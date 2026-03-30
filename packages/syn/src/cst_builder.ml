@@ -7275,28 +7275,84 @@ let module_declaration_from_node = fun node ->
         | _ ->
             lifted_module_expression
       in
-      Some Cst.ModuleDeclaration.{
-        syntax_node = node;
-        module_name = token module_name;
-        functor_parameters = direct_children
+      let module_name = token module_name in
+      let functor_parameters =
+        direct_children
         |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.FUNCTOR_PARAM)
-        |> List.map functor_parameter_from_node;
-        module_type = lifted_module_type;
-        module_expression = lifted_module_expression;
-        is_recursive = is_recursive_declaration;
-        owned_trivia = owned_trivia_from_node node
-      }
+        |> List.map functor_parameter_from_node
+      in
+      let owned_trivia = owned_trivia_from_node node in
+      (match lifted_module_expression, lifted_module_type with
+      | Some module_expression, module_type ->
+          Some
+            (Cst.ModuleDeclaration.Structure {
+               syntax_node = node;
+               module_name;
+               functor_parameters;
+               module_type;
+               module_expression;
+               is_recursive = is_recursive_declaration;
+               owned_trivia;
+             })
+      | None, Some module_type ->
+          Some
+            (Cst.ModuleDeclaration.Signature {
+               syntax_node = node;
+               module_name;
+               functor_parameters;
+               module_type;
+               is_recursive = is_recursive_declaration;
+               owned_trivia;
+             })
+      | None, None ->
+          None)
     )
   | None -> None
 
 let recursive_module_declaration_from_nodes = fun ~group_syntax_node module_decl_nodes ->
+  let with_recursive_flag = function
+    | Cst.ModuleDeclaration.Signature {
+        syntax_node;
+        module_name;
+        functor_parameters;
+        module_type;
+        owned_trivia;
+        _;
+      } ->
+        Cst.ModuleDeclaration.Signature {
+          syntax_node;
+          module_name;
+          functor_parameters;
+          module_type;
+          is_recursive = true;
+          owned_trivia;
+        }
+    | Cst.ModuleDeclaration.Structure {
+        syntax_node;
+        module_name;
+        functor_parameters;
+        module_type;
+        module_expression;
+        owned_trivia;
+        _;
+      } ->
+        Cst.ModuleDeclaration.Structure {
+          syntax_node;
+          module_name;
+          functor_parameters;
+          module_type;
+          module_expression;
+          is_recursive = true;
+          owned_trivia;
+        }
+  in
   let recursive_declarations =
     module_decl_nodes
     |> List.map
       (fun module_decl_node ->
         match module_declaration_from_node module_decl_node with
         | Some decl ->
-            ({decl with is_recursive = true}: Cst.ModuleDeclaration.t)
+            with_recursive_flag decl
         | None ->
             bail ~message:"expected recursive module binding during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
               "item";

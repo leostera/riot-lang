@@ -4091,6 +4091,7 @@
       {
         "tag": "module_declaration",
         "item": {
+          "tag": "structure",
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
@@ -5336,6 +5337,7 @@
       {
         "tag": "module_declaration",
         "item": {
+          "tag": "structure",
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
@@ -5389,6 +5391,7 @@
           },
           "declarations": [
             {
+              "tag": "structure",
               "syntax_node": {
                 "kind": "MODULE_DECL",
                 "span": {
@@ -5481,6 +5484,7 @@
               "is_recursive": true
             },
             {
+              "tag": "structure",
               "syntax_node": {
                 "kind": "MODULE_DECL",
                 "span": {

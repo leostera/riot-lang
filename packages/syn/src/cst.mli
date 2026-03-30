@@ -4029,23 +4029,26 @@ end
     module F (X : S) : T = struct end
     ```
 
-    This node is still intentionally shared across structure and signature
-    contexts. As a result it can represent combinations that are only valid in
-    one context, such as signature-only bindings without a module expression or
-    structure bindings with both an optional module-type ascription and a
-    module expression. Downstream tools should treat those combinations as
-    context-sensitive until this node is tightened further.
 *)
 module ModuleDeclaration : sig
-  type t = {
-    syntax_node : syntax_node;
-    module_name : Token.t;
-    functor_parameters : functor_parameter list;
-    module_type : module_type option;
-    module_expression : module_expression option;
-    is_recursive : bool;
-    owned_trivia : owned_trivia;
-  }
+  type t =
+    | Signature of {
+        syntax_node : syntax_node;
+        module_name : Token.t;
+        functor_parameters : functor_parameter list;
+        module_type : module_type;
+        is_recursive : bool;
+        owned_trivia : owned_trivia;
+      }
+    | Structure of {
+        syntax_node : syntax_node;
+        module_name : Token.t;
+        functor_parameters : functor_parameter list;
+        module_type : module_type option;
+        module_expression : module_expression;
+        is_recursive : bool;
+        owned_trivia : owned_trivia;
+      }
   val syntax_node : t -> syntax_node
 
   val module_name_token : t -> Token.t

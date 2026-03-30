@@ -1657,21 +1657,41 @@ let type_extension_to_json = fun decl ->
     )
   ]
 
-let module_declaration_to_json = fun decl ->
-  Json.Object [
-    ("syntax_node", syntax_node_to_json (Cst.ModuleDeclaration.syntax_node decl));
-    ("module_name", token_to_json (Cst.ModuleDeclaration.module_name_token decl));
-    (
-      "functor_parameters",
-      Json.Array (List.map functor_parameter_to_json (Cst.ModuleDeclaration.functor_parameters decl))
-    );
-    ("module_type", option_to_json module_type_to_json (Cst.ModuleDeclaration.module_type decl));
-    (
-      "module_expression",
-      option_to_json module_expression_to_json (Cst.ModuleDeclaration.module_expression decl)
-    );
-    ("is_recursive", Json.Bool (Cst.ModuleDeclaration.is_recursive decl))
-  ]
+let module_declaration_to_json = function
+  | Cst.ModuleDeclaration.Signature {
+      syntax_node;
+      module_name;
+      functor_parameters;
+      module_type;
+      is_recursive;
+      owned_trivia = _;
+    } ->
+      Json.Object [
+        ("tag", Json.String "signature");
+        ("syntax_node", syntax_node_to_json syntax_node);
+        ("module_name", token_to_json module_name);
+        ("functor_parameters", Json.Array (List.map functor_parameter_to_json functor_parameters));
+        ("module_type", module_type_to_json module_type);
+        ("is_recursive", Json.Bool is_recursive)
+      ]
+  | Cst.ModuleDeclaration.Structure {
+      syntax_node;
+      module_name;
+      functor_parameters;
+      module_type;
+      module_expression;
+      is_recursive;
+      owned_trivia = _;
+    } ->
+      Json.Object [
+        ("tag", Json.String "structure");
+        ("syntax_node", syntax_node_to_json syntax_node);
+        ("module_name", token_to_json module_name);
+        ("functor_parameters", Json.Array (List.map functor_parameter_to_json functor_parameters));
+        ("module_type", option_to_json module_type_to_json module_type);
+        ("module_expression", module_expression_to_json module_expression);
+        ("is_recursive", Json.Bool is_recursive)
+      ]
 
 let recursive_module_declaration_to_json = fun decl ->
   Json.Object [

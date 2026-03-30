@@ -5018,8 +5018,11 @@ and render_module_expression_doc = function
       render_extension_doc extension
 
 and render_module_declaration_with_keyword keyword_doc
-    ({ module_name; functor_parameters; module_type; module_expression; _ } :
-      Syn.Cst.ModuleDeclaration.t) =
+    (decl : Syn.Cst.ModuleDeclaration.t) =
+  let module_name = Syn.Cst.ModuleDeclaration.module_name_token decl in
+  let functor_parameters = Syn.Cst.ModuleDeclaration.functor_parameters decl in
+  let module_type = Syn.Cst.ModuleDeclaration.module_type decl in
+  let module_expression = Syn.Cst.ModuleDeclaration.module_expression decl in
   let header =
     Doc.concat
       [
@@ -5092,7 +5095,12 @@ and render_include_statement ({ target; _ } : Syn.Cst.include_statement) =
 
 and is_module_alias_structure_item = function
   | Syn.Cst.StructureItem.ModuleDeclaration
-      { functor_parameters = []; module_type = None; module_expression = Some (Syn.Cst.ModuleExpression.Path _); _ } ->
+      (Syn.Cst.ModuleDeclaration.Structure {
+         functor_parameters = [];
+         module_type = None;
+         module_expression = Syn.Cst.ModuleExpression.Path _;
+         _;
+       }) ->
       true
   | _ ->
       false

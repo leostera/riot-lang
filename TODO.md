@@ -59,7 +59,7 @@ This file is _yours_. Keep it up to date after every big change.
 - class, local-open, object, and extension core types now lower structurally.
 - `Syn.Cst.class_declaration` is now an explicit valid-shape sum instead of a `class_type option * class_body option` product; impossible `None/None` declaration states are no longer representable.
 - `Syn.Cst.ModuleTypeDeclaration` now models only `module type Name` and `module type Name = ...`; the bogus `is_destructive_substitution` state is gone from that CST node.
-- `Syn.Cst.ModuleDeclaration` now models only `module ... = ...` / `module ... : ... = ...` / signature-only `module ... : ...` shapes; the bogus `:=` substitution flag is gone, but the node is still shared across structure and signature contexts and remains context-sensitive CST debt.
+- `Syn.Cst.ModuleDeclaration` is now an explicit valid-shape sum for signature-only versus structure-with-body module bindings; the bogus `:=` substitution path and the old `module_type option * module_expression option` product are gone, although the node still spans both structure and signature contexts.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module/extension patterns now lower structurally; default opaque extension payloads in patterns now render directly from CST token slices, while the remaining structured guard case still fails explicitly.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
 - module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, extension, and unreachable expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes, and extension payloads render from CST-owned opaque token slices when they are not explicitly structured OCaml payloads.
@@ -221,7 +221,7 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit ambiguity-sensitive type-declaration shape markers
 
 - [ ] Tighten remaining representable-but-invalid CST states
-  - `ModuleDeclaration` still admits invalid cross-context combinations through optional `module_type` / `module_expression` fields
+  - audit the remaining shared declaration nodes and helper payload surfaces for context-invalid combinations now that `ClassDeclaration`, `ModuleTypeDeclaration`, and `ModuleDeclaration` have been tightened
 
 - [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
   - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly

@@ -22,6 +22,7 @@
           },
           "declarations": [
             {
+              "tag": "structure",
               "syntax_node": {
                 "kind": "MODULE_DECL",
                 "span": {
@@ -104,6 +105,7 @@
               "is_recursive": true
             },
             {
+              "tag": "structure",
               "syntax_node": {
                 "kind": "MODULE_DECL",
                 "span": {

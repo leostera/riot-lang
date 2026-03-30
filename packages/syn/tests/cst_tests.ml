@@ -1287,16 +1287,16 @@ let tests =
         let items = structure_items cst in
         match items with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_name;
               functor_parameters = [];
               module_type = None;
               module_expression =
-                Some
-                  (Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = [ item_node ]; _ });
+                Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = [ item_node ]; _ };
               is_recursive = false;
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:"Foo_bar"
               ~actual:(Syn.Cst.Token.text module_name);
@@ -1317,12 +1317,12 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
-              module_expression =
-                Some
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
+                module_expression =
                   ((Syn.Cst.ModuleExpression.Structure _) as module_expression);
-              _;
-            }
+                _;
+              })
           :: _ -> (
             match Syn.CstBuilder.structure_items_of_module_expression module_expression with
             | Ok (Some [ Syn.Cst.StructureItem.LetBinding binding ]) ->
@@ -1352,12 +1352,12 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_expression =
-                Some
-                  ((Syn.Cst.ModuleExpression.Structure _) as module_expression);
+                ((Syn.Cst.ModuleExpression.Structure _) as module_expression);
               _;
-            }
+            })
           :: _ -> (
             match Syn.CstBuilder.structure_items_of_module_expression module_expression with
             | Ok
@@ -1411,11 +1411,12 @@ let tests =
         in
         match structure_items cst with
         | [ Syn.Cst.StructureItem.ModuleDeclaration
-              {
+              (Syn.Cst.ModuleDeclaration.Structure
+                {
                 module_expression =
-                  Some ((Syn.Cst.ModuleExpression.Structure _) as module_expression);
+                  ((Syn.Cst.ModuleExpression.Structure _) as module_expression);
                 _;
-              } ] -> (
+                }) ] -> (
             match Syn.CstBuilder.structure_items_of_module_expression module_expression with
             | Ok
                 (Some
@@ -1464,7 +1465,8 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_type =
                 Some
                   (Syn.Cst.ModuleType.With
@@ -1474,22 +1476,21 @@ let tests =
                       _;
                     });
               module_expression =
-                Some
-                  (Syn.Cst.ModuleExpression.Constraint
-                    {
-                      module_expression =
-                        Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = [ item_node ]; _ };
-                      module_type =
-                        Syn.Cst.ModuleType.With
-                          {
-                            base = Syn.Cst.ModuleType.Path inner_base;
-                            constraints = [ inner_constraint ];
-                            _;
-                          };
-                      _;
-                    });
+                Syn.Cst.ModuleExpression.Constraint
+                  {
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = [ item_node ]; _ };
+                    module_type =
+                      Syn.Cst.ModuleType.With
+                        {
+                          base = Syn.Cst.ModuleType.Path inner_base;
+                          constraints = [ inner_constraint ];
+                          _;
+                        };
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:(Some "S")
               ~actual:(Syn.Cst.Ident.name outer_base);
@@ -1529,10 +1530,11 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
-              module_expression = Some (Syn.Cst.ModuleExpression.Path path);
-              _;
-            }
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
+                module_expression = Syn.Cst.ModuleExpression.Path path;
+                _;
+              })
           :: _ ->
             Test.assert_equal ~expected:(Some "Source")
               ~actual:(Syn.Cst.Ident.name path);
@@ -1549,18 +1551,18 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_expression =
-                Some
-                  (Syn.Cst.ModuleExpression.Functor
-                    {
-                      parameters =
-                        [ { name_token; module_type = Syn.Cst.ModuleType.Path param_type; _ } ];
-                      body = Syn.Cst.ModuleExpression.Path body_path;
-                      _;
-                    });
+                Syn.Cst.ModuleExpression.Functor
+                  {
+                    parameters =
+                      [ { name_token; module_type = Syn.Cst.ModuleType.Path param_type; _ } ];
+                    body = Syn.Cst.ModuleExpression.Path body_path;
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:"X"
               ~actual:(Syn.Cst.Token.text name_token);
@@ -1581,23 +1583,23 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_expression =
-                Some
-                  (Syn.Cst.ModuleExpression.Apply
-                    {
-                      callee =
-                        Syn.Cst.ModuleExpression.Apply
-                          {
-                            callee = Syn.Cst.ModuleExpression.Path functor_path;
-                            argument = Syn.Cst.ModuleExpression.Path first_arg;
-                            _;
-                          };
-                      argument = Syn.Cst.ModuleExpression.Path second_arg;
-                      _;
-                    });
+                Syn.Cst.ModuleExpression.Apply
+                  {
+                    callee =
+                      Syn.Cst.ModuleExpression.Apply
+                        {
+                          callee = Syn.Cst.ModuleExpression.Path functor_path;
+                          argument = Syn.Cst.ModuleExpression.Path first_arg;
+                          _;
+                        };
+                    argument = Syn.Cst.ModuleExpression.Path second_arg;
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:(Some "F")
               ~actual:(Syn.Cst.Ident.name functor_path);
@@ -1619,17 +1621,17 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_expression =
-                Some
-                  (Syn.Cst.ModuleExpression.Apply
-                    {
-                      callee = Syn.Cst.ModuleExpression.Path functor_path;
-                      argument = Syn.Cst.ModuleExpression.Path arg_path;
-                      _;
-                    });
+                Syn.Cst.ModuleExpression.Apply
+                  {
+                    callee = Syn.Cst.ModuleExpression.Path functor_path;
+                    argument = Syn.Cst.ModuleExpression.Path arg_path;
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:(Some "F")
               ~actual:(Syn.Cst.Ident.name functor_path);
@@ -1648,16 +1650,16 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_expression =
-                Some
-                  (Syn.Cst.ModuleExpression.ApplyUnit
-                    {
-                      callee = Syn.Cst.ModuleExpression.Path functor_path;
-                      _;
-                    });
+                Syn.Cst.ModuleExpression.ApplyUnit
+                  {
+                    callee = Syn.Cst.ModuleExpression.Path functor_path;
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:(Some "F")
               ~actual:(Syn.Cst.Ident.name functor_path);
@@ -1674,11 +1676,11 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
-              module_expression =
-                Some (Syn.Cst.ModuleExpression.Extension extension);
-              _;
-            }
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
+                module_expression = Syn.Cst.ModuleExpression.Extension extension;
+                _;
+              })
           :: _ ->
             Test.assert_equal ~expected:"%"
               ~actual:(Syn.Cst.Token.text extension.sigil_token);
@@ -1697,24 +1699,24 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_expression =
-                Some
-                  (Syn.Cst.ModuleExpression.Parenthesized
-                    {
-                      inner =
-                        Syn.Cst.ModuleExpression.ModuleUnpack
-                          {
-                            expression =
-                              Syn.Cst.Expression.Path { path = module_path; _ };
-                            module_type =
-                              Some (Syn.Cst.ModuleType.Path module_type_path);
-                            _;
-                          };
-                      _;
-                    });
+                Syn.Cst.ModuleExpression.Parenthesized
+                  {
+                    inner =
+                      Syn.Cst.ModuleExpression.ModuleUnpack
+                        {
+                          expression =
+                            Syn.Cst.Expression.Path { path = module_path; _ };
+                          module_type =
+                            Some (Syn.Cst.ModuleType.Path module_type_path);
+                          _;
+                        };
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:(Some "packed")
               ~actual:(Syn.Cst.Ident.name module_path);
@@ -1736,23 +1738,22 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Signature
+              {
               module_type =
-                Some
-                  (Syn.Cst.ModuleType.Parenthesized
-                    {
-                      inner =
-                        Syn.Cst.ModuleType.Parenthesized
-                          {
-                            inner =
-                              Syn.Cst.ModuleType.TypeOf { module_path; _ };
-                            _;
-                          };
-                      _;
-                    });
-              module_expression = None;
+                Syn.Cst.ModuleType.Parenthesized
+                  {
+                    inner =
+                      Syn.Cst.ModuleType.Parenthesized
+                        {
+                          inner =
+                            Syn.Cst.ModuleType.TypeOf { module_path; _ };
+                          _;
+                        };
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:(Some "N")
               ~actual:(Syn.Cst.Ident.name module_path);
@@ -1798,13 +1799,13 @@ let tests =
         in
         match signature_items cst with
         | Syn.Cst.SignatureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Signature
+              {
               module_name;
-              module_type = Some (Syn.Cst.ModuleType.Signature _);
-              module_expression = None;
+              module_type = Syn.Cst.ModuleType.Signature _;
               is_recursive = false;
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:"M"
               ~actual:(Syn.Cst.Token.text module_name);
@@ -2048,11 +2049,12 @@ let tests =
         in
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.ModuleDeclaration
-              {
+              (Syn.Cst.ModuleDeclaration.Signature
+                {
                 module_type =
-                  Some ((Syn.Cst.ModuleType.Signature _) as module_type);
+                  ((Syn.Cst.ModuleType.Signature _) as module_type);
                 _;
-              } ] -> (
+                }) ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
             | Ok
                 (Some
@@ -2120,11 +2122,12 @@ let tests =
         in
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.ModuleDeclaration
-              {
+              (Syn.Cst.ModuleDeclaration.Signature
+                {
                 module_type =
-                  Some ((Syn.Cst.ModuleType.Signature _) as module_type);
+                  ((Syn.Cst.ModuleType.Signature _) as module_type);
                 _;
-              } ] -> (
+                }) ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
             | Ok
                 (Some
@@ -2169,12 +2172,13 @@ let tests =
           |> List.find_map (
                function
                | Syn.Cst.SignatureItem.ModuleDeclaration
-                   {
+                   (Syn.Cst.ModuleDeclaration.Signature
+                     {
                      module_name;
                      module_type =
-                       Some ((Syn.Cst.ModuleType.Signature _) as module_type);
+                       ((Syn.Cst.ModuleType.Signature _) as module_type);
                      _;
-                   }
+                   })
                  when String.equal (Syn.Cst.Token.text module_name) "Green" ->
                    Some module_type
                | _ ->
@@ -2264,11 +2268,12 @@ let tests =
         in
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.ModuleDeclaration
-              {
+              (Syn.Cst.ModuleDeclaration.Signature
+                {
                 module_type =
-                  Some ((Syn.Cst.ModuleType.Signature _) as module_type);
+                  ((Syn.Cst.ModuleType.Signature _) as module_type);
                 _;
-              } ] -> (
+                }) ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
             | Ok
                 (Some
@@ -9691,18 +9696,18 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
+            (Syn.Cst.ModuleDeclaration.Structure
+              {
               module_expression =
-                Some
-                  (Syn.Cst.ModuleExpression.Attribute
-                     {
-                       module_expression =
-                         Syn.Cst.ModuleExpression.Structure
-                           { item_syntax_nodes; _ };
-                       _;
-                     });
+                Syn.Cst.ModuleExpression.Attribute
+                  {
+                    module_expression =
+                      Syn.Cst.ModuleExpression.Structure
+                        { item_syntax_nodes; _ };
+                    _;
+                  };
               _;
-            }
+            })
           :: Syn.Cst.StructureItem.ModuleTypeDeclaration
                {
                  module_type =

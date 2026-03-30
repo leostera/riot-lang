@@ -2827,31 +2827,54 @@ module LetBinding = struct
 end
 
 module ModuleDeclaration = struct
-  type t = {
-    syntax_node : syntax_node;
-    module_name : Token.t;
-    functor_parameters : functor_parameter list;
-    module_type : module_type option;
-    module_expression : module_expression option;
-    is_recursive : bool;
-    owned_trivia : owned_trivia;
-  }
+  type t =
+    | Signature of {
+        syntax_node : syntax_node;
+        module_name : Token.t;
+        functor_parameters : functor_parameter list;
+        module_type : module_type;
+        is_recursive : bool;
+        owned_trivia : owned_trivia;
+      }
+    | Structure of {
+        syntax_node : syntax_node;
+        module_name : Token.t;
+        functor_parameters : functor_parameter list;
+        module_type : module_type option;
+        module_expression : module_expression;
+        is_recursive : bool;
+        owned_trivia : owned_trivia;
+      }
 
-  let syntax_node = fun decl -> decl.syntax_node
+  let syntax_node = function
+    | Signature { syntax_node; _ }
+    | Structure { syntax_node; _ } -> syntax_node
 
-  let module_name_token = fun decl -> decl.module_name
+  let module_name_token = function
+    | Signature { module_name; _ }
+    | Structure { module_name; _ } -> module_name
 
-  let functor_parameters = fun decl -> decl.functor_parameters
+  let functor_parameters = function
+    | Signature { functor_parameters; _ }
+    | Structure { functor_parameters; _ } -> functor_parameters
 
-  let module_type = fun decl -> decl.module_type
+  let module_type = function
+    | Signature { module_type; _ } -> Some module_type
+    | Structure { module_type; _ } -> module_type
 
-  let module_expression = fun decl -> decl.module_expression
+  let module_expression = function
+    | Signature _ -> None
+    | Structure { module_expression; _ } -> Some module_expression
 
-  let is_recursive = fun decl -> decl.is_recursive
+  let is_recursive = function
+    | Signature { is_recursive; _ }
+    | Structure { is_recursive; _ } -> is_recursive
 
-  let owned_trivia = fun decl -> decl.owned_trivia
+  let owned_trivia = function
+    | Signature { owned_trivia; _ }
+    | Structure { owned_trivia; _ } -> owned_trivia
 
-  let name = fun decl -> Token.text decl.module_name
+  let name = fun decl -> Token.text (module_name_token decl)
 end
 
 module RecursiveModuleDeclaration = struct
