@@ -347,17 +347,23 @@ let plan_bundle_of_json ~(package : Package.t) json =
     - Action graph (derived from module graph)
 
     If input_hash hasn't changed, we know the full hash is the same! *)
-let compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx =
+let compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx
+    ~toolchain =
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
 
   (* Planner artifact contract version.
      Bump this when planned output shapes or link-time artifact requirements
      change in ways that must invalidate cached package artifacts. *)
-  H.write_string state "planner-artifacts:v5";
+  H.write_string state "planner-artifacts:v6";
 
   (* Build context (includes resolved profile) *)
   Build_ctx.hash state build_ctx;
+
+  (* Toolchain identity must participate in package cache invalidation so
+     cross-compiled artifacts are rebuilt when the installed compiler/sysroot
+     changes underneath the same target triple. *)
+  H.write state (Std.Crypto.Digest.bytes (Tusk_toolchain.hash toolchain));
   
   (* Package metadata (includes compiler config overrides) *)
   Package.hash state package;
@@ -527,7 +533,10 @@ let plan_package ~workspace ~toolchain ~store ~package_graph ~package_key
             profile
       in
       
-      let input_hash = compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx in
+      let input_hash =
+        compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx
+          ~toolchain
+      in
 
       (match Tusk_store.Store.load_plan_bundle store ~hash:input_hash with
       | Some json -> (

@@ -49,11 +49,6 @@ let stdlib_flags (package : Package.t) =
   else
     [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
 
-let shared_library_linker_flags ctx =
-  match Build_ctx.target_platform_name ctx with
-  | "macos" -> [ "-Wl,-undefined,dynamic_lookup" ]
-  | _ -> []
-
 let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink
     (module_node : Module_node.t) (deps : G.Node_id.t list) :
     Action.t list * Path.t list * Path.t list =
@@ -194,7 +189,6 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
   | { kind = Library { name; includes }; _ } ->
       let library_name = Module_name.(of_string name |> cmxa) in
       let archive_name = Module_name.(of_string name |> a) in
-      let shared_lib_name = Module_name.(of_string name |> cmxs) in
       let sources = [] in
 
       let objects_with_duplicates =
@@ -220,40 +214,9 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         objects; 
         includes 
       } in
-      
-      (* For shared libraries, include external OCaml runtime dependencies *)
-      (* These are dependencies that can't be dynamically loaded later (stdlib, unix, dynlink) *)
-      let external_libs = 
-        [ Path.v "stdlib.cmxa" ]
-        @ (if needs_unix then [ Path.v "unix.cmxa" ] else [])
-        @ (if needs_dynlink then [ Path.v "dynlink.cmxa" ] else [])
-      in
-      let dependency_libs =
-        Dependency.transitive_closure depset
-        |> List.filter_map (fun (dep : Dependency.t) ->
-               match dep.package.library with
-               | Some _ -> Some (Dependency.library_cmxa dep)
-               | None -> None)
-      in
-      let shared_cclib_flags = shared_library_linker_flags ctx in
-      
-      (* When building .cmxs from .cmxa, the C objects are already embedded in the .cmxa *)
-      (* We should NOT pass them again via -cclib as this causes duplicate symbol errors *)
-      (* The .cmxa was built with all necessary C objects included (see CreateLibrary above) *)
-      
-      (* Create shared library (.cmxs) from the .cmxa *)
-      let create_shared = Action.CreateSharedLibrary {
-        outputs = [ shared_lib_name ];
-        objects = [ library_name ];  (* Use the .cmxa as input *)
-        libraries = List.unique (external_libs @ dependency_libs);
-        includes;
-        cclibs = [];                 (* Empty - C objects already in .cmxa *)
-        ccopt_flags = [];
-        cclib_flags = shared_cclib_flags;
-      } in
-      
-      let all_outputs = [ library_name; archive_name; shared_lib_name ] in
-      ([ create_lib; create_shared ], all_outputs, sources)
+
+      let all_outputs = [ library_name; archive_name ] in
+      ([ create_lib ], all_outputs, sources)
   | { kind = Binary { name; source; libraries; includes }; _ } ->
       let binary_mod =
         Module.make ~namespace:Namespace.empty ~filename:source

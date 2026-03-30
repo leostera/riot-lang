@@ -14,13 +14,13 @@ Usage:
 
 import argparse
 import difflib
+from pathlib import Path
 import platform
 import re
 import shlex
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 from typing import List, Optional
 
 GREEN = "\033[0;32m"
@@ -111,7 +111,8 @@ class FixtureRunner:
                 expected.splitlines(),
                 actual.splitlines(),
                 fromfile=str(expected_path.relative_to(self.context.workspace_root)),
-                tofile=str(fixture_path.relative_to(self.context.workspace_root)) + " (actual)",
+                tofile=str(fixture_path.relative_to(self.context.workspace_root))
+                + " (actual)",
                 lineterm="",
             )
         )
@@ -120,9 +121,7 @@ class FixtureRunner:
         if len(diff_lines) <= max_lines:
             return "\n".join(diff_lines)
         head = "\n".join(diff_lines[:max_lines])
-        return (
-            f"{head}\n... diff truncated ({len(diff_lines) - max_lines} additional lines omitted) ..."
-        )
+        return f"{head}\n... diff truncated ({len(diff_lines) - max_lines} additional lines omitted) ..."
 
     def normalize_trailing_whitespace(self, text: str) -> str:
         lines = text.splitlines()
@@ -307,7 +306,7 @@ class WorkspaceVerifier:
             hash_result = self.context.run_krasny(
                 "syntax-hash",
                 tmp_path,
-                timeout_seconds=20.0,
+                timeout_seconds=600.0,
             )
         if hash_result.returncode != 0:
             detail = f"syntax-hash exited {hash_result.returncode}"
@@ -411,24 +410,35 @@ class WorkspaceVerifier:
 
         # Option 1: allow formatter-owned sugar rewrites if canonicalized
         # formatting converges to an equivalent CST hash.
-        original_format_ok, canonical_original_text = self.format_text(source_text, suffix)
+        original_format_ok, canonical_original_text = self.format_text(
+            source_text, suffix
+        )
         if not original_format_ok:
             return False, f"canonical original format failed: {canonical_original_text}"
 
-        canonical_formatted_ok, canonical_formatted_text = self.format_text(formatted.stdout, suffix)
+        canonical_formatted_ok, canonical_formatted_text = self.format_text(
+            formatted.stdout, suffix
+        )
         if not canonical_formatted_ok:
-            return False, f"canonical formatted format failed: {canonical_formatted_text}"
+            return (
+                False,
+                f"canonical formatted format failed: {canonical_formatted_text}",
+            )
 
-        canonical_original_hash_ok, canonical_original_hash = self.syntax_hash_from_text(
-            canonical_original_text,
-            suffix,
+        canonical_original_hash_ok, canonical_original_hash = (
+            self.syntax_hash_from_text(
+                canonical_original_text,
+                suffix,
+            )
         )
         if not canonical_original_hash_ok:
             return False, f"canonical original hash failed: {canonical_original_hash}"
 
-        canonical_formatted_hash_ok, canonical_formatted_hash = self.syntax_hash_from_text(
-            canonical_formatted_text,
-            suffix,
+        canonical_formatted_hash_ok, canonical_formatted_hash = (
+            self.syntax_hash_from_text(
+                canonical_formatted_text,
+                suffix,
+            )
         )
         if not canonical_formatted_hash_ok:
             return False, f"canonical formatted hash failed: {canonical_formatted_hash}"

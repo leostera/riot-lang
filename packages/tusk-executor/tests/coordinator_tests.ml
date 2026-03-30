@@ -144,7 +144,7 @@ let test_failed_dependency_updates_package_graph () =
                     | Tusk_planner.Package_graph.Skipped _ ->
                         Error
                           "package graph left dependent package skipped after \
-                           dependency failure"))))
+                           dependency failure")))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"

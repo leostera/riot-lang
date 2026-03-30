@@ -1,14 +1,6 @@
 open Std
 open Std.Data
 
-let rec binding_operator_bindings_to_list (binding : Cst.binding_operator_binding) =
-  match binding.and_binding with
-  | Some next -> next :: binding_operator_bindings_to_list next
-  | None -> []
-
-let let_binding_chain_to_list binding =
-  binding :: Cst.LetBinding.and_bindings binding
-
 let span_to_json = fun (span : Ceibo.Span.t) -> Json.Object [
   ("start", Json.Int span.start);
   ("end", Json.Int span.end_)
@@ -804,6 +796,17 @@ and extension_to_json = fun (ext : Cst.extension) -> Json.Object [
   ("name", ident_to_json ext.name);
   ("payload", option_to_json payload_to_json ext.payload)
 ]
+and binding_operator_binding_to_json = fun
+  ({ keyword_token; operator_token; equals_token; binding_pattern; bound_value; and_binding } :
+      Cst.binding_operator_binding) ->
+  Json.Object [
+    ("keyword_token", token_to_json keyword_token);
+    ("operator_token", token_to_json operator_token);
+    ("equals_token", token_to_json equals_token);
+    ("binding_pattern", pattern_to_json binding_pattern);
+    ("bound_value", expression_to_json bound_value);
+    ("and_binding", option_to_json binding_operator_binding_to_json and_binding)
+  ]
 and method_definition_to_json =
   function
   | Cst.ConcreteMethod { body; type_ } ->
@@ -885,16 +888,6 @@ and object_member_to_json =
         ("syntax_node", syntax_node_to_json syntax_node);
         ("body", expression_to_json body)
       ]
-and binding_operator_binding_to_json = fun
-  ({ keyword_token; operator_token; equals_token; binding_pattern; bound_value } :
-      Cst.binding_operator_binding) ->
-  Json.Object [
-    ("keyword_token", token_to_json keyword_token);
-    ("operator_token", token_to_json operator_token);
-    ("equals_token", token_to_json equals_token);
-    ("binding_pattern", pattern_to_json binding_pattern);
-    ("bound_value", expression_to_json bound_value)
-  ]
 and for_direction_to_json =
   function
   | Cst.To { direction_token } ->
@@ -1274,7 +1267,6 @@ and expression_to_json = fun expression ->
         ("tag", Json.String "let_operator");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("binding", binding_operator_binding_to_json binding);
-        ("and_bindings", Json.Array (List.map binding_operator_binding_to_json (binding_operator_bindings_to_list binding)));
         ("in_token", token_to_json in_token);
         ("body", expression_to_json body)
       ]
@@ -1304,7 +1296,7 @@ and expression_to_json = fun expression ->
           ("binding_pattern", pattern_to_json binding_pattern);
           ("parameters", Json.Array (List.map parameter_to_json parameters));
           ("bound_value", expression_to_json bound_value);
-          ("and_bindings", Json.Array (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list |> List.map let_binding_to_json));
+          ("and_binding", option_to_json let_binding_to_json and_binding);
           ("body", expression_to_json body);
           ("is_recursive", Json.Bool is_recursive);
         ] @ expression_attribute_fields expression
@@ -1442,7 +1434,7 @@ and let_binding_to_json = fun binding ->
     ("binding_pattern", pattern_to_json (Cst.LetBinding.binding_pattern binding));
     ("parameters", Json.Array (List.map parameter_to_json (Cst.LetBinding.parameters binding)));
     ("value", expression_to_json (Cst.LetBinding.value binding));
-    ("and_bindings", Json.Array (List.map let_binding_to_json (Cst.LetBinding.and_bindings binding)));
+    ("and_binding", option_to_json let_binding_to_json (Cst.LetBinding.and_binding binding));
     ("is_recursive", Json.Bool (Cst.LetBinding.is_recursive binding));
   ]
 
@@ -1601,7 +1593,6 @@ let type_definition_to_json =
 
 let rec type_declaration_to_json = fun decl ->
   let constraints = Cst.TypeDeclaration.constraints decl |> List.map type_constraint_to_json in
-  let and_declarations = Cst.TypeDeclaration.and_declarations decl |> List.map type_declaration_to_json in
   let owned_trivia = owned_trivia_fields_to_json (Cst.TypeDeclaration.owned_trivia decl) in
   Json.Object (
     [
@@ -1634,10 +1625,9 @@ let rec type_declaration_to_json = fun decl ->
         [ ("constraints", Json.Array constraints) ]
     )
     @ (
-      if and_declarations = [] then
-        []
-      else
-        [ ("and_declarations", Json.Array and_declarations) ]
+      match Cst.TypeDeclaration.next_and_declaration decl with
+      | None -> []
+      | Some next -> [ ("next_and_declaration", type_declaration_to_json next) ]
     )
     @ (
       if Cst.TypeDeclaration.is_nonrec decl then
@@ -1692,10 +1682,8 @@ let rec module_signature_to_json decl =
       Json.Array (List.map functor_parameter_to_json (Cst.ModuleSignature.functor_parameters decl))
     );
     ("definition", definition_json);
-    (
-      "and_declarations",
-      Json.Array (List.map module_signature_to_json (Cst.ModuleSignature.and_declarations decl))
-    );
+    ("next_and_declaration",
+     option_to_json module_signature_to_json (Cst.ModuleSignature.next_and_declaration decl));
     ("is_recursive", Json.Bool (Cst.ModuleSignature.is_recursive decl))
   ]
 
@@ -1709,10 +1697,8 @@ let rec module_structure_to_json decl =
     );
     ("module_type", option_to_json module_type_to_json (Cst.ModuleStructure.module_type decl));
     ("module_expression", module_expression_to_json (Cst.ModuleStructure.module_expression decl));
-    (
-      "and_declarations",
-      Json.Array (List.map module_structure_to_json (Cst.ModuleStructure.and_declarations decl))
-    );
+    ("next_and_declaration",
+     option_to_json module_structure_to_json (Cst.ModuleStructure.next_and_declaration decl));
     ("is_recursive", Json.Bool (Cst.ModuleStructure.is_recursive decl))
   ]
 
@@ -1866,7 +1852,7 @@ and class_expression_to_json =
         ("binding_pattern", pattern_to_json binding_pattern);
         ("parameters", Json.Array (List.map parameter_to_json parameters));
         ("bound_value", expression_to_json bound_value);
-        ("and_bindings", Json.Array (Option.to_list and_binding |> List.concat_map let_binding_chain_to_list |> List.map let_binding_to_json));
+        ("and_binding", option_to_json let_binding_to_json and_binding);
         ("body", class_expression_to_json body);
         ("is_recursive", Json.Bool is_recursive);
       ]
