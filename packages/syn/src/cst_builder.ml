@@ -4386,16 +4386,16 @@ let rec parameter_from_node = fun node ->
             | None ->
                 None
           in
-          Cst.Parameter.Optional
-            (Cst.Plain {
-               syntax_node = node;
-               sigil_token = sigil_token;
-               label_token = label_name_token;
-               binding_name_token;
-               binding_name_matches_label =
-                 binding_name_matches_label ~label_name_token binding_name_token;
-               binding_pattern
-             })
+          Cst.Parameter.Optional {
+            syntax_node = node;
+            sigil_token = sigil_token;
+            label_token = label_name_token;
+            binding_name_token;
+            binding_name_matches_label =
+              binding_name_matches_label ~label_name_token binding_name_token;
+            default_value = None;
+            binding_pattern
+          }
       | _ -> unsupported_parameter node
     )
   | Syntax_kind.OPTIONAL_PARAM_DEFAULT -> (
@@ -4422,17 +4422,16 @@ let rec parameter_from_node = fun node ->
           match binding_pattern, default_value with
           | Some binding_pattern, Some default_value ->
               let binding_name_token = binding_name_token_from_pattern binding_pattern in
-              Cst.Parameter.Optional
-                (Cst.Defaulted {
-                   syntax_node = node;
-                   sigil_token = sigil_token;
-                   label_token;
-                   binding_name_token;
-                   binding_name_matches_label =
-                     binding_name_matches_label ~label_name_token:label_token binding_name_token;
-                   binding_pattern;
-                   default_value;
-                 })
+              Cst.Parameter.Optional {
+                syntax_node = node;
+                sigil_token = sigil_token;
+                label_token;
+                binding_name_token;
+                binding_name_matches_label =
+                  binding_name_matches_label ~label_name_token:label_token binding_name_token;
+                default_value = Some default_value;
+                binding_pattern = Some binding_pattern;
+              }
           | _ ->
               unsupported_parameter node)
       | _ -> unsupported_parameter node
@@ -4465,25 +4464,16 @@ and parameter_with_attributes = fun parameter attributes ->
       | None ->
           Cst.Parameter.Labeled parameter
     )
-  | _, Cst.Parameter.Optional (Cst.Plain parameter) -> (
+  | _, Cst.Parameter.Optional parameter -> (
       match parameter.binding_pattern with
       | Some pattern ->
-          Cst.Parameter.Optional
-            (Cst.Plain
-               {
-                 parameter
-                 with binding_pattern = Some (pattern_with_attributes pattern attributes)
-               })
+          Cst.Parameter.Optional {
+            parameter
+            with binding_pattern = Some (pattern_with_attributes pattern attributes)
+          }
       | None ->
-          Cst.Parameter.Optional (Cst.Plain parameter)
+          Cst.Parameter.Optional parameter
     )
-  | _, Cst.Parameter.Optional (Cst.Defaulted parameter) ->
-      Cst.Parameter.Optional
-        (Cst.Defaulted
-           {
-             parameter
-             with binding_pattern = pattern_with_attributes parameter.binding_pattern attributes
-           })
   | _, Cst.Parameter.LocallyAbstract _ ->
       parameter
 

@@ -1848,33 +1848,20 @@ and labeled_parameter = {
   binding_name_matches_label : bool;
   binding_pattern : pattern option;
 }
-(** An optional parameter without a default such as `?x` or `?timeout:chosen_timeout`. *)
-and plain_optional_parameter = {
+(** An optional parameter introduced with `?`.
+
+    This covers both plain optional parameters like `?x` and parameters with a
+    default such as `?(x = 0)`.
+*)
+and optional_parameter = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
   binding_name_matches_label : bool;
+  default_value : expression option;
   binding_pattern : pattern option;
 }
-(** An optional parameter with a default such as `?(x = 0)`. *)
-and defaulted_optional_parameter = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  label_token : Token.t;
-  binding_name_token : Token.t option;
-  binding_name_matches_label : bool;
-  binding_pattern : pattern;
-  default_value : expression;
-}
-(** An optional parameter.
-
-    `Plain` covers shapes such as `?x` and `?timeout:chosen_timeout`.
-    `Defaulted` covers shapes such as `?(x = 0)`.
-*)
-and optional_parameter =
-  | Plain of plain_optional_parameter
-  | Defaulted of defaulted_optional_parameter
 (** A locally abstract type parameter in function parameter position.
 
     Examples:

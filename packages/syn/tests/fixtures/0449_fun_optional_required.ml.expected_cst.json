@@ -121,7 +121,6 @@
               },
               {
                 "tag": "optional",
-                "kind": "plain",
                 "syntax_node": {
                   "kind": "OPTIONAL_PARAM",
                   "span": {

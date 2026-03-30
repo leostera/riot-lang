@@ -4135,7 +4135,7 @@ and render_binding_annotation_parameter = function
               None)
       | None ->
           None)
-  | Syn.Cst.Parameter.Optional (Syn.Cst.Plain { sigil_token; label_token; binding_pattern; _ }) -> (
+  | Syn.Cst.Parameter.Optional { sigil_token; label_token; binding_pattern; _ } -> (
       match binding_pattern with
       | Some pattern -> (
           match split_typed_binding_pattern pattern with
@@ -4151,19 +4151,6 @@ and render_binding_annotation_parameter = function
           | _, None ->
               None)
       | None ->
-          None)
-  | Syn.Cst.Parameter.Optional (Syn.Cst.Defaulted { sigil_token; label_token; binding_pattern; _ }) -> (
-      match split_typed_binding_pattern binding_pattern with
-      | _, Some type_ ->
-          Some
-            (Doc.concat
-               [
-                 doc_of_token sigil_token;
-                 doc_of_token label_token;
-                 Doc.colon;
-                 render_arrow_parameter_type_doc type_;
-               ])
-      | _, None ->
           None)
   | Syn.Cst.Parameter.LocallyAbstract _ ->
       None
@@ -4220,13 +4207,14 @@ and render_unsugared_binding_parameter = function
       render_unsugared_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
         ~binding_pattern
   | Syn.Cst.Parameter.Optional
-      (Syn.Cst.Plain { sigil_token; label_token; binding_name_matches_label; binding_pattern; _ }) ->
-      render_unsugared_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
-        ~binding_pattern
-  | Syn.Cst.Parameter.Optional
-      (Syn.Cst.Defaulted { sigil_token; label_token; binding_pattern; default_value; _ }) ->
-      render_unsugared_optional_parameter_with_default ~sigil_token ~label_token
-        ~binding_pattern:(Some binding_pattern) ~default_value
+      { sigil_token; label_token; binding_name_matches_label; binding_pattern; default_value; _ } ->
+      (match default_value with
+      | Some default_value ->
+          render_unsugared_optional_parameter_with_default ~sigil_token ~label_token
+            ~binding_pattern ~default_value
+      | None ->
+          render_unsugared_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
+            ~binding_pattern)
   | Syn.Cst.Parameter.LocallyAbstract parameter ->
       render_parameter (Syn.Cst.Parameter.LocallyAbstract parameter)
 
@@ -4237,13 +4225,14 @@ and render_parameter = function
       { sigil_token; label_token; binding_name_matches_label; binding_pattern; _ } ->
       render_named_parameter ~sigil_token ~label_token ~binding_name_matches_label ~binding_pattern
   | Syn.Cst.Parameter.Optional
-      (Syn.Cst.Plain { sigil_token; label_token; binding_name_matches_label; binding_pattern; _ }) ->
-      render_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
-        ~binding_pattern
-  | Syn.Cst.Parameter.Optional
-      (Syn.Cst.Defaulted { sigil_token; label_token; binding_pattern; default_value; _ }) ->
-      render_optional_parameter_with_default ~sigil_token ~label_token
-        ~binding_pattern:(Some binding_pattern) ~default_value
+      { sigil_token; label_token; binding_name_matches_label; binding_pattern; default_value; _ } ->
+      (match default_value with
+      | Some default_value ->
+          render_optional_parameter_with_default ~sigil_token ~label_token ~binding_pattern
+            ~default_value
+      | None ->
+          render_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
+            ~binding_pattern)
   | Syn.Cst.Parameter.LocallyAbstract { binders; _ } ->
       Doc.concat [
         Doc.lparen;

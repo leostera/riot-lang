@@ -379,32 +379,34 @@ let hash t =
   in
   Crypto.Sha256.write_string hasher t.version;
   Crypto.Sha256.write_string hasher t.target;
-  match read_manifest_fingerprint toolchain_path with
-  | Some fingerprint -> Crypto.Sha256.write_string hasher fingerprint
-  | None ->
-      write_legacy_path_fingerprint
-        [
-          Ocamlc.path t.ocamlc;
-          t.ocamlopt;
-          Ocamldep.path t.ocamldep;
-          Ocamlformat.path t.ocamlformat;
-          Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "stdlib.cmxa");
-          Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmi");
-          Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmxa");
-        ];
-      if not (String.equal t.target (get_host_triple ())) then
-        (match first_existing (sysroot_candidates ~toolchain_path ~target:t.target) with
-        | Some sysroot ->
-            write_legacy_path_fingerprint
-              [
-                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "uuid" / Path.v "uuid.h");
-                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "openssl" / Path.v "ssl.h");
-                Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "zlib.h");
-                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libuuid.a");
-                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libssl.a");
-                Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libcrypto.a");
-              ]
-        | None -> ());
+  let () =
+    match read_manifest_fingerprint toolchain_path with
+    | Some fingerprint -> Crypto.Sha256.write_string hasher fingerprint
+    | None ->
+        write_legacy_path_fingerprint
+          [
+            Ocamlc.path t.ocamlc;
+            t.ocamlopt;
+            Ocamldep.path t.ocamldep;
+            Ocamlformat.path t.ocamlformat;
+            Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "stdlib.cmxa");
+            Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmi");
+            Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmxa");
+          ];
+        if not (String.equal t.target (get_host_triple ())) then
+          (match first_existing (sysroot_candidates ~toolchain_path ~target:t.target) with
+          | Some sysroot ->
+              write_legacy_path_fingerprint
+                [
+                  Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "uuid" / Path.v "uuid.h");
+                  Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "openssl" / Path.v "ssl.h");
+                  Path.(sysroot / Path.v "usr" / Path.v "include" / Path.v "zlib.h");
+                  Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libuuid.a");
+                  Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libssl.a");
+                  Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libcrypto.a");
+                ]
+          | None -> ());
+  in
   Crypto.Sha256.finish hasher
 
 (** Initialize toolchain for a specific target architecture *)

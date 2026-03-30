@@ -1115,28 +1115,15 @@ and labeled_parameter = {
   binding_pattern : pattern option;
 }
 
-and plain_optional_parameter = {
+and optional_parameter = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
   binding_name_matches_label : bool;
+  default_value : expression option;
   binding_pattern : pattern option;
 }
-
-and defaulted_optional_parameter = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  label_token : Token.t;
-  binding_name_token : Token.t option;
-  binding_name_matches_label : bool;
-  binding_pattern : pattern;
-  default_value : expression;
-}
-
-and optional_parameter =
-  | Plain of plain_optional_parameter
-  | Defaulted of defaulted_optional_parameter
 
 and locally_abstract_type_parameter = {
   syntax_node : syntax_node;
@@ -2079,8 +2066,7 @@ module Parameter = struct
     function
     | Positional param -> param.syntax_node
     | Labeled param -> param.syntax_node
-    | Optional (Plain param) -> param.syntax_node
-    | Optional (Defaulted param) -> param.syntax_node
+    | Optional param -> param.syntax_node
     | LocallyAbstract param -> param.syntax_node
 
   let sigil_token =
@@ -2090,17 +2076,14 @@ module Parameter = struct
         None
     | Labeled param ->
         Some param.sigil_token
-    | Optional (Plain param) ->
-        Some param.sigil_token
-    | Optional (Defaulted param) ->
+    | Optional param ->
         Some param.sigil_token
 
   let name_token =
     function
     | Positional param -> param.name_token
     | Labeled param -> Some param.label_token
-    | Optional (Plain param) -> Some param.label_token
-    | Optional (Defaulted param) -> Some param.label_token
+    | Optional param -> Some param.label_token
     | LocallyAbstract _ ->
         None
 
@@ -2120,18 +2103,15 @@ module Parameter = struct
   let binding_name_matches_label =
     function
     | Labeled param -> param.binding_name_matches_label
-    | Optional (Plain param) -> param.binding_name_matches_label
-    | Optional (Defaulted param) -> param.binding_name_matches_label
+    | Optional param -> param.binding_name_matches_label
     | Positional _
     | LocallyAbstract _ ->
         false
 
   let default_value =
     function
-    | Optional (Plain _) ->
-        None
-    | Optional (Defaulted param) ->
-        Some param.default_value
+    | Optional param ->
+        param.default_value
     | Positional _
     | Labeled _
     | LocallyAbstract _ ->
@@ -2143,10 +2123,8 @@ module Parameter = struct
         Some param.pattern
     | Labeled param ->
         param.binding_pattern
-    | Optional (Plain param) ->
+    | Optional param ->
         param.binding_pattern
-    | Optional (Defaulted param) ->
-        Some param.binding_pattern
     | LocallyAbstract _ ->
         None
 end

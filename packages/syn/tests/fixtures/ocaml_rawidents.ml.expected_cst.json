@@ -879,7 +879,6 @@
             },
             {
               "tag": "optional",
-              "kind": "plain",
               "syntax_node": {
                 "kind": "OPTIONAL_PARAM",
                 "span": {
@@ -910,7 +909,6 @@
             },
             {
               "tag": "optional",
-              "kind": "defaulted",
               "syntax_node": {
                 "kind": "OPTIONAL_PARAM_DEFAULT",
                 "span": {
@@ -2135,7 +2133,6 @@
             },
             {
               "tag": "optional",
-              "kind": "plain",
               "syntax_node": {
                 "kind": "OPTIONAL_PARAM",
                 "span": {
