@@ -953,15 +953,15 @@ and render_core_type =
               head
             ]
       )
-  | Syn.Cst.CoreType.Alias { type_; name_token; _ } ->
-      let alias_name = token_text name_token in
-      let alias_name =
-        if String.starts_with ~prefix:"'" alias_name then
-          alias_name
-        else
-          "'" ^ alias_name
+  | Syn.Cst.CoreType.Alias { type_; sigil_token; name_token; _ } ->
+      let alias_doc =
+        match sigil_token with
+        | Some sigil_token ->
+            Doc.concat [ doc_of_token sigil_token; doc_of_token name_token ]
+        | None ->
+            doc_of_token name_token
       in
-      Doc.concat [ render_core_type type_; Doc.space; Doc.text "as"; Doc.space; Doc.text alias_name ]
+      Doc.concat [ render_core_type type_; Doc.space; Doc.text "as"; Doc.space; alias_doc ]
   | Syn.Cst.CoreType.Attribute { type_; attribute; _ } ->
       Doc.concat [ render_core_type type_; Doc.space; render_attribute attribute ]
   | Syn.Cst.CoreType.Poly { type_keyword_token; binders; body; _ } ->
@@ -3562,19 +3562,12 @@ and render_named_parameter_binding_pattern_internal ~include_type pattern =
 and render_named_parameter_binding_pattern pattern =
   render_named_parameter_binding_pattern_internal ~include_type:true pattern
 
-and named_parameter_pattern_matches_label ~label_token pattern =
-  let pattern, _ = split_typed_binding_pattern pattern in
-  match pattern with
-  | Syn.Cst.Pattern.Identifier { name_token; _ } ->
-      String.equal (token_text name_token) (token_text label_token)
-  | _ ->
-      false
-
-and render_named_parameter_internal ~include_type ~sigil_token ~label_token ~binding_pattern =
+and render_named_parameter_internal ~include_type ~sigil_token ~label_token
+    ~binding_name_matches_label ~binding_pattern =
   match binding_pattern with
   | None ->
       Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
-  | Some pattern when named_parameter_pattern_matches_label ~label_token pattern ->
+  | Some pattern when binding_name_matches_label ->
       let _, type_ = split_typed_binding_pattern pattern in
       (match include_type, type_ with
       | true, Some _ ->
@@ -3594,11 +3587,14 @@ and render_named_parameter_internal ~include_type ~sigil_token ~label_token ~bin
         render_named_parameter_binding_pattern_internal ~include_type pattern;
       ]
 
-and render_named_parameter ~sigil_token ~label_token ~binding_pattern =
-  render_named_parameter_internal ~include_type:true ~sigil_token ~label_token ~binding_pattern
+and render_named_parameter ~sigil_token ~label_token ~binding_name_matches_label ~binding_pattern =
+  render_named_parameter_internal ~include_type:true ~sigil_token ~label_token
+    ~binding_name_matches_label ~binding_pattern
 
-and render_unsugared_named_parameter ~sigil_token ~label_token ~binding_pattern =
-  render_named_parameter_internal ~include_type:false ~sigil_token ~label_token ~binding_pattern
+and render_unsugared_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
+    ~binding_pattern =
+  render_named_parameter_internal ~include_type:false ~sigil_token ~label_token
+    ~binding_name_matches_label ~binding_pattern
 
 and render_optional_parameter_with_default_internal ~include_type ~sigil_token ~label_token
     ~binding_pattern ~default_value =
@@ -3725,10 +3721,20 @@ and render_unsugared_binding_parameter = function
   | Syn.Cst.Parameter.Positional { pattern; _ } ->
       let pattern, _ = split_typed_binding_pattern pattern in
       render_positional_parameter_pattern pattern
-  | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_pattern; _ } ->
-      render_unsugared_named_parameter ~sigil_token ~label_token ~binding_pattern
+  | Syn.Cst.Parameter.Labeled
+      { sigil_token; label_token; binding_name_matches_label; binding_pattern; _ } ->
+      render_unsugared_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
+        ~binding_pattern
   | Syn.Cst.Parameter.Optional
-      { sigil_token; label_token; has_default; binding_pattern; default_value; _ } ->
+      {
+        sigil_token;
+        label_token;
+        binding_name_matches_label;
+        has_default;
+        binding_pattern;
+        default_value;
+        _;
+      } ->
       if has_default then
         match default_value with
         | Some default_value ->
@@ -3739,17 +3745,27 @@ and render_unsugared_binding_parameter = function
               ~context:[ "parameter"; "optional"; "default" ]
               "optional parameter default value missing from CST"
       else
-        render_unsugared_named_parameter ~sigil_token ~label_token ~binding_pattern
+        render_unsugared_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
+          ~binding_pattern
   | Syn.Cst.Parameter.LocallyAbstract parameter ->
       render_parameter (Syn.Cst.Parameter.LocallyAbstract parameter)
 
 and render_parameter = function
   | Syn.Cst.Parameter.Positional { pattern; _ } ->
       render_positional_parameter_pattern pattern
-  | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_pattern; _ } ->
-      render_named_parameter ~sigil_token ~label_token ~binding_pattern
+  | Syn.Cst.Parameter.Labeled
+      { sigil_token; label_token; binding_name_matches_label; binding_pattern; _ } ->
+      render_named_parameter ~sigil_token ~label_token ~binding_name_matches_label ~binding_pattern
   | Syn.Cst.Parameter.Optional
-      { sigil_token; label_token; has_default; binding_pattern; default_value; _ } ->
+      {
+        sigil_token;
+        label_token;
+        binding_name_matches_label;
+        has_default;
+        binding_pattern;
+        default_value;
+        _;
+      } ->
       if has_default then
         match default_value with
         | Some default_value ->
@@ -3760,7 +3776,8 @@ and render_parameter = function
               ~context:[ "parameter"; "optional"; "default" ]
               "optional parameter default value missing from CST"
       else
-        render_named_parameter ~sigil_token ~label_token ~binding_pattern
+        render_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
+          ~binding_pattern
   | Syn.Cst.Parameter.LocallyAbstract { binders; _ } ->
       Doc.concat [
         Doc.lparen;

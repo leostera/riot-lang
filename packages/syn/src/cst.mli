@@ -551,6 +551,7 @@ and core_type =
   | Alias of {
       syntax_node : syntax_node;
       type_ : core_type;
+      sigil_token : Token.t option;
       name_token : Token.t;
     }
       (** A type aliased with `as`.
@@ -968,6 +969,7 @@ module CoreType : sig
     | Alias of {
         syntax_node : syntax_node;
         type_ : core_type;
+        sigil_token : Token.t option;
         name_token : Token.t;
       }
     | Attribute of {
@@ -1817,6 +1819,7 @@ and labeled_parameter = {
   sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
+  binding_name_matches_label : bool;
   binding_pattern : pattern option;
 }
 (** A locally abstract type parameter in function parameter position.
@@ -1833,6 +1836,7 @@ and optional_parameter = {
   sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
+  binding_name_matches_label : bool;
   has_default : bool;
   default_value : expression option;
   binding_pattern : pattern option;
@@ -3228,6 +3232,8 @@ module Parameter : sig
   val name : t -> string option
 
   val is_named : t -> bool
+
+  val binding_name_matches_label : t -> bool
 
   val has_default : t -> bool
 

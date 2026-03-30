@@ -278,6 +278,19 @@ val id : 'a -> 'a
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format core type alias binders from explicit sigil tokens"
+      (fun () ->
+        let source =
+          {|val cast : ('a list as 'whole) -> 'whole
+|}
+        in
+        let actual =
+          parse_mli source |> Krasny.format
+          |> Result.expect
+               ~msg:"core type alias binders should format from explicit sigil tokens"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
     Test.case "desugar typed named parameters without duplicating inner annotations"
       (fun () ->
         let source =

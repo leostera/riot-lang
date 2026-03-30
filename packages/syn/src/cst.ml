@@ -266,6 +266,7 @@ and core_type =
   | Alias of {
       syntax_node : syntax_node;
       type_ : core_type;
+      sigil_token : Token.t option;
       name_token : Token.t;
     }
   | Attribute of {
@@ -424,6 +425,7 @@ module CoreType = struct
     | Alias of {
         syntax_node : syntax_node;
         type_ : core_type;
+        sigil_token : Token.t option;
         name_token : Token.t;
       }
     | Attribute of {
@@ -1042,6 +1044,7 @@ and labeled_parameter = {
   sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
+  binding_name_matches_label : bool;
   binding_pattern : pattern option;
 }
 
@@ -1050,6 +1053,7 @@ and optional_parameter = {
   sigil_token : Token.t;
   label_token : Token.t;
   binding_name_token : Token.t option;
+  binding_name_matches_label : bool;
   has_default : bool;
   default_value : expression option;
   binding_pattern : pattern option;
@@ -2002,6 +2006,14 @@ module Parameter = struct
     function
     | Labeled _
     | Optional _ -> true
+    | Positional _
+    | LocallyAbstract _ ->
+        false
+
+  let binding_name_matches_label =
+    function
+    | Labeled param -> param.binding_name_matches_label
+    | Optional param -> param.binding_name_matches_label
     | Positional _
     | LocallyAbstract _ ->
         false

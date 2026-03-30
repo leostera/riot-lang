@@ -52,6 +52,8 @@
 46. Keep quoted-vs-bare `Cst.CoreType.Var` spelling explicit. Preserve the optional apostrophe on quoted vars via `sigil_token` instead of forcing downstream tools to infer `'a` vs `a` from raw token scans or ad hoc string rewriting.
 47. Keep index-expression delimiters explicit on `Cst.index_expression`. Preserve the opening punctuation token sequence and closing token so downstream renderers can print `.[ ]`, `.( )`, and extended `.%( )` forms without raw token-text reconstruction.
 48. Keep leading `+` / `-` explicit on signed int/float constants via `sign_token` when the constant node owns that sign, so downstream tools do not rescan literal syntax-node tokens just to preserve signed literal patterns.
+49. Keep core-type alias binder spelling explicit on `Cst.CoreType.Alias`. Preserve the optional alias-variable apostrophe via `sigil_token` instead of forcing downstream tools to synthesize `'whole` from bare name text.
+50. Keep named and optional parameter sugar decisions explicit in `Syn.Cst`. Preserve whether the binding name matches the label via `binding_name_matches_label` so downstream tools do not compare label text with binding-pattern identifiers to choose `~label` vs `~label:pattern`.
 
 ## Validate
 

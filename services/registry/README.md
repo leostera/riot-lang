@@ -10,6 +10,18 @@ Production endpoint: `https://api.pkgs.ml`
 2. Create a `.env` file next to `wrangler.toml`.
 3. Run `bun run dev`.
 
+Apply D1 schema changes with migrations before first run:
+
+```bash
+bun run migrate
+```
+
+For production databases:
+
+```bash
+bun run migrate:remote
+```
+
 Wrangler reads `.env` during local development, and the Worker expects at least:
 
 ```dotenv

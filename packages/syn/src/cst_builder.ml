@@ -3498,15 +3498,27 @@ and core_type_from_node = fun node ->
   | Syntax_kind.TYPE_ALIAS -> (
       match child_type_nodes node with
       | type_node :: alias_node :: _ -> (
-          match List.rev (direct_non_trivia_tokens alias_node) with
-          | alias_token :: _ ->
+          match direct_non_trivia_tokens alias_node with
+          | [ alias_token ] ->
               Cst.CoreType.Alias {
                 syntax_node = node;
                 type_ = core_type_from_node type_node;
+                sigil_token = None;
+                name_token = token alias_token
+              }
+          | [ sigil_token; alias_token ] ->
+              Cst.CoreType.Alias {
+                syntax_node = node;
+                type_ = core_type_from_node type_node;
+                sigil_token = Some (token sigil_token);
                 name_token = token alias_token
               }
           | [] ->
               bail ~message:"expected alias name token during Ceibo -> CST lifting" ~syntax_node:alias_node ~context:[
+                "core_type.alias"
+              ]
+          | _ ->
+              bail ~message:"expected alias sigil/name tokens during Ceibo -> CST lifting" ~syntax_node:alias_node ~context:[
                 "core_type.alias"
               ]
         )
@@ -4009,6 +4021,13 @@ let rec parameter_from_node = fun node ->
     | _ ->
         None
   in
+  let binding_name_matches_label = fun ~label_name_token binding_name_token ->
+    match binding_name_token with
+    | Some binding_name_token ->
+        String.equal (Cst.Token.text binding_name_token) (Cst.Token.text label_name_token)
+    | None ->
+        false
+  in
   let binding_pattern_from_direct_nodes = fun ~label_name_token direct_nodes ->
     match direct_nodes with
     | binding_pattern_node :: type_node :: _
@@ -4043,17 +4062,20 @@ let rec parameter_from_node = fun node ->
       match token_with_text node "~", first_ident_token_in_subtree node with
       | Some sigil_token, Some label_name_token ->
           let binding_pattern = binding_pattern_from_direct_nodes ~label_name_token direct_nodes in
+          let binding_name_token =
+            match binding_pattern with
+            | Some pattern ->
+                binding_name_token_from_pattern pattern
+            | None ->
+                None
+          in
           Cst.Parameter.Labeled {
             syntax_node = node;
             sigil_token = sigil_token;
             label_token = label_name_token;
-            binding_name_token = (
-              match binding_pattern with
-              | Some pattern ->
-                  binding_name_token_from_pattern pattern
-              | None ->
-                  None
-            );
+            binding_name_token;
+            binding_name_matches_label =
+              binding_name_matches_label ~label_name_token binding_name_token;
             binding_pattern
           }
       | _ -> unsupported_parameter node
@@ -4063,17 +4085,20 @@ let rec parameter_from_node = fun node ->
       match token_with_text node "?", first_ident_token_in_subtree node with
       | Some sigil_token, Some label_name_token ->
           let binding_pattern = binding_pattern_from_direct_nodes ~label_name_token direct_nodes in
+          let binding_name_token =
+            match binding_pattern with
+            | Some pattern ->
+                binding_name_token_from_pattern pattern
+            | None ->
+                None
+          in
           Cst.Parameter.Optional {
             syntax_node = node;
             sigil_token = sigil_token;
             label_token = label_name_token;
-            binding_name_token = (
-              match binding_pattern with
-              | Some pattern ->
-                  binding_name_token_from_pattern pattern
-              | None ->
-                  None
-            );
+            binding_name_token;
+            binding_name_matches_label =
+              binding_name_matches_label ~label_name_token binding_name_token;
             has_default = false;
             default_value = None;
             binding_pattern
@@ -4103,11 +4128,14 @@ let rec parameter_from_node = fun node ->
           in
           match binding_pattern, default_value with
           | Some binding_pattern, Some default_value ->
+              let binding_name_token = binding_name_token_from_pattern binding_pattern in
               Cst.Parameter.Optional {
                 syntax_node = node;
                 sigil_token = sigil_token;
                 label_token;
-                binding_name_token = binding_name_token_from_pattern binding_pattern;
+                binding_name_token;
+                binding_name_matches_label =
+                  binding_name_matches_label ~label_name_token:label_token binding_name_token;
                 has_default = true;
                 default_value = Some default_value;
                 binding_pattern = Some binding_pattern;

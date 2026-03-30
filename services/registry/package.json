@@ -6,6 +6,8 @@
     "check": "tsc --noEmit",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 migrations apply riot-registry --local --config wrangler.toml",
+    "migrate:remote": "wrangler d1 migrations apply riot-registry --remote --config wrangler.toml",
     "test": "bun test tests/routes.test.ts tests/storage.test.ts tests/indexing.test.ts tests/search.test.ts tests/auth.test.ts",
     "test:e2e": "bun test tests/e2e.test.ts"
   },

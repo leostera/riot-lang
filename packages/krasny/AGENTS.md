@@ -52,6 +52,8 @@
 46. Render signed int/float literals from `sign_token` when the CST constant carries one. Do not rescan literal-node direct tokens for leading `+` / `-`, especially for signed literal patterns.
 47. Render operator expressions, operator patterns, and infix/prefix expression operator docs from CST-carried operator tokens directly. Do not concatenate raw token text back into an operator string when the CST already preserves the exact token sequence.
 48. Render structure/signature `open!` statements from `bang_token` when present. Do not hardcode `!` in the formatter when the CST already carries the token.
+49. Render `CoreType.Alias` binders from `sigil_token` plus `name_token`. Do not synthesize a leading apostrophe for `... as 'a` by inspecting token text once `syn` exposes the alias-binder spelling explicitly.
+50. Render named and optional parameter sugar from `binding_name_matches_label` on `Syn.Cst.Parameter`. Do not compare label token text with identifier binding patterns to choose `~label` vs `~label:pattern` once `syn` has made that equivalence explicit.
 
 ## Validate
 

@@ -3539,6 +3539,54 @@ let tests =
               ~actual:(Syn.Cst.Token.text result_name_token);
             Ok ()
         | _ -> Error "expected quoted core type variables");
+    Test.case "cst value declarations preserve core type alias binder sigils"
+      (fun () ->
+        let result = parse_mli "val cast : ('a list as 'whole) -> 'whole\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.Arrow
+                  {
+                    parameter_type =
+                      Syn.Cst.CoreType.Parenthesized
+                        {
+                          inner =
+                            Syn.Cst.CoreType.Alias
+                              {
+                                sigil_token = Some alias_sigil_token;
+                                name_token = alias_name_token;
+                                _;
+                              };
+                          _;
+                        };
+                    result_type =
+                      Syn.Cst.CoreType.Var
+                        {
+                          sigil_token = Some result_sigil_token;
+                          name_token = result_name_token;
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"'"
+              ~actual:(Syn.Cst.Token.text alias_sigil_token);
+            Test.assert_equal ~expected:"whole"
+              ~actual:(Syn.Cst.Token.text alias_name_token);
+            Test.assert_equal ~expected:"'"
+              ~actual:(Syn.Cst.Token.text result_sigil_token);
+            Test.assert_equal ~expected:"whole"
+              ~actual:(Syn.Cst.Token.text result_name_token);
+            Ok ()
+        | _ -> Error "expected aliased core type binder with explicit sigil");
     Test.case
       "cst value declarations lift explicit polymorphic core types with inline comments"
       (fun () ->
@@ -5416,6 +5464,7 @@ let tests =
                 {
                   label_token;
                   binding_name_token = Some binding_name_token;
+                  binding_name_matches_label = true;
                   has_default = true;
                   default_value = Some (Syn.Cst.Expression.Fun _);
                   binding_pattern = Some (Syn.Cst.Pattern.Typed _);
@@ -5425,6 +5474,7 @@ let tests =
                    {
                      label_token = renamed_label;
                      binding_name_token = Some renamed_binding;
+                     binding_name_matches_label = false;
                      has_default = false;
                      default_value = None;
                      _;

@@ -296,11 +296,12 @@ and core_type_to_json =
         ("class_path", ident_to_json class_path);
         ("arguments", Json.Array (List.map core_type_to_json arguments))
       ]
-  | Cst.CoreType.Alias { syntax_node; type_; name_token } ->
+  | Cst.CoreType.Alias { syntax_node; type_; sigil_token; name_token } ->
       Json.Object [
         ("tag", Json.String "alias");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("type", core_type_to_json type_);
+        ("sigil_token", option_to_json token_to_json sigil_token);
         ("name_token", token_to_json name_token)
       ]
   | Cst.CoreType.Attribute { syntax_node; type_; attribute } ->
@@ -729,6 +730,7 @@ and parameter_to_json =
     sigil_token;
     label_token;
     binding_name_token;
+    binding_name_matches_label;
     binding_pattern
   } ->
       Json.Object [
@@ -737,6 +739,7 @@ and parameter_to_json =
         ("sigil_token", token_to_json sigil_token);
         ("label_token", token_to_json label_token);
         ("binding_name_token", option_to_json token_to_json binding_name_token);
+        ("binding_name_matches_label", Json.Bool binding_name_matches_label);
         ("binding_pattern", option_to_json pattern_to_json binding_pattern)
       ]
   | Cst.Parameter.Optional {
@@ -744,6 +747,7 @@ and parameter_to_json =
     sigil_token;
     label_token;
     binding_name_token;
+    binding_name_matches_label;
     has_default;
     default_value;
     binding_pattern
@@ -754,6 +758,7 @@ and parameter_to_json =
         ("sigil_token", token_to_json sigil_token);
         ("label_token", token_to_json label_token);
         ("binding_name_token", option_to_json token_to_json binding_name_token);
+        ("binding_name_matches_label", Json.Bool binding_name_matches_label);
         ("has_default", Json.Bool has_default);
         ("default_value", option_to_json expression_to_json default_value);
         ("binding_pattern", option_to_json pattern_to_json binding_pattern)

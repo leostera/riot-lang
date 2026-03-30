@@ -1,38 +1,9 @@
 import { buildFtsQuery, rankQueryResult } from "./search-document.ts";
+import { applySearchMigrations as applyD1SearchMigrations } from "./db-migrations.ts";
 import type { SearchPackageRow, SearchResult } from "./types.ts";
 
 export async function applySearchMigrations(db: D1Database): Promise<void> {
-  await db.exec(
-    "CREATE TABLE IF NOT EXISTS packages (" +
-      "package_name TEXT PRIMARY KEY, " +
-      "normalized_name TEXT NOT NULL, " +
-      "latest_version TEXT NOT NULL, " +
-      "description TEXT, " +
-      "license TEXT, " +
-      "homepage TEXT, " +
-      "repository TEXT, " +
-      "root_module TEXT, " +
-      "canonical_locator TEXT NOT NULL, " +
-      "repo_url TEXT NOT NULL, " +
-      "repo_owner TEXT NOT NULL, " +
-      "repo_name TEXT NOT NULL, " +
-      "subdir TEXT NOT NULL, " +
-      "release_count INTEGER NOT NULL, " +
-      "updated_at TEXT NOT NULL" +
-      ")",
-  );
-
-  await db.exec(
-    "CREATE VIRTUAL TABLE IF NOT EXISTS package_search USING fts5 (" +
-      "package_name, " +
-      "description, " +
-      "repo_owner, " +
-      "repo_name, " +
-      "subdir, " +
-      "repository, " +
-      "tokenize = 'unicode61 remove_diacritics 2'" +
-      ")",
-  );
+  await applyD1SearchMigrations(db);
 }
 
 export async function upsertSearchRow(db: D1Database, row: SearchPackageRow): Promise<void> {

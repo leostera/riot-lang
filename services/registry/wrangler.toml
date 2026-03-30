@@ -31,6 +31,7 @@ preview_bucket_name = "ml-pkgs-cdn"
 binding = "SEARCH_DB"
 database_name = "riot-registry"
 database_id = "3a482dd8-a28f-4f87-a143-46153d492819"
+migrations_dir = "./migrations"
 
 [[queues.producers]]
 binding = "PACKAGE_PUBLISHED_QUEUE"
