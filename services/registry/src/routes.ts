@@ -153,6 +153,7 @@ async function routeRequest(
   }
 
   await applyMetadataMigrations(env.SEARCH_DB);
+  await applySearchMigrations(env.SEARCH_DB);
 
   if (matchesPath(path, "v1/auth/github/start", "auth/github/start")) {
     if (request.method !== "GET") {
