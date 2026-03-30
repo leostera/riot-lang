@@ -665,6 +665,25 @@ module M = [%foo]
 |}
           ~actual;
         Ok ());
+    Test.case "format shared core-type attributes from structural payload expressions"
+      (fun () ->
+        let source = "type t = int [@deprecated   \"use other\"]\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"shared core-type attributes should render from structural payload expressions"
+        in
+        Test.assert_equal ~expected:"type t = int [@deprecated \"use other\"]\n" ~actual;
+        Ok ());
+    Test.case "format fails for unsupported shared attribute payload expressions"
+      (fun () ->
+        let source = "type t = int [@foo 1 + 2]\n" in
+        match parse_ml source |> Krasny.format with
+        | Ok _ ->
+            panic
+              "unsupported shared attribute payload expressions should fail formatting instead of replaying source"
+        | Error _ ->
+            Ok ());
     Test.case "format expression attributes from structural payload items"
       (fun () ->
         let source = "let _ = value [@foo   1  +  2]\n" in

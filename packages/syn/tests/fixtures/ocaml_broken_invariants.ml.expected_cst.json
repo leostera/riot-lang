@@ -547,18 +547,7 @@
                             }
                           },
                           "payload_syntax_node": null,
-                          "payload": {
-                            "tag": "structure",
-                            "item_syntax_nodes": [
-                              {
-                                "kind": "IDENT_EXPR",
-                                "span": {
-                                  "start": 0,
-                                  "end": 230
-                                }
-                              }
-                            ]
-                          }
+                          "payload": null
                         }
                       }
                     }
@@ -602,18 +591,7 @@
                           }
                         },
                         "payload_syntax_node": null,
-                        "payload": {
-                          "tag": "structure",
-                          "item_syntax_nodes": [
-                            {
-                              "kind": "IDENT_EXPR",
-                              "span": {
-                                "start": 0,
-                                "end": 245
-                              }
-                            }
-                          ]
-                        }
+                        "payload": null
                       }
                     }
                   }

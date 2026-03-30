@@ -8,7 +8,6 @@ type format_error = Format_core.format_error =
 module Doc = Doc
 module Solver = Solver
 module Printer = Printer
-module Source = Source
 module Lower = Lower
 module Runner = Runner
 module Report = Report

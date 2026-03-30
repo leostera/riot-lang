@@ -9250,6 +9250,88 @@ let tests =
           :: _ ->
             assert_nested item_syntax_nodes
         | _ -> Error "expected local module in let body");
+    Test.case
+      "cst builder keeps nested floating attributes in relifted module bodies"
+      (fun () ->
+        let source =
+          "module M = struct\n\
+          \  type t = int [@@foo]\n\
+          \  [@@@foo]\n\
+          end [@foo]\n\n\
+          module type S = sig\n\
+          \  type t = int [@@foo]\n\
+          \  [@@@foo]\n\
+          end [@foo]\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        let assert_nested_structure item_syntax_nodes =
+          Test.assert_equal ~expected:2 ~actual:(List.length item_syntax_nodes);
+          match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
+          | Ok
+              [
+                Syn.Cst.StructureItem.TypeDeclaration _;
+                Syn.Cst.StructureItem.Attribute attribute;
+              ] ->
+              Test.assert_equal ~expected:None ~actual:attribute.payload;
+              Ok ()
+          | Ok _ ->
+              Error "expected relifted nested structure floating attribute"
+          | Error _ ->
+              Error "expected nested structure relift to succeed"
+        in
+        let assert_nested_signature module_type =
+          match Syn.CstBuilder.signature_items_of_module_type module_type with
+          | Ok
+              (Some
+                [
+                  Syn.Cst.SignatureItem.TypeDeclaration _;
+                  Syn.Cst.SignatureItem.Attribute attribute;
+                ]) ->
+              Test.assert_equal ~expected:None ~actual:attribute.payload;
+              Ok ()
+          | Ok _ ->
+              Error "expected relifted nested signature floating attribute"
+          | Error _ ->
+              Error "expected nested signature relift to succeed"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ModuleDeclaration
+            {
+              module_expression =
+                Some
+                  (Syn.Cst.ModuleExpression.Attribute
+                     {
+                       module_expression =
+                         Syn.Cst.ModuleExpression.Structure
+                           { item_syntax_nodes; _ };
+                       _;
+                     });
+              _;
+            }
+          :: Syn.Cst.StructureItem.ModuleTypeDeclaration
+               {
+                 module_type =
+                  Some
+                     (Syn.Cst.ModuleType.Attribute
+                        {
+                          module_type = (Syn.Cst.ModuleType.Signature _ as module_type);
+                          _;
+                        });
+                 _;
+               }
+          :: _ -> (
+            match assert_nested_structure item_syntax_nodes with
+            | Ok () ->
+                assert_nested_signature module_type
+            | Error _ as error ->
+                error)
+        | _ ->
+            Error "expected nested module declaration and module type declaration");
   ]
 
 let () = Miniriot.run

@@ -42,6 +42,8 @@
 36. Render first-class module core types and type definitions from structural module-type variants. Do not reconstruct `(module ...)` text from raw module-type syntax-node text; if a first-class module-type form still lacks a structural renderer, fail explicitly.
 37. In the main lowering path, render floating and expression-attached attribute payloads from `Syn.Cst.attribute.payload` plus `Syn.CstBuilder.structure_items_of_payload` / `signature_items_of_payload`. Do not replay raw payload syntax text there; unsupported pattern payloads should fail explicitly until `syn` exposes more structure.
 38. Join `owned_trivia` with explicit formatter separators. Do not recover comment/docstring spacing from raw source gaps or thread source text through nested item renderers just to preserve whitespace between trivia items.
+39. Render shared core-type, module-type, and module-expression attributes structurally too. Support simple single-expression structure payloads without raw payload replay, and fail explicitly on richer shared/global payload forms until `syn` exposes enough structure.
+40. When relifted nested item streams expose a floating attribute immediately after a `type` declaration, keep that join tight on the next line. Do not open a blank paragraph there or re-split the nested body to recover the attribute twice.
 
 ## Validate
 

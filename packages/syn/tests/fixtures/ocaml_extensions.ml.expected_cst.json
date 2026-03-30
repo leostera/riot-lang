@@ -74,7 +74,7 @@
                 "kind": "INFIX_EXPR",
                 "span": {
                   "start": 0,
-                  "end": 168
+                  "end": 169
                 }
               }
             ]
@@ -284,7 +284,7 @@
                           "kind": "INFIX_EXPR",
                           "span": {
                             "start": 0,
-                            "end": 247
+                            "end": 248
                           }
                         }
                       ]
@@ -571,7 +571,27 @@
                       }
                     },
                     "payload_syntax_node": null,
-                    "payload": null
+                    "payload": {
+                      "tag": "type",
+                      "type": {
+                        "tag": "var",
+                        "syntax_node": {
+                          "kind": "TYPE_VAR",
+                          "span": {
+                            "start": 335,
+                            "end": 342
+                          }
+                        },
+                        "name_token": {
+                          "kind": "IDENT_EXPR",
+                          "text": "alist",
+                          "span": {
+                            "start": 337,
+                            "end": 342
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -815,7 +835,19 @@
                         }
                       },
                       "payload_syntax_node": null,
-                      "payload": null
+                      "payload": {
+                        "tag": "pattern",
+                        "payload": {
+                          "pattern_syntax_node": {
+                            "kind": "WILDCARD_PATTERN",
+                            "span": {
+                              "start": 415,
+                              "end": 417
+                            }
+                          },
+                          "guard_syntax_node": null
+                        }
+                      }
                     }
                   }
                 }
@@ -859,18 +891,7 @@
                       }
                     },
                     "payload_syntax_node": null,
-                    "payload": {
-                      "tag": "structure",
-                      "item_syntax_nodes": [
-                        {
-                          "kind": "INFIX_EXPR",
-                          "span": {
-                            "start": 0,
-                            "end": 438
-                          }
-                        }
-                      ]
-                    }
+                    "payload": null
                   }
                 }
               }
@@ -1189,7 +1210,49 @@
                       }
                     },
                     "payload_syntax_node": null,
-                    "payload": null
+                    "payload": {
+                      "tag": "type",
+                      "type": {
+                        "tag": "extension",
+                        "extension": {
+                          "syntax_node": {
+                            "kind": "EXTENSION_EXPR",
+                            "span": {
+                              "start": 512,
+                              "end": 518
+                            }
+                          },
+                          "sigil_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "%",
+                            "span": {
+                              "start": 513,
+                              "end": 514
+                            }
+                          },
+                          "name": {
+                            "tag": "ident",
+                            "syntax_node": {
+                              "kind": "EXTENSION_EXPR",
+                              "span": {
+                                "start": 512,
+                                "end": 518
+                              }
+                            },
+                            "name_token": {
+                              "kind": "IDENT_EXPR",
+                              "text": "baz",
+                              "span": {
+                                "start": 514,
+                                "end": 517
+                              }
+                            }
+                          },
+                          "payload_syntax_node": null,
+                          "payload": null
+                        }
+                      }
+                    }
                   }
                 }
               }

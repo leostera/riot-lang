@@ -60,6 +60,25 @@ let keyword_and_text = "and"
 let keyword_in_text = "in"
 let equals_text = "="
 let semicolon_text = ";"
+let open_bracket_text = "["
+let close_bracket_text = "]"
+let close_brace_text = "}"
+let dot_text = "."
+let colon_text = ":"
+let question_mark_text = "?"
+let at_text = "@"
+let double_at_text = "@@"
+let triple_at_text = "@@@"
+let percent_text = "%"
+let double_percent_text = "%%"
+let triple_percent_text = "%%%"
+
+let attribute_sigil_texts = [ at_text; double_at_text; triple_at_text ]
+let extension_sigil_texts = [ percent_text; double_percent_text; triple_percent_text ]
+let annotation_sigil_texts = attribute_sigil_texts @ extension_sigil_texts
+
+let is_annotation_sigil_text = fun text ->
+  List.exists (String.equal text) annotation_sigil_texts
 
 let synthetic_token = fun ~kind ~text ~start_offset ~end_offset ->
   let green_token =
@@ -2101,7 +2120,9 @@ let annotation_name_from_tokens = fun ~syntax_node ~sigils syntax_tokens ->
       (fun syntax_token ->
         let text = Ceibo.Red.SyntaxToken.text syntax_token in
         not
-        (String.equal text "[" || String.equal text "]" || List.exists (String.equal text) sigils))
+        (String.equal text open_bracket_text
+        || String.equal text close_bracket_text
+        || List.exists (String.equal text) sigils))
   in
   module_path_from_tokens ~syntax_node name_tokens
 
@@ -2142,9 +2163,9 @@ let annotation_payload_from_shell = fun shell_node -> (Cell.get annotation_paylo
 
 let attribute_from_node node : Cst.attribute =
   let shell_node, payload_syntax_node = annotation_shell_and_payload ~annotation_kind:Syntax_kind.ATTRIBUTE_EXPR ~sigils:[
-    "@";
-    "@@";
-    "@@@"
+    at_text;
+    double_at_text;
+    triple_at_text
   ] node in
   let shell_tokens = direct_non_trivia_tokens shell_node in
   let sigil_syntax_token =
@@ -2152,14 +2173,16 @@ let attribute_from_node node : Cst.attribute =
     |> List.find_opt
       (fun syntax_token ->
         let text = Ceibo.Red.SyntaxToken.text syntax_token in
-        String.equal text "@" || String.equal text "@@" || String.equal text "@@@")
+        String.equal text at_text
+        || String.equal text double_at_text
+        || String.equal text triple_at_text)
   in
   match sigil_syntax_token with
   | Some sigil_syntax_token ->
       {
         Cst.syntax_node = node;
         sigil_token = token sigil_syntax_token;
-        name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:[ "@"; "@@"; "@@@" ] shell_tokens;
+        name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:attribute_sigil_texts shell_tokens;
         payload_syntax_node;
         payload = annotation_payload_from_shell shell_node
       }
@@ -2170,9 +2193,9 @@ let attribute_from_node node : Cst.attribute =
 
 let extension_from_node node : Cst.extension =
   let shell_node, payload_syntax_node = annotation_shell_and_payload ~annotation_kind:Syntax_kind.EXTENSION_EXPR ~sigils:[
-    "%";
-    "%%";
-    "%%%"
+    percent_text;
+    double_percent_text;
+    triple_percent_text
   ] node in
   let shell_tokens = direct_non_trivia_tokens shell_node in
   let sigil_syntax_token =
@@ -2180,14 +2203,16 @@ let extension_from_node node : Cst.extension =
     |> List.find_opt
       (fun syntax_token ->
         let text = Ceibo.Red.SyntaxToken.text syntax_token in
-        String.equal text "%" || String.equal text "%%" || String.equal text "%%%")
+        String.equal text percent_text
+        || String.equal text double_percent_text
+        || String.equal text triple_percent_text)
   in
   match sigil_syntax_token with
   | Some sigil_syntax_token ->
       {
         Cst.syntax_node = node;
         sigil_token = token sigil_syntax_token;
-        name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:[ "%"; "%%"; "%%%" ] shell_tokens;
+        name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:extension_sigil_texts shell_tokens;
         payload_syntax_node;
         payload = annotation_payload_from_shell shell_node;
         attributes = []
@@ -2201,11 +2226,44 @@ let attributes_from_node = fun node -> direct_non_trivia_nodes node
 |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR)
 |> List.map attribute_from_node
 
+let attribute_sigil_text = fun (attribute : Cst.attribute) ->
+  direct_non_trivia_tokens attribute.syntax_node
+  |> List.filter_map (fun syntax_token ->
+         match Ceibo.Red.SyntaxToken.text syntax_token with
+         | text when List.exists (String.equal text) attribute_sigil_texts ->
+             Some text
+         | _ ->
+             None)
+  |> String.concat ""
+
 let attribute_is_item_like = fun (attribute : Cst.attribute) ->
-  match Cst.Token.text attribute.sigil_token with
-  | "@@"
-  | "@@@" -> true
+  match attribute_sigil_text attribute with
+  | text when String.equal text double_at_text || String.equal text triple_at_text ->
+      true
   | _ -> false
+
+let attribute_is_floating_item = fun (attribute : Cst.attribute) ->
+  String.equal (attribute_sigil_text attribute) triple_at_text
+
+let rec floating_attribute_payload_nodes_from_node = fun node ->
+  direct_non_trivia_nodes node
+  |> List.concat_map (fun child ->
+         let nested = floating_attribute_payload_nodes_from_node child in
+         if Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR then
+           let attribute = attribute_from_node child in
+           if attribute_is_floating_item attribute then
+             child :: nested
+           else
+             nested
+         else
+           nested)
+
+let split_payload_item_nodes_from_node = fun node ->
+  match Ceibo.Red.SyntaxNode.kind node with
+  | Syntax_kind.TYPE_DECL ->
+      node :: floating_attribute_payload_nodes_from_node node
+  | _ ->
+      [ node ]
 
 let is_initializer_node = fun node ->
   match direct_non_trivia_tokens node with
@@ -4277,7 +4335,9 @@ and module_expression_from_node = fun node ->
   | Syntax_kind.STRUCT_EXPR ->
       Cst.ModuleExpression.Structure {
         syntax_node = node;
-        item_syntax_nodes = direct_non_trivia_nodes node
+        item_syntax_nodes =
+          direct_non_trivia_nodes node
+          |> List.concat_map split_payload_item_nodes_from_node
       }
   | Syntax_kind.FUNCTOR_TYPE -> (
       match direct_non_trivia_tokens node, List.rev (direct_non_trivia_nodes node) with
@@ -7408,19 +7468,38 @@ let raw_annotation_payload_from_shell = fun shell_node ->
         Ceibo.Red.SyntaxNode.span shell_node |> fun span -> span.end_
   in
   let payload_non_trivia_tokens =
-    let rec skip_name =
+    let rec skip_qualified_name_tail =
       function
-      | dot_token :: _name_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text dot_token) "." ->
-          skip_name rest
+      | dot_token :: _name_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text dot_token) dot_text ->
+          skip_qualified_name_tail rest
       | rest ->
           rest
     in
+    let rec skip_sigils =
+      function
+      | syntax_token :: rest
+        when is_annotation_sigil_text (Ceibo.Red.SyntaxToken.text syntax_token) ->
+          skip_sigils rest
+      | rest ->
+          rest
+    in
+    let skip_name =
+      function
+      | _name_token :: rest ->
+          skip_qualified_name_tail rest
+      | [] ->
+          []
+    in
     match shell_tokens with
-    | _open_token :: _sigil_token :: _name_token :: rest -> (
-        let rest = skip_name rest in
+    | open_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text open_token) open_bracket_text -> (
+        let rest =
+          rest
+          |> skip_sigils
+          |> skip_name
+        in
         match List.rev rest with
-        | close_token :: payload_rev when String.equal (Ceibo.Red.SyntaxToken.text close_token) "]"
-        || String.equal (Ceibo.Red.SyntaxToken.text close_token) "}" ->
+        | close_token :: payload_rev when String.equal (Ceibo.Red.SyntaxToken.text close_token) close_bracket_text
+        || String.equal (Ceibo.Red.SyntaxToken.text close_token) close_brace_text ->
             List.rev payload_rev
         | _ ->
             rest
@@ -7431,7 +7510,7 @@ let raw_annotation_payload_from_shell = fun shell_node ->
   match payload_non_trivia_tokens with
   | [] ->
       None
-  | marker_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text marker_token) ":" -> (
+  | marker_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text marker_token) colon_text -> (
       match rest with
       | first_content_token :: _ ->
           Some {
@@ -7442,7 +7521,7 @@ let raw_annotation_payload_from_shell = fun shell_node ->
       | [] ->
           None
     )
-  | marker_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text marker_token) "?" -> (
+  | marker_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text marker_token) question_mark_text -> (
       match rest with
       | first_content_token :: _ ->
           Some {
@@ -8477,17 +8556,20 @@ let structure_item_payload_nodes_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.STRUCT_EXPR ->
       direct_non_trivia_nodes node
+      |> List.concat_map split_payload_item_nodes_from_node
   | _ ->
-      [ node ]
+      split_payload_item_nodes_from_node node
 
 let signature_item_payload_nodes_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.SIGNATURE ->
       direct_non_trivia_nodes node
+      |> List.concat_map split_payload_item_nodes_from_node
   | Syntax_kind.SIG_EXPR ->
       direct_non_trivia_nodes node
+      |> List.concat_map split_payload_item_nodes_from_node
   | _ ->
-      [ node ]
+      split_payload_item_nodes_from_node node
 
 let normalize_structure_items = fun ~source items -> items
 |> coalesce_structure_type_declaration_groups
@@ -8516,7 +8598,7 @@ node
 |> Result.map (normalize_structure_items ~source)
 
 let structure_items_from_syntax_nodes = fun nodes ->
-  match nodes |> List.concat_map structure_item_payload_nodes_from_node |> List.concat_map structure_items_from_node with
+  match nodes |> List.concat_map structure_items_from_node with
   | items -> (
       match nodes with
       | first :: _ ->
@@ -8534,8 +8616,8 @@ let structure_items_of_payload = function
       Ok None
 
 let structure_items_of_module_expression = function
-  | Cst.ModuleExpression.Structure {syntax_node; _} ->
-      structure_items_from_syntax_node syntax_node
+  | Cst.ModuleExpression.Structure {item_syntax_nodes; _} ->
+      structure_items_from_syntax_nodes item_syntax_nodes
       |> Result.map Option.some
   | _ ->
       Ok None
@@ -8571,7 +8653,7 @@ node
 |> Result.map (normalize_signature_items ~source)
 
 let signature_items_from_syntax_nodes = fun nodes ->
-  match nodes |> List.concat_map signature_item_payload_nodes_from_node |> List.concat_map signature_items_from_node with
+  match nodes |> List.concat_map signature_items_from_node with
   | items -> (
       match nodes with
       | first :: _ ->
@@ -8590,7 +8672,8 @@ let signature_items_of_payload = function
 
 let signature_items_of_module_type = function
   | Cst.ModuleType.Signature {signature_syntax_node; _} ->
-      signature_items_from_syntax_node signature_syntax_node
+      signature_item_payload_nodes_from_node signature_syntax_node
+      |> signature_items_from_syntax_nodes
       |> Result.map Option.some
   | _ ->
       Ok None

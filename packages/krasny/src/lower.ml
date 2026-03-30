@@ -42,6 +42,9 @@ let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
   in
   unsupported ~context:(context @ [ kind ]) message
 
+let attribute_payload_context = [ "attribute"; "payload" ]
+let shared_attribute_payload_context = [ "shared"; "attribute"; "payload" ]
+
 type pending_trivia_entry =
   | TriviaComment of int * Doc.t
   | TriviaDocstring of int * bool * Doc.t
@@ -451,29 +454,6 @@ let doc_of_owned_trivia = fun ?start trivia ->
   in
   loop None None trivia
 
-let render_attribute_doc = fun ~floating (attribute : Syn.Cst.attribute) ->
-  let sigil_doc =
-    if floating then
-      Doc.concat [ at; doc_of_token attribute.sigil_token ]
-    else
-      doc_of_token attribute.sigil_token
-  in
-  Doc.concat
-    [ Doc.lbracket; sigil_doc; doc_of_ident attribute.name; (
-        match attribute.payload_syntax_node with
-        | Some payload_syntax_node ->
-            let payload_text = Source.source_of_syntax_node payload_syntax_node |> String.trim in
-            if payload_text = "" then
-              Doc.empty
-            else
-              Doc.concat [ Doc.space; Doc.text payload_text ]
-        | None ->
-            Doc.empty
-      ); Doc.rbracket ]
-
-let render_attribute = fun attribute -> render_attribute_doc ~floating:false attribute
-let render_floating_attribute = fun attribute -> render_attribute_doc ~floating:true attribute
-
 let kw_module = Doc.text "module"
 
 let kw_let = Doc.text "let"
@@ -864,6 +844,97 @@ and render_first_class_functor_parameter ({ name_token; module_type; _ } :
       render_first_class_module_type_doc module_type;
       Doc.rparen;
     ]
+
+and shared_attribute_payload_source_node (attribute : Syn.Cst.attribute) =
+  match attribute.payload_syntax_node with
+  | Some payload_syntax_node ->
+      payload_syntax_node
+  | None ->
+      attribute.syntax_node
+
+and render_shared_attribute_payload_expression_doc = function
+  | Syn.Cst.Expression.Path { path; attributes = []; _ } ->
+      doc_of_ident path
+  | Syn.Cst.Expression.Constructor { constructor_path; payload = None; attributes = []; _ } ->
+      doc_of_ident constructor_path
+  | Syn.Cst.Expression.Operator { operator_tokens; _ } ->
+      operator_tokens |> List.map doc_of_token |> Doc.concat
+  | Syn.Cst.Expression.Literal literal ->
+      render_literal literal
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      Doc.concat [ Doc.lparen; render_shared_attribute_payload_expression_doc inner; Doc.rparen ]
+  | expression ->
+      unsupported_syntax ~context:shared_attribute_payload_context
+        ~syntax_node:(Syn.Cst.Expression.syntax_node expression)
+        "shared attribute expression payloads do not have a structural formatter yet"
+
+and render_shared_attribute_payload_doc (attribute : Syn.Cst.attribute) =
+  match attribute.payload with
+  | None ->
+      Doc.empty
+  | Some (Syn.Cst.Payload.Type type_) ->
+      Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
+  | Some (Syn.Cst.Payload.Pattern { pattern_syntax_node; guard_syntax_node }) ->
+      let syntax_node =
+        match guard_syntax_node with
+        | Some guard_syntax_node ->
+            guard_syntax_node
+        | None ->
+            pattern_syntax_node
+      in
+      unsupported_syntax ~context:shared_attribute_payload_context ~syntax_node
+        "shared attribute pattern payloads do not have a structural formatter yet"
+  | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
+      match Syn.CstBuilder.structure_items_of_payload payload with
+      | Ok (Some [ Syn.Cst.StructureItem.Expression expression ]) ->
+          Doc.concat [ Doc.space; render_shared_attribute_payload_expression_doc expression ]
+      | Ok None ->
+          Doc.empty
+      | Ok (Some []) ->
+          Doc.empty
+      | Ok (Some _items) ->
+          unsupported_syntax ~context:shared_attribute_payload_context
+            ~syntax_node:(shared_attribute_payload_source_node attribute)
+            "shared attribute structure payloads do not have a structural formatter yet"
+      | Error error ->
+          unsupported
+            ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ shared_attribute_payload_context @ error.context)
+            error.message)
+  | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
+      match Syn.CstBuilder.signature_items_of_payload payload with
+      | Ok None ->
+          Doc.empty
+      | Ok (Some []) ->
+          Doc.empty
+      | Ok (Some _items) ->
+          unsupported_syntax ~context:shared_attribute_payload_context
+            ~syntax_node:(shared_attribute_payload_source_node attribute)
+            "shared attribute signature payloads do not have a structural formatter yet"
+      | Error error ->
+          unsupported
+            ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ shared_attribute_payload_context @ error.context)
+            error.message)
+
+and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
+  let sigil_doc =
+    if floating then
+      Doc.concat [ at; doc_of_token attribute.sigil_token ]
+    else
+      doc_of_token attribute.sigil_token
+  in
+  Doc.concat
+    [
+      Doc.lbracket;
+      sigil_doc;
+      doc_of_ident attribute.name;
+      render_shared_attribute_payload_doc attribute;
+      Doc.rbracket;
+    ]
+
+and render_attribute attribute = render_attribute_doc ~floating:false attribute
+
+and render_floating_attribute attribute =
+  render_attribute_doc ~floating:true attribute
 
 and render_first_class_module_type_doc = function
   | Syn.Cst.ModuleType.Path path ->
@@ -2488,7 +2559,7 @@ let make_lowerer =
           | None ->
               pattern_syntax_node
         in
-        unsupported_syntax ~context:[ "attribute"; "payload" ] ~syntax_node
+        unsupported_syntax ~context:attribute_payload_context ~syntax_node
           "pattern attribute payloads do not have a structural formatter yet"
     | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
         let source_node = attribute_payload_source_node attribute in
@@ -2502,7 +2573,7 @@ let make_lowerer =
             Doc.empty
         | Error error ->
             unsupported
-              ~context:([ "attribute"; "payload"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+              ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ attribute_payload_context @ error.context)
               error.message)
     | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
         let source_node = attribute_payload_source_node attribute in
@@ -2516,7 +2587,7 @@ let make_lowerer =
             Doc.empty
         | Error error ->
             unsupported
-              ~context:([ "attribute"; "payload"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+              ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ attribute_payload_context @ error.context)
               error.message)
 
   and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
@@ -4210,17 +4281,19 @@ and render_let_binding (binding : Syn.Cst.let_binding) =
   Doc.concat (first :: trailing)
 
 and nested_structure_items_from_module_expression module_expression =
-  match Syn.CstBuilder.structure_items_of_module_expression module_expression with
-  | Ok (Some items) ->
-      items
-  | Ok None ->
+  match module_expression with
+  | Syn.Cst.ModuleExpression.Structure { item_syntax_nodes; _ } -> (
+      match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
+      | Ok items ->
+          items
+      | Error error ->
+          unsupported
+            ~context:([ "module_expression"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+            error.message)
+  | _ ->
       unsupported_syntax ~context:[ "module_expression" ]
         ~syntax_node:(Syn.Cst.ModuleExpression.syntax_node module_expression)
         "nested structure module expressions do not have a structural item stream"
-  | Error error ->
-      unsupported
-        ~context:([ "module_expression"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
-        error.message
 
 and nested_signature_items_from_module_type module_type =
   match Syn.CstBuilder.signature_items_of_module_type module_type with
@@ -4648,7 +4721,30 @@ and render_structure_entry ~trailing_suffix item =
     | _ ->
         false
   in
-  (doc, is_open_structure_item item, is_trivia, tight_after, false, is_docstring)
+  let is_type_declaration =
+    match item with
+    | Syn.Cst.StructureItem.TypeDeclaration _ ->
+        true
+    | _ ->
+        false
+  in
+  let compact_before =
+    match item with
+    | Syn.Cst.StructureItem.Attribute _ ->
+        true
+    | _ ->
+        false
+  in
+  (
+    doc,
+    is_open_structure_item item,
+    is_trivia,
+    tight_after,
+    false,
+    is_docstring,
+    is_type_declaration,
+    compact_before
+  )
 
 and render_signature_entry ~trailing_suffix item =
   let doc =
@@ -4902,15 +4998,24 @@ and render_structure_top_level_items ~source_node ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
-    | (doc, _, _, _, _, _) :: [] ->
+    | (doc, _, _, _, _, _, _, _) :: [] ->
         doc
-    | (doc, is_open, is_trivia, tight_after, has_trailing_break, is_docstring)
-      :: ((_, next_is_open, _, _, _, next_is_docstring) :: _ as rest) ->
+    | ( doc,
+        is_open,
+        is_trivia,
+        tight_after,
+        has_trailing_break,
+        is_docstring,
+        is_type_declaration,
+        _compact_before )
+      :: ((_, next_is_open, _, _, _, next_is_docstring, _, next_compact_before) :: _ as rest) ->
         let separator =
           if has_trailing_break then
             Doc.empty
           else if is_docstring && next_is_docstring then
             blank_line
+          else if is_type_declaration && next_compact_before then
+            Doc.line
           else if tight_after || is_trivia then
             Doc.line
           else if is_open && next_is_open then

@@ -46,6 +46,8 @@
 40. Keep sequence separator structure explicit in `Syn.Cst`: `sequence_expression.separator_tokens` is the token-order-complete list of `;` boundaries, and downstream tools should not have to recover per-boundary separator trivia from raw source gaps.
 41. Keep binding-operator clause boundaries explicit in `Syn.Cst`: `binding_operator_binding.equals_token` and `let_operator_expression.in_token` must stay public so downstream renderers do not reconstruct `let*` / `and*` separators from subtree token scans or source text.
 42. Keep structure/signature payload helper streams public via `CstBuilder.structure_items_of_payload` and `CstBuilder.signature_items_of_payload`; downstream tools should not relift `payload.item_syntax_nodes` by hand when they need normalized payload items.
+43. Keep split-sigil floating annotations payload-free during CST lift. Forms such as `[@@@foo]` and `[%%%foo]` must not misparse the trailing sigil token as raw payload text.
+44. Keep explicit nested item-anchor helpers non-duplicating: once `item_syntax_nodes` already includes lifted floating-attribute siblings, downstream relift helpers must not split the same `TYPE_DECL` a second time.
 
 ## Validate
 

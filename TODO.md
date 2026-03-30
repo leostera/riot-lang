@@ -74,13 +74,16 @@ This file is _yours_. Keep it up to date after every big change.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`.
 - `doc_of_owned_trivia` now joins owned comments/docstrings with explicit formatter separators instead of recovering whitespace/newline gaps from raw source text.
-- `packages/krasny/src/source.ml` is trimmed to the remaining live raw source-reconstruction helper only; `Source` is now down to `source_of_syntax_node`.
 - `render_structure_items` and `render_signature_items` now render directly from ordered item streams plus owned trivia; they no longer require source text or nested source-window slicing.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
 - the main lowering path now renders floating attributes and expression-attached attributes structurally from payload shape plus those payload item helpers; pattern payloads fail explicitly there instead of replaying raw payload text.
-- the remaining attribute debt is the older shared `render_attribute_doc` path outside `make_lowerer`, plus the still-raw pattern payload case.
+- shared/global core-type, module-type, and module-expression attributes now render no-payload, type-payload, and simple single-expression structure payloads structurally; richer shared/global payload forms fail explicitly instead of replaying raw payload text.
+- split-sigil floating attributes such as `[@@@foo]` now lift as payload-free annotations instead of misparsing the trailing `@foo` as raw payload text.
+- relifted nested `struct ... end` and `sig ... end` bodies now keep floating attributes as real sibling items after preceding `type` declarations, without double-splitting or dropping them.
+- `packages/krasny/src/source.ml` is gone; `krasny` no longer keeps any live raw source-reconstruction helper.
+- the remaining attribute debt is the still-raw pattern payload case, plus whatever extra CST structure richer payload bodies need before they can lower structurally.
 
 ## Working Style
 
@@ -93,11 +96,10 @@ This file is _yours_. Keep it up to date after every big change.
 
 ## Structural Formatting Debt
 
-- [ ] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
-  - token/text reconstruction via `Source.source_of_syntax_node`
-  - remaining shared/global attribute payload reconstruction such as `render_attribute_doc` outside `make_lowerer`
-  - remaining non-top-level fallback branches in expression/module/module-type lowering that still end in `doc_of_node (...)`
-  - keep unsupported shapes on the explicit `Cannot_lower` path; do not reintroduce silent source preservation
+- [x] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
+  - `Source.source_of_syntax_node` is gone
+  - shared/global attribute payloads no longer replay raw syntax-node text
+  - unsupported shared/global payload forms now fail explicitly instead of preserving source
 
 - [x] Remove API-level source-preserving fallback from `packages/krasny/src/format_core.ml` and `packages/krasny/src/lower.ml`
   - `Lower.source_file` now returns an explicit lowering result instead of `None`
@@ -140,8 +142,8 @@ This file is _yours_. Keep it up to date after every big change.
   - `render_signature_items ?source ~source_node`
   - do not derive nested/top-level source windows from `ctx.source` + `source_node` spans just to support fallback formatting
 
-- [ ] Shrink `packages/krasny/src/source.ml` to the minimal structural-support surface
-  - keep `Source` focused on the remaining supported structural utilities, not as a grab-bag for historical source-replay helpers
+- [x] Shrink `packages/krasny/src/source.ml` to the minimal structural-support surface
+  - `source.ml` is deleted; `krasny` no longer keeps a raw source helper module
 
 - [x] Remove obsolete lowering source parameters from internal formatter plumbing
   - `Lower.source_file` no longer takes `~source`
@@ -156,19 +158,15 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Remove impossible-state fallback patterns from formatter hot paths
   - any remaining “best effort” fallback that hides missing structural support instead of surfacing it
 
-- [ ] Audit every `ctx.source` / `Source.*` use in `packages/krasny/src/lower.ml`
-  - classify each site as:
-    remove,
-    replace with an explicit CST fact,
-    or keep only behind an explicit “unsupported shape” failure boundary while the CST is extended
-  - current high-priority sites:
-    `Source.source_of_syntax_node`
+- [x] Audit every `ctx.source` / `Source.*` use in `packages/krasny/src/lower.ml`
+  - `lower.ml` no longer uses `Source.*`
+  - any future raw source helper use should be treated as new debt immediately
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
   - explicit phrase-separator / top-level phrase-boundary modeling
   - explicit value-declaration printable name modeling
   - pattern-payload structure beyond the current raw `pattern_syntax_node` / `guard_syntax_node`, so all attribute/extension payload rendering can stay structural there too
-  - explicit structured structure/signature payload and module-body views where the public CST still exposes only raw `item_syntax_nodes`
+  - explicit public nested signature-body item anchors beyond the current helper-only relift surface, if downstream tools need more than `CstBuilder.signature_items_of_module_type`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit ambiguity-sensitive type-declaration shape markers
   - explicit poly-variant inherit path rendering data if needed

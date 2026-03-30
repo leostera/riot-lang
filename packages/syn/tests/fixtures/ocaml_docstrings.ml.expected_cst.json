@@ -246,10 +246,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 12091
+                  "end": 12092
                 }
               }
             ]
@@ -387,10 +387,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 12603
+                  "end": 12604
                 }
               }
             ]
@@ -528,10 +528,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 12962
+                  "end": 12963
                 }
               }
             ]
@@ -629,10 +629,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 13183
+                  "end": 13184
                 }
               }
             ]
@@ -730,10 +730,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 13421
+                  "end": 13422
                 }
               }
             ]
@@ -831,10 +831,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 13661
+                  "end": 13662
                 }
               }
             ]
@@ -932,10 +932,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 13963
+                  "end": 13964
                 }
               }
             ]
@@ -1033,10 +1033,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 14284
+                  "end": 14285
                 }
               }
             ]
@@ -1134,10 +1134,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 14607
+                  "end": 14608
                 }
               }
             ]
@@ -1228,10 +1228,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 14778
+                  "end": 14779
                 }
               }
             ]
@@ -1322,10 +1322,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 14993
+                  "end": 14994
                 }
               }
             ]
@@ -1408,10 +1408,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 15114
+                  "end": 15115
                 }
               }
             ]
@@ -1494,10 +1494,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 15236
+                  "end": 15237
                 }
               }
             ]
@@ -1580,10 +1580,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 15358
+                  "end": 15359
                 }
               }
             ]
@@ -1666,10 +1666,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 15479
+                  "end": 15480
                 }
               }
             ]
@@ -1752,10 +1752,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 15601
+                  "end": 15602
                 }
               }
             ]
@@ -1838,10 +1838,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 15723
+                  "end": 15724
                 }
               }
             ]
@@ -1924,10 +1924,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 15846
+                  "end": 15847
                 }
               }
             ]
@@ -2010,10 +2010,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 16023
+                  "end": 16024
                 }
               }
             ]
@@ -2096,10 +2096,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 16198
+                  "end": 16199
                 }
               }
             ]
@@ -2392,10 +2392,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 16686
+                  "end": 16687
                 }
               }
             ]
@@ -2659,10 +2659,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 17031
+                  "end": 17032
                 }
               }
             ]
@@ -2868,10 +2868,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 17256
+                  "end": 17257
                 }
               }
             ]
@@ -2957,10 +2957,10 @@
             "tag": "structure",
             "item_syntax_nodes": [
               {
-                "kind": "APPLY_EXPR",
+                "kind": "STRING_LITERAL",
                 "span": {
                   "start": 0,
-                  "end": 17692
+                  "end": 17693
                 }
               }
             ]
