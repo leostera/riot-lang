@@ -4022,14 +4022,22 @@ module LetBinding : sig
   val is_function : t -> bool
 end
 
-(** A `module type` declaration item.
+(** A `module` declaration item.
 
     Examples:
 
     ```ocaml,norun
-    module type S
-    module type S = sig type t end
+    module M = N
+    module F (X : S) : T = struct end
+    module Alias := Stdlib.List
     ```
+
+    This node is still intentionally shared across structure and signature
+    contexts. As a result it can represent combinations that are only valid in
+    one context, such as signature-only bindings without a module expression or
+    structure bindings with both an optional module-type ascription and a
+    module expression. Downstream tools should treat those combinations as
+    context-sensitive until this node is tightened further.
 *)
 module ModuleDeclaration : sig
   type t = {

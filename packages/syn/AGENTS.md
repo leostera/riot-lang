@@ -68,6 +68,7 @@
 61. Keep class and class-type declaration shell modifiers explicit in `Syn.Cst`. Shortcut forms such as `class%foo [@foo] x = ...` and `class type%foo [@foo] t = ...` should expose their shell extension/attributes directly instead of forcing downstream tools to recover them from raw declaration syntax.
 62. Keep class and class-type body helper streams token-order-complete just like records and objects. `CstBuilder.class_field_items_of_fields` and `class_type_field_items_of_fields` should surface trailing `end`-owned comments/docstrings so downstream renderers never need class-body archaeology.
 63. Prefer valid-shape sums over `option * option` declaration records. `class` declarations should not be representable as “missing both type and body”, and the same tightening should happen for other shared declaration nodes when practical.
+64. When a shared CST node still spans multiple grammar contexts and cannot yet be tightened, document that broadness explicitly at the type surface. `ModuleDeclaration` is currently one of those cases: its optional `module_type` / `module_expression` fields are still context-sensitive rather than globally valid by construction.
 
 ## Validate
 
