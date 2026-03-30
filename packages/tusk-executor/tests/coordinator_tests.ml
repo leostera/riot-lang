@@ -116,7 +116,7 @@ let test_failed_dependency_updates_package_graph () =
                 ~session_id:build_ctx.Tusk_model.Build_ctx.session_id
             with
             | Error _ -> Error "workspace build failed"
-            | Ok result -> (
+            | Ok result ->
                 let package_key =
                   Tusk_planner.Package_graph.package_key ~package_name:"b"
                     Tusk_planner.Package_graph.Runtime
@@ -144,7 +144,7 @@ let test_failed_dependency_updates_package_graph () =
                     | Tusk_planner.Package_graph.Skipped _ ->
                         Error
                           "package graph left dependent package skipped after \
-                           dependency failure")))
+                           dependency failure"))))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
