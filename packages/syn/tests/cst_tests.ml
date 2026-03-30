@@ -3975,6 +3975,25 @@ let tests =
             Ok ()
         | [] ->
             Error "expected interface extension payload");
+    Test.case "cst builder can reify signature payload items from extensions"
+      (fun () ->
+        let result = parse_mli "[%%signature_item val x : int]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.Extension { payload = Some payload; _ } :: _ -> (
+            match Syn.CstBuilder.signature_items_of_payload payload with
+            | Ok (Some (Syn.Cst.SignatureItem.ValueDeclaration _ :: _)) ->
+                Ok ()
+            | Ok _ ->
+                Error "expected signature payload helper to reify value items"
+            | Error _ ->
+                Error "expected signature payload helper to succeed")
+        | _ ->
+            Error "expected extension payload");
     Test.case "cst attributed types keep attribute names and payload nodes" (fun () ->
         let result = parse_ml "type t = int [@foo]\n" in
         let cst =
@@ -4095,6 +4114,29 @@ let tests =
                 Error "expected commented expression attribute payload")
         | _ ->
             Error "expected let binding with commented expression attribute");
+    Test.case "cst builder can reify structure payload items from attributes"
+      (fun () ->
+        let result = parse_ml "let _ = value [@foo 1 + 2]\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding { value; _ } :: _ -> (
+            match Syn.Cst.Expression.attributes value with
+            | { payload = Some payload; _ } :: _ -> (
+                match Syn.CstBuilder.structure_items_of_payload payload with
+                | Ok (Some (Syn.Cst.StructureItem.Expression _ :: _)) ->
+                    Ok ()
+                | Ok _ ->
+                    Error "expected structure payload helper to reify expression items"
+                | Error _ ->
+                    Error "expected structure payload helper to succeed")
+            | _ ->
+                Error "expected expression attribute payload")
+        | _ ->
+            Error "expected let binding with attribute payload");
     Test.case "cst extensions lift typed `:` payloads" (fun () ->
         let result = parse_ml "let _ = [%foo: int -> string]\n" in
         let cst =

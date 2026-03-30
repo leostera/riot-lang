@@ -45,6 +45,7 @@
 39. Keep optional parameter structure lossless in `Syn.Cst`: preserve typed binding patterns and `default_value` as real CST fields instead of forcing downstream tools to recover them from parameter source text.
 40. Keep sequence separator structure explicit in `Syn.Cst`: `sequence_expression.separator_tokens` is the token-order-complete list of `;` boundaries, and downstream tools should not have to recover per-boundary separator trivia from raw source gaps.
 41. Keep binding-operator clause boundaries explicit in `Syn.Cst`: `binding_operator_binding.equals_token` and `let_operator_expression.in_token` must stay public so downstream renderers do not reconstruct `let*` / `and*` separators from subtree token scans or source text.
+42. Keep structure/signature payload helper streams public via `CstBuilder.structure_items_of_payload` and `CstBuilder.signature_items_of_payload`; downstream tools should not relift `payload.item_syntax_nodes` by hand when they need normalized payload items.
 
 ## Validate
 

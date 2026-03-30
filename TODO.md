@@ -76,6 +76,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `packages/krasny/src/source.ml` is trimmed to the remaining live raw source-reconstruction helper only; `Source` is now down to `source_of_syntax_node`.
 - `render_structure_items` and `render_signature_items` now require source text explicitly; the impossible no-source path fails instead of reconstructing node text behind the formatter's back.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
+- `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly; the remaining attribute debt is `krasny`'s source replay and the still-raw pattern payload case, not missing payload item helpers.
 
 ## Working Style
 
@@ -158,7 +159,7 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
   - explicit phrase-separator / top-level phrase-boundary modeling
   - explicit value-declaration printable name modeling
-  - explicit structured attribute/extension payload rendering surface instead of replaying `payload_syntax_node` / `item_syntax_nodes`
+  - pattern-payload structure beyond the current raw `pattern_syntax_node` / `guard_syntax_node`, so attribute/extension payload rendering can stay structural there too
   - explicit structured structure/signature payload and module-body views where the public CST still exposes only raw `item_syntax_nodes`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit ambiguity-sensitive type-declaration shape markers
