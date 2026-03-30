@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "connect",
-            "span": {
-              "start": 4,
-              "end": 11
-            }
-          },
           "parameters": [
             {
               "tag": "positional",

@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "map",
-            "span": {
-              "start": 30,
-              "end": 33
-            }
-          },
           "parameters": [
             {
               "tag": "locally_abstract",
@@ -486,14 +478,6 @@
                 "start": 109,
                 "end": 113
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "fold",
-            "span": {
-              "start": 109,
-              "end": 113
             }
           },
           "parameters": [
@@ -1065,14 +1049,6 @@
                 "start": 208,
                 "end": 215
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "complex",
-            "span": {
-              "start": 208,
-              "end": 215
             }
           },
           "parameters": [

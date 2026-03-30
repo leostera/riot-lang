@@ -267,14 +267,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 62,
-              "end": 63
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "first_class_module",

@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "id",
-            "span": {
-              "start": 55,
-              "end": 57
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -338,14 +330,6 @@
                 "start": 92,
                 "end": 96
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "make",
-            "span": {
-              "start": 92,
-              "end": 96
             }
           },
           "parameters": [],
@@ -813,14 +797,6 @@
                 "start": 183,
                 "end": 190
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "convert",
-            "span": {
-              "start": 183,
-              "end": 190
             }
           },
           "parameters": [],

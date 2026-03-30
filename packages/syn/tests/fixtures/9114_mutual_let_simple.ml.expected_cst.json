@@ -83,14 +83,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "is_even",
-            "span": {
-              "start": 53,
-              "end": 60
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -438,14 +430,6 @@
                     "start": 110,
                     "end": 116
                   }
-                }
-              },
-              "binding_name": {
-                "kind": "IDENT_EXPR",
-                "text": "is_odd",
-                "span": {
-                  "start": 110,
-                  "end": 116
                 }
               },
               "parameters": [

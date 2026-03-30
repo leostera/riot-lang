@@ -187,7 +187,6 @@
             ],
             "open_tail": null
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "path",

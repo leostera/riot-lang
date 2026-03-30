@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "process",
-            "span": {
-              "start": 45,
-              "end": 52
-            }
-          },
           "parameters": [
             {
               "tag": "positional",

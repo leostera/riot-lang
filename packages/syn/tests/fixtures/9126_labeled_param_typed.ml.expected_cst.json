@@ -96,14 +96,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "foo",
-            "span": {
-              "start": 70,
-              "end": 73
-            }
-          },
           "parameters": [
             {
               "tag": "labeled",
@@ -337,14 +329,6 @@
                 "start": 129,
                 "end": 132
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "map",
-            "span": {
-              "start": 129,
-              "end": 132
             }
           },
           "parameters": [
@@ -713,14 +697,6 @@
                 "start": 196,
                 "end": 203
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "process",
-            "span": {
-              "start": 196,
-              "end": 203
             }
           },
           "parameters": [
@@ -1196,14 +1172,6 @@
                 "start": 319,
                 "end": 326
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "combine",
-            "span": {
-              "start": 319,
-              "end": 326
             }
           },
           "parameters": [

@@ -2694,8 +2694,6 @@ and function_expression = {
     This shape is used both for item-level bindings and for nested `and`
     bindings inside `let ... in ...` expressions. For top-level mutual groups,
     `and_bindings` stores trailing clauses under the leading binding.
-    `binding_name` is extracted only when the binding pattern has a simple
-    recoverable name.
 *)
 and let_binding = {
   syntax_node : syntax_node;
@@ -2704,7 +2702,6 @@ and let_binding = {
   equals_token : Token.t;
   attributes : attribute list;
   binding_pattern : pattern;
-  binding_name : Token.t option;
   parameters : parameter list;
   value_leading_trivia : trivia list;
   value : expression;
@@ -3954,7 +3951,6 @@ module LetBinding : sig
     equals_token : Token.t;
     attributes : attribute list;
     binding_pattern : pattern;
-    binding_name : Token.t option;
     parameters : Parameter.t list;
     value_leading_trivia : trivia list;
     value : expression;
@@ -3973,6 +3969,7 @@ module LetBinding : sig
 
   val binding_pattern : t -> Pattern.t
 
+  (** Derived only when `binding_pattern` has a simple recoverable name. *)
   val binding_name_token : t -> Token.t option
 
   val name : t -> string

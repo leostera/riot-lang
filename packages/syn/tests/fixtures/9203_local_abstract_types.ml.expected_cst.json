@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "cast",
-            "span": {
-              "start": 66,
-              "end": 70
-            }
-          },
           "parameters": [
             {
               "tag": "locally_abstract",
@@ -369,14 +361,6 @@
                 "start": 112,
                 "end": 113
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 112,
-              "end": 113
             }
           },
           "parameters": [

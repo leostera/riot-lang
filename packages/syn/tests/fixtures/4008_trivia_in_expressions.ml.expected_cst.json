@@ -96,14 +96,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 87,
-              "end": 88
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -220,14 +212,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "a",
-            "span": {
-              "start": 158,
-              "end": 159
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -297,14 +281,6 @@
                     "start": 180,
                     "end": 181
                   }
-                }
-              },
-              "binding_name": {
-                "kind": "IDENT_EXPR",
-                "text": "b",
-                "span": {
-                  "start": 180,
-                  "end": 181
                 }
               },
               "parameters": [],
@@ -404,14 +380,6 @@
                 "start": 231,
                 "end": 232
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 231,
-              "end": 232
             }
           },
           "parameters": [
@@ -591,14 +559,6 @@
                 "start": 317,
                 "end": 318
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "g",
-            "span": {
-              "start": 317,
-              "end": 318
             }
           },
           "parameters": [
@@ -965,14 +925,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "h",
-            "span": {
-              "start": 508,
-              "end": 509
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -1266,7 +1218,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "for",
@@ -1498,7 +1449,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "while",
@@ -1681,7 +1631,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "try",

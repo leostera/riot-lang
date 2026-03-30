@@ -78,7 +78,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "for",
@@ -298,7 +297,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "for",

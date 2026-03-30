@@ -58,7 +58,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_assign",

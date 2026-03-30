@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "absurd",
-            "span": {
-              "start": 4,
-              "end": 10
-            }
-          },
           "parameters": [
             {
               "tag": "positional",

@@ -58,7 +58,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "fun",
@@ -207,7 +206,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "fun",
@@ -377,7 +375,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "fun",
@@ -556,7 +553,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "fun",
@@ -787,7 +783,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "fun",
@@ -1018,7 +1013,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [
             {
               "tag": "positional",

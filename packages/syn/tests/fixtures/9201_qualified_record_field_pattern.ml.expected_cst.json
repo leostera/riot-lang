@@ -96,14 +96,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 95,
-              "end": 96
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "fun",
@@ -312,14 +304,6 @@
                 "start": 163,
                 "end": 164
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "g",
-            "span": {
-              "start": 163,
-              "end": 164
             }
           },
           "parameters": [],
@@ -630,14 +614,6 @@
                 "start": 281,
                 "end": 282
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "h",
-            "span": {
-              "start": 281,
-              "end": 282
             }
           },
           "parameters": [],
@@ -1050,14 +1026,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "i",
-            "span": {
-              "start": 355,
-              "end": 356
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "fun",
@@ -1283,14 +1251,6 @@
                 "start": 421,
                 "end": 422
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "j",
-            "span": {
-              "start": 421,
-              "end": 422
             }
           },
           "parameters": [],

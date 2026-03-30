@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "panic",
-            "span": {
-              "start": 4,
-              "end": 9
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -301,14 +293,6 @@
                 "start": 76,
                 "end": 80
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "test",
-            "span": {
-              "start": 76,
-              "end": 80
             }
           },
           "parameters": [

@@ -1556,7 +1556,6 @@ and let_binding = {
   equals_token : Token.t;
   attributes : attribute list;
   binding_pattern : pattern;
-  binding_name : Token.t option;
   parameters : parameter list;
   value_leading_trivia : trivia list;
   value : expression;
@@ -2704,7 +2703,6 @@ module LetBinding = struct
     equals_token : Token.t;
     attributes : attribute list;
     binding_pattern : pattern;
-    binding_name : Token.t option;
     parameters : Parameter.t list;
     value_leading_trivia : trivia list;
     value : expression;
@@ -2724,10 +2722,26 @@ module LetBinding = struct
 
   let binding_pattern = fun binding -> binding.binding_pattern
 
-  let binding_name_token = fun binding -> binding.binding_name
+  let rec binding_name_token_from_pattern =
+    function
+    | Pattern.Identifier { name_token; _ } ->
+        Some name_token
+    | Pattern.Typed { pattern; _ }
+    | Pattern.Lazy { pattern; _ }
+    | Pattern.LocalOpen { pattern; _ } ->
+        binding_name_token_from_pattern pattern
+    | Pattern.Parenthesized { inner; _ } ->
+        binding_name_token_from_pattern inner
+    | Pattern.Alias { name_token; _ } ->
+        Some name_token
+    | _ ->
+        None
+
+  let binding_name_token = fun binding ->
+    binding_name_token_from_pattern binding.binding_pattern
 
   let name = fun binding ->
-    match binding.binding_name with
+    match binding_name_token binding with
     | Some token -> Token.text token
     | None -> panic "LetBinding.name: missing binding name token"
 

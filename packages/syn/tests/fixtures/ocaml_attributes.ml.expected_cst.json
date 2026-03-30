@@ -205,14 +205,6 @@
               ]
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 209,
-              "end": 210
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -1551,7 +1543,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "first_class_module",
@@ -1694,7 +1685,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "first_class_module",
@@ -1923,14 +1913,6 @@
                 "start": 789,
                 "end": 790
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 789,
-              "end": 790
             }
           },
           "parameters": [

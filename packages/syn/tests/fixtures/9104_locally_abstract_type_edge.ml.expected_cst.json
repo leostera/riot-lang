@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 43,
-              "end": 44
-            }
-          },
           "parameters": [
             {
               "tag": "locally_abstract",
@@ -309,14 +301,6 @@
                 "start": 111,
                 "end": 112
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "g",
-            "span": {
-              "start": 111,
-              "end": 112
             }
           },
           "parameters": [
@@ -553,14 +537,6 @@
                 "start": 172,
                 "end": 176
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "fold",
-            "span": {
-              "start": 172,
-              "end": 176
             }
           },
           "parameters": [
@@ -1302,14 +1278,6 @@
                 "start": 350,
                 "end": 357
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "process",
-            "span": {
-              "start": 350,
-              "end": 357
             }
           },
           "parameters": [

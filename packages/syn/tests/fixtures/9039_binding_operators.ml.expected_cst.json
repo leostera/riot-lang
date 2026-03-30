@@ -86,7 +86,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [
             {
               "tag": "positional",
@@ -349,7 +348,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [
             {
               "tag": "positional",
@@ -612,7 +610,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [
             {
               "tag": "positional",
@@ -875,7 +872,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [
             {
               "tag": "positional",
@@ -1146,14 +1142,6 @@
                 "start": 207,
                 "end": 212
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "test1",
-            "span": {
-              "start": 207,
-              "end": 212
             }
           },
           "parameters": [
@@ -1681,14 +1669,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "test2",
-            "span": {
-              "start": 279,
-              "end": 284
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -2160,14 +2140,6 @@
                 "start": 342,
                 "end": 347
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "test3",
-            "span": {
-              "start": 342,
-              "end": 347
             }
           },
           "parameters": [

@@ -225,7 +225,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -627,7 +626,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -1011,7 +1009,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -1508,7 +1505,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -1932,7 +1928,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "typed",

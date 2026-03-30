@@ -98,7 +98,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "let",
@@ -259,14 +258,6 @@
                       "start": 211,
                       "end": 212
                     }
-                  }
-                },
-                "binding_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "y",
-                  "span": {
-                    "start": 211,
-                    "end": 212
                   }
                 },
                 "parameters": [],
@@ -4708,14 +4699,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 1652,
-              "end": 1653
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -4823,14 +4806,6 @@
                     "start": 1668,
                     "end": 1669
                   }
-                }
-              },
-              "binding_name": {
-                "kind": "IDENT_EXPR",
-                "text": "y",
-                "span": {
-                  "start": 1668,
-                  "end": 1669
                 }
               },
               "parameters": [],

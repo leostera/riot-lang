@@ -116,14 +116,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "single_list",
-            "span": {
-              "start": 138,
-              "end": 149
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "list",
@@ -230,14 +222,6 @@
                 "start": 212,
                 "end": 225
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "multiple_list",
-            "span": {
-              "start": 212,
-              "end": 225
             }
           },
           "parameters": [],
@@ -398,14 +382,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_list",
-            "span": {
-              "start": 296,
-              "end": 306
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "list",
@@ -486,14 +462,6 @@
                 "start": 361,
                 "end": 372
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "nested_list",
-            "span": {
-              "start": 361,
-              "end": 372
             }
           },
           "parameters": [],
@@ -701,14 +669,6 @@
                 "start": 469,
                 "end": 481
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "complex_list",
-            "span": {
-              "start": 469,
-              "end": 481
             }
           },
           "parameters": [],
@@ -990,7 +950,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -1384,14 +1343,6 @@
                 "start": 663,
                 "end": 672
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "test_list",
-            "span": {
-              "start": 663,
-              "end": 672
             }
           },
           "parameters": [
@@ -1874,14 +1825,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "single_array",
-            "span": {
-              "start": 812,
-              "end": 824
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "array",
@@ -1988,14 +1931,6 @@
                 "start": 889,
                 "end": 903
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "multiple_array",
-            "span": {
-              "start": 889,
-              "end": 903
             }
           },
           "parameters": [],
@@ -2156,14 +2091,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_array",
-            "span": {
-              "start": 977,
-              "end": 988
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "array",
@@ -2244,14 +2171,6 @@
                 "start": 1046,
                 "end": 1058
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "nested_array",
-            "span": {
-              "start": 1046,
-              "end": 1058
             }
           },
           "parameters": [],
@@ -2479,14 +2398,6 @@
                 "start": 1244,
                 "end": 1255
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "seq_in_list",
-            "span": {
-              "start": 1244,
-              "end": 1255
             }
           },
           "parameters": [],
@@ -2870,14 +2781,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "seq_in_array",
-            "span": {
-              "start": 1363,
-              "end": 1375
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "array",
@@ -3257,14 +3160,6 @@
                 "start": 1473,
                 "end": 1484
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "let_in_list",
-            "span": {
-              "start": 1473,
-              "end": 1484
             }
           },
           "parameters": [],

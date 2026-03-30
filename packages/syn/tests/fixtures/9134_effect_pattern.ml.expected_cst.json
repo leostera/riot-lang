@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "handle_match",
-            "span": {
-              "start": 4,
-              "end": 16
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -529,14 +521,6 @@
                 "start": 123,
                 "end": 133
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "handle_try",
-            "span": {
-              "start": 123,
-              "end": 133
             }
           },
           "parameters": [

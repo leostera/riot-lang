@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 4,
-              "end": 5
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "function",

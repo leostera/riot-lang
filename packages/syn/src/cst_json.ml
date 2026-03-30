@@ -1410,7 +1410,6 @@ and let_binding_to_json = fun binding ->
     ("equals_token", token_to_json (Cst.LetBinding.equals_token binding));
     ("attributes", Json.Array (List.map attribute_to_json (Cst.LetBinding.attributes binding)));
     ("binding_pattern", pattern_to_json (Cst.LetBinding.binding_pattern binding));
-    ("binding_name", option_to_json token_to_json (Cst.LetBinding.binding_name_token binding));
     ("parameters", Json.Array (List.map parameter_to_json (Cst.LetBinding.parameters binding)));
     ("value", expression_to_json (Cst.LetBinding.value binding));
     ("and_bindings", Json.Array (List.map let_binding_to_json (Cst.LetBinding.and_bindings binding)));

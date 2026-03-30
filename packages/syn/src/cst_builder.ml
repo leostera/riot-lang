@@ -5894,7 +5894,6 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                       equals_token = binding_equals_token;
                       attributes = binding_attributes;
                       binding_pattern = pattern_from_node nested_binding_pattern_node;
-                      binding_name = simple_pattern_name_token nested_binding_pattern_node;
                       parameters = binding_parameters_from_prefix prefix_nodes;
                       value_leading_trivia =
                         Cst.leading_trivia_before_node
@@ -6248,7 +6247,6 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                       );
                       attributes = binding_attributes;
                       binding_pattern = pattern_from_node nested_binding_pattern_node;
-                      binding_name = simple_pattern_name_token nested_binding_pattern_node;
                       parameters = binding_parameters_from_prefix prefix_nodes;
                       value_leading_trivia =
                         Cst.leading_trivia_before_node
@@ -6495,7 +6493,6 @@ and let_binding_from_binding_operator_binding = fun
       equals_token = binding_equals_token;
       attributes = [];
       binding_pattern = clause_pattern;
-      binding_name = simple_pattern_name_token (Cst.Pattern.syntax_node clause_pattern);
       parameters = [];
       value_leading_trivia = bound_value_leading_trivia;
       value = clause_value;
@@ -7160,7 +7157,6 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
             equals_token = binding_equals_token;
             attributes = binding_attributes;
             binding_pattern = pattern_from_node binding_pattern_node;
-            binding_name = simple_pattern_name_token binding_pattern_node;
             parameters = binding_parameters_from_prefix prefix_nodes;
             value_leading_trivia =
               Cst.leading_trivia_before_node
@@ -7219,7 +7215,7 @@ let let_expression_binding_from_node = fun ~is_recursive_binding node ->
                   bail ~message:"expected let-expression binding keyword during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                     "let_expression.binding"
                   ]
-            ); rec_token = direct_token_with_text node "rec"; equals_token = binding_equals_token; attributes = []; binding_pattern = pattern_from_node binding_pattern_node; binding_name = simple_pattern_name_token binding_pattern_node; parameters = binding_parameters_from_prefix
+            ); rec_token = direct_token_with_text node "rec"; equals_token = binding_equals_token; attributes = []; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix
             prefix_nodes; value_leading_trivia =
               Cst.leading_trivia_before_node
                 ~after:(Cst.Token.span binding_equals_token).end_

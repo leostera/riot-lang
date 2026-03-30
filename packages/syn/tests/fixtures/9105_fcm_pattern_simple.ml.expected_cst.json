@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "test",
-            "span": {
-              "start": 22,
-              "end": 26
-            }
-          },
           "parameters": [
             {
               "tag": "positional",

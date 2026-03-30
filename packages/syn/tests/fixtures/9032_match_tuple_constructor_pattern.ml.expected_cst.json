@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "daemon_exists",
-            "span": {
-              "start": 4,
-              "end": 17
-            }
-          },
           "parameters": [
             {
               "tag": "positional",

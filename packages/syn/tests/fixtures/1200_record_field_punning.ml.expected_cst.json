@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "make",
-            "span": {
-              "start": 4,
-              "end": 8
-            }
-          },
           "parameters": [
             {
               "tag": "labeled",

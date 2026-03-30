@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_tuple",
-            "span": {
-              "start": 81,
-              "end": 92
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "extension",
@@ -175,14 +167,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_record",
-            "span": {
-              "start": 108,
-              "end": 120
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "extension",
@@ -272,14 +256,6 @@
                 "start": 137,
                 "end": 148
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_apply",
-            "span": {
-              "start": 137,
-              "end": 148
             }
           },
           "parameters": [],
@@ -383,14 +359,6 @@
                 "start": 168,
                 "end": 169
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 168,
-              "end": 169
             }
           },
           "parameters": [],
@@ -687,14 +655,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 295,
-              "end": 296
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -819,14 +779,6 @@
                 "start": 328,
                 "end": 329
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 328,
-              "end": 329
             }
           },
           "parameters": [
@@ -990,14 +942,6 @@
                 "start": 365,
                 "end": 366
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 365,
-              "end": 366
             }
           },
           "parameters": [
@@ -1164,14 +1108,6 @@
                 "start": 402,
                 "end": 403
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "g",
-            "span": {
-              "start": 402,
-              "end": 403
             }
           },
           "parameters": [],

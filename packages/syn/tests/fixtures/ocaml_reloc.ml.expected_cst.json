@@ -96,14 +96,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "blocks",
-            "span": {
-              "start": 220,
-              "end": 226
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "let",

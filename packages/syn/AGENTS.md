@@ -69,6 +69,7 @@
 62. Keep class and class-type body helper streams token-order-complete just like records and objects. `CstBuilder.class_field_items_of_fields` and `class_type_field_items_of_fields` should surface trailing `end`-owned comments/docstrings so downstream renderers never need class-body archaeology.
 63. Prefer valid-shape sums over `option * option` declaration records. `class` declarations should not be representable as “missing both type and body”, and the same tightening should happen for other shared declaration nodes when practical.
 64. When a shared CST node still spans multiple grammar contexts and cannot yet be fully split, keep the valid local shapes explicit anyway. `ModuleDeclaration` should distinguish signature-only versus structure-with-body forms instead of using a bare `option * option` product, even while the node remains shared across structure/signature contexts.
+65. Keep `let_binding` pattern-first. Do not cache a parallel `binding_name` field alongside `binding_pattern`; simple binding names should be derived only when the pattern shape actually carries one.
 
 ## Validate
 

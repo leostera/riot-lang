@@ -140,7 +140,6 @@
               "tag": "closed"
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "path",

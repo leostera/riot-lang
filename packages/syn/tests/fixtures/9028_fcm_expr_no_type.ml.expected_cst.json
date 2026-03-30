@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 71,
-              "end": 72
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "first_class_module",
@@ -165,14 +157,6 @@
                 "start": 90,
                 "end": 91
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "y",
-            "span": {
-              "start": 90,
-              "end": 91
             }
           },
           "parameters": [],
@@ -356,14 +340,6 @@
                 "start": 128,
                 "end": 129
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "z",
-            "span": {
-              "start": 128,
-              "end": 129
             }
           },
           "parameters": [],

@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "flags",
-            "span": {
-              "start": 34,
-              "end": 39
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -160,14 +152,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "mask",
-            "span": {
-              "start": 53,
-              "end": 57
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -242,14 +226,6 @@
                 "start": 76,
                 "end": 80
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "zero",
-            "span": {
-              "start": 76,
-              "end": 80
             }
           },
           "parameters": [],
@@ -346,14 +322,6 @@
                 "start": 120,
                 "end": 130
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "parse_bits",
-            "span": {
-              "start": 120,
-              "end": 130
             }
           },
           "parameters": [

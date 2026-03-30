@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "state2",
-            "span": {
-              "start": 4,
-              "end": 10
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "record",

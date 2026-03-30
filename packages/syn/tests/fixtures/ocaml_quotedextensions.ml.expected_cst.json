@@ -455,7 +455,6 @@
               "payload": null
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -704,7 +703,6 @@
               "payload": null
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -953,7 +951,6 @@
               "payload": null
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "typed",

@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 4,
-              "end": 5
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "let",
@@ -186,14 +178,6 @@
                       "start": 24,
                       "end": 25
                     }
-                  }
-                },
-                "binding_name": {
-                  "kind": "IDENT_EXPR",
-                  "text": "b",
-                  "span": {
-                    "start": 24,
-                    "end": 25
                   }
                 },
                 "parameters": [],

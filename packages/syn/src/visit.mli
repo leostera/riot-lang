@@ -58,7 +58,8 @@ open Std
         visit_let_binding =
           (fun names _walk binding ->
             match Syn.Cst.LetBinding.binding_name_token binding with
-            | Some token -> Syn.Cst.Token.text token :: names
+            | Some token ->
+                Syn.Cst.Token.text token :: names
             | None -> names);
       }
     in

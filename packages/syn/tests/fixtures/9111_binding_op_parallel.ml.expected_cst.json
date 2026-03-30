@@ -86,7 +86,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -194,7 +193,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -290,14 +288,6 @@
                 "start": 81,
                 "end": 85
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "test",
-            "span": {
-              "start": 81,
-              "end": 85
             }
           },
           "parameters": [

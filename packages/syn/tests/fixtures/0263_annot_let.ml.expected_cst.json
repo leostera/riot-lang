@@ -95,14 +95,6 @@
               "arguments": []
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 5,
-              "end": 6
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",

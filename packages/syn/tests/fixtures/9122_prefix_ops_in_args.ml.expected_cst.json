@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 53,
-              "end": 54
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -201,14 +193,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "y",
-            "span": {
-              "start": 67,
-              "end": 68
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -283,14 +267,6 @@
                 "start": 81,
                 "end": 82
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "a",
-            "span": {
-              "start": 81,
-              "end": 82
             }
           },
           "parameters": [],
@@ -455,14 +431,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "b",
-            "span": {
-              "start": 98,
-              "end": 99
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -623,14 +591,6 @@
                 "start": 118,
                 "end": 119
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "c",
-            "span": {
-              "start": 118,
-              "end": 119
             }
           },
           "parameters": [],
@@ -798,14 +758,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "d",
-            "span": {
-              "start": 135,
-              "end": 136
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -966,14 +918,6 @@
                 "start": 153,
                 "end": 154
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "e",
-            "span": {
-              "start": 153,
-              "end": 154
             }
           },
           "parameters": [],

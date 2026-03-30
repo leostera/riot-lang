@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "driver",
-            "span": {
-              "start": 4,
-              "end": 10
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "first_class_module",
@@ -171,14 +163,6 @@
                 "start": 40,
                 "end": 51
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "constrained",
-            "span": {
-              "start": 40,
-              "end": 51
             }
           },
           "parameters": [],

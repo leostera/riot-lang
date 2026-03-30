@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 4,
-              "end": 5
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -138,14 +130,6 @@
                 "start": 14,
                 "end": 15
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "y",
-            "span": {
-              "start": 14,
-              "end": 15
             }
           },
           "parameters": [],

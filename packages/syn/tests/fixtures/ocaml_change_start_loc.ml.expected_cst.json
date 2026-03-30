@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "position",
-            "span": {
-              "start": 102,
-              "end": 110
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "local_open",
@@ -440,14 +432,6 @@
                 "start": 454,
                 "end": 477
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "set_position_incomplete",
-            "span": {
-              "start": 454,
-              "end": 477
             }
           },
           "parameters": [
@@ -826,14 +810,6 @@
                 "start": 629,
                 "end": 649
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "print_error_in_parse",
-            "span": {
-              "start": 629,
-              "end": 649
             }
           },
           "parameters": [
@@ -1691,7 +1667,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "sequence",

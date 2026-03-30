@@ -83,14 +83,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 52,
-              "end": 53
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -284,14 +276,6 @@
                     "start": 70,
                     "end": 71
                   }
-                }
-              },
-              "binding_name": {
-                "kind": "IDENT_EXPR",
-                "text": "g",
-                "span": {
-                  "start": 70,
-                  "end": 71
                 }
               },
               "parameters": [
@@ -489,14 +473,6 @@
                     "start": 88,
                     "end": 89
                   }
-                }
-              },
-              "binding_name": {
-                "kind": "IDENT_EXPR",
-                "text": "h",
-                "span": {
-                  "start": 88,
-                  "end": 89
                 }
               },
               "parameters": [

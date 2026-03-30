@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "apply",
-            "span": {
-              "start": 4,
-              "end": 9
-            }
-          },
           "parameters": [
             {
               "tag": "locally_abstract",

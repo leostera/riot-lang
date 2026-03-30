@@ -201,14 +201,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_tuple",
-            "span": {
-              "start": 64,
-              "end": 75
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -428,14 +420,6 @@
                 "start": 106,
                 "end": 118
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_record",
-            "span": {
-              "start": 106,
-              "end": 118
             }
           },
           "parameters": [
@@ -699,14 +683,6 @@
                 "start": 155,
                 "end": 166
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_apply",
-            "span": {
-              "start": 155,
-              "end": 166
             }
           },
           "parameters": [
@@ -1005,14 +981,6 @@
                 "start": 202,
                 "end": 213
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "missing_rhs",
-            "span": {
-              "start": 202,
-              "end": 213
             }
           },
           "parameters": [
@@ -1641,14 +1609,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_let",
-            "span": {
-              "start": 329,
-              "end": 338
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -1938,14 +1898,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_type",
-            "span": {
-              "start": 391,
-              "end": 401
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -2233,14 +2185,6 @@
                 "start": 454,
                 "end": 471
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "empty_poly_binder",
-            "span": {
-              "start": 454,
-              "end": 471
             }
           },
           "parameters": [
@@ -2642,14 +2586,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "functor_id",
-            "span": {
-              "start": 518,
-              "end": 528
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -3040,14 +2976,6 @@
                 "start": 605,
                 "end": 619
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "complex_record",
-            "span": {
-              "start": 605,
-              "end": 619
             }
           },
           "parameters": [
@@ -3583,14 +3511,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "super",
-            "span": {
-              "start": 707,
-              "end": 712
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -3686,14 +3606,6 @@
                 "start": 737,
                 "end": 741
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "expr",
-            "span": {
-              "start": 737,
-              "end": 741
             }
           },
           "parameters": [
@@ -5096,14 +5008,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "pat",
-            "span": {
-              "start": 1077,
-              "end": 1080
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -5754,14 +5658,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "typ",
-            "span": {
-              "start": 1248,
-              "end": 1251
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -6410,14 +6306,6 @@
                 "start": 1416,
                 "end": 1430
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "structure_item",
-            "span": {
-              "start": 1416,
-              "end": 1430
             }
           },
           "parameters": [
@@ -7451,14 +7339,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "signature_item",
-            "span": {
-              "start": 1698,
-              "end": 1712
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -8158,7 +8038,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "apply",

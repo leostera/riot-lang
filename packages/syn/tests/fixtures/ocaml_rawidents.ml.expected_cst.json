@@ -162,14 +162,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "obj",
-            "span": {
-              "start": 251,
-              "end": 254
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -478,14 +470,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 1000,
-              "end": 1001
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -683,7 +667,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -826,14 +809,6 @@
                 "start": 1174,
                 "end": 1175
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 1174,
-              "end": 1175
             }
           },
           "parameters": [
@@ -1508,14 +1483,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "\\#rec",
-            "span": {
-              "start": 1600,
-              "end": 1605
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -1854,14 +1821,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 1838,
-              "end": 1839
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -2006,14 +1965,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 1961,
-              "end": 1962
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -2156,14 +2107,6 @@
                 "start": 2086,
                 "end": 2087
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 2086,
-              "end": 2087
             }
           },
           "parameters": [
@@ -2399,14 +2342,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 2185,
-              "end": 2186
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -2625,14 +2560,6 @@
                 "start": 2433,
                 "end": 2434
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 2433,
-              "end": 2434
             }
           },
           "parameters": [],
@@ -3031,14 +2958,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "f",
-            "span": {
-              "start": 2598,
-              "end": 2599
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -3396,7 +3315,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "apply",

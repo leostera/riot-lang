@@ -102,7 +102,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -226,7 +225,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -358,7 +356,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -482,7 +479,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -614,7 +610,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -722,7 +717,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "field_access",
@@ -838,7 +832,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -999,14 +992,6 @@
                 "start": 893,
                 "end": 894
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "h",
-            "span": {
-              "start": 893,
-              "end": 894
             }
           },
           "parameters": [],
@@ -1347,7 +1332,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "sequence",
@@ -2259,7 +2243,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [
             {
               "tag": "positional",
@@ -2489,7 +2472,6 @@
               }
             ]
           },
-          "binding_name": null,
           "parameters": [
             {
               "tag": "positional",
@@ -2706,14 +2688,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 1392,
-              "end": 1393
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "array",
@@ -2794,7 +2768,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "index",
@@ -2942,7 +2915,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "apply",
@@ -3183,7 +3155,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "index",
@@ -3415,7 +3386,6 @@
               }
             }
           },
-          "binding_name": null,
           "parameters": [],
           "value": {
             "tag": "apply",

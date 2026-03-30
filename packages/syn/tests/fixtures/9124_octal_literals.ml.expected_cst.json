@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "perms",
-            "span": {
-              "start": 33,
-              "end": 38
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -160,14 +152,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "mask",
-            "span": {
-              "start": 51,
-              "end": 55
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -242,14 +226,6 @@
                 "start": 68,
                 "end": 72
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "zero",
-            "span": {
-              "start": 68,
-              "end": 72
             }
           },
           "parameters": [],
@@ -346,14 +322,6 @@
                 "start": 110,
                 "end": 121
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "check_perms",
-            "span": {
-              "start": 110,
-              "end": 121
             }
           },
           "parameters": [

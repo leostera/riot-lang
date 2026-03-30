@@ -96,14 +96,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "foo",
-            "span": {
-              "start": 84,
-              "end": 87
-            }
-          },
           "parameters": [
             {
               "tag": "optional",
@@ -363,14 +355,6 @@
                 "start": 149,
                 "end": 154
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "apply",
-            "span": {
-              "start": 149,
-              "end": 154
             }
           },
           "parameters": [
@@ -819,14 +803,6 @@
                 "start": 234,
                 "end": 239
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "greet",
-            "span": {
-              "start": 234,
-              "end": 239
             }
           },
           "parameters": [

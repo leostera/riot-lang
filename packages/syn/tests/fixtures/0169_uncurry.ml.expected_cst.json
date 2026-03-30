@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "uncurry",
-            "span": {
-              "start": 4,
-              "end": 11
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "fun",

@@ -135,14 +135,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 10,
-              "end": 11
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "try",

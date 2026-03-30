@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "classify",
-            "span": {
-              "start": 44,
-              "end": 52
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "function",
@@ -541,14 +533,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "is_number_start",
-            "span": {
-              "start": 217,
-              "end": 232
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "function",
@@ -857,14 +841,6 @@
                 "start": 323,
                 "end": 338
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "parse_json_char",
-            "span": {
-              "start": 323,
-              "end": 338
             }
           },
           "parameters": [],

@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 51,
-              "end": 52
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "local_open",
@@ -297,14 +289,6 @@
                 "start": 78,
                 "end": 83
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "stdio",
-            "span": {
-              "start": 78,
-              "end": 83
             }
           },
           "parameters": [],

@@ -56,14 +56,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "x",
-            "span": {
-              "start": 4,
-              "end": 5
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "local_open",
@@ -210,14 +202,6 @@
                 "start": 37,
                 "end": 38
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "y",
-            "span": {
-              "start": 37,
-              "end": 38
             }
           },
           "parameters": [],

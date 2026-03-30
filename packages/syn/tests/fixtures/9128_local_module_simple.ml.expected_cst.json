@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "result",
-            "span": {
-              "start": 41,
-              "end": 47
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "let_module",

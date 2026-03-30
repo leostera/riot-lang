@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "int_with_custom_modifier",
-            "span": {
-              "start": 157,
-              "end": 181
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -158,14 +150,6 @@
                 "start": 247,
                 "end": 273
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "float_with_custom_modifier",
-            "span": {
-              "start": 247,
-              "end": 273
             }
           },
           "parameters": [],
@@ -244,14 +228,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "int32",
-            "span": {
-              "start": 340,
-              "end": 345
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -326,14 +302,6 @@
                 "start": 358,
                 "end": 363
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "int64",
-            "span": {
-              "start": 358,
-              "end": 363
             }
           },
           "parameters": [],
@@ -412,14 +380,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "nativeint",
-            "span": {
-              "start": 376,
-              "end": 385
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -494,14 +454,6 @@
                 "start": 398,
                 "end": 418
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "hex_without_modifier",
-            "span": {
-              "start": 398,
-              "end": 418
             }
           },
           "parameters": [],
@@ -580,14 +532,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "hex_with_modifier",
-            "span": {
-              "start": 431,
-              "end": 448
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "literal",
@@ -662,14 +606,6 @@
                 "start": 461,
                 "end": 482
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "float_without_modifer",
-            "span": {
-              "start": 461,
-              "end": 482
             }
           },
           "parameters": [],
@@ -784,14 +720,6 @@
                 "start": 495,
                 "end": 513
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "float_with_modifer",
-            "span": {
-              "start": 495,
-              "end": 513
             }
           },
           "parameters": [],

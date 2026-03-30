@@ -76,14 +76,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "ignore_typed",
-            "span": {
-              "start": 22,
-              "end": 34
-            }
-          },
           "parameters": [
             {
               "tag": "positional",
@@ -288,14 +280,6 @@
                 "start": 87,
                 "end": 99
               }
-            }
-          },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "ignore_plain",
-            "span": {
-              "start": 87,
-              "end": 99
             }
           },
           "parameters": [

@@ -83,14 +83,6 @@
               }
             }
           },
-          "binding_name": {
-            "kind": "IDENT_EXPR",
-            "text": "map",
-            "span": {
-              "start": 68,
-              "end": 71
-            }
-          },
           "parameters": [],
           "value": {
             "tag": "typed",
@@ -830,14 +822,6 @@
                     "start": 185,
                     "end": 194
                   }
-                }
-              },
-              "binding_name": {
-                "kind": "IDENT_EXPR",
-                "text": "fold_left",
-                "span": {
-                  "start": 185,
-                  "end": 194
                 }
               },
               "parameters": [],
