@@ -12,7 +12,7 @@ import tarfile
 import tempfile
 import urllib.request
 
-OCAML_VERSION = os.getenv("OCAML_VERSION", "5.5.0")
+OCAML_VERSION = os.getenv("OCAML_VERSION", "5.5.0-riot.1")
 OCAML_CDN_BASE_URL = os.getenv(
     "TUSK_OCAML_CDN_URL", "https://cdn.pkgs.ml/ocaml"
 ).rstrip("/")

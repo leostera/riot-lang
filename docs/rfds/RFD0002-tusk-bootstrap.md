@@ -113,7 +113,8 @@ The script then ensures that an OCaml toolchain exists under:
 ~/.tusk/toolchains/<version>/<host-triple>
 ```
 
-The current default version is taken from `OCAML_VERSION`, falling back to `5.5.0`.
+The current default version is taken from `OCAML_VERSION`, falling back to
+`5.5.0-riot.1`.
 
 Provisioning works in this order:
 

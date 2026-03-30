@@ -20,7 +20,7 @@ let home_dir = Sys.getenv "HOME"
 let get_host_triple () = "unknown-unknown-unknown"
 
 (** Get the default OCaml version *)
-let ocaml_version = "5.5.0"
+let ocaml_version = "5.5.0-riot.1"
 
 (** Get the toolchain directory for a given version and target *)
 let get_toolchain_dir ?(version = ocaml_version) ?(target = get_host_triple ()) () =
@@ -33,4 +33,3 @@ let get_toolchain_bin_dir ?(version = ocaml_version) ?(target = get_host_triple 
 (** Get the lib directory for a given toolchain *)
 let get_toolchain_lib_dir ?(version = ocaml_version) ?(target = get_host_triple ()) () =
   Filename.concat (get_toolchain_dir ~version ~target ()) "lib/ocaml"
-

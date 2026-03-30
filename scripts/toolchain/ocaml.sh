@@ -17,6 +17,7 @@ OUTPUT_ROOT="$REPO_ROOT/dist/toolchains/ocaml"
 CLEAN_BUILD=0
 DRY_RUN=0
 TARGETS=()
+RIOT_TOOLCHAIN_SUFFIX="${RIOT_TOOLCHAIN_SUFFIX:-${OCAML_TOOLCHAIN_SUFFIX:-riot.1}}"
 
 load_env_file() {
   local env_file="$1"
@@ -108,6 +109,7 @@ docker_platform_for_target() {
 }
 
 ensure_publish_env() {
+  export RIOT_TOOLCHAIN_SUFFIX
   CDN_BASE_URL="${RIOT_CDN_PUBLIC_BASE_URL:-${OCAML_CDN_PUBLIC_BASE_URL:-https://cdn.pkgs.ml}}"
   PUBLIC_BASE_URL="${CDN_BASE_URL%/}/ocaml"
   BUCKET="${RIOT_CDN_BUCKET:-${OCAML_CDN_BUCKET:-ml-pkgs-cdn}}"
@@ -235,6 +237,8 @@ build_linux_host_target() {
   run_cmd docker run \
     --rm \
     --platform "$platform" \
+    --env RIOT_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
+    --env OCAML_TOOLCHAIN_SUFFIX="$RIOT_TOOLCHAIN_SUFFIX" \
     --volume "$REPO_ROOT:/src:ro" \
     --volume "$worktree_dir:/work" \
     --volume "$output_dir:/out" \

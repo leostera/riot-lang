@@ -25,7 +25,7 @@ type t = {
   ocamlformat : Ocamlformat.t;
 }
 
-let default_ocaml_version = "5.5.0"
+let default_ocaml_version = "5.5.0-riot.1"
 
 let toolchain_base_dir =
   Path.(Tusk_model.Tusk_dirs.dot_tusk / Path.v "toolchains")

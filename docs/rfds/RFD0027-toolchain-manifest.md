@@ -13,6 +13,12 @@ This RFD makes `tusk` require `manifest.json` inside published OCaml
 toolchain tarballs and use it as the authoritative toolchain identity input to
 cache hashing.
 
+From this point forward, published toolchains use the Riot toolchain suffixing
+scheme `5.5.0-riot.<N>` (for example `5.5.0-riot.1`) to force explicit rebuild
+epochs. `scripts/toolchain/ocaml.sh` defaults that suffix to `riot.1` when
+packaging is not explicitly overridden, so consumers resolve and download the Riot
+artifact family by default.
+
 The contract is:
 
 - Release toolchains published for `./scripts/toolchain/ocaml.sh` must include
@@ -54,3 +60,8 @@ depend on a stable build artifact description carried in the release tarball.
 - Re-publish affected OCaml toolchains after this change and upload to CDN.
 - Invalidate stale local toolchain cache directories under `~/.tusk/toolchains/...`
   if users previously installed legacy tarballs without manifests.
+- Publish and consume only Riot version-family toolchains by default:
+  - `bootstrap.py`, `packages/tusk-toolchain`, `packages/tusk-model`, and
+    `ocaml-toolchain.toml` default to `5.5.0-riot.1`.
+  - Explicitly setting `OCAML_VERSION`/`[toolchain].version` remains the override
+    for newer epochs (for example `5.5.0-riot.2`).
