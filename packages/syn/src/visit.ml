@@ -839,15 +839,18 @@ and descend_external_declaration = fun walk ctx (declaration : Cst.external_decl
   let ctx = walk.core_type ctx declaration.type_ in
   List.fold_left walk.attribute ctx declaration.attributes
 and descend_class_declaration = fun walk ctx (declaration : Cst.class_declaration) ->
-  let ctx = List.fold_left walk.type_parameter ctx declaration.type_params in
-  let ctx =
-    match declaration.class_type with
-    | Some class_type -> walk.class_type ctx class_type
-    | None -> ctx
-  in
-  match declaration.class_body with
-  | Some class_body -> walk.class_expression ctx class_body
-  | None -> ctx
+  match declaration with
+  | Cst.ClassDeclarationSignature { type_params; class_type; _ } ->
+      let ctx = List.fold_left walk.type_parameter ctx type_params in
+      walk.class_type ctx class_type
+  | Cst.ClassDeclarationStructure { type_params; class_type; class_body; _ } ->
+      let ctx = List.fold_left walk.type_parameter ctx type_params in
+      let ctx =
+        match class_type with
+        | Some class_type -> walk.class_type ctx class_type
+        | None -> ctx
+      in
+      walk.class_expression ctx class_body
 and descend_class_type_declaration = fun walk ctx (declaration : Cst.class_type_declaration) ->
   let ctx = List.fold_left walk.type_parameter ctx declaration.type_params in
   walk.class_type ctx declaration.class_type_body

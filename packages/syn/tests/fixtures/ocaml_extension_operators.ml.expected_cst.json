@@ -253,12 +253,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 13-15:\n1 | let f o x = o##x;;\n                 ^^\nError: \"##\" is not a valid value identifier.\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 49,
                           "end": 168
                         }
                       }
@@ -459,12 +460,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 10-12:\n1 | let f x = !#x\n              ^^\nError: \"!#\" is not a valid value identifier.\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 196,
                           "end": 307
                         }
                       }
@@ -665,12 +667,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ?#x\n              ^^\nError: \"?#\" is not a valid value identifier.\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 335,
                           "end": 446
                         }
                       }
@@ -871,12 +874,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 10-12:\n1 | let f x = ~#x\n              ^^\nError: \"~#\" is not a valid value identifier.\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 474,
                           "end": 585
                         }
                       }
@@ -1113,12 +1117,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 13-16:\n1 | let f o x = o#-#x\n                 ^^^\nError: \"#-#\" is not a valid value identifier.\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 617,
                           "end": 737
                         }
                       }
@@ -1337,12 +1342,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 10-13:\n1 | let f x = !-#x\n              ^^^\nError: \"!-#\" is not a valid value identifier.\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 766,
                           "end": 880
                         }
                       }
@@ -1561,12 +1567,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ?-#x\n              ^^^\nError: \"?-#\" is not a valid value identifier.\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 909,
                           "end": 1023
                         }
                       }
@@ -1785,12 +1792,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 10-13:\n1 | let f x = ~-#x\n              ^^^\nError: \"~-#\" is not a valid value identifier.\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 1052,
                           "end": 1166
                         }
                       }

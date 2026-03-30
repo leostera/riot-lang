@@ -157,10 +157,10 @@
                     },
                     "name_token": {
                       "kind": "IDENT_EXPR",
-                      "text": "#",
+                      "text": "color",
                       "span": {
-                        "start": 21,
-                        "end": 22
+                        "start": 22,
+                        "end": 27
                       }
                     }
                   }

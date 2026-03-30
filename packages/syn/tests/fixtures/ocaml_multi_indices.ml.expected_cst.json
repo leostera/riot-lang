@@ -139,12 +139,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule A = Bigarray.Genarray;;\nmodule A = Bigarray.Genarray\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 82,
                   "end": 148
                 }
               }
@@ -485,12 +486,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\n\nlet (.%{;..}<-) = A.set;;\nval ( .%{;..}<- ) : ('a, 'b, 'c) A.t -> int array -> 'a -> unit = <fun>\n\nlet (.%{;..}) = A.get;;\nval ( .%{;..} ) : ('a, 'b, 'c) A.t -> int array -> 'a = <fun>\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 212,
                           "end": 403
                         }
                       }
@@ -1664,12 +1666,13 @@
                       },
                       "payload_syntax_node": null,
                       "payload": {
-                        "tag": "structure",
-                        "item_syntax_nodes": [
+                        "tag": "opaque_tokens",
+                        "tokens": [
                           {
                             "kind": "STRING_LITERAL",
+                            "text": "{|\n\nlet (.![;..]<-) = A.set;;\nval ( .![;..]<- ) : ('a, 'b, 'c) A.t -> int array -> 'a -> unit = <fun>\n\nlet (.![;..]) a n =\n  Format.printf \"indices: @[[|%a|]@]@.\"\n    (Format.pp_print_list ~pp_sep:(fun ppf () -> Format.fprintf ppf \";@ \")\n       Format.pp_print_int) (Array.to_list n);\n  A.get a n;;\nval ( .![;..] ) : ('a, 'b, 'c) A.t -> int array -> 'a = <fun>\n|}",
                             "span": {
-                              "start": 0,
+                              "start": 689,
                               "end": 1052
                             }
                           }
@@ -1986,12 +1989,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\n\nlet (.?(;..)<-) = A.set;;\nval ( .?(;..)<- ) : ('a, 'b, 'c) A.t -> int array -> 'a -> unit = <fun>\n\nlet (.?(;..)) = A.get;;\nval ( .?(;..) ) : ('a, 'b, 'c) A.t -> int array -> 'a = <fun>\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 1116,
                           "end": 1307
                         }
                       }
@@ -2401,12 +2405,13 @@
                       },
                       "payload_syntax_node": null,
                       "payload": {
-                        "tag": "structure",
-                        "item_syntax_nodes": [
+                        "tag": "opaque_tokens",
+                        "tokens": [
                           {
                             "kind": "STRING_LITERAL",
+                            "text": "{|\n\nlet a = A.create Bigarray.float64 Bigarray.c_layout [|3;3;3|];;\nval a : (float, Bigarray.float64_elt, Bigarray.c_layout) A.t = <abstr>\n|}",
                             "span": {
-                              "start": 0,
+                              "start": 1387,
                               "end": 1528
                             }
                           }
@@ -2751,12 +2756,13 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
                       "kind": "STRING_LITERAL",
+                      "text": "{|\n\n;;a.![1;0;0] <- 2.;;\n- : unit = ()\n|}",
                       "span": {
-                        "start": 0,
+                        "start": 1566,
                         "end": 1607
                       }
                     }
@@ -3096,12 +3102,13 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
                       "kind": "STRING_LITERAL",
+                      "text": "{|\n\n;;a.?(0;1;0) <- 3.;;\n- : unit = ()\n|}",
                       "span": {
-                        "start": 0,
+                        "start": 1644,
                         "end": 1685
                       }
                     }
@@ -3441,12 +3448,13 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
                       "kind": "STRING_LITERAL",
+                      "text": "{|\n\n;;a.%{0;0;1} <- 5.;;\n- : unit = ()\n|}",
                       "span": {
-                        "start": 0,
+                        "start": 1722,
                         "end": 1763
                       }
                     }
@@ -3949,12 +3957,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\n;;a.![0;1;2] <- 7.; a.![0;1;2];;\nindices: [|0; 1; 2|]\n- : float = 7.\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 1815,
                   "end": 1890
                 }
               }
@@ -4117,12 +4126,13 @@
                       },
                       "payload_syntax_node": null,
                       "payload": {
-                        "tag": "structure",
-                        "item_syntax_nodes": [
+                        "tag": "opaque_tokens",
+                        "tokens": [
                           {
                             "kind": "STRING_LITERAL",
+                            "text": "{|\n\nlet (#+) = (+.);;\nval ( #+ ) : float -> float -> float = <fun>\n|}",
                             "span": {
-                              "start": 0,
+                              "start": 1924,
                               "end": 1993
                             }
                           }
@@ -4744,12 +4754,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\n;;((a.?(1;0;0)) #+ (a.%{0;1;0})) #+ (a.![0;0;1]);;\nindices: [|0; 0; 1|]\n- : float = 10.\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 2053,
                   "end": 2147
                 }
               }
@@ -5195,12 +5206,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nlet (.??[]) () () = ();;\nval ( .??[] ) : unit -> unit -> unit = <fun>\n\n;;().??[((); ())];;\n- : unit = ()\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 2219,
                   "end": 2330
                 }
               }
@@ -5641,12 +5653,13 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
                       "kind": "STRING_LITERAL",
+                      "text": "{|\n\nmodule M =\n  struct\n    let (.%?(;..)) = A.get\n    let (.%?(;..)<-) = A.set\n    let (.%![;..]) = A.get\n    let (.%![;..]<-) = A.set\n    let (.%%{;..}) = A.get\n    let (.%%{;..}<-) = A.set\n  end;;\nmodule M :\n  sig\n    val ( .%?(;..) ) : ('a, 'b, 'c) A.t -> int array -> 'a\n    val ( .%?(;..)<- ) : ('a, 'b, 'c) A.t -> int array -> 'a -> unit\n    val ( .%![;..] ) : ('a, 'b, 'c) A.t -> int array -> 'a\n    val ( .%![;..]<- ) : ('a, 'b, 'c) A.t -> int array -> 'a -> unit\n    val ( .%%{;..} ) : ('a, 'b, 'c) A.t -> int array -> 'a\n    val ( .%%{;..}<- ) : ('a, 'b, 'c) A.t -> int array -> 'a -> unit\n  end\n\n;;a.M.%![1;0;0] <- 7.;;\n- : unit = ()\n|}",
                       "span": {
-                        "start": 0,
+                        "start": 2562,
                         "end": 3210
                       }
                     }
@@ -6012,12 +6025,13 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
                       "kind": "STRING_LITERAL",
+                      "text": "{|\n\n;;a.M.%?(0;1;0) <- 11.;;\n- : unit = ()\n|}",
                       "span": {
-                        "start": 0,
+                        "start": 3252,
                         "end": 3297
                       }
                     }
@@ -6383,12 +6397,13 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
                       "kind": "STRING_LITERAL",
+                      "text": "{|\n\n;;a.M.%%{0;0;1} <- 13.;;\n- : unit = ()\n|}",
                       "span": {
-                        "start": 0,
+                        "start": 3338,
                         "end": 3383
                       }
                     }
@@ -7083,12 +7098,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\n;;((a.M.%?(1;0;0)) #+ (a.M.%%{0;1;0})) #+ (a.M.%![0;0;1]);;\n- : float = 31.\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 3451,
                   "end": 3533
                 }
               }

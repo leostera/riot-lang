@@ -274,12 +274,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nmodule M :\n  sig class \\#and : object val mutable \\#and : int method \\#and : int end end\nval obj : M.\\#and = <obj>\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 280,
                           "end": 400
                         }
                       }
@@ -417,12 +418,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\nLine 1, characters 38-68:\n1 | module M : sig type \\#and = int end = struct type \\#and = string end\n                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nError: Signature mismatch:\n       Modules do not match:\n         sig type \\#and = string end\n       is not included in\n         sig type \\#and = int end\n       Type declarations do not match:\n         type \\#and = string\n       is not included in\n         type \\#and = int\n       The type \"string\" is not equal to the type \"int\"\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 487,
                   "end": 993
                 }
               }
@@ -760,12 +762,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nval x : [ `\\#let of [ `\\#and ] ] = `\\#let `\\#and\nval \\#rec : [ `\\#and ] = `\\#and\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 1081,
                           "end": 1167
                         }
                       }
@@ -896,6 +899,7 @@
                 }
               },
               "binding_name_token": null,
+              "binding_name_matches_label": false,
               "binding_pattern": null
             },
             {
@@ -924,6 +928,7 @@
                 }
               },
               "binding_name_token": null,
+              "binding_name_matches_label": false,
               "has_default": false,
               "default_value": null,
               "binding_pattern": null
@@ -961,6 +966,7 @@
                   "end": 1199
                 }
               },
+              "binding_name_matches_label": true,
               "has_default": true,
               "default_value": {
                 "tag": "path",
@@ -1218,12 +1224,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nval f :\n  (\\#let:'a -> ?\\#and:'b -> unit -> 'c) ->\n  \\#let:'a -> ?\\#and:'b -> ?\\#for:'b option -> unit -> 'c = <fun>\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 1244,
                           "end": 1366
                         }
                       }
@@ -1343,12 +1350,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\nLine 1, characters 9-15:\n1 | type t = '\\#let\n             ^^^^^^\nError: The type variable \"'\\#let\" is unbound in this type declaration.\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 1396,
                   "end": 1537
                 }
               }
@@ -1635,12 +1643,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\ntype \\#mutable = { mutable \\#mutable : \\#mutable; }\nval \\#rec : \\#mutable = {\\#mutable = <cycle>}\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 1641,
                           "end": 1744
                         }
                       }
@@ -1785,12 +1794,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\ntype \\#and = ..\ntype \\#and += Foo\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 1792,
                   "end": 1831
                 }
               }
@@ -1930,12 +1940,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 8-12:\n1 | let x = (++);;\n            ^^^^\nError: Unbound value \"(++)\"\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 1860,
                           "end": 1954
                         }
                       }
@@ -2081,12 +2092,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 8-13:\n1 | let x = \\#let;;\n            ^^^^^\nError: Unbound value \"\\#let\"\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 1982,
                           "end": 2079
                         }
                       }
@@ -2181,6 +2193,7 @@
                 }
               },
               "binding_name_token": null,
+              "binding_name_matches_label": false,
               "binding_pattern": null
             },
             {
@@ -2209,6 +2222,7 @@
                 }
               },
               "binding_name_token": null,
+              "binding_name_matches_label": false,
               "has_default": false,
               "default_value": null,
               "binding_pattern": null
@@ -2319,12 +2333,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nval f : \\#let:'a -> ?\\#and:'b -> unit -> int = <fun>\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 2120,
                           "end": 2178
                         }
                       }
@@ -2503,12 +2518,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nLine 1, characters 9-13:\n1 | let x = (true:int)\n             ^^^^\nError: The constructor \"true\" has type \"bool\"\n       but an expression was expected of type \"int\"\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 2213,
                           "end": 2382
                         }
                       }
@@ -2720,12 +2736,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nmodule M : sig type \\#true = true end\nval x : M.\\#true = M.(true)\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 2457,
                           "end": 2528
                         }
                       }
@@ -3180,12 +3197,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\ntype t = { \\#false : int; x : int; }\ntype u = { \\#true : int; }\nLine 4, characters 17-23:\n4 | let f { \\#false; \\#true } = 0\n                     ^^^^^^\nError: The record field \"\\#true\" belongs to the type \"u\"\n       but is mixed here with fields of type \"t\"\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 2635,
                           "end": 2898
                         }
                       }
@@ -3568,12 +3586,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "{|\nmodule M :\n  sig\n    type t = { \\#true : int; y : int; }\n    type r = { \\#true : int; y : int; }\n  end\ntype t = { \\#false : int; }\nLine 6, characters 12-20:\n6 | let _ = ( { M.\\#true=0 } : t );;\n                ^^^^^^^^\nError: The field \"M.\\#true\" belongs to one of the following record types:\n         \"M.r\"  \"M.t\"\n       but a field was expected belonging to the record type \"t\"\n|}",
                         "span": {
-                          "start": 0,
+                          "start": 3068,
                           "end": 3453
                         }
                       }

@@ -106,12 +106,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule type S  = sig type t type t' := t end;;\nmodule type S = sig type t end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 101,
                   "end": 185
                 }
               }

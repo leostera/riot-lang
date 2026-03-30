@@ -3145,16 +3145,26 @@ type external_declaration = {
   owned_trivia : owned_trivia;
 }
 
-type class_declaration = {
-  syntax_node : syntax_node;
-  type_params : TypeParameter.t list;
-  declaration_extension : extension option;
-  declaration_attributes : attribute list;
-  class_name : Token.t;
-  class_type : class_type option;
-  class_body : class_expression option;
-  owned_trivia : owned_trivia;
-}
+type class_declaration =
+  | ClassDeclarationSignature of {
+      syntax_node : syntax_node;
+      type_params : TypeParameter.t list;
+      declaration_extension : extension option;
+      declaration_attributes : attribute list;
+      class_name : Token.t;
+      class_type : class_type;
+      owned_trivia : owned_trivia;
+    }
+  | ClassDeclarationStructure of {
+      syntax_node : syntax_node;
+      type_params : TypeParameter.t list;
+      declaration_extension : extension option;
+      declaration_attributes : attribute list;
+      class_name : Token.t;
+      class_type : class_type option;
+      class_body : class_expression;
+      owned_trivia : owned_trivia;
+    }
 
 type class_type_declaration = {
   syntax_node : syntax_node;
@@ -3205,7 +3215,11 @@ module StructureItem = struct
     | Expression expr -> Expression.syntax_node expr
     | Attribute attribute -> attribute.syntax_node
     | Extension extension -> extension.syntax_node
-    | ClassDeclaration decl -> decl.syntax_node
+    | ClassDeclaration decl -> (
+        match decl with
+        | ClassDeclarationSignature { syntax_node; _ }
+        | ClassDeclarationStructure { syntax_node; _ } ->
+            syntax_node)
     | ClassTypeDeclaration decl -> decl.syntax_node
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
     | RecursiveModuleDeclaration decl ->
@@ -3245,7 +3259,11 @@ module SignatureItem = struct
     | TypeExtension decl -> TypeExtension.syntax_node decl
     | Attribute attribute -> attribute.syntax_node
     | Extension extension -> extension.syntax_node
-    | ClassDeclaration decl -> decl.syntax_node
+    | ClassDeclaration decl -> (
+        match decl with
+        | ClassDeclarationSignature { syntax_node; _ }
+        | ClassDeclarationStructure { syntax_node; _ } ->
+            syntax_node)
     | ClassTypeDeclaration decl -> decl.syntax_node
     | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
     | RecursiveModuleDeclaration decl ->

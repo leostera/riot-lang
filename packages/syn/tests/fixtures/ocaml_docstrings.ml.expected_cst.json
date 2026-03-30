@@ -243,12 +243,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule Manual :\n  sig\n    [@@@ocaml.text\n      \" Special comments can be placed between elements and are kept\\n      by the OCamldoc tool, but are not associated to any element.\\n      @-tags in these comments are ignored.\"]\n    [@@@ocaml.text\n      \" Comments like the one above, with more than two asterisks,\\n      are ignored. \"]\n    val f : int -> int -> int[@@ocaml.doc \" The comment for function f. \"]\n    [@@ocaml.doc \" The continuation of the comment for function f. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type weather2 =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather2  \"]\n    [@@ocaml.doc\n      \" I can continue the comment for type weather2 here\\n      because there is already a comment associated to the last constructor.\"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    [@@ocaml.doc \" Continuation of comment for type my_record \"]\n    val foo : string[@@ocaml.doc \" Comment for foo \"][@@ocaml.doc\n                                                       \" This comment is ambiguous and associated to both foo and bar. \"]\n    val bar : string[@@ocaml.doc\n                      \" This comment is ambiguous and associated to both foo and bar. \"]\n    [@@ocaml.doc \" This comment is associated to bar. \"]\n    class my_class :\n      object\n        inherit cl[@@ocaml.doc \" A comment to describe inheritance from cl \"]\n        val  mutable tutu : string[@@ocaml.doc\n                                    \" The comment for attribute tutu \"]\n        val  toto : int[@@ocaml.doc \" The comment for attribute toto. \"]\n        [@@@ocaml.text\n          \" This comment is not attached to titi since\\n        there is a blank line before titi, but is kept\\n        as a comment in the class. \"]\n        val  titi : string\n        method  toto : string[@@ocaml.doc \" Comment for method toto \"]\n        method  m : float -> int[@@ocaml.doc \" Comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 drops.\\n        For some reason, when a class type begins with two docstrings,\\n        it keeps only the second one.\\n        This is fixed by GPR#2151. \"]\n        val  mutable x : int[@@ocaml.doc \" The comment for variable x. \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 misplaces.\\n        For some reason, when a class type ends with two docstrings,\\n        it keeps both of them, but exchanges their order.\\n        This is again fixed by GPR#2151. \"]\n        [@@@ocaml.text \" Another docstring that OCaml <= 4.07.1 misplaces. \"]\n      end[@@ocaml.doc \" The comment for the class type my_class_type \"]\n    module Foo :\n    sig\n      val x : int[@@ocaml.doc \" The comment for x \"]\n      [@@@ocaml.text\n        \" A special comment that is kept but not associated to any element \"]\n    end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  =\n      sig\n        val x : int[@@ocaml.doc \" The comment for value x. \"]\n        module M :\n        sig val y : int[@@ocaml.doc \" The comment for value y. \"] end\n        [@@ocaml.doc \" The comment for module M. \"]\n      end[@@ocaml.doc \" The comment for module type my_module_type. \"]\n  end =\n  struct\n    let f x y = x + y[@@ocaml.doc \" The comment for function f \"]\n    [@@@ocaml.text\n      \" This comment is not attached to any element since there is another\\n      special comment just before the next element. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    class my_class =\n      object\n        inherit  cl[@@ocaml.doc\n                     \" A comment to describe inheritance from cl \"]\n        val mutable tutu = \"tutu\"[@@ocaml.doc\n                                   \" The comment for the instance variable tutu \"]\n        val toto = 1[@@ocaml.doc \" The comment for toto \"]\n        val titi = \"titi\"[@@ocaml.doc\n                           \" Ambiguous comment on both titi and toto \"]\n        method toto = tutu ^ \"!\"[@@ocaml.doc\n                                  \" Ambiguous comment on both titi and toto \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method m (f : float) = 1[@@ocaml.doc \" The comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        val  mutable x : int[@@ocaml.doc\n                              \" The comment for the instance variable x. \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n      end[@@ocaml.doc \" The comment for class type my_class_type \"]\n    module Foo =\n      struct\n        external x : int[@@ocaml.doc \" The comment for x \"][@@ocaml.doc\n                                                             \" Another comment for x \"]\n      end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  = sig val x : int end[@@ocaml.doc\n                                                       \" The comment for module type my_module_type. \"]\n  end ;;\nLine 141, characters 12-14:\n141 |     inherit cl\n                  ^^\nError: Unbound class \"cl\"\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 5376,
                   "end": 12092
                 }
               }
@@ -384,12 +385,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct\n    type t =\n      | Label [@@ocaml.doc \" attached to t \"]\n    [@@@ocaml.text\n      \" Empty docstring comments should not generate attributes \"]\n    type w\n  end;;\nmodule M : sig type t = Label type w end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 12373,
                   "end": 12604
                 }
               }
@@ -525,12 +527,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 12826,
                   "end": 12963
                 }
               }
@@ -626,12 +629,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 13047,
                   "end": 13184
                 }
               }
@@ -727,12 +731,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 13268,
                   "end": 13422
                 }
               }
@@ -828,12 +833,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 13508,
                   "end": 13662
                 }
               }
@@ -929,12 +935,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct type t[@@ocaml.doc \" foo2 \"]\n         type s[@@ocaml.doc \" bar1 \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 13832,
                   "end": 13964
                 }
               }
@@ -1030,12 +1037,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 14080,
                   "end": 14285
                 }
               }
@@ -1131,12 +1139,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 14403,
                   "end": 14608
                 }
               }
@@ -1225,12 +1234,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"][@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 14674,
                   "end": 14779
                 }
               }
@@ -1319,12 +1329,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  type t\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 14847,
                   "end": 14994
                 }
               }
@@ -1405,12 +1416,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 15042,
                   "end": 15115
                 }
               }
@@ -1491,12 +1503,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 15164,
                   "end": 15237
                 }
               }
@@ -1577,12 +1590,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 15286,
                   "end": 15359
                 }
               }
@@ -1663,12 +1677,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 15407,
                   "end": 15480
                 }
               }
@@ -1749,12 +1764,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 15529,
                   "end": 15602
                 }
               }
@@ -1835,12 +1851,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 15651,
                   "end": 15724
                 }
               }
@@ -1921,12 +1938,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 15774,
                   "end": 15847
                 }
               }
@@ -2007,12 +2025,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 15909,
                   "end": 16024
                 }
               }
@@ -2093,12 +2112,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 16084,
                   "end": 16199
                 }
               }
@@ -2397,12 +2417,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\ntype 'a with_default =\n  ?size:((int)[@ocaml.doc \" default [42] \"]) ->\n    ?resizable:((bool)[@ocaml.doc \" default [true] \"]) -> 'a;;\ntype 'a with_default = ?size:int -> ?resizable:bool -> 'a\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 16489,
                   "end": 16687
                 }
               }
@@ -2664,12 +2685,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\ntype obj =\n  <\n    meth1: int -> int [@ocaml.doc \" method 1 \"] ;meth2: unit -> float\n                                                   [@ocaml.doc \" method 2 \"]\n    > ;;\ntype obj = < meth1 : int -> int; meth2 : unit -> float >\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 16798,
                   "end": 17032
                 }
               }
@@ -2873,12 +2895,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\ntype var =\n  [ `Foo [@ocaml.doc \" foo \"] | `Bar of (int * string) [@ocaml.doc \" bar \"]];;\ntype var = [ `Bar of int * string | `Foo ]\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 17118,
                   "end": 17257
                 }
               }
@@ -2962,12 +2985,13 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
                 "kind": "STRING_LITERAL",
+                "text": "{|\n\nmodule type S  =\n  sig\n    val before : unit -> unit[@@ocaml.doc \" docstring before \"]\n    [@@@foo ]\n    [@@@foo ]\n    val after : unit -> unit[@@ocaml.doc \" docstring after \"]\n  end;;\nmodule type S = sig val before : unit -> unit val after : unit -> unit end\n|}",
                 "span": {
-                  "start": 0,
+                  "start": 17427,
                   "end": 17693
                 }
               }

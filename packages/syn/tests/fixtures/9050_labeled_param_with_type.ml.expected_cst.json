@@ -118,6 +118,7 @@
                   "end": 56
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -317,6 +318,7 @@
                   "end": 119
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -408,6 +410,7 @@
                   "end": 133
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -667,6 +670,7 @@
                 }
               },
               "binding_name_token": null,
+              "binding_name_matches_label": false,
               "binding_pattern": null
             },
             {
@@ -702,6 +706,7 @@
                   "end": 192
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -793,6 +798,7 @@
                   "end": 203
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -1087,6 +1093,7 @@
                   "end": 267
                 }
               },
+              "binding_name_matches_label": true,
               "has_default": true,
               "default_value": {
                 "tag": "literal",

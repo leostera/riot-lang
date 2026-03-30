@@ -78,6 +78,7 @@
 71. Prefer node-specific CST boundary-trivia fields over generic helper calls. Once `syn` exposes `fun`/`if`/`let`/binding-operator body or branch trivia, or sequence-expression per-step boundary trivia, read those fields directly and delete the corresponding `leading_trivia_*` lookups from `lower.ml`.
 72. Render class bodies and class-type signatures from `Syn.CstBuilder.class_field_items_of_fields` and `class_type_field_items_of_fields`; do not reconstruct `object ... end` member ownership for class declarations inside `krasny`.
 73. Render `class%foo` / `class type%foo` shortcut declaration shells from explicit CST declaration modifier fields. Do not rescan declaration syntax to rediscover shell extensions or attributes once `syn` exposes them.
+74. When `syn` tightens a declaration node into explicit valid-shape variants, follow that split directly in `krasny`. Do not reconstruct old optional-field products in the formatter just to preserve previous call sites.
 
 ## Validate
 

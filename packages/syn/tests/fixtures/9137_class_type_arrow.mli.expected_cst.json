@@ -13,6 +13,7 @@
       {
         "tag": "class_declaration",
         "item": {
+          "tag": "signature",
           "syntax_node": {
             "kind": "CLASS_DECL",
             "span": {
@@ -21,6 +22,8 @@
             }
           },
           "type_params": [],
+          "declaration_extension": null,
+          "declaration_attributes": [],
           "class_name": {
             "kind": "IDENT_EXPR",
             "text": "service",
@@ -128,8 +131,7 @@
                 }
               ]
             }
-          },
-          "class_body": null
+          }
         }
       },
       {
@@ -143,6 +145,8 @@
             }
           },
           "type_params": [],
+          "declaration_extension": null,
+          "declaration_attributes": [],
           "class_type_name": {
             "kind": "IDENT_EXPR",
             "text": "factory",
@@ -265,6 +269,8 @@
             }
           },
           "type_params": [],
+          "declaration_extension": null,
+          "declaration_attributes": [],
           "class_type_name": {
             "kind": "IDENT_EXPR",
             "text": "grouped",

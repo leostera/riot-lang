@@ -33,6 +33,7 @@
       {
         "tag": "class_declaration",
         "item": {
+          "tag": "structure",
           "syntax_node": {
             "kind": "CLASS_DECL",
             "span": {
@@ -70,6 +71,8 @@
               }
             }
           ],
+          "declaration_extension": null,
+          "declaration_attributes": [],
           "class_name": {
             "kind": "IDENT_EXPR",
             "text": "list",
@@ -235,6 +238,14 @@
                     "arguments": []
                   }
                 ]
+              },
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "'",
+                "span": {
+                  "start": 195,
+                  "end": 196
+                }
               },
               "name_token": {
                 "kind": "IDENT_EXPR",

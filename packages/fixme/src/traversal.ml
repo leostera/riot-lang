@@ -303,8 +303,12 @@ let let_bindings_of_structure_item = function
       let_bindings_of_let_binding binding
   | Syn.Cst.StructureItem.Expression expr ->
       let_bindings_of_expression expr
-  | Syn.Cst.StructureItem.ClassDeclaration { class_body; _ } ->
-      Option.to_list class_body |> List.concat_map let_bindings_of_class_expression
+  | Syn.Cst.StructureItem.ClassDeclaration
+      (Syn.Cst.ClassDeclarationStructure { class_body; _ }) ->
+      [ class_body ] |> List.concat_map let_bindings_of_class_expression
+  | Syn.Cst.StructureItem.ClassDeclaration
+      (Syn.Cst.ClassDeclarationSignature _) ->
+      []
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
       Option.to_list (Syn.Cst.ModuleDeclaration.module_expression decl)
       |> List.concat_map let_bindings_of_module_expression
@@ -329,7 +333,9 @@ let let_bindings_of_structure_item = function
   | Syn.Cst.StructureItem.ModuleTypeDeclaration _
   | Syn.Cst.StructureItem.ValueDeclaration _
   | Syn.Cst.StructureItem.ExternalDeclaration _
-  | Syn.Cst.StructureItem.ExceptionDeclaration _ ->
+  | Syn.Cst.StructureItem.ExceptionDeclaration _
+  | Syn.Cst.StructureItem.Docstring _
+  | Syn.Cst.StructureItem.Comment _ ->
       []
 
 let rec expressions_of_expression expr =
@@ -530,5 +536,9 @@ let expressions_of_structure_item = function
       expressions_of_let_binding binding
   | Syn.Cst.StructureItem.Expression expr ->
       expressions_of_expression expr
-  | Syn.Cst.StructureItem.ClassDeclaration { class_body; _ } ->
-      Option.to_list class_body |> List.concat_map expressions_of_class_expression
+  | Syn.Cst.StructureItem.ClassDeclaration
+      (Syn.Cst.ClassDeclarationStructure { class_body; _ }) ->
+      [ class_body ] |> List.concat_map expressions_of_class_expression
+  | Syn.Cst.StructureItem.ClassDeclaration
+      (Syn.Cst.ClassDeclarationSignature _) ->
+      []

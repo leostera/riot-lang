@@ -1337,12 +1337,13 @@
                         },
                         "payload_syntax_node": null,
                         "payload": {
-                          "tag": "structure",
-                          "item_syntax_nodes": [
+                          "tag": "opaque_tokens",
+                          "tokens": [
                             {
                               "kind": "STRING_LITERAL",
+                              "text": "{|\nval blocks : string list =\n  [\"( (* comment *) (( \\\"contant\\\" [@attr] )  (* comment *)))\";\n   \"(( \\\"contant\\\" [@attr] )  (* comment *))\"; \"( \\\"contant\\\" [@attr] )\";\n   \"\\\"contant\\\"\"]\n|}",
                               "span": {
-                                "start": 0,
+                                "start": 561,
                                 "end": 749
                               }
                             }

@@ -91,6 +91,7 @@
                 }
               },
               "binding_name_token": null,
+              "binding_name_matches_label": false,
               "binding_pattern": null
             },
             {
@@ -119,6 +120,7 @@
                 }
               },
               "binding_name_token": null,
+              "binding_name_matches_label": false,
               "binding_pattern": null
             }
           ],

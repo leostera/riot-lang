@@ -117,6 +117,7 @@
                   }
                 },
                 "binding_name_token": null,
+                "binding_name_matches_label": false,
                 "has_default": false,
                 "default_value": null,
                 "binding_pattern": null
@@ -147,6 +148,7 @@
                   }
                 },
                 "binding_name_token": null,
+                "binding_name_matches_label": false,
                 "has_default": false,
                 "default_value": null,
                 "binding_pattern": null

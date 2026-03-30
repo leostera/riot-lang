@@ -124,6 +124,7 @@
                     "end": 15
                   }
                 },
+                "binding_name_matches_label": true,
                 "has_default": true,
                 "default_value": {
                   "tag": "literal",
@@ -202,6 +203,7 @@
                     "end": 24
                   }
                 },
+                "binding_name_matches_label": true,
                 "has_default": true,
                 "default_value": {
                   "tag": "literal",

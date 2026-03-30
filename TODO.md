@@ -57,6 +57,7 @@ This file is _yours_. Keep it up to date after every big change.
 - module-expression and module-type extensions now lower structurally from the shared extension shell; extension payloads default to CST-owned opaque token slices instead of OCaml payload relift.
 - core-type extensions now lower structurally from that same shared extension shell, including the default opaque payload path.
 - class, local-open, object, and extension core types now lower structurally.
+- `Syn.Cst.class_declaration` is now an explicit valid-shape sum instead of a `class_type option * class_body option` product; impossible `None/None` declaration states are no longer representable.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module/extension patterns now lower structurally; default opaque extension payloads in patterns now render directly from CST token slices, while the remaining structured guard case still fails explicitly.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
 - module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, extension, and unreachable expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes, and extension payloads render from CST-owned opaque token slices when they are not explicitly structured OCaml payloads.
@@ -216,6 +217,10 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit public nested signature-body item anchors beyond the current helper-only relift surface, if downstream tools need more than `CstBuilder.signature_items_of_module_type`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit ambiguity-sensitive type-declaration shape markers
+
+- [ ] Tighten remaining representable-but-invalid CST states
+  - `ModuleDeclaration` still admits invalid cross-context combinations through optional `module_type` / `module_expression` fields
+  - payload still carries broader surface than the current opaque-token-only contract and should be collapsed to match reality
 
 - [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
   - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly

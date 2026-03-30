@@ -7414,20 +7414,38 @@ let class_declaration_from_node = fun node ->
                   Some (class_type_from_node class_type_node)
               | _ -> None
           in
-          Some {
-            Cst.syntax_node = node;
-            type_params = type_parameters_from_node node;
-            declaration_extension;
-            declaration_attributes;
-            class_name;
-            class_type = (
-              match suffix_class_type with
-              | Some _ -> suffix_class_type
-              | None -> prefix_class_type
-            );
-            class_body = suffix_class_body;
-            owned_trivia = owned_trivia_from_node node
-          }
+          let class_type =
+            match suffix_class_type with
+            | Some _ -> suffix_class_type
+            | None -> prefix_class_type
+          in
+          let owned_trivia = owned_trivia_from_node node in
+          (match suffix_class_body, class_type with
+          | Some class_body, class_type ->
+              Some
+                (Cst.ClassDeclarationStructure {
+                   syntax_node = node;
+                   type_params = type_parameters_from_node node;
+                   declaration_extension;
+                   declaration_attributes;
+                   class_name;
+                   class_type;
+                   class_body;
+                   owned_trivia;
+                 })
+          | None, Some class_type ->
+              Some
+                (Cst.ClassDeclarationSignature {
+                   syntax_node = node;
+                   type_params = type_parameters_from_node node;
+                   declaration_extension;
+                   declaration_attributes;
+                   class_name;
+                   class_type;
+                   owned_trivia;
+                 })
+          | None, None ->
+              None)
       | _ -> None
     )
   | None -> None
@@ -9129,9 +9147,13 @@ let validate_type_extension = fun ~context ({ constructors; _ } : Cst.TypeExtens
       :: context)))) (Cst.VariantConstructor.result_type constructor))
     constructors
 
-let validate_class_declaration = fun ~context ({ class_type; class_body; _ } : Cst.class_declaration) ->
-  Option.iter (validate_class_type ~context:((("item.class_declaration.type" :: context)))) class_type;
-  Option.iter (validate_class_expression ~context:((("item.class_declaration.body" :: context)))) class_body
+let validate_class_declaration = fun ~context ->
+  function
+  | Cst.ClassDeclarationSignature { class_type; _ } ->
+      validate_class_type ~context:((("item.class_declaration.type" :: context))) class_type
+  | Cst.ClassDeclarationStructure { class_type; class_body; _ } ->
+      Option.iter (validate_class_type ~context:((("item.class_declaration.type" :: context)))) class_type;
+      validate_class_expression ~context:((("item.class_declaration.body" :: context))) class_body
 
 let validate_class_type_declaration = fun ~context ({ class_type_body; _ } : Cst.class_type_declaration) -> validate_class_type
 ~context:((("item.class_type_declaration.body" :: context)))

@@ -138,6 +138,7 @@
                   "end": 91
                 }
               },
+              "binding_name_matches_label": true,
               "has_default": true,
               "default_value": {
                 "tag": "literal",
@@ -406,6 +407,7 @@
                   "end": 158
                 }
               },
+              "binding_name_matches_label": true,
               "has_default": true,
               "default_value": {
                 "tag": "fun",
@@ -861,6 +863,7 @@
                   "end": 248
                 }
               },
+              "binding_name_matches_label": true,
               "has_default": true,
               "default_value": {
                 "tag": "literal",
@@ -979,6 +982,7 @@
                   "end": 277
                 }
               },
+              "binding_name_matches_label": true,
               "has_default": true,
               "default_value": {
                 "tag": "literal",

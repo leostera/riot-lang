@@ -53,6 +53,7 @@
       {
         "tag": "class_declaration",
         "item": {
+          "tag": "structure",
           "syntax_node": {
             "kind": "CLASS_DECL",
             "span": {
@@ -118,6 +119,8 @@
               }
             }
           ],
+          "declaration_extension": null,
+          "declaration_attributes": [],
           "class_name": {
             "kind": "IDENT_EXPR",
             "text": "foo",

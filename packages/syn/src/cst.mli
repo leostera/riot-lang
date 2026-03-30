@@ -4322,16 +4322,26 @@ type external_declaration = {
     class type service = object method run : unit -> unit end
     ```
 *)
-type class_declaration = {
-  syntax_node : syntax_node;
-  type_params : TypeParameter.t list;
-  declaration_extension : extension option;
-  declaration_attributes : attribute list;
-  class_name : Token.t;
-  class_type : class_type option;
-  class_body : class_expression option;
-  owned_trivia : owned_trivia;
-}
+type class_declaration =
+  | ClassDeclarationSignature of {
+      syntax_node : syntax_node;
+      type_params : TypeParameter.t list;
+      declaration_extension : extension option;
+      declaration_attributes : attribute list;
+      class_name : Token.t;
+      class_type : class_type;
+      owned_trivia : owned_trivia;
+    }
+  | ClassDeclarationStructure of {
+      syntax_node : syntax_node;
+      type_params : TypeParameter.t list;
+      declaration_extension : extension option;
+      declaration_attributes : attribute list;
+      class_name : Token.t;
+      class_type : class_type option;
+      class_body : class_expression;
+      owned_trivia : owned_trivia;
+    }
 (** The payload of an `include` item.
 
     Implementations include module expressions such as `include M` or

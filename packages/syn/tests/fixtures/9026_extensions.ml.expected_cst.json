@@ -123,12 +123,13 @@
               },
               "payload_syntax_node": null,
               "payload": {
-                "tag": "structure",
-                "item_syntax_nodes": [
+                "tag": "opaque_tokens",
+                "tokens": [
                   {
                     "kind": "INT_LITERAL",
+                    "text": "42",
                     "span": {
-                      "start": 0,
+                      "start": 43,
                       "end": 45
                     }
                   }
@@ -233,13 +234,30 @@
               },
               "payload_syntax_node": null,
               "payload": {
-                "tag": "structure",
-                "item_syntax_nodes": [
+                "tag": "opaque_tokens",
+                "tokens": [
                   {
-                    "kind": "TUPLE_EXPR",
+                    "kind": "IDENT_EXPR",
+                    "text": "show",
                     "span": {
-                      "start": 0,
-                      "end": 71
+                      "start": 64,
+                      "end": 68
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ",",
+                    "span": {
+                      "start": 68,
+                      "end": 69
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "eq",
+                    "span": {
+                      "start": 70,
+                      "end": 72
                     }
                   }
                 ]
@@ -352,12 +370,13 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
                       "kind": "STRING_LITERAL",
+                      "text": "{| some output |}",
                       "span": {
-                        "start": 0,
+                        "start": 91,
                         "end": 108
                       }
                     }
@@ -405,13 +424,38 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
-                        "kind": "PAREN_EXPR",
+                        "kind": "IDENT_EXPR",
+                        "text": "(",
                         "span": {
-                          "start": 0,
+                          "start": 128,
+                          "end": 129
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "print_endline",
+                        "span": {
+                          "start": 129,
+                          "end": 142
+                        }
+                      },
+                      {
+                        "kind": "STRING_LITERAL",
+                        "text": "\"hello\"",
+                        "span": {
+                          "start": 143,
                           "end": 150
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": ")",
+                        "span": {
+                          "start": 150,
+                          "end": 151
                         }
                       }
                     ]

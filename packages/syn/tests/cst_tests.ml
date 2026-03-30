@@ -2454,31 +2454,30 @@ let tests =
         in
         match signature_items cst with
         | Syn.Cst.SignatureItem.ClassDeclaration
-            {
+            (Syn.Cst.ClassDeclarationSignature
+              {
               class_name;
               class_type =
-                Some
-                  (Syn.Cst.ClassType.Signature
-                    {
-                      syntax_node = class_type_syntax_node;
-                      fields =
-                        [
-                          Syn.Cst.ClassTypeField.Method
-                            {
-                              name_token = class_type_method_name;
-                              type_ =
-                                Syn.Cst.CoreType.Constr
-                                  {
-                                    constructor_path = declared_type;
-                                    _;
-                                  };
-                              _;
-                            };
-                        ];
-                    });
-              class_body = None;
+                Syn.Cst.ClassType.Signature
+                  {
+                    syntax_node = class_type_syntax_node;
+                    fields =
+                      [
+                        Syn.Cst.ClassTypeField.Method
+                          {
+                            name_token = class_type_method_name;
+                            type_ =
+                              Syn.Cst.CoreType.Constr
+                                {
+                                  constructor_path = declared_type;
+                                  _;
+                                };
+                            _;
+                          };
+                      ];
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:"c"
               ~actual:(Syn.Cst.Token.text class_name);
@@ -2506,7 +2505,8 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            {
+            (Syn.Cst.ClassDeclarationStructure
+              {
               class_name;
               class_type =
                 Some
@@ -2526,25 +2526,24 @@ let tests =
                       _;
                     });
               class_body =
-                Some
-                  (Syn.Cst.ClassExpression.Structure
-                    {
-                      fields =
-                        [
-                            Syn.Cst.ClassField.Method
-                              {
-                                name_token = body_method_name;
-                                body =
-                                  Some
-                                    (Syn.Cst.Expression.Path
-                                      { path = body_value_path; _ });
-                                _;
-                              };
-                        ];
-                      _;
-                    });
+                Syn.Cst.ClassExpression.Structure
+                  {
+                    fields =
+                      [
+                          Syn.Cst.ClassField.Method
+                            {
+                              name_token = body_method_name;
+                              body =
+                                Some
+                                  (Syn.Cst.Expression.Path
+                                    { path = body_value_path; _ });
+                              _;
+                            };
+                      ];
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:"service"
               ~actual:(Syn.Cst.Token.text class_name);
@@ -2576,115 +2575,116 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            {
+            (Syn.Cst.ClassDeclarationStructure
+              {
               class_name = direct_name;
               class_body =
-                Some (Syn.Cst.ClassExpression.Path direct_path);
+                Syn.Cst.ClassExpression.Path direct_path;
               _;
-            }
+            })
           :: Syn.Cst.StructureItem.ClassDeclaration
-               {
+               (Syn.Cst.ClassDeclarationStructure
+                 {
                  class_name = applied_name;
                  class_body =
-                   Some
-                     (Syn.Cst.ClassExpression.Apply
-                       {
-                         callee = Syn.Cst.ClassExpression.Path applied_callee;
-                         argument =
-                           Syn.Cst.Positional
-                             (Syn.Cst.Expression.Path { path = applied_arg; _ });
-                         _;
-                       });
+                   Syn.Cst.ClassExpression.Apply
+                     {
+                       callee = Syn.Cst.ClassExpression.Path applied_callee;
+                       argument =
+                         Syn.Cst.Positional
+                           (Syn.Cst.Expression.Path { path = applied_arg; _ });
+                       _;
+                     };
                  _;
-               }
+               })
              :: Syn.Cst.StructureItem.ClassDeclaration
-                  {
+                  (Syn.Cst.ClassDeclarationStructure
+                    {
                     class_name = factory_name;
                     class_body =
-                      Some
-                        (Syn.Cst.ClassExpression.Fun
-                          {
-                            parameters =
-                              [
-                                Syn.Cst.Parameter.Positional
-                                  { name_token = Some factory_param; _ };
-                              ];
-                            body =
-                              Syn.Cst.ClassExpression.Structure
-                                {
-                                  fields =
-                                    [
-                                      Syn.Cst.ClassField.Method
-                                        {
-                                          name_token = factory_method_name;
-                                          body =
-                                            Some
-                                              (Syn.Cst.Expression.Path
-                                                { path = factory_body_path; _ });
-                                          _;
-                                        };
-                                    ];
-                                  _;
-                                };
-                            _;
-                          });
+                      Syn.Cst.ClassExpression.Fun
+                        {
+                          parameters =
+                            [
+                              Syn.Cst.Parameter.Positional
+                                { name_token = Some factory_param; _ };
+                            ];
+                          body =
+                            Syn.Cst.ClassExpression.Structure
+                              {
+                                fields =
+                                  [
+                                    Syn.Cst.ClassField.Method
+                                      {
+                                        name_token = factory_method_name;
+                                        body =
+                                          Some
+                                            (Syn.Cst.Expression.Path
+                                              { path = factory_body_path; _ });
+                                        _;
+                                      };
+                                  ];
+                                _;
+                              };
+                          _;
+                        };
                     _;
-                  }
+                  })
                 :: Syn.Cst.StructureItem.ClassDeclaration
-                     {
+                     (Syn.Cst.ClassDeclarationStructure
+                       {
                        class_name = local_name;
                        class_body =
-                         Some
-                           (Syn.Cst.ClassExpression.Let
-                             {
-                               binding_pattern =
-                                 Syn.Cst.Pattern.Identifier
-                                   { name_token = helper_name; _ };
-                               bound_value =
-                                 Syn.Cst.Expression.Literal
-                                   (Syn.Cst.Literal.Int { literal_token; _ });
-                               body =
-                                 Syn.Cst.ClassExpression.Structure
-                                   {
-                                     fields =
-                                       [
-                                         Syn.Cst.ClassField.Method
-                                           {
-                                             body =
-                                               Some
-                                                 (Syn.Cst.Expression.Path
-                                                   { path = helper_path; _ });
-                                             _;
-                                           };
-                                       ];
-                                     _;
-                                   };
-                               _;
-                             });
+                         Syn.Cst.ClassExpression.Let
+                           {
+                             binding_pattern =
+                               Syn.Cst.Pattern.Identifier
+                                 { name_token = helper_name; _ };
+                             bound_value =
+                               Syn.Cst.Expression.Literal
+                                 (Syn.Cst.Literal.Int { literal_token; _ });
+                             body =
+                               Syn.Cst.ClassExpression.Structure
+                                 {
+                                   fields =
+                                     [
+                                       Syn.Cst.ClassField.Method
+                                         {
+                                           body =
+                                             Some
+                                               (Syn.Cst.Expression.Path
+                                                 { path = helper_path; _ });
+                                           _;
+                                         };
+                                     ];
+                                   _;
+                                 };
+                             _;
+                           };
                        _;
-                     }
+                     })
                    :: Syn.Cst.StructureItem.ClassDeclaration
-                        {
+                        (Syn.Cst.ClassDeclarationStructure
+                          {
                           class_name = opened_name;
                           class_body =
-                            Some
-                              (Syn.Cst.ClassExpression.LocalOpen
-                                {
-                                  module_path = opened_module_path;
-                                  class_expression =
-                                    Syn.Cst.ClassExpression.Path opened_body_path;
-                                  _;
-                                });
+                            Syn.Cst.ClassExpression.LocalOpen
+                              {
+                                module_path = opened_module_path;
+                                class_expression =
+                                  Syn.Cst.ClassExpression.Path opened_body_path;
+                                _;
+                              };
                           _;
-                        }
+                        })
                       :: Syn.Cst.StructureItem.ClassDeclaration
-                           {
+                           (Syn.Cst.ClassDeclarationStructure
+                             {
                              class_name = generated_name;
                              class_body =
-                               Some
-                                 (Syn.Cst.ClassExpression.Extension extension);
+                               Syn.Cst.ClassExpression.Extension extension;
                              _;
-                           }
+                           })
                          :: _ ->
             Test.assert_equal ~expected:"direct"
               ~actual:(Syn.Cst.Token.text direct_name);
@@ -2736,19 +2736,19 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            {
+            (Syn.Cst.ClassDeclarationStructure
+              {
               class_name;
               class_body =
-                Some
-                  (Syn.Cst.ClassExpression.Constraint
-                    {
-                      class_expression =
-                        Syn.Cst.ClassExpression.Path builder_path;
-                      class_type = Syn.Cst.ClassType.Path service_path;
-                      _;
-                    });
+                Syn.Cst.ClassExpression.Constraint
+                  {
+                    class_expression =
+                      Syn.Cst.ClassExpression.Path builder_path;
+                    class_type = Syn.Cst.ClassType.Path service_path;
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:"constrained"
               ~actual:(Syn.Cst.Token.text class_name);
@@ -2776,10 +2776,10 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            {
-              class_body =
-                Some
-                  (Syn.Cst.ClassExpression.Structure
+            (Syn.Cst.ClassDeclarationStructure
+              {
+                class_body =
+                  Syn.Cst.ClassExpression.Structure
                     {
                       fields =
                         [
@@ -2866,9 +2866,9 @@ let tests =
                             };
                         ];
                       _;
-                    });
-              _;
-            }
+                    };
+                _;
+              })
           :: _ ->
             Test.assert_equal ~expected:(Some "builder")
               ~actual:(Syn.Cst.Ident.name inherited_class);
@@ -2920,85 +2920,85 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            {
+            (Syn.Cst.ClassDeclarationStructure
+              {
               class_body =
-                Some
-                  (Syn.Cst.ClassExpression.Structure
-                    {
-                      fields =
-                        [
-                          Syn.Cst.ClassField.Value
-                            {
-                              name_token = state_name;
-                              value =
-                                Some
-                                  (Syn.Cst.Expression.Path { path = state_value; _ });
-                              is_mutable = true;
-                              _;
-                            };
-                          Syn.Cst.ClassField.Inherit
-                            {
-                              class_expression =
-                                Syn.Cst.ClassExpression.Parenthesized
+                Syn.Cst.ClassExpression.Structure
+                  {
+                    fields =
+                      [
+                        Syn.Cst.ClassField.Value
+                          {
+                            name_token = state_name;
+                            value =
+                              Some
+                                (Syn.Cst.Expression.Path { path = state_value; _ });
+                            is_mutable = true;
+                            _;
+                          };
+                        Syn.Cst.ClassField.Inherit
+                          {
+                            class_expression =
+                              Syn.Cst.ClassExpression.Parenthesized
+                                {
+                                  inner =
+                                    Syn.Cst.ClassExpression.Apply
+                                      {
+                                        callee =
+                                          Syn.Cst.ClassExpression.Path
+                                            inherit_callee;
+                                        argument =
+                                          Syn.Cst.Positional
+                                            (Syn.Cst.Expression.Path
+                                              { path = inherit_arg; _ });
+                                        _;
+                                      };
+                                  _;
+                                };
+                            _;
+                          };
+                        Syn.Cst.ClassField.Method
+                          {
+                            name_token = method_name;
+                            body =
+                              Some
+                                (Syn.Cst.Expression.Path { path = method_body; _ });
+                            is_private = true;
+                            _;
+                          };
+                        Syn.Cst.ClassField.Constraint
+                          {
+                            left =
+                              Syn.Cst.CoreType.Constr
+                                { constructor_path = left_type; _ };
+                            right =
+                              Syn.Cst.CoreType.Constr
+                                { constructor_path = right_type; _ };
+                            _;
+                          };
+                        Syn.Cst.ClassField.Extension extension;
+                        Syn.Cst.ClassField.Initializer
+                          {
+                            body =
+                              Some
+                                (Syn.Cst.Expression.Apply
                                   {
-                                    inner =
-                                      Syn.Cst.ClassExpression.Apply
-                                        {
-                                          callee =
-                                            Syn.Cst.ClassExpression.Path
-                                              inherit_callee;
-                                          argument =
-                                            Syn.Cst.Positional
-                                              (Syn.Cst.Expression.Path
-                                                { path = inherit_arg; _ });
-                                          _;
-                                        };
+                                    callee =
+                                      Syn.Cst.Expression.Path
+                                        { path = init_callee; _ };
+                                    argument =
+                                      Syn.Cst.Positional
+                                        (Syn.Cst.Expression.Path
+                                          { path = init_arg; _ });
                                     _;
-                                  };
-                              _;
-                            };
-                          Syn.Cst.ClassField.Method
-                            {
-                              name_token = method_name;
-                              body =
-                                Some
-                                  (Syn.Cst.Expression.Path { path = method_body; _ });
-                              is_private = true;
-                              _;
-                            };
-                          Syn.Cst.ClassField.Constraint
-                            {
-                              left =
-                                Syn.Cst.CoreType.Constr
-                                  { constructor_path = left_type; _ };
-                              right =
-                                Syn.Cst.CoreType.Constr
-                                  { constructor_path = right_type; _ };
-                              _;
-                            };
-                          Syn.Cst.ClassField.Extension extension;
-                          Syn.Cst.ClassField.Initializer
-                            {
-                              body =
-                                Some
-                                  (Syn.Cst.Expression.Apply
-                                    {
-                                      callee =
-                                        Syn.Cst.Expression.Path
-                                          { path = init_callee; _ };
-                                      argument =
-                                        Syn.Cst.Positional
-                                          (Syn.Cst.Expression.Path
-                                            { path = init_arg; _ });
-                                      _;
-                                    });
-                              _;
-                            };
-                        ];
-                      _;
-                    });
+                                  });
+                            _;
+                          };
+                      ];
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:"state"
               ~actual:(Syn.Cst.Token.text state_name);
@@ -3041,17 +3041,17 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            {
+            (Syn.Cst.ClassDeclarationStructure
+              {
               class_body =
-                Some
-                  (Syn.Cst.ClassExpression.Structure
-                    {
-                      syntax_node;
-                      fields;
-                      _;
-                    });
+                Syn.Cst.ClassExpression.Structure
+                  {
+                    syntax_node;
+                    fields;
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             let body_items =
               Syn.CstBuilder.class_field_items_of_fields
@@ -3218,36 +3218,35 @@ let tests =
         in
         match signature_items cst with
         | Syn.Cst.SignatureItem.ClassDeclaration
-            {
+            (Syn.Cst.ClassDeclarationSignature
+              {
               class_name;
               class_type =
-                Some
-                  (Syn.Cst.ClassType.Arrow
-                    {
-                      parameter_type =
-                        Syn.Cst.CoreType.Constr
-                          { constructor_path = request_type; _ };
-                      result_type =
-                        Syn.Cst.ClassType.Signature
-                          {
-                            fields =
-                              [
-                                Syn.Cst.ClassTypeField.Method
-                                  {
-                                    name_token = method_name;
-                                    type_ =
-                                      Syn.Cst.CoreType.Constr
-                                        { constructor_path = method_type; _ };
-                                    _;
-                                  };
-                              ];
-                            _;
-                          };
-                      _;
-                    });
-              class_body = None;
+                Syn.Cst.ClassType.Arrow
+                  {
+                    parameter_type =
+                      Syn.Cst.CoreType.Constr
+                        { constructor_path = request_type; _ };
+                    result_type =
+                      Syn.Cst.ClassType.Signature
+                        {
+                          fields =
+                            [
+                              Syn.Cst.ClassTypeField.Method
+                                {
+                                  name_token = method_name;
+                                  type_ =
+                                    Syn.Cst.CoreType.Constr
+                                      { constructor_path = method_type; _ };
+                                  _;
+                                };
+                            ];
+                          _;
+                        };
+                    _;
+                  };
               _;
-            }
+            })
           :: _ ->
             Test.assert_equal ~expected:"service"
               ~actual:(Syn.Cst.Token.text class_name);
@@ -4249,6 +4248,8 @@ let tests =
             match Syn.CstBuilder.signature_items_of_payload payload with
             | Ok None ->
                 Ok ()
+            | Ok (Some _) ->
+                Error "expected opaque extension payload helper to stay non-reifying"
             | Error _ ->
                 Error "expected opaque extension payload helper to stay non-reifying")
         | _ ->
@@ -9774,7 +9775,20 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            { declaration_extension = Some extension; declaration_attributes = [ attribute ]; _ }
+            (Syn.Cst.ClassDeclarationSignature
+              {
+                declaration_extension = Some extension;
+                declaration_attributes = [ attribute ];
+                _;
+              })
+          :: _
+        | Syn.Cst.StructureItem.ClassDeclaration
+            (Syn.Cst.ClassDeclarationStructure
+              {
+                declaration_extension = Some extension;
+                declaration_attributes = [ attribute ];
+                _;
+              })
           :: _ ->
             Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name extension.name);
             Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name attribute.name);

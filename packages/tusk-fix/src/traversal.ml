@@ -378,8 +378,12 @@ let binding_sites_of_structure_item = function
       binding_sites_of_let_binding binding
   | Syn.Cst.StructureItem.Expression expr ->
       binding_sites_of_expression expr
-  | Syn.Cst.StructureItem.ClassDeclaration { class_body; _ } ->
-      Option.to_list class_body |> List.concat_map binding_sites_of_class_expression
+  | Syn.Cst.StructureItem.ClassDeclaration
+      (Syn.Cst.ClassDeclarationStructure { class_body; _ }) ->
+      [ class_body ] |> List.concat_map binding_sites_of_class_expression
+  | Syn.Cst.StructureItem.ClassDeclaration
+      (Syn.Cst.ClassDeclarationSignature _) ->
+      []
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
       Option.to_list (Syn.Cst.ModuleDeclaration.module_expression decl)
       |> List.concat_map binding_sites_of_module_expression

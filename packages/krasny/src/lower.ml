@@ -5129,6 +5129,11 @@ and is_open_signature_item = function
   | _ ->
       false
 
+and class_declaration_owned_trivia = function
+  | Syn.Cst.ClassDeclarationSignature { owned_trivia; _ }
+  | Syn.Cst.ClassDeclarationStructure { owned_trivia; _ } ->
+      owned_trivia
+
 and render_structure_item_owned_trivia =
   function
   | Syn.Cst.StructureItem.TypeDeclaration decl ->
@@ -5136,7 +5141,7 @@ and render_structure_item_owned_trivia =
   | Syn.Cst.StructureItem.TypeExtension decl ->
       Some (Syn.Cst.TypeExtension.owned_trivia decl)
   | Syn.Cst.StructureItem.ClassDeclaration decl ->
-      Some decl.owned_trivia
+      Some (class_declaration_owned_trivia decl)
   | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
       Some decl.owned_trivia
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
@@ -5170,7 +5175,7 @@ and render_signature_item_owned_trivia =
   | Syn.Cst.SignatureItem.TypeExtension decl ->
       Some (Syn.Cst.TypeExtension.owned_trivia decl)
   | Syn.Cst.SignatureItem.ClassDeclaration decl ->
-      Some decl.owned_trivia
+      Some (class_declaration_owned_trivia decl)
   | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
       Some decl.owned_trivia
   | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
@@ -5434,17 +5439,25 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
       render_class_type_declaration decl
 
-and render_class_declaration
-    ({
-       syntax_node;
-       type_params;
-       declaration_extension;
-       declaration_attributes;
-       class_name;
-       class_type;
-       class_body;
-       _;
-     } : Syn.Cst.class_declaration) =
+and render_class_declaration (declaration : Syn.Cst.class_declaration) =
+  let type_params, declaration_extension, declaration_attributes, class_name =
+    match declaration with
+    | Syn.Cst.ClassDeclarationSignature {
+        type_params;
+        declaration_extension;
+        declaration_attributes;
+        class_name;
+        _;
+      }
+    | Syn.Cst.ClassDeclarationStructure {
+        type_params;
+        declaration_extension;
+        declaration_attributes;
+        class_name;
+        _;
+      } ->
+        (type_params, declaration_extension, declaration_attributes, class_name)
+  in
   let keyword =
     match declaration_extension with
     | None ->
@@ -5474,23 +5487,22 @@ and render_class_declaration
           doc_of_token class_name;
         ]
   in
-  match class_type, class_body with
-  | Some class_type, Some class_body ->
-      Doc.concat
-        [
-          head;
-          annotation_colon;
-          render_class_type_doc class_type;
-          equals;
-          render_class_expression class_body;
-        ]
-  | Some class_type, None ->
+  match declaration with
+  | Syn.Cst.ClassDeclarationSignature { class_type; _ } ->
       Doc.concat [ head; annotation_colon; render_class_type_doc class_type ]
-  | None, Some class_body ->
-      Doc.concat [ head; equals; render_class_expression class_body ]
-  | None, None ->
-      unsupported_syntax ~context:[ "class_declaration" ] ~syntax_node
-        "class declaration is missing both type and body"
+  | Syn.Cst.ClassDeclarationStructure { class_type; class_body; _ } -> (
+      match class_type with
+      | Some class_type ->
+          Doc.concat
+            [
+              head;
+              annotation_colon;
+              render_class_type_doc class_type;
+              equals;
+              render_class_expression class_body;
+            ]
+      | None ->
+          Doc.concat [ head; equals; render_class_expression class_body ])
 
 and render_class_type_declaration
     ({

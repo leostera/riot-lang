@@ -138,6 +138,7 @@
                   "end": 77
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -380,6 +381,7 @@
                   "end": 136
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -755,6 +757,7 @@
                   "end": 213
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -910,6 +913,7 @@
                   "end": 239
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -1236,6 +1240,7 @@
                   "end": 331
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -1398,6 +1403,7 @@
                   "end": 353
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {
@@ -1486,6 +1492,7 @@
                   "end": 363
                 }
               },
+              "binding_name_matches_label": true,
               "binding_pattern": {
                 "tag": "typed",
                 "syntax_node": {

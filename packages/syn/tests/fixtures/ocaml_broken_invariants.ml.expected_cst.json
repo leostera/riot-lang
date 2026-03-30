@@ -321,12 +321,13 @@
               },
               "payload_syntax_node": null,
               "payload": {
-                "tag": "structure",
-                "item_syntax_nodes": [
+                "tag": "opaque_tokens",
+                "tokens": [
                   {
                     "kind": "IDENT_EXPR",
+                    "text": "f",
                     "span": {
-                      "start": 0,
+                      "start": 161,
                       "end": 162
                     }
                   }

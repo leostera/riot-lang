@@ -68,13 +68,54 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "structure",
-            "item_syntax_nodes": [
+            "tag": "opaque_tokens",
+            "tokens": [
               {
-                "kind": "INFIX_EXPR",
+                "kind": "IDENT_EXPR",
+                "text": "let",
                 "span": {
-                  "start": 0,
+                  "start": 160,
+                  "end": 163
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 164,
+                  "end": 165
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 166,
+                  "end": 167
+                }
+              },
+              {
+                "kind": "INT_LITERAL",
+                "text": "1",
+                "span": {
+                  "start": 168,
                   "end": 169
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "in",
+                "span": {
+                  "start": 170,
+                  "end": 172
+                }
+              },
+              {
+                "kind": "IDENT_EXPR",
+                "text": "x",
+                "span": {
+                  "start": 173,
+                  "end": 174
                 }
               }
             ]
@@ -154,13 +195,30 @@
               },
               "payload_syntax_node": null,
               "payload": {
-                "tag": "structure",
-                "item_syntax_nodes": [
+                "tag": "opaque_tokens",
+                "tokens": [
                   {
-                    "kind": "INFIX_EXPR",
+                    "kind": "INT_LITERAL",
+                    "text": "2",
                     "span": {
-                      "start": 0,
+                      "start": 187,
+                      "end": 188
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "+",
+                    "span": {
+                      "start": 189,
                       "end": 190
+                    }
+                  },
+                  {
+                    "kind": "INT_LITERAL",
+                    "text": "1",
+                    "span": {
+                      "start": 191,
+                      "end": 192
                     }
                   }
                 ]
@@ -225,12 +283,13 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
                         "kind": "STRING_LITERAL",
+                        "text": "\"foo\"",
                         "span": {
-                          "start": 0,
+                          "start": 219,
                           "end": 224
                         }
                       }
@@ -278,13 +337,62 @@
                     },
                     "payload_syntax_node": null,
                     "payload": {
-                      "tag": "structure",
-                      "item_syntax_nodes": [
+                      "tag": "opaque_tokens",
+                      "tokens": [
                         {
-                          "kind": "INFIX_EXPR",
+                          "kind": "IDENT_EXPR",
+                          "text": "module",
                           "span": {
-                            "start": 0,
-                            "end": 248
+                            "start": 234,
+                            "end": 240
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "M",
+                          "span": {
+                            "start": 241,
+                            "end": 242
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "=",
+                          "span": {
+                            "start": 243,
+                            "end": 244
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "[",
+                          "span": {
+                            "start": 245,
+                            "end": 246
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "%",
+                          "span": {
+                            "start": 246,
+                            "end": 247
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "bar",
+                          "span": {
+                            "start": 247,
+                            "end": 250
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "]",
+                          "span": {
+                            "start": 250,
+                            "end": 251
                           }
                         }
                       ]
@@ -357,12 +465,29 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
-                      "kind": "FIELD_ACCESS_EXPR",
+                      "kind": "IDENT_EXPR",
+                      "text": "bar",
                       "span": {
-                        "start": 0,
+                        "start": 202,
+                        "end": 205
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 205,
+                        "end": 206
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "baz",
+                      "span": {
+                        "start": 206,
                         "end": 209
                       }
                     }
@@ -448,13 +573,54 @@
               },
               "payload_syntax_node": null,
               "payload": {
-                "tag": "structure",
-                "item_syntax_nodes": [
+                "tag": "opaque_tokens",
+                "tokens": [
                   {
-                    "kind": "LET_BINDING",
+                    "kind": "IDENT_EXPR",
+                    "text": "let",
                     "span": {
-                      "start": 0,
+                      "start": 264,
+                      "end": 267
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "span": {
+                      "start": 268,
+                      "end": 269
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "span": {
+                      "start": 269,
+                      "end": 270
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 271,
                       "end": 272
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "span": {
+                      "start": 273,
+                      "end": 274
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "span": {
+                      "start": 274,
+                      "end": 275
                     }
                   }
                 ]
@@ -519,13 +685,46 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "structure",
-                    "item_syntax_nodes": [
+                    "tag": "opaque_tokens",
+                    "tokens": [
                       {
-                        "kind": "INFIX_EXPR",
+                        "kind": "IDENT_EXPR",
+                        "text": "class",
                         "span": {
-                          "start": 0,
+                          "start": 305,
+                          "end": 310
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "c",
+                        "span": {
+                          "start": 311,
+                          "end": 312
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "=",
+                        "span": {
+                          "start": 313,
+                          "end": 314
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "object",
+                        "span": {
+                          "start": 315,
                           "end": 321
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "end",
+                        "span": {
+                          "start": 322,
+                          "end": 325
                         }
                       }
                     ]
@@ -572,17 +771,17 @@
                     },
                     "payload_syntax_node": null,
                     "payload": {
-                      "tag": "type",
-                      "type": {
-                        "tag": "var",
-                        "syntax_node": {
-                          "kind": "TYPE_VAR",
+                      "tag": "opaque_tokens",
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ":",
                           "span": {
-                            "start": 335,
-                            "end": 342
+                            "start": 334,
+                            "end": 335
                           }
                         },
-                        "sigil_token": {
+                        {
                           "kind": "IDENT_EXPR",
                           "text": "'",
                           "span": {
@@ -590,15 +789,23 @@
                             "end": 337
                           }
                         },
-                        "name_token": {
+                        {
                           "kind": "IDENT_EXPR",
-                          "text": "alist",
+                          "text": "a",
                           "span": {
                             "start": 337,
-                            "end": 342
+                            "end": 338
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "list",
+                          "span": {
+                            "start": 339,
+                            "end": 343
                           }
                         }
-                      }
+                      ]
                     }
                   }
                 }
@@ -642,13 +849,38 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "structure",
-                  "item_syntax_nodes": [
+                  "tag": "opaque_tokens",
+                  "tokens": [
                     {
-                      "kind": "INFIX_EXPR",
+                      "kind": "IDENT_EXPR",
+                      "text": "type",
                       "span": {
-                        "start": 0,
-                        "end": 292
+                        "start": 285,
+                        "end": 289
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 290,
+                        "end": 291
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "=",
+                      "span": {
+                        "start": 292,
+                        "end": 293
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 294,
+                        "end": 295
                       }
                     }
                   ]
@@ -732,7 +964,51 @@
                 }
               },
               "payload_syntax_node": null,
-              "payload": null
+              "payload": {
+                "tag": "opaque_tokens",
+                "tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ":",
+                    "span": {
+                      "start": 355,
+                      "end": 356
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "[",
+                    "span": {
+                      "start": 357,
+                      "end": 358
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "`",
+                    "span": {
+                      "start": 359,
+                      "end": 360
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Foo",
+                    "span": {
+                      "start": 360,
+                      "end": 363
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "]",
+                    "span": {
+                      "start": 364,
+                      "end": 365
+                    }
+                  }
+                ]
+              }
             }
           },
           "binding_name": null,
@@ -801,7 +1077,59 @@
                       }
                     },
                     "payload_syntax_node": null,
-                    "payload": null
+                    "payload": {
+                      "tag": "opaque_tokens",
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ":",
+                          "span": {
+                            "start": 391,
+                            "end": 392
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "<",
+                          "span": {
+                            "start": 393,
+                            "end": 394
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "foo",
+                          "span": {
+                            "start": 395,
+                            "end": 398
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ":",
+                          "span": {
+                            "start": 399,
+                            "end": 400
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "t",
+                          "span": {
+                            "start": 401,
+                            "end": 402
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ">",
+                          "span": {
+                            "start": 403,
+                            "end": 404
+                          }
+                        }
+                      ]
+                    }
                   }
                 },
                 "argument": {
@@ -844,17 +1172,25 @@
                       },
                       "payload_syntax_node": null,
                       "payload": {
-                        "tag": "pattern",
-                        "payload": {
-                          "pattern_syntax_node": {
-                            "kind": "WILDCARD_PATTERN",
+                        "tag": "opaque_tokens",
+                        "tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "?",
                             "span": {
-                              "start": 415,
-                              "end": 417
+                              "start": 414,
+                              "end": 415
                             }
                           },
-                          "guard_syntax_node": null
-                        }
+                          {
+                            "kind": "WILDCARD_PATTERN",
+                            "text": "_",
+                            "span": {
+                              "start": 416,
+                              "end": 417
+                            }
+                          }
+                        ]
                       }
                     }
                   }
@@ -899,7 +1235,67 @@
                       }
                     },
                     "payload_syntax_node": null,
-                    "payload": null
+                    "payload": {
+                      "tag": "opaque_tokens",
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "?",
+                          "span": {
+                            "start": 425,
+                            "end": 426
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "Some",
+                          "span": {
+                            "start": 427,
+                            "end": 431
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "y",
+                          "span": {
+                            "start": 432,
+                            "end": 433
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "when",
+                          "span": {
+                            "start": 434,
+                            "end": 438
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "y",
+                          "span": {
+                            "start": 439,
+                            "end": 440
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ">",
+                          "span": {
+                            "start": 441,
+                            "end": 442
+                          }
+                        },
+                        {
+                          "kind": "INT_LITERAL",
+                          "text": "0",
+                          "span": {
+                            "start": 443,
+                            "end": 444
+                          }
+                        }
+                      ]
+                    }
                   }
                 }
               }
@@ -942,76 +1338,41 @@
                 },
                 "payload_syntax_node": null,
                 "payload": {
-                  "tag": "type",
-                  "type": {
-                    "tag": "arrow",
-                    "syntax_node": {
-                      "kind": "TYPE_ARROW",
+                  "tag": "opaque_tokens",
+                  "tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ":",
                       "span": {
-                        "start": 375,
+                        "start": 374,
+                        "end": 375
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 376,
+                        "end": 377
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "->",
+                      "span": {
+                        "start": 378,
                         "end": 380
                       }
                     },
-                    "label": null,
-                    "parameter_type": {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 375,
-                          "end": 377
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 375,
-                            "end": 377
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "t",
-                          "span": {
-                            "start": 376,
-                            "end": 377
-                          }
-                        }
-                      },
-                      "arguments": []
-                    },
-                    "result_type": {
-                      "tag": "constr",
-                      "syntax_node": {
-                        "kind": "TYPE_CONSTR",
-                        "span": {
-                          "start": 379,
-                          "end": 380
-                        }
-                      },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 379,
-                            "end": 380
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "t",
-                          "span": {
-                            "start": 379,
-                            "end": 380
-                          }
-                        }
-                      },
-                      "arguments": []
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 381,
+                        "end": 382
+                      }
                     }
-                  }
+                  ]
                 }
               }
             }
@@ -1093,17 +1454,57 @@
               },
               "payload_syntax_node": null,
               "payload": {
-                "tag": "pattern",
-                "payload": {
-                  "pattern_syntax_node": {
-                    "kind": "OR_PATTERN",
+                "tag": "opaque_tokens",
+                "tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "?",
                     "span": {
-                      "start": 457,
-                      "end": 467
+                      "start": 456,
+                      "end": 457
                     }
                   },
-                  "guard_syntax_node": null
-                }
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Bar",
+                    "span": {
+                      "start": 458,
+                      "end": 461
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 462,
+                      "end": 463
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 464,
+                      "end": 465
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "Baz",
+                    "span": {
+                      "start": 466,
+                      "end": 469
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "x",
+                    "span": {
+                      "start": 470,
+                      "end": 471
+                    }
+                  }
+                ]
               }
             }
           },
@@ -1165,17 +1566,41 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "pattern",
-                    "payload": {
-                      "pattern_syntax_node": {
-                        "kind": "RECORD_PATTERN",
+                    "tag": "opaque_tokens",
+                    "tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "?",
                         "span": {
-                          "start": 496,
+                          "start": 495,
+                          "end": 496
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "{",
+                        "span": {
+                          "start": 497,
+                          "end": 498
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "x",
+                        "span": {
+                          "start": 499,
                           "end": 500
                         }
                       },
-                      "guard_syntax_node": null
-                    }
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "}",
+                        "span": {
+                          "start": 501,
+                          "end": 502
+                        }
+                      }
+                    ]
                   }
                 }
               },
@@ -1219,47 +1644,73 @@
                     },
                     "payload_syntax_node": null,
                     "payload": {
-                      "tag": "type",
-                      "type": {
-                        "tag": "extension",
-                        "extension": {
-                          "syntax_node": {
-                            "kind": "EXTENSION_EXPR",
-                            "span": {
-                              "start": 512,
-                              "end": 518
-                            }
-                          },
-                          "sigil_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "%",
-                            "span": {
-                              "start": 513,
-                              "end": 514
-                            }
-                          },
-                          "name": {
-                            "tag": "ident",
-                            "syntax_node": {
-                              "kind": "EXTENSION_EXPR",
-                              "span": {
-                                "start": 512,
-                                "end": 518
-                              }
-                            },
-                            "name_token": {
-                              "kind": "IDENT_EXPR",
-                              "text": "baz",
-                              "span": {
-                                "start": 514,
-                                "end": 517
-                              }
-                            }
-                          },
-                          "payload_syntax_node": null,
-                          "payload": null
+                      "tag": "opaque_tokens",
+                      "tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ":",
+                          "span": {
+                            "start": 511,
+                            "end": 512
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "module",
+                          "span": {
+                            "start": 513,
+                            "end": 519
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "M",
+                          "span": {
+                            "start": 520,
+                            "end": 521
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": ":",
+                          "span": {
+                            "start": 522,
+                            "end": 523
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "[",
+                          "span": {
+                            "start": 524,
+                            "end": 525
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "%",
+                          "span": {
+                            "start": 525,
+                            "end": 526
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "baz",
+                          "span": {
+                            "start": 526,
+                            "end": 529
+                          }
+                        },
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "]",
+                          "span": {
+                            "start": 529,
+                            "end": 530
+                          }
                         }
-                      }
+                      ]
                     }
                   }
                 }
@@ -1302,7 +1753,35 @@
                   }
                 },
                 "payload_syntax_node": null,
-                "payload": null
+                "payload": {
+                  "tag": "opaque_tokens",
+                  "tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "?",
+                      "span": {
+                        "start": 480,
+                        "end": 481
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "#",
+                      "span": {
+                        "start": 482,
+                        "end": 483
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "bar",
+                      "span": {
+                        "start": 483,
+                        "end": 486
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
@@ -1382,7 +1861,75 @@
                 }
               },
               "payload_syntax_node": null,
-              "payload": null
+              "payload": {
+                "tag": "opaque_tokens",
+                "tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ":",
+                    "span": {
+                      "start": 542,
+                      "end": 543
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "include",
+                    "span": {
+                      "start": 544,
+                      "end": 551
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "S",
+                    "span": {
+                      "start": 552,
+                      "end": 553
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "with",
+                    "span": {
+                      "start": 554,
+                      "end": 558
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "type",
+                    "span": {
+                      "start": 559,
+                      "end": 563
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 564,
+                      "end": 565
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 566,
+                      "end": 567
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "t",
+                    "span": {
+                      "start": 568,
+                      "end": 569
+                    }
+                  }
+                ]
+              }
             }
           },
           "binding_name": null,
@@ -1433,7 +1980,51 @@
                   }
                 },
                 "payload_syntax_node": null,
-                "payload": null
+                "payload": {
+                  "tag": "opaque_tokens",
+                  "tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ":",
+                      "span": {
+                        "start": 626,
+                        "end": 627
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "type",
+                      "span": {
+                        "start": 628,
+                        "end": 632
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 633,
+                        "end": 634
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "=",
+                      "span": {
+                        "start": 635,
+                        "end": 636
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 637,
+                        "end": 638
+                      }
+                    }
+                  ]
+                }
               }
             },
             "type": {
@@ -1473,7 +2064,83 @@
                   }
                 },
                 "payload_syntax_node": null,
-                "payload": null
+                "payload": {
+                  "tag": "opaque_tokens",
+                  "tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ":",
+                      "span": {
+                        "start": 582,
+                        "end": 583
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "val",
+                      "span": {
+                        "start": 590,
+                        "end": 593
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "x",
+                      "span": {
+                        "start": 594,
+                        "end": 595
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ":",
+                      "span": {
+                        "start": 596,
+                        "end": 597
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 598,
+                        "end": 599
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "val",
+                      "span": {
+                        "start": 606,
+                        "end": 609
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "y",
+                      "span": {
+                        "start": 610,
+                        "end": 611
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ":",
+                      "span": {
+                        "start": 612,
+                        "end": 613
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "t",
+                      "span": {
+                        "start": 614,
+                        "end": 615
+                      }
+                    }
+                  ]
+                }
               }
             }
           },
