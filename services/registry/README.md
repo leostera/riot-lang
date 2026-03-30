@@ -22,6 +22,59 @@ For production databases:
 bun run migrate:remote
 ```
 
+## Backups and rollback
+
+The control-plane database is Cloudflare D1 (`riot-registry`). Set up periodic
+backups from your deployment environment by running:
+
+```bash
+cd services/registry
+bun run db:backup
+```
+
+Backups are written as SQL dumps under `services/registry/backups` by default.
+Set environment overrides before running:
+
+```bash
+export REGISTRY_D1_DB_NAME=riot-registry
+export REGISTRY_D1_BACKUP_DIR=./backups
+```
+
+Rollback options:
+
+- **Point-in-time rollback (recommended):**
+
+  ```bash
+  bun run db:time-travel:info
+  bun run db:time-travel:restore -- --timestamp <RFC3339-or-epoch>
+  bun run db:time-travel:restore -- --bookmark <bookmark>
+  ```
+
+  Examples:
+
+  ```bash
+  # find available rollback points around a UTC timestamp
+  bunx wrangler d1 time-travel info riot-registry --timestamp 2026-03-30T10:20:00Z --json
+
+  # restore to a concrete timestamp
+  bunx wrangler d1 time-travel restore riot-registry --timestamp 2026-03-30T10:20:00Z
+  ```
+
+- **Restore from a snapshot file (full re-import):**
+
+  ```bash
+  bun run db:restore -- services/registry/backups/registry-d1-riot-registry-20260330T101530Z.sql
+  ```
+
+  This is destructive and replays the SQL dump. Confirm the prompt before
+  continuing, and validate after restore.
+
+Notes:
+- D1 Time Travel rollback is managed by Cloudflare and is generally the safest
+  restoration path.
+- Keep exported SQL backups in an external secure location if you need retention
+  beyond Cloudflare Time Travel retention.
+
 Wrangler reads `.env` during local development, and the Worker expects at least:
 
 ```dotenv
