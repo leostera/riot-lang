@@ -4573,9 +4573,7 @@ and render_structure_entry ~source ~trailing_suffix item =
   in
   (doc, is_open_structure_item item, is_trivia, tight_after, false, is_docstring)
 
-and render_signature_entry ~source ~source_offset ~span ~trailing_suffix item =
-  let _span = (span : Syn.Ceibo.Span.t) in
-  let _source_offset = source_offset in
+and render_signature_entry ~source ~trailing_suffix item =
   let doc =
     let base_doc =
       match item with
@@ -4823,7 +4821,7 @@ and type_declaration_owned_trivia_end = fun decl ->
          Int.max acc (type_declaration_owned_trivia_end declaration))
        current
 
-and render_structure_top_level_items ~source ~source_offset:_source_offset ~source_node ~items =
+and render_structure_top_level_items ~source ~source_node ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
@@ -4870,8 +4868,7 @@ and render_structure_top_level_items ~source ~source_offset:_source_offset ~sour
     else
       Int.compare left_span.end_ right_span.end_
   in
-  let source_length = String.length source in
-  let source_end = (Syn.Ceibo.Red.SyntaxNode.span source_node).start + source_length in
+  let source_end = (Syn.Ceibo.Red.SyntaxNode.span source_node).end_ in
   let top_level_tokens = direct_tokens_in_source_order source_node in
   let items =
     items
@@ -4913,29 +4910,21 @@ and render_structure_top_level_items ~source ~source_offset:_source_offset ~sour
   loop [] items
 
 and render_structure_items ?source ~source_node items =
-  let source_opt = source in
   let source =
-    match source_opt with
+    match source with
     | Some source ->
         source
     | None ->
         (match ctx.source with
         | Some full_source ->
-            Source.source_of_span full_source (Syn.Ceibo.Red.SyntaxNode.span source_node)
+            full_source
         | None ->
             Source.source_of_syntax_node source_node)
   in
-  let source_offset =
-    match source_opt with
-    | Some _ ->
-        0
-    | None ->
-        (Syn.Ceibo.Red.SyntaxNode.span source_node).start
-  in
-  render_structure_top_level_items ~source ~source_offset ~source_node ~items
+  render_structure_top_level_items ~source ~source_node ~items
 
 and render_signature_top_level_items
-    ~source ~source_offset ~source_node ~items =
+    ~source ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
@@ -5010,34 +4999,26 @@ and render_signature_top_level_items
         join_entries (List.rev acc)
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let entry =
-          render_signature_entry ~source ~source_offset ~span:base_span
-            ~trailing_suffix:None item
+          let _base_span = (base_span : Syn.Ceibo.Span.t) in
+          render_signature_entry ~source ~trailing_suffix:None item
         in
         loop (entry :: acc) rest
   in
   loop [] items
 
 and render_signature_items ?source ~source_node items =
-  let source_opt = source in
   let source =
-    match source_opt with
+    match source with
     | Some source ->
         source
     | None ->
         (match ctx.source with
         | Some full_source ->
-            Source.source_of_span full_source (Syn.Ceibo.Red.SyntaxNode.span source_node)
+            full_source
         | None ->
             Source.source_of_syntax_node source_node)
   in
-  let source_offset =
-    match source_opt with
-    | Some _ ->
-        0
-    | None ->
-        (Syn.Ceibo.Red.SyntaxNode.span source_node).start
-  in
-  render_signature_top_level_items ~source ~source_offset ~source_node ~items
+  render_signature_top_level_items ~source ~items
   in
   { render_structure_items; render_signature_items }
 

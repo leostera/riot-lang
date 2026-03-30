@@ -73,7 +73,8 @@ This file is _yours_. Keep it up to date after every big change.
 - singleton list patterns now use explicit formatter edge spacing; `lower.ml` no longer sniffs source text for `"[ "` / `" ]"` to preserve original spacing.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`; the remaining raw-trivia debt is in `doc_of_owned_trivia` separator recovery and source/text heuristics, not generic between-node span replay.
-- `packages/krasny/src/source.ml` is trimmed to the remaining live raw source-reconstruction helpers only; `Source` is now down to `source_of_syntax_node` and `source_of_span`.
+- `packages/krasny/src/source.ml` is trimmed to the remaining live raw source-reconstruction helper only; `Source` is now down to `source_of_syntax_node`.
+- `render_structure_items` and `render_signature_items` no longer slice `ctx.source` down to nested/top-level span windows; they use the full available source and only fall back to `Source.source_of_syntax_node` when no source text was provided at all.
 
 ## Working Style
 
@@ -132,7 +133,7 @@ This file is _yours_. Keep it up to date after every big change.
   - expression-run preservation rules in `render_structure_top_level_items`
   - replace “preserve this source because rewrite might change meaning” with explicit CST facts or hard failure
 
-- [ ] Remove source-slice reconstruction from lowering context setup
+- [x] Remove source-slice reconstruction from lowering context setup
   - `render_structure_items ?source ~source_node`
   - `render_signature_items ?source ~source_node`
   - do not derive nested/top-level source windows from `ctx.source` + `source_node` spans just to support fallback formatting
@@ -156,7 +157,6 @@ This file is _yours_. Keep it up to date after every big change.
     replace with an explicit CST fact,
     or keep only behind an explicit “unsupported shape” failure boundary while the CST is extended
   - current high-priority sites:
-    `Source.source_of_span`,
     `Source.source_of_syntax_node`
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing

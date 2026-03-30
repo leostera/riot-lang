@@ -30,26 +30,3 @@ let source_of_syntax_node (node : Syn.Cst.syntax_node) =
       append_token ~include_leading_trivia:false first;
       List.iter append_token rest;
       IO.Buffer.contents buffer |> trim_trailing_newlines
-
-let source_of_span source (span : Syn.Ceibo.Span.t) =
-  let source_length = String.length source in
-  let start =
-    if span.start < 0 then
-      0
-    else if span.start > source_length then
-      source_length
-    else
-      span.start
-  in
-  let end_ =
-    if span.end_ < start then
-      start
-    else if span.end_ > source_length then
-      source_length
-    else
-      span.end_
-  in
-  if end_ <= start then
-    ""
-  else
-    String.sub source start (end_ - start)
