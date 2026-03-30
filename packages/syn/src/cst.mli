@@ -212,13 +212,12 @@ and extension = {
   attributes : attribute list;
 }
 
-(** Structured payloads attached to attributes and extensions.
+(** Payloads attached to attributes and extensions.
 
-    This mirrors the main OCaml payload families without forcing every payload
-    body into a fully typed item tree yet. Unmarked structure and signature
-    payloads currently preserve their lifted top-level item anchors via
-    `item_syntax_nodes`; `Type` payloads expose typed CST nodes directly; and
-    `Pattern` payloads currently preserve the lifted pattern and guard anchors.
+    Attributes and extensions default to an opaque token-slice contract so
+    payload bodies stay lossless without forcing them through OCaml-specific
+    relift. Structured payload variants remain available for the cases where
+    the CST explicitly commits to an OCaml payload family.
 *)
 and payload =
   | Structure of {
@@ -247,9 +246,10 @@ and payload =
       (** A lossless opaque payload preserved as its raw shell-local token
           slice.
 
-          This is the default for extension payloads whose contents are not
-          committed to OCaml CST structure yet, for example foreign mini-
-          languages such as `[%sql SELECT * FROM users]`.
+          This is the default for attribute and extension payloads whose
+          contents are not yet committed to OCaml CST structure, for example
+          foreign mini-languages such as `[%sql SELECT * FROM users]` or
+          attribute bodies we intentionally leave opaque for now.
       *)
 
 (** A pattern payload with its optional `when` guard. *)

@@ -7957,7 +7957,7 @@ let raw_annotation_payload_from_shell = fun shell_node ->
         start_offset = (Ceibo.Red.SyntaxToken.span first_payload_token).start
       }
 
-let extension_payload_from_shell_default = fun shell_node ->
+let annotation_payload_from_shell_default = fun shell_node ->
   let all_tokens = direct_tokens shell_node in
   let shell_tokens = direct_non_trivia_tokens shell_node in
   let rec skip_sigils =
@@ -8038,82 +8038,9 @@ let item_syntax_nodes_from_parse_result = fun ~kind result ->
     | Bail _ ->
         None
 
-let attribute_payload_from_shell_lift = fun shell_node ->
-  let structure_payload = fun raw_payload ->
-    let source = make_padded_fragment ~start_offset:raw_payload.start_offset raw_payload.text in
-    parse_implementation_fragment source
-    |> item_syntax_nodes_from_parse_result ~kind:`Implementation
-    |> Option.map (fun item_syntax_nodes -> Cst.Payload.Structure {item_syntax_nodes})
-  in
-  let signature_payload = fun raw_payload ->
-    let source = make_padded_fragment ~start_offset:raw_payload.start_offset raw_payload.text in
-    parse_interface_fragment source
-    |> item_syntax_nodes_from_parse_result ~kind:`Interface
-    |> Option.map (fun item_syntax_nodes -> Cst.Payload.Signature {item_syntax_nodes})
-  in
-  let type_payload = fun raw_payload ->
-    let source = make_wrapped_fragment ~prefix:"type t = " ~suffix:"\n" ~start_offset:raw_payload.start_offset raw_payload.text in
-    match parse_implementation_fragment source with
-    | { diagnostics = []; tree; _ } ->
-        let root = Ceibo.Red.new_root tree in
-        (
-          match direct_non_trivia_nodes root with
-          | type_decl_node :: _ -> (
-              match type_declaration_from_node type_decl_node with
-              | Some { type_definition = Cst.TypeDefinition.Alias { manifest; _ }; _ } ->
-                  Some (Cst.Payload.Type manifest)
-              | _ ->
-                  None
-            )
-          | [] ->
-              None
-        )
-    | _ ->
-        None
-  in
-  let pattern_payload = fun raw_payload ->
-    let source =
-      make_wrapped_fragment ~prefix:"let p = function | " ~suffix:" -> ()\n" ~start_offset:raw_payload.start_offset raw_payload.text
-    in
-    match parse_implementation_fragment source with
-    | { diagnostics = []; tree; _ } ->
-        let root = Ceibo.Red.new_root tree in
-        (
-          match direct_non_trivia_nodes root with
-          | let_binding_node :: _ -> (
-              match let_binding_from_node ~is_recursive_binding:false let_binding_node with
-              | Some { value = Cst.Expression.Function { cases = case :: _; _ }; _ } ->
-                  Some (Cst.Payload.Pattern {
-                    pattern_syntax_node = Cst.Pattern.syntax_node case.pattern;
-                    guard_syntax_node = Option.map Cst.Expression.syntax_node case.guard
-                  })
-              | _ ->
-                  None
-            )
-          | [] ->
-              None
-        )
-    | _ ->
-        None
-  in
-  match raw_annotation_payload_from_shell shell_node with
-  | Some ({ kind = TypePayload; _ } as raw_payload) ->
-      type_payload raw_payload
-  | Some ({ kind = PatternPayload; _ } as raw_payload) ->
-      pattern_payload raw_payload
-  | Some ({ kind = Unmarked; _ } as raw_payload) -> (
-      match structure_payload raw_payload with
-      | Some payload ->
-          Some payload
-      | None ->
-          signature_payload raw_payload
-    )
-  | None ->
-      None
-
 let () =
-  Cell.set attribute_payload_from_shell_impl attribute_payload_from_shell_lift;
-  Cell.set extension_payload_from_shell_impl extension_payload_from_shell_default
+  Cell.set attribute_payload_from_shell_impl annotation_payload_from_shell_default;
+  Cell.set extension_payload_from_shell_impl annotation_payload_from_shell_default
 
 let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item ~owned_trivia_spans_of_item tree items_from_node ->
   let root = Ceibo.Red.new_root tree in

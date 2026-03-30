@@ -716,58 +716,12 @@ and render_shared_attribute_payload_doc (attribute : Syn.Cst.attribute) =
   match attribute.payload with
   | None ->
       Doc.empty
-  | Some (Syn.Cst.Payload.Type type_) ->
-      Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
-  | Some (Syn.Cst.Payload.Pattern { pattern_syntax_node; guard_syntax_node }) ->
-      let syntax_node =
-        match guard_syntax_node with
-        | Some guard_syntax_node ->
-            guard_syntax_node
-        | None ->
-            pattern_syntax_node
-      in
-      unsupported_syntax ~context:shared_attribute_payload_context ~syntax_node
-        "shared attribute pattern payloads do not have a structural formatter yet"
-  | Some (Syn.Cst.Payload.Opaque_tokens { tokens = _ }) ->
+  | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+      Doc.concat (List.map doc_of_token tokens)
+  | Some _ ->
       unsupported_syntax ~context:shared_attribute_payload_context
         ~syntax_node:(shared_attribute_payload_source_node attribute)
-        "shared attribute opaque payloads do not have a structural formatter yet"
-  | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
-      match Syn.CstBuilder.structure_items_of_payload payload with
-      | Ok (Some [ Syn.Cst.StructureItem.Expression expression ]) ->
-          Doc.concat [ Doc.space; render_shared_attribute_payload_expression_doc expression ]
-      | Ok None ->
-          Doc.empty
-      | Ok (Some []) ->
-          Doc.empty
-      | Ok (Some _items) ->
-          unsupported_syntax ~context:shared_attribute_payload_context
-            ~syntax_node:(shared_attribute_payload_source_node attribute)
-            "shared attribute structure payloads do not have a structural formatter yet"
-      | Error error ->
-          unsupported_with_context_entries
-            ~context:
-              (Context_syntax_kind error.syntax_kind
-              :: List.map (fun label -> Context_label label) shared_attribute_payload_context
-              @ List.map (fun label -> Context_label label) error.context)
-            error.message)
-  | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
-      match Syn.CstBuilder.signature_items_of_payload payload with
-      | Ok None ->
-          Doc.empty
-      | Ok (Some []) ->
-          Doc.empty
-      | Ok (Some _items) ->
-          unsupported_syntax ~context:shared_attribute_payload_context
-            ~syntax_node:(shared_attribute_payload_source_node attribute)
-            "shared attribute signature payloads do not have a structural formatter yet"
-      | Error error ->
-          unsupported_with_context_entries
-            ~context:
-              (Context_syntax_kind error.syntax_kind
-              :: List.map (fun label -> Context_label label) shared_attribute_payload_context
-              @ List.map (fun label -> Context_label label) error.context)
-            error.message)
+        "shared attribute payloads should be opaque tokens"
 
 and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
   let sigil_doc =
@@ -2503,49 +2457,12 @@ let make_lowerer =
     match attribute.payload with
     | None ->
         Doc.empty
-    | Some (Syn.Cst.Payload.Type type_) ->
-        Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
-    | Some (Syn.Cst.Payload.Pattern payload) ->
-        Doc.concat
-          [
-            Doc.text "?";
-            Doc.space;
-            render_pattern_payload_doc_with_context ~context:attribute_payload_context payload;
-          ]
-    | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
-        let source_node = attribute_payload_source_node attribute in
-        match Syn.CstBuilder.structure_items_of_payload payload with
-        | Ok (Some items) ->
-            if List.is_empty items then
-              Doc.empty
-            else
-              Doc.concat [ Doc.space; render_structure_items ~source_node items ]
-        | Ok None ->
-            Doc.empty
-        | Error error ->
-            unsupported_with_context_entries
-              ~context:
-                (Context_syntax_kind error.syntax_kind
-                :: List.map (fun label -> Context_label label) attribute_payload_context
-                @ List.map (fun label -> Context_label label) error.context)
-              error.message)
-    | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
-        let source_node = attribute_payload_source_node attribute in
-        match Syn.CstBuilder.signature_items_of_payload payload with
-        | Ok (Some items) ->
-            if List.is_empty items then
-              Doc.empty
-            else
-              Doc.concat [ Doc.space; render_signature_items ~source_node items ]
-        | Ok None ->
-            Doc.empty
-        | Error error ->
-            unsupported_with_context_entries
-              ~context:
-                (Context_syntax_kind error.syntax_kind
-                :: List.map (fun label -> Context_label label) attribute_payload_context
-                @ List.map (fun label -> Context_label label) error.context)
-              error.message)
+    | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+        Doc.concat (List.map doc_of_token tokens)
+    | Some _ ->
+        unsupported_syntax ~context:attribute_payload_context
+          ~syntax_node:(attribute_payload_source_node attribute)
+          "attribute payloads should be opaque tokens"
 
   and render_pattern_payload_doc_with_context ~context
     ({ pattern_syntax_node; guard_syntax_node } : Syn.Cst.pattern_payload) =

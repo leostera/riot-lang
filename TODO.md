@@ -128,8 +128,8 @@ This file is _yours_. Keep it up to date after every big change.
 - polymorphic-variant expression and pattern heads now render from explicit `tag_token` plus a formatter backtick, instead of replaying raw syntax-node token text.
 - `Syn.Cst.CoreType.Poly` now exposes `type_keyword_token`, and `krasny` uses that explicit token instead of scanning raw tokens to decide whether locally abstract types were written with `type`.
 - `packages/krasny/src/source.ml` is gone; `krasny` no longer keeps any live raw source-reconstruction helper.
-- extension payloads now default to `Syn.Cst.Payload.Opaque_tokens`, preserving foreign-language bodies losslessly in the CST; attributes still use structured OCaml payload variants where supported.
-- the remaining attribute debt is the shared/global pattern payload case, plus whatever extra CST structure richer attribute payload bodies need before they can lower structurally.
+- attribute and extension payloads now default to `Syn.Cst.Payload.Opaque_tokens`, preserving foreign-language bodies and OCaml payload bodies losslessly in the CST until we intentionally commit to a structured payload family.
+- `krasny` now renders attribute and extension payloads from that opaque CST token slice instead of relifting or normalizing payload contents.
 - the remaining structural debt is unsupported valid syntax and missing CST facts, not formatter-side source/token/span reconstruction.
 
 ## Working Style
@@ -146,13 +146,14 @@ This file is _yours_. Keep it up to date after every big change.
 ## Structural Formatting Debt
 
 - [ ] Burn down the remaining unsupported valid syntax in structural-priority order
-  - shared/global pattern payloads
   - signature-bodied first-class module types, if we decide those should be supported rather than remain explicit failures
+  - implementation `val` structure items if they remain valid syntax we want to format
 
-- [x] Make extension payloads structural-by-contract without forcing OCaml relift
-  - extension payloads now default to `Syn.Cst.Payload.Opaque_tokens`
+- [x] Make annotation payloads structural-by-contract without forcing OCaml relift
+  - attribute and extension payloads now default to `Syn.Cst.Payload.Opaque_tokens`
   - `krasny` renders those payloads by replaying the CST-owned token slice exactly
   - foreign payload languages such as `[%sql ...]` no longer depend on accidental OCaml payload parsing
+  - ordinary OCaml attribute payload bodies also stay opaque until we intentionally add a structured payload contract
 
 - [x] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
   - `Source.source_of_syntax_node` is gone
@@ -212,7 +213,6 @@ This file is _yours_. Keep it up to date after every big change.
   - any future raw source helper use should be treated as new debt immediately
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
-  - pattern-payload structure beyond the current raw `pattern_syntax_node` / `guard_syntax_node`, so attribute payload rendering can stay structural there too
   - explicit public nested signature-body item anchors beyond the current helper-only relift surface, if downstream tools need more than `CstBuilder.signature_items_of_module_type`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit ambiguity-sensitive type-declaration shape markers

@@ -1143,35 +1143,35 @@ type payload = (module [%foo: S])
 |}
           ~actual;
         Ok ());
-    Test.case "format shared core-type attributes from structural payload expressions"
+    Test.case "format shared core-type attributes keeps opaque payload tokens"
       (fun () ->
         let source = "type t = int [@deprecated   \"use other\"]\n" in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect
-               ~msg:"shared core-type attributes should render from structural payload expressions"
+               ~msg:"shared core-type attributes should render from opaque payload tokens"
         in
-        Test.assert_equal ~expected:"type t = int [@deprecated \"use other\"]\n" ~actual;
+        Test.assert_equal ~expected:source ~actual;
         Ok ());
-    Test.case "format shared attribute payload infix expressions structurally"
+    Test.case "format shared attribute payload infix expressions opaquely"
       (fun () ->
         let source = "type t = int [@foo 1 + 2]\n" in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect
-               ~msg:"shared attribute payload infix expressions should render structurally"
+               ~msg:"shared attribute payload infix expressions should render opaquely"
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
-    Test.case "format expression attributes from structural payload items"
+    Test.case "format expression attributes keeps opaque payload tokens"
       (fun () ->
         let source = "let _ = value [@foo   1  +  2]\n" in
         let actual =
           parse_ml source |> Krasny.format
           |> Result.expect
-               ~msg:"expression attributes should render from structural payload items"
+               ~msg:"expression attributes should render from opaque payload tokens"
         in
-        Test.assert_equal ~expected:"let _ = value [@foo 1 + 2]\n" ~actual;
+        Test.assert_equal ~expected:source ~actual;
         Ok ());
     Test.case "format ordinary pattern-payload attributes structurally" (fun () ->
         let source =

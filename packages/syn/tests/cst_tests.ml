@@ -4320,7 +4320,7 @@ let tests =
             | _ ->
                 Error "expected parenthesized identifier pattern")
         | _ -> Error "expected let binding with parenthesized pattern");
-    Test.case "cst expression attributes lift structure payloads and anchors"
+    Test.case "cst expression attributes keep opaque payload tokens"
       (fun () ->
         let result = parse_ml "let _ = value [@foo 1 + 2]\n" in
         let cst =
@@ -4340,18 +4340,18 @@ let tests =
             match attributes with
             | {
                payload_syntax_node = None;
-               payload =
-                 Some (Syn.Cst.Payload.Structure { item_syntax_nodes = item_node :: _ });
+               payload = Some (Syn.Cst.Payload.Opaque_tokens { tokens });
                _;
               }
               :: _ ->
-                Test.assert_equal ~expected:"INFIX_EXPR"
-                  ~actual:(SyntaxKind.to_string (Ceibo.Red.SyntaxNode.kind item_node));
+                Test.assert_equal
+                  ~expected:[ " "; "1"; " "; "+"; " "; "2" ]
+                  ~actual:(List.map Syn.Cst.Token.text tokens);
                 Ok ()
             | _ ->
-                Error "expected expression attribute with structure payload")
+                Error "expected expression attribute with opaque payload")
         | _ ->
-            Error "expected expression attribute with structure payload");
+            Error "expected expression attribute with opaque payload");
     Test.case "cst expression attributes survive inline comments after bracket"
       (fun () ->
         let result = parse_ml "let _ = value [ (* c *) @foo 1 + 2]\n" in
@@ -4365,7 +4365,7 @@ let tests =
             let attributes = Syn.Cst.Expression.attributes value in
             Test.assert_equal ~expected:1 ~actual:(List.length attributes);
             (match attributes with
-            | { name; payload = Some (Syn.Cst.Payload.Structure _); _ } :: _ ->
+            | { name; payload = Some (Syn.Cst.Payload.Opaque_tokens _); _ } :: _ ->
                 Test.assert_equal ~expected:(Some "foo")
                   ~actual:(Syn.Cst.Ident.name name);
                 Ok ()
@@ -4373,7 +4373,7 @@ let tests =
                 Error "expected commented expression attribute payload")
         | _ ->
             Error "expected let binding with commented expression attribute");
-    Test.case "cst builder can reify structure payload items from attributes"
+    Test.case "cst builder does not relift opaque attribute payloads"
       (fun () ->
         let result = parse_ml "let _ = value [@foo 1 + 2]\n" in
         let cst =
@@ -4386,12 +4386,12 @@ let tests =
             match Syn.Cst.Expression.attributes value with
             | { payload = Some payload; _ } :: _ -> (
                 match Syn.CstBuilder.structure_items_of_payload payload with
-                | Ok (Some (Syn.Cst.StructureItem.Expression _ :: _)) ->
+                | Ok None ->
                     Ok ()
                 | Ok _ ->
-                    Error "expected structure payload helper to reify expression items"
+                    Error "expected opaque attribute payload helper to stay non-reifying"
                 | Error _ ->
-                    Error "expected structure payload helper to succeed")
+                    Error "expected opaque attribute payload helper to stay non-reifying")
             | _ ->
                 Error "expected expression attribute payload")
         | _ ->
