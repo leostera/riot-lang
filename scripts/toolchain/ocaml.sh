@@ -372,12 +372,14 @@ build_local_target() {
   local output_dir="$2"
   local worktree_dir
   local host_target
+  local bootstrapped_host
   local temp_output_dir
   local tarball_path
   local final_tarball
   local checksum_path
 
   worktree_dir="$LOCAL_CACHE_ROOT/$target/worktree/vendor/ocaml"
+  bootstrapped_host=0
 
   if [ "$CLEAN_BUILD" != "0" ]; then
     run_cmd rm -rf "$(dirname "$worktree_dir")"
@@ -414,8 +416,17 @@ build_local_target() {
           cd "$worktree_dir"
           bash ./cross/build.sh "$host_target"
         )
+        bootstrapped_host=1
       fi
     fi
+  fi
+
+  if [ "$bootstrapped_host" = "1" ]; then
+    echo "Resetting source tree after host bootstrap for $target"
+    (
+      cd "$worktree_dir"
+      make distclean
+    )
   fi
 
   (

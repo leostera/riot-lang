@@ -142,6 +142,24 @@ let read_manifest_fingerprint toolchain_path =
       | Error _ -> None)
   | Ok false | Error _ -> None
 
+let manifest_error target manifest_path =
+  "Missing or invalid manifest.json at " ^ manifest_path
+  ^ " for " ^ target
+  ^ ". Reinstall this toolchain from a republished archive that includes manifest.json "
+  ^ "(the release artifact must include a stable toolchain_fingerprint)."
+
+let ensure_manifest_present toolchain_path target source =
+  match source with
+  | Path _ -> Ok ()
+  | _ -> (
+      match read_manifest_fingerprint toolchain_path with
+      | Some fingerprint when not (String.equal (String.trim fingerprint) "") ->
+          Ok ()
+      | _ ->
+          Error
+            (manifest_error target (Path.to_string Path.(toolchain_path / Path.v "manifest.json")))
+    )
+
 let sysroot_candidates ~toolchain_path ~target =
   [
     Path.(toolchain_path / Path.v "sysroot");
@@ -181,9 +199,8 @@ let missing_cross_components ~toolchain_path ~target =
       in
       compiler_missing @ sysroot_missing
 
-let validate_toolchain_install ~version ~target =
+let validate_toolchain_install ~version ~target ~source =
   let toolchain_path = get_toolchain_path_for_target version target in
-  let source = Version version in
   let toolchain = make_toolchain version source ~target in
   match check_binaries_exist toolchain with
   | Error _ -> Error [ "binaries" ]
@@ -192,7 +209,12 @@ let validate_toolchain_install ~version ~target =
         if target = get_host_triple () || explicit_sysroot_override () then []
         else missing_cross_components ~toolchain_path ~target
       in
-      if List.length missing = 0 then Ok toolchain else Error missing
+      if List.length missing > 0 then
+        Error missing
+      else
+        match ensure_manifest_present toolchain_path target source with
+        | Error msg -> Error [ msg ]
+        | Ok () -> Ok toolchain
 
 let reset_toolchain_install path =
   match Fs.exists path with
@@ -269,18 +291,27 @@ let download_and_install_toolchain version ~host ~target =
           | Ok output when output.Command.status != 0 ->
               Error ("Failed to extract toolchain tarball")
           | Ok _ ->
-              (* Clean up tarball *)
-              let _ = Fs.remove_file tar_path in
-              println ("✓ OCaml " ^ version ^ " (" ^ target ^ ") installed successfully");
-              Ok ())
+              (match ensure_manifest_present toolchain_path target (Version version) with
+              | Error msg -> Error msg
+              | Ok () ->
+                  (* Clean up tarball *)
+                  let _ = Fs.remove_file tar_path in
+                  println ("✓ OCaml " ^ version ^ " (" ^ target ^ ") installed successfully");
+                  Ok ()))
 
 let init ~config =
   let version = config.Tusk_model.Toolchain_config.version in
+  let local_compiler = local_compiler_path () in
   let source =
     match config.source with
     | Tusk_model.Toolchain_config.Version v -> Version v
     | Tusk_model.Toolchain_config.Path p -> Path p
     | Tusk_model.Toolchain_config.Url u -> Url u
+  in
+  let source =
+    match Fs.is_dir local_compiler with
+    | Ok true -> Path local_compiler
+    | _ -> source
   in
   let host = get_host_triple () in
   let target = host in (* init always uses host target for backward compatibility *)
@@ -298,7 +329,6 @@ let init ~config =
             ("Toolchain at " ^ Path.to_string toolchain_path ^ " is incomplete"))
   | _ -> (
       (* Try to use ./vendor/ocaml/compiler if it exists *)
-      let local_compiler = local_compiler_path () in
       match Fs.is_dir local_compiler with
       | Ok true -> (
           (* Create symlink from ~/.tusk/toolchains/{version}/{host_triple} to ./vendor/ocaml/compiler *)
@@ -310,18 +340,18 @@ let init ~config =
 
           (* Check if symlink already exists *)
           match Fs.exists toolchain_path with
-          | Ok true -> Ok toolchain
+          | Ok true -> Ok (make_toolchain version source ~target)
           | _ -> (
               (* Get absolute path for local_compiler *)
               let cwd =
                 Env.current_dir () |> Result.expect ~msg:"Failed to get cwd"
               in
               let abs_local =
-                if Path.is_absolute local_compiler then local_compiler
-                else Path.(cwd / local_compiler)
+              if Path.is_absolute local_compiler then local_compiler
+              else Path.(cwd / local_compiler)
               in
               match Fs.symlink ~src:abs_local ~dst:toolchain_path with
-              | Ok () -> Ok toolchain
+              | Ok () -> Ok (make_toolchain version source ~target)
               | Error err ->
                   Error
                     ("Failed to create toolchain symlink from " ^ 
@@ -380,9 +410,8 @@ let hash t =
   Crypto.Sha256.write_string hasher t.version;
   Crypto.Sha256.write_string hasher t.target;
   let () =
-    match read_manifest_fingerprint toolchain_path with
-    | Some fingerprint -> Crypto.Sha256.write_string hasher fingerprint
-    | None ->
+    match t.source with
+    | Path _ ->
         write_legacy_path_fingerprint
           [
             Ocamlc.path t.ocamlc;
@@ -405,7 +434,15 @@ let hash t =
                   Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libssl.a");
                   Path.(sysroot / Path.v "usr" / Path.v "lib" / Path.v "libcrypto.a");
                 ]
-          | None -> ());
+          | None -> ())
+    | Version _ | Url _ -> (
+        match read_manifest_fingerprint toolchain_path with
+        | Some fingerprint when not (String.equal (String.trim fingerprint) "") ->
+            Crypto.Sha256.write_string hasher fingerprint
+        | _ ->
+            panic
+              ("Toolchain manifest fingerprint is required for non-local toolchains. "
+              ^ "Install from a republished archive that includes manifest.json."))
   in
   Crypto.Sha256.finish hasher
 
@@ -419,9 +456,18 @@ let init_for_target ~config ~target =
     | Tusk_model.Toolchain_config.Url u -> Url u
   in
   let host = get_host_triple () in
+  let local_compiler = local_compiler_path () in
+  let source =
+    if String.equal target host then
+      match Fs.is_dir local_compiler with
+      | Ok true -> Path local_compiler
+      | _ -> source
+    else
+      source
+  in
   let toolchain_path = get_toolchain_path_for_target version target in
   let bin_dir = Path.(toolchain_path / Path.v "bin") in
-  let validate () = validate_toolchain_install ~version ~target in
+  let validate () = validate_toolchain_install ~version ~target ~source in
   let refresh () =
     match download_and_install_toolchain version ~host ~target with
     | Ok () -> (
@@ -450,7 +496,6 @@ let init_for_target ~config ~target =
       (* Try local compiler if native build *)
       if host = target then
         (* Native build - try local compiler first *)
-        let local_compiler = local_compiler_path () in
         (match Fs.is_dir local_compiler with
         | Ok true ->
             (* Create symlink *)
@@ -507,12 +552,20 @@ type toolchain_info = {
 
 let check_toolchain_status ~version ~target =
   let toolchain_path = get_toolchain_path_for_target version target in
+  let source =
+    if String.equal target (get_host_triple ()) then
+      match Fs.is_dir (local_compiler_path ()) with
+      | Ok true -> Path (local_compiler_path ())
+      | _ -> Version version
+    else
+      Version version
+  in
   
   match Fs.is_dir toolchain_path with
   | Ok false | Error _ -> 
       NotInstalled { expected_path = toolchain_path }
   | Ok true ->
-      (match validate_toolchain_install ~version ~target with
+      (match validate_toolchain_install ~version ~target ~source with
       | Ok _ -> Installed { path = toolchain_path }
       | Error missing -> Incomplete { path = toolchain_path; missing })
 

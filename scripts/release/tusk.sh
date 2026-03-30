@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
-ENV_FILE="${RIOT_CDN_ENV_FILE:-${OCAML_CDN_ENV_FILE:-$REPO_ROOT/.env}}"
+ENV_FILE="$REPO_ROOT/.env"
 
 load_env_file() {
   local env_file="$1"
@@ -41,10 +41,7 @@ Important environment:
 
 Optional environment:
   VERSION                 default: git short SHA
-  OUTPUT_DIR              default: artifacts/tusk
-  RIOT_CDN_PUBLIC_BASE_URL
-                          default: https://cdn.pkgs.ml
-  RIOT_CDN_OBJECT_ACL
+  OUTPUT_DIR              default: dist/tusk
   INSTALL_SCRIPT_PATH     default: scripts/install.sh
   RIOT_RELEASE_UPLOAD     default: 1
   RIOT_RELEASE_PUBLISH_LATEST
@@ -52,6 +49,12 @@ Optional environment:
   RIOT_RELEASE_INSTALL_SCRIPT
                           default: 1
   RIOT_RELEASE_DRY_RUN    default: 0
+  RIOT_CDN_ENDPOINT_URL
+  RIOT_CDN_ACCESS_KEY_ID
+  RIOT_CDN_SECRET_ACCESS_KEY
+  RIOT_CDN_SESSION_TOKEN
+  RIOT_CDN_REGION
+  RIOT_CDN_OBJECT_ACL
 EOF
 }
 
@@ -62,16 +65,16 @@ if [ $# -ne 1 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
 fi
 
 TARGET="$1"
-OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/artifacts/tusk}"
-CDN_BASE_URL="${RIOT_CDN_PUBLIC_BASE_URL:-${OCAML_CDN_PUBLIC_BASE_URL:-https://cdn.pkgs.ml}}"
-PUBLIC_BASE_URL="${CDN_BASE_URL%/}/tusk"
-BUCKET="${RIOT_CDN_BUCKET:-${OCAML_CDN_BUCKET:-}}"
-ENDPOINT_URL="${RIOT_CDN_ENDPOINT_URL:-${OCAML_CDN_ENDPOINT_URL:-}}"
-OBJECT_ACL="${RIOT_CDN_OBJECT_ACL:-${OCAML_CDN_OBJECT_ACL:-}}"
-AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-${RIOT_CDN_ACCESS_KEY_ID:-${OCAML_CDN_ACCESS_KEY_ID:-}}}"
-AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-${RIOT_CDN_SECRET_ACCESS_KEY:-${OCAML_CDN_SECRET_ACCESS_KEY:-}}}"
-AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN:-${RIOT_CDN_SESSION_TOKEN:-${OCAML_CDN_SESSION_TOKEN:-}}}"
-AWS_REGION_VALUE="${AWS_REGION:-${AWS_DEFAULT_REGION:-${RIOT_CDN_REGION:-${OCAML_CDN_REGION:-}}}}"
+OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/dist/tusk}"
+CDN_BASE_URL="https://cdn.pkgs.ml"
+PUBLIC_BASE_URL="${CDN_BASE_URL}/tusk"
+BUCKET="ml-pkgs-cdn"
+ENDPOINT_URL="${RIOT_CDN_ENDPOINT_URL:-}"
+OBJECT_ACL="${RIOT_CDN_OBJECT_ACL:-}"
+AWS_ACCESS_KEY_ID="${RIOT_CDN_ACCESS_KEY_ID:-}"
+AWS_SECRET_ACCESS_KEY="${RIOT_CDN_SECRET_ACCESS_KEY:-}"
+AWS_SESSION_TOKEN="${RIOT_CDN_SESSION_TOKEN:-}"
+AWS_REGION_VALUE="${RIOT_CDN_REGION:-}"
 INSTALL_SCRIPT_PATH="${INSTALL_SCRIPT_PATH:-$REPO_ROOT/scripts/install.sh}"
 VERSION="${VERSION:-$(git rev-parse --short HEAD)}"
 UPLOAD_ARTIFACTS="${RIOT_RELEASE_UPLOAD:-1}"
@@ -206,9 +209,8 @@ upload_object() {
 
 if [ "$UPLOAD_ARTIFACTS" != "0" ]; then
   command -v aws >/dev/null 2>&1 || die "aws CLI is required for uploads"
-  [ -n "$BUCKET" ] || die "RIOT_CDN_BUCKET / OCAML_CDN_BUCKET is required"
-  [ -n "$AWS_ACCESS_KEY_ID" ] || die "RIOT_CDN_ACCESS_KEY_ID / AWS_ACCESS_KEY_ID is required"
-  [ -n "$AWS_SECRET_ACCESS_KEY" ] || die "RIOT_CDN_SECRET_ACCESS_KEY / AWS_SECRET_ACCESS_KEY is required"
+  [ -n "$AWS_ACCESS_KEY_ID" ] || die "RIOT_CDN_ACCESS_KEY_ID is required"
+  [ -n "$AWS_SECRET_ACCESS_KEY" ] || die "RIOT_CDN_SECRET_ACCESS_KEY is required"
   configure_aws_env
 fi
 

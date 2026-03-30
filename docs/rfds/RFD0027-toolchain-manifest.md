@@ -1,0 +1,56 @@
+# RFD0027 - Toolchain Manifest Contract
+
+- Feature Name: `toolchain_manifest_contract`
+- Start Date: `2026-03-30`
+- Status: `implemented`
+- RFD PR: [leostera/riot#0000](https://github.com/leostera/riot/pull/0000)
+- Riot Issue: [leostera/riot#0000](https://github.com/leostera/riot/issues/0000)
+
+## Summary
+[summary]: #summary
+
+This RFD makes `tusk` require `manifest.json` inside published OCaml
+toolchain tarballs and use it as the authoritative toolchain identity input to
+cache hashing.
+
+The contract is:
+
+- Release toolchains published for `./scripts/toolchain/ocaml.sh` must include
+  `manifest.json`.
+- The file must contain a non-empty `toolchain_fingerprint`.
+- `tusk-toolchain` must validate manifest presence on install and reject archives
+  that do not contain it.
+- Planner cache keys for downloaded/non-local toolchains must be derived from that
+  fingerprint instead of probing selected filesystem paths.
+- Local source toolchains (explicit `Path` installs / vendored compiler) remain
+  supported and continue to use path-based fallback hashing.
+
+## Motivation
+[motivation]: #motivation
+
+Recent cross-compilation failures were traceable to toolchain tarballs drifting
+from the compiler artifact set expected by the build process (missing sysroot
+headers/libs). A manifest fingerprint makes it explicit when a compiler bundle is
+semantically different even if file layout is similar.
+
+This RFD removes ad-hoc probing as the primary identity and makes cache behavior
+depend on a stable build artifact description carried in the release tarball.
+
+## Mechanism
+[mechanism]: #mechanism
+
+1. `vendor/ocaml/cross/package.sh` writes `manifest.json` during packaging and
+   archives it into every tarball.
+2. `tusk-toolchain`:
+   - validates `manifest.json` after extraction for downloaded toolchains,
+   - fails installation if the manifest is missing or invalid,
+   - prefers `toolchain_fingerprint` in `hash`.
+3. Planner cache keys now fail fast for missing-manifest non-local toolchains,
+   forcing users to install from a republished artifact.
+
+## Migration
+[migration]: #migration
+
+- Re-publish affected OCaml toolchains after this change and upload to CDN.
+- Invalidate stale local toolchain cache directories under `~/.tusk/toolchains/...`
+  if users previously installed legacy tarballs without manifests.

@@ -73,8 +73,8 @@ install_tusk() {
     # Create installation directory
     mkdir -p "$INSTALL_DIR"
     
-    # Construct download URL from S3/CDN
-    S3_BASE_URL="${TUSK_CDN_URL:-${RIOT_CDN_URL:-https://cdn.pkgs.ml}}"
+    # Construct download URL from CDN
+    S3_BASE_URL="https://cdn.pkgs.ml"
     
     if [ "$VERSION" = "latest" ]; then
         print_info "Fetching latest development build..."
@@ -148,7 +148,7 @@ handle_download_error() {
         echo ""
         echo "Please check:"
         echo "  - Your internet connection"
-        echo "  - The CDN is accessible: ${TUSK_CDN_URL:-${RIOT_CDN_URL:-https://cdn.pkgs.ml}}"
+        echo "  - The CDN is accessible: https://cdn.pkgs.ml"
         echo "  - https://github.com/leostera/riot/issues"
     fi
     

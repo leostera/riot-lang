@@ -48,6 +48,7 @@ There are currently no RFDs marked `rejected`.
 - `RFD0022` - Riot Package Registry
 - `RFD0023` - Riot Package Index
 - `RFD0024` - Riot Package Search
+- `RFD0027` - Toolchain Manifest Contract
 
 ## Notes
 
