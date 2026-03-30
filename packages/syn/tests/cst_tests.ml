@@ -1323,7 +1323,7 @@ let tests =
               }
           :: _ -> (
             match Syn.CstBuilder.structure_items_of_module_expression module_expression with
-            | Ok (Some [ Syn.Cst.StructureItem.LetBinding binding ]) ->
+            | Ok [ Syn.Cst.StructureItem.LetBinding binding ] ->
                 Test.assert_equal ~expected:"answer"
                   ~actual:(Syn.Cst.LetBinding.name binding);
                 Ok ()
@@ -1358,9 +1358,10 @@ let tests =
           :: _ -> (
             match Syn.CstBuilder.structure_items_of_module_expression module_expression with
             | Ok
-                (Some
-                  [ Syn.Cst.StructureItem.LetBinding binding;
-                    Syn.Cst.StructureItem.Comment comment ]) ->
+                [
+                  Syn.Cst.StructureItem.LetBinding binding;
+                  Syn.Cst.StructureItem.Comment comment;
+                ] ->
                 Test.assert_equal ~expected:"answer"
                   ~actual:(Syn.Cst.LetBinding.name binding);
                 Test.assert_equal ~expected:"(* keep me *)"
@@ -1415,12 +1416,11 @@ let tests =
                 } ] -> (
             match Syn.CstBuilder.structure_items_of_module_expression module_expression with
             | Ok
-                (Some
-                  [ Syn.Cst.StructureItem.Docstring types_doc;
-                    Syn.Cst.StructureItem.TypeDeclaration token_decl;
-                    Syn.Cst.StructureItem.TypeDeclaration node_decl;
-                    Syn.Cst.StructureItem.Docstring construction_doc;
-                    Syn.Cst.StructureItem.LetBinding make_token ]) ->
+                [ Syn.Cst.StructureItem.Docstring types_doc;
+                  Syn.Cst.StructureItem.TypeDeclaration token_decl;
+                  Syn.Cst.StructureItem.TypeDeclaration node_decl;
+                  Syn.Cst.StructureItem.Docstring construction_doc;
+                  Syn.Cst.StructureItem.LetBinding make_token ] ->
                 Test.assert_equal ~expected:"(** ## Types *)"
                   ~actual:(Syn.Cst.Docstring.text types_doc);
                 Test.assert_equal ~expected:"token"
@@ -1944,7 +1944,7 @@ let tests =
                 (SyntaxKind.to_string
                    (Ceibo.Red.SyntaxNode.kind signature_syntax_node));
             (match Syn.CstBuilder.signature_items_of_module_type module_type with
-            | Ok (Some [ Syn.Cst.SignatureItem.ValueDeclaration decl ]) ->
+            | Ok [ Syn.Cst.SignatureItem.ValueDeclaration decl ] ->
                 Test.assert_equal ~expected:"x"
                   ~actual:(Syn.Cst.Token.text decl.name_token);
                 Ok ()
@@ -1980,9 +1980,10 @@ let tests =
           :: _ -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
             | Ok
-                (Some
-                  [ Syn.Cst.SignatureItem.ValueDeclaration decl;
-                    Syn.Cst.SignatureItem.Docstring docstring ]) ->
+                [
+                  Syn.Cst.SignatureItem.ValueDeclaration decl;
+                  Syn.Cst.SignatureItem.Docstring docstring;
+                ] ->
                 Test.assert_equal ~expected:"x"
                   ~actual:(Syn.Cst.Token.text decl.name_token);
                 Test.assert_equal ~expected:true
@@ -2041,12 +2042,11 @@ let tests =
                 } ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
             | Ok
-                (Some
-                  [ Syn.Cst.SignatureItem.Docstring types_doc;
-                    Syn.Cst.SignatureItem.TypeDeclaration token_decl;
-                    Syn.Cst.SignatureItem.TypeDeclaration node_decl;
-                    Syn.Cst.SignatureItem.Docstring construction_doc;
-                    Syn.Cst.SignatureItem.ValueDeclaration _ ]) ->
+                [ Syn.Cst.SignatureItem.Docstring types_doc;
+                  Syn.Cst.SignatureItem.TypeDeclaration token_decl;
+                  Syn.Cst.SignatureItem.TypeDeclaration node_decl;
+                  Syn.Cst.SignatureItem.Docstring construction_doc;
+                  Syn.Cst.SignatureItem.ValueDeclaration _ ] ->
                 Test.assert_equal ~expected:"(** ## Types *)"
                   ~actual:(Syn.Cst.Docstring.text types_doc);
                 Test.assert_equal ~expected:"(** ## Construction *)"
@@ -2113,12 +2113,11 @@ let tests =
                 } ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
             | Ok
-                (Some
-                  [ Syn.Cst.SignatureItem.Docstring heading;
-                    Syn.Cst.SignatureItem.TypeDeclaration tool_decl;
-                    Syn.Cst.SignatureItem.TypeDeclaration resource_decl;
-                    Syn.Cst.SignatureItem.TypeDeclaration prompt_decl;
-                    Syn.Cst.SignatureItem.TypeDeclaration sampling_decl ]) ->
+                [ Syn.Cst.SignatureItem.Docstring heading;
+                  Syn.Cst.SignatureItem.TypeDeclaration tool_decl;
+                  Syn.Cst.SignatureItem.TypeDeclaration resource_decl;
+                  Syn.Cst.SignatureItem.TypeDeclaration prompt_decl;
+                  Syn.Cst.SignatureItem.TypeDeclaration sampling_decl ] ->
                 Test.assert_equal ~expected:"(** {2 Capabilities} *)"
                   ~actual:(Syn.Cst.Docstring.text heading);
                 Test.assert_equal ~expected:1
@@ -2169,7 +2168,7 @@ let tests =
         match green_module_type with
         | Some module_type -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
-            | Ok (Some items) ->
+            | Ok items ->
                 let types_heading_count =
                   items
                   |> List.filter (
@@ -2257,11 +2256,10 @@ let tests =
                 } ] -> (
             match Syn.CstBuilder.signature_items_of_module_type module_type with
             | Ok
-                (Some
-                  [ Syn.Cst.SignatureItem.OpenStatement _;
-                    Syn.Cst.SignatureItem.Docstring docstring;
-                    Syn.Cst.SignatureItem.Comment comment;
-                    Syn.Cst.SignatureItem.ValueDeclaration decl ]) ->
+                [ Syn.Cst.SignatureItem.OpenStatement _;
+                  Syn.Cst.SignatureItem.Docstring docstring;
+                  Syn.Cst.SignatureItem.Comment comment;
+                  Syn.Cst.SignatureItem.ValueDeclaration decl ] ->
                 Test.assert_equal ~expected:"(** Nested overview *)"
                   ~actual:(Syn.Cst.Docstring.text docstring);
                 Test.assert_equal ~expected:"(* plain note *)"
@@ -9732,11 +9730,10 @@ let tests =
         let assert_nested_signature module_type =
           match Syn.CstBuilder.signature_items_of_module_type module_type with
           | Ok
-              (Some
-                [
-                  Syn.Cst.SignatureItem.TypeDeclaration _;
-                  Syn.Cst.SignatureItem.Attribute attribute;
-                ]) ->
+              [
+                Syn.Cst.SignatureItem.TypeDeclaration _;
+                Syn.Cst.SignatureItem.Attribute attribute;
+              ] ->
               Test.assert_equal ~expected:None ~actual:attribute.payload;
               Ok ()
           | Ok _ ->

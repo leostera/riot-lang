@@ -72,7 +72,7 @@ val class_field_items_of_fields : ?source_node:Cst.syntax_node -> Cst.ClassField
 val class_type_field_items_of_fields : ?source_node:Cst.syntax_node -> Cst.ClassTypeField.t list -> class_type_field_item list
 
 val structure_items_of_module_expression : Cst.ModuleExpression.t ->
-(Cst.StructureItem.t list option, error) result
+(Cst.StructureItem.t list, error) result
 
 val signature_items_from_syntax_node : Cst.syntax_node -> (Cst.SignatureItem.t list, error) result
 
@@ -83,7 +83,7 @@ Cst.syntax_node ->
 val signature_items_from_syntax_nodes : Cst.syntax_node list -> (Cst.SignatureItem.t list, error) result
 
 val signature_items_of_module_type : Cst.ModuleType.t ->
-(Cst.SignatureItem.t list option, error) result
+(Cst.SignatureItem.t list, error) result
 
 val pattern_of_syntax_node : Cst.syntax_node -> (Cst.Pattern.t, error) result
 

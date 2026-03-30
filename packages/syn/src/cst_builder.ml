@@ -9638,9 +9638,14 @@ let structure_items_from_syntax_nodes = fun nodes ->
 let structure_items_of_module_expression = function
   | Cst.ModuleExpression.Structure {item_syntax_nodes; _} ->
       structure_items_from_syntax_nodes item_syntax_nodes
-      |> Result.map Option.some
-  | _ ->
-      Ok None
+  | module_expression ->
+      Error
+        {
+          message = "module expression does not have a structural item stream";
+          syntax_kind = Cst.syntax_kind (Cst.ModuleExpression.syntax_node module_expression);
+          span = Ceibo.Red.SyntaxNode.span (Cst.ModuleExpression.syntax_node module_expression);
+          context = [ "module_expression" ];
+        }
 
 let normalize_signature_items = fun ~source items -> items
 |> coalesce_signature_type_declaration_groups
@@ -9687,9 +9692,14 @@ let signature_items_of_module_type = function
   | Cst.ModuleType.Signature {signature_syntax_node; _} ->
       signature_item_payload_nodes_from_node signature_syntax_node
       |> signature_items_from_syntax_nodes
-      |> Result.map Option.some
-  | _ ->
-      Ok None
+  | module_type ->
+      Error
+        {
+          message = "module type does not have a structural item stream";
+          syntax_kind = Cst.syntax_kind (Cst.ModuleType.syntax_node module_type);
+          span = Ceibo.Red.SyntaxNode.span (Cst.ModuleType.syntax_node module_type);
+          context = [ "module_type" ];
+        }
 
 let pattern_of_syntax_node = fun node ->
   match pattern_from_node node with

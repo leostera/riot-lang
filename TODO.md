@@ -219,7 +219,7 @@ This file is _yours_. Keep it up to date after every big change.
   - any future raw source helper use should be treated as new debt immediately
 
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
-  - explicit public nested signature-body item anchors beyond the current helper-only relift surface, if downstream tools need more than `CstBuilder.signature_items_of_module_type`
+  - nested `struct ... end` / `sig ... end` item streams are now shape-specific `syn` helpers that return explicit errors instead of `Ok None`; if downstream tools ever need more than `CstBuilder.structure_items_of_module_expression` / `signature_items_of_module_type`, add that structure here rather than reintroducing formatter-side absence checks
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit ambiguity-sensitive type-declaration shape markers
 
@@ -228,6 +228,7 @@ This file is _yours_. Keep it up to date after every big change.
   - `OpenStatement.t` still spans both `.ml` and `.mli` contexts through `target = Path | ModuleExpression`, so `SignatureItem.OpenStatement` can still represent invalid interface-only `open struct ... end` / `open F(X)` shapes unless we split or otherwise narrow the item context
   - `include_statement` still spans both `.ml` and `.mli` contexts through `target = ModuleExpression | ModuleType`, so `SignatureItem.IncludeStatement` can still represent invalid interface `include F(X)` / implementation `include S` mixes unless we split or otherwise narrow that surface
   - class items are now split by context (`ClassDefinition` for structure items, `ClassDeclaration` for signature items); keep applying that same rule to any other shared declaration nodes that still mix `.ml` and `.mli` forms
+  - nested `struct ... end` / `sig ... end` helper APIs are no longer broad `option` surfaces; wrong-shape requests now fail explicitly from `syn`
   - keep auditing broad shared nodes and documenting any remaining intentional invalid-state surface explicitly
 
 - [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`

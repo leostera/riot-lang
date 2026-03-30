@@ -4673,12 +4673,8 @@ and nested_structure_items_from_module_expression module_expression =
 
 and nested_signature_items_from_module_type module_type =
   match Syn.CstBuilder.signature_items_of_module_type module_type with
-  | Ok (Some items) ->
+  | Ok items ->
       items
-  | Ok None ->
-      unsupported_syntax ~context:[ "module_type" ]
-        ~syntax_node:(Syn.Cst.ModuleType.syntax_node module_type)
-        "nested signature module types do not have a structural item stream"
   | Error error ->
       unsupported_with_context_entries
         ~context:
