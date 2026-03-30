@@ -201,9 +201,8 @@ and diagnostics_for_expression ~inside_local_open expr =
     | Syn.Cst.Expression.Infix { left; right; _ } ->
         diagnostics_for_expression ~inside_local_open left
         @ diagnostics_for_expression ~inside_local_open right
-    | Syn.Cst.Expression.Typed { expression; _ }
-    | Syn.Cst.Expression.Polymorphic { expression; _ }
-    | Syn.Cst.Expression.Coerce { expression; _ } ->
+    | Syn.Cst.Expression.TypeAscription { expression; _ }
+    | Syn.Cst.Expression.Polymorphic { expression; _ } ->
         diagnostics_for_expression ~inside_local_open expression
     | Syn.Cst.Expression.Sequence { expressions; _ } ->
         expressions |> List.concat_map (diagnostics_for_expression ~inside_local_open)

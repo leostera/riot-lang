@@ -1177,9 +1177,8 @@ and expression =
   | FieldAssign of field_assign_expression
   | Assign of assign_expression
   | Infix of infix_expression
-  | Typed of typed_expression
+  | TypeAscription of type_ascription_expression
   | Polymorphic of polymorphic_expression
-  | Coerce of coerce_expression
   | Sequence of sequence_expression
   | Tuple of tuple_expression
   | List of list_expression
@@ -1454,25 +1453,25 @@ and infix_expression = {
   attributes : attribute list;
 }
 
-and typed_expression = {
+and type_ascription_expression = {
   syntax_node : syntax_node;
   expression : expression;
-  type_ : core_type;
+  kind : type_ascription_kind;
   attributes : attribute list;
 }
+
+and type_ascription_kind =
+  | Type of core_type
+  | Coerce of core_type
+  | ConstraintCoerce of {
+      from_type : core_type;
+      to_type : core_type;
+    }
 
 and polymorphic_expression = {
   syntax_node : syntax_node;
   expression : expression;
   type_ : core_type;
-  attributes : attribute list;
-}
-
-and coerce_expression = {
-  syntax_node : syntax_node;
-  expression : expression;
-  from_type : core_type option;
-  to_type : core_type;
   attributes : attribute list;
 }
 
@@ -1861,9 +1860,8 @@ module Expression = struct
     | FieldAssign of field_assign_expression
     | Assign of assign_expression
     | Infix of infix_expression
-    | Typed of typed_expression
+    | TypeAscription of type_ascription_expression
     | Polymorphic of polymorphic_expression
-    | Coerce of coerce_expression
     | Sequence of sequence_expression
     | Tuple of tuple_expression
     | List of list_expression
@@ -1933,11 +1931,9 @@ module Expression = struct
         expr.syntax_node
     | Infix expr ->
         expr.syntax_node
-    | Typed expr ->
+    | TypeAscription expr ->
         expr.syntax_node
     | Polymorphic expr ->
-        expr.syntax_node
-    | Coerce expr ->
         expr.syntax_node
     | Sequence expr ->
         expr.syntax_node
@@ -2025,11 +2021,9 @@ module Expression = struct
         expr.attributes
     | Infix expr ->
         expr.attributes
-    | Typed expr ->
+    | TypeAscription expr ->
         expr.attributes
     | Polymorphic expr ->
-        expr.attributes
-    | Coerce expr ->
         expr.attributes
     | Sequence expr ->
         expr.attributes

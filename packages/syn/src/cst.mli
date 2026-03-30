@@ -2027,9 +2027,9 @@ and expression =
       (** A general assignment expression such as `r := 1` or `arr.(i) <- x`. *)
   | Infix of infix_expression
       (** An infix operator expression such as `a + b` or `x |> f`. *)
-  | Typed of typed_expression
-      (** A type-constrained expression such as `(expr : t)` or
-          `let value : t = expr`.
+  | TypeAscription of type_ascription_expression
+      (** A type-constrained or coerced expression such as `(expr : t)`,
+          `(expr :> t)`, `(expr : s :> t)`, or `let value : t = expr`.
 
           When lifted from a binding annotation, `syntax_node` is the enclosing
           `let` binding because the parser does not currently emit a dedicated
@@ -2042,8 +2042,6 @@ and expression =
           This is reconstructed from the surrounding binding or typed
           expression syntax when the annotated type is a quoted `CoreType.Poly`.
       *)
-  | Coerce of coerce_expression
-      (** A coercion expression such as `(expr :> t)` or `(expr : s :> t)`. *)
   | Sequence of sequence_expression
       (** A sequence expression such as `e1; e2`. *)
   | Tuple of tuple_expression
@@ -2525,17 +2523,25 @@ and infix_expression = {
   attributes : attribute list;
 }
 
-(** Payload for `Expression.Typed`.
+(** Payload for `Expression.TypeAscription`.
 
     Covers `(expr : t)` and reconstructed binding annotations such as
     `let value : t = expr`.
 *)
-and typed_expression = {
+and type_ascription_expression = {
   syntax_node : syntax_node;
   expression : expression;
-  type_ : core_type;
+  kind : type_ascription_kind;
   attributes : attribute list;
 }
+
+and type_ascription_kind =
+  | Type of core_type
+  | Coerce of core_type
+  | ConstraintCoerce of {
+      from_type : core_type;
+      to_type : core_type;
+    }
 
 (** Payload for `Expression.Polymorphic`.
 
@@ -2551,19 +2557,6 @@ and polymorphic_expression = {
   syntax_node : syntax_node;
   expression : expression;
   type_ : core_type;
-  attributes : attribute list;
-}
-
-(** Payload for `Expression.Coerce`.
-
-    `from_type` is present for the longer `(expr : from :> to)` spelling and
-    absent for the shorter `(expr :> to)` spelling.
-*)
-and coerce_expression = {
-  syntax_node : syntax_node;
-  expression : expression;
-  from_type : core_type option;
-  to_type : core_type;
   attributes : attribute list;
 }
 
@@ -3271,9 +3264,8 @@ module Expression : sig
     | FieldAssign of field_assign_expression
     | Assign of assign_expression
     | Infix of infix_expression
-    | Typed of typed_expression
+    | TypeAscription of type_ascription_expression
     | Polymorphic of polymorphic_expression
-    | Coerce of coerce_expression
     | Sequence of sequence_expression
     | Tuple of tuple_expression
     | List of list_expression

@@ -262,10 +262,8 @@ and binding_sites_of_expression expr =
       binding_sites_of_expression target @ binding_sites_of_expression value
   | Syn.Cst.Expression.Infix { left; right; _ } ->
       binding_sites_of_expression left @ binding_sites_of_expression right
-  | Syn.Cst.Expression.Typed { expression; _ }
+  | Syn.Cst.Expression.TypeAscription { expression; _ }
   | Syn.Cst.Expression.Polymorphic { expression; _ } ->
-      binding_sites_of_expression expression
-  | Syn.Cst.Expression.Coerce { expression; _ } ->
       binding_sites_of_expression expression
   | Syn.Cst.Expression.Sequence { expressions; _ } ->
       expressions |> List.concat_map binding_sites_of_expression

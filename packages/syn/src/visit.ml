@@ -657,26 +657,19 @@ and descend_expression = fun walk ctx (expression : Cst.Expression.t) ->
   | Cst.Expression.Sequence { expressions; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       List.fold_left walk.expression ctx expressions
-  | Cst.Expression.Typed { expression; type_; attributes; _ }
+  | Cst.Expression.TypeAscription { expression; kind; attributes; _ } ->
+      let ctx = List.fold_left walk.attribute ctx attributes in
+      let ctx = walk.expression ctx expression in
+      (match kind with
+      | Cst.Type type_ | Cst.Coerce type_ ->
+          walk.core_type ctx type_
+      | Cst.ConstraintCoerce { from_type; to_type } ->
+          let ctx = walk.core_type ctx from_type in
+          walk.core_type ctx to_type)
   | Cst.Expression.Polymorphic { expression; type_; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx expression in
       walk.core_type ctx type_
-  | Cst.Expression.Coerce {
-    expression;
-    from_type;
-    to_type;
-    attributes;
-    _
-  } ->
-      let ctx = List.fold_left walk.attribute ctx attributes in
-      let ctx = walk.expression ctx expression in
-      let ctx =
-        match from_type with
-        | Some from_type -> walk.core_type ctx from_type
-        | None -> ctx
-      in
-      walk.core_type ctx to_type
   | Cst.Expression.Tuple { elements; attributes; _ }
   | Cst.Expression.List { elements; attributes; _ }
   | Cst.Expression.Array { elements; attributes; _ } ->

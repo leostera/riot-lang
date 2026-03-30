@@ -4622,7 +4622,12 @@ and expression_with_type_annotation = fun ~syntax_node ~expression type_node ->
   | Cst.CoreType.Poly { binders; _ } when List.exists Cst.TypeBinder.is_quoted binders ->
       Cst.Expression.Polymorphic {syntax_node; expression; type_; attributes = []}
   | _ ->
-      Cst.Expression.Typed {syntax_node; expression; type_; attributes = []}
+      Cst.Expression.TypeAscription {
+        syntax_node;
+        expression;
+        kind = Cst.Type type_;
+        attributes = []
+      }
 and binding_type_annotation_node = fun prefix_nodes -> prefix_nodes |> List.find_opt can_lift_core_type_node
 and binding_parameter_nodes = fun prefix_nodes -> prefix_nodes
 |> List.filter (fun child -> is_parameter_like_kind (Ceibo.Red.SyntaxNode.kind child))
@@ -4831,12 +4836,10 @@ and expression_from_node = fun node ->
             Cst.Expression.Assign {expr with attributes = append expr.attributes}
         | Cst.Expression.Infix expr ->
             Cst.Expression.Infix {expr with attributes = append expr.attributes}
-        | Cst.Expression.Typed expr ->
-            Cst.Expression.Typed {expr with attributes = append expr.attributes}
+        | Cst.Expression.TypeAscription expr ->
+            Cst.Expression.TypeAscription {expr with attributes = append expr.attributes}
         | Cst.Expression.Polymorphic expr ->
             Cst.Expression.Polymorphic {expr with attributes = append expr.attributes}
-        | Cst.Expression.Coerce expr ->
-            Cst.Expression.Coerce {expr with attributes = append expr.attributes}
         | Cst.Expression.Sequence expr ->
             Cst.Expression.Sequence {expr with attributes = append expr.attributes}
         | Cst.Expression.Tuple expr ->
@@ -5151,19 +5154,21 @@ and expression_from_node = fun node ->
     | Syntax_kind.COERCE_EXPR -> (
         match direct_non_trivia_nodes node with
         | expr_node :: to_type_node :: [] ->
-            Cst.Expression.Coerce {
+            Cst.Expression.TypeAscription {
               syntax_node = node;
               expression = expression_from_node expr_node;
-              from_type = None;
-              to_type = core_type_from_node to_type_node;
+              kind = Cst.Coerce (core_type_from_node to_type_node);
               attributes = []
             }
         | expr_node :: from_type_node :: to_type_node :: _ ->
-            Cst.Expression.Coerce {
+            Cst.Expression.TypeAscription {
               syntax_node = node;
               expression = expression_from_node expr_node;
-              from_type = Some (core_type_from_node from_type_node);
-              to_type = core_type_from_node to_type_node;
+              kind =
+                Cst.ConstraintCoerce {
+                  from_type = core_type_from_node from_type_node;
+                  to_type = core_type_from_node to_type_node;
+                };
               attributes = []
             }
         | _ -> unsupported_expression node
@@ -9174,16 +9179,17 @@ and validate_expression = fun ~context ->
   | Cst.Expression.Infix { left; right; _ } ->
       validate_expression ~context:((("expression.infix.left" :: context))) left;
       validate_expression ~context:((("expression.infix.right" :: context))) right
-  | Cst.Expression.Typed { expression; type_; _ } ->
-      validate_expression ~context:((("expression.typed.expression" :: context))) expression;
-      validate_core_type ~context:((("expression.typed.type" :: context))) type_
+  | Cst.Expression.TypeAscription { expression; kind; _ } ->
+      validate_expression ~context:((("expression.type_ascription.expression" :: context))) expression;
+      (match kind with
+      | Cst.Type type_ | Cst.Coerce type_ ->
+          validate_core_type ~context:((("expression.type_ascription.type" :: context))) type_
+      | Cst.ConstraintCoerce { from_type; to_type } ->
+          validate_core_type ~context:((("expression.type_ascription.from_type" :: context))) from_type;
+          validate_core_type ~context:((("expression.type_ascription.to_type" :: context))) to_type)
   | Cst.Expression.Polymorphic { expression; type_; _ } ->
       validate_expression ~context:((("expression.polymorphic.expression" :: context))) expression;
       validate_core_type ~context:((("expression.polymorphic.type" :: context))) type_
-  | Cst.Expression.Coerce { expression; from_type; to_type; _ } ->
-      validate_expression ~context:((("expression.coerce.expression" :: context))) expression;
-      Option.iter (validate_core_type ~context:((("expression.coerce.from_type" :: context)))) from_type;
-      validate_core_type ~context:((("expression.coerce.to_type" :: context))) to_type
   | Cst.Expression.Sequence { expressions; _ } ->
       List.iter (validate_expression ~context:((("expression.sequence.expressions" :: context)))) expressions
   | Cst.Expression.Tuple { elements; _ }

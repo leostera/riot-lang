@@ -79,6 +79,7 @@
 73. Render `class%foo` / `class type%foo` shortcut declaration shells from explicit CST declaration modifier fields. Do not rescan declaration syntax to rediscover shell extensions or attributes once `syn` exposes them.
 74. When `syn` tightens a declaration node into explicit valid-shape variants, follow that split directly in `krasny`. Do not reconstruct old optional-field products in the formatter just to preserve previous call sites.
 75. Follow class/object member validity splits directly too. Render concrete member definitions from mandatory bodies/values, virtual member definitions from mandatory types, and initializers from mandatory bodies; do not preserve formatter branches for old `option`-shaped member states once `syn` removes them.
+76. Render expression `: t`, `:> t`, and `: t :> u` forms from `Syn.Cst.Expression.TypeAscription` and its explicit inner variants. Do not reconstruct the old split between typed expressions and coercions in `krasny`.
 
 ## Validate
 

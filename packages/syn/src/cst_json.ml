@@ -903,6 +903,18 @@ and expression_attribute_fields = fun expression ->
       []
   | attributes ->
       [ ("attributes", Json.Array (List.map attribute_to_json attributes)) ]
+and type_ascription_kind_to_json = function
+  | Cst.Type type_ ->
+      Json.Object [ ("tag", Json.String "type"); ("type", core_type_to_json type_) ]
+  | Cst.Coerce type_ ->
+      Json.Object [ ("tag", Json.String "coerce"); ("type", core_type_to_json type_) ]
+  | Cst.ConstraintCoerce { from_type; to_type } ->
+      Json.Object
+        [
+          ("tag", Json.String "constraint_coerce");
+          ("from_type", core_type_to_json from_type);
+          ("to_type", core_type_to_json to_type);
+        ]
 and expression_to_json = fun expression ->
   match expression with
   | Cst.Expression.Path { syntax_node; path; _ } ->
@@ -1144,12 +1156,12 @@ and expression_to_json = fun expression ->
         ("right", expression_to_json right)
       ]
       @ expression_attribute_fields expression)
-  | Cst.Expression.Typed { syntax_node; expression = inner; type_; _ } ->
+  | Cst.Expression.TypeAscription { syntax_node; expression = inner; kind; _ } ->
       Json.Object ([
-        ("tag", Json.String "typed");
+        ("tag", Json.String "type_ascription");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("expression", expression_to_json inner);
-        ("type", core_type_to_json type_)
+        ("kind", type_ascription_kind_to_json kind)
       ]
       @ expression_attribute_fields expression)
   | Cst.Expression.Polymorphic { syntax_node; expression = inner; type_; _ } ->
@@ -1158,21 +1170,6 @@ and expression_to_json = fun expression ->
         ("syntax_node", syntax_node_to_json syntax_node);
         ("expression", expression_to_json inner);
         ("type", core_type_to_json type_)
-      ]
-      @ expression_attribute_fields expression)
-  | Cst.Expression.Coerce {
-    syntax_node;
-    expression = inner;
-    from_type;
-    to_type;
-    _
-  } ->
-      Json.Object ([
-        ("tag", Json.String "coerce");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("expression", expression_to_json inner);
-        ("from_type", option_to_json core_type_to_json from_type);
-        ("to_type", core_type_to_json to_type)
       ]
       @ expression_attribute_fields expression)
   | Cst.Expression.Sequence { syntax_node; separator_token; separator_tokens; expressions; _ } ->

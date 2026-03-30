@@ -303,7 +303,7 @@
             }
           ],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
@@ -380,17 +380,10 @@
                 }
               }
             },
-            "type": {
-              "tag": "constr",
-              "syntax_node": {
-                "kind": "TYPE_CONSTR",
-                "span": {
-                  "start": 67,
-                  "end": 69
-                }
-              },
-              "constructor_path": {
-                "tag": "ident",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "constr",
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
@@ -398,16 +391,26 @@
                     "end": 69
                   }
                 },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "b",
-                  "span": {
-                    "start": 68,
-                    "end": 69
+                "constructor_path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 67,
+                      "end": 69
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 68,
+                      "end": 69
+                    }
                   }
-                }
-              },
-              "arguments": []
+                },
+                "arguments": []
+              }
             }
           },
           "and_bindings": [],
@@ -833,7 +836,7 @@
             }
           ],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
@@ -951,17 +954,10 @@
                 }
               }
             },
-            "type": {
-              "tag": "constr",
-              "syntax_node": {
-                "kind": "TYPE_CONSTR",
-                "span": {
-                  "start": 162,
-                  "end": 164
-                }
-              },
-              "constructor_path": {
-                "tag": "ident",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "constr",
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
@@ -969,16 +965,26 @@
                     "end": 164
                   }
                 },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "c",
-                  "span": {
-                    "start": 163,
-                    "end": 164
+                "constructor_path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 162,
+                      "end": 164
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "c",
+                    "span": {
+                      "start": 163,
+                      "end": 164
+                    }
                   }
-                }
-              },
-              "arguments": []
+                },
+                "arguments": []
+              }
             }
           },
           "and_bindings": [],

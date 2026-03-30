@@ -457,7 +457,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
@@ -531,26 +531,11 @@
                 "payload": null
               }
             },
-            "type": {
-              "tag": "extension",
-              "extension": {
-                "syntax_node": {
-                  "kind": "EXTENSION_EXPR",
-                  "span": {
-                    "start": 415,
-                    "end": 438
-                  }
-                },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 417,
-                    "end": 418
-                  }
-                },
-                "name": {
-                  "tag": "qualified",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "extension",
+                "extension": {
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
@@ -558,8 +543,16 @@
                       "end": 438
                     }
                   },
-                  "prefix": {
-                    "tag": "ident",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 417,
+                      "end": 418
+                    }
+                  },
+                  "name": {
+                    "tag": "qualified",
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
@@ -567,34 +560,44 @@
                         "end": 438
                       }
                     },
+                    "prefix": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "EXTENSION_EXPR",
+                        "span": {
+                          "start": 415,
+                          "end": 438
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "{",
+                        "span": {
+                          "start": 416,
+                          "end": 417
+                        }
+                      }
+                    },
+                    "dot_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 419,
+                        "end": 420
+                      }
+                    },
                     "name_token": {
                       "kind": "IDENT_EXPR",
-                      "text": "{",
+                      "text": "foo",
                       "span": {
-                        "start": 416,
-                        "end": 417
+                        "start": 420,
+                        "end": 423
                       }
                     }
                   },
-                  "dot_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "span": {
-                      "start": 419,
-                      "end": 420
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "foo",
-                    "span": {
-                      "start": 420,
-                      "end": 423
-                    }
-                  }
-                },
-                "payload_syntax_node": null,
-                "payload": null
+                  "payload_syntax_node": null,
+                  "payload": null
+                }
               }
             }
           },
@@ -705,7 +708,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
@@ -779,26 +782,11 @@
                 "payload": null
               }
             },
-            "type": {
-              "tag": "extension",
-              "extension": {
-                "syntax_node": {
-                  "kind": "EXTENSION_EXPR",
-                  "span": {
-                    "start": 502,
-                    "end": 534
-                  }
-                },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 504,
-                    "end": 505
-                  }
-                },
-                "name": {
-                  "tag": "qualified",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "extension",
+                "extension": {
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
@@ -806,8 +794,16 @@
                       "end": 534
                     }
                   },
-                  "prefix": {
-                    "tag": "ident",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 504,
+                      "end": 505
+                    }
+                  },
+                  "name": {
+                    "tag": "qualified",
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
@@ -815,34 +811,44 @@
                         "end": 534
                       }
                     },
+                    "prefix": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "EXTENSION_EXPR",
+                        "span": {
+                          "start": 502,
+                          "end": 534
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "{",
+                        "span": {
+                          "start": 503,
+                          "end": 504
+                        }
+                      }
+                    },
+                    "dot_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 506,
+                        "end": 507
+                      }
+                    },
                     "name_token": {
                       "kind": "IDENT_EXPR",
-                      "text": "{",
+                      "text": "foo",
                       "span": {
-                        "start": 503,
-                        "end": 504
+                        "start": 507,
+                        "end": 510
                       }
                     }
                   },
-                  "dot_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "span": {
-                      "start": 506,
-                      "end": 507
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "foo",
-                    "span": {
-                      "start": 507,
-                      "end": 510
-                    }
-                  }
-                },
-                "payload_syntax_node": null,
-                "payload": null
+                  "payload_syntax_node": null,
+                  "payload": null
+                }
               }
             }
           },
@@ -953,7 +959,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
@@ -1106,26 +1112,11 @@
                 }
               }
             },
-            "type": {
-              "tag": "extension",
-              "extension": {
-                "syntax_node": {
-                  "kind": "EXTENSION_EXPR",
-                  "span": {
-                    "start": 604,
-                    "end": 631
-                  }
-                },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 606,
-                    "end": 607
-                  }
-                },
-                "name": {
-                  "tag": "qualified",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "extension",
+                "extension": {
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
@@ -1133,8 +1124,16 @@
                       "end": 631
                     }
                   },
-                  "prefix": {
-                    "tag": "ident",
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 606,
+                      "end": 607
+                    }
+                  },
+                  "name": {
+                    "tag": "qualified",
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
@@ -1142,34 +1141,44 @@
                         "end": 631
                       }
                     },
+                    "prefix": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "EXTENSION_EXPR",
+                        "span": {
+                          "start": 604,
+                          "end": 631
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "{",
+                        "span": {
+                          "start": 605,
+                          "end": 606
+                        }
+                      }
+                    },
+                    "dot_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": ".",
+                      "span": {
+                        "start": 608,
+                        "end": 609
+                      }
+                    },
                     "name_token": {
                       "kind": "IDENT_EXPR",
-                      "text": "{",
+                      "text": "foo",
                       "span": {
-                        "start": 605,
-                        "end": 606
+                        "start": 609,
+                        "end": 612
                       }
                     }
                   },
-                  "dot_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": ".",
-                    "span": {
-                      "start": 608,
-                      "end": 609
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "foo",
-                    "span": {
-                      "start": 609,
-                      "end": 612
-                    }
-                  }
-                },
-                "payload_syntax_node": null,
-                "payload": null
+                  "payload_syntax_node": null,
+                  "payload": null
+                }
               }
             }
           },

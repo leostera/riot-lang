@@ -657,7 +657,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
@@ -690,26 +690,11 @@
                 "suffix": null
               }
             },
-            "type": {
-              "tag": "extension",
-              "extension": {
-                "syntax_node": {
-                  "kind": "EXTENSION_EXPR",
-                  "span": {
-                    "start": 298,
-                    "end": 319
-                  }
-                },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 300,
-                    "end": 301
-                  }
-                },
-                "name": {
-                  "tag": "ident",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "extension",
+                "extension": {
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
@@ -717,17 +702,35 @@
                       "end": 319
                     }
                   },
-                  "name_token": {
+                  "sigil_token": {
                     "kind": "IDENT_EXPR",
-                    "text": "empty_poly_binder",
+                    "text": "%",
                     "span": {
-                      "start": 301,
-                      "end": 318
+                      "start": 300,
+                      "end": 301
                     }
-                  }
-                },
-                "payload_syntax_node": null,
-                "payload": null
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 298,
+                        "end": 319
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "empty_poly_binder",
+                      "span": {
+                        "start": 301,
+                        "end": 318
+                      }
+                    }
+                  },
+                  "payload_syntax_node": null,
+                  "payload": null
+                }
               }
             }
           },
@@ -983,7 +986,7 @@
             }
           ],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "TYPED_EXPR",
               "span": {
@@ -1019,26 +1022,11 @@
                 }
               }
             },
-            "type": {
-              "tag": "extension",
-              "extension": {
-                "syntax_node": {
-                  "kind": "EXTENSION_EXPR",
-                  "span": {
-                    "start": 375,
-                    "end": 396
-                  }
-                },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 377,
-                    "end": 378
-                  }
-                },
-                "name": {
-                  "tag": "ident",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "extension",
+                "extension": {
                   "syntax_node": {
                     "kind": "EXTENSION_EXPR",
                     "span": {
@@ -1046,17 +1034,35 @@
                       "end": 396
                     }
                   },
-                  "name_token": {
+                  "sigil_token": {
                     "kind": "IDENT_EXPR",
-                    "text": "empty_poly_binder",
+                    "text": "%",
                     "span": {
-                      "start": 378,
-                      "end": 395
+                      "start": 377,
+                      "end": 378
                     }
-                  }
-                },
-                "payload_syntax_node": null,
-                "payload": null
+                  },
+                  "name": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "EXTENSION_EXPR",
+                      "span": {
+                        "start": 375,
+                        "end": 396
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "empty_poly_binder",
+                      "span": {
+                        "start": 378,
+                        "end": 395
+                      }
+                    }
+                  },
+                  "payload_syntax_node": null,
+                  "payload": null
+                }
               }
             }
           },
@@ -1112,7 +1118,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
@@ -1251,27 +1257,20 @@
                 }
               }
             },
-            "type": {
-              "tag": "arrow",
-              "syntax_node": {
-                "kind": "TYPE_ARROW",
-                "span": {
-                  "start": 405,
-                  "end": 433
-                }
-              },
-              "label": null,
-              "parameter_type": {
-                "tag": "constr",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "arrow",
                 "syntax_node": {
-                  "kind": "TYPE_CONSTR",
+                  "kind": "TYPE_ARROW",
                   "span": {
                     "start": 405,
-                    "end": 409
+                    "end": 433
                   }
                 },
-                "constructor_path": {
-                  "tag": "ident",
+                "label": null,
+                "parameter_type": {
+                  "tag": "constr",
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
@@ -1279,37 +1278,29 @@
                       "end": 409
                     }
                   },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "int",
-                    "span": {
-                      "start": 406,
-                      "end": 409
-                    }
-                  }
-                },
-                "arguments": []
-              },
-              "result_type": {
-                "tag": "extension",
-                "extension": {
-                  "syntax_node": {
-                    "kind": "EXTENSION_EXPR",
-                    "span": {
-                      "start": 412,
-                      "end": 433
-                    }
-                  },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 414,
-                      "end": 415
-                    }
-                  },
-                  "name": {
+                  "constructor_path": {
                     "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 405,
+                        "end": 409
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "int",
+                      "span": {
+                        "start": 406,
+                        "end": 409
+                      }
+                    }
+                  },
+                  "arguments": []
+                },
+                "result_type": {
+                  "tag": "extension",
+                  "extension": {
                     "syntax_node": {
                       "kind": "EXTENSION_EXPR",
                       "span": {
@@ -1317,17 +1308,35 @@
                         "end": 433
                       }
                     },
-                    "name_token": {
+                    "sigil_token": {
                       "kind": "IDENT_EXPR",
-                      "text": "empty_poly_binder",
+                      "text": "%",
                       "span": {
-                        "start": 415,
-                        "end": 432
+                        "start": 414,
+                        "end": 415
                       }
-                    }
-                  },
-                  "payload_syntax_node": null,
-                  "payload": null
+                    },
+                    "name": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "EXTENSION_EXPR",
+                        "span": {
+                          "start": 412,
+                          "end": 433
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "empty_poly_binder",
+                        "span": {
+                          "start": 415,
+                          "end": 432
+                        }
+                      }
+                    },
+                    "payload_syntax_node": null,
+                    "payload": null
+                  }
                 }
               }
             }

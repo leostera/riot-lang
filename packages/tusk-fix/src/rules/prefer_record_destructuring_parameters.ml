@@ -204,9 +204,8 @@ and usage_in_expression expected_name expr =
       merge_usage
         (usage_in_expression expected_name left)
         (usage_in_expression expected_name right)
-  | Syn.Cst.Expression.Typed { expression; _ }
-  | Syn.Cst.Expression.Polymorphic { expression; _ }
-  | Syn.Cst.Expression.Coerce { expression; _ } ->
+  | Syn.Cst.Expression.TypeAscription { expression; _ }
+  | Syn.Cst.Expression.Polymorphic { expression; _ } ->
       usage_in_expression expected_name expression
   | Syn.Cst.Expression.Sequence { expressions; _ } ->
       expressions

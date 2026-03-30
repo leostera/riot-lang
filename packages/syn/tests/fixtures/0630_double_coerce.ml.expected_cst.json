@@ -58,7 +58,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "coerce",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "COERCE_EXPR",
               "span": {
@@ -94,17 +94,10 @@
                 }
               }
             },
-            "from_type": {
-              "tag": "constr",
-              "syntax_node": {
-                "kind": "TYPE_CONSTR",
-                "span": {
-                  "start": 14,
-                  "end": 28
-                }
-              },
-              "constructor_path": {
-                "tag": "ident",
+            "kind": {
+              "tag": "constraint_coerce",
+              "from_type": {
+                "tag": "constr",
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
@@ -112,28 +105,28 @@
                     "end": 28
                   }
                 },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "specific_type",
-                  "span": {
-                    "start": 15,
-                    "end": 28
+                "constructor_path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 14,
+                      "end": 28
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "specific_type",
+                    "span": {
+                      "start": 15,
+                      "end": 28
+                    }
                   }
-                }
+                },
+                "arguments": []
               },
-              "arguments": []
-            },
-            "to_type": {
-              "tag": "constr",
-              "syntax_node": {
-                "kind": "TYPE_CONSTR",
-                "span": {
-                  "start": 31,
-                  "end": 41
-                }
-              },
-              "constructor_path": {
-                "tag": "ident",
+              "to_type": {
+                "tag": "constr",
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
@@ -141,16 +134,26 @@
                     "end": 41
                   }
                 },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "base_type",
-                  "span": {
-                    "start": 32,
-                    "end": 41
+                "constructor_path": {
+                  "tag": "ident",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 31,
+                      "end": 41
+                    }
+                  },
+                  "name_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "base_type",
+                    "span": {
+                      "start": 32,
+                      "end": 41
+                    }
                   }
-                }
-              },
-              "arguments": []
+                },
+                "arguments": []
+              }
             }
           },
           "and_bindings": [],

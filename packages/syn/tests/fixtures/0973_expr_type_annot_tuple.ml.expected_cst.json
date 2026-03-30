@@ -58,7 +58,7 @@
           },
           "parameters": [],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "TYPED_EXPR",
               "span": {
@@ -156,27 +156,20 @@
                 ]
               }
             },
-            "type": {
-              "tag": "tuple",
-              "syntax_node": {
-                "kind": "TYPE_TUPLE",
-                "span": {
-                  "start": 19,
-                  "end": 32
-                }
-              },
-              "elements": [
-                {
-                  "tag": "constr",
-                  "syntax_node": {
-                    "kind": "TYPE_CONSTR",
-                    "span": {
-                      "start": 19,
-                      "end": 23
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "tuple",
+                "syntax_node": {
+                  "kind": "TYPE_TUPLE",
+                  "span": {
+                    "start": 19,
+                    "end": 32
+                  }
+                },
+                "elements": [
+                  {
+                    "tag": "constr",
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
@@ -184,28 +177,28 @@
                         "end": 23
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "int",
-                      "span": {
-                        "start": 20,
-                        "end": 23
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 19,
+                          "end": 23
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 20,
+                          "end": 23
+                        }
                       }
-                    }
+                    },
+                    "arguments": []
                   },
-                  "arguments": []
-                },
-                {
-                  "tag": "constr",
-                  "syntax_node": {
-                    "kind": "TYPE_CONSTR",
-                    "span": {
-                      "start": 25,
-                      "end": 32
-                    }
-                  },
-                  "constructor_path": {
-                    "tag": "ident",
+                  {
+                    "tag": "constr",
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
@@ -213,18 +206,28 @@
                         "end": 32
                       }
                     },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "string",
-                      "span": {
-                        "start": 26,
-                        "end": 32
+                    "constructor_path": {
+                      "tag": "ident",
+                      "syntax_node": {
+                        "kind": "TYPE_CONSTR",
+                        "span": {
+                          "start": 25,
+                          "end": 32
+                        }
+                      },
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "string",
+                        "span": {
+                          "start": 26,
+                          "end": 32
+                        }
                       }
-                    }
-                  },
-                  "arguments": []
-                }
-              ]
+                    },
+                    "arguments": []
+                  }
+                ]
+              }
             }
           },
           "and_bindings": [],

@@ -188,10 +188,8 @@ and let_bindings_of_expression expr =
       let_bindings_of_expression target @ let_bindings_of_expression value
   | Syn.Cst.Expression.Infix { left; right; _ } ->
       let_bindings_of_expression left @ let_bindings_of_expression right
-  | Syn.Cst.Expression.Typed { expression; _ }
+  | Syn.Cst.Expression.TypeAscription { expression; _ }
   | Syn.Cst.Expression.Polymorphic { expression; _ } ->
-      let_bindings_of_expression expression
-  | Syn.Cst.Expression.Coerce { expression; _ } ->
       let_bindings_of_expression expression
   | Syn.Cst.Expression.Sequence { expressions; _ } ->
       expressions |> List.concat_map let_bindings_of_expression
@@ -408,10 +406,8 @@ let rec expressions_of_expression expr =
         expressions_of_expression target @ expressions_of_expression value
     | Syn.Cst.Expression.Infix { left; right; _ } ->
         expressions_of_expression left @ expressions_of_expression right
-    | Syn.Cst.Expression.Typed { expression; _ }
+    | Syn.Cst.Expression.TypeAscription { expression; _ }
     | Syn.Cst.Expression.Polymorphic { expression; _ } ->
-        expressions_of_expression expression
-    | Syn.Cst.Expression.Coerce { expression; _ } ->
         expressions_of_expression expression
     | Syn.Cst.Expression.Sequence { expressions; _ } ->
         expressions |> List.concat_map expressions_of_expression

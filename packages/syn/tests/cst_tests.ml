@@ -5731,10 +5731,10 @@ let tests =
         | Syn.Cst.StructureItem.LetBinding
             {
               value =
-                Syn.Cst.Expression.Typed
+                Syn.Cst.Expression.TypeAscription
                   {
                     expression = Syn.Cst.Expression.Fun _;
-                    type_ = Syn.Cst.CoreType.Arrow _;
+                    kind = Syn.Cst.Type (Syn.Cst.CoreType.Arrow _);
                     _;
                   };
               _;
@@ -5799,34 +5799,35 @@ let tests =
         | Syn.Cst.StructureItem.LetBinding
             {
               value =
-                Syn.Cst.Expression.Typed
+                Syn.Cst.Expression.TypeAscription
                   {
                     expression = Syn.Cst.Expression.Fun _;
-                    type_ =
-                      Syn.Cst.CoreType.Poly
-                        {
-                          type_keyword_token = Some type_keyword_token;
-                          binders;
-                          body =
-                            Syn.Cst.CoreType.Arrow
-                              {
-                                parameter_type =
-                                  Syn.Cst.CoreType.Var
-                                    {
-                                      sigil_token = None;
-                                      name_token = parameter_name_token;
-                                      _;
-                                    };
-                                result_type =
-                                  Syn.Cst.CoreType.Var
-                                    {
-                                      sigil_token = None;
-                                      name_token = result_name_token;
-                                      _;
-                                    };
-                                _;
-                              };
-                        };
+                    kind =
+                      Syn.Cst.Type
+                        (Syn.Cst.CoreType.Poly
+                          {
+                            type_keyword_token = Some type_keyword_token;
+                            binders;
+                            body =
+                              Syn.Cst.CoreType.Arrow
+                                {
+                                  parameter_type =
+                                    Syn.Cst.CoreType.Var
+                                      {
+                                        sigil_token = None;
+                                        name_token = parameter_name_token;
+                                        _;
+                                      };
+                                  result_type =
+                                    Syn.Cst.CoreType.Var
+                                      {
+                                        sigil_token = None;
+                                        name_token = result_name_token;
+                                        _;
+                                      };
+                                  _;
+                                };
+                          });
                     _;
                   };
               _;
@@ -5963,10 +5964,10 @@ let tests =
         | Syn.Cst.StructureItem.LetBinding
             {
               value =
-                Syn.Cst.Expression.Typed
+                Syn.Cst.Expression.TypeAscription
                   {
                     expression = Syn.Cst.Expression.Path { path; _ };
-                    type_ = Syn.Cst.CoreType.Constr _;
+                    kind = Syn.Cst.Type (Syn.Cst.CoreType.Constr _);
                     _;
                   };
               _;
@@ -5988,11 +5989,15 @@ let tests =
         | Syn.Cst.StructureItem.LetBinding
             {
               value =
-                Syn.Cst.Expression.Coerce
+                Syn.Cst.Expression.TypeAscription
                   {
                     expression = Syn.Cst.Expression.Path { path; _ };
-                    from_type = Some (Syn.Cst.CoreType.Constr _);
-                    to_type = Syn.Cst.CoreType.Constr _;
+                    kind =
+                      Syn.Cst.ConstraintCoerce
+                        {
+                          from_type = Syn.Cst.CoreType.Constr _;
+                          to_type = Syn.Cst.CoreType.Constr _;
+                        };
                     _;
                   };
               _;

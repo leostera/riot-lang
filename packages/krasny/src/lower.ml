@@ -1660,7 +1660,7 @@ let expression_needs_parens_in_apply =
   | Syn.Cst.Expression.Fun _
   | Syn.Cst.Expression.Function _
   | Syn.Cst.Expression.Infix _
-  | Syn.Cst.Expression.Coerce _ ->
+  | Syn.Cst.Expression.TypeAscription _ ->
       true
   | _ ->
       false
@@ -1905,8 +1905,7 @@ let rec expression_is_simple_after_equals =
   | Syn.Cst.Expression.Record _
   | Syn.Cst.Expression.FieldAccess _
   | Syn.Cst.Expression.Index _
-  | Syn.Cst.Expression.Coerce _
-  | Syn.Cst.Expression.Typed _
+  | Syn.Cst.Expression.TypeAscription _
   | Syn.Cst.Expression.MethodCall _
   | Syn.Cst.Expression.New _
   | Syn.Cst.Expression.LocalOpen _ ->
@@ -2279,31 +2278,28 @@ let make_lowerer =
       Doc.concat [ receiver; Doc.text "."; doc_of_token field_name ]
   | Syn.Cst.Expression.Index index ->
       render_index_expression index
-  | Syn.Cst.Expression.Typed { expression; type_; _ } ->
-      Doc.concat
-        [ Doc.lparen; render_expression expression; annotation_colon; render_core_type type_; Doc.rparen ]
+  | Syn.Cst.Expression.TypeAscription { expression; kind; _ } ->
+      let tail =
+        match kind with
+        | Syn.Cst.Type type_ ->
+            Doc.concat [ annotation_colon; render_core_type type_ ]
+        | Syn.Cst.Coerce type_ ->
+            Doc.concat [ Doc.space; coercion_arrow; Doc.space; render_core_type type_ ]
+        | Syn.Cst.ConstraintCoerce { from_type; to_type } ->
+            Doc.concat
+              [
+                annotation_colon;
+                render_core_type from_type;
+                Doc.space;
+                coercion_arrow;
+                Doc.space;
+                render_core_type to_type;
+              ]
+      in
+      Doc.concat [ Doc.lparen; render_expression expression; tail; Doc.rparen ]
   | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
       Doc.concat
         [ Doc.lparen; render_expression expression; annotation_colon; render_core_type type_; Doc.rparen ]
-  | Syn.Cst.Expression.Coerce { expression; from_type; to_type; _ } ->
-      let from_doc =
-        match from_type with
-        | None ->
-            Doc.empty
-        | Some from_type ->
-            Doc.concat [ annotation_colon; render_core_type from_type ]
-      in
-      Doc.concat
-        [
-          Doc.lparen;
-          render_expression expression;
-          from_doc;
-          Doc.space;
-          coercion_arrow;
-          Doc.space;
-          render_core_type to_type;
-          Doc.rparen;
-        ]
   | Syn.Cst.Expression.PolyVariant { tag_token; payload; _ } ->
       let head = Doc.concat [ Doc.text "`"; doc_of_token tag_token ] in
       (match payload with
@@ -3435,7 +3431,7 @@ and render_match_expression ~keyword_token ~scrutinee ~with_token ~cases =
   in
   let scrutinee_requires_parens =
     match scrutinee with
-    | Syn.Cst.Expression.Coerce _ ->
+    | Syn.Cst.Expression.TypeAscription _ ->
         true
     | _ ->
         false
@@ -3983,7 +3979,7 @@ and render_binding_header ~keyword_token ~rec_token pattern =
   Doc.concat ([ doc_of_token keyword_token ] @ rec_part @ [ Doc.space; pattern ])
 
 and split_typed_binding_value = function
-  | Syn.Cst.Expression.Typed { expression; type_; _ } ->
+  | Syn.Cst.Expression.TypeAscription { expression; kind = Syn.Cst.Type type_; _ } ->
       (expression, Some type_)
   | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
       (expression, Some type_)

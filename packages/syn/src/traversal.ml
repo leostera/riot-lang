@@ -140,9 +140,8 @@ let children_of_expression =
       [ target; value ]
   | Cst.Expression.Infix { left; right; _ } ->
       [ left; right ]
-  | Cst.Expression.Typed { expression; _ }
-  | Cst.Expression.Polymorphic { expression; _ }
-  | Cst.Expression.Coerce { expression; _ } ->
+  | Cst.Expression.TypeAscription { expression; _ }
+  | Cst.Expression.Polymorphic { expression; _ } ->
       [ expression ]
   | Cst.Expression.Sequence { expressions; _ } ->
       expressions

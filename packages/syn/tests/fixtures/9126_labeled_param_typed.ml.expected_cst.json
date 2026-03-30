@@ -1518,7 +1518,7 @@
             }
           ],
           "value": {
-            "tag": "typed",
+            "tag": "type_ascription",
             "syntax_node": {
               "kind": "LET_BINDING",
               "span": {
@@ -1636,29 +1636,32 @@
                 }
               }
             },
-            "type": {
-              "tag": "var",
-              "syntax_node": {
-                "kind": "TYPE_VAR",
-                "span": {
-                  "start": 371,
-                  "end": 374
-                }
-              },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "'",
-                "span": {
-                  "start": 372,
-                  "end": 373
-                }
-              },
-              "name_token": {
-                "kind": "IDENT_EXPR",
-                "text": "c",
-                "span": {
-                  "start": 373,
-                  "end": 374
+            "kind": {
+              "tag": "type",
+              "type": {
+                "tag": "var",
+                "syntax_node": {
+                  "kind": "TYPE_VAR",
+                  "span": {
+                    "start": 371,
+                    "end": 374
+                  }
+                },
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "'",
+                  "span": {
+                    "start": 372,
+                    "end": 373
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "c",
+                  "span": {
+                    "start": 373,
+                    "end": 374
+                  }
                 }
               }
             }
