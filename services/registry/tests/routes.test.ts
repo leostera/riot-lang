@@ -88,7 +88,7 @@ describe("riot package registry routes", () => {
     });
 
     await applyMetadataMigrations(db as unknown as D1Database);
-    const logEntry = (await listRequestLogs(db as unknown as D1Database, 1))[0];
+    const logEntry = (await listRequestLogs(db as unknown as D1Database, 1))[0]!;
     expect(logEntry.route).toBe("root");
     expect(logEntry.success).toBe(true);
     expect(logEntry.status).toBe(200);
@@ -1667,7 +1667,7 @@ describe("riot package registry routes", () => {
     });
 
     await applyMetadataMigrations(db as unknown as D1Database);
-    const logEntry = (await listRequestLogs(db as unknown as D1Database, 1))[0];
+    const logEntry = (await listRequestLogs(db as unknown as D1Database, 1))[0]!;
     expect(logEntry.success).toBe(false);
     expect(logEntry.status).toBe(400);
     expect(logEntry.error_category).toBe("invalid_locator");

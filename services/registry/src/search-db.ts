@@ -1,93 +1,73 @@
+import { eq, like, or, sql } from "drizzle-orm";
+
+import { registryDb } from "./db.ts";
+import { packages } from "./schema.ts";
 import { buildFtsQuery, rankQueryResult } from "./search-document.ts";
-import { applySearchMigrations as applyD1SearchMigrations } from "./db-migrations.ts";
 import type { SearchPackageRow, SearchResult } from "./types.ts";
 
 export async function applySearchMigrations(db: D1Database): Promise<void> {
-  await applyD1SearchMigrations(db);
+  void db;
 }
 
 export async function upsertSearchRow(db: D1Database, row: SearchPackageRow): Promise<void> {
-  await db.batch(prepareUpsertSearchRowStatements(db, row));
-}
+  const database = registryDb(db);
+  await database
+    .insert(packages)
+    .values({
+      packageName: row.package_name,
+      normalizedName: row.normalized_name,
+      latestVersion: row.latest_version,
+      description: row.description ?? null,
+      license: row.license ?? null,
+      homepage: row.homepage ?? null,
+      repository: row.repository ?? null,
+      rootModule: row.root_module ?? null,
+      canonicalLocator: row.canonical_locator,
+      repoUrl: row.repo_url,
+      repoOwner: row.repo_owner,
+      repoName: row.repo_name,
+      subdir: row.subdir,
+      releaseCount: row.release_count,
+      updatedAt: row.updated_at,
+    })
+    .onConflictDoUpdate({
+      target: packages.packageName,
+      set: {
+        normalizedName: row.normalized_name,
+        latestVersion: row.latest_version,
+        description: row.description ?? null,
+        license: row.license ?? null,
+        homepage: row.homepage ?? null,
+        repository: row.repository ?? null,
+        rootModule: row.root_module ?? null,
+        canonicalLocator: row.canonical_locator,
+        repoUrl: row.repo_url,
+        repoOwner: row.repo_owner,
+        repoName: row.repo_name,
+        subdir: row.subdir,
+        releaseCount: row.release_count,
+        updatedAt: row.updated_at,
+      },
+    });
 
-export function prepareUpsertSearchRowStatements(
-  db: D1Database,
-  row: SearchPackageRow,
-): D1PreparedStatement[] {
-  return [
-    db
-      .prepare(
-        `INSERT INTO packages (
-          package_name,
-          normalized_name,
-          latest_version,
-          description,
-          license,
-          homepage,
-          repository,
-          root_module,
-          canonical_locator,
-          repo_url,
-          repo_owner,
-          repo_name,
-          subdir,
-          release_count,
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(package_name) DO UPDATE SET
-          normalized_name = excluded.normalized_name,
-          latest_version = excluded.latest_version,
-          description = excluded.description,
-          license = excluded.license,
-          homepage = excluded.homepage,
-          repository = excluded.repository,
-          root_module = excluded.root_module,
-          canonical_locator = excluded.canonical_locator,
-          repo_url = excluded.repo_url,
-          repo_owner = excluded.repo_owner,
-          repo_name = excluded.repo_name,
-          subdir = excluded.subdir,
-          release_count = excluded.release_count,
-          updated_at = excluded.updated_at`,
-      )
-      .bind(
-        row.package_name,
-        row.normalized_name,
-        row.latest_version,
-        row.description,
-        row.license,
-        row.homepage,
-        row.repository,
-        row.root_module,
-        row.canonical_locator,
-        row.repo_url,
-        row.repo_owner,
-        row.repo_name,
-        row.subdir,
-        row.release_count,
-        row.updated_at,
-      ),
-    db.prepare(`DELETE FROM package_search WHERE package_name = ?`).bind(row.package_name),
-    db
-      .prepare(
-        `INSERT INTO package_search (
-          package_name,
-          description,
-          repo_owner,
-          repo_name,
-          subdir,
-          repository
-        ) VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        row.package_name,
-        row.description ?? "",
-        row.repo_owner,
-        row.repo_name,
-        row.subdir,
-        row.repository ?? "",
-      ),
-  ];
+  await database.run(sql`DELETE FROM package_search WHERE package_name = ${row.package_name}`);
+  await database.run(sql`
+    INSERT INTO package_search (
+      package_name,
+      description,
+      repo_owner,
+      repo_name,
+      subdir,
+      repository
+    ) VALUES (
+      ${row.package_name},
+      ${row.description ?? ""},
+      ${row.repo_owner},
+      ${row.repo_name},
+      ${row.subdir},
+      ${row.repository ?? ""}
+    )
+  `);
 }
 
 export async function searchPackages(
@@ -96,6 +76,7 @@ export async function searchPackages(
   limit: number,
   offset: number,
 ): Promise<SearchResult[]> {
+  const database = registryDb(db);
   const normalizedQuery = query.trim();
   if (normalizedQuery.length === 0) {
     return [];
@@ -105,73 +86,66 @@ export async function searchPackages(
   const results = new Map<string, SearchResult & { fts_rank: number | null }>();
 
   if (ftsQuery.length > 0) {
-    const ftsRows = await db
-      .prepare(
-        `SELECT
-           p.package_name,
-           p.normalized_name,
-           p.latest_version,
-           p.description,
-           p.license,
-           p.homepage,
-           p.repository,
-           p.root_module,
-           p.canonical_locator,
-           p.repo_url,
-           p.repo_owner,
-           p.repo_name,
-           p.subdir,
-           p.release_count,
-           p.updated_at,
-           bm25(package_search) AS fts_rank
-         FROM package_search
-         JOIN packages p ON p.package_name = package_search.package_name
-         WHERE package_search MATCH ?`
-      )
-      .bind(ftsQuery)
-      .all<SearchResult & { fts_rank: number | null }>();
+    const ftsRows = await database.all<SearchResult & { fts_rank: number | null }>(sql`
+      SELECT
+        p.package_name,
+        p.normalized_name,
+        p.latest_version,
+        p.description,
+        p.license,
+        p.homepage,
+        p.repository,
+        p.root_module,
+        p.canonical_locator,
+        p.repo_url,
+        p.repo_owner,
+        p.repo_name,
+        p.subdir,
+        p.release_count,
+        p.updated_at,
+        bm25(package_search) AS fts_rank
+      FROM package_search
+      JOIN packages p ON p.package_name = package_search.package_name
+      WHERE package_search MATCH ${ftsQuery}
+    `);
 
-    for (const row of ftsRows.results ?? []) {
+    for (const row of ftsRows) {
       results.set(row.package_name, row);
     }
   }
 
-  const directRows = await db
-    .prepare(
-      `SELECT
-         package_name,
-         normalized_name,
-         latest_version,
-         description,
-         license,
-         homepage,
-         repository,
-         root_module,
-         canonical_locator,
-         repo_url,
-         repo_owner,
-         repo_name,
-         subdir,
-         release_count,
-         updated_at,
-         NULL AS fts_rank
-       FROM packages
-       WHERE normalized_name = ?
-          OR normalized_name LIKE ?
-          OR normalized_name LIKE ?
-          OR lower(repo_owner) = lower(?)
-          OR lower(repo_name) = lower(?)`
-    )
-    .bind(
-      normalizeName(normalizedQuery),
-      `${normalizeName(normalizedQuery)}%`,
-      `%${normalizeName(normalizedQuery)}%`,
-      normalizedQuery,
-      normalizedQuery,
-    )
-    .all<SearchResult & { fts_rank: number | null }>();
+  const normalizedName = normalizeName(normalizedQuery);
+  const directRows = await database
+    .select({
+      package_name: packages.packageName,
+      normalized_name: packages.normalizedName,
+      latest_version: packages.latestVersion,
+      description: packages.description,
+      license: packages.license,
+      homepage: packages.homepage,
+      repository: packages.repository,
+      root_module: packages.rootModule,
+      canonical_locator: packages.canonicalLocator,
+      repo_url: packages.repoUrl,
+      repo_owner: packages.repoOwner,
+      repo_name: packages.repoName,
+      subdir: packages.subdir,
+      release_count: packages.releaseCount,
+      updated_at: packages.updatedAt,
+      fts_rank: sql<number | null>`NULL`,
+    })
+    .from(packages)
+    .where(
+      or(
+        eq(packages.normalizedName, normalizedName),
+        like(packages.normalizedName, `${normalizedName}%`),
+        like(packages.normalizedName, `%${normalizedName}%`),
+        eq(sql`lower(${packages.repoOwner})`, normalizedQuery.toLowerCase()),
+        eq(sql`lower(${packages.repoName})`, normalizedQuery.toLowerCase()),
+      ),
+    );
 
-  for (const row of directRows.results ?? []) {
+  for (const row of directRows) {
     results.set(row.package_name, row);
   }
 

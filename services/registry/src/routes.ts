@@ -23,7 +23,6 @@ import {
 import { readCachedMaterialization } from "./publication.ts";
 import { writeRequestLog } from "./request-log.ts";
 import {
-  applyMetadataMigrations,
   listRegistryEvents,
   listPackageRegistryEvents,
   listApiTokenRecords,
@@ -34,7 +33,7 @@ import {
   readPopularPackagesDocument,
   readRecentPackagesDocument,
 } from "./metadata-db.ts";
-import { applySearchMigrations, searchPackages } from "./search-db.ts";
+import { searchPackages } from "./search-db.ts";
 import {
   manifestKey,
   prettyManifestUrl,
@@ -151,8 +150,6 @@ async function routeRequest(
       cdn_base_url: getConfig(env).cdnBaseUrl,
     });
   }
-
-  await applyMetadataMigrations(env.SEARCH_DB);
 
   if (matchesPath(path, "v1/auth/github/start", "auth/github/start")) {
     if (request.method !== "GET") {
@@ -632,7 +629,6 @@ async function handleSearch(env: Env, url: URL): Promise<Response> {
     });
   }
 
-  await applySearchMigrations(env.SEARCH_DB);
   const limit = clampInteger(url.searchParams.get("limit"), 20, 1, 100);
   const offset = clampInteger(url.searchParams.get("offset"), 0, 0, 10_000);
   const results = await searchPackages(env.SEARCH_DB, query, limit, offset);

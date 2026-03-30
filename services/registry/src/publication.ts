@@ -8,14 +8,12 @@ import { HttpError } from "./errors.ts";
 import { indexPublishedRelease } from "./indexing.ts";
 import { isFullSha, isSemverLikeTag } from "./locator.ts";
 import {
-  applyMetadataMigrations,
   hasPublishedRelease,
-  prepareWritePackageClaim,
-  prepareWritePublishedRelease,
-  prepareWriteRegistryEvent,
   readPackageClaim,
   readPublishedRelease,
   readSelectorResolution,
+  writePackageClaim,
+  writePublishedRelease,
   writeRegistryEvent,
   writeSelectorResolution,
 } from "./metadata-db.ts";
@@ -51,7 +49,6 @@ export async function ensureSourceMaterialization(
   selector: string,
 ): Promise<ResolvedPublication> {
   await assertGitHubRepositoryAccess(env, locator);
-  await applyMetadataMigrations(env.SEARCH_DB);
 
   const materializedAt = new Date().toISOString();
   const freezeSelector = isSemverLikeTag(selector);
@@ -150,7 +147,6 @@ export async function publishPackageRelease(
 ): Promise<PublishedPackageRelease> {
   const materialization = await ensureSourceMaterialization(env, locator, selector);
   const manifest = await readMaterializationManifest(env, materialization.manifestKey);
-  await applyMetadataMigrations(env.SEARCH_DB);
   const existingRelease = await readPublishedRelease(
     env.SEARCH_DB,
     manifest.package_name,
@@ -206,26 +202,22 @@ export async function publishPackageRelease(
   const claimRecord = buildClaimRecord(locator, manifest, existingClaim, actor, now);
 
   if (existingClaim === null || !claimMatches(existingClaim, claimRecord)) {
-    await env.SEARCH_DB.batch([
-      prepareWritePackageClaim(env.SEARCH_DB, claimRecord),
-    ]);
+    await writePackageClaim(env.SEARCH_DB, claimRecord);
   }
 
   let releaseCreated = false;
   let indexChanged = false;
   const releaseRecord = buildPublishedReleaseRecord(manifest, now);
-  await env.SEARCH_DB.batch([
-    prepareWritePublishedRelease(env.SEARCH_DB, releaseRecord),
-    prepareWriteRegistryEvent(
-      env.SEARCH_DB,
-      makePackageEvent("package.published", publishedEventAt, manifest, {
-        selector,
-        resolved_sha: releaseRecord.resolved_sha,
-        claim_created: existingClaim === null,
-        release_created: true,
-      }),
-    ),
-  ]);
+  await writePublishedRelease(env.SEARCH_DB, releaseRecord);
+  await writeRegistryEvent(
+    env.SEARCH_DB,
+    makePackageEvent("package.published", publishedEventAt, manifest, {
+      selector,
+      resolved_sha: releaseRecord.resolved_sha,
+      claim_created: existingClaim === null,
+      release_created: true,
+    }),
+  );
   const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
   indexChanged = indexResult.changed;
   await env.PACKAGE_PUBLISHED_QUEUE.send({
@@ -251,7 +243,6 @@ export async function readCachedMaterialization(
   locator: PackageLocator,
   selector: string,
 ): Promise<ResolvedPublication | null> {
-  await applyMetadataMigrations(env.SEARCH_DB);
   const resolvedSha =
     isFullSha(selector)
       ? selector

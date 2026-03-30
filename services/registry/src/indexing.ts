@@ -1,9 +1,9 @@
 import { getConfig } from "./config.ts";
 import { buildIndexedRelease, upsertPackageDocument } from "./index-document.ts";
-import { applySearchMigrations, prepareUpsertSearchRowStatements } from "./search-db.ts";
+import { upsertSearchRow } from "./search-db.ts";
 import { buildSearchRow } from "./search-document.ts";
-import { applyMetadataMigrations, prepareWriteRegistryEvent, writeRegistryEvent } from "./metadata-db.ts";
 import { v7 as uuidv7 } from "uuid";
+import { writeRegistryEvent } from "./metadata-db.ts";
 import {
   packageIndexKey,
   packageIndexUrl,
@@ -30,7 +30,6 @@ export async function indexPublishedRelease(
   packageIndexUrl: string;
 }> {
   const config = getConfig(env);
-  await applyMetadataMigrations(env.SEARCH_DB);
   await writeIndexConfig(env.ML_PKGS_CDN, config);
 
   const currentDocument = await readPackageIndexDocument(
@@ -54,19 +53,16 @@ export async function indexPublishedRelease(
   const indexedAt = addMilliseconds(document.updated_at, 2);
 
   if (!changed) {
-    await applySearchMigrations(env.SEARCH_DB);
-    await env.SEARCH_DB.batch([
-      ...prepareUpsertSearchRowStatements(env.SEARCH_DB, searchRow),
-      prepareWriteRegistryEvent(
-        env.SEARCH_DB,
-        makeIndexEvent("package.searchable", releaseRecord, searchableAt, {
-          latest: document.latest,
-          package_index_key: key,
-          package_index_url: url,
-          changed: false,
-        }),
-      ),
-    ]);
+    await upsertSearchRow(env.SEARCH_DB, searchRow);
+    await writeRegistryEvent(
+      env.SEARCH_DB,
+      makeIndexEvent("package.searchable", releaseRecord, searchableAt, {
+        latest: document.latest,
+        package_index_key: key,
+        package_index_url: url,
+        changed: false,
+      }),
+    );
     await writeRegistryEvent(
       env.SEARCH_DB,
       makeIndexEvent("package.indexed", releaseRecord, indexedAt, {
@@ -99,19 +95,16 @@ export async function indexPublishedRelease(
   }
 
   await writePackageIndexDocument(env.ML_PKGS_CDN, config, document);
-  await applySearchMigrations(env.SEARCH_DB);
-  await env.SEARCH_DB.batch([
-    ...prepareUpsertSearchRowStatements(env.SEARCH_DB, searchRow),
-    prepareWriteRegistryEvent(
-      env.SEARCH_DB,
-      makeIndexEvent("package.searchable", releaseRecord, searchableAt, {
-        latest: document.latest,
-        package_index_key: key,
-        package_index_url: url,
-        changed: true,
-      }),
-    ),
-  ]);
+  await upsertSearchRow(env.SEARCH_DB, searchRow);
+  await writeRegistryEvent(
+    env.SEARCH_DB,
+    makeIndexEvent("package.searchable", releaseRecord, searchableAt, {
+      latest: document.latest,
+      package_index_key: key,
+      package_index_url: url,
+      changed: true,
+    }),
+  );
   await writeRegistryEvent(
     env.SEARCH_DB,
     makeIndexEvent("package.indexed", releaseRecord, indexedAt, {

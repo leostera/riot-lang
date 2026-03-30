@@ -1,4 +1,5 @@
 import semver from "semver";
+import { and, asc, desc, eq, gt } from "drizzle-orm";
 
 import type {
   ApiTokenCapability,
@@ -25,277 +26,257 @@ import type {
   UserLoginRecord,
   UserRecord,
 } from "./types.ts";
-import { applyMetadataMigrations as applyD1Migrations } from "./db-migrations.ts";
+import { registryDb } from "./db.ts";
+import {
+  apiTokenLookups,
+  apiTokens,
+  oauthStates,
+  packageClaims,
+  publishedReleases,
+  registryEvents,
+  requestLogs,
+  selectorResolutions,
+  sessions,
+  userLogins,
+  users,
+} from "./schema.ts";
 
 export async function applyMetadataMigrations(db: D1Database): Promise<void> {
-  await applyD1Migrations(db);
+  void db;
 }
 
 export async function writeRequestLog(db: D1Database, entry: RequestLogEntry): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO request_logs (
-         request_id,
-         request_timestamp,
-         method,
-         path,
-         route,
-         package_locator,
-         selector,
-         resolved_sha,
-         status,
-         success,
-         error_category,
-         error_message,
-         user_agent
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      entry.request_id,
-      entry.request_timestamp,
-      entry.method,
-      entry.path,
-      entry.route,
-      entry.package_locator ?? null,
-      entry.selector ?? null,
-      entry.resolved_sha ?? null,
-      entry.status,
-      entry.success ? 1 : 0,
-      entry.error_category ?? null,
-      entry.error_message ?? null,
-      entry.user_agent ?? null,
-    )
-    .run();
+  const database = registryDb(db);
+  await database.insert(requestLogs).values({
+    requestId: entry.request_id,
+    requestTimestamp: entry.request_timestamp,
+    method: entry.method,
+    path: entry.path,
+    route: entry.route,
+    packageLocator: entry.package_locator ?? null,
+    selector: entry.selector ?? null,
+    resolvedSha: entry.resolved_sha ?? null,
+    status: entry.status,
+    success: entry.success,
+    errorCategory: entry.error_category ?? null,
+    errorMessage: entry.error_message ?? null,
+    userAgent: entry.user_agent ?? null,
+  });
 }
 
 export async function listRequestLogs(
   db: D1Database,
   limit = 100,
 ): Promise<RequestLogEntry[]> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         request_id,
-         request_timestamp,
-         method,
-         path,
-         route,
-         package_locator,
-         selector,
-         resolved_sha,
-         status,
-         success,
-         error_category,
-         error_message,
-         user_agent
-       FROM request_logs
-       ORDER BY request_timestamp DESC
-       LIMIT ?`,
-    )
-    .bind(limit)
-    .all<RequestLogRow>();
+  const database = registryDb(db);
+  const rows = await database
+    .select({
+      request_id: requestLogs.requestId,
+      request_timestamp: requestLogs.requestTimestamp,
+      method: requestLogs.method,
+      path: requestLogs.path,
+      route: requestLogs.route,
+      package_locator: requestLogs.packageLocator,
+      selector: requestLogs.selector,
+      resolved_sha: requestLogs.resolvedSha,
+      status: requestLogs.status,
+      success: requestLogs.success,
+      error_category: requestLogs.errorCategory,
+      error_message: requestLogs.errorMessage,
+      user_agent: requestLogs.userAgent,
+    })
+    .from(requestLogs)
+    .orderBy(desc(requestLogs.requestTimestamp))
+    .limit(limit);
 
-  return (rows.results ?? []).map(parseRequestLogRecord);
+  return rows.map(parseRequestLogRecord);
 }
 
 export async function readUserRecord(db: D1Database, userId: string): Promise<UserRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         user_id,
-         github_id,
-         github_login,
-         github_name,
-         github_avatar_url,
-         github_email,
-         github_email_verified,
-         created_at,
-         updated_at
-       FROM users
-       WHERE user_id = ?`,
-    )
-    .bind(userId)
-    .all<UserRow>();
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      user_id: users.userId,
+      github_id: users.githubId,
+      github_login: users.githubLogin,
+      github_name: users.githubName,
+      github_avatar_url: users.githubAvatarUrl,
+      github_email: users.githubEmail,
+      github_email_verified: users.githubEmailVerified,
+      created_at: users.createdAt,
+      updated_at: users.updatedAt,
+    })
+    .from(users)
+    .where(eq(users.userId, userId))
+    .limit(1);
 
-  return rows.results?.[0] ? parseUserRecord(rows.results[0]) : null;
+  return row ? parseUserRecord(row) : null;
 }
 
 export async function writeUserRecord(db: D1Database, record: UserRecord): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO users (
-         user_id,
-         github_id,
-         github_login,
-         github_login_lower,
-         github_name,
-         github_avatar_url,
-         github_email,
-         github_email_verified,
-         created_at,
-         updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET
-         github_id = excluded.github_id,
-         github_login = excluded.github_login,
-         github_login_lower = excluded.github_login_lower,
-         github_name = excluded.github_name,
-         github_avatar_url = excluded.github_avatar_url,
-         github_email = excluded.github_email,
-         github_email_verified = excluded.github_email_verified,
-         updated_at = excluded.updated_at`,
-    )
-    .bind(
-      record.user_id,
-      record.github_id,
-      record.github_login,
-      record.github_login.toLowerCase(),
-      record.github_name ?? null,
-      record.github_avatar_url ?? null,
-      record.github_email ?? null,
-      record.github_email_verified ? 1 : 0,
-      record.created_at,
-      record.updated_at,
-    )
-    .run();
+  const database = registryDb(db);
+  await database
+    .insert(users)
+    .values({
+      userId: record.user_id,
+      githubId: record.github_id,
+      githubLogin: record.github_login,
+      githubLoginLower: record.github_login.toLowerCase(),
+      githubName: record.github_name ?? null,
+      githubAvatarUrl: record.github_avatar_url ?? null,
+      githubEmail: record.github_email ?? null,
+      githubEmailVerified: record.github_email_verified ?? false,
+      createdAt: record.created_at,
+      updatedAt: record.updated_at,
+    })
+    .onConflictDoUpdate({
+      target: users.userId,
+      set: {
+        githubId: record.github_id,
+        githubLogin: record.github_login,
+        githubLoginLower: record.github_login.toLowerCase(),
+        githubName: record.github_name ?? null,
+        githubAvatarUrl: record.github_avatar_url ?? null,
+        githubEmail: record.github_email ?? null,
+        githubEmailVerified: record.github_email_verified ?? false,
+        updatedAt: record.updated_at,
+      },
+    });
 }
 
 export async function readUserLoginRecord(
   db: D1Database,
   githubLogin: string,
 ): Promise<UserLoginRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         github_login,
-         user_id,
-         updated_at
-       FROM user_logins
-       WHERE github_login_lower = ?`,
-    )
-    .bind(githubLogin.toLowerCase())
-    .all<UserLoginRecord>();
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      github_login: userLogins.githubLogin,
+      user_id: userLogins.userId,
+      updated_at: userLogins.updatedAt,
+    })
+    .from(userLogins)
+    .where(eq(userLogins.githubLoginLower, githubLogin.toLowerCase()))
+    .limit(1);
 
-  return rows.results?.[0] ?? null;
+  return row ?? null;
 }
 
 export async function writeUserLoginRecord(
   db: D1Database,
   record: UserLoginRecord,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO user_logins (
-         github_login_lower,
-         github_login,
-         user_id,
-         updated_at
-       ) VALUES (?, ?, ?, ?)
-       ON CONFLICT(github_login_lower) DO UPDATE SET
-         github_login = excluded.github_login,
-         user_id = excluded.user_id,
-         updated_at = excluded.updated_at`,
-    )
-    .bind(
-      record.github_login.toLowerCase(),
-      record.github_login,
-      record.user_id,
-      record.updated_at,
-    )
-    .run();
+  const database = registryDb(db);
+  await database
+    .insert(userLogins)
+    .values({
+      githubLoginLower: record.github_login.toLowerCase(),
+      githubLogin: record.github_login,
+      userId: record.user_id,
+      updatedAt: record.updated_at,
+    })
+    .onConflictDoUpdate({
+      target: userLogins.githubLoginLower,
+      set: {
+        githubLogin: record.github_login,
+        userId: record.user_id,
+        updatedAt: record.updated_at,
+      },
+    });
 }
 
 export async function readOAuthStateRecord(
   db: D1Database,
   stateId: string,
 ): Promise<OAuthStateRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         state_id,
-         return_to,
-         created_at
-       FROM oauth_states
-       WHERE state_id = ?`,
-    )
-    .bind(stateId)
-    .all<OAuthStateRecord>();
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      state_id: oauthStates.stateId,
+      return_to: oauthStates.returnTo,
+      created_at: oauthStates.createdAt,
+    })
+    .from(oauthStates)
+    .where(eq(oauthStates.stateId, stateId))
+    .limit(1);
 
-  return rows.results?.[0] ?? null;
+  return row ?? null;
 }
 
 export async function writeOAuthStateRecord(
   db: D1Database,
   record: OAuthStateRecord,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO oauth_states (state_id, return_to, created_at)
-       VALUES (?, ?, ?)
-       ON CONFLICT(state_id) DO UPDATE SET
-         return_to = excluded.return_to,
-         created_at = excluded.created_at`,
-    )
-    .bind(record.state_id, record.return_to, record.created_at)
-    .run();
+  const database = registryDb(db);
+  await database
+    .insert(oauthStates)
+    .values({
+      stateId: record.state_id,
+      returnTo: record.return_to,
+      createdAt: record.created_at,
+    })
+    .onConflictDoUpdate({
+      target: oauthStates.stateId,
+      set: {
+        returnTo: record.return_to,
+        createdAt: record.created_at,
+      },
+    });
 }
 
 export async function deleteOAuthStateRecord(db: D1Database, stateId: string): Promise<void> {
-  await db.prepare("DELETE FROM oauth_states WHERE state_id = ?").bind(stateId).run();
+  const database = registryDb(db);
+  await database.delete(oauthStates).where(eq(oauthStates.stateId, stateId));
 }
 
 export async function readSessionRecord(
   db: D1Database,
   sessionId: string,
 ): Promise<SessionRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         session_id,
-         user_id,
-         github_login,
-         created_at,
-         expires_at
-       FROM sessions
-       WHERE session_id = ?`,
-    )
-    .bind(sessionId)
-    .all<SessionRecord>();
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      session_id: sessions.sessionId,
+      user_id: sessions.userId,
+      github_login: sessions.githubLogin,
+      created_at: sessions.createdAt,
+      expires_at: sessions.expiresAt,
+    })
+    .from(sessions)
+    .where(eq(sessions.sessionId, sessionId))
+    .limit(1);
 
-  return rows.results?.[0] ?? null;
+  return row ?? null;
 }
 
 export async function writeSessionRecord(
   db: D1Database,
   record: SessionRecord,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO sessions (
-         session_id,
-         user_id,
-         github_login,
-         created_at,
-         expires_at
-       ) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(session_id) DO UPDATE SET
-         user_id = excluded.user_id,
-         github_login = excluded.github_login,
-         created_at = excluded.created_at,
-         expires_at = excluded.expires_at`,
-    )
-    .bind(
-      record.session_id,
-      record.user_id,
-      record.github_login,
-      record.created_at,
-      record.expires_at,
-    )
-    .run();
+  const database = registryDb(db);
+  await database
+    .insert(sessions)
+    .values({
+      sessionId: record.session_id,
+      userId: record.user_id,
+      githubLogin: record.github_login,
+      createdAt: record.created_at,
+      expiresAt: record.expires_at,
+    })
+    .onConflictDoUpdate({
+      target: sessions.sessionId,
+      set: {
+        userId: record.user_id,
+        githubLogin: record.github_login,
+        createdAt: record.created_at,
+        expiresAt: record.expires_at,
+      },
+    });
 }
 
 export async function deleteSessionRecord(db: D1Database, sessionId: string): Promise<void> {
-  await db.prepare("DELETE FROM sessions WHERE session_id = ?").bind(sessionId).run();
+  const database = registryDb(db);
+  await database.delete(sessions).where(eq(sessions.sessionId, sessionId));
 }
 
 export async function readApiTokenRecord(
@@ -303,113 +284,101 @@ export async function readApiTokenRecord(
   userId: string,
   tokenId: string,
 ): Promise<ApiTokenRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         token_id,
-         user_id,
-         github_login,
-         name,
-         secret_hash,
-         capabilities_json,
-         created_at,
-         last_used_at,
-         revoked_at
-       FROM api_tokens
-       WHERE user_id = ? AND token_id = ?`,
-    )
-    .bind(userId, tokenId)
-    .all<ApiTokenRow>();
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      token_id: apiTokens.tokenId,
+      user_id: apiTokens.userId,
+      github_login: apiTokens.githubLogin,
+      name: apiTokens.name,
+      secret_hash: apiTokens.secretHash,
+      capabilities_json: apiTokens.capabilitiesJson,
+      created_at: apiTokens.createdAt,
+      last_used_at: apiTokens.lastUsedAt,
+      revoked_at: apiTokens.revokedAt,
+    })
+    .from(apiTokens)
+    .where(and(eq(apiTokens.userId, userId), eq(apiTokens.tokenId, tokenId)))
+    .limit(1);
 
-  return rows.results?.[0] ? parseApiTokenRecord(rows.results[0]) : null;
+  return row ? parseApiTokenRecord(row) : null;
 }
 
 export async function writeApiTokenRecord(
   db: D1Database,
   record: ApiTokenRecord,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO api_tokens (
-         token_id,
-         user_id,
-         github_login,
-         name,
-         secret_hash,
-         capabilities_json,
-         created_at,
-         last_used_at,
-         revoked_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(token_id) DO UPDATE SET
-         user_id = excluded.user_id,
-         github_login = excluded.github_login,
-         name = excluded.name,
-         secret_hash = excluded.secret_hash,
-         capabilities_json = excluded.capabilities_json,
-         created_at = excluded.created_at,
-         last_used_at = excluded.last_used_at,
-         revoked_at = excluded.revoked_at`,
-    )
-    .bind(
-      record.token_id,
-      record.user_id,
-      record.github_login,
-      record.name,
-      record.secret_hash,
-      JSON.stringify(record.capabilities),
-      record.created_at,
-      record.last_used_at ?? null,
-      record.revoked_at ?? null,
-    )
-    .run();
+  const database = registryDb(db);
+  await database
+    .insert(apiTokens)
+    .values({
+      tokenId: record.token_id,
+      userId: record.user_id,
+      githubLogin: record.github_login,
+      name: record.name,
+      secretHash: record.secret_hash,
+      capabilitiesJson: JSON.stringify(record.capabilities),
+      createdAt: record.created_at,
+      lastUsedAt: record.last_used_at ?? null,
+      revokedAt: record.revoked_at ?? null,
+    })
+    .onConflictDoUpdate({
+      target: apiTokens.tokenId,
+      set: {
+        userId: record.user_id,
+        githubLogin: record.github_login,
+        name: record.name,
+        secretHash: record.secret_hash,
+        capabilitiesJson: JSON.stringify(record.capabilities),
+        createdAt: record.created_at,
+        lastUsedAt: record.last_used_at ?? null,
+        revokedAt: record.revoked_at ?? null,
+      },
+    });
 }
 
 export async function listApiTokenRecords(
   db: D1Database,
   userId: string,
 ): Promise<ApiTokenRecord[]> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         token_id,
-         user_id,
-         github_login,
-         name,
-         secret_hash,
-         capabilities_json,
-         created_at,
-         last_used_at,
-         revoked_at
-       FROM api_tokens
-       WHERE user_id = ?
-       ORDER BY created_at DESC`,
-    )
-    .bind(userId)
-    .all<ApiTokenRow>();
+  const database = registryDb(db);
+  const rows = await database
+    .select({
+      token_id: apiTokens.tokenId,
+      user_id: apiTokens.userId,
+      github_login: apiTokens.githubLogin,
+      name: apiTokens.name,
+      secret_hash: apiTokens.secretHash,
+      capabilities_json: apiTokens.capabilitiesJson,
+      created_at: apiTokens.createdAt,
+      last_used_at: apiTokens.lastUsedAt,
+      revoked_at: apiTokens.revokedAt,
+    })
+    .from(apiTokens)
+    .where(eq(apiTokens.userId, userId))
+    .orderBy(desc(apiTokens.createdAt));
 
-  return (rows.results ?? []).map(parseApiTokenRecord);
+  return rows.map(parseApiTokenRecord);
 }
 
 export async function readApiTokenLookupRecord(
   db: D1Database,
   tokenHash: string,
 ): Promise<ApiTokenLookupRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         token_id,
-         user_id,
-         github_login,
-         capabilities_json,
-         revoked_at
-       FROM api_token_lookups
-       WHERE secret_hash = ?`,
-    )
-    .bind(tokenHash)
-    .all<ApiTokenLookupRow>();
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      token_id: apiTokenLookups.tokenId,
+      user_id: apiTokenLookups.userId,
+      github_login: apiTokenLookups.githubLogin,
+      capabilities_json: apiTokenLookups.capabilitiesJson,
+      revoked_at: apiTokenLookups.revokedAt,
+    })
+    .from(apiTokenLookups)
+    .where(eq(apiTokenLookups.secretHash, tokenHash))
+    .limit(1);
 
-  return rows.results?.[0] ? parseApiTokenLookupRecord(rows.results[0]) : null;
+  return row ? parseApiTokenLookupRecord(row) : null;
 }
 
 export async function writeApiTokenLookupRecord(
@@ -417,32 +386,27 @@ export async function writeApiTokenLookupRecord(
   tokenHash: string,
   record: ApiTokenLookupRecord,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO api_token_lookups (
-         secret_hash,
-         token_id,
-         user_id,
-         github_login,
-         capabilities_json,
-         revoked_at
-       ) VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(secret_hash) DO UPDATE SET
-         token_id = excluded.token_id,
-         user_id = excluded.user_id,
-         github_login = excluded.github_login,
-         capabilities_json = excluded.capabilities_json,
-         revoked_at = excluded.revoked_at`,
-    )
-    .bind(
-      tokenHash,
-      record.token_id,
-      record.user_id,
-      record.github_login,
-      JSON.stringify(record.capabilities),
-      record.revoked_at ?? null,
-    )
-    .run();
+  const database = registryDb(db);
+  await database
+    .insert(apiTokenLookups)
+    .values({
+      secretHash: tokenHash,
+      tokenId: record.token_id,
+      userId: record.user_id,
+      githubLogin: record.github_login,
+      capabilitiesJson: JSON.stringify(record.capabilities),
+      revokedAt: record.revoked_at ?? null,
+    })
+    .onConflictDoUpdate({
+      target: apiTokenLookups.secretHash,
+      set: {
+        tokenId: record.token_id,
+        userId: record.user_id,
+        githubLogin: record.github_login,
+        capabilitiesJson: JSON.stringify(record.capabilities),
+        revokedAt: record.revoked_at ?? null,
+      },
+    });
 }
 
 export async function readSelectorResolution(
@@ -450,111 +414,111 @@ export async function readSelectorResolution(
   packageLocator: string,
   selector: string,
 ): Promise<SelectorResolutionRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         package_locator,
-         selector,
-         resolved_sha,
-         frozen,
-         recorded_at
-       FROM selector_resolutions
-       WHERE package_locator = ? AND selector = ?`,
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      package_locator: selectorResolutions.packageLocator,
+      selector: selectorResolutions.selector,
+      resolved_sha: selectorResolutions.resolvedSha,
+      frozen: selectorResolutions.frozen,
+      recorded_at: selectorResolutions.recordedAt,
+    })
+    .from(selectorResolutions)
+    .where(
+      and(
+        eq(selectorResolutions.packageLocator, packageLocator),
+        eq(selectorResolutions.selector, selector),
+      ),
     )
-    .bind(packageLocator, selector)
-    .all<SelectorResolutionRow>();
+    .limit(1);
 
-  return rows.results?.[0] ? parseSelectorResolution(rows.results[0]) : null;
+  return row
+    ? {
+        package_locator: row.package_locator,
+        selector: row.selector,
+        resolved_sha: row.resolved_sha,
+        frozen: row.frozen,
+        recorded_at: row.recorded_at,
+      }
+    : null;
 }
 
 export async function writeSelectorResolution(
   db: D1Database,
   record: SelectorResolutionRecord,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO selector_resolutions (
-         package_locator,
-         selector,
-         resolved_sha,
-         frozen,
-         recorded_at
-       ) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(package_locator, selector) DO UPDATE SET
-         resolved_sha = excluded.resolved_sha,
-         frozen = excluded.frozen,
-         recorded_at = excluded.recorded_at`,
-    )
-    .bind(
-      record.package_locator,
-      record.selector,
-      record.resolved_sha,
-      record.frozen ? 1 : 0,
-      record.recorded_at,
-    )
-    .run();
+  const database = registryDb(db);
+  await database
+    .insert(selectorResolutions)
+    .values({
+      packageLocator: record.package_locator,
+      selector: record.selector,
+      resolvedSha: record.resolved_sha,
+      frozen: record.frozen,
+      recordedAt: record.recorded_at,
+    })
+    .onConflictDoUpdate({
+      target: [selectorResolutions.packageLocator, selectorResolutions.selector],
+      set: {
+        resolvedSha: record.resolved_sha,
+        frozen: record.frozen,
+        recordedAt: record.recorded_at,
+      },
+    });
 }
 
 export async function readPackageClaim(
   db: D1Database,
   packageName: string,
 ): Promise<PackageClaimRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         package_name,
-         package_locator,
-         source_url,
-         package_subdir,
-         owner_user_id,
-         owner_github_login,
-         claimed_at,
-         updated_at
-       FROM package_claims
-       WHERE package_name = ?`,
-    )
-    .bind(packageName)
-    .all<PackageClaimRow>();
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      package_name: packageClaims.packageName,
+      package_locator: packageClaims.packageLocator,
+      source_url: packageClaims.sourceUrl,
+      package_subdir: packageClaims.packageSubdir,
+      owner_user_id: packageClaims.ownerUserId,
+      owner_github_login: packageClaims.ownerGithubLogin,
+      claimed_at: packageClaims.claimedAt,
+      updated_at: packageClaims.updatedAt,
+    })
+    .from(packageClaims)
+    .where(eq(packageClaims.packageName, packageName))
+    .limit(1);
 
-  return rows.results?.[0] ? parsePackageClaimRecord(rows.results[0]) : null;
+  return row ? parsePackageClaimRecord(row) : null;
 }
 
 export async function writePackageClaim(
   db: D1Database,
   record: PackageClaimRecord,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO package_claims (
-         package_name,
-         package_locator,
-         source_url,
-         package_subdir,
-         owner_user_id,
-         owner_github_login,
-         claimed_at,
-         updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(package_name) DO UPDATE SET
-         package_locator = excluded.package_locator,
-         source_url = excluded.source_url,
-         package_subdir = excluded.package_subdir,
-         owner_user_id = excluded.owner_user_id,
-         owner_github_login = excluded.owner_github_login,
-         claimed_at = excluded.claimed_at,
-         updated_at = excluded.updated_at`,
-    )
-    .bind(
-      record.package_name,
-      record.package_locator,
-      record.source_url,
-      record.package_subdir,
-      record.owner_user_id ?? null,
-      record.owner_github_login ?? null,
-      record.claimed_at,
-      record.updated_at,
-    )
-    .run();
+  const database = registryDb(db);
+  await database
+    .insert(packageClaims)
+    .values({
+      packageName: record.package_name,
+      packageLocator: record.package_locator,
+      sourceUrl: record.source_url,
+      packageSubdir: record.package_subdir,
+      ownerUserId: record.owner_user_id ?? null,
+      ownerGithubLogin: record.owner_github_login ?? null,
+      claimedAt: record.claimed_at,
+      updatedAt: record.updated_at,
+    })
+    .onConflictDoUpdate({
+      target: packageClaims.packageName,
+      set: {
+        packageLocator: record.package_locator,
+        sourceUrl: record.source_url,
+        packageSubdir: record.package_subdir,
+        ownerUserId: record.owner_user_id ?? null,
+        ownerGithubLogin: record.owner_github_login ?? null,
+        claimedAt: record.claimed_at,
+        updatedAt: record.updated_at,
+      },
+    });
 }
 
 export async function readPublishedRelease(
@@ -562,253 +526,115 @@ export async function readPublishedRelease(
   packageName: string,
   version: string,
 ): Promise<PublishedReleaseRecord | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         package_name,
-         package_version,
-         package_locator,
-         source_url,
-         package_subdir,
-         selector,
-         resolved_sha,
-         package_description,
-         package_license,
-         package_homepage,
-         package_repository,
-         package_root_module,
-         package_categories_json,
-         package_keywords_json,
-         dependencies_json,
-         source_archive_key,
-         manifest_key,
-         published_at
-       FROM published_releases
-       WHERE package_name = ? AND package_version = ?`,
+  const database = registryDb(db);
+  const [row] = await database
+    .select({
+      package_name: publishedReleases.packageName,
+      package_version: publishedReleases.packageVersion,
+      package_locator: publishedReleases.packageLocator,
+      source_url: publishedReleases.sourceUrl,
+      package_subdir: publishedReleases.packageSubdir,
+      selector: publishedReleases.selector,
+      resolved_sha: publishedReleases.resolvedSha,
+      package_description: publishedReleases.packageDescription,
+      package_license: publishedReleases.packageLicense,
+      package_homepage: publishedReleases.packageHomepage,
+      package_repository: publishedReleases.packageRepository,
+      package_root_module: publishedReleases.packageRootModule,
+      package_categories_json: publishedReleases.packageCategoriesJson,
+      package_keywords_json: publishedReleases.packageKeywordsJson,
+      dependencies_json: publishedReleases.dependenciesJson,
+      source_archive_key: publishedReleases.sourceArchiveKey,
+      manifest_key: publishedReleases.manifestKey,
+      published_at: publishedReleases.publishedAt,
+    })
+    .from(publishedReleases)
+    .where(
+      and(
+        eq(publishedReleases.packageName, packageName),
+        eq(publishedReleases.packageVersion, version),
+      ),
     )
-    .bind(packageName, version)
-    .all<PublishedReleaseRow>();
+    .limit(1);
 
-  return rows.results?.[0] ? parsePublishedReleaseRecord(rows.results[0]) : null;
+  return row ? parsePublishedReleaseRecord(row) : null;
 }
 
 export async function hasPublishedRelease(db: D1Database, packageName: string): Promise<boolean> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         package_name
-       FROM published_releases
-       WHERE package_name = ?
-       LIMIT 1`,
-    )
-    .bind(packageName)
-    .all<{ package_name: string }>();
+  const database = registryDb(db);
+  const [row] = await database
+    .select({ package_name: publishedReleases.packageName })
+    .from(publishedReleases)
+    .where(eq(publishedReleases.packageName, packageName))
+    .limit(1);
 
-  return (rows.results?.length ?? 0) > 0;
+  return row !== undefined;
 }
 
 export async function writePublishedRelease(
   db: D1Database,
   record: PublishedReleaseRecord,
 ): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO published_releases (
-         package_name,
-         package_version,
-         package_locator,
-         source_url,
-         package_subdir,
-         selector,
-         resolved_sha,
-         package_description,
-         package_license,
-         package_homepage,
-         package_repository,
-         package_root_module,
-         package_categories_json,
-         package_keywords_json,
-         dependencies_json,
-         source_archive_key,
-         manifest_key,
-         published_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(package_name, package_version) DO UPDATE SET
-         package_locator = excluded.package_locator,
-         source_url = excluded.source_url,
-         package_subdir = excluded.package_subdir,
-         selector = excluded.selector,
-         resolved_sha = excluded.resolved_sha,
-         package_description = excluded.package_description,
-         package_license = excluded.package_license,
-         package_homepage = excluded.package_homepage,
-         package_repository = excluded.package_repository,
-         package_root_module = excluded.package_root_module,
-         package_categories_json = excluded.package_categories_json,
-         package_keywords_json = excluded.package_keywords_json,
-         dependencies_json = excluded.dependencies_json,
-         source_archive_key = excluded.source_archive_key,
-         manifest_key = excluded.manifest_key,
-         published_at = excluded.published_at`,
-    )
-    .bind(
-      record.package_name,
-      record.package_version,
-      record.package_locator,
-      record.source_url,
-      record.package_subdir,
-      record.selector,
-      record.resolved_sha,
-      record.package_description ?? null,
-      record.package_license ?? null,
-      record.package_homepage ?? null,
-      record.package_repository ?? null,
-      record.package_root_module ?? null,
-      JSON.stringify(record.package_categories ?? []),
-      JSON.stringify(record.package_keywords ?? []),
-      JSON.stringify(record.dependencies),
-      record.source_archive_key,
-      record.manifest_key,
-      record.published_at,
-    )
-    .run();
-}
-
-export function prepareWritePackageClaim(
-  db: D1Database,
-  record: PackageClaimRecord,
-): D1PreparedStatement {
-  return db
-    .prepare(
-      `INSERT INTO package_claims (
-         package_name,
-         package_locator,
-         source_url,
-         package_subdir,
-         owner_user_id,
-         owner_github_login,
-         claimed_at,
-         updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(package_name) DO UPDATE SET
-         package_locator = excluded.package_locator,
-         source_url = excluded.source_url,
-         package_subdir = excluded.package_subdir,
-         owner_user_id = excluded.owner_user_id,
-         owner_github_login = excluded.owner_github_login,
-         claimed_at = excluded.claimed_at,
-         updated_at = excluded.updated_at`,
-    )
-    .bind(
-      record.package_name,
-      record.package_locator,
-      record.source_url,
-      record.package_subdir,
-      record.owner_user_id ?? null,
-      record.owner_github_login ?? null,
-      record.claimed_at,
-      record.updated_at,
-    );
-}
-
-export function prepareWritePublishedRelease(
-  db: D1Database,
-  record: PublishedReleaseRecord,
-): D1PreparedStatement {
-  return db
-    .prepare(
-      `INSERT INTO published_releases (
-         package_name,
-         package_version,
-         package_locator,
-         source_url,
-         package_subdir,
-         selector,
-         resolved_sha,
-         package_description,
-         package_license,
-         package_homepage,
-         package_repository,
-         package_root_module,
-         package_categories_json,
-         package_keywords_json,
-         dependencies_json,
-         source_archive_key,
-         manifest_key,
-         published_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(package_name, package_version) DO UPDATE SET
-         package_locator = excluded.package_locator,
-         source_url = excluded.source_url,
-         package_subdir = excluded.package_subdir,
-         selector = excluded.selector,
-         resolved_sha = excluded.resolved_sha,
-         package_description = excluded.package_description,
-         package_license = excluded.package_license,
-         package_homepage = excluded.package_homepage,
-         package_repository = excluded.package_repository,
-         package_root_module = excluded.package_root_module,
-         package_categories_json = excluded.package_categories_json,
-         package_keywords_json = excluded.package_keywords_json,
-         dependencies_json = excluded.dependencies_json,
-         source_archive_key = excluded.source_archive_key,
-         manifest_key = excluded.manifest_key,
-         published_at = excluded.published_at`,
-    )
-    .bind(
-      record.package_name,
-      record.package_version,
-      record.package_locator,
-      record.source_url,
-      record.package_subdir,
-      record.selector,
-      record.resolved_sha,
-      record.package_description ?? null,
-      record.package_license ?? null,
-      record.package_homepage ?? null,
-      record.package_repository ?? null,
-      record.package_root_module ?? null,
-      JSON.stringify(record.package_categories ?? []),
-      JSON.stringify(record.package_keywords ?? []),
-      JSON.stringify(record.dependencies),
-      record.source_archive_key,
-      record.manifest_key,
-      record.published_at,
-    );
+  const database = registryDb(db);
+  await database
+    .insert(publishedReleases)
+    .values({
+      packageName: record.package_name,
+      packageVersion: record.package_version,
+      packageLocator: record.package_locator,
+      sourceUrl: record.source_url,
+      packageSubdir: record.package_subdir,
+      selector: record.selector,
+      resolvedSha: record.resolved_sha,
+      packageDescription: record.package_description ?? null,
+      packageLicense: record.package_license ?? null,
+      packageHomepage: record.package_homepage ?? null,
+      packageRepository: record.package_repository ?? null,
+      packageRootModule: record.package_root_module ?? null,
+      packageCategoriesJson: JSON.stringify(record.package_categories ?? []),
+      packageKeywordsJson: JSON.stringify(record.package_keywords ?? []),
+      dependenciesJson: JSON.stringify(record.dependencies),
+      sourceArchiveKey: record.source_archive_key,
+      manifestKey: record.manifest_key,
+      publishedAt: record.published_at,
+    })
+    .onConflictDoUpdate({
+      target: [publishedReleases.packageName, publishedReleases.packageVersion],
+      set: {
+        packageLocator: record.package_locator,
+        sourceUrl: record.source_url,
+        packageSubdir: record.package_subdir,
+        selector: record.selector,
+        resolvedSha: record.resolved_sha,
+        packageDescription: record.package_description ?? null,
+        packageLicense: record.package_license ?? null,
+        packageHomepage: record.package_homepage ?? null,
+        packageRepository: record.package_repository ?? null,
+        packageRootModule: record.package_root_module ?? null,
+        packageCategoriesJson: JSON.stringify(record.package_categories ?? []),
+        packageKeywordsJson: JSON.stringify(record.package_keywords ?? []),
+        dependenciesJson: JSON.stringify(record.dependencies),
+        sourceArchiveKey: record.source_archive_key,
+        manifestKey: record.manifest_key,
+        publishedAt: record.published_at,
+      },
+    });
 }
 
 export async function writeRegistryEvent(
   db: D1Database,
   record: RegistryEventRecord,
 ): Promise<void> {
-  await prepareWriteRegistryEvent(db, record).run();
-}
-
-export function prepareWriteRegistryEvent(
-  db: D1Database,
-  record: RegistryEventRecord,
-): D1PreparedStatement {
-  return db
-    .prepare(
-      `INSERT INTO registry_events (
-         event_id,
-         event_type,
-         package_name,
-         package_version,
-         package_locator,
-         payload_json,
-         created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      record.event_id,
-      record.event_type,
-      record.package_name ?? null,
-      record.package_version ?? null,
-      record.package_locator ?? null,
-      JSON.stringify(record.payload),
-      record.created_at,
-    );
+  const database = registryDb(db);
+  await database.insert(registryEvents).values({
+    eventId: record.event_id,
+    eventType: record.event_type,
+    packageName: record.package_name ?? null,
+    packageVersion: record.package_version ?? null,
+    packageLocator: record.package_locator ?? null,
+    payloadJson: JSON.stringify(record.payload),
+    createdAt: record.created_at,
+  });
 }
 
 export async function listRegistryEvents(
@@ -816,42 +642,37 @@ export async function listRegistryEvents(
   limit = 100,
   after?: string,
 ): Promise<RegistryEventRecord[]> {
+  const database = registryDb(db);
   const rows = after === undefined
-    ? await db
-        .prepare(
-          `SELECT
-             event_id,
-             event_type,
-             package_name,
-             package_version,
-             package_locator,
-             payload_json,
-             created_at
-           FROM registry_events
-           ORDER BY event_id DESC
-           LIMIT ?`,
-        )
-        .bind(limit)
-        .all<RegistryEventRow>()
-    : await db
-        .prepare(
-          `SELECT
-             event_id,
-             event_type,
-             package_name,
-             package_version,
-             package_locator,
-             payload_json,
-             created_at
-           FROM registry_events
-           WHERE event_id > ?
-           ORDER BY event_id ASC
-           LIMIT ?`,
-        )
-        .bind(after, limit)
-        .all<RegistryEventRow>();
+    ? await database
+        .select({
+          event_id: registryEvents.eventId,
+          event_type: registryEvents.eventType,
+          package_name: registryEvents.packageName,
+          package_version: registryEvents.packageVersion,
+          package_locator: registryEvents.packageLocator,
+          payload_json: registryEvents.payloadJson,
+          created_at: registryEvents.createdAt,
+        })
+        .from(registryEvents)
+        .orderBy(desc(registryEvents.eventId))
+        .limit(limit)
+    : await database
+        .select({
+          event_id: registryEvents.eventId,
+          event_type: registryEvents.eventType,
+          package_name: registryEvents.packageName,
+          package_version: registryEvents.packageVersion,
+          package_locator: registryEvents.packageLocator,
+          payload_json: registryEvents.payloadJson,
+          created_at: registryEvents.createdAt,
+        })
+        .from(registryEvents)
+        .where(gt(registryEvents.eventId, after))
+        .orderBy(asc(registryEvents.eventId))
+        .limit(limit);
 
-  return (rows.results ?? []).map(parseRegistryEventRecord);
+  return rows.map((row) => parseRegistryEventRecord(row as RegistryEventRow));
 }
 
 export async function listPackageRegistryEvents(
@@ -860,47 +681,44 @@ export async function listPackageRegistryEvents(
   packageVersion?: string,
   limit = 50,
 ): Promise<RegistryEventRecord[]> {
-  if (packageVersion === undefined) {
-    const rows = await db
-      .prepare(
-        `SELECT
-           event_id,
-           event_type,
-           package_name,
-           package_version,
-           package_locator,
-           payload_json,
-           created_at
-        FROM registry_events
-        WHERE package_name = ?
-        ORDER BY event_id DESC
-        LIMIT ?`,
-      )
-      .bind(packageName, limit)
-      .all<RegistryEventRow>();
+  const database = registryDb(db);
 
-    return (rows.results ?? []).map(parseRegistryEventRecord);
-  }
+  const rows = packageVersion === undefined
+    ? await database
+        .select({
+          event_id: registryEvents.eventId,
+          event_type: registryEvents.eventType,
+          package_name: registryEvents.packageName,
+          package_version: registryEvents.packageVersion,
+          package_locator: registryEvents.packageLocator,
+          payload_json: registryEvents.payloadJson,
+          created_at: registryEvents.createdAt,
+        })
+        .from(registryEvents)
+        .where(eq(registryEvents.packageName, packageName))
+        .orderBy(desc(registryEvents.eventId))
+        .limit(limit)
+    : await database
+        .select({
+          event_id: registryEvents.eventId,
+          event_type: registryEvents.eventType,
+          package_name: registryEvents.packageName,
+          package_version: registryEvents.packageVersion,
+          package_locator: registryEvents.packageLocator,
+          payload_json: registryEvents.payloadJson,
+          created_at: registryEvents.createdAt,
+        })
+        .from(registryEvents)
+        .where(
+          and(
+            eq(registryEvents.packageName, packageName),
+            eq(registryEvents.packageVersion, packageVersion),
+          ),
+        )
+        .orderBy(desc(registryEvents.eventId))
+        .limit(limit);
 
-  const rows = await db
-    .prepare(
-      `SELECT
-         event_id,
-         event_type,
-         package_name,
-         package_version,
-         package_locator,
-         payload_json,
-         created_at
-       FROM registry_events
-       WHERE package_name = ? AND package_version = ?
-       ORDER BY event_id DESC
-       LIMIT ?`,
-    )
-    .bind(packageName, packageVersion, limit)
-    .all<RegistryEventRow>();
-
-  return (rows.results ?? []).map(parseRegistryEventRecord);
+  return rows.map((row) => parseRegistryEventRecord(row as RegistryEventRow));
 }
 
 export async function readPackageOverviewDocument(
@@ -921,25 +739,25 @@ export async function readPackageOverviewDocument(
     latest_version: snapshot.latest_version,
     updated_at: snapshot.updated_at,
     published_at: snapshot.published_at,
-    description: snapshot.description,
-    license: snapshot.license,
-    homepage: snapshot.homepage,
-    repository: snapshot.repository,
-    root_module: snapshot.root_module,
+    description: snapshot.description ?? undefined,
+    license: snapshot.license ?? undefined,
+    homepage: snapshot.homepage ?? undefined,
+    repository: snapshot.repository ?? undefined,
+    root_module: snapshot.root_module ?? undefined,
     canonical_locator: snapshot.canonical_locator,
     repo_url: snapshot.repo_url,
     subdir: snapshot.subdir,
     source_key: snapshot.source_key,
     manifest_key: snapshot.manifest_key,
     sha: snapshot.sha,
-    owner_github_login: snapshot.owner_github_login,
+    owner_github_login: snapshot.owner_github_login ?? snapshot.repo_owner,
     owner_github_avatar_url: await resolveOwnerAvatarUrl(
       db,
       {
         owner_user_id: snapshot.owner_user_id,
         owner_github_login: snapshot.owner_github_login,
       },
-      snapshot.owner_github_login,
+      snapshot.owner_github_login ?? snapshot.repo_owner,
     ),
     release_count: snapshot.release_count,
     dependency_count: snapshot.dependencies.length,
@@ -1075,7 +893,7 @@ export async function readOwnerPackagesDocument(
 ): Promise<OwnerPackagesDocument | null> {
   const packages = await listPackageSnapshots(db);
   const ownerPackages = packages.filter((snapshot) =>
-    snapshot.owner_github_login.toLowerCase() === ownerGithubLogin.toLowerCase()
+    (snapshot.owner_github_login ?? snapshot.repo_owner).toLowerCase() === ownerGithubLogin.toLowerCase()
   );
   if (ownerPackages.length === 0) {
     return null;
@@ -1088,7 +906,7 @@ export async function readOwnerPackagesDocument(
   return {
     schema_version: 1,
     generated_at: new Date().toISOString(),
-    owner_github_login: ownerPackages[0]?.owner_github_login ?? ownerGithubLogin,
+    owner_github_login: ownerPackages[0]?.owner_github_login ?? ownerPackages[0]?.repo_owner ?? ownerGithubLogin,
     owner_github_avatar_url: avatarUrls.get(normalizedLogin),
     package_count: packageItems.length,
     latest_update_at: packageItems[0]?.updated_at,
@@ -1097,37 +915,36 @@ export async function readOwnerPackagesDocument(
 }
 
 async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         package_name,
-         package_version,
-         package_locator,
-         source_url,
-         package_subdir,
-         selector,
-         resolved_sha,
-         package_description,
-         package_license,
-         package_homepage,
-         package_repository,
-         package_root_module,
-         package_categories_json,
-         package_keywords_json,
-         dependencies_json,
-         source_archive_key,
-         manifest_key,
-         published_at
-       FROM published_releases
-       ORDER BY package_name ASC, published_at DESC`,
-    )
-    .all<PublishedReleaseRow>();
+  const database = registryDb(db);
+  const rows = await database
+    .select({
+      package_name: publishedReleases.packageName,
+      package_version: publishedReleases.packageVersion,
+      package_locator: publishedReleases.packageLocator,
+      source_url: publishedReleases.sourceUrl,
+      package_subdir: publishedReleases.packageSubdir,
+      selector: publishedReleases.selector,
+      resolved_sha: publishedReleases.resolvedSha,
+      package_description: publishedReleases.packageDescription,
+      package_license: publishedReleases.packageLicense,
+      package_homepage: publishedReleases.packageHomepage,
+      package_repository: publishedReleases.packageRepository,
+      package_root_module: publishedReleases.packageRootModule,
+      package_categories_json: publishedReleases.packageCategoriesJson,
+      package_keywords_json: publishedReleases.packageKeywordsJson,
+      dependencies_json: publishedReleases.dependenciesJson,
+      source_archive_key: publishedReleases.sourceArchiveKey,
+      manifest_key: publishedReleases.manifestKey,
+      published_at: publishedReleases.publishedAt,
+    })
+    .from(publishedReleases)
+    .orderBy(asc(publishedReleases.packageName), desc(publishedReleases.publishedAt));
 
   const claims = await listPackageClaims(db);
   const grouped = new Map<string, PublishedReleaseRecord[]>();
 
-  for (const row of rows.results ?? []) {
-    const release = parsePublishedReleaseRecord(row);
+  for (const row of rows) {
+    const release = parsePublishedReleaseRecord(row as PublishedReleaseRow);
     const packageReleases = grouped.get(release.package_name) ?? [];
     packageReleases.push(release);
     grouped.set(release.package_name, packageReleases);
@@ -1181,24 +998,23 @@ async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> 
 }
 
 async function listPackageClaims(db: D1Database): Promise<Map<string, PackageClaimRecord>> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         package_name,
-         package_locator,
-         source_url,
-         package_subdir,
-         owner_user_id,
-         owner_github_login,
-         claimed_at,
-         updated_at
-       FROM package_claims`,
-    )
-    .all<PackageClaimRow>();
+  const database = registryDb(db);
+  const rows = await database
+    .select({
+      package_name: packageClaims.packageName,
+      package_locator: packageClaims.packageLocator,
+      source_url: packageClaims.sourceUrl,
+      package_subdir: packageClaims.packageSubdir,
+      owner_user_id: packageClaims.ownerUserId,
+      owner_github_login: packageClaims.ownerGithubLogin,
+      claimed_at: packageClaims.claimedAt,
+      updated_at: packageClaims.updatedAt,
+    })
+    .from(packageClaims);
 
   const claims = new Map<string, PackageClaimRecord>();
-  for (const row of rows.results ?? []) {
-    claims.set(row.package_name, parsePackageClaimRecord(row));
+  for (const row of rows) {
+    claims.set(row.package_name, parsePackageClaimRecord(row as PackageClaimRow));
   }
 
   return claims;
@@ -1340,14 +1156,26 @@ function compareReleaseVersionsDesc(
   left: PublishedReleaseRecord,
   right: PublishedReleaseRecord,
 ): number {
-  const semverResult = semver.rcompare(left.package_version, right.package_version);
-  if (semverResult !== 0) {
-    return semverResult;
+  const leftVersion = semver.valid(left.package_version);
+  const rightVersion = semver.valid(right.package_version);
+
+  if (leftVersion !== null && rightVersion !== null) {
+    const semverResult = semver.rcompare(leftVersion, rightVersion);
+    if (semverResult !== 0) {
+      return semverResult;
+    }
+  } else if (leftVersion !== null || rightVersion !== null) {
+    return leftVersion !== null ? -1 : 1;
   }
 
   const publishedAtResult = right.published_at.localeCompare(left.published_at);
   if (publishedAtResult !== 0) {
     return publishedAtResult;
+  }
+
+  const versionResult = right.package_version.localeCompare(left.package_version);
+  if (versionResult !== 0) {
+    return versionResult;
   }
 
   return right.resolved_sha.localeCompare(left.resolved_sha);

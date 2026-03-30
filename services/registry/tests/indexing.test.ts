@@ -353,6 +353,68 @@ describe("registry indexing", () => {
     ) as OwnerPackagesDocument;
     expect(ownerPackages.packages.map((item) => item.package_name)).toEqual(["miniriot", "kernel"]);
   });
+
+  test("derived package view documents tolerate legacy non-semver releases", async () => {
+    const { db } = makeEnv();
+    const legacy = makeReleaseRecord({
+      package_version: "main",
+      resolved_sha: "11110372bf5b6687db05bda80cde55f960cbfd9d",
+      source_archive_key:
+        "sources/github.com/leostera/riot-new/11110372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
+      manifest_key:
+        "packages/github.com/leostera/riot-new/packages/kernel/11110372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
+      published_at: "2026-03-27T15:00:00Z",
+      package_categories: ["runtime"],
+    });
+    const current = makeReleaseRecord({
+      package_version: "0.1.0",
+      resolved_sha: "22220372bf5b6687db05bda80cde55f960cbfd9d",
+      source_archive_key:
+        "sources/github.com/leostera/riot-new/22220372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
+      manifest_key:
+        "packages/github.com/leostera/riot-new/packages/kernel/22220372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
+      published_at: "2026-03-27T16:00:00Z",
+      package_categories: ["runtime", "concurrency"],
+    });
+
+    await applyMetadataMigrations(db as unknown as D1Database);
+    await writePackageClaim(db as unknown as D1Database, {
+      package_name: "kernel",
+      package_locator: current.package_locator,
+      source_url: current.source_url,
+      package_subdir: current.package_subdir,
+      owner_github_login: "leostera",
+      claimed_at: legacy.published_at,
+      updated_at: current.published_at,
+    });
+    await writePublishedRelease(db as unknown as D1Database, legacy);
+    await writePublishedRelease(db as unknown as D1Database, current);
+
+    const overview = await readPackageOverviewDocument(
+      db as unknown as D1Database,
+      "kernel",
+    ) as PackageOverviewDocument;
+    expect(overview.latest_version).toBe("0.1.0");
+    expect(overview.categories).toEqual(["runtime", "concurrency"]);
+
+    const categories = await readCategoriesIndexDocument(
+      db as unknown as D1Database,
+    ) as CategoriesIndexDocument;
+    expect(categories.categories).toEqual([
+      {
+        name: "concurrency",
+        slug: "concurrency",
+        package_count: 1,
+        packages: ["kernel"],
+      },
+      {
+        name: "runtime",
+        slug: "runtime",
+        package_count: 1,
+        packages: ["kernel"],
+      },
+    ]);
+  });
 });
 
 function makeReleaseRecord(

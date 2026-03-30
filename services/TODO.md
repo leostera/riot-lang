@@ -19,6 +19,8 @@
 
 ## Follow-up
 
+- [done] Switch `services/registry` fully to Wrangler D1 SQL migrations and remove runtime schema bootstrapping from worker request paths.
+- [done] Make registry tests initialize SQLite from `services/registry/migrations/*.sql` so local schema matches remote D1 exactly.
 - [done] Add publish metadata (`description`, `license`, `public`, missing versions) to all real workspace package manifests so the repo can be bulk-published in live e2e.
 - [done] Add D1 backup and rollback plan for `services/registry` using Cloudflare-native Time Travel + scheduled D1→R2 exports.
 - [pending] Decide whether to rename `SEARCH_DB` to a more accurate binding once the metadata migration is complete.

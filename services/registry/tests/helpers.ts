@@ -1,4 +1,7 @@
 import { Database, type SQLQueryBindings } from "bun:sqlite";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { handlePublicationCoordinatorRequest } from "../src/publication-coordinator-handler.ts";
 import type { Env } from "../src/types.ts";
@@ -246,6 +249,10 @@ export function makeEnv(overrides: Partial<Env> = {}): {
 export class FakeD1Database {
   private readonly sqlite = new Database(":memory:");
 
+  constructor() {
+    initializeRegistrySchema(this.sqlite);
+  }
+
   async exec(query: string): Promise<D1ExecResult> {
     this.sqlite.exec(query);
     return {
@@ -260,6 +267,19 @@ export class FakeD1Database {
 
   async batch<T = unknown>(statements: FakeD1PreparedStatement[]): Promise<D1Result<T>[]> {
     return await Promise.all(statements.map(async (statement) => await statement.run<T>()));
+  }
+
+  withSession(_constraintOrBookmark?: D1SessionBookmark | D1SessionConstraint): D1DatabaseSession {
+    return {
+      prepare: (query: string) => this.prepare(query) as unknown as D1PreparedStatement,
+      batch: async <T = unknown>(statements: D1PreparedStatement[]) =>
+        await Promise.all(statements.map(async (statement) => await statement.run<T>())),
+      getBookmark: () => "test-bookmark",
+    } as D1DatabaseSession;
+  }
+
+  async dump(): Promise<ArrayBuffer> {
+    return new ArrayBuffer(0);
   }
 }
 
@@ -311,6 +331,35 @@ class FakeD1PreparedStatement {
       },
       results,
     } as D1Result<T>;
+  }
+
+  async first<T = unknown>(columnName?: string): Promise<T | null> {
+    const statement = this.sqlite.query(this.query);
+    const row = statement.get(...this.bindings) as Record<string, unknown> | null;
+    if (row === null || row === undefined) {
+      return null;
+    }
+
+    if (columnName !== undefined) {
+      return (row[columnName] as T | undefined) ?? null;
+    }
+
+    return row as T;
+  }
+
+  async raw<T = unknown[]>(options: { columnNames: true }): Promise<[string[], ...T[]]>;
+  async raw<T = unknown[]>(options?: { columnNames?: false }): Promise<T[]>;
+  async raw<T = unknown[]>(
+    options?: { columnNames?: boolean },
+  ): Promise<T[] | [string[], ...T[]]> {
+    const statement = this.sqlite.query(this.query);
+    const rows = (statement.all(...this.bindings) as Record<string, unknown>[])
+      .map((row) => statement.columnNames.map((column) => row[column]) as T);
+    if (options?.columnNames === true) {
+      return [statement.columnNames, ...rows];
+    }
+
+    return rows;
   }
 }
 
@@ -426,6 +475,25 @@ function writeTarOctal(
   const encoded = value.toString(8).padStart(length - 1, "0");
   writeTarString(header, offset, length - 1, encoded);
   header[offset + length - 1] = 0;
+}
+
+function initializeRegistrySchema(sqlite: Database): void {
+  for (const migration of loadRegistryMigrationSql()) {
+    sqlite.exec(migration);
+  }
+}
+
+function loadRegistryMigrationSql(): string[] {
+  const migrationsDir = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "migrations",
+  );
+
+  return readdirSync(migrationsDir)
+    .filter((entry) => entry.endsWith(".sql"))
+    .sort()
+    .map((entry) => readFileSync(join(migrationsDir, entry), "utf8"));
 }
 
 function padLength(size: number): number {

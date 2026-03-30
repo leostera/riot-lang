@@ -4,7 +4,6 @@ import { parse as parseCookieHeader, serialize as serializeCookie } from "cookie
 import { getConfig, getGitHubApiBaseUrl } from "./config.ts";
 import { HttpError } from "./errors.ts";
 import {
-  applyMetadataMigrations,
   deleteSessionRecord,
   deleteOAuthStateRecord,
   readApiTokenLookupRecord,
@@ -67,7 +66,6 @@ export async function createGitHubAuthorizationUrl(
     created_at: createdAt,
   };
 
-  await applyMetadataMigrations(env.SEARCH_DB);
   await writeOAuthStateRecord(env.SEARCH_DB, record);
   return client.createAuthorizationURL(state, ["read:user", "user:email"]).toString();
 }
@@ -79,7 +77,6 @@ export async function completeGitHubAuthorization(
   state: string,
 ): Promise<{ user: UserRecord; session: SessionRecord; returnTo: string }> {
   const client = getGitHubOAuthClient(env, buildGitHubCallbackUrl(requestUrl));
-  await applyMetadataMigrations(env.SEARCH_DB);
   const stateRecord = await readOAuthStateRecord(env.SEARCH_DB, state);
 
   if (stateRecord === null) {
@@ -125,7 +122,6 @@ export async function logoutSession(
     return;
   }
 
-  await applyMetadataMigrations(env.SEARCH_DB);
   await deleteSessionRecord(env.SEARCH_DB, sessionId);
 }
 
@@ -164,7 +160,6 @@ export async function readAuthenticatedSession(
     return null;
   }
 
-  await applyMetadataMigrations(env.SEARCH_DB);
   const session = await readSessionRecord(env.SEARCH_DB, sessionId);
   if (session === null) {
     return null;
@@ -244,7 +239,6 @@ export async function createPublishApiToken(
     capabilities: record.capabilities,
   };
 
-  await applyMetadataMigrations(env.SEARCH_DB);
   await writeApiTokenRecord(env.SEARCH_DB, record);
   await writeApiTokenLookupRecord(env.SEARCH_DB, secretHash, lookup);
 
@@ -256,7 +250,6 @@ export async function revokeApiToken(
   user: UserRecord,
   tokenId: string,
 ): Promise<ApiTokenRecord | null> {
-  await applyMetadataMigrations(env.SEARCH_DB);
   const record = await readApiTokenRecord(env.SEARCH_DB, user.user_id, tokenId);
   if (record === null) {
     return null;
@@ -371,7 +364,6 @@ async function upsertUser(
   githubEmail: string,
 ): Promise<UserRecord> {
   const now = new Date().toISOString();
-  await applyMetadataMigrations(env.SEARCH_DB);
   const existingLogin = await readUserLoginRecord(env.SEARCH_DB, githubUser.login);
   const userId = existingLogin?.user_id ?? crypto.randomUUID();
   const existingUser = await readUserRecord(env.SEARCH_DB, userId);
@@ -444,7 +436,6 @@ async function createSession(env: Env, user: UserRecord): Promise<SessionRecord>
     expires_at: expiresAt.toISOString(),
   };
 
-  await applyMetadataMigrations(env.SEARCH_DB);
   await writeSessionRecord(env.SEARCH_DB, record);
   return record;
 }
@@ -503,7 +494,6 @@ async function authenticateApiToken(
   }
 
   const secretHash = await hashSecret(plaintext);
-  await applyMetadataMigrations(env.SEARCH_DB);
   const lookup = await readApiTokenLookupRecord(env.SEARCH_DB, secretHash);
   if (lookup === null || lookup.revoked_at !== undefined) {
     throw new HttpError(401, "unauthorized", "Publish requests require a valid API token.");
