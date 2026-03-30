@@ -40,6 +40,7 @@ This file is _yours_. Keep it up to date after every big change.
   - Focus on `lower.ml`.
   - Prefer removing impossible-state handling that the new CST already forbids.
   - grouped module renderers no longer match impossible empty declaration lists now that the CST head declaration is always explicit
+  - `render_let_operator_expression` no longer carries an impossible empty rendered-binding branch now that the leading binding is always explicit
 
 - [ ] Re-audit `lower.ml` exhaustiveness and unsupported-shape branches after each cleanup slice.
   - If a branch is impossible with the current CST, delete it.

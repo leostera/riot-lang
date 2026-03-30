@@ -3905,17 +3905,12 @@ and render_let_operator_expression
     | Some next -> binding_operator_group_items next
     | None -> []
   in
-  let rendered_bindings =
-    render_binding_operator_binding binding
-    :: List.map render_binding_operator_binding and_bindings
-  in
   let bindings =
-    match rendered_bindings with
-    | first :: rest ->
-        Doc.concat
-          (first :: List.map (fun binding -> Doc.concat [ Doc.line; binding ]) rest)
-    | [] ->
-        Doc.empty
+    Doc.concat
+      (render_binding_operator_binding binding
+      :: List.map
+           (fun binding -> Doc.concat [ Doc.line; binding ])
+           (List.map render_binding_operator_binding and_bindings))
   in
   let last_bound_value =
     match List.rev and_bindings with
