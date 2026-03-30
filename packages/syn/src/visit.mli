@@ -153,7 +153,6 @@ type 'ctx walker = {
   open_statement : 'ctx -> Cst.OpenStatement.t -> 'ctx;
   parameter : 'ctx -> Cst.Parameter.t -> 'ctx;
   pattern : 'ctx -> Cst.Pattern.t -> 'ctx;
-  pattern_payload : 'ctx -> Cst.PatternPayload.t -> 'ctx;
   payload : 'ctx -> Cst.Payload.t -> 'ctx;
   record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
@@ -200,7 +199,6 @@ type 'ctx walker = {
   descend_open_statement : 'ctx -> Cst.OpenStatement.t -> 'ctx;
   descend_parameter : 'ctx -> Cst.Parameter.t -> 'ctx;
   descend_pattern : 'ctx -> Cst.Pattern.t -> 'ctx;
-  descend_pattern_payload : 'ctx -> Cst.PatternPayload.t -> 'ctx;
   descend_payload : 'ctx -> Cst.Payload.t -> 'ctx;
   descend_record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   descend_record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
@@ -252,7 +250,6 @@ type 'ctx visitor = {
   visit_open_statement : 'ctx -> 'ctx walker -> Cst.OpenStatement.t -> 'ctx;
   visit_parameter : 'ctx -> 'ctx walker -> Cst.Parameter.t -> 'ctx;
   visit_pattern : 'ctx -> 'ctx walker -> Cst.Pattern.t -> 'ctx;
-  visit_pattern_payload : 'ctx -> 'ctx walker -> Cst.PatternPayload.t -> 'ctx;
   visit_payload : 'ctx -> 'ctx walker -> Cst.Payload.t -> 'ctx;
   visit_record_expression : 'ctx -> 'ctx walker -> Cst.RecordExpression.t -> 'ctx;
   visit_record_type_field : 'ctx -> 'ctx walker -> Cst.record_type_field -> 'ctx;
@@ -335,8 +332,6 @@ val open_statement : 'ctx visitor -> 'ctx -> Cst.OpenStatement.t -> 'ctx
 val parameter : 'ctx visitor -> 'ctx -> Cst.Parameter.t -> 'ctx
 
 val pattern : 'ctx visitor -> 'ctx -> Cst.Pattern.t -> 'ctx
-
-val pattern_payload : 'ctx visitor -> 'ctx -> Cst.PatternPayload.t -> 'ctx
 
 val payload : 'ctx visitor -> 'ctx -> Cst.Payload.t -> 'ctx
 

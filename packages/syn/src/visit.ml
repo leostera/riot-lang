@@ -31,7 +31,6 @@ type 'ctx walker = {
   open_statement : 'ctx -> Cst.OpenStatement.t -> 'ctx;
   parameter : 'ctx -> Cst.Parameter.t -> 'ctx;
   pattern : 'ctx -> Cst.Pattern.t -> 'ctx;
-  pattern_payload : 'ctx -> Cst.PatternPayload.t -> 'ctx;
   payload : 'ctx -> Cst.Payload.t -> 'ctx;
   record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
@@ -78,7 +77,6 @@ type 'ctx walker = {
   descend_open_statement : 'ctx -> Cst.OpenStatement.t -> 'ctx;
   descend_parameter : 'ctx -> Cst.Parameter.t -> 'ctx;
   descend_pattern : 'ctx -> Cst.Pattern.t -> 'ctx;
-  descend_pattern_payload : 'ctx -> Cst.PatternPayload.t -> 'ctx;
   descend_payload : 'ctx -> Cst.Payload.t -> 'ctx;
   descend_record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   descend_record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
@@ -129,7 +127,6 @@ type 'ctx visitor = {
   visit_open_statement : 'ctx -> 'ctx walker -> Cst.OpenStatement.t -> 'ctx;
   visit_parameter : 'ctx -> 'ctx walker -> Cst.Parameter.t -> 'ctx;
   visit_pattern : 'ctx -> 'ctx walker -> Cst.Pattern.t -> 'ctx;
-  visit_pattern_payload : 'ctx -> 'ctx walker -> Cst.PatternPayload.t -> 'ctx;
   visit_payload : 'ctx -> 'ctx walker -> Cst.Payload.t -> 'ctx;
   visit_record_expression : 'ctx -> 'ctx walker -> Cst.RecordExpression.t -> 'ctx;
   visit_record_type_field : 'ctx -> 'ctx walker -> Cst.record_type_field -> 'ctx;
@@ -162,16 +159,7 @@ and descend_extension = fun walk ctx (extension : Cst.extension) ->
       walk.payload ctx payload
   | None ->
       ctx
-and descend_payload = fun walk ctx (payload : Cst.Payload.t) ->
-  match payload with
-  | Cst.Payload.Structure _
-  | Cst.Payload.Signature _ ->
-      ctx
-  | Cst.Payload.Type core_type ->
-      walk.core_type ctx core_type
-  | Cst.Payload.Pattern pattern_payload ->
-      walk.pattern_payload ctx pattern_payload
-and descend_pattern_payload = fun _walk ctx _pattern_payload -> ctx
+and descend_payload = fun _walk ctx (_payload : Cst.Payload.t) -> ctx
 and descend_type_binder = fun _walk ctx _type_binder -> ctx
 and descend_type_parameter = fun _walk ctx _type_parameter -> ctx
 and descend_parameter = fun walk ctx parameter ->
@@ -1001,8 +989,7 @@ let default = {visit_apply_argument = (fun ctx walk node ->
     walk.descend_object_type_field ctx node); visit_open_statement = (fun ctx walk node ->
     walk.descend_open_statement ctx node); visit_parameter = (fun ctx walk node ->
     walk.descend_parameter ctx node); visit_pattern = (fun ctx walk node ->
-    walk.descend_pattern ctx node); visit_pattern_payload = (fun ctx walk node ->
-    walk.descend_pattern_payload ctx node); visit_payload = (fun ctx walk node ->
+    walk.descend_pattern ctx node); visit_payload = (fun ctx walk node ->
     walk.descend_payload ctx node); visit_record_expression = (fun ctx walk node ->
     walk.descend_record_expression ctx node); visit_record_type_field = (fun ctx walk node ->
     walk.descend_record_type_field ctx node); visit_recursive_module_declaration = (fun ctx walk node ->
@@ -1051,8 +1038,7 @@ let walker = fun visitor ->
       visitor.visit_object_type_field ctx walk node); open_statement = (fun ctx node ->
       visitor.visit_open_statement ctx walk node); parameter = (fun ctx node ->
       visitor.visit_parameter ctx walk node); pattern = (fun ctx node ->
-      visitor.visit_pattern ctx walk node); pattern_payload = (fun ctx node ->
-      visitor.visit_pattern_payload ctx walk node); payload = (fun ctx node ->
+      visitor.visit_pattern ctx walk node); payload = (fun ctx node ->
       visitor.visit_payload ctx walk node); record_expression = (fun ctx node ->
       visitor.visit_record_expression ctx walk node); record_type_field = (fun ctx node ->
       visitor.visit_record_type_field ctx walk node); recursive_module_declaration = (fun ctx node ->
@@ -1110,7 +1096,7 @@ let walker = fun visitor ->
     node); descend_parameter = (fun ctx node -> descend_parameter walk ctx node); descend_pattern = (fun ctx node -> descend_pattern
     walk
     ctx
-    node); descend_pattern_payload = (fun ctx node -> descend_pattern_payload walk ctx node); descend_payload = (fun ctx node -> descend_payload
+    node); descend_payload = (fun ctx node -> descend_payload
     walk
     ctx
     node); descend_record_expression = (fun ctx node -> descend_record_expression walk ctx node); descend_record_type_field = (fun ctx node -> descend_record_type_field
@@ -1199,8 +1185,6 @@ let open_statement = fun visitor ctx node -> (walker visitor).open_statement ctx
 let parameter = fun visitor ctx node -> (walker visitor).parameter ctx node
 
 let pattern = fun visitor ctx node -> (walker visitor).pattern ctx node
-
-let pattern_payload = fun visitor ctx node -> (walker visitor).pattern_payload ctx node
 
 let payload = fun visitor ctx node -> (walker visitor).payload ctx node
 

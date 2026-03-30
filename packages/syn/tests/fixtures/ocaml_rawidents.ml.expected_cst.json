@@ -274,7 +274,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -418,7 +418,7 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "opaque_tokens",
+            "tag": "opaque",
             "tokens": [
               {
                 "kind": "STRING_LITERAL",
@@ -762,7 +762,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -1224,7 +1224,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -1350,7 +1350,7 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "opaque_tokens",
+            "tag": "opaque",
             "tokens": [
               {
                 "kind": "STRING_LITERAL",
@@ -1643,7 +1643,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -1794,7 +1794,7 @@
           },
           "payload_syntax_node": null,
           "payload": {
-            "tag": "opaque_tokens",
+            "tag": "opaque",
             "tokens": [
               {
                 "kind": "STRING_LITERAL",
@@ -1940,7 +1940,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -2092,7 +2092,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -2333,7 +2333,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -2518,7 +2518,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -2736,7 +2736,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -3197,7 +3197,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",
@@ -3586,7 +3586,7 @@
                   },
                   "payload_syntax_node": null,
                   "payload": {
-                    "tag": "opaque_tokens",
+                    "tag": "opaque",
                     "tokens": [
                       {
                         "kind": "STRING_LITERAL",

@@ -8060,7 +8060,7 @@ let annotation_payload_from_shell_default = fun shell_node ->
           if tokens = [] then
             None
           else
-            Some (Cst.Payload.Opaque_tokens { tokens })
+            Some (Cst.Payload.Opaque { tokens })
       | [] ->
           None
     )
@@ -9385,13 +9385,6 @@ let structure_items_from_syntax_nodes = fun nodes ->
     )
   | exception Bail error -> Error error
 
-let structure_items_of_payload = function
-  | Cst.Payload.Structure {item_syntax_nodes} ->
-      structure_items_from_syntax_nodes item_syntax_nodes
-      |> Result.map Option.some
-  | _ ->
-      Ok None
-
 let structure_items_of_module_expression = function
   | Cst.ModuleExpression.Structure {item_syntax_nodes; _} ->
       structure_items_from_syntax_nodes item_syntax_nodes
@@ -9439,13 +9432,6 @@ let signature_items_from_syntax_nodes = fun nodes ->
           Ok items
     )
   | exception Bail error -> Error error
-
-let signature_items_of_payload = function
-  | Cst.Payload.Signature {item_syntax_nodes} ->
-      signature_items_from_syntax_nodes item_syntax_nodes
-      |> Result.map Option.some
-  | _ ->
-      Ok None
 
 let signature_items_of_module_type = function
   | Cst.ModuleType.Signature {signature_syntax_node; _} ->

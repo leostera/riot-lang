@@ -58,8 +58,6 @@ let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
       (List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ])
     message
 
-let attribute_payload_context = [ "attribute"; "payload" ]
-let shared_attribute_payload_context = [ "shared"; "attribute"; "payload" ]
 let extension_payload_context = [ "extension"; "payload" ]
 
 type pending_trivia_entry =
@@ -623,26 +621,13 @@ and render_first_class_functor_parameter ({ name_token; module_type; _ } :
       Doc.rparen;
     ]
 
-and extension_payload_source_node (extension : Syn.Cst.extension) =
-  match extension.payload_syntax_node with
-  | Some payload_syntax_node ->
-      payload_syntax_node
-  | None ->
-      extension.syntax_node
-
 and render_core_type_extension_doc (extension : Syn.Cst.extension) =
   let payload_doc =
     match extension.payload with
     | None ->
         Doc.empty
-    | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+    | Some (Syn.Cst.Payload.Opaque { tokens }) ->
         Doc.concat (List.map doc_of_token tokens)
-    | Some (Syn.Cst.Payload.Type type_) ->
-        Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
-    | Some _ ->
-        unsupported_syntax ~context:[ "core_type"; "extension_payload" ]
-          ~syntax_node:(extension_payload_source_node extension)
-          "core-type extension payloads do not have a structural formatter yet"
   in
   Doc.concat
     [
@@ -658,12 +643,8 @@ and render_first_class_module_type_extension_doc (extension : Syn.Cst.extension)
     match extension.payload with
     | None ->
         Doc.empty
-    | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+    | Some (Syn.Cst.Payload.Opaque { tokens }) ->
         Doc.concat (List.map doc_of_token tokens)
-    | Some _ ->
-        unsupported_syntax ~context:[ "first_class_module_type"; "extension_payload" ]
-          ~syntax_node:(extension_payload_source_node extension)
-          "first-class module-type extension payloads do not have a structural formatter yet"
   in
   Doc.concat
     [
@@ -674,54 +655,12 @@ and render_first_class_module_type_extension_doc (extension : Syn.Cst.extension)
       Doc.rbracket;
     ]
 
-and shared_attribute_payload_source_node (attribute : Syn.Cst.attribute) =
-  match attribute.payload_syntax_node with
-  | Some payload_syntax_node ->
-      payload_syntax_node
-  | None ->
-      attribute.syntax_node
-
-and render_shared_attribute_payload_expression_doc = function
-  | Syn.Cst.Expression.Path { path; attributes = []; _ } ->
-      doc_of_ident path
-  | Syn.Cst.Expression.Constructor { constructor_path; payload = None; attributes = []; _ } ->
-      doc_of_ident constructor_path
-  | Syn.Cst.Expression.Operator { operator_tokens; _ } ->
-      operator_tokens |> List.map doc_of_token |> Doc.concat
-  | Syn.Cst.Expression.Prefix { operator_token; operand; _ } ->
-      Doc.concat
-        [
-          doc_of_token operator_token;
-          render_shared_attribute_payload_expression_doc operand;
-        ]
-  | Syn.Cst.Expression.Infix { left; operator_token; right; _ } ->
-      Doc.concat
-        [
-          render_shared_attribute_payload_expression_doc left;
-          Doc.space;
-          doc_of_token operator_token;
-          Doc.space;
-          render_shared_attribute_payload_expression_doc right;
-        ]
-  | Syn.Cst.Expression.Literal literal ->
-      render_literal literal
-  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
-      Doc.concat [ Doc.lparen; render_shared_attribute_payload_expression_doc inner; Doc.rparen ]
-  | expression ->
-      unsupported_syntax ~context:shared_attribute_payload_context
-        ~syntax_node:(Syn.Cst.Expression.syntax_node expression)
-        "shared attribute expression payloads do not have a structural formatter yet"
-
 and render_shared_attribute_payload_doc (attribute : Syn.Cst.attribute) =
   match attribute.payload with
   | None ->
       Doc.empty
-  | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+  | Some (Syn.Cst.Payload.Opaque { tokens }) ->
       Doc.concat (List.map doc_of_token tokens)
-  | Some _ ->
-      unsupported_syntax ~context:shared_attribute_payload_context
-        ~syntax_node:(shared_attribute_payload_source_node attribute)
-        "shared attribute payloads should be opaque tokens"
 
 and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
   let sigil_doc =
@@ -1436,32 +1375,8 @@ let rec render_pattern =
         match extension.payload with
         | None ->
             Doc.empty
-        | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+        | Some (Syn.Cst.Payload.Opaque { tokens }) ->
             Doc.concat (List.map doc_of_token tokens)
-        | Some (Syn.Cst.Payload.Pattern payload) ->
-            (match payload.guard_syntax_node with
-            | Some guard_syntax_node ->
-                unsupported_syntax ~context:[ "pattern"; "extension_payload" ]
-                  ~syntax_node:guard_syntax_node
-                  "pattern extension guards do not have a structural formatter yet"
-            | None ->
-                let pattern =
-                  match Syn.CstBuilder.pattern_of_syntax_node payload.pattern_syntax_node with
-                  | Ok pattern ->
-                      pattern
-                  | Error error ->
-                      unsupported_with_context_entries
-                        ~context:
-                          (Context_syntax_kind error.syntax_kind
-                          :: [ Context_label "pattern"; Context_label "extension_payload" ]
-                          @ List.map (fun label -> Context_label label) error.context)
-                        error.message
-                in
-                Doc.concat [ Doc.text "?"; Doc.space; render_pattern pattern ])
-        | Some _ ->
-            unsupported_syntax ~context:[ "pattern"; "extension_payload" ]
-              ~syntax_node:(extension_payload_source_node extension)
-              "pattern extension payloads do not have a structural formatter yet"
       in
       Doc.concat
         [
@@ -2378,62 +2293,12 @@ let make_lowerer =
   in
   doc_with_expression_attributes expression doc
 
-  and extension_payload_source_node (extension : Syn.Cst.extension) =
-    match extension.payload_syntax_node with
-    | Some payload_syntax_node ->
-        payload_syntax_node
-    | None ->
-        extension.syntax_node
-
   and render_extension_payload_doc_with_context ~context (extension : Syn.Cst.extension) =
     match extension.payload with
     | None ->
         Doc.empty
-    | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+    | Some (Syn.Cst.Payload.Opaque { tokens }) ->
         Doc.concat (List.map doc_of_token tokens)
-    | Some (Syn.Cst.Payload.Type type_) ->
-        Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
-    | Some (Syn.Cst.Payload.Pattern payload) ->
-        Doc.concat
-          [
-            Doc.text "?";
-            Doc.space;
-            render_pattern_payload_doc_with_context ~context payload;
-          ]
-    | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
-        let source_node = extension_payload_source_node extension in
-        match Syn.CstBuilder.structure_items_of_payload payload with
-        | Ok (Some items) ->
-            if List.is_empty items then
-              Doc.empty
-            else
-              Doc.concat [ Doc.space; render_structure_items ~source_node items ]
-        | Ok None ->
-            Doc.empty
-        | Error error ->
-            unsupported_with_context_entries
-              ~context:
-                (Context_syntax_kind error.syntax_kind
-                :: List.map (fun label -> Context_label label) context
-                @ List.map (fun label -> Context_label label) error.context)
-              error.message)
-    | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
-        let source_node = extension_payload_source_node extension in
-        match Syn.CstBuilder.signature_items_of_payload payload with
-        | Ok (Some items) ->
-            if List.is_empty items then
-              Doc.empty
-            else
-              Doc.concat [ Doc.space; render_signature_items ~source_node items ]
-        | Ok None ->
-            Doc.empty
-        | Error error ->
-            unsupported_with_context_entries
-              ~context:
-                (Context_syntax_kind error.syntax_kind
-                :: List.map (fun label -> Context_label label) context
-                @ List.map (fun label -> Context_label label) error.context)
-              error.message)
 
   and render_extension_doc (extension : Syn.Cst.extension) =
     Doc.concat
@@ -2446,60 +2311,12 @@ let make_lowerer =
         Doc.rbracket;
       ]
 
-  and attribute_payload_source_node (attribute : Syn.Cst.attribute) =
-    match attribute.payload_syntax_node with
-    | Some payload_syntax_node ->
-        payload_syntax_node
-    | None ->
-        attribute.syntax_node
-
   and render_attribute_payload_doc (attribute : Syn.Cst.attribute) =
     match attribute.payload with
     | None ->
         Doc.empty
-    | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+    | Some (Syn.Cst.Payload.Opaque { tokens }) ->
         Doc.concat (List.map doc_of_token tokens)
-    | Some _ ->
-        unsupported_syntax ~context:attribute_payload_context
-          ~syntax_node:(attribute_payload_source_node attribute)
-          "attribute payloads should be opaque tokens"
-
-  and render_pattern_payload_doc_with_context ~context
-    ({ pattern_syntax_node; guard_syntax_node } : Syn.Cst.pattern_payload) =
-    let pattern =
-      match Syn.CstBuilder.pattern_of_syntax_node pattern_syntax_node with
-      | Ok pattern ->
-          pattern
-      | Error error ->
-          unsupported_with_context_entries
-            ~context:
-              (Context_syntax_kind error.syntax_kind
-              :: List.map (fun label -> Context_label label) context
-              @ List.map (fun label -> Context_label label) error.context)
-            error.message
-    in
-    let guard =
-      match guard_syntax_node with
-      | None ->
-          None
-      | Some guard_syntax_node -> (
-          match Syn.CstBuilder.expression_of_syntax_node guard_syntax_node with
-          | Ok guard ->
-              Some guard
-          | Error error ->
-              unsupported_with_context_entries
-                ~context:
-                  (Context_syntax_kind error.syntax_kind
-                  :: List.map (fun label -> Context_label label) context
-                  @ List.map (fun label -> Context_label label) error.context)
-                error.message)
-    in
-    let pattern_doc = render_pattern pattern in
-    match guard with
-    | None ->
-        pattern_doc
-    | Some guard ->
-        Doc.concat [ pattern_doc; Doc.space; kw_when; Doc.space; render_expression guard ]
 
   and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
     let sigil_doc =

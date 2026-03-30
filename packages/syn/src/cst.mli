@@ -214,49 +214,21 @@ and extension = {
 
 (** Payloads attached to attributes and extensions.
 
-    Attributes and extensions default to an opaque token-slice contract so
-    payload bodies stay lossless without forcing them through OCaml-specific
-    relift. Structured payload variants remain available for the cases where
-    the CST explicitly commits to an OCaml payload family.
+    Attribute and extension payloads stay lossless but opaque for now. The CST
+    preserves the shell-local token slice exactly and does not commit to any
+    OCaml-specific payload grammar.
 *)
 and payload =
-  | Structure of {
-      item_syntax_nodes : syntax_node list;
-    }
-      (** A structure-style payload such as the body of `[%foo let x = 1]`
-          or `[@foo "message"]`. *)
-  | Signature of {
-      item_syntax_nodes : syntax_node list;
-    }
-      (** A signature-style payload such as the body of
-          `[%%foo val x : int]`. *)
-  | Type of core_type
-      (** A type payload introduced by `:`.
-
-          Example: `[%foo: int -> string]`.
-      *)
-  | Pattern of pattern_payload
-      (** A pattern payload introduced by `?`.
-
-          Example: `[%foo? Some x when x > 0]`.
-      *)
-  | Opaque_tokens of {
+  | Opaque of {
       tokens : Token.t list;
     }
       (** A lossless opaque payload preserved as its raw shell-local token
           slice.
 
-          This is the default for attribute and extension payloads whose
-          contents are not yet committed to OCaml CST structure, for example
-          foreign mini-languages such as `[%sql SELECT * FROM users]` or
-          attribute bodies we intentionally leave opaque for now.
+          This covers both foreign mini-languages such as
+          `[%sql SELECT * FROM users]` and OCaml-shaped payload bodies we are
+          intentionally leaving opaque for now.
       *)
-
-(** A pattern payload with its optional `when` guard. *)
-and pattern_payload = {
-  pattern_syntax_node : syntax_node;
-  guard_syntax_node : syntax_node option;
-}
 
 (** A field inside an object type.
 
@@ -4370,11 +4342,6 @@ type include_target =
     This is the payload shape used by pattern-oriented attributes and
     extensions.
 *)
-(** Helper view over attribute and extension payloads.
-
-    This is useful when a consumer wants to branch on payload family without
-    inspecting the surrounding attribute or extension shell directly.
-*)
 type include_statement = {
   syntax_node : syntax_node;
   target : include_target;
@@ -4385,16 +4352,6 @@ type include_statement = {
     This covers structure items such as `let`, `module`, `type`, floating
     attributes, and standalone expressions.
 *)
-module PatternPayload : sig
-  type t = pattern_payload = {
-    pattern_syntax_node : syntax_node;
-    guard_syntax_node : syntax_node option;
-  }
-  val pattern_syntax_node : t -> syntax_node
-
-  val guard_syntax_node : t -> syntax_node option
-end
-
 (** Top-level items that can appear in an interface source file.
 
     This covers signature items such as `val`, `module`, `type`, `class`, and
@@ -4402,26 +4359,10 @@ end
 *)
 module Payload : sig
   type t = payload =
-    | Structure of {
-        item_syntax_nodes : syntax_node list;
-      }
-    | Signature of {
-        item_syntax_nodes : syntax_node list;
-      }
-    | Type of core_type
-    | Pattern of pattern_payload
-    | Opaque_tokens of {
+    | Opaque of {
         tokens : Token.t list;
       }
-  val item_syntax_nodes : t -> syntax_node list option
-
-  val core_type : t -> core_type option
-
-  val pattern_syntax_node : t -> syntax_node option
-
-  val guard_syntax_node : t -> syntax_node option
-
-  val opaque_tokens : t -> Token.t list option
+  val tokens : t -> Token.t list
 end
 
 (** A parsed implementation source file.

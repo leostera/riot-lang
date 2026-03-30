@@ -62,7 +62,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Syn.Cst.ModuleDeclaration` is now an explicit valid-shape sum for signature-only versus structure-with-body module bindings; the bogus `:=` substitution path and the old `module_type option * module_expression option` product are gone, although the node still spans both structure and signature contexts.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module/extension patterns now lower structurally; default opaque extension payloads in patterns now render directly from CST token slices, while the remaining structured guard case still fails explicitly.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
-- module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, extension, and unreachable expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes, and extension payloads render from CST-owned opaque token slices when they are not explicitly structured OCaml payloads.
+- module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, extension, and unreachable expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes, and extension payloads render from CST-owned opaque token slices.
 - optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
 - signature `val` declarations now render names from CST token structure plus `Syn.Cst.Token.is_operator_like_name`; `krasny` no longer reparses declaration source or compares raw token text to recover or parenthesize operator names before `:`.
 - inherited polymorphic-variant rows now render directly from `Syn.Cst.RowField.Inherit.type_`; `krasny` no longer reconstructs inherited row paths by scanning token text.
@@ -114,11 +114,9 @@ This file is _yours_. Keep it up to date after every big change.
 - `Syn.Cst.sequence_expression` now carries per-step `expression_leading_trivia`, and `krasny` uses that structural list directly instead of reconstructing semicolon-boundary trivia from generic `leading_trivia_after_token_before_node` helper calls.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms, including opaque extension module-type payloads; signature-bodied first-class module types still fail explicitly instead of reconstructing raw `(module ...)` text.
-- `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature payload item streams for structured OCaml payloads; opaque extension payloads intentionally do not relift through those helpers.
 - class-structure and class-type-signature field payloads now carry `owned_trivia`, and `Syn.CstBuilder.class_field_items_of_fields` / `class_type_field_items_of_fields` expose ordered helper streams with standalone trailing `end`-owned comments/docstrings.
 - class and class-type declarations now render structurally too, including `class%foo` / `class type%foo` shortcut shell modifiers from explicit CST `declaration_extension` / `declaration_attributes` instead of formatter-side recovery.
-- the main lowering path now renders floating attributes and expression-attached attributes structurally from payload shape plus those payload item helpers; pattern payloads fail explicitly there instead of replaying raw payload text.
-- ordinary `[@attr? pattern when guard]` payloads now lower structurally by relifting `pattern_syntax_node` / `guard_syntax_node` through `Syn.CstBuilder.pattern_of_syntax_node` and `expression_of_syntax_node`; shared/global pattern payloads still fail explicitly.
+- the main lowering path now renders floating attributes and expression-attached attributes from the opaque payload token slice carried by the CST; `krasny` no longer relifts payload bodies as OCaml.
 - postfix expression attributes on constructor/apply/infix expressions now parenthesize the attributed expression structurally before rendering `[@attr]`, so payloads stay intact and repeated formatting stays idempotent for shapes like `Some 0 [@inline always]`, `f x [@inline always]`, and `a + b [@inline always]`.
 - shared/global core-type, module-type, and module-expression attributes now render no-payload, type-payload, and simple single-expression structure payloads structurally; richer shared/global payload forms fail explicitly instead of replaying raw payload text.
 - split-sigil floating attributes such as `[@@@foo]` now lift as payload-free annotations instead of misparsing the trailing `@foo` as raw payload text.
@@ -131,7 +129,7 @@ This file is _yours_. Keep it up to date after every big change.
 - polymorphic-variant expression and pattern heads now render from explicit `tag_token` plus a formatter backtick, instead of replaying raw syntax-node token text.
 - `Syn.Cst.CoreType.Poly` now exposes `type_keyword_token`, and `krasny` uses that explicit token instead of scanning raw tokens to decide whether locally abstract types were written with `type`.
 - `packages/krasny/src/source.ml` is gone; `krasny` no longer keeps any live raw source-reconstruction helper.
-- attribute and extension payloads now default to `Syn.Cst.Payload.Opaque_tokens`, preserving foreign-language bodies and OCaml payload bodies losslessly in the CST until we intentionally commit to a structured payload family.
+- attribute and extension payloads now use a single `Syn.Cst.Payload.Opaque` constructor, preserving foreign-language bodies and OCaml payload bodies losslessly in the CST without advertising structured payload variants we do not actually support.
 - `krasny` now renders attribute and extension payloads from that opaque CST token slice instead of relifting or normalizing payload contents.
 - the remaining structural debt is unsupported valid syntax and missing CST facts, not formatter-side source/token/span reconstruction.
 
@@ -149,14 +147,13 @@ This file is _yours_. Keep it up to date after every big change.
 ## Structural Formatting Debt
 
 - [ ] Burn down the remaining unsupported valid syntax in structural-priority order
-  - signature-bodied first-class module types, if we decide those should be supported rather than remain explicit failures
   - implementation `val` structure items if they remain valid syntax we want to format
 
 - [x] Make annotation payloads structural-by-contract without forcing OCaml relift
-  - attribute and extension payloads now default to `Syn.Cst.Payload.Opaque_tokens`
+  - attribute and extension payloads now use a single `Syn.Cst.Payload.Opaque` constructor
   - `krasny` renders those payloads by replaying the CST-owned token slice exactly
   - foreign payload languages such as `[%sql ...]` no longer depend on accidental OCaml payload parsing
-  - ordinary OCaml attribute payload bodies also stay opaque until we intentionally add a structured payload contract
+  - ordinary OCaml payload bodies also stay opaque until we intentionally add a different CST contract
 
 - [x] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
   - `Source.source_of_syntax_node` is gone

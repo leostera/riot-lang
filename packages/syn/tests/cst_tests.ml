@@ -4132,7 +4132,7 @@ let tests =
               ~actual:(Syn.Cst.Ident.name extension.name);
             Test.assert_equal ~expected:None ~actual:extension.payload_syntax_node;
             (match extension.payload with
-            | Some (Syn.Cst.Payload.Opaque_tokens { tokens }) ->
+            | Some (Syn.Cst.Payload.Opaque { tokens }) ->
                 Test.assert_equal
                   ~expected:[ " "; "42" ]
                   ~actual:(List.map Syn.Cst.Token.text tokens);
@@ -4181,10 +4181,7 @@ let tests =
           signature_items cst
           |> List.filter_map (function
                | Syn.Cst.SignatureItem.Extension
-                   {
-                     payload = Some (Syn.Cst.Payload.Opaque_tokens { tokens });
-                     _;
-                   } ->
+                   { payload = Some (Syn.Cst.Payload.Opaque { tokens }); _ } ->
                    Some tokens
                | _ ->
                    None)
@@ -4197,25 +4194,6 @@ let tests =
             Ok ()
         | [] ->
             Error "expected interface extension payload");
-    Test.case "cst builder does not relift opaque extension payloads"
-      (fun () ->
-        let result = parse_mli "[%%signature_item val x : int]\n" in
-        let cst =
-          expect_some result.cst
-            ~msg:"expected CST for diagnostics-free parse"
-          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-        in
-        match signature_items cst with
-        | Syn.Cst.SignatureItem.Extension { payload = Some payload; _ } :: _ -> (
-            match Syn.CstBuilder.signature_items_of_payload payload with
-            | Ok None ->
-                Ok ()
-            | Ok (Some _) ->
-                Error "expected opaque extension payload helper to stay non-reifying"
-            | Error _ ->
-                Error "expected opaque extension payload helper to stay non-reifying")
-        | _ ->
-            Error "expected extension payload");
     Test.case "cst attributed types keep attribute names and payload nodes" (fun () ->
         let result = parse_ml "type t = int [@foo]\n" in
         let cst =
@@ -4303,7 +4281,7 @@ let tests =
             match attributes with
             | {
                payload_syntax_node = None;
-               payload = Some (Syn.Cst.Payload.Opaque_tokens { tokens });
+               payload = Some (Syn.Cst.Payload.Opaque { tokens });
                _;
               }
               :: _ ->
@@ -4328,7 +4306,7 @@ let tests =
             let attributes = Syn.Cst.Expression.attributes value in
             Test.assert_equal ~expected:1 ~actual:(List.length attributes);
             (match attributes with
-            | { name; payload = Some (Syn.Cst.Payload.Opaque_tokens _); _ } :: _ ->
+            | { name; payload = Some (Syn.Cst.Payload.Opaque _); _ } :: _ ->
                 Test.assert_equal ~expected:(Some "foo")
                   ~actual:(Syn.Cst.Ident.name name);
                 Ok ()
@@ -4336,29 +4314,6 @@ let tests =
                 Error "expected commented expression attribute payload")
         | _ ->
             Error "expected let binding with commented expression attribute");
-    Test.case "cst builder does not relift opaque attribute payloads"
-      (fun () ->
-        let result = parse_ml "let _ = value [@foo 1 + 2]\n" in
-        let cst =
-          expect_some result.cst
-            ~msg:"expected CST for diagnostics-free parse"
-          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-        in
-        match structure_items cst with
-        | Syn.Cst.StructureItem.LetBinding { value; _ } :: _ -> (
-            match Syn.Cst.Expression.attributes value with
-            | { payload = Some payload; _ } :: _ -> (
-                match Syn.CstBuilder.structure_items_of_payload payload with
-                | Ok None ->
-                    Ok ()
-                | Ok _ ->
-                    Error "expected opaque attribute payload helper to stay non-reifying"
-                | Error _ ->
-                    Error "expected opaque attribute payload helper to stay non-reifying")
-            | _ ->
-                Error "expected expression attribute payload")
-        | _ ->
-            Error "expected let binding with attribute payload");
     Test.case "cst extensions keep typed `:` payloads opaque by default" (fun () ->
         let result = parse_ml "let _ = [%foo: int -> string]\n" in
         let cst =
@@ -4372,7 +4327,7 @@ let tests =
               value =
                 Syn.Cst.Expression.Extension
                   {
-                    payload = Some (Syn.Cst.Payload.Opaque_tokens { tokens });
+                    payload = Some (Syn.Cst.Payload.Opaque { tokens });
                     _;
                   };
               _;
@@ -4398,7 +4353,7 @@ let tests =
                 Syn.Cst.Expression.Extension
                   {
                     name;
-                    payload = Some (Syn.Cst.Payload.Opaque_tokens { tokens });
+                    payload = Some (Syn.Cst.Payload.Opaque { tokens });
                     _;
                   };
               _;

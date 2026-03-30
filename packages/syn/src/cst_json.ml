@@ -777,30 +777,12 @@ and attribute_to_json = fun (attr : Cst.attribute) -> Json.Object [
   ("payload_syntax_node", option_to_json syntax_node_to_json attr.payload_syntax_node);
   ("payload", option_to_json payload_to_json attr.payload)
 ]
-and pattern_payload_to_json = fun ({ pattern_syntax_node; guard_syntax_node } : Cst.pattern_payload) -> Json.Object [
-  ("pattern_syntax_node", syntax_node_to_json pattern_syntax_node);
-  ("guard_syntax_node", option_to_json syntax_node_to_json guard_syntax_node)
-]
 and payload_to_json =
   function
-  | Cst.Payload.Structure { item_syntax_nodes } ->
-      Json.Object [
-        ("tag", Json.String "structure");
-        ("item_syntax_nodes", Json.Array (List.map syntax_node_to_json item_syntax_nodes))
-      ]
-  | Cst.Payload.Signature { item_syntax_nodes } ->
-      Json.Object [
-        ("tag", Json.String "signature");
-        ("item_syntax_nodes", Json.Array (List.map syntax_node_to_json item_syntax_nodes))
-      ]
-  | Cst.Payload.Type type_ ->
-      Json.Object [ ("tag", Json.String "type"); ("type", core_type_to_json type_) ]
-  | Cst.Payload.Pattern payload ->
-      Json.Object [ ("tag", Json.String "pattern"); ("payload", pattern_payload_to_json payload) ]
-  | Cst.Payload.Opaque_tokens { tokens } ->
+  | Cst.Payload.Opaque { tokens } ->
       Json.Object
         [
-          ("tag", Json.String "opaque_tokens");
+          ("tag", Json.String "opaque");
           ("tokens", Json.Array (List.map token_to_json tokens));
         ]
 and extension_to_json = fun (ext : Cst.extension) -> Json.Object [

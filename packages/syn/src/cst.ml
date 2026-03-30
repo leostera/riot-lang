@@ -199,22 +199,9 @@ and extension = {
 }
 
 and payload =
-  | Structure of {
-      item_syntax_nodes : syntax_node list;
-    }
-  | Signature of {
-      item_syntax_nodes : syntax_node list;
-    }
-  | Type of core_type
-  | Pattern of pattern_payload
-  | Opaque_tokens of {
+  | Opaque of {
       tokens : Token.t list;
     }
-
-and pattern_payload = {
-  pattern_syntax_node : syntax_node;
-  guard_syntax_node : syntax_node option;
-}
 
 and object_type_field = {
   syntax_node : syntax_node;
@@ -2351,17 +2338,6 @@ module Pattern = struct
     | Parenthesized pattern -> pattern.attributes
 end
 
-module PatternPayload = struct
-  type t = pattern_payload = {
-    pattern_syntax_node : syntax_node;
-    guard_syntax_node : syntax_node option;
-  }
-
-  let pattern_syntax_node = fun payload -> payload.pattern_syntax_node
-
-  let guard_syntax_node = fun payload -> payload.guard_syntax_node
-end
-
 module InfixExpression = struct
   type t = infix_expression = {
     syntax_node : syntax_node;
@@ -2397,64 +2373,13 @@ end
 
 module Payload = struct
   type t = payload =
-    | Structure of {
-        item_syntax_nodes : syntax_node list;
-      }
-    | Signature of {
-        item_syntax_nodes : syntax_node list;
-      }
-    | Type of core_type
-    | Pattern of pattern_payload
-    | Opaque_tokens of {
+    | Opaque of {
         tokens : Token.t list;
       }
 
-  let item_syntax_nodes =
-    function
-    | Structure { item_syntax_nodes }
-    | Signature { item_syntax_nodes } ->
-        Some item_syntax_nodes
-    | Type _
-    | Pattern _
-    | Opaque_tokens _ ->
-        None
-
-  let core_type =
-    function
-    | Type type_ -> Some type_
-    | Structure _
-    | Signature _
-    | Pattern _
-    | Opaque_tokens _ ->
-        None
-
-  let pattern_syntax_node =
-    function
-    | Pattern payload -> Some payload.pattern_syntax_node
-    | Structure _
-    | Signature _
-    | Type _
-    | Opaque_tokens _ ->
-        None
-
-  let guard_syntax_node =
-    function
-    | Pattern payload -> payload.guard_syntax_node
-    | Structure _
-    | Signature _
-    | Type _
-    | Opaque_tokens _ ->
-        None
-
-  let opaque_tokens =
-    function
-    | Opaque_tokens { tokens } ->
-        Some tokens
-    | Structure _
-    | Signature _
-    | Type _
-    | Pattern _ ->
-        None
+  let tokens = function
+    | Opaque { tokens } ->
+        tokens
 end
 
 module TypeVariable = struct
