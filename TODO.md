@@ -58,7 +58,7 @@ This file is _yours_. Keep it up to date after every big change.
 - class, local-open, and object core types now lower structurally; core-type extensions fail explicitly instead of falling through raw fallback.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module patterns now lower structurally; pattern extensions still fail explicitly instead of falling through raw fallback.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
-- module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, and extension expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer members and member attributes, while object extension members still fail explicitly instead of falling through raw fallback.
+- module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, and extension expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes.
 - optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
 - signature `val` declarations now render names from CST token structure plus `Syn.Cst.Token.is_operator_like_name`; `krasny` no longer reparses declaration source or compares raw token text to recover or parenthesize operator names before `:`.
 - inherited polymorphic-variant rows now render directly from `Syn.Cst.RowField.Inherit.type_`; `krasny` no longer reconstructs inherited row paths by scanning token text.
@@ -73,7 +73,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Format_core.format` no longer falls back to returning the original source when lowering declines to format.
 - `Format_core.format` now has an explicit EOF policy: non-empty formatted output ends with a final newline, without inspecting the input source to inherit that behavior.
 - `Syn.Cst.SourceFile` now exposes `phrase_separator_tokens`, and top-level structure phrase separators render from that CST token stream instead of slicing raw source between item spans, preserving expression runs, or scanning source-file direct tokens in `krasny`.
-- plain `object ... end` expressions now format structurally and idempotently, including empty objects, self patterns, `method`/`val` members, `inherit`, `initializer`, member attributes, and typed object-expression constraints; object extension members still fail explicitly.
+- plain `object ... end` expressions now format structurally and idempotently, including empty objects, self patterns, `method`/`val` members, `inherit`, `initializer`, extension members, member attributes, and typed object-expression constraints.
 - positional constructor parameter patterns no longer accumulate redundant parentheses across reformat; `krasny` now treats already-parenthesized parameter docs as stable and has focused regression coverage for `fun (Conn conn) -> ...`.
 - structure/signature `open!` statements now render the bang from `bang_token`, instead of hardcoding `!` in the formatter.
 - trivia between `fun ... ->` and the first body token now comes from that body token's `leading_trivia`; `lower.ml` no longer reparses a raw source slice for that path.
@@ -142,9 +142,6 @@ This file is _yours_. Keep it up to date after every big change.
 ## Structural Formatting Debt
 
 - [ ] Burn down the remaining unsupported valid syntax in structural-priority order
-  - module-expression extensions
-  - module-type extensions
-  - object extension members
   - shared/global pattern payloads
   - floating extension items
   - class / class-type declaration items

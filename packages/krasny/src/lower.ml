@@ -2658,8 +2658,7 @@ and render_object_member = function
   | Syn.Cst.ObjectMember.Inherit inherit_ ->
       render_object_inherit inherit_
   | Syn.Cst.ObjectMember.Extension extension ->
-      unsupported_syntax ~context:[ "expression"; "object_member" ] ~syntax_node:extension.syntax_node
-        "object extension members do not have a structural formatter yet"
+      render_extension_doc extension
   | Syn.Cst.ObjectMember.Initializer initializer_ ->
       render_object_initializer initializer_
 

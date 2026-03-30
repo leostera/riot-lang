@@ -96,6 +96,59 @@ let test_build_workspace_respects_serial_package_orchestration () =
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_failed_dependency_updates_package_graph () =
+  match
+    Fs.with_tempdir ~prefix:"coordinator_failed_dep_test" (fun tmpdir ->
+        write_package ~root:tmpdir ~name:"a" ~lib_body:"let broken =" ~deps:[];
+        write_package ~root:tmpdir ~name:"b" ~lib_body:"let b = 1" ~deps:[ "a" ];
+        with_scanned_workspace tmpdir (fun workspace ->
+            let toolchain =
+              Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
+              |> Result.expect ~msg:"toolchain init failed"
+            in
+            let store = Tusk_store.Store.create ~workspace in
+            let build_ctx = make_build_ctx ~parallelism:2 () in
+            match
+              Tusk_executor.Coordinator.build_workspace ~workspace ~toolchain
+                ~store ~target:Tusk_planner.Workspace_planner.All
+                ~scope:Tusk_planner.Package_graph.Runtime ~concurrency:2
+                ~build_ctx
+                ~session_id:build_ctx.Tusk_model.Build_ctx.session_id
+            with
+            | Error _ -> Error "workspace build failed"
+            | Ok result -> (
+                let package_key =
+                  Tusk_planner.Package_graph.package_key ~package_name:"b"
+                    Tusk_planner.Package_graph.Runtime
+                in
+                match
+                  Tusk_planner.Package_graph.get_node_by_key result.package_graph
+                    package_key
+                with
+                | None -> Error "missing package graph node for failed package"
+                | Some node -> (
+                    match node.value with
+                    | Tusk_planner.Package_graph.Failed _ -> Ok ()
+                    | Tusk_planner.Package_graph.Unplanned _ ->
+                        Error
+                          "package graph left dependent package unplanned after \
+                           dependency failure"
+                    | Tusk_planner.Package_graph.Planned _ ->
+                        Error
+                          "package graph left dependent package planned after \
+                           dependency failure"
+                    | Tusk_planner.Package_graph.Built _ ->
+                        Error
+                          "package graph left dependent package built after \
+                           dependency failure"
+                    | Tusk_planner.Package_graph.Skipped _ ->
+                        Error
+                          "package graph left dependent package skipped after \
+                           dependency failure")))
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let tests =
   Test.
     [
@@ -103,6 +156,8 @@ let tests =
         test_build_workspace_two_packages_success;
       case "build_workspace: serial orchestration succeeds"
         test_build_workspace_respects_serial_package_orchestration;
+      case "build_workspace: dependency failure updates package graph"
+        test_failed_dependency_updates_package_graph;
     ]
 
 let name = "Coordinator Tests"

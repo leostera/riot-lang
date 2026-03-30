@@ -1246,6 +1246,32 @@ let typed =
         assert_idempotent ~source
           ~msg:"object-body terminal trivia should stay stable across repeated formatting";
         Ok ());
+    Test.case "format object extension members structurally" (fun () ->
+        let source =
+          {|let extended =
+  object
+    [%%foo]
+    [%%bar let x = 1]
+  end
+|}
+        in
+        let expected =
+          {|let extended =
+  object
+    [%%foo]
+    [%%bar let x = 1]
+  end
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"object extension members should render structurally from the CST"
+        in
+        Test.assert_equal ~expected ~actual;
+        assert_idempotent ~source
+          ~msg:"object extension members should stay stable across repeated formatting";
+        Ok ());
     Test.case "format trailing variant comments with explicit separator policy"
       (fun () ->
         let source = "type t =\n  | A (* comment *)\n" in

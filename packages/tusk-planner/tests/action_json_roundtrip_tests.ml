@@ -82,6 +82,23 @@ let build_foreign_dependency_roundtrip_preserves_env_and_outputs () =
          env = [ ("RUSTFLAGS", "-C target-cpu=native"); ("CC", "clang") ];
        })
 
+let compile_implementation_roundtrip_preserves_combined_warning_flags () =
+  assert_roundtrip
+    (Tusk_planner.Action.CompileImplementation
+       {
+         source = Path.v "src/warn.ml";
+         outputs = [ Path.v "warn.cmx"; Path.v "warn.o" ];
+         includes = [ Path.v "src" ];
+         flags =
+           [
+             Tusk_toolchain.Ocamlc.Warning
+               [
+                 Tusk_toolchain.Ocamlc.All;
+                 Tusk_toolchain.Ocamlc.NoCmiFile;
+               ];
+           ];
+       })
+
 let tests =
   Test.
     [
@@ -96,6 +113,8 @@ let tests =
         create_shared_library_roundtrip_preserves_linker_fields;
       case "build foreign dependency json roundtrip"
         build_foreign_dependency_roundtrip_preserves_env_and_outputs;
+      case "compile implementation combined warning flags roundtrip"
+        compile_implementation_roundtrip_preserves_combined_warning_flags;
     ]
 
 let name = "tusk-planner:action-json-roundtrip"
