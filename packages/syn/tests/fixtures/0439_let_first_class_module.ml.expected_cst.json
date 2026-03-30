@@ -55,7 +55,7 @@
                 "end": 14
               }
             },
-            "module_type": null,
+            "package_type": null,
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "M",

@@ -1709,8 +1709,8 @@ let tests =
                         {
                           expression =
                             Syn.Cst.Expression.Path { path = module_path; _ };
-                          module_type =
-                            Some (Syn.Cst.ModuleType.Path module_type_path);
+                          package_type =
+                            Some { module_type_path; constraints = []; _ };
                           _;
                         };
                     _;
@@ -3777,13 +3777,8 @@ let tests =
               type_ =
                 Syn.Cst.CoreType.FirstClassModule
                   {
-                    module_type =
-                      Syn.Cst.ModuleType.With
-                        {
-                          base = Syn.Cst.ModuleType.Path base_path;
-                          constraints;
-                          _;
-                        };
+                    package_type =
+                      { module_type_path = base_path; constraints; _ };
                     _;
                   };
               _;
@@ -4414,13 +4409,8 @@ let tests =
                  type_definition =
                    Syn.Cst.TypeDefinition.FirstClassModule
                      {
-                       module_type =
-                         Syn.Cst.ModuleType.With
-                           {
-                             base = Syn.Cst.ModuleType.Path base_path;
-                             constraints;
-                             _;
-                           };
+                       package_type =
+                         { module_type_path = base_path; constraints; _ };
                        _;
                      };
                  _;
@@ -7309,7 +7299,8 @@ let tests =
                     Syn.Cst.Pattern.FirstClassModule
                       {
                         binding = Syn.Cst.Anonymous { wildcard_token = typed_wildcard };
-                        module_type = Some (Syn.Cst.ModuleType.Path typed_module_type);
+                        package_type =
+                          Some { module_type_path = typed_module_type; constraints = []; _ };
                         _;
                       };
                   _;
@@ -7323,7 +7314,7 @@ let tests =
                        Syn.Cst.Pattern.FirstClassModule
                          {
                            binding = Syn.Cst.Anonymous { wildcard_token = plain_wildcard };
-                           module_type = None;
+                           package_type = None;
                            _;
                          };
                      _;
@@ -7355,7 +7346,8 @@ let tests =
                 Syn.Cst.Expression.ModulePack
                   {
                     module_expression = Syn.Cst.ModuleExpression.Path module_path;
-                    module_type = Some (Syn.Cst.ModuleType.Path module_type_path);
+                    package_type =
+                      Some { module_type_path = module_type_path; constraints = []; _ };
                     _;
                   };
               _;
@@ -7395,21 +7387,25 @@ let tests =
                             name_token = leaf;
                             _;
                           });
-                    module_type =
+                    package_type =
                       Some
-                        (Syn.Cst.ModuleType.Path
-                          (Syn.Cst.Ident.Qualified
-                            {
-                              prefix =
-                                Syn.Cst.Ident.Qualified
-                                  {
-                                    prefix = Syn.Cst.Ident.Ident { name_token = type_root; _ };
-                                    name_token = type_mid;
-                                    _;
-                                  };
-                              name_token = type_leaf;
-                              _;
-                            }));
+                        {
+                          module_type_path =
+                            Syn.Cst.Ident.Qualified
+                              {
+                                prefix =
+                                  Syn.Cst.Ident.Qualified
+                                    {
+                                      prefix = Syn.Cst.Ident.Ident { name_token = type_root; _ };
+                                      name_token = type_mid;
+                                      _;
+                                    };
+                                name_token = type_leaf;
+                                _;
+                              };
+                          constraints = [];
+                          _;
+                        };
                     _;
                   };
               _;
@@ -7457,21 +7453,25 @@ let tests =
                             name_token = leaf;
                             _;
                           });
-                    module_type =
+                    package_type =
                       Some
-                        (Syn.Cst.ModuleType.Path
-                          (Syn.Cst.Ident.Qualified
-                            {
-                              prefix =
-                                Syn.Cst.Ident.Qualified
-                                  {
-                                    prefix = Syn.Cst.Ident.Ident { name_token = type_root; _ };
-                                    name_token = type_mid;
-                                    _;
-                                  };
-                              name_token = type_leaf;
-                              _;
-                            }));
+                        {
+                          module_type_path =
+                            Syn.Cst.Ident.Qualified
+                              {
+                                prefix =
+                                  Syn.Cst.Ident.Qualified
+                                    {
+                                      prefix = Syn.Cst.Ident.Ident { name_token = type_root; _ };
+                                      name_token = type_mid;
+                                      _;
+                                    };
+                                name_token = type_leaf;
+                                _;
+                              };
+                          constraints = [];
+                          _;
+                        };
                     _;
                   };
               _;
@@ -7506,7 +7506,8 @@ let tests =
                     module_expression =
                       Syn.Cst.ModuleExpression.Structure
                         { item_syntax_nodes = [ item_node ]; _ };
-                    module_type = Some (Syn.Cst.ModuleType.Path module_type_path);
+                    package_type =
+                      Some { module_type_path = module_type_path; constraints = []; _ };
                     _;
                   };
               _;
@@ -7606,7 +7607,7 @@ let tests =
                         {
                           expression =
                             Syn.Cst.Expression.Path { path = module_path; _ };
-                          module_type = None;
+                          package_type = None;
                           _;
                         };
                     body = Syn.Cst.Expression.Apply _;
@@ -7645,7 +7646,7 @@ let tests =
                         {
                           expression =
                             Syn.Cst.Expression.Path { path = module_path; _ };
-                          module_type = None;
+                          package_type = None;
                           _;
                         };
                     body = Syn.Cst.Expression.Apply _;

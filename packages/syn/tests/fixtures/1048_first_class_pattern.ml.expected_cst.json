@@ -75,9 +75,15 @@
                     "end": 20
                   }
                 },
-                "module_type": {
-                  "tag": "path",
-                  "path": {
+                "package_type": {
+                  "syntax_node": {
+                    "kind": "MODULE_TYPE_PATH",
+                    "span": {
+                      "start": 17,
+                      "end": 19
+                    }
+                  },
+                  "module_type_path": {
                     "tag": "ident",
                     "syntax_node": {
                       "kind": "MODULE_TYPE_PATH",
@@ -94,7 +100,9 @@
                         "end": 19
                       }
                     }
-                  }
+                  },
+                  "constraints": [],
+                  "attribute": null
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",

@@ -103,9 +103,15 @@
                   "end": 23
                 }
               },
-              "module_type": {
-                "tag": "path",
-                "path": {
+              "package_type": {
+                "syntax_node": {
+                  "kind": "FIRST_CLASS_MODULE_TYPE",
+                  "span": {
+                    "start": 12,
+                    "end": 23
+                  }
+                },
+                "module_type_path": {
                   "tag": "ident",
                   "syntax_node": {
                     "kind": "MODULE_TYPE_PATH",
@@ -122,7 +128,9 @@
                       "end": 22
                     }
                   }
-                }
+                },
+                "constraints": [],
+                "attribute": null
               }
             }
           },

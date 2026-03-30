@@ -188,10 +188,16 @@ and descend_pattern = fun walk ctx (pattern : Cst.Pattern.t) ->
   | Cst.Pattern.Parenthesized { inner = pattern; attributes; _ } ->
       let ctx = walk.pattern ctx pattern in
       List.fold_left walk.attribute ctx attributes
-  | Cst.Pattern.FirstClassModule { module_type; attributes; _ } ->
+  | Cst.Pattern.FirstClassModule { package_type; attributes; _ } ->
       let ctx =
-        match module_type with
-        | Some module_type -> walk.module_type ctx module_type
+        match package_type with
+        | Some package_type ->
+            let ctx = List.fold_left walk.module_type_constraint ctx package_type.constraints in
+            begin
+              match package_type.attribute with
+              | Some attribute -> walk.attribute ctx attribute
+              | None -> ctx
+            end
         | None -> ctx
       in
       List.fold_left walk.attribute ctx attributes
@@ -280,8 +286,13 @@ and descend_core_type = fun walk ctx (core_type : Cst.CoreType.t) ->
       List.fold_left walk.row_field ctx fields
   | Cst.CoreType.Record { fields; _ } ->
       List.fold_left walk.record_type_field ctx fields
-  | Cst.CoreType.FirstClassModule { module_type; _ } ->
-      walk.module_type ctx module_type
+  | Cst.CoreType.FirstClassModule { package_type; _ } ->
+      let ctx = List.fold_left walk.module_type_constraint ctx package_type.constraints in
+      begin
+        match package_type.attribute with
+        | Some attribute -> walk.attribute ctx attribute
+        | None -> ctx
+      end
   | Cst.CoreType.Object { fields; _ } ->
       List.fold_left walk.object_type_field ctx fields
 and descend_exception_declaration = fun _walk ctx _decl -> ctx
@@ -368,8 +379,13 @@ and descend_type_definition = fun walk ctx (type_definition : Cst.TypeDefinition
       ctx
   | Cst.TypeDefinition.Alias { manifest; _ } ->
       walk.core_type ctx manifest
-  | Cst.TypeDefinition.FirstClassModule { module_type; _ } ->
-      walk.module_type ctx module_type
+  | Cst.TypeDefinition.FirstClassModule { package_type; _ } ->
+      let ctx = List.fold_left walk.module_type_constraint ctx package_type.constraints in
+      begin
+        match package_type.attribute with
+        | Some attribute -> walk.attribute ctx attribute
+        | None -> ctx
+      end
   | Cst.TypeDefinition.Object { fields; _ } ->
       List.fold_left walk.object_type_field ctx fields
   | Cst.TypeDefinition.Record { fields; _ } ->
@@ -442,11 +458,17 @@ and descend_module_expression = fun walk ctx (module_expression : Cst.ModuleExpr
   | Cst.ModuleExpression.Constraint { module_expression; module_type; _ } ->
       let ctx = walk.module_expression ctx module_expression in
       walk.module_type ctx module_type
-  | Cst.ModuleExpression.ModuleUnpack { expression; module_type; _ } ->
+  | Cst.ModuleExpression.ModuleUnpack { expression; package_type; _ } ->
       let ctx = walk.expression ctx expression in
       (
-        match module_type with
-        | Some module_type -> walk.module_type ctx module_type
+        match package_type with
+        | Some package_type ->
+            let ctx = List.fold_left walk.module_type_constraint ctx package_type.constraints in
+            begin
+              match package_type.attribute with
+              | Some attribute -> walk.attribute ctx attribute
+              | None -> ctx
+            end
         | None -> ctx
       )
   | Cst.ModuleExpression.Parenthesized { inner; _ } ->
@@ -559,12 +581,18 @@ and descend_expression = fun walk ctx (expression : Cst.Expression.t) ->
         | Some payload -> walk.expression ctx payload
         | None -> ctx
       )
-  | Cst.Expression.ModulePack { module_expression; module_type; attributes; _ } ->
+  | Cst.Expression.ModulePack { module_expression; package_type; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.module_expression ctx module_expression in
       (
-        match module_type with
-        | Some module_type -> walk.module_type ctx module_type
+        match package_type with
+        | Some package_type ->
+            let ctx = List.fold_left walk.module_type_constraint ctx package_type.constraints in
+            begin
+              match package_type.attribute with
+              | Some attribute -> walk.attribute ctx attribute
+              | None -> ctx
+            end
         | None -> ctx
       )
   | Cst.Expression.LetModule { module_expression; body; attributes; _ } ->

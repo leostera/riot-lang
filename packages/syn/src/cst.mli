@@ -431,6 +431,39 @@ and module_type_constraint = {
   is_destructive : bool;
 }
 
+(** A package type used in first-class module positions.
+
+    Package types are narrower than general module-type syntax: they consist of
+    a module type path plus zero or more `with type` constraints.
+
+    Examples:
+
+    ```ocaml,norun
+    S
+    Handler with type t = int
+    ```
+*)
+(** A package type used in first-class module positions.
+
+    Package types are narrower than general module-type syntax: they consist of
+    a module type path plus zero or more `with type` constraints, optionally
+    wrapped in attribute nodes that are still valid in package-type positions.
+
+    Examples:
+
+    ```ocaml,norun
+    S
+    Handler with type t = int
+    T[@foo]
+    ```
+*)
+and package_type = {
+  syntax_node : syntax_node;
+  module_type_path : Ident.t;
+  constraints : module_type_constraint list;
+  attribute : attribute option;
+}
+
 (** A named functor parameter.
 
     Examples:
@@ -657,7 +690,7 @@ and core_type =
       *)
   | FirstClassModule of {
       syntax_node : syntax_node;
-      module_type : module_type;
+      package_type : package_type;
     }
       (** A first-class module type.
 
@@ -1006,7 +1039,7 @@ module CoreType : sig
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
-        module_type : module_type;
+        package_type : package_type;
       }
     | Object of {
         syntax_node : syntax_node;
@@ -1575,7 +1608,7 @@ and first_class_module_pattern_binding =
 and first_class_module_pattern = {
   syntax_node : syntax_node;
   binding : first_class_module_pattern_binding;
-  module_type : module_type option;
+  package_type : package_type option;
   attributes : attribute list;
 }
 
@@ -2190,13 +2223,13 @@ and poly_variant_expression = {
 
     `module_expression` preserves the packed module payload directly, for
     example as `ModuleExpression.Path` or `ModuleExpression.Structure`.
-    `module_type` carries the optional `: S` ascription without re-encoding it
+    `package_type` carries the optional `: S` ascription without re-encoding it
     as a nested `ModuleExpression.Constraint`.
 *)
 and module_pack_expression = {
   syntax_node : syntax_node;
   module_expression : module_expression;
-  module_type : module_type option;
+  package_type : package_type option;
   attributes : attribute list;
 }
 
@@ -3139,7 +3172,7 @@ and module_expression =
   | ModuleUnpack of {
       syntax_node : syntax_node;
       expression : expression;
-      module_type : module_type option;
+      package_type : package_type option;
     }
       (** A first-class module unpacking expression.
 
@@ -3363,7 +3396,7 @@ module ModuleExpression : sig
     | ModuleUnpack of {
         syntax_node : syntax_node;
         expression : expression;
-        module_type : module_type option;
+        package_type : package_type option;
       }
     | Parenthesized of {
         syntax_node : syntax_node;
@@ -3800,7 +3833,7 @@ module TypeDefinition : sig
         *)
     | FirstClassModule of {
         syntax_node : syntax_node;
-        module_type : module_type;
+        package_type : package_type;
       }
     (** A manifest first-class module type.
 

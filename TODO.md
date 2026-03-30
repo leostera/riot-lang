@@ -115,7 +115,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `fun`, `if`, ordinary `let`, top-level `let`, class-`let` `and` bindings, and binding-operator CST nodes now carry explicit keyword-bound boundary trivia (`body_leading_trivia`, `value_leading_trivia`, `then_branch_trailing_trivia`, `else_branch_leading_trivia`, and related binding-operator fields), and `krasny` uses those structural fields directly instead of generic boundary-trivia helper calls on those paths.
 - `Syn.Cst.sequence_expression` now carries per-step `expression_leading_trivia`, and `krasny` uses that structural list directly instead of reconstructing semicolon-boundary trivia from generic `leading_trivia_after_token_before_node` helper calls.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
-- first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms, including opaque extension module-type payloads; signature-bodied first-class module types still fail explicitly instead of reconstructing raw `(module ...)` text.
+- first-class module package-type positions now use an explicit `Syn.Cst.package_type` record in `syn`, including optional package-type attributes, and `krasny` renders those positions from package paths plus `with type` constraints instead of broad module-type variants.
 - class-structure and class-type-signature field payloads now carry `owned_trivia`, and `Syn.CstBuilder.class_field_items_of_fields` / `class_type_field_items_of_fields` expose ordered helper streams with standalone trailing `end`-owned comments/docstrings.
 - class and class-type declarations now render structurally too, including `class%foo` / `class type%foo` shortcut shell modifiers from explicit CST `declaration_extension` / `declaration_attributes` instead of formatter-side recovery.
 - the main lowering path now renders floating attributes and expression-attached attributes from the opaque payload token slice carried by the CST; `krasny` no longer relifts payload bodies as OCaml.
@@ -219,7 +219,6 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit ambiguity-sensitive type-declaration shape markers
 
 - [ ] Tighten remaining representable-but-invalid CST states
-  - tighten package-type `CoreType.FirstClassModule` so it only admits valid `(module S)` / `(module S with type ...)` shapes
   - split or otherwise constrain object/class member records (`object_method`, `object_value`, `object_initializer`, `class_method`, `class_value`, `class_initializer`) so concrete/virtual/initializer states are explicit instead of broad `option` products
   - keep auditing broad shared nodes and documenting any remaining intentional invalid-state surface explicitly
 

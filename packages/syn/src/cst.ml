@@ -274,6 +274,13 @@ and module_type_constraint = {
   is_destructive : bool;
 }
 
+and package_type = {
+  syntax_node : syntax_node;
+  module_type_path : Ident.t;
+  constraints : module_type_constraint list;
+  attribute : attribute option;
+}
+
 and functor_parameter = {
   syntax_node : syntax_node;
   name_token : Token.t;
@@ -357,7 +364,7 @@ and core_type =
     }
   | FirstClassModule of {
       syntax_node : syntax_node;
-      module_type : module_type;
+      package_type : package_type;
     }
   | Object of {
       syntax_node : syntax_node;
@@ -520,7 +527,7 @@ module CoreType = struct
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
-        module_type : module_type;
+        package_type : package_type;
       }
     | Object of {
         syntax_node : syntax_node;
@@ -967,7 +974,7 @@ and first_class_module_pattern_binding =
 and first_class_module_pattern = {
   syntax_node : syntax_node;
   binding : first_class_module_pattern_binding;
-  module_type : module_type option;
+  package_type : package_type option;
   attributes : attribute list;
 }
 
@@ -1275,7 +1282,7 @@ and poly_variant_expression = {
 and module_pack_expression = {
   syntax_node : syntax_node;
   module_expression : module_expression;
-  module_type : module_type option;
+  package_type : package_type option;
   attributes : attribute list;
 }
 
@@ -1801,7 +1808,7 @@ and module_expression =
   | ModuleUnpack of {
       syntax_node : syntax_node;
       expression : expression;
-      module_type : module_type option;
+      package_type : package_type option;
     }
   | Parenthesized of {
       syntax_node : syntax_node;
@@ -2229,7 +2236,7 @@ module ModuleExpression = struct
     | ModuleUnpack of {
         syntax_node : syntax_node;
         expression : expression;
-        module_type : module_type option;
+        package_type : package_type option;
       }
     | Parenthesized of {
         syntax_node : syntax_node;
@@ -2608,7 +2615,7 @@ module TypeDefinition = struct
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
-        module_type : module_type;
+        package_type : package_type;
       }
     | Object of {
         syntax_node : syntax_node;

@@ -85,7 +85,7 @@
                 }
               ]
             },
-            "module_type": null
+            "package_type": null
           },
           "and_bindings": [],
           "is_recursive": false

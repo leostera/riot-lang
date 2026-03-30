@@ -157,9 +157,15 @@
                   "end": 64
                 }
               },
-              "module_type": {
-                "tag": "path",
-                "path": {
+              "package_type": {
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 61,
+                    "end": 63
+                  }
+                },
+                "module_type_path": {
                   "tag": "ident",
                   "syntax_node": {
                     "kind": "MODULE_TYPE_PATH",
@@ -176,7 +182,9 @@
                       "end": 63
                     }
                   }
-                }
+                },
+                "constraints": [],
+                "attribute": null
               },
               "wildcard_token": {
                 "kind": "WILDCARD_PATTERN",
@@ -363,7 +371,7 @@
                   "end": 125
                 }
               },
-              "module_type": null,
+              "package_type": null,
               "wildcard_token": {
                 "kind": "WILDCARD_PATTERN",
                 "text": "_",

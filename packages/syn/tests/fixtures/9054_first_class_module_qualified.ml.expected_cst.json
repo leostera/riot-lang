@@ -221,7 +221,7 @@
                     }
                   }
                 },
-                "module_type": null
+                "package_type": null
               }
             }
           },
@@ -443,7 +443,7 @@
                     }
                   }
                 },
-                "module_type": null
+                "package_type": null
               }
             }
           },
@@ -689,7 +689,7 @@
                       }
                     }
                   },
-                  "module_type": null
+                  "package_type": null
                 }
               }
             },

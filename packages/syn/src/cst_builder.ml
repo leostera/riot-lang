@@ -3240,17 +3240,69 @@ and module_type_from_node = fun node ->
 and module_type_from_first_class_module_type_node = fun node ->
   match direct_non_trivia_nodes node with
   | base_node :: constraint_nodes ->
-      let base = module_type_from_node base_node in
-      let constraints = constraint_nodes
-      |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
-      |> List.map module_type_constraint_from_node in
-      if List.length constraints = 0 then
-        base
-      else
-        Cst.ModuleType.With {syntax_node = node; base; constraints}
+      let ({ module_type_path; constraints = base_constraints; attribute; _ } : Cst.package_type) =
+        package_type_from_module_type_node base_node
+      in
+      let constraints =
+        constraint_nodes
+        |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
+        |> List.map module_type_constraint_from_node
+      in
+      {
+        Cst.syntax_node = node;
+        module_type_path;
+        constraints = base_constraints @ constraints;
+        attribute
+      }
   | [] ->
       bail ~message:"expected module type inside first-class module type during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-        "module_type.first_class_module"
+        "package_type"
+      ]
+and package_type_from_module_type_node = fun node ->
+  match module_type_from_node node with
+  | Cst.ModuleType.Path module_type_path ->
+      {
+        Cst.syntax_node = node;
+        module_type_path;
+        constraints = [];
+        attribute = None
+      }
+  | Cst.ModuleType.With { syntax_node; base = Cst.ModuleType.Path module_type_path; constraints } ->
+      {
+        Cst.syntax_node = syntax_node;
+        module_type_path;
+        constraints;
+        attribute = None
+      }
+  | Cst.ModuleType.Attribute { syntax_node; module_type; attribute } ->
+      let ({ module_type_path; constraints; _ } : Cst.package_type) =
+        package_type_from_module_type_node (Cst.ModuleType.syntax_node module_type)
+      in
+      {
+        Cst.syntax_node = syntax_node;
+        module_type_path;
+        constraints;
+        attribute = Some attribute
+      }
+  | Cst.ModuleType.With { syntax_node; base = Cst.ModuleType.Attribute { module_type; attribute; _ }; constraints } -> (
+      match
+        (package_type_from_module_type_node (Cst.ModuleType.syntax_node module_type) : Cst.package_type)
+      with
+      | { module_type_path; constraints = base_constraints; _ } ->
+          {
+            Cst.syntax_node = syntax_node;
+            module_type_path;
+            constraints = base_constraints @ constraints;
+            attribute = Some attribute
+          }
+    )
+  | Cst.ModuleType.With { base; _ } ->
+      bail ~message:"expected package type path base inside constrained package type during Ceibo -> CST lifting" ~syntax_node:(Cst.ModuleType.syntax_node base) ~context:[
+        "package_type"
+      ]
+  | _ ->
+      bail ~message:"expected package type path or constrained package type during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+        "package_type"
       ]
 and core_type_payload_and_field_attribute = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
@@ -3817,7 +3869,7 @@ and core_type_from_node = fun node ->
   | Syntax_kind.FIRST_CLASS_MODULE_TYPE ->
       (Cst.CoreType.FirstClassModule {
         syntax_node = node;
-        module_type = module_type_from_first_class_module_type_node node
+        package_type = module_type_from_first_class_module_type_node node
       })
   | Syntax_kind.OBJECT_TYPE ->
       Cst.CoreType.Object {
@@ -4036,10 +4088,10 @@ let rec pattern_from_node = fun node ->
                 Cst.Anonymous {wildcard_token = token binding_syntax_token}
               else
                 Cst.Named {name_token = token binding_syntax_token};
-                module_type
+                package_type
                 = (direct_non_trivia_nodes node
                 |> List.find_opt can_lift_module_type_node
-                |> Option.map module_type_from_node);
+                |> Option.map package_type_from_module_type_node);
                 attributes = []
             }
         | _ -> unsupported_pattern node
@@ -4638,13 +4690,13 @@ and module_expression_from_node = fun node ->
   | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
       match non_paren_tokens node, direct_non_trivia_nodes node with
       | val_kw :: _, expression_node :: _ when String.equal (Ceibo.Red.SyntaxToken.text val_kw) "val" ->
-          let module_type = direct_non_trivia_nodes node
+          let package_type = direct_non_trivia_nodes node
           |> List.find_opt can_lift_module_type_node
-          |> Option.map module_type_from_node in
+          |> Option.map package_type_from_module_type_node in
           Cst.ModuleExpression.ModuleUnpack {
             syntax_node = node;
             expression = expression_from_node expression_node;
-            module_type
+            package_type
           }
       | _ ->
           unsupported_module_expression node
@@ -5023,13 +5075,13 @@ and expression_from_node = fun node ->
     | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
         match non_paren_tokens node, direct_non_trivia_nodes node with
         | module_kw :: _, module_expression_node :: _ when String.equal (Ceibo.Red.SyntaxToken.text module_kw) "module" ->
-            let module_type = direct_non_trivia_nodes node
+            let package_type = direct_non_trivia_nodes node
             |> List.find_opt can_lift_module_type_node
-            |> Option.map module_type_from_node in
+            |> Option.map package_type_from_module_type_node in
             Cst.Expression.ModulePack {
               syntax_node = node;
               module_expression = module_expression_from_node module_expression_node;
-              module_type;
+              package_type;
               attributes = []
             }
         | _ -> unsupported_expression node
@@ -6978,7 +7030,7 @@ let type_definition_from_node = fun node ->
                   else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
                     Cst.TypeDefinition.FirstClassModule {
                       syntax_node = first;
-                      module_type = module_type_from_first_class_module_type_node first
+                      package_type = module_type_from_first_class_module_type_node first
                     }
                   else
                     bail ~message:"unsupported type definition body during Ceibo -> CST lifting" ~syntax_node:first ~context:[
@@ -8628,8 +8680,22 @@ let rec validate_pattern = fun ~context ->
   | Cst.Pattern.Operator _
   | Cst.Pattern.PolyVariantInherit _ ->
       ()
-  | Cst.Pattern.FirstClassModule { module_type; _ } ->
-      Option.iter (validate_module_type ~context:((("pattern.first_class_module.type" :: context)))) module_type
+  | Cst.Pattern.FirstClassModule { package_type; _ } ->
+      Option.iter
+        (fun ({ constraints; _ } : Cst.package_type) ->
+          List.iteri
+            (fun index ({ constrained_type; replacement_type; _ } :
+                 Cst.module_type_constraint) ->
+              validate_core_type ~context:(((("pattern.first_class_module.type.constraint["
+              ^ Int.to_string index
+              ^ "].target")
+              :: context))) constrained_type;
+              validate_core_type ~context:(((("pattern.first_class_module.type.constraint["
+              ^ Int.to_string index
+              ^ "].replacement")
+              :: context))) replacement_type)
+            constraints)
+        package_type
   | Cst.Pattern.PolyVariant { payload; _ } ->
       Option.iter (validate_pattern ~context:((("pattern.poly_variant.payload" :: context)))) payload
   | Cst.Pattern.Constructor { arguments; _ } ->
@@ -8715,8 +8781,19 @@ and validate_core_type = fun ~context ->
       ()
   | Cst.CoreType.Poly { body; _ } ->
       validate_core_type ~context:((("core_type.poly.body" :: context))) body
-  | Cst.CoreType.FirstClassModule { module_type; _ } ->
-      validate_module_type ~context:((("core_type.first_class_module" :: context))) module_type
+  | Cst.CoreType.FirstClassModule { package_type; _ } ->
+      List.iteri
+        (fun index ({ constrained_type; replacement_type; _ } :
+             Cst.module_type_constraint) ->
+          validate_core_type ~context:(((("core_type.first_class_module.constraint["
+          ^ Int.to_string index
+          ^ "].target")
+          :: context))) constrained_type;
+          validate_core_type ~context:(((("core_type.first_class_module.constraint["
+          ^ Int.to_string index
+          ^ "].replacement")
+          :: context))) replacement_type)
+        package_type.constraints
   | Cst.CoreType.Constr { arguments; _ } ->
       List.iteri (fun index type_ -> validate_core_type ~context:(((("core_type.constr.arg["
       ^ Int.to_string index
@@ -8890,9 +8967,23 @@ and validate_module_expression = fun ~context ->
   | Cst.ModuleExpression.Constraint { module_expression; module_type; _ } ->
       validate_module_expression ~context:((("module_expression.constraint.expression" :: context))) module_expression;
       validate_module_type ~context:((("module_expression.constraint.type" :: context))) module_type
-  | Cst.ModuleExpression.ModuleUnpack { expression; module_type; _ } ->
+  | Cst.ModuleExpression.ModuleUnpack { expression; package_type; _ } ->
       validate_expression ~context:((("module_expression.unpack.expression" :: context))) expression;
-      Option.iter (validate_module_type ~context:((("module_expression.unpack.type" :: context)))) module_type
+      Option.iter
+        (fun ({ constraints; _ } : Cst.package_type) ->
+          List.iteri
+            (fun index ({ constrained_type; replacement_type; _ } :
+                 Cst.module_type_constraint) ->
+              validate_core_type ~context:(((("module_expression.unpack.type.constraint["
+              ^ Int.to_string index
+              ^ "].target")
+              :: context))) constrained_type;
+              validate_core_type ~context:(((("module_expression.unpack.type.constraint["
+              ^ Int.to_string index
+              ^ "].replacement")
+              :: context))) replacement_type)
+            constraints)
+        package_type
   | Cst.ModuleExpression.Parenthesized { inner; _ } ->
       validate_module_expression ~context:((("module_expression.parenthesized" :: context))) inner
   | Cst.ModuleExpression.Attribute { module_expression; _ } ->
@@ -8930,10 +9021,23 @@ and validate_expression = fun ~context ->
       ()
   | Cst.Expression.Constructor { payload; _ } ->
       Option.iter (validate_expression ~context:((("expression.constructor.payload" :: context)))) payload
-  | Cst.Expression.ModulePack { module_expression; module_type; _ } ->
+  | Cst.Expression.ModulePack { module_expression; package_type; _ } ->
       validate_module_expression ~context:((("expression.first_class_module.expression" :: context))) module_expression;
-      Option.iter (validate_module_type
-      ~context:((("expression.first_class_module.type" :: context)))) module_type
+      Option.iter
+        (fun ({ constraints; _ } : Cst.package_type) ->
+          List.iteri
+            (fun index ({ constrained_type; replacement_type; _ } :
+                 Cst.module_type_constraint) ->
+              validate_core_type ~context:(((("expression.first_class_module.type.constraint["
+              ^ Int.to_string index
+              ^ "].target")
+              :: context))) constrained_type;
+              validate_core_type ~context:(((("expression.first_class_module.type.constraint["
+              ^ Int.to_string index
+              ^ "].replacement")
+              :: context))) replacement_type)
+            constraints)
+        package_type
   | Cst.Expression.Object { self_pattern; members; _ } ->
       Option.iter (validate_pattern ~context:((("expression.object.self_pattern" :: context)))) self_pattern;
       List.iteri (fun index member -> validate_object_member ~context:(((("expression.object.member["
@@ -9112,8 +9216,19 @@ let validate_type_definition = fun ~context ->
   | Cst.TypeDefinition.Alias { manifest; _ } ->
       validate_core_type ~context:((("type_definition.alias" :: context))) manifest
   | Cst.TypeDefinition.Extensible _ -> ()
-  | Cst.TypeDefinition.FirstClassModule { module_type; _ } ->
-      validate_module_type ~context:((("type_definition.first_class_module" :: context))) module_type
+  | Cst.TypeDefinition.FirstClassModule { package_type; _ } ->
+      List.iteri
+        (fun index ({ constrained_type; replacement_type; _ } :
+             Cst.module_type_constraint) ->
+          validate_core_type ~context:(((("type_definition.first_class_module.constraint["
+          ^ Int.to_string index
+          ^ "].target")
+          :: context))) constrained_type;
+          validate_core_type ~context:(((("type_definition.first_class_module.constraint["
+          ^ Int.to_string index
+          ^ "].replacement")
+          :: context))) replacement_type)
+        package_type.constraints
   | Cst.TypeDefinition.Object { fields; _ } ->
       List.iteri (fun index ({ field_type; _ } : Cst.object_type_field) -> validate_core_type ~context:(((("type_definition.object.field["
       ^ Int.to_string index

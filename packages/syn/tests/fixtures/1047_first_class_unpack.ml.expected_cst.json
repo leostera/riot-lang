@@ -66,9 +66,15 @@
                 }
               }
             },
-            "module_type": {
-              "tag": "path",
-              "path": {
+            "package_type": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 23,
+                  "end": 25
+                }
+              },
+              "module_type_path": {
                 "tag": "ident",
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
@@ -85,7 +91,9 @@
                     "end": 25
                   }
                 }
-              }
+              },
+              "constraints": [],
+              "attribute": null
             }
           },
           "body": {

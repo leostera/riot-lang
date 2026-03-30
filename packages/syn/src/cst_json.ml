@@ -361,11 +361,11 @@ and core_type_to_json =
         ("syntax_node", syntax_node_to_json syntax_node);
         ("fields", Json.Array (List.map record_type_field_to_json fields))
       ]
-  | Cst.CoreType.FirstClassModule { syntax_node; module_type } ->
+  | Cst.CoreType.FirstClassModule { syntax_node; package_type } ->
       Json.Object [
         ("tag", Json.String "first_class_module");
         ("syntax_node", syntax_node_to_json syntax_node);
-        ("module_type", module_type_to_json module_type)
+        ("package_type", package_type_to_json package_type)
       ]
   | Cst.CoreType.Object { syntax_node; fields } ->
       Json.Object [
@@ -382,6 +382,14 @@ and module_type_constraint_to_json = fun
     ("replacement_type", core_type_to_json replacement_type);
     ("is_destructive", Json.Bool is_destructive)
   ]
+and package_type_to_json =
+  fun ({ syntax_node; module_type_path; constraints; attribute } : Cst.package_type) ->
+    Json.Object [
+      ("syntax_node", syntax_node_to_json syntax_node);
+      ("module_type_path", ident_to_json module_type_path);
+      ("constraints", Json.Array (List.map module_type_constraint_to_json constraints));
+      ("attribute", option_to_json attribute_to_json attribute)
+    ]
 and functor_parameter_to_json = fun ({ syntax_node; name_token; module_type } : Cst.functor_parameter) -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("name_token", token_to_json name_token);
@@ -469,12 +477,12 @@ and module_expression_to_json =
         ("module_expression", module_expression_to_json module_expression);
         ("module_type", module_type_to_json module_type)
       ]
-  | Cst.ModuleExpression.ModuleUnpack { syntax_node; expression; module_type } ->
+  | Cst.ModuleExpression.ModuleUnpack { syntax_node; expression; package_type } ->
       Json.Object [
         ("tag", Json.String "unpack");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("expression", expression_to_json expression);
-        ("module_type", option_to_json module_type_to_json module_type)
+        ("package_type", option_to_json package_type_to_json package_type)
       ]
   | Cst.ModuleExpression.Parenthesized { syntax_node; inner } ->
       Json.Object [
@@ -561,7 +569,7 @@ and pattern_to_json =
         ("operator_tokens", Json.Array (List.map token_to_json operator_tokens))
       ]
       @ pattern_attribute_fields attributes)
-  | Cst.Pattern.FirstClassModule { syntax_node; binding; module_type; attributes } ->
+  | Cst.Pattern.FirstClassModule { syntax_node; binding; package_type; attributes } ->
       let binding_fields =
         match binding with
         | Cst.Named { name_token } ->
@@ -572,7 +580,7 @@ and pattern_to_json =
       Json.Object ([
         ("tag", Json.String "first_class_module");
         ("syntax_node", syntax_node_to_json syntax_node);
-        ("module_type", option_to_json module_type_to_json module_type)
+        ("package_type", option_to_json package_type_to_json package_type)
       ]
       @ binding_fields
       @ pattern_attribute_fields attributes)
@@ -926,12 +934,12 @@ and expression_to_json = fun expression ->
         ("payload", option_to_json expression_to_json payload)
       ]
       @ expression_attribute_fields expression)
-  | Cst.Expression.ModulePack { syntax_node; module_expression; module_type; _ } ->
+  | Cst.Expression.ModulePack { syntax_node; module_expression; package_type; _ } ->
       Json.Object ([
         ("tag", Json.String "first_class_module");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("module_expression", module_expression_to_json module_expression);
-        ("module_type", option_to_json module_type_to_json module_type)
+        ("package_type", option_to_json package_type_to_json package_type)
       ]
       @ expression_attribute_fields expression)
   | Cst.Expression.LetModule {
@@ -1537,11 +1545,11 @@ let type_definition_to_json =
         ("tag", Json.String "extensible");
         ("syntax_node", syntax_node_to_json syntax_node)
       ]
-  | Cst.TypeDefinition.FirstClassModule { syntax_node; module_type } ->
+  | Cst.TypeDefinition.FirstClassModule { syntax_node; package_type } ->
       Json.Object [
         ("tag", Json.String "first_class_module");
         ("syntax_node", syntax_node_to_json syntax_node);
-        ("module_type", module_type_to_json module_type)
+        ("package_type", package_type_to_json package_type)
       ]
   | Cst.TypeDefinition.Object { syntax_node; fields } ->
       Json.Object [

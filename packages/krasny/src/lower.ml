@@ -621,6 +621,36 @@ and render_first_class_functor_parameter ({ name_token; module_type; _ } :
       Doc.rparen;
     ]
 
+and render_package_type_doc ({ module_type_path; constraints; attribute; _ } : Syn.Cst.package_type) =
+  let first, rest =
+    match constraints with
+    | [] ->
+        (Doc.empty, [])
+    | first :: rest ->
+        (render_first_class_module_type_constraint ~keyword:kw_with first, rest)
+  in
+  let base =
+    if List.is_empty constraints then
+      doc_of_ident module_type_path
+    else
+      Doc.concat
+        (doc_of_ident module_type_path
+        :: Doc.space
+        :: first
+        :: List.map (fun constraint_ ->
+               Doc.concat
+                 [
+                   Doc.space;
+                   render_first_class_module_type_constraint ~keyword:kw_and constraint_;
+                 ])
+             rest)
+  in
+  match attribute with
+  | Some attribute ->
+      Doc.concat [ base; Doc.space; render_attribute attribute ]
+  | None ->
+      base
+
 and render_core_type_extension_doc (extension : Syn.Cst.extension) =
   let payload_doc =
     match extension.payload with
@@ -688,9 +718,6 @@ and render_first_class_module_type_doc = function
       doc_of_ident path
   | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
       Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; kw_of; Doc.space; doc_of_ident module_path ]
-  | Syn.Cst.ModuleType.Signature { syntax_node; _ } ->
-      unsupported_syntax ~context:[ "first_class_module_type" ] ~syntax_node
-        "signature-bodied first-class module types do not have a structural formatter yet"
   | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
       Doc.concat
         [
@@ -857,8 +884,8 @@ and render_core_type =
       render_poly_variant_type poly_variant
   | Syn.Cst.CoreType.Record { fields; _ } ->
       render_record_type fields
-  | Syn.Cst.CoreType.FirstClassModule { module_type; _ } ->
-      Doc.concat [ Doc.lparen; kw_module; Doc.space; render_first_class_module_type_doc module_type; Doc.rparen ]
+  | Syn.Cst.CoreType.FirstClassModule { package_type; _ } ->
+      Doc.concat [ Doc.lparen; kw_module; Doc.space; render_package_type_doc package_type; Doc.rparen ]
   | Syn.Cst.CoreType.Object { fields; _ } ->
       render_object_type fields
   | Syn.Cst.CoreType.Extension extension ->
@@ -1158,10 +1185,10 @@ let render_type_definition = function
     )
   | Syn.Cst.TypeDefinition.Extensible _ ->
       Some (Doc.text "..")
-  | Syn.Cst.TypeDefinition.FirstClassModule { module_type; _ } ->
+  | Syn.Cst.TypeDefinition.FirstClassModule { package_type; _ } ->
       Some
         (Doc.concat
-           [ Doc.lparen; kw_module; Doc.space; render_first_class_module_type_doc module_type; Doc.rparen ])
+           [ Doc.lparen; kw_module; Doc.space; render_package_type_doc package_type; Doc.rparen ])
   | Syn.Cst.TypeDefinition.Object { fields; _ } ->
       Some (render_object_type fields)
 
@@ -1406,7 +1433,7 @@ let rec render_pattern =
   | Syn.Cst.Pattern.Operator { operator_tokens; _ } ->
       let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
       Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
-  | Syn.Cst.Pattern.FirstClassModule { binding; module_type; _ } ->
+  | Syn.Cst.Pattern.FirstClassModule { binding; package_type; _ } ->
       let binding_doc =
         match binding with
         | Syn.Cst.Named { name_token } ->
@@ -1415,16 +1442,16 @@ let rec render_pattern =
             doc_of_token wildcard_token
       in
       let constraint_doc =
-        match module_type with
+        match package_type with
         | None ->
             Doc.empty
-        | Some module_type ->
+        | Some package_type ->
             Doc.concat
               [
                 Doc.space;
                 Doc.colon;
                 Doc.space;
-                render_first_class_module_type_doc module_type;
+                render_package_type_doc package_type;
               ]
       in
       Doc.concat
@@ -2008,13 +2035,13 @@ let make_lowerer =
               render_expression payload
           in
           Doc.concat [ head; Doc.space; payload ])
-  | Syn.Cst.Expression.ModulePack { module_expression; module_type; _ } ->
+  | Syn.Cst.Expression.ModulePack { module_expression; package_type; _ } ->
       let constraint_doc =
-        match module_type with
+        match package_type with
         | None ->
             Doc.empty
-        | Some module_type ->
-            Doc.concat [ colon; render_module_type_doc module_type ]
+        | Some package_type ->
+            Doc.concat [ colon; render_package_type_doc package_type ]
       in
       Doc.concat
         [
@@ -4810,13 +4837,13 @@ and render_module_expression_doc = function
           colon;
           render_module_type_doc module_type;
         ]
-  | Syn.Cst.ModuleExpression.ModuleUnpack { expression; module_type; _ } ->
+  | Syn.Cst.ModuleExpression.ModuleUnpack { expression; package_type; _ } ->
       let constraint_doc =
-        match module_type with
+        match package_type with
         | None ->
             Doc.empty
-        | Some module_type ->
-            Doc.concat [ colon; render_module_type_doc module_type ]
+        | Some package_type ->
+            Doc.concat [ colon; render_package_type_doc package_type ]
       in
       Doc.concat
         [

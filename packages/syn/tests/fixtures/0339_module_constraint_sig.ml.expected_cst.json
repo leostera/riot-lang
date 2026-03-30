@@ -87,8 +87,7 @@
                 }
               }
             },
-            "module_type": {
-              "tag": "with",
+            "package_type": {
               "syntax_node": {
                 "kind": "MODULE_TYPE_EXPR",
                 "span": {
@@ -96,24 +95,21 @@
                   "end": 39
                 }
               },
-              "base": {
-                "tag": "path",
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "MODULE_TYPE_PATH",
-                    "span": {
-                      "start": 19,
-                      "end": 21
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "S",
-                    "span": {
-                      "start": 20,
-                      "end": 21
-                    }
+              "module_type_path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 19,
+                    "end": 21
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "S",
+                  "span": {
+                    "start": 20,
+                    "end": 21
                   }
                 }
               },
@@ -186,7 +182,8 @@
                   },
                   "is_destructive": false
                 }
-              ]
+              ],
+              "attribute": null
             }
           },
           "and_bindings": [],

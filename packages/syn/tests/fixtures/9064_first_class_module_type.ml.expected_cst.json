@@ -48,9 +48,15 @@
                 "end": 35
               }
             },
-            "module_type": {
-              "tag": "path",
-              "path": {
+            "package_type": {
+              "syntax_node": {
+                "kind": "FIRST_CLASS_MODULE_TYPE",
+                "span": {
+                  "start": 16,
+                  "end": 35
+                }
+              },
+              "module_type_path": {
                 "tag": "ident",
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
@@ -67,7 +73,9 @@
                     "end": 34
                   }
                 }
-              }
+              },
+              "constraints": [],
+              "attribute": null
             }
           },
           "is_destructive_substitution": false
@@ -111,8 +119,7 @@
                 "end": 88
               }
             },
-            "module_type": {
-              "tag": "with",
+            "package_type": {
               "syntax_node": {
                 "kind": "FIRST_CLASS_MODULE_TYPE",
                 "span": {
@@ -120,24 +127,21 @@
                   "end": 88
                 }
               },
-              "base": {
-                "tag": "path",
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "MODULE_TYPE_PATH",
-                    "span": {
-                      "start": 57,
-                      "end": 64
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "Driver",
-                    "span": {
-                      "start": 58,
-                      "end": 64
-                    }
+              "module_type_path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 57,
+                    "end": 64
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Driver",
+                  "span": {
+                    "start": 58,
+                    "end": 64
                   }
                 }
               },
@@ -210,7 +214,8 @@
                   },
                   "is_destructive": false
                 }
-              ]
+              ],
+              "attribute": null
             }
           },
           "is_destructive_substitution": false

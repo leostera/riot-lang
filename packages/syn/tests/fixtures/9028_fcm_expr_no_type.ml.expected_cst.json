@@ -107,7 +107,7 @@
                 }
               }
             },
-            "module_type": null
+            "package_type": null
           },
           "and_bindings": [],
           "is_recursive": false
@@ -256,7 +256,7 @@
                       }
                     }
                   },
-                  "module_type": null
+                  "package_type": null
                 }
               }
             },
@@ -373,9 +373,15 @@
                 }
               }
             },
-            "module_type": {
-              "tag": "path",
-              "path": {
+            "package_type": {
+              "syntax_node": {
+                "kind": "MODULE_TYPE_PATH",
+                "span": {
+                  "start": 143,
+                  "end": 145
+                }
+              },
+              "module_type_path": {
                 "tag": "ident",
                 "syntax_node": {
                   "kind": "MODULE_TYPE_PATH",
@@ -392,7 +398,9 @@
                     "end": 145
                   }
                 }
-              }
+              },
+              "constraints": [],
+              "attribute": null
             }
           },
           "and_bindings": [],
