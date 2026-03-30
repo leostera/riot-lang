@@ -1,24 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { packageIndexKey, requestLogKey } from "../src/storage.ts";
-import type { IndexConfig, RequestLogEntry } from "../src/types.ts";
+import { packageIndexKey } from "../src/storage.ts";
+import type { IndexConfig } from "../src/types.ts";
 
 describe("registry storage", () => {
-  test("request logs are partitioned by UTC hour", () => {
-    const entry: RequestLogEntry = {
-      request_id: "01HZXTEST",
-      request_timestamp: "2026-03-27T12:34:56.000Z",
-      method: "GET",
-      path: "/",
-      route: "root",
-      status: 200,
-      success: true,
-      user_agent: "bun:test",
-    };
-
-    expect(requestLogKey(entry)).toBe("requests/2026/03/27/12/01HZXTEST.json");
-  });
-
   test("package documents use cargo-style sharding", () => {
     const config: IndexConfig = {
       cdnBaseUrl: "https://cdn.pkgs.ml",

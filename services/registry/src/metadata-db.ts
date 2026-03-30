@@ -3,16 +3,21 @@ import type {
   ApiTokenLookupRecord,
   ApiTokenRecord,
   CategoriesIndexDocument,
+  CategorySummary,
   OAuthStateRecord,
   OwnerPackagesDocument,
   PackageClaimRecord,
+  PackageRelationDependency,
+  PackageRelationDependent,
   PackageOverviewDocument,
+  WebPackageListItem,
   PackagePublicationManifest,
   PackageRelationsDocument,
   PopularPackagesDocument,
   PublishedReleaseRecord,
   RecentPackagesDocument,
   RegistryEventRecord,
+  RequestLogEntry,
   SelectorResolutionRecord,
   SessionRecord,
   UserLoginRecord,
@@ -22,6 +27,73 @@ import { applyMetadataMigrations as applyD1Migrations } from "./db-migrations.ts
 
 export async function applyMetadataMigrations(db: D1Database): Promise<void> {
   await applyD1Migrations(db);
+}
+
+export async function writeRequestLog(db: D1Database, entry: RequestLogEntry): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO request_logs (
+         request_id,
+         request_timestamp,
+         method,
+         path,
+         route,
+         package_locator,
+         selector,
+         resolved_sha,
+         status,
+         success,
+         error_category,
+         error_message,
+         user_agent
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      entry.request_id,
+      entry.request_timestamp,
+      entry.method,
+      entry.path,
+      entry.route,
+      entry.package_locator ?? null,
+      entry.selector ?? null,
+      entry.resolved_sha ?? null,
+      entry.status,
+      entry.success ? 1 : 0,
+      entry.error_category ?? null,
+      entry.error_message ?? null,
+      entry.user_agent ?? null,
+    )
+    .run();
+}
+
+export async function listRequestLogs(
+  db: D1Database,
+  limit = 100,
+): Promise<RequestLogEntry[]> {
+  const rows = await db
+    .prepare(
+      `SELECT
+         request_id,
+         request_timestamp,
+         method,
+         path,
+         route,
+         package_locator,
+         selector,
+         resolved_sha,
+         status,
+         success,
+         error_category,
+         error_message,
+         user_agent
+       FROM request_logs
+       ORDER BY request_timestamp DESC
+       LIMIT ?`,
+    )
+    .bind(limit)
+    .all<RequestLogRow>();
+
+  return (rows.results ?? []).map(parseRequestLogRecord);
 }
 
 export async function readUserRecord(db: D1Database, userId: string): Promise<UserRecord | null> {
@@ -829,144 +901,564 @@ export async function listPackageRegistryEvents(
   return (rows.results ?? []).map(parseRegistryEventRecord);
 }
 
-export async function writePackageOverviewDocument(
-  db: D1Database,
-  document: PackageOverviewDocument,
-): Promise<void> {
-  await writeWebViewDocument(db, packageOverviewViewKey(document.package_name), document, document.updated_at);
-}
-
-export async function writePackageRelationsDocument(
-  db: D1Database,
-  document: PackageRelationsDocument,
-): Promise<void> {
-  await writeWebViewDocument(db, packageRelationsViewKey(document.package_name), document, document.updated_at);
-}
-
-export async function writeRecentPackagesDocument(
-  db: D1Database,
-  document: RecentPackagesDocument,
-): Promise<void> {
-  await writeWebViewDocument(db, recentPackagesViewKey(), document, document.generated_at);
-}
-
-export async function writePopularPackagesDocument(
-  db: D1Database,
-  document: PopularPackagesDocument,
-): Promise<void> {
-  await writeWebViewDocument(db, popularPackagesViewKey(), document, document.generated_at);
-}
-
-export async function writeCategoriesIndexDocument(
-  db: D1Database,
-  document: CategoriesIndexDocument,
-): Promise<void> {
-  await writeWebViewDocument(db, categoriesIndexViewKey(), document, document.generated_at);
-}
-
-export async function writeOwnerPackagesDocument(
-  db: D1Database,
-  document: OwnerPackagesDocument,
-): Promise<void> {
-  await writeWebViewDocument(db, ownerPackagesViewKey(document.owner_github_login), document, document.generated_at);
-}
-
 export async function readPackageOverviewDocument(
   db: D1Database,
   packageName: string,
 ): Promise<PackageOverviewDocument | null> {
-  return await readWebViewDocument<PackageOverviewDocument>(db, packageOverviewViewKey(packageName));
+  const rows = await db
+    .prepare(
+      `SELECT
+         p.package_name,
+         p.latest_version,
+         p.description,
+         p.license,
+         p.homepage,
+         p.repository,
+         p.root_module,
+         p.repo_url,
+         p.repo_owner,
+         p.release_count,
+         p.updated_at,
+         pr.package_locator,
+         pr.package_subdir,
+         pr.resolved_sha,
+         pr.package_description,
+         pr.package_license,
+         pr.package_homepage,
+         pr.package_repository,
+         pr.package_root_module,
+         pr.package_categories_json,
+         pr.package_keywords_json,
+         pr.dependencies_json,
+         pr.source_archive_key,
+         pr.manifest_key,
+         pr.published_at
+       FROM packages p
+       JOIN published_releases pr
+         ON pr.package_name = p.package_name
+        AND pr.package_version = p.latest_version
+       WHERE p.package_name = ?`,
+    )
+    .bind(packageName)
+    .all<PackageOverviewRow>();
+
+  const row = rows.results?.[0];
+  if (row === undefined) {
+    return null;
+  }
+
+  const claim = await readPackageClaim(db, packageName);
+  const ownerGithubLogin = claim?.owner_github_login ?? row.repo_owner;
+  const dependentMap = await readPackageDependentMap(db);
+
+  return {
+    schema_version: 1,
+    package_name: row.package_name,
+    latest_version: row.latest_version,
+    updated_at: row.updated_at,
+    published_at: row.published_at,
+    description: row.package_description ?? row.description ?? undefined,
+    license: row.package_license ?? row.license ?? undefined,
+    homepage: row.package_homepage ?? row.homepage ?? undefined,
+    repository: row.package_repository ?? row.repository ?? undefined,
+    root_module: row.package_root_module ?? row.root_module ?? undefined,
+    canonical_locator: row.package_locator,
+    repo_url: row.repo_url,
+    subdir: row.package_subdir,
+    source_key: row.source_archive_key,
+    manifest_key: row.manifest_key,
+    sha: row.resolved_sha,
+    owner_github_login: ownerGithubLogin,
+    owner_github_avatar_url: await resolveOwnerAvatarUrl(
+      db,
+      {
+        owner_user_id: claim?.owner_user_id,
+        owner_github_login: claim?.owner_github_login,
+      },
+      ownerGithubLogin,
+    ),
+    release_count: row.release_count,
+    dependency_count: normalizeDependencies(row.dependencies_json).length,
+    dependent_count: (dependentMap.get(packageName) ?? []).length,
+    categories: parseJsonArray<string>(row.package_categories_json),
+    keywords: parseJsonArray<string>(row.package_keywords_json),
+  };
 }
 
 export async function readPackageRelationsDocument(
   db: D1Database,
   packageName: string,
 ): Promise<PackageRelationsDocument | null> {
-  return await readWebViewDocument<PackageRelationsDocument>(db, packageRelationsViewKey(packageName));
+  const rows = await db
+    .prepare(
+      `SELECT
+         p.package_name,
+         p.updated_at,
+         pr.dependencies_json
+       FROM packages p
+       JOIN published_releases pr
+         ON pr.package_name = p.package_name
+        AND pr.package_version = p.latest_version
+       WHERE p.package_name = ?`,
+    )
+    .bind(packageName)
+    .all<PackageRelationsRow>();
+
+  const row = rows.results?.[0];
+  if (row === undefined) {
+    return null;
+  }
+
+  const dependentMap = await readPackageDependentMap(db);
+  return {
+    schema_version: 1,
+    package_name: row.package_name,
+    updated_at: row.updated_at,
+    dependencies: normalizeDependencies(row.dependencies_json),
+    dependents: [...(dependentMap.get(packageName) ?? [])].sort((left, right) =>
+      left.package_name.localeCompare(right.package_name)
+    ),
+  };
 }
 
 export async function readRecentPackagesDocument(
   db: D1Database,
 ): Promise<RecentPackagesDocument | null> {
-  return await readWebViewDocument<RecentPackagesDocument>(db, recentPackagesViewKey());
+  const summaries = await listPackageSummaryRows(db);
+  if (summaries.length === 0) {
+    return null;
+  }
+
+  const latestReleases = await readLatestReleaseRows(db);
+  const avatarUrls = await resolveOwnerAvatarUrls(db, summaries);
+
+  return {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    packages: summaries
+      .slice(0, 12)
+      .map((summary) => toWebPackageListItem(summary, latestReleases, avatarUrls)),
+  };
 }
 
 export async function readPopularPackagesDocument(
   db: D1Database,
 ): Promise<PopularPackagesDocument | null> {
-  return await readWebViewDocument<PopularPackagesDocument>(db, popularPackagesViewKey());
+  const summaries = await listPackageSummaryRows(db);
+  if (summaries.length === 0) {
+    return null;
+  }
+
+  const latestReleases = await readLatestReleaseRows(db);
+  const avatarUrls = await resolveOwnerAvatarUrls(db, summaries);
+  const dependentMap = await readPackageDependentMap(db);
+
+  return {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    packages: summaries
+      .map((summary) => ({
+        ...toWebPackageListItem(summary, latestReleases, avatarUrls),
+        dependent_count: (dependentMap.get(summary.package_name) ?? []).length,
+        release_count: summary.release_count,
+      }))
+      .sort((left, right) => {
+        if (right.dependent_count !== left.dependent_count) {
+          return right.dependent_count - left.dependent_count;
+        }
+
+        if (right.release_count !== left.release_count) {
+          return right.release_count - left.release_count;
+        }
+
+        return right.updated_at.localeCompare(left.updated_at);
+      })
+      .slice(0, 12),
+  };
 }
 
 export async function readCategoriesIndexDocument(
   db: D1Database,
 ): Promise<CategoriesIndexDocument | null> {
-  return await readWebViewDocument<CategoriesIndexDocument>(db, categoriesIndexViewKey());
+  const latestReleases = await readLatestReleaseRows(db);
+  if (latestReleases.size === 0) {
+    return null;
+  }
+
+  const packagesByCategory = new Map<string, Set<string>>();
+  for (const [packageName, release] of latestReleases.entries()) {
+    for (const category of release.categories) {
+      const normalized = category.trim();
+      if (normalized.length === 0) {
+        continue;
+      }
+
+      const packageNames = packagesByCategory.get(normalized) ?? new Set<string>();
+      packageNames.add(packageName);
+      packagesByCategory.set(normalized, packageNames);
+    }
+  }
+
+  const categories: CategorySummary[] = [...packagesByCategory.entries()]
+    .map(([name, packageNames]) => ({
+      name,
+      slug: toSlug(name),
+      package_count: packageNames.size,
+      packages: [...packageNames].sort(),
+    }))
+    .sort((left, right) => {
+      if (right.package_count !== left.package_count) {
+        return right.package_count - left.package_count;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+
+  return {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    categories,
+  };
 }
 
 export async function readOwnerPackagesDocument(
   db: D1Database,
   ownerGithubLogin: string,
 ): Promise<OwnerPackagesDocument | null> {
-  return await readWebViewDocument<OwnerPackagesDocument>(db, ownerPackagesViewKey(ownerGithubLogin));
-}
-
-export function packageOverviewViewKey(packageName: string): string {
-  return `packages/${packageName}/overview`;
-}
-
-export function packageRelationsViewKey(packageName: string): string {
-  return `packages/${packageName}/relations`;
-}
-
-export function recentPackagesViewKey(): string {
-  return "recent/packages";
-}
-
-export function popularPackagesViewKey(): string {
-  return "popular/packages";
-}
-
-export function categoriesIndexViewKey(): string {
-  return "categories/index";
-}
-
-export function ownerPackagesViewKey(ownerGithubLogin: string): string {
-  return `owners/${ownerGithubLogin.toLowerCase()}/packages`;
-}
-
-async function writeWebViewDocument(
-  db: D1Database,
-  viewKey: string,
-  payload: unknown,
-  updatedAt: string,
-): Promise<void> {
-  await db
-    .prepare(
-      `INSERT INTO web_views (view_key, payload_json, updated_at)
-       VALUES (?, ?, ?)
-       ON CONFLICT(view_key) DO UPDATE SET
-         payload_json = excluded.payload_json,
-         updated_at = excluded.updated_at`,
-    )
-    .bind(viewKey, JSON.stringify(payload), updatedAt)
-    .run();
-}
-
-async function readWebViewDocument<T>(
-  db: D1Database,
-  viewKey: string,
-): Promise<T | null> {
   const rows = await db
     .prepare(
-      `SELECT payload_json
-       FROM web_views
-       WHERE view_key = ?`,
+      `SELECT
+         p.package_name,
+         p.latest_version,
+         p.description,
+         p.license,
+         p.repository,
+         p.subdir,
+         p.release_count,
+         p.updated_at,
+         p.repo_url,
+         p.repo_owner,
+         c.owner_user_id,
+         c.owner_github_login
+       FROM package_claims c
+       JOIN packages p
+         ON p.package_name = c.package_name
+       WHERE lower(c.owner_github_login) = lower(?)
+       ORDER BY p.updated_at DESC`,
     )
-    .bind(viewKey)
-    .all<{ payload_json: string }>();
+    .bind(ownerGithubLogin)
+    .all<OwnerPackageRow>();
 
-  const payload = rows.results?.[0]?.payload_json;
-  return payload === undefined ? null : (JSON.parse(payload) as T);
+  const ownerRows = rows.results ?? [];
+  if (ownerRows.length === 0) {
+    return null;
+  }
+
+  const latestReleases = await readLatestReleaseRows(db);
+  const avatarUrls = await resolveOwnerAvatarUrls(db, ownerRows);
+  const normalizedLogin = ownerGithubLogin.toLowerCase();
+
+  const packages = ownerRows.map((row) => toWebPackageListItem(row, latestReleases, avatarUrls));
+  return {
+    schema_version: 1,
+    generated_at: new Date().toISOString(),
+    owner_github_login: ownerRows[0]?.owner_github_login ?? ownerGithubLogin,
+    owner_github_avatar_url: avatarUrls.get(normalizedLogin),
+    package_count: packages.length,
+    latest_update_at: packages[0]?.updated_at,
+    packages,
+  };
+}
+
+async function listPackageSummaryRows(db: D1Database): Promise<PackageSummaryRow[]> {
+  const rows = await db
+    .prepare(
+      `SELECT
+         p.package_name,
+         p.latest_version,
+         p.description,
+         p.license,
+         p.repository,
+         p.subdir,
+         p.release_count,
+         p.updated_at,
+         p.repo_url,
+         p.repo_owner,
+         c.owner_user_id,
+         c.owner_github_login
+       FROM packages p
+       LEFT JOIN package_claims c
+         ON c.package_name = p.package_name
+       ORDER BY p.updated_at DESC, p.package_name ASC`,
+    )
+    .all<PackageSummaryRow>();
+
+  return rows.results ?? [];
+}
+
+async function readLatestReleaseRows(
+  db: D1Database,
+): Promise<Map<string, LatestReleaseMetadata>> {
+  const rows = await db
+    .prepare(
+      `SELECT
+         p.package_name,
+         pr.package_categories_json,
+         pr.package_keywords_json,
+         pr.dependencies_json
+       FROM packages p
+       JOIN published_releases pr
+         ON pr.package_name = p.package_name
+        AND pr.package_version = p.latest_version`,
+    )
+    .all<LatestReleaseRow>();
+
+  const latestReleases = new Map<string, LatestReleaseMetadata>();
+  for (const row of rows.results ?? []) {
+    latestReleases.set(row.package_name, {
+      categories: parseJsonArray<string>(row.package_categories_json),
+      keywords: parseJsonArray<string>(row.package_keywords_json),
+      dependencies: normalizeDependencies(row.dependencies_json),
+    });
+  }
+
+  return latestReleases;
+}
+
+async function readPackageDependentMap(
+  db: D1Database,
+): Promise<Map<string, PackageRelationDependent[]>> {
+  const rows = await db
+    .prepare(
+      `SELECT
+         p.package_name,
+         p.latest_version,
+         pr.dependencies_json
+       FROM packages p
+       JOIN published_releases pr
+         ON pr.package_name = p.package_name
+        AND pr.package_version = p.latest_version`,
+    )
+    .all<DependentSourceRow>();
+
+  const dependents = new Map<string, PackageRelationDependent[]>();
+  for (const row of rows.results ?? []) {
+    for (const dependency of normalizeDependencies(row.dependencies_json)) {
+      const existing = dependents.get(dependency.package_name) ?? [];
+      existing.push({
+        package_name: row.package_name,
+        latest_version: row.latest_version,
+        requirement: dependency.requirement,
+      });
+      dependents.set(dependency.package_name, existing);
+    }
+  }
+
+  return dependents;
+}
+
+async function resolveOwnerAvatarUrls(
+  db: D1Database,
+  rows: Array<{
+    repo_owner: string;
+    owner_user_id?: string | null;
+    owner_github_login?: string | null;
+  }>,
+): Promise<Map<string, string | undefined>> {
+  const avatarUrls = new Map<string, string | undefined>();
+
+  for (const row of rows) {
+    const ownerGithubLogin = row.owner_github_login ?? row.repo_owner;
+    const normalizedLogin = ownerGithubLogin.toLowerCase();
+    if (avatarUrls.has(normalizedLogin)) {
+      continue;
+    }
+
+    avatarUrls.set(
+      normalizedLogin,
+      await resolveOwnerAvatarUrl(
+        db,
+        {
+          owner_user_id: row.owner_user_id,
+          owner_github_login: row.owner_github_login,
+        },
+        ownerGithubLogin,
+      ),
+    );
+  }
+
+  return avatarUrls;
+}
+
+async function resolveOwnerAvatarUrl(
+  db: D1Database,
+  owner: {
+    owner_user_id?: string | null;
+    owner_github_login?: string | null;
+  },
+  fallbackGithubLogin: string,
+): Promise<string | undefined> {
+  if (owner.owner_user_id !== undefined && owner.owner_user_id !== null) {
+    const user = await readUserRecord(db, owner.owner_user_id);
+    if (user?.github_avatar_url !== undefined) {
+      return user.github_avatar_url;
+    }
+  }
+
+  const githubLogin = owner.owner_github_login ?? fallbackGithubLogin;
+  const loginRecord = await readUserLoginRecord(db, githubLogin);
+  if (loginRecord === null) {
+    return undefined;
+  }
+
+  const user = await readUserRecord(db, loginRecord.user_id);
+  return user?.github_avatar_url;
+}
+
+function toWebPackageListItem(
+  row: {
+    package_name: string;
+    latest_version: string;
+    description?: string | null;
+    license?: string | null;
+    repository?: string | null;
+    subdir: string;
+    release_count: number;
+    updated_at: string;
+    repo_url: string;
+    repo_owner: string;
+    owner_github_login?: string | null;
+  },
+  latestReleases: Map<string, LatestReleaseMetadata>,
+  avatarUrls: Map<string, string | undefined>,
+): WebPackageListItem {
+  const ownerGithubLogin = row.owner_github_login ?? row.repo_owner;
+  const normalizedOwner = ownerGithubLogin.toLowerCase();
+
+  return {
+    package_name: row.package_name,
+    latest_version: row.latest_version,
+    description: row.description ?? undefined,
+    license: row.license ?? undefined,
+    owner_github_login: ownerGithubLogin,
+    owner_github_avatar_url: avatarUrls.get(normalizedOwner),
+    categories: latestReleases.get(row.package_name)?.categories ?? [],
+    updated_at: row.updated_at,
+    repo_url: row.repo_url,
+    repository: row.repository ?? undefined,
+    subdir: row.subdir,
+    release_count: row.release_count,
+    package_path: `/p/${row.package_name}`,
+  };
+}
+
+function normalizeDependencies(dependenciesJson: string): PackageRelationDependency[] {
+  return parseJsonArray<Record<string, unknown>>(dependenciesJson)
+    .map((dependency) => {
+      const packageName =
+        typeof dependency.package === "string"
+          ? dependency.package
+          : typeof dependency.name === "string"
+            ? dependency.name
+            : null;
+
+      if (packageName === null || packageName.length === 0) {
+        return null;
+      }
+
+      const requirement =
+        typeof dependency.version === "string"
+          ? dependency.version
+          : typeof dependency.requirement === "string"
+            ? dependency.requirement
+            : typeof dependency.raw === "string"
+              ? dependency.raw
+              : "unspecified";
+
+      return {
+        package_name: packageName,
+        requirement,
+      };
+    })
+    .filter((dependency): dependency is PackageRelationDependency => dependency !== null);
+}
+
+function toSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+interface PackageOverviewRow {
+  package_name: string;
+  latest_version: string;
+  description?: string | null;
+  license?: string | null;
+  homepage?: string | null;
+  repository?: string | null;
+  root_module?: string | null;
+  repo_url: string;
+  repo_owner: string;
+  release_count: number;
+  updated_at: string;
+  package_locator: string;
+  package_subdir: string;
+  resolved_sha: string;
+  package_description?: string | null;
+  package_license?: string | null;
+  package_homepage?: string | null;
+  package_repository?: string | null;
+  package_root_module?: string | null;
+  package_categories_json: string;
+  package_keywords_json: string;
+  dependencies_json: string;
+  source_archive_key: string;
+  manifest_key: string;
+  published_at: string;
+}
+
+interface PackageRelationsRow {
+  package_name: string;
+  updated_at: string;
+  dependencies_json: string;
+}
+
+interface PackageSummaryRow {
+  package_name: string;
+  latest_version: string;
+  description?: string | null;
+  license?: string | null;
+  repository?: string | null;
+  subdir: string;
+  release_count: number;
+  updated_at: string;
+  repo_url: string;
+  repo_owner: string;
+  owner_user_id?: string | null;
+  owner_github_login?: string | null;
+}
+
+interface OwnerPackageRow extends PackageSummaryRow {}
+
+interface LatestReleaseRow {
+  package_name: string;
+  package_categories_json: string;
+  package_keywords_json: string;
+  dependencies_json: string;
+}
+
+interface LatestReleaseMetadata {
+  categories: string[];
+  keywords: string[];
+  dependencies: PackageRelationDependency[];
+}
+
+interface DependentSourceRow {
+  package_name: string;
+  latest_version: string;
+  dependencies_json: string;
 }
 
 interface ApiTokenRow {
@@ -1041,6 +1533,22 @@ interface PublishedReleaseRow {
   published_at: string;
 }
 
+interface RequestLogRow {
+  request_id: string;
+  request_timestamp: string;
+  method: string;
+  path: string;
+  route: string;
+  package_locator?: string | null;
+  selector?: string | null;
+  resolved_sha?: string | null;
+  status: number;
+  success: number | boolean;
+  error_category?: string | null;
+  error_message?: string | null;
+  user_agent?: string | null;
+}
+
 interface RegistryEventRow {
   event_id: string;
   event_type: RegistryEventRecord["event_type"];
@@ -1049,6 +1557,24 @@ interface RegistryEventRow {
   package_locator?: string | null;
   payload_json: string;
   created_at: string;
+}
+
+function parseRequestLogRecord(row: RequestLogRow): RequestLogEntry {
+  return {
+    request_id: row.request_id,
+    request_timestamp: row.request_timestamp,
+    method: row.method,
+    path: row.path,
+    route: row.route,
+    package_locator: row.package_locator ?? undefined,
+    selector: row.selector ?? undefined,
+    resolved_sha: row.resolved_sha ?? undefined,
+    status: row.status,
+    success: row.success === true || row.success === 1,
+    error_category: row.error_category ?? undefined,
+    error_message: row.error_message ?? undefined,
+    user_agent: row.user_agent ?? null,
+  };
 }
 
 function parseApiTokenRecord(row: ApiTokenRow): ApiTokenRecord {

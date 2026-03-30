@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { handleRequest } from "../src/routes.ts";
 import {
   applyMetadataMigrations,
+  listRequestLogs,
   listRegistryEvents,
   listPackageRegistryEvents,
   readPackageClaim,
@@ -34,7 +35,7 @@ const INDEX_CONFIG = {
 
 describe("riot package registry routes", () => {
   test("root route returns service metadata and logs the request", async () => {
-    const { env, bucket } = makeEnv();
+    const { env, db } = makeEnv();
     const ctx = new FakeExecutionContext();
 
     const response = await handleRequest(new Request("https://registry.test/"), env, ctx);
@@ -86,8 +87,8 @@ describe("riot package registry routes", () => {
       cdn_base_url: "https://cdn.pkgs.ml",
     });
 
-    const logKey = onlyRequestLogKey(bucket.keys());
-    const logEntry = JSON.parse((await bucket.text(logKey)) ?? "null");
+    await applyMetadataMigrations(db as unknown as D1Database);
+    const logEntry = (await listRequestLogs(db as unknown as D1Database, 1))[0];
     expect(logEntry.route).toBe("root");
     expect(logEntry.success).toBe(true);
     expect(logEntry.status).toBe(200);
@@ -1650,7 +1651,7 @@ describe("riot package registry routes", () => {
   });
 
   test("invalid locators return 400 and failures are still logged", async () => {
-    const { env, bucket } = makeEnv();
+    const { env, db } = makeEnv();
     const ctx = new FakeExecutionContext();
 
     const response = await handleRequest(
@@ -1665,19 +1666,13 @@ describe("riot package registry routes", () => {
       error: "invalid_locator",
     });
 
-    const logKey = onlyRequestLogKey(bucket.keys());
-    const logEntry = JSON.parse((await bucket.text(logKey)) ?? "null");
+    await applyMetadataMigrations(db as unknown as D1Database);
+    const logEntry = (await listRequestLogs(db as unknown as D1Database, 1))[0];
     expect(logEntry.success).toBe(false);
     expect(logEntry.status).toBe(400);
     expect(logEntry.error_category).toBe("invalid_locator");
   });
 });
-
-function onlyRequestLogKey(keys: string[]): string {
-  const requestKeys = keys.filter((key) => key.startsWith("requests/"));
-  expect(requestKeys).toHaveLength(1);
-  return requestKeys[0]!;
-}
 
 async function readJson(response: Response): Promise<unknown> {
   return JSON.parse(await response.text());

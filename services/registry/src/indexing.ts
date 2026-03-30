@@ -11,7 +11,6 @@ import {
   writeIndexConfig,
   writePackageIndexDocument,
 } from "./storage.ts";
-import { rebuildWebViews } from "./web-views.ts";
 import type {
   Env,
   PackageIndexedEvent,
@@ -68,7 +67,6 @@ export async function indexPublishedRelease(
         }),
       ),
     ]);
-    await rebuildWebViews(env);
     await writeRegistryEvent(
       env.SEARCH_DB,
       makeIndexEvent("package.indexed", releaseRecord, indexedAt, {
@@ -114,7 +112,6 @@ export async function indexPublishedRelease(
       }),
     ),
   ]);
-  await rebuildWebViews(env);
   await writeRegistryEvent(
     env.SEARCH_DB,
     makeIndexEvent("package.indexed", releaseRecord, indexedAt, {

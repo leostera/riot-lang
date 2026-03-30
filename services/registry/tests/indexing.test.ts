@@ -11,6 +11,8 @@ import {
   readPackageRelationsDocument,
   readPopularPackagesDocument,
   readRecentPackagesDocument,
+  writePackageClaim,
+  writePublishedRelease,
 } from "../src/metadata-db.ts";
 import {
   indexConfigKey,
@@ -35,7 +37,7 @@ describe("registry indexing", () => {
     const release = makeReleaseRecord();
     const manifest = makeManifest(release);
 
-    const result = await indexPublishedRelease(env, release, manifest);
+    const result = await indexSeededRelease(env, db, release, manifest);
 
     expect(result).toEqual({
       changed: true,
@@ -168,7 +170,7 @@ describe("registry indexing", () => {
   });
 
   test("higher versions become latest and releases stay semver-sorted", async () => {
-    const { env, bucket, indexedQueue } = makeEnv();
+    const { env, bucket, db, indexedQueue } = makeEnv();
     const first = makeReleaseRecord();
     const second = makeReleaseRecord({
       package_version: "0.2.0",
@@ -180,8 +182,8 @@ describe("registry indexing", () => {
       published_at: "2026-03-27T16:00:00Z",
     });
 
-    await indexPublishedRelease(env, first, makeManifest(first));
-    await indexPublishedRelease(env, second, makeManifest(second));
+    await indexSeededRelease(env, db, first, makeManifest(first));
+    await indexSeededRelease(env, db, second, makeManifest(second));
 
     const document = JSON.parse(
       (await bucket.text(packageIndexKey(getConfig(env), "kernel"))) ?? "null",
@@ -194,12 +196,12 @@ describe("registry indexing", () => {
   });
 
   test("reprocessing the same release is idempotent and still emits package.indexed for downstream consumers", async () => {
-    const { env, bucket, indexedQueue } = makeEnv();
+    const { env, bucket, db, indexedQueue } = makeEnv();
     const release = makeReleaseRecord();
     const manifest = makeManifest(release);
 
-    const first = await indexPublishedRelease(env, release, manifest);
-    const second = await indexPublishedRelease(env, release, manifest);
+    const first = await indexSeededRelease(env, db, release, manifest);
+    const second = await indexSeededRelease(env, db, release, manifest);
 
     const document = JSON.parse(
       (await bucket.text(packageIndexKey(getConfig(env), "kernel"))) ?? "null",
@@ -227,7 +229,7 @@ describe("registry indexing", () => {
     const release = makeReleaseRecord();
     const manifest = makeManifest(release);
 
-    await indexPublishedRelease(env, release, manifest);
+    await indexSeededRelease(env, db, release, manifest);
 
     await bucket.put(
       packageIndexKey(getConfig(env), "kernel"),
@@ -259,7 +261,7 @@ describe("registry indexing", () => {
       },
     );
 
-    const result = await indexPublishedRelease(env, release, manifest);
+    const result = await indexSeededRelease(env, db, release, manifest);
 
     expect(result.changed).toBe(true);
 
@@ -276,7 +278,7 @@ describe("registry indexing", () => {
     });
   });
 
-  test("web views track dependents and categories across indexed packages", async () => {
+  test("derived package view documents track dependents and categories across indexed packages", async () => {
     const { env, bucket, db } = makeEnv();
     const kernel = makeReleaseRecord({
       package_categories: ["runtime", "concurrency"],
@@ -297,9 +299,15 @@ describe("registry indexing", () => {
       package_categories: ["runtime", "actors"],
     });
 
-    await indexPublishedRelease(env, kernel, makeManifest(kernel, { package_categories: ["runtime", "concurrency"] }));
-    await indexPublishedRelease(
+    await indexSeededRelease(
       env,
+      db,
+      kernel,
+      makeManifest(kernel, { package_categories: ["runtime", "concurrency"] }),
+    );
+    await indexSeededRelease(
+      env,
+      db,
       miniriot,
       makeManifest(miniriot, { package_categories: ["runtime", "actors"] }),
     );
@@ -400,4 +408,24 @@ function makeManifest(
     materialized_at: "2026-03-27T15:20:00Z",
     ...overrides,
   };
+}
+
+async function indexSeededRelease(
+  env: Parameters<typeof indexPublishedRelease>[0],
+  db: D1Database,
+  release: PublishedReleaseRecord,
+  manifest: PackagePublicationManifest,
+) {
+  await applyMetadataMigrations(db);
+  await writePackageClaim(db, {
+    package_name: release.package_name,
+    package_locator: release.package_locator,
+    source_url: release.source_url,
+    package_subdir: release.package_subdir,
+    owner_github_login: "leostera",
+    claimed_at: release.published_at,
+    updated_at: release.published_at,
+  });
+  await writePublishedRelease(db, release);
+  return await indexPublishedRelease(env, release, manifest);
 }

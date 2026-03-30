@@ -95,10 +95,20 @@ CREATE TABLE IF NOT EXISTS selector_resolutions (
   PRIMARY KEY (package_locator, selector)
 );
 
-CREATE TABLE IF NOT EXISTS web_views (
-  view_key TEXT PRIMARY KEY,
-  payload_json TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS request_logs (
+  request_id TEXT PRIMARY KEY,
+  request_timestamp TEXT NOT NULL,
+  method TEXT NOT NULL,
+  path TEXT NOT NULL,
+  route TEXT NOT NULL,
+  package_locator TEXT,
+  selector TEXT,
+  resolved_sha TEXT,
+  status INTEGER NOT NULL,
+  success INTEGER NOT NULL,
+  error_category TEXT,
+  error_message TEXT,
+  user_agent TEXT
 );
 
 CREATE TABLE IF NOT EXISTS packages (
@@ -135,3 +145,4 @@ CREATE INDEX IF NOT EXISTS idx_api_tokens_secret_hash ON api_tokens(secret_hash)
 CREATE INDEX IF NOT EXISTS idx_claims_owner_login ON package_claims(owner_github_login);
 CREATE INDEX IF NOT EXISTS idx_releases_package_name ON published_releases(package_name);
 CREATE INDEX IF NOT EXISTS idx_selector_resolutions_locator ON selector_resolutions(package_locator);
+CREATE INDEX IF NOT EXISTS idx_request_logs_timestamp ON request_logs(request_timestamp DESC);

@@ -895,25 +895,8 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
       : null;
 
   if (normalizedPath === null) {
-  return null;
-}
-
-function parsePackageEventsRoute(path: string): ParsedPackageEventsRoute | null {
-  const normalizedPath = trimSlashes(path);
-  const packageEventsMatch = normalizedPath.match(/^(?:api\/)?v1\/packages\/([^/]+)\/events$/);
-  if (packageEventsMatch === null) {
     return null;
   }
-
-  const packageName = packageEventsMatch[1];
-  if (packageName === undefined) {
-    return null;
-  }
-
-  return {
-    packageName: decodeURIComponent(packageName),
-  };
-}
 
   if (normalizedPath === "recent/packages") {
     return { kind: "recent_packages" };

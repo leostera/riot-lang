@@ -100,10 +100,20 @@ const METADATA_MIGRATIONS: Migration[] = [
           recorded_at TEXT NOT NULL,
           PRIMARY KEY (package_locator, selector)
         );
-        CREATE TABLE IF NOT EXISTS web_views (
-          view_key TEXT PRIMARY KEY,
-          payload_json TEXT NOT NULL,
-          updated_at TEXT NOT NULL
+        CREATE TABLE IF NOT EXISTS request_logs (
+          request_id TEXT PRIMARY KEY,
+          request_timestamp TEXT NOT NULL,
+          method TEXT NOT NULL,
+          path TEXT NOT NULL,
+          route TEXT NOT NULL,
+          package_locator TEXT,
+          selector TEXT,
+          resolved_sha TEXT,
+          status INTEGER NOT NULL,
+          success INTEGER NOT NULL,
+          error_category TEXT,
+          error_message TEXT,
+          user_agent TEXT
         );
         CREATE TABLE IF NOT EXISTS registry_events (
           sequence_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,6 +131,7 @@ const METADATA_MIGRATIONS: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_claims_owner_login ON package_claims(owner_github_login);
         CREATE INDEX IF NOT EXISTS idx_releases_package_name ON published_releases(package_name);
         CREATE INDEX IF NOT EXISTS idx_selector_resolutions_locator ON selector_resolutions(package_locator);
+        CREATE INDEX IF NOT EXISTS idx_request_logs_timestamp ON request_logs(request_timestamp DESC);
         CREATE INDEX IF NOT EXISTS idx_registry_events_sequence_id ON registry_events(sequence_id);
         CREATE INDEX IF NOT EXISTS idx_registry_events_created_at ON registry_events(created_at);
         CREATE INDEX IF NOT EXISTS idx_registry_events_package ON registry_events(package_name, package_version, created_at);
@@ -266,6 +277,30 @@ const METADATA_MIGRATIONS: Migration[] = [
           .bind(nextEventId, eventId)
           .run();
       }
+    },
+  },
+  {
+    version: 5,
+    migrate: async (db: D1Database): Promise<void> => {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS request_logs (
+          request_id TEXT PRIMARY KEY,
+          request_timestamp TEXT NOT NULL,
+          method TEXT NOT NULL,
+          path TEXT NOT NULL,
+          route TEXT NOT NULL,
+          package_locator TEXT,
+          selector TEXT,
+          resolved_sha TEXT,
+          status INTEGER NOT NULL,
+          success INTEGER NOT NULL,
+          error_category TEXT,
+          error_message TEXT,
+          user_agent TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_request_logs_timestamp ON request_logs(request_timestamp DESC);
+        DROP TABLE IF EXISTS web_views;
+      `);
     },
   },
 ];

@@ -3,7 +3,6 @@ import { parse as parseCookieHeader, serialize as serializeCookie } from "cookie
 
 import { getConfig, getGitHubApiBaseUrl } from "./config.ts";
 import { HttpError } from "./errors.ts";
-import { rebuildWebViews } from "./web-views.ts";
 import {
   applyMetadataMigrations,
   deleteSessionRecord,
@@ -108,7 +107,6 @@ export async function completeGitHubAuthorization(
   const githubUser = await fetchGitHubUser(env, tokens.accessToken());
   const githubEmail = await fetchGitHubPrimaryEmail(env, tokens.accessToken());
   const user = await upsertUser(env, githubUser, githubEmail);
-  await rebuildWebViews(env);
   const session = await createSession(env, user);
 
   return {
