@@ -3201,12 +3201,14 @@ type implementation = {
   syntax_node : syntax_node;
   items : StructureItem.t list;
   phrase_separator_tokens : Token.t list;
+  trailing_phrase_separator_tokens : Token.t list list;
 }
 
 type interface = {
   syntax_node : syntax_node;
   items : SignatureItem.t list;
   phrase_separator_tokens : Token.t list;
+  trailing_phrase_separator_tokens : Token.t list list;
 }
 
 type t =
@@ -3237,6 +3239,11 @@ module SourceFile = struct
     function
     | Implementation source_file -> source_file.phrase_separator_tokens
     | Interface source_file -> source_file.phrase_separator_tokens
+
+  let trailing_phrase_separator_tokens =
+    function
+    | Implementation source_file -> source_file.trailing_phrase_separator_tokens
+    | Interface source_file -> source_file.trailing_phrase_separator_tokens
 
   let kind =
     function

@@ -4457,6 +4457,7 @@ type implementation = {
   syntax_node : syntax_node;
   items : StructureItem.t list;
   phrase_separator_tokens : Token.t list;
+  trailing_phrase_separator_tokens : Token.t list list;
 }
 (** A parsed source file, distinguished by whether the grammar was an
     implementation or an interface. *)
@@ -4464,6 +4465,7 @@ type interface = {
   syntax_node : syntax_node;
   items : SignatureItem.t list;
   phrase_separator_tokens : Token.t list;
+  trailing_phrase_separator_tokens : Token.t list list;
 }
 (** Alias for the full-file CST root. *)
 type t =
@@ -4488,6 +4490,8 @@ module SourceFile : sig
   val signature_items : t -> SignatureItem.t list option
 
   val phrase_separator_tokens : t -> Token.t list
+
+  val trailing_phrase_separator_tokens : t -> Token.t list list
 
   val kind : t -> [
     | `Implementation

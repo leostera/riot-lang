@@ -14,6 +14,11 @@ type record_field_item =
   | Comment of Cst.comment
   | Docstring of Cst.docstring
 
+type object_member_item =
+  | ObjectMember of Cst.ObjectMember.t
+  | Comment of Cst.comment
+  | Docstring of Cst.docstring
+
 exception Bail of error
 
 let bail = fun ~message ~syntax_node ~context -> raise (Bail {
@@ -289,6 +294,39 @@ let eof_leading_trivia_tokens = fun tokens ->
       List.map Token.trivia_to_token eof.Token.leading_trivia
   | _ ->
       []
+
+let compare_syntax_token_by_span = fun left right ->
+  let left_span = Ceibo.Red.SyntaxToken.span left in
+  let right_span = Ceibo.Red.SyntaxToken.span right in
+  if not (Int.equal left_span.start right_span.start) then
+    Int.compare left_span.start right_span.start
+  else
+    Int.compare left_span.end_ right_span.end_
+
+let source_file_phrase_separator_tokens = fun root ->
+  Ceibo.Red.SyntaxNode.direct_tokens root
+  |> List.sort compare_syntax_token_by_span
+  |> List.filter_map (fun syntax_token ->
+         if String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ";" then
+           Some { Cst.Token.syntax_token = syntax_token }
+         else
+           None)
+
+let phrase_separator_tokens_between = fun tokens ~start ~end_ ->
+  let rec loop acc =
+    function
+    | [] ->
+        List.rev acc
+    | token :: rest ->
+        let span = Cst.Token.span token in
+        if span.end_ <= start then
+          loop acc rest
+        else if span.start >= end_ then
+          List.rev acc
+        else
+          loop (token :: acc) rest
+  in
+  loop [] tokens
 
 let source_file_items_from_child = fun ~comment_item_of_comment ~docstring_item_of_docstring ~owned_trivia_spans_of_item items_from_node ->
   function
@@ -653,9 +691,47 @@ let record_field_item_owned_trivia_spans =
   | Docstring _ ->
       []
 
-let record_field_item_of_comment = fun comment -> Comment comment
+let record_field_item_of_comment : Cst.Comment.t -> record_field_item = fun comment ->
+  Comment comment
 
-let record_field_item_of_docstring = fun docstring -> Docstring docstring
+let syntax_node_of_object_member_item =
+  function
+  | ObjectMember member ->
+      Cst.ObjectMember.syntax_node member
+  | Comment comment ->
+      Cst.Comment.syntax_node comment
+  | Docstring docstring ->
+      Cst.Docstring.syntax_node docstring
+
+let object_member_owned_trivia_spans =
+  function
+  | Cst.ObjectMember.Method method_ ->
+      owned_trivia_spans (method_.owned_trivia)
+  | Cst.ObjectMember.Value value ->
+      owned_trivia_spans (value.owned_trivia)
+  | Cst.ObjectMember.Inherit inherit_ ->
+      owned_trivia_spans (inherit_.owned_trivia)
+  | Cst.ObjectMember.Extension _extension ->
+      []
+  | Cst.ObjectMember.Initializer initializer_ ->
+      owned_trivia_spans (initializer_.owned_trivia)
+
+let object_member_item_owned_trivia_spans =
+  function
+  | ObjectMember member ->
+      object_member_owned_trivia_spans member
+  | Comment _
+  | Docstring _ ->
+      []
+
+let object_member_item_of_comment : Cst.Comment.t -> object_member_item = fun comment ->
+  Comment comment
+
+let record_field_item_of_docstring : Cst.Docstring.t -> record_field_item = fun docstring ->
+  Docstring docstring
+
+let object_member_item_of_docstring : Cst.Docstring.t -> object_member_item = fun docstring ->
+  Docstring docstring
 
 let rec variant_constructor_owned_trivia_spans = fun constructor ->
   let argument_spans =
@@ -2012,6 +2088,14 @@ let rec module_path_like_from_node = fun node ->
     )
   | _ ->
       module_path_from_tokens ~syntax_node:node (direct_non_trivia_tokens node)
+
+let poly_variant_type_path_from_node = fun node ->
+  let path_tokens =
+    direct_non_trivia_tokens node
+    |> List.filter (fun syntax_token ->
+           not (String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "#"))
+  in
+  module_path_from_tokens ~syntax_node:node path_tokens
 
 let type_constructor_path_from_node = fun node ->
   let is_identifier_like_text = fun text ->
@@ -3872,7 +3956,7 @@ let rec pattern_from_node = fun node ->
     | Syntax_kind.POLY_VARIANT_TYPE_PATTERN ->
         Cst.Pattern.PolyVariantInherit {
           syntax_node = node;
-          type_path = module_path_like_from_node node;
+          type_path = poly_variant_type_path_from_node node;
           attributes = []
         }
     | Syntax_kind.CONSTRUCTOR_PATTERN ->
@@ -5056,6 +5140,7 @@ and object_method_from_node = fun node ->
       | Some name_token ->
           Some {
             Cst.syntax_node = node;
+            owned_trivia = owned_trivia_from_node node;
             attributes = attributes_from_node node;
             name_token;
             body = (remainder |> List.rev |> List.find_opt can_lift_expression_node |> Option.map expression_from_node);
@@ -5085,6 +5170,7 @@ and object_value_from_node = fun node ->
       | Some name_token ->
           Some {
             Cst.syntax_node = node;
+            owned_trivia = owned_trivia_from_node node;
             attributes = attributes_from_node node;
             name_token;
             value = (remainder |> List.rev |> List.find_opt can_lift_expression_node |> Option.map expression_from_node);
@@ -5117,7 +5203,12 @@ and object_inherit_from_node = fun node ->
           None)
   with
   | Some expression ->
-      Some {Cst.syntax_node = node; attributes = attributes_from_node node; expression}
+      Some {
+        Cst.syntax_node = node;
+        owned_trivia = owned_trivia_from_node node;
+        attributes = attributes_from_node node;
+        expression
+      }
   | None -> None
 and object_initializer_from_node = fun node ->
   match direct_non_trivia_tokens node, direct_non_trivia_nodes node with
@@ -5132,7 +5223,11 @@ and object_initializer_from_node = fun node ->
             else
               None)
       in
-      Some ({syntax_node = node; body}: Cst.object_initializer)
+      Some {
+        Cst.syntax_node = node;
+        owned_trivia = owned_trivia_from_node node;
+        body
+      }
   | _ -> None
 and object_expression_from_node = fun node ->
   let non_trivia_children = direct_non_trivia_nodes node in
@@ -5184,7 +5279,16 @@ and object_expression_from_node = fun node ->
   in
   match lift_members [] member_children with
   | Some members ->
-      Some ({syntax_node = node; self_pattern; members; attributes = []}: Cst.object_expression)
+      let child_owned_spans =
+        members |> List.concat_map object_member_owned_trivia_spans
+      in
+      Some ({
+        syntax_node = node;
+        self_pattern;
+        members;
+        owned_trivia = owned_trivia_from_node_excluding_child_owned_spans node child_owned_spans;
+        attributes = []
+      }: Cst.object_expression)
   | None -> None
 and method_call_expression_from_node = fun node ->
   match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
@@ -7718,6 +7822,7 @@ let () = Cell.set annotation_payload_from_shell_impl annotation_payload_from_she
 
 let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item ~owned_trivia_spans_of_item tree items_from_node ->
   let root = Ceibo.Red.new_root tree in
+  let phrase_separator_tokens = source_file_phrase_separator_tokens root in
   let item_nodes = Ceibo.Red.SyntaxNode.direct_nodes root
   |> List.filter (fun node -> not (is_trivia (Ceibo.Red.SyntaxNode.kind node))) in
   let next_index =
@@ -7755,7 +7860,7 @@ let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docst
             let syntax_node = syntax_node_of_item item in
             (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
   in
-  let file_items =
+  let ordered_entries =
     List.sort
       (fun (left_index, (left_span : Ceibo.Span.t), _) (right_index, (right_span : Ceibo.Span.t), _) ->
         let order =
@@ -7771,9 +7876,22 @@ let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docst
         else
           order)
       (item_entries @ trivia_entries)
-    |> List.map (fun (_, _, item) -> item)
   in
-  (root, file_items)
+  let file_items = ordered_entries |> List.map (fun (_, _, item) -> item) in
+  let trailing_phrase_separator_tokens =
+    ordered_entries
+    |> List.mapi (fun index (_, (span : Ceibo.Span.t), _) ->
+           let next_boundary =
+             match List.nth_opt ordered_entries (index + 1) with
+             | Some (_, (next_span : Ceibo.Span.t), _) ->
+                 next_span.start
+             | None ->
+                 (Ceibo.Red.SyntaxNode.span root).end_
+           in
+           phrase_separator_tokens_between phrase_separator_tokens ~start:span.end_
+             ~end_:next_boundary)
+  in
+  (root, file_items, phrase_separator_tokens, trailing_phrase_separator_tokens)
 
 let build_items_from_payload_nodes =
   fun ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item
@@ -7858,7 +7976,7 @@ let record_field_items_of_fields = fun fields ->
       Cell.set cell (index + 1);
       index
   in
-  let item_entries =
+  let item_entries : (int * Ceibo.Span.t * record_field_item) list =
     fields
     |> List.map (fun field ->
            let item = RecordField field in
@@ -7888,7 +8006,7 @@ let record_field_items_of_fields = fun fields ->
     | [] ->
         []
   in
-  let trivia_entries =
+  let trivia_entries : (int * Ceibo.Span.t * record_field_item) list =
     ((item_entries
       |> List.concat_map (fun (_, _, item) ->
              leading_trivia_syntax_tokens_for_item
@@ -7901,12 +8019,116 @@ let record_field_items_of_fields = fun fields ->
                 (fun owned_span -> span_contains owned_span token_span)
                 owned_trivia_spans))
     |> List.filter_map (fun syntax_token ->
+           match
+             standalone_trivia_item_from_token
+               ~comment_item_of_comment:record_field_item_of_comment
+               ~docstring_item_of_docstring:record_field_item_of_docstring
+               syntax_token
+           with
+           | None ->
+               None
+           | Some (item : record_field_item) ->
+               let syntax_node = syntax_node_of_record_field_item item in
+               Some (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item))
+  in
+  List.sort
+    (fun
+      (left_index, (left_span : Ceibo.Span.t), _)
+      (right_index, (right_span : Ceibo.Span.t), _) ->
+      let order =
+        if not (Int.equal left_span.start right_span.start) then
+          Int.compare left_span.start right_span.start
+        else if not (Int.equal left_span.end_ right_span.end_) then
+          Int.compare left_span.end_ right_span.end_
+        else
+          0
+      in
+      if Int.equal order 0 then
+        Int.compare left_index right_index
+      else
+        order)
+    (item_entries @ trivia_entries)
+  |> List.map (fun (_, _, item) -> item)
+
+let object_member_items_of_members = fun ?source_node members ->
+  let next_index =
+    let cell = Cell.create 0 in
+    fun () ->
+      let index = Cell.get cell in
+      Cell.set cell (index + 1);
+      index
+  in
+  let item_entries =
+    members
+    |> List.map (fun member ->
+           let item = ObjectMember member in
+           let span =
+             span_of_syntax_node_nontrivia_bounds
+               (Cst.ObjectMember.syntax_node member)
+           in
+           (next_index (), span, item))
+  in
+  let owned_trivia_spans =
+    item_entries
+    |> List.concat_map (fun (_, _, item) ->
+           object_member_item_owned_trivia_spans item)
+  in
+  let terminal_tokens =
+    match members, source_node with
+    | _ :: _, Some source_node ->
+        (match direct_non_trivia_tokens source_node with
+        | closing_token :: _ when
+            String.equal
+              (Ceibo.Red.SyntaxToken.text closing_token)
+              "end" ->
+            Ceibo.Red.SyntaxToken.leading_trivia closing_token
+            |> List.map syntax_token_from_trivia
+        | _ ->
+            [])
+    | member :: _, None -> (
+        match Ceibo.Red.SyntaxNode.parent (Cst.ObjectMember.syntax_node member) with
+        | Some source_node -> (
+            match direct_non_trivia_tokens source_node with
+            | closing_token :: _ ->
+                Ceibo.Red.SyntaxToken.leading_trivia closing_token
+                |> List.map syntax_token_from_trivia
+            | [] ->
+                [])
+        | None ->
+            [])
+    | [], Some source_node -> (
+        match direct_non_trivia_tokens source_node with
+        | closing_token :: _ when
+            String.equal
+              (Ceibo.Red.SyntaxToken.text closing_token)
+              "end" ->
+            Ceibo.Red.SyntaxToken.leading_trivia closing_token
+            |> List.map syntax_token_from_trivia
+        | _ ->
+            [])
+    | [] , None ->
+        []
+  in
+  let trivia_entries =
+    ((item_entries
+      |> List.concat_map (fun (_, _, item) ->
+             leading_trivia_syntax_tokens_for_item
+               (syntax_node_of_object_member_item item)))
+    @ terminal_tokens)
+    |> List.filter (fun syntax_token ->
+           let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+           not
+             (List.exists
+                (fun owned_span -> span_contains owned_span token_span)
+                owned_trivia_spans))
+    |> List.filter_map (fun syntax_token ->
            standalone_trivia_item_from_token
-             ~comment_item_of_comment:record_field_item_of_comment
-             ~docstring_item_of_docstring:record_field_item_of_docstring
+             ~comment_item_of_comment:object_member_item_of_comment
+             ~docstring_item_of_docstring:object_member_item_of_docstring
              syntax_token
            |> Option.map (fun item ->
-                  let syntax_node = syntax_node_of_record_field_item item in
+                  let item : object_member_item = item in
+                  let syntax_node = syntax_node_of_object_member_item item in
                   (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
   in
   List.sort
@@ -8600,17 +8822,21 @@ let lift = fun ~kind ~source ~tokens tree ->
   let cst =
     match kind with
     | `Implementation ->
-        let syntax_node, items = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans tree structure_items_from_node in
+        let syntax_node, items, phrase_separator_tokens, trailing_phrase_separator_tokens = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans tree structure_items_from_node in
         Cst.Implementation {
           syntax_node;
+          phrase_separator_tokens;
+          trailing_phrase_separator_tokens;
           items = items
           |> coalesce_structure_type_declaration_groups
           |> normalize_structure_items_owned_trivia ~source
         }
     | `Interface ->
-        let syntax_node, items = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans tree signature_items_from_node in
+        let syntax_node, items, phrase_separator_tokens, trailing_phrase_separator_tokens = build_source_file_body ~source ~tokens ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans tree signature_items_from_node in
         Cst.Interface {
           syntax_node;
+          phrase_separator_tokens;
+          trailing_phrase_separator_tokens;
           items = items
           |> coalesce_signature_type_declaration_groups
           |> normalize_signature_items_owned_trivia ~source
@@ -8749,3 +8975,17 @@ let signature_items_of_module_type = function
       |> Result.map Option.some
   | _ ->
       Ok None
+
+let pattern_of_syntax_node = fun node ->
+  match pattern_from_node node with
+  | pattern ->
+      Ok pattern
+  | exception Bail error ->
+      Error error
+
+let expression_of_syntax_node = fun node ->
+  match expression_from_node node with
+  | expression ->
+      Ok expression
+  | exception Bail error ->
+      Error error

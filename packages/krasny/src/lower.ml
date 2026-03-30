@@ -82,23 +82,8 @@ let binding_has_explicit_fun_rhs = fun (binding : Syn.Cst.let_binding) ->
   | _ ->
       false
 
-let phrase_separator_count_between_tokens = fun tokens ~start ~end_ ->
-  let rec loop count = function
-    | [] ->
-        count
-    | token :: rest ->
-        let span = Syn.Cst.Token.span token in
-        if span.end_ <= start then
-          loop count rest
-        else if span.start >= end_ then
-          count
-        else
-          loop (count + 1) rest
-  in
-  loop 0 tokens
-
-let phrase_separator_doc_between_tokens = fun tokens ~start ~end_ ->
-  match phrase_separator_count_between_tokens tokens ~start ~end_ with
+let phrase_separator_doc_of_tokens = fun tokens ->
+  match List.length tokens with
   | count when count > 0 ->
       Some (List.init count (fun _ -> Doc.semi) |> Doc.concat)
   | _ ->
@@ -2031,8 +2016,7 @@ let infix_chain = fun operator_token expression ->
 
 type lowerer = {
   render_structure_items :
-    ?source_end:int ->
-    ?phrase_separator_tokens:Syn.Cst.Token.t list ->
+    ?trailing_phrase_separator_tokens:Syn.Cst.Token.t list list ->
     source_node:Syn.Cst.syntax_node -> Syn.Cst.StructureItem.t list -> Doc.t;
   render_signature_items :
     source_node:Syn.Cst.syntax_node -> Syn.Cst.SignatureItem.t list -> Doc.t;
@@ -5045,7 +5029,7 @@ and type_declaration_owned_trivia_end = fun decl ->
          Int.max acc (type_declaration_owned_trivia_end declaration))
        current
 
-and render_structure_top_level_items ~source_end ~phrase_separator_tokens ~items =
+and render_structure_top_level_items ~trailing_phrase_separator_tokens ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
@@ -5076,52 +5060,34 @@ and render_structure_top_level_items ~source_end ~phrase_separator_tokens ~items
         in
         Doc.concat [ doc; separator; join_entries rest ]
   in
-  let structure_item_span item =
-    match item with
-    | Syn.Cst.StructureItem.Comment comment ->
-        Syn.Cst.Token.span (Syn.Cst.Comment.token comment)
-    | Syn.Cst.StructureItem.Docstring docstring ->
-        Syn.Cst.Token.span (Syn.Cst.Docstring.token docstring)
-    | _ ->
-        let syntax_node = Syn.Cst.StructureItem.syntax_node item in
-        (match item with
-        | Syn.Cst.StructureItem.TypeDeclaration decl ->
-            let span =
-              span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
-            in
-            { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
-        | _ ->
-            span_of_syntax_node_nontrivia_bounds syntax_node)
-  in
-  let items =
-    items
-    |> List.map (fun item -> (item, structure_item_span item))
-  in
-  let rec loop acc items =
+  let rec loop_with_trailing acc items trailing_phrase_separator_tokens =
     yield ();
     match items with
     | [] ->
         join_entries (List.rev acc)
-    | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let next_boundary =
-          match rest with
-          | (_, (next_span : Syn.Ceibo.Span.t)) :: _ ->
-              next_span.start
-          | [] ->
-              source_end
-        in
+    | item :: rest ->
         let trailing_suffix =
-          phrase_separator_doc_between_tokens phrase_separator_tokens ~start:base_span.end_
-            ~end_:next_boundary
+          match trailing_phrase_separator_tokens with
+          | trailing :: _ ->
+              phrase_separator_doc_of_tokens trailing
+          | [] ->
+              None
         in
         let entry = render_structure_entry ~trailing_suffix item in
-        loop (entry :: acc) rest
+        let remaining_trailing =
+          match trailing_phrase_separator_tokens with
+          | _ :: trailing_rest ->
+              trailing_rest
+          | [] ->
+              []
+        in
+        loop_with_trailing (entry :: acc) rest remaining_trailing
   in
-  loop [] items
+  loop_with_trailing [] items trailing_phrase_separator_tokens
 
-and render_structure_items ?(source_end = 0) ?(phrase_separator_tokens = []) ~source_node items =
+and render_structure_items ?(trailing_phrase_separator_tokens = []) ~source_node items =
   let _source_node = source_node in
-  render_structure_top_level_items ~source_end ~phrase_separator_tokens ~items
+  render_structure_top_level_items ~trailing_phrase_separator_tokens ~items
 
 and render_signature_top_level_items
     ~items =
@@ -5171,8 +5137,8 @@ let source_file = fun source_file ->
       (match source_file with
       | Syn.Cst.Implementation implementation ->
           lowerer.render_structure_items
-            ~source_end:(Syn.Ceibo.Red.SyntaxNode.span implementation.syntax_node).end_
-            ~phrase_separator_tokens:implementation.phrase_separator_tokens
+            ~trailing_phrase_separator_tokens:
+              implementation.trailing_phrase_separator_tokens
             ~source_node:implementation.syntax_node
             implementation.items
       | Syn.Cst.Interface interface ->
