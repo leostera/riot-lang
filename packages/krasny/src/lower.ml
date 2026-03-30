@@ -4546,32 +4546,6 @@ and is_open_signature_item = function
   | _ ->
       false
 
-and flatten_top_level_expression_item = function
-  | Syn.Cst.StructureItem.Expression (Syn.Cst.Expression.Sequence { expressions; _ }) ->
-      expressions
-  | Syn.Cst.StructureItem.Expression expression ->
-      [ expression ]
-  | _ ->
-      []
-
-and render_structure_expression_run ~has_trailing_separator items =
-  let expressions =
-    items
-    |> List.concat_map flatten_top_level_expression_item
-  in
-  let expression_count = List.length expressions in
-  expressions
-  |> List.mapi (fun index expression ->
-         let suffix =
-           if index < expression_count - 1 || (has_trailing_separator && index = expression_count - 1)
-           then
-             Doc.semi
-           else
-             Doc.empty
-         in
-         Doc.concat [ render_expression expression; suffix ])
-  |> Doc.join Doc.line
-
 and render_structure_item_owned_trivia =
   function
   | Syn.Cst.StructureItem.TypeDeclaration decl ->
