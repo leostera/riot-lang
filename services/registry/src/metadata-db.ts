@@ -12,6 +12,7 @@ import type {
   PopularPackagesDocument,
   PublishedReleaseRecord,
   RecentPackagesDocument,
+  RegistryEventRecord,
   SelectorResolutionRecord,
   SessionRecord,
   UserLoginRecord,
@@ -517,6 +518,21 @@ export async function readPublishedRelease(
   return rows.results?.[0] ? parsePublishedReleaseRecord(rows.results[0]) : null;
 }
 
+export async function hasPublishedRelease(db: D1Database, packageName: string): Promise<boolean> {
+  const rows = await db
+    .prepare(
+      `SELECT
+         package_name
+       FROM published_releases
+       WHERE package_name = ?
+       LIMIT 1`,
+    )
+    .bind(packageName)
+    .all<{ package_name: string }>();
+
+  return (rows.results?.length ?? 0) > 0;
+}
+
 export async function writePublishedRelease(
   db: D1Database,
   record: PublishedReleaseRecord,
@@ -582,6 +598,235 @@ export async function writePublishedRelease(
       record.published_at,
     )
     .run();
+}
+
+export function prepareWritePackageClaim(
+  db: D1Database,
+  record: PackageClaimRecord,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO package_claims (
+         package_name,
+         package_locator,
+         source_url,
+         package_subdir,
+         owner_user_id,
+         owner_github_login,
+         claimed_at,
+         updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(package_name) DO UPDATE SET
+         package_locator = excluded.package_locator,
+         source_url = excluded.source_url,
+         package_subdir = excluded.package_subdir,
+         owner_user_id = excluded.owner_user_id,
+         owner_github_login = excluded.owner_github_login,
+         claimed_at = excluded.claimed_at,
+         updated_at = excluded.updated_at`,
+    )
+    .bind(
+      record.package_name,
+      record.package_locator,
+      record.source_url,
+      record.package_subdir,
+      record.owner_user_id ?? null,
+      record.owner_github_login ?? null,
+      record.claimed_at,
+      record.updated_at,
+    );
+}
+
+export function prepareWritePublishedRelease(
+  db: D1Database,
+  record: PublishedReleaseRecord,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO published_releases (
+         package_name,
+         package_version,
+         package_locator,
+         source_url,
+         package_subdir,
+         selector,
+         resolved_sha,
+         package_description,
+         package_license,
+         package_homepage,
+         package_repository,
+         package_root_module,
+         package_categories_json,
+         package_keywords_json,
+         dependencies_json,
+         source_archive_key,
+         manifest_key,
+         published_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(package_name, package_version) DO UPDATE SET
+         package_locator = excluded.package_locator,
+         source_url = excluded.source_url,
+         package_subdir = excluded.package_subdir,
+         selector = excluded.selector,
+         resolved_sha = excluded.resolved_sha,
+         package_description = excluded.package_description,
+         package_license = excluded.package_license,
+         package_homepage = excluded.package_homepage,
+         package_repository = excluded.package_repository,
+         package_root_module = excluded.package_root_module,
+         package_categories_json = excluded.package_categories_json,
+         package_keywords_json = excluded.package_keywords_json,
+         dependencies_json = excluded.dependencies_json,
+         source_archive_key = excluded.source_archive_key,
+         manifest_key = excluded.manifest_key,
+         published_at = excluded.published_at`,
+    )
+    .bind(
+      record.package_name,
+      record.package_version,
+      record.package_locator,
+      record.source_url,
+      record.package_subdir,
+      record.selector,
+      record.resolved_sha,
+      record.package_description ?? null,
+      record.package_license ?? null,
+      record.package_homepage ?? null,
+      record.package_repository ?? null,
+      record.package_root_module ?? null,
+      JSON.stringify(record.package_categories ?? []),
+      JSON.stringify(record.package_keywords ?? []),
+      JSON.stringify(record.dependencies),
+      record.source_archive_key,
+      record.manifest_key,
+      record.published_at,
+    );
+}
+
+export async function writeRegistryEvent(
+  db: D1Database,
+  record: RegistryEventRecord,
+): Promise<void> {
+  await prepareWriteRegistryEvent(db, record).run();
+}
+
+export function prepareWriteRegistryEvent(
+  db: D1Database,
+  record: RegistryEventRecord,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO registry_events (
+         event_id,
+         event_type,
+         package_name,
+         package_version,
+         package_locator,
+         payload_json,
+         created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      record.event_id,
+      record.event_type,
+      record.package_name ?? null,
+      record.package_version ?? null,
+      record.package_locator ?? null,
+      JSON.stringify(record.payload),
+      record.created_at,
+    );
+}
+
+export async function listRegistryEvents(
+  db: D1Database,
+  limit = 100,
+  after?: string,
+): Promise<RegistryEventRecord[]> {
+  const rows = after === undefined
+    ? await db
+        .prepare(
+          `SELECT
+             event_id,
+             event_type,
+             package_name,
+             package_version,
+             package_locator,
+             payload_json,
+             created_at
+           FROM registry_events
+           ORDER BY event_id DESC
+           LIMIT ?`,
+        )
+        .bind(limit)
+        .all<RegistryEventRow>()
+    : await db
+        .prepare(
+          `SELECT
+             event_id,
+             event_type,
+             package_name,
+             package_version,
+             package_locator,
+             payload_json,
+             created_at
+           FROM registry_events
+           WHERE event_id > ?
+           ORDER BY event_id ASC
+           LIMIT ?`,
+        )
+        .bind(after, limit)
+        .all<RegistryEventRow>();
+
+  return (rows.results ?? []).map(parseRegistryEventRecord);
+}
+
+export async function listPackageRegistryEvents(
+  db: D1Database,
+  packageName: string,
+  packageVersion?: string,
+  limit = 50,
+): Promise<RegistryEventRecord[]> {
+  if (packageVersion === undefined) {
+    const rows = await db
+      .prepare(
+        `SELECT
+           event_id,
+           event_type,
+           package_name,
+           package_version,
+           package_locator,
+           payload_json,
+           created_at
+        FROM registry_events
+        WHERE package_name = ?
+        ORDER BY event_id DESC
+        LIMIT ?`,
+      )
+      .bind(packageName, limit)
+      .all<RegistryEventRow>();
+
+    return (rows.results ?? []).map(parseRegistryEventRecord);
+  }
+
+  const rows = await db
+    .prepare(
+      `SELECT
+         event_id,
+         event_type,
+         package_name,
+         package_version,
+         package_locator,
+         payload_json,
+         created_at
+       FROM registry_events
+       WHERE package_name = ? AND package_version = ?
+       ORDER BY event_id DESC
+       LIMIT ?`,
+    )
+    .bind(packageName, packageVersion, limit)
+    .all<RegistryEventRow>();
+
+  return (rows.results ?? []).map(parseRegistryEventRecord);
 }
 
 export async function writePackageOverviewDocument(
@@ -796,6 +1041,16 @@ interface PublishedReleaseRow {
   published_at: string;
 }
 
+interface RegistryEventRow {
+  event_id: string;
+  event_type: RegistryEventRecord["event_type"];
+  package_name?: string | null;
+  package_version?: string | null;
+  package_locator?: string | null;
+  payload_json: string;
+  created_at: string;
+}
+
 function parseApiTokenRecord(row: ApiTokenRow): ApiTokenRecord {
   return {
     token_id: row.token_id,
@@ -880,11 +1135,34 @@ function parsePublishedReleaseRecord(row: PublishedReleaseRow): PublishedRelease
   };
 }
 
+function parseRegistryEventRecord(row: RegistryEventRow): RegistryEventRecord {
+  return {
+    event_id: row.event_id,
+    event_type: row.event_type,
+    package_name: row.package_name ?? undefined,
+    package_version: row.package_version ?? undefined,
+    package_locator: row.package_locator ?? undefined,
+    payload: parseJsonObject(row.payload_json),
+    created_at: row.created_at,
+  };
+}
+
 function parseJsonArray<T = string>(value: string): T[] {
   try {
     const parsed = JSON.parse(value) as unknown;
     return Array.isArray(parsed) ? (parsed as T[]) : [];
   } catch {
     return [];
+  }
+}
+
+function parseJsonObject(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
   }
 }

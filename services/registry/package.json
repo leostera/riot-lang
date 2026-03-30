@@ -14,7 +14,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
     "@types/bun": "latest",
-    "@types/is-git-url": "^1.0.2",
     "@types/semver": "^7.7.1",
     "typescript": "^5",
     "wrangler": "latest"
@@ -22,9 +21,10 @@
   "dependencies": {
     "arctic": "^3.7.0",
     "cookie": "^1.1.1",
-    "is-git-url": "^1.0.0",
+    "git-url-parse": "^16.1.0",
     "semver": "^7.7.4",
     "smol-toml": "^1.6.1",
-    "spdx-expression-validate": "^2.0.0"
+    "spdx-expression-validate": "^2.0.0",
+    "uuid": "^13.0.0"
   }
 }

@@ -1,9 +1,11 @@
 export interface Env {
   ML_PKGS_CDN: R2Bucket;
+  ML_PKGS_BACKUPS?: R2Bucket;
   SEARCH_DB: D1Database;
   PACKAGE_PUBLISHED_QUEUE: Queue<PackagePublishedEvent>;
   PACKAGE_INDEXED_QUEUE: Queue<PackageIndexedEvent>;
   PUBLICATION_COORDINATOR: DurableObjectNamespace;
+  REGISTRY_D1_BACKUP?: Workflow<{ accountId: string; databaseId: string; bucketPrefix?: string }>;
   CDN_BASE_URL?: string;
   INDEX_BASE_PATH?: string;
   VIEWS_BASE_PATH?: string;
@@ -14,6 +16,11 @@ export interface Env {
   ROOT_AUTH_TOKEN?: string;
   AUTH_COOKIE_DOMAIN?: string;
   PKGS_WEB_BASE_URL?: string;
+  D1_REST_API_TOKEN?: string;
+  D1_BACKUP_ACCOUNT_ID?: string;
+  D1_BACKUP_DATABASE_ID?: string;
+  D1_BACKUP_BUCKET_PREFIX?: string;
+  D1_BACKUP_ENABLED?: string;
 }
 
 export interface PackageLocator {
@@ -120,6 +127,29 @@ export interface ApiTokenLookupRecord {
   github_login: string;
   capabilities: ApiTokenCapability[];
   revoked_at?: string;
+}
+
+export type RegistryEventType =
+  | "package.submitted"
+  | "package.verified"
+  | "package.indexed"
+  | "package.searchable"
+  | "package.published";
+
+export interface RegistryEventRecord {
+  event_id: string;
+  event_type: RegistryEventType;
+  package_name?: string;
+  package_version?: string;
+  package_locator?: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface RegistryEventsDocument {
+  limit?: number;
+  after?: string;
+  events: RegistryEventRecord[];
 }
 
 export interface SessionResponse {

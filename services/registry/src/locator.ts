@@ -1,8 +1,9 @@
+import semver from "semver";
+
 import { HttpError } from "./errors.ts";
 import type { PackageLocator } from "./types.ts";
 
 const FULL_SHA = /^[0-9a-f]{40}$/i;
-const SEMVER_LIKE_TAG = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 
 export function normalizeLocator(rawValue: string): PackageLocator {
   const stripped = stripProtocol(rawValue).replace(/^\/+|\/+$/g, "");
@@ -58,7 +59,7 @@ export function isFullSha(value: string): boolean {
 }
 
 export function isSemverLikeTag(value: string): boolean {
-  return SEMVER_LIKE_TAG.test(value);
+  return semver.valid(value.trim()) !== null;
 }
 
 export function publicLocatorPath(locator: PackageLocator): string {

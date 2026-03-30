@@ -26,27 +26,33 @@ bun run migrate:remote
 
 The control-plane database is Cloudflare D1 (`riot-registry`).
 
-- Use **D1 Time Travel** for point-in-time rollback. It is always on, supports
-  rollback to historical points, and is the primary recovery mechanism.
+## Database-first rollback
+- D1 Time Travel is enabled and should be the primary point-in-time recovery path:
 
   ```bash
-  # Current backup point
   wrangler d1 time-travel info riot-registry
-
-  # Restore to a timestamp (UTC RFC3339 or Unix seconds)
   wrangler d1 time-travel restore riot-registry --timestamp 2026-03-30T10:20:00Z
   ```
 
-- For retention beyond Time Travel retention windows, use the Cloudflare
-  Workflows example to periodically export D1 into R2:
-  https://developers.cloudflare.com/workflows/examples/backup-d1/
+## Exported backups (Cloudflare Workflows)
+`services/registry` includes a `D1BackupWorkflow` that exports D1 to R2 using
+Cloudflare’s D1 REST export API and stores `*.sql` snapshots in
+`ML_PKGS_BACKUPS` (Cloudflare R2 bucket `ml-pkgs-backups`) at:
+`{prefix}/{accountId}/{databaseId}/{YYYY-MM-DD}/{timestamp}-*.sql`.
 
-  This pattern uses the D1 REST export API and cron-driven retry logic.
+- The workflow is scheduled by cron in `wrangler.toml` (default daily at midnight UTC).
+- Enable it with `D1_BACKUP_ENABLED=true`.
+- Configure:
 
-Notes:
-- Time Travel retention is plan-dependent (7 days on Free, 30 days on Paid).
-- Time Travel restore overwrites the target database in place; validate immediately
-  after restore.
+```dotenv
+D1_BACKUP_ACCOUNT_ID=<cloudflare-account-id>
+D1_BACKUP_DATABASE_ID=3a482dd8-a28f-4f87-a143-46153d492819
+D1_BACKUP_BUCKET_PREFIX=registry-database-backups
+D1_REST_API_TOKEN=<cloudflare-api-token>
+```
+
+The token only needs `Cloudflare D1:Read` / export-capable permissions for the
+target account/database.
 
 Wrangler reads `.env` during local development, and the Worker expects at least:
 

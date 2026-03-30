@@ -5,10 +5,11 @@ import { applyMetadataMigrations, readPackageClaim, readUserLoginRecord } from "
 import { FakeExecutionContext, makeEnv, makeTarGz, withMockedFetch } from "./helpers.ts";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
+const NEXT_SHA = "89abcdef012345670123456789abcdef01234567";
 
 describe("riot package registry auth", () => {
   test("github oauth callback creates a session and /v1/me returns the user", async () => {
-    const { env, db } = makeEnv({
+    const { env, db, bucket } = makeEnv({
       GITHUB_OAUTH_CLIENT_ID: "github-client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
       PKGS_WEB_BASE_URL: "https://pkgs.ml",
@@ -60,6 +61,15 @@ describe("riot package registry auth", () => {
         ]);
       }
 
+      if (url.toString() === "https://avatars.githubusercontent.com/u/42") {
+        return new Response("avatar", {
+          status: 200,
+          headers: {
+            "content-type": "image/png",
+          },
+        });
+      }
+
       throw new Error(`Unexpected fetch to ${url.toString()}`);
     }, async () => {
       return await handleRequest(
@@ -101,10 +111,12 @@ describe("riot package registry auth", () => {
       user: {
         github_login: "leostera",
         github_name: "Leo Stera",
+        github_avatar_url: "https://cdn.pkgs.ml/avatars/leostera",
         github_email: "leo@example.com",
         github_email_verified: true,
       },
     });
+    expect(await bucket.head("avatars/leostera")).not.toBeNull();
   });
 
   test("github oauth callback rejects users without verified primary email", async () => {
@@ -256,7 +268,7 @@ describe("riot package registry auth", () => {
     });
   });
 
-  test("publish tokens can create claims for matching github owners and adopt legacy claims", async () => {
+  test("publish tokens can create claims for matching github owners and adopt legacy claims on later versions", async () => {
     const { env, db, queue, indexedQueue } = makeEnv({
       GITHUB_OAUTH_CLIENT_ID: "github-client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
@@ -264,7 +276,17 @@ describe("riot package registry auth", () => {
     });
     const cookie = await loginAsGitHubUser(env, "leostera");
     const publishToken = await createPublishToken(env, cookie, "publish");
-    const archive = await makeTarGz({
+    const firstArchive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.1"',
+        "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
+      ].join("\n"),
+    });
+    const secondArchive = await makeTarGz({
       "tusk.toml": [
         "[package]",
         'name = "minttea"',
@@ -281,17 +303,23 @@ describe("riot package registry auth", () => {
         return Response.json({ private: false });
       }
       if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: NEXT_SHA });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/v0.4.1") {
         return Response.json({ sha: SHA });
       }
       if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
-        return new Response(archive, { status: 200 });
+        return new Response(firstArchive, { status: 200 });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${NEXT_SHA}`) {
+        return new Response(secondArchive, { status: 200 });
       }
 
       throw new Error(`Unexpected fetch to ${url.toString()}`);
     }, async () => {
       const rootCtx = new FakeExecutionContext();
       const rootPublish = await handleRequest(
-        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=v0.4.1", {
           method: "POST",
           headers: {
             authorization: "Bearer root-secret",
@@ -324,7 +352,7 @@ describe("riot package registry auth", () => {
     expect(claim).toMatchObject({
       owner_github_login: "leostera",
     });
-    expect(queue.messages).toHaveLength(1);
+    expect(queue.messages).toHaveLength(2);
     expect(indexedQueue.messages).toHaveLength(2);
   });
 
@@ -383,9 +411,118 @@ describe("riot package registry auth", () => {
     await applyMetadataMigrations(db as unknown as D1Database);
     expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toBeNull();
   });
+
+  test("logging in after publish refreshes package overview owner avatars", async () => {
+    const { env } = makeEnv({
+      GITHUB_OAUTH_CLIENT_ID: "github-client-id",
+      GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
+      PKGS_WEB_BASE_URL: "https://pkgs.ml",
+    });
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "minttea"',
+        'version = "0.4.2"',
+        "public = true",
+        'description = "Terminal UI toolkit for Riot"',
+        'license = "MIT"',
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(toRequestUrl(input));
+      if (url.pathname === "/repos/leostera/minttea") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/minttea/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+      if (url.origin === "https://github.com" && url.pathname === "/login/oauth/access_token") {
+        return Response.json({
+          access_token: "token-for-leostera",
+          token_type: "bearer",
+        });
+      }
+      if (url.origin === "https://api.github.com" && url.pathname === "/user") {
+        return Response.json({
+          id: 42,
+          login: "leostera",
+          name: "Leo Stera",
+          avatar_url: "https://avatars.githubusercontent.com/u/42",
+        });
+      }
+      if (url.origin === "https://api.github.com" && url.pathname === "/user/emails") {
+        return Response.json([
+          {
+            email: "leo@example.com",
+            primary: true,
+            verified: true,
+          },
+        ]);
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const publishCtx = new FakeExecutionContext();
+      const publishResponse = await handleRequest(
+        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+          method: "POST",
+          headers: {
+            authorization: "Bearer root-secret",
+          },
+        }),
+        env,
+        publishCtx,
+      );
+      await publishCtx.drain();
+      expect(publishResponse.status).toBe(200);
+
+      const overviewBeforeLoginCtx = new FakeExecutionContext();
+      const overviewBeforeLogin = await handleRequest(
+        new Request("https://registry.test/v1/views/packages/minttea/overview"),
+        env,
+        overviewBeforeLoginCtx,
+      );
+      await overviewBeforeLoginCtx.drain();
+      expect(overviewBeforeLogin.status).toBe(200);
+      const beforePayload = await readJson(overviewBeforeLogin) as {
+        owner_github_login: string;
+        owner_github_avatar_url?: string;
+      };
+      expect(beforePayload.owner_github_login).toBe("leostera");
+      expect(beforePayload.owner_github_avatar_url).toBeUndefined();
+
+      const loginCookie = await loginAsGitHubUser(env, "leostera", {
+        avatarUrl: "https://avatars.githubusercontent.com/u/42",
+      });
+      expect(loginCookie).toContain("pkgs_session=");
+
+      const overviewAfterLoginCtx = new FakeExecutionContext();
+      const overviewAfterLogin = await handleRequest(
+        new Request("https://registry.test/v1/views/packages/minttea/overview"),
+        env,
+        overviewAfterLoginCtx,
+      );
+      await overviewAfterLoginCtx.drain();
+      expect(overviewAfterLogin.status).toBe(200);
+      const afterPayload = await readJson(overviewAfterLogin) as {
+        owner_github_login: string;
+        owner_github_avatar_url?: string;
+      };
+      expect(afterPayload.owner_github_login).toBe("leostera");
+      expect(afterPayload.owner_github_avatar_url).toBe("https://cdn.pkgs.ml/avatars/leostera");
+    });
+  });
 });
 
-async function loginAsGitHubUser(env: ReturnType<typeof makeEnv>["env"], login: string): Promise<string> {
+async function loginAsGitHubUser(
+  env: ReturnType<typeof makeEnv>["env"],
+  login: string,
+  options?: { avatarUrl?: string },
+): Promise<string> {
   const startCtx = new FakeExecutionContext();
   const startResponse = await handleRequest(
     new Request(`https://registry.test/v1/auth/github/start?return_to=${encodeURIComponent(`/u/${login}/tokens`)}`),
@@ -415,6 +552,7 @@ async function loginAsGitHubUser(env: ReturnType<typeof makeEnv>["env"], login: 
         id: Math.floor(Math.random() * 10_000),
         login,
         name: login,
+        avatar_url: options?.avatarUrl,
       });
     }
 
@@ -426,6 +564,15 @@ async function loginAsGitHubUser(env: ReturnType<typeof makeEnv>["env"], login: 
           verified: true,
         },
       ]);
+    }
+
+    if (options?.avatarUrl !== undefined && url.toString() === options.avatarUrl) {
+      return new Response("avatar", {
+        status: 200,
+        headers: {
+          "content-type": "image/png",
+        },
+      });
     }
 
     throw new Error(`Unexpected fetch to ${url.toString()}`);

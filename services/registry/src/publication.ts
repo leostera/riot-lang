@@ -1,6 +1,7 @@
-import isGitUrl from "is-git-url";
+import gitUrlParse from "git-url-parse";
 import semver from "semver";
 import spdxExpressionValidate from "spdx-expression-validate";
+import { v7 as uuidv7 } from "uuid";
 
 import { buildPublicationManifest } from "./manifest.ts";
 import { HttpError } from "./errors.ts";
@@ -8,12 +9,14 @@ import { indexPublishedRelease } from "./indexing.ts";
 import { isFullSha, isSemverLikeTag } from "./locator.ts";
 import {
   applyMetadataMigrations,
-  readPackageClaim,
   hasPublishedRelease,
+  prepareWritePackageClaim,
+  prepareWritePublishedRelease,
+  prepareWriteRegistryEvent,
+  readPackageClaim,
   readPublishedRelease,
   readSelectorResolution,
-  writePackageClaim,
-  writePublishedRelease,
+  writeRegistryEvent,
   writeSelectorResolution,
 } from "./metadata-db.ts";
 import {
@@ -35,6 +38,12 @@ import type {
   ResolvedPublication,
 } from "./types.ts";
 import { assertGitHubRepositoryAccess, fetchGitHubTarball, resolveGitHubSelector } from "./github.ts";
+
+const OCAML_BUILTIN_DEPENDENCIES = new Set([
+  "stdlib",
+  "unix",
+  "dynlink",
+]);
 
 export async function ensureSourceMaterialization(
   env: Env,
@@ -141,48 +150,89 @@ export async function publishPackageRelease(
 ): Promise<PublishedPackageRelease> {
   const materialization = await ensureSourceMaterialization(env, locator, selector);
   const manifest = await readMaterializationManifest(env, materialization.manifestKey);
-  assertPublishableManifest(manifest);
   await applyMetadataMigrations(env.SEARCH_DB);
-  await assertPublishableDependencies(env.SEARCH_DB, manifest);
-
-  const now = new Date().toISOString();
-  const existingClaim = await readPackageClaim(env.SEARCH_DB, manifest.package_name);
-  const claimRecord = buildClaimRecord(locator, manifest, existingClaim, actor, now);
-
-  if (existingClaim === null || !claimMatches(existingClaim, claimRecord)) {
-    await writePackageClaim(env.SEARCH_DB, claimRecord);
-  }
-
   const existingRelease = await readPublishedRelease(
     env.SEARCH_DB,
     manifest.package_name,
     manifest.package_version,
   );
 
-  let releaseCreated = false;
-  let indexChanged = false;
-  if (existingRelease === null) {
-    const releaseRecord = buildPublishedReleaseRecord(manifest, now);
-    await writePublishedRelease(env.SEARCH_DB, releaseRecord);
-    const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
-    indexChanged = indexResult.changed;
-    await env.PACKAGE_PUBLISHED_QUEUE.send({
-      type: "package.published",
-      ...releaseRecord,
-    } satisfies PackagePublishedEvent);
-    releaseCreated = true;
-  } else {
-    const releaseRecord = releaseMatchesManifest(existingRelease, manifest)
-      ? existingRelease
-      : buildPublishedReleaseRecord(manifest, now);
-
-    if (releaseRecord !== existingRelease) {
-      await writePublishedRelease(env.SEARCH_DB, releaseRecord);
+  if (existingRelease !== null) {
+    if (
+      existingRelease.package_locator !== manifest.package_locator ||
+      existingRelease.resolved_sha !== manifest.resolved_sha
+    ) {
+      throw new HttpError(
+        409,
+        "package_version_already_published",
+        `Package ${manifest.package_name}@${manifest.package_version} is already published from ${existingRelease.package_locator} at ${existingRelease.resolved_sha}.`,
+      );
     }
 
-    const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
-    indexChanged = indexResult.changed;
+    return {
+      ...materialization,
+      packageName: manifest.package_name,
+      packageVersion: manifest.package_version,
+      claimKey: packageClaimKey(manifest.package_name),
+      releaseKey: publishedReleaseKey(manifest.package_name, manifest.package_version),
+      claimCreated: false,
+      releaseCreated: false,
+      indexChanged: false,
+    };
   }
+
+  assertPublishableManifest(manifest);
+  await assertPublishableDependencies(env.SEARCH_DB, manifest);
+  const submittedAt = new Date().toISOString();
+  const verifiedAt = addMilliseconds(submittedAt, 1);
+  const publishedEventAt = addMilliseconds(submittedAt, 2);
+  await writeRegistryEvent(
+    env.SEARCH_DB,
+    makePackageEvent("package.submitted", submittedAt, manifest, {
+      selector,
+      actor_kind: actor.kind,
+    }),
+  );
+
+  const now = publishedEventAt;
+  await writeRegistryEvent(
+    env.SEARCH_DB,
+    makePackageEvent("package.verified", verifiedAt, manifest, {
+      selector,
+      dependency_count: manifest.dependencies.length,
+    }),
+  );
+  const existingClaim = await readPackageClaim(env.SEARCH_DB, manifest.package_name);
+  const claimRecord = buildClaimRecord(locator, manifest, existingClaim, actor, now);
+
+  if (existingClaim === null || !claimMatches(existingClaim, claimRecord)) {
+    await env.SEARCH_DB.batch([
+      prepareWritePackageClaim(env.SEARCH_DB, claimRecord),
+    ]);
+  }
+
+  let releaseCreated = false;
+  let indexChanged = false;
+  const releaseRecord = buildPublishedReleaseRecord(manifest, now);
+  await env.SEARCH_DB.batch([
+    prepareWritePublishedRelease(env.SEARCH_DB, releaseRecord),
+    prepareWriteRegistryEvent(
+      env.SEARCH_DB,
+      makePackageEvent("package.published", publishedEventAt, manifest, {
+        selector,
+        resolved_sha: releaseRecord.resolved_sha,
+        claim_created: existingClaim === null,
+        release_created: true,
+      }),
+    ),
+  ]);
+  const indexResult = await indexPublishedRelease(env, releaseRecord, manifest);
+  indexChanged = indexResult.changed;
+  await env.PACKAGE_PUBLISHED_QUEUE.send({
+    type: "package.published",
+    ...releaseRecord,
+  } satisfies PackagePublishedEvent);
+  releaseCreated = true;
 
   return {
     ...materialization,
@@ -307,6 +357,10 @@ async function assertPublishableDependencies(db: D1Database, manifest: PackagePu
       continue;
     }
 
+    if (isBuiltinOcamlDependency(normalized.name)) {
+      continue;
+    }
+
     if (!(await hasPublishedRelease(db, normalized.name))) {
       throw new HttpError(
         422,
@@ -411,38 +465,16 @@ function isValidGitReference(value: string): boolean {
     return false;
   }
 
-  if (isGitUrl(trimmed)) {
-    return true;
-  }
-
-  const withoutFragment = trimmed.split("#")[0];
-  if (withoutFragment === undefined) {
+  try {
+    const parsed = gitUrlParse(trimmed);
+    return parsed.owner.length > 0 && parsed.name.length > 0;
+  } catch {
     return false;
   }
+}
 
-  if (isGitUrl(withoutFragment)) {
-    return true;
-  }
-
-  if (trimmed.includes("://")) {
-    return false;
-  }
-
-  const parts = trimmed.split("/");
-  if (parts.length !== 2) {
-    return false;
-  }
-
-  const [owner, repo] = parts;
-  if (owner === undefined || repo === undefined) {
-    return false;
-  }
-
-  if (trimmed.includes(":")) {
-    return false;
-  }
-
-  return owner.length > 0 && repo.length > 0 && !owner.includes(" ") && !repo.includes(" ");
+function isBuiltinOcamlDependency(value: string): boolean {
+  return OCAML_BUILTIN_DEPENDENCIES.has(value.trim().toLowerCase());
 }
 
 type DependencyReference =
@@ -554,28 +586,6 @@ function buildPublishedReleaseRecord(
   };
 }
 
-function releaseMatchesManifest(
-  existingRelease: PublishedReleaseRecord,
-  manifest: PackagePublicationManifest,
-): boolean {
-  return (
-    existingRelease.package_locator === manifest.package_locator &&
-    existingRelease.resolved_sha === manifest.resolved_sha &&
-    existingRelease.package_description === manifest.package_description &&
-    existingRelease.package_license === manifest.package_license &&
-    existingRelease.package_homepage === manifest.package_homepage &&
-    existingRelease.package_repository === manifest.package_repository &&
-    existingRelease.package_root_module === manifest.package_root_module &&
-    JSON.stringify(existingRelease.package_categories ?? []) ===
-      JSON.stringify(manifest.package_categories ?? []) &&
-    JSON.stringify(existingRelease.package_keywords ?? []) ===
-      JSON.stringify(manifest.package_keywords ?? []) &&
-    JSON.stringify(existingRelease.dependencies) === JSON.stringify(manifest.dependencies) &&
-    existingRelease.source_archive_key === manifest.source_archive_key &&
-    existingRelease.manifest_key === manifest.manifest_key
-  );
-}
-
 function isValidSemver(value: string): boolean {
   return semver.valid(value.trim()) !== null;
 }
@@ -593,4 +603,27 @@ function claimMatches(left: PackageClaimRecord, right: PackageClaimRecord): bool
     left.owner_user_id === right.owner_user_id &&
     left.owner_github_login === right.owner_github_login
   );
+}
+
+function makePackageEvent(
+  eventType: "package.submitted" | "package.verified" | "package.published",
+  createdAt: string,
+  manifest: PackagePublicationManifest,
+  payload: Record<string, unknown>,
+) {
+  return {
+    event_id: uuidv7({
+      msecs: Date.parse(createdAt),
+    }),
+    event_type: eventType,
+    package_name: manifest.package_name,
+    package_version: manifest.package_version,
+    package_locator: manifest.package_locator,
+    payload,
+    created_at: createdAt,
+  } as const;
+}
+
+function addMilliseconds(timestamp: string, milliseconds: number): string {
+  return new Date(Date.parse(timestamp) + milliseconds).toISOString();
 }

@@ -5,6 +5,7 @@ import { indexPublishedRelease } from "../src/indexing.ts";
 import {
   applyMetadataMigrations,
   readCategoriesIndexDocument,
+  listPackageRegistryEvents,
   readOwnerPackagesDocument,
   readPackageOverviewDocument,
   readPackageRelationsDocument,
@@ -146,6 +147,23 @@ describe("registry indexing", () => {
           release_count: 1,
         },
       ],
+    });
+
+    const events = await listPackageRegistryEvents(
+      db as unknown as D1Database,
+      "kernel",
+      "0.0.1",
+    );
+    expect(events.map((event) => event.event_type)).toEqual([
+      "package.indexed",
+      "package.searchable",
+    ]);
+    expect(events[0]).toMatchObject({
+      payload: {
+        latest: "0.0.1",
+        package_index_key: "index/v1/ke/rn/kernel.json",
+        changed: true,
+      },
     });
   });
 

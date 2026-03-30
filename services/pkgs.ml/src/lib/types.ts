@@ -62,6 +62,8 @@ export interface UserRecord {
   github_login: string;
   github_name?: string;
   github_avatar_url?: string;
+  github_email?: string;
+  github_email_verified?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -191,4 +193,27 @@ export interface OwnerPackagesDocument {
   package_count: number;
   latest_update_at?: string;
   packages: WebPackageListItem[];
+}
+
+export type RegistryEventType =
+  | "package.submitted"
+  | "package.verified"
+  | "package.indexed"
+  | "package.searchable"
+  | "package.published";
+
+export interface RegistryEventRecord {
+  event_id: string;
+  event_type: RegistryEventType;
+  package_name?: string;
+  package_version?: string;
+  package_locator?: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface RegistryEventsDocument {
+  limit?: number;
+  after?: string;
+  events: RegistryEventRecord[];
 }

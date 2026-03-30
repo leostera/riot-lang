@@ -24,6 +24,8 @@ import { readCachedMaterialization } from "./publication.ts";
 import { writeRequestLog } from "./request-log.ts";
 import {
   applyMetadataMigrations,
+  listRegistryEvents,
+  listPackageRegistryEvents,
   listApiTokenRecords,
   readCategoriesIndexDocument,
   readOwnerPackagesDocument,
@@ -123,6 +125,8 @@ async function routeRequest(
         me: "/v1/me",
         tokens: "/v1/me/tokens",
         search: "/v1/search?q=<query>",
+        events: "/v1/events?limit=<count>&after=<event-id>",
+        package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       legacy_routes: {
         resolve: "/package/<locator>/-/resolve?ref=<selector>",
@@ -141,6 +145,8 @@ async function routeRequest(
         me: "/api/v1/me",
         tokens: "/api/v1/me/tokens",
         search: "/api/v1/search?q=<query>",
+        events: "/api/v1/events?limit=<count>&after=<event-id>",
+        package_events: "/api/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       cdn_base_url: getConfig(env).cdnBaseUrl,
     });
@@ -214,6 +220,27 @@ async function routeRequest(
 
     logEntry.route = "api.search";
     return await handleSearch(env, url);
+  }
+
+  if (matchesPath(path, "v1/events", "api/v1/events")) {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
+    logEntry.route = "api.events";
+    return await handleEvents(env, url);
+  }
+
+  const packageEventsRoute = parsePackageEventsRoute(path);
+  if (packageEventsRoute !== null) {
+    if (request.method !== "GET") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET"]);
+    }
+
+    logEntry.route = "api.package_events";
+    return await handlePackageEvents(env, url, packageEventsRoute.packageName);
   }
 
   const viewRoute = parseViewRoute(path);
@@ -617,6 +644,35 @@ async function handleSearch(env: Env, url: URL): Promise<Response> {
   });
 }
 
+async function handleEvents(env: Env, url: URL): Promise<Response> {
+  const limit = clampInteger(url.searchParams.get("limit"), 100, 1, 500);
+  const after = url.searchParams.get("after") ?? undefined;
+  const events = await listRegistryEvents(env.SEARCH_DB, limit, after);
+
+  return json({
+    limit,
+    after,
+    events,
+  });
+}
+
+async function handlePackageEvents(
+  env: Env,
+  url: URL,
+  packageName: string,
+): Promise<Response> {
+  const limit = clampInteger(url.searchParams.get("limit"), 25, 1, 100);
+  const packageVersion = url.searchParams.get("version") ?? undefined;
+  const events = await listPackageRegistryEvents(env.SEARCH_DB, packageName, packageVersion, limit);
+
+  return json({
+    package_name: packageName,
+    package_version: packageVersion,
+    limit,
+    events,
+  });
+}
+
 async function handleListTokens(request: Request, env: Env): Promise<Response> {
   const { user } = await requireAuthenticatedSession(request, env);
   const records = await listApiTokenRecords(env.SEARCH_DB, user.user_id);
@@ -722,6 +778,10 @@ interface ParsedPackageRoute {
   rawLocator: string;
   operation: "resolve" | "manifest" | "source" | "publish";
   sha: string | null;
+}
+
+interface ParsedPackageEventsRoute {
+  packageName: string;
 }
 
 type ParsedViewRoute =
@@ -835,8 +895,25 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
       : null;
 
   if (normalizedPath === null) {
+  return null;
+}
+
+function parsePackageEventsRoute(path: string): ParsedPackageEventsRoute | null {
+  const normalizedPath = trimSlashes(path);
+  const packageEventsMatch = normalizedPath.match(/^(?:api\/)?v1\/packages\/([^/]+)\/events$/);
+  if (packageEventsMatch === null) {
     return null;
   }
+
+  const packageName = packageEventsMatch[1];
+  if (packageName === undefined) {
+    return null;
+  }
+
+  return {
+    packageName: decodeURIComponent(packageName),
+  };
+}
 
   if (normalizedPath === "recent/packages") {
     return { kind: "recent_packages" };
@@ -875,6 +952,23 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
   }
 
   throw new HttpError(404, "not_found", "View route does not exist.");
+}
+
+function parsePackageEventsRoute(path: string): ParsedPackageEventsRoute | null {
+  const normalizedPath = trimSlashes(path);
+  const packageEventsMatch = normalizedPath.match(/^(?:api\/)?v1\/packages\/([^/]+)\/events$/);
+  if (packageEventsMatch === null) {
+    return null;
+  }
+
+  const packageName = packageEventsMatch[1];
+  if (packageName === undefined) {
+    return null;
+  }
+
+  return {
+    packageName: decodeURIComponent(packageName),
+  };
 }
 
 function parsePackageOperation(rawLocator: string, operationPath: string): ParsedPackageRoute {

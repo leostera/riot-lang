@@ -6,6 +6,7 @@ import type {
   PackageRelationsDocument,
   PopularPackagesDocument,
   RecentPackagesDocument,
+  RegistryEventsDocument,
 } from "./types.ts";
 
 function viewUrl(path: string): string {
@@ -59,4 +60,55 @@ export async function fetchOwnerPackages(ownerGithubLogin: string): Promise<Owne
   return await fetchJsonOrNull<OwnerPackagesDocument>(
     viewUrl(`owners/${encodeURIComponent(ownerGithubLogin.toLowerCase())}/packages`),
   );
+}
+
+export async function fetchRegistryEvents(limit = 100, after?: string): Promise<RegistryEventsDocument> {
+  const config = getConfig();
+  const searchParams = new URLSearchParams({
+    limit: String(limit),
+  });
+  if (after !== undefined) {
+    searchParams.set("after", String(after));
+  }
+
+  const response = await fetch(`${config.registryBaseUrl}/v1/events?${searchParams.toString()}`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Events request failed: ${response.status}`);
+  }
+
+  return (await response.json()) as RegistryEventsDocument;
+}
+
+export async function fetchPackageEvents(
+  packageName: string,
+  options?: { version?: string; limit?: number },
+): Promise<RegistryEventsDocument> {
+  const config = getConfig();
+  const searchParams = new URLSearchParams({
+    limit: String(options?.limit ?? 25),
+  });
+
+  if (options?.version !== undefined) {
+    searchParams.set("version", options.version);
+  }
+
+  const response = await fetch(
+    `${config.registryBaseUrl}/v1/packages/${encodeURIComponent(packageName)}/events?${searchParams.toString()}`,
+    {
+      headers: {
+        accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Package events request failed: ${response.status}`);
+  }
+
+  return (await response.json()) as RegistryEventsDocument;
 }

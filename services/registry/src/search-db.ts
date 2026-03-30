@@ -7,7 +7,14 @@ export async function applySearchMigrations(db: D1Database): Promise<void> {
 }
 
 export async function upsertSearchRow(db: D1Database, row: SearchPackageRow): Promise<void> {
-  await db.batch([
+  await db.batch(prepareUpsertSearchRowStatements(db, row));
+}
+
+export function prepareUpsertSearchRowStatements(
+  db: D1Database,
+  row: SearchPackageRow,
+): D1PreparedStatement[] {
+  return [
     db
       .prepare(
         `INSERT INTO packages (
@@ -41,7 +48,7 @@ export async function upsertSearchRow(db: D1Database, row: SearchPackageRow): Pr
           repo_name = excluded.repo_name,
           subdir = excluded.subdir,
           release_count = excluded.release_count,
-          updated_at = excluded.updated_at`
+          updated_at = excluded.updated_at`,
       )
       .bind(
         row.package_name,
@@ -70,7 +77,7 @@ export async function upsertSearchRow(db: D1Database, row: SearchPackageRow): Pr
           repo_name,
           subdir,
           repository
-        ) VALUES (?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         row.package_name,
@@ -80,7 +87,7 @@ export async function upsertSearchRow(db: D1Database, row: SearchPackageRow): Pr
         row.subdir,
         row.repository ?? "",
       ),
-  ]);
+  ];
 }
 
 export async function searchPackages(

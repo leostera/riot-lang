@@ -3,6 +3,7 @@ import { parse as parseCookieHeader, serialize as serializeCookie } from "cookie
 
 import { getConfig, getGitHubApiBaseUrl } from "./config.ts";
 import { HttpError } from "./errors.ts";
+import { rebuildWebViews } from "./web-views.ts";
 import {
   applyMetadataMigrations,
   deleteSessionRecord,
@@ -20,6 +21,7 @@ import {
   writeUserLoginRecord,
   writeUserRecord,
 } from "./metadata-db.ts";
+import { userAvatarKey, userAvatarUrl } from "./storage.ts";
 import type {
   ApiTokenCapability,
   ApiTokenLookupRecord,
@@ -106,6 +108,7 @@ export async function completeGitHubAuthorization(
   const githubUser = await fetchGitHubUser(env, tokens.accessToken());
   const githubEmail = await fetchGitHubPrimaryEmail(env, tokens.accessToken());
   const user = await upsertUser(env, githubUser, githubEmail);
+  await rebuildWebViews(env);
   const session = await createSession(env, user);
 
   return {
@@ -374,13 +377,18 @@ async function upsertUser(
   const existingLogin = await readUserLoginRecord(env.SEARCH_DB, githubUser.login);
   const userId = existingLogin?.user_id ?? crypto.randomUUID();
   const existingUser = await readUserRecord(env.SEARCH_DB, userId);
+  const cachedAvatarUrl = await cacheGitHubAvatar(
+    env,
+    githubUser.login,
+    githubUser.avatar_url ?? undefined,
+  );
 
   const record: UserRecord = {
     user_id: userId,
     github_id: githubUser.id,
     github_login: githubUser.login,
     github_name: githubUser.name ?? undefined,
-    github_avatar_url: githubUser.avatar_url ?? undefined,
+    github_avatar_url: cachedAvatarUrl ?? existingUser?.github_avatar_url,
     github_email: githubEmail,
     github_email_verified: true,
     created_at: existingUser?.created_at ?? now,
@@ -395,6 +403,36 @@ async function upsertUser(
   });
 
   return record;
+}
+
+async function cacheGitHubAvatar(
+  env: Env,
+  githubLogin: string,
+  sourceUrl?: string,
+): Promise<string | undefined> {
+  if (sourceUrl === undefined || sourceUrl.length === 0) {
+    return undefined;
+  }
+
+  const response = await fetch(sourceUrl, {
+    headers: {
+      accept: "image/*",
+      "user-agent": "riot-package-registry",
+    },
+  });
+
+  if (!response.ok) {
+    return undefined;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "image/jpeg";
+  await env.ML_PKGS_CDN.put(userAvatarKey(githubLogin), await response.arrayBuffer(), {
+    httpMetadata: {
+      contentType,
+    },
+  });
+
+  return userAvatarUrl(getConfig(env), githubLogin);
 }
 
 async function createSession(env: Env, user: UserRecord): Promise<SessionRecord> {

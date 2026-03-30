@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test";
 import { handleRequest } from "../src/routes.ts";
 import {
   applyMetadataMigrations,
+  listRegistryEvents,
+  listPackageRegistryEvents,
   readPackageClaim,
   readPublishedRelease,
   readSelectorResolution,
@@ -58,6 +60,8 @@ describe("riot package registry routes", () => {
         me: "/v1/me",
         tokens: "/v1/me/tokens",
         search: "/v1/search?q=<query>",
+        events: "/v1/events?limit=<count>&after=<event-id>",
+        package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       legacy_routes: {
         resolve: "/package/<locator>/-/resolve?ref=<selector>",
@@ -76,6 +80,8 @@ describe("riot package registry routes", () => {
         me: "/api/v1/me",
         tokens: "/api/v1/me/tokens",
         search: "/api/v1/search?q=<query>",
+        events: "/api/v1/events?limit=<count>&after=<event-id>",
+        package_events: "/api/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       cdn_base_url: "https://cdn.pkgs.ml",
     });
@@ -85,6 +91,226 @@ describe("riot package registry routes", () => {
     expect(logEntry.route).toBe("root");
     expect(logEntry.success).toBe(true);
     expect(logEntry.status).toBe(200);
+  });
+
+  test("events route returns the latest registry events in reverse chronological order", async () => {
+    const { env, db } = makeEnv();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    await db.exec(`
+      INSERT INTO registry_events (
+        event_id,
+        event_type,
+        package_name,
+        package_version,
+        package_locator,
+        payload_json,
+        created_at
+      ) VALUES
+        (
+          'evt-1',
+          'package.submitted',
+          'kernel',
+          '0.0.1',
+          'github.com/leostera/riot-new/packages/kernel',
+          '{"selector":"main"}',
+          '2026-03-30T12:00:00.000Z'
+        ),
+        (
+          'evt-2',
+          'package.indexed',
+          'kernel',
+          '0.0.1',
+          'github.com/leostera/riot-new/packages/kernel',
+          '{"latest":"0.0.1"}',
+          '2026-03-30T12:01:00.000Z'
+        )
+    `);
+
+    const response = await handleRequest(
+      new Request("https://registry.test/v1/events?limit=1"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await readJson(response)).toEqual({
+      limit: 1,
+      events: [
+        {
+          event_id: "evt-2",
+          event_type: "package.indexed",
+          package_name: "kernel",
+          package_version: "0.0.1",
+          package_locator: "github.com/leostera/riot-new/packages/kernel",
+          payload: {
+            latest: "0.0.1",
+          },
+          created_at: "2026-03-30T12:01:00.000Z",
+        },
+      ],
+    });
+  });
+
+  test("events route supports incremental polling via after event id", async () => {
+    const { env, db } = makeEnv();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    await db.exec(`
+      INSERT INTO registry_events (
+        event_id,
+        event_type,
+        package_name,
+        package_version,
+        package_locator,
+        payload_json,
+        created_at
+      ) VALUES
+        (
+          'evt-1',
+          'package.submitted',
+          'kernel',
+          '0.0.1',
+          'github.com/leostera/riot-new/packages/kernel',
+          '{}',
+          '2026-03-30T12:00:00.000Z'
+        ),
+        (
+          'evt-2',
+          'package.verified',
+          'kernel',
+          '0.0.1',
+          'github.com/leostera/riot-new/packages/kernel',
+          '{}',
+          '2026-03-30T12:01:00.000Z'
+        ),
+        (
+          'evt-3',
+          'package.indexed',
+          'kernel',
+          '0.0.1',
+          'github.com/leostera/riot-new/packages/kernel',
+          '{}',
+          '2026-03-30T12:02:00.000Z'
+        )
+    `);
+
+    const response = await handleRequest(
+      new Request("https://registry.test/v1/events?after=evt-1&limit=10"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await readJson(response)).toEqual({
+      limit: 10,
+      after: "evt-1",
+      events: [
+        expect.objectContaining({
+          event_id: "evt-2",
+        }),
+        expect.objectContaining({
+          event_id: "evt-3",
+        }),
+      ],
+    });
+  });
+
+  test("package events route returns package timeline and supports version filtering", async () => {
+    const { env, db } = makeEnv();
+    await applyMetadataMigrations(db as unknown as D1Database);
+    await db.exec(`
+      INSERT INTO registry_events (
+        event_id,
+        event_type,
+        package_name,
+        package_version,
+        package_locator,
+        payload_json,
+        created_at
+      ) VALUES
+        (
+          'evt-1',
+          'package.submitted',
+          'kernel',
+          '0.0.1',
+          'github.com/leostera/riot-new/packages/kernel',
+          '{}',
+          '2026-03-30T12:00:00.000Z'
+        ),
+        (
+          'evt-2',
+          'package.published',
+          'kernel',
+          '0.0.1',
+          'github.com/leostera/riot-new/packages/kernel',
+          '{}',
+          '2026-03-30T12:01:00.000Z'
+        ),
+        (
+          'evt-3',
+          'package.published',
+          'kernel',
+          '0.0.2',
+          'github.com/leostera/riot-new/packages/kernel',
+          '{}',
+          '2026-03-30T12:02:00.000Z'
+        ),
+        (
+          'evt-4',
+          'package.published',
+          'http',
+          '0.1.0',
+          'github.com/leostera/riot-new/packages/http',
+          '{}',
+          '2026-03-30T12:03:00.000Z'
+        )
+    `);
+
+    const packageResponse = await handleRequest(
+      new Request("https://registry.test/v1/packages/kernel/events?limit=2"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(packageResponse.status).toBe(200);
+    expect(await readJson(packageResponse)).toEqual({
+      package_name: "kernel",
+      limit: 2,
+      events: [
+        expect.objectContaining({
+          event_id: "evt-3",
+          package_name: "kernel",
+          package_version: "0.0.2",
+        }),
+        expect.objectContaining({
+          event_id: "evt-2",
+          package_name: "kernel",
+          package_version: "0.0.1",
+        }),
+      ],
+    });
+
+    const versionResponse = await handleRequest(
+      new Request("https://registry.test/v1/packages/kernel/events?version=0.0.1&limit=10"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(versionResponse.status).toBe(200);
+    expect(await readJson(versionResponse)).toEqual({
+      package_name: "kernel",
+      package_version: "0.0.1",
+      limit: 10,
+      events: [
+        expect.objectContaining({
+          event_id: "evt-2",
+          package_version: "0.0.1",
+        }),
+        expect.objectContaining({
+          event_id: "evt-1",
+          package_version: "0.0.1",
+        }),
+      ],
+    });
   });
 
   test("resolve returns cached SHA materialization metadata for GitHub shorthand locators", async () => {
@@ -458,6 +684,36 @@ describe("riot package registry routes", () => {
       package_root_module: "Minttea",
     });
 
+    const events = await listPackageRegistryEvents(
+      db as unknown as D1Database,
+      "minttea",
+      "0.4.2",
+    );
+    expect(events.map((event) => event.event_type)).toEqual([
+      "package.indexed",
+      "package.searchable",
+      "package.published",
+      "package.verified",
+      "package.submitted",
+    ]);
+    expect(events[0]).toMatchObject({
+      package_name: "minttea",
+      package_version: "0.4.2",
+      package_locator: "github.com/leostera/minttea",
+      payload: {
+        latest: "0.4.2",
+        package_index_key: "index/v1/mi/nt/minttea.json",
+        changed: true,
+      },
+    });
+    expect(events[2]).toMatchObject({
+      payload: {
+        selector: "main",
+        release_created: true,
+        resolved_sha: SHA,
+      },
+    });
+
     const packageDocument = JSON.parse(
       (await bucket.text(packageIndexKey(INDEX_CONFIG, "minttea"))) ?? "null",
     );
@@ -470,7 +726,7 @@ describe("riot package registry routes", () => {
     });
   });
 
-  test("publish is idempotent for an already-published release", async () => {
+  test("publish short-circuits duplicate package versions without emitting new events", async () => {
     const { env, bucket, queue, indexedQueue } = makeEnv();
     const archive = await makeTarGz({
       "tusk.toml": [
@@ -524,12 +780,16 @@ describe("riot package registry routes", () => {
       expect((await readJson(second)) as Record<string, unknown>).toMatchObject({
         claim: { created: false },
         release: { created: false },
+        materialization: {
+          manifest: true,
+          source: true,
+        },
       });
     });
 
     expect(queue.messages).toHaveLength(1);
-    expect(indexedQueue.messages).toHaveLength(2);
-    expect(indexedQueue.messages[1]).toMatchObject({
+    expect(indexedQueue.messages).toHaveLength(1);
+    expect(indexedQueue.messages[0]).toMatchObject({
       type: "package.indexed",
       package_name: "minttea",
       package_version: "0.4.2",
@@ -541,7 +801,7 @@ describe("riot package registry routes", () => {
     });
   });
 
-  test("publish refreshes an existing release when the same package version is republished", async () => {
+  test("publish rejects republishing the same package version from a different sha", async () => {
     const { env, bucket, db, queue, indexedQueue } = makeEnv();
     const firstArchive = await makeTarGz({
       "tusk.toml": [
@@ -606,15 +866,14 @@ describe("riot package registry routes", () => {
       await secondCtx.drain();
 
       expect(first.status).toBe(200);
-      expect(second.status).toBe(200);
+      expect(second.status).toBe(409);
       expect((await readJson(second)) as Record<string, unknown>).toMatchObject({
-        release: { created: false },
-        resolved_sha: NEXT_SHA,
+        error: "package_version_already_published",
       });
     });
 
     expect(queue.messages).toHaveLength(1);
-    expect(indexedQueue.messages).toHaveLength(2);
+    expect(indexedQueue.messages).toHaveLength(1);
 
     await applyMetadataMigrations(db as unknown as D1Database);
     const publishedRelease = await readPublishedRelease(
@@ -623,9 +882,9 @@ describe("riot package registry routes", () => {
       "0.4.2",
     );
     expect(publishedRelease).toMatchObject({
-      resolved_sha: NEXT_SHA,
-      package_description: "Updated description",
-      package_license: "Apache-2.0",
+      resolved_sha: SHA,
+      package_description: "Original description",
+      package_license: "MIT",
     });
 
     const packageDocument = JSON.parse(
@@ -633,9 +892,9 @@ describe("riot package registry routes", () => {
     );
     expect(packageDocument.releases[0]).toMatchObject({
       version: "0.4.2",
-      sha: NEXT_SHA,
-      description: "Updated description",
-      license: "Apache-2.0",
+      sha: SHA,
+      description: "Original description",
+      license: "MIT",
     });
   });
 
@@ -897,7 +1156,7 @@ describe("riot package registry routes", () => {
     expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).toBeNull();
   });
 
-  test("publish rejects packages with undeclared semver dependencies", async () => {
+  test("publish rejects packages whose semver dependencies have not been published yet", async () => {
     const { env, db, queue, indexedQueue } = makeEnv();
     const ctx = new FakeExecutionContext();
     const archive = await makeTarGz({
@@ -1036,6 +1295,62 @@ describe("riot package registry routes", () => {
     await applyMetadataMigrations(db as unknown as D1Database);
     expect(await readPackageClaim(db as unknown as D1Database, "minttea")).not.toBeNull();
     expect(await readPublishedRelease(db as unknown as D1Database, "minttea", "0.4.2")).not.toBeNull();
+  });
+
+  test("publish accepts built-in OCaml dependencies without registry lookup", async () => {
+    const { env, db, queue, indexedQueue } = makeEnv();
+    const ctx = new FakeExecutionContext();
+    const archive = await makeTarGz({
+      "tusk.toml": [
+        "[package]",
+        'name = "kernel"',
+        'version = "0.0.1"',
+        "public = true",
+        'description = "OCaml runtime primitives"',
+        'license = "MIT"',
+        "[dependencies]",
+        'stdlib = "*"',
+        'unix = "*"',
+        'dynlink = "*"',
+      ].join("\n"),
+    });
+
+    await withMockedFetch(async (input) => {
+      const url = new URL(typeof input === "string" ? input : input.toString());
+      if (url.pathname === "/repos/leostera/kernel") {
+        return Response.json({ private: false });
+      }
+      if (url.pathname === "/repos/leostera/kernel/commits/main") {
+        return Response.json({ sha: SHA });
+      }
+      if (url.pathname === `/repos/leostera/kernel/tarball/${SHA}`) {
+        return new Response(archive, { status: 200 });
+      }
+
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      const response = await handleRequest(
+        new Request("https://registry.test/package/leostera/kernel/-/publish?ref=main", {
+          method: "POST",
+          headers: { authorization: "Bearer root-secret" },
+        }),
+        env,
+        ctx,
+      );
+      await ctx.drain();
+
+      expect(response.status).toBe(200);
+      expect(await readJson(response)).toMatchObject({
+        package_name: "kernel",
+        package_version: "0.0.1",
+      });
+    });
+
+    expect(queue.messages).toHaveLength(1);
+    expect(indexedQueue.messages).toHaveLength(1);
+    await applyMetadataMigrations(db as unknown as D1Database);
+    expect(await readPackageClaim(db as unknown as D1Database, "kernel")).not.toBeNull();
+    expect(await readPublishedRelease(db as unknown as D1Database, "kernel", "0.0.1")).not.toBeNull();
   });
 
   test("publish accepts git-based dependencies without registry lookup", async () => {

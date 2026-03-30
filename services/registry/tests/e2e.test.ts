@@ -17,6 +17,48 @@ const liveAuthenticatedTest =
   sessionCookie === null || githubLogin === null ? test.skip : test;
 const cdnBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
 const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "index/v1";
+const WORKSPACE_PUBLISH_ORDER = [
+  "packages/kernel",
+  "packages/miniriot",
+  "packages/std",
+  "packages/ceibo",
+  "packages/colors",
+  "packages/tty",
+  "packages/propane",
+  "packages/http",
+  "packages/jsonrpc",
+  "packages/mime",
+  "packages/pubgrub",
+  "packages/sqlx-driver",
+  "packages/sqlx",
+  "packages/sqlite",
+  "packages/postgres",
+  "packages/swisstable",
+  "packages/syn",
+  "packages/krasny",
+  "packages/fixme",
+  "packages/gooey",
+  "packages/minttea",
+  "packages/blink",
+  "packages/mcp",
+  "packages/hello-foreign",
+  "packages/minitusk",
+  "packages/tusk-model",
+  "packages/tusk-store",
+  "packages/tusk-toolchain",
+  "packages/tusk-planner",
+  "packages/tusk-executor",
+  "packages/tusk-init",
+  "packages/tusk-fmt",
+  "packages/tusk-fix",
+  "packages/tusk-server",
+  "packages/tusk-cli",
+  "packages/tusk-cmd",
+  "packages/tusk-eval",
+  "packages/tusk-repl",
+  "packages/suri",
+  "services/registry",
+] as const;
 
 describe("riot package registry live e2e", () => {
   liveTest("root route returns service metadata", async () => {
@@ -480,8 +522,23 @@ function readWorkspacePublishMembers(): string[] {
     throw new Error("Workspace members are missing from the repository tusk.toml.");
   }
 
-  return members.filter((member): member is string => {
+  const publishableMembers = members.filter((member): member is string => {
     return typeof member === "string" && !member.includes("tests/fixtures");
+  });
+
+  const order = new Map<string, number>(
+    WORKSPACE_PUBLISH_ORDER.map((member, index) => [member, index]),
+  );
+
+  const unorderedMembers = publishableMembers.filter((member) => !order.has(member));
+  if (unorderedMembers.length > 0) {
+    throw new Error(
+      `Workspace publish order is missing: ${unorderedMembers.join(", ")}.`,
+    );
+  }
+
+  return [...publishableMembers].sort((left, right) => {
+    return (order.get(left) ?? Number.MAX_SAFE_INTEGER) - (order.get(right) ?? Number.MAX_SAFE_INTEGER);
   });
 }
 

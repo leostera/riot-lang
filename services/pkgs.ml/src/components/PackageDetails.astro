@@ -1,4 +1,5 @@
 ---
+import PackageActivity from "@/components/PackageActivity.astro";
 import {
   Card,
   CardContent,
@@ -11,6 +12,7 @@ import type {
   PackageIndexDocument,
   PackageOverviewDocument,
   PackageRelationsDocument,
+  RegistryEventRecord,
 } from "../lib/types.ts";
 
 interface Props {
@@ -18,9 +20,10 @@ interface Props {
   release: IndexedPackageRelease;
   overview?: PackageOverviewDocument | null;
   relations?: PackageRelationsDocument | null;
+  events?: RegistryEventRecord[];
 }
 
-const { document, release, relations = null } = Astro.props;
+const { document, release, relations = null, events = [] } = Astro.props;
 const dependencyRows =
   relations?.dependencies ??
   release.dependencies.map((dependency) => {
@@ -103,5 +106,7 @@ const dependencyRows =
         }
       </CardContent>
     </Card>
+
+    <PackageActivity events={events} />
   </div>
 </section>

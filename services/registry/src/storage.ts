@@ -76,6 +76,14 @@ export function apiTokenLookupKey(tokenHash: string): string {
   return `auth/tokens/by-secret/${encodePathSegment(tokenHash)}.json`;
 }
 
+export function userAvatarKey(githubLogin: string): string {
+  return `avatars/${encodePathSegment(githubLogin.toLowerCase())}`;
+}
+
+export function userAvatarUrl(config: RegistryConfig, githubLogin: string): string {
+  return `${config.cdnBaseUrl}/${userAvatarKey(githubLogin)}`;
+}
+
 export function manifestRoutePath(locator: PackageLocator, sha: string): string {
   return `/package/${locator.normalized}/-/manifest/${sha}.json`;
 }

@@ -1,0 +1,400 @@
+---
+import SiteLayout from "@/layouts/SiteLayout.astro";
+import { getConfig } from "@/lib/config.ts";
+import { fetchRegistryEvents } from "@/lib/web-views.ts";
+import type { RegistryEventRecord } from "@/lib/types.ts";
+
+const feed = await fetchRegistryEvents(100);
+const registryBaseUrl = getConfig().registryBaseUrl;
+
+function eventLabel(eventType: RegistryEventRecord["event_type"]): string {
+  switch (eventType) {
+    case "package.submitted":
+      return "Submitted";
+    case "package.verified":
+      return "Verified";
+    case "package.published":
+      return "Published";
+    case "package.searchable":
+      return "Searchable";
+    case "package.indexed":
+      return "Indexed";
+  }
+}
+
+function eventTone(eventType: RegistryEventRecord["event_type"]): string {
+  switch (eventType) {
+    case "package.submitted":
+      return "border-slate-200 bg-slate-50 text-slate-700";
+    case "package.verified":
+      return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
+    case "package.published":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "package.searchable":
+      return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300";
+    case "package.indexed":
+      return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300";
+  }
+}
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+function packageHref(event: RegistryEventRecord): string | null {
+  if (!event.package_name) {
+    return null;
+  }
+
+  return event.package_version
+    ? `/p/${encodeURIComponent(event.package_name)}/${encodeURIComponent(event.package_version)}`
+    : `/p/${encodeURIComponent(event.package_name)}`;
+}
+
+function packageLabel(event: RegistryEventRecord): string {
+  if (!event.package_name) {
+    return "Unknown package";
+  }
+
+  return event.package_version
+    ? `${event.package_name} ${event.package_version}`
+    : event.package_name;
+}
+
+function secondaryFacts(event: RegistryEventRecord): string[] {
+  const facts: string[] = [];
+  const selector = event.payload.selector;
+  const resolvedSha = event.payload.resolved_sha;
+  const latest = event.payload.latest;
+
+  if (typeof selector === "string" && selector.length > 0) {
+    facts.push(`selector ${selector}`);
+  }
+
+  if (typeof latest === "string" && latest.length > 0) {
+    facts.push(`latest ${latest}`);
+  }
+
+  if (typeof resolvedSha === "string" && resolvedSha.length >= 7) {
+    facts.push(`sha ${resolvedSha.slice(0, 12)}`);
+  }
+
+  if (typeof event.package_locator === "string" && event.package_locator.length > 0) {
+    facts.push(event.package_locator);
+  }
+
+  return facts;
+}
+
+function renderEventMarkup(event: RegistryEventRecord): string {
+  const packageLink = packageHref(event);
+  const facts = secondaryFacts(event)
+    .map((fact) => `<span class="rounded-sm border border-border bg-muted px-2 py-0.5">${escapeHtml(fact)}</span>`)
+    .join("");
+
+  const packageMarkup = packageLink
+    ? `<a href="${escapeAttribute(packageLink)}" class="text-base font-medium text-foreground hover:text-primary">${escapeHtml(packageLabel(event))}</a>`
+    : `<span class="text-base font-medium text-foreground">${escapeHtml(packageLabel(event))}</span>`;
+
+  return `
+    <article class="rounded-md border border-border bg-card px-4 py-3" data-event-id="${escapeAttribute(event.event_id)}">
+      <div class="grid gap-3 md:grid-cols-[176px_minmax(0,1fr)] md:items-start md:gap-4">
+        <div class="grid gap-1 text-sm text-muted-foreground">
+          <time datetime="${escapeAttribute(event.created_at)}">${escapeHtml(formatTimestamp(event.created_at))}</time>
+          <span class="inline-flex w-fit items-center rounded-sm border px-2 py-0.5 text-xs font-medium ${eventTone(event.event_type)}">
+            ${escapeHtml(eventLabel(event.event_type))}
+          </span>
+        </div>
+
+        <div class="grid min-w-0 gap-2">
+          <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            ${packageMarkup}
+          </div>
+
+          <div class="flex flex-wrap gap-2 text-sm text-muted-foreground">
+            ${facts}
+          </div>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function escapeAttribute(value: string): string {
+  return escapeHtml(value);
+}
+
+const initialAfter = feed.events.length > 0 ? feed.events[0]?.event_id ?? "" : "";
+---
+
+<SiteLayout
+  title="Activity · pkgs.ml"
+  description="Live package publishing, indexing, and search activity across the Riot package registry."
+  showNavSearch={true}
+>
+  <section class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+    <div class="grid gap-6">
+      <div class="grid gap-2 border-b border-border pb-4">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div class="grid gap-1">
+            <h1 class="font-heading text-2xl font-semibold tracking-tight text-foreground">
+              Registry activity
+            </h1>
+            <p class="text-base text-muted-foreground">
+              Publish, verification, indexing, and search events across the registry.
+            </p>
+          </div>
+
+          <div class="text-sm text-muted-foreground">
+            Polling every 5 seconds
+          </div>
+        </div>
+      </div>
+
+      {
+        feed.events.length === 0 ? (
+          <div
+            id="activity-empty"
+            class="rounded-md border border-border bg-card px-4 py-5 text-base text-muted-foreground"
+          >
+            No registry activity has been recorded yet.
+          </div>
+        ) : (
+          <div id="activity-empty" class="hidden rounded-md border border-border bg-card px-4 py-5 text-base text-muted-foreground">
+            No registry activity has been recorded yet.
+          </div>
+        )
+      }
+
+      <div
+        id="activity-feed"
+        class="grid gap-3"
+        data-registry-base-url={registryBaseUrl}
+        data-after={initialAfter}
+      >
+        {feed.events.map((event) => (
+          <Fragment set:html={renderEventMarkup(event)} />
+        ))}
+      </div>
+    </div>
+  </section>
+</SiteLayout>
+
+<script
+  is:inline
+  define:vars={{
+    registryBaseUrl,
+  }}
+>
+  const feed = document.getElementById("activity-feed");
+  const emptyState = document.getElementById("activity-empty");
+
+  const eventLabel = (eventType) => {
+    switch (eventType) {
+      case "package.submitted":
+        return "Submitted";
+      case "package.verified":
+        return "Verified";
+      case "package.published":
+        return "Published";
+      case "package.searchable":
+        return "Searchable";
+      case "package.indexed":
+        return "Indexed";
+      default:
+        return eventType;
+    }
+  };
+
+  const eventTone = (eventType) => {
+    switch (eventType) {
+      case "package.submitted":
+        return "border-slate-200 bg-slate-50 text-slate-700";
+      case "package.verified":
+        return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
+      case "package.published":
+        return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+      case "package.searchable":
+        return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300";
+      case "package.indexed":
+        return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300";
+      default:
+        return "border-slate-200 bg-slate-50 text-slate-700";
+    }
+  };
+
+  const formatTimestamp = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat("en", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(date);
+  };
+
+  const packageHref = (event) => {
+    if (!event.package_name) {
+      return null;
+    }
+
+    return event.package_version
+      ? `/p/${encodeURIComponent(event.package_name)}/${encodeURIComponent(event.package_version)}`
+      : `/p/${encodeURIComponent(event.package_name)}`;
+  };
+
+  const packageLabel = (event) => {
+    if (!event.package_name) {
+      return "Unknown package";
+    }
+
+    return event.package_version
+      ? `${event.package_name} ${event.package_version}`
+      : event.package_name;
+  };
+
+  const secondaryFacts = (event) => {
+    const facts = [];
+
+    if (typeof event.payload?.selector === "string" && event.payload.selector.length > 0) {
+      facts.push(`selector ${event.payload.selector}`);
+    }
+
+    if (typeof event.payload?.latest === "string" && event.payload.latest.length > 0) {
+      facts.push(`latest ${event.payload.latest}`);
+    }
+
+    if (typeof event.payload?.resolved_sha === "string" && event.payload.resolved_sha.length >= 7) {
+      facts.push(`sha ${event.payload.resolved_sha.slice(0, 12)}`);
+    }
+
+    if (typeof event.package_locator === "string" && event.package_locator.length > 0) {
+      facts.push(event.package_locator);
+    }
+
+    return facts;
+  };
+
+  const escapeHtml = (value) =>
+    value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  const renderEvent = (event) => {
+    const packageLink = packageHref(event);
+    const packageMarkup = packageLink
+      ? `<a href="${escapeHtml(packageLink)}" class="text-base font-medium text-foreground hover:text-primary">${escapeHtml(packageLabel(event))}</a>`
+      : `<span class="text-base font-medium text-foreground">${escapeHtml(packageLabel(event))}</span>`;
+
+    const factsMarkup = secondaryFacts(event)
+      .map((fact) => `<span class="rounded-sm border border-border bg-muted px-2 py-0.5">${escapeHtml(fact)}</span>`)
+      .join("");
+
+    return `
+      <article class="rounded-md border border-border bg-card px-4 py-3" data-event-id="${escapeHtml(event.event_id)}">
+        <div class="grid gap-3 md:grid-cols-[176px_minmax(0,1fr)] md:items-start md:gap-4">
+          <div class="grid gap-1 text-sm text-muted-foreground">
+            <time datetime="${escapeHtml(event.created_at)}">${escapeHtml(formatTimestamp(event.created_at))}</time>
+            <span class="inline-flex w-fit items-center rounded-sm border px-2 py-0.5 text-xs font-medium ${eventTone(event.event_type)}">
+              ${escapeHtml(eventLabel(event.event_type))}
+            </span>
+          </div>
+
+          <div class="grid min-w-0 gap-2">
+            <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              ${packageMarkup}
+            </div>
+
+            <div class="flex flex-wrap gap-2 text-sm text-muted-foreground">
+              ${factsMarkup}
+            </div>
+          </div>
+        </div>
+      </article>
+    `;
+  };
+
+  const prependEvents = (events) => {
+    if (!feed || events.length === 0) {
+      return;
+    }
+
+    for (const event of events) {
+      feed.insertAdjacentHTML("afterbegin", renderEvent(event));
+    }
+
+    emptyState?.classList.add("hidden");
+  };
+
+  const poll = async () => {
+    if (!feed) {
+      return;
+    }
+
+    const after = feed.dataset.after ?? "";
+    const searchParams = new URLSearchParams({
+      limit: "100",
+    });
+    if (after.length > 0) {
+      searchParams.set("after", after);
+    }
+    const response = await fetch(
+      `${registryBaseUrl}/v1/events?${searchParams.toString()}`,
+      {
+        headers: {
+          accept: "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return;
+    }
+
+    const payload = await response.json();
+    const events = Array.isArray(payload.events) ? payload.events : [];
+    if (events.length === 0) {
+      return;
+    }
+
+    prependEvents(events);
+    const last = events[events.length - 1];
+    if (last && typeof last.event_id === "string") {
+      feed.dataset.after = last.event_id;
+    }
+  };
+
+  window.setInterval(() => {
+    void poll();
+  }, 5_000);
+</script>

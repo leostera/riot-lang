@@ -1,0 +1,132 @@
+---
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import type { RegistryEventRecord } from "../lib/types.ts";
+
+interface Props {
+  events: RegistryEventRecord[];
+}
+
+const { events } = Astro.props;
+
+function eventLabel(eventType: RegistryEventRecord["event_type"]): string {
+  switch (eventType) {
+    case "package.submitted":
+      return "Submitted";
+    case "package.verified":
+      return "Verified";
+    case "package.published":
+      return "Published";
+    case "package.searchable":
+      return "Searchable";
+    case "package.indexed":
+      return "Indexed";
+  }
+}
+
+function eventTone(eventType: RegistryEventRecord["event_type"]): string {
+  switch (eventType) {
+    case "package.submitted":
+      return "border-slate-200 bg-slate-50 text-slate-700";
+    case "package.verified":
+      return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300";
+    case "package.published":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+    case "package.searchable":
+      return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300";
+    case "package.indexed":
+      return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300";
+  }
+}
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+function secondaryFacts(event: RegistryEventRecord): string[] {
+  const facts: string[] = [];
+  const selector = event.payload.selector;
+  const resolvedSha = event.payload.resolved_sha;
+  const latest = event.payload.latest;
+
+  if (typeof event.package_version === "string" && event.package_version.length > 0) {
+    facts.push(`version ${event.package_version}`);
+  }
+
+  if (typeof selector === "string" && selector.length > 0) {
+    facts.push(`selector ${selector}`);
+  }
+
+  if (typeof latest === "string" && latest.length > 0) {
+    facts.push(`latest ${latest}`);
+  }
+
+  if (typeof resolvedSha === "string" && resolvedSha.length >= 7) {
+    facts.push(`sha ${resolvedSha.slice(0, 12)}`);
+  }
+
+  return facts;
+}
+---
+
+<Card size="sm" className="rounded-md shadow-none">
+  <CardHeader className="border-b border-border">
+    <CardTitle className="text-base">Activity</CardTitle>
+    <CardDescription>
+      Publication and indexing events recorded for this package.
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="py-3">
+    {
+      events.length === 0 ? (
+        <p class="text-base text-muted-foreground">No activity has been recorded for this package yet.</p>
+      ) : (
+        <ul class="grid gap-3">
+          {events.map((event) => (
+            <li class="rounded-md border border-border bg-card px-4 py-3">
+              <div class="grid gap-3 md:grid-cols-[176px_minmax(0,1fr)] md:items-start md:gap-4">
+                <div class="grid gap-1 text-sm text-muted-foreground">
+                  <time datetime={event.created_at}>{formatTimestamp(event.created_at)}</time>
+                  <span class:list={["inline-flex w-fit items-center rounded-sm border px-2 py-0.5 text-xs font-medium", eventTone(event.event_type)]}>
+                    {eventLabel(event.event_type)}
+                  </span>
+                </div>
+
+                <div class="grid min-w-0 gap-2">
+                  <div class="text-base font-medium text-foreground">
+                    {event.package_version ? `${event.package_name} ${event.package_version}` : event.package_name}
+                  </div>
+
+                  <div class="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                    {secondaryFacts(event).map((fact) => (
+                      <span class="rounded-sm border border-border bg-muted px-2 py-0.5">
+                        {fact}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </CardContent>
+</Card>

@@ -4,17 +4,18 @@ import PackageHero from "@/components/PackageHero.astro";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import SiteLayout from "@/layouts/SiteLayout.astro";
 import { fetchPackageRelease } from "@/lib/package-index.ts";
-import { fetchPackageOverview, fetchPackageRelations } from "@/lib/web-views.ts";
+import { fetchPackageEvents, fetchPackageOverview, fetchPackageRelations } from "@/lib/web-views.ts";
 
 const packageName = Astro.params.pkg ?? "";
 const version = Astro.params.vsn ?? "";
 const resolved = await fetchPackageRelease(packageName, version);
-const [overview, relations] =
+const [overview, relations, events] =
   resolved === null
-    ? [null, null]
+    ? [null, null, { events: [] }]
     : await Promise.all([
         fetchPackageOverview(packageName),
         fetchPackageRelations(packageName),
+        fetchPackageEvents(packageName, { version }),
       ]);
 
 if (resolved === null) {
@@ -45,6 +46,7 @@ if (resolved === null) {
           release={resolved.release}
           overview={overview}
           relations={relations}
+          events={events.events}
         />
       </>
     ) : (
