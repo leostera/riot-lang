@@ -4189,6 +4189,12 @@ val leading_trivia_after_token_before_node :
     leading token-attached trivia. *)
 val token_body_span : syntax_node -> Ceibo.Span.t
 
+(** Return the syntax kind for a raw syntax node.
+
+    This keeps diagnostics-only kind labeling behind `Syn.Cst` so downstream
+    tools can keep the value typed and stringify it only at the edge. *)
+val syntax_kind : syntax_node -> Syntax_kind.t
+
 module OwnedTrivia : sig
   type t = owned_trivia = {
     leading : trivia list;

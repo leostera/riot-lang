@@ -17,28 +17,46 @@ let multiline_list_threshold = 10
 let star = Doc.text "*"
 let at = Doc.text "@"
 
+type error_context_entry =
+  | Context_label of string
+  | Context_syntax_kind of Syn.SyntaxKind.t
+
 type error = {
   message : string;
-  context : string list;
+  context : error_context_entry list;
 }
 
 exception Unsupported of error
 
 let error_to_string = fun err ->
-  match err.context with
+  let context =
+    err.context
+    |> List.map (function
+         | Context_label label ->
+             label
+         | Context_syntax_kind kind ->
+             Syn.SyntaxKind.to_string kind)
+  in
+  match context with
   | [] ->
       err.message
   | context ->
       err.message ^ " [" ^ String.concat " > " context ^ "]"
 
-let unsupported = fun ?(context = []) message -> raise (Unsupported {message; context})
+let unsupported_with_context_entries = fun ?(context = []) message ->
+  raise (Unsupported {message; context})
+
+let unsupported = fun ?(context = []) message ->
+  unsupported_with_context_entries
+    ~context:(List.map (fun label -> Context_label label) context)
+    message
 
 let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
-  let kind =
-    Syn.Ceibo.Red.SyntaxNode.kind syntax_node
-    |> Syn.SyntaxKind.to_string
-  in
-  unsupported ~context:(context @ [ kind ]) message
+  let kind = Syn.Cst.syntax_kind syntax_node in
+  unsupported_with_context_entries
+    ~context:
+      (List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ])
+    message
 
 let attribute_payload_context = [ "attribute"; "payload" ]
 let shared_attribute_payload_context = [ "shared"; "attribute"; "payload" ]
@@ -674,8 +692,11 @@ and render_shared_attribute_payload_doc (attribute : Syn.Cst.attribute) =
             ~syntax_node:(shared_attribute_payload_source_node attribute)
             "shared attribute structure payloads do not have a structural formatter yet"
       | Error error ->
-          unsupported
-            ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ shared_attribute_payload_context @ error.context)
+          unsupported_with_context_entries
+            ~context:
+              (Context_syntax_kind error.syntax_kind
+              :: List.map (fun label -> Context_label label) shared_attribute_payload_context
+              @ List.map (fun label -> Context_label label) error.context)
             error.message)
   | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
       match Syn.CstBuilder.signature_items_of_payload payload with
@@ -688,8 +709,11 @@ and render_shared_attribute_payload_doc (attribute : Syn.Cst.attribute) =
             ~syntax_node:(shared_attribute_payload_source_node attribute)
             "shared attribute signature payloads do not have a structural formatter yet"
       | Error error ->
-          unsupported
-            ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ shared_attribute_payload_context @ error.context)
+          unsupported_with_context_entries
+            ~context:
+              (Context_syntax_kind error.syntax_kind
+              :: List.map (fun label -> Context_label label) shared_attribute_payload_context
+              @ List.map (fun label -> Context_label label) error.context)
             error.message)
 
 and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
@@ -2347,8 +2371,11 @@ let make_lowerer =
         | Ok None ->
             Doc.empty
         | Error error ->
-            unsupported
-              ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ attribute_payload_context @ error.context)
+            unsupported_with_context_entries
+              ~context:
+                (Context_syntax_kind error.syntax_kind
+                :: List.map (fun label -> Context_label label) attribute_payload_context
+                @ List.map (fun label -> Context_label label) error.context)
               error.message)
     | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
         let source_node = attribute_payload_source_node attribute in
@@ -2361,8 +2388,11 @@ let make_lowerer =
         | Ok None ->
             Doc.empty
         | Error error ->
-            unsupported
-              ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ attribute_payload_context @ error.context)
+            unsupported_with_context_entries
+              ~context:
+                (Context_syntax_kind error.syntax_kind
+                :: List.map (fun label -> Context_label label) attribute_payload_context
+                @ List.map (fun label -> Context_label label) error.context)
               error.message)
 
   and render_pattern_payload_doc_with_context ~context
@@ -2372,8 +2402,11 @@ let make_lowerer =
       | Ok pattern ->
           pattern
       | Error error ->
-          unsupported
-            ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ context @ error.context)
+          unsupported_with_context_entries
+            ~context:
+              (Context_syntax_kind error.syntax_kind
+              :: List.map (fun label -> Context_label label) context
+              @ List.map (fun label -> Context_label label) error.context)
             error.message
     in
     let guard =
@@ -2385,8 +2418,11 @@ let make_lowerer =
           | Ok guard ->
               Some guard
           | Error error ->
-              unsupported
-                ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ context @ error.context)
+              unsupported_with_context_entries
+                ~context:
+                  (Context_syntax_kind error.syntax_kind
+                  :: List.map (fun label -> Context_label label) context
+                  @ List.map (fun label -> Context_label label) error.context)
                 error.message)
     in
     let pattern_doc = render_pattern pattern in
@@ -4310,8 +4346,11 @@ and nested_structure_items_from_module_expression module_expression =
       | Ok items ->
           items
       | Error error ->
-          unsupported
-            ~context:([ "module_expression"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+          unsupported_with_context_entries
+            ~context:
+              (Context_label "module_expression"
+              :: Context_syntax_kind error.syntax_kind
+              :: List.map (fun label -> Context_label label) error.context)
             error.message)
   | _ ->
       unsupported_syntax ~context:[ "module_expression" ]
@@ -4327,8 +4366,11 @@ and nested_signature_items_from_module_type module_type =
         ~syntax_node:(Syn.Cst.ModuleType.syntax_node module_type)
         "nested signature module types do not have a structural item stream"
   | Error error ->
-      unsupported
-        ~context:([ "module_type"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+      unsupported_with_context_entries
+        ~context:
+          (Context_label "module_type"
+          :: Context_syntax_kind error.syntax_kind
+          :: List.map (fun label -> Context_label label) error.context)
         error.message
 
 and render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_constraint) =

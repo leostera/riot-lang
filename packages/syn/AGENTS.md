@@ -61,6 +61,7 @@
 55. Keep `Pattern.PolyVariantInherit.type_path` free of the leading `#` sigil. Preserve `#color` and `#M.color` as ordinary identifier/module paths after the sigil so downstream renderers can print the `#` once structurally instead of recovering or duplicating it from token text.
 56. Keep CST boundary-trivia access explicit when downstream tools still need token-attached leading trivia around body/branch boundaries. Use `Syn.Cst.leading_trivia_after`, `leading_trivia_before_node`, and `leading_trivia_after_token_before_node` instead of having formatters walk `Ceibo.Red.SyntaxNode.tokens` directly.
 57. Keep generic token-body span access explicit in `Syn.Cst` too. If downstream tools need a node’s real-token span without leading trivia, expose that through `Syn.Cst.token_body_span` instead of having formatters scan `Ceibo.Red.SyntaxNode.tokens` themselves.
+58. Keep diagnostics-only syntax-kind access explicit in `Syn.Cst` as well. If downstream tools only need a node kind for unsupported-shape reporting, expose that through `Syn.Cst.syntax_kind` and stringify it only at the edge instead of calling `Ceibo.Red.SyntaxNode.kind` directly.
 
 ## Validate
 

@@ -3047,6 +3047,8 @@ let token_body_span = fun syntax_node ->
         end_ = (Ceibo.Red.SyntaxToken.span last).end_;
       }
 
+let syntax_kind = fun syntax_node -> Ceibo.Red.SyntaxNode.kind syntax_node
+
 module OwnedTrivia = struct
   type t = owned_trivia = {
     leading : trivia list;
