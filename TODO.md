@@ -72,6 +72,8 @@ This file is _yours_. Keep it up to date after every big change.
 - trivia after `=` and `in` in ordinary `let ... in` expressions now comes from the RHS/body node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for those paths.
 - local binding layout no longer preserves raw internal newlines from RHS syntax nodes; simple wrapped values now collapse from CST structure instead of staying multiline because the source had embedded newlines.
 - the remaining local-binding `=` placement policy now runs through named helper functions, isolating the live style heuristics without changing formatter behavior.
+- the live local-binding `=` placement policy now has focused formatter regression coverage for long boolean chains and pipelines before the next heuristic cleanup.
+- binding-operator clause `=` placement now reuses the same isolated after-equals policy helpers as ordinary local bindings, with focused formatter coverage for explicit `fun` RHS values plus long boolean/pipeline bodies.
 - dead inline-string binding special casing is gone; ordinary `expression_is_simple_after_equals` checks now carry the inline decision for both `let` and `let*` bindings.
 - singleton list patterns now use explicit formatter edge spacing; `lower.ml` no longer sniffs source text for `"[ "` / `" ]"` to preserve original spacing.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.

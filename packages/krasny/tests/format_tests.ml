@@ -602,6 +602,90 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
         Test.assert_equal ~expected:source ~actual:actual_ml;
         Test.assert_equal ~expected:source ~actual:actual_mli;
         Ok ());
+    Test.case "format local binding equals policy for boolean chains and pipelines"
+      (fun () ->
+        let source =
+          {|let run flag01 flag02 flag03 flag04 flag05 flag06 flag07 flag08 flag09 value =
+  let ready = flag01 && flag02 && flag03 && flag04 && flag05 && flag06 && flag07 && flag08 && flag09 in
+  let staged = value |> stage01 |> stage02 |> stage03 |> stage04 |> stage05 |> stage06 in
+  ready, staged
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"local binding equals policy should stay stable while heuristics are isolated"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let run flag01 flag02 flag03 flag04 flag05 flag06 flag07 flag08 flag09 value =
+  let ready =
+    flag01
+    && flag02
+    && flag03
+    && flag04
+    && flag05
+    && flag06
+    && flag07
+    && flag08
+    && flag09
+  in
+  let staged =
+    value
+    |> stage01
+    |> stage02
+    |> stage03
+    |> stage04
+    |> stage05
+    |> stage06
+  in
+  ready, staged
+|}
+          ~actual;
+        Ok ());
+    Test.case "format binding-operator equals policy with explicit fun and multiline values"
+      (fun () ->
+        let source =
+          {|let bind flag01 flag02 flag03 flag04 flag05 flag06 flag07 flag08 flag09 value =
+  let* callback = fun x -> x in
+  let* ready = flag01 && flag02 && flag03 && flag04 && flag05 && flag06 && flag07 && flag08 && flag09 in
+  let+ staged = value |> stage01 |> stage02 |> stage03 |> stage04 |> stage05 |> stage06 in
+  callback staged, ready
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"binding-operator equals policy should stay aligned with local bindings"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let bind flag01 flag02 flag03 flag04 flag05 flag06 flag07 flag08 flag09 value =
+  let* callback = fun x -> x in
+  let* ready =
+    flag01
+    && flag02
+    && flag03
+    && flag04
+    && flag05
+    && flag06
+    && flag07
+    && flag08
+    && flag09
+  in
+  let+ staged =
+    value
+    |> stage01
+    |> stage02
+    |> stage03
+    |> stage04
+    |> stage05
+    |> stage06
+  in
+  callback staged, ready
+|}
+          ~actual;
+        Ok ());
     Test.case "format breaks long tuples without source-length sniffing" (fun () ->
         let source =
           {|let tuple_value = (left_side_identifier, right_side_identifier, final_identifier, fourth_identifier)

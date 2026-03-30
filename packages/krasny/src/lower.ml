@@ -3415,11 +3415,11 @@ and render_binding_operator_binding
     |> doc_with_leading_trivia leading_value_trivia
   in
   let keep_value_after_equals =
-    Option.is_none leading_value_trivia
-    && not (expression_requires_break_after_equals bound_value)
-    && expression_is_simple_after_equals bound_value
-    && not (Doc.is_multiline rendered_value)
+    local_binding_value_stays_after_equals ~leading_value_trivia ~has_parameters:false
+      ~keep_header_parameters:false bound_value
+    |> adjust_local_binding_value_after_equals ~rendered_value bound_value
   in
+  let keep_value_after_equals = keep_value_after_equals && not (Doc.is_multiline rendered_value) in
   if keep_value_after_equals then
     Doc.concat [ header; Doc.space; doc_of_token equals_token; Doc.space; rendered_value ]
   else
