@@ -39,6 +39,7 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Delete dead or redundant formatter branches that were only supporting older broader CST shapes.
   - Focus on `lower.ml`.
   - Prefer removing impossible-state handling that the new CST already forbids.
+  - grouped module renderers no longer match impossible empty declaration lists now that the CST head declaration is always explicit
 
 - [ ] Re-audit `lower.ml` exhaustiveness and unsupported-shape branches after each cleanup slice.
   - If a branch is impossible with the current CST, delete it.

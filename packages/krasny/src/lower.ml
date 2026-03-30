@@ -4825,18 +4825,15 @@ and render_module_signature_with_keyword keyword_doc
       ]
   in
   let header = Doc.concat [ header; colon; render_module_type_doc module_type ] in
-  let declarations = decl :: Syn.Cst.ModuleSignature.and_declarations decl in
-  match declarations with
-  | [] -> Doc.empty
-  | first :: rest ->
-      Doc.join blank_line
-        (render_module_signature_header
-           (if Syn.Cst.ModuleSignature.is_recursive first then
-              Doc.concat [ kw_module; Doc.space; kw_rec ]
-            else
-              keyword_doc)
-           first
-        :: List.map (render_module_signature_header kw_and) rest)
+  let rest = Syn.Cst.ModuleSignature.and_declarations decl in
+  Doc.join blank_line
+    (render_module_signature_header
+       (if Syn.Cst.ModuleSignature.is_recursive decl then
+          Doc.concat [ kw_module; Doc.space; kw_rec ]
+        else
+          keyword_doc)
+       decl
+    :: List.map (render_module_signature_header kw_and) rest)
 
 and render_module_signature_header keyword_doc
     (decl : Syn.Cst.ModuleSignature.t) =
@@ -4863,18 +4860,15 @@ and render_module_signature_header keyword_doc
 
 and render_module_structure_with_keyword keyword_doc
     (decl : Syn.Cst.ModuleStructure.t) =
-  let declarations = decl :: Syn.Cst.ModuleStructure.and_declarations decl in
-  match declarations with
-  | [] -> Doc.empty
-  | first :: rest ->
-      Doc.join blank_line
-        (render_module_structure_header
-           (if Syn.Cst.ModuleStructure.is_recursive first then
-              Doc.concat [ kw_module; Doc.space; kw_rec ]
-            else
-              keyword_doc)
-           first
-        :: List.map (render_module_structure_header kw_and) rest)
+  let rest = Syn.Cst.ModuleStructure.and_declarations decl in
+  Doc.join blank_line
+    (render_module_structure_header
+       (if Syn.Cst.ModuleStructure.is_recursive decl then
+          Doc.concat [ kw_module; Doc.space; kw_rec ]
+        else
+          keyword_doc)
+       decl
+    :: List.map (render_module_structure_header kw_and) rest)
 
 and render_module_structure_header keyword_doc
     (decl : Syn.Cst.ModuleStructure.t) =
