@@ -1827,10 +1827,6 @@ type literal = Literal.t
     This covers ordinary unlabeled parameters in `fun` expressions and
     function-like `let` bindings, such as `x`, `_`, or `(x : int)`.
 *)
-(** A labeled parameter introduced with `~`.
-
-    Examples include `~x` and `~label`.
-*)
 and positional_parameter = {
   syntax_node : syntax_node;
   pattern : pattern;
@@ -1852,6 +1848,10 @@ and labeled_parameter = {
 
     This covers both plain optional parameters like `?x` and parameters with a
     default such as `?(x = 0)`.
+
+    `default_value = None` represents plain optional parameters such as `?x`.
+    `default_value = Some expr` represents defaulted parameters such as
+    `?(x = expr)`.
 *)
 and optional_parameter = {
   syntax_node : syntax_node;
@@ -1871,21 +1871,17 @@ and optional_parameter = {
     (type a b)
     ```
 *)
+and locally_abstract_type_parameter = {
+  syntax_node : syntax_node;
+  binders : type_binder list;
+}
+
 (** Function parameter syntax.
 
     Parameters appear in `fun` expressions and in function-shaped `let`
     bindings. The CST separates positional, labeled, optional, and locally
     abstract parameters so tooling can reason about the source-level calling
     convention directly.
-*)
-and locally_abstract_type_parameter = {
-  syntax_node : syntax_node;
-  binders : type_binder list;
-}
-(** Namespace helpers for `parameter`.
-
-    The constructors mirror `parameter` exactly, so the parameter grammar
-    documented above applies here unchanged.
 *)
 and parameter =
   | Positional of positional_parameter
@@ -1896,6 +1892,12 @@ and parameter =
   (** An optional parameter such as `?x` or `?(x = 0)`. *)
   | LocallyAbstract of locally_abstract_type_parameter
   (** A locally abstract type binder such as `(type a)`. *)
+
+(** Namespace helpers for `parameter`.
+
+    The constructors mirror `parameter` exactly, so the parameter grammar
+    documented above applies here unchanged.
+*)
 (** An exception declaration header.
 
     This is used both for top-level `exception` items and `let exception ... in`
@@ -4414,11 +4416,6 @@ end
     class type service = object method run : unit -> unit end
     ```
 *)
-(** The payload of an `include` item.
-
-    Implementations include module expressions such as `include M` or
-    `include F(X)`, while signatures include module types such as `include S`.
-*)
 type class_type_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
@@ -4428,20 +4425,22 @@ type class_type_declaration = {
   class_type_body : class_type;
   owned_trivia : owned_trivia;
 }
-(** An `include` item.
 
-    This keeps the include target in its native grammar family instead of
-    collapsing implementation and interface includes to a shared raw path.
+(** The payload of an `include` item.
+
+    Implementations include module expressions such as `include M` or
+    `include F(X)`, while signatures include module types such as `include S`.
 *)
 type include_target =
   | ModuleExpression of module_expression
   (** An included module expression such as `include M` or `include F(X)`. *)
   | ModuleType of module_type
   (** An included module type such as `include S` inside a signature. *)
-(** A pattern payload together with its optional `when` guard.
 
-    This is the payload shape used by pattern-oriented attributes and
-    extensions.
+(** An `include` item.
+
+    This keeps the include target in its native grammar family instead of
+    collapsing implementation and interface includes to a shared raw path.
 *)
 type include_statement = {
   syntax_node : syntax_node;
@@ -4452,11 +4451,6 @@ type include_statement = {
 
     This covers structure items such as `let`, `module`, `type`, floating
     attributes, and standalone expressions.
-*)
-(** Top-level items that can appear in an interface source file.
-
-    This covers signature items such as `val`, `module`, `type`, `class`, and
-    floating signature attributes or extensions.
 *)
 module Payload : sig
   type t = payload =
