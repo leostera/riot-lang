@@ -3421,13 +3421,21 @@ and core_type_from_node = fun node ->
   in
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_VAR -> (
-      match List.rev (direct_non_trivia_tokens node) with
-      | syntax_token :: _ ->
+      match direct_non_trivia_tokens node with
+      | syntax_tokens when not (List.is_empty syntax_tokens) ->
+          let syntax_token = List.hd (List.rev syntax_tokens) in
           let lifted = token syntax_token in
           if String.equal (Cst.Token.text lifted) "_" then
             Cst.CoreType.Wildcard {syntax_node = node; wildcard_token = lifted}
           else
-            Cst.CoreType.Var {syntax_node = node; name_token = lifted}
+            let sigil_token =
+              match syntax_tokens with
+              | first :: _ when String.equal (Ceibo.Red.SyntaxToken.text first) "'" ->
+                  Some (token first)
+              | _ ->
+                  None
+            in
+            Cst.CoreType.Var {syntax_node = node; sigil_token; name_token = lifted}
       | [] ->
           bail ~message:"expected type variable token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
             "core_type.var"

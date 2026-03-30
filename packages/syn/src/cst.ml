@@ -249,6 +249,7 @@ and core_type =
     }
   | Var of {
       syntax_node : syntax_node;
+      sigil_token : Token.t option;
       name_token : Token.t;
     }
   | Constr of {
@@ -406,6 +407,7 @@ module CoreType = struct
       }
     | Var of {
         syntax_node : syntax_node;
+        sigil_token : Token.t option;
         name_token : Token.t;
       }
     | Constr of {

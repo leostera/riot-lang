@@ -263,6 +263,42 @@ let value = `Ok 1
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format quoted core type variables from explicit sigil tokens"
+      (fun () ->
+        let source =
+          {|type 'a t = 'a list
+
+val id : 'a -> 'a
+|}
+        in
+        let actual =
+          parse_mli source |> Krasny.format
+          |> Result.expect
+               ~msg:"quoted core type variables should format from sigil and name tokens"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
+    Test.case "desugar typed named parameters without duplicating inner annotations"
+      (fun () ->
+        let source =
+          {|type 'a t = 'a list
+
+let map (type a b) (iter : a t) ~(fn : a -> b) : b t = failwith "todo"
+|}
+        in
+        let expected =
+          {|type 'a t = 'a list
+
+let map : type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn -> failwith "todo"
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"typed named parameters should move to the synthesized outer annotation"
+        in
+        Test.assert_equal ~expected ~actual;
+        Ok ());
     Test.case "format singleton list patterns with explicit formatter spacing"
       (fun () ->
         let compact_source =

@@ -82,7 +82,8 @@ This file is _yours_. Keep it up to date after every big change.
 - shared/global core-type, module-type, and module-expression attributes now render no-payload, type-payload, and simple single-expression structure payloads structurally; richer shared/global payload forms fail explicitly instead of replaying raw payload text.
 - split-sigil floating attributes such as `[@@@foo]` now lift as payload-free annotations instead of misparsing the trailing `@foo` as raw payload text.
 - relifted nested `struct ... end` and `sig ... end` bodies now keep floating attributes as real sibling items after preceding `type` declarations, without double-splitting or dropping them.
-- core-type variables now render from `Syn.Cst.CoreType.Var.name_token`; that simple token-backed case no longer replays the raw syntax-node token stream.
+- core-type variables now render from `Syn.Cst.CoreType.Var.sigil_token` plus `name_token`; quoted `'a` and bare locally abstract `a` variables no longer need raw syntax-node token replay.
+- typed named parameters now normalize through synthesized outer `: type ...` binding annotations without duplicating `~(fn : ...)` inside the unsugared `fun` parameter list.
 - polymorphic-variant expression and pattern heads now render from explicit `tag_token` plus a formatter backtick, instead of replaying raw syntax-node token text.
 - `Syn.Cst.CoreType.Poly` now exposes `type_keyword_token`, and `krasny` uses that explicit token instead of scanning raw tokens to decide whether locally abstract types were written with `type`.
 - `packages/krasny/src/source.ml` is gone; `krasny` no longer keeps any live raw source-reconstruction helper.
@@ -164,7 +165,6 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Decide which missing structural facts belong in `syn` so `krasny` can stop guessing
   - explicit phrase-separator / top-level phrase-boundary modeling
   - explicit value-declaration printable name modeling
-  - explicit quoted core-type-variable sigil preservation if `CoreType.Var.name_token` is not stable enough to distinguish `'a` from bare `a` in all parsed forms
   - pattern-payload structure beyond the current raw `pattern_syntax_node` / `guard_syntax_node`, so all attribute/extension payload rendering can stay structural there too
   - explicit public nested signature-body item anchors beyond the current helper-only relift surface, if downstream tools need more than `CstBuilder.signature_items_of_module_type`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`

@@ -124,6 +124,14 @@
                           "end": 32
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 30,
+                          "end": 31
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -142,6 +150,14 @@
                     "span": {
                       "start": 29,
                       "end": 32
+                    }
+                  },
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "'",
+                    "span": {
+                      "start": 30,
+                      "end": 31
                     }
                   },
                   "name_token": {
@@ -182,6 +198,14 @@
                           "end": 45
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 43,
+                          "end": 44
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -198,6 +222,14 @@
                         "span": {
                           "start": 47,
                           "end": 50
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 48,
+                          "end": 49
                         }
                       },
                       "name_token": {
@@ -230,6 +262,14 @@
                           "end": 45
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 43,
+                          "end": 44
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -246,6 +286,14 @@
                         "span": {
                           "start": 47,
                           "end": 50
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 48,
+                          "end": 49
                         }
                       },
                       "name_token": {
@@ -288,6 +336,14 @@
                           "end": 65
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 63,
+                          "end": 64
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -306,6 +362,14 @@
                           "end": 70
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 68,
+                          "end": 69
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -322,6 +386,14 @@
                         "span": {
                           "start": 72,
                           "end": 75
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 73,
+                          "end": 74
                         }
                       },
                       "name_token": {
@@ -354,6 +426,14 @@
                           "end": 65
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 63,
+                          "end": 64
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -372,6 +452,14 @@
                           "end": 70
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 68,
+                          "end": 69
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -388,6 +476,14 @@
                         "span": {
                           "start": 72,
                           "end": 75
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 73,
+                          "end": 74
                         }
                       },
                       "name_token": {

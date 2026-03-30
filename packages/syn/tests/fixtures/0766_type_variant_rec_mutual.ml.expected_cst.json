@@ -106,6 +106,14 @@
                           "end": 19
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 17,
+                          "end": 18
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -124,6 +132,14 @@
                     "span": {
                       "start": 16,
                       "end": 19
+                    }
+                  },
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "'",
+                    "span": {
+                      "start": 17,
+                      "end": 18
                     }
                   },
                   "name_token": {
@@ -192,6 +208,14 @@
                               "end": 29
                             }
                           },
+                          "sigil_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "'",
+                            "span": {
+                              "start": 27,
+                              "end": 28
+                            }
+                          },
                           "name_token": {
                             "kind": "IDENT_EXPR",
                             "text": "a",
@@ -240,6 +264,14 @@
                         "span": {
                           "start": 26,
                           "end": 29
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 27,
+                          "end": 28
                         }
                       },
                       "name_token": {

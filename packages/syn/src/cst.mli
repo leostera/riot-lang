@@ -517,9 +517,11 @@ and core_type =
       *)
   | Var of {
       syntax_node : syntax_node;
+      sigil_token : Token.t option;
       name_token : Token.t;
     }
-      (** A named type variable such as `'a`, `'state`, or `'msg`. *)
+      (** A named type variable such as `'a`, `'state`, `'msg`, or bare `a` in
+          locally abstract `type a. ...` syntax. *)
   | Constr of {
       syntax_node : syntax_node;
       constructor_path : Ident.t;
@@ -949,6 +951,7 @@ module CoreType : sig
       }
     | Var of {
         syntax_node : syntax_node;
+        sigil_token : Token.t option;
         name_token : Token.t;
       }
     | Constr of {

@@ -540,6 +540,14 @@
                           "end": 256
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 253,
+                          "end": 254
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "ok",

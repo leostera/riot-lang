@@ -333,6 +333,14 @@
                       "end": 68
                     }
                   },
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "'",
+                    "span": {
+                      "start": 66,
+                      "end": 67
+                    }
+                  },
                   "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "a",
@@ -351,6 +359,14 @@
                 "span": {
                   "start": 75,
                   "end": 78
+                }
+              },
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "'",
+                "span": {
+                  "start": 76,
+                  "end": 77
                 }
               },
               "name_token": {
@@ -430,6 +446,14 @@
                       "end": 94
                     }
                   },
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "'",
+                    "span": {
+                      "start": 92,
+                      "end": 93
+                    }
+                  },
                   "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "a",
@@ -458,6 +482,14 @@
                   "span": {
                     "start": 101,
                     "end": 104
+                  }
+                },
+                "sigil_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "'",
+                  "span": {
+                    "start": 102,
+                    "end": 103
                   }
                 },
                 "name_token": {

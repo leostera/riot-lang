@@ -3496,6 +3496,49 @@ let tests =
             Test.assert_equal ~expected:[ true; true ] ~actual:quoted;
             Ok ()
         | _ -> Error "expected explicitly polymorphic value declaration");
+    Test.case "cst value declarations preserve quoted core type variable sigils"
+      (fun () ->
+        let result = parse_mli "val id : 'a -> 'a\n" in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match signature_items cst with
+        | Syn.Cst.SignatureItem.ValueDeclaration
+            {
+              type_ =
+                Syn.Cst.CoreType.Arrow
+                  {
+                    parameter_type =
+                      Syn.Cst.CoreType.Var
+                        {
+                          sigil_token = Some parameter_sigil_token;
+                          name_token = parameter_name_token;
+                          _;
+                        };
+                    result_type =
+                      Syn.Cst.CoreType.Var
+                        {
+                          sigil_token = Some result_sigil_token;
+                          name_token = result_name_token;
+                          _;
+                        };
+                    _;
+                  };
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"'"
+              ~actual:(Syn.Cst.Token.text parameter_sigil_token);
+            Test.assert_equal ~expected:"'"
+              ~actual:(Syn.Cst.Token.text result_sigil_token);
+            Test.assert_equal ~expected:"a"
+              ~actual:(Syn.Cst.Token.text parameter_name_token);
+            Test.assert_equal ~expected:"a"
+              ~actual:(Syn.Cst.Token.text result_name_token);
+            Ok ()
+        | _ -> Error "expected quoted core type variables");
     Test.case
       "cst value declarations lift explicit polymorphic core types with inline comments"
       (fun () ->
@@ -5525,7 +5568,25 @@ let tests =
                         {
                           type_keyword_token = Some type_keyword_token;
                           binders;
-                          _;
+                          body =
+                            Syn.Cst.CoreType.Arrow
+                              {
+                                parameter_type =
+                                  Syn.Cst.CoreType.Var
+                                    {
+                                      sigil_token = None;
+                                      name_token = parameter_name_token;
+                                      _;
+                                    };
+                                result_type =
+                                  Syn.Cst.CoreType.Var
+                                    {
+                                      sigil_token = None;
+                                      name_token = result_name_token;
+                                      _;
+                                    };
+                                _;
+                              };
                         };
                     _;
                   };
@@ -5534,6 +5595,10 @@ let tests =
           :: _ ->
             Test.assert_equal ~expected:"type"
               ~actual:(Syn.Cst.Token.text type_keyword_token);
+            Test.assert_equal ~expected:"a"
+              ~actual:(Syn.Cst.Token.text parameter_name_token);
+            Test.assert_equal ~expected:"a"
+              ~actual:(Syn.Cst.Token.text result_name_token);
             let binder_text =
               binders |> List.map Syn.Cst.TypeBinder.text
             in

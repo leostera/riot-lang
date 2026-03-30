@@ -106,6 +106,14 @@
                           "end": 25
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 23,
+                          "end": 24
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -124,6 +132,14 @@
                     "span": {
                       "start": 22,
                       "end": 25
+                    }
+                  },
+                  "sigil_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "'",
+                    "span": {
+                      "start": 23,
+                      "end": 24
                     }
                   },
                   "name_token": {
@@ -192,6 +208,14 @@
                               "end": 38
                             }
                           },
+                          "sigil_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "'",
+                            "span": {
+                              "start": 36,
+                              "end": 37
+                            }
+                          },
                           "name_token": {
                             "kind": "IDENT_EXPR",
                             "text": "a",
@@ -238,6 +262,14 @@
                             "span": {
                               "start": 45,
                               "end": 48
+                            }
+                          },
+                          "sigil_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "'",
+                            "span": {
+                              "start": 46,
+                              "end": 47
                             }
                           },
                           "name_token": {
@@ -300,6 +332,14 @@
                               "end": 38
                             }
                           },
+                          "sigil_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "'",
+                            "span": {
+                              "start": 36,
+                              "end": 37
+                            }
+                          },
                           "name_token": {
                             "kind": "IDENT_EXPR",
                             "text": "a",
@@ -346,6 +386,14 @@
                             "span": {
                               "start": 45,
                               "end": 48
+                            }
+                          },
+                          "sigil_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "'",
+                            "span": {
+                              "start": 46,
+                              "end": 47
                             }
                           },
                           "name_token": {

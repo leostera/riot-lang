@@ -47,6 +47,14 @@
                   "end": 13
                 }
               },
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "'",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
               "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "a",
@@ -63,6 +71,14 @@
                 "span": {
                   "start": 16,
                   "end": 19
+                }
+              },
+              "sigil_token": {
+                "kind": "IDENT_EXPR",
+                "text": "'",
+                "span": {
+                  "start": 17,
+                  "end": 18
                 }
               },
               "name_token": {

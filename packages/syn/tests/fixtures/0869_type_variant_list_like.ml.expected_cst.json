@@ -124,6 +124,14 @@
                           "end": 33
                         }
                       },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 31,
+                          "end": 32
+                        }
+                      },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "a",
@@ -170,6 +178,14 @@
                               "end": 38
                             }
                           },
+                          "sigil_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "'",
+                            "span": {
+                              "start": 36,
+                              "end": 37
+                            }
+                          },
                           "name_token": {
                             "kind": "IDENT_EXPR",
                             "text": "a",
@@ -200,6 +216,14 @@
                         "span": {
                           "start": 30,
                           "end": 33
+                        }
+                      },
+                      "sigil_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "'",
+                        "span": {
+                          "start": 31,
+                          "end": 32
                         }
                       },
                       "name_token": {
@@ -246,6 +270,14 @@
                             "span": {
                               "start": 35,
                               "end": 38
+                            }
+                          },
+                          "sigil_token": {
+                            "kind": "IDENT_EXPR",
+                            "text": "'",
+                            "span": {
+                              "start": 36,
+                              "end": 37
                             }
                           },
                           "name_token": {

@@ -46,6 +46,8 @@
 40. When relifted nested item streams expose a floating attribute immediately after a `type` declaration, keep that join tight on the next line. Do not open a blank paragraph there or re-split the nested body to recover the attribute twice.
 41. Render polymorphic-variant expression and pattern heads from the explicit `tag_token` fields in the CST. Do not replay raw direct-token text for the leading backtick tag once `syn` exposes it structurally.
 42. Render `CoreType.Poly`'s optional leading `type` prefix from `type_keyword_token`. Do not scan raw poly-type tokens to rediscover whether a locally abstract type was written with `type`.
+43. Render `CoreType.Var` from `sigil_token` plus `name_token`. Do not drop quoted `'a` sigils by printing only the bare name token, and do not reintroduce raw token replay to recover them.
+44. When `render_local_binding` synthesizes an outer `: type ...` annotation from parameter types, drop duplicate inner type annotations from the unsugared `fun` parameter list too. Normalize `~(fn : a -> b)` to `~fn` once the outer arrow already carries `fn:(a -> b)`.
 
 ## Validate
 

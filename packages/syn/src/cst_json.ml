@@ -258,10 +258,11 @@ and core_type_to_json =
         ("syntax_node", syntax_node_to_json syntax_node);
         ("wildcard_token", token_to_json wildcard_token)
       ]
-  | Cst.CoreType.Var { syntax_node; name_token } ->
+  | Cst.CoreType.Var { syntax_node; sigil_token; name_token } ->
       Json.Object [
         ("tag", Json.String "var");
         ("syntax_node", syntax_node_to_json syntax_node);
+        ("sigil_token", option_to_json token_to_json sigil_token);
         ("name_token", token_to_json name_token)
       ]
   | Cst.CoreType.Constr { syntax_node; constructor_path; arguments } ->
