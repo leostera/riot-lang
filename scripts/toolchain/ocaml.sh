@@ -10,6 +10,7 @@ DOCKERFILE="$REPO_ROOT/docker/ocaml-toolchain.Dockerfile"
 ENV_FILE="${RIOT_CDN_ENV_FILE:-${OCAML_CDN_ENV_FILE:-$REPO_ROOT/.env}}"
 DOCKER_CACHE_ROOT="$REPO_ROOT/.docker/volumes/ocaml"
 LOCAL_CACHE_ROOT="$REPO_ROOT/.tmp/ocaml"
+WORKTREE_LAYOUT_VERSION="2"
 
 MODE=""
 OUTPUT_ROOT="$REPO_ROOT/dist/toolchains/ocaml"
@@ -251,6 +252,34 @@ sync_ocaml_source_tree() {
     rsync -a --from0 --files-from=- "$source_dir"/ "$worktree_dir"/
 }
 
+reset_stale_local_worktree_if_needed() {
+  local worktree_dir="$1"
+  local worktree_root
+  local version_file
+  local current_version
+
+  worktree_root="$(dirname "$worktree_dir")"
+  version_file="$worktree_dir/.riot-worktree-layout-version"
+  current_version=""
+
+  if [ -f "$version_file" ]; then
+    current_version="$(cat "$version_file" 2>/dev/null || true)"
+  fi
+
+  if [ "$current_version" = "$WORKTREE_LAYOUT_VERSION" ]; then
+    return 0
+  fi
+
+  echo "Resetting cached OCaml worktree at $worktree_root"
+  rm -rf "$worktree_root"
+}
+
+mark_local_worktree_layout_version() {
+  local worktree_dir="$1"
+
+  printf '%s\n' "$WORKTREE_LAYOUT_VERSION" > "$worktree_dir/.riot-worktree-layout-version"
+}
+
 host_target_for_cross_target() {
   local target="$1"
 
@@ -294,6 +323,8 @@ build_local_target() {
 
   if [ "$CLEAN_BUILD" != "0" ]; then
     run_cmd rm -rf "$(dirname "$worktree_dir")"
+  else
+    reset_stale_local_worktree_if_needed "$worktree_dir"
   fi
 
   run_cmd mkdir -p "$output_dir"
@@ -313,6 +344,7 @@ build_local_target() {
   fi
 
   sync_ocaml_source_tree "$VENDORED_OCAML_DIR" "$worktree_dir"
+  mark_local_worktree_layout_version "$worktree_dir"
 
   if host_target="$(host_target_for_cross_target "$target" 2>/dev/null)"; then
     if [ ! -d "$worktree_dir/cross/$host_target" ]; then

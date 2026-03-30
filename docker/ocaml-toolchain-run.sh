@@ -7,6 +7,8 @@ CLEAN_BUILD="${2:-0}"
 SOURCE_DIR="/src/vendor/ocaml"
 WORK_DIR="/work/vendor/ocaml"
 OUTPUT_DIR="/out"
+WORKTREE_LAYOUT_VERSION="2"
+VERSION_FILE="$WORK_DIR/.riot-worktree-layout-version"
 
 die() {
   echo "error: $*" >&2
@@ -20,6 +22,9 @@ mkdir -p /work "$OUTPUT_DIR"
 
 if [ "$CLEAN_BUILD" != "0" ]; then
   rm -rf "$WORK_DIR"
+elif [ ! -f "$VERSION_FILE" ] || [ "$(cat "$VERSION_FILE" 2>/dev/null || true)" != "$WORKTREE_LAYOUT_VERSION" ]; then
+  echo "Resetting cached OCaml worktree at $WORK_DIR"
+  rm -rf "$WORK_DIR"
 fi
 
 mkdir -p "$WORK_DIR"
@@ -29,6 +34,8 @@ mkdir -p "$WORK_DIR"
 # avoiding Mach-O and other host-specific artefacts from the source checkout.
 git -C "$SOURCE_DIR" ls-files -z --cached --others --exclude-standard | \
   rsync -a --from0 --files-from=- "$SOURCE_DIR"/ "$WORK_DIR"/
+
+printf '%s\n' "$WORKTREE_LAYOUT_VERSION" > "$VERSION_FILE"
 
 cd "$WORK_DIR"
 bash ./cross/build.sh "$TARGET"
