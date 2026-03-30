@@ -610,6 +610,15 @@ exception Nested = Std.Result.Error
         in
         Test.assert_equal ~expected:formatted ~actual:reparsed;
         Ok ());
+    Test.case "format floating attributes from structural payload items" (fun () ->
+        let source = "[@@@warning    \"-32\"]\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"floating attributes should render from structural payload items"
+        in
+        Test.assert_equal ~expected:"[@@@warning \"-32\"]\n" ~actual;
+        Ok ());
     Test.case "format fails for module-expression and module-type extensions"
       (fun () ->
         let source =
@@ -655,6 +664,16 @@ module M = [%foo]
             {|type packed = (module Transport with type t = int)
 |}
           ~actual;
+        Ok ());
+    Test.case "format expression attributes from structural payload items"
+      (fun () ->
+        let source = "let _ = value [@foo   1  +  2]\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"expression attributes should render from structural payload items"
+        in
+        Test.assert_equal ~expected:"let _ = value [@foo 1 + 2]\n" ~actual;
         Ok ());
     Test.case "format fails for signature-bodied first-class module types"
       (fun () ->

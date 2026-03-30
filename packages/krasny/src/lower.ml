@@ -2506,7 +2506,98 @@ let make_lowerer ctx =
   in
   doc_with_expression_attributes expression doc
 
-and render_record_field (field : Syn.Cst.record_expression_field) =
+  and attribute_payload_source_node (attribute : Syn.Cst.attribute) =
+    match attribute.payload_syntax_node with
+    | Some payload_syntax_node ->
+        payload_syntax_node
+    | None ->
+        attribute.syntax_node
+
+  and attribute_payload_source attribute =
+    match ctx.source with
+    | Some source ->
+        source
+    | None ->
+        unsupported_syntax ~context:[ "attribute"; "payload" ]
+          ~syntax_node:(attribute_payload_source_node attribute)
+          "structural attribute payload rendering requires source text"
+
+  and render_attribute_payload_doc (attribute : Syn.Cst.attribute) =
+    match attribute.payload with
+    | None ->
+        Doc.empty
+    | Some (Syn.Cst.Payload.Type type_) ->
+        Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
+    | Some (Syn.Cst.Payload.Pattern { pattern_syntax_node; guard_syntax_node }) ->
+        let syntax_node =
+          match guard_syntax_node with
+          | Some guard_syntax_node ->
+              guard_syntax_node
+          | None ->
+              pattern_syntax_node
+        in
+        unsupported_syntax ~context:[ "attribute"; "payload" ] ~syntax_node
+          "pattern attribute payloads do not have a structural formatter yet"
+    | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
+        let source = attribute_payload_source attribute in
+        let source_node = attribute_payload_source_node attribute in
+        match Syn.CstBuilder.structure_items_of_payload payload with
+        | Ok (Some items) ->
+            if List.is_empty items then
+              Doc.empty
+            else
+              Doc.concat [ Doc.space; render_structure_items ~source ~source_node items ]
+        | Ok None ->
+            Doc.empty
+        | Error error ->
+            unsupported
+              ~context:([ "attribute"; "payload"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+              error.message)
+    | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
+        let source = attribute_payload_source attribute in
+        let source_node = attribute_payload_source_node attribute in
+        match Syn.CstBuilder.signature_items_of_payload payload with
+        | Ok (Some items) ->
+            if List.is_empty items then
+              Doc.empty
+            else
+              Doc.concat [ Doc.space; render_signature_items ~source ~source_node items ]
+        | Ok None ->
+            Doc.empty
+        | Error error ->
+            unsupported
+              ~context:([ "attribute"; "payload"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
+              error.message)
+
+  and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
+    let sigil_doc =
+      if floating then
+        Doc.concat [ at; doc_of_token attribute.sigil_token ]
+      else
+        doc_of_token attribute.sigil_token
+    in
+    Doc.concat
+      [
+        Doc.lbracket;
+        sigil_doc;
+        doc_of_ident attribute.name;
+        render_attribute_payload_doc attribute;
+        Doc.rbracket;
+      ]
+
+  and render_attribute attribute = render_attribute_doc ~floating:false attribute
+
+  and render_floating_attribute attribute =
+    render_attribute_doc ~floating:true attribute
+
+  and doc_with_expression_attributes expression doc =
+    match Syn.Cst.Expression.attributes expression with
+    | [] ->
+        doc
+    | attributes ->
+        Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
+
+  and render_record_field (field : Syn.Cst.record_expression_field) =
   match field.source with
   | Syn.Cst.Punned ->
       doc_of_ident field.field_path
