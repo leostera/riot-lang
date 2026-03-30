@@ -2169,13 +2169,6 @@ let infix_chain = fun operator expression ->
   in
   collect [] expression
 
-let doc_with_expression_attributes = fun expression doc ->
-  match Syn.Cst.Expression.attributes expression with
-  | [] ->
-      doc
-  | attributes ->
-      Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
-
 type lowerer = {
   render_structure_items :
     source_node:Syn.Cst.syntax_node -> Syn.Cst.StructureItem.t list -> Doc.t;
