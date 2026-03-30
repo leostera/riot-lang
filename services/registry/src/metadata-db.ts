@@ -1,3 +1,5 @@
+import semver from "semver";
+
 import type {
   ApiTokenCapability,
   ApiTokenLookupRecord,
@@ -905,83 +907,45 @@ export async function readPackageOverviewDocument(
   db: D1Database,
   packageName: string,
 ): Promise<PackageOverviewDocument | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         p.package_name,
-         p.latest_version,
-         p.description,
-         p.license,
-         p.homepage,
-         p.repository,
-         p.root_module,
-         p.repo_url,
-         p.repo_owner,
-         p.release_count,
-         p.updated_at,
-         pr.package_locator,
-         pr.package_subdir,
-         pr.resolved_sha,
-         pr.package_description,
-         pr.package_license,
-         pr.package_homepage,
-         pr.package_repository,
-         pr.package_root_module,
-         pr.package_categories_json,
-         pr.package_keywords_json,
-         pr.dependencies_json,
-         pr.source_archive_key,
-         pr.manifest_key,
-         pr.published_at
-       FROM packages p
-       JOIN published_releases pr
-         ON pr.package_name = p.package_name
-        AND pr.package_version = p.latest_version
-       WHERE p.package_name = ?`,
-    )
-    .bind(packageName)
-    .all<PackageOverviewRow>();
-
-  const row = rows.results?.[0];
-  if (row === undefined) {
+  const packages = await listPackageSnapshots(db);
+  const snapshot = packages.find((candidate) => candidate.package_name === packageName);
+  if (snapshot === undefined) {
     return null;
   }
 
-  const claim = await readPackageClaim(db, packageName);
-  const ownerGithubLogin = claim?.owner_github_login ?? row.repo_owner;
-  const dependentMap = await readPackageDependentMap(db);
+  const dependentMap = buildPackageDependentMap(packages);
 
   return {
     schema_version: 1,
-    package_name: row.package_name,
-    latest_version: row.latest_version,
-    updated_at: row.updated_at,
-    published_at: row.published_at,
-    description: row.package_description ?? row.description ?? undefined,
-    license: row.package_license ?? row.license ?? undefined,
-    homepage: row.package_homepage ?? row.homepage ?? undefined,
-    repository: row.package_repository ?? row.repository ?? undefined,
-    root_module: row.package_root_module ?? row.root_module ?? undefined,
-    canonical_locator: row.package_locator,
-    repo_url: row.repo_url,
-    subdir: row.package_subdir,
-    source_key: row.source_archive_key,
-    manifest_key: row.manifest_key,
-    sha: row.resolved_sha,
-    owner_github_login: ownerGithubLogin,
+    package_name: snapshot.package_name,
+    latest_version: snapshot.latest_version,
+    updated_at: snapshot.updated_at,
+    published_at: snapshot.published_at,
+    description: snapshot.description,
+    license: snapshot.license,
+    homepage: snapshot.homepage,
+    repository: snapshot.repository,
+    root_module: snapshot.root_module,
+    canonical_locator: snapshot.canonical_locator,
+    repo_url: snapshot.repo_url,
+    subdir: snapshot.subdir,
+    source_key: snapshot.source_key,
+    manifest_key: snapshot.manifest_key,
+    sha: snapshot.sha,
+    owner_github_login: snapshot.owner_github_login,
     owner_github_avatar_url: await resolveOwnerAvatarUrl(
       db,
       {
-        owner_user_id: claim?.owner_user_id,
-        owner_github_login: claim?.owner_github_login,
+        owner_user_id: snapshot.owner_user_id,
+        owner_github_login: snapshot.owner_github_login,
       },
-      ownerGithubLogin,
+      snapshot.owner_github_login,
     ),
-    release_count: row.release_count,
-    dependency_count: normalizeDependencies(row.dependencies_json).length,
+    release_count: snapshot.release_count,
+    dependency_count: snapshot.dependencies.length,
     dependent_count: (dependentMap.get(packageName) ?? []).length,
-    categories: parseJsonArray<string>(row.package_categories_json),
-    keywords: parseJsonArray<string>(row.package_keywords_json),
+    categories: snapshot.categories,
+    keywords: snapshot.keywords,
   };
 }
 
@@ -989,32 +953,18 @@ export async function readPackageRelationsDocument(
   db: D1Database,
   packageName: string,
 ): Promise<PackageRelationsDocument | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         p.package_name,
-         p.updated_at,
-         pr.dependencies_json
-       FROM packages p
-       JOIN published_releases pr
-         ON pr.package_name = p.package_name
-        AND pr.package_version = p.latest_version
-       WHERE p.package_name = ?`,
-    )
-    .bind(packageName)
-    .all<PackageRelationsRow>();
-
-  const row = rows.results?.[0];
-  if (row === undefined) {
+  const packages = await listPackageSnapshots(db);
+  const snapshot = packages.find((candidate) => candidate.package_name === packageName);
+  if (snapshot === undefined) {
     return null;
   }
 
-  const dependentMap = await readPackageDependentMap(db);
+  const dependentMap = buildPackageDependentMap(packages);
   return {
     schema_version: 1,
-    package_name: row.package_name,
-    updated_at: row.updated_at,
-    dependencies: normalizeDependencies(row.dependencies_json),
+    package_name: snapshot.package_name,
+    updated_at: snapshot.updated_at,
+    dependencies: snapshot.dependencies,
     dependents: [...(dependentMap.get(packageName) ?? [])].sort((left, right) =>
       left.package_name.localeCompare(right.package_name)
     ),
@@ -1024,43 +974,41 @@ export async function readPackageRelationsDocument(
 export async function readRecentPackagesDocument(
   db: D1Database,
 ): Promise<RecentPackagesDocument | null> {
-  const summaries = await listPackageSummaryRows(db);
-  if (summaries.length === 0) {
+  const packages = await listPackageSnapshots(db);
+  if (packages.length === 0) {
     return null;
   }
 
-  const latestReleases = await readLatestReleaseRows(db);
-  const avatarUrls = await resolveOwnerAvatarUrls(db, summaries);
+  const avatarUrls = await resolveOwnerAvatarUrls(db, packages);
 
   return {
     schema_version: 1,
     generated_at: new Date().toISOString(),
-    packages: summaries
+    packages: packages
       .slice(0, 12)
-      .map((summary) => toWebPackageListItem(summary, latestReleases, avatarUrls)),
+      .map((snapshot) => toWebPackageListItem(snapshot, avatarUrls)),
   };
 }
 
 export async function readPopularPackagesDocument(
   db: D1Database,
 ): Promise<PopularPackagesDocument | null> {
-  const summaries = await listPackageSummaryRows(db);
-  if (summaries.length === 0) {
+  const packages = await listPackageSnapshots(db);
+  if (packages.length === 0) {
     return null;
   }
 
-  const latestReleases = await readLatestReleaseRows(db);
-  const avatarUrls = await resolveOwnerAvatarUrls(db, summaries);
-  const dependentMap = await readPackageDependentMap(db);
+  const avatarUrls = await resolveOwnerAvatarUrls(db, packages);
+  const dependentMap = buildPackageDependentMap(packages);
 
   return {
     schema_version: 1,
     generated_at: new Date().toISOString(),
-    packages: summaries
-      .map((summary) => ({
-        ...toWebPackageListItem(summary, latestReleases, avatarUrls),
-        dependent_count: (dependentMap.get(summary.package_name) ?? []).length,
-        release_count: summary.release_count,
+    packages: packages
+      .map((snapshot) => ({
+        ...toWebPackageListItem(snapshot, avatarUrls),
+        dependent_count: (dependentMap.get(snapshot.package_name) ?? []).length,
+        release_count: snapshot.release_count,
       }))
       .sort((left, right) => {
         if (right.dependent_count !== left.dependent_count) {
@@ -1080,21 +1028,21 @@ export async function readPopularPackagesDocument(
 export async function readCategoriesIndexDocument(
   db: D1Database,
 ): Promise<CategoriesIndexDocument | null> {
-  const latestReleases = await readLatestReleaseRows(db);
-  if (latestReleases.size === 0) {
+  const packages = await listPackageSnapshots(db);
+  if (packages.length === 0) {
     return null;
   }
 
   const packagesByCategory = new Map<string, Set<string>>();
-  for (const [packageName, release] of latestReleases.entries()) {
-    for (const category of release.categories) {
+  for (const snapshot of packages) {
+    for (const category of snapshot.categories) {
       const normalized = category.trim();
       if (normalized.length === 0) {
         continue;
       }
 
       const packageNames = packagesByCategory.get(normalized) ?? new Set<string>();
-      packageNames.add(packageName);
+      packageNames.add(snapshot.package_name);
       packagesByCategory.set(normalized, packageNames);
     }
   }
@@ -1125,129 +1073,147 @@ export async function readOwnerPackagesDocument(
   db: D1Database,
   ownerGithubLogin: string,
 ): Promise<OwnerPackagesDocument | null> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         p.package_name,
-         p.latest_version,
-         p.description,
-         p.license,
-         p.repository,
-         p.subdir,
-         p.release_count,
-         p.updated_at,
-         p.repo_url,
-         p.repo_owner,
-         c.owner_user_id,
-         c.owner_github_login
-       FROM package_claims c
-       JOIN packages p
-         ON p.package_name = c.package_name
-       WHERE lower(c.owner_github_login) = lower(?)
-       ORDER BY p.updated_at DESC`,
-    )
-    .bind(ownerGithubLogin)
-    .all<OwnerPackageRow>();
-
-  const ownerRows = rows.results ?? [];
-  if (ownerRows.length === 0) {
+  const packages = await listPackageSnapshots(db);
+  const ownerPackages = packages.filter((snapshot) =>
+    snapshot.owner_github_login.toLowerCase() === ownerGithubLogin.toLowerCase()
+  );
+  if (ownerPackages.length === 0) {
     return null;
   }
 
-  const latestReleases = await readLatestReleaseRows(db);
-  const avatarUrls = await resolveOwnerAvatarUrls(db, ownerRows);
+  const avatarUrls = await resolveOwnerAvatarUrls(db, ownerPackages);
   const normalizedLogin = ownerGithubLogin.toLowerCase();
 
-  const packages = ownerRows.map((row) => toWebPackageListItem(row, latestReleases, avatarUrls));
+  const packageItems = ownerPackages.map((snapshot) => toWebPackageListItem(snapshot, avatarUrls));
   return {
     schema_version: 1,
     generated_at: new Date().toISOString(),
-    owner_github_login: ownerRows[0]?.owner_github_login ?? ownerGithubLogin,
+    owner_github_login: ownerPackages[0]?.owner_github_login ?? ownerGithubLogin,
     owner_github_avatar_url: avatarUrls.get(normalizedLogin),
-    package_count: packages.length,
-    latest_update_at: packages[0]?.updated_at,
-    packages,
+    package_count: packageItems.length,
+    latest_update_at: packageItems[0]?.updated_at,
+    packages: packageItems,
   };
 }
 
-async function listPackageSummaryRows(db: D1Database): Promise<PackageSummaryRow[]> {
+async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> {
   const rows = await db
     .prepare(
       `SELECT
-         p.package_name,
-         p.latest_version,
-         p.description,
-         p.license,
-         p.repository,
-         p.subdir,
-         p.release_count,
-         p.updated_at,
-         p.repo_url,
-         p.repo_owner,
-         c.owner_user_id,
-         c.owner_github_login
-       FROM packages p
-       LEFT JOIN package_claims c
-         ON c.package_name = p.package_name
-       ORDER BY p.updated_at DESC, p.package_name ASC`,
+         package_name,
+         package_version,
+         package_locator,
+         source_url,
+         package_subdir,
+         selector,
+         resolved_sha,
+         package_description,
+         package_license,
+         package_homepage,
+         package_repository,
+         package_root_module,
+         package_categories_json,
+         package_keywords_json,
+         dependencies_json,
+         source_archive_key,
+         manifest_key,
+         published_at
+       FROM published_releases
+       ORDER BY package_name ASC, published_at DESC`,
     )
-    .all<PackageSummaryRow>();
+    .all<PublishedReleaseRow>();
 
-  return rows.results ?? [];
-}
+  const claims = await listPackageClaims(db);
+  const grouped = new Map<string, PublishedReleaseRecord[]>();
 
-async function readLatestReleaseRows(
-  db: D1Database,
-): Promise<Map<string, LatestReleaseMetadata>> {
-  const rows = await db
-    .prepare(
-      `SELECT
-         p.package_name,
-         pr.package_categories_json,
-         pr.package_keywords_json,
-         pr.dependencies_json
-       FROM packages p
-       JOIN published_releases pr
-         ON pr.package_name = p.package_name
-        AND pr.package_version = p.latest_version`,
-    )
-    .all<LatestReleaseRow>();
-
-  const latestReleases = new Map<string, LatestReleaseMetadata>();
   for (const row of rows.results ?? []) {
-    latestReleases.set(row.package_name, {
-      categories: parseJsonArray<string>(row.package_categories_json),
-      keywords: parseJsonArray<string>(row.package_keywords_json),
-      dependencies: normalizeDependencies(row.dependencies_json),
-    });
+    const release = parsePublishedReleaseRecord(row);
+    const packageReleases = grouped.get(release.package_name) ?? [];
+    packageReleases.push(release);
+    grouped.set(release.package_name, packageReleases);
   }
 
-  return latestReleases;
+  const snapshots = [...grouped.entries()].map(([packageName, releases]) => {
+    releases.sort(compareReleaseVersionsDesc);
+    const latestRelease = releases[0];
+    if (latestRelease === undefined) {
+      throw new Error(`Package ${packageName} has no releases.`);
+    }
+
+    const claim = claims.get(packageName);
+    const ownerGithubLogin = claim?.owner_github_login ?? parseOwnerFromLocator(latestRelease.package_locator);
+    return {
+      package_name: packageName,
+      latest_version: latestRelease.package_version,
+      description: latestRelease.package_description,
+      license: latestRelease.package_license,
+      homepage: latestRelease.package_homepage,
+      repository: latestRelease.package_repository,
+      root_module: latestRelease.package_root_module,
+      canonical_locator: latestRelease.package_locator,
+      repo_url: latestRelease.source_url,
+      repo_owner: parseOwnerFromLocator(latestRelease.package_locator),
+      subdir: latestRelease.package_subdir,
+      release_count: releases.length,
+      updated_at: latestRelease.published_at,
+      published_at: latestRelease.published_at,
+      source_key: latestRelease.source_archive_key,
+      manifest_key: latestRelease.manifest_key,
+      sha: latestRelease.resolved_sha,
+      owner_user_id: claim?.owner_user_id,
+      owner_github_login: ownerGithubLogin,
+      categories: latestRelease.package_categories ?? [],
+      keywords: latestRelease.package_keywords ?? [],
+      dependencies: normalizeDependencies(JSON.stringify(latestRelease.dependencies)),
+    } satisfies PackageSnapshot;
+  });
+
+  snapshots.sort((left, right) => {
+    const timestamp = right.updated_at.localeCompare(left.updated_at);
+    if (timestamp !== 0) {
+      return timestamp;
+    }
+
+    return left.package_name.localeCompare(right.package_name);
+  });
+
+  return snapshots;
 }
 
-async function readPackageDependentMap(
-  db: D1Database,
-): Promise<Map<string, PackageRelationDependent[]>> {
+async function listPackageClaims(db: D1Database): Promise<Map<string, PackageClaimRecord>> {
   const rows = await db
     .prepare(
       `SELECT
-         p.package_name,
-         p.latest_version,
-         pr.dependencies_json
-       FROM packages p
-       JOIN published_releases pr
-         ON pr.package_name = p.package_name
-        AND pr.package_version = p.latest_version`,
+         package_name,
+         package_locator,
+         source_url,
+         package_subdir,
+         owner_user_id,
+         owner_github_login,
+         claimed_at,
+         updated_at
+       FROM package_claims`,
     )
-    .all<DependentSourceRow>();
+    .all<PackageClaimRow>();
 
-  const dependents = new Map<string, PackageRelationDependent[]>();
+  const claims = new Map<string, PackageClaimRecord>();
   for (const row of rows.results ?? []) {
-    for (const dependency of normalizeDependencies(row.dependencies_json)) {
+    claims.set(row.package_name, parsePackageClaimRecord(row));
+  }
+
+  return claims;
+}
+
+function buildPackageDependentMap(
+  packages: PackageSnapshot[],
+): Map<string, PackageRelationDependent[]> {
+  const dependents = new Map<string, PackageRelationDependent[]>();
+  for (const snapshot of packages) {
+    for (const dependency of snapshot.dependencies) {
       const existing = dependents.get(dependency.package_name) ?? [];
       existing.push({
-        package_name: row.package_name,
-        latest_version: row.latest_version,
+        package_name: snapshot.package_name,
+        latest_version: snapshot.latest_version,
         requirement: dependency.requirement,
       });
       dependents.set(dependency.package_name, existing);
@@ -1316,20 +1282,7 @@ async function resolveOwnerAvatarUrl(
 }
 
 function toWebPackageListItem(
-  row: {
-    package_name: string;
-    latest_version: string;
-    description?: string | null;
-    license?: string | null;
-    repository?: string | null;
-    subdir: string;
-    release_count: number;
-    updated_at: string;
-    repo_url: string;
-    repo_owner: string;
-    owner_github_login?: string | null;
-  },
-  latestReleases: Map<string, LatestReleaseMetadata>,
+  row: PackageSnapshot,
   avatarUrls: Map<string, string | undefined>,
 ): WebPackageListItem {
   const ownerGithubLogin = row.owner_github_login ?? row.repo_owner;
@@ -1342,7 +1295,7 @@ function toWebPackageListItem(
     license: row.license ?? undefined,
     owner_github_login: ownerGithubLogin,
     owner_github_avatar_url: avatarUrls.get(normalizedOwner),
-    categories: latestReleases.get(row.package_name)?.categories ?? [],
+    categories: row.categories,
     updated_at: row.updated_at,
     repo_url: row.repo_url,
     repository: row.repository ?? undefined,
@@ -1383,6 +1336,28 @@ function normalizeDependencies(dependenciesJson: string): PackageRelationDepende
     .filter((dependency): dependency is PackageRelationDependency => dependency !== null);
 }
 
+function compareReleaseVersionsDesc(
+  left: PublishedReleaseRecord,
+  right: PublishedReleaseRecord,
+): number {
+  const semverResult = semver.rcompare(left.package_version, right.package_version);
+  if (semverResult !== 0) {
+    return semverResult;
+  }
+
+  const publishedAtResult = right.published_at.localeCompare(left.published_at);
+  if (publishedAtResult !== 0) {
+    return publishedAtResult;
+  }
+
+  return right.resolved_sha.localeCompare(left.resolved_sha);
+}
+
+function parseOwnerFromLocator(locator: string): string {
+  const parts = locator.split("/");
+  return parts[1] ?? "unknown";
+}
+
 function toSlug(value: string): string {
   return value
     .toLowerCase()
@@ -1391,7 +1366,7 @@ function toSlug(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-interface PackageOverviewRow {
+interface PackageSnapshot {
   package_name: string;
   latest_version: string;
   description?: string | null;
@@ -1399,66 +1374,21 @@ interface PackageOverviewRow {
   homepage?: string | null;
   repository?: string | null;
   root_module?: string | null;
-  repo_url: string;
-  repo_owner: string;
-  release_count: number;
-  updated_at: string;
-  package_locator: string;
-  package_subdir: string;
-  resolved_sha: string;
-  package_description?: string | null;
-  package_license?: string | null;
-  package_homepage?: string | null;
-  package_repository?: string | null;
-  package_root_module?: string | null;
-  package_categories_json: string;
-  package_keywords_json: string;
-  dependencies_json: string;
-  source_archive_key: string;
-  manifest_key: string;
-  published_at: string;
-}
-
-interface PackageRelationsRow {
-  package_name: string;
-  updated_at: string;
-  dependencies_json: string;
-}
-
-interface PackageSummaryRow {
-  package_name: string;
-  latest_version: string;
-  description?: string | null;
-  license?: string | null;
-  repository?: string | null;
+  canonical_locator: string;
   subdir: string;
   release_count: number;
   updated_at: string;
+  published_at: string;
   repo_url: string;
   repo_owner: string;
+  source_key: string;
+  manifest_key: string;
+  sha: string;
   owner_user_id?: string | null;
   owner_github_login?: string | null;
-}
-
-interface OwnerPackageRow extends PackageSummaryRow {}
-
-interface LatestReleaseRow {
-  package_name: string;
-  package_categories_json: string;
-  package_keywords_json: string;
-  dependencies_json: string;
-}
-
-interface LatestReleaseMetadata {
   categories: string[];
   keywords: string[];
   dependencies: PackageRelationDependency[];
-}
-
-interface DependentSourceRow {
-  package_name: string;
-  latest_version: string;
-  dependencies_json: string;
 }
 
 interface ApiTokenRow {
