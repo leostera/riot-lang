@@ -872,6 +872,7 @@ and class_type_field =
   | Inherit of {
       syntax_node : syntax_node;
       class_type : class_type;
+      owned_trivia : owned_trivia;
     }
       (** An inherited class type field.
 
@@ -882,6 +883,7 @@ and class_type_field =
       name_token : Token.t;
       type_ : core_type;
       is_mutable : bool;
+      owned_trivia : owned_trivia;
     }
       (** A value declaration in a class signature.
 
@@ -897,6 +899,7 @@ and class_type_field =
       name_token : Token.t;
       type_ : core_type;
       is_private : bool;
+      owned_trivia : owned_trivia;
     }
       (** A method declaration in a class signature.
 
@@ -911,6 +914,7 @@ and class_type_field =
       syntax_node : syntax_node;
       left : core_type;
       right : core_type;
+      owned_trivia : owned_trivia;
     }
       (** A class-type constraint.
 
@@ -1205,23 +1209,27 @@ module ClassTypeField : sig
     | Inherit of {
         syntax_node : syntax_node;
         class_type : class_type;
+        owned_trivia : owned_trivia;
       }
     | Value of {
         syntax_node : syntax_node;
         name_token : Token.t;
         type_ : core_type;
         is_mutable : bool;
+        owned_trivia : owned_trivia;
       }
     | Method of {
         syntax_node : syntax_node;
         name_token : Token.t;
         type_ : core_type;
         is_private : bool;
+        owned_trivia : owned_trivia;
       }
     | Constraint of {
         syntax_node : syntax_node;
         left : core_type;
         right : core_type;
+        owned_trivia : owned_trivia;
       }
     | Attribute of {
         syntax_node : syntax_node;
@@ -3001,6 +3009,7 @@ and class_method = {
   is_private : bool;
   is_virtual : bool;
   is_override : bool;
+  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassField.Value`.
@@ -3016,12 +3025,14 @@ and class_value = {
   is_mutable : bool;
   is_virtual : bool;
   is_override : bool;
+  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassField.Inherit`. *)
 and class_inherit = {
   syntax_node : syntax_node;
   class_expression : class_expression;
+  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassField.Constraint`.
@@ -3032,6 +3043,7 @@ and class_constraint = {
   syntax_node : syntax_node;
   left : core_type;
   right : core_type;
+  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassField.Initializer`.
@@ -3041,6 +3053,7 @@ and class_constraint = {
 and class_initializer = {
   syntax_node : syntax_node;
   body : expression option;
+  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassExpression.Apply`. *)

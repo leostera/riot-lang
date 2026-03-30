@@ -12,6 +12,21 @@ type record_field_item =
   | Comment of Cst.comment
   | Docstring of Cst.docstring
 
+type object_member_item =
+  | ObjectMember of Cst.ObjectMember.t
+  | Comment of Cst.comment
+  | Docstring of Cst.docstring
+
+type class_field_item =
+  | ClassField of Cst.ClassField.t
+  | Comment of Cst.comment
+  | Docstring of Cst.docstring
+
+type class_type_field_item =
+  | ClassTypeField of Cst.ClassTypeField.t
+  | Comment of Cst.comment
+  | Docstring of Cst.docstring
+
 val create_from_ceibo : kind:[
   | `Implementation
   | `Interface
@@ -35,6 +50,30 @@ val structure_items_of_payload : Cst.payload ->
     excluded. *)
 val record_field_items_of_fields : Cst.RecordField.t list -> record_field_item list
 
+(** Ordered object-body helper stream.
+
+    This keeps `ObjectMember` items in source order and surfaces any
+    standalone body comments/docstrings, optionally using the enclosing
+    `source_node` to include trailing trivia on `end` when members are empty.
+*)
+val object_member_items_of_members : ?source_node:Cst.syntax_node -> Cst.ObjectMember.t list -> object_member_item list
+
+(** Ordered class-structure helper stream.
+
+    This keeps `ClassField` items in source order and surfaces any standalone
+    body comments/docstrings, optionally using the enclosing `source_node` to
+    include trailing trivia on `end` when fields are empty.
+*)
+val class_field_items_of_fields : ?source_node:Cst.syntax_node -> Cst.ClassField.t list -> class_field_item list
+
+(** Ordered class-type signature helper stream.
+
+    This keeps `ClassTypeField` items in source order and surfaces any
+    standalone body comments/docstrings, optionally using the enclosing
+    `source_node` to include trailing trivia on `end` when fields are empty.
+*)
+val class_type_field_items_of_fields : ?source_node:Cst.syntax_node -> Cst.ClassTypeField.t list -> class_type_field_item list
+
 val structure_items_of_module_expression : Cst.ModuleExpression.t ->
 (Cst.StructureItem.t list option, error) result
 
@@ -51,3 +90,7 @@ val signature_items_of_payload : Cst.payload ->
 
 val signature_items_of_module_type : Cst.ModuleType.t ->
 (Cst.SignatureItem.t list option, error) result
+
+val pattern_of_syntax_node : Cst.syntax_node -> (Cst.Pattern.t, error) result
+
+val expression_of_syntax_node : Cst.syntax_node -> (Cst.Expression.t, error) result

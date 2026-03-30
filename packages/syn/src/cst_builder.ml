@@ -19,6 +19,16 @@ type object_member_item =
   | Comment of Cst.comment
   | Docstring of Cst.docstring
 
+type class_field_item =
+  | ClassField of Cst.ClassField.t
+  | Comment of Cst.comment
+  | Docstring of Cst.docstring
+
+type class_type_field_item =
+  | ClassTypeField of Cst.ClassTypeField.t
+  | Comment of Cst.comment
+  | Docstring of Cst.docstring
+
 exception Bail of error
 
 let bail = fun ~message ~syntax_node ~context -> raise (Bail {
@@ -731,6 +741,81 @@ let record_field_item_of_docstring : Cst.Docstring.t -> record_field_item = fun 
   Docstring docstring
 
 let object_member_item_of_docstring : Cst.Docstring.t -> object_member_item = fun docstring ->
+  Docstring docstring
+
+let syntax_node_of_class_field_item =
+  function
+  | ClassField field ->
+      Cst.ClassField.syntax_node field
+  | Comment comment ->
+      Cst.Comment.syntax_node comment
+  | Docstring docstring ->
+      Cst.Docstring.syntax_node docstring
+
+let rec class_field_owned_trivia_spans =
+  function
+  | Cst.ClassField.Method method_ ->
+      owned_trivia_spans method_.owned_trivia
+  | Cst.ClassField.Value value ->
+      owned_trivia_spans value.owned_trivia
+  | Cst.ClassField.Inherit inherit_ ->
+      owned_trivia_spans inherit_.owned_trivia
+  | Cst.ClassField.Constraint constraint_ ->
+      owned_trivia_spans constraint_.owned_trivia
+  | Cst.ClassField.Initializer initializer_ ->
+      owned_trivia_spans initializer_.owned_trivia
+  | Cst.ClassField.Attribute { field; _ } ->
+      class_field_owned_trivia_spans field
+  | Cst.ClassField.Extension _ ->
+      []
+
+let class_field_item_owned_trivia_spans =
+  function
+  | ClassField field ->
+      class_field_owned_trivia_spans field
+  | Comment _
+  | Docstring _ ->
+      []
+
+let class_field_item_of_comment : Cst.Comment.t -> class_field_item = fun comment ->
+  Comment comment
+
+let class_field_item_of_docstring : Cst.Docstring.t -> class_field_item = fun docstring ->
+  Docstring docstring
+
+let syntax_node_of_class_type_field_item =
+  function
+  | ClassTypeField field ->
+      Cst.ClassTypeField.syntax_node field
+  | Comment comment ->
+      Cst.Comment.syntax_node comment
+  | Docstring docstring ->
+      Cst.Docstring.syntax_node docstring
+
+let rec class_type_field_owned_trivia_spans =
+  function
+  | Cst.ClassTypeField.Inherit { owned_trivia; _ }
+  | Cst.ClassTypeField.Value { owned_trivia; _ }
+  | Cst.ClassTypeField.Method { owned_trivia; _ }
+  | Cst.ClassTypeField.Constraint { owned_trivia; _ } ->
+      owned_trivia_spans owned_trivia
+  | Cst.ClassTypeField.Attribute { field; _ } ->
+      class_type_field_owned_trivia_spans field
+  | Cst.ClassTypeField.Extension _ ->
+      []
+
+let class_type_field_item_owned_trivia_spans =
+  function
+  | ClassTypeField field ->
+      class_type_field_owned_trivia_spans field
+  | Comment _
+  | Docstring _ ->
+      []
+
+let class_type_field_item_of_comment : Cst.Comment.t -> class_type_field_item = fun comment ->
+  Comment comment
+
+let class_type_field_item_of_docstring : Cst.Docstring.t -> class_type_field_item = fun docstring ->
   Docstring docstring
 
 let rec variant_constructor_owned_trivia_spans = fun constructor ->
@@ -3174,7 +3259,13 @@ and core_type_payload_and_field_attribute = fun node ->
 and class_type_field_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.OBJECT_INHERIT ->
-      let make_field = fun class_type -> Cst.ClassTypeField.Inherit {syntax_node = node; class_type} in
+      let make_field = fun class_type ->
+        Cst.ClassTypeField.Inherit {
+          syntax_node = node;
+          class_type;
+          owned_trivia = owned_trivia_from_node node
+        }
+      in
       begin
         match direct_non_trivia_nodes node with
         | child :: _ when Ceibo.Red.SyntaxNode.kind child = Syntax_kind.APPLY_EXPR -> (
@@ -3211,7 +3302,8 @@ and class_type_field_from_node = fun node ->
                 is_mutable = List.exists
                   (fun tok ->
                     String.equal (Ceibo.Red.SyntaxToken.text tok) "mutable")
-                  (direct_non_trivia_tokens node)
+                  (direct_non_trivia_tokens node);
+                owned_trivia = owned_trivia_from_node node
               }
               in
               (
@@ -3240,7 +3332,8 @@ and class_type_field_from_node = fun node ->
                 is_private = List.exists
                   (fun tok ->
                     String.equal (Ceibo.Red.SyntaxToken.text tok) "private")
-                  (direct_non_trivia_tokens node)
+                  (direct_non_trivia_tokens node);
+                owned_trivia = owned_trivia_from_node node
               }
               in
               (
@@ -3263,7 +3356,8 @@ and class_type_field_from_node = fun node ->
           let field = Cst.ClassTypeField.Constraint {
             syntax_node = node;
             left = core_type_from_node left_node;
-            right = core_type_from_node payload_right_node
+            right = core_type_from_node payload_right_node;
+            owned_trivia = owned_trivia_from_node node
           } in
           (
             match field_attribute with
@@ -5255,11 +5349,12 @@ and object_initializer_from_node = fun node ->
             else
               None)
       in
-      Some {
-        Cst.syntax_node = node;
-        owned_trivia = owned_trivia_from_node node;
-        body
-      }
+      Some
+        ({
+           Cst.syntax_node = node;
+           owned_trivia = owned_trivia_from_node node;
+           body
+         } : Cst.object_initializer)
   | _ -> None
 and object_expression_from_node = fun node ->
   let non_trivia_children = direct_non_trivia_nodes node in
@@ -5908,7 +6003,8 @@ and class_method_from_node = fun node ->
             is_override = List.exists
               (fun tok ->
                 String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
-              (direct_non_trivia_tokens node)
+              (direct_non_trivia_tokens node);
+            owned_trivia = owned_trivia_from_node node
           }
           in
           Some (field, type_attributes @ field_attributes)
@@ -5955,7 +6051,8 @@ and class_value_from_node = fun node ->
             is_override = List.exists
               (fun tok ->
                 String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
-              (direct_non_trivia_tokens node)
+              (direct_non_trivia_tokens node);
+            owned_trivia = owned_trivia_from_node node
           }
           in
           Some (field, type_attributes @ field_attributes)
@@ -5976,7 +6073,13 @@ and class_inherit_from_node = fun node ->
           None)
   with
   | Some (class_expression, field_attributes) ->
-      Some (({syntax_node = node; class_expression}: Cst.class_inherit), field_attributes)
+      Some
+        (({
+            syntax_node = node;
+            class_expression;
+            owned_trivia = owned_trivia_from_node node
+          }: Cst.class_inherit),
+         field_attributes)
   | None ->
       None
 and class_constraint_from_node = fun node ->
@@ -5987,7 +6090,8 @@ and class_constraint_from_node = fun node ->
         ({
           syntax_node = node;
           left = core_type_from_node left_node;
-          right = core_type_from_node payload_right_node
+          right = core_type_from_node payload_right_node;
+          owned_trivia = owned_trivia_from_node node
         }: Cst.class_constraint),
         []
       )
@@ -6011,7 +6115,13 @@ and class_initializer_from_node = fun node ->
         | None ->
             (None, [])
       in
-      Some (({syntax_node = node; body}: Cst.class_initializer), field_attributes)
+      Some
+        (({
+            syntax_node = node;
+            body;
+            owned_trivia = owned_trivia_from_node node
+          }: Cst.class_initializer),
+         field_attributes)
   | _ ->
       None
 and class_field_from_node = fun node ->
@@ -8291,6 +8401,200 @@ let object_member_items_of_members = fun ?source_node members ->
            |> Option.map (fun item ->
                   let item : object_member_item = item in
                   let syntax_node = syntax_node_of_object_member_item item in
+                  (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
+  in
+  List.sort
+    (fun
+      (left_index, (left_span : Ceibo.Span.t), _)
+      (right_index, (right_span : Ceibo.Span.t), _) ->
+      let order =
+        if not (Int.equal left_span.start right_span.start) then
+          Int.compare left_span.start right_span.start
+        else if not (Int.equal left_span.end_ right_span.end_) then
+          Int.compare left_span.end_ right_span.end_
+        else
+          0
+      in
+      if Int.equal order 0 then
+        Int.compare left_index right_index
+      else
+        order)
+    (item_entries @ trivia_entries)
+  |> List.map (fun (_, _, item) -> item)
+
+let class_field_items_of_fields = fun ?source_node fields ->
+  let next_index =
+    let cell = Cell.create 0 in
+    fun () ->
+      let index = Cell.get cell in
+      Cell.set cell (index + 1);
+      index
+  in
+  let item_entries =
+    fields
+    |> List.map (fun field ->
+           let item = ClassField field in
+           let span =
+             span_of_syntax_node_nontrivia_bounds
+               (Cst.ClassField.syntax_node field)
+           in
+           (next_index (), span, item))
+  in
+  let owned_trivia_spans =
+    item_entries
+    |> List.concat_map (fun (_, _, item) ->
+           class_field_item_owned_trivia_spans item)
+  in
+  let terminal_tokens =
+    match fields, source_node with
+    | _ :: _, Some source_node -> (
+        match List.rev (direct_non_trivia_tokens source_node) with
+        | closing_token :: _ when
+            String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" ->
+            Ceibo.Red.SyntaxToken.leading_trivia closing_token
+            |> List.map syntax_token_from_trivia
+        | _ ->
+            [])
+    | field :: _, None -> (
+        match Ceibo.Red.SyntaxNode.parent (Cst.ClassField.syntax_node field) with
+        | Some source_node -> (
+            match List.rev (direct_non_trivia_tokens source_node) with
+            | closing_token :: _ when
+                String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" ->
+                Ceibo.Red.SyntaxToken.leading_trivia closing_token
+                |> List.map syntax_token_from_trivia
+            | _ ->
+                [])
+        | None ->
+            [])
+    | [], Some source_node -> (
+        match List.rev (direct_non_trivia_tokens source_node) with
+        | closing_token :: _ when
+            String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" ->
+            Ceibo.Red.SyntaxToken.leading_trivia closing_token
+            |> List.map syntax_token_from_trivia
+        | _ ->
+            [])
+    | [], None ->
+        []
+  in
+  let trivia_entries =
+    ((item_entries
+      |> List.concat_map (fun (_, _, item) ->
+             leading_trivia_syntax_tokens_for_item
+               (syntax_node_of_class_field_item item)))
+    @ terminal_tokens)
+    |> List.filter (fun syntax_token ->
+           let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+           not
+             (List.exists
+                (fun owned_span -> span_contains owned_span token_span)
+                owned_trivia_spans))
+    |> List.filter_map (fun syntax_token ->
+           standalone_trivia_item_from_token
+             ~comment_item_of_comment:class_field_item_of_comment
+             ~docstring_item_of_docstring:class_field_item_of_docstring
+             syntax_token
+           |> Option.map (fun item ->
+                  let item : class_field_item = item in
+                  let syntax_node = syntax_node_of_class_field_item item in
+                  (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
+  in
+  List.sort
+    (fun
+      (left_index, (left_span : Ceibo.Span.t), _)
+      (right_index, (right_span : Ceibo.Span.t), _) ->
+      let order =
+        if not (Int.equal left_span.start right_span.start) then
+          Int.compare left_span.start right_span.start
+        else if not (Int.equal left_span.end_ right_span.end_) then
+          Int.compare left_span.end_ right_span.end_
+        else
+          0
+      in
+      if Int.equal order 0 then
+        Int.compare left_index right_index
+      else
+        order)
+    (item_entries @ trivia_entries)
+  |> List.map (fun (_, _, item) -> item)
+
+let class_type_field_items_of_fields = fun ?source_node fields ->
+  let next_index =
+    let cell = Cell.create 0 in
+    fun () ->
+      let index = Cell.get cell in
+      Cell.set cell (index + 1);
+      index
+  in
+  let item_entries =
+    fields
+    |> List.map (fun field ->
+           let item = ClassTypeField field in
+           let span =
+             span_of_syntax_node_nontrivia_bounds
+               (Cst.ClassTypeField.syntax_node field)
+           in
+           (next_index (), span, item))
+  in
+  let owned_trivia_spans =
+    item_entries
+    |> List.concat_map (fun (_, _, item) ->
+           class_type_field_item_owned_trivia_spans item)
+  in
+  let terminal_tokens =
+    match fields, source_node with
+    | _ :: _, Some source_node -> (
+        match List.rev (direct_non_trivia_tokens source_node) with
+        | closing_token :: _ when
+            String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" ->
+            Ceibo.Red.SyntaxToken.leading_trivia closing_token
+            |> List.map syntax_token_from_trivia
+        | _ ->
+            [])
+    | field :: _, None -> (
+        match Ceibo.Red.SyntaxNode.parent (Cst.ClassTypeField.syntax_node field) with
+        | Some source_node -> (
+            match List.rev (direct_non_trivia_tokens source_node) with
+            | closing_token :: _ when
+                String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" ->
+                Ceibo.Red.SyntaxToken.leading_trivia closing_token
+                |> List.map syntax_token_from_trivia
+            | _ ->
+                [])
+        | None ->
+            [])
+    | [], Some source_node -> (
+        match List.rev (direct_non_trivia_tokens source_node) with
+        | closing_token :: _ when
+            String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" ->
+            Ceibo.Red.SyntaxToken.leading_trivia closing_token
+            |> List.map syntax_token_from_trivia
+        | _ ->
+            [])
+    | [], None ->
+        []
+  in
+  let trivia_entries =
+    ((item_entries
+      |> List.concat_map (fun (_, _, item) ->
+             leading_trivia_syntax_tokens_for_item
+               (syntax_node_of_class_type_field_item item)))
+    @ terminal_tokens)
+    |> List.filter (fun syntax_token ->
+           let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+           not
+             (List.exists
+                (fun owned_span -> span_contains owned_span token_span)
+                owned_trivia_spans))
+    |> List.filter_map (fun syntax_token ->
+           standalone_trivia_item_from_token
+             ~comment_item_of_comment:class_type_field_item_of_comment
+             ~docstring_item_of_docstring:class_type_field_item_of_docstring
+             syntax_token
+           |> Option.map (fun item ->
+                  let item : class_type_field_item = item in
+                  let syntax_node = syntax_node_of_class_type_field_item item in
                   (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item)))
   in
   List.sort

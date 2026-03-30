@@ -3024,6 +3024,56 @@ let tests =
               ~actual:(Syn.Cst.Ident.name init_arg);
             Ok ()
         | _ -> Error "expected structured class fields");
+    Test.case "cst builder keeps class trailing trivia as explicit body entries"
+      (fun () ->
+        let source =
+          "class c = object\n\
+           \  method run = 1\n\
+           \  (** body doc *)\n\
+           \  (* body comment *)\n\
+           end\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassDeclaration
+            {
+              class_body =
+                Some
+                  (Syn.Cst.ClassExpression.Structure
+                    {
+                      syntax_node;
+                      fields;
+                      _;
+                    });
+              _;
+            }
+          :: _ ->
+            let body_items =
+              Syn.CstBuilder.class_field_items_of_fields
+                ~source_node:syntax_node
+                fields
+            in
+            (match body_items with
+            | [
+             Syn.CstBuilder.ClassField (Syn.Cst.ClassField.Method _);
+             Syn.CstBuilder.Docstring docstring;
+             Syn.CstBuilder.Comment comment;
+            ] ->
+                Test.assert_equal
+                  ~expected:"(** body doc *)"
+                  ~actual:(Syn.Cst.Docstring.text docstring);
+                Test.assert_equal
+                  ~expected:"(* body comment *)"
+                  ~actual:(Syn.Cst.Comment.text comment);
+                Ok ()
+            | _ ->
+                Error "expected class field stream to include method and body docstring/comment")
+        | _ -> Error "expected class declaration with structure body");
     Test.case "cst interface class type declarations preserve structured signatures"
       (fun () ->
         let result =
@@ -3437,6 +3487,54 @@ let tests =
               ~actual:(Syn.Cst.Ident.name constructor_path);
             Ok ()
         | _ -> Error "expected class type extension field");
+    Test.case "cst builder keeps class-type trailing trivia as explicit body entries"
+      (fun () ->
+        let source =
+          "class type ct = object\n\
+           \  method run : int\n\
+           \  (** body doc *)\n\
+           \  (* body comment *)\n\
+           end\n"
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassTypeDeclaration
+            {
+              class_type_body =
+                Syn.Cst.ClassType.Signature
+                  {
+                    syntax_node;
+                    fields;
+                  };
+              _;
+            }
+          :: _ ->
+            let body_items =
+              Syn.CstBuilder.class_type_field_items_of_fields
+                ~source_node:syntax_node
+                fields
+            in
+            (match body_items with
+            | [
+             Syn.CstBuilder.ClassTypeField (Syn.Cst.ClassTypeField.Method _);
+             Syn.CstBuilder.Docstring docstring;
+             Syn.CstBuilder.Comment comment;
+            ] ->
+                Test.assert_equal
+                  ~expected:"(** body doc *)"
+                  ~actual:(Syn.Cst.Docstring.text docstring);
+                Test.assert_equal
+                  ~expected:"(* body comment *)"
+                  ~actual:(Syn.Cst.Comment.text comment);
+                Ok ()
+            | _ ->
+                Error "expected class type field stream to include method and body docstring/comment")
+        | _ -> Error "expected class type declaration with signature body");
     Test.case "cst value declarations preserve names and type nodes" (fun () ->
         let result = parse_mli "val create : name:string -> person\n" in
         let cst =

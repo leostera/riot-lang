@@ -112,6 +112,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms, including opaque extension module-type payloads; signature-bodied first-class module types still fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature payload item streams for structured OCaml payloads; opaque extension payloads intentionally do not relift through those helpers.
+- class-structure and class-type-signature field payloads now carry `owned_trivia`, and `Syn.CstBuilder.class_field_items_of_fields` / `class_type_field_items_of_fields` expose ordered helper streams with standalone trailing `end`-owned comments/docstrings.
 - the main lowering path now renders floating attributes and expression-attached attributes structurally from payload shape plus those payload item helpers; pattern payloads fail explicitly there instead of replaying raw payload text.
 - ordinary `[@attr? pattern when guard]` payloads now lower structurally by relifting `pattern_syntax_node` / `guard_syntax_node` through `Syn.CstBuilder.pattern_of_syntax_node` and `expression_of_syntax_node`; shared/global pattern payloads still fail explicitly.
 - postfix expression attributes on constructor/apply/infix expressions now parenthesize the attributed expression structurally before rendering `[@attr]`, so payloads stay intact and repeated formatting stays idempotent for shapes like `Some 0 [@inline always]`, `f x [@inline always]`, and `a + b [@inline always]`.
@@ -214,7 +215,6 @@ This file is _yours_. Keep it up to date after every big change.
   - pattern-payload structure beyond the current raw `pattern_syntax_node` / `guard_syntax_node`, so attribute payload rendering can stay structural there too
   - explicit public nested signature-body item anchors beyond the current helper-only relift surface, if downstream tools need more than `CstBuilder.signature_items_of_module_type`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
-  - explicit object-expression member ownership / ordered member-item streams if comments or docstrings inside `object ... end` bodies need structural rendering instead of per-member token assumptions
   - explicit ambiguity-sensitive type-declaration shape markers
 
 - [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
