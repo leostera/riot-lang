@@ -2703,7 +2703,7 @@ and render_tuple_expression_bare elements =
   Doc.group
     (join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements)
 
-and render_preserved_parenthesized_apply_payload
+and render_parenthesized_apply_payload
     ({ opening_token; closing_token; inner; _ } : Syn.Cst.parenthesized_expression) =
   let rendered_inner =
     match inner with
@@ -2792,7 +2792,7 @@ and render_apply_argument = function
              | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } );
            _;
          } as expression)) ->
-      render_preserved_parenthesized_apply_payload expression
+      render_parenthesized_apply_payload expression
   | Syn.Cst.Positional expression ->
       if expression_needs_parens_in_apply expression then
         Doc.concat [ Doc.lparen; render_expression expression; Doc.rparen ]
@@ -2814,7 +2814,7 @@ and render_apply_argument = function
                      | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } );
                    _;
                  } as expression) ->
-                render_preserved_parenthesized_apply_payload expression
+                render_parenthesized_apply_payload expression
             | _ when expression_needs_parens_in_labeled_argument value ->
                 Doc.concat [ Doc.lparen; render_expression value; Doc.rparen ]
             | _ ->
@@ -2843,7 +2843,7 @@ and render_apply_argument = function
                      | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } );
                    _;
                  } as expression) ->
-                render_preserved_parenthesized_apply_payload expression
+                render_parenthesized_apply_payload expression
             | _ when expression_needs_parens_in_labeled_argument value ->
                 Doc.concat [ Doc.lparen; render_expression value; Doc.rparen ]
             | _ ->

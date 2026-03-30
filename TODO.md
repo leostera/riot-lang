@@ -127,15 +127,14 @@ This file is _yours_. Keep it up to date after every big change.
   - `doc_of_owned_trivia` now uses explicit formatter separators instead of raw source gaps between adjacent comment/doc items
 
 - [ ] Remove token-text replay and token-text heuristics still used in `lower.ml`
-  - any remaining token-text-based preservation gates such as shortcut-attribute / extension special cases if they still exist
+  - keep auditing the remaining `token_text` uses so they stay limited to explicit structural/layout decisions, not new preservation or replay paths
 
 - [ ] Audit remaining layout heuristics and keep only the ones that are explicit style policy
   - inline `let ... =` placement rules such as `expression_is_simple_after_equals`
   - `render_local_binding` header/body placement rules
 
-- [ ] Remove source-derived “safe to rewrite” gates from top-level formatting
-  - keep auditing top-level item joins for any remaining “preserve because rewrite might change meaning” behavior
-  - replace any such gate with explicit CST facts or hard failure
+- [x] Remove source-derived “safe to rewrite” gates from top-level formatting
+  - top-level item joins/renderers are layout-only now; there are no remaining “preserve because rewrite might change meaning” branches in top-level formatting
 
 - [x] Remove source-slice reconstruction from lowering context setup
   - `render_structure_items ?source ~source_node`
