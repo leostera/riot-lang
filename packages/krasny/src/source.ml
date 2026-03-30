@@ -53,6 +53,3 @@ let source_of_span source (span : Syn.Ceibo.Span.t) =
     ""
   else
     String.sub source start (end_ - start)
-
-let source_between source ~start ~end_ =
-  source_of_span source (Syn.Ceibo.Span.make ~start ~end_)
