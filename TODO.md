@@ -93,6 +93,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `doc_of_owned_trivia` now joins owned comments/docstrings with explicit formatter separators instead of recovering whitespace/newline gaps from raw source text.
 - `render_structure_items` and `render_signature_items` now render directly from ordered item streams plus owned trivia; they no longer require source text or nested source-window slicing.
 - top-level structure/signature rendering now trusts the incoming ordered CST item streams directly; `lower.ml` no longer re-sorts those item lists by reconstructed syntax-node spans before joining docs.
+- signature top-level rendering no longer reconstructs per-item spans at all; `render_signature_top_level_items` now joins the ordered CST stream directly because signature entries have no phrase-separator suffix path today.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
@@ -191,7 +192,7 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit comment-sensitive layout facts for apply / after-`=` policy, so `krasny` can stop scanning red-token leading trivia through `syntax_node_has_comment_like_trivia`
 
 - [ ] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
-  - `render_structure_top_level_items` and `render_signature_top_level_items` still derive joins from syntax-node spans and boundary reconstruction even though they now trust ordered CST streams for item order
+  - `render_structure_top_level_items` still derives joins from syntax-node spans and boundary reconstruction for phrase-separator placement; the signature top-level path is now span-free
   - `span_of_syntax_node_nontrivia_bounds`, `span_of_syntax_node_trim_leading_trivia_keep_trailing_comments`, and `type_declaration_owned_trivia_end` still reconstruct layout boundaries from red-tree token spans
   - body/branch boundary trivia now routes through `Syn.Cst.leading_trivia_*` helpers instead of direct formatter-side token walks, but the remaining debt is still missing node-specific CST boundary fields rather than permanent generic helper indirection
 

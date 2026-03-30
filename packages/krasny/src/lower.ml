@@ -5148,39 +5148,13 @@ and render_signature_top_level_items
         in
         Doc.concat [ doc; separator; join_entries rest ]
   in
-  let signature_item_span item =
-    match item with
-    | Syn.Cst.SignatureItem.Comment comment ->
-        Syn.Cst.Token.span (Syn.Cst.Comment.token comment)
-    | Syn.Cst.SignatureItem.Docstring docstring ->
-        Syn.Cst.Token.span (Syn.Cst.Docstring.token docstring)
-    | Syn.Cst.SignatureItem.TypeDeclaration decl ->
-        let syntax_node = Syn.Cst.SignatureItem.syntax_node item in
-        let span =
-          let span =
-            span_of_syntax_node_trim_leading_trivia_keep_trailing_comments syntax_node
-          in
-          { span with end_ = Int.max span.end_ (type_declaration_owned_trivia_end decl) }
-        in
-        span
-    | _ ->
-        Syn.Cst.SignatureItem.syntax_node item
-        |> span_of_syntax_node_nontrivia_bounds
-  in
-  let items =
-    items
-    |> List.map (fun item -> (item, signature_item_span item))
-  in
   let rec loop acc items =
     yield ();
     match items with
     | [] ->
         join_entries (List.rev acc)
-    | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
-        let entry =
-          let _base_span = (base_span : Syn.Ceibo.Span.t) in
-          render_signature_entry ~trailing_suffix:None item
-        in
+    | item :: rest ->
+        let entry = render_signature_entry ~trailing_suffix:None item in
         loop (entry :: acc) rest
   in
   loop [] items
