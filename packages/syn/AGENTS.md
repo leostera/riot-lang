@@ -73,6 +73,7 @@
 66. Keep syntax-optional adornments as optional fields, not fake grammar branches. If attributes, annotations, or constraints are optional in the language, model them with `option` on the valid node shape instead of introducing branch constructors just for presence/absence.
 67. Split class/object member definitions along real grammar alternatives. Concrete methods/values should require bodies and keep optional type annotations, while virtual methods/values should require types and forbid bodies; initializers should require bodies outright.
 68. Keep expression type annotations and coercions on one explicit `Expression.TypeAscription` node with valid inner variants. Do not split ordinary `: t` away from `:> t` / `: t :> u` into parallel nullable record shapes again.
+69. Keep `class` items split by file context. Structure-side `class ... = ...` forms belong on `ClassDefinition`; interface-side `class ... : ...` forms belong on `ClassDeclaration`; do not reintroduce a shared cross-context class node.
 
 ## Validate
 

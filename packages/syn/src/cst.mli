@@ -4354,26 +4354,62 @@ type external_declaration = {
     class type service = object method run : unit -> unit end
     ```
 *)
-type class_declaration =
-  | ClassDeclarationSignature of {
-      syntax_node : syntax_node;
-      type_params : TypeParameter.t list;
-      declaration_extension : extension option;
-      declaration_attributes : attribute list;
-      class_name : Token.t;
-      class_type : class_type;
-      owned_trivia : owned_trivia;
-    }
-  | ClassDeclarationStructure of {
-      syntax_node : syntax_node;
-      type_params : TypeParameter.t list;
-      declaration_extension : extension option;
-      declaration_attributes : attribute list;
-      class_name : Token.t;
-      class_type : class_type option;
-      class_body : class_expression;
-      owned_trivia : owned_trivia;
-    }
+module ClassDeclaration : sig
+  type t = {
+    syntax_node : syntax_node;
+    type_params : TypeParameter.t list;
+    declaration_extension : extension option;
+    declaration_attributes : attribute list;
+    class_name : Token.t;
+    class_type : class_type;
+    owned_trivia : owned_trivia;
+  }
+  val syntax_node : t -> syntax_node
+
+  val type_params : t -> TypeParameter.t list
+
+  val declaration_extension : t -> extension option
+
+  val declaration_attributes : t -> attribute list
+
+  val class_name_token : t -> Token.t
+
+  val class_type : t -> class_type
+
+  val owned_trivia : t -> owned_trivia
+
+  val name : t -> string
+end
+
+module ClassDefinition : sig
+  type t = {
+    syntax_node : syntax_node;
+    type_params : TypeParameter.t list;
+    declaration_extension : extension option;
+    declaration_attributes : attribute list;
+    class_name : Token.t;
+    class_type : class_type option;
+    class_body : class_expression;
+    owned_trivia : owned_trivia;
+  }
+  val syntax_node : t -> syntax_node
+
+  val type_params : t -> TypeParameter.t list
+
+  val declaration_extension : t -> extension option
+
+  val declaration_attributes : t -> attribute list
+
+  val class_name_token : t -> Token.t
+
+  val class_type : t -> class_type option
+
+  val class_body : t -> class_expression
+
+  val owned_trivia : t -> owned_trivia
+
+  val name : t -> string
+end
 (** The payload of an `include` item.
 
     Implementations include module expressions such as `include M` or
@@ -4446,7 +4482,7 @@ module StructureItem : sig
         (** A floating attribute item such as `[@@@warning "-32"]`. *)
     | Extension of extension
         (** A floating extension item. *)
-    | ClassDeclaration of class_declaration
+    | ClassDeclaration of ClassDefinition.t
         (** A `class` declaration item. *)
     | ClassTypeDeclaration of class_type_declaration
         (** A `class type` declaration item. *)
@@ -4480,7 +4516,7 @@ module SignatureItem : sig
         (** A floating attribute item such as `[@@@warning "-32"]`. *)
     | Extension of extension
         (** A floating extension item. *)
-    | ClassDeclaration of class_declaration
+    | ClassDeclaration of ClassDeclaration.t
         (** A `class` declaration item. *)
     | ClassTypeDeclaration of class_type_declaration
         (** A `class type` declaration item. *)

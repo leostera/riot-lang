@@ -4989,10 +4989,11 @@ and is_open_signature_item = function
   | _ ->
       false
 
-and class_declaration_owned_trivia = function
-  | Syn.Cst.ClassDeclarationSignature { owned_trivia; _ }
-  | Syn.Cst.ClassDeclarationStructure { owned_trivia; _ } ->
-      owned_trivia
+and class_declaration_owned_trivia decl =
+  Syn.Cst.ClassDeclaration.owned_trivia decl
+
+and class_definition_owned_trivia decl =
+  Syn.Cst.ClassDefinition.owned_trivia decl
 
 and render_structure_item_owned_trivia =
   function
@@ -5001,7 +5002,7 @@ and render_structure_item_owned_trivia =
   | Syn.Cst.StructureItem.TypeExtension decl ->
       Some (Syn.Cst.TypeExtension.owned_trivia decl)
   | Syn.Cst.StructureItem.ClassDeclaration decl ->
-      Some (class_declaration_owned_trivia decl)
+      Some (class_definition_owned_trivia decl)
   | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
       Some decl.owned_trivia
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
@@ -5232,7 +5233,7 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.Extension extension ->
       render_extension_doc extension
   | Syn.Cst.StructureItem.ClassDeclaration decl ->
-      render_class_declaration decl
+      render_class_definition decl
   | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
       render_class_type_declaration decl
 
@@ -5286,25 +5287,11 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
       render_class_type_declaration decl
 
-and render_class_declaration (declaration : Syn.Cst.class_declaration) =
-  let type_params, declaration_extension, declaration_attributes, class_name =
-    match declaration with
-    | Syn.Cst.ClassDeclarationSignature {
-        type_params;
-        declaration_extension;
-        declaration_attributes;
-        class_name;
-        _;
-      }
-    | Syn.Cst.ClassDeclarationStructure {
-        type_params;
-        declaration_extension;
-        declaration_attributes;
-        class_name;
-        _;
-      } ->
-        (type_params, declaration_extension, declaration_attributes, class_name)
-  in
+and render_class_declaration (declaration : Syn.Cst.ClassDeclaration.t) =
+  let type_params = Syn.Cst.ClassDeclaration.type_params declaration in
+  let declaration_extension = Syn.Cst.ClassDeclaration.declaration_extension declaration in
+  let declaration_attributes = Syn.Cst.ClassDeclaration.declaration_attributes declaration in
+  let class_name = Syn.Cst.ClassDeclaration.class_name_token declaration in
   let keyword =
     match declaration_extension with
     | None ->
@@ -5334,22 +5321,60 @@ and render_class_declaration (declaration : Syn.Cst.class_declaration) =
           doc_of_token class_name;
         ]
   in
-  match declaration with
-  | Syn.Cst.ClassDeclarationSignature { class_type; _ } ->
-      Doc.concat [ head; annotation_colon; render_class_type_doc class_type ]
-  | Syn.Cst.ClassDeclarationStructure { class_type; class_body; _ } -> (
-      match class_type with
-      | Some class_type ->
-          Doc.concat
-            [
-              head;
-              annotation_colon;
-              render_class_type_doc class_type;
-              equals;
-              render_class_expression class_body;
-            ]
-      | None ->
-          Doc.concat [ head; equals; render_class_expression class_body ])
+  Doc.concat
+    [
+      head;
+      annotation_colon;
+      render_class_type_doc (Syn.Cst.ClassDeclaration.class_type declaration);
+    ]
+
+and render_class_definition (declaration : Syn.Cst.ClassDefinition.t) =
+  let type_params = Syn.Cst.ClassDefinition.type_params declaration in
+  let declaration_extension = Syn.Cst.ClassDefinition.declaration_extension declaration in
+  let declaration_attributes = Syn.Cst.ClassDefinition.declaration_attributes declaration in
+  let class_name = Syn.Cst.ClassDefinition.class_name_token declaration in
+  let keyword =
+    match declaration_extension with
+    | None ->
+        kw_class
+    | Some extension ->
+        Doc.concat
+          [
+            kw_class;
+            doc_of_token extension.sigil_token;
+            doc_of_ident extension.name;
+            render_extension_payload_doc_with_context ~context:extension_payload_context extension;
+          ]
+  in
+  let head =
+    let params = render_type_parameters type_params in
+    if params = Doc.empty then
+      Doc.concat [ keyword; Doc.space; join_map Doc.space render_attribute declaration_attributes; (if declaration_attributes = [] then Doc.empty else Doc.space); doc_of_token class_name ]
+    else
+      Doc.concat
+        [
+          keyword;
+          Doc.space;
+          join_map Doc.space render_attribute declaration_attributes;
+          (if declaration_attributes = [] then Doc.empty else Doc.space);
+          params;
+          Doc.space;
+          doc_of_token class_name;
+        ]
+  in
+  match Syn.Cst.ClassDefinition.class_type declaration with
+  | Some class_type ->
+      Doc.concat
+        [
+          head;
+          annotation_colon;
+          render_class_type_doc class_type;
+          equals;
+          render_class_expression (Syn.Cst.ClassDefinition.class_body declaration);
+        ]
+  | None ->
+      Doc.concat
+        [ head; equals; render_class_expression (Syn.Cst.ClassDefinition.class_body declaration) ]
 
 and render_class_type_declaration
     ({

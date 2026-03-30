@@ -7560,7 +7560,7 @@ let class_declaration_from_node = fun node ->
   | Some (name_node, prefix, remainder) -> (
       match first_ident_token_in_subtree name_node, List.rev remainder with
       | Some class_name, class_body_node :: rev_prefix ->
-          let declaration_extension, declaration_attributes =
+          let class_declaration_extension, class_declaration_attributes =
             declaration_modifiers_from_nodes prefix
           in
           let suffix_class_type, suffix_class_body = class_type_and_body_from_child class_body_node in
@@ -7573,36 +7573,38 @@ let class_declaration_from_node = fun node ->
                   Some (class_type_from_node class_type_node)
               | _ -> None
           in
-          let class_type =
+          let declaration_class_type =
             match suffix_class_type with
             | Some _ -> suffix_class_type
             | None -> prefix_class_type
           in
-          let owned_trivia = owned_trivia_from_node node in
-          (match suffix_class_body, class_type with
-          | Some class_body, class_type ->
+          let declaration_owned_trivia = owned_trivia_from_node node in
+          (match suffix_class_body, declaration_class_type with
+          | Some declaration_class_body, declaration_class_type ->
               Some
-                (Cst.ClassDeclarationStructure {
-                   syntax_node = node;
-                   type_params = type_parameters_from_node node;
-                   declaration_extension;
-                   declaration_attributes;
-                   class_name;
-                   class_type;
-                   class_body;
-                   owned_trivia;
-                 })
-          | None, Some class_type ->
+                (`Definition
+                  Cst.ClassDefinition.{
+                    syntax_node = node;
+                    type_params = type_parameters_from_node node;
+                    declaration_extension = class_declaration_extension;
+                    declaration_attributes = class_declaration_attributes;
+                    class_name = class_name;
+                    class_type = declaration_class_type;
+                    class_body = declaration_class_body;
+                    owned_trivia = declaration_owned_trivia;
+                  })
+          | None, Some declaration_class_type ->
               Some
-                (Cst.ClassDeclarationSignature {
-                   syntax_node = node;
-                   type_params = type_parameters_from_node node;
-                   declaration_extension;
-                   declaration_attributes;
-                   class_name;
-                   class_type;
-                   owned_trivia;
-                 })
+                (`Declaration
+                  Cst.ClassDeclaration.{
+                    syntax_node = node;
+                    type_params = type_parameters_from_node node;
+                    declaration_extension = class_declaration_extension;
+                    declaration_attributes = class_declaration_attributes;
+                    class_name = class_name;
+                    class_type = declaration_class_type;
+                    owned_trivia = declaration_owned_trivia;
+                  })
           | None, None ->
               None)
       | _ -> None
@@ -7890,7 +7892,8 @@ let rec structure_items_from_node = fun node ->
       )
   | Syntax_kind.CLASS_DECL -> (
       match class_declaration_from_node node with
-      | Some decl -> [ Cst.StructureItem.ClassDeclaration decl ]
+      | Some (`Definition decl) -> [ Cst.StructureItem.ClassDeclaration decl ]
+      | Some (`Declaration _) -> unsupported_item node
       | None -> unsupported_item node
     )
   | Syntax_kind.CLASS_TYPE_DECL -> (
@@ -7976,7 +7979,8 @@ let rec signature_items_from_node = fun node ->
         child_nodes |> List.concat_map signature_items_from_node
   | Syntax_kind.CLASS_DECL -> (
       match class_declaration_from_node node with
-      | Some decl -> [ Cst.SignatureItem.ClassDeclaration decl ]
+      | Some (`Declaration decl) -> [ Cst.SignatureItem.ClassDeclaration decl ]
+      | Some (`Definition _) -> unsupported_item node
       | None -> unsupported_item node
     )
   | Syntax_kind.CLASS_TYPE_DECL -> (
@@ -9359,13 +9363,16 @@ let validate_type_extension = fun ~context ({ constructors; _ } : Cst.TypeExtens
       :: context)))) (Cst.VariantConstructor.result_type constructor))
     constructors
 
-let validate_class_declaration = fun ~context ->
-  function
-  | Cst.ClassDeclarationSignature { class_type; _ } ->
-      validate_class_type ~context:((("item.class_declaration.type" :: context))) class_type
-  | Cst.ClassDeclarationStructure { class_type; class_body; _ } ->
-      Option.iter (validate_class_type ~context:((("item.class_declaration.type" :: context)))) class_type;
-      validate_class_expression ~context:((("item.class_declaration.body" :: context))) class_body
+let validate_class_declaration = fun ~context (decl : Cst.ClassDeclaration.t) ->
+  validate_class_type ~context:((("item.class_declaration.type" :: context)))
+    (Cst.ClassDeclaration.class_type decl)
+
+let validate_class_definition = fun ~context (decl : Cst.ClassDefinition.t) ->
+  Option.iter
+    (validate_class_type ~context:((("item.class_definition.type" :: context))))
+    (Cst.ClassDefinition.class_type decl);
+  validate_class_expression ~context:((("item.class_definition.body" :: context)))
+    (Cst.ClassDefinition.class_body decl)
 
 let validate_class_type_declaration = fun ~context ({ class_type_body; _ } : Cst.class_type_declaration) -> validate_class_type
 ~context:((("item.class_type_declaration.body" :: context)))
@@ -9400,7 +9407,7 @@ let validate_structure_item = fun ~context ->
   | Cst.StructureItem.Expression expr ->
       validate_expression ~context:((("item.expression" :: context))) expr
   | Cst.StructureItem.ClassDeclaration decl ->
-      validate_class_declaration ~context decl
+      validate_class_definition ~context decl
   | Cst.StructureItem.ClassTypeDeclaration decl ->
       validate_class_type_declaration ~context decl
   | Cst.StructureItem.Attribute _

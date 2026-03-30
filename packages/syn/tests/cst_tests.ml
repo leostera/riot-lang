@@ -2397,8 +2397,7 @@ let tests =
         in
         match signature_items cst with
         | Syn.Cst.SignatureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationSignature
-              {
+            {
               class_name;
               class_type =
                 Syn.Cst.ClassType.Signature
@@ -2420,7 +2419,7 @@ let tests =
                       ];
                   };
               _;
-            })
+            }
           :: _ ->
             Test.assert_equal ~expected:"c"
               ~actual:(Syn.Cst.Token.text class_name);
@@ -2448,8 +2447,7 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationStructure
-              {
+            {
               class_name;
               class_type =
                 Some
@@ -2490,7 +2488,7 @@ let tests =
                     _;
                   };
               _;
-            })
+            }
           :: _ ->
             Test.assert_equal ~expected:"service"
               ~actual:(Syn.Cst.Token.text class_name);
@@ -2522,16 +2520,14 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationStructure
-              {
+            {
               class_name = direct_name;
               class_body =
                 Syn.Cst.ClassExpression.Path direct_path;
               _;
-            })
+            }
           :: Syn.Cst.StructureItem.ClassDeclaration
-               (Syn.Cst.ClassDeclarationStructure
-                 {
+               {
                  class_name = applied_name;
                  class_body =
                    Syn.Cst.ClassExpression.Apply
@@ -2543,10 +2539,9 @@ let tests =
                        _;
                      };
                  _;
-               })
+               }
              :: Syn.Cst.StructureItem.ClassDeclaration
-                  (Syn.Cst.ClassDeclarationStructure
-                    {
+                  {
                     class_name = factory_name;
                     class_body =
                       Syn.Cst.ClassExpression.Fun
@@ -2580,10 +2575,9 @@ let tests =
                           _;
                         };
                     _;
-                  })
+                  }
                 :: Syn.Cst.StructureItem.ClassDeclaration
-                     (Syn.Cst.ClassDeclarationStructure
-                       {
+                     {
                        class_name = local_name;
                        class_body =
                          Syn.Cst.ClassExpression.Let
@@ -2617,10 +2611,9 @@ let tests =
                              _;
                            };
                        _;
-                     })
+                     }
                    :: Syn.Cst.StructureItem.ClassDeclaration
-                        (Syn.Cst.ClassDeclarationStructure
-                          {
+                        {
                           class_name = opened_name;
                           class_body =
                             Syn.Cst.ClassExpression.LocalOpen
@@ -2631,15 +2624,14 @@ let tests =
                                 _;
                               };
                           _;
-                        })
+                        }
                       :: Syn.Cst.StructureItem.ClassDeclaration
-                           (Syn.Cst.ClassDeclarationStructure
-                             {
+                           {
                              class_name = generated_name;
                              class_body =
                                Syn.Cst.ClassExpression.Extension extension;
                              _;
-                           })
+                           }
                          :: _ ->
             Test.assert_equal ~expected:"direct"
               ~actual:(Syn.Cst.Token.text direct_name);
@@ -2691,8 +2683,7 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationStructure
-              {
+            {
               class_name;
               class_body =
                 Syn.Cst.ClassExpression.Constraint
@@ -2703,7 +2694,7 @@ let tests =
                     _;
                   };
               _;
-            })
+            }
           :: _ ->
             Test.assert_equal ~expected:"constrained"
               ~actual:(Syn.Cst.Token.text class_name);
@@ -2731,8 +2722,7 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationStructure
-              {
+            {
                 class_body =
                   Syn.Cst.ClassExpression.Structure
                     {
@@ -2830,7 +2820,7 @@ let tests =
                       _;
                     };
                 _;
-              })
+              }
           :: _ ->
             Test.assert_equal ~expected:(Some "builder")
               ~actual:(Syn.Cst.Ident.name inherited_class);
@@ -2882,8 +2872,7 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationStructure
-              {
+            {
               class_body =
                 Syn.Cst.ClassExpression.Structure
                   {
@@ -2969,7 +2958,7 @@ let tests =
                     _;
                   };
               _;
-            })
+            }
           :: _ ->
             Test.assert_equal ~expected:"state"
               ~actual:(Syn.Cst.Token.text state_name);
@@ -3013,8 +3002,7 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationStructure
-              {
+            {
                 class_body =
                   Syn.Cst.ClassExpression.Structure
                     {
@@ -3073,7 +3061,7 @@ let tests =
                       _;
                     };
                 _;
-              })
+              }
           :: _ ->
             Test.assert_equal ~expected:(Some "seed")
               ~actual:(Syn.Cst.Ident.name state_value);
@@ -3106,8 +3094,7 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationStructure
-              {
+            {
               class_body =
                 Syn.Cst.ClassExpression.Structure
                   {
@@ -3116,7 +3103,7 @@ let tests =
                     _;
                   };
               _;
-            })
+            }
           :: _ ->
             let body_items =
               Syn.CstBuilder.class_field_items_of_fields
@@ -3283,8 +3270,7 @@ let tests =
         in
         match signature_items cst with
         | Syn.Cst.SignatureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationSignature
-              {
+            {
               class_name;
               class_type =
                 Syn.Cst.ClassType.Arrow
@@ -3311,7 +3297,7 @@ let tests =
                     _;
                   };
               _;
-            })
+            }
           :: _ ->
             Test.assert_equal ~expected:"service"
               ~actual:(Syn.Cst.Token.text class_name);
@@ -9800,20 +9786,11 @@ let tests =
         in
         match structure_items cst with
         | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationSignature
-              {
+            {
                 declaration_extension = Some extension;
                 declaration_attributes = [ attribute ];
                 _;
-              })
-          :: _
-        | Syn.Cst.StructureItem.ClassDeclaration
-            (Syn.Cst.ClassDeclarationStructure
-              {
-                declaration_extension = Some extension;
-                declaration_attributes = [ attribute ];
-                _;
-              })
+              }
           :: _ ->
             Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name extension.name);
             Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name attribute.name);

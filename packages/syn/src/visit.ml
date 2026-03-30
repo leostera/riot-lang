@@ -4,7 +4,8 @@ type 'ctx walker = {
   apply_argument : 'ctx -> Cst.apply_argument -> 'ctx;
   attribute : 'ctx -> Cst.attribute -> 'ctx;
   binding_operator_binding : 'ctx -> Cst.binding_operator_binding -> 'ctx;
-  class_declaration : 'ctx -> Cst.class_declaration -> 'ctx;
+  class_declaration : 'ctx -> Cst.ClassDeclaration.t -> 'ctx;
+  class_definition : 'ctx -> Cst.ClassDefinition.t -> 'ctx;
   class_expression : 'ctx -> Cst.ClassExpression.t -> 'ctx;
   class_field : 'ctx -> Cst.class_field -> 'ctx;
   class_type : 'ctx -> Cst.ClassType.t -> 'ctx;
@@ -50,7 +51,8 @@ type 'ctx walker = {
   descend_apply_argument : 'ctx -> Cst.apply_argument -> 'ctx;
   descend_attribute : 'ctx -> Cst.attribute -> 'ctx;
   descend_binding_operator_binding : 'ctx -> Cst.binding_operator_binding -> 'ctx;
-  descend_class_declaration : 'ctx -> Cst.class_declaration -> 'ctx;
+  descend_class_declaration : 'ctx -> Cst.ClassDeclaration.t -> 'ctx;
+  descend_class_definition : 'ctx -> Cst.ClassDefinition.t -> 'ctx;
   descend_class_expression : 'ctx -> Cst.ClassExpression.t -> 'ctx;
   descend_class_field : 'ctx -> Cst.class_field -> 'ctx;
   descend_class_type : 'ctx -> Cst.ClassType.t -> 'ctx;
@@ -99,7 +101,8 @@ type 'ctx visitor = {
   visit_apply_argument : 'ctx -> 'ctx walker -> Cst.apply_argument -> 'ctx;
   visit_attribute : 'ctx -> 'ctx walker -> Cst.attribute -> 'ctx;
   visit_binding_operator_binding : 'ctx -> 'ctx walker -> Cst.binding_operator_binding -> 'ctx;
-  visit_class_declaration : 'ctx -> 'ctx walker -> Cst.class_declaration -> 'ctx;
+  visit_class_declaration : 'ctx -> 'ctx walker -> Cst.ClassDeclaration.t -> 'ctx;
+  visit_class_definition : 'ctx -> 'ctx walker -> Cst.ClassDefinition.t -> 'ctx;
   visit_class_expression : 'ctx -> 'ctx walker -> Cst.ClassExpression.t -> 'ctx;
   visit_class_field : 'ctx -> 'ctx walker -> Cst.class_field -> 'ctx;
   visit_class_type : 'ctx -> 'ctx walker -> Cst.ClassType.t -> 'ctx;
@@ -835,19 +838,17 @@ and descend_value_declaration = fun walk ctx (declaration : Cst.value_declaratio
 and descend_external_declaration = fun walk ctx (declaration : Cst.external_declaration) ->
   let ctx = walk.core_type ctx declaration.type_ in
   List.fold_left walk.attribute ctx declaration.attributes
-and descend_class_declaration = fun walk ctx (declaration : Cst.class_declaration) ->
-  match declaration with
-  | Cst.ClassDeclarationSignature { type_params; class_type; _ } ->
-      let ctx = List.fold_left walk.type_parameter ctx type_params in
-      walk.class_type ctx class_type
-  | Cst.ClassDeclarationStructure { type_params; class_type; class_body; _ } ->
-      let ctx = List.fold_left walk.type_parameter ctx type_params in
-      let ctx =
-        match class_type with
-        | Some class_type -> walk.class_type ctx class_type
-        | None -> ctx
-      in
-      walk.class_expression ctx class_body
+and descend_class_declaration = fun walk ctx (declaration : Cst.ClassDeclaration.t) ->
+  let ctx = List.fold_left walk.type_parameter ctx (Cst.ClassDeclaration.type_params declaration) in
+  walk.class_type ctx (Cst.ClassDeclaration.class_type declaration)
+and descend_class_definition = fun walk ctx (declaration : Cst.ClassDefinition.t) ->
+  let ctx = List.fold_left walk.type_parameter ctx (Cst.ClassDefinition.type_params declaration) in
+  let ctx =
+    match Cst.ClassDefinition.class_type declaration with
+    | Some class_type -> walk.class_type ctx class_type
+    | None -> ctx
+  in
+  walk.class_expression ctx (Cst.ClassDefinition.class_body declaration)
 and descend_class_type_declaration = fun walk ctx (declaration : Cst.class_type_declaration) ->
   let ctx = List.fold_left walk.type_parameter ctx declaration.type_params in
   walk.class_type ctx declaration.class_type_body
@@ -901,7 +902,7 @@ and descend_structure_item = fun walk ctx (item : Cst.StructureItem.t) ->
   | Cst.StructureItem.Extension extension ->
       walk.extension ctx extension
   | Cst.StructureItem.ClassDeclaration declaration ->
-      walk.class_declaration ctx declaration
+      walk.class_definition ctx declaration
   | Cst.StructureItem.ClassTypeDeclaration declaration ->
       walk.class_type_declaration ctx declaration
   | Cst.StructureItem.ModuleDeclaration declaration ->
@@ -967,7 +968,8 @@ let default = {visit_apply_argument = (fun ctx walk node ->
     walk.descend_apply_argument ctx node); visit_attribute = (fun ctx walk node ->
     walk.descend_attribute ctx node); visit_binding_operator_binding = (fun ctx walk node ->
     walk.descend_binding_operator_binding ctx node); visit_class_declaration = (fun ctx walk node ->
-    walk.descend_class_declaration ctx node); visit_class_expression = (fun ctx walk node ->
+    walk.descend_class_declaration ctx node); visit_class_definition = (fun ctx walk node ->
+    walk.descend_class_definition ctx node); visit_class_expression = (fun ctx walk node ->
     walk.descend_class_expression ctx node); visit_class_field = (fun ctx walk node ->
     walk.descend_class_field ctx node); visit_class_type = (fun ctx walk node ->
     walk.descend_class_type ctx node); visit_class_type_declaration = (fun ctx walk node ->
@@ -1016,7 +1018,8 @@ let walker = fun visitor ->
       visitor.visit_apply_argument ctx walk node); attribute = (fun ctx node ->
       visitor.visit_attribute ctx walk node); binding_operator_binding = (fun ctx node ->
       visitor.visit_binding_operator_binding ctx walk node); class_declaration = (fun ctx node ->
-      visitor.visit_class_declaration ctx walk node); class_expression = (fun ctx node ->
+      visitor.visit_class_declaration ctx walk node); class_definition = (fun ctx node ->
+      visitor.visit_class_definition ctx walk node); class_expression = (fun ctx node ->
       visitor.visit_class_expression ctx walk node); class_field = (fun ctx node ->
       visitor.visit_class_field ctx walk node); class_type = (fun ctx node ->
       visitor.visit_class_type ctx walk node); class_type_declaration = (fun ctx node ->
@@ -1065,6 +1068,9 @@ let walker = fun visitor ->
     walk
     ctx
     node); descend_class_expression = (fun ctx node -> descend_class_expression walk ctx node); descend_class_field = (fun ctx node -> descend_class_field
+    walk
+    ctx
+    node); descend_class_definition = (fun ctx node -> descend_class_definition
     walk
     ctx
     node); descend_class_type = (fun ctx node -> descend_class_type walk ctx node); descend_class_type_declaration = (fun ctx node -> descend_class_type_declaration walk ctx node); descend_class_type_field = (fun ctx node -> descend_class_type_field
@@ -1140,6 +1146,8 @@ ctx
 node
 
 let class_declaration = fun visitor ctx node -> (walker visitor).class_declaration ctx node
+
+let class_definition = fun visitor ctx node -> (walker visitor).class_definition ctx node
 
 let class_expression = fun visitor ctx node -> (walker visitor).class_expression ctx node
 

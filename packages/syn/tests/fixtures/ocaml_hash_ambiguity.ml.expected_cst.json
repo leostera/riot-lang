@@ -33,7 +33,7 @@
       {
         "tag": "class_declaration",
         "item": {
-          "tag": "structure",
+          "tag": "definition",
           "syntax_node": {
             "kind": "CLASS_DECL",
             "span": {

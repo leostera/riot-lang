@@ -13,7 +13,7 @@
       {
         "tag": "class_declaration",
         "item": {
-          "tag": "signature",
+          "tag": "declaration",
           "syntax_node": {
             "kind": "CLASS_DECL",
             "span": {

@@ -1963,45 +1963,28 @@ and class_type_to_json =
   | Cst.ClassType.Extension extension ->
       Json.Object [ ("tag", Json.String "extension"); ("extension", extension_to_json extension) ]
 
-let class_declaration_to_json = function
-  | Cst.ClassDeclarationSignature {
-      syntax_node;
-      type_params;
-      declaration_extension;
-      declaration_attributes;
-      class_name;
-      class_type;
-      owned_trivia = _;
-    } ->
-      Json.Object [
-        ("tag", Json.String "signature");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("type_params", Json.Array (List.map type_parameter_to_json type_params));
-        ("declaration_extension", option_to_json extension_to_json declaration_extension);
-        ("declaration_attributes", Json.Array (List.map attribute_to_json declaration_attributes));
-        ("class_name", token_to_json class_name);
-        ("class_type", class_type_to_json class_type)
-      ]
-  | Cst.ClassDeclarationStructure {
-      syntax_node;
-      type_params;
-      declaration_extension;
-      declaration_attributes;
-      class_name;
-      class_type;
-      class_body;
-      owned_trivia = _;
-    } ->
-      Json.Object [
-        ("tag", Json.String "structure");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("type_params", Json.Array (List.map type_parameter_to_json type_params));
-        ("declaration_extension", option_to_json extension_to_json declaration_extension);
-        ("declaration_attributes", Json.Array (List.map attribute_to_json declaration_attributes));
-        ("class_name", token_to_json class_name);
-        ("class_type", option_to_json class_type_to_json class_type);
-        ("class_body", class_expression_to_json class_body)
-      ]
+let class_declaration_to_json (decl : Cst.ClassDeclaration.t) =
+  Json.Object [
+    ("tag", Json.String "declaration");
+    ("syntax_node", syntax_node_to_json (Cst.ClassDeclaration.syntax_node decl));
+    ("type_params", Json.Array (List.map type_parameter_to_json (Cst.ClassDeclaration.type_params decl)));
+    ("declaration_extension", option_to_json extension_to_json (Cst.ClassDeclaration.declaration_extension decl));
+    ("declaration_attributes", Json.Array (List.map attribute_to_json (Cst.ClassDeclaration.declaration_attributes decl)));
+    ("class_name", token_to_json (Cst.ClassDeclaration.class_name_token decl));
+    ("class_type", class_type_to_json (Cst.ClassDeclaration.class_type decl))
+  ]
+
+let class_definition_to_json (decl : Cst.ClassDefinition.t) =
+  Json.Object [
+    ("tag", Json.String "definition");
+    ("syntax_node", syntax_node_to_json (Cst.ClassDefinition.syntax_node decl));
+    ("type_params", Json.Array (List.map type_parameter_to_json (Cst.ClassDefinition.type_params decl)));
+    ("declaration_extension", option_to_json extension_to_json (Cst.ClassDefinition.declaration_extension decl));
+    ("declaration_attributes", Json.Array (List.map attribute_to_json (Cst.ClassDefinition.declaration_attributes decl)));
+    ("class_name", token_to_json (Cst.ClassDefinition.class_name_token decl));
+    ("class_type", option_to_json class_type_to_json (Cst.ClassDefinition.class_type decl));
+    ("class_body", class_expression_to_json (Cst.ClassDefinition.class_body decl))
+  ]
 
 let class_type_declaration_to_json = fun
   ({
@@ -2054,7 +2037,7 @@ let structure_item_to_json =
   | Cst.StructureItem.ClassDeclaration decl ->
       Json.Object [
         ("tag", Json.String "class_declaration");
-        ("item", class_declaration_to_json decl)
+        ("item", class_definition_to_json decl)
       ]
   | Cst.StructureItem.Attribute attribute ->
       Json.Object [

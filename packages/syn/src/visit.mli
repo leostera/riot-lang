@@ -127,7 +127,8 @@ type 'ctx walker = {
   apply_argument : 'ctx -> Cst.apply_argument -> 'ctx;
   attribute : 'ctx -> Cst.attribute -> 'ctx;
   binding_operator_binding : 'ctx -> Cst.binding_operator_binding -> 'ctx;
-  class_declaration : 'ctx -> Cst.class_declaration -> 'ctx;
+  class_declaration : 'ctx -> Cst.ClassDeclaration.t -> 'ctx;
+  class_definition : 'ctx -> Cst.ClassDefinition.t -> 'ctx;
   class_expression : 'ctx -> Cst.ClassExpression.t -> 'ctx;
   class_field : 'ctx -> Cst.class_field -> 'ctx;
   class_type : 'ctx -> Cst.ClassType.t -> 'ctx;
@@ -173,7 +174,8 @@ type 'ctx walker = {
   descend_apply_argument : 'ctx -> Cst.apply_argument -> 'ctx;
   descend_attribute : 'ctx -> Cst.attribute -> 'ctx;
   descend_binding_operator_binding : 'ctx -> Cst.binding_operator_binding -> 'ctx;
-  descend_class_declaration : 'ctx -> Cst.class_declaration -> 'ctx;
+  descend_class_declaration : 'ctx -> Cst.ClassDeclaration.t -> 'ctx;
+  descend_class_definition : 'ctx -> Cst.ClassDefinition.t -> 'ctx;
   descend_class_expression : 'ctx -> Cst.ClassExpression.t -> 'ctx;
   descend_class_field : 'ctx -> Cst.class_field -> 'ctx;
   descend_class_type : 'ctx -> Cst.ClassType.t -> 'ctx;
@@ -223,7 +225,8 @@ type 'ctx visitor = {
   visit_apply_argument : 'ctx -> 'ctx walker -> Cst.apply_argument -> 'ctx;
   visit_attribute : 'ctx -> 'ctx walker -> Cst.attribute -> 'ctx;
   visit_binding_operator_binding : 'ctx -> 'ctx walker -> Cst.binding_operator_binding -> 'ctx;
-  visit_class_declaration : 'ctx -> 'ctx walker -> Cst.class_declaration -> 'ctx;
+  visit_class_declaration : 'ctx -> 'ctx walker -> Cst.ClassDeclaration.t -> 'ctx;
+  visit_class_definition : 'ctx -> 'ctx walker -> Cst.ClassDefinition.t -> 'ctx;
   visit_class_expression : 'ctx -> 'ctx walker -> Cst.ClassExpression.t -> 'ctx;
   visit_class_field : 'ctx -> 'ctx walker -> Cst.class_field -> 'ctx;
   visit_class_type : 'ctx -> 'ctx walker -> Cst.ClassType.t -> 'ctx;
@@ -278,7 +281,9 @@ val attribute : 'ctx visitor -> 'ctx -> Cst.attribute -> 'ctx
 
 val binding_operator_binding : 'ctx visitor -> 'ctx -> Cst.binding_operator_binding -> 'ctx
 
-val class_declaration : 'ctx visitor -> 'ctx -> Cst.class_declaration -> 'ctx
+val class_declaration : 'ctx visitor -> 'ctx -> Cst.ClassDeclaration.t -> 'ctx
+
+val class_definition : 'ctx visitor -> 'ctx -> Cst.ClassDefinition.t -> 'ctx
 
 val class_expression : 'ctx visitor -> 'ctx -> Cst.ClassExpression.t -> 'ctx
 

@@ -3109,26 +3109,49 @@ type external_declaration = {
   owned_trivia : owned_trivia;
 }
 
-type class_declaration =
-  | ClassDeclarationSignature of {
-      syntax_node : syntax_node;
-      type_params : TypeParameter.t list;
-      declaration_extension : extension option;
-      declaration_attributes : attribute list;
-      class_name : Token.t;
-      class_type : class_type;
-      owned_trivia : owned_trivia;
-    }
-  | ClassDeclarationStructure of {
-      syntax_node : syntax_node;
-      type_params : TypeParameter.t list;
-      declaration_extension : extension option;
-      declaration_attributes : attribute list;
-      class_name : Token.t;
-      class_type : class_type option;
-      class_body : class_expression;
-      owned_trivia : owned_trivia;
-    }
+module ClassDeclaration = struct
+  type t = {
+    syntax_node : syntax_node;
+    type_params : TypeParameter.t list;
+    declaration_extension : extension option;
+    declaration_attributes : attribute list;
+    class_name : Token.t;
+    class_type : class_type;
+    owned_trivia : owned_trivia;
+  }
+
+  let syntax_node = fun declaration -> declaration.syntax_node
+  let type_params = fun declaration -> declaration.type_params
+  let declaration_extension = fun declaration -> declaration.declaration_extension
+  let declaration_attributes = fun declaration -> declaration.declaration_attributes
+  let class_name_token = fun declaration -> declaration.class_name
+  let class_type = fun declaration -> declaration.class_type
+  let owned_trivia = fun declaration -> declaration.owned_trivia
+  let name = fun declaration -> Token.text declaration.class_name
+end
+
+module ClassDefinition = struct
+  type t = {
+    syntax_node : syntax_node;
+    type_params : TypeParameter.t list;
+    declaration_extension : extension option;
+    declaration_attributes : attribute list;
+    class_name : Token.t;
+    class_type : class_type option;
+    class_body : class_expression;
+    owned_trivia : owned_trivia;
+  }
+
+  let syntax_node = fun definition -> definition.syntax_node
+  let type_params = fun definition -> definition.type_params
+  let declaration_extension = fun definition -> definition.declaration_extension
+  let declaration_attributes = fun definition -> definition.declaration_attributes
+  let class_name_token = fun definition -> definition.class_name
+  let class_type = fun definition -> definition.class_type
+  let class_body = fun definition -> definition.class_body
+  let owned_trivia = fun definition -> definition.owned_trivia
+  let name = fun definition -> Token.text definition.class_name
+end
 
 type class_type_declaration = {
   syntax_node : syntax_node;
@@ -3158,7 +3181,7 @@ module StructureItem = struct
     | Expression of Expression.t
     | Attribute of attribute
     | Extension of extension
-    | ClassDeclaration of class_declaration
+    | ClassDeclaration of ClassDefinition.t
     | ClassTypeDeclaration of class_type_declaration
     | ModuleDeclaration of ModuleStructure.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
@@ -3177,11 +3200,7 @@ module StructureItem = struct
     | Expression expr -> Expression.syntax_node expr
     | Attribute attribute -> attribute.syntax_node
     | Extension extension -> extension.syntax_node
-    | ClassDeclaration decl -> (
-        match decl with
-        | ClassDeclarationSignature { syntax_node; _ }
-        | ClassDeclarationStructure { syntax_node; _ } ->
-            syntax_node)
+    | ClassDeclaration decl -> ClassDefinition.syntax_node decl
     | ClassTypeDeclaration decl -> decl.syntax_node
     | ModuleDeclaration decl -> ModuleStructure.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
@@ -3199,7 +3218,7 @@ module SignatureItem = struct
     | TypeExtension of TypeExtension.t
     | Attribute of attribute
     | Extension of extension
-    | ClassDeclaration of class_declaration
+    | ClassDeclaration of ClassDeclaration.t
     | ClassTypeDeclaration of class_type_declaration
     | ModuleDeclaration of ModuleSignature.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
@@ -3217,11 +3236,7 @@ module SignatureItem = struct
     | TypeExtension decl -> TypeExtension.syntax_node decl
     | Attribute attribute -> attribute.syntax_node
     | Extension extension -> extension.syntax_node
-    | ClassDeclaration decl -> (
-        match decl with
-        | ClassDeclarationSignature { syntax_node; _ }
-        | ClassDeclarationStructure { syntax_node; _ } ->
-            syntax_node)
+    | ClassDeclaration decl -> ClassDeclaration.syntax_node decl
     | ClassTypeDeclaration decl -> decl.syntax_node
     | ModuleDeclaration decl -> ModuleSignature.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl

@@ -223,7 +223,10 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit ambiguity-sensitive type-declaration shape markers
 
 - [ ] Tighten remaining representable-but-invalid CST states
-  - tighten `CoreType.FirstClassModule` / package-type positions further if any broad module-type-only states are still representable beyond module-type paths plus `with type` constraints
+  - package-type positions look materially narrowed now; `Syn.Cst.package_type` is already path-plus-constraints only, so the next audit target is no longer first-class module broadness
+  - `OpenStatement.t` still spans both `.ml` and `.mli` contexts through `target = Path | ModuleExpression`, so `SignatureItem.OpenStatement` can still represent invalid interface-only `open struct ... end` / `open F(X)` shapes unless we split or otherwise narrow the item context
+  - `include_statement` still spans both `.ml` and `.mli` contexts through `target = ModuleExpression | ModuleType`, so `SignatureItem.IncludeStatement` can still represent invalid interface `include F(X)` / implementation `include S` mixes unless we split or otherwise narrow that surface
+  - class items are now split by context (`ClassDefinition` for structure items, `ClassDeclaration` for signature items); keep applying that same rule to any other shared declaration nodes that still mix `.ml` and `.mli` forms
   - keep auditing broad shared nodes and documenting any remaining intentional invalid-state surface explicitly
 
 - [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
