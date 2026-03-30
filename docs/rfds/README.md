@@ -19,6 +19,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0019` - Tusk Fix Syntax-Directed Rewrites
 - `RFD0020` - Krasny Pretty Printer
 - `RFD0025` - Snapshot Testing for Riot
+- `RFD0026` - Tusk Package Management
 
 ## Accepted
 
