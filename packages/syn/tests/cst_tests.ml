@@ -2495,10 +2495,14 @@ let tests =
                           Syn.Cst.ClassField.Method
                             {
                               name_token = body_method_name;
-                              body =
-                                Some
-                                  (Syn.Cst.Expression.Path
-                                    { path = body_value_path; _ });
+                              definition =
+                                Syn.Cst.ConcreteMethod
+                                  {
+                                    body =
+                                      Syn.Cst.Expression.Path
+                                        { path = body_value_path; _ };
+                                    type_ = None;
+                                  };
                               _;
                             };
                       ];
@@ -2579,10 +2583,14 @@ let tests =
                                     Syn.Cst.ClassField.Method
                                       {
                                         name_token = factory_method_name;
-                                        body =
-                                          Some
-                                            (Syn.Cst.Expression.Path
-                                              { path = factory_body_path; _ });
+                                        definition =
+                                          Syn.Cst.ConcreteMethod
+                                            {
+                                              body =
+                                                Syn.Cst.Expression.Path
+                                                  { path = factory_body_path; _ };
+                                              type_ = None;
+                                            };
                                         _;
                                       };
                                   ];
@@ -2612,10 +2620,14 @@ let tests =
                                      [
                                        Syn.Cst.ClassField.Method
                                          {
-                                           body =
-                                             Some
-                                               (Syn.Cst.Expression.Path
-                                                 { path = helper_path; _ });
+                                           definition =
+                                             Syn.Cst.ConcreteMethod
+                                               {
+                                                 body =
+                                                   Syn.Cst.Expression.Path
+                                                     { path = helper_path; _ };
+                                                 type_ = None;
+                                               };
                                            _;
                                          };
                                      ];
@@ -2763,10 +2775,14 @@ let tests =
                                 Syn.Cst.ClassField.Value
                                   {
                                     name_token = state_name;
-                                    value =
-                                      Some
-                                        (Syn.Cst.Expression.Path
-                                          { path = state_value; _ });
+                                    definition =
+                                      Syn.Cst.ConcreteValue
+                                        {
+                                          value =
+                                            Syn.Cst.Expression.Path
+                                              { path = state_value; _ };
+                                          type_ = None;
+                                        };
                                     _;
                                   };
                               attribute = state_attribute;
@@ -2778,10 +2794,14 @@ let tests =
                                 Syn.Cst.ClassField.Method
                                   {
                                     name_token = run_name;
-                                    body =
-                                      Some
-                                        (Syn.Cst.Expression.Path
-                                          { path = run_body; _ });
+                                    definition =
+                                      Syn.Cst.ConcreteMethod
+                                        {
+                                          body =
+                                            Syn.Cst.Expression.Path
+                                              { path = run_body; _ };
+                                          type_ = None;
+                                        };
                                     _;
                                   };
                               attribute = run_attribute;
@@ -2809,18 +2829,17 @@ let tests =
                                 Syn.Cst.ClassField.Initializer
                                   {
                                     body =
-                                      Some
-                                        (Syn.Cst.Expression.Apply
-                                          {
-                                            callee =
-                                              Syn.Cst.Expression.Path
-                                                { path = init_callee; _ };
-                                            argument =
-                                              Syn.Cst.Positional
-                                                (Syn.Cst.Expression.Path
-                                                  { path = init_arg; _ });
-                                            _;
-                                          });
+                                      Syn.Cst.Expression.Apply
+                                        {
+                                          callee =
+                                            Syn.Cst.Expression.Path
+                                              { path = init_callee; _ };
+                                          argument =
+                                            Syn.Cst.Positional
+                                              (Syn.Cst.Expression.Path
+                                                { path = init_arg; _ });
+                                          _;
+                                        };
                                     _;
                                   };
                               attribute = init_attribute;
@@ -2892,9 +2911,14 @@ let tests =
                         Syn.Cst.ClassField.Value
                           {
                             name_token = state_name;
-                            value =
-                              Some
-                                (Syn.Cst.Expression.Path { path = state_value; _ });
+                            definition =
+                              Syn.Cst.ConcreteValue
+                                {
+                                  value =
+                                    Syn.Cst.Expression.Path
+                                      { path = state_value; _ };
+                                  type_ = None;
+                                };
                             is_mutable = true;
                             _;
                           };
@@ -2922,9 +2946,14 @@ let tests =
                         Syn.Cst.ClassField.Method
                           {
                             name_token = method_name;
-                            body =
-                              Some
-                                (Syn.Cst.Expression.Path { path = method_body; _ });
+                            definition =
+                              Syn.Cst.ConcreteMethod
+                                {
+                                  body =
+                                    Syn.Cst.Expression.Path
+                                      { path = method_body; _ };
+                                  type_ = None;
+                                };
                             is_private = true;
                             _;
                           };
@@ -2942,18 +2971,17 @@ let tests =
                         Syn.Cst.ClassField.Initializer
                           {
                             body =
-                              Some
-                                (Syn.Cst.Expression.Apply
-                                  {
-                                    callee =
-                                      Syn.Cst.Expression.Path
-                                        { path = init_callee; _ };
-                                    argument =
-                                      Syn.Cst.Positional
-                                        (Syn.Cst.Expression.Path
-                                          { path = init_arg; _ });
-                                    _;
-                                  });
+                              Syn.Cst.Expression.Apply
+                                {
+                                  callee =
+                                    Syn.Cst.Expression.Path
+                                      { path = init_callee; _ };
+                                  argument =
+                                    Syn.Cst.Positional
+                                      (Syn.Cst.Expression.Path
+                                        { path = init_arg; _ });
+                                  _;
+                                };
                             _;
                           };
                       ];
@@ -2986,6 +3014,100 @@ let tests =
               ~actual:(Syn.Cst.Ident.name init_arg);
             Ok ()
         | _ -> Error "expected structured class fields");
+    Test.case "cst class structures distinguish concrete and virtual members"
+      (fun () ->
+        let result =
+          parse_ml
+            "class c = object\n\
+             \  val mutable state = seed\n\
+             \  val virtual name : string\n\
+             \  method run = state\n\
+             \  method virtual reset : unit\n\
+             end\n"
+        in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassDeclaration
+            (Syn.Cst.ClassDeclarationStructure
+              {
+                class_body =
+                  Syn.Cst.ClassExpression.Structure
+                    {
+                      fields =
+                        [
+                          Syn.Cst.ClassField.Value
+                            {
+                              definition =
+                                Syn.Cst.ConcreteValue
+                                  {
+                                    value =
+                                      Syn.Cst.Expression.Path
+                                        { path = state_value; _ };
+                                    type_ = None;
+                                  };
+                              is_mutable = true;
+                              _;
+                            };
+                          Syn.Cst.ClassField.Value
+                            {
+                              name_token = virtual_value_name;
+                              definition =
+                                Syn.Cst.VirtualValue
+                                  {
+                                    type_ =
+                                      Syn.Cst.CoreType.Constr
+                                        { constructor_path = virtual_value_type; _ };
+                                  };
+                              _;
+                            };
+                          Syn.Cst.ClassField.Method
+                            {
+                              definition =
+                                Syn.Cst.ConcreteMethod
+                                  {
+                                    body =
+                                      Syn.Cst.Expression.Path
+                                        { path = method_body; _ };
+                                    type_ = None;
+                                  };
+                              _;
+                            };
+                          Syn.Cst.ClassField.Method
+                            {
+                              name_token = virtual_method_name;
+                              definition =
+                                Syn.Cst.VirtualMethod
+                                  {
+                                    type_ =
+                                      Syn.Cst.CoreType.Constr
+                                        { constructor_path = virtual_method_type; _ };
+                                  };
+                              _;
+                            };
+                        ];
+                      _;
+                    };
+                _;
+              })
+          :: _ ->
+            Test.assert_equal ~expected:(Some "seed")
+              ~actual:(Syn.Cst.Ident.name state_value);
+            Test.assert_equal ~expected:"name"
+              ~actual:(Syn.Cst.Token.text virtual_value_name);
+            Test.assert_equal ~expected:(Some "string")
+              ~actual:(Syn.Cst.Ident.name virtual_value_type);
+            Test.assert_equal ~expected:(Some "state")
+              ~actual:(Syn.Cst.Ident.name method_body);
+            Test.assert_equal ~expected:"reset"
+              ~actual:(Syn.Cst.Token.text virtual_method_name);
+            Test.assert_equal ~expected:(Some "unit")
+              ~actual:(Syn.Cst.Ident.name virtual_method_type);
+            Ok ()
+        | _ -> Error "expected concrete and virtual class member definitions");
     Test.case "cst builder keeps class trailing trivia as explicit body entries"
       (fun () ->
         let source =
@@ -8845,15 +8967,15 @@ let tests =
                         Syn.Cst.ObjectMember.Method
                           {
                             body =
-                              Some
-                                (Syn.Cst.Expression.InstanceVariableAssign
-                                  {
-                                    name_token;
-                                    operator_token;
-                                    value =
-                                      Syn.Cst.Expression.Path { path = value_path; _ };
-                                    _;
-                                  });
+                              Syn.Cst.Expression.InstanceVariableAssign
+                                {
+                                  name_token;
+                                  operator_token;
+                                  value =
+                                    Syn.Cst.Expression.Path
+                                      { path = value_path; _ };
+                                  _;
+                                };
                             _;
                           };
                       ];
@@ -8893,9 +9015,9 @@ let tests =
                           {
                             name_token;
                             body =
-                              Some
-                                (Syn.Cst.Expression.Literal
-                                  (Syn.Cst.Literal.Int { literal_token; _ }));
+                              Syn.Cst.Expression.Literal
+                                (Syn.Cst.Literal.Int
+                                  { literal_token; _ });
                             _;
                           };
                       ];

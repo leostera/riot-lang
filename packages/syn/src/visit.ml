@@ -482,11 +482,7 @@ and descend_object_member = fun walk ctx (member : Cst.ObjectMember.t) ->
   match member with
   | Cst.ObjectMember.Method method_ ->
       let ctx = List.fold_left walk.attribute ctx method_.attributes in
-      let ctx =
-        match method_.body with
-        | Some body -> walk.expression ctx body
-        | None -> ctx
-      in
+      let ctx = walk.expression ctx method_.body in
       (
         match method_.type_ with
         | Some type_ -> walk.core_type ctx type_
@@ -494,11 +490,7 @@ and descend_object_member = fun walk ctx (member : Cst.ObjectMember.t) ->
       )
   | Cst.ObjectMember.Value value ->
       let ctx = List.fold_left walk.attribute ctx value.attributes in
-      let ctx =
-        match value.value with
-        | Some body -> walk.expression ctx body
-        | None -> ctx
-      in
+      let ctx = walk.expression ctx value.value in
       (
         match value.type_ with
         | Some type_ -> walk.core_type ctx type_
@@ -509,11 +501,8 @@ and descend_object_member = fun walk ctx (member : Cst.ObjectMember.t) ->
       walk.expression ctx inherit_.expression
   | Cst.ObjectMember.Extension extension ->
       walk.extension ctx extension
-  | Cst.ObjectMember.Initializer init_member -> (
-      match init_member.body with
-      | Some body -> walk.expression ctx body
-      | None -> ctx
-    )
+  | Cst.ObjectMember.Initializer init_member ->
+      walk.expression ctx init_member.body
 and descend_apply_argument = fun walk ctx argument ->
   match argument with
   | Cst.Positional expression ->
@@ -773,37 +762,38 @@ and descend_let_binding = fun walk ctx binding ->
 and descend_class_field = fun walk ctx (field : Cst.class_field) ->
   match field with
   | Cst.ClassField.Method method_ ->
-      let ctx =
-        match method_.body with
-        | Some body -> walk.expression ctx body
-        | None -> ctx
-      in
       (
-        match method_.type_ with
-        | Some type_ -> walk.core_type ctx type_
-        | None -> ctx
+        match method_.definition with
+        | Cst.ConcreteMethod { body; type_ } ->
+            let ctx = walk.expression ctx body in
+            (
+              match type_ with
+              | Some type_ -> walk.core_type ctx type_
+              | None -> ctx
+            )
+        | Cst.VirtualMethod { type_ } ->
+            walk.core_type ctx type_
       )
   | Cst.ClassField.Value value ->
-      let ctx =
-        match value.value with
-        | Some body -> walk.expression ctx body
-        | None -> ctx
-      in
       (
-        match value.type_ with
-        | Some type_ -> walk.core_type ctx type_
-        | None -> ctx
+        match value.definition with
+        | Cst.ConcreteValue { value; type_ } ->
+            let ctx = walk.expression ctx value in
+            (
+              match type_ with
+              | Some type_ -> walk.core_type ctx type_
+              | None -> ctx
+            )
+        | Cst.VirtualValue { type_ } ->
+            walk.core_type ctx type_
       )
   | Cst.ClassField.Inherit inherit_ ->
       walk.class_expression ctx inherit_.class_expression
   | Cst.ClassField.Constraint { left; right; _ } ->
       let ctx = walk.core_type ctx left in
       walk.core_type ctx right
-  | Cst.ClassField.Initializer init_field -> (
-      match init_field.body with
-      | Some body -> walk.expression ctx body
-      | None -> ctx
-    )
+  | Cst.ClassField.Initializer init_field ->
+      walk.expression ctx init_field.body
   | Cst.ClassField.Attribute { field; attribute; _ } ->
       let ctx = walk.class_field ctx field in
       walk.attribute ctx attribute

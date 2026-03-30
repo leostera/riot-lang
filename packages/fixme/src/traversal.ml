@@ -122,15 +122,15 @@ let rec let_bindings_of_module_expression = function
 
 and let_bindings_of_object_member = function
   | Syn.Cst.ObjectMember.Method { body; _ } ->
-      Option.to_list body |> List.concat_map let_bindings_of_expression
+      let_bindings_of_expression body
   | Syn.Cst.ObjectMember.Value { value; _ } ->
-      Option.to_list value |> List.concat_map let_bindings_of_expression
+      let_bindings_of_expression value
   | Syn.Cst.ObjectMember.Inherit { expression; _ } ->
       let_bindings_of_expression expression
   | Syn.Cst.ObjectMember.Extension _ ->
       []
   | Syn.Cst.ObjectMember.Initializer { body; _ } ->
-      Option.to_list body |> List.concat_map let_bindings_of_expression
+      let_bindings_of_expression body
 
 and let_bindings_of_expression expr =
   match expr with
@@ -260,16 +260,20 @@ and let_bindings_of_match_case ({ guard; body; _ } : Syn.Cst.match_case) =
   @ let_bindings_of_expression body
 
 and let_bindings_of_class_field = function
-  | Syn.Cst.ClassField.Method { body; _ } ->
-      Option.to_list body |> List.concat_map let_bindings_of_expression
-  | Syn.Cst.ClassField.Value { value; _ } ->
-      Option.to_list value |> List.concat_map let_bindings_of_expression
+  | Syn.Cst.ClassField.Method { definition = Syn.Cst.ConcreteMethod { body; _ }; _ } ->
+      let_bindings_of_expression body
+  | Syn.Cst.ClassField.Method { definition = Syn.Cst.VirtualMethod _; _ } ->
+      []
+  | Syn.Cst.ClassField.Value { definition = Syn.Cst.ConcreteValue { value; _ }; _ } ->
+      let_bindings_of_expression value
+  | Syn.Cst.ClassField.Value { definition = Syn.Cst.VirtualValue _; _ } ->
+      []
   | Syn.Cst.ClassField.Inherit { class_expression; _ } ->
       let_bindings_of_class_expression class_expression
   | Syn.Cst.ClassField.Constraint _ ->
       []
   | Syn.Cst.ClassField.Initializer { body; _ } ->
-      Option.to_list body |> List.concat_map let_bindings_of_expression
+      let_bindings_of_expression body
   | Syn.Cst.ClassField.Attribute { field; _ } ->
       let_bindings_of_class_field field
   | Syn.Cst.ClassField.Extension _ ->
@@ -353,15 +357,15 @@ let rec expressions_of_expression expr =
         members
         |> List.concat_map (function
              | Syn.Cst.ObjectMember.Method { body; _ } ->
-                 Option.to_list body |> List.concat_map expressions_of_expression
+                 expressions_of_expression body
              | Syn.Cst.ObjectMember.Value { value; _ } ->
-                 Option.to_list value |> List.concat_map expressions_of_expression
+                 expressions_of_expression value
              | Syn.Cst.ObjectMember.Inherit { expression; _ } ->
                  expressions_of_expression expression
              | Syn.Cst.ObjectMember.Extension _ ->
                  []
              | Syn.Cst.ObjectMember.Initializer { body; _ } ->
-                 Option.to_list body |> List.concat_map expressions_of_expression)
+                 expressions_of_expression body)
     | Syn.Cst.Expression.PolyVariant { payload; _ } ->
         Option.to_list payload |> List.concat_map expressions_of_expression
     | Syn.Cst.Expression.ModulePack _ ->
@@ -478,16 +482,20 @@ and expressions_of_match_case ({ guard; body; _ } : Syn.Cst.match_case) =
   @ expressions_of_expression body
 
 and expressions_of_class_field = function
-  | Syn.Cst.ClassField.Method { body; _ } ->
-      Option.to_list body |> List.concat_map expressions_of_expression
-  | Syn.Cst.ClassField.Value { value; _ } ->
-      Option.to_list value |> List.concat_map expressions_of_expression
+  | Syn.Cst.ClassField.Method { definition = Syn.Cst.ConcreteMethod { body; _ }; _ } ->
+      expressions_of_expression body
+  | Syn.Cst.ClassField.Method { definition = Syn.Cst.VirtualMethod _; _ } ->
+      []
+  | Syn.Cst.ClassField.Value { definition = Syn.Cst.ConcreteValue { value; _ }; _ } ->
+      expressions_of_expression value
+  | Syn.Cst.ClassField.Value { definition = Syn.Cst.VirtualValue _; _ } ->
+      []
   | Syn.Cst.ClassField.Inherit { class_expression; _ } ->
       expressions_of_class_expression class_expression
   | Syn.Cst.ClassField.Constraint _ ->
       []
   | Syn.Cst.ClassField.Initializer { body; _ } ->
-      Option.to_list body |> List.concat_map expressions_of_expression
+      expressions_of_expression body
   | Syn.Cst.ClassField.Attribute { field; _ } ->
       expressions_of_class_field field
   | Syn.Cst.ClassField.Extension _ ->

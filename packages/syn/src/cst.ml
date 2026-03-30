@@ -1235,15 +1235,32 @@ and object_member =
   | Extension of extension
   | Initializer of object_initializer
 
+and method_definition =
+  | ConcreteMethod of {
+      body : expression;
+      type_ : core_type option;
+    }
+  | VirtualMethod of {
+      type_ : core_type;
+    }
+
+and value_definition =
+  | ConcreteValue of {
+      value : expression;
+      type_ : core_type option;
+    }
+  | VirtualValue of {
+      type_ : core_type;
+    }
+
 and object_method = {
   syntax_node : syntax_node;
   owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
-  body : expression option;
+  body : expression;
   type_ : core_type option;
   is_private : bool;
-  is_virtual : bool;
   is_override : bool;
 }
 
@@ -1252,10 +1269,9 @@ and object_value = {
   owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
-  value : expression option;
+  value : expression;
   type_ : core_type option;
   is_mutable : bool;
-  is_virtual : bool;
   is_override : bool;
 }
 
@@ -1269,7 +1285,7 @@ and object_inherit = {
 and object_initializer = {
   syntax_node : syntax_node;
   owned_trivia : owned_trivia;
-  body : expression option;
+  body : expression;
 }
 
 and poly_variant_expression = {
@@ -1698,10 +1714,8 @@ and class_field =
 and class_method = {
   syntax_node : syntax_node;
   name_token : Token.t;
-  body : expression option;
-  type_ : core_type option;
+  definition : method_definition;
   is_private : bool;
-  is_virtual : bool;
   is_override : bool;
   owned_trivia : owned_trivia;
 }
@@ -1709,10 +1723,8 @@ and class_method = {
 and class_value = {
   syntax_node : syntax_node;
   name_token : Token.t;
-  value : expression option;
-  type_ : core_type option;
+  definition : value_definition;
   is_mutable : bool;
-  is_virtual : bool;
   is_override : bool;
   owned_trivia : owned_trivia;
 }
@@ -1732,7 +1744,7 @@ and class_constraint = {
 
 and class_initializer = {
   syntax_node : syntax_node;
-  body : expression option;
+  body : expression;
   owned_trivia : owned_trivia;
 }
 

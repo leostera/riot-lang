@@ -190,15 +190,15 @@ let rec binding_sites_of_module_expression = function
 
 and binding_sites_of_object_member = function
   | Syn.Cst.ObjectMember.Method { body; _ } ->
-      Option.to_list body |> List.concat_map binding_sites_of_expression
+      binding_sites_of_expression body
   | Syn.Cst.ObjectMember.Value { value; _ } ->
-      Option.to_list value |> List.concat_map binding_sites_of_expression
+      binding_sites_of_expression value
   | Syn.Cst.ObjectMember.Inherit { expression; _ } ->
       binding_sites_of_expression expression
   | Syn.Cst.ObjectMember.Extension _ ->
       []
   | Syn.Cst.ObjectMember.Initializer { body; _ } ->
-      Option.to_list body |> List.concat_map binding_sites_of_expression
+      binding_sites_of_expression body
 
 and binding_sites_of_function_body = function
   | Syn.Cst.Expression expression ->
@@ -332,16 +332,24 @@ and binding_sites_of_match_case ({ guard; body; _ } : Syn.Cst.match_case) =
   @ binding_sites_of_expression body
 
 and binding_sites_of_class_field = function
-  | Syn.Cst.ClassField.Method { body; _ } ->
-      Option.to_list body |> List.concat_map binding_sites_of_expression
-  | Syn.Cst.ClassField.Value { value; _ } ->
-      Option.to_list value |> List.concat_map binding_sites_of_expression
+  | Syn.Cst.ClassField.Method { definition; _ } -> (
+      match definition with
+      | Syn.Cst.ConcreteMethod { body; _ } ->
+          binding_sites_of_expression body
+      | Syn.Cst.VirtualMethod _ ->
+          [])
+  | Syn.Cst.ClassField.Value { definition; _ } -> (
+      match definition with
+      | Syn.Cst.ConcreteValue { value; _ } ->
+          binding_sites_of_expression value
+      | Syn.Cst.VirtualValue _ ->
+          [])
   | Syn.Cst.ClassField.Inherit { class_expression; _ } ->
       binding_sites_of_class_expression class_expression
   | Syn.Cst.ClassField.Constraint _ ->
       []
   | Syn.Cst.ClassField.Initializer { body; _ } ->
-      Option.to_list body |> List.concat_map binding_sites_of_expression
+      binding_sites_of_expression body
   | Syn.Cst.ClassField.Attribute { field; _ } ->
       binding_sites_of_class_field field
   | Syn.Cst.ClassField.Extension _ ->

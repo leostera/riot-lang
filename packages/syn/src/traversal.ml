@@ -13,27 +13,31 @@ let expressions_of_parameter = fun (_ : Cst.Parameter.t) -> []
 let rec expressions_of_object_member =
   function
   | Cst.ObjectMember.Method { body; _ } ->
-      Option.to_list body
+      [ body ]
   | Cst.ObjectMember.Value { value; _ } ->
-      Option.to_list value
+      [ value ]
   | Cst.ObjectMember.Inherit { expression; _ } ->
       [ expression ]
   | Cst.ObjectMember.Extension _ ->
       []
   | Cst.ObjectMember.Initializer { body; _ } ->
-      Option.to_list body
+      [ body ]
 and expressions_of_class_field =
   function
-  | Cst.ClassField.Method { body; _ } ->
-      Option.to_list body
-  | Cst.ClassField.Value { value; _ } ->
-      Option.to_list value
+  | Cst.ClassField.Method { definition = Cst.ConcreteMethod { body; _ }; _ } ->
+      [ body ]
+  | Cst.ClassField.Method { definition = Cst.VirtualMethod _; _ } ->
+      []
+  | Cst.ClassField.Value { definition = Cst.ConcreteValue { value; _ }; _ } ->
+      [ value ]
+  | Cst.ClassField.Value { definition = Cst.VirtualValue _; _ } ->
+      []
   | Cst.ClassField.Inherit _
   | Cst.ClassField.Constraint _
   | Cst.ClassField.Extension _ ->
       []
   | Cst.ClassField.Initializer { body; _ } ->
-      Option.to_list body
+      [ body ]
   | Cst.ClassField.Attribute { field; _ } ->
       expressions_of_class_field field
 and expressions_of_class_expression =

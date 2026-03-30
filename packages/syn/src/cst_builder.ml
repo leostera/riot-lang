@@ -5326,20 +5326,29 @@ and object_method_from_node = fun node ->
   | name_node :: remainder when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
       match first_ident_token_in_subtree name_node with
       | Some name_token ->
+          let body =
+            remainder |> List.rev |> List.find_opt can_lift_expression_node |> Option.map expression_from_node
+          in
+          let type_ =
+            List.find_opt can_lift_core_type_node remainder |> Option.map core_type_from_node
+          in
           Some {
             Cst.syntax_node = node;
             owned_trivia = owned_trivia_from_node node;
             attributes = attributes_from_node node;
             name_token;
-            body = (remainder |> List.rev |> List.find_opt can_lift_expression_node |> Option.map expression_from_node);
-            type_ = List.find_opt can_lift_core_type_node remainder |> Option.map core_type_from_node;
+            body =
+              (match body with
+               | Some body -> body
+               | None ->
+                   bail ~message:"expected body expression for object method during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                     "object_member";
+                     "method"
+                   ]);
+            type_;
             is_private = List.exists
               (fun tok ->
                 String.equal (Ceibo.Red.SyntaxToken.text tok) "private")
-              (direct_non_trivia_tokens node);
-            is_virtual = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
               (direct_non_trivia_tokens node);
             is_override = List.exists
               (fun tok ->
@@ -5356,20 +5365,29 @@ and object_value_from_node = fun node ->
   | name_node :: remainder when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
       match first_ident_token_in_subtree name_node with
       | Some name_token ->
+          let value =
+            remainder |> List.rev |> List.find_opt can_lift_expression_node |> Option.map expression_from_node
+          in
+          let type_ =
+            List.find_opt can_lift_core_type_node remainder |> Option.map core_type_from_node
+          in
           Some {
             Cst.syntax_node = node;
             owned_trivia = owned_trivia_from_node node;
             attributes = attributes_from_node node;
             name_token;
-            value = (remainder |> List.rev |> List.find_opt can_lift_expression_node |> Option.map expression_from_node);
-            type_ = List.find_opt can_lift_core_type_node remainder |> Option.map core_type_from_node;
+            value =
+              (match value with
+               | Some value -> value
+               | None ->
+                   bail ~message:"expected bound expression for object value during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                     "object_member";
+                     "value"
+                   ]);
+            type_;
             is_mutable = List.exists
               (fun tok ->
                 String.equal (Ceibo.Red.SyntaxToken.text tok) "mutable")
-              (direct_non_trivia_tokens node);
-            is_virtual = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
               (direct_non_trivia_tokens node);
             is_override = List.exists
               (fun tok ->
@@ -5415,7 +5433,14 @@ and object_initializer_from_node = fun node ->
         ({
            Cst.syntax_node = node;
            owned_trivia = owned_trivia_from_node node;
-           body
+           body =
+             (match body with
+              | Some body -> body
+              | None ->
+                  bail ~message:"expected body expression for object initializer during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "object_member";
+                    "initializer"
+                  ])
          } : Cst.object_initializer)
   | _ -> None
 and object_expression_from_node = fun node ->
@@ -6048,18 +6073,38 @@ and class_method_from_node = fun node ->
             | None ->
                 (None, [])
           in
+          let is_virtual =
+            List.exists
+              (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
+              (direct_non_trivia_tokens node)
+          in
+          let definition : Cst.method_definition =
+            if is_virtual then
+              match type_ with
+              | Some type_ -> Cst.VirtualMethod { type_ }
+              | None ->
+                  bail ~message:"expected type annotation for virtual class method during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "class_field";
+                    "method";
+                    "virtual"
+                  ]
+            else
+              match body with
+              | Some body -> Cst.ConcreteMethod { body; type_ }
+              | None ->
+                  bail ~message:"expected body expression for concrete class method during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "class_field";
+                    "method";
+                    "concrete"
+                  ]
+          in
           let field : Cst.class_method = {
             Cst.syntax_node = node;
             name_token;
-            body;
-            type_;
+            definition;
             is_private = List.exists
               (fun tok ->
                 String.equal (Ceibo.Red.SyntaxToken.text tok) "private")
-              (direct_non_trivia_tokens node);
-            is_virtual = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
               (direct_non_trivia_tokens node);
             is_override = List.exists
               (fun tok ->
@@ -6096,18 +6141,38 @@ and class_value_from_node = fun node ->
             | None ->
                 (None, [])
           in
+          let is_virtual =
+            List.exists
+              (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
+              (direct_non_trivia_tokens node)
+          in
+          let definition : Cst.value_definition =
+            if is_virtual then
+              match type_ with
+              | Some type_ -> Cst.VirtualValue { type_ }
+              | None ->
+                  bail ~message:"expected type annotation for virtual class value during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "class_field";
+                    "value";
+                    "virtual"
+                  ]
+            else
+              match value with
+              | Some value -> Cst.ConcreteValue { value; type_ }
+              | None ->
+                  bail ~message:"expected bound expression for concrete class value during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "class_field";
+                    "value";
+                    "concrete"
+                  ]
+          in
           let field : Cst.class_value = {
             Cst.syntax_node = node;
             name_token;
-            value;
-            type_;
+            definition;
             is_mutable = List.exists
               (fun tok ->
                 String.equal (Ceibo.Red.SyntaxToken.text tok) "mutable")
-              (direct_non_trivia_tokens node);
-            is_virtual = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
               (direct_non_trivia_tokens node);
             is_override = List.exists
               (fun tok ->
@@ -6179,7 +6244,14 @@ and class_initializer_from_node = fun node ->
       Some
         (({
             syntax_node = node;
-            body;
+            body =
+              (match body with
+               | Some body -> body
+               | None ->
+                   bail ~message:"expected body expression for class initializer during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                     "class_field";
+                     "initializer"
+                   ]);
             owned_trivia = owned_trivia_from_node node
           }: Cst.class_initializer),
          field_attributes)
@@ -8879,19 +8951,27 @@ and validate_class_type = fun ~context ->
       validate_class_type ~context:((("class_type.attribute" :: context))) class_type
 and validate_class_field = fun ~context ->
   function
-  | Cst.ClassField.Method { body; type_; _ } ->
-      Option.iter (validate_expression ~context:((("class_field.method.body" :: context)))) body;
-      Option.iter (validate_core_type ~context:((("class_field.method.type" :: context)))) type_
-  | Cst.ClassField.Value { value; type_; _ } ->
-      Option.iter (validate_expression ~context:((("class_field.value.value" :: context)))) value;
-      Option.iter (validate_core_type ~context:((("class_field.value.type" :: context)))) type_
+  | Cst.ClassField.Method { definition; _ } ->
+      (match definition with
+      | Cst.ConcreteMethod { body; type_ } ->
+          validate_expression ~context:((("class_field.method.body" :: context))) body;
+          Option.iter (validate_core_type ~context:((("class_field.method.type" :: context)))) type_
+      | Cst.VirtualMethod { type_ } ->
+          validate_core_type ~context:((("class_field.method.type" :: context))) type_)
+  | Cst.ClassField.Value { definition; _ } ->
+      (match definition with
+      | Cst.ConcreteValue { value; type_ } ->
+          validate_expression ~context:((("class_field.value.value" :: context))) value;
+          Option.iter (validate_core_type ~context:((("class_field.value.type" :: context)))) type_
+      | Cst.VirtualValue { type_ } ->
+          validate_core_type ~context:((("class_field.value.type" :: context))) type_)
   | Cst.ClassField.Inherit { class_expression; _ } ->
       validate_class_expression ~context:((("class_field.inherit.class_expression" :: context))) class_expression
   | Cst.ClassField.Constraint { left; right; _ } ->
       validate_core_type ~context:((("class_field.constraint.left" :: context))) left;
       validate_core_type ~context:((("class_field.constraint.right" :: context))) right
   | Cst.ClassField.Initializer { body; _ } ->
-      Option.iter (validate_expression ~context:((("class_field.initializer.body" :: context)))) body
+      validate_expression ~context:((("class_field.initializer.body" :: context))) body
   | Cst.ClassField.Attribute { field; _ } ->
       validate_class_field ~context:((("class_field.attribute" :: context))) field
   | Cst.ClassField.Extension _ ->
@@ -8991,17 +9071,17 @@ and validate_module_expression = fun ~context ->
 and validate_object_member = fun ~context ->
   function
   | Cst.ObjectMember.Method { body; type_; _ } ->
-      Option.iter (validate_expression ~context:((("object_member.method.body" :: context)))) body;
+      validate_expression ~context:((("object_member.method.body" :: context))) body;
       Option.iter (validate_core_type ~context:((("object_member.method.type" :: context)))) type_
   | Cst.ObjectMember.Value { value; type_; _ } ->
-      Option.iter (validate_expression ~context:((("object_member.value.value" :: context)))) value;
+      validate_expression ~context:((("object_member.value.value" :: context))) value;
       Option.iter (validate_core_type ~context:((("object_member.value.type" :: context)))) type_
   | Cst.ObjectMember.Inherit { expression; _ } ->
       validate_expression ~context:((("object_member.inherit.expression" :: context))) expression
   | Cst.ObjectMember.Extension _ ->
       ()
   | Cst.ObjectMember.Initializer { body; _ } ->
-      Option.iter (validate_expression ~context:((("object_member.initializer.body" :: context)))) body
+      validate_expression ~context:((("object_member.initializer.body" :: context))) body
 and validate_fun_body = fun ~context ->
   function
   | Cst.Expression expression ->

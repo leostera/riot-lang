@@ -70,6 +70,8 @@
 63. Prefer valid-shape sums over `option * option` declaration records. `class` declarations should not be representable as “missing both type and body”, and the same tightening should happen for other shared declaration nodes when practical.
 64. When a shared CST node still spans multiple grammar contexts and cannot yet be fully split, keep the valid local shapes explicit anyway. `ModuleDeclaration` should distinguish signature-only versus structure-with-body forms instead of using a bare `option * option` product, even while the node remains shared across structure/signature contexts.
 65. Keep `let_binding` pattern-first. Do not cache a parallel `binding_name` field alongside `binding_pattern`; simple binding names should be derived only when the pattern shape actually carries one.
+66. Keep syntax-optional adornments as optional fields, not fake grammar branches. If attributes, annotations, or constraints are optional in the language, model them with `option` on the valid node shape instead of introducing branch constructors just for presence/absence.
+67. Split class/object member definitions along real grammar alternatives. Concrete methods/values should require bodies and keep optional type annotations, while virtual methods/values should require types and forbid bodies; initializers should require bodies outright.
 
 ## Validate
 

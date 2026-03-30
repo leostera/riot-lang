@@ -116,21 +116,15 @@ and usage_in_match_case expected_name ({ guard; body; _ } : Syn.Cst.match_case) 
 
 and usage_in_object_member expected_name = function
   | Syn.Cst.ObjectMember.Method { body; _ } ->
-      Option.to_list body
-      |> List.map (usage_in_expression expected_name)
-      |> merge_all
+      usage_in_expression expected_name body
   | Syn.Cst.ObjectMember.Value { value; _ } ->
-      Option.to_list value
-      |> List.map (usage_in_expression expected_name)
-      |> merge_all
+      usage_in_expression expected_name value
   | Syn.Cst.ObjectMember.Inherit { expression; _ } ->
       usage_in_expression expected_name expression
   | Syn.Cst.ObjectMember.Extension _ ->
       empty_usage
   | Syn.Cst.ObjectMember.Initializer { body; _ } ->
-      Option.to_list body
-      |> List.map (usage_in_expression expected_name)
-      |> merge_all
+      usage_in_expression expected_name body
 
 and usage_in_expression expected_name expr =
   match expr with

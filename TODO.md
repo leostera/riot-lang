@@ -62,6 +62,8 @@ This file is _yours_. Keep it up to date after every big change.
 - `Syn.Cst.ModuleDeclaration` is now an explicit valid-shape sum for signature-only versus structure-with-body module bindings; the bogus `:=` substitution path and the old `module_type option * module_expression option` product are gone, although the node still spans both structure and signature contexts.
 - implementation-side `val` items are no longer representable in `Syn.Cst.StructureItem`; ordinary `value_declaration` nodes now stay signature-only, matching standard OCaml syntax.
 - `Syn.Cst.let_binding` is now pattern-first only; the old cached `binding_name` field is gone, and simple binding names are derived from `binding_pattern` when the pattern shape actually carries one.
+- object members now model only valid concrete forms: `object_method.body`, `object_value.value`, and `object_initializer.body` are mandatory expressions, and the old impossible `None` body/value states are gone from the CST.
+- class members now split real grammar alternatives explicitly: methods and values carry `ConcreteMethod | VirtualMethod` and `ConcreteValue | VirtualValue` definitions, while `class_initializer.body` is now mandatory.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module/extension patterns now lower structurally; default opaque extension payloads in patterns now render directly from CST token slices, while the remaining structured guard case still fails explicitly.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
 - module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, extension, and unreachable expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes, and extension payloads render from CST-owned opaque token slices.
@@ -219,7 +221,7 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit ambiguity-sensitive type-declaration shape markers
 
 - [ ] Tighten remaining representable-but-invalid CST states
-  - split or otherwise constrain object/class member records (`object_method`, `object_value`, `object_initializer`, `class_method`, `class_value`, `class_initializer`) so concrete/virtual/initializer states are explicit instead of broad `option` products
+  - tighten `CoreType.FirstClassModule` / package-type positions further if any broad module-type-only states are still representable beyond module-type paths plus `with type` constraints
   - keep auditing broad shared nodes and documenting any remaining intentional invalid-state surface explicitly
 
 - [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`

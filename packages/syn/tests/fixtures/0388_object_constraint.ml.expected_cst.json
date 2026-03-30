@@ -122,7 +122,6 @@
                   },
                   "type": null,
                   "is_private": false,
-                  "is_virtual": false,
                   "is_override": false
                 }
               ]

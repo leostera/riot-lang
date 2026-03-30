@@ -2412,7 +2412,6 @@ and render_object_method
        type_;
        attributes;
        is_private;
-       is_virtual;
        is_override;
        _;
      } : Syn.Cst.object_method) =
@@ -2425,7 +2424,6 @@ and render_object_method
   let modifiers =
     [
       (if is_private then Some kw_private else None);
-      (if is_virtual then Some kw_virtual else None);
     ]
     |> List.filter_map (fun modifier -> modifier)
   in
@@ -2444,15 +2442,11 @@ and render_object_method
           ]
   in
   let doc =
-    match type_, body with
-    | Some type_, None ->
-        Doc.concat [ head; annotation_colon; render_core_type type_ ]
-    | None, Some body ->
+    match type_ with
+    | None ->
         render_object_member_body ~head body
-    | Some type_, Some body ->
+    | Some type_ ->
         render_object_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) body
-    | None, None ->
-        head
   in
   doc_with_object_member_attributes attributes doc
 
@@ -2463,7 +2457,6 @@ and render_object_value
        type_;
        attributes;
        is_mutable;
-       is_virtual;
        is_override;
        _;
      } : Syn.Cst.object_value) =
@@ -2476,7 +2469,6 @@ and render_object_value
   let modifiers =
     [
       (if is_mutable then Some kw_mutable else None);
-      (if is_virtual then Some kw_virtual else None);
     ]
     |> List.filter_map (fun modifier -> modifier)
   in
@@ -2495,15 +2487,11 @@ and render_object_value
           ]
   in
   let doc =
-    match type_, value with
-    | Some type_, None ->
-        Doc.concat [ head; annotation_colon; render_core_type type_ ]
-    | None, Some value ->
+    match type_ with
+    | None ->
         render_object_member_body ~head value
-    | Some type_, Some value ->
+    | Some type_ ->
         render_object_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) value
-    | None, None ->
-        head
   in
   doc_with_object_member_attributes attributes doc
 
@@ -2512,13 +2500,8 @@ and render_object_inherit
   let doc = Doc.concat [ kw_inherit; Doc.space; render_expression expression ] in
   doc_with_object_member_attributes attributes doc
 
-and render_object_initializer ({ syntax_node; body } : Syn.Cst.object_initializer) =
-  match body with
-  | Some body ->
-      render_object_member_body ~head:kw_initializer body
-  | None ->
-      unsupported_syntax ~context:[ "expression"; "object"; "initializer" ] ~syntax_node
-        "object initializer is missing its body expression"
+and render_object_initializer ({ body; _ } : Syn.Cst.object_initializer) =
+  render_object_member_body ~head:kw_initializer body
 
 and render_object_member = function
   | Syn.Cst.ObjectMember.Method method_ ->
@@ -2696,10 +2679,8 @@ and render_class_member_body ~head expression =
 and render_class_method
     ({
        name_token;
-       body;
-       type_;
+       definition;
        is_private;
-       is_virtual;
        is_override;
        _;
      } : Syn.Cst.class_method) =
@@ -2712,7 +2693,7 @@ and render_class_method
   let modifiers =
     [
       (if is_private then Some kw_private else None);
-      (if is_virtual then Some kw_virtual else None);
+      (match definition with Syn.Cst.VirtualMethod _ -> Some kw_virtual | Syn.Cst.ConcreteMethod _ -> None);
     ]
     |> List.filter_map (fun modifier -> modifier)
   in
@@ -2730,23 +2711,19 @@ and render_class_method
             doc_of_token name_token;
           ]
   in
-  match type_, body with
-  | Some type_, None ->
+  match definition with
+  | Syn.Cst.VirtualMethod { type_ } ->
       Doc.concat [ head; annotation_colon; render_core_type type_ ]
-  | None, Some body ->
+  | Syn.Cst.ConcreteMethod { body; type_ = None } ->
       render_class_member_body ~head body
-  | Some type_, Some body ->
+  | Syn.Cst.ConcreteMethod { body; type_ = Some type_ } ->
       render_class_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) body
-  | None, None ->
-      head
 
 and render_class_value
     ({
        name_token;
-       value;
-       type_;
+       definition;
        is_mutable;
-       is_virtual;
        is_override;
        _;
      } : Syn.Cst.class_value) =
@@ -2759,7 +2736,7 @@ and render_class_value
   let modifiers =
     [
       (if is_mutable then Some kw_mutable else None);
-      (if is_virtual then Some kw_virtual else None);
+      (match definition with Syn.Cst.VirtualValue _ -> Some kw_virtual | Syn.Cst.ConcreteValue _ -> None);
     ]
     |> List.filter_map (fun modifier -> modifier)
   in
@@ -2777,15 +2754,13 @@ and render_class_value
             doc_of_token name_token;
           ]
   in
-  match type_, value with
-  | Some type_, None ->
+  match definition with
+  | Syn.Cst.VirtualValue { type_ } ->
       Doc.concat [ head; annotation_colon; render_core_type type_ ]
-  | None, Some value ->
+  | Syn.Cst.ConcreteValue { value; type_ = None } ->
       render_class_member_body ~head value
-  | Some type_, Some value ->
+  | Syn.Cst.ConcreteValue { value; type_ = Some type_ } ->
       render_class_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) value
-  | None, None ->
-      head
 
 and render_class_inherit ({ class_expression; _ } : Syn.Cst.class_inherit) =
   Doc.concat [ kw_inherit; Doc.space; render_class_expression class_expression ]
@@ -2794,13 +2769,8 @@ and render_class_constraint ({ left; right; _ } : Syn.Cst.class_constraint) =
   Doc.concat
     [ kw_constraint; Doc.space; render_core_type left; Doc.space; equals; render_core_type right ]
 
-and render_class_initializer ({ syntax_node; body; _ } : Syn.Cst.class_initializer) =
-  match body with
-  | Some body ->
-      render_class_member_body ~head:kw_initializer body
-  | None ->
-      unsupported_syntax ~context:[ "class_expression"; "initializer" ] ~syntax_node
-        "class initializer is missing its body expression"
+and render_class_initializer ({ body; _ } : Syn.Cst.class_initializer) =
+  render_class_member_body ~head:kw_initializer body
 
 and render_class_field = function
   | Syn.Cst.ClassField.Method method_ ->

@@ -2152,6 +2152,35 @@ and object_member =
   | Initializer of object_initializer
       (** An `initializer expr` member. *)
 
+(** The valid definition forms for methods.
+
+    Concrete methods require a body and may optionally carry a type
+    annotation. Virtual methods require a type and never carry a body.
+*)
+and method_definition =
+  | ConcreteMethod of {
+      body : expression;
+      type_ : core_type option;
+    }
+  | VirtualMethod of {
+      type_ : core_type;
+    }
+
+(** The valid definition forms for values.
+
+    Concrete values require a bound expression and may optionally carry a type
+    annotation. Virtual values require a type and never carry a bound
+    expression.
+*)
+and value_definition =
+  | ConcreteValue of {
+      value : expression;
+      type_ : core_type option;
+    }
+  | VirtualValue of {
+      type_ : core_type;
+    }
+
 (** Payload for `object_member` methods.
 
     This covers concrete methods, virtual methods, private methods, and
@@ -2162,10 +2191,9 @@ and object_method = {
   owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
-  body : expression option;
+  body : expression;
   type_ : core_type option;
   is_private : bool;
-  is_virtual : bool;
   is_override : bool;
 }
 
@@ -2179,10 +2207,9 @@ and object_value = {
   owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
-  value : expression option;
+  value : expression;
   type_ : core_type option;
   is_mutable : bool;
-  is_virtual : bool;
   is_override : bool;
 }
 
@@ -2201,7 +2228,7 @@ and object_inherit = {
 and object_initializer = {
   syntax_node : syntax_node;
   owned_trivia : owned_trivia;
-  body : expression option;
+  body : expression;
 }
 
 (** Payload for `Expression.PolyVariant`.
@@ -3006,10 +3033,8 @@ and class_field =
 and class_method = {
   syntax_node : syntax_node;
   name_token : Token.t;
-  body : expression option;
-  type_ : core_type option;
+  definition : method_definition;
   is_private : bool;
-  is_virtual : bool;
   is_override : bool;
   owned_trivia : owned_trivia;
 }
@@ -3022,10 +3047,8 @@ and class_method = {
 and class_value = {
   syntax_node : syntax_node;
   name_token : Token.t;
-  value : expression option;
-  type_ : core_type option;
+  definition : value_definition;
   is_mutable : bool;
-  is_virtual : bool;
   is_override : bool;
   owned_trivia : owned_trivia;
 }
@@ -3054,7 +3077,7 @@ and class_constraint = {
 *)
 and class_initializer = {
   syntax_node : syntax_node;
-  body : expression option;
+  body : expression;
   owned_trivia : owned_trivia;
 }
 

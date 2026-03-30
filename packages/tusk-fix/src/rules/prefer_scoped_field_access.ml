@@ -274,8 +274,7 @@ and diagnostics_for_object_member ~inside_local_open = function
   | Syn.Cst.ObjectMember.Method { body; _ }
   | Syn.Cst.ObjectMember.Value { value = body; _ }
   | Syn.Cst.ObjectMember.Initializer { body; _ } ->
-      Option.to_list body
-      |> List.concat_map (diagnostics_for_expression ~inside_local_open)
+      diagnostics_for_expression ~inside_local_open body
   | Syn.Cst.ObjectMember.Inherit { expression; _ } ->
       diagnostics_for_expression ~inside_local_open expression
   | Syn.Cst.ObjectMember.Extension _ ->

@@ -800,6 +800,32 @@ and extension_to_json = fun (ext : Cst.extension) -> Json.Object [
   ("payload_syntax_node", option_to_json syntax_node_to_json ext.payload_syntax_node);
   ("payload", option_to_json payload_to_json ext.payload)
 ]
+and method_definition_to_json =
+  function
+  | Cst.ConcreteMethod { body; type_ } ->
+      Json.Object [
+        ("tag", Json.String "concrete");
+        ("body", expression_to_json body);
+        ("type", option_to_json core_type_to_json type_)
+      ]
+  | Cst.VirtualMethod { type_ } ->
+      Json.Object [
+        ("tag", Json.String "virtual");
+        ("type", core_type_to_json type_)
+      ]
+and value_definition_to_json =
+  function
+  | Cst.ConcreteValue { value; type_ } ->
+      Json.Object [
+        ("tag", Json.String "concrete");
+        ("value", expression_to_json value);
+        ("type", option_to_json core_type_to_json type_)
+      ]
+  | Cst.VirtualValue { type_ } ->
+      Json.Object [
+        ("tag", Json.String "virtual");
+        ("type", core_type_to_json type_)
+      ]
 and object_member_to_json =
   function
   | Cst.ObjectMember.Method {
@@ -809,7 +835,6 @@ and object_member_to_json =
     body;
     type_;
     is_private;
-    is_virtual;
     is_override
   } ->
       Json.Object [
@@ -817,10 +842,9 @@ and object_member_to_json =
         ("syntax_node", syntax_node_to_json syntax_node);
         ("attributes", Json.Array (List.map attribute_to_json attributes));
         ("name_token", token_to_json name_token);
-        ("body", option_to_json expression_to_json body);
+        ("body", expression_to_json body);
         ("type", option_to_json core_type_to_json type_);
         ("is_private", Json.Bool is_private);
-        ("is_virtual", Json.Bool is_virtual);
         ("is_override", Json.Bool is_override)
       ]
   | Cst.ObjectMember.Value {
@@ -830,7 +854,6 @@ and object_member_to_json =
     value;
     type_;
     is_mutable;
-    is_virtual;
     is_override
   } ->
       Json.Object [
@@ -838,10 +861,9 @@ and object_member_to_json =
         ("syntax_node", syntax_node_to_json syntax_node);
         ("attributes", Json.Array (List.map attribute_to_json attributes));
         ("name_token", token_to_json name_token);
-        ("value", option_to_json expression_to_json value);
+        ("value", expression_to_json value);
         ("type", option_to_json core_type_to_json type_);
         ("is_mutable", Json.Bool is_mutable);
-        ("is_virtual", Json.Bool is_virtual);
         ("is_override", Json.Bool is_override)
       ]
   | Cst.ObjectMember.Inherit { syntax_node; attributes; expression } ->
@@ -857,7 +879,7 @@ and object_member_to_json =
       Json.Object [
         ("tag", Json.String "initializer");
         ("syntax_node", syntax_node_to_json syntax_node);
-        ("body", option_to_json expression_to_json body)
+        ("body", expression_to_json body)
       ]
 and binding_operator_binding_to_json = fun
   ({ keyword_token; operator_token; equals_token; binding_pattern; bound_value } :
@@ -1740,39 +1762,31 @@ let rec class_field_to_json =
   | Cst.ClassField.Method {
     syntax_node;
     name_token;
-    body;
-    type_;
+    definition;
     is_private;
-    is_virtual;
     is_override
   } ->
       Json.Object [
         ("tag", Json.String "method");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("name_token", token_to_json name_token);
-        ("body", option_to_json expression_to_json body);
-        ("type", option_to_json core_type_to_json type_);
+        ("definition", method_definition_to_json definition);
         ("is_private", Json.Bool is_private);
-        ("is_virtual", Json.Bool is_virtual);
         ("is_override", Json.Bool is_override)
       ]
   | Cst.ClassField.Value {
     syntax_node;
     name_token;
-    value;
-    type_;
+    definition;
     is_mutable;
-    is_virtual;
     is_override
   } ->
       Json.Object [
         ("tag", Json.String "value");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("name_token", token_to_json name_token);
-        ("value", option_to_json expression_to_json value);
-        ("type", option_to_json core_type_to_json type_);
+        ("definition", value_definition_to_json definition);
         ("is_mutable", Json.Bool is_mutable);
-        ("is_virtual", Json.Bool is_virtual);
         ("is_override", Json.Bool is_override)
       ]
   | Cst.ClassField.Inherit { syntax_node; class_expression } ->
@@ -1792,7 +1806,7 @@ let rec class_field_to_json =
       Json.Object [
         ("tag", Json.String "initializer");
         ("syntax_node", syntax_node_to_json syntax_node);
-        ("body", option_to_json expression_to_json body)
+        ("body", expression_to_json body)
       ]
   | Cst.ClassField.Attribute { syntax_node; field; attribute } ->
       Json.Object [

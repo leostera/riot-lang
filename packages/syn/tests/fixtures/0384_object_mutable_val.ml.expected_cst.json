@@ -113,7 +113,6 @@
                 },
                 "type": null,
                 "is_mutable": true,
-                "is_virtual": false,
                 "is_override": false
               }
             ]
