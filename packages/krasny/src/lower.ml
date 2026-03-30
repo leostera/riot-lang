@@ -4919,7 +4919,8 @@ and render_structure_items ?source ~source_node items =
         | Some full_source ->
             full_source
         | None ->
-            Source.source_of_syntax_node source_node)
+            unsupported_syntax ~context:[ "structure_items" ] ~syntax_node:source_node
+              "structural item rendering requires source text")
   in
   render_structure_top_level_items ~source ~source_node ~items
 
@@ -5016,7 +5017,8 @@ and render_signature_items ?source ~source_node items =
         | Some full_source ->
             full_source
         | None ->
-            Source.source_of_syntax_node source_node)
+            unsupported_syntax ~context:[ "signature_items" ] ~syntax_node:source_node
+              "structural item rendering requires source text")
   in
   render_signature_top_level_items ~source ~items
   in

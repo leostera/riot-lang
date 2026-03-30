@@ -75,6 +75,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`; the remaining raw-trivia debt is in `doc_of_owned_trivia` separator recovery and source/text heuristics, not generic between-node span replay.
 - `packages/krasny/src/source.ml` is trimmed to the remaining live raw source-reconstruction helper only; `Source` is now down to `source_of_syntax_node`.
 - `render_structure_items` and `render_signature_items` no longer slice `ctx.source` down to nested/top-level span windows; they use the full available source and only fall back to `Source.source_of_syntax_node` when no source text was provided at all.
+- `render_structure_items` and `render_signature_items` now require source text explicitly; the impossible no-source path fails instead of reconstructing node text behind the formatter's back.
 
 ## Working Style
 
