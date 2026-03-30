@@ -1665,51 +1665,37 @@ let type_extension_to_json = fun decl ->
     )
   ]
 
-let module_declaration_to_json = function
-  | Cst.ModuleDeclaration.Signature {
-      syntax_node;
-      module_name;
-      functor_parameters;
-      module_type;
-      is_recursive;
-      owned_trivia = _;
-    } ->
-      Json.Object [
-        ("tag", Json.String "signature");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("module_name", token_to_json module_name);
-        ("functor_parameters", Json.Array (List.map functor_parameter_to_json functor_parameters));
-        ("module_type", module_type_to_json module_type);
-        ("is_recursive", Json.Bool is_recursive)
-      ]
-  | Cst.ModuleDeclaration.Structure {
-      syntax_node;
-      module_name;
-      functor_parameters;
-      module_type;
-      module_expression;
-      is_recursive;
-      owned_trivia = _;
-    } ->
-      Json.Object [
-        ("tag", Json.String "structure");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("module_name", token_to_json module_name);
-        ("functor_parameters", Json.Array (List.map functor_parameter_to_json functor_parameters));
-        ("module_type", option_to_json module_type_to_json module_type);
-        ("module_expression", module_expression_to_json module_expression);
-        ("is_recursive", Json.Bool is_recursive)
-      ]
-
-let recursive_module_declaration_to_json = fun decl ->
+let rec module_signature_to_json decl =
   Json.Object [
-    ("syntax_node", syntax_node_to_json (Cst.RecursiveModuleDeclaration.syntax_node decl));
+    ("syntax_node", syntax_node_to_json (Cst.ModuleSignature.syntax_node decl));
+    ("module_name", token_to_json (Cst.ModuleSignature.module_name_token decl));
     (
-      "declarations",
-      Json.Array (List.map
-      module_declaration_to_json
-      (Cst.RecursiveModuleDeclaration.declarations decl))
-    )
+      "functor_parameters",
+      Json.Array (List.map functor_parameter_to_json (Cst.ModuleSignature.functor_parameters decl))
+    );
+    ("module_type", module_type_to_json (Cst.ModuleSignature.module_type decl));
+    (
+      "and_declarations",
+      Json.Array (List.map module_signature_to_json (Cst.ModuleSignature.and_declarations decl))
+    );
+    ("is_recursive", Json.Bool (Cst.ModuleSignature.is_recursive decl))
+  ]
+
+let rec module_structure_to_json decl =
+  Json.Object [
+    ("syntax_node", syntax_node_to_json (Cst.ModuleStructure.syntax_node decl));
+    ("module_name", token_to_json (Cst.ModuleStructure.module_name_token decl));
+    (
+      "functor_parameters",
+      Json.Array (List.map functor_parameter_to_json (Cst.ModuleStructure.functor_parameters decl))
+    );
+    ("module_type", option_to_json module_type_to_json (Cst.ModuleStructure.module_type decl));
+    ("module_expression", module_expression_to_json (Cst.ModuleStructure.module_expression decl));
+    (
+      "and_declarations",
+      Json.Array (List.map module_structure_to_json (Cst.ModuleStructure.and_declarations decl))
+    );
+    ("is_recursive", Json.Bool (Cst.ModuleStructure.is_recursive decl))
   ]
 
 let module_type_declaration_to_json = fun decl ->
@@ -2088,12 +2074,7 @@ let structure_item_to_json =
   | Cst.StructureItem.ModuleDeclaration decl ->
       Json.Object [
         ("tag", Json.String "module_declaration");
-        ("item", module_declaration_to_json decl)
-      ]
-  | Cst.StructureItem.RecursiveModuleDeclaration decl ->
-      Json.Object [
-        ("tag", Json.String "recursive_module_declaration");
-        ("item", recursive_module_declaration_to_json decl)
+        ("item", module_structure_to_json decl)
       ]
   | Cst.StructureItem.ModuleTypeDeclaration decl ->
       Json.Object [
@@ -2154,12 +2135,7 @@ let signature_item_to_json =
   | Cst.SignatureItem.ModuleDeclaration decl ->
       Json.Object [
         ("tag", Json.String "module_declaration");
-        ("item", module_declaration_to_json decl)
-      ]
-  | Cst.SignatureItem.RecursiveModuleDeclaration decl ->
-      Json.Object [
-        ("tag", Json.String "recursive_module_declaration");
-        ("item", recursive_module_declaration_to_json decl)
+        ("item", module_signature_to_json decl)
       ]
   | Cst.SignatureItem.ModuleTypeDeclaration decl ->
       Json.Object [

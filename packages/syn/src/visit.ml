@@ -21,7 +21,8 @@ type 'ctx walker = {
   interface : 'ctx -> Cst.interface -> 'ctx;
   let_binding : 'ctx -> Cst.LetBinding.t -> 'ctx;
   match_case : 'ctx -> Cst.match_case -> 'ctx;
-  module_declaration : 'ctx -> Cst.ModuleDeclaration.t -> 'ctx;
+  module_signature : 'ctx -> Cst.ModuleSignature.t -> 'ctx;
+  module_structure : 'ctx -> Cst.ModuleStructure.t -> 'ctx;
   module_expression : 'ctx -> Cst.ModuleExpression.t -> 'ctx;
   module_type : 'ctx -> Cst.ModuleType.t -> 'ctx;
   module_type_constraint : 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
@@ -34,7 +35,6 @@ type 'ctx walker = {
   payload : 'ctx -> Cst.Payload.t -> 'ctx;
   record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
-  recursive_module_declaration : 'ctx -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
   row_field : 'ctx -> Cst.RowField.t -> 'ctx;
   signature_item : 'ctx -> Cst.SignatureItem.t -> 'ctx;
   source_file : 'ctx -> Cst.SourceFile.t -> 'ctx;
@@ -67,7 +67,8 @@ type 'ctx walker = {
   descend_interface : 'ctx -> Cst.interface -> 'ctx;
   descend_let_binding : 'ctx -> Cst.LetBinding.t -> 'ctx;
   descend_match_case : 'ctx -> Cst.match_case -> 'ctx;
-  descend_module_declaration : 'ctx -> Cst.ModuleDeclaration.t -> 'ctx;
+  descend_module_signature : 'ctx -> Cst.ModuleSignature.t -> 'ctx;
+  descend_module_structure : 'ctx -> Cst.ModuleStructure.t -> 'ctx;
   descend_module_expression : 'ctx -> Cst.ModuleExpression.t -> 'ctx;
   descend_module_type : 'ctx -> Cst.ModuleType.t -> 'ctx;
   descend_module_type_constraint : 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
@@ -80,8 +81,6 @@ type 'ctx walker = {
   descend_payload : 'ctx -> Cst.Payload.t -> 'ctx;
   descend_record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   descend_record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
-  descend_recursive_module_declaration :
-    'ctx -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
   descend_row_field : 'ctx -> Cst.RowField.t -> 'ctx;
   descend_signature_item : 'ctx -> Cst.SignatureItem.t -> 'ctx;
   descend_source_file : 'ctx -> Cst.SourceFile.t -> 'ctx;
@@ -117,7 +116,8 @@ type 'ctx visitor = {
   visit_interface : 'ctx -> 'ctx walker -> Cst.interface -> 'ctx;
   visit_let_binding : 'ctx -> 'ctx walker -> Cst.LetBinding.t -> 'ctx;
   visit_match_case : 'ctx -> 'ctx walker -> Cst.match_case -> 'ctx;
-  visit_module_declaration : 'ctx -> 'ctx walker -> Cst.ModuleDeclaration.t -> 'ctx;
+  visit_module_signature : 'ctx -> 'ctx walker -> Cst.ModuleSignature.t -> 'ctx;
+  visit_module_structure : 'ctx -> 'ctx walker -> Cst.ModuleStructure.t -> 'ctx;
   visit_module_expression : 'ctx -> 'ctx walker -> Cst.ModuleExpression.t -> 'ctx;
   visit_module_type : 'ctx -> 'ctx walker -> Cst.ModuleType.t -> 'ctx;
   visit_module_type_constraint : 'ctx -> 'ctx walker -> Cst.ModuleTypeConstraint.t -> 'ctx;
@@ -130,8 +130,6 @@ type 'ctx visitor = {
   visit_payload : 'ctx -> 'ctx walker -> Cst.Payload.t -> 'ctx;
   visit_record_expression : 'ctx -> 'ctx walker -> Cst.RecordExpression.t -> 'ctx;
   visit_record_type_field : 'ctx -> 'ctx walker -> Cst.record_type_field -> 'ctx;
-  visit_recursive_module_declaration :
-    'ctx -> 'ctx walker -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
   visit_row_field : 'ctx -> 'ctx walker -> Cst.RowField.t -> 'ctx;
   visit_signature_item : 'ctx -> 'ctx walker -> Cst.SignatureItem.t -> 'ctx;
   visit_source_file : 'ctx -> 'ctx walker -> Cst.SourceFile.t -> 'ctx;
@@ -853,24 +851,25 @@ and descend_class_declaration = fun walk ctx (declaration : Cst.class_declaratio
 and descend_class_type_declaration = fun walk ctx (declaration : Cst.class_type_declaration) ->
   let ctx = List.fold_left walk.type_parameter ctx declaration.type_params in
   walk.class_type ctx declaration.class_type_body
-and descend_module_declaration = fun walk ctx (declaration : Cst.ModuleDeclaration.t) ->
+and descend_module_signature = fun walk ctx (declaration : Cst.ModuleSignature.t) ->
   let ctx = List.fold_left
   walk.functor_parameter
   ctx
-  (Cst.ModuleDeclaration.functor_parameters declaration) in
+  (Cst.ModuleSignature.functor_parameters declaration) in
+  let ctx = walk.module_type ctx (Cst.ModuleSignature.module_type declaration) in
+  List.fold_left walk.module_signature ctx (Cst.ModuleSignature.and_declarations declaration)
+and descend_module_structure = fun walk ctx (declaration : Cst.ModuleStructure.t) ->
+  let ctx = List.fold_left
+  walk.functor_parameter
+  ctx
+  (Cst.ModuleStructure.functor_parameters declaration) in
   let ctx =
-    match Cst.ModuleDeclaration.module_type declaration with
+    match Cst.ModuleStructure.module_type declaration with
     | Some module_type -> walk.module_type ctx module_type
     | None -> ctx
   in
-  match Cst.ModuleDeclaration.module_expression declaration with
-  | Some module_expression -> walk.module_expression ctx module_expression
-  | None -> ctx
-and descend_recursive_module_declaration = fun walk ctx (declaration : Cst.RecursiveModuleDeclaration.t) ->
-  List.fold_left
-  walk.module_declaration
-  ctx
-  (Cst.RecursiveModuleDeclaration.declarations declaration)
+  let ctx = walk.module_expression ctx (Cst.ModuleStructure.module_expression declaration) in
+  List.fold_left walk.module_structure ctx (Cst.ModuleStructure.and_declarations declaration)
 and descend_module_type_declaration = fun walk ctx (declaration : Cst.ModuleTypeDeclaration.t) ->
   match Cst.ModuleTypeDeclaration.module_type declaration with
   | Some module_type -> walk.module_type ctx module_type
@@ -906,9 +905,7 @@ and descend_structure_item = fun walk ctx (item : Cst.StructureItem.t) ->
   | Cst.StructureItem.ClassTypeDeclaration declaration ->
       walk.class_type_declaration ctx declaration
   | Cst.StructureItem.ModuleDeclaration declaration ->
-      walk.module_declaration ctx declaration
-  | Cst.StructureItem.RecursiveModuleDeclaration declaration ->
-      walk.recursive_module_declaration ctx declaration
+      walk.module_structure ctx declaration
   | Cst.StructureItem.ModuleTypeDeclaration declaration ->
       walk.module_type_declaration ctx declaration
   | Cst.StructureItem.OpenStatement statement ->
@@ -938,9 +935,7 @@ and descend_signature_item = fun walk ctx (item : Cst.SignatureItem.t) ->
   | Cst.SignatureItem.ClassTypeDeclaration declaration ->
       walk.class_type_declaration ctx declaration
   | Cst.SignatureItem.ModuleDeclaration declaration ->
-      walk.module_declaration ctx declaration
-  | Cst.SignatureItem.RecursiveModuleDeclaration declaration ->
-      walk.recursive_module_declaration ctx declaration
+      walk.module_signature ctx declaration
   | Cst.SignatureItem.ModuleTypeDeclaration declaration ->
       walk.module_type_declaration ctx declaration
   | Cst.SignatureItem.OpenStatement statement ->
@@ -988,8 +983,9 @@ let default = {visit_apply_argument = (fun ctx walk node ->
     walk.descend_include_statement ctx node); visit_interface = (fun ctx walk node ->
     walk.descend_interface ctx node); visit_let_binding = (fun ctx walk node ->
     walk.descend_let_binding ctx node); visit_match_case = (fun ctx walk node ->
-    walk.descend_match_case ctx node); visit_module_declaration = (fun ctx walk node ->
-    walk.descend_module_declaration ctx node); visit_module_expression = (fun ctx walk node ->
+    walk.descend_match_case ctx node); visit_module_signature = (fun ctx walk node ->
+    walk.descend_module_signature ctx node); visit_module_structure = (fun ctx walk node ->
+    walk.descend_module_structure ctx node); visit_module_expression = (fun ctx walk node ->
     walk.descend_module_expression ctx node); visit_module_type = (fun ctx walk node ->
     walk.descend_module_type ctx node); visit_module_type_constraint = (fun ctx walk node ->
     walk.descend_module_type_constraint ctx node); visit_module_type_declaration = (fun ctx walk node ->
@@ -1001,8 +997,7 @@ let default = {visit_apply_argument = (fun ctx walk node ->
     walk.descend_pattern ctx node); visit_payload = (fun ctx walk node ->
     walk.descend_payload ctx node); visit_record_expression = (fun ctx walk node ->
     walk.descend_record_expression ctx node); visit_record_type_field = (fun ctx walk node ->
-    walk.descend_record_type_field ctx node); visit_recursive_module_declaration = (fun ctx walk node ->
-    walk.descend_recursive_module_declaration ctx node); visit_row_field = (fun ctx walk node ->
+    walk.descend_record_type_field ctx node); visit_row_field = (fun ctx walk node ->
     walk.descend_row_field ctx node); visit_signature_item = (fun ctx walk node ->
     walk.descend_signature_item ctx node); visit_source_file = (fun ctx walk node ->
     walk.descend_source_file ctx node); visit_structure_item = (fun ctx walk node ->
@@ -1037,8 +1032,9 @@ let walker = fun visitor ->
       visitor.visit_include_statement ctx walk node); interface = (fun ctx node ->
       visitor.visit_interface ctx walk node); let_binding = (fun ctx node ->
       visitor.visit_let_binding ctx walk node); match_case = (fun ctx node ->
-      visitor.visit_match_case ctx walk node); module_declaration = (fun ctx node ->
-      visitor.visit_module_declaration ctx walk node); module_expression = (fun ctx node ->
+      visitor.visit_match_case ctx walk node); module_signature = (fun ctx node ->
+      visitor.visit_module_signature ctx walk node); module_structure = (fun ctx node ->
+      visitor.visit_module_structure ctx walk node); module_expression = (fun ctx node ->
       visitor.visit_module_expression ctx walk node); module_type = (fun ctx node ->
       visitor.visit_module_type ctx walk node); module_type_constraint = (fun ctx node ->
       visitor.visit_module_type_constraint ctx walk node); module_type_declaration = (fun ctx node ->
@@ -1050,8 +1046,7 @@ let walker = fun visitor ->
       visitor.visit_pattern ctx walk node); payload = (fun ctx node ->
       visitor.visit_payload ctx walk node); record_expression = (fun ctx node ->
       visitor.visit_record_expression ctx walk node); record_type_field = (fun ctx node ->
-      visitor.visit_record_type_field ctx walk node); recursive_module_declaration = (fun ctx node ->
-      visitor.visit_recursive_module_declaration ctx walk node); row_field = (fun ctx node ->
+      visitor.visit_record_type_field ctx walk node); row_field = (fun ctx node ->
       visitor.visit_row_field ctx walk node); signature_item = (fun ctx node ->
       visitor.visit_signature_item ctx walk node); source_file = (fun ctx node ->
       visitor.visit_source_file ctx walk node); structure_item = (fun ctx node ->
@@ -1090,7 +1085,10 @@ let walker = fun visitor ->
     node); descend_interface = (fun ctx node -> descend_interface walk ctx node); descend_let_binding = (fun ctx node -> descend_let_binding
     walk
     ctx
-    node); descend_match_case = (fun ctx node -> descend_match_case walk ctx node); descend_module_declaration = (fun ctx node -> descend_module_declaration
+    node); descend_match_case = (fun ctx node -> descend_match_case walk ctx node); descend_module_signature = (fun ctx node -> descend_module_signature
+    walk
+    ctx
+    node); descend_module_structure = (fun ctx node -> descend_module_structure
     walk
     ctx
     node); descend_module_expression = (fun ctx node -> descend_module_expression walk ctx node); descend_module_type = (fun ctx node -> descend_module_type
@@ -1111,7 +1109,7 @@ let walker = fun visitor ->
     node); descend_record_expression = (fun ctx node -> descend_record_expression walk ctx node); descend_record_type_field = (fun ctx node -> descend_record_type_field
     walk
     ctx
-    node); descend_recursive_module_declaration = (fun ctx node -> descend_recursive_module_declaration walk ctx node); descend_row_field = (fun ctx node -> descend_row_field
+    node); descend_row_field = (fun ctx node -> descend_row_field
     walk
     ctx
     node); descend_signature_item = (fun ctx node -> descend_signature_item walk ctx node); descend_source_file = (fun ctx node -> descend_source_file
@@ -1175,7 +1173,9 @@ let let_binding = fun visitor ctx node -> (walker visitor).let_binding ctx node
 
 let match_case = fun visitor ctx node -> (walker visitor).match_case ctx node
 
-let module_declaration = fun visitor ctx node -> (walker visitor).module_declaration ctx node
+let module_signature = fun visitor ctx node -> (walker visitor).module_signature ctx node
+
+let module_structure = fun visitor ctx node -> (walker visitor).module_structure ctx node
 
 let module_expression = fun visitor ctx node -> (walker visitor).module_expression ctx node
 
@@ -1200,10 +1200,6 @@ let payload = fun visitor ctx node -> (walker visitor).payload ctx node
 let record_expression = fun visitor ctx node -> (walker visitor).record_expression ctx node
 
 let record_type_field = fun visitor ctx node -> (walker visitor).record_type_field ctx node
-
-let recursive_module_declaration = fun visitor ctx node -> (walker visitor).recursive_module_declaration
-ctx
-node
 
 let row_field = fun visitor ctx node -> (walker visitor).row_field ctx node
 

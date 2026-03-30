@@ -391,13 +391,12 @@ let binding_sites_of_structure_item = function
       (Syn.Cst.ClassDeclarationSignature _) ->
       []
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
-      Option.to_list (Syn.Cst.ModuleDeclaration.module_expression decl)
-      |> List.concat_map binding_sites_of_module_expression
-  | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
-      Syn.Cst.RecursiveModuleDeclaration.declarations decl
-      |> List.concat_map (fun nested_decl ->
-             Option.to_list (Syn.Cst.ModuleDeclaration.module_expression nested_decl)
-             |> List.concat_map binding_sites_of_module_expression)
+      let rec binding_sites_of_module_structure decl =
+        binding_sites_of_module_expression (Syn.Cst.ModuleStructure.module_expression decl)
+        @ (Syn.Cst.ModuleStructure.and_declarations decl
+          |> List.concat_map binding_sites_of_module_structure)
+      in
+      binding_sites_of_module_structure decl
   | Syn.Cst.StructureItem.OpenStatement stmt -> (
       match Syn.Cst.OpenStatement.module_expression stmt with
       | Some expr -> binding_sites_of_module_expression expr

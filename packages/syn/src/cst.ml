@@ -2778,69 +2778,64 @@ module LetBinding = struct
     | _ -> false
 end
 
-module ModuleDeclaration = struct
-  type t =
-    | Signature of {
-        syntax_node : syntax_node;
-        module_name : Token.t;
-        functor_parameters : functor_parameter list;
-        module_type : module_type;
-        is_recursive : bool;
-        owned_trivia : owned_trivia;
-      }
-    | Structure of {
-        syntax_node : syntax_node;
-        module_name : Token.t;
-        functor_parameters : functor_parameter list;
-        module_type : module_type option;
-        module_expression : module_expression;
-        is_recursive : bool;
-        owned_trivia : owned_trivia;
-      }
-
-  let syntax_node = function
-    | Signature { syntax_node; _ }
-    | Structure { syntax_node; _ } -> syntax_node
-
-  let module_name_token = function
-    | Signature { module_name; _ }
-    | Structure { module_name; _ } -> module_name
-
-  let functor_parameters = function
-    | Signature { functor_parameters; _ }
-    | Structure { functor_parameters; _ } -> functor_parameters
-
-  let module_type = function
-    | Signature { module_type; _ } -> Some module_type
-    | Structure { module_type; _ } -> module_type
-
-  let module_expression = function
-    | Signature _ -> None
-    | Structure { module_expression; _ } -> Some module_expression
-
-  let is_recursive = function
-    | Signature { is_recursive; _ }
-    | Structure { is_recursive; _ } -> is_recursive
-
-  let owned_trivia = function
-    | Signature { owned_trivia; _ }
-    | Structure { owned_trivia; _ } -> owned_trivia
-
-  let name = fun decl -> Token.text (module_name_token decl)
-end
-
-module RecursiveModuleDeclaration = struct
+module ModuleSignature = struct
   type t = {
     syntax_node : syntax_node;
-    declarations : ModuleDeclaration.t list;
+    module_name : Token.t;
+    functor_parameters : functor_parameter list;
+    module_type : module_type;
+    and_declarations : t list;
+    is_recursive : bool;
     owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
 
-  let declarations = fun decl -> decl.declarations
+  let module_name_token = fun decl -> decl.module_name
+
+  let functor_parameters = fun decl -> decl.functor_parameters
+
+  let module_type = fun decl -> decl.module_type
+
+  let and_declarations = fun decl -> decl.and_declarations
+
+  let is_recursive = fun decl -> decl.is_recursive
 
   let owned_trivia = fun decl -> decl.owned_trivia
+
+  let name = fun decl -> Token.text decl.module_name
+end
+
+module ModuleStructure = struct
+  type t =
+    {
+    syntax_node : syntax_node;
+    module_name : Token.t;
+    functor_parameters : functor_parameter list;
+    module_type : module_type option;
+    module_expression : module_expression;
+    and_declarations : t list;
+    is_recursive : bool;
+    owned_trivia : owned_trivia;
+  }
+
+  let syntax_node = fun decl -> decl.syntax_node
+
+  let module_name_token = fun decl -> decl.module_name
+
+  let functor_parameters = fun decl -> decl.functor_parameters
+
+  let module_type = fun decl -> decl.module_type
+
+  let module_expression = fun decl -> decl.module_expression
+
+  let and_declarations = fun decl -> decl.and_declarations
+
+  let is_recursive = fun decl -> decl.is_recursive
+
+  let owned_trivia = fun decl -> decl.owned_trivia
+
+  let name = fun decl -> Token.text decl.module_name
 end
 
 module ModuleTypeDeclaration = struct
@@ -3165,8 +3160,7 @@ module StructureItem = struct
     | Extension of extension
     | ClassDeclaration of class_declaration
     | ClassTypeDeclaration of class_type_declaration
-    | ModuleDeclaration of ModuleDeclaration.t
-    | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
+    | ModuleDeclaration of ModuleStructure.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
     | Docstring of Docstring.t
@@ -3189,9 +3183,7 @@ module StructureItem = struct
         | ClassDeclarationStructure { syntax_node; _ } ->
             syntax_node)
     | ClassTypeDeclaration decl -> decl.syntax_node
-    | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
-    | RecursiveModuleDeclaration decl ->
-        RecursiveModuleDeclaration.syntax_node decl
+    | ModuleDeclaration decl -> ModuleStructure.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
     | Docstring doc -> Docstring.syntax_node doc
@@ -3209,8 +3201,7 @@ module SignatureItem = struct
     | Extension of extension
     | ClassDeclaration of class_declaration
     | ClassTypeDeclaration of class_type_declaration
-    | ModuleDeclaration of ModuleDeclaration.t
-    | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
+    | ModuleDeclaration of ModuleSignature.t
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
     | OpenStatement of OpenStatement.t
     | Docstring of Docstring.t
@@ -3232,9 +3223,7 @@ module SignatureItem = struct
         | ClassDeclarationStructure { syntax_node; _ } ->
             syntax_node)
     | ClassTypeDeclaration decl -> decl.syntax_node
-    | ModuleDeclaration decl -> ModuleDeclaration.syntax_node decl
-    | RecursiveModuleDeclaration decl ->
-        RecursiveModuleDeclaration.syntax_node decl
+    | ModuleDeclaration decl -> ModuleSignature.syntax_node decl
     | ModuleTypeDeclaration decl -> ModuleTypeDeclaration.syntax_node decl
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
     | Docstring doc -> Docstring.syntax_node doc

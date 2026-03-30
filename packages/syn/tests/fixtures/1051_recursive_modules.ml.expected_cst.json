@@ -11,7 +11,7 @@
     },
     "items": [
       {
-        "tag": "recursive_module_declaration",
+        "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_MUTUAL_DECL",
@@ -20,92 +20,80 @@
               "end": 118
             }
           },
-          "declarations": [
-            {
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "A",
+            "span": {
+              "start": 11,
+              "end": 12
+            }
+          },
+          "functor_parameters": [],
+          "module_type": {
+            "tag": "signature",
+            "syntax_node": {
+              "kind": "SIG_EXPR",
+              "span": {
+                "start": 14,
+                "end": 36
+              }
+            },
+            "signature_syntax_node": {
+              "kind": "SIG_EXPR",
+              "span": {
+                "start": 14,
+                "end": 36
+              }
+            }
+          },
+          "module_expression": {
+            "tag": "constraint",
+            "syntax_node": {
+              "kind": "MODULE_DECL",
+              "span": {
+                "start": 0,
+                "end": 63
+              }
+            },
+            "module_expression": {
               "tag": "structure",
               "syntax_node": {
-                "kind": "MODULE_DECL",
+                "kind": "STRUCT_EXPR",
                 "span": {
-                  "start": 0,
+                  "start": 38,
                   "end": 63
                 }
               },
-              "module_name": {
-                "kind": "IDENT_EXPR",
-                "text": "A",
-                "span": {
-                  "start": 11,
-                  "end": 12
-                }
-              },
-              "functor_parameters": [],
-              "module_type": {
-                "tag": "signature",
-                "syntax_node": {
-                  "kind": "SIG_EXPR",
+              "item_syntax_nodes": [
+                {
+                  "kind": "LET_BINDING",
                   "span": {
-                    "start": 14,
-                    "end": 36
-                  }
-                },
-                "signature_syntax_node": {
-                  "kind": "SIG_EXPR",
-                  "span": {
-                    "start": 14,
-                    "end": 36
+                    "start": 45,
+                    "end": 59
                   }
                 }
-              },
-              "module_expression": {
-                "tag": "constraint",
-                "syntax_node": {
-                  "kind": "MODULE_DECL",
-                  "span": {
-                    "start": 0,
-                    "end": 63
-                  }
-                },
-                "module_expression": {
-                  "tag": "structure",
-                  "syntax_node": {
-                    "kind": "STRUCT_EXPR",
-                    "span": {
-                      "start": 38,
-                      "end": 63
-                    }
-                  },
-                  "item_syntax_nodes": [
-                    {
-                      "kind": "LET_BINDING",
-                      "span": {
-                        "start": 45,
-                        "end": 59
-                      }
-                    }
-                  ]
-                },
-                "module_type": {
-                  "tag": "signature",
-                  "syntax_node": {
-                    "kind": "SIG_EXPR",
-                    "span": {
-                      "start": 14,
-                      "end": 36
-                    }
-                  },
-                  "signature_syntax_node": {
-                    "kind": "SIG_EXPR",
-                    "span": {
-                      "start": 14,
-                      "end": 36
-                    }
-                  }
-                }
-              },
-              "is_recursive": true
+              ]
             },
+            "module_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "SIG_EXPR",
+                "span": {
+                  "start": 14,
+                  "end": 36
+                }
+              },
+              "signature_syntax_node": {
+                "kind": "SIG_EXPR",
+                "span": {
+                  "start": 14,
+                  "end": 36
+                }
+              }
+            }
+          },
+          "and_declarations": [
             {
-              "tag": "structure",
               "syntax_node": {
                 "kind": "MODULE_DECL",
                 "span": {
@@ -185,9 +173,11 @@
                   }
                 }
               },
+              "and_declarations": [],
               "is_recursive": true
             }
-          ]
+          ],
+          "is_recursive": true
         }
       }
     ]

@@ -4092,7 +4092,6 @@
       {
         "tag": "module_declaration",
         "item": {
-          "tag": "structure",
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
@@ -4334,6 +4333,7 @@
               }
             }
           },
+          "and_declarations": [],
           "is_recursive": false
         }
       },
@@ -5322,7 +5322,6 @@
       {
         "tag": "module_declaration",
         "item": {
-          "tag": "structure",
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
@@ -5361,11 +5360,12 @@
               }
             }
           },
+          "and_declarations": [],
           "is_recursive": false
         }
       },
       {
-        "tag": "recursive_module_declaration",
+        "tag": "module_declaration",
         "item": {
           "syntax_node": {
             "kind": "TYPE_MUTUAL_DECL",
@@ -5374,102 +5374,90 @@
               "end": 1927
             }
           },
-          "declarations": [
-            {
-              "tag": "structure",
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 1897,
+              "end": 1898
+            }
+          },
+          "functor_parameters": [],
+          "module_type": {
+            "tag": "path",
+            "path": {
+              "tag": "ident",
               "syntax_node": {
-                "kind": "MODULE_DECL",
+                "kind": "MODULE_TYPE_PATH",
                 "span": {
-                  "start": 1873,
-                  "end": 1906
+                  "start": 1900,
+                  "end": 1902
                 }
               },
-              "module_name": {
+              "name_token": {
                 "kind": "IDENT_EXPR",
-                "text": "M",
+                "text": "S",
                 "span": {
-                  "start": 1897,
-                  "end": 1898
+                  "start": 1901,
+                  "end": 1902
                 }
-              },
-              "functor_parameters": [],
-              "module_type": {
-                "tag": "path",
-                "path": {
-                  "tag": "ident",
-                  "syntax_node": {
-                    "kind": "MODULE_TYPE_PATH",
-                    "span": {
-                      "start": 1900,
-                      "end": 1902
-                    }
-                  },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "S",
-                    "span": {
-                      "start": 1901,
-                      "end": 1902
-                    }
-                  }
-                }
-              },
-              "module_expression": {
-                "tag": "constraint",
+              }
+            }
+          },
+          "module_expression": {
+            "tag": "constraint",
+            "syntax_node": {
+              "kind": "MODULE_DECL",
+              "span": {
+                "start": 1873,
+                "end": 1906
+              }
+            },
+            "module_expression": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
                 "syntax_node": {
-                  "kind": "MODULE_DECL",
+                  "kind": "IDENT_EXPR",
                   "span": {
-                    "start": 1873,
+                    "start": 1904,
                     "end": 1906
                   }
                 },
-                "module_expression": {
-                  "tag": "path",
-                  "path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "IDENT_EXPR",
-                      "span": {
-                        "start": 1904,
-                        "end": 1906
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "M",
-                      "span": {
-                        "start": 1905,
-                        "end": 1906
-                      }
-                    }
-                  }
-                },
-                "module_type": {
-                  "tag": "path",
-                  "path": {
-                    "tag": "ident",
-                    "syntax_node": {
-                      "kind": "MODULE_TYPE_PATH",
-                      "span": {
-                        "start": 1900,
-                        "end": 1902
-                      }
-                    },
-                    "name_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "S",
-                      "span": {
-                        "start": 1901,
-                        "end": 1902
-                      }
-                    }
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "M",
+                  "span": {
+                    "start": 1905,
+                    "end": 1906
                   }
                 }
-              },
-              "is_recursive": true
+              }
             },
+            "module_type": {
+              "tag": "path",
+              "path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 1900,
+                    "end": 1902
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "S",
+                  "span": {
+                    "start": 1901,
+                    "end": 1902
+                  }
+                }
+              }
+            }
+          },
+          "and_declarations": [
             {
-              "tag": "structure",
               "syntax_node": {
                 "kind": "MODULE_DECL",
                 "span": {
@@ -5559,9 +5547,11 @@
                   }
                 }
               },
+              "and_declarations": [],
               "is_recursive": true
             }
-          ]
+          ],
+          "is_recursive": true
         }
       },
       {

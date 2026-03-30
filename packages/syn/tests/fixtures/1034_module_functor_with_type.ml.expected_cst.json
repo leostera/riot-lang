@@ -13,7 +13,6 @@
       {
         "tag": "module_declaration",
         "item": {
-          "tag": "structure",
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
@@ -169,6 +168,7 @@
               }
             ]
           },
+          "and_declarations": [],
           "is_recursive": false
         }
       }

@@ -13,7 +13,6 @@
       {
         "tag": "module_declaration",
         "item": {
-          "tag": "signature",
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
@@ -58,6 +57,7 @@
               }
             }
           },
+          "and_declarations": [],
           "is_recursive": false
         }
       }

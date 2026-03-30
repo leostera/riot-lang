@@ -144,7 +144,8 @@ type 'ctx walker = {
   interface : 'ctx -> Cst.interface -> 'ctx;
   let_binding : 'ctx -> Cst.LetBinding.t -> 'ctx;
   match_case : 'ctx -> Cst.match_case -> 'ctx;
-  module_declaration : 'ctx -> Cst.ModuleDeclaration.t -> 'ctx;
+  module_signature : 'ctx -> Cst.ModuleSignature.t -> 'ctx;
+  module_structure : 'ctx -> Cst.ModuleStructure.t -> 'ctx;
   module_expression : 'ctx -> Cst.ModuleExpression.t -> 'ctx;
   module_type : 'ctx -> Cst.ModuleType.t -> 'ctx;
   module_type_constraint : 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
@@ -157,7 +158,6 @@ type 'ctx walker = {
   payload : 'ctx -> Cst.Payload.t -> 'ctx;
   record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
-  recursive_module_declaration : 'ctx -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
   row_field : 'ctx -> Cst.RowField.t -> 'ctx;
   signature_item : 'ctx -> Cst.SignatureItem.t -> 'ctx;
   source_file : 'ctx -> Cst.SourceFile.t -> 'ctx;
@@ -190,7 +190,8 @@ type 'ctx walker = {
   descend_interface : 'ctx -> Cst.interface -> 'ctx;
   descend_let_binding : 'ctx -> Cst.LetBinding.t -> 'ctx;
   descend_match_case : 'ctx -> Cst.match_case -> 'ctx;
-  descend_module_declaration : 'ctx -> Cst.ModuleDeclaration.t -> 'ctx;
+  descend_module_signature : 'ctx -> Cst.ModuleSignature.t -> 'ctx;
+  descend_module_structure : 'ctx -> Cst.ModuleStructure.t -> 'ctx;
   descend_module_expression : 'ctx -> Cst.ModuleExpression.t -> 'ctx;
   descend_module_type : 'ctx -> Cst.ModuleType.t -> 'ctx;
   descend_module_type_constraint : 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
@@ -203,8 +204,6 @@ type 'ctx walker = {
   descend_payload : 'ctx -> Cst.Payload.t -> 'ctx;
   descend_record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
   descend_record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
-  descend_recursive_module_declaration :
-    'ctx -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
   descend_row_field : 'ctx -> Cst.RowField.t -> 'ctx;
   descend_signature_item : 'ctx -> Cst.SignatureItem.t -> 'ctx;
   descend_source_file : 'ctx -> Cst.SourceFile.t -> 'ctx;
@@ -241,7 +240,8 @@ type 'ctx visitor = {
   visit_interface : 'ctx -> 'ctx walker -> Cst.interface -> 'ctx;
   visit_let_binding : 'ctx -> 'ctx walker -> Cst.LetBinding.t -> 'ctx;
   visit_match_case : 'ctx -> 'ctx walker -> Cst.match_case -> 'ctx;
-  visit_module_declaration : 'ctx -> 'ctx walker -> Cst.ModuleDeclaration.t -> 'ctx;
+  visit_module_signature : 'ctx -> 'ctx walker -> Cst.ModuleSignature.t -> 'ctx;
+  visit_module_structure : 'ctx -> 'ctx walker -> Cst.ModuleStructure.t -> 'ctx;
   visit_module_expression : 'ctx -> 'ctx walker -> Cst.ModuleExpression.t -> 'ctx;
   visit_module_type : 'ctx -> 'ctx walker -> Cst.ModuleType.t -> 'ctx;
   visit_module_type_constraint : 'ctx -> 'ctx walker -> Cst.ModuleTypeConstraint.t -> 'ctx;
@@ -254,8 +254,6 @@ type 'ctx visitor = {
   visit_payload : 'ctx -> 'ctx walker -> Cst.Payload.t -> 'ctx;
   visit_record_expression : 'ctx -> 'ctx walker -> Cst.RecordExpression.t -> 'ctx;
   visit_record_type_field : 'ctx -> 'ctx walker -> Cst.record_type_field -> 'ctx;
-  visit_recursive_module_declaration :
-    'ctx -> 'ctx walker -> Cst.RecursiveModuleDeclaration.t -> 'ctx;
   visit_row_field : 'ctx -> 'ctx walker -> Cst.RowField.t -> 'ctx;
   visit_signature_item : 'ctx -> 'ctx walker -> Cst.SignatureItem.t -> 'ctx;
   visit_source_file : 'ctx -> 'ctx walker -> Cst.SourceFile.t -> 'ctx;
@@ -314,7 +312,9 @@ val let_binding : 'ctx visitor -> 'ctx -> Cst.LetBinding.t -> 'ctx
 
 val match_case : 'ctx visitor -> 'ctx -> Cst.match_case -> 'ctx
 
-val module_declaration : 'ctx visitor -> 'ctx -> Cst.ModuleDeclaration.t -> 'ctx
+val module_signature : 'ctx visitor -> 'ctx -> Cst.ModuleSignature.t -> 'ctx
+
+val module_structure : 'ctx visitor -> 'ctx -> Cst.ModuleStructure.t -> 'ctx
 
 val module_expression : 'ctx visitor -> 'ctx -> Cst.ModuleExpression.t -> 'ctx
 
@@ -339,8 +339,6 @@ val payload : 'ctx visitor -> 'ctx -> Cst.Payload.t -> 'ctx
 val record_expression : 'ctx visitor -> 'ctx -> Cst.RecordExpression.t -> 'ctx
 
 val record_type_field : 'ctx visitor -> 'ctx -> Cst.record_type_field -> 'ctx
-
-val recursive_module_declaration : 'ctx visitor -> 'ctx -> Cst.RecursiveModuleDeclaration.t -> 'ctx
 
 val row_field : 'ctx visitor -> 'ctx -> Cst.RowField.t -> 'ctx
 

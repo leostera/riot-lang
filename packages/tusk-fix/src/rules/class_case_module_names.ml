@@ -58,11 +58,22 @@ let make_diagnostic token =
     ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ()
 
-let diagnostic_for_module_decl decl =
-  let name = Syn.Cst.ModuleDeclaration.name decl in
+let diagnostic_for_module_structure decl =
+  let name = Syn.Cst.ModuleStructure.name decl in
   if should_flag_module_name name then
     let token =
-      Syn.Cst.ModuleDeclaration.module_name_token decl
+      Syn.Cst.ModuleStructure.module_name_token decl
+      |> Syn.Cst.Token.syntax_token
+    in
+    Some (make_diagnostic token)
+  else
+    None
+
+let diagnostic_for_module_signature decl =
+  let name = Syn.Cst.ModuleSignature.name decl in
+  if should_flag_module_name name then
+    let token =
+      Syn.Cst.ModuleSignature.module_name_token decl
       |> Syn.Cst.Token.syntax_token
     in
     Some (make_diagnostic token)
@@ -80,9 +91,15 @@ let diagnostic_for_module_type_decl decl =
   else
     None
 
-let diagnostics_for_recursive_module_decl decl =
-  Syn.Cst.RecursiveModuleDeclaration.declarations decl
-  |> List.filter_map diagnostic_for_module_decl
+let rec diagnostics_for_module_structure decl =
+  Option.to_list (diagnostic_for_module_structure decl)
+  @ (Syn.Cst.ModuleStructure.and_declarations decl
+    |> List.concat_map diagnostics_for_module_structure)
+
+let rec diagnostics_for_module_signature decl =
+  Option.to_list (diagnostic_for_module_signature decl)
+  @ (Syn.Cst.ModuleSignature.and_declarations decl
+    |> List.concat_map diagnostics_for_module_signature)
 
 let diagnostics_for_items source_file =
   match source_file with
@@ -90,9 +107,7 @@ let diagnostics_for_items source_file =
       items
       |> List.concat_map (function
            | Syn.Cst.StructureItem.ModuleDeclaration decl ->
-               Option.to_list (diagnostic_for_module_decl decl)
-           | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
-               diagnostics_for_recursive_module_decl decl
+               diagnostics_for_module_structure decl
            | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
                Option.to_list (diagnostic_for_module_type_decl decl)
            | _ -> [])
@@ -100,9 +115,7 @@ let diagnostics_for_items source_file =
       items
       |> List.concat_map (function
            | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
-               Option.to_list (diagnostic_for_module_decl decl)
-           | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
-               diagnostics_for_recursive_module_decl decl
+               diagnostics_for_module_signature decl
            | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
                Option.to_list (diagnostic_for_module_type_decl decl)
            | _ -> [])

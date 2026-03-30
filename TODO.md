@@ -59,7 +59,7 @@ This file is _yours_. Keep it up to date after every big change.
 - class, local-open, object, and extension core types now lower structurally.
 - `Syn.Cst.class_declaration` is now an explicit valid-shape sum instead of a `class_type option * class_body option` product; impossible `None/None` declaration states are no longer representable.
 - `Syn.Cst.ModuleTypeDeclaration` now models only `module type Name` and `module type Name = ...`; the bogus `is_destructive_substitution` state is gone from that CST node.
-- `Syn.Cst.ModuleDeclaration` is now an explicit valid-shape sum for signature-only versus structure-with-body module bindings; the bogus `:=` substitution path and the old `module_type option * module_expression option` product are gone, although the node still spans both structure and signature contexts.
+- `Syn.Cst.ModuleStructure` and `Syn.Cst.ModuleSignature` now split implementation-only versus interface-only `module` bindings, and grouped `module rec ... and ...` declarations live on `and_declarations` instead of a recursive wrapper item.
 - implementation-side `val` items are no longer representable in `Syn.Cst.StructureItem`; ordinary `value_declaration` nodes now stay signature-only, matching standard OCaml syntax.
 - `Syn.Cst.let_binding` is now pattern-first only; the old cached `binding_name` field is gone, and simple binding names are derived from `binding_pattern` when the pattern shape actually carries one.
 - expression type annotations and coercions now share one `Syn.Cst.Expression.TypeAscription` node with explicit `Type | Coerce | ConstraintCoerce` variants instead of a split `Typed` node plus nullable `Coerce` record.
@@ -137,6 +137,7 @@ This file is _yours_. Keep it up to date after every big change.
 - attribute and extension payloads now use a single `Syn.Cst.Payload.Opaque` constructor, preserving foreign-language bodies and OCaml payload bodies losslessly in the CST without advertising structured payload variants we do not actually support.
 - `krasny` now renders attribute and extension payloads from that opaque CST token slice instead of relifting or normalizing payload contents.
 - the remaining structural debt is unsupported valid syntax and missing CST facts, not formatter-side source/token/span reconstruction.
+- `timeout 120 tusk build syn krasny fixme tusk-fix`, `timeout 180 tusk test syn:cst_tests`, `timeout 180 tusk test krasny:format_tests`, and `timeout 300 python3 packages/syn/tests/test_runner.py cst --refresh-clean` all pass on the module split plus CST-tightening work.
 
 ## Working Style
 

@@ -4037,7 +4037,42 @@ module LetBinding : sig
   val is_function : t -> bool
 end
 
-(** A `module` declaration item.
+(** A `module` item that appears in signatures.
+
+    Example:
+
+    ```ocaml,norun
+    module M : S
+    ```
+*)
+module ModuleSignature : sig
+  type t = {
+    syntax_node : syntax_node;
+    module_name : Token.t;
+    functor_parameters : functor_parameter list;
+    module_type : module_type;
+    and_declarations : t list;
+    is_recursive : bool;
+    owned_trivia : owned_trivia;
+  }
+  val syntax_node : t -> syntax_node
+
+  val module_name_token : t -> Token.t
+
+  val functor_parameters : t -> functor_parameter list
+
+  val module_type : t -> module_type
+
+  val and_declarations : t -> t list
+
+  val is_recursive : t -> bool
+
+  val owned_trivia : t -> owned_trivia
+
+  val name : t -> string
+end
+
+(** A `module` item that appears in implementations.
 
     Examples:
 
@@ -4045,27 +4080,18 @@ end
     module M = N
     module F (X : S) : T = struct end
     ```
-
 *)
-module ModuleDeclaration : sig
-  type t =
-    | Signature of {
-        syntax_node : syntax_node;
-        module_name : Token.t;
-        functor_parameters : functor_parameter list;
-        module_type : module_type;
-        is_recursive : bool;
-        owned_trivia : owned_trivia;
-      }
-    | Structure of {
-        syntax_node : syntax_node;
-        module_name : Token.t;
-        functor_parameters : functor_parameter list;
-        module_type : module_type option;
-        module_expression : module_expression;
-        is_recursive : bool;
-        owned_trivia : owned_trivia;
-      }
+module ModuleStructure : sig
+  type t = {
+    syntax_node : syntax_node;
+    module_name : Token.t;
+    functor_parameters : functor_parameter list;
+    module_type : module_type option;
+    module_expression : module_expression;
+    and_declarations : t list;
+    is_recursive : bool;
+    owned_trivia : owned_trivia;
+  }
   val syntax_node : t -> syntax_node
 
   val module_name_token : t -> Token.t
@@ -4074,7 +4100,9 @@ module ModuleDeclaration : sig
 
   val module_type : t -> module_type option
 
-  val module_expression : t -> module_expression option
+  val module_expression : t -> module_expression
+
+  val and_declarations : t -> t list
 
   val is_recursive : t -> bool
 
@@ -4087,18 +4115,6 @@ end
 
     Covers both `open M` and `open! M`.
 *)
-module RecursiveModuleDeclaration : sig
-  type t = {
-    syntax_node : syntax_node;
-    declarations : ModuleDeclaration.t list;
-    owned_trivia : owned_trivia;
-  }
-  val syntax_node : t -> syntax_node
-
-  val declarations : t -> ModuleDeclaration.t list
-
-  val owned_trivia : t -> owned_trivia
-end
 
 (** A standalone docstring item.
 
@@ -4434,10 +4450,8 @@ module StructureItem : sig
         (** A `class` declaration item. *)
     | ClassTypeDeclaration of class_type_declaration
         (** A `class type` declaration item. *)
-    | ModuleDeclaration of ModuleDeclaration.t
+    | ModuleDeclaration of ModuleStructure.t
         (** A non-recursive `module` declaration item. *)
-    | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
-        (** A `module rec ... and ...` item. *)
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
         (** A `module type` declaration item. *)
     | OpenStatement of OpenStatement.t
@@ -4470,10 +4484,8 @@ module SignatureItem : sig
         (** A `class` declaration item. *)
     | ClassTypeDeclaration of class_type_declaration
         (** A `class type` declaration item. *)
-    | ModuleDeclaration of ModuleDeclaration.t
+    | ModuleDeclaration of ModuleSignature.t
         (** A non-recursive `module` declaration item. *)
-    | RecursiveModuleDeclaration of RecursiveModuleDeclaration.t
-        (** A `module rec ... and ...` item. *)
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
         (** A `module type` declaration item. *)
     | OpenStatement of OpenStatement.t

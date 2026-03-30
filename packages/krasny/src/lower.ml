@@ -4827,12 +4827,85 @@ and render_module_expression_doc = function
   | Syn.Cst.ModuleExpression.Extension extension ->
       render_extension_doc extension
 
-and render_module_declaration_with_keyword keyword_doc
-    (decl : Syn.Cst.ModuleDeclaration.t) =
-  let module_name = Syn.Cst.ModuleDeclaration.module_name_token decl in
-  let functor_parameters = Syn.Cst.ModuleDeclaration.functor_parameters decl in
-  let module_type = Syn.Cst.ModuleDeclaration.module_type decl in
-  let module_expression = Syn.Cst.ModuleDeclaration.module_expression decl in
+and render_module_signature_with_keyword keyword_doc
+    (decl : Syn.Cst.ModuleSignature.t) =
+  let module_name = Syn.Cst.ModuleSignature.module_name_token decl in
+  let functor_parameters = Syn.Cst.ModuleSignature.functor_parameters decl in
+  let module_type = Syn.Cst.ModuleSignature.module_type decl in
+  let header =
+    Doc.concat
+      [
+        keyword_doc;
+        Doc.space;
+        doc_of_token module_name;
+        (if functor_parameters = [] then
+           Doc.empty
+         else
+           Doc.concat
+             [
+               Doc.space;
+               Doc.join Doc.space (List.map render_functor_parameter functor_parameters);
+             ]);
+      ]
+  in
+  let header = Doc.concat [ header; colon; render_module_type_doc module_type ] in
+  let declarations = decl :: Syn.Cst.ModuleSignature.and_declarations decl in
+  match declarations with
+  | [] -> Doc.empty
+  | first :: rest ->
+      Doc.join blank_line
+        (render_module_signature_header
+           (if Syn.Cst.ModuleSignature.is_recursive first then
+              Doc.concat [ kw_module; Doc.space; kw_rec ]
+            else
+              keyword_doc)
+           first
+        :: List.map (render_module_signature_header kw_and) rest)
+
+and render_module_signature_header keyword_doc
+    (decl : Syn.Cst.ModuleSignature.t) =
+  let module_name = Syn.Cst.ModuleSignature.module_name_token decl in
+  let functor_parameters = Syn.Cst.ModuleSignature.functor_parameters decl in
+  let module_type = Syn.Cst.ModuleSignature.module_type decl in
+  let header =
+    Doc.concat
+      [
+        keyword_doc;
+        Doc.space;
+        doc_of_token module_name;
+        (if functor_parameters = [] then
+           Doc.empty
+         else
+           Doc.concat
+             [
+               Doc.space;
+               Doc.join Doc.space (List.map render_functor_parameter functor_parameters);
+             ]);
+      ]
+  in
+  Doc.concat [ header; colon; render_module_type_doc module_type ]
+
+and render_module_structure_with_keyword keyword_doc
+    (decl : Syn.Cst.ModuleStructure.t) =
+  let declarations = decl :: Syn.Cst.ModuleStructure.and_declarations decl in
+  match declarations with
+  | [] -> Doc.empty
+  | first :: rest ->
+      Doc.join blank_line
+        (render_module_structure_header
+           (if Syn.Cst.ModuleStructure.is_recursive first then
+              Doc.concat [ kw_module; Doc.space; kw_rec ]
+            else
+              keyword_doc)
+           first
+        :: List.map (render_module_structure_header kw_and) rest)
+
+and render_module_structure_header keyword_doc
+    (decl : Syn.Cst.ModuleStructure.t) =
+  let module_name = Syn.Cst.ModuleStructure.module_name_token decl in
+  let functor_parameters = Syn.Cst.ModuleStructure.functor_parameters decl in
+  let module_type = Syn.Cst.ModuleStructure.module_type decl in
+  let module_expression = Syn.Cst.ModuleStructure.module_expression decl in
   let header =
     Doc.concat
       [
@@ -4857,24 +4930,11 @@ and render_module_declaration_with_keyword keyword_doc
         Doc.concat [ header; colon; render_module_type_doc module_type ]
   in
   match module_expression with
-  | None ->
-      header
-  | Some (Syn.Cst.ModuleExpression.Constraint { module_expression; _ })
+  | Syn.Cst.ModuleExpression.Constraint { module_expression; _ }
     when Option.is_some module_type ->
       Doc.concat [ header; equals; render_module_expression_doc module_expression ]
-  | Some module_expression ->
+  | module_expression ->
       Doc.concat [ header; equals; render_module_expression_doc module_expression ]
-
-and render_recursive_module_declaration (decl : Syn.Cst.RecursiveModuleDeclaration.t) =
-  match Syn.Cst.RecursiveModuleDeclaration.declarations decl with
-  | [] ->
-      Doc.empty
-  | first :: rest ->
-      Doc.join blank_line
-        (render_module_declaration_with_keyword
-           (Doc.concat [ kw_module; Doc.space; kw_rec ])
-           first
-        :: List.map (render_module_declaration_with_keyword kw_and) rest)
 
 and render_module_type_declaration ({ module_type_name; module_type; _ } :
       Syn.Cst.ModuleTypeDeclaration.t) =
@@ -4905,12 +4965,12 @@ and render_include_statement ({ target; _ } : Syn.Cst.include_statement) =
 
 and is_module_alias_structure_item = function
   | Syn.Cst.StructureItem.ModuleDeclaration
-      (Syn.Cst.ModuleDeclaration.Structure {
+      {
          functor_parameters = [];
          module_type = None;
          module_expression = Syn.Cst.ModuleExpression.Path _;
          _;
-       }) ->
+       } ->
       true
   | _ ->
       false
@@ -4945,9 +5005,7 @@ and render_structure_item_owned_trivia =
   | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
       Some decl.owned_trivia
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
-      Some (Syn.Cst.ModuleDeclaration.owned_trivia decl)
-  | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
-      Some (Syn.Cst.RecursiveModuleDeclaration.owned_trivia decl)
+      Some (Syn.Cst.ModuleStructure.owned_trivia decl)
   | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
       Some (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl)
   | Syn.Cst.StructureItem.OpenStatement stmt ->
@@ -4977,9 +5035,7 @@ and render_signature_item_owned_trivia =
   | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
       Some decl.owned_trivia
   | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
-      Some (Syn.Cst.ModuleDeclaration.owned_trivia decl)
-  | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
-      Some (Syn.Cst.RecursiveModuleDeclaration.owned_trivia decl)
+      Some (Syn.Cst.ModuleSignature.owned_trivia decl)
   | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
       Some (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl)
   | Syn.Cst.SignatureItem.OpenStatement stmt ->
@@ -5146,9 +5202,7 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.ExternalDeclaration decl ->
       render_external_declaration decl
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
-      render_module_declaration_with_keyword kw_module decl
-  | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
-      render_recursive_module_declaration decl
+      render_module_structure_with_keyword kw_module decl
   | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
       render_module_type_declaration decl
   | Syn.Cst.StructureItem.IncludeStatement stmt ->
@@ -5189,9 +5243,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.TypeExtension decl ->
       render_type_extension decl
   | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
-      render_module_declaration_with_keyword kw_module decl
-  | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
-      render_recursive_module_declaration decl
+      render_module_signature_with_keyword kw_module decl
   | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
       render_module_type_declaration decl
   | Syn.Cst.SignatureItem.IncludeStatement stmt ->

@@ -312,13 +312,12 @@ let let_bindings_of_structure_item = function
       (Syn.Cst.ClassDeclarationSignature _) ->
       []
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
-      Option.to_list (Syn.Cst.ModuleDeclaration.module_expression decl)
-      |> List.concat_map let_bindings_of_module_expression
-  | Syn.Cst.StructureItem.RecursiveModuleDeclaration decl ->
-      Syn.Cst.RecursiveModuleDeclaration.declarations decl
-      |> List.concat_map (fun nested_decl ->
-             Option.to_list (Syn.Cst.ModuleDeclaration.module_expression nested_decl)
-             |> List.concat_map let_bindings_of_module_expression)
+      let rec let_bindings_of_module_structure decl =
+        let_bindings_of_module_expression (Syn.Cst.ModuleStructure.module_expression decl)
+        @ (Syn.Cst.ModuleStructure.and_declarations decl
+          |> List.concat_map let_bindings_of_module_structure)
+      in
+      let_bindings_of_module_structure decl
   | Syn.Cst.StructureItem.OpenStatement stmt -> (
       match Syn.Cst.OpenStatement.module_expression stmt with
       | Some expr -> let_bindings_of_module_expression expr
@@ -524,7 +523,6 @@ let expressions_of_structure_item = function
   | Syn.Cst.StructureItem.TypeDeclaration _
   | Syn.Cst.StructureItem.TypeExtension _
   | Syn.Cst.StructureItem.ModuleDeclaration _
-  | Syn.Cst.StructureItem.RecursiveModuleDeclaration _
   | Syn.Cst.StructureItem.ModuleTypeDeclaration _
   | Syn.Cst.StructureItem.OpenStatement _
   | Syn.Cst.StructureItem.ExternalDeclaration _

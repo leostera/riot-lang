@@ -868,7 +868,6 @@ let structure_item_owned_trivia_spans =
   | Cst.StructureItem.ClassDeclaration _
   | Cst.StructureItem.ClassTypeDeclaration _
   | Cst.StructureItem.ModuleDeclaration _
-  | Cst.StructureItem.RecursiveModuleDeclaration _
   | Cst.StructureItem.ModuleTypeDeclaration _
   | Cst.StructureItem.OpenStatement _
   | Cst.StructureItem.Docstring _
@@ -890,7 +889,6 @@ let signature_item_owned_trivia_spans =
   | Cst.SignatureItem.ClassDeclaration _
   | Cst.SignatureItem.ClassTypeDeclaration _
   | Cst.SignatureItem.ModuleDeclaration _
-  | Cst.SignatureItem.RecursiveModuleDeclaration _
   | Cst.SignatureItem.ModuleTypeDeclaration _
   | Cst.SignatureItem.OpenStatement _
   | Cst.SignatureItem.Docstring _
@@ -7351,7 +7349,7 @@ let let_expression_binding_from_node = fun ~is_recursive_binding node ->
                 bound_value_node; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_bindings = []; is_recursive = is_recursive_binding}
     | _ -> None
 
-let module_declaration_from_node = fun node ->
+let module_declaration_parts_from_node = fun node ->
   let direct_tokens = direct_non_trivia_tokens node in
   let is_recursive_declaration =
     direct_tokens
@@ -7404,96 +7402,94 @@ let module_declaration_from_node = fun node ->
         |> List.map functor_parameter_from_node
       in
       let owned_trivia = owned_trivia_from_node node in
-      (match lifted_module_expression, lifted_module_type with
-      | Some module_expression, module_type ->
-          Some
-            (Cst.ModuleDeclaration.Structure {
-               syntax_node = node;
-               module_name;
-               functor_parameters;
-               module_type;
-               module_expression;
-               is_recursive = is_recursive_declaration;
-               owned_trivia;
-             })
-      | None, Some module_type ->
-          Some
-            (Cst.ModuleDeclaration.Signature {
-               syntax_node = node;
-               module_name;
-               functor_parameters;
-               module_type;
-               is_recursive = is_recursive_declaration;
-               owned_trivia;
-             })
-      | None, None ->
-          None)
+      Some
+        (module_name, functor_parameters, lifted_module_type, lifted_module_expression,
+         is_recursive_declaration, owned_trivia)
     )
   | None -> None
 
-let recursive_module_declaration_from_nodes = fun ~group_syntax_node module_decl_nodes ->
-  let with_recursive_flag = function
-    | Cst.ModuleDeclaration.Signature {
-        syntax_node;
-        module_name;
-        functor_parameters;
-        module_type;
-        owned_trivia;
-        _;
-      } ->
-        Cst.ModuleDeclaration.Signature {
-          syntax_node;
-          module_name;
-          functor_parameters;
-          module_type;
-          is_recursive = true;
-          owned_trivia;
-        }
-    | Cst.ModuleDeclaration.Structure {
-        syntax_node;
-        module_name;
-        functor_parameters;
-        module_type;
-        module_expression;
-        owned_trivia;
-        _;
-      } ->
-        Cst.ModuleDeclaration.Structure {
-          syntax_node;
-          module_name;
-          functor_parameters;
-          module_type;
-          module_expression;
-          is_recursive = true;
-          owned_trivia;
-        }
-  in
-  let recursive_declarations =
+let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive_group module_decl_nodes ->
+  let declarations =
     module_decl_nodes
     |> List.map
-      (fun module_decl_node ->
-        match module_declaration_from_node module_decl_node with
-        | Some decl ->
-            with_recursive_flag decl
-        | None ->
-            bail ~message:"expected recursive module binding during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
-              "item";
-              "recursive_module_declaration"
-            ])
+         (fun module_decl_node ->
+           match module_declaration_parts_from_node module_decl_node with
+           | Some
+               (module_name, functor_parameters, Some module_type, None, is_recursive_declaration, owned_trivia) ->
+               {
+                 Cst.ModuleSignature.syntax_node = module_decl_node;
+                 module_name;
+                 functor_parameters;
+                 module_type;
+                 and_declarations = [];
+                 is_recursive = is_recursive_group || is_recursive_declaration;
+                 owned_trivia;
+               }
+           | Some _ ->
+               bail ~message:"expected signature module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
+                 "item";
+                 "module_signature"
+               ]
+           | None ->
+               bail ~message:"expected signature module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
+                 "item";
+                 "module_signature"
+               ])
   in
-  match recursive_declarations with
-  | [] -> None
-  | _ ->
-      Some Cst.RecursiveModuleDeclaration.{
-        syntax_node = group_syntax_node;
-        declarations = recursive_declarations;
-        owned_trivia =
-          owned_trivia_from_node_excluding_child_owned_spans group_syntax_node
-            (recursive_declarations
-            |> List.concat_map
-                 (fun decl ->
-                   owned_trivia_spans (Cst.ModuleDeclaration.owned_trivia decl)))
-      }
+  match declarations with
+  | [] ->
+      None
+  | first :: rest ->
+      let owned_trivia =
+        owned_trivia_from_node_excluding_child_owned_spans group_syntax_node
+          (declarations
+          |> List.concat_map
+               (fun decl ->
+                 owned_trivia_spans (Cst.ModuleSignature.owned_trivia decl)))
+      in
+      Some { first with syntax_node = group_syntax_node; and_declarations = rest; owned_trivia }
+
+let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive_group module_decl_nodes ->
+  let declarations =
+    module_decl_nodes
+    |> List.map
+         (fun module_decl_node ->
+           match module_declaration_parts_from_node module_decl_node with
+           | Some
+               (module_name, functor_parameters, module_type, Some module_expression, is_recursive_declaration, owned_trivia) ->
+               {
+                 Cst.ModuleStructure.syntax_node = module_decl_node;
+                 module_name;
+                 functor_parameters;
+                 module_type;
+                 module_expression;
+                 and_declarations = [];
+                 is_recursive = is_recursive_group || is_recursive_declaration;
+                 owned_trivia;
+               }
+           | Some _ ->
+               bail ~message:"expected structure module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
+                 "item";
+                 "module_structure"
+               ]
+           | None ->
+               bail ~message:"expected structure module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
+                 "item";
+                 "module_structure"
+               ])
+  in
+  match declarations with
+  | [] ->
+      None
+  | first :: rest ->
+      let owned_trivia =
+        owned_trivia_from_node_excluding_child_owned_spans group_syntax_node
+          (declarations
+          |> List.concat_map
+               (fun decl ->
+                 owned_trivia_spans (Cst.ModuleStructure.owned_trivia decl)))
+      in
+      Some { first with syntax_node = group_syntax_node; and_declarations = rest; owned_trivia }
 
 let module_type_declaration_from_node = fun node ->
   match find_declaration_name_token
@@ -7804,8 +7800,8 @@ let rec structure_items_from_node = fun node ->
         child_nodes != []
         && List.for_all (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MODULE_DECL) child_nodes
       then
-        match recursive_module_declaration_from_nodes ~group_syntax_node:node child_nodes with
-        | Some decl -> [ Cst.StructureItem.RecursiveModuleDeclaration decl ]
+        match module_structure_group_from_nodes ~group_syntax_node:node ~is_recursive_group:true child_nodes with
+        | Some decl -> [ Cst.StructureItem.ModuleDeclaration decl ]
         | None -> unsupported_item node
       else if
         child_nodes != []
@@ -7903,14 +7899,7 @@ let rec structure_items_from_node = fun node ->
       | None -> unsupported_item node
     )
   | Syntax_kind.MODULE_DECL -> (
-      match module_declaration_from_node node with
-      | Some decl when Cst.ModuleDeclaration.is_recursive decl -> (
-          match recursive_module_declaration_from_nodes ~group_syntax_node:node [ node ] with
-          | Some recursive_decl ->
-              [ Cst.StructureItem.RecursiveModuleDeclaration recursive_decl ]
-          | None ->
-              unsupported_item node
-        )
+      match module_structure_group_from_nodes ~group_syntax_node:node ~is_recursive_group:false [ node ] with
       | Some decl ->
           [ Cst.StructureItem.ModuleDeclaration decl ]
       | None ->
@@ -7973,8 +7962,8 @@ let rec signature_items_from_node = fun node ->
         child_nodes != []
         && List.for_all (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.MODULE_DECL) child_nodes
       then
-        match recursive_module_declaration_from_nodes ~group_syntax_node:node child_nodes with
-        | Some decl -> [ Cst.SignatureItem.RecursiveModuleDeclaration decl ]
+        match module_signature_group_from_nodes ~group_syntax_node:node ~is_recursive_group:true child_nodes with
+        | Some decl -> [ Cst.SignatureItem.ModuleDeclaration decl ]
         | None -> unsupported_item node
       else if
         child_nodes != []
@@ -7996,14 +7985,7 @@ let rec signature_items_from_node = fun node ->
       | None -> unsupported_item node
     )
   | Syntax_kind.MODULE_DECL -> (
-      match module_declaration_from_node node with
-      | Some decl when Cst.ModuleDeclaration.is_recursive decl -> (
-          match recursive_module_declaration_from_nodes ~group_syntax_node:node [ node ] with
-          | Some recursive_decl ->
-              [ Cst.SignatureItem.RecursiveModuleDeclaration recursive_decl ]
-          | None ->
-              unsupported_item node
-        )
+      match module_signature_group_from_nodes ~group_syntax_node:node ~is_recursive_group:false [ node ] with
       | Some decl ->
           [ Cst.SignatureItem.ModuleDeclaration decl ]
       | None ->
@@ -9435,7 +9417,6 @@ let validate_structure_item = fun ~context ->
   | Cst.StructureItem.OpenStatement stmt ->
       validate_open_statement ~context stmt
   | Cst.StructureItem.ModuleDeclaration _
-  | Cst.StructureItem.RecursiveModuleDeclaration _
   | Cst.StructureItem.IncludeStatement _
   | Cst.StructureItem.ExceptionDeclaration _ ->
       ()
@@ -9466,7 +9447,6 @@ let validate_signature_item = fun ~context ->
   | Cst.SignatureItem.ExternalDeclaration { type_; _ } ->
       validate_core_type ~context:((("item.external_declaration.type" :: context))) type_
   | Cst.SignatureItem.ModuleDeclaration _
-  | Cst.SignatureItem.RecursiveModuleDeclaration _
   | Cst.SignatureItem.IncludeStatement _
   | Cst.SignatureItem.ExceptionDeclaration _ ->
       ()
