@@ -1,5 +1,6 @@
 dist
 artifacts
+.wrangler
 *.pone
 3rdparty
 generated

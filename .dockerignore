@@ -1,6 +1,11 @@
 # Build artifacts - don't include in Docker context
-_build/
-target/
+_build
+target
+dist
+node_modules
+.docker
+.tmp
+vendor
 *.o
 *.cmo
 *.cmi
