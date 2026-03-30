@@ -8,6 +8,7 @@
 2. Keep the API narrow and mechanical. Higher-level policy belongs in `std` or above.
 3. Preserve cross-platform behavior. Check both macOS and Linux branches when changing FFI, link flags, or platform shims.
 4. Prefer explicit error variants over stringly failures.
+5. Treat interrupted poll syscalls (`EINTR` from `kevent`/`epoll_wait`) as retryable wakeups at the kernel boundary; do not surface them to the scheduler as hard polling errors.
 
 ## Validate
 

@@ -61,6 +61,10 @@ CAMLprim value kernel_unix_kevent(value max_events_val, value timeout_val, value
 
     if (num_events == -1) {
       // fprintf(stderr, "error %d\n", errno);
+        if (errno == EINTR) {
+            free(events);
+            CAMLreturn(caml_alloc(0, 0));
+        }
         free(events);
         uerror("kevent", Nothing);
     }
@@ -249,6 +253,10 @@ CAMLprim value kernel_unix_kevent(value max_events_val, value timeout_val, value
     caml_leave_blocking_section();
 
     if (num_events == -1) {
+        if (errno == EINTR) {
+            free(events);
+            CAMLreturn(caml_alloc(0, 0));
+        }
         free(events);
         uerror("epoll_wait", Nothing);
     }
