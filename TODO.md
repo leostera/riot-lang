@@ -55,8 +55,8 @@ This file is _yours_. Keep it up to date after every big change.
 - grouped and standalone GADT-style type declarations now lower through the normal structural type renderer; `lower.ml` no longer preserves whole type declarations from source for uppercase constructor/result-type probes.
 - top-level type extensions, exception declarations, floating attributes, and floating extension items now lower structurally; unsupported top-level class/class-type items fail explicitly instead of preserving source text.
 - module-expression and module-type extensions now lower structurally from the shared extension shell plus payload relift helpers, instead of failing explicitly or falling through raw `doc_of_node` fallback.
-- class, local-open, and object core types now lower structurally; core-type extensions fail explicitly instead of falling through raw fallback.
-- lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module patterns now lower structurally; pattern extensions still fail explicitly instead of falling through raw fallback.
+- class, local-open, object, and extension core types now lower structurally.
+- lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module/extension patterns now lower structurally.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
 - module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, and extension expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes.
 - optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
@@ -109,7 +109,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `fun`, `if`, ordinary `let`, top-level `let`, class-`let` `and` bindings, and binding-operator CST nodes now carry explicit keyword-bound boundary trivia (`body_leading_trivia`, `value_leading_trivia`, `then_branch_trailing_trivia`, `else_branch_leading_trivia`, and related binding-operator fields), and `krasny` uses those structural fields directly instead of generic boundary-trivia helper calls on those paths.
 - `Syn.Cst.sequence_expression` now carries per-step `expression_leading_trivia`, and `krasny` uses that structural list directly instead of reconstructing semicolon-boundary trivia from generic `leading_trivia_after_token_before_node` helper calls.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
-- first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
+- first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms, including extension module types; signature-bodied first-class module types still fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
 - the main lowering path now renders floating attributes and expression-attached attributes structurally from payload shape plus those payload item helpers; pattern payloads fail explicitly there instead of replaying raw payload text.
 - ordinary `[@attr? pattern when guard]` payloads now lower structurally by relifting `pattern_syntax_node` / `guard_syntax_node` through `Syn.CstBuilder.pattern_of_syntax_node` and `expression_of_syntax_node`; shared/global pattern payloads still fail explicitly.
@@ -144,8 +144,6 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Burn down the remaining unsupported valid syntax in structural-priority order
   - shared/global pattern payloads
   - class / class-type declaration items
-  - core-type extensions
-  - pattern extensions
   - signature-bodied first-class module types, if we decide those should be supported rather than remain explicit failures
 
 - [x] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`

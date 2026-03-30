@@ -621,6 +621,53 @@ and render_first_class_functor_parameter ({ name_token; module_type; _ } :
       Doc.rparen;
     ]
 
+and extension_payload_source_node (extension : Syn.Cst.extension) =
+  match extension.payload_syntax_node with
+  | Some payload_syntax_node ->
+      payload_syntax_node
+  | None ->
+      extension.syntax_node
+
+and render_core_type_extension_doc (extension : Syn.Cst.extension) =
+  let payload_doc =
+    match extension.payload with
+    | None ->
+        Doc.empty
+    | Some (Syn.Cst.Payload.Type type_) ->
+        Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
+    | Some _ ->
+        unsupported_syntax ~context:[ "core_type"; "extension_payload" ]
+          ~syntax_node:(extension_payload_source_node extension)
+          "core-type extension payloads do not have a structural formatter yet"
+  in
+  Doc.concat
+    [
+      Doc.lbracket;
+      doc_of_token extension.sigil_token;
+      doc_of_ident extension.name;
+      payload_doc;
+      Doc.rbracket;
+    ]
+
+and render_first_class_module_type_extension_doc (extension : Syn.Cst.extension) =
+  let payload_doc =
+    match extension.payload with
+    | None ->
+        Doc.empty
+    | Some _ ->
+        unsupported_syntax ~context:[ "first_class_module_type"; "extension_payload" ]
+          ~syntax_node:(extension_payload_source_node extension)
+          "first-class module-type extension payloads do not have a structural formatter yet"
+  in
+  Doc.concat
+    [
+      Doc.lbracket;
+      doc_of_token extension.sigil_token;
+      doc_of_ident extension.name;
+      payload_doc;
+      Doc.rbracket;
+    ]
+
 and shared_attribute_payload_source_node (attribute : Syn.Cst.attribute) =
   match attribute.payload_syntax_node with
   | Some payload_syntax_node ->
@@ -761,8 +808,7 @@ and render_first_class_module_type_doc = function
   | Syn.Cst.ModuleType.Attribute { module_type; attribute; _ } ->
       Doc.concat [ render_first_class_module_type_doc module_type; Doc.space; render_attribute attribute ]
   | Syn.Cst.ModuleType.Extension extension ->
-      unsupported_syntax ~context:[ "first_class_module_type" ] ~syntax_node:extension.syntax_node
-        "first-class module-type extensions do not have a structural formatter yet"
+      render_first_class_module_type_extension_doc extension
 
 and render_core_type =
   function
@@ -898,8 +944,7 @@ and render_core_type =
   | Syn.Cst.CoreType.Object { fields; _ } ->
       render_object_type fields
   | Syn.Cst.CoreType.Extension extension ->
-      unsupported_syntax ~context:[ "core_type" ] ~syntax_node:extension.syntax_node
-        "core-type extensions do not have a structural formatter yet"
+      render_core_type_extension_doc extension
 and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
   let type_doc = render_core_type field.field_type in
   let separator =
@@ -1407,8 +1452,41 @@ let rec render_pattern =
   | Syn.Cst.Pattern.Wildcard _ ->
       Doc.text "_"
   | Syn.Cst.Pattern.Extension extension ->
-      unsupported_syntax ~context:[ "pattern" ] ~syntax_node:extension.syntax_node
-        "pattern extensions do not have a structural formatter yet"
+      let extension = extension.extension in
+      let payload_doc =
+        match extension.payload with
+        | None ->
+            Doc.empty
+        | Some (Syn.Cst.Payload.Pattern { pattern_syntax_node; guard_syntax_node = None }) ->
+            let pattern =
+              match Syn.CstBuilder.pattern_of_syntax_node pattern_syntax_node with
+              | Ok pattern ->
+                  pattern
+              | Error error ->
+                  unsupported_with_context_entries
+                    ~context:
+                      (Context_syntax_kind error.syntax_kind
+                      :: [ Context_label "pattern"; Context_label "extension_payload" ]
+                      @ List.map (fun label -> Context_label label) error.context)
+                    error.message
+            in
+            Doc.concat [ Doc.text "?"; Doc.space; render_pattern pattern ]
+        | Some (Syn.Cst.Payload.Pattern { guard_syntax_node = Some guard_syntax_node; _ }) ->
+            unsupported_syntax ~context:[ "pattern"; "extension_payload" ] ~syntax_node:guard_syntax_node
+              "pattern extension guards do not have a structural formatter yet"
+        | Some _ ->
+            unsupported_syntax ~context:[ "pattern"; "extension_payload" ]
+              ~syntax_node:(extension_payload_source_node extension)
+              "pattern extension payloads do not have a structural formatter yet"
+      in
+      Doc.concat
+        [
+          Doc.lbracket;
+          doc_of_token extension.sigil_token;
+          doc_of_ident extension.name;
+          payload_doc;
+          Doc.rbracket;
+        ]
   | Syn.Cst.Pattern.Literal { literal; _ } ->
       render_literal literal
   | Syn.Cst.Pattern.Lazy { pattern; _ } ->

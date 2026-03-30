@@ -1092,6 +1092,7 @@ module M = [%foo]
       (fun () ->
         let source =
           {|type packed = (module   Transport   with   type t = int)
+type extended = (module [%foo])
 |}
         in
         let actual =
@@ -1102,6 +1103,7 @@ module M = [%foo]
         Test.assert_equal
           ~expected:
             {|type packed = (module Transport with type t = int)
+type extended = (module [%foo])
 |}
           ~actual;
         Ok ());
@@ -1338,13 +1340,21 @@ end)
               "signature-bodied first-class module types should fail until they have a structural formatter"
         | Error _ ->
             Ok ());
-    Test.case "format fails for core-type extensions" (fun () ->
+    Test.case "format core-type extensions structurally" (fun () ->
         let source = "val use : [%foo: int]\n" in
-        match parse_mli source |> Krasny.format with
-        | Ok _ ->
-            panic "core-type extensions should fail formatting instead of preserving source"
-        | Error _ ->
-            Ok ());
+        let actual =
+          parse_mli source |> Krasny.format
+          |> Result.expect
+               ~msg:"core-type extensions should render structurally from the extension shell and payload"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        let reparsed =
+          parse_mli actual |> Krasny.format
+          |> Result.expect
+               ~msg:"core-type extensions should stay stable across repeated formatting"
+        in
+        Test.assert_equal ~expected:actual ~actual:reparsed;
+        Ok ());
     Test.case "format keeps structural patterns idempotent" (fun () ->
         let source =
           {|let unpack = function
@@ -1388,17 +1398,27 @@ end)
               "typed first-class-module patterns should fail formatting instead of preserving source"
         | Error _ ->
             Ok ());
-    Test.case "format fails for pattern extensions" (fun () ->
+    Test.case "format pattern extensions structurally" (fun () ->
         let source =
           {|let unpack = function
   | [%foo? Some x] -> x
 |}
         in
-        match parse_ml source |> Krasny.format with
-        | Ok _ ->
-            panic "pattern extensions should fail formatting instead of preserving source"
-        | Error _ ->
-            Ok ());
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"pattern extensions should render structurally from the extension shell and payload"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let unpack =
+  function
+  | [%foo? Some x] -> x
+|}
+          ~actual;
+        assert_idempotent ~source
+          ~msg:"pattern extensions should stay stable across repeated formatting";
+        Ok ());
     Test.case "format keeps structural imperative and module expressions idempotent" (fun () ->
         let source =
           {|let packed = (module M : S)
