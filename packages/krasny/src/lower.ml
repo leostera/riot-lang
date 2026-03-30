@@ -2063,13 +2063,6 @@ let rec expression_is_function_like =
   | _ ->
       false
 
-let rec unwrap_parenthesized_expression =
-  function
-  | Syn.Cst.Expression.Parenthesized { grouping = Syn.Cst.Parens; inner; _ } ->
-      unwrap_parenthesized_expression inner
-  | expression ->
-      expression
-
 let rec infix_chain_term_count =
   function
   | Syn.Cst.Expression.Infix { left; right; _ } ->
