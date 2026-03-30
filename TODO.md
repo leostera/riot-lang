@@ -53,7 +53,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`.
 - nested `sig ... end` and `struct ... end` module bodies now either relift ordered item streams or fail explicitly; `lower.ml` no longer falls back to source-preserved nested body rendering.
 - grouped and standalone GADT-style type declarations now lower through the normal structural type renderer; `lower.ml` no longer preserves whole type declarations from source for uppercase constructor/result-type probes.
-- top-level type extensions, exception declarations, and floating attributes now lower structurally; unsupported top-level class/class-type/extension items fail explicitly instead of preserving source text.
+- top-level type extensions, exception declarations, floating attributes, and floating extension items now lower structurally; unsupported top-level class/class-type items fail explicitly instead of preserving source text.
 - module-expression and module-type extensions now lower structurally from the shared extension shell plus payload relift helpers, instead of failing explicitly or falling through raw `doc_of_node` fallback.
 - class, local-open, and object core types now lower structurally; core-type extensions fail explicitly instead of falling through raw fallback.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module patterns now lower structurally; pattern extensions still fail explicitly instead of falling through raw fallback.
@@ -143,7 +143,6 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Burn down the remaining unsupported valid syntax in structural-priority order
   - shared/global pattern payloads
-  - floating extension items
   - class / class-type declaration items
   - core-type extensions
   - pattern extensions

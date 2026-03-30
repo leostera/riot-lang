@@ -4921,8 +4921,7 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.Expression expression ->
       render_expression expression
   | Syn.Cst.StructureItem.Extension extension ->
-      unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:extension.syntax_node
-        "floating extension items do not have a structural formatter yet"
+      render_extension_doc extension
   | Syn.Cst.StructureItem.ClassDeclaration decl ->
       unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:decl.syntax_node
         "class declaration items do not have a structural formatter yet"
@@ -4979,8 +4978,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.ExceptionDeclaration decl ->
       render_exception_declaration decl
   | Syn.Cst.SignatureItem.Extension extension ->
-      unsupported_syntax ~context:[ "signature_item" ] ~syntax_node:extension.syntax_node
-        "floating extension items do not have a structural formatter yet"
+      render_extension_doc extension
   | Syn.Cst.SignatureItem.ClassDeclaration decl ->
       unsupported_syntax ~context:[ "signature_item" ] ~syntax_node:decl.syntax_node
         "class declaration items do not have a structural formatter yet"

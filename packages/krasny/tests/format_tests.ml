@@ -1024,6 +1024,38 @@ exception Nested = Std.Result.Error
         in
         Test.assert_equal ~expected:"[@@@warning \"-32\"]\n" ~actual;
         Ok ());
+    Test.case "format floating extension items structurally" (fun () ->
+        let structure_source =
+          {|[%%foo]
+[%%bar let x = 1]
+|}
+        in
+        let signature_source =
+          {|[%%foo]
+[%%bar val x : int]
+|}
+        in
+        let actual_structure =
+          parse_ml structure_source |> Krasny.format
+          |> Result.expect
+               ~msg:"floating structure extensions should render structurally from the extension shell and payload"
+        in
+        let actual_signature =
+          parse_mli signature_source |> Krasny.format
+          |> Result.expect
+               ~msg:"floating signature extensions should render structurally from the extension shell and payload"
+        in
+        Test.assert_equal ~expected:structure_source ~actual:actual_structure;
+        Test.assert_equal ~expected:signature_source ~actual:actual_signature;
+        assert_idempotent ~source:structure_source
+          ~msg:"floating structure extensions should stay stable across repeated formatting";
+        let reformatted_signature =
+          parse_mli actual_signature |> Krasny.format
+          |> Result.expect
+               ~msg:"floating signature extensions should stay stable across repeated formatting"
+        in
+        Test.assert_equal ~expected:actual_signature ~actual:reformatted_signature;
+        Ok ());
     Test.case "format module-expression and module-type extensions structurally"
       (fun () ->
         let source =
