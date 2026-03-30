@@ -74,6 +74,8 @@ export interface UserRecord {
   github_login: string;
   github_name?: string;
   github_avatar_url?: string;
+  github_email?: string;
+  github_email_verified?: boolean;
   created_at: string;
   updated_at: string;
 }

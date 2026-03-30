@@ -50,6 +50,16 @@ describe("riot package registry auth", () => {
         });
       }
 
+      if (url.origin === "https://api.github.com" && url.pathname === "/user/emails") {
+        return Response.json([
+          {
+            email: "leo@example.com",
+            primary: true,
+            verified: true,
+          },
+        ]);
+      }
+
       throw new Error(`Unexpected fetch to ${url.toString()}`);
     }, async () => {
       return await handleRequest(
@@ -91,7 +101,75 @@ describe("riot package registry auth", () => {
       user: {
         github_login: "leostera",
         github_name: "Leo Stera",
+        github_email: "leo@example.com",
+        github_email_verified: true,
       },
+    });
+  });
+
+  test("github oauth callback rejects users without verified primary email", async () => {
+    const { env } = makeEnv({
+      GITHUB_OAUTH_CLIENT_ID: "github-client-id",
+      GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
+      PKGS_WEB_BASE_URL: "https://pkgs.ml",
+    });
+
+    const startCtx = new FakeExecutionContext();
+    const startResponse = await handleRequest(
+      new Request("https://registry.test/v1/auth/github/start?return_to=/u/leostera/tokens"),
+      env,
+      startCtx,
+    );
+    await startCtx.drain();
+
+    const state = new URL(startResponse.headers.get("location") ?? "").searchParams.get("state");
+    if (state === null) {
+      throw new Error("OAuth state was missing.");
+    }
+
+    const callbackCtx = new FakeExecutionContext();
+    const callbackResponse = await withMockedFetch(async (input) => {
+      const url = new URL(toRequestUrl(input));
+      if (url.origin === "https://github.com" && url.pathname === "/login/oauth/access_token") {
+        return Response.json({
+          access_token: "github-access-token",
+          token_type: "bearer",
+        });
+      }
+      if (url.origin === "https://api.github.com" && url.pathname === "/user") {
+        return Response.json({
+          id: 42,
+          login: "leostera",
+          name: "Leo Stera",
+          avatar_url: "https://avatars.githubusercontent.com/u/42",
+        });
+      }
+      if (url.origin === "https://api.github.com" && url.pathname === "/user/emails") {
+        return Response.json([
+          {
+            email: "leo@example.com",
+            primary: true,
+            verified: false,
+          },
+        ]);
+      }
+      throw new Error(`Unexpected fetch to ${url.toString()}`);
+    }, async () => {
+      return await handleRequest(
+        new Request(
+          `https://registry.test/v1/auth/github/callback?code=oauth-code&state=${encodeURIComponent(
+            state,
+          )}`,
+        ),
+        env,
+        callbackCtx,
+      );
+    });
+    await callbackCtx.drain();
+
+    expect(callbackResponse.status).toBe(403);
+    expect(await readJson(callbackResponse)).toMatchObject({
+      error: "github_email_not_verified",
     });
   });
 
@@ -338,6 +416,16 @@ async function loginAsGitHubUser(env: ReturnType<typeof makeEnv>["env"], login: 
         login,
         name: login,
       });
+    }
+
+    if (url.origin === "https://api.github.com" && url.pathname === "/user/emails") {
+      return Response.json([
+        {
+          email: `${login}@example.com`,
+          primary: true,
+          verified: true,
+        },
+      ]);
     }
 
     throw new Error(`Unexpected fetch to ${url.toString()}`);

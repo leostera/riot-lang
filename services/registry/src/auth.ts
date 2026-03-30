@@ -44,6 +44,12 @@ interface GitHubUserProfile {
   avatar_url?: string | null;
 }
 
+interface GitHubEmailAddress {
+  email?: string;
+  primary?: boolean;
+  verified?: boolean;
+}
+
 export async function createGitHubAuthorizationUrl(
   env: Env,
   requestUrl: URL,
@@ -62,7 +68,7 @@ export async function createGitHubAuthorizationUrl(
 
   await applyMetadataMigrations(env.SEARCH_DB);
   await writeOAuthStateRecord(env.SEARCH_DB, record);
-  return client.createAuthorizationURL(state, ["read:user"]).toString();
+  return client.createAuthorizationURL(state, ["read:user", "user:email"]).toString();
 }
 
 export async function completeGitHubAuthorization(
@@ -98,7 +104,8 @@ export async function completeGitHubAuthorization(
   }
 
   const githubUser = await fetchGitHubUser(env, tokens.accessToken());
-  const user = await upsertUser(env, githubUser);
+  const githubEmail = await fetchGitHubPrimaryEmail(env, tokens.accessToken());
+  const user = await upsertUser(env, githubUser, githubEmail);
   const session = await createSession(env, user);
 
   return {
@@ -322,7 +329,46 @@ async function fetchGitHubUser(env: Env, accessToken: string): Promise<GitHubUse
   return payload as GitHubUserProfile;
 }
 
-async function upsertUser(env: Env, githubUser: GitHubUserProfile): Promise<UserRecord> {
+async function fetchGitHubPrimaryEmail(
+  env: Env,
+  accessToken: string,
+): Promise<string> {
+  const response = await fetch(`${getGitHubApiBaseUrl(env)}/user/emails`, {
+    headers: {
+      accept: "application/vnd.github+json",
+      authorization: `Bearer ${accessToken}`,
+      "user-agent": "riot-package-registry",
+    },
+  });
+
+  if (!response.ok) {
+    throw new HttpError(
+      502,
+      "github_user_emails_lookup_failed",
+      `GitHub email lookup failed with status ${response.status}.`,
+    );
+  }
+
+  const emails = await response.json() as Partial<GitHubEmailAddress>[];
+  const verifiedPrimary = emails.find((email) =>
+    email.primary === true && email.verified === true
+  );
+  if (typeof verifiedPrimary?.email !== "string" || verifiedPrimary.email.length === 0) {
+    throw new HttpError(
+      403,
+      "github_email_not_verified",
+      "A verified primary GitHub email is required to sign in.",
+    );
+  }
+
+  return verifiedPrimary.email;
+}
+
+async function upsertUser(
+  env: Env,
+  githubUser: GitHubUserProfile,
+  githubEmail: string,
+): Promise<UserRecord> {
   const now = new Date().toISOString();
   await applyMetadataMigrations(env.SEARCH_DB);
   const existingLogin = await readUserLoginRecord(env.SEARCH_DB, githubUser.login);
@@ -335,6 +381,8 @@ async function upsertUser(env: Env, githubUser: GitHubUserProfile): Promise<User
     github_login: githubUser.login,
     github_name: githubUser.name ?? undefined,
     github_avatar_url: githubUser.avatar_url ?? undefined,
+    github_email: githubEmail,
+    github_email_verified: true,
     created_at: existingUser?.created_at ?? now,
     updated_at: now,
   };
