@@ -74,8 +74,8 @@ This file is _yours_. Keep it up to date after every big change.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`; the remaining raw-trivia debt is in `doc_of_owned_trivia` separator recovery and source/text heuristics, not generic between-node span replay.
 - `packages/krasny/src/source.ml` is trimmed to the remaining live raw source-reconstruction helper only; `Source` is now down to `source_of_syntax_node`.
-- `render_structure_items` and `render_signature_items` no longer slice `ctx.source` down to nested/top-level span windows; they use the full available source and only fall back to `Source.source_of_syntax_node` when no source text was provided at all.
 - `render_structure_items` and `render_signature_items` now require source text explicitly; the impossible no-source path fails instead of reconstructing node text behind the formatter's back.
+- first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 
 ## Working Style
 
@@ -89,9 +89,8 @@ This file is _yours_. Keep it up to date after every big change.
 ## Structural Formatting Debt
 
 - [ ] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
-  - `text_of_syntax_node`
   - token/text reconstruction via `Source.source_of_syntax_node`
-  - attribute/module-type string reconstruction such as `render_attribute`, `render_first_class_module_type`, `strip_outer_parens_once`, and `strip_module_prefix`
+  - remaining attribute payload reconstruction such as `render_attribute`
   - remaining non-top-level fallback branches in expression/module/module-type lowering that still end in `doc_of_node (...)`
   - keep unsupported shapes on the explicit `Cannot_lower` path; do not reintroduce silent source preservation
 
@@ -114,7 +113,6 @@ This file is _yours_. Keep it up to date after every big change.
   - if formatting still needs these, the missing structure belongs in `syn`
 
 - [ ] Remove source-sniffing and token-text heuristics used to make rendering decisions
-  - `type_declaration_requires_source_preservation`
   - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
   - multiline/layout heuristics currently driven by reconstructed node text
   - token-text scans over `SyntaxNode.tokens`, e.g. searching for `"="` then `"fun"` or reconstructing poly-variant inherit paths from token text lists
@@ -129,10 +127,8 @@ This file is _yours_. Keep it up to date after every big change.
   - `let exception` rendering that prints `exception_declaration.syntax_node` text directly
 
 - [ ] Remove source-derived “safe to rewrite” gates from top-level formatting
-  - `structure_item_requires_source_preservation_before_expression`
-  - `render_structure_entry` / `render_signature_entry` `should_preserve_source`
-  - expression-run preservation rules in `render_structure_top_level_items`
-  - replace “preserve this source because rewrite might change meaning” with explicit CST facts or hard failure
+  - keep auditing top-level item joins for any remaining “preserve because rewrite might change meaning” behavior
+  - replace any such gate with explicit CST facts or hard failure
 
 - [x] Remove source-slice reconstruction from lowering context setup
   - `render_structure_items ?source ~source_node`
@@ -149,7 +145,6 @@ This file is _yours_. Keep it up to date after every big change.
   - any AGENTS/docs wording that still describes source-preserving fallback as part of the formatter contract
 
 - [ ] Remove impossible-state fallback patterns from formatter hot paths
-  - `assert false` branches in item-run collection/rendering
   - any remaining “best effort” fallback that hides missing structural support instead of surfacing it
 
 - [ ] Audit every `ctx.source` / `Source.*` use in `packages/krasny/src/lower.ml`

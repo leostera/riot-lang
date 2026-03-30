@@ -639,6 +639,37 @@ module M = [%foo]
         in
         Test.assert_equal ~expected:formatted ~actual:reparsed;
         Ok ());
+    Test.case "format first-class module types from structural module-type docs"
+      (fun () ->
+        let source =
+          {|type packed = (module   Transport   with   type t = int)
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"first-class module types should format from structural module-type rendering"
+        in
+        Test.assert_equal
+          ~expected:
+            {|type packed = (module Transport with type t = int)
+|}
+          ~actual;
+        Ok ());
+    Test.case "format fails for signature-bodied first-class module types"
+      (fun () ->
+        let source =
+          {|type packed = (module sig
+  type t
+end)
+|}
+        in
+        match parse_ml source |> Krasny.format with
+        | Ok _ ->
+            panic
+              "signature-bodied first-class module types should fail until they have a structural formatter"
+        | Error _ ->
+            Ok ());
     Test.case "format fails for core-type extensions" (fun () ->
         let source = "val use : [%foo: int]\n" in
         match parse_mli source |> Krasny.format with

@@ -91,26 +91,6 @@ let is_operator_like_text = fun text ->
   in
   String.length text > 0 && (is_keyword_operator_name text || contains_non_identifier_char 0)
 
-let text_of_syntax_node = fun syntax_node ->
-  Syn.Ceibo.Red.SyntaxNode.tokens syntax_node
-  |> function
-  | [] ->
-      ""
-  | first :: rest ->
-      let first_text = Syn.Ceibo.Red.SyntaxToken.text first in
-      let rest_text =
-        rest
-        |> List.map (fun token ->
-               let leading =
-                 Syn.Ceibo.Red.SyntaxToken.leading_trivia token
-                 |> List.map Syn.Ceibo.Red.SyntaxTrivia.text
-                 |> String.concat ""
-               in
-               leading ^ Syn.Ceibo.Red.SyntaxToken.text token)
-        |> String.concat ""
-      in
-      first_text ^ rest_text
-
 let syntax_node_has_comment_like_trivia = fun (node : Syn.Cst.syntax_node) ->
   let found = ref false in
   Syn.Ceibo.Red.SyntaxNode.preorder node (function
@@ -153,21 +133,6 @@ let trim_trailing_layout_whitespace = fun text ->
     ""
   else
     String.sub text 0 (last_index + 1)
-
-let strip_outer_parens_once = fun text ->
-  let text = String.trim text in
-  let length = String.length text in
-  if length >= 2 && text.[0] = '(' && text.[length - 1] = ')' then
-    String.sub text 1 (length - 2) |> String.trim
-  else
-    text
-
-let strip_module_prefix = fun text ->
-  let text = String.trim text in
-  if String.starts_with ~prefix:"module " text then
-    String.sub text 7 (String.length text - 7) |> String.trim
-  else
-    text
 
 let doc_of_ident = fun ident ->
   Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
@@ -526,13 +491,6 @@ let render_attribute = fun attribute -> render_attribute_doc ~floating:false att
 let render_floating_attribute = fun attribute -> render_attribute_doc ~floating:true attribute
 
 let kw_module = Doc.text "module"
-
-let render_first_class_module_type = fun module_type ->
-  let module_type_text = Syn.Cst.ModuleType.syntax_node module_type
-  |> text_of_syntax_node
-  |> strip_outer_parens_once
-  |> strip_module_prefix in
-  Doc.concat [ Doc.lparen; kw_module; Doc.space; Doc.text module_type_text; Doc.rparen ]
 
 let kw_let = Doc.text "let"
 
@@ -893,7 +851,83 @@ let rec core_type_is_atomic =
 let record_field_prefers_multiline = fun ~name_token ~field_type ->
   String.length (token_text name_token) > 32 && not (core_type_is_atomic field_type)
 
-let rec render_core_type =
+let rec render_first_class_module_type_constraint ~keyword
+    (constraint_ : Syn.Cst.module_type_constraint) =
+  let separator =
+    if constraint_.is_destructive then
+      Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
+    else
+      equals
+  in
+  Doc.concat
+    [
+      keyword;
+      Doc.space;
+      kw_type;
+      Doc.space;
+      render_core_type constraint_.constrained_type;
+      separator;
+      render_core_type constraint_.replacement_type;
+    ]
+
+and render_first_class_functor_parameter ({ name_token; module_type; _ } :
+  Syn.Cst.functor_parameter) =
+  Doc.concat
+    [
+      Doc.lparen;
+      doc_of_token name_token;
+      colon;
+      render_first_class_module_type_doc module_type;
+      Doc.rparen;
+    ]
+
+and render_first_class_module_type_doc = function
+  | Syn.Cst.ModuleType.Path path ->
+      doc_of_ident path
+  | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
+      Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; kw_of; Doc.space; doc_of_ident module_path ]
+  | Syn.Cst.ModuleType.Signature { syntax_node; _ } ->
+      unsupported_syntax ~context:[ "first_class_module_type" ] ~syntax_node
+        "signature-bodied first-class module types do not have a structural formatter yet"
+  | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
+      Doc.concat
+        [
+          Doc.text "functor";
+          Doc.space;
+          Doc.join Doc.space (List.map render_first_class_functor_parameter parameters);
+          Doc.space;
+          Doc.arrow;
+          Doc.space;
+          render_first_class_module_type_doc result;
+        ]
+  | Syn.Cst.ModuleType.With { base; constraints; _ } ->
+      let first, rest =
+        match constraints with
+        | [] ->
+            (Doc.empty, [])
+        | first :: rest ->
+            (render_first_class_module_type_constraint ~keyword:kw_with first, rest)
+      in
+      Doc.concat
+        (render_first_class_module_type_doc base
+        :: Doc.space
+        :: first
+        :: List.map (fun constraint_ ->
+               Doc.concat
+                 [
+                   Doc.space;
+                   render_first_class_module_type_constraint ~keyword:kw_and constraint_;
+                 ])
+             rest)
+  | Syn.Cst.ModuleType.Parenthesized { inner; _ } ->
+      Doc.concat [ Doc.lparen; render_first_class_module_type_doc inner; Doc.rparen ]
+  | Syn.Cst.ModuleType.Attribute { module_type; attribute; _ } ->
+      Doc.concat [ render_first_class_module_type_doc module_type; Doc.space; render_attribute attribute ]
+  | Syn.Cst.ModuleType.Extension extension ->
+      unsupported_syntax ~context:[ "first_class_module_type" ] ~syntax_node:extension.syntax_node
+        "first-class module-type extensions do not have a structural formatter yet"
+
+and render_core_type =
   function
   | Syn.Cst.CoreType.Wildcard { wildcard_token; _ } ->
       doc_of_token wildcard_token
@@ -1019,7 +1053,7 @@ let rec render_core_type =
   | Syn.Cst.CoreType.Record { fields; _ } ->
       render_record_type fields
   | Syn.Cst.CoreType.FirstClassModule { module_type; _ } ->
-      render_first_class_module_type module_type
+      Doc.concat [ Doc.lparen; kw_module; Doc.space; render_first_class_module_type_doc module_type; Doc.rparen ]
   | Syn.Cst.CoreType.Object { fields; _ } ->
       render_object_type fields
   | Syn.Cst.CoreType.Extension extension ->
@@ -1351,7 +1385,9 @@ let render_type_definition = fun ?source ->
   | Syn.Cst.TypeDefinition.Extensible _ ->
       Some (Doc.text "..")
   | Syn.Cst.TypeDefinition.FirstClassModule { module_type; _ } ->
-      Some (render_first_class_module_type module_type)
+      Some
+        (Doc.concat
+           [ Doc.lparen; kw_module; Doc.space; render_first_class_module_type_doc module_type; Doc.rparen ])
   | Syn.Cst.TypeDefinition.Object { fields; _ } ->
       Some (render_object_type fields)
 
