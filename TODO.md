@@ -96,7 +96,7 @@ This file is _yours_. Keep it up to date after every big change.
 - signature top-level rendering no longer reconstructs per-item spans at all; `render_signature_top_level_items` now joins the ordered CST stream directly because signature entries have no phrase-separator suffix path today.
 - `Syn.Cst.Implementation` / `Interface` now carry per-item `trailing_phrase_separator_tokens`, and `krasny` uses those CST-provided boundary tokens directly instead of recomputing top-level structure phrase-separator placement from item spans.
 - dead top-level span/owned-trivia boundary helpers such as `span_of_syntax_node_nontrivia_bounds`, `span_of_syntax_node_trim_leading_trivia_keep_trailing_comments`, and `type_declaration_owned_trivia_end` are gone from `lower.ml`; the remaining structural debt is no longer hiding in unused formatter boundary code.
-- `Syn.Cst.token_body_span` now owns the remaining generic “real token span” query, and `krasny` uses that helper instead of scanning `Ceibo.Red.SyntaxNode.tokens` locally for variant-constructor trailing trivia and expression boundary offsets.
+- `lower.ml` no longer uses generic boundary/span helpers for sequence joins or variant-constructor trailing trivia; those paths now run through explicit CST trivia fields or formatter-local booleans instead of reconstructed token offsets.
 - inline-record constructor layout no longer reaches through `RecordField.syntax_node` to ask the red tree for a parent node; `krasny` now decides inline-vs-multiline rendering from field presence, owned trivia, standalone record-body trivia, and explicit multiline preference only.
 - `Syn.Cst.syntax_kind` now owns diagnostics-only syntax-kind access too, and `krasny` keeps that value typed until `error_to_string` renders it; `packages/krasny/src/lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly even for unsupported-shape reporting.
 - `fun`, `if`, ordinary `let`, top-level `let`, class-`let` `and` bindings, and binding-operator CST nodes now carry explicit keyword-bound boundary trivia (`body_leading_trivia`, `value_leading_trivia`, `then_branch_trailing_trivia`, `else_branch_leading_trivia`, and related binding-operator fields), and `krasny` uses those structural fields directly instead of generic boundary-trivia helper calls on those paths.
@@ -196,8 +196,10 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit ambiguity-sensitive type-declaration shape markers
   - explicit comment-sensitive layout facts for apply / after-`=` policy, so `krasny` can stop scanning red-token leading trivia through `syntax_node_has_comment_like_trivia`
 
-- [ ] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
-  - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly; the remaining generic boundary-helper/span debt is now concentrated in the variant-constructor trailing-trivia start offset plus explicit style heuristics that still inspect trivia presence
+- [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
+  - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly
+  - generic boundary-helper/span reconstruction for sequence joins and variant-constructor trailing trivia is gone
+  - the remaining debt is structural support for unsupported shapes plus explicit style heuristics, not token/span archaeology
 
 - [ ] Add regression coverage before removing each heuristic
   - use `syn:cst_tests` when the missing fact is ownership/structure

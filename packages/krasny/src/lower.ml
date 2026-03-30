@@ -201,11 +201,11 @@ let doc_with_leading_trivia = fun trivia doc ->
   | Some trivia ->
       Doc.concat [ trivia; Doc.line; doc ]
 
-let separator_before_first_owned_trivia = fun ?start trivia ->
-  match start with
-  | None ->
+let separator_before_first_owned_trivia = fun ?(after_rendered_body = false) trivia ->
+  match after_rendered_body with
+  | false ->
       Doc.empty
-  | Some _ -> (
+  | true -> (
       match trivia with
       | Syn.Cst.Trivia.Comment _ ->
           Doc.space
@@ -214,7 +214,7 @@ let separator_before_first_owned_trivia = fun ?start trivia ->
 
 let separator_between_owned_trivia = fun _previous _current -> Doc.line
 
-let doc_of_owned_trivia = fun ?start trivia ->
+let doc_of_owned_trivia = fun ?(after_rendered_body = false) trivia ->
   let trivia = trivia |> List.sort (fun left right -> Int.compare
   ((Syn.Cst.Token.span (Syn.Cst.Trivia.token left)).start)
   ((Syn.Cst.Token.span (Syn.Cst.Trivia.token right)).start)) in
@@ -233,7 +233,7 @@ let doc_of_owned_trivia = fun ?start trivia ->
         let separator =
           match previous, acc with
           | _, None ->
-              separator_before_first_owned_trivia ?start trivia
+              separator_before_first_owned_trivia ~after_rendered_body trivia
           | Some previous, Some _ ->
               separator_between_owned_trivia previous trivia
           | None, Some _ ->
@@ -1138,10 +1138,7 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
   in
   let trailing =
     Syn.Cst.OwnedTrivia.trailing owned
-    |> doc_of_owned_trivia
-         ~start:
-           ((Syn.Cst.token_body_span
-               (Syn.Cst.VariantConstructor.syntax_node constructor)).end_)
+    |> doc_of_owned_trivia ~after_rendered_body:true
   in
   let body = body |> doc_with_leading_trivia leading in
   match trailing with
