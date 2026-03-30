@@ -291,6 +291,25 @@ val id : 'a -> 'a
         in
         Test.assert_equal ~expected:source ~actual;
         Ok ());
+    Test.case "format record fields without name-length multiline forcing"
+      (fun () ->
+        let source =
+          {|type t = {
+  this_is_a_pretty_long_record_field_name : int list;
+}
+
+type u = {
+  mutable this_is_a_pretty_long_record_field_name : int list;
+}
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"record fields should not break after ':' just because the field name is long"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
     Test.case "desugar typed named parameters without duplicating inner annotations"
       (fun () ->
         let source =
@@ -311,6 +330,19 @@ let map : type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn -> failwith "todo"
                ~msg:"typed named parameters should move to the synthesized outer annotation"
         in
         Test.assert_equal ~expected ~actual;
+        Ok ());
+    Test.case "keep typed parameters in the binding header when annotation synthesis declines"
+      (fun () ->
+        let source =
+          {|let pick x : int = x
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"typed parameters should stay in the binding header when outer annotation synthesis does not apply"
+        in
+        Test.assert_equal ~expected:source ~actual;
         Ok ());
     Test.case "format index expressions from explicit delimiter tokens"
       (fun () ->
@@ -656,6 +688,55 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
 |}
           ~actual;
         Ok ());
+    Test.case "format local binding infix threshold around inline-after-equals cutoff"
+      (fun () ->
+        let source =
+          {|let totals a b c d e f g h i =
+  let total8 = a + b + c + d + e + f + g + h in
+  let total9 = a + b + c + d + e + f + g + h + i in
+  total8, total9
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"local binding infix threshold should stay explicit and stable"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let totals a b c d e f g h i =
+  let total8 = a + b + c + d + e + f + g + h in
+  let total9 =
+    a
+    + b
+    + c
+    + d
+    + e
+    + f
+    + g
+    + h
+    + i
+  in
+  total8, total9
+|}
+          ~actual;
+        Ok ());
+    Test.case "format simple apply rhs by shape, not comment scans" (fun () ->
+        let source =
+          {|let run x =
+  let value = f (* keep *) x in
+  value
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"simple apply rhs layout should not depend on scanning raw token trivia"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        assert_idempotent ~source
+          ~msg:"comment-bearing simple apply rhs should stay stable";
+        Ok ());
     Test.case "format binding-operator equals policy with explicit fun and multiline values"
       (fun () ->
         let source =
@@ -696,6 +777,32 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
     |> stage06
   in
   callback staged, ready
+|}
+          ~actual;
+        Ok ());
+    Test.case "format recursive local bindings with multiline bodies"
+      (fun () ->
+        let source =
+          {|let outer value =
+  let rec loop n = if n = 0 then value else loop (n - 1) in
+  loop 3
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"recursive local bindings should keep multiline bodies explicit"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let outer value =
+  let rec loop n =
+    if n = 0 then
+      value
+    else
+      loop (n - 1)
+  in
+  loop 3
 |}
           ~actual;
         Ok ());
@@ -835,6 +942,25 @@ let request = fun (Conn conn as c) () -> ()
         in
         assert_idempotent ~source ~msg:"alias patterns should stay stable";
         Ok ());
+    Test.case "format keeps constructor parameter patterns idempotent" (fun () ->
+        let source =
+          {|open Std
+
+let request = fun (Conn conn) () -> ()
+|}
+        in
+        assert_idempotent ~source
+          ~msg:"constructor parameter patterns should not gain extra parentheses";
+        Ok ());
+    Test.case "format keeps typed first-class module patterns idempotent"
+      (fun () ->
+        let source =
+          {|let run_comparison index (module R : Reporter.Intf.Intf) comp = (index, comp)
+|}
+        in
+        assert_idempotent ~source
+          ~msg:"typed first-class module patterns should lower structurally";
+        Ok ());
     Test.case "format keeps first-class module expressions idempotent" (fun () ->
         let source =
           {|open Std
@@ -973,6 +1099,150 @@ module M = [%foo]
         in
         Test.assert_equal ~expected:"let _ = value [@foo 1 + 2]\n" ~actual;
         Ok ());
+    Test.case "format ordinary pattern-payload attributes structurally" (fun () ->
+        let source =
+          {|let simple = 1 [@foo? Some y]
+let guarded = 1 [@foo? Some y when y > 0]
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"ordinary pattern-payload attributes should render structurally"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        assert_idempotent ~source
+          ~msg:"ordinary pattern-payload attributes should stay stable";
+        Ok ());
+    Test.case "format parenthesizes attributed non-atomic expressions"
+      (fun () ->
+        let source =
+          {|let constructor = Some 0 [@inline always]
+let apply = I64.logor b (I64.shift_left b 32) [@inline always]
+let infix = mask land (mask - 1) [@inline always]
+|}
+        in
+        let expected =
+          {|let constructor = (Some 0) [@inline always]
+
+let apply = (I64.logor b (I64.shift_left b 32)) [@inline always]
+
+let infix = (mask land (mask - 1)) [@inline always]
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"postfix expression attributes should preserve attributed apply and infix payloads"
+        in
+        Test.assert_equal ~expected ~actual;
+        assert_idempotent ~source
+          ~msg:"postfix attributed apply and infix expressions should stay stable";
+        Ok ());
+    Test.case "format plain object expressions structurally" (fun () ->
+        let source =
+          {|let empty = object end
+let methods =
+  object
+    method m = 1
+    method! private x = 3 [@@foo]
+  end
+let fields =
+  object
+    val mutable y = 1
+    val virtual z : t [@@foo]
+  end
+let self_ =
+  object (self)
+    method m = self#n
+  end
+let inherited =
+  object
+    inherit c [@@foo]
+    initializer setup [@@foo]
+  end
+let typed =
+  (object
+     method m = 1
+   end
+    : < m : int >)
+|}
+        in
+        let expected =
+          {|let empty =
+  object end
+
+let methods =
+  object
+    method m = 1
+    method! private x = 3 [@@foo]
+  end
+
+let fields =
+  object
+    val mutable y = 1
+    val virtual z : t [@@foo]
+  end
+
+let self_ =
+  object (self)
+    method m = self#n
+  end
+
+let inherited =
+  object
+    inherit c [@@foo]
+    initializer setup [@@foo]
+  end
+
+let typed =
+  (object
+     method m = 1
+   end: <
+     m : int
+   >)
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"plain object expressions should render structurally from the CST"
+        in
+        Test.assert_equal ~expected ~actual;
+        assert_idempotent ~source
+          ~msg:"plain object expressions should stay stable across repeated formatting";
+        Ok ());
+    Test.case "format object bodies preserve terminal trivia" (fun () ->
+        let source =
+          {|let empty = object
+  (* trailing comment *)
+  (** trailing docstring *)
+  method run = 1
+  (* trailing comment *)
+  (** trailing docstring *)
+  end
+|}
+        in
+        let expected =
+          {|let empty =
+  object
+    (* trailing comment *)
+    (** trailing docstring *)
+    method run = 1
+    (* trailing comment *)
+    (** trailing docstring *)
+  end
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"object bodies should preserve trailing in-body comments and docstrings"
+        in
+        Test.assert_equal ~expected ~actual;
+        assert_idempotent ~source
+          ~msg:"object-body terminal trivia should stay stable across repeated formatting";
+        Ok ());
     Test.case "format trailing variant comments with explicit separator policy"
       (fun () ->
         let source = "type t =\n  | A (* comment *)\n" in
@@ -1026,6 +1296,25 @@ end)
           ~source
           ~msg:"first-class module, local-open, alias, and typed patterns should format structurally";
         Ok ());
+    Test.case "format keeps polymorphic-variant inherit patterns idempotent"
+      (fun () ->
+        let source = "let x = match y with #color -> 1\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"polymorphic-variant inherit patterns should render from the structural path"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let x =
+  match y with
+  | #color -> 1
+|}
+          ~actual;
+        assert_idempotent
+          ~source
+          ~msg:"polymorphic-variant inherit patterns should stay stable";
+        Ok ());
     Test.case "format fails for typed first-class-module patterns" (fun () ->
         let source =
           {|let unpack = function
@@ -1067,19 +1356,24 @@ let update next count = {< current = next; count >}
           ~source
           ~msg:"module-pack, imperative, coercion, and object-override expressions should format structurally";
         Ok ());
-    Test.case "format fails for unsupported object and extension expressions"
+    Test.case "format expression extensions structurally"
       (fun () ->
         let source =
           {|let generated = [%foo]
-let counter = object method run = 1 end
+let computed = [%test 42]
+let typed = [%foo: int]
+let nested = [%foo let x = 1]
 |}
         in
-        match parse_ml source |> Krasny.format with
-        | Ok _ ->
-            panic
-              "object and extension expressions should fail formatting instead of preserving source"
-        | Error _ ->
-            Ok ());
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"expression extensions should render structurally from the extension shell and payload"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        assert_idempotent ~source
+          ~msg:"expression extensions should stay stable across repeated formatting";
+        Ok ());
     Test.case "format keeps typed and polymorphic expressions structural" (fun () ->
         let source =
           {|let typed value = (value : source)

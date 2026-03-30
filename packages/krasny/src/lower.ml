@@ -60,6 +60,7 @@ let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
 
 let attribute_payload_context = [ "attribute"; "payload" ]
 let shared_attribute_payload_context = [ "shared"; "attribute"; "payload" ]
+let extension_payload_context = [ "extension"; "payload" ]
 
 type pending_trivia_entry =
   | TriviaComment of int * Doc.t
@@ -2010,8 +2011,7 @@ let make_lowerer =
   | Syn.Cst.Expression.Path { path; _ } ->
       doc_of_ident path
   | Syn.Cst.Expression.Extension extension ->
-      unsupported_syntax ~context:[ "expression" ] ~syntax_node:extension.syntax_node
-        "extension expressions do not have a structural formatter yet"
+      render_extension_doc extension
   | Syn.Cst.Expression.Unreachable unreachable ->
       unsupported_syntax ~context:[ "expression" ] ~syntax_node:unreachable.syntax_node
         "unreachable expressions do not have a structural formatter yet"
@@ -2316,6 +2316,72 @@ let make_lowerer =
           Doc.concat [ head; Doc.space; payload ])
   in
   doc_with_expression_attributes expression doc
+
+  and extension_payload_source_node (extension : Syn.Cst.extension) =
+    match extension.payload_syntax_node with
+    | Some payload_syntax_node ->
+        payload_syntax_node
+    | None ->
+        extension.syntax_node
+
+  and render_extension_payload_doc_with_context ~context (extension : Syn.Cst.extension) =
+    match extension.payload with
+    | None ->
+        Doc.empty
+    | Some (Syn.Cst.Payload.Type type_) ->
+        Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
+    | Some (Syn.Cst.Payload.Pattern payload) ->
+        Doc.concat
+          [
+            Doc.text "?";
+            Doc.space;
+            render_pattern_payload_doc_with_context ~context payload;
+          ]
+    | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
+        let source_node = extension_payload_source_node extension in
+        match Syn.CstBuilder.structure_items_of_payload payload with
+        | Ok (Some items) ->
+            if List.is_empty items then
+              Doc.empty
+            else
+              Doc.concat [ Doc.space; render_structure_items ~source_node items ]
+        | Ok None ->
+            Doc.empty
+        | Error error ->
+            unsupported_with_context_entries
+              ~context:
+                (Context_syntax_kind error.syntax_kind
+                :: List.map (fun label -> Context_label label) context
+                @ List.map (fun label -> Context_label label) error.context)
+              error.message)
+    | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
+        let source_node = extension_payload_source_node extension in
+        match Syn.CstBuilder.signature_items_of_payload payload with
+        | Ok (Some items) ->
+            if List.is_empty items then
+              Doc.empty
+            else
+              Doc.concat [ Doc.space; render_signature_items ~source_node items ]
+        | Ok None ->
+            Doc.empty
+        | Error error ->
+            unsupported_with_context_entries
+              ~context:
+                (Context_syntax_kind error.syntax_kind
+                :: List.map (fun label -> Context_label label) context
+                @ List.map (fun label -> Context_label label) error.context)
+              error.message)
+
+  and render_extension_doc (extension : Syn.Cst.extension) =
+    Doc.concat
+      [
+        Doc.lbracket;
+        doc_of_token extension.sigil_token;
+        doc_of_ident extension.name;
+        render_extension_payload_doc_with_context ~context:extension_payload_context
+          extension;
+        Doc.rbracket;
+      ]
 
   and attribute_payload_source_node (attribute : Syn.Cst.attribute) =
     match attribute.payload_syntax_node with
