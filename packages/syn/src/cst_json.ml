@@ -2088,11 +2088,6 @@ let structure_item_to_json =
       Json.Object [ ("tag", Json.String "docstring"); ("item", docstring_to_json docstring) ]
   | Cst.StructureItem.Comment comment ->
       Json.Object [ ("tag", Json.String "comment"); ("item", comment_to_json comment) ]
-  | Cst.StructureItem.ValueDeclaration decl ->
-      Json.Object [
-        ("tag", Json.String "value_declaration");
-        ("item", value_declaration_to_json decl)
-      ]
   | Cst.StructureItem.ExternalDeclaration decl ->
       Json.Object [
         ("tag", Json.String "external_declaration");

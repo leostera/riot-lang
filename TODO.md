@@ -60,6 +60,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Syn.Cst.class_declaration` is now an explicit valid-shape sum instead of a `class_type option * class_body option` product; impossible `None/None` declaration states are no longer representable.
 - `Syn.Cst.ModuleTypeDeclaration` now models only `module type Name` and `module type Name = ...`; the bogus `is_destructive_substitution` state is gone from that CST node.
 - `Syn.Cst.ModuleDeclaration` is now an explicit valid-shape sum for signature-only versus structure-with-body module bindings; the bogus `:=` substitution path and the old `module_type option * module_expression option` product are gone, although the node still spans both structure and signature contexts.
+- implementation-side `val` items are no longer representable in `Syn.Cst.StructureItem`; ordinary `value_declaration` nodes now stay signature-only, matching standard OCaml syntax.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module/extension patterns now lower structurally; default opaque extension payloads in patterns now render directly from CST token slices, while the remaining structured guard case still fails explicitly.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
 - module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, extension, and unreachable expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes, and extension payloads render from CST-owned opaque token slices.
@@ -147,7 +148,6 @@ This file is _yours_. Keep it up to date after every big change.
 ## Structural Formatting Debt
 
 - [ ] Burn down the remaining unsupported valid syntax in structural-priority order
-  - implementation `val` structure items if they remain valid syntax we want to format
 
 - [x] Make annotation payloads structural-by-contract without forcing OCaml relift
   - attribute and extension payloads now use a single `Syn.Cst.Payload.Opaque` constructor
@@ -218,7 +218,9 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit ambiguity-sensitive type-declaration shape markers
 
 - [ ] Tighten remaining representable-but-invalid CST states
-  - audit the remaining shared declaration nodes and helper payload surfaces for context-invalid combinations now that `ClassDeclaration`, `ModuleTypeDeclaration`, and `ModuleDeclaration` have been tightened
+  - tighten package-type `CoreType.FirstClassModule` so it only admits valid `(module S)` / `(module S with type ...)` shapes
+  - split or otherwise constrain object/class member records (`object_method`, `object_value`, `object_initializer`, `class_method`, `class_value`, `class_initializer`) so concrete/virtual/initializer states are explicit instead of broad `option` products
+  - keep auditing broad shared nodes and documenting any remaining intentional invalid-state surface explicitly
 
 - [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
   - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly

@@ -331,7 +331,6 @@ let let_bindings_of_structure_item = function
   | Syn.Cst.StructureItem.Extension _
   | Syn.Cst.StructureItem.ClassTypeDeclaration _
   | Syn.Cst.StructureItem.ModuleTypeDeclaration _
-  | Syn.Cst.StructureItem.ValueDeclaration _
   | Syn.Cst.StructureItem.ExternalDeclaration _
   | Syn.Cst.StructureItem.ExceptionDeclaration _
   | Syn.Cst.StructureItem.Docstring _
@@ -524,7 +523,6 @@ let expressions_of_structure_item = function
   | Syn.Cst.StructureItem.RecursiveModuleDeclaration _
   | Syn.Cst.StructureItem.ModuleTypeDeclaration _
   | Syn.Cst.StructureItem.OpenStatement _
-  | Syn.Cst.StructureItem.ValueDeclaration _
   | Syn.Cst.StructureItem.ExternalDeclaration _
   | Syn.Cst.StructureItem.IncludeStatement _
   | Syn.Cst.StructureItem.ExceptionDeclaration _

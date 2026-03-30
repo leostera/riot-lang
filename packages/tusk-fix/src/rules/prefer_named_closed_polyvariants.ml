@@ -145,8 +145,6 @@ let diagnostics_for_items source_file =
       |> List.concat_map (function
            | Syn.Cst.StructureItem.TypeDeclaration decl ->
                diagnostics_for_type_declaration decl
-           | Syn.Cst.StructureItem.ValueDeclaration decl ->
-               diagnostics_for_value_declaration decl
            | Syn.Cst.StructureItem.ExternalDeclaration decl ->
                diagnostics_for_external_declaration decl
            | _ ->

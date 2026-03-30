@@ -237,8 +237,6 @@ let check_tree (ctx : Rule.context) _red_root =
              | Syn.Cst.StructureItem.LetBinding binding
                when Syn.Cst.LetBinding.is_function binding ->
                  diagnostics_for_binding binding
-             | Syn.Cst.StructureItem.ValueDeclaration decl ->
-                 diagnostics_for_value_declaration decl
              | Syn.Cst.StructureItem.ExternalDeclaration decl ->
                  diagnostics_for_external_declaration decl
              | _ ->

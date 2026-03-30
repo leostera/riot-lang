@@ -860,8 +860,6 @@ let structure_item_owned_trivia_spans =
   function
   | Cst.StructureItem.TypeDeclaration decl ->
       type_declaration_owned_trivia_spans decl
-  | Cst.StructureItem.ValueDeclaration decl ->
-      value_declaration_owned_trivia_spans decl
   | Cst.StructureItem.TypeExtension _
   | Cst.StructureItem.LetBinding _
   | Cst.StructureItem.Expression _
@@ -1844,8 +1842,6 @@ let signature_item_type_declaration =
 
 let structure_item_value_declaration =
   function
-  | Cst.StructureItem.ValueDeclaration decl ->
-      Some decl
   | _ ->
       None
 
@@ -1864,7 +1860,8 @@ let normalize_structure_items_owned_trivia = fun ~source items ->
     value_declaration_of_item = structure_item_value_declaration;
     item_of_trivia = structure_item_of_trivia;
     item_of_type_declaration = (fun decl -> Cst.StructureItem.TypeDeclaration decl);
-    item_of_value_declaration = (fun decl -> Cst.StructureItem.ValueDeclaration decl);
+    item_of_value_declaration = (fun _ ->
+      panic "structure_items cannot contain value declarations");
     normalize_value_declaration = normalize_value_declaration_owned_trivia;
     append_value_declaration_leading_trivia = append_value_declaration_leading_trivia;
   } items
@@ -7806,11 +7803,6 @@ let rec structure_items_from_node = fun node ->
           [ Cst.StructureItem.OpenStatement stmt ]
       | None -> unsupported_item node
     )
-  | Syntax_kind.VAL_DECL -> (
-      match value_declaration_from_node node with
-      | Some decl -> [ Cst.StructureItem.ValueDeclaration decl ]
-      | None -> unsupported_item node
-    )
   | Syntax_kind.EXTERNAL_DECL -> (
       match external_declaration_from_node node with
       | Some decl -> [ Cst.StructureItem.ExternalDeclaration decl ]
@@ -9239,8 +9231,6 @@ let validate_structure_item = fun ~context ->
       ()
   | Cst.StructureItem.Comment _ ->
       ()
-  | Cst.StructureItem.ValueDeclaration { type_; _ } ->
-      validate_core_type ~context:((("item.value_declaration.type" :: context))) type_
   | Cst.StructureItem.ExternalDeclaration { type_; _ } ->
       validate_core_type ~context:((("item.external_declaration.type" :: context))) type_
   | Cst.StructureItem.ModuleTypeDeclaration decl ->

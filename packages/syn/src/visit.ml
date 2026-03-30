@@ -906,8 +906,6 @@ and descend_structure_item = fun walk ctx (item : Cst.StructureItem.t) ->
       ctx
   | Cst.StructureItem.Comment _ ->
       ctx
-  | Cst.StructureItem.ValueDeclaration declaration ->
-      walk.value_declaration ctx declaration
   | Cst.StructureItem.ExternalDeclaration declaration ->
       walk.external_declaration ctx declaration
   | Cst.StructureItem.IncludeStatement statement ->

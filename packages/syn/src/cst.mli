@@ -4401,8 +4401,6 @@ module StructureItem : sig
         (** A standalone top-level docstring item. *)
     | Comment of Comment.t
         (** A standalone top-level comment item. *)
-    | ValueDeclaration of value_declaration
-        (** A `val` declaration item. *)
     | ExternalDeclaration of external_declaration
         (** An `external` declaration item. *)
     | IncludeStatement of include_statement

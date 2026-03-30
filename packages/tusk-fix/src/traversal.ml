@@ -406,7 +406,6 @@ let binding_sites_of_structure_item = function
   | Syn.Cst.StructureItem.Extension _
   | Syn.Cst.StructureItem.ClassTypeDeclaration _
   | Syn.Cst.StructureItem.ModuleTypeDeclaration _
-  | Syn.Cst.StructureItem.ValueDeclaration _
   | Syn.Cst.StructureItem.ExternalDeclaration _
   | Syn.Cst.StructureItem.ExceptionDeclaration _ ->
       []

@@ -3144,7 +3144,6 @@ module StructureItem = struct
     | OpenStatement of OpenStatement.t
     | Docstring of Docstring.t
     | Comment of Comment.t
-    | ValueDeclaration of value_declaration
     | ExternalDeclaration of external_declaration
     | IncludeStatement of include_statement
     | ExceptionDeclaration of exception_declaration
@@ -3170,7 +3169,6 @@ module StructureItem = struct
     | OpenStatement stmt -> OpenStatement.syntax_node stmt
     | Docstring doc -> Docstring.syntax_node doc
     | Comment comment -> Comment.syntax_node comment
-    | ValueDeclaration decl -> decl.syntax_node
     | ExternalDeclaration decl -> decl.syntax_node
     | IncludeStatement stmt -> stmt.syntax_node
     | ExceptionDeclaration decl -> decl.syntax_node

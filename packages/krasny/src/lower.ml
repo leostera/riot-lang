@@ -4959,8 +4959,6 @@ and render_structure_item_owned_trivia =
       Some (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl)
   | Syn.Cst.StructureItem.OpenStatement stmt ->
       Some (Syn.Cst.OpenStatement.owned_trivia stmt)
-  | Syn.Cst.StructureItem.ValueDeclaration decl ->
-      Some (Syn.Cst.ValueDeclaration.owned_trivia decl)
   | Syn.Cst.StructureItem.ExternalDeclaration decl ->
       Some decl.owned_trivia
   | Syn.Cst.StructureItem.IncludeStatement stmt ->
@@ -5190,9 +5188,6 @@ and render_structure_item = function
       render_class_declaration decl
   | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
       render_class_type_declaration decl
-  | Syn.Cst.StructureItem.ValueDeclaration decl ->
-      unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:decl.syntax_node
-        "implementation val declaration items do not have a structural formatter yet"
 
 and render_signature_item item =
   match item with
