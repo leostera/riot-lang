@@ -32,7 +32,14 @@ This file is _yours_. Keep it up to date after every big change.
 - [x] Member ownership is reliable for grouped `type ... and ...`, variant constructors, and record fields.
 - [x] Doc kind is explicit in the CST, and doc ownership is leading-only.
 - [x] `krasny/lower.ml` no longer does normal-path trivia archaeology.
-- [x] `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` passes.
+- [x] `packages/krasny/src/lower.ml` no longer does raw source reparsing, source sniffing, red-tree token walking, or formatter-side span archaeology.
+
+## Priority Right Now
+
+- Make valid unsupported syntax lower structurally or fail because `syn` still lacks a named CST fact.
+- Do not spend time improving layout consistency or formatter aesthetics unless it directly unblocks structural lowering.
+- If `krasny` needs to reconstruct a stable fact, move that fact into `syn`.
+- Use workspace verify as the closing check, but prioritize the next unsupported valid shape over policy cleanup.
 
 ## Current State
 
@@ -47,7 +54,7 @@ This file is _yours_. Keep it up to date after every big change.
 - nested `sig ... end` and `struct ... end` module bodies now either relift ordered item streams or fail explicitly; `lower.ml` no longer falls back to source-preserved nested body rendering.
 - grouped and standalone GADT-style type declarations now lower through the normal structural type renderer; `lower.ml` no longer preserves whole type declarations from source for uppercase constructor/result-type probes.
 - top-level type extensions, exception declarations, and floating attributes now lower structurally; unsupported top-level class/class-type/extension items fail explicitly instead of preserving source text.
-- module-expression and module-type extensions now fail explicitly instead of falling through raw `doc_of_node` fallback.
+- module-expression and module-type extensions now lower structurally from the shared extension shell plus payload relift helpers, instead of failing explicitly or falling through raw `doc_of_node` fallback.
 - class, local-open, and object core types now lower structurally; core-type extensions fail explicitly instead of falling through raw fallback.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module patterns now lower structurally; pattern extensions still fail explicitly instead of falling through raw fallback.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
@@ -119,6 +126,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Syn.Cst.CoreType.Poly` now exposes `type_keyword_token`, and `krasny` uses that explicit token instead of scanning raw tokens to decide whether locally abstract types were written with `type`.
 - `packages/krasny/src/source.ml` is gone; `krasny` no longer keeps any live raw source-reconstruction helper.
 - the remaining attribute debt is the shared/global pattern payload case, plus whatever extra CST structure richer payload bodies need before they can lower structurally.
+- the remaining structural debt is unsupported valid syntax and missing CST facts, not formatter-side source/token/span reconstruction.
 
 ## Working Style
 
@@ -127,9 +135,22 @@ This file is _yours_. Keep it up to date after every big change.
 - Commit every slice with a scoped conventional commit message.
 - Prefer `syn:cst_tests` for ownership bugs and `krasny` fixtures for layout/rendering bugs.
 - Do not reintroduce ownership heuristics in `krasny` once the CST already knows the answer.
+- Prefer structural completeness over formatter quality for now. A temporarily worse but CST-only formatter is acceptable.
+- Treat policy cleanup as deferred unless it directly blocks structural lowering.
 - At every turn, do a quick audit to see if we can add more clean up todo items 
 
 ## Structural Formatting Debt
+
+- [ ] Burn down the remaining unsupported valid syntax in structural-priority order
+  - module-expression extensions
+  - module-type extensions
+  - object extension members
+  - shared/global pattern payloads
+  - floating extension items
+  - class / class-type declaration items
+  - core-type extensions
+  - pattern extensions
+  - signature-bodied first-class module types, if we decide those should be supported rather than remain explicit failures
 
 - [x] Remove source-preserving node fallback from `packages/krasny/src/lower.ml`
   - `Source.source_of_syntax_node` is gone
@@ -194,14 +215,13 @@ This file is _yours_. Keep it up to date after every big change.
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
   - explicit object-expression member ownership / ordered member-item streams if comments or docstrings inside `object ... end` bodies need structural rendering instead of per-member token assumptions
   - explicit ambiguity-sensitive type-declaration shape markers
-  - explicit comment-sensitive layout facts for apply / after-`=` policy, so `krasny` can stop scanning red-token leading trivia through `syntax_node_has_comment_like_trivia`
 
 - [x] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
   - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly
   - generic boundary-helper/span reconstruction for sequence joins and variant-constructor trailing trivia is gone
   - the remaining debt is structural support for unsupported shapes plus explicit style heuristics, not token/span archaeology
 
-- [ ] Add regression coverage before removing each heuristic
+- [ ] Add regression coverage before landing each new structural shape
   - use `syn:cst_tests` when the missing fact is ownership/structure
   - use `krasny` fixtures when the issue is purely rendering/layout
 

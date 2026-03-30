@@ -1024,19 +1024,22 @@ exception Nested = Std.Result.Error
         in
         Test.assert_equal ~expected:"[@@@warning \"-32\"]\n" ~actual;
         Ok ());
-    Test.case "format fails for module-expression and module-type extensions"
+    Test.case "format module-expression and module-type extensions structurally"
       (fun () ->
         let source =
           {|module type S = [%foo]
 module M = [%foo]
 |}
         in
-        match parse_ml source |> Krasny.format with
-        | Ok _ ->
-            panic
-              "module-expression and module-type extensions should fail formatting instead of preserving source"
-        | Error _ ->
-            Ok ());
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"module-expression and module-type extensions should render from the structural extension shell"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        assert_idempotent ~source
+          ~msg:"module-expression and module-type extensions should stay stable";
+        Ok ());
     Test.case "format keeps structural core types idempotent" (fun () ->
         let source =
           {|val use : #service -> M.(t list) -> < close : unit -> unit; next : int >

@@ -7,15 +7,16 @@
 1. Keep `krasny` as the single rendering pipeline for formatted OCaml output; do not grow a separate fix-only printer beside it.
 2. Format only from a successful CST lift; do not pretty-print broken files or add a token-replay fallback for them.
 3. Start with deterministic valid OCaml output before chasing aesthetic heuristics.
-4. Keep the public surface writer-oriented and `Std.IO`-friendly.
-5. Treat comments and trivia as part of the formatter design, not as a post-processing hack.
-6. Keep workspace formatting runners streaming-friendly: file discovery and per-file check results should be able to flow incrementally instead of requiring a full precollected file list.
-7. Keep the active fixture manifest intentionally curated; prefer one category corpus per supported syntax band and add individual edge-case fixtures only after real code exposes a regression. Use `tests/FIXTURES.md` and `tests/fixture_audit.py` before adding overlapping cases.
-8. When a copied real-file regression exposes a missing formatter behavior, add the smallest representative example back into the relevant `0X00` category corpus so the feature is isolated before or alongside the fix.
-9. `--verify` is a normalized semantic-hash safety preflight, not another formatting-state check. Report files that would reformat safely separately from files that are unsafe to format.
-10. Keep lowering context explicit and per-invocation. Do not reintroduce global mutable source/render state in `Lower`; each format run must be multicore-safe on its own.
-11. Preserve standalone top-level docstrings and section headers. Treat odoc section docs and markdown-style `# ...` doc blocks as section boundaries, not declaration-owned docs to be dropped or reassigned.
-12. Render variant constructor docs from `Syn.Cst.VariantConstructor.owned_trivia.leading`; do not pull docstrings backward from later gaps or EOF once `syn` has assigned leading-only constructor ownership.
+4. During the structural-formatting push, prefer “supported from CST” over “beautiful.” If a layout policy is ugly but fully structural, ship it and come back later.
+5. Keep the public surface writer-oriented and `Std.IO`-friendly.
+6. Treat comments and trivia as part of the formatter design, not as a post-processing hack.
+7. Keep workspace formatting runners streaming-friendly: file discovery and per-file check results should be able to flow incrementally instead of requiring a full precollected file list.
+8. Keep the active fixture manifest intentionally curated; prefer one category corpus per supported syntax band and add individual edge-case fixtures only after real code exposes a regression. Use `tests/FIXTURES.md` and `tests/fixture_audit.py` before adding overlapping cases.
+9. When a copied real-file regression exposes a missing formatter behavior, add the smallest representative example back into the relevant `0X00` category corpus so the feature is isolated before or alongside the fix.
+10. `--verify` is a normalized semantic-hash safety preflight, not another formatting-state check. Report files that would reformat safely separately from files that are unsafe to format.
+11. Keep lowering context explicit and per-invocation. Do not reintroduce global mutable source/render state in `Lower`; each format run must be multicore-safe on its own.
+12. Preserve standalone top-level docstrings and section headers. Treat odoc section docs and markdown-style `# ...` doc blocks as section boundaries, not declaration-owned docs to be dropped or reassigned.
+13. Render variant constructor docs from `Syn.Cst.VariantConstructor.owned_trivia.leading`; do not pull docstrings backward from later gaps or EOF once `syn` has assigned leading-only constructor ownership.
 13. Render record field docs from `Syn.Cst.RecordField.owned_trivia.leading`, and preserve terminal `}`-owned comment/doc trivia inside the record body instead of stealing them for the last field.
 14. Use `Syn.Cst.Docstring.kind` for normal doc-vs-section decisions when lowering CST-owned docstrings; do not resniff raw docstring text once `syn` has made that distinction explicit.
 15. Render top-level source files from the ordered `SourceFile.items` stream plus each item's `owned_trivia`; do not reparse raw source gaps there to rediscover standalone comments/docstrings or declaration docs.
@@ -69,11 +70,12 @@
 63. Render polymorphic-variant inherit patterns by printing `#` separately from `Syn.Cst.Pattern.PolyVariantInherit.type_path`. That path should already exclude the sigil, so `#color` and `#M.color` must not collapse to `##` or duplicate the sigil during formatting.
 64. Render plain `object ... end` expressions structurally from `Syn.Cst.Expression.Object`. Support empty objects, self patterns, `method`/`val`/`inherit`/`initializer` members, and postfix member attributes without replaying source text; keep object extension members on an explicit unsupported path until `syn` exposes the remaining structural ownership facts there.
 65. Render plain expression extensions structurally from `Syn.Cst.extension` plus its structured payload. `[%foo]`, `[%foo expr]`, `[%foo: type]`, and structure/signature payload forms should use the extension shell and payload relift helpers directly instead of failing as unsupported.
-66. When body/branch boundary trivia still comes from token-attached leading trivia, read it through `Syn.Cst.leading_trivia_after`, `leading_trivia_before_node`, and `leading_trivia_after_token_before_node`. Do not walk `Ceibo.Red.SyntaxNode.tokens` in `lower.ml` just to rediscover the first token and its attached trivia.
-67. When a formatter boundary still needs a node’s real-token span, read it through `Syn.Cst.token_body_span`. Do not keep local `SyntaxNode.tokens` scans in `lower.ml` just to recover start/end offsets of the first and last nontrivia tokens.
-68. Do not reach back into `RecordField.syntax_node` parents from `lower.ml` just to choose inline-vs-multiline record-constructor layout. That decision should come from field structure, owned trivia, and explicit formatter policy only.
-69. Keep unsupported-shape diagnostics behind `Syn.Cst` helpers too. `lower.ml` should not read `Ceibo.Red.SyntaxNode.kind` directly just to annotate an error path with the current syntax kind, and it should keep that kind typed until final error rendering.
-70. Prefer node-specific CST boundary-trivia fields over generic helper calls. Once `syn` exposes `fun`/`if`/`let`/binding-operator body or branch trivia, or sequence-expression per-step boundary trivia, read those fields directly and delete the corresponding `leading_trivia_*` lookups from `lower.ml`.
+66. Render module-expression and module-type extensions from that same structural extension shell. `[%foo]` in `module M = ...` or `module type S = ...` should reuse the extension payload renderer instead of keeping separate unsupported paths.
+67. When body/branch boundary trivia still comes from token-attached leading trivia, read it through `Syn.Cst.leading_trivia_after`, `leading_trivia_before_node`, and `leading_trivia_after_token_before_node`. Do not walk `Ceibo.Red.SyntaxNode.tokens` in `lower.ml` just to rediscover the first token and its attached trivia.
+68. When a formatter boundary still needs a node’s real-token span, read it through `Syn.Cst.token_body_span`. Do not keep local `SyntaxNode.tokens` scans in `lower.ml` just to recover start/end offsets of the first and last nontrivia tokens.
+69. Do not reach back into `RecordField.syntax_node` parents from `lower.ml` just to choose inline-vs-multiline record-constructor layout. That decision should come from field structure, owned trivia, and explicit formatter policy only.
+70. Keep unsupported-shape diagnostics behind `Syn.Cst` helpers too. `lower.ml` should not read `Ceibo.Red.SyntaxNode.kind` directly just to annotate an error path with the current syntax kind, and it should keep that kind typed until final error rendering.
+71. Prefer node-specific CST boundary-trivia fields over generic helper calls. Once `syn` exposes `fun`/`if`/`let`/binding-operator body or branch trivia, or sequence-expression per-step boundary trivia, read those fields directly and delete the corresponding `leading_trivia_*` lookups from `lower.ml`.
 
 ## Validate
 
