@@ -70,6 +70,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `if` conditions now render from ordinary expression structure; `lower.ml` no longer scans token text for `&&` / `||` or comment-like trivia just to format boolean conditions.
 - trivia after `=` and `in` in ordinary `let ... in` expressions now comes from the RHS/body node's first-token `leading_trivia`; `lower.ml` no longer reparses raw source spans for those paths.
 - local binding layout no longer preserves raw internal newlines from RHS syntax nodes; simple wrapped values now collapse from CST structure instead of staying multiline because the source had embedded newlines.
+- dead inline-string binding special casing is gone; ordinary `expression_is_simple_after_equals` checks now carry the inline decision for both `let` and `let*` bindings.
 - singleton list patterns now use explicit formatter edge spacing; `lower.ml` no longer sniffs source text for `"[ "` / `" ]"` to preserve original spacing.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
 - `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`.

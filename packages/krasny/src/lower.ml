@@ -2032,15 +2032,6 @@ and qualified_multi_argument_apply_prefers_multiline = fun ({ callee; argument; 
   && head_is_qualified_path callee
   && not (has_non_positional_argument acc callee)
 
-let rec expression_keeps_inline_binding_value =
-  function
-  | Syn.Cst.Expression.Literal (Syn.Cst.Literal.String _) ->
-      true
-  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
-      expression_keeps_inline_binding_value inner
-  | _ ->
-      false
-
 let rec expression_is_pipeline =
   function
   | Syn.Cst.Expression.Infix { operator_token; left; right; _ } ->
@@ -3543,8 +3534,7 @@ and render_binding_operator_binding
   let keep_value_after_equals =
     Option.is_none leading_value_trivia
     && not (expression_requires_break_after_equals bound_value)
-    && (expression_is_simple_after_equals bound_value
-       || expression_keeps_inline_binding_value bound_value)
+    && expression_is_simple_after_equals bound_value
     && not (Doc.is_multiline rendered_value)
   in
   if keep_value_after_equals then
@@ -4117,7 +4107,7 @@ and render_local_binding
       | _ when expression_requires_break_after_equals value ->
           false
       | _ ->
-          expression_is_simple_after_equals value || expression_keeps_inline_binding_value value
+          expression_is_simple_after_equals value
   in
   let rendered_value =
     match value with

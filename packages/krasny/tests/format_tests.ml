@@ -462,6 +462,33 @@ let ready =
 |}
           ~actual;
         Ok ());
+    Test.case "format simple string bindings inline from ordinary simplicity checks"
+      (fun () ->
+        let source =
+          {|let message =
+  (
+    "ok"
+  )
+let bind =
+  let* value = "ok" in
+  finish value
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"simple string bindings should stay inline without a separate override"
+        in
+        Test.assert_equal
+          ~expected:
+            {|let message = ("ok")
+
+let bind =
+  let* value = "ok" in
+  finish value
+|}
+          ~actual;
+        Ok ());
     Test.case "format keeps simple applies inline even when identifiers contain keywords"
       (fun () ->
         let source = "let handler = use function_handler\n" in
