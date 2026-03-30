@@ -246,6 +246,23 @@ let bind =
 |}
           ~actual;
         Ok ());
+    Test.case "format polymorphic variant heads from explicit tag tokens"
+      (fun () ->
+        let source =
+          {|let classify = function
+  | `Ok value -> value
+  | `Error -> fallback
+
+let value = `Ok 1
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"polymorphic variant heads should format from tag tokens"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        Ok ());
     Test.case "format singleton list patterns with explicit formatter spacing"
       (fun () ->
         let compact_source =

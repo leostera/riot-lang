@@ -44,6 +44,7 @@
 38. Join `owned_trivia` with explicit formatter separators. Do not recover comment/docstring spacing from raw source gaps or thread source text through nested item renderers just to preserve whitespace between trivia items.
 39. Render shared core-type, module-type, and module-expression attributes structurally too. Support simple single-expression structure payloads without raw payload replay, and fail explicitly on richer shared/global payload forms until `syn` exposes enough structure.
 40. When relifted nested item streams expose a floating attribute immediately after a `type` declaration, keep that join tight on the next line. Do not open a blank paragraph there or re-split the nested body to recover the attribute twice.
+41. Render polymorphic-variant expression and pattern heads from the explicit `tag_token` fields in the CST. Do not replay raw direct-token text for the leading backtick tag once `syn` exposes it structurally.
 
 ## Validate
 

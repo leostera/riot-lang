@@ -136,12 +136,6 @@ let trim_trailing_layout_whitespace = fun text ->
 let doc_of_ident = fun ident ->
   Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
 
-let doc_of_nontrivia_direct_tokens =
-  fun syntax_node ->
-    Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node
-    |> List.map (fun syntax_token -> Doc.text (Syn.Ceibo.Red.SyntaxToken.text syntax_token))
-    |> Doc.concat
-
 let token_requires_parenthesized_value_name = fun (token : Syn.Cst.Token.t) ->
   match Syn.Cst.Token.syntax_token token |> Syn.Ceibo.Red.SyntaxToken.kind with
   | Syn.SyntaxKind.IDENT_EXPR ->
@@ -1782,8 +1776,8 @@ let rec render_pattern =
       | _ ->
           Doc.concat [ Doc.lparen; render_pattern inner; Doc.rparen ]
     )
-  | Syn.Cst.Pattern.PolyVariant { syntax_node; payload; _ } ->
-      let head = doc_of_nontrivia_direct_tokens syntax_node in
+  | Syn.Cst.Pattern.PolyVariant { tag_token; payload; _ } ->
+      let head = Doc.concat [ Doc.text "`"; doc_of_token tag_token ] in
       (
         match payload with
         | None ->
@@ -2522,8 +2516,8 @@ let make_lowerer =
           render_core_type to_type;
           Doc.rparen;
         ]
-  | Syn.Cst.Expression.PolyVariant { syntax_node; payload; _ } ->
-      let head = doc_of_nontrivia_direct_tokens syntax_node in
+  | Syn.Cst.Expression.PolyVariant { tag_token; payload; _ } ->
+      let head = Doc.concat [ Doc.text "`"; doc_of_token tag_token ] in
       (match payload with
       | None ->
           head

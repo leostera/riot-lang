@@ -83,6 +83,7 @@ This file is _yours_. Keep it up to date after every big change.
 - split-sigil floating attributes such as `[@@@foo]` now lift as payload-free annotations instead of misparsing the trailing `@foo` as raw payload text.
 - relifted nested `struct ... end` and `sig ... end` bodies now keep floating attributes as real sibling items after preceding `type` declarations, without double-splitting or dropping them.
 - core-type variables now render from `Syn.Cst.CoreType.Var.name_token`; that simple token-backed case no longer replays the raw syntax-node token stream.
+- polymorphic-variant expression and pattern heads now render from explicit `tag_token` plus a formatter backtick, instead of replaying raw syntax-node token text.
 - `packages/krasny/src/source.ml` is gone; `krasny` no longer keeps any live raw source-reconstruction helper.
 - the remaining attribute debt is the still-raw pattern payload case, plus whatever extra CST structure richer payload bodies need before they can lower structurally.
 
@@ -121,7 +122,6 @@ This file is _yours_. Keep it up to date after every big change.
   - `doc_of_owned_trivia` now uses explicit formatter separators instead of raw source gaps between adjacent comment/doc items
 
 - [ ] Remove token-text replay and token-text heuristics still used in `lower.ml`
-  - `doc_of_nontrivia_direct_tokens` call sites such as polymorphic-variant heads
   - `signed_literal_text_from_syntax_node`
   - `poly_type_has_explicit_type_keyword`
   - `render_index_expression` punctuation reconstruction from `direct_tokens`
