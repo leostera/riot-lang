@@ -72,6 +72,7 @@
 66. When a formatter boundary still needs a node’s real-token span, read it through `Syn.Cst.token_body_span`. Do not keep local `SyntaxNode.tokens` scans in `lower.ml` just to recover start/end offsets of the first and last nontrivia tokens.
 67. Do not reach back into `RecordField.syntax_node` parents from `lower.ml` just to choose inline-vs-multiline record-constructor layout. That decision should come from field structure, owned trivia, and explicit formatter policy only.
 68. Keep unsupported-shape diagnostics behind `Syn.Cst` helpers too. `lower.ml` should not read `Ceibo.Red.SyntaxNode.kind` directly just to annotate an error path with the current syntax kind, and it should keep that kind typed until final error rendering.
+69. Prefer node-specific CST boundary-trivia fields over generic helper calls. Once `syn` exposes `fun`/`if`/`let`/binding-operator body or branch trivia structurally, read those fields directly and delete the corresponding `leading_trivia_*` lookups from `lower.ml`.
 
 ## Validate
 

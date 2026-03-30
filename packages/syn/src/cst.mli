@@ -2676,6 +2676,7 @@ and fun_expression = {
   keyword_token : Token.t;
   arrow_token : Token.t;
   parameters : parameter list;
+  body_leading_trivia : trivia list;
   body : fun_body;
   attributes : attribute list;
 }
@@ -2714,6 +2715,7 @@ and let_binding = {
   binding_pattern : pattern;
   binding_name : Token.t option;
   parameters : parameter list;
+  value_leading_trivia : trivia list;
   value : expression;
   and_bindings : let_binding list;
   is_recursive : bool;
@@ -2733,6 +2735,7 @@ and binding_operator_binding = {
   operator_token : Token.t;
   equals_token : Token.t;
   binding_pattern : pattern;
+  bound_value_leading_trivia : trivia list;
   bound_value : expression;
 }
 
@@ -2750,6 +2753,7 @@ and let_operator_expression = {
   binding : binding_operator_binding;
   and_bindings : binding_operator_binding list;
   in_token : Token.t;
+  body_leading_trivia : trivia list;
   body : expression;
   attributes : attribute list;
 }
@@ -2768,8 +2772,10 @@ and let_expression = {
   in_token : Token.t;
   binding_pattern : pattern;
   parameters : parameter list;
+  bound_value_leading_trivia : trivia list;
   bound_value : expression;
   and_bindings : let_binding list;
+  body_leading_trivia : trivia list;
   body : expression;
   is_recursive : bool;
   attributes : attribute list;
@@ -2827,7 +2833,9 @@ and if_expression = {
   then_token : Token.t;
   else_token : Token.t option;
   condition : expression;
+  then_branch_trailing_trivia : trivia list;
   then_branch : expression;
+  else_branch_leading_trivia : trivia list;
   else_branch : expression option;
   attributes : attribute list;
 }
@@ -3954,6 +3962,7 @@ module LetBinding : sig
     binding_pattern : pattern;
     binding_name : Token.t option;
     parameters : Parameter.t list;
+    value_leading_trivia : trivia list;
     value : expression;
     and_bindings : let_binding list;
     is_recursive : bool;
@@ -3975,6 +3984,8 @@ module LetBinding : sig
   val name : t -> string
 
   val parameters : t -> Parameter.t list
+
+  val value_leading_trivia : t -> trivia list
 
   val value : t -> Expression.t
 

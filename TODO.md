@@ -99,6 +99,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `Syn.Cst.token_body_span` now owns the remaining generic “real token span” query, and `krasny` uses that helper instead of scanning `Ceibo.Red.SyntaxNode.tokens` locally for variant-constructor trailing trivia and expression boundary offsets.
 - inline-record constructor layout no longer reaches through `RecordField.syntax_node` to ask the red tree for a parent node; `krasny` now decides inline-vs-multiline rendering from field presence, owned trivia, standalone record-body trivia, and explicit multiline preference only.
 - `Syn.Cst.syntax_kind` now owns diagnostics-only syntax-kind access too, and `krasny` keeps that value typed until `error_to_string` renders it; `packages/krasny/src/lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly even for unsupported-shape reporting.
+- `fun`, `if`, ordinary `let`, top-level `let`, class-`let` `and` bindings, and binding-operator CST nodes now carry explicit keyword-bound boundary trivia (`body_leading_trivia`, `value_leading_trivia`, `then_branch_trailing_trivia`, `else_branch_leading_trivia`, and related binding-operator fields), and `krasny` uses those structural fields directly instead of generic boundary-trivia helper calls on those paths.
 - `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
@@ -190,14 +191,13 @@ This file is _yours_. Keep it up to date after every big change.
   - pattern-payload structure beyond the current raw `pattern_syntax_node` / `guard_syntax_node`, so all attribute/extension payload rendering can stay structural there too
   - explicit public nested signature-body item anchors beyond the current helper-only relift surface, if downstream tools need more than `CstBuilder.signature_items_of_module_type`
   - explicit inter-trivia separator/layout facts if `owned_trivia` must preserve spacing between adjacent comment/doc items without `separator_doc_between_offsets`
+  - explicit sequence-expression boundary trivia/items, so `krasny` can stop deriving per-expression separator trivia from generic token-span helpers
   - explicit object-expression member ownership / ordered member-item streams if comments or docstrings inside `object ... end` bodies need structural rendering instead of per-member token assumptions
   - explicit ambiguity-sensitive type-declaration shape markers
-  - richer explicit boundary-trivia fields on the affected CST nodes themselves, so `krasny` can eventually stop routing `fun` / `if` / `let` / sequence boundary trivia through generic `Syn.Cst.leading_trivia_*` helpers
   - explicit comment-sensitive layout facts for apply / after-`=` policy, so `krasny` can stop scanning red-token leading trivia through `syntax_node_has_comment_like_trivia`
 
 - [ ] Remove remaining red-tree token/span archaeology from `packages/krasny/src/lower.ml`
-  - body/branch boundary trivia now routes through `Syn.Cst.leading_trivia_*` helpers instead of direct formatter-side token walks, but the remaining debt is still missing node-specific CST boundary fields rather than permanent generic helper indirection
-  - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly; the remaining debt is now generic `Syn.Cst.leading_trivia_*` / `token_body_span` helper indirection standing in for richer node-specific CST boundary fields
+  - `lower.ml` no longer references `Ceibo.Red.SyntaxNode` directly; the remaining generic boundary-helper debt is now concentrated in sequence-expression separator joins plus the variant-constructor trailing-trivia start offset
 
 - [ ] Add regression coverage before removing each heuristic
   - use `syn:cst_tests` when the missing fact is ownership/structure
