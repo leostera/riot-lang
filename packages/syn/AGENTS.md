@@ -48,6 +48,7 @@
 42. Keep structure/signature payload helper streams public via `CstBuilder.structure_items_of_payload` and `CstBuilder.signature_items_of_payload`; downstream tools should not relift `payload.item_syntax_nodes` by hand when they need normalized payload items.
 43. Keep split-sigil floating annotations payload-free during CST lift. Forms such as `[@@@foo]` and `[%%%foo]` must not misparse the trailing sigil token as raw payload text.
 44. Keep explicit nested item-anchor helpers non-duplicating: once `item_syntax_nodes` already includes lifted floating-attribute siblings, downstream relift helpers must not split the same `TYPE_DECL` a second time.
+45. Keep the optional leading `type` keyword explicit on `Cst.CoreType.Poly` via `type_keyword_token`. Downstream tools should not rescan raw poly-type tokens just to distinguish `type a. ...` from `'a. ...`.
 
 ## Validate
 

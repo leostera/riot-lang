@@ -3514,13 +3514,25 @@ and core_type_from_node = fun node ->
       Cst.CoreType.Extension (extension_from_node node)
   | Syntax_kind.POLY_TYPE -> (
       let binders = type_binders_from_poly_type_node node in
+      let type_keyword_token =
+        match direct_non_trivia_tokens node with
+        | first :: _ when String.equal (Ceibo.Red.SyntaxToken.text first) "type" ->
+            Some (token first)
+        | _ ->
+            None
+      in
       let body_node = direct_non_trivia_nodes node
       |> List.rev
       |> List.find_opt (fun child -> can_lift_core_type_node child
       && Ceibo.Red.SyntaxNode.kind child != Syntax_kind.TYPE_VAR) in
       match binders, body_node with
       | _ :: _, Some body_node ->
-          Cst.CoreType.Poly {syntax_node = node; binders; body = core_type_from_node body_node}
+          Cst.CoreType.Poly {
+            syntax_node = node;
+            type_keyword_token;
+            binders;
+            body = core_type_from_node body_node
+          }
       | [], _ ->
           bail ~message:"expected quantified type binders during Ceibo -> CST lifting" ~syntax_node:node ~context:[
             "core_type.poly"

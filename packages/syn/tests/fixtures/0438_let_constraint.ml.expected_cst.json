@@ -178,6 +178,7 @@
                   "end": 20
                 }
               },
+              "type_keyword_token": null,
               "binders": [
                 {
                   "tag": "quoted",

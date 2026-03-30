@@ -295,10 +295,11 @@ and core_type_to_json =
       ]
   | Cst.CoreType.Extension extension ->
       Json.Object [ ("tag", Json.String "extension"); ("extension", extension_to_json extension) ]
-  | Cst.CoreType.Poly { syntax_node; binders; body } ->
+  | Cst.CoreType.Poly { syntax_node; type_keyword_token; binders; body } ->
       Json.Object [
         ("tag", Json.String "poly");
         ("syntax_node", syntax_node_to_json syntax_node);
+        ("type_keyword_token", option_to_json token_to_json type_keyword_token);
         ("binders", Json.Array (List.map type_binder_to_json binders));
         ("body", core_type_to_json body)
       ]

@@ -663,13 +663,6 @@ let render_type_binder =
   | Syn.Cst.TypeBinder.Bare binder ->
       Doc.text (Syn.Cst.TypeBinder.text (Syn.Cst.TypeBinder.Bare binder))
 
-let poly_type_has_explicit_type_keyword = fun syntax_node ->
-  match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
-  | token :: _ ->
-      Syn.Ceibo.Red.SyntaxToken.text token = "type"
-  | [] ->
-      false
-
 let render_arrow_label =
   function
   | None ->
@@ -1055,12 +1048,13 @@ and render_core_type =
       Doc.concat [ render_core_type type_; Doc.space; Doc.text "as"; Doc.space; Doc.text alias_name ]
   | Syn.Cst.CoreType.Attribute { type_; attribute; _ } ->
       Doc.concat [ render_core_type type_; Doc.space; render_attribute attribute ]
-  | Syn.Cst.CoreType.Poly { syntax_node; binders; body; _ } ->
+  | Syn.Cst.CoreType.Poly { type_keyword_token; binders; body; _ } ->
       let prefix =
-        if poly_type_has_explicit_type_keyword syntax_node then
-          Doc.concat [ kw_type; Doc.space ]
-        else
-          Doc.empty
+        match type_keyword_token with
+        | Some type_keyword_token ->
+            Doc.concat [ doc_of_token type_keyword_token; Doc.space ]
+        | None ->
+            Doc.empty
       in
       Doc.concat [
         prefix;

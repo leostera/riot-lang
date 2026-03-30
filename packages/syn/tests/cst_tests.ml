@@ -3473,6 +3473,7 @@ let tests =
               type_ =
                 Syn.Cst.CoreType.Poly
                   {
+                    type_keyword_token = None;
                     binders;
                     body =
                       Syn.Cst.CoreType.Arrow
@@ -5519,12 +5520,20 @@ let tests =
                 Syn.Cst.Expression.Typed
                   {
                     expression = Syn.Cst.Expression.Fun _;
-                    type_ = Syn.Cst.CoreType.Poly { binders; _ };
+                    type_ =
+                      Syn.Cst.CoreType.Poly
+                        {
+                          type_keyword_token = Some type_keyword_token;
+                          binders;
+                          _;
+                        };
                     _;
                   };
               _;
             }
           :: _ ->
+            Test.assert_equal ~expected:"type"
+              ~actual:(Syn.Cst.Token.text type_keyword_token);
             let binder_text =
               binders |> List.map Syn.Cst.TypeBinder.text
             in

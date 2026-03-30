@@ -571,6 +571,7 @@ and core_type =
       *)
   | Poly of {
       syntax_node : syntax_node;
+      type_keyword_token : Token.t option;
       binders : type_binder list;
       body : core_type;
     }
@@ -974,6 +975,7 @@ module CoreType : sig
     | Extension of extension
     | Poly of {
         syntax_node : syntax_node;
+        type_keyword_token : Token.t option;
         binders : type_binder list;
         body : core_type;
       }

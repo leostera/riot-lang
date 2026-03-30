@@ -198,6 +198,14 @@
                   "end": 74
                 }
               },
+              "type_keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "type",
+                "span": {
+                  "start": 60,
+                  "end": 64
+                }
+              },
               "binders": [
                 {
                   "tag": "bare",
@@ -473,6 +481,14 @@
                 "span": {
                   "start": 98,
                   "end": 153
+                }
+              },
+              "type_keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "type",
+                "span": {
+                  "start": 99,
+                  "end": 103
                 }
               },
               "binders": [
@@ -996,6 +1012,14 @@
                 "span": {
                   "start": 192,
                   "end": 221
+                }
+              },
+              "type_keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "type",
+                "span": {
+                  "start": 193,
+                  "end": 197
                 }
               },
               "binders": [
