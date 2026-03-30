@@ -9,7 +9,7 @@ TARGETS_DIR="$VENDORED_OCAML_DIR/cross/targets"
 DOCKERFILE="$REPO_ROOT/docker/ocaml-toolchain.Dockerfile"
 ENV_FILE="${RIOT_CDN_ENV_FILE:-${OCAML_CDN_ENV_FILE:-$REPO_ROOT/.env}}"
 DOCKER_CACHE_ROOT="$REPO_ROOT/.docker/volumes/ocaml"
-LOCAL_CACHE_ROOT="$REPO_ROOT/.tmp/ocaml"
+LOCAL_CACHE_ROOT="${RIOT_OCAML_LOCAL_CACHE_ROOT:-/tmp/riot/ocaml}"
 WORKTREE_LAYOUT_VERSION="2"
 
 MODE=""
@@ -61,7 +61,7 @@ Native Linux builds keep a per-target working tree cache under:
   .docker/volumes/ocaml/<target>/worktree
 
 Other targets build in isolated local worktrees under:
-  .tmp/ocaml/<target>/worktree
+  /tmp/riot/ocaml/<target>/worktree
 EOF
 }
 
@@ -108,7 +108,7 @@ docker_platform_for_target() {
 }
 
 ensure_publish_env() {
-  CDN_BASE_URL="${RIOT_CDN_PUBLIC_BASE_URL:-${OCAML_CDN_PUBLIC_BASE_URL:-https://cdn.ocaml.ai}}"
+  CDN_BASE_URL="${RIOT_CDN_PUBLIC_BASE_URL:-${OCAML_CDN_PUBLIC_BASE_URL:-https://cdn.pkgs.ml}}"
   PUBLIC_BASE_URL="${CDN_BASE_URL%/}/ocaml"
   BUCKET="${RIOT_CDN_BUCKET:-${OCAML_CDN_BUCKET:-ml-pkgs-cdn}}"
   ENDPOINT_URL="${RIOT_CDN_ENDPOINT_URL:-${OCAML_CDN_ENDPOINT_URL:-}}"

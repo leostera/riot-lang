@@ -93,12 +93,12 @@ let download_and_install_toolchain version ~host ~target =
   let (binary_url, tar_filename, description) =
     if host = target then
       (* Native toolchain *)
-      let url = "https://cdn.riot.ml/ocaml/ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
+      let url = "https://cdn.pkgs.ml/ocaml/ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
       let filename = "ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
       (url, filename, "native")
     else
       (* Cross-compilation toolchain *)
-      let url = "https://cdn.riot.ml/ocaml/ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
+      let url = "https://cdn.pkgs.ml/ocaml/ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
       let filename = "ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
       (url, filename, "cross-compilation from " ^ host ^ " to " ^ target)
   in

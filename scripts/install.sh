@@ -1,6 +1,6 @@
 #!/bin/sh
 # Tusk installation script
-# Usage: curl -sSL https://cdn.ocaml.ai/tusk/install.sh | sh
+# Usage: curl -sSL https://cdn.pkgs.ml/tusk/install.sh | sh
 
 set -e
 
@@ -74,7 +74,7 @@ install_tusk() {
     mkdir -p "$INSTALL_DIR"
     
     # Construct download URL from S3/CDN
-    S3_BASE_URL="${TUSK_CDN_URL:-${RIOT_CDN_URL:-https://cdn.ocaml.ai}}"
+    S3_BASE_URL="${TUSK_CDN_URL:-${RIOT_CDN_URL:-https://cdn.pkgs.ml}}"
     
     if [ "$VERSION" = "latest" ]; then
         print_info "Fetching latest development build..."
@@ -148,7 +148,7 @@ handle_download_error() {
         echo ""
         echo "Please check:"
         echo "  - Your internet connection"
-        echo "  - The CDN is accessible: ${TUSK_CDN_URL:-${RIOT_CDN_URL:-https://cdn.ocaml.ai}}"
+        echo "  - The CDN is accessible: ${TUSK_CDN_URL:-${RIOT_CDN_URL:-https://cdn.pkgs.ml}}"
         echo "  - https://github.com/leostera/riot/issues"
     fi
     

@@ -43,7 +43,7 @@ Optional environment:
   VERSION                 default: git short SHA
   OUTPUT_DIR              default: artifacts/tusk
   RIOT_CDN_PUBLIC_BASE_URL
-                          default: https://cdn.ocaml.ai
+                          default: https://cdn.pkgs.ml
   RIOT_CDN_OBJECT_ACL
   INSTALL_SCRIPT_PATH     default: scripts/install.sh
   RIOT_RELEASE_UPLOAD     default: 1
@@ -63,7 +63,7 @@ fi
 
 TARGET="$1"
 OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/artifacts/tusk}"
-CDN_BASE_URL="${RIOT_CDN_PUBLIC_BASE_URL:-${OCAML_CDN_PUBLIC_BASE_URL:-https://cdn.ocaml.ai}}"
+CDN_BASE_URL="${RIOT_CDN_PUBLIC_BASE_URL:-${OCAML_CDN_PUBLIC_BASE_URL:-https://cdn.pkgs.ml}}"
 PUBLIC_BASE_URL="${CDN_BASE_URL%/}/tusk"
 BUCKET="${RIOT_CDN_BUCKET:-${OCAML_CDN_BUCKET:-}}"
 ENDPOINT_URL="${RIOT_CDN_ENDPOINT_URL:-${OCAML_CDN_ENDPOINT_URL:-}}"
