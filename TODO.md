@@ -132,7 +132,6 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Audit remaining layout heuristics and keep only the ones that are explicit style policy
   - inline `let ... =` placement rules such as `expression_is_simple_after_equals`
   - `render_local_binding` header/body placement rules
-  - `let exception` rendering, which still prints from `exception_declaration.syntax_node` text today
 
 - [ ] Remove source-derived “safe to rewrite” gates from top-level formatting
   - keep auditing top-level item joins for any remaining “preserve because rewrite might change meaning” behavior
@@ -150,14 +149,11 @@ This file is _yours_. Keep it up to date after every big change.
   - `Lower.source_file` no longer takes `~source`
   - `Format_core.format` no longer threads parse-result source into lowering
 
-- [ ] Remove public/docs-level assumptions that unsupported shapes are preserved from source
-  - `packages/krasny/src/Krasny.mli`
-  - `packages/krasny/src/format_core.ml`
-  - `packages/krasny/AGENTS.md` rules that still describe source-preserving lowering as an accepted steady-state behavior
-  - any AGENTS/docs wording that still describes source-preserving fallback as part of the formatter contract
+- [x] Remove public/docs-level assumptions that unsupported shapes are preserved from source
+  - `packages/krasny/src/Krasny.mli`, `packages/krasny/src/format_core.ml`, and `packages/krasny/AGENTS.md` now describe explicit failure on unsupported shapes instead of source fallback
 
-- [ ] Remove impossible-state fallback patterns from formatter hot paths
-  - any remaining “best effort” fallback that hides missing structural support instead of surfacing it
+- [x] Remove impossible-state fallback patterns from formatter hot paths
+  - formatter hot paths no longer carry “best effort” source-preserving fallback branches that mask missing structural support
 
 - [x] Audit every `ctx.source` / `Source.*` use in `packages/krasny/src/lower.ml`
   - `lower.ml` no longer uses `Source.*`

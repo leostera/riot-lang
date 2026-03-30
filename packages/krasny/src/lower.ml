@@ -149,9 +149,6 @@ let render_value_declaration_name = fun (decl : Syn.Cst.value_declaration) ->
   else
     doc_of_token decl.name_token
 
-let nontrivia_direct_tokens =
-  fun syntax_node -> Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node
-
 let nontrivia_bounds_span_of_syntax_node = fun syntax_node ->
   let full_span = Syn.Ceibo.Red.SyntaxNode.span syntax_node in
   match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
