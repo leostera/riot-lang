@@ -2880,6 +2880,19 @@ let is_attribute_node = standalone_attribute_node
 
 let is_extension_node = fun node -> Ceibo.Red.SyntaxNode.kind node = Syntax_kind.EXTENSION_EXPR
 
+let declaration_modifiers_from_nodes = fun nodes ->
+  let declaration_extension =
+    nodes
+    |> List.find_opt is_extension_node
+    |> Option.map extension_from_node
+  in
+  let declaration_attributes =
+    nodes
+    |> List.filter is_attribute_node
+    |> List.map attribute_from_node
+  in
+  (declaration_extension, declaration_attributes)
+
 let is_let_binding_node = fun node ->
   let kind = Ceibo.Red.SyntaxNode.kind node in
   kind = Syntax_kind.LET_BINDING || kind = Syntax_kind.LET_REC_BINDING
@@ -7385,9 +7398,12 @@ let class_declaration_from_node = fun node ->
     | [] -> None
   in
   match split_at_name [] children with
-  | Some (name_node, _prefix, remainder) -> (
+  | Some (name_node, prefix, remainder) -> (
       match first_ident_token_in_subtree name_node, List.rev remainder with
       | Some class_name, class_body_node :: rev_prefix ->
+          let declaration_extension, declaration_attributes =
+            declaration_modifiers_from_nodes prefix
+          in
           let suffix_class_type, suffix_class_body = class_type_and_body_from_child class_body_node in
           let prefix_class_type =
             if Option.is_some suffix_class_type then
@@ -7401,6 +7417,8 @@ let class_declaration_from_node = fun node ->
           Some {
             Cst.syntax_node = node;
             type_params = type_parameters_from_node node;
+            declaration_extension;
+            declaration_attributes;
             class_name;
             class_type = (
               match suffix_class_type with
@@ -7426,13 +7444,18 @@ let class_type_declaration_from_node = fun node ->
     | [] -> None
   in
   match split_at_name [] children with
-  | Some (name_node, _prefix, body_node :: _) -> (
+  | Some (name_node, prefix, body_node :: _) -> (
       match first_ident_token_in_subtree name_node with
       | Some class_type_name ->
           if can_lift_class_type_node body_node then
+            let declaration_extension, declaration_attributes =
+              declaration_modifiers_from_nodes prefix
+            in
             Some {
               Cst.syntax_node = node;
               type_params = type_parameters_from_node node;
+              declaration_extension;
+              declaration_attributes;
               class_type_name;
               class_type_body = class_type_from_node body_node;
               owned_trivia = owned_trivia_from_node node

@@ -9764,6 +9764,40 @@ let tests =
                 error)
         | _ ->
             Error "expected nested module declaration and module type declaration");
+    Test.case "cst builder keeps class declaration shell modifiers explicit" (fun () ->
+        let source = "class%foo [@foo] x = x\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassDeclaration
+            { declaration_extension = Some extension; declaration_attributes = [ attribute ]; _ }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name extension.name);
+            Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name attribute.name);
+            Ok ()
+        | _ ->
+            Error "expected class declaration shell extension and attribute");
+    Test.case "cst builder keeps class-type declaration shell modifiers explicit" (fun () ->
+        let source = "class type%foo [@foo] x = x\n" in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.ClassTypeDeclaration
+            { declaration_extension = Some extension; declaration_attributes = [ attribute ]; _ }
+          :: _ ->
+            Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name extension.name);
+            Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name attribute.name);
+            Ok ()
+        | _ ->
+            Error "expected class-type declaration shell extension and attribute");
   ]
 
 let () = Miniriot.run

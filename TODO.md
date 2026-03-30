@@ -53,7 +53,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `krasny` renders top-level, nested, grouped-type, and record-body ownership from CST streams plus per-node `owned_trivia`.
 - nested `sig ... end` and `struct ... end` module bodies now either relift ordered item streams or fail explicitly; `lower.ml` no longer falls back to source-preserved nested body rendering.
 - grouped and standalone GADT-style type declarations now lower through the normal structural type renderer; `lower.ml` no longer preserves whole type declarations from source for uppercase constructor/result-type probes.
-- top-level type extensions, exception declarations, floating attributes, and floating extension items now lower structurally; unsupported top-level class/class-type items fail explicitly instead of preserving source text.
+- top-level type extensions, exception declarations, floating attributes, floating extension items, and class/class-type declaration items now lower structurally.
 - module-expression and module-type extensions now lower structurally from the shared extension shell; extension payloads default to CST-owned opaque token slices instead of OCaml payload relift.
 - core-type extensions now lower structurally from that same shared extension shell, including the default opaque payload path.
 - class, local-open, object, and extension core types now lower structurally.
@@ -113,6 +113,7 @@ This file is _yours_. Keep it up to date after every big change.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms, including opaque extension module-type payloads; signature-bodied first-class module types still fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature payload item streams for structured OCaml payloads; opaque extension payloads intentionally do not relift through those helpers.
 - class-structure and class-type-signature field payloads now carry `owned_trivia`, and `Syn.CstBuilder.class_field_items_of_fields` / `class_type_field_items_of_fields` expose ordered helper streams with standalone trailing `end`-owned comments/docstrings.
+- class and class-type declarations now render structurally too, including `class%foo` / `class type%foo` shortcut shell modifiers from explicit CST `declaration_extension` / `declaration_attributes` instead of formatter-side recovery.
 - the main lowering path now renders floating attributes and expression-attached attributes structurally from payload shape plus those payload item helpers; pattern payloads fail explicitly there instead of replaying raw payload text.
 - ordinary `[@attr? pattern when guard]` payloads now lower structurally by relifting `pattern_syntax_node` / `guard_syntax_node` through `Syn.CstBuilder.pattern_of_syntax_node` and `expression_of_syntax_node`; shared/global pattern payloads still fail explicitly.
 - postfix expression attributes on constructor/apply/infix expressions now parenthesize the attributed expression structurally before rendering `[@attr]`, so payloads stay intact and repeated formatting stays idempotent for shapes like `Some 0 [@inline always]`, `f x [@inline always]`, and `a + b [@inline always]`.
@@ -146,7 +147,6 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Burn down the remaining unsupported valid syntax in structural-priority order
   - shared/global pattern payloads
-  - class / class-type declaration items
   - signature-bodied first-class module types, if we decide those should be supported rather than remain explicit failures
 
 - [x] Make extension payloads structural-by-contract without forcing OCaml relift

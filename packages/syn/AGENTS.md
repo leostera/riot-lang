@@ -65,6 +65,8 @@
 58. Keep generic token-body span access explicit in `Syn.Cst` too. If downstream tools need a node’s real-token span without leading trivia, expose that through `Syn.Cst.token_body_span` instead of having formatters scan `Ceibo.Red.SyntaxNode.tokens` themselves.
 59. Keep diagnostics-only syntax-kind access explicit in `Syn.Cst` as well. If downstream tools only need a node kind for unsupported-shape reporting, expose that through `Syn.Cst.syntax_kind` and stringify it only at the edge instead of calling `Ceibo.Red.SyntaxNode.kind` directly.
 60. When a keyword or separator defines a stable grammar boundary, prefer an explicit CST field over a generic helper. `fun`, `if`, ordinary `let`, top-level `let`, class-`let`, binding-operator body/value trivia, and sequence-expression per-step leading trivia should be attached during CST lifting instead of left for downstream boundary reconstruction.
+61. Keep class and class-type declaration shell modifiers explicit in `Syn.Cst`. Shortcut forms such as `class%foo [@foo] x = ...` and `class type%foo [@foo] t = ...` should expose their shell extension/attributes directly instead of forcing downstream tools to recover them from raw declaration syntax.
+62. Keep class and class-type body helper streams token-order-complete just like records and objects. `CstBuilder.class_field_items_of_fields` and `class_type_field_items_of_fields` should surface trailing `end`-owned comments/docstrings so downstream renderers never need class-body archaeology.
 
 ## Validate
 

@@ -3148,6 +3148,8 @@ type external_declaration = {
 type class_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
+  declaration_extension : extension option;
+  declaration_attributes : attribute list;
   class_name : Token.t;
   class_type : class_type option;
   class_body : class_expression option;
@@ -3157,6 +3159,8 @@ type class_declaration = {
 type class_type_declaration = {
   syntax_node : syntax_node;
   type_params : TypeParameter.t list;
+  declaration_extension : extension option;
+  declaration_attributes : attribute list;
   class_type_name : Token.t;
   class_type_body : class_type;
   owned_trivia : owned_trivia;

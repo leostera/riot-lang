@@ -279,6 +279,8 @@ let kw_val = Doc.text "val"
 
 let kw_type = Doc.text "type"
 
+let kw_class = Doc.text "class"
+
 let kw_external = Doc.text "external"
 
 let kw_constraint = Doc.text "constraint"
@@ -2818,6 +2820,430 @@ and render_object_expression
         kw_end;
       ]
 
+and render_class_type_field = function
+  | Syn.Cst.ClassTypeField.Inherit { class_type; _ } ->
+      Doc.concat [ kw_inherit; Doc.space; render_class_type_doc class_type ]
+  | Syn.Cst.ClassTypeField.Value { name_token; type_; is_mutable; _ } ->
+      let head =
+        if is_mutable then
+          Doc.concat [ kw_val; Doc.space; kw_mutable; Doc.space; doc_of_token name_token ]
+        else
+          Doc.concat [ kw_val; Doc.space; doc_of_token name_token ]
+      in
+      Doc.concat [ head; annotation_colon; render_core_type type_ ]
+  | Syn.Cst.ClassTypeField.Method { name_token; type_; is_private; _ } ->
+      let head =
+        if is_private then
+          Doc.concat [ kw_method; Doc.space; kw_private; Doc.space; doc_of_token name_token ]
+        else
+          Doc.concat [ kw_method; Doc.space; doc_of_token name_token ]
+      in
+      Doc.concat [ head; annotation_colon; render_core_type type_ ]
+  | Syn.Cst.ClassTypeField.Constraint { left; right; _ } ->
+      Doc.concat
+        [ kw_constraint; Doc.space; render_core_type left; Doc.space; equals; render_core_type right ]
+  | Syn.Cst.ClassTypeField.Attribute { field; attribute; _ } ->
+      Doc.concat [ render_class_type_field field; Doc.space; render_attribute attribute ]
+  | Syn.Cst.ClassTypeField.Extension extension ->
+      render_extension_doc extension
+
+and class_type_field_owned_trivia = function
+  | Syn.Cst.ClassTypeField.Inherit { owned_trivia; _ }
+  | Syn.Cst.ClassTypeField.Value { owned_trivia; _ }
+  | Syn.Cst.ClassTypeField.Method { owned_trivia; _ }
+  | Syn.Cst.ClassTypeField.Constraint { owned_trivia; _ } ->
+      owned_trivia
+  | Syn.Cst.ClassTypeField.Attribute { field; _ } ->
+      class_type_field_owned_trivia field
+  | Syn.Cst.ClassTypeField.Extension _ ->
+      Syn.Cst.OwnedTrivia.empty
+
+and render_class_type_body_item = function
+  | Syn.CstBuilder.ClassTypeField field ->
+      let doc = render_class_type_field field in
+      let owned_trivia = class_type_field_owned_trivia field in
+      let leading_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned_trivia) in
+      let trailing_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned_trivia) in
+      doc |> doc_with_leading_trivia leading_trivia |> fun doc -> doc_with_trailing_trivia doc trailing_trivia
+  | Syn.CstBuilder.Comment comment ->
+      Doc.text (Syn.Cst.Comment.text comment)
+  | Syn.CstBuilder.Docstring docstring ->
+      Doc.text (Syn.Cst.Docstring.text docstring)
+
+and render_class_type_doc = function
+  | Syn.Cst.ClassType.Path path ->
+      doc_of_ident path
+  | Syn.Cst.ClassType.Signature { syntax_node; fields } ->
+      let body_items =
+        Syn.CstBuilder.class_type_field_items_of_fields
+          ~source_node:syntax_node fields
+      in
+      if List.is_empty body_items then
+        Doc.concat [ kw_object; Doc.space; kw_end ]
+      else
+        Doc.concat
+          [
+            kw_object;
+            Doc.line;
+            Doc.indent 2 (join_map Doc.line render_class_type_body_item body_items);
+            Doc.line;
+            kw_end;
+          ]
+  | Syn.Cst.ClassType.Arrow { label; parameter_type; result_type; _ } ->
+      let render_arrow_parameter = fun label parameter_type ->
+        let parameter_type =
+          match parameter_type with
+          | Syn.Cst.CoreType.Arrow _ ->
+              Doc.concat [ Doc.lparen; render_core_type parameter_type; Doc.rparen ]
+          | _ ->
+              render_core_type parameter_type
+        in
+        Doc.concat [ render_arrow_label label; parameter_type ]
+      in
+      let rec collect params label parameter_type result_type =
+        let params = params @ [ render_arrow_parameter label parameter_type ] in
+        match result_type with
+        | Syn.Cst.ClassType.Arrow { label; parameter_type; result_type; _ } ->
+            collect params label parameter_type result_type
+        | result_type ->
+            (params, render_class_type_doc result_type)
+      in
+      let parameters, result = collect [] label parameter_type result_type in
+      let parts = parameters @ [ result ] in
+      Doc.group (join_map (Doc.concat [ Doc.space; Doc.arrow; Doc.break () ]) (fun doc -> doc) parts)
+  | Syn.Cst.ClassType.Parenthesized { inner; _ } ->
+      Doc.concat [ Doc.lparen; render_class_type_doc inner; Doc.rparen ]
+  | Syn.Cst.ClassType.LocalOpen { module_path; class_type; _ } ->
+      Doc.concat [ doc_of_ident module_path; Doc.text ".("; render_class_type_doc class_type; Doc.rparen ]
+  | Syn.Cst.ClassType.Attribute { class_type; attribute; _ } ->
+      Doc.concat [ render_class_type_doc class_type; Doc.space; render_attribute attribute ]
+  | Syn.Cst.ClassType.Extension extension ->
+      render_extension_doc extension
+
+and render_class_member_body ~head expression =
+  let body_doc =
+    if expression_requires_break_after_equals expression then
+      render_block_expression expression
+    else
+      render_expression expression
+  in
+  if Doc.is_multiline body_doc || expression_requires_break_after_equals expression then
+    Doc.concat [ head; Doc.space; Doc.equal; Doc.line; Doc.indent 2 body_doc ]
+  else
+    Doc.concat [ head; equals; body_doc ]
+
+and render_class_method
+    ({
+       name_token;
+       body;
+       type_;
+       is_private;
+       is_virtual;
+       is_override;
+       _;
+     } : Syn.Cst.class_method) =
+  let keyword =
+    if is_override then
+      Doc.concat [ kw_method; Doc.text "!" ]
+    else
+      kw_method
+  in
+  let modifiers =
+    [
+      (if is_private then Some kw_private else None);
+      (if is_virtual then Some kw_virtual else None);
+    ]
+    |> List.filter_map (fun modifier -> modifier)
+  in
+  let head =
+    match modifiers with
+    | [] ->
+        Doc.concat [ keyword; Doc.space; doc_of_token name_token ]
+    | modifiers ->
+        Doc.concat
+          [
+            keyword;
+            Doc.space;
+            Doc.join Doc.space modifiers;
+            Doc.space;
+            doc_of_token name_token;
+          ]
+  in
+  match type_, body with
+  | Some type_, None ->
+      Doc.concat [ head; annotation_colon; render_core_type type_ ]
+  | None, Some body ->
+      render_class_member_body ~head body
+  | Some type_, Some body ->
+      render_class_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) body
+  | None, None ->
+      head
+
+and render_class_value
+    ({
+       name_token;
+       value;
+       type_;
+       is_mutable;
+       is_virtual;
+       is_override;
+       _;
+     } : Syn.Cst.class_value) =
+  let keyword =
+    if is_override then
+      Doc.concat [ kw_val; Doc.text "!" ]
+    else
+      kw_val
+  in
+  let modifiers =
+    [
+      (if is_mutable then Some kw_mutable else None);
+      (if is_virtual then Some kw_virtual else None);
+    ]
+    |> List.filter_map (fun modifier -> modifier)
+  in
+  let head =
+    match modifiers with
+    | [] ->
+        Doc.concat [ keyword; Doc.space; doc_of_token name_token ]
+    | modifiers ->
+        Doc.concat
+          [
+            keyword;
+            Doc.space;
+            Doc.join Doc.space modifiers;
+            Doc.space;
+            doc_of_token name_token;
+          ]
+  in
+  match type_, value with
+  | Some type_, None ->
+      Doc.concat [ head; annotation_colon; render_core_type type_ ]
+  | None, Some value ->
+      render_class_member_body ~head value
+  | Some type_, Some value ->
+      render_class_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) value
+  | None, None ->
+      head
+
+and render_class_inherit ({ class_expression; _ } : Syn.Cst.class_inherit) =
+  Doc.concat [ kw_inherit; Doc.space; render_class_expression class_expression ]
+
+and render_class_constraint ({ left; right; _ } : Syn.Cst.class_constraint) =
+  Doc.concat
+    [ kw_constraint; Doc.space; render_core_type left; Doc.space; equals; render_core_type right ]
+
+and render_class_initializer ({ syntax_node; body; _ } : Syn.Cst.class_initializer) =
+  match body with
+  | Some body ->
+      render_class_member_body ~head:kw_initializer body
+  | None ->
+      unsupported_syntax ~context:[ "class_expression"; "initializer" ] ~syntax_node
+        "class initializer is missing its body expression"
+
+and render_class_field = function
+  | Syn.Cst.ClassField.Method method_ ->
+      render_class_method method_
+  | Syn.Cst.ClassField.Value value ->
+      render_class_value value
+  | Syn.Cst.ClassField.Inherit inherit_ ->
+      render_class_inherit inherit_
+  | Syn.Cst.ClassField.Constraint constraint_ ->
+      render_class_constraint constraint_
+  | Syn.Cst.ClassField.Initializer initializer_ ->
+      render_class_initializer initializer_
+  | Syn.Cst.ClassField.Attribute { field; attribute; _ } ->
+      Doc.concat [ render_class_field field; Doc.space; render_attribute attribute ]
+  | Syn.Cst.ClassField.Extension extension ->
+      render_extension_doc extension
+
+and class_field_owned_trivia = function
+  | Syn.Cst.ClassField.Method method_ ->
+      method_.owned_trivia
+  | Syn.Cst.ClassField.Value value ->
+      value.owned_trivia
+  | Syn.Cst.ClassField.Inherit inherit_ ->
+      inherit_.owned_trivia
+  | Syn.Cst.ClassField.Constraint constraint_ ->
+      constraint_.owned_trivia
+  | Syn.Cst.ClassField.Initializer initializer_ ->
+      initializer_.owned_trivia
+  | Syn.Cst.ClassField.Attribute { field; _ } ->
+      class_field_owned_trivia field
+  | Syn.Cst.ClassField.Extension _ ->
+      Syn.Cst.OwnedTrivia.empty
+
+and render_class_expression_body_item = function
+  | Syn.CstBuilder.ClassField field ->
+      let doc = render_class_field field in
+      let owned_trivia = class_field_owned_trivia field in
+      let leading_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned_trivia) in
+      let trailing_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned_trivia) in
+      doc |> doc_with_leading_trivia leading_trivia |> fun doc -> doc_with_trailing_trivia doc trailing_trivia
+  | Syn.CstBuilder.Comment comment ->
+      Doc.text (Syn.Cst.Comment.text comment)
+  | Syn.CstBuilder.Docstring docstring ->
+      Doc.text (Syn.Cst.Docstring.text docstring)
+
+and class_expression_needs_parens_in_apply_head = function
+  | Syn.Cst.ClassExpression.Path _
+  | Syn.Cst.ClassExpression.Structure _
+  | Syn.Cst.ClassExpression.Parenthesized _
+  | Syn.Cst.ClassExpression.LocalOpen _
+  | Syn.Cst.ClassExpression.Extension _ ->
+      false
+  | Syn.Cst.ClassExpression.Attribute { class_expression; _ } ->
+      class_expression_needs_parens_in_apply_head class_expression
+  | Syn.Cst.ClassExpression.Fun _
+  | Syn.Cst.ClassExpression.Apply _
+  | Syn.Cst.ClassExpression.Let _
+  | Syn.Cst.ClassExpression.Constraint _ ->
+      true
+
+and render_class_apply_expression ({ callee; argument; _ } : Syn.Cst.class_apply_expression) =
+  let rec collect_arguments acc = function
+    | Syn.Cst.ClassExpression.Apply { callee; argument; _ } ->
+        collect_arguments (argument :: acc) callee
+    | class_expression ->
+        (class_expression, acc)
+  in
+  let head, arguments = collect_arguments [ argument ] callee in
+  let rendered_head =
+    if class_expression_needs_parens_in_apply_head head then
+      Doc.concat [ Doc.lparen; render_class_expression head; Doc.rparen ]
+    else
+      render_class_expression head
+  in
+  let rendered_arguments = arguments |> List.map render_apply_argument in
+  Doc.group
+    (Doc.concat
+       (rendered_head
+       :: List.map
+            (fun argument ->
+              Doc.concat [ Doc.break (); argument ])
+            rendered_arguments))
+
+and render_class_fun_expression ({ parameters; body; _ } : Syn.Cst.class_fun_expression) =
+  let parameters = parameters |> List.map render_parameter in
+  let body = render_class_expression body in
+  let body_prefers_multiline = Doc.is_multiline body in
+  if body_prefers_multiline || List.length parameters = 0 then
+    Doc.concat
+      [
+        kw_fun;
+        (if List.length parameters = 0 then Doc.empty else Doc.concat [ Doc.space; Doc.join Doc.space parameters ]);
+        Doc.space;
+        Doc.arrow;
+        Doc.line;
+        Doc.indent 2 body;
+      ]
+  else
+    Doc.concat
+      [
+        kw_fun;
+        Doc.space;
+        Doc.join Doc.space parameters;
+        Doc.space;
+        Doc.arrow;
+        Doc.space;
+        body;
+      ]
+
+and render_class_let_expression
+    ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value; and_bindings; in_token; body; _ } :
+      Syn.Cst.class_let_expression) =
+  let first_binding =
+    render_local_binding ~local_context:true ~source_has_explicit_fun:false
+      ~keyword_token ~rec_token ~equals_token ~leading_value_trivia:None
+      ~pattern:binding_pattern ~parameters ~value:bound_value
+  in
+  let and_bindings =
+    and_bindings
+    |> List.map (fun (binding : Syn.Cst.let_binding) ->
+           render_local_binding ~local_context:true ~source_has_explicit_fun:false
+             ~keyword_token:binding.keyword_token
+             ~rec_token:binding.rec_token ~equals_token:binding.equals_token
+             ~leading_value_trivia:
+               (binding.value_leading_trivia
+               |> List.filter_map pending_entry_of_trivia
+               |> render_pending_trivia)
+             ~pattern:binding.binding_pattern ~parameters:binding.parameters
+             ~value:binding.value)
+  in
+  let bindings =
+    Doc.concat
+      (first_binding :: List.map (fun binding -> Doc.concat [ Doc.line; binding ]) and_bindings)
+  in
+  let body_doc = render_class_expression body in
+  if Doc.is_multiline first_binding then
+    Doc.concat
+      [
+        bindings;
+        Doc.line;
+        doc_of_token in_token;
+        Doc.line;
+        body_doc;
+      ]
+  else
+    Doc.concat
+      [
+        bindings;
+        Doc.space;
+        doc_of_token in_token;
+        Doc.line;
+        body_doc;
+      ]
+
+and render_class_expression = function
+  | Syn.Cst.ClassExpression.Path path ->
+      doc_of_ident path
+  | Syn.Cst.ClassExpression.Structure { syntax_node; self_pattern; fields } ->
+      let header =
+        match self_pattern with
+        | None ->
+            kw_object
+        | Some self_pattern ->
+            Doc.concat [ kw_object; Doc.space; Doc.lparen; render_pattern self_pattern; Doc.rparen ]
+      in
+      let body_items =
+        Syn.CstBuilder.class_field_items_of_fields
+          ~source_node:syntax_node fields
+      in
+      if List.is_empty body_items then
+        Doc.concat [ header; Doc.space; kw_end ]
+      else
+        Doc.concat
+          [
+            header;
+            Doc.line;
+            Doc.indent 2 (join_map Doc.line render_class_expression_body_item body_items);
+            Doc.line;
+            kw_end;
+          ]
+  | Syn.Cst.ClassExpression.Fun fun_ ->
+      render_class_fun_expression fun_
+  | Syn.Cst.ClassExpression.Apply apply ->
+      render_class_apply_expression apply
+  | Syn.Cst.ClassExpression.Let let_ ->
+      render_class_let_expression let_
+  | Syn.Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
+      Doc.concat
+        [
+          Doc.lparen;
+          render_class_expression class_expression;
+          annotation_colon;
+          render_class_type_doc class_type;
+          Doc.rparen;
+        ]
+  | Syn.Cst.ClassExpression.LocalOpen { module_path; class_expression; _ } ->
+      Doc.concat [ doc_of_ident module_path; Doc.text ".("; render_class_expression class_expression; Doc.rparen ]
+  | Syn.Cst.ClassExpression.Parenthesized { inner; _ } ->
+      Doc.concat [ Doc.lparen; render_class_expression inner; Doc.rparen ]
+  | Syn.Cst.ClassExpression.Attribute { class_expression; attribute; _ } ->
+      Doc.concat [ render_class_expression class_expression; Doc.space; render_attribute attribute ]
+  | Syn.Cst.ClassExpression.Extension extension ->
+      render_extension_doc extension
+
 and render_object_override_expression ({ fields; _ } : Syn.Cst.object_override_expression) =
   let fields =
     fields
@@ -4250,7 +4676,9 @@ and local_binding_forces_multiline_body ~local_context ~rec_token value =
 and render_local_binding
     ~local_context
     ~source_has_explicit_fun
-    ~keyword_token ~rec_token ~equals_token ~leading_value_trivia ~pattern ~parameters ~value =
+    ~keyword_token ~rec_token ~equals_token
+    ~leading_value_trivia:(leading_value_trivia : Doc.t option)
+    ~pattern ~parameters ~value =
   let pattern, type_annotation_from_pattern = split_typed_binding_pattern pattern in
   let value, type_annotation = split_typed_binding_value value in
   let type_annotation =
@@ -5030,11 +5458,9 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.Extension extension ->
       render_extension_doc extension
   | Syn.Cst.StructureItem.ClassDeclaration decl ->
-      unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:decl.syntax_node
-        "class declaration items do not have a structural formatter yet"
+      render_class_declaration decl
   | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
-      unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:decl.syntax_node
-        "class type declaration items do not have a structural formatter yet"
+      render_class_type_declaration decl
   | Syn.Cst.StructureItem.ValueDeclaration decl ->
       unsupported_syntax ~context:[ "structure_item" ] ~syntax_node:decl.syntax_node
         "implementation val declaration items do not have a structural formatter yet"
@@ -5087,11 +5513,116 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.Extension extension ->
       render_extension_doc extension
   | Syn.Cst.SignatureItem.ClassDeclaration decl ->
-      unsupported_syntax ~context:[ "signature_item" ] ~syntax_node:decl.syntax_node
-        "class declaration items do not have a structural formatter yet"
+      render_class_declaration decl
   | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
-      unsupported_syntax ~context:[ "signature_item" ] ~syntax_node:decl.syntax_node
-        "class type declaration items do not have a structural formatter yet"
+      render_class_type_declaration decl
+
+and render_class_declaration
+    ({
+       syntax_node;
+       type_params;
+       declaration_extension;
+       declaration_attributes;
+       class_name;
+       class_type;
+       class_body;
+       _;
+     } : Syn.Cst.class_declaration) =
+  let keyword =
+    match declaration_extension with
+    | None ->
+        kw_class
+    | Some extension ->
+        Doc.concat
+          [
+            kw_class;
+            doc_of_token extension.sigil_token;
+            doc_of_ident extension.name;
+            render_extension_payload_doc_with_context ~context:extension_payload_context extension;
+          ]
+  in
+  let head =
+    let params = render_type_parameters type_params in
+    if params = Doc.empty then
+      Doc.concat [ keyword; Doc.space; join_map Doc.space render_attribute declaration_attributes; (if declaration_attributes = [] then Doc.empty else Doc.space); doc_of_token class_name ]
+    else
+      Doc.concat
+        [
+          keyword;
+          Doc.space;
+          join_map Doc.space render_attribute declaration_attributes;
+          (if declaration_attributes = [] then Doc.empty else Doc.space);
+          params;
+          Doc.space;
+          doc_of_token class_name;
+        ]
+  in
+  match class_type, class_body with
+  | Some class_type, Some class_body ->
+      Doc.concat
+        [
+          head;
+          annotation_colon;
+          render_class_type_doc class_type;
+          equals;
+          render_class_expression class_body;
+        ]
+  | Some class_type, None ->
+      Doc.concat [ head; annotation_colon; render_class_type_doc class_type ]
+  | None, Some class_body ->
+      Doc.concat [ head; equals; render_class_expression class_body ]
+  | None, None ->
+      unsupported_syntax ~context:[ "class_declaration" ] ~syntax_node
+        "class declaration is missing both type and body"
+
+and render_class_type_declaration
+    ({
+       declaration_extension;
+       declaration_attributes;
+       class_type_name;
+       type_params;
+       class_type_body;
+       _;
+     } : Syn.Cst.class_type_declaration) =
+  let keyword =
+    match declaration_extension with
+    | None ->
+        Doc.concat [ kw_class; Doc.space; kw_type ]
+    | Some extension ->
+        Doc.concat
+          [
+            kw_class;
+            Doc.space;
+            kw_type;
+            doc_of_token extension.sigil_token;
+            doc_of_ident extension.name;
+            render_extension_payload_doc_with_context ~context:extension_payload_context extension;
+          ]
+  in
+  let head =
+    let params = render_type_parameters type_params in
+    if params = Doc.empty then
+      Doc.concat
+        [
+          keyword;
+          Doc.space;
+          join_map Doc.space render_attribute declaration_attributes;
+          (if declaration_attributes = [] then Doc.empty else Doc.space);
+          doc_of_token class_type_name;
+        ]
+    else
+      Doc.concat
+        [
+          keyword;
+          Doc.space;
+          join_map Doc.space render_attribute declaration_attributes;
+          (if declaration_attributes = [] then Doc.empty else Doc.space);
+          params;
+          Doc.space;
+          doc_of_token class_type_name;
+        ]
+  in
+  Doc.concat [ head; equals; render_class_type_doc class_type_body ]
 
 and render_structure_top_level_items ~trailing_phrase_separator_tokens ~items =
   let rec join_entries = function

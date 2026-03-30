@@ -976,23 +976,57 @@ let packed = (module Protocol.Http1)
           ~source
           ~msg:"first-class module expressions should stay stable";
         Ok ());
-    Test.case "format fails for unsupported class type declaration items"
-      (fun () ->
+    Test.case "format keeps class declaration items idempotent" (fun () ->
         let source =
-          {|module type%foo [@foo] S = S
-
-module type Outer = sig
-  module type%foo [@foo] S = S
-  class type%foo [@foo] x = x
-end
+          {|class ['a] service : object
+  val mutable state : int
+  method private run : int
+end =
+  object (self)
+    val mutable state = 0
+    method private run = self#state
+    (** keep body doc *)
+    [%%foo]
+  end
 |}
         in
-        match parse_ml source |> Krasny.format with
-        | Ok _ ->
-            panic
-              "unsupported class type declaration items should fail formatting instead of preserving source"
-        | Error _ ->
-            Ok ());
+        assert_idempotent
+          ~source
+          ~msg:"class declaration items should lower structurally";
+        Ok ());
+    Test.case "format keeps class type declaration items idempotent" (fun () ->
+        let source =
+          {|class type ['a] service = object
+  inherit base
+  val mutable state : int
+  method private run : 'a
+  (** keep body doc *)
+  [%%foo]
+end
+
+class worker : int -> service
+|}
+        in
+        let first =
+          parse_mli source |> Krasny.format
+          |> Result.expect ~msg:"class type declaration items should lower structurally"
+        in
+        let second =
+          parse_mli first |> Krasny.format
+          |> Result.expect ~msg:"formatted class type declarations should reformat"
+        in
+        Test.assert_equal ~expected:first ~actual:second;
+        Ok ());
+    Test.case "format keeps shortcut class declaration modifiers idempotent" (fun () ->
+        let source =
+          {|class%foo [@foo] x = x
+class type%foo [@foo] y = y
+|}
+        in
+        assert_idempotent
+          ~source
+          ~msg:"class declaration shell modifiers should stay structural";
+        Ok ());
     Test.case "format keeps structural signature items idempotent" (fun () ->
         let source =
           {|[@@@warning "-32"]
