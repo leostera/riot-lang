@@ -19,10 +19,6 @@ let at = Doc.text "@"
 
 let semicolon_text = ";"
 
-type ctx = {
-  source : string option;
-}
-
 type error = {
   message : string;
   context : string list;
@@ -405,33 +401,20 @@ let doc_with_leading_trivia = fun trivia doc ->
   | Some trivia ->
       Doc.concat [ trivia; Doc.line; doc ]
 
-let separator_doc_between_offsets = fun source ~start ~end_ ->
-  let source_length = String.length source in
-  let start = Int.max 0 (Int.min start source_length) in
-  let end_ = Int.max start (Int.min end_ source_length) in
-  let rec loop = fun index saw_inline_spacing newline_count ->
-    if index >= end_ then
-      (saw_inline_spacing, newline_count)
-    else
-      match source.[index] with
-      | '\n' ->
-          loop (index + 1) false (newline_count + 1)
-      | ' '
-      | '\t'
-      | '\r' ->
-          loop (index + 1) true newline_count
-      | _ ->
-          loop (index + 1) true newline_count
-  in
-  let saw_inline_spacing, newline_count = loop start false 0 in
-  if newline_count > 0 then
-    List.init newline_count (fun _ -> Doc.line) |> Doc.concat
-  else if saw_inline_spacing then
-    Doc.space
-  else
-    Doc.empty
+let separator_before_first_owned_trivia = fun ?start trivia ->
+  match start with
+  | None ->
+      Doc.empty
+  | Some _ -> (
+      match trivia with
+      | Syn.Cst.Trivia.Comment _ ->
+          Doc.space
+      | Syn.Cst.Trivia.Docstring _ ->
+          Doc.line)
 
-let doc_of_owned_trivia = fun ?start ~source trivia ->
+let separator_between_owned_trivia = fun _previous _current -> Doc.line
+
+let doc_of_owned_trivia = fun ?start trivia ->
   let trivia = trivia |> List.sort (fun left right -> Int.compare
   ((Syn.Cst.Token.span (Syn.Cst.Trivia.token left)).start)
   ((Syn.Cst.Token.span (Syn.Cst.Trivia.token right)).start)) in
@@ -442,18 +425,19 @@ let doc_of_owned_trivia = fun ?start ~source trivia ->
     | Syn.Cst.Trivia.Docstring docstring ->
         Doc.text (Syn.Cst.Docstring.text docstring)
   in
-  let rec loop = fun acc previous_end ->
+  let rec loop = fun acc previous ->
     function
     | [] ->
         acc
     | trivia :: rest ->
-        let span = Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia) in
         let separator =
-          match previous_end with
-          | None ->
-              Doc.empty
-          | Some previous_end ->
-              separator_doc_between_offsets source ~start:previous_end ~end_:span.start
+          match previous, acc with
+          | _, None ->
+              separator_before_first_owned_trivia ?start trivia
+          | Some previous, Some _ ->
+              separator_between_owned_trivia previous trivia
+          | None, Some _ ->
+              separator_between_owned_trivia trivia trivia
         in
         let piece = Doc.concat [ separator; trivia_doc trivia ] in
         let acc =
@@ -463,9 +447,9 @@ let doc_of_owned_trivia = fun ?start ~source trivia ->
           | Some current ->
               Some (Doc.concat [ current; piece ])
         in
-        loop acc (Some span.end_) rest
+        loop acc (Some trivia) rest
   in
-  loop None start trivia
+  loop None None trivia
 
 let render_attribute_doc = fun ~floating (attribute : Syn.Cst.attribute) ->
   let sigil_doc =
@@ -1115,40 +1099,35 @@ and render_record_definition_field = fun (field : Syn.Cst.RecordField.t) ->
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
 and render_record_definition_field_entry =
-  fun ?source ?(include_trailing_semicolon = true) (field : Syn.Cst.RecordField.t) ->
+  fun ?(include_trailing_semicolon = true) (field : Syn.Cst.RecordField.t) ->
   let body =
     if include_trailing_semicolon then
       Doc.concat [ render_record_definition_field field; Doc.semi ]
     else
       render_record_definition_field field
   in
-  match source with
-  | Some source ->
-      let owned = Syn.Cst.RecordField.owned_trivia field in
-      let leading =
-        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
-      in
-      let trailing =
-        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
-      in
-      body
-      |> doc_with_leading_trivia leading
-      |> fun body -> doc_with_trailing_trivia body trailing
-  | None ->
-      body
-and render_record_definition_body_item = fun ?source ->
-  function
+  let owned = Syn.Cst.RecordField.owned_trivia field in
+  let leading =
+    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
+  in
+  let trailing =
+    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned)
+  in
+  body
+  |> doc_with_leading_trivia leading
+  |> fun body -> doc_with_trailing_trivia body trailing
+and render_record_definition_body_item = function
   | Syn.CstBuilder.RecordField field ->
-      render_record_definition_field_entry ?source field
+      render_record_definition_field_entry field
   | Syn.CstBuilder.Comment comment ->
       Doc.text (Syn.Cst.Comment.text comment)
   | Syn.CstBuilder.Docstring docstring ->
       Doc.text (Syn.Cst.Docstring.text docstring)
-and render_record_definition = fun ?source fields ->
+and render_record_definition = fun fields ->
   let body =
     fields
     |> Syn.CstBuilder.record_field_items_of_fields
-    |> List.map (render_record_definition_body_item ?source)
+    |> List.map render_record_definition_body_item
     |> Doc.join Doc.line
   in
   Doc.concat
@@ -1237,7 +1216,7 @@ let render_type_constraint = fun (constraint_ : Syn.Cst.type_constraint) ->
     render_core_type constraint_.right
   ]
 
-let render_variant_constructor_arguments = fun ?source ?(prefer_multiline_inline_record = false) ->
+let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record = false) ->
   function
   | Syn.Cst.ConstructorArguments.Tuple types ->
       Doc.group (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type types)
@@ -1272,16 +1251,16 @@ let render_variant_constructor_arguments = fun ?source ?(prefer_multiline_inline
         match source_node with
         | Some _ when fields_have_owned_trivia
         || has_standalone_record_trivia ->
-            Doc.indent 2 (render_record_definition ?source fields)
+            Doc.indent 2 (render_record_definition fields)
         | Some _ when prefer_multiline_inline_record ->
-            Doc.indent 2 (render_record_definition ?source fields)
+            Doc.indent 2 (render_record_definition fields)
         | Some _ ->
             Doc.indent 2 (render_inline_record_definition fields)
         | None ->
-            Doc.indent 2 (render_record_definition ?source fields)
+            Doc.indent 2 (render_record_definition fields)
       )
 
-let render_variant_constructor = fun ?source ?(prefer_multiline_inline_record = false) constructor ->
+let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) constructor ->
   let head = Doc.concat [
     Doc.bar;
     Doc.space;
@@ -1291,7 +1270,7 @@ let render_variant_constructor = fun ?source ?(prefer_multiline_inline_record = 
     match Syn.Cst.VariantConstructor.arguments constructor, Syn.Cst.VariantConstructor.result_type constructor with
     | Some arguments, Some result_type ->
         let payload =
-          render_variant_constructor_arguments ?source
+          render_variant_constructor_arguments
             ~prefer_multiline_inline_record arguments
         in
         Doc.concat
@@ -1302,7 +1281,7 @@ let render_variant_constructor = fun ?source ?(prefer_multiline_inline_record = 
           Doc.space;
           kw_of;
           Doc.space;
-          render_variant_constructor_arguments ?source
+          render_variant_constructor_arguments
             ~prefer_multiline_inline_record arguments
         ]
     | None, Some result_type ->
@@ -1310,29 +1289,25 @@ let render_variant_constructor = fun ?source ?(prefer_multiline_inline_record = 
     | None, None ->
         head
   in
-  match source with
-  | Some source ->
-      let owned = Syn.Cst.VariantConstructor.owned_trivia constructor in
-      let leading =
-        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
-      in
-      let trailing =
-        Syn.Cst.OwnedTrivia.trailing owned
-        |> doc_of_owned_trivia ~source
-             ~start:
-               ((nontrivia_bounds_span_of_syntax_node
-                   (Syn.Cst.VariantConstructor.syntax_node constructor)).end_)
-      in
-      let body = body |> doc_with_leading_trivia leading in
-      (match trailing with
-      | None ->
-          body
-      | Some suffix ->
-          Doc.concat [ body; suffix ])
+  let owned = Syn.Cst.VariantConstructor.owned_trivia constructor in
+  let leading =
+    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
+  in
+  let trailing =
+    Syn.Cst.OwnedTrivia.trailing owned
+    |> doc_of_owned_trivia
+         ~start:
+           ((nontrivia_bounds_span_of_syntax_node
+               (Syn.Cst.VariantConstructor.syntax_node constructor)).end_)
+  in
+  let body = body |> doc_with_leading_trivia leading in
+  match trailing with
   | None ->
       body
+  | Some suffix ->
+      Doc.concat [ body; suffix ]
 
-let render_variant_definition = fun ?source ~source_node:_ constructors ->
+let render_variant_definition = fun constructors ->
   let constructors_all_inline_records =
     not (List.is_empty constructors)
     && List.for_all
@@ -1347,25 +1322,20 @@ let render_variant_definition = fun ?source ~source_node:_ constructors ->
   let constructor_docs = constructors
   |> List.map (fun constructor ->
     render_variant_constructor
-      ?source
       ~prefer_multiline_inline_record:constructors_all_inline_records
       constructor) in
   constructor_docs |> Doc.join Doc.line
 
-let render_type_definition = fun ?source ->
-  function
+let render_type_definition = function
   | Syn.Cst.TypeDefinition.Abstract ->
       None
   | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
       Some (render_core_type manifest)
   | Syn.Cst.TypeDefinition.Record { fields; _ } ->
-      Some (render_record_definition ?source fields)
-  | Syn.Cst.TypeDefinition.Variant { syntax_node; constructors } ->
+      Some (render_record_definition fields)
+  | Syn.Cst.TypeDefinition.Variant { syntax_node = _; constructors } ->
       Some
-        (render_variant_definition
-           ?source
-           ~source_node:syntax_node
-           constructors)
+        (render_variant_definition constructors)
   | Syn.Cst.TypeDefinition.PolyVariant poly_variant -> (
       match Syn.Cst.PolyVariant.kind poly_variant with
       | Syn.Cst.PolyVariantBound.Exact when not (poly_variant_has_inherit_field poly_variant) ->
@@ -1426,7 +1396,7 @@ let type_definition_layout = fun decl ->
   | Syn.Cst.TypeDefinition.Abstract ->
       Inline_definition
 
-let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
+let render_single_type_declaration_with_keyword = fun keyword decl ->
   let type_name = Syn.Cst.TypeDeclaration.type_name decl in
   let type_definition = Syn.Cst.TypeDeclaration.type_definition decl in
   let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
@@ -1452,13 +1422,10 @@ let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
   let definition =
     match Syn.Cst.TypeDeclaration.private_flag decl with
     | Syn.Cst.PrivateFlag.Public ->
-          render_type_definition
-            ?source:ctx.source
-            type_definition
+          render_type_definition type_definition
     | Syn.Cst.PrivateFlag.Private _ ->
-          Option.map (fun definition -> Doc.concat [ kw_private; Doc.space; definition ]) (render_type_definition
-          ?source:ctx.source
-          type_definition)
+          Option.map (fun definition -> Doc.concat [ kw_private; Doc.space; definition ])
+            (render_type_definition type_definition)
     in
     let with_definition =
       match definition with
@@ -1481,59 +1448,55 @@ let render_single_type_declaration_with_keyword = fun ctx keyword decl ->
     [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ]) with_definition in
     with_constraints
 
-let doc_with_type_declaration_owned_trivia = fun ctx decl doc ->
-  match ctx.source with
-  | None ->
-      doc
-  | Some source ->
-      let owned = Syn.Cst.TypeDeclaration.owned_trivia decl in
-      let leading =
-        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
-      in
-      let trailing =
-        doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
-      in
-      let trailing_separator =
-        match Syn.Cst.TypeDeclaration.type_definition decl, trailing with
-        | Syn.Cst.TypeDefinition.Variant { constructors; _ }, Some _ -> (
-            match List.rev constructors with
-            | constructor :: _ ->
-                let trailing =
-                  Syn.Cst.VariantConstructor.owned_trivia constructor
-                  |> Syn.Cst.OwnedTrivia.trailing
-                in
-                if List.is_empty trailing then
-                  Doc.line
-                else
-                  blank_line
-            | [] ->
-                Doc.line)
-        | _ ->
-            Doc.line
-      in
-      doc
-      |> doc_with_leading_trivia leading
-      |> fun doc ->
-           match trailing with
-           | None ->
-               doc
-           | Some trailing ->
-               Doc.concat [ doc; trailing_separator; trailing ]
+let doc_with_type_declaration_owned_trivia = fun decl doc ->
+  let owned = Syn.Cst.TypeDeclaration.owned_trivia decl in
+  let leading =
+    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
+  in
+  let trailing =
+    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned)
+  in
+  let trailing_separator =
+    match Syn.Cst.TypeDeclaration.type_definition decl, trailing with
+    | Syn.Cst.TypeDefinition.Variant { constructors; _ }, Some _ -> (
+        match List.rev constructors with
+        | constructor :: _ ->
+            let trailing =
+              Syn.Cst.VariantConstructor.owned_trivia constructor
+              |> Syn.Cst.OwnedTrivia.trailing
+            in
+            if List.is_empty trailing then
+              Doc.line
+            else
+              blank_line
+        | [] ->
+            Doc.line)
+    | _ ->
+        Doc.line
+  in
+  doc
+  |> doc_with_leading_trivia leading
+  |> fun doc ->
+       match trailing with
+       | None ->
+           doc
+       | Some trailing ->
+           Doc.concat [ doc; trailing_separator; trailing ]
 
-let render_type_declaration_member_with_keyword = fun ctx keyword decl ->
-  render_single_type_declaration_with_keyword ctx keyword decl
-  |> doc_with_type_declaration_owned_trivia ctx decl
+let render_type_declaration_member_with_keyword = fun keyword decl ->
+  render_single_type_declaration_with_keyword keyword decl
+  |> doc_with_type_declaration_owned_trivia decl
 
-let render_type_declaration_with_keyword = fun ctx keyword decl ->
+let render_type_declaration_with_keyword = fun keyword decl ->
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   if and_declarations = [] then
-    render_type_declaration_member_with_keyword ctx keyword decl
+    render_type_declaration_member_with_keyword keyword decl
   else
     Doc.join blank_line
-      (render_type_declaration_member_with_keyword ctx keyword decl
-      :: List.map (render_type_declaration_member_with_keyword ctx kw_and) and_declarations)
+      (render_type_declaration_member_with_keyword keyword decl
+      :: List.map (render_type_declaration_member_with_keyword kw_and) and_declarations)
 
-let render_type_extension = fun ctx (decl : Syn.Cst.TypeExtension.t) ->
+let render_type_extension = fun (decl : Syn.Cst.TypeExtension.t) ->
   let params = render_type_parameters (Syn.Cst.TypeExtension.type_params decl) in
   let header =
     if params = Doc.empty then
@@ -1558,9 +1521,7 @@ let render_type_extension = fun ctx (decl : Syn.Cst.TypeExtension.t) ->
         ]
   in
   let constructors =
-    render_variant_definition ?source:ctx.source
-      ~source_node:(Syn.Cst.TypeExtension.syntax_node decl)
-      (Syn.Cst.TypeExtension.constructors decl)
+    render_variant_definition (Syn.Cst.TypeExtension.constructors decl)
   in
   Doc.concat [ header; Doc.line; Doc.indent 2 constructors ]
 
@@ -2190,14 +2151,14 @@ let doc_with_expression_attributes = fun expression doc ->
 
 type lowerer = {
   render_structure_items :
-    ?source:string -> source_node:Syn.Cst.syntax_node -> Syn.Cst.StructureItem.t list -> Doc.t;
+    source_node:Syn.Cst.syntax_node -> Syn.Cst.StructureItem.t list -> Doc.t;
   render_signature_items :
-    ?source:string -> source_node:Syn.Cst.syntax_node -> Syn.Cst.SignatureItem.t list -> Doc.t;
+    source_node:Syn.Cst.syntax_node -> Syn.Cst.SignatureItem.t list -> Doc.t;
 }
 
-let make_lowerer ctx =
+let make_lowerer =
   let render_type_declaration_with_keyword keyword decl =
-    render_type_declaration_with_keyword ctx keyword decl
+    render_type_declaration_with_keyword keyword decl
   in
   let rec render_expression expression =
   let doc =
@@ -2513,15 +2474,6 @@ let make_lowerer ctx =
     | None ->
         attribute.syntax_node
 
-  and attribute_payload_source attribute =
-    match ctx.source with
-    | Some source ->
-        source
-    | None ->
-        unsupported_syntax ~context:[ "attribute"; "payload" ]
-          ~syntax_node:(attribute_payload_source_node attribute)
-          "structural attribute payload rendering requires source text"
-
   and render_attribute_payload_doc (attribute : Syn.Cst.attribute) =
     match attribute.payload with
     | None ->
@@ -2539,14 +2491,13 @@ let make_lowerer ctx =
         unsupported_syntax ~context:[ "attribute"; "payload" ] ~syntax_node
           "pattern attribute payloads do not have a structural formatter yet"
     | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
-        let source = attribute_payload_source attribute in
         let source_node = attribute_payload_source_node attribute in
         match Syn.CstBuilder.structure_items_of_payload payload with
         | Ok (Some items) ->
             if List.is_empty items then
               Doc.empty
             else
-              Doc.concat [ Doc.space; render_structure_items ~source ~source_node items ]
+              Doc.concat [ Doc.space; render_structure_items ~source_node items ]
         | Ok None ->
             Doc.empty
         | Error error ->
@@ -2554,14 +2505,13 @@ let make_lowerer ctx =
               ~context:([ "attribute"; "payload"; Syn.SyntaxKind.to_string error.syntax_kind ] @ error.context)
               error.message)
     | Some ((Syn.Cst.Payload.Signature _) as payload) -> (
-        let source = attribute_payload_source attribute in
         let source_node = attribute_payload_source_node attribute in
         match Syn.CstBuilder.signature_items_of_payload payload with
         | Ok (Some items) ->
             if List.is_empty items then
               Doc.empty
             else
-              Doc.concat [ Doc.space; render_signature_items ~source ~source_node items ]
+              Doc.concat [ Doc.space; render_signature_items ~source_node items ]
         | Ok None ->
             Doc.empty
         | Error error ->
@@ -4647,7 +4597,7 @@ and render_signature_item_owned_trivia =
   | Syn.Cst.SignatureItem.Comment _ ->
       None
 
-and render_structure_entry ~source ~trailing_suffix item =
+and render_structure_entry ~trailing_suffix item =
   let doc =
     let base_doc =
       match item with
@@ -4664,10 +4614,10 @@ and render_structure_entry ~source ~trailing_suffix item =
           match render_structure_item_owned_trivia item with
           | Some owned ->
               let leading =
-                doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+                doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
               in
               let trailing =
-                doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+                doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned)
               in
               base_doc
               |> doc_with_leading_trivia leading
@@ -4700,7 +4650,7 @@ and render_structure_entry ~source ~trailing_suffix item =
   in
   (doc, is_open_structure_item item, is_trivia, tight_after, false, is_docstring)
 
-and render_signature_entry ~source ~trailing_suffix item =
+and render_signature_entry ~trailing_suffix item =
   let doc =
     let base_doc =
       match item with
@@ -4717,10 +4667,10 @@ and render_signature_entry ~source ~trailing_suffix item =
           match render_signature_item_owned_trivia item with
           | Some owned ->
               let leading =
-                doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.leading owned)
+                doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
               in
               let trailing =
-                doc_of_owned_trivia ~source (Syn.Cst.OwnedTrivia.trailing owned)
+                doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned)
               in
               base_doc
               |> doc_with_leading_trivia leading
@@ -4768,7 +4718,7 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.TypeDeclaration decl ->
       render_type_declaration_with_keyword kw_type decl
   | Syn.Cst.StructureItem.TypeExtension decl ->
-      render_type_extension ctx decl
+      render_type_extension decl
   | Syn.Cst.StructureItem.ExternalDeclaration decl ->
       render_external_declaration decl
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
@@ -4815,7 +4765,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.TypeDeclaration decl ->
       render_type_declaration_with_keyword kw_type decl
   | Syn.Cst.SignatureItem.TypeExtension decl ->
-      render_type_extension ctx decl
+      render_type_extension decl
   | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
       render_module_declaration_with_keyword kw_module decl
   | Syn.Cst.SignatureItem.RecursiveModuleDeclaration decl ->
@@ -4948,7 +4898,7 @@ and type_declaration_owned_trivia_end = fun decl ->
          Int.max acc (type_declaration_owned_trivia_end declaration))
        current
 
-and render_structure_top_level_items ~source ~source_node ~items =
+and render_structure_top_level_items ~source_node ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
@@ -5031,28 +4981,16 @@ and render_structure_top_level_items ~source ~source_node ~items =
           phrase_separator_doc_between_tokens top_level_tokens ~start:base_span.end_
             ~end_:next_boundary
         in
-        let entry = render_structure_entry ~source ~trailing_suffix item in
+        let entry = render_structure_entry ~trailing_suffix item in
         loop (entry :: acc) rest
   in
   loop [] items
 
-and render_structure_items ?source ~source_node items =
-  let source =
-    match source with
-    | Some source ->
-        source
-    | None ->
-        (match ctx.source with
-        | Some full_source ->
-            full_source
-        | None ->
-            unsupported_syntax ~context:[ "structure_items" ] ~syntax_node:source_node
-              "structural item rendering requires source text")
-  in
-  render_structure_top_level_items ~source ~source_node ~items
+and render_structure_items ~source_node items =
+  render_structure_top_level_items ~source_node ~items
 
 and render_signature_top_level_items
-    ~source ~items =
+    ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
@@ -5128,39 +5066,27 @@ and render_signature_top_level_items
     | (item, (base_span : Syn.Ceibo.Span.t)) :: rest ->
         let entry =
           let _base_span = (base_span : Syn.Ceibo.Span.t) in
-          render_signature_entry ~source ~trailing_suffix:None item
+          render_signature_entry ~trailing_suffix:None item
         in
         loop (entry :: acc) rest
   in
   loop [] items
 
-and render_signature_items ?source ~source_node items =
-  let source =
-    match source with
-    | Some source ->
-        source
-    | None ->
-        (match ctx.source with
-        | Some full_source ->
-            full_source
-        | None ->
-            unsupported_syntax ~context:[ "signature_items" ] ~syntax_node:source_node
-              "structural item rendering requires source text")
-  in
-  render_signature_top_level_items ~source ~items
+and render_signature_items ~source_node:_ items =
+  render_signature_top_level_items ~items
   in
   { render_structure_items; render_signature_items }
 
-let source_file = fun ~source source_file ->
+let source_file = fun ~source:_ source_file ->
   try
-    let lowerer = make_lowerer {source = Some source} in
+    let lowerer = make_lowerer in
     Ok
       (match source_file with
       | Syn.Cst.Implementation implementation ->
-          lowerer.render_structure_items ~source ~source_node:(Syn.Cst.SourceFile.syntax_node
+          lowerer.render_structure_items ~source_node:(Syn.Cst.SourceFile.syntax_node
           (Syn.Cst.Implementation implementation)) implementation.items
       | Syn.Cst.Interface interface ->
-          lowerer.render_signature_items ~source ~source_node:(Syn.Cst.SourceFile.syntax_node
+          lowerer.render_signature_items ~source_node:(Syn.Cst.SourceFile.syntax_node
           (Syn.Cst.Interface interface)) interface.items)
   with
   | Unsupported err ->

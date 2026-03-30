@@ -41,6 +41,7 @@
 35. Local binding layout should follow rendered RHS structure, not raw source newlines inside the RHS syntax node. Do not keep multiline `let ... =` layouts just because the original subtree text contained embedded newlines.
 36. Render first-class module core types and type definitions from structural module-type variants. Do not reconstruct `(module ...)` text from raw module-type syntax-node text; if a first-class module-type form still lacks a structural renderer, fail explicitly.
 37. In the main lowering path, render floating and expression-attached attribute payloads from `Syn.Cst.attribute.payload` plus `Syn.CstBuilder.structure_items_of_payload` / `signature_items_of_payload`. Do not replay raw payload syntax text there; unsupported pattern payloads should fail explicitly until `syn` exposes more structure.
+38. Join `owned_trivia` with explicit formatter separators. Do not recover comment/docstring spacing from raw source gaps or thread source text through nested item renderers just to preserve whitespace between trivia items.
 
 ## Validate
 

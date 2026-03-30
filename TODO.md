@@ -72,9 +72,10 @@ This file is _yours_. Keep it up to date after every big change.
 - local binding layout no longer preserves raw internal newlines from RHS syntax nodes; simple wrapped values now collapse from CST structure instead of staying multiline because the source had embedded newlines.
 - singleton list patterns now use explicit formatter edge spacing; `lower.ml` no longer sniffs source text for `"[ "` / `" ]"` to preserve original spacing.
 - dead source-preserving helper scaffolding such as `doc_of_node` and `doc_of_source_preserved_syntax_node*` is gone from `lower.ml`; remaining source debt is in live formatting decisions, not unreachable fallback wrappers.
-- `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`; the remaining raw-trivia debt is in `doc_of_owned_trivia` separator recovery and source/text heuristics, not generic between-node span replay.
+- `render_trivia_between_spans`, `parse_trivia_between_offsets`, `trailing_inline_comment_suffix`, `leading_inline_comment_between_offsets`, and `split_leading_inline_comment_source` are gone from `lower.ml`.
+- `doc_of_owned_trivia` now joins owned comments/docstrings with explicit formatter separators instead of recovering whitespace/newline gaps from raw source text.
 - `packages/krasny/src/source.ml` is trimmed to the remaining live raw source-reconstruction helper only; `Source` is now down to `source_of_syntax_node`.
-- `render_structure_items` and `render_signature_items` now require source text explicitly; the impossible no-source path fails instead of reconstructing node text behind the formatter's back.
+- `render_structure_items` and `render_signature_items` now render directly from ordered item streams plus owned trivia; they no longer require source text or nested source-window slicing.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
 - the main lowering path now renders floating attributes and expression-attached attributes structurally from payload shape plus those payload item helpers; pattern payloads fail explicitly there instead of replaying raw payload text.
@@ -111,9 +112,9 @@ This file is _yours_. Keep it up to date after every big change.
   - top-level structure phrase separators now come from direct source-file separator tokens instead of scanning raw source between item spans
   - expression-run preservation in `render_structure_top_level_items` is gone; phrase separation is structural
 
-- [ ] Remove raw trivia reparsing helpers from `lower.ml`
-  - `doc_of_owned_trivia` should not need `separator_doc_between_offsets` plus raw `source` just to recover spacing between adjacent comment/doc items
-  - if formatting still needs these, the missing structure belongs in `syn`
+- [x] Remove raw trivia reparsing helpers from `lower.ml`
+  - `separator_doc_between_offsets` is gone
+  - `doc_of_owned_trivia` now uses explicit formatter separators instead of raw source gaps between adjacent comment/doc items
 
 - [ ] Remove source-sniffing and token-text heuristics used to make rendering decisions
   - rendered-source substring checks such as `[@` / `[%%expect]` preservation gates
@@ -140,6 +141,10 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Shrink `packages/krasny/src/source.ml` to the minimal structural-support surface
   - keep `Source` focused on the remaining supported structural utilities, not as a grab-bag for historical source-replay helpers
+
+- [ ] Remove obsolete lowering source parameters from internal formatter plumbing
+  - `Lower.source_file` still takes `~source` even though normal lowering no longer consumes source text
+  - `Format_core.format` should stop threading parse-result source into lowering once the remaining shared attribute replay site is gone
 
 - [ ] Remove public/docs-level assumptions that unsupported shapes are preserved from source
   - `packages/krasny/src/Krasny.mli`

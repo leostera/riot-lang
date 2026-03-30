@@ -675,6 +675,26 @@ module M = [%foo]
         in
         Test.assert_equal ~expected:"let _ = value [@foo 1 + 2]\n" ~actual;
         Ok ());
+    Test.case "format trailing variant comments with explicit separator policy"
+      (fun () ->
+        let source = "type t =\n  | A (* comment *)\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"trailing variant comments should format from explicit trivia separators"
+        in
+        Test.assert_equal ~expected:"type t =\n  | A (* comment *)\n" ~actual;
+        Ok ());
+    Test.case "format trailing variant docstrings with explicit separator policy"
+      (fun () ->
+        let source = "type t =\n  | A (** doc *)\n" in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"trailing variant docstrings should format from explicit trivia separators"
+        in
+        Test.assert_equal ~expected:"type t =\n  | A\n  (** doc *)\n" ~actual;
+        Ok ());
     Test.case "format fails for signature-bodied first-class module types"
       (fun () ->
         let source =
