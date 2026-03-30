@@ -7240,18 +7240,11 @@ let module_declaration_from_node = fun node ->
   match find_declaration_name_token ~skip_keywords:[ "module"; "rec"; "and" ] direct_tokens with
   | Some module_name -> (
       let direct_children = direct_non_trivia_nodes node in
-      let destructive_substitution =
-        direct_non_trivia_tokens node
-        |> List.exists
-          (fun syntax_token ->
-            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
-      in
       let has_equals =
         direct_non_trivia_tokens node
         |> List.exists
           (fun syntax_token ->
-            let text = Ceibo.Red.SyntaxToken.text syntax_token in
-            String.equal text "=" || String.equal text ":=")
+            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "=")
       in
       let lifted_module_expression =
         if has_equals then
@@ -7290,7 +7283,6 @@ let module_declaration_from_node = fun node ->
         |> List.map functor_parameter_from_node;
         module_type = lifted_module_type;
         module_expression = lifted_module_expression;
-        is_destructive_substitution = destructive_substitution;
         is_recursive = is_recursive_declaration;
         owned_trivia = owned_trivia_from_node node
       }

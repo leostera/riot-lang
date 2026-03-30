@@ -5018,7 +5018,7 @@ and render_module_expression_doc = function
       render_extension_doc extension
 
 and render_module_declaration_with_keyword keyword_doc
-    ({ module_name; functor_parameters; module_type; module_expression; is_destructive_substitution; _ } :
+    ({ module_name; functor_parameters; module_type; module_expression; _ } :
       Syn.Cst.ModuleDeclaration.t) =
   let header =
     Doc.concat
@@ -5048,21 +5048,9 @@ and render_module_declaration_with_keyword keyword_doc
       header
   | Some (Syn.Cst.ModuleExpression.Constraint { module_expression; _ })
     when Option.is_some module_type ->
-      let separator =
-        if is_destructive_substitution then
-          Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
-        else
-          equals
-      in
-      Doc.concat [ header; separator; render_module_expression_doc module_expression ]
+      Doc.concat [ header; equals; render_module_expression_doc module_expression ]
   | Some module_expression ->
-      let separator =
-        if is_destructive_substitution then
-          Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
-        else
-          equals
-      in
-      Doc.concat [ header; separator; render_module_expression_doc module_expression ]
+      Doc.concat [ header; equals; render_module_expression_doc module_expression ]
 
 and render_recursive_module_declaration (decl : Syn.Cst.RecursiveModuleDeclaration.t) =
   match Syn.Cst.RecursiveModuleDeclaration.declarations decl with

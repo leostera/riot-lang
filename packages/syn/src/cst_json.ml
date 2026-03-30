@@ -1670,10 +1670,6 @@ let module_declaration_to_json = fun decl ->
       "module_expression",
       option_to_json module_expression_to_json (Cst.ModuleDeclaration.module_expression decl)
     );
-    (
-      "is_destructive_substitution",
-      Json.Bool (Cst.ModuleDeclaration.is_destructive_substitution decl)
-    );
     ("is_recursive", Json.Bool (Cst.ModuleDeclaration.is_recursive decl))
   ]
 

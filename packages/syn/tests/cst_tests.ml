@@ -1810,27 +1810,6 @@ let tests =
               ~actual:(Syn.Cst.Token.text module_name);
             Ok ()
         | _ -> Error "expected first item to be an interface module declaration");
-    Test.case "cst interface module substitutions preserve substitution flags"
-      (fun () ->
-        let result = parse_mli "module Alias := Std.List\n" in
-        let cst =
-          expect_some result.cst
-            ~msg:"expected CST for diagnostics-free parse"
-          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-        in
-        match signature_items cst with
-        | Syn.Cst.SignatureItem.ModuleDeclaration decl :: _ -> (
-            match Syn.Cst.ModuleDeclaration.module_expression decl with
-            | Some (Syn.Cst.ModuleExpression.Path path) ->
-                Test.assert_equal ~expected:"Alias"
-                  ~actual:(Syn.Cst.ModuleDeclaration.name decl);
-                Test.assert_true
-                  (Syn.Cst.ModuleDeclaration.is_destructive_substitution decl);
-                Test.assert_equal ~expected:(Some "List")
-                  ~actual:(Syn.Cst.Ident.name path);
-                Ok ()
-            | _ -> Error "expected module substitution path")
-        | _ -> Error "expected first item to be a module declaration");
     Test.case "cst interface recursive modules preserve grouped signatures"
       (fun () ->
         let result =

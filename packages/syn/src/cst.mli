@@ -3932,14 +3932,12 @@ end
 
     This covers plain `module` items and the individual bindings nested under a
     recursive module item. `is_recursive` reports whether the binding belongs to
-    a `module rec` group, while `is_destructive_substitution` distinguishes
-    interface substitutions such as `module Name := Path`.
+    a `module rec` group.
 
     Examples:
 
     ```ocaml,norun
     module M = N
-    module Alias := Stdlib.List
     module F (X : S) : T = struct end
     ```
 *)
@@ -4029,7 +4027,6 @@ end
     ```ocaml,norun
     module M = N
     module F (X : S) : T = struct end
-    module Alias := Stdlib.List
     ```
 
     This node is still intentionally shared across structure and signature
@@ -4046,7 +4043,6 @@ module ModuleDeclaration : sig
     functor_parameters : functor_parameter list;
     module_type : module_type option;
     module_expression : module_expression option;
-    is_destructive_substitution : bool;
     is_recursive : bool;
     owned_trivia : owned_trivia;
   }
@@ -4059,8 +4055,6 @@ module ModuleDeclaration : sig
   val module_type : t -> module_type option
 
   val module_expression : t -> module_expression option
-
-  val is_destructive_substitution : t -> bool
 
   val is_recursive : t -> bool
 

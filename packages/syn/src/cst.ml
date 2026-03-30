@@ -2833,7 +2833,6 @@ module ModuleDeclaration = struct
     functor_parameters : functor_parameter list;
     module_type : module_type option;
     module_expression : module_expression option;
-    is_destructive_substitution : bool;
     is_recursive : bool;
     owned_trivia : owned_trivia;
   }
@@ -2847,8 +2846,6 @@ module ModuleDeclaration = struct
   let module_type = fun decl -> decl.module_type
 
   let module_expression = fun decl -> decl.module_expression
-
-  let is_destructive_substitution = fun decl -> decl.is_destructive_substitution
 
   let is_recursive = fun decl -> decl.is_recursive
 

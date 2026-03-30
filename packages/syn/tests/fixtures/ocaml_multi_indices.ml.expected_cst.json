@@ -97,7 +97,6 @@
               }
             }
           },
-          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
@@ -5294,7 +5293,6 @@
               }
             ]
           },
-          "is_destructive_substitution": false,
           "is_recursive": false
         }
       },
