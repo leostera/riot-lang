@@ -2420,28 +2420,6 @@ let tests =
             Ok ()
         | _ ->
             Error "expected module type declaration with extension body");
-    Test.case "cst interface module type substitutions preserve substitution flags"
-      (fun () ->
-        let result = parse_mli "module type Alias := Source\n" in
-        let cst =
-          expect_some result.cst
-            ~msg:"expected CST for diagnostics-free parse"
-          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-        in
-        match signature_items cst with
-        | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl :: _ -> (
-            match Syn.Cst.ModuleTypeDeclaration.module_type decl with
-            | Some (Syn.Cst.ModuleType.Path path) ->
-                Test.assert_equal ~expected:"Alias"
-                  ~actual:(Syn.Cst.ModuleTypeDeclaration.name decl);
-                Test.assert_true
-                  (Syn.Cst.ModuleTypeDeclaration.is_destructive_substitution decl);
-                Test.assert_equal ~expected:(Some "Source")
-                  ~actual:(Syn.Cst.Ident.name path);
-                Ok ()
-            | _ -> Error "expected module type substitution path")
-        | _ ->
-            Error "expected first item to be an interface module type declaration");
     Test.case "cst interface class declarations preserve typed class-type annotations"
       (fun () ->
         let result =

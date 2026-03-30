@@ -4601,8 +4601,7 @@
                 }
               }
             }
-          },
-          "is_destructive_substitution": false
+          }
         }
       },
       {
@@ -5618,8 +5617,7 @@
                 }
               }
             }
-          },
-          "is_destructive_substitution": false
+          }
         }
       },
       {
@@ -5767,8 +5765,7 @@
                 "end": 2436
               }
             }
-          },
-          "is_destructive_substitution": false
+          }
         }
       },
       {

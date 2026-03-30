@@ -913,8 +913,7 @@
               "payload_syntax_node": null,
               "payload": null
             }
-          },
-          "is_destructive_substitution": false
+          }
         }
       },
       {
@@ -951,8 +950,7 @@
                 "end": 629
               }
             }
-          },
-          "is_destructive_substitution": false
+          }
         }
       },
       {

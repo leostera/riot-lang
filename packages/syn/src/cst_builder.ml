@@ -7330,12 +7330,6 @@ let module_type_declaration_from_node = fun node ->
   ~skip_keywords:[ "module"; "type" ]
   (direct_non_trivia_tokens node) with
   | Some module_type_name ->
-      let destructive_substitution =
-        direct_non_trivia_tokens node
-        |> List.exists
-          (fun syntax_token ->
-            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
-      in
       Some Cst.ModuleTypeDeclaration.{
         syntax_node = node;
         module_type_name = token module_type_name;
@@ -7343,7 +7337,6 @@ let module_type_declaration_from_node = fun node ->
         |> List.rev
         |> List.find_opt can_lift_module_type_node
         |> Option.map module_type_from_node);
-        is_destructive_substitution = destructive_substitution;
         owned_trivia = owned_trivia_from_node node
       }
   | None -> None

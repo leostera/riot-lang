@@ -2876,7 +2876,6 @@ module ModuleTypeDeclaration = struct
     syntax_node : syntax_node;
     module_type_name : Token.t;
     module_type : module_type option;
-    is_destructive_substitution : bool;
     owned_trivia : owned_trivia;
   }
 
@@ -2885,8 +2884,6 @@ module ModuleTypeDeclaration = struct
   let module_type_name_token = fun decl -> decl.module_type_name
 
   let module_type = fun decl -> decl.module_type
-
-  let is_destructive_substitution = fun decl -> decl.is_destructive_substitution
 
   let owned_trivia = fun decl -> decl.owned_trivia
 

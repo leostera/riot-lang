@@ -4029,7 +4029,6 @@ end
     ```ocaml,norun
     module type S
     module type S = sig type t end
-    module type Alias := Source
     ```
 *)
 module ModuleDeclaration : sig
@@ -4053,7 +4052,6 @@ module ModuleDeclaration : sig
 
   val module_expression : t -> module_expression option
 
-  (** `true` for destructive substitutions such as `module Alias := M`. *)
   val is_destructive_substitution : t -> bool
 
   val is_recursive : t -> bool
@@ -4091,7 +4089,6 @@ module ModuleTypeDeclaration : sig
     syntax_node : syntax_node;
     module_type_name : Token.t;
     module_type : module_type option;
-    is_destructive_substitution : bool;
     owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
@@ -4099,9 +4096,6 @@ module ModuleTypeDeclaration : sig
   val module_type_name_token : t -> Token.t
 
   val module_type : t -> module_type option
-
-  (** `true` for destructive substitutions such as `module type Alias := S`. *)
-  val is_destructive_substitution : t -> bool
 
   val owned_trivia : t -> owned_trivia
 

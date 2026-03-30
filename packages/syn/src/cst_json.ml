@@ -1692,11 +1692,7 @@ let module_type_declaration_to_json = fun decl ->
   Json.Object [
     ("syntax_node", syntax_node_to_json (Cst.ModuleTypeDeclaration.syntax_node decl));
     ("module_type_name", token_to_json (Cst.ModuleTypeDeclaration.module_type_name_token decl));
-    ("module_type", option_to_json module_type_to_json (Cst.ModuleTypeDeclaration.module_type decl));
-    (
-      "is_destructive_substitution",
-      Json.Bool (Cst.ModuleTypeDeclaration.is_destructive_substitution decl)
-    )
+    ("module_type", option_to_json module_type_to_json (Cst.ModuleTypeDeclaration.module_type decl))
   ]
 
 let open_statement_to_json = fun stmt ->

@@ -5075,7 +5075,7 @@ and render_recursive_module_declaration (decl : Syn.Cst.RecursiveModuleDeclarati
            first
         :: List.map (render_module_declaration_with_keyword kw_and) rest)
 
-and render_module_type_declaration ({ module_type_name; module_type; is_destructive_substitution; _ } :
+and render_module_type_declaration ({ module_type_name; module_type; _ } :
       Syn.Cst.ModuleTypeDeclaration.t) =
   let header =
     Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; doc_of_token module_type_name ]
@@ -5084,13 +5084,7 @@ and render_module_type_declaration ({ module_type_name; module_type; is_destruct
   | None ->
       header
   | Some module_type ->
-      let separator =
-        if is_destructive_substitution then
-          Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
-        else
-          equals
-      in
-      Doc.concat [ header; separator; render_module_type_doc module_type ]
+      Doc.concat [ header; equals; render_module_type_doc module_type ]
 
 and render_open_target = function
   | Syn.Cst.OpenStatement.Path path ->
