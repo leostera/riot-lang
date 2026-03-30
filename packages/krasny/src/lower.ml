@@ -113,26 +113,6 @@ let syntax_node_has_comment_like_trivia = fun (node : Syn.Cst.syntax_node) ->
 let token_is_phrase_separator = fun token ->
   String.equal (Syn.Ceibo.Red.SyntaxToken.text token) semicolon_text
 
-let trim_trailing_layout_whitespace = fun text ->
-  let rec find_last_non_layout = fun index ->
-    if index < 0 then
-      (-1)
-    else
-      match text.[index] with
-      | ' '
-      | '\t'
-      | '\n'
-      | '\r' ->
-          find_last_non_layout (index - 1)
-      | _ ->
-          index
-  in
-  let last_index = find_last_non_layout (String.length text - 1) in
-  if last_index < 0 then
-    ""
-  else
-    String.sub text 0 (last_index + 1)
-
 let doc_of_ident = fun ident ->
   Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
 
@@ -169,18 +149,6 @@ let binding_has_explicit_fun_rhs = fun (binding : Syn.Cst.let_binding) ->
   | _ ->
       false
 
-let push_pending_break = fun pending ~position break_count ->
-  if break_count <= 0 then
-    pending
-  else
-    match pending with
-    | TriviaBreak (existing_position, existing_break_count) :: rest when Int.equal
-    existing_position
-    position ->
-        TriviaBreak (existing_position, Int.max existing_break_count break_count) :: rest
-    | _ ->
-        TriviaBreak (position, break_count) :: pending
-
 let child_span =
   function
   | Syn.Ceibo.Red.Token syntax_token ->
@@ -197,9 +165,6 @@ let compare_child_by_span = fun left right ->
     Int.compare left_span.end_ right_span.end_
   else
     0
-
-let children_in_source_order = fun syntax_node ->
-  Syn.Ceibo.Red.SyntaxNode.children_list syntax_node |> List.sort compare_child_by_span
 
 let compare_direct_token_by_span = fun left right ->
   let left_span = Syn.Ceibo.Red.SyntaxToken.span left in
@@ -256,14 +221,6 @@ let pending_trivia_position =
 
 let compare_pending_trivia_by_position = fun left right ->
   Int.compare (pending_trivia_position left) (pending_trivia_position right)
-
-let extract_leading_inline_comment = fun pending ->
-  let pending = List.sort compare_pending_trivia_by_position pending in
-  match pending with
-  | TriviaComment (_, doc) :: rest ->
-      (Some doc, rest)
-  | _ ->
-      (None, pending)
 
 let render_pending_trivia = fun ?(strip_trailing_breaks = true) pending ->
   let break_doc = fun break_count -> List.init break_count (fun _ -> Doc.line) |> Doc.concat in
@@ -455,15 +412,7 @@ let kw_and = Doc.text "and"
 
 let kw_in = Doc.text "in"
 
-let kw_if = Doc.text "if"
-
-let kw_then = Doc.text "then"
-
 let kw_else = Doc.text "else"
-
-let kw_match = Doc.text "match"
-
-let kw_try = Doc.text "try"
 
 let kw_with = Doc.text "with"
 
@@ -2822,14 +2771,6 @@ and render_apply_argument = function
               value;
             ])
 
-and syntax_node_of_apply_argument = function
-  | Syn.Cst.Positional expression ->
-      Syn.Cst.Expression.syntax_node expression
-  | Syn.Cst.Labeled argument ->
-      argument.syntax_node
-  | Syn.Cst.Optional argument ->
-      argument.syntax_node
-
 and apply_argument_prefers_break = function
   | Syn.Cst.Positional
       (Syn.Cst.Expression.Parenthesized
@@ -3171,21 +3112,6 @@ and render_function_expression ({ keyword_token; cases; _ } : Syn.Cst.function_e
       join_map Doc.line
         (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
         cases;
-    ]
-
-and render_function_expression_inline
-    ({ keyword_token; cases; _ } : Syn.Cst.function_expression) =
-  let force_multiline_cases =
-    List.length cases > 2 && List.exists case_body_prefers_multiline cases
-  in
-  Doc.concat
-    [
-      doc_of_token keyword_token;
-      Doc.line;
-      Doc.indent 2
-        (join_map Doc.line
-           (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
-           cases);
     ]
 
 and render_function_expression_unindented
@@ -3652,9 +3578,6 @@ and render_named_parameter_binding_pattern_internal ~include_type pattern =
 
 and render_named_parameter_binding_pattern pattern =
   render_named_parameter_binding_pattern_internal ~include_type:true pattern
-
-and render_unsugared_named_parameter_binding_pattern pattern =
-  render_named_parameter_binding_pattern_internal ~include_type:false pattern
 
 and named_parameter_pattern_matches_label ~label_token pattern =
   let pattern, _ = split_typed_binding_pattern pattern in
