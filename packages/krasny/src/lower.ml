@@ -17,8 +17,6 @@ let multiline_list_threshold = 10
 let star = Doc.text "*"
 let at = Doc.text "@"
 
-let semicolon_text = ";"
-
 type error = {
   message : string;
   context : string list;
@@ -50,78 +48,13 @@ type pending_trivia_entry =
   | TriviaDocstring of int * bool * Doc.t
   | TriviaBreak of int * int
 
-let token_text = Syn.Cst.Token.text
-
-let doc_of_token = fun token -> Doc.text (token_text token)
-
-let is_keyword_operator_name =
-  function
-  | "mod"
-  | "land"
-  | "lor"
-  | "lxor"
-  | "lsl"
-  | "lsr"
-  | "asr"
-  | "or" ->
-      true
-  | _ ->
-      false
-
-let is_operator_like_text = fun text ->
-  let is_identifier_char =
-    function
-    | 'a' .. 'z'
-    | 'A' .. 'Z'
-    | '0' .. '9'
-    | '_'
-    | '\'' ->
-        true
-    | _ ->
-        false
-  in
-  let rec contains_non_identifier_char = fun index ->
-    if index >= String.length text then
-      false
-    else if is_identifier_char text.[index] then
-      contains_non_identifier_char (index + 1)
-    else
-      true
-  in
-  String.length text > 0 && (is_keyword_operator_name text || contains_non_identifier_char 0)
-
-let syntax_node_has_comment_like_trivia = fun (node : Syn.Cst.syntax_node) ->
-  let found = ref false in
-  Syn.Ceibo.Red.SyntaxNode.preorder node (function
-    | Syn.Ceibo.Red.Token token ->
-        if
-          Syn.Ceibo.Red.SyntaxToken.leading_trivia token
-          |> List.exists (fun trivia ->
-                 match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
-                 | Syn.SyntaxKind.COMMENT
-                 | Syn.SyntaxKind.DOCSTRING ->
-                     true
-                 | _ ->
-                     false)
-        then
-          found := true
-    | Syn.Ceibo.Red.Node _ ->
-        ())
-  ;
-  !found
-
-let token_is_phrase_separator = fun token ->
-  String.equal (Syn.Ceibo.Red.SyntaxToken.text token) semicolon_text
+let doc_of_token = fun token -> Doc.text (Syn.Cst.Token.text token)
 
 let doc_of_ident = fun ident ->
   Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
 
 let token_requires_parenthesized_value_name = fun (token : Syn.Cst.Token.t) ->
-  match Syn.Cst.Token.syntax_token token |> Syn.Ceibo.Red.SyntaxToken.kind with
-  | Syn.SyntaxKind.IDENT_EXPR ->
-      false
-  | _ ->
-      true
+  Syn.Cst.Token.is_operator_like_name token
 
 let render_value_declaration_name = fun (decl : Syn.Cst.value_declaration) ->
   if token_requires_parenthesized_value_name decl.name_token then
@@ -149,32 +82,18 @@ let binding_has_explicit_fun_rhs = fun (binding : Syn.Cst.let_binding) ->
   | _ ->
       false
 
-let compare_direct_token_by_span = fun left right ->
-  let left_span = Syn.Ceibo.Red.SyntaxToken.span left in
-  let right_span = Syn.Ceibo.Red.SyntaxToken.span right in
-  if not (Int.equal left_span.start right_span.start) then
-    Int.compare left_span.start right_span.start
-  else
-    Int.compare left_span.end_ right_span.end_
-
-let direct_tokens_in_source_order = fun syntax_node ->
-  Syn.Ceibo.Red.SyntaxNode.direct_tokens syntax_node
-  |> List.sort compare_direct_token_by_span
-
 let phrase_separator_count_between_tokens = fun tokens ~start ~end_ ->
   let rec loop count = function
     | [] ->
         count
     | token :: rest ->
-        let span = Syn.Ceibo.Red.SyntaxToken.span token in
+        let span = Syn.Cst.Token.span token in
         if span.end_ <= start then
           loop count rest
         else if span.start >= end_ then
           count
-        else if token_is_phrase_separator token then
-          loop (count + 1) rest
         else
-          -1
+          loop (count + 1) rest
   in
   loop 0 tokens
 
@@ -265,59 +184,35 @@ let render_pending_trivia = fun ?(strip_trailing_breaks = true) pending ->
   | None, Some _ ->
       None
 
-let pending_entry_of_syntax_trivia = fun trivia ->
-  let span = Syn.Ceibo.Red.SyntaxTrivia.span trivia in
-  match Syn.Ceibo.Red.SyntaxTrivia.kind trivia with
-  | Syn.SyntaxKind.WHITESPACE ->
-      let newline_count =
-        String.fold_left
-          (fun count char -> if Char.equal char '\n' then count + 1 else count)
-          0
-          (Syn.Ceibo.Red.SyntaxTrivia.text trivia)
-      in
-      if newline_count > 0 then
-        Some (TriviaBreak (span.start, newline_count))
-      else
-        None
-  | Syn.SyntaxKind.COMMENT ->
-      Some (TriviaComment (span.start, Doc.text (Syn.Ceibo.Red.SyntaxTrivia.text trivia)))
-  | Syn.SyntaxKind.DOCSTRING ->
-      let text = Syn.Ceibo.Red.SyntaxTrivia.text trivia in
-      Some (TriviaDocstring (span.start, is_section_docstring_text text, Doc.text text))
-  | _ ->
-      None
+let pending_entry_of_trivia = fun trivia ->
+  let span = Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia) in
+  match trivia with
+  | Syn.Cst.Trivia.Comment comment ->
+      Some (TriviaComment (span.start, Doc.text (Syn.Cst.Comment.text comment)))
+  | Syn.Cst.Trivia.Docstring docstring ->
+      Some
+        (TriviaDocstring
+           ( span.start,
+             Syn.Cst.Docstring.is_section docstring,
+             Doc.text (Syn.Cst.Docstring.text docstring) ))
 
 let pending_entries_of_leading_trivia_after = fun ~after token ->
-  Syn.Ceibo.Red.SyntaxToken.leading_trivia token
-  |> List.filter_map (fun trivia ->
-         let span = Syn.Ceibo.Red.SyntaxTrivia.span trivia in
-         if span.start >= after then
-           pending_entry_of_syntax_trivia trivia
-         else
-           None)
+  Syn.Cst.leading_trivia_after ~after token
+  |> List.filter_map pending_entry_of_trivia
 
 let render_leading_trivia_before_token = fun ~after token ->
   pending_entries_of_leading_trivia_after ~after token
   |> render_pending_trivia
 
 let render_leading_trivia_before_node = fun ~after syntax_node ->
-  match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
-  | [] ->
-      None
-  | first :: _ ->
-      render_leading_trivia_before_token ~after first
+  Syn.Cst.leading_trivia_before_node ~after syntax_node
+  |> List.filter_map pending_entry_of_trivia
+  |> render_pending_trivia
 
 let render_leading_trivia_after_token_before_node = fun ~after token syntax_node ->
-  let pending = pending_entries_of_leading_trivia_after ~after token in
   let pending =
-    match Syn.Ceibo.Red.SyntaxNode.tokens syntax_node with
-    | [] ->
-        pending
-    | first :: _ ->
-        pending
-        @ pending_entries_of_leading_trivia_after
-            ~after:(Syn.Ceibo.Red.SyntaxToken.span token).end_
-            first
+    Syn.Cst.leading_trivia_after_token_before_node ~after token syntax_node
+    |> List.filter_map pending_entry_of_trivia
   in
   render_pending_trivia pending
 
@@ -435,6 +330,18 @@ let kw_do = Doc.text "do"
 let kw_done = Doc.text "done"
 
 let kw_new = Doc.text "new"
+
+let kw_object = Doc.text "object"
+
+let kw_method = Doc.text "method"
+
+let kw_inherit = Doc.text "inherit"
+
+let kw_initializer = Doc.text "initializer"
+
+let kw_virtual = Doc.text "virtual"
+
+let kw_end = Doc.text "end"
 
 let hash = Doc.text "#"
 
@@ -711,9 +618,6 @@ let rec core_type_is_atomic =
       core_type_is_atomic type_
   | _ ->
       false
-
-let record_field_prefers_multiline = fun ~name_token ~field_type ->
-  String.length (token_text name_token) > 32 && not (core_type_is_atomic field_type)
 
 let rec render_first_class_module_type_constraint ~keyword
     (constraint_ : Syn.Cst.module_type_constraint) =
@@ -1023,7 +927,6 @@ and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
   let separator =
     if
       core_type_prefers_multiline field.field_type
-      || record_field_prefers_multiline ~name_token:field.field_name ~field_type:field.field_type
     then
       Doc.line
     else
@@ -1055,7 +958,6 @@ and render_record_definition_field = fun (field : Syn.Cst.RecordField.t) ->
   let separator =
     if
       core_type_prefers_multiline field_type
-      || record_field_prefers_multiline ~name_token:(Syn.Cst.RecordField.field_name_token field) ~field_type
     then
       Doc.line
     else
@@ -1576,9 +1478,13 @@ let rec render_pattern =
         | None ->
             Doc.empty
         | Some module_type ->
-            unsupported_syntax ~context:[ "pattern"; "first_class_module" ]
-              ~syntax_node:(Syn.Cst.ModuleType.syntax_node module_type)
-              "typed first-class-module patterns do not have a structural formatter yet"
+            Doc.concat
+              [
+                Doc.space;
+                Doc.colon;
+                Doc.space;
+                render_first_class_module_type_doc module_type;
+              ]
       in
       Doc.concat
         [ Doc.lparen; kw_module; Doc.space; binding_doc; constraint_doc; Doc.rparen ]
@@ -1675,8 +1581,8 @@ let rec render_pattern =
       Doc.concat [ render_literal lower; Doc.space; Doc.text ".."; Doc.space; render_literal upper ]
   | Syn.Cst.Pattern.Parenthesized { inner; _ } -> (
       match inner with
-      | Syn.Cst.Pattern.Identifier { name_token; _ } when is_keyword_operator_name
-      (token_text name_token) ->
+      | Syn.Cst.Pattern.Identifier { name_token; _ }
+        when Syn.Cst.Token.is_operator_like_name name_token ->
           Doc.concat [ Doc.lparen; Doc.space; doc_of_token name_token; Doc.space; Doc.rparen ]
       | Syn.Cst.Pattern.Tuple _
       | Syn.Cst.Pattern.List _
@@ -1763,6 +1669,18 @@ let is_simple_expression =
   | _ ->
       false
 
+let expression_needs_parens_for_postfix_attributes =
+  function
+  | Syn.Cst.Expression.Apply _
+  | Syn.Cst.Expression.Infix _
+  | Syn.Cst.Expression.Constructor { payload = Some _; _ }
+  | Syn.Cst.Expression.PolyVariant { payload = Some _; _ } ->
+      true
+  | Syn.Cst.Expression.Parenthesized _ ->
+      false
+  | _ ->
+      false
+
 let expression_needs_parens_in_apply =
   function
   | Syn.Cst.Expression.If _
@@ -1812,9 +1730,9 @@ let rec expression_needs_parens_in_constructor =
 let expression_requires_spaced_delimited_local_open =
   function
   | Syn.Cst.Expression.Path { path; _ } -> (
-      match Syn.Cst.Ident.name path with
-      | Some name ->
-          is_operator_like_text name
+      match Syn.Cst.Ident.last_segment path with
+      | Some name_token ->
+          Syn.Cst.Token.is_operator_like_name name_token
       | None ->
           false
     )
@@ -1955,7 +1873,8 @@ and qualified_multi_argument_apply_prefers_multiline = fun ({ callee; argument; 
 let rec expression_is_pipeline =
   function
   | Syn.Cst.Expression.Infix { operator_token; left; right; _ } ->
-      token_text operator_token = "|>" || expression_is_pipeline left || expression_is_pipeline right
+      Syn.Cst.Token.fixed_operator operator_token = Some Syn.Cst.Token.PipeForward
+      || expression_is_pipeline left || expression_is_pipeline right
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       expression_is_pipeline inner
   | _ ->
@@ -1964,9 +1883,14 @@ let rec expression_is_pipeline =
 let rec expression_is_boolean_infix =
   function
   | Syn.Cst.Expression.Infix { operator_token; left; right; _ } ->
-      let operator = token_text operator_token in
-      operator = "&&"
-      || operator = "||"
+      (
+        match Syn.Cst.Token.fixed_operator operator_token with
+        | Some Syn.Cst.Token.BooleanAnd
+        | Some Syn.Cst.Token.BooleanOr ->
+            true
+        | _ ->
+            false
+      )
       || expression_is_boolean_infix left
       || expression_is_boolean_infix right
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
@@ -1990,10 +1914,15 @@ let rec infix_chain_term_count =
   | _ ->
       1
 
+let max_inline_infix_terms_after_equals = 8
+
+let infix_expression_is_simple_after_equals = fun (infix : Syn.Cst.infix_expression) ->
+  infix_chain_term_count (Syn.Cst.Expression.Infix infix) <= max_inline_infix_terms_after_equals
+
 let rec expression_is_simple_after_equals =
   function
   | Syn.Cst.Expression.Infix infix ->
-      infix_chain_term_count (Syn.Cst.Expression.Infix infix) <= 8
+      infix_expression_is_simple_after_equals infix
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Operator _
@@ -2031,9 +1960,8 @@ and apply_argument_is_simple_after_equals =
   | Syn.Cst.Optional { value = None; _ } ->
       true
 and apply_expression_is_simple_after_equals =
-  fun ({ syntax_node; callee; argument; _ } : Syn.Cst.apply_expression) ->
-  not (syntax_node_has_comment_like_trivia syntax_node)
-  && expression_is_simple_after_equals callee
+  fun ({ callee; argument; _ } : Syn.Cst.apply_expression) ->
+  expression_is_simple_after_equals callee
   && apply_argument_is_simple_after_equals argument
 
 let expression_requires_break_after_equals =
@@ -2070,19 +1998,31 @@ let rec collapse_redundant_parenthesized_expression =
       collapse_redundant_parenthesized_expression inner
   | Syn.Cst.Expression.Operator _ ->
       None
-  | Syn.Cst.Expression.Prefix { operator_token; operand = Syn.Cst.Expression.Literal literal; _ } when let operator = token_text
-  operator_token in
-  operator = "-" || operator = "~-" ->
+  | Syn.Cst.Expression.Prefix
+      {
+        operator_token;
+        operand = Syn.Cst.Expression.Literal literal;
+        _;
+      }
+    when (
+      match Syn.Cst.Token.fixed_operator operator_token with
+      | Some Syn.Cst.Token.PrefixMinus
+      | Some Syn.Cst.Token.PrefixNegate ->
+          true
+      | _ ->
+          false
+    ) ->
       Some (`NegativeLiteral literal)
   | expression when is_simple_expression expression ->
       Some (`Expression expression)
   | _ ->
       None
 
-let infix_chain = fun operator expression ->
+let infix_chain = fun operator_token expression ->
   let rec collect = fun acc ->
     function
-    | Syn.Cst.Expression.Infix { left; operator_token; right; _ } when token_text operator_token = operator ->
+    | Syn.Cst.Expression.Infix { left; operator_token = next_operator_token; right; _ }
+      when Syn.Cst.Token.same_text next_operator_token operator_token ->
         collect (collect acc left) right
     | expression ->
         acc @ [ expression ]
@@ -2091,6 +2031,8 @@ let infix_chain = fun operator expression ->
 
 type lowerer = {
   render_structure_items :
+    ?source_end:int ->
+    ?phrase_separator_tokens:Syn.Cst.Token.t list ->
     source_node:Syn.Cst.syntax_node -> Syn.Cst.StructureItem.t list -> Doc.t;
   render_signature_items :
     source_node:Syn.Cst.syntax_node -> Syn.Cst.SignatureItem.t list -> Doc.t;
@@ -2114,8 +2056,7 @@ let make_lowerer =
   | Syn.Cst.Expression.Literal literal ->
       render_literal literal
   | Syn.Cst.Expression.Object object_ ->
-      unsupported_syntax ~context:[ "expression" ] ~syntax_node:object_.syntax_node
-        "object expressions do not have a structural formatter yet"
+      render_object_expression object_
   | Syn.Cst.Expression.Constructor { constructor_path; payload; _ } ->
       let head = doc_of_ident constructor_path in
       (match payload with
@@ -2257,9 +2198,16 @@ let make_lowerer =
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       render_parenthesized_expression expression
   | Syn.Cst.Expression.Prefix { operator_token; operand; _ } ->
-      let operator = token_text operator_token in
       (match operand with
-      | Syn.Cst.Expression.Literal literal when operator = "-" || operator = "~-" ->
+      | Syn.Cst.Expression.Literal literal
+        when (
+          match Syn.Cst.Token.fixed_operator operator_token with
+          | Some Syn.Cst.Token.PrefixMinus
+          | Some Syn.Cst.Token.PrefixNegate ->
+              true
+          | _ ->
+              false
+        ) ->
           Doc.concat [ Doc.lparen; Doc.text "-"; render_literal literal; Doc.rparen ]
       | _ ->
           let operand_doc =
@@ -2420,16 +2368,13 @@ let make_lowerer =
         Doc.empty
     | Some (Syn.Cst.Payload.Type type_) ->
         Doc.concat [ Doc.colon; Doc.space; render_core_type type_ ]
-    | Some (Syn.Cst.Payload.Pattern { pattern_syntax_node; guard_syntax_node }) ->
-        let syntax_node =
-          match guard_syntax_node with
-          | Some guard_syntax_node ->
-              guard_syntax_node
-          | None ->
-              pattern_syntax_node
-        in
-        unsupported_syntax ~context:attribute_payload_context ~syntax_node
-          "pattern attribute payloads do not have a structural formatter yet"
+    | Some (Syn.Cst.Payload.Pattern payload) ->
+        Doc.concat
+          [
+            Doc.text "?";
+            Doc.space;
+            render_pattern_payload_doc_with_context ~context:attribute_payload_context payload;
+          ]
     | Some ((Syn.Cst.Payload.Structure _) as payload) -> (
         let source_node = attribute_payload_source_node attribute in
         match Syn.CstBuilder.structure_items_of_payload payload with
@@ -2459,6 +2404,37 @@ let make_lowerer =
               ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ attribute_payload_context @ error.context)
               error.message)
 
+  and render_pattern_payload_doc_with_context ~context
+    ({ pattern_syntax_node; guard_syntax_node } : Syn.Cst.pattern_payload) =
+    let pattern =
+      match Syn.CstBuilder.pattern_of_syntax_node pattern_syntax_node with
+      | Ok pattern ->
+          pattern
+      | Error error ->
+          unsupported
+            ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ context @ error.context)
+            error.message
+    in
+    let guard =
+      match guard_syntax_node with
+      | None ->
+          None
+      | Some guard_syntax_node -> (
+          match Syn.CstBuilder.expression_of_syntax_node guard_syntax_node with
+          | Ok guard ->
+              Some guard
+          | Error error ->
+              unsupported
+                ~context:([ Syn.SyntaxKind.to_string error.syntax_kind ] @ context @ error.context)
+                error.message)
+    in
+    let pattern_doc = render_pattern pattern in
+    match guard with
+    | None ->
+        pattern_doc
+    | Some guard ->
+        Doc.concat [ pattern_doc; Doc.space; kw_when; Doc.space; render_expression guard ]
+
   and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
     let sigil_doc =
       if floating then
@@ -2485,14 +2461,216 @@ let make_lowerer =
     | [] ->
         doc
     | attributes ->
+        let doc =
+          if expression_needs_parens_for_postfix_attributes expression then
+            Doc.concat [ Doc.lparen; doc; Doc.rparen ]
+          else
+            doc
+        in
         Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
 
-  and render_record_field (field : Syn.Cst.record_expression_field) =
+and render_record_field (field : Syn.Cst.record_expression_field) =
   match field.source with
   | Syn.Cst.Punned ->
       doc_of_ident field.field_path
   | Syn.Cst.Explicit ->
       Doc.concat [ doc_of_ident field.field_path; equals; render_expression field.value ]
+
+and doc_with_object_member_attributes attributes doc =
+  match attributes with
+  | [] ->
+      doc
+  | attributes ->
+      Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
+
+and render_object_member_body ~head expression =
+  let body_doc =
+    if expression_requires_break_after_equals expression then
+      render_block_expression expression
+    else
+      render_expression expression
+  in
+  if Doc.is_multiline body_doc || expression_requires_break_after_equals expression then
+    Doc.concat [ head; Doc.space; Doc.equal; Doc.line; Doc.indent 2 body_doc ]
+  else
+    Doc.concat [ head; equals; body_doc ]
+
+and render_object_method
+    ({
+       name_token;
+       body;
+       type_;
+       attributes;
+       is_private;
+       is_virtual;
+       is_override;
+       _;
+     } : Syn.Cst.object_method) =
+  let keyword =
+    if is_override then
+      Doc.concat [ kw_method; Doc.text "!" ]
+    else
+      kw_method
+  in
+  let modifiers =
+    [
+      (if is_private then Some kw_private else None);
+      (if is_virtual then Some kw_virtual else None);
+    ]
+    |> List.filter_map (fun modifier -> modifier)
+  in
+  let head =
+    match modifiers with
+    | [] ->
+        Doc.concat [ keyword; Doc.space; doc_of_token name_token ]
+    | modifiers ->
+        Doc.concat
+          [
+            keyword;
+            Doc.space;
+            Doc.join Doc.space modifiers;
+            Doc.space;
+            doc_of_token name_token;
+          ]
+  in
+  let doc =
+    match type_, body with
+    | Some type_, None ->
+        Doc.concat [ head; annotation_colon; render_core_type type_ ]
+    | None, Some body ->
+        render_object_member_body ~head body
+    | Some type_, Some body ->
+        render_object_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) body
+    | None, None ->
+        head
+  in
+  doc_with_object_member_attributes attributes doc
+
+and render_object_value
+    ({
+       name_token;
+       value;
+       type_;
+       attributes;
+       is_mutable;
+       is_virtual;
+       is_override;
+       _;
+     } : Syn.Cst.object_value) =
+  let keyword =
+    if is_override then
+      Doc.concat [ kw_val; Doc.text "!" ]
+    else
+      kw_val
+  in
+  let modifiers =
+    [
+      (if is_mutable then Some kw_mutable else None);
+      (if is_virtual then Some kw_virtual else None);
+    ]
+    |> List.filter_map (fun modifier -> modifier)
+  in
+  let head =
+    match modifiers with
+    | [] ->
+        Doc.concat [ keyword; Doc.space; doc_of_token name_token ]
+    | modifiers ->
+        Doc.concat
+          [
+            keyword;
+            Doc.space;
+            Doc.join Doc.space modifiers;
+            Doc.space;
+            doc_of_token name_token;
+          ]
+  in
+  let doc =
+    match type_, value with
+    | Some type_, None ->
+        Doc.concat [ head; annotation_colon; render_core_type type_ ]
+    | None, Some value ->
+        render_object_member_body ~head value
+    | Some type_, Some value ->
+        render_object_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) value
+    | None, None ->
+        head
+  in
+  doc_with_object_member_attributes attributes doc
+
+and render_object_inherit
+    ({ expression; attributes; _ } : Syn.Cst.object_inherit) =
+  let doc = Doc.concat [ kw_inherit; Doc.space; render_expression expression ] in
+  doc_with_object_member_attributes attributes doc
+
+and render_object_initializer ({ syntax_node; body } : Syn.Cst.object_initializer) =
+  match body with
+  | Some body ->
+      render_object_member_body ~head:kw_initializer body
+  | None ->
+      unsupported_syntax ~context:[ "expression"; "object"; "initializer" ] ~syntax_node
+        "object initializer is missing its body expression"
+
+and render_object_member = function
+  | Syn.Cst.ObjectMember.Method method_ ->
+      render_object_method method_
+  | Syn.Cst.ObjectMember.Value value ->
+      render_object_value value
+  | Syn.Cst.ObjectMember.Inherit inherit_ ->
+      render_object_inherit inherit_
+  | Syn.Cst.ObjectMember.Extension extension ->
+      unsupported_syntax ~context:[ "expression"; "object_member" ] ~syntax_node:extension.syntax_node
+        "object extension members do not have a structural formatter yet"
+  | Syn.Cst.ObjectMember.Initializer initializer_ ->
+      render_object_initializer initializer_
+
+and object_member_owned_trivia = function
+  | Syn.Cst.ObjectMember.Method method_ ->
+      method_.owned_trivia
+  | Syn.Cst.ObjectMember.Value value ->
+      value.owned_trivia
+  | Syn.Cst.ObjectMember.Inherit inherit_ ->
+      inherit_.owned_trivia
+  | Syn.Cst.ObjectMember.Initializer initializer_ ->
+      initializer_.owned_trivia
+  | Syn.Cst.ObjectMember.Extension _ ->
+      Syn.Cst.OwnedTrivia.empty
+
+and render_object_expression_body_item = function
+  | Syn.CstBuilder.ObjectMember member ->
+      let doc = render_object_member member in
+      let owned_trivia = object_member_owned_trivia member in
+      let leading_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned_trivia) in
+      let trailing_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned_trivia) in
+      doc |> doc_with_leading_trivia leading_trivia |> fun doc -> doc_with_trailing_trivia doc trailing_trivia
+  | Syn.CstBuilder.Comment comment ->
+      Doc.text (Syn.Cst.Comment.text comment)
+  | Syn.CstBuilder.Docstring docstring ->
+      Doc.text (Syn.Cst.Docstring.text docstring)
+
+and render_object_expression
+    ({ syntax_node; self_pattern; members; _ } : Syn.Cst.object_expression) =
+  let header =
+    match self_pattern with
+    | None ->
+        kw_object
+    | Some self_pattern ->
+        Doc.concat [ kw_object; Doc.space; Doc.lparen; render_pattern self_pattern; Doc.rparen ]
+  in
+  let body_items =
+    Syn.CstBuilder.object_member_items_of_members
+      ~source_node:syntax_node members
+  in
+  if List.is_empty body_items then
+    Doc.concat [ header; Doc.space; kw_end ]
+  else
+    Doc.concat
+      [
+        header;
+        Doc.line;
+        Doc.indent 2 (join_map Doc.line render_object_expression_body_item body_items);
+        Doc.line;
+        kw_end;
+      ]
 
 and render_object_override_expression ({ fields; _ } : Syn.Cst.object_override_expression) =
   let fields =
@@ -2771,7 +2949,7 @@ and apply_argument_prefers_break = function
   | Syn.Cst.Positional
       (Syn.Cst.Expression.Parenthesized
         { inner = Syn.Cst.Expression.Infix { operator_token; _ }; _ }) ->
-      token_text operator_token = "|>"
+      Syn.Cst.Token.fixed_operator operator_token = Some Syn.Cst.Token.PipeForward
   | Syn.Cst.Positional expression ->
       expression_prefers_multiline_layout expression
   | Syn.Cst.Labeled { value = Some value; _ }
@@ -2782,9 +2960,8 @@ and apply_argument_prefers_break = function
 
 and render_infix_expression ({ syntax_node; left; operator_token; right; _ } :
       Syn.Cst.infix_expression) =
-  let operator = token_text operator_token in
   let parts =
-    infix_chain operator
+    infix_chain operator_token
       (Syn.Cst.Expression.Infix { syntax_node; left; operator_token; right; attributes = [] })
   in
   Doc.group
@@ -3177,7 +3354,7 @@ and render_if_expression_block
             (nontrivia_bounds_span_of_syntax_node
                (Syn.Cst.Expression.syntax_node then_branch))
               .end_
-          (Syn.Cst.Token.syntax_token else_token)
+          else_token
   in
   let then_doc = doc_with_trailing_trivia then_doc then_trivia in
   let head =
@@ -3476,7 +3653,7 @@ and render_sequence_expression ({ separator_tokens; expressions; _ } : Syn.Cst.s
                       (nontrivia_bounds_span_of_syntax_node
                          (Syn.Cst.Expression.syntax_node previous_expression))
                         .end_
-                    (Syn.Cst.Token.syntax_token separator_token)
+                    separator_token
                     (Syn.Cst.Expression.syntax_node expression)
               | None ->
                   render_leading_trivia_before_node
@@ -3539,7 +3716,18 @@ and split_typed_binding_pattern = function
 
 and render_positional_parameter_pattern pattern =
   let pattern_doc = render_pattern pattern in
-  if pattern_is_simple_function_parameter pattern then
+  let pattern_doc_is_already_parenthesized =
+    match pattern with
+    | Syn.Cst.Pattern.Typed _ ->
+        true
+    | Syn.Cst.Pattern.Parenthesized { inner = (Syn.Cst.Pattern.Tuple _ | Syn.Cst.Pattern.List _ | Syn.Cst.Pattern.Array _ | Syn.Cst.Pattern.Record _); _ } ->
+        false
+    | Syn.Cst.Pattern.Parenthesized _ ->
+        true
+    | _ ->
+        false
+  in
+  if pattern_is_simple_function_parameter pattern || pattern_doc_is_already_parenthesized then
     pattern_doc
   else
     Doc.concat [ Doc.lparen; pattern_doc; Doc.rparen ]
@@ -3916,6 +4104,24 @@ and adjust_local_binding_value_after_equals ~rendered_value value stays_after_eq
   | _ ->
       stays_after_equals
 
+and local_binding_keeps_parameters_in_header ~parameters ~rendered_type_annotation
+    ~synthesized_type_annotation =
+  not (parameters = [])
+  && Option.is_some rendered_type_annotation
+  && not synthesized_type_annotation
+
+and local_binding_forces_multiline_body ~local_context ~rec_token value =
+  local_context
+  &&
+  Option.is_some rec_token
+  && (expression_prefers_multiline_layout value
+     ||
+     match value with
+     | Syn.Cst.Expression.Fun _ ->
+         true
+     | _ ->
+         false)
+
 and render_local_binding
     ~local_context
     ~source_has_explicit_fun
@@ -3975,9 +4181,8 @@ and render_local_binding
     |> Doc.join Doc.space
   in
   let keep_header_parameters =
-    not (parameters = [])
-    && Option.is_some rendered_type_annotation
-    && not synthesized_type_annotation
+    local_binding_keeps_parameters_in_header ~parameters ~rendered_type_annotation
+      ~synthesized_type_annotation
   in
   let header =
     if keep_header_parameters then
@@ -3993,16 +4198,7 @@ and render_local_binding
         Doc.concat [ header; colon; type_doc ]
   in
   let force_multiline_body =
-    local_context
-    &&
-    Option.is_some rec_token
-    && (expression_prefers_multiline_layout value
-       ||
-       match value with
-       | Syn.Cst.Expression.Fun _ ->
-           true
-       | _ ->
-           false)
+    local_binding_forces_multiline_body ~local_context ~rec_token value
   in
   let leading_value_trivia =
     render_leading_trivia_before_node
@@ -4061,8 +4257,7 @@ and render_local_binding
       match value with
       | Syn.Cst.Expression.Infix ({ operator_token; _ } as infix)
         when parameters = [] || keep_header_parameters ->
-          let operator = token_text operator_token in
-          let parts = infix_chain operator (Syn.Cst.Expression.Infix infix) in
+          let parts = infix_chain operator_token (Syn.Cst.Expression.Infix infix) in
           join_map
             (Doc.concat [ Doc.line; doc_of_token operator_token; Doc.space ])
             render_expression
@@ -4850,7 +5045,7 @@ and type_declaration_owned_trivia_end = fun decl ->
          Int.max acc (type_declaration_owned_trivia_end declaration))
        current
 
-and render_structure_top_level_items ~source_node ~items =
+and render_structure_top_level_items ~source_end ~phrase_separator_tokens ~items =
   let rec join_entries = function
     | [] ->
         Doc.empty
@@ -4898,32 +5093,9 @@ and render_structure_top_level_items ~source_node ~items =
         | _ ->
             span_of_syntax_node_nontrivia_bounds syntax_node)
   in
-  let compare_structure_items_by_span left right =
-    let left_span = structure_item_span left in
-    let right_span = structure_item_span right in
-    if not (Int.equal left_span.start right_span.start) then
-      Int.compare left_span.start right_span.start
-    else
-      Int.compare left_span.end_ right_span.end_
-  in
-  let source_end = (Syn.Ceibo.Red.SyntaxNode.span source_node).end_ in
-  let top_level_tokens = direct_tokens_in_source_order source_node in
   let items =
     items
     |> List.map (fun item -> (item, structure_item_span item))
-    |> List.sort (fun (left, left_span) (right, right_span) ->
-           let left_span : Syn.Ceibo.Span.t = left_span in
-           let right_span : Syn.Ceibo.Span.t = right_span in
-           let order =
-             if not (Int.equal left_span.start right_span.start) then
-               Int.compare left_span.start right_span.start
-             else
-               Int.compare left_span.end_ right_span.end_
-           in
-           if not (Int.equal order 0) then
-             order
-           else
-             compare_structure_items_by_span left right)
   in
   let rec loop acc items =
     yield ();
@@ -4939,7 +5111,7 @@ and render_structure_top_level_items ~source_node ~items =
               source_end
         in
         let trailing_suffix =
-          phrase_separator_doc_between_tokens top_level_tokens ~start:base_span.end_
+          phrase_separator_doc_between_tokens phrase_separator_tokens ~start:base_span.end_
             ~end_:next_boundary
         in
         let entry = render_structure_entry ~trailing_suffix item in
@@ -4947,8 +5119,9 @@ and render_structure_top_level_items ~source_node ~items =
   in
   loop [] items
 
-and render_structure_items ~source_node items =
-  render_structure_top_level_items ~source_node ~items
+and render_structure_items ?(source_end = 0) ?(phrase_separator_tokens = []) ~source_node items =
+  let _source_node = source_node in
+  render_structure_top_level_items ~source_end ~phrase_separator_tokens ~items
 
 and render_signature_top_level_items
     ~items =
@@ -4994,30 +5167,9 @@ and render_signature_top_level_items
         Syn.Cst.SignatureItem.syntax_node item
         |> span_of_syntax_node_nontrivia_bounds
   in
-  let compare_signature_items_by_span left right =
-    let left_span = signature_item_span left in
-    let right_span = signature_item_span right in
-    if not (Int.equal left_span.start right_span.start) then
-      Int.compare left_span.start right_span.start
-    else
-      Int.compare left_span.end_ right_span.end_
-  in
   let items =
     items
     |> List.map (fun item -> (item, signature_item_span item))
-    |> List.sort (fun (left, left_span) (right, right_span) ->
-           let left_span : Syn.Ceibo.Span.t = left_span in
-           let right_span : Syn.Ceibo.Span.t = right_span in
-           let order =
-             if not (Int.equal left_span.start right_span.start) then
-               Int.compare left_span.start right_span.start
-             else
-               Int.compare left_span.end_ right_span.end_
-           in
-           if not (Int.equal order 0) then
-             order
-           else
-             compare_signature_items_by_span left right)
   in
   let rec loop acc items =
     yield ();
@@ -5044,8 +5196,11 @@ let source_file = fun source_file ->
     Ok
       (match source_file with
       | Syn.Cst.Implementation implementation ->
-          lowerer.render_structure_items ~source_node:(Syn.Cst.SourceFile.syntax_node
-          (Syn.Cst.Implementation implementation)) implementation.items
+          lowerer.render_structure_items
+            ~source_end:(Syn.Ceibo.Red.SyntaxNode.span implementation.syntax_node).end_
+            ~phrase_separator_tokens:implementation.phrase_separator_tokens
+            ~source_node:implementation.syntax_node
+            implementation.items
       | Syn.Cst.Interface interface ->
           lowerer.render_signature_items ~source_node:(Syn.Cst.SourceFile.syntax_node
           (Syn.Cst.Interface interface)) interface.items)

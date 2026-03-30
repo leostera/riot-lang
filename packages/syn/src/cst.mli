@@ -71,6 +71,12 @@ type syntax_token = (Syntax_kind.t, string) Ceibo.Red.syntax_token
 *)
 type green_node = (Syntax_kind.t, string) Ceibo.Green.node
 module Token : sig
+  type fixed_operator =
+    | BooleanAnd
+    | BooleanOr
+    | PipeForward
+    | PrefixMinus
+    | PrefixNegate
   (** A CST token wrapper.
 
       This is used throughout the CST anywhere the concrete spelling is part of
@@ -85,6 +91,14 @@ module Token : sig
   val text : t -> string
 
   val span : t -> Ceibo.Span.t
+
+  val same_text : t -> t -> bool
+
+  val fixed_operator : t -> fixed_operator option
+
+  val is_operator_like_name : t -> bool
+
+  val is_identifier_like_name : t -> bool
 end
 
 type docstring_kind =
@@ -2095,6 +2109,7 @@ and object_expression = {
   syntax_node : syntax_node;
   self_pattern : pattern option;
   members : object_member list;
+  owned_trivia : owned_trivia;
   attributes : attribute list;
 }
 
@@ -2121,6 +2136,7 @@ and object_member =
 *)
 and object_method = {
   syntax_node : syntax_node;
+  owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
   body : expression option;
@@ -2137,6 +2153,7 @@ and object_method = {
 *)
 and object_value = {
   syntax_node : syntax_node;
+  owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
   value : expression option;
@@ -2149,6 +2166,7 @@ and object_value = {
 (** Payload for `object_member` inheritance clauses. *)
 and object_inherit = {
   syntax_node : syntax_node;
+  owned_trivia : owned_trivia;
   attributes : attribute list;
   expression : expression;
 }
@@ -2159,6 +2177,7 @@ and object_inherit = {
 *)
 and object_initializer = {
   syntax_node : syntax_node;
+  owned_trivia : owned_trivia;
   body : expression option;
 }
 
@@ -4152,6 +4171,20 @@ module Trivia : sig
   val is_comment : t -> bool
 end
 
+(** Filter a token's leading trivia down to the trivia entries that begin at or
+    after the given source offset. *)
+val leading_trivia_after : after:int -> Token.t -> trivia list
+
+(** Return the first token's leading trivia for a syntax node, filtered to
+    entries that begin at or after the given source offset. *)
+val leading_trivia_before_node : after:int -> syntax_node -> trivia list
+
+(** Return boundary trivia between a token and the next syntax node by combining
+    the token's remaining leading trivia with the node's first-token leading
+    trivia after the token ends. *)
+val leading_trivia_after_token_before_node :
+  after:int -> Token.t -> syntax_node -> trivia list
+
 module OwnedTrivia : sig
   type t = owned_trivia = {
     leading : trivia list;
@@ -4423,12 +4456,14 @@ end
 type implementation = {
   syntax_node : syntax_node;
   items : StructureItem.t list;
+  phrase_separator_tokens : Token.t list;
 }
 (** A parsed source file, distinguished by whether the grammar was an
     implementation or an interface. *)
 type interface = {
   syntax_node : syntax_node;
   items : SignatureItem.t list;
+  phrase_separator_tokens : Token.t list;
 }
 (** Alias for the full-file CST root. *)
 type t =
@@ -4451,6 +4486,8 @@ module SourceFile : sig
   val structure_items : t -> StructureItem.t list option
 
   val signature_items : t -> SignatureItem.t list option
+
+  val phrase_separator_tokens : t -> Token.t list
 
   val kind : t -> [
     | `Implementation

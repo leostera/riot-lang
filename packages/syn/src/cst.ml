@@ -10,6 +10,13 @@ type green_node = (Syntax_kind.t, string) Ceibo.Green.node
 let is_trivia = fun kind -> let open Syntax_kind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
 
 module Token = struct
+  type fixed_operator =
+    | BooleanAnd
+    | BooleanOr
+    | PipeForward
+    | PrefixMinus
+    | PrefixNegate
+
   type t = {
     syntax_token : syntax_token;
   }
@@ -19,6 +26,63 @@ module Token = struct
   let text = fun token -> Ceibo.Red.SyntaxToken.text token.syntax_token
 
   let span = fun token -> Ceibo.Red.SyntaxToken.span token.syntax_token
+
+  let same_text = fun left right -> String.equal (text left) (text right)
+
+  let fixed_operator = fun token ->
+    match text token with
+    | "&&" ->
+        Some BooleanAnd
+    | "||" ->
+        Some BooleanOr
+    | "|>" ->
+        Some PipeForward
+    | "-" ->
+        Some PrefixMinus
+    | "~-" ->
+        Some PrefixNegate
+    | _ ->
+        None
+
+  let is_keyword_operator_name =
+    function
+    | "mod"
+    | "land"
+    | "lor"
+    | "lxor"
+    | "lsl"
+    | "lsr"
+    | "asr"
+    | "or" ->
+        true
+    | _ ->
+        false
+
+  let is_identifier_char =
+    function
+    | 'a' .. 'z'
+    | 'A' .. 'Z'
+    | '0' .. '9'
+    | '_'
+    | '\'' ->
+        true
+    | _ ->
+        false
+
+  let is_operator_like_name = fun token ->
+    let token_text = text token in
+    let rec contains_non_identifier_char = fun index ->
+      if index >= String.length token_text then
+        false
+      else if is_identifier_char token_text.[index] then
+        contains_non_identifier_char (index + 1)
+      else
+        true
+    in
+    String.length token_text > 0
+    && (is_keyword_operator_name token_text || contains_non_identifier_char 0)
+
+  let is_identifier_like_name = fun token -> not (is_operator_like_name token)
 end
 
 type docstring_kind =
@@ -1155,6 +1219,7 @@ and object_expression = {
   syntax_node : syntax_node;
   self_pattern : pattern option;
   members : object_member list;
+  owned_trivia : owned_trivia;
   attributes : attribute list;
 }
 
@@ -1167,6 +1232,7 @@ and object_member =
 
 and object_method = {
   syntax_node : syntax_node;
+  owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
   body : expression option;
@@ -1178,6 +1244,7 @@ and object_method = {
 
 and object_value = {
   syntax_node : syntax_node;
+  owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
   value : expression option;
@@ -1189,12 +1256,14 @@ and object_value = {
 
 and object_inherit = {
   syntax_node : syntax_node;
+  owned_trivia : owned_trivia;
   attributes : attribute list;
   expression : expression;
 }
 
 and object_initializer = {
   syntax_node : syntax_node;
+  owned_trivia : owned_trivia;
   body : expression option;
 }
 
@@ -2881,6 +2950,91 @@ module Trivia = struct
     | Comment _ -> true
 end
 
+let synthetic_syntax_node_wrapping_token = fun syntax_token ->
+  let green_token = Ceibo.Red.SyntaxToken.green syntax_token in
+  let wrapped_node =
+    Ceibo.Green.make_node_list ~kind:(Ceibo.Red.SyntaxToken.kind syntax_token)
+      [ Ceibo.Green.Token green_token ]
+  in
+  let root =
+    Ceibo.Green.make_node_list ~kind:Syntax_kind.SOURCE_FILE
+      [ Ceibo.Green.Node wrapped_node ]
+  in
+  match Ceibo.Red.SyntaxNode.child (Ceibo.Red.new_root root) 0 with
+  | Some (Ceibo.Red.Node node) ->
+      node
+  | _ ->
+      panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
+
+let docstring_kind_from_text = fun comment_text ->
+  let len = String.length comment_text in
+  if len < 5 then
+    Ordinary
+  else
+    let body = String.sub comment_text 3 (len - 5) |> String.trim in
+    if String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#') then
+      Section
+    else
+      Ordinary
+
+let syntax_token_from_trivia = fun trivia ->
+  let span = Ceibo.Red.SyntaxTrivia.span trivia in
+  let green_token =
+    Ceibo.Green.make_token ~leading_trivia:[]
+      ~kind:(Ceibo.Red.SyntaxTrivia.kind trivia)
+      ~text:(Ceibo.Red.SyntaxTrivia.text trivia)
+      ~width:(span.end_ - span.start)
+  in
+  Ceibo.Red.new_token green_token span
+
+let trivia_of_syntax_trivia = fun trivia ->
+  let syntax_token = syntax_token_from_trivia trivia in
+  match Ceibo.Red.SyntaxTrivia.kind trivia with
+  | Syntax_kind.COMMENT ->
+      Some
+        (Comment
+           {
+             syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
+             comment_token = { Token.syntax_token = syntax_token };
+           })
+  | Syntax_kind.DOCSTRING ->
+      Some
+        (Docstring
+           {
+             syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
+             docstring_token = { Token.syntax_token = syntax_token };
+             kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text syntax_token);
+           })
+  | _ ->
+      None
+
+let leading_trivia_after = fun ~after token ->
+  Ceibo.Red.SyntaxToken.leading_trivia token.Token.syntax_token
+  |> List.filter_map (fun trivia ->
+         let span = Ceibo.Red.SyntaxTrivia.span trivia in
+         if span.start >= after then
+           trivia_of_syntax_trivia trivia
+         else
+           None)
+
+let leading_trivia_before_node = fun ~after syntax_node ->
+  match Ceibo.Red.SyntaxNode.first_token syntax_node with
+  | None ->
+      []
+  | Some first_token ->
+      leading_trivia_after ~after { Token.syntax_token = first_token }
+
+let leading_trivia_after_token_before_node = fun ~after token syntax_node ->
+  let pending = leading_trivia_after ~after token in
+  match Ceibo.Red.SyntaxNode.first_token syntax_node with
+  | None ->
+      pending
+  | Some first_token ->
+      pending
+      @ leading_trivia_after
+          ~after:(Ceibo.Red.SyntaxToken.span token.Token.syntax_token).end_
+          { Token.syntax_token = first_token }
+
 module OwnedTrivia = struct
   type t = owned_trivia = {
     leading : trivia list;
@@ -3046,11 +3200,13 @@ end
 type implementation = {
   syntax_node : syntax_node;
   items : StructureItem.t list;
+  phrase_separator_tokens : Token.t list;
 }
 
 type interface = {
   syntax_node : syntax_node;
   items : SignatureItem.t list;
+  phrase_separator_tokens : Token.t list;
 }
 
 type t =
@@ -3076,6 +3232,11 @@ module SourceFile = struct
     function
     | Implementation _ -> None
     | Interface source_file -> Some source_file.items
+
+  let phrase_separator_tokens =
+    function
+    | Implementation source_file -> source_file.phrase_separator_tokens
+    | Interface source_file -> source_file.phrase_separator_tokens
 
   let kind =
     function
