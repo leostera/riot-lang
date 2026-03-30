@@ -5077,7 +5077,7 @@ and render_signature_items ~source_node:_ items =
   in
   { render_structure_items; render_signature_items }
 
-let source_file = fun ~source:_ source_file ->
+let source_file = fun source_file ->
   try
     let lowerer = make_lowerer in
     Ok

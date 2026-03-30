@@ -76,6 +76,7 @@ This file is _yours_. Keep it up to date after every big change.
 - `doc_of_owned_trivia` now joins owned comments/docstrings with explicit formatter separators instead of recovering whitespace/newline gaps from raw source text.
 - `packages/krasny/src/source.ml` is trimmed to the remaining live raw source-reconstruction helper only; `Source` is now down to `source_of_syntax_node`.
 - `render_structure_items` and `render_signature_items` now render directly from ordered item streams plus owned trivia; they no longer require source text or nested source-window slicing.
+- `Lower.source_file` and `Format_core.format` no longer thread parse-result source through the normal lowering path just to satisfy dead internal parameters.
 - first-class module core types and type definitions now render from structural module-type variants for supported non-signature forms; signature-bodied first-class module types fail explicitly instead of reconstructing raw `(module ...)` text.
 - `Syn.CstBuilder.structure_items_of_payload` and `signature_items_of_payload` now expose normalized structure/signature attribute and extension payload item streams directly.
 - the main lowering path now renders floating attributes and expression-attached attributes structurally from payload shape plus those payload item helpers; pattern payloads fail explicitly there instead of replaying raw payload text.
@@ -142,9 +143,9 @@ This file is _yours_. Keep it up to date after every big change.
 - [ ] Shrink `packages/krasny/src/source.ml` to the minimal structural-support surface
   - keep `Source` focused on the remaining supported structural utilities, not as a grab-bag for historical source-replay helpers
 
-- [ ] Remove obsolete lowering source parameters from internal formatter plumbing
-  - `Lower.source_file` still takes `~source` even though normal lowering no longer consumes source text
-  - `Format_core.format` should stop threading parse-result source into lowering once the remaining shared attribute replay site is gone
+- [x] Remove obsolete lowering source parameters from internal formatter plumbing
+  - `Lower.source_file` no longer takes `~source`
+  - `Format_core.format` no longer threads parse-result source into lowering
 
 - [ ] Remove public/docs-level assumptions that unsupported shapes are preserved from source
   - `packages/krasny/src/Krasny.mli`

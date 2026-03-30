@@ -38,7 +38,7 @@ let format (result : Syn.Parser.parse_result) =
       Error (Cannot_build_cst err)
   | Ok source_file ->
       yield ();
-      (match Lower.source_file ~source:result.source source_file with
+      (match Lower.source_file source_file with
       | Error err ->
           Error (Cannot_lower (Lower.error_to_string err))
       | Ok rendered ->
