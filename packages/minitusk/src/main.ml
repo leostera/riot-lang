@@ -73,6 +73,7 @@ let () =
   build_package ~build_results "tty" "packages/tty";
   build_package ~build_results "ceibo" "packages/ceibo";
   build_package ~build_results "syn" "packages/syn";
+  build_package ~build_results "krasny" "packages/krasny";
   build_package ~build_results "tusk-model" "packages/tusk-model";
   build_package ~build_results "tusk-store" "packages/tusk-store";
   build_package ~build_results "tusk-toolchain" "packages/tusk-toolchain";
@@ -82,6 +83,7 @@ let () =
   build_package ~build_results "tusk-init" "packages/tusk-init";
   build_package ~build_results "fixme" "packages/fixme";
   build_package ~build_results "tusk-fix" "packages/tusk-fix";
+  build_package ~build_results "tusk-fmt" "packages/tusk-fmt";
   build_package ~build_results "tusk-cli" "packages/tusk-cli";
 
   Printf.printf "\n=== Build complete! ===\n"
