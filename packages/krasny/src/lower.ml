@@ -3873,6 +3873,32 @@ and render_binding_value_with_parameter_doc ~leading_body_trivia ~force_multilin
            Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
          ])
 
+and local_binding_value_stays_after_equals ~leading_value_trivia
+    ~has_parameters ~keep_header_parameters value =
+  if Option.is_some leading_value_trivia && (not has_parameters || keep_header_parameters) then
+    false
+  else if has_parameters && not keep_header_parameters then
+    true
+  else
+    match value with
+    | Syn.Cst.Expression.Fun _ ->
+        true
+    | _ when expression_is_boolean_infix value ->
+        false
+    | _ when expression_requires_break_after_equals value ->
+        false
+    | _ ->
+        expression_is_simple_after_equals value
+
+and adjust_local_binding_value_after_equals ~rendered_value value stays_after_equals =
+  match value with
+  | Syn.Cst.Expression.Fun _ ->
+      stays_after_equals
+  | _ when expression_is_pipeline value && Doc.is_multiline rendered_value ->
+      false
+  | _ ->
+      stays_after_equals
+
 and render_local_binding
     ~local_context
     ~source_has_explicit_fun
@@ -3967,27 +3993,9 @@ and render_local_binding
       (Syn.Cst.Expression.syntax_node value)
   in
   let keep_value_after_equals =
-    let has_fun_rhs =
-      match value with
-      | Syn.Cst.Expression.Fun _ ->
-          true
-      | _ ->
-          false
-    in
-    if Option.is_some leading_value_trivia && (parameters = [] || keep_header_parameters) then
-      false
-    else if not (parameters = []) && not keep_header_parameters then
-      true
-    else
-      match value with
-      | _ when has_fun_rhs ->
-          true
-      | _ when expression_is_boolean_infix value ->
-          false
-      | _ when expression_requires_break_after_equals value ->
-          false
-      | _ ->
-          expression_is_simple_after_equals value
+    local_binding_value_stays_after_equals ~leading_value_trivia
+      ~has_parameters:(not (parameters = []))
+      ~keep_header_parameters value
   in
   let rendered_value =
     match value with
@@ -4016,13 +4024,7 @@ and render_local_binding
       rendered_value
   in
   let keep_value_after_equals =
-    match value with
-    | Syn.Cst.Expression.Fun _ ->
-        keep_value_after_equals
-    | _ when expression_is_pipeline value && Doc.is_multiline rendered_value ->
-        false
-    | _ ->
-        keep_value_after_equals
+    adjust_local_binding_value_after_equals ~rendered_value value keep_value_after_equals
   in
   if keep_value_after_equals then
     Doc.concat
