@@ -1455,6 +1455,23 @@ let nested = [%foo let x = 1]
         assert_idempotent ~source
           ~msg:"expression extensions should stay stable across repeated formatting";
         Ok ());
+    Test.case "format unreachable expressions structurally" (fun () ->
+        let source =
+          {|let absurd maybe =
+  match maybe with
+  | Some value -> value
+  | None -> .
+|}
+        in
+        let actual =
+          parse_ml source |> Krasny.format
+          |> Result.expect
+               ~msg:"unreachable expressions should render structurally from the CST token"
+        in
+        Test.assert_equal ~expected:source ~actual;
+        assert_idempotent ~source
+          ~msg:"unreachable expressions should stay stable across repeated formatting";
+        Ok ());
     Test.case "format keeps typed and polymorphic expressions structural" (fun () ->
         let source =
           {|let typed value = (value : source)

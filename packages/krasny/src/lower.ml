@@ -2091,8 +2091,7 @@ let make_lowerer =
   | Syn.Cst.Expression.Extension extension ->
       render_extension_doc extension
   | Syn.Cst.Expression.Unreachable unreachable ->
-      unsupported_syntax ~context:[ "expression" ] ~syntax_node:unreachable.syntax_node
-        "unreachable expressions do not have a structural formatter yet"
+      doc_of_token unreachable.dot_token
   | Syn.Cst.Expression.Literal literal ->
       render_literal literal
   | Syn.Cst.Expression.Object object_ ->

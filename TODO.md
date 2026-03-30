@@ -58,7 +58,7 @@ This file is _yours_. Keep it up to date after every big change.
 - class, local-open, object, and extension core types now lower structurally.
 - lazy/operator/poly-variant-inherit/alias/typed/local-open/effect/first-class-module/extension patterns now lower structurally.
 - polymorphic-variant inherit patterns now lift their `type_path` without the leading `#` sigil, and `krasny` renders `#color` / `#M.color` structurally and idempotently instead of collapsing the path to `##`.
-- module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, and extension expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes.
+- module-pack, assert, lazy, while, for, method-call, new, object, object-override, instance-variable-assign, typed, polymorphic, coerce, extension, and unreachable expressions now lower structurally; plain object expressions support self patterns plus method/value/inherit/initializer/extension members and member attributes.
 - optional parameter defaults and typed binding patterns now survive the `Syn.Cst` lift structurally, and `krasny` renders parameters from CST shape instead of `Source.source_of_parameter`.
 - signature `val` declarations now render names from CST token structure plus `Syn.Cst.Token.is_operator_like_name`; `krasny` no longer reparses declaration source or compares raw token text to recover or parenthesize operator names before `:`.
 - inherited polymorphic-variant rows now render directly from `Syn.Cst.RowField.Inherit.type_`; `krasny` no longer reconstructs inherited row paths by scanning token text.
