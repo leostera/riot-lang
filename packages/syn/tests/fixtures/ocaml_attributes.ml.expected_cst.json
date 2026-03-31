@@ -599,6 +599,7 @@
                     "end": 305
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Foo",
@@ -743,6 +744,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 268,
+                    "end": 270
+                  }
+                },
                 "payload_type": {
                   "tag": "attribute",
                   "syntax_node": {
@@ -873,7 +882,8 @@
                     },
                     "payload": null
                   }
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

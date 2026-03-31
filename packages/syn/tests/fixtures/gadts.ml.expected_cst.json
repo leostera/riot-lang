@@ -106,12 +106,28 @@
                     "end": 43
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 30,
+                    "end": 31
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Int",
                   "span": {
                     "start": 32,
                     "end": 35
+                  }
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 36,
+                    "end": 37
                   }
                 },
                 "payload_type": {
@@ -231,7 +247,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -239,6 +256,14 @@
                   "span": {
                     "start": 47,
                     "end": 61
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 46,
+                    "end": 47
                   }
                 },
                 "constructor_name": {
@@ -249,6 +274,14 @@
                     "end": 52
                   }
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 53,
+                    "end": 54
+                  }
+                },
                 "payload_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -366,7 +399,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },
@@ -469,6 +503,14 @@
                     "end": 126
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 105,
+                    "end": 106
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Val",
@@ -507,6 +549,14 @@
                       }
                     }
                   ]
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 111,
+                    "end": 112
+                  }
                 },
                 "payload_type": {
                   "tag": "arrow",
@@ -656,6 +706,14 @@
                       }
                     }
                   ]
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 116,
+                    "end": 118
+                  }
                 }
               },
               {
@@ -664,6 +722,14 @@
                   "span": {
                     "start": 130,
                     "end": 173
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 129,
+                    "end": 130
                   }
                 },
                 "constructor_name": {
@@ -802,6 +868,14 @@
                       ]
                     }
                   ]
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 136,
+                    "end": 137
+                  }
                 },
                 "payload_type": {
                   "tag": "arrow",
@@ -1145,6 +1219,14 @@
                       }
                     }
                   ]
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 156,
+                    "end": 158
+                  }
                 }
               },
               {
@@ -1153,6 +1235,14 @@
                   "span": {
                     "start": 177,
                     "end": 220
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 176,
+                    "end": 177
                   }
                 },
                 "constructor_name": {
@@ -1338,6 +1428,14 @@
                       ]
                     }
                   ]
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 182,
+                    "end": 183
+                  }
                 },
                 "payload_type": {
                   "tag": "arrow",
@@ -1632,6 +1730,14 @@
                       }
                     }
                   ]
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 188,
+                    "end": 190
+                  }
                 }
               }
             ]
@@ -1763,12 +1869,28 @@
                     "end": 302
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 282,
+                    "end": 283
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Refl",
                   "span": {
                     "start": 284,
                     "end": 288
+                  }
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 289,
+                    "end": 290
                   }
                 },
                 "payload_type": {
@@ -1958,7 +2080,8 @@
                       ]
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },
@@ -2030,6 +2153,14 @@
                   "span": {
                     "start": 344,
                     "end": 377
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 343,
+                    "end": 344
                   }
                 },
                 "constructor_name": {
@@ -2158,6 +2289,14 @@
                       ]
                     }
                   ]
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 349,
+                    "end": 350
+                  }
                 },
                 "payload_type": {
                   "tag": "arrow",
@@ -2341,6 +2480,14 @@
                     }
                   },
                   "arguments": []
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 360,
+                    "end": 362
+                  }
                 }
               }
             ]
@@ -2444,6 +2591,14 @@
                     "end": 471
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 438,
+                    "end": 439
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "String",
@@ -2485,6 +2640,14 @@
                       "arguments": []
                     }
                   ]
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 447,
+                    "end": 448
+                  }
                 },
                 "payload_type": {
                   "tag": "arrow",
@@ -2643,6 +2806,14 @@
                       "arguments": []
                     }
                   ]
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 456,
+                    "end": 458
+                  }
                 }
               },
               {
@@ -2651,6 +2822,14 @@
                   "span": {
                     "start": 475,
                     "end": 498
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 474,
+                    "end": 475
                   }
                 },
                 "constructor_name": {
@@ -2694,6 +2873,14 @@
                       "arguments": []
                     }
                   ]
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 480,
+                    "end": 481
+                  }
                 },
                 "payload_type": {
                   "tag": "arrow",
@@ -2852,6 +3039,14 @@
                       "arguments": []
                     }
                   ]
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 486,
+                    "end": 488
+                  }
                 }
               },
               {
@@ -2862,12 +3057,28 @@
                     "end": 517
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 501,
+                    "end": 502
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "None",
                   "span": {
                     "start": 503,
                     "end": 507
+                  }
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 508,
+                    "end": 509
                   }
                 },
                 "payload_type": {
@@ -2965,7 +3176,8 @@
                       }
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

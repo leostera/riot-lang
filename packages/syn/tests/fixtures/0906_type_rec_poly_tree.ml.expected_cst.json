@@ -86,6 +86,14 @@
                     "end": 25
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Empty",
@@ -94,7 +102,9 @@
                     "end": 25
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -102,6 +112,14 @@
                   "span": {
                     "start": 29,
                     "end": 87
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 28,
+                    "end": 29
                   }
                 },
                 "constructor_name": {
@@ -309,6 +327,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 35,
+                    "end": 37
+                  }
+                },
                 "payload_type": {
                   "tag": "record",
                   "syntax_node": {
@@ -512,7 +538,8 @@
                       "is_mutable": false
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

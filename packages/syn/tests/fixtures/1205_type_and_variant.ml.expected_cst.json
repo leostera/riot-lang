@@ -123,6 +123,14 @@
                       "end": 38
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 28,
+                      "end": 29
+                    }
+                  },
                   "constructor_name": {
                     "kind": "IDENT_EXPR",
                     "text": "A",
@@ -165,6 +173,14 @@
                       }
                     ]
                   },
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "of",
+                    "span": {
+                      "start": 32,
+                      "end": 34
+                    }
+                  },
                   "payload_type": {
                     "tag": "constr",
                     "syntax_node": {
@@ -193,7 +209,8 @@
                       }
                     },
                     "arguments": []
-                  }
+                  },
+                  "arrow_token": null
                 },
                 {
                   "syntax_node": {
@@ -201,6 +218,14 @@
                     "span": {
                       "start": 42,
                       "end": 54
+                    }
+                  },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 41,
+                      "end": 42
                     }
                   },
                   "constructor_name": {
@@ -245,6 +270,14 @@
                       }
                     ]
                   },
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "of",
+                    "span": {
+                      "start": 45,
+                      "end": 47
+                    }
+                  },
                   "payload_type": {
                     "tag": "constr",
                     "syntax_node": {
@@ -273,7 +306,8 @@
                       }
                     },
                     "arguments": []
-                  }
+                  },
+                  "arrow_token": null
                 }
               ]
             },

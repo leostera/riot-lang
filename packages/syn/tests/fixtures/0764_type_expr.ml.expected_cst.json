@@ -57,6 +57,7 @@
                     "end": 22
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Int",
@@ -99,6 +100,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 16,
+                    "end": 18
+                  }
+                },
                 "payload_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -127,7 +136,8 @@
                     }
                   },
                   "arguments": []
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -135,6 +145,14 @@
                   "span": {
                     "start": 24,
                     "end": 43
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 23,
+                    "end": 24
                   }
                 },
                 "constructor_name": {
@@ -208,6 +226,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 29,
+                    "end": 31
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -277,7 +303,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -285,6 +312,14 @@
                   "span": {
                     "start": 45,
                     "end": 64
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 44,
+                    "end": 45
                   }
                 },
                 "constructor_name": {
@@ -358,6 +393,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 50,
+                    "end": 52
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -427,7 +470,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

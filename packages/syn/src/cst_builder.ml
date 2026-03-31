@@ -614,6 +614,19 @@ let direct_non_trivia_nodes = fun node -> Ceibo.Red.SyntaxNode.direct_nodes node
 
 let direct_non_trivia_tokens = fun node -> Ceibo.Red.SyntaxNode.direct_tokens node
 
+let previous_direct_token_with_text_in_parent = fun ~text node ->
+  match Ceibo.Red.SyntaxNode.parent node with
+  | Some parent ->
+      let node_start = (Ceibo.Red.SyntaxNode.span node).start in
+      direct_non_trivia_tokens parent
+      |> List.rev
+      |> List.find_opt (fun syntax_token ->
+             let span = Ceibo.Red.SyntaxToken.span syntax_token in
+             span.end_ <= node_start
+             && String.equal (Ceibo.Red.SyntaxToken.text syntax_token) text)
+  | None ->
+      None
+
 let subtree_non_trivia_tokens = fun node -> Ceibo.Red.SyntaxNode.tokens node
 
 let span_of_syntax_node_nontrivia_bounds = fun syntax_node ->
@@ -7236,9 +7249,24 @@ let variant_constructor_from_node = fun node ->
           Some Cst.VariantConstructor.{
             syntax_node = node;
             attributes = lifted_attributes;
+            bar_token =
+              previous_direct_token_with_text_in_parent ~text:"|" node
+              |> Option.map token;
             constructor_name = token constructor_name;
+            separator_token =
+              (match direct_token_with_text node "of" with
+              | Some separator_token ->
+                  Some separator_token
+              | None ->
+                  direct_token_with_text node ":");
             arguments = lifted_arguments;
             payload_type = lifted_payload_type;
+            arrow_token =
+              subtree_non_trivia_tokens node
+              |> List.find_opt
+                   (fun syntax_token ->
+                     String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "->")
+              |> Option.map token;
             result_type = lifted_result_type;
             owned_trivia = constructor_owned_trivia
           }

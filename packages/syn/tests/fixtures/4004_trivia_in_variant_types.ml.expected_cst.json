@@ -97,6 +97,7 @@
                     "end": 86
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "A",
@@ -105,7 +106,9 @@
                     "end": 86
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -113,6 +116,14 @@
                   "span": {
                     "start": 88,
                     "end": 90
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 87,
+                    "end": 88
                   }
                 },
                 "constructor_name": {
@@ -123,7 +134,9 @@
                     "end": 90
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -131,6 +144,14 @@
                   "span": {
                     "start": 92,
                     "end": 94
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 91,
+                    "end": 92
                   }
                 },
                 "constructor_name": {
@@ -141,7 +162,9 @@
                     "end": 94
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               }
             ]
           },
@@ -215,6 +238,14 @@
                     "end": 160
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 157,
+                    "end": 158
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "A",
@@ -223,7 +254,9 @@
                     "end": 160
                   }
                 },
+                "separator_token": null,
                 "payload_type": null,
+                "arrow_token": null,
                 "trailing_trivia": [
                   {
                     "tag": "comment",
@@ -255,6 +288,14 @@
                     "end": 180
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 177,
+                    "end": 178
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "B",
@@ -263,7 +304,9 @@
                     "end": 180
                   }
                 },
+                "separator_token": null,
                 "payload_type": null,
+                "arrow_token": null,
                 "trailing_trivia": [
                   {
                     "tag": "comment",
@@ -295,6 +338,14 @@
                     "end": 201
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 198,
+                    "end": 199
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "C",
@@ -303,7 +354,9 @@
                     "end": 201
                   }
                 },
+                "separator_token": null,
                 "payload_type": null,
+                "arrow_token": null,
                 "trailing_trivia": [
                   {
                     "tag": "comment",
@@ -399,6 +452,7 @@
                     "end": 269
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "None",
@@ -407,7 +461,9 @@
                     "end": 269
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -415,6 +471,14 @@
                   "span": {
                     "start": 271,
                     "end": 306
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 270,
+                    "end": 271
                   }
                 },
                 "constructor_name": {
@@ -459,6 +523,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 289,
+                    "end": 291
+                  }
+                },
                 "payload_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -487,7 +559,8 @@
                     }
                   },
                   "arguments": []
-                }
+                },
+                "arrow_token": null
               }
             ]
           },
@@ -561,6 +634,14 @@
                     "end": 445
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 358,
+                    "end": 359
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Pair",
@@ -632,6 +713,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 383,
+                    "end": 385
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -701,7 +790,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },
@@ -941,12 +1031,28 @@
                     "end": 633
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 591,
+                    "end": 592
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Int",
                   "span": {
                     "start": 593,
                     "end": 596
+                  }
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 612,
+                    "end": 613
                   }
                 },
                 "payload_type": {
@@ -1066,7 +1172,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -1074,6 +1181,14 @@
                   "span": {
                     "start": 637,
                     "end": 687
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 636,
+                    "end": 637
                   }
                 },
                 "constructor_name": {
@@ -1084,6 +1199,14 @@
                     "end": 644
                   }
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 663,
+                    "end": 664
+                  }
+                },
                 "payload_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -1201,7 +1324,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

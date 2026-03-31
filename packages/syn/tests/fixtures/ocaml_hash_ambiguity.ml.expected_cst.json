@@ -356,6 +356,7 @@
                     "end": 450
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "A",
@@ -436,6 +437,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 438,
+                    "end": 440
+                  }
+                },
                 "payload_type": {
                   "tag": "class",
                   "syntax_node": {
@@ -502,7 +511,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },
@@ -585,6 +595,7 @@
                     "end": 483
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "A",
@@ -694,6 +705,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 465,
+                    "end": 467
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -801,7 +820,8 @@
                       ]
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

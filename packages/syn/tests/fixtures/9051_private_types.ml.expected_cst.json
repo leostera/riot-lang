@@ -312,6 +312,7 @@
                     "end": 167
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Red",
@@ -320,7 +321,9 @@
                     "end": 167
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -328,6 +331,14 @@
                   "span": {
                     "start": 169,
                     "end": 175
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 168,
+                    "end": 169
                   }
                 },
                 "constructor_name": {
@@ -338,7 +349,9 @@
                     "end": 175
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -346,6 +359,14 @@
                   "span": {
                     "start": 177,
                     "end": 182
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 176,
+                    "end": 177
                   }
                 },
                 "constructor_name": {
@@ -356,7 +377,9 @@
                     "end": 182
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               }
             ]
           },

@@ -57,6 +57,7 @@
                     "end": 21
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Empty",
@@ -65,7 +66,9 @@
                     "end": 21
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -73,6 +76,14 @@
                   "span": {
                     "start": 23,
                     "end": 43
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 22,
+                    "end": 23
                   }
                 },
                 "constructor_name": {
@@ -147,6 +158,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 30,
+                    "end": 32
+                  }
+                },
                 "payload_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -205,7 +224,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

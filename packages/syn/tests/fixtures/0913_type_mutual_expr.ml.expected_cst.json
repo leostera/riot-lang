@@ -57,6 +57,7 @@
                     "end": 22
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Num",
@@ -99,6 +100,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 16,
+                    "end": 18
+                  }
+                },
                 "payload_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -127,7 +136,8 @@
                     }
                   },
                   "arguments": []
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -135,6 +145,14 @@
                   "span": {
                     "start": 24,
                     "end": 53
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 23,
+                    "end": 24
                   }
                 },
                 "constructor_name": {
@@ -237,6 +255,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 28,
+                    "end": 30
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -335,7 +361,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },
@@ -384,6 +411,7 @@
                       "end": 72
                     }
                   },
+                  "bar_token": null,
                   "constructor_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Add",
@@ -392,7 +420,9 @@
                       "end": 72
                     }
                   },
-                  "payload_type": null
+                  "separator_token": null,
+                  "payload_type": null,
+                  "arrow_token": null
                 },
                 {
                   "syntax_node": {
@@ -400,6 +430,14 @@
                     "span": {
                       "start": 74,
                       "end": 78
+                    }
+                  },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 73,
+                      "end": 74
                     }
                   },
                   "constructor_name": {
@@ -410,7 +448,9 @@
                       "end": 78
                     }
                   },
-                  "payload_type": null
+                  "separator_token": null,
+                  "payload_type": null,
+                  "arrow_token": null
                 },
                 {
                   "syntax_node": {
@@ -418,6 +458,14 @@
                     "span": {
                       "start": 80,
                       "end": 84
+                    }
+                  },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 79,
+                      "end": 80
                     }
                   },
                   "constructor_name": {
@@ -428,7 +476,9 @@
                       "end": 84
                     }
                   },
-                  "payload_type": null
+                  "separator_token": null,
+                  "payload_type": null,
+                  "arrow_token": null
                 },
                 {
                   "syntax_node": {
@@ -436,6 +486,14 @@
                     "span": {
                       "start": 86,
                       "end": 90
+                    }
+                  },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 85,
+                      "end": 86
                     }
                   },
                   "constructor_name": {
@@ -446,7 +504,9 @@
                       "end": 90
                     }
                   },
-                  "payload_type": null
+                  "separator_token": null,
+                  "payload_type": null,
+                  "arrow_token": null
                 }
               ]
             },

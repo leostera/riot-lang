@@ -57,6 +57,7 @@
                     "end": 33
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Point2D",
@@ -128,6 +129,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 21,
+                    "end": 23
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -197,7 +206,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -205,6 +215,14 @@
                   "span": {
                     "start": 35,
                     "end": 62
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 34,
+                    "end": 35
                   }
                 },
                 "constructor_name": {
@@ -307,6 +325,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 44,
+                    "end": 46
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -405,7 +431,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

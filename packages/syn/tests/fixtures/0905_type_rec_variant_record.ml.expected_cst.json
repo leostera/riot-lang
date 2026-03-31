@@ -57,6 +57,7 @@
                     "end": 16
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Leaf",
@@ -65,7 +66,9 @@
                     "end": 16
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -73,6 +76,14 @@
                   "span": {
                     "start": 18,
                     "end": 69
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 17,
+                    "end": 18
                   }
                 },
                 "constructor_name": {
@@ -229,6 +240,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 24,
+                    "end": 26
+                  }
+                },
                 "payload_type": {
                   "tag": "record",
                   "syntax_node": {
@@ -381,7 +400,8 @@
                       "is_mutable": false
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

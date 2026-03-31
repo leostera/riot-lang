@@ -1529,6 +1529,7 @@ let variant_constructor_to_json = fun constr ->
   Json.Object (
     [
       ("syntax_node", syntax_node_to_json (Cst.VariantConstructor.syntax_node constr));
+      ("bar_token", option_to_json token_to_json (Cst.VariantConstructor.bar_token constr));
       ("constructor_name", token_to_json (Cst.VariantConstructor.constructor_name_token constr))
     ]
     @ (
@@ -1543,6 +1544,7 @@ let variant_constructor_to_json = fun constr ->
       | None -> []
     )
     @ [
+      ("separator_token", option_to_json token_to_json (Cst.VariantConstructor.separator_token constr));
       ("payload_type", option_to_json core_type_to_json (Cst.VariantConstructor.payload_type constr))
     ]
     @ (
@@ -1550,6 +1552,9 @@ let variant_constructor_to_json = fun constr ->
       | Some result_type -> [ ("result_type", result_type) ]
       | None -> []
     )
+    @ [
+      ("arrow_token", option_to_json token_to_json (Cst.VariantConstructor.arrow_token constr))
+    ]
     @ owned_trivia
   )
 

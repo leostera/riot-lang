@@ -3663,9 +3663,12 @@ module VariantConstructor : sig
   type t = {
     syntax_node : syntax_node;
     attributes : attribute list;
+    bar_token : Token.t option;
     constructor_name : Token.t;
+    separator_token : Token.t option;
     arguments : ConstructorArguments.t option;
     payload_type : core_type option;
+    arrow_token : Token.t option;
     result_type : core_type option;
     owned_trivia : owned_trivia;
   }
@@ -3673,11 +3676,17 @@ module VariantConstructor : sig
 
   val attributes : t -> attribute list
 
+  val bar_token : t -> Token.t option
+
   val constructor_name_token : t -> Token.t
+
+  val separator_token : t -> Token.t option
 
   val arguments : t -> ConstructorArguments.t option
 
   val payload_type : t -> core_type option
+
+  val arrow_token : t -> Token.t option
 
   val result_type : t -> core_type option
 

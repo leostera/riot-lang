@@ -57,6 +57,14 @@
                     "end": 32
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 15,
+                    "end": 16
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Circle",
@@ -99,6 +107,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 24,
+                    "end": 26
+                  }
+                },
                 "payload_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -127,7 +143,8 @@
                     }
                   },
                   "arguments": []
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -135,6 +152,14 @@
                   "span": {
                     "start": 36,
                     "end": 63
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 35,
+                    "end": 36
                   }
                 },
                 "constructor_name": {
@@ -208,6 +233,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 47,
+                    "end": 49
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -277,7 +310,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -285,6 +319,14 @@
                   "span": {
                     "start": 67,
                     "end": 101
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 66,
+                    "end": 67
                   }
                 },
                 "constructor_name": {
@@ -387,6 +429,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 77,
+                    "end": 79
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -485,7 +535,8 @@
                       "arguments": []
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

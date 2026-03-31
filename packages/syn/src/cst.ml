@@ -2518,9 +2518,12 @@ module VariantConstructor = struct
   type t = {
     syntax_node : syntax_node;
     attributes : attribute list;
+    bar_token : Token.t option;
     constructor_name : Token.t;
+    separator_token : Token.t option;
     arguments : ConstructorArguments.t option;
     payload_type : core_type option;
+    arrow_token : Token.t option;
     result_type : core_type option;
     owned_trivia : owned_trivia;
   }
@@ -2529,11 +2532,17 @@ module VariantConstructor = struct
 
   let attributes = fun constr -> constr.attributes
 
+  let bar_token = fun constr -> constr.bar_token
+
   let constructor_name_token = fun constr -> constr.constructor_name
+
+  let separator_token = fun constr -> constr.separator_token
 
   let arguments = fun constr -> constr.arguments
 
   let payload_type = fun constr -> constr.payload_type
+
+  let arrow_token = fun constr -> constr.arrow_token
 
   let result_type = fun constr -> constr.result_type
 

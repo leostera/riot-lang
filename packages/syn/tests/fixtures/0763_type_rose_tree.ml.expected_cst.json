@@ -86,6 +86,7 @@
                     "end": 40
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Node",
@@ -211,6 +212,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 20,
+                    "end": 22
+                  }
+                },
                 "payload_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -334,7 +343,8 @@
                       ]
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

@@ -57,6 +57,7 @@
                     "end": 47
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Person",
@@ -164,6 +165,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 16,
+                    "end": 18
+                  }
+                },
                 "payload_type": {
                   "tag": "record",
                   "syntax_node": {
@@ -269,7 +278,8 @@
                       "is_mutable": false
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

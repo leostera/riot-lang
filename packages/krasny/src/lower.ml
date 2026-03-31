@@ -1120,11 +1120,70 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
         Doc.indent 2 (render_inline_record_definition fields)
 
 let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) constructor ->
-  let head = Doc.concat [
-    Doc.bar;
-    Doc.space;
-    doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor)
-  ] in
+  let bar_leading_trivia =
+    match Syn.Cst.VariantConstructor.bar_token constructor with
+    | Some bar_token ->
+        pending_doc_of_token_leading_trivia bar_token
+    | None ->
+        None
+  in
+  let head =
+    let bar_doc =
+      match Syn.Cst.VariantConstructor.bar_token constructor with
+      | Some bar_token ->
+          doc_of_token bar_token |> doc_with_leading_trivia bar_leading_trivia
+      | None ->
+          Doc.bar
+    in
+    Doc.concat [
+      bar_doc;
+      Doc.space;
+      doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor)
+    ]
+  in
+  let inline_separator_or_multiline_block =
+    fun ~fallback_separator_doc ~separator_token ~next_syntax_node ~render_next ->
+      let separator_leading_trivia =
+        match separator_token with
+        | Some separator_token ->
+            pending_doc_of_token_leading_trivia separator_token
+        | None ->
+            None
+      in
+      let next_leading_trivia =
+        match separator_token, next_syntax_node with
+        | Some separator_token, Some next_syntax_node ->
+            pending_doc_of_trivia_before_node
+              ~after:(Syn.Cst.Token.span separator_token).end_
+              next_syntax_node
+        | _ ->
+            None
+      in
+      let separator_doc =
+        match separator_token with
+        | Some separator_token ->
+            doc_of_token separator_token
+        | None ->
+            fallback_separator_doc
+      in
+      if separator_leading_trivia = None && next_leading_trivia = None then
+        (Doc.concat [ Doc.space; separator_doc; Doc.space; render_next ], false)
+      else
+        let separator_doc =
+          separator_doc |> doc_with_leading_trivia separator_leading_trivia
+        in
+        let next_doc =
+          render_next |> doc_with_leading_trivia next_leading_trivia
+        in
+        (Doc.concat
+           [
+             Doc.line;
+             Doc.indent 2 separator_doc;
+             Doc.line;
+             Doc.indent 2 next_doc;
+           ],
+         true)
+  in
   let body =
     match Syn.Cst.VariantConstructor.arguments constructor, Syn.Cst.VariantConstructor.result_type constructor with
     | Some arguments, Some result_type ->
@@ -1132,19 +1191,98 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
           render_variant_constructor_arguments
             ~prefer_multiline_inline_record arguments
         in
-        Doc.concat
-        [ head; Doc.space; Doc.colon; Doc.space; payload; arrow; render_core_type result_type ]
+        let payload_doc, payload_multiline =
+          inline_separator_or_multiline_block
+            ~fallback_separator_doc:Doc.colon
+            ~separator_token:(Syn.Cst.VariantConstructor.separator_token constructor)
+            ~next_syntax_node:(Syn.Cst.VariantConstructor.payload_type constructor
+                               |> Option.map Syn.Cst.CoreType.syntax_node)
+            ~render_next:payload
+        in
+        let arrow_token = Syn.Cst.VariantConstructor.arrow_token constructor in
+        let arrow_leading_trivia =
+          match arrow_token with
+          | Some arrow_token ->
+              pending_doc_of_token_leading_trivia arrow_token
+          | None ->
+              None
+        in
+        let result_leading_trivia =
+          match arrow_token with
+          | Some arrow_token ->
+              pending_doc_of_trivia_before_node
+                ~after:(Syn.Cst.Token.span arrow_token).end_
+                (Syn.Cst.CoreType.syntax_node result_type)
+          | None ->
+              None
+        in
+        if not payload_multiline && arrow_leading_trivia = None && result_leading_trivia = None then
+          Doc.concat
+            [
+              head;
+              payload_doc;
+              Doc.space;
+              (match arrow_token with
+              | Some arrow_token ->
+                  doc_of_token arrow_token
+              | None ->
+                  arrow);
+              Doc.space;
+              render_core_type result_type;
+            ]
+        else
+          let arrow_doc =
+            (match arrow_token with
+            | Some arrow_token ->
+                doc_of_token arrow_token
+            | None ->
+                arrow)
+            |> doc_with_leading_trivia arrow_leading_trivia
+          in
+          let result_doc =
+            render_core_type result_type
+            |> doc_with_leading_trivia result_leading_trivia
+          in
+          Doc.concat
+            [
+              head;
+              payload_doc;
+              Doc.line;
+              Doc.indent 2 arrow_doc;
+              Doc.line;
+              Doc.indent 2 result_doc;
+            ]
     | Some arguments, None ->
-        Doc.concat [
-          head;
-          Doc.space;
-          kw_of;
-          Doc.space;
+        let payload =
           render_variant_constructor_arguments
             ~prefer_multiline_inline_record arguments
-        ]
+        in
+        let payload_doc, _payload_multiline =
+          inline_separator_or_multiline_block
+            ~fallback_separator_doc:kw_of
+            ~separator_token:(Syn.Cst.VariantConstructor.separator_token constructor)
+            ~next_syntax_node:(Syn.Cst.VariantConstructor.payload_type constructor
+                               |> Option.map Syn.Cst.CoreType.syntax_node)
+            ~render_next:payload
+        in
+        Doc.concat
+          [
+            head;
+            payload_doc;
+          ]
     | None, Some result_type ->
-        Doc.concat [ head; Doc.space; Doc.colon; Doc.space; render_core_type result_type ]
+        let result_doc, _result_multiline =
+          inline_separator_or_multiline_block
+            ~fallback_separator_doc:Doc.colon
+            ~separator_token:(Syn.Cst.VariantConstructor.separator_token constructor)
+            ~next_syntax_node:(Some (Syn.Cst.CoreType.syntax_node result_type))
+            ~render_next:(render_core_type result_type)
+        in
+        Doc.concat
+          [
+            head;
+            result_doc;
+          ]
     | None, None ->
         head
   in

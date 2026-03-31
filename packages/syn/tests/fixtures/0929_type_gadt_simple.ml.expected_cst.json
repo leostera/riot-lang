@@ -86,6 +86,7 @@
                     "end": 35
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Int",
@@ -127,6 +128,14 @@
                       "arguments": []
                     }
                   ]
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
                 },
                 "payload_type": {
                   "tag": "arrow",
@@ -285,6 +294,14 @@
                       "arguments": []
                     }
                   ]
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 24,
+                    "end": 26
+                  }
                 }
               },
               {
@@ -293,6 +310,14 @@
                   "span": {
                     "start": 37,
                     "end": 62
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 36,
+                    "end": 37
                   }
                 },
                 "constructor_name": {
@@ -336,6 +361,14 @@
                       "arguments": []
                     }
                   ]
+                },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 43,
+                    "end": 44
+                  }
                 },
                 "payload_type": {
                   "tag": "arrow",
@@ -494,6 +527,14 @@
                       "arguments": []
                     }
                   ]
+                },
+                "arrow_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "->",
+                  "span": {
+                    "start": 50,
+                    "end": 52
+                  }
                 }
               }
             ]

@@ -1,0 +1,6 @@
+type t =
+  (** ctor doc *)
+  | A (* payload *) of string
+
+type _ gadt =
+  | B (* colon *) : int (* arrow *) -> int gadt

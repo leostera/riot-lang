@@ -103,6 +103,14 @@
                   "end": 122
                 }
               },
+              "bar_token": {
+                "kind": "IDENT_EXPR",
+                "text": "|",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              },
               "constructor_name": {
                 "kind": "IDENT_EXPR",
                 "text": "Receive",
@@ -293,6 +301,14 @@
                     ]
                   }
                 ]
+              },
+              "separator_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 31,
+                  "end": 32
+                }
               },
               "payload_type": {
                 "tag": "arrow",
@@ -646,6 +662,14 @@
                     }
                   }
                 ]
+              },
+              "arrow_token": {
+                "kind": "IDENT_EXPR",
+                "text": "->",
+                "span": {
+                  "start": 62,
+                  "end": 64
+                }
               }
             }
           ]
@@ -744,12 +768,21 @@
                   "end": 164
                 }
               },
+              "bar_token": null,
               "constructor_name": {
                 "kind": "IDENT_EXPR",
                 "text": "Yield",
                 "span": {
                   "start": 143,
                   "end": 148
+                }
+              },
+              "separator_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 149,
+                  "end": 150
                 }
               },
               "payload_type": {
@@ -921,7 +954,8 @@
                     "arguments": []
                   }
                 ]
-              }
+              },
+              "arrow_token": null
             }
           ]
         }

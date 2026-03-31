@@ -57,6 +57,14 @@
                     "end": 57
                   }
                 },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 16,
+                    "end": 17
+                  }
+                },
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Student",
@@ -164,6 +172,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 26,
+                    "end": 28
+                  }
+                },
                 "payload_type": {
                   "tag": "record",
                   "syntax_node": {
@@ -269,7 +285,8 @@
                       "is_mutable": false
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               },
               {
                 "syntax_node": {
@@ -277,6 +294,14 @@
                   "span": {
                     "start": 61,
                     "end": 90
+                  }
+                },
+                "bar_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "|",
+                  "span": {
+                    "start": 60,
+                    "end": 61
                   }
                 },
                 "constructor_name": {
@@ -339,6 +364,14 @@
                     }
                   ]
                 },
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 70,
+                    "end": 72
+                  }
+                },
                 "payload_type": {
                   "tag": "record",
                   "syntax_node": {
@@ -397,7 +430,8 @@
                       "is_mutable": false
                     }
                   ]
-                }
+                },
+                "arrow_token": null
               }
             ]
           },

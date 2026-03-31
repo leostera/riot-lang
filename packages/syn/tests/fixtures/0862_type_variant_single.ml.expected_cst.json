@@ -57,6 +57,7 @@
                     "end": 20
                   }
                 },
+                "bar_token": null,
                 "constructor_name": {
                   "kind": "IDENT_EXPR",
                   "text": "Active",
@@ -65,7 +66,9 @@
                     "end": 20
                   }
                 },
-                "payload_type": null
+                "separator_token": null,
+                "payload_type": null,
+                "arrow_token": null
               }
             ]
           },
