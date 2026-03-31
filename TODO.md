@@ -60,6 +60,7 @@ Token-backed so far:
 - named parameter alias `:`
 - optional parameter alias `:`
 - optional parameter default `=`
+- polymorphic expression `:`
 
 ## Next Targets
 

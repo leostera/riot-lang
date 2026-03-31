@@ -4508,7 +4508,13 @@ and expression_with_type_annotation = fun ~syntax_node ~expression type_node ->
   in
   match type_ with
   | Cst.CoreType.Poly { binders; _ } when List.exists Cst.TypeBinder.is_quoted binders ->
-      Cst.Expression.Polymorphic {syntax_node; expression; type_; attributes = []}
+      Cst.Expression.Polymorphic {
+        syntax_node;
+        expression;
+        colon_token;
+        type_;
+        attributes = []
+      }
   | _ ->
       Cst.Expression.TypeAscription {
         syntax_node;

@@ -2571,9 +2571,9 @@ let make_lowerer =
               ]
       in
       Doc.concat [ Doc.lparen; render_expression expression; tail; Doc.rparen ]
-  | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
+  | Syn.Cst.Expression.Polymorphic { expression; colon_token; type_; _ } ->
       Doc.concat
-        [ Doc.lparen; render_expression expression; annotation_colon; render_core_type type_; Doc.rparen ]
+        [ Doc.lparen; render_expression expression; doc_of_token colon_token; Doc.space; render_core_type type_; Doc.rparen ]
   | Syn.Cst.Expression.PolyVariant { tag_token; payload; _ } ->
       let head = Doc.concat [ Doc.text "`"; doc_of_token tag_token ] in
       (match payload with

@@ -2529,6 +2529,7 @@ and type_ascription_kind =
 and polymorphic_expression = {
   syntax_node : syntax_node;
   expression : expression;
+  colon_token : Token.t;
   type_ : core_type;
   attributes : attribute list;
 }
