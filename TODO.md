@@ -39,6 +39,7 @@ Token-backed so far:
 - typed pattern `:`
 - expression type ascription `:`
 - expression coercion `:>`
+- variant constructor payload/result separator
 
 ## Next Targets
 

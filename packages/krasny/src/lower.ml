@@ -1275,10 +1275,17 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
           render_variant_constructor_arguments
             ~prefer_multiline_inline_record arguments
         in
+        let separator_token =
+          match Syn.Cst.VariantConstructor.separator_token constructor with
+          | Some separator_token ->
+              separator_token
+          | None ->
+              unsupported "variant constructor payload missing separator token"
+        in
         let payload_doc, payload_multiline =
           inline_separator_or_multiline_block
-            ~fallback_separator_doc:Doc.colon
-            ~separator_token:(Syn.Cst.VariantConstructor.separator_token constructor)
+            ~fallback_separator_doc:Doc.empty
+            ~separator_token:(Some separator_token)
             ~next_syntax_node:(Syn.Cst.VariantConstructor.payload_type constructor
                                |> Option.map Syn.Cst.CoreType.syntax_node)
             ~render_next:payload
