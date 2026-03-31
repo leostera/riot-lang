@@ -1775,7 +1775,10 @@ and effect_pattern = {
 and local_open_pattern = {
   syntax_node : syntax_node;
   module_path : Ident.t;
+  dot_token : Token.t;
+  opening_token : Token.t option;
   pattern : pattern;
+  closing_token : Token.t option;
   attributes : attribute list;
 }
 

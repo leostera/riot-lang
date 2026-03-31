@@ -1850,8 +1850,24 @@ let rec render_pattern =
           Doc.space;
           render_pattern continuation;
         ]
-  | Syn.Cst.Pattern.LocalOpen { module_path; pattern; _ } ->
-      Doc.concat [ doc_of_ident module_path; Doc.text ".("; render_pattern pattern; Doc.rparen ]
+  | Syn.Cst.Pattern.LocalOpen
+      { module_path; dot_token; opening_token; pattern; closing_token; _ } ->
+      Doc.concat
+        [
+          doc_of_ident module_path;
+          doc_of_token dot_token;
+          (match opening_token with
+          | Some opening_token ->
+              doc_of_token opening_token
+          | None ->
+              Doc.empty);
+          render_pattern pattern;
+          (match closing_token with
+          | Some closing_token ->
+              doc_of_token closing_token
+          | None ->
+              Doc.empty);
+        ]
   | Syn.Cst.Pattern.Exception { keyword_token; pattern; _ } ->
       Doc.concat [ doc_of_token keyword_token; Doc.space; render_pattern pattern ]
   | Syn.Cst.Pattern.Range { lower; upper; _ } ->

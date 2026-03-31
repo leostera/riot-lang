@@ -4115,10 +4115,38 @@ and record_pattern_field_from_node = fun node ->
 and local_open_pattern_from_node = fun node ->
   match direct_non_trivia_nodes node with
   | module_path_node :: pattern_node :: _ ->
+      let dot_token =
+        direct_required_token_with_text ~context:[ "pattern"; "local_open" ] node "."
+      in
+      let module_path_span = span_of_syntax_node_nontrivia_bounds module_path_node in
+      let pattern_span = span_of_syntax_node_nontrivia_bounds pattern_node in
+      let boundary_tokens =
+        direct_tokens_between_offsets ~after_offset:module_path_span.end_
+          ~before_offset:pattern_span.start node
+      in
+      let opening_token =
+        boundary_tokens
+        |> List.find_opt (fun token ->
+               let text = Cst.Token.text token in
+               String.equal text "(" || String.equal text "[" || String.equal text "[|" || String.equal text "{")
+      in
+      let trailing_tokens =
+        direct_tokens_between_offsets ~after_offset:pattern_span.end_
+          ~before_offset:(span_of_syntax_node_nontrivia_bounds node).end_ node
+      in
+      let closing_token =
+        trailing_tokens
+        |> List.find_opt (fun token ->
+               let text = Cst.Token.text token in
+               String.equal text ")" || String.equal text "]" || String.equal text "|]" || String.equal text "}")
+      in
       Some {
         syntax_node = node;
         module_path = module_path_like_from_node module_path_node;
+        dot_token;
+        opening_token;
         pattern = pattern_from_node pattern_node;
+        closing_token;
         attributes = []
       }
   | _ -> None

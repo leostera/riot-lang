@@ -75,6 +75,7 @@ Token-backed so far:
 - core type first-class module delimiters `( )`
 - type definition first-class module delimiters `( )`
 - module unpack delimiters `( )`
+- pattern local-open shell tokens
 
 ## Next Targets
 
