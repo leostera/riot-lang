@@ -7325,9 +7325,21 @@ let type_definition_from_node = fun node ->
                               ])
                     }
                   else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
+                    let direct_tokens = direct_non_trivia_tokens first in
+                    let opening_token, closing_token =
+                      match direct_tokens with
+                      | opening_token :: _ ->
+                          let closing_token = List.hd (List.rev direct_tokens) in
+                          (token opening_token, token closing_token)
+                      | [] ->
+                          bail ~message:"expected type definition first-class module delimiters during Ceibo -> CST lifting"
+                            ~syntax_node:first ~context:[ "type_definition.first_class_module" ]
+                    in
                     Cst.TypeDefinition.FirstClassModule {
                       syntax_node = first;
-                      package_type = module_type_from_first_class_module_type_node first
+                      opening_token;
+                      package_type = module_type_from_first_class_module_type_node first;
+                      closing_token
                     }
                   else
                     bail ~message:"unsupported type definition body during Ceibo -> CST lifting" ~syntax_node:first ~context:[

@@ -73,6 +73,7 @@ Token-backed so far:
 - or-pattern separator `|`
 - module pack delimiters `( )`
 - core type first-class module delimiters `( )`
+- type definition first-class module delimiters `( )`
 
 ## Next Targets
 

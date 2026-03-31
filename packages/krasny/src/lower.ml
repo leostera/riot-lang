@@ -1426,10 +1426,17 @@ let render_type_definition = function
       Some (render_poly_variant_type poly_variant)
   | Syn.Cst.TypeDefinition.Extensible _ ->
       Some (Doc.text "..")
-  | Syn.Cst.TypeDefinition.FirstClassModule { package_type; _ } ->
+  | Syn.Cst.TypeDefinition.FirstClassModule
+      { opening_token; package_type; closing_token; _ } ->
       Some
         (Doc.concat
-           [ Doc.lparen; kw_module; Doc.space; render_package_type_doc package_type; Doc.rparen ])
+           [
+             doc_of_token opening_token;
+             kw_module;
+             Doc.space;
+             render_package_type_doc package_type;
+             doc_of_token closing_token;
+           ])
   | Syn.Cst.TypeDefinition.Object { fields; _ } ->
       Some (render_object_type fields)
 
