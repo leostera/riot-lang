@@ -68,7 +68,7 @@ let cycle_detected_event_to_json session_id detected_at cycle_nodes =
       ("type", Data.Json.String "CycleDetected");
       ("session_id", Data.Json.String (Session_id.to_string session_id));
       ("detected_at", Data.Json.String (Datetime.to_iso8601 detected_at));
-      ("cycle_nodes", Data.Json.Array (List.map Data.Json.String cycle_nodes));
+      ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes));
     ]
 
 let command_error_event_to_json kind details =
@@ -250,11 +250,15 @@ let run_build_request ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human)
                       out "";
                       out ("\027[1;31mError\027[0m: " ^ formatted_message)
                   | Tusk_executor.Package_builder.Failed
-                      (Tusk_executor.Package_builder.PlanningFailed _) ->
+                      (Tusk_executor.Package_builder.PlanningFailed
+                        planning_error) ->
                       out "";
                       out
-                        ("\027[1;31mError\027[0m: Planning failed for "
-                        ^ error.package.name)
+                        ("\027[1;31mError\027[0m: "
+                        ^ Tusk_executor.Package_builder.package_error_to_string
+                            (Tusk_executor.Package_builder.PlanningFailed
+                               planning_error)
+                        ^ " in package " ^ error.package.name)
                   | Tusk_executor.Package_builder.Failed
                       (Tusk_executor.Package_builder.ActionExecutionFailed
                        { message }) ->
