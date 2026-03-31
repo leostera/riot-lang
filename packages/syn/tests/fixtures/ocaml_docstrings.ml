@@ -183,7 +183,7 @@ end = struct
   (** The comment for module Foo *)
   module Foo = struct
     (** The comment for x *)
-    val x : int
+    let x = 1
     (** Another comment for x *)
   end
 
