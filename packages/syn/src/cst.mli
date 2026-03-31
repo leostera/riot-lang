@@ -356,8 +356,10 @@ and row_field =
 *)
 and poly_variant = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   kind : poly_variant_bound;
   fields : row_field list;
+  closing_token : Token.t;
 }
 
 (** A `constraint ... = ...` attached to a type declaration.
@@ -3854,8 +3856,10 @@ end
 module PolyVariant : sig
   type t = poly_variant = {
     syntax_node : syntax_node;
+    opening_token : Token.t;
     kind : poly_variant_bound;
     fields : row_field list;
+    closing_token : Token.t;
   }
   val syntax_node : t -> syntax_node
 

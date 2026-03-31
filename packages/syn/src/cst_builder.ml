@@ -3528,13 +3528,25 @@ and core_type_from_node = fun node ->
           "core_type.poly_variant.row_field"
         ]
   and poly_variant_from_node = fun node ->
+    let direct_tokens = direct_non_trivia_tokens node in
+    let opening_token, closing_token =
+      match direct_tokens with
+      | opening_token :: _ ->
+          let closing_token = List.hd (List.rev direct_tokens) in
+          (token opening_token, token closing_token)
+      | [] ->
+          bail ~message:"expected polyvariant delimiters during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "core_type.poly_variant" ]
+    in
     {
       Cst.syntax_node = node;
+      opening_token;
       kind = poly_variant_bound_from_node node;
       fields = direct_non_trivia_nodes node |> List.filter
         (fun child ->
           let kind = Ceibo.Red.SyntaxNode.kind child in
-          kind = Syntax_kind.POLY_VARIANT_TAG || can_lift_core_type_node child) |> List.map row_field_from_node
+          kind = Syntax_kind.POLY_VARIANT_TAG || can_lift_core_type_node child) |> List.map row_field_from_node;
+      closing_token
     }
   in
   match Ceibo.Red.SyntaxNode.kind node with
@@ -7422,13 +7434,25 @@ let row_field_from_node = fun node ->
       ]
 
 let poly_variant_from_node = fun node ->
+  let direct_tokens = direct_non_trivia_tokens node in
+  let opening_token, closing_token =
+    match direct_tokens with
+    | opening_token :: _ ->
+        let closing_token = List.hd (List.rev direct_tokens) in
+        (token opening_token, token closing_token)
+    | [] ->
+        bail ~message:"expected type definition polyvariant delimiters during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "type_definition.poly_variant" ]
+  in
   {
     Cst.syntax_node = node;
+    opening_token;
     kind = poly_variant_bound_from_node node;
     fields = direct_non_trivia_nodes node |> List.filter
       (fun child ->
         let kind = Ceibo.Red.SyntaxNode.kind child in
-        kind = Syntax_kind.POLY_VARIANT_TAG || can_lift_core_type_node child) |> List.map row_field_from_node
+        kind = Syntax_kind.POLY_VARIANT_TAG || can_lift_core_type_node child) |> List.map row_field_from_node;
+    closing_token
   }
 
 let type_declaration_name_path = fun node ->

@@ -262,8 +262,10 @@ and row_field =
 
 and poly_variant = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   kind : poly_variant_bound;
   fields : row_field list;
+  closing_token : Token.t;
 }
 
 and type_constraint = {
@@ -2721,8 +2723,10 @@ end
 module PolyVariant = struct
   type t = poly_variant = {
     syntax_node : syntax_node;
+    opening_token : Token.t;
     kind : poly_variant_bound;
     fields : row_field list;
+    closing_token : Token.t;
   }
 
   let syntax_node = fun poly_variant -> poly_variant.syntax_node

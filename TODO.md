@@ -87,6 +87,7 @@ Token-backed so far:
 - core record type delimiters and separators
 - type definition record delimiters `{ }`
 - constructor record argument delimiters `{ }`
+- polyvariant delimiters `[ ]`
 
 ## Next Targets
 

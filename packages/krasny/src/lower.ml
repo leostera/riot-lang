@@ -1151,11 +1151,11 @@ and render_poly_variant_type = fun ?(field_indent = 2) poly_variant ->
   let open_doc =
     match Syn.Cst.PolyVariant.kind poly_variant with
     | Syn.Cst.PolyVariantBound.Exact ->
-        Doc.lbracket
+        doc_of_token poly_variant.opening_token
     | Syn.Cst.PolyVariantBound.UpperBound { marker_token } ->
-        Doc.concat [ Doc.lbracket; doc_of_token marker_token ]
+        Doc.concat [ doc_of_token poly_variant.opening_token; doc_of_token marker_token ]
     | Syn.Cst.PolyVariantBound.LowerBound { marker_token } ->
-        Doc.concat [ Doc.lbracket; doc_of_token marker_token ]
+        Doc.concat [ doc_of_token poly_variant.opening_token; doc_of_token marker_token ]
   in
   let fields =
     let rec render_fields = fun previous_boundary_end ->
@@ -1194,7 +1194,7 @@ and render_poly_variant_type = fun ?(field_indent = 2) poly_variant ->
     Doc.line;
     Doc.indent field_indent (Doc.join Doc.line fields);
     Doc.line;
-    Doc.rbracket
+    doc_of_token poly_variant.closing_token
   ]
 
 let poly_variant_has_inherit_field =
