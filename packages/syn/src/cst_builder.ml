@@ -4917,6 +4917,15 @@ and expression_from_node = fun node ->
             Cst.Expression.For {
               syntax_node = node;
               iterator_token = token iterator_syntax_token;
+              equals_token =
+                (match direct_token_with_text node "=" with
+                | Some equals_token ->
+                    equals_token
+                | None ->
+                    bail ~message:"expected for-loop equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                      "expression.for";
+                      "equals_token"
+                    ]);
               start_expr = expression_from_node start_node;
               direction;
               end_expr = expression_from_node end_node;

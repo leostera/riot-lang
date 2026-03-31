@@ -1359,6 +1359,7 @@ and for_direction =
 and for_expression = {
   syntax_node : syntax_node;
   iterator_token : Token.t;
+  equals_token : Token.t;
   start_expr : expression;
   direction : for_direction;
   end_expr : expression;

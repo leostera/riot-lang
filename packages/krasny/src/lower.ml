@@ -2340,7 +2340,7 @@ let make_lowerer =
           Doc.line;
           kw_done;
         ]
-  | Syn.Cst.Expression.For { iterator_token; start_expr; direction; end_expr; body; _ } ->
+  | Syn.Cst.Expression.For { iterator_token; equals_token; start_expr; direction; end_expr; body; _ } ->
       let direction_doc =
         match direction with
         | Syn.Cst.To { direction_token }
@@ -2352,7 +2352,9 @@ let make_lowerer =
           kw_for;
           Doc.space;
           doc_of_token iterator_token;
-          equals;
+          Doc.space;
+          doc_of_token equals_token;
+          Doc.space;
           render_expression start_expr;
           Doc.space;
           direction_doc;

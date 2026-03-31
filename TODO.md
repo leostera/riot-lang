@@ -55,6 +55,7 @@ Token-backed so far:
 - class type declaration `=`
 - object member body `=`
 - class member body `=`
+- for loop `=`
 
 ## Next Targets
 
