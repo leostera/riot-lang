@@ -3621,12 +3621,15 @@ module TypeParameter : sig
   type t = {
     syntax_node : syntax_node;
     variance : TypeParameterVariance.t option;
+    injectivity_token : Token.t option;
     is_injective : bool;
     type_variable : TypeVariable.t option;
   }
   val syntax_node : t -> syntax_node
 
   val variance : t -> TypeParameterVariance.t option
+
+  val injectivity_token : t -> Token.t option
 
   val is_injective : t -> bool
 
@@ -3995,12 +3998,14 @@ module TypeDeclaration : sig
   type t = {
     syntax_node : syntax_node;
     keyword_token : Token.t;
+    nonrec_token : Token.t option;
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
     manifest_equals_token : Token.t option;
     manifest_alias : core_type option;
     definition_equals_token : Token.t option;
+    destructive_substitution_token : Token.t option;
     private_flag : private_flag;
     constraints : type_constraint list;
     attributes : attribute list;
@@ -4011,6 +4016,8 @@ module TypeDeclaration : sig
   val syntax_node : t -> syntax_node
 
   val keyword_token : t -> Token.t
+
+  val nonrec_token : t -> Token.t option
 
   val type_name : t -> Ident.t
 
@@ -4026,6 +4033,8 @@ module TypeDeclaration : sig
   val manifest_alias : t -> core_type option
 
   val definition_equals_token : t -> Token.t option
+
+  val destructive_substitution_token : t -> Token.t option
 
   val private_flag : t -> private_flag
 
@@ -4267,11 +4276,17 @@ end
 module ModuleTypeDeclaration : sig
   type t = {
     syntax_node : syntax_node;
+    module_keyword_token : Token.t;
+    type_keyword_token : Token.t;
     module_type_name : Token.t;
     equals_token : Token.t option;
     module_type : module_type option;
   }
   val syntax_node : t -> syntax_node
+
+  val module_keyword_token : t -> Token.t
+
+  val type_keyword_token : t -> Token.t
 
   val module_type_name_token : t -> Token.t
 
@@ -4458,6 +4473,7 @@ end
 
 type external_declaration = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   name_tokens : Token.t list;
   colon_token : Token.t;
   type_ : core_type;
@@ -4476,6 +4492,7 @@ type external_declaration = {
 module ClassDeclaration : sig
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     type_params : TypeParameter.t list;
     declaration_extension : extension option;
     declaration_attributes : attribute list;
@@ -4484,6 +4501,8 @@ module ClassDeclaration : sig
     class_type : class_type;
   }
   val syntax_node : t -> syntax_node
+
+  val keyword_token : t -> Token.t
 
   val type_params : t -> TypeParameter.t list
 
@@ -4513,6 +4532,7 @@ end
 module ClassDefinition : sig
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     type_params : TypeParameter.t list;
     declaration_extension : extension option;
     declaration_attributes : attribute list;
@@ -4523,6 +4543,8 @@ module ClassDefinition : sig
     class_body : class_expression;
   }
   val syntax_node : t -> syntax_node
+
+  val keyword_token : t -> Token.t
 
   val type_params : t -> TypeParameter.t list
 
@@ -4557,6 +4579,8 @@ end
 *)
 type class_type_declaration = {
   syntax_node : syntax_node;
+  class_keyword_token : Token.t;
+  type_keyword_token : Token.t;
   type_params : TypeParameter.t list;
   declaration_extension : extension option;
   declaration_attributes : attribute list;

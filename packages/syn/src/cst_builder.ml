@@ -1485,20 +1485,8 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
                   ops.item_of_type_declaration normalized_decl
                   :: normalize_ordered_items_owned_trivia ~source ops
                        tail
-              | None -> (
-                  match ops.value_declaration_of_item next_item with
-                  | Some decl ->
-                      let decl =
-                        ops.normalize_value_declaration decl
-                        |> fun decl ->
-                        ops.append_value_declaration_leading_trivia decl
-                          attached_docstrings
-                      in
-                      ops.item_of_value_declaration decl
-                      :: normalize_ordered_items_owned_trivia ~source ops tail
-                  | None ->
-                      item :: normalize_ordered_items_owned_trivia ~source ops rest
-                )
+              | None ->
+                  item :: normalize_ordered_items_owned_trivia ~source ops rest
             )
           | [] ->
               item :: normalize_ordered_items_owned_trivia ~source ops rest
@@ -7304,9 +7292,13 @@ and type_parameter_from_node = fun node ->
       (fun syntax_token ->
         String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "!")
   in
+  let parameter_injectivity_token =
+    direct_token_with_text node "!"
+  in
   Cst.TypeParameter.{
     syntax_node = node;
     variance = parameter_variance;
+    injectivity_token = parameter_injectivity_token;
     is_injective = parameter_is_injective;
     type_variable = lifted_type_variable
   }
@@ -7859,6 +7851,12 @@ let type_declaration_from_node = fun ?keyword_token node ->
   in
   let manifest_alias_opt = type_manifest_alias_from_node node in
   let definition = type_definition_from_node node in
+  let nonrec_token_opt =
+    direct_token_with_text node "nonrec"
+  in
+  let destructive_substitution_token_opt =
+    direct_token_with_text node ":="
+  in
   let equals_tokens =
     direct_non_trivia_tokens node
     |> List.filter
@@ -7887,12 +7885,14 @@ let type_declaration_from_node = fun ?keyword_token node ->
           Some Cst.TypeDeclaration.{
             syntax_node = node;
             keyword_token = lifted_keyword_token;
+            nonrec_token = nonrec_token_opt;
             type_name = lifted_type_name;
             type_params = lifted_type_params;
             type_definition = definition;
             manifest_equals_token = manifest_equals_token_opt;
             manifest_alias = manifest_alias_opt;
             definition_equals_token = definition_equals_token_opt;
+            destructive_substitution_token = destructive_substitution_token_opt;
             private_flag = private_flag_from_type_declaration_node node;
             constraints = lifted_constraints;
             attributes = [];
@@ -8358,12 +8358,18 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
         }
 
 let module_type_declaration_from_node = fun node ->
+  let module_keyword_token_opt = direct_token_with_text node "module" in
+  let type_keyword_token_opt = direct_token_with_text node "type" in
   match find_declaration_name_token
   ~skip_keywords:[ "module"; "type" ]
   (direct_non_trivia_tokens node) with
-  | Some module_type_name ->
+  | Some module_type_name -> (
+      match module_keyword_token_opt, type_keyword_token_opt with
+      | Some lifted_module_keyword_token, Some lifted_type_keyword_token ->
       Some Cst.ModuleTypeDeclaration.{
         syntax_node = node;
+        module_keyword_token = lifted_module_keyword_token;
+        type_keyword_token = lifted_type_keyword_token;
         module_type_name = token module_type_name;
         equals_token = direct_token_with_text node "=";
         module_type = (direct_non_trivia_nodes node
@@ -8371,6 +8377,8 @@ let module_type_declaration_from_node = fun node ->
         |> List.find_opt can_lift_module_type_node
         |> Option.map module_type_from_node)
       }
+      | _ -> None
+    )
   | None -> None
 
 let class_declaration_from_node = fun node ->
@@ -8450,6 +8458,16 @@ let class_declaration_from_node = fun node ->
                 (`Definition
                   Cst.ClassDefinition.{
                     syntax_node = node;
+                    keyword_token =
+                      (match direct_token_with_text node "class" with
+                      | Some lifted_keyword_token ->
+                          lifted_keyword_token
+                      | None ->
+                          bail ~message:"expected class definition keyword token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                            "item";
+                            "class_definition";
+                            "keyword_token"
+                          ]);
                     type_params = type_parameters_from_node node;
                     declaration_extension = class_declaration_extension;
                     declaration_attributes = class_declaration_attributes;
@@ -8473,6 +8491,16 @@ let class_declaration_from_node = fun node ->
                 (`Declaration
                   Cst.ClassDeclaration.{
                     syntax_node = node;
+                    keyword_token =
+                      (match direct_token_with_text node "class" with
+                      | Some lifted_keyword_token ->
+                          lifted_keyword_token
+                      | None ->
+                          bail ~message:"expected class declaration keyword token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                            "item";
+                            "class_declaration";
+                            "keyword_token"
+                          ]);
                     type_params = type_parameters_from_node node;
                     declaration_extension = class_declaration_extension;
                     declaration_attributes = class_declaration_attributes;
@@ -8516,6 +8544,24 @@ let class_type_declaration_from_node = fun node ->
             in
             Some {
               Cst.syntax_node = node;
+              class_keyword_token =
+                (match direct_token_with_text node "class" with
+                | Some lifted_class_keyword_token ->
+                    lifted_class_keyword_token
+                | None ->
+                    bail ~message:"expected class type declaration class keyword token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                      "class_type_declaration";
+                      "class_keyword_token"
+                    ]);
+              type_keyword_token =
+                (match direct_token_with_text node "type" with
+                | Some lifted_type_keyword_token ->
+                    lifted_type_keyword_token
+                | None ->
+                    bail ~message:"expected class type declaration type keyword token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                      "class_type_declaration";
+                      "type_keyword_token"
+                    ]);
               type_params = type_parameters_from_node node;
               declaration_extension;
               declaration_attributes;
@@ -8611,6 +8657,7 @@ let value_declaration_from_node = fun node ->
 
 let external_declaration_from_node = fun node ->
   let direct_children = direct_non_trivia_nodes node in
+  let lifted_keyword_token = direct_token_with_text node "external" in
   let lifted_primitive_name_tokens = direct_non_trivia_tokens node
   |> List.filter (fun syntax_token -> Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.STRING_LITERAL)
   |> List.map token in
@@ -8619,12 +8666,13 @@ let external_declaration_from_node = fun node ->
   in
   let lifted_colon_token = direct_token_with_text node ":" in
   let lifted_equals_token = direct_token_with_text node "=" in
-  match external_name_tokens, lifted_colon_token, lifted_equals_token with
-  | Some lifted_name_tokens, Some lifted_colon_token, Some lifted_equals_token -> (
+  match lifted_keyword_token, external_name_tokens, lifted_colon_token, lifted_equals_token with
+  | Some lifted_keyword_token, Some lifted_name_tokens, Some lifted_colon_token, Some lifted_equals_token -> (
       match direct_children |> List.find_opt can_lift_core_type_node with
       | Some lifted_type_node ->
           Some ({
             syntax_node = node;
+            keyword_token = lifted_keyword_token;
             name_tokens = lifted_name_tokens;
             colon_token = lifted_colon_token;
             type_ = core_type_from_node lifted_type_node;

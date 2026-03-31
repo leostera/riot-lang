@@ -2560,6 +2560,7 @@ module TypeParameter = struct
   type t = {
     syntax_node : syntax_node;
     variance : TypeParameterVariance.t option;
+    injectivity_token : Token.t option;
     is_injective : bool;
     type_variable : TypeVariable.t option;
   }
@@ -2567,6 +2568,8 @@ module TypeParameter = struct
   let syntax_node = fun type_param -> type_param.syntax_node
 
   let variance = fun type_param -> type_param.variance
+
+  let injectivity_token = fun type_param -> type_param.injectivity_token
 
   let is_injective = fun type_param -> type_param.is_injective
 
@@ -2801,12 +2804,14 @@ module TypeDeclaration = struct
   type t = {
     syntax_node : syntax_node;
     keyword_token : Token.t;
+    nonrec_token : Token.t option;
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
     manifest_equals_token : Token.t option;
     manifest_alias : core_type option;
     definition_equals_token : Token.t option;
+    destructive_substitution_token : Token.t option;
     private_flag : private_flag;
     constraints : type_constraint list;
     attributes : attribute list;
@@ -2819,6 +2824,8 @@ module TypeDeclaration = struct
 
   let keyword_token = fun decl -> decl.keyword_token
 
+  let nonrec_token = fun decl -> decl.nonrec_token
+
   let type_name = fun decl -> decl.type_name
 
   let type_params = fun decl -> decl.type_params
@@ -2830,6 +2837,8 @@ module TypeDeclaration = struct
   let manifest_alias = fun decl -> decl.manifest_alias
 
   let definition_equals_token = fun decl -> decl.definition_equals_token
+
+  let destructive_substitution_token = fun decl -> decl.destructive_substitution_token
 
   let private_flag = fun decl -> decl.private_flag
 
@@ -3060,12 +3069,18 @@ end
 module ModuleTypeDeclaration = struct
   type t = {
     syntax_node : syntax_node;
+    module_keyword_token : Token.t;
+    type_keyword_token : Token.t;
     module_type_name : Token.t;
     equals_token : Token.t option;
     module_type : module_type option;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
+
+  let module_keyword_token = fun decl -> decl.module_keyword_token
+
+  let type_keyword_token = fun decl -> decl.type_keyword_token
 
   let module_type_name_token = fun decl -> decl.module_type_name
 
@@ -3314,6 +3329,7 @@ end
 
 type external_declaration = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   name_tokens : Token.t list;
   colon_token : Token.t;
   type_ : core_type;
@@ -3325,6 +3341,7 @@ type external_declaration = {
 module ClassDeclaration = struct
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     type_params : TypeParameter.t list;
     declaration_extension : extension option;
     declaration_attributes : attribute list;
@@ -3334,6 +3351,7 @@ module ClassDeclaration = struct
   }
 
   let syntax_node = fun declaration -> declaration.syntax_node
+  let keyword_token = fun declaration -> declaration.keyword_token
   let type_params = fun declaration -> declaration.type_params
   let declaration_extension = fun declaration -> declaration.declaration_extension
   let declaration_attributes = fun declaration -> declaration.declaration_attributes
@@ -3346,6 +3364,7 @@ end
 module ClassDefinition = struct
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     type_params : TypeParameter.t list;
     declaration_extension : extension option;
     declaration_attributes : attribute list;
@@ -3357,6 +3376,7 @@ module ClassDefinition = struct
   }
 
   let syntax_node = fun definition -> definition.syntax_node
+  let keyword_token = fun definition -> definition.keyword_token
   let type_params = fun definition -> definition.type_params
   let declaration_extension = fun definition -> definition.declaration_extension
   let declaration_attributes = fun definition -> definition.declaration_attributes
@@ -3370,6 +3390,8 @@ end
 
 type class_type_declaration = {
   syntax_node : syntax_node;
+  class_keyword_token : Token.t;
+  type_keyword_token : Token.t;
   type_params : TypeParameter.t list;
   declaration_extension : extension option;
   declaration_attributes : attribute list;

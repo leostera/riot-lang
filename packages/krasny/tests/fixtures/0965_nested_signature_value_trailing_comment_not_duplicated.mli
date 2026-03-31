@@ -1,0 +1,4 @@
+module BuildStats : sig
+  val get_build_duration : t -> float (* seconds *)
+  val get_packages_built : t -> int
+end

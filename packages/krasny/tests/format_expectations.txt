@@ -144,6 +144,8 @@
 0961_signature_exception_doc_preserved.mli
 0962_signature_value_trailing_comment_preserved.mli
 0963_signature_module_type_doc_between_items.mli
+0964_nested_signature_value_docs_not_duplicated.mli
+0965_nested_signature_value_trailing_comment_not_duplicated.mli
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

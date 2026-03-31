@@ -6045,6 +6045,8 @@ and render_signature_entry ~trailing_suffix ~leading_after item =
       match item with
       | Syn.Cst.SignatureItem.TypeDeclaration decl ->
           render_type_declaration_with_keyword ~leading_after kw_type decl
+      | Syn.Cst.SignatureItem.ValueDeclaration decl ->
+          render_signature_value_declaration ~leading_after decl
       | _ ->
           render_signature_item item
     in
@@ -6133,6 +6135,27 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
       render_class_type_declaration decl
 
+and render_signature_value_declaration ~leading_after decl =
+  let base =
+    Doc.concat
+      [
+        doc_of_token_with_filtered_leading_trivia
+          ~after:leading_after
+          (Syn.Cst.ValueDeclaration.keyword_token decl);
+        Doc.space;
+        render_value_declaration_name decl;
+        Doc.space;
+        doc_of_token (Syn.Cst.ValueDeclaration.colon_token decl);
+        Doc.space;
+        render_core_type decl.type_;
+      ]
+  in
+  match Syn.Cst.ValueDeclaration.trailing_comment decl with
+  | Some comment ->
+      Doc.concat [ base; Doc.space; doc_of_token (Syn.Cst.Comment.token comment) ]
+  | None ->
+      base
+
 and render_signature_item item =
   match item with
   | Syn.Cst.SignatureItem.TypeDeclaration decl ->
@@ -6164,23 +6187,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.Comment comment ->
       doc_of_token (Syn.Cst.Comment.token comment)
   | Syn.Cst.SignatureItem.ValueDeclaration decl ->
-      let base =
-        Doc.concat
-          [
-            doc_of_token_with_leading_trivia (Syn.Cst.ValueDeclaration.keyword_token decl);
-            Doc.space;
-            render_value_declaration_name decl;
-            Doc.space;
-            doc_of_token_with_leading_trivia (Syn.Cst.ValueDeclaration.colon_token decl);
-            Doc.space;
-            render_core_type decl.type_;
-          ]
-      in
-      (match Syn.Cst.ValueDeclaration.trailing_comment decl with
-      | Some comment ->
-          Doc.concat [ base; Doc.space; doc_of_token (Syn.Cst.Comment.token comment) ]
-      | None ->
-          base)
+      render_signature_value_declaration ~leading_after:0 decl
   | Syn.Cst.SignatureItem.ExternalDeclaration decl ->
       render_external_declaration decl
   | Syn.Cst.SignatureItem.ExceptionDeclaration decl ->
