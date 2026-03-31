@@ -88,6 +88,7 @@ Token-backed so far:
 - type definition record delimiters `{ }`
 - constructor record argument delimiters `{ }`
 - polyvariant delimiters `[ ]`
+- inline record definition separators `;`
 
 ## Next Targets
 

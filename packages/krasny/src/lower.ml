@@ -1035,6 +1035,27 @@ and render_tokenized_record_definition = fun ~opening_token ~closing_token field
   Doc.concat
     [ doc_of_token opening_token; Doc.line; Doc.indent 2 body; Doc.line; doc_of_token closing_token ]
 and render_inline_record_definition = fun fields ->
+  let rec render_fields = function
+    | [] ->
+        Doc.empty
+    | [ field ] ->
+        render_record_definition_field field
+    | field :: rest ->
+        let semicolon_token =
+          match Syn.Cst.RecordField.semicolon_token field with
+          | Some semicolon_token ->
+              semicolon_token
+          | None ->
+              unsupported "inline record definition field missing semicolon token"
+        in
+        Doc.concat
+          [
+            render_record_definition_field field;
+            doc_of_token semicolon_token;
+            Doc.break ~flat:" " ();
+            render_fields rest;
+          ]
+  in
   if List.is_empty fields then
     Doc.concat [ Doc.lbrace; Doc.rbrace ]
   else
@@ -1042,12 +1063,33 @@ and render_inline_record_definition = fun fields ->
       Doc.lbrace;
       Doc.indent 2 (Doc.concat [
         Doc.break ~flat:" " ();
-        join_map (Doc.concat [ Doc.semi; Doc.break ~flat:" " () ]) render_record_definition_field fields
+        render_fields fields
       ]);
       Doc.break ~flat:" " ();
       Doc.rbrace
     ])
 and render_tokenized_inline_record_definition = fun ~opening_token ~closing_token fields ->
+  let rec render_fields = function
+    | [] ->
+        Doc.empty
+    | [ field ] ->
+        render_record_definition_field field
+    | field :: rest ->
+        let semicolon_token =
+          match Syn.Cst.RecordField.semicolon_token field with
+          | Some semicolon_token ->
+              semicolon_token
+          | None ->
+              unsupported "inline tokenized record definition field missing semicolon token"
+        in
+        Doc.concat
+          [
+            render_record_definition_field field;
+            doc_of_token semicolon_token;
+            Doc.break ~flat:" " ();
+            render_fields rest;
+          ]
+  in
   if List.is_empty fields then
     Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
   else
@@ -1055,7 +1097,7 @@ and render_tokenized_inline_record_definition = fun ~opening_token ~closing_toke
       doc_of_token opening_token;
       Doc.indent 2 (Doc.concat [
         Doc.break ~flat:" " ();
-        join_map (Doc.concat [ Doc.semi; Doc.break ~flat:" " () ]) render_record_definition_field fields
+        render_fields fields
       ]);
       Doc.break ~flat:" " ();
       doc_of_token closing_token
