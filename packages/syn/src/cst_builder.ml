@@ -7452,6 +7452,7 @@ let module_declaration_parts_from_node = fun node ->
           (fun syntax_token ->
             String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "=")
       in
+      let equals_token = direct_token_with_text node "=" in
       let lifted_module_expression =
         if has_equals then
           direct_children
@@ -7493,6 +7494,7 @@ let module_declaration_parts_from_node = fun node ->
           rec_token,
           module_name,
           functor_parameters,
+          equals_token,
           lifted_module_type,
           lifted_module_expression,
           is_recursive_declaration,
@@ -7524,7 +7526,7 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
            in
            match module_declaration_parts_from_node module_decl_node with
            | Some
-               (_parts_keyword_token, rec_token, module_name, functor_parameters, Some module_type, None, is_recursive_declaration, _owned_trivia) -> (
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, equals_token, Some module_type, None, is_recursive_declaration, _owned_trivia) -> (
                match keyword_token with
                | Some keyword_token ->
                {
@@ -7533,6 +7535,7 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  rec_token;
                  module_name;
                  functor_parameters;
+                 equals_token;
                  definition = Cst.ModuleSignature.Signature module_type;
                  next_and_declaration = None;
                  is_recursive = is_recursive_group || is_recursive_declaration;
@@ -7543,7 +7546,7 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                      "module_signature"
                    ])
            | Some
-               (_parts_keyword_token, rec_token, module_name, functor_parameters, None, Some module_expression, is_recursive_declaration, _owned_trivia) -> (
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, equals_token, None, Some module_expression, is_recursive_declaration, _owned_trivia) -> (
                match keyword_token with
                | Some keyword_token ->
                {
@@ -7552,6 +7555,7 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  rec_token;
                  module_name;
                  functor_parameters;
+                 equals_token;
                  definition = Cst.ModuleSignature.Alias module_expression;
                  next_and_declaration = None;
                  is_recursive = is_recursive_group || is_recursive_declaration;
@@ -7607,7 +7611,7 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
            in
            match module_declaration_parts_from_node module_decl_node with
            | Some
-               (_parts_keyword_token, rec_token, module_name, functor_parameters, module_type, Some module_expression, is_recursive_declaration, _owned_trivia) -> (
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, equals_token, module_type, Some module_expression, is_recursive_declaration, _owned_trivia) -> (
                match keyword_token with
                | Some keyword_token ->
                {
@@ -7616,6 +7620,16 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  rec_token;
                  module_name;
                  functor_parameters;
+                 equals_token =
+                   (match equals_token with
+                   | Some equals_token ->
+                       equals_token
+                   | None ->
+                       bail ~message:"expected module structure equals token during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
+                         "item";
+                         "module_structure";
+                         "equals_token"
+                       ]);
                  module_type;
                  module_expression;
                  next_and_declaration = None;

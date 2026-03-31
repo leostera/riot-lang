@@ -2,7 +2,7 @@
 
 ## Loop
 
-Token-first cleanup loop:
+Token-first compiler-lead cleanup loop:
 
 1. Start in `packages/krasny/src/lower.ml`.
 2. In the formatter branch, ask for the exact original token you want to render.
@@ -42,6 +42,7 @@ Token-backed so far:
 - variant constructor payload/result separator
 - arrow label `:`
 - class/class-type constraint `=`
+- module declaration `=`
 
 ## Next Targets
 

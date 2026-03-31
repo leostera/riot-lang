@@ -5263,7 +5263,16 @@ and render_module_signature_header ~include_keyword_leading_trivia
   | Syn.Cst.ModuleSignature.Signature module_type ->
       Doc.concat [ header; colon; render_module_type_doc module_type ]
   | Syn.Cst.ModuleSignature.Alias module_expression ->
-      Doc.concat [ header; equals; render_module_expression_doc module_expression ]
+      let equals_token =
+        match Syn.Cst.ModuleSignature.equals_token decl with
+        | Some equals_token ->
+            equals_token
+        | None ->
+            unsupported "module signature alias missing equals token"
+      in
+      Doc.concat
+        [ header; Doc.space; doc_of_token_with_leading_trivia equals_token; Doc.space;
+          render_module_expression_doc module_expression ]
 
 and render_module_structure_with_keyword _keyword_doc
     (decl : Syn.Cst.ModuleStructure.t) =
@@ -5311,12 +5320,17 @@ and render_module_structure_header ~include_keyword_leading_trivia
     | Some module_type ->
         Doc.concat [ header; colon; render_module_type_doc module_type ]
   in
+  let equals_token = Syn.Cst.ModuleStructure.equals_token decl in
   match module_expression with
   | Syn.Cst.ModuleExpression.Constraint { module_expression; _ }
     when Option.is_some module_type ->
-      Doc.concat [ header; equals; render_module_expression_doc module_expression ]
+      Doc.concat
+        [ header; Doc.space; doc_of_token_with_leading_trivia equals_token; Doc.space;
+          render_module_expression_doc module_expression ]
   | module_expression ->
-      Doc.concat [ header; equals; render_module_expression_doc module_expression ]
+      Doc.concat
+        [ header; Doc.space; doc_of_token_with_leading_trivia equals_token; Doc.space;
+          render_module_expression_doc module_expression ]
 
 and render_module_type_declaration ({ module_type_name; equals_token; module_type; _ } :
       Syn.Cst.ModuleTypeDeclaration.t) =
