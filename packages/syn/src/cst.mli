@@ -4078,6 +4078,7 @@ module ModuleSignature : sig
     rec_token : Token.t option;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
+    colon_token : Token.t option;
     equals_token : Token.t option;
     definition : definition;
     next_and_declaration : t option;
@@ -4092,6 +4093,8 @@ module ModuleSignature : sig
   val module_name_token : t -> Token.t
 
   val functor_parameters : t -> functor_parameter list
+
+  val colon_token : t -> Token.t option
 
   val equals_token : t -> Token.t option
 
@@ -4127,6 +4130,7 @@ module ModuleStructure : sig
     rec_token : Token.t option;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
+    colon_token : Token.t option;
     equals_token : Token.t;
     module_type : module_type option;
     module_expression : module_expression;
@@ -4142,6 +4146,8 @@ module ModuleStructure : sig
   val module_name_token : t -> Token.t
 
   val functor_parameters : t -> functor_parameter list
+
+  val colon_token : t -> Token.t option
 
   val equals_token : t -> Token.t
 

@@ -64,6 +64,7 @@ Token-backed so far:
 - first-class module pattern `:`
 - module pack expression `:`
 - module unpack expression `:`
+- module declaration `:`
 
 ## Next Targets
 

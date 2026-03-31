@@ -2878,6 +2878,7 @@ module ModuleSignature = struct
     rec_token : Token.t option;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
+    colon_token : Token.t option;
     equals_token : Token.t option;
     definition : definition;
     next_and_declaration : t option;
@@ -2893,6 +2894,8 @@ module ModuleSignature = struct
   let module_name_token = fun decl -> decl.module_name
 
   let functor_parameters = fun decl -> decl.functor_parameters
+
+  let colon_token = fun decl -> decl.colon_token
 
   let equals_token = fun decl -> decl.equals_token
 
@@ -2927,6 +2930,7 @@ module ModuleStructure = struct
     rec_token : Token.t option;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
+    colon_token : Token.t option;
     equals_token : Token.t;
     module_type : module_type option;
     module_expression : module_expression;
@@ -2943,6 +2947,8 @@ module ModuleStructure = struct
   let module_name_token = fun decl -> decl.module_name
 
   let functor_parameters = fun decl -> decl.functor_parameters
+
+  let colon_token = fun decl -> decl.colon_token
 
   let equals_token = fun decl -> decl.equals_token
 

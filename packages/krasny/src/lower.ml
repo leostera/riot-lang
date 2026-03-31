@@ -5392,7 +5392,14 @@ and render_module_signature_header ~include_keyword_leading_trivia
   in
   match Syn.Cst.ModuleSignature.definition decl with
   | Syn.Cst.ModuleSignature.Signature module_type ->
-      Doc.concat [ header; colon; render_module_type_doc module_type ]
+      let colon_token =
+        match Syn.Cst.ModuleSignature.colon_token decl with
+        | Some colon_token ->
+            colon_token
+        | None ->
+            unsupported "module signature with module type missing colon token"
+      in
+      Doc.concat [ header; Doc.space; doc_of_token colon_token; Doc.space; render_module_type_doc module_type ]
   | Syn.Cst.ModuleSignature.Alias module_expression ->
       let equals_token =
         match Syn.Cst.ModuleSignature.equals_token decl with
@@ -5449,7 +5456,14 @@ and render_module_structure_header ~include_keyword_leading_trivia
     | None ->
         header
     | Some module_type ->
-        Doc.concat [ header; colon; render_module_type_doc module_type ]
+        let colon_token =
+          match Syn.Cst.ModuleStructure.colon_token decl with
+          | Some colon_token ->
+              colon_token
+          | None ->
+              unsupported "module structure with module type missing colon token"
+        in
+        Doc.concat [ header; Doc.space; doc_of_token colon_token; Doc.space; render_module_type_doc module_type ]
   in
   let equals_token = Syn.Cst.ModuleStructure.equals_token decl in
   match module_expression with
