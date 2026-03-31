@@ -958,20 +958,27 @@ and render_record_type = fun ~opening_token ~closing_token fields ->
   let rec render_fields = function
     | [] ->
         Doc.empty
-    | [ field ] ->
-        render_record_core_type_field field
-    | field :: rest ->
-        let semicolon_token =
+    | [ (field : Syn.Cst.record_type_field) ] ->
+        let semicolon_doc =
           match field.semicolon_token with
           | Some semicolon_token ->
-              semicolon_token
+              doc_of_token semicolon_token
           | None ->
-              unsupported "record type field missing semicolon token"
+              Doc.semi
+        in
+        Doc.concat [ render_record_core_type_field field; semicolon_doc ]
+    | (field : Syn.Cst.record_type_field) :: rest ->
+        let semicolon_doc =
+          match field.semicolon_token with
+          | Some semicolon_token ->
+              doc_of_token semicolon_token
+          | None ->
+              Doc.semi
         in
         Doc.concat
           [
             render_record_core_type_field field;
-            doc_of_token semicolon_token;
+            semicolon_doc;
             Doc.line;
             render_fields rest;
           ]
@@ -1024,20 +1031,8 @@ and render_record_definition_field_entry =
   body
 and render_record_definition_body_item ~remaining = function
   | Syn.CstBuilder.RecordField field ->
-      let has_following_field =
-        List.exists
-          (function
-          | Syn.CstBuilder.RecordField _ ->
-              true
-          | _ ->
-              false)
-          remaining
-      in
-      let include_trailing_semicolon =
-        Option.is_some (Syn.Cst.RecordField.semicolon_token field)
-        || has_following_field
-      in
-      render_record_definition_field_entry ~include_trailing_semicolon field
+      let _ = remaining in
+      render_record_definition_field_entry ~include_trailing_semicolon:true field
   | Syn.CstBuilder.Comment comment ->
       Doc.text (Syn.Cst.Comment.text comment)
   | Syn.CstBuilder.Docstring docstring ->
@@ -1610,7 +1605,9 @@ let render_single_type_declaration_with_keyword = fun keyword decl ->
         Doc.concat
           [
             header;
+            Doc.space;
             doc_of_token manifest_equals_token;
+            Doc.space;
             render_core_type manifest_alias;
           ]
     | Some _, None ->
@@ -1643,7 +1640,9 @@ let render_single_type_declaration_with_keyword = fun keyword decl ->
               Doc.concat
                 [
                   header;
+                  Doc.space;
                   doc_of_token definition_equals_token;
+                  Doc.space;
                   definition;
                 ]
           | Inline_opening_definition ->
