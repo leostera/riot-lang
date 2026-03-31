@@ -207,6 +207,33 @@ let pending_doc_of_token_leading_trivia = fun token ->
   |> List.filter_map Syn.Cst.trivia_of_syntax_trivia
   |> pending_doc_of_trivia
 
+let pending_doc_of_token_leading_trivia_after_fresh_line = fun ~after token ->
+  let raw_leading_trivia = Ceibo.Red.SyntaxToken.leading_trivia token.Syn.Cst.Token.syntax_token in
+  let rec collect seen_newline acc =
+    function
+    | [] ->
+        List.rev acc
+    | syntax_trivia :: rest ->
+        let span = Ceibo.Red.SyntaxTrivia.span syntax_trivia in
+        if span.start < after then
+          collect seen_newline acc rest
+        else
+          match Syn.Cst.trivia_of_syntax_trivia syntax_trivia with
+          | Some trivia when seen_newline || Int.equal after 0 ->
+              collect false (trivia :: acc) rest
+          | Some _ ->
+              collect false acc rest
+          | None ->
+              let seen_newline =
+                seen_newline
+                || String.exists (fun ch -> Char.equal ch '\n') (Ceibo.Red.SyntaxTrivia.text syntax_trivia)
+              in
+              collect seen_newline acc rest
+  in
+  raw_leading_trivia
+  |> collect false []
+  |> pending_doc_of_trivia
+
 let pending_doc_of_trivia_before_node = fun ~after syntax_node ->
   Syn.Cst.leading_trivia_before_node ~after syntax_node |> pending_doc_of_trivia
 
@@ -223,6 +250,10 @@ let doc_of_token_with_leading_trivia = fun token ->
 let doc_of_token_with_filtered_leading_trivia = fun ~after token ->
   doc_of_token token
   |> doc_with_leading_trivia (Syn.Cst.leading_trivia_after ~after token |> pending_doc_of_trivia)
+
+let doc_of_declaration_token_with_filtered_leading_trivia = fun ~after token ->
+  doc_of_token token
+  |> doc_with_leading_trivia (pending_doc_of_token_leading_trivia_after_fresh_line ~after token)
 
 let token_has_renderable_leading_trivia = fun token ->
   match pending_doc_of_token_leading_trivia token with
@@ -1601,7 +1632,7 @@ let render_single_type_declaration_with_keyword = fun ~leading_after _keyword de
   let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
   let keyword =
     let keyword =
-      doc_of_token_with_filtered_leading_trivia
+      doc_of_declaration_token_with_filtered_leading_trivia
         ~after:leading_after
         (Syn.Cst.TypeDeclaration.keyword_token decl)
     in
@@ -1716,7 +1747,7 @@ let render_type_declaration_with_keyword = fun ?(leading_after = 0) keyword decl
         | declaration :: rest ->
             let rendered =
               render_type_declaration_member_with_keyword
-                ~leading_after:previous_end
+                ~leading_after:0
                 kw_and
                 declaration
             in
@@ -6076,7 +6107,7 @@ and render_signature_value_declaration ~leading_after decl =
   let base =
     Doc.concat
       [
-        doc_of_token_with_filtered_leading_trivia
+        doc_of_declaration_token_with_filtered_leading_trivia
           ~after:leading_after
           (Syn.Cst.ValueDeclaration.keyword_token decl);
         Doc.space;

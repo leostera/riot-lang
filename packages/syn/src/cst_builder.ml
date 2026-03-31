@@ -1407,7 +1407,7 @@ let has_newline_between_offsets = fun ~source ~start ~end_ ->
   in
   loop start
 
-let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
+let rec normalize_ordered_items_owned_trivia = fun ~source ?(at_module_start = true) ops ->
   let finalize_normalized_type_declaration = fun normalized_decl next_trivia rest ->
     let normalized_decl, next_trivia =
       absorb_following_variant_constructor_trivia ~source normalized_decl
@@ -1483,15 +1483,30 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
                       tail
                   in
                   ops.item_of_type_declaration normalized_decl
-                  :: normalize_ordered_items_owned_trivia ~source ops
+                  :: normalize_ordered_items_owned_trivia ~source ~at_module_start:false ops
                        tail
               | None ->
-                  item :: normalize_ordered_items_owned_trivia ~source ops rest
+                  item :: normalize_ordered_items_owned_trivia ~source ~at_module_start:true ops rest
             )
           | [] ->
-              item :: normalize_ordered_items_owned_trivia ~source ops rest
+              item :: normalize_ordered_items_owned_trivia ~source ~at_module_start:true ops rest
         )
       | _ -> (
+          match ops.trivia_of_item item with
+          | Some _ when not at_module_start -> (
+              let _, remaining =
+                take_leading_trivia_items ~trivia_of_item:ops.trivia_of_item [] (item :: rest)
+              in
+              match remaining with
+              | next_item :: _ when Option.is_some (ops.value_declaration_of_item next_item) ->
+                  normalize_ordered_items_owned_trivia ~source ~at_module_start:false ops
+                    remaining
+              | _ ->
+                  item :: normalize_ordered_items_owned_trivia ~source ~at_module_start:false ops rest
+            )
+          | Some _ ->
+              item :: normalize_ordered_items_owned_trivia ~source ~at_module_start:true ops rest
+          | None -> (
           match ops.type_declaration_of_item item with
           | Some decl ->
               let normalized_decl, next_trivia =
@@ -1510,7 +1525,7 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
                   rest
               in
               ops.item_of_type_declaration normalized_decl
-              :: normalize_ordered_items_owned_trivia ~source ops rest
+              :: normalize_ordered_items_owned_trivia ~source ~at_module_start:false ops rest
           | None -> (
               match ops.value_declaration_of_item item with
               | Some decl ->
@@ -1531,9 +1546,10 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
                         (decl, rest)
                   in
                   ops.item_of_value_declaration decl
-                  :: normalize_ordered_items_owned_trivia ~source ops rest
+                  :: normalize_ordered_items_owned_trivia ~source ~at_module_start:false ops rest
               | None ->
-                  item :: normalize_ordered_items_owned_trivia ~source ops rest
+                  item :: normalize_ordered_items_owned_trivia ~source ~at_module_start:false ops rest
+            )
             )
         )
     )
