@@ -1581,7 +1581,7 @@ let type_definition_layout = fun decl ->
         Inline_definition
   | Syn.Cst.TypeDefinition.FirstClassModule _
   | Syn.Cst.TypeDefinition.Extensible _ ->
-      Inline_definition
+      Inline_opening_definition
   | Syn.Cst.TypeDefinition.Abstract ->
       Inline_definition
 
@@ -2923,7 +2923,9 @@ and render_record_field (field : Syn.Cst.record_expression_field) =
       Doc.concat
         [
           doc_of_ident field.field_path;
+          Doc.space;
           doc_of_token equals_token;
+          Doc.space;
           render_expression field.value;
         ]
 
