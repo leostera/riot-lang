@@ -1556,6 +1556,7 @@ and first_class_module_pattern_binding =
 and first_class_module_pattern = {
   syntax_node : syntax_node;
   binding : first_class_module_pattern_binding;
+  colon_token : Token.t option;
   package_type : package_type option;
   attributes : attribute list;
 }
@@ -2217,6 +2218,7 @@ and poly_variant_expression = {
 and module_pack_expression = {
   syntax_node : syntax_node;
   module_expression : module_expression;
+  colon_token : Token.t option;
   package_type : package_type option;
   attributes : attribute list;
 }
@@ -3178,6 +3180,7 @@ and module_expression =
   | ModuleUnpack of {
       syntax_node : syntax_node;
       expression : expression;
+      colon_token : Token.t option;
       package_type : package_type option;
     }
       (** A first-class module unpacking expression.
@@ -3399,6 +3402,7 @@ module ModuleExpression : sig
     | ModuleUnpack of {
         syntax_node : syntax_node;
         expression : expression;
+        colon_token : Token.t option;
         package_type : package_type option;
       }
     | Parenthesized of {

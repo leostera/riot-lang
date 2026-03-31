@@ -1686,7 +1686,7 @@ let rec render_pattern =
   | Syn.Cst.Pattern.Operator { operator_tokens; _ } ->
       let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
       Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
-  | Syn.Cst.Pattern.FirstClassModule { binding; package_type; _ } ->
+  | Syn.Cst.Pattern.FirstClassModule { binding; colon_token; package_type; _ } ->
       let binding_doc =
         match binding with
         | Syn.Cst.Named { name_token } ->
@@ -1699,10 +1699,17 @@ let rec render_pattern =
         | None ->
             Doc.empty
         | Some package_type ->
+            let colon_token =
+              match colon_token with
+              | Some colon_token ->
+                  colon_token
+              | None ->
+                  unsupported "first-class module pattern package type missing colon token"
+            in
             Doc.concat
               [
                 Doc.space;
-                Doc.colon;
+                doc_of_token colon_token;
                 Doc.space;
                 render_package_type_doc package_type;
               ]
@@ -2306,13 +2313,20 @@ let make_lowerer =
               render_expression payload
           in
           Doc.concat [ head; Doc.space; payload ])
-  | Syn.Cst.Expression.ModulePack { module_expression; package_type; _ } ->
+  | Syn.Cst.Expression.ModulePack { module_expression; colon_token; package_type; _ } ->
       let constraint_doc =
         match package_type with
         | None ->
             Doc.empty
         | Some package_type ->
-            Doc.concat [ colon; render_package_type_doc package_type ]
+            let colon_token =
+              match colon_token with
+              | Some colon_token ->
+                  colon_token
+              | None ->
+                  unsupported "module pack package type missing colon token"
+            in
+            Doc.concat [ Doc.space; doc_of_token colon_token; Doc.space; render_package_type_doc package_type ]
       in
       Doc.concat
         [
@@ -5308,13 +5322,20 @@ and render_module_expression_doc = function
           colon;
           render_module_type_doc module_type;
         ]
-  | Syn.Cst.ModuleExpression.ModuleUnpack { expression; package_type; _ } ->
+  | Syn.Cst.ModuleExpression.ModuleUnpack { expression; colon_token; package_type; _ } ->
       let constraint_doc =
         match package_type with
         | None ->
             Doc.empty
         | Some package_type ->
-            Doc.concat [ colon; render_package_type_doc package_type ]
+            let colon_token =
+              match colon_token with
+              | Some colon_token ->
+                  colon_token
+              | None ->
+                  unsupported "module unpack package type missing colon token"
+            in
+            Doc.concat [ Doc.space; doc_of_token colon_token; Doc.space; render_package_type_doc package_type ]
       in
       Doc.concat
         [

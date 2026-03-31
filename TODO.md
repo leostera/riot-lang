@@ -61,6 +61,9 @@ Token-backed so far:
 - optional parameter alias `:`
 - optional parameter default `=`
 - polymorphic expression `:`
+- first-class module pattern `:`
+- module pack expression `:`
+- module unpack expression `:`
 
 ## Next Targets
 

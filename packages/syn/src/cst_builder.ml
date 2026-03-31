@@ -3926,6 +3926,7 @@ let rec pattern_from_node = fun node ->
                 Cst.Anonymous {wildcard_token = token binding_syntax_token}
               else
                 Cst.Named {name_token = token binding_syntax_token};
+                colon_token = token_with_text node ":";
                 package_type
                 = (direct_non_trivia_nodes node
                 |> List.find_opt can_lift_module_type_node
@@ -4595,6 +4596,7 @@ and module_expression_from_node = fun node ->
           Cst.ModuleExpression.ModuleUnpack {
             syntax_node = node;
             expression = expression_from_node expression_node;
+            colon_token = token_with_text node ":";
             package_type
           }
       | _ ->
@@ -5014,6 +5016,7 @@ and expression_from_node = fun node ->
             Cst.Expression.ModulePack {
               syntax_node = node;
               module_expression = module_expression_from_node module_expression_node;
+              colon_token = token_with_text node ":";
               package_type;
               attributes = []
             }
