@@ -1016,23 +1016,43 @@ and render_record_definition_field_entry =
         | Some semicolon_token ->
             doc_of_token semicolon_token
         | None ->
-            Doc.empty)
+            Doc.semi)
       ]
     else
       render_record_definition_field field
   in
   body
-and render_record_definition_body_item = function
+and render_record_definition_body_item ~remaining = function
   | Syn.CstBuilder.RecordField field ->
-      render_record_definition_field_entry field
+      let has_following_field =
+        List.exists
+          (function
+          | Syn.CstBuilder.RecordField _ ->
+              true
+          | _ ->
+              false)
+          remaining
+      in
+      let include_trailing_semicolon =
+        Option.is_some (Syn.Cst.RecordField.semicolon_token field)
+        || has_following_field
+      in
+      render_record_definition_field_entry ~include_trailing_semicolon field
   | Syn.CstBuilder.Comment comment ->
       Doc.text (Syn.Cst.Comment.text comment)
   | Syn.CstBuilder.Docstring docstring ->
       Doc.text (Syn.Cst.Docstring.text docstring)
 and render_record_definition_body = fun fields ->
-  fields
-  |> Syn.CstBuilder.record_field_items_of_fields
-  |> List.map render_record_definition_body_item
+  let items = Syn.CstBuilder.record_field_items_of_fields fields in
+  let rec render_items =
+    function
+    | [] ->
+        []
+    | item :: rest ->
+        render_record_definition_body_item ~remaining:rest item :: render_items rest
+  in
+  items
+  |> render_items
   |> Doc.join Doc.line
 and render_record_definition = fun fields ->
   let body = render_record_definition_body fields in
