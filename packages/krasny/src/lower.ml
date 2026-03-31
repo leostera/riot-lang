@@ -1772,11 +1772,29 @@ let rec render_pattern =
           Doc.break ~flat:edge_space ();
           doc_of_token closing_token
         ])
-  | Syn.Cst.Pattern.Array { elements; _ } ->
+  | Syn.Cst.Pattern.Array
+      { opening_token; elements; separator_tokens; closing_token; _ } ->
+      let rec render_elements elements separator_tokens =
+        match elements, separator_tokens with
+        | [], [] ->
+            Doc.empty
+        | [ element ], [] ->
+            render_pattern element
+        | element :: rest, separator_token :: rest_separators ->
+            Doc.concat
+              [
+                render_pattern element;
+                doc_of_token separator_token;
+                Doc.space;
+                render_elements rest rest_separators;
+              ]
+        | _ ->
+            unsupported "array pattern elements missing separator tokens"
+      in
       Doc.concat [
-        Doc.text "[|";
-        join_map (Doc.concat [ Doc.semi; Doc.space ]) render_pattern elements;
-        Doc.text "|]"
+        doc_of_token opening_token;
+        render_elements elements separator_tokens;
+        doc_of_token closing_token
       ]
   | Syn.Cst.Pattern.Record { fields; closedness; _ } ->
       let fields =

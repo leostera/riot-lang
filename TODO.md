@@ -79,6 +79,7 @@ Token-backed so far:
 - list expression delimiters and separators
 - array expression delimiters and separators
 - list pattern delimiters and separators
+- array pattern delimiters and separators
 
 ## Next Targets
 

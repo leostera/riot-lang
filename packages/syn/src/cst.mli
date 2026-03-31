@@ -1667,7 +1667,10 @@ and list_pattern = {
 *)
 and array_pattern = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   elements : pattern list;
+  separator_tokens : Token.t list;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 
