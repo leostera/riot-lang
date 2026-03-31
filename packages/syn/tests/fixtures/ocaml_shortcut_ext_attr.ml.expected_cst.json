@@ -5690,6 +5690,14 @@
               "end": 1979
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "include",
+            "span": {
+              "start": 1959,
+              "end": 1966
+            }
+          },
           "target": {
             "tag": "module_expression",
             "value": {
@@ -5724,6 +5732,14 @@
             "span": {
               "start": 1979,
               "end": 1997
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "open",
+            "span": {
+              "start": 1980,
+              "end": 1984
             }
           },
           "target": {

@@ -1,0 +1,7 @@
+module M = struct end
+
+(** Before open *)
+open! M
+
+(** Before include *)
+include M

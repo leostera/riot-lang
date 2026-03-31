@@ -1736,6 +1736,7 @@ let open_statement_to_json = fun stmt ->
   in
   Json.Object [
     ("syntax_node", syntax_node_to_json (Cst.OpenStatement.syntax_node stmt));
+    ("keyword_token", token_to_json (Cst.OpenStatement.keyword_token stmt));
     ("target", open_target_to_json (Cst.OpenStatement.target stmt));
     ("module_path", option_to_json ident_to_json (Cst.OpenStatement.module_path stmt));
     ("bang_token", option_to_json token_to_json (Cst.OpenStatement.bang_token stmt))
@@ -2043,7 +2044,11 @@ let include_statement_to_json = fun (stmt : Cst.include_statement) ->
           ("value", module_type_to_json module_type)
         ]
   in
-  Json.Object [ ("syntax_node", syntax_node_to_json stmt.syntax_node); ("target", target) ]
+  Json.Object [
+    ("syntax_node", syntax_node_to_json stmt.syntax_node);
+    ("keyword_token", token_to_json stmt.keyword_token);
+    ("target", target)
+  ]
 
 let structure_item_to_json =
   function

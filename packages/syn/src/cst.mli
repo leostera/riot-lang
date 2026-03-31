@@ -4166,11 +4166,14 @@ module OpenStatement : sig
         *)
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     target : target;
     bang_token : Token.t option;
     owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
+
+  val keyword_token : t -> Token.t
 
   val target : t -> target
 
@@ -4442,6 +4445,7 @@ type include_target =
 *)
 type include_statement = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   target : include_target;
   owned_trivia : owned_trivia;
 }

@@ -8066,6 +8066,9 @@ let class_type_declaration_from_node = fun node ->
 
 let open_statement_from_node = fun node ->
   let tokens = direct_non_trivia_tokens node in
+  let open_keyword_token_opt =
+    direct_token_with_text node "open"
+  in
   let bang_token_opt =
     tokens
     |> List.find_opt
@@ -8076,15 +8079,16 @@ let open_statement_from_node = fun node ->
   let lifted_target = direct_non_trivia_nodes node
   |> List.find_opt can_lift_module_expression_node
   |> Option.map (fun target_node -> Cst.OpenStatement.ModuleExpression (module_expression_from_node target_node)) in
-  match lifted_target with
-  | Some lifted_target ->
+  match open_keyword_token_opt, lifted_target with
+  | Some open_keyword_token, Some lifted_target ->
       Some Cst.OpenStatement.{
         syntax_node = node;
+        keyword_token = open_keyword_token;
         target = lifted_target;
         bang_token = bang_token_opt;
         owned_trivia = owned_trivia_from_node node
       }
-  | None ->
+  | Some open_keyword_token, None ->
       let module_tokens =
         tokens
         |> List.filter
@@ -8098,11 +8102,14 @@ let open_statement_from_node = fun node ->
         | _ ->
             Some Cst.OpenStatement.{
               syntax_node = node;
+              keyword_token = open_keyword_token;
               target = Cst.OpenStatement.Path (module_path_from_tokens ~syntax_node:node module_tokens);
               bang_token = bang_token_opt;
               owned_trivia = owned_trivia_from_node node
             }
       )
+  | None, _ ->
+      None
 
 let value_declaration_from_node = fun node ->
   let direct_children = direct_non_trivia_nodes node in
@@ -8157,10 +8164,15 @@ let external_declaration_from_node = fun node ->
   | _ -> None
 
 let include_statement_from_node = fun node ->
+  let include_keyword_token_opt =
+    direct_token_with_text node "include"
+  in
   match direct_non_trivia_nodes node
   |> List.find_opt (fun child -> can_lift_module_expression_node child || can_lift_module_type_node child) with
-  | Some included_node ->
-      Some ({syntax_node = node; target = if can_lift_module_expression_node included_node then
+  | Some included_node -> (
+      match include_keyword_token_opt with
+      | Some include_keyword_token ->
+          Some ({syntax_node = node; keyword_token = include_keyword_token; target = if can_lift_module_expression_node included_node then
           Cst.ModuleExpression (module_expression_from_node included_node)
         else if can_lift_module_type_node included_node then
           Cst.ModuleType (module_type_from_node included_node)
@@ -8168,6 +8180,8 @@ let include_statement_from_node = fun node ->
           bail ~message:"expected include target during Ceibo -> CST lifting" ~syntax_node:included_node ~context:[
             "include_statement"
           ]; owned_trivia = owned_trivia_from_node node}: Cst.include_statement)
+      | None ->
+          None)
   | None -> None
 
 let exception_declaration_from_node = fun node ->

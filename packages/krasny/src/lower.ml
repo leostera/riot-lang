@@ -5025,7 +5025,7 @@ and render_open_target = function
   | Syn.Cst.OpenStatement.ModuleExpression expression ->
       render_module_expression_doc expression
 
-and render_include_statement ({ target; _ } : Syn.Cst.include_statement) =
+and render_include_statement ({ keyword_token; target; _ } : Syn.Cst.include_statement) =
   let target =
     match target with
     | Syn.Cst.ModuleExpression expression ->
@@ -5033,7 +5033,7 @@ and render_include_statement ({ target; _ } : Syn.Cst.include_statement) =
     | Syn.Cst.ModuleType module_type ->
         render_module_type_doc module_type
   in
-  Doc.concat [ Doc.text "include"; Doc.space; target ]
+  Doc.concat [ doc_of_token keyword_token; Doc.space; target ]
 
 and is_module_alias_structure_item = function
   | Syn.Cst.StructureItem.ModuleDeclaration
@@ -5283,7 +5283,7 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.OpenStatement open_ ->
       Doc.concat
         [
-          kw_open;
+          doc_of_token (Syn.Cst.OpenStatement.keyword_token open_);
           (match open_.bang_token with
           | None ->
               Doc.empty
@@ -5324,7 +5324,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.OpenStatement open_ ->
       Doc.concat
         [
-          kw_open;
+          doc_of_token (Syn.Cst.OpenStatement.keyword_token open_);
           (match open_.bang_token with
           | None ->
               Doc.empty

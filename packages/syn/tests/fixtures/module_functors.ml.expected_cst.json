@@ -901,6 +901,14 @@
               "end": 443
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "include",
+            "span": {
+              "start": 431,
+              "end": 438
+            }
+          },
           "target": {
             "tag": "module_expression",
             "value": {
@@ -986,6 +994,14 @@
             "span": {
               "start": 443,
               "end": 487
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "include",
+            "span": {
+              "start": 478,
+              "end": 485
             }
           },
           "target": {

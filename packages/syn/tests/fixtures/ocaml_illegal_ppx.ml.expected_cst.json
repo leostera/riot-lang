@@ -128,6 +128,14 @@
               "end": 58
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "open",
+            "span": {
+              "start": 44,
+              "end": 48
+            }
+          },
           "target": {
             "tag": "module_expression",
             "value": {

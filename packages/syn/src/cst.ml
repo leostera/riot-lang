@@ -2920,12 +2920,15 @@ module OpenStatement = struct
 
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     target : target;
     bang_token : Token.t option;
     owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun stmt -> stmt.syntax_node
+
+  let keyword_token = fun stmt -> stmt.keyword_token
 
   let target = fun stmt -> stmt.target
 
@@ -3231,6 +3234,7 @@ type include_target =
 
 type include_statement = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   target : include_target;
   owned_trivia : owned_trivia;
 }
