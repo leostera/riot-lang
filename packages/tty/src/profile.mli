@@ -65,16 +65,16 @@
 
     Returns a profile that matches the detected capability. *)
 type t
-val from_env : unit -> t
+val from_env: unit -> t
 
 (** [default] provides a conservative profile for basic terminals.
 
     Assumes 16-color ANSI support, which is widely compatible. *)
-val default : t
+val default: t
 
 (** [convert profile color] adapts [color] to match the [profile]'s capability.
 
     If the color is already compatible (e.g., ANSI color on ANSI profile), it
     returns the color unchanged. Otherwise, it converts to the closest
     equivalent color the terminal can display. *)
-val convert : t -> Color.t -> Color.t
+val convert: t -> Color.t -> Color.t

@@ -47,16 +47,16 @@ type parser =
   | Multipart
 (** multipart/form-data *)
 type config = {
-  parsers : parser list;
+  parsers: parser list;
   (** List of enabled parsers (default: [Urlencoded; Json]) *)
-  max_body_size : int;
+  max_body_size: int;
   (** Maximum body size in bytes (default: 10MB). Bodies exceeding this are
           not parsed. *)
 }
-val default_config : unit -> config
+val default_config: unit -> config
 
 (** Default configuration: urlencoded and JSON parsing, 10MB limit *)
-val make : ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val make: ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 (** Create body parser middleware.
 

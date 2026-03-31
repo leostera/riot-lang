@@ -4,18 +4,18 @@ open Std
 type parse_state =
   | WaitingForHeaders
   | WaitingForBody of {
-      http_req : Net.Http.Request.t;
-      expected_length : int;
-      accumulated_body : string;
+      http_req: Net.Http.Request.t;
+      expected_length: int;
+      accumulated_body: string;
     }
 
 type state = {
-  config : Web_config.t;
-  handler : Http_handler.t;
-  is_keep_alive : bool;
-  requests_processed : int;
-  sniffed_data : string;
-  parse_state : parse_state;
+  config: Web_config.t;
+  handler: Http_handler.t;
+  is_keep_alive: bool;
+  requests_processed: int;
+  sniffed_data: string;
+  parse_state: parse_state;
 }
 
 type error =
@@ -31,16 +31,15 @@ let to_string_error =
   | `ExcessBodyRead -> "Excess body read"
   | `IoError msg -> "I/O error: " ^ msg
 
-let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
-  {
-    config;
-    handler;
-    sniffed_data;
-    is_keep_alive = false;
-    requests_processed = 0;
-    parse_state = WaitingForHeaders;
+let make_handler = fun ~config ~handler ?(sniffed_data = "") () -> {
+  config;
+  handler;
+  sniffed_data;
+  is_keep_alive = false;
+  requests_processed = 0;
+  parse_state = WaitingForHeaders;
 
-  }
+}
 
 let handle_close = fun _conn _state -> ()
 

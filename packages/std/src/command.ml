@@ -23,9 +23,9 @@ end
 type status = int
 
 type output = {
-  stdout : string;
-  stderr : string;
-  status : status;
+  stdout: string;
+  stderr: string;
+  status: status;
 }
 
 type error =
@@ -33,15 +33,15 @@ type error =
 
 type state =
   | Pending
-  | Running of { proc : OsProcess.t; stdout : Fs.File.t option; stderr : Fs.File.t option; }
+  | Running of { proc: OsProcess.t; stdout: Fs.File.t option; stderr: Fs.File.t option; }
   | Exited of output
 
 type t = {
-  cmd : string;
-  args : string list;
-  env : (string * string) list;
-  cwd : string option;
-  mutable state : state;
+  cmd: string;
+  args: string list;
+  env: (string * string) list;
+  cwd: string option;
+  mutable state: state;
 }
 
 (** Command - OS process spawning and management *)

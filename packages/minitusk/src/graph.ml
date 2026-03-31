@@ -1,14 +1,14 @@
 open Stdlib
 
-module Node_id : sig
+module Node_id: sig
   type t
-  val next : unit -> t
+  val next: unit -> t
 
-  val eq : t -> t -> bool
+  val eq: t -> t -> bool
 
-  val to_int : t -> int
+  val to_int: t -> int
 
-  val to_string : t -> string
+  val to_string: t -> string
 end = struct
   type t = int
 
@@ -26,13 +26,13 @@ end = struct
 end
 
 type 'value node = {
-  id : Node_id.t;
-  mutable deps : Node_id.t list;
-  value : 'value;
+  id: Node_id.t;
+  mutable deps: Node_id.t list;
+  value: 'value;
 }
 
 type 'value t = {
-  nodes : (Node_id.t, 'value node) Hashtbl.t;
+  nodes: (Node_id.t, 'value node) Hashtbl.t;
 }
 
 let make = fun () -> {nodes = Hashtbl.create 100}

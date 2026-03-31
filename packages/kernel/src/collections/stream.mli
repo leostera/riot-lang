@@ -18,7 +18,7 @@ include module type of Stdlib.Seq
 
     - Time: O(1) to create iterator
     - Space: O(1) *)
-val into_iter : 'a t -> 'a Iter.Iterator.t
+val into_iter: 'a t -> 'a Iter.Iterator.t
 
 (** Converts this stream into a mutable iterator.
 
@@ -38,4 +38,4 @@ val into_iter : 'a t -> 'a Iter.Iterator.t
 
     - Time: O(1) to create iterator
     - Space: O(1) *)
-val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
+val to_mut_iter: 'a t -> 'a Iter.MutIterator.t

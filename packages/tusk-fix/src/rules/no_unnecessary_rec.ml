@@ -31,14 +31,13 @@ let self_references_binding = fun binding ->
           String.equal (Syn.Ceibo.Red.SyntaxToken.text token) name)
         value_node |> List.length |> fun count -> count > 0
 
-let rec_token =
-  fun binding ->
-    Traversal.find_tokens
-      (fun token ->
-        String.equal (Syn.Ceibo.Red.SyntaxToken.text token) "rec")
-      (Syn.Cst.LetBinding.syntax_node binding) |> function
-    | token :: _ -> Some token
-    | [] -> None
+let rec_token = fun binding ->
+  Traversal.find_tokens
+    (fun token ->
+      String.equal (Syn.Ceibo.Red.SyntaxToken.text token) "rec")
+    (Syn.Cst.LetBinding.syntax_node binding) |> function
+  | token :: _ -> Some token
+  | [] -> None
 
 let make_diagnostic = fun binding ->
   let span =
@@ -66,5 +65,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.let_bindings_of_structure_item
   |> List.filter_map diagnostic_for_binding
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

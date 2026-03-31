@@ -33,12 +33,12 @@ type focus =
 (* Model with multiple text inputs *)
 
 type model = {
-  name_input : Textinput.t;
-  email_input : Textinput.t;
-  password_input : Textinput.t;
-  focus : focus;
-  submitted : bool;
-  error : string option;
+  name_input: Textinput.t;
+  email_input: Textinput.t;
+  password_input: Textinput.t;
+  focus: focus;
+  submitted: bool;
+  error: string option;
 }
 
 (* Email validation helper *)
@@ -115,15 +115,15 @@ let update = fun event model ->
         match model.focus with
         | NameField ->
             let current = Textinput.value model.name_input in
-            let input = Textinput.set_value model.name_input ~value:((current ^ s)) in
+            let input = Textinput.set_value model.name_input ~value:((((current ^ s)))) in
             {model with name_input = input; error = None}
         | EmailField ->
             let current = Textinput.value model.email_input in
-            let input = Textinput.set_value model.email_input ~value:((current ^ s)) in
+            let input = Textinput.set_value model.email_input ~value:((((current ^ s)))) in
             {model with email_input = input; error = None}
         | PasswordField ->
             let current = Textinput.value model.password_input in
-            let input = Textinput.set_value model.password_input ~value:((current ^ s)) in
+            let input = Textinput.set_value model.password_input ~value:((((current ^ s)))) in
             {model with password_input = input; error = None}
         | SubmitButton ->
             model
@@ -212,17 +212,21 @@ let view = fun model ->
           text "";
           text
             ~style:((
-              if model.focus = SubmitButton then
-                Style.(empty
-                |> bg (`rgb (62, 103, 224))
-                |> fg (`rgb (255, 255, 255))
-                |> bold
-                |> padding (Padding.symmetric ~h:2 ~v:1))
-              else
-                Style.(empty
-                |> bg (`rgb (40, 40, 40))
-                |> fg (`rgb (150, 150, 150))
-                |> padding (Padding.symmetric ~h:2 ~v:1))
+              (
+                (
+                  if model.focus = SubmitButton then
+                    Style.(empty
+                    |> bg (`rgb (62, 103, 224))
+                    |> fg (`rgb (255, 255, 255))
+                    |> bold
+                    |> padding (Padding.symmetric ~h:2 ~v:1))
+                  else
+                    Style.(empty
+                    |> bg (`rgb (40, 40, 40))
+                    |> fg (`rgb (150, 150, 150))
+                    |> padding (Padding.symmetric ~h:2 ~v:1))
+                )
+              )
             ))
             " Submit (Enter) ";
           (

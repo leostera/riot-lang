@@ -7,18 +7,18 @@ type single_result =
   | Skipped
 
 type t = {
-  index : int;
-  name : string;
-  test_type : Test_case.test_type;
-  result : single_result;
+  index: int;
+  name: string;
+  test_type: Test_case.test_type;
+  result: single_result;
 }
 
 type summary = {
-  total : int;
-  passed : int;
-  failed : int;
-  skipped : int;
-  results : t list;
+  total: int;
+  passed: int;
+  failed: int;
+  skipped: int;
+  results: t list;
 }
 
 let make_summary = fun results ->

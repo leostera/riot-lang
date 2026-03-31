@@ -7,32 +7,34 @@ open Collections
 
 (** Range of 16-bit Unicode code points *)
 type range16 = {
-  lo : int;  (** Start of range *)
-  hi : int;  (** End of range *)
-  stride : int;  (** Step (1 = all chars, 2 = every other) *)
+  lo: int;  (** Start of range *)
+  hi: int;  (** End of range *)
+  stride: int;  (** Step (1 = all chars, 2 = every other) *)
 }
 
 (** Range of 32-bit Unicode code points *)
 type range32 = {
-  lo : int;  (** Start of range *)
-  hi : int;  (** End of range *)
-  stride : int;  (** Step *)
+  lo: int;  (** Start of range *)
+  hi: int;  (** End of range *)
+  stride: int;  (** Step *)
 }
 
 (** Table of Unicode ranges for a category *)
 type range_table = {
-  r16 : range16 array;  (** Ranges for code points < 0x10000 *)
-  r32 : range32 array;  (** Ranges for code points >= 0x10000 *)
-  latin_offset : int;  (** Number of R16 entries with Hi <= 0xFF *)
+  r16: range16 array;  (** Ranges for code points < 0x10000 *)
+  r32: range32 array;  (** Ranges for code points >= 0x10000 *)
+  latin_offset: int;  (** Number of R16 entries with Hi <= 0xFF *)
 }
 
 (** Check if code point is in 16-bit range *)
-let in_range16 : range16 -> int -> bool = fun r code ->
-  code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
+let in_range16 : range16 -> int -> bool = fun r code -> code >= r.lo
+&& code <= r.hi
+&& (r.stride = 1 || (code - r.lo) mod r.stride = 0)
 
 (** Check if code point is in 32-bit range *)
-let in_range32 : range32 -> int -> bool = fun r code ->
-  code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
+let in_range32 : range32 -> int -> bool = fun r code -> code >= r.lo
+&& code <= r.hi
+&& (r.stride = 1 || (code - r.lo) mod r.stride = 0)
 
 (** Check if code point is in range table using binary search *)
 let in_table : range_table -> int -> bool = fun tbl code ->

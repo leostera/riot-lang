@@ -8,14 +8,14 @@ type error =
   | System_error of IO.error
   | Invalid_port_number of string
   | Invalid_format of string
-val loopback : tcp_addr
+val loopback: tcp_addr
 
-val tcp : tcp_addr -> int -> stream_addr
+val tcp: tcp_addr -> int -> stream_addr
 
-val of_host_and_port : host:string -> port:int -> (stream_addr, error) result
+val of_host_and_port: host:string -> port:int -> (stream_addr, error) result
 
-val parse : string -> (stream_addr, error) result
+val parse: string -> (stream_addr, error) result
 
-val ip : stream_addr -> string
+val ip: stream_addr -> string
 
-val port : stream_addr -> int
+val port: stream_addr -> int

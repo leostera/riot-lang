@@ -4,15 +4,15 @@ open Std
 
 type property_result =
   | Success
-  | Failure of { counter_example : string; shrink_steps : int; }
-  | Error of { exception_ : exn; backtrace : string; }
+  | Failure of { counter_example: string; shrink_steps: int; }
+  | Error of { exception_: exn; backtrace: string; }
   | Assumption_violated
 
 type config = {
-  test_count : int;
-  max_shrink_steps : int;
-  seed : int option;
-  verbose : bool;
+  test_count: int;
+  max_shrink_steps: int;
+  seed: int option;
+  verbose: bool;
 }
 
 let default_config = {test_count = 100; max_shrink_steps = 1_000; seed = None; verbose = false; }
@@ -20,9 +20,9 @@ let default_config = {test_count = 100; max_shrink_steps = 1_000; seed = None; v
 (* Internal property representation *)
 
 type 'value property_internal = {
-  name : string;
-  arbitrary : 'value Arbitrary.t;
-  predicate : 'value -> bool;
+  name: string;
+  arbitrary: 'value Arbitrary.t;
+  predicate: 'value -> bool;
 }
 
 type test_property =
@@ -187,8 +187,8 @@ let check = fun ?(config = default_config) (Prop prop) ->
 
 let for_all = fun arbitrary predicate -> Prop {name = "unnamed property"; arbitrary; predicate}
 
-let get_test_count_from_env = fun () ->
-  Env.var Int ~name:"PROPANE_TESTS" |> Option.unwrap_or ~default:default_config.test_count
+let get_test_count_from_env = fun () -> Env.var Int ~name:"PROPANE_TESTS"
+|> Option.unwrap_or ~default:default_config.test_count
 
 let get_seed_from_env = fun () -> Env.var Int ~name:"PROPANE_SEED"
 

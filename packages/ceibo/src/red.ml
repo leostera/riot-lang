@@ -2,20 +2,20 @@ open Std
 open Std.Collections
 
 type ('kind, 'text) syntax_node = {
-  green_node : ('kind, 'text) Green.node;
-  parent : ('kind, 'text) syntax_node option;
-  offset : int;
+  green_node: ('kind, 'text) Green.node;
+  parent: ('kind, 'text) syntax_node option;
+  offset: int;
 }
 
 type ('kind, 'text) syntax_token = {
-  green_token : ('kind, 'text) Green.token;
-  parent : ('kind, 'text) syntax_node option;
-  offset : int;
+  green_token: ('kind, 'text) Green.token;
+  parent: ('kind, 'text) syntax_node option;
+  offset: int;
 }
 
 type ('kind, 'text) syntax_trivia = {
-  green_trivia : ('kind, 'text) Green.trivia;
-  offset : int;
+  green_trivia: ('kind, 'text) Green.trivia;
+  offset: int;
 }
 
 type ('kind, 'text) syntax_element =
@@ -31,7 +31,7 @@ module SyntaxNode = struct
 
   let span = fun (node:('kind, 'text) syntax_node) ->
     let g = green node in
-    Span.make ~start:node.offset ~end_:((((node.offset + g.width))))
+    Span.make ~start:node.offset ~end_:((((((node.offset + g.width))))))
 
   let parent = fun (node:('kind, 'text) syntax_node) -> node.parent
 
@@ -224,7 +224,7 @@ module SyntaxTrivia = struct
 
   let span = fun (trivia:('kind, 'text) syntax_trivia) ->
     let g = green trivia in
-    Span.make ~start:trivia.offset ~end_:((trivia.offset + Green.trivia_width g))
+    Span.make ~start:trivia.offset ~end_:((((trivia.offset + Green.trivia_width g))))
 
   let kind = fun (trivia:('kind, 'text) syntax_trivia) -> (green trivia).kind
 
@@ -238,7 +238,7 @@ module SyntaxToken = struct
 
   let span = fun (token:('kind, 'text) syntax_token) ->
     let g = green token in
-    Span.make ~start:token.offset ~end_:((token.offset + Green.token_width g))
+    Span.make ~start:token.offset ~end_:((((token.offset + Green.token_width g))))
 
   let kind = fun (token:('kind, 'text) syntax_token) -> (green token).kind
 

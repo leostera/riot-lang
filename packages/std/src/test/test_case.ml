@@ -7,13 +7,13 @@ type test_result =
 
 type test_type =
   | UnitTest
-  | Property of { examples : int; }
+  | Property of { examples: int; }
 
 type t = {
-  name : string;
-  test_type : test_type;
-  fn : unit -> (unit, string) result;
-  skip : bool;
+  name: string;
+  test_type: test_type;
+  fn: unit -> (unit, string) result;
+  skip: bool;
 }
 
 let case = fun name fn -> {name; test_type = UnitTest; fn; skip = false}
@@ -22,5 +22,9 @@ let property = fun name ~examples fn -> {name; test_type = Property {examples}; 
 
 let skip = fun name fn -> {name; test_type = UnitTest; fn; skip = true}
 
-let todo = fun name ->
-  {name; test_type = UnitTest; fn = (fun () -> Result.Error "todo"); skip = false}
+let todo = fun name -> {
+  name;
+  test_type = UnitTest;
+  fn = (fun () -> Result.Error "todo");
+  skip = false
+}

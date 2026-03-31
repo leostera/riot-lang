@@ -1,21 +1,21 @@
 open Std
 
 type t = {
-  rules : Rule.t list;
+  rules: Rule.t list;
 }
 
 type result = Fixme.Source_runner.result = {
-  tree : Rule.green_tree;
-  diagnostics : Diagnostic.t list;
-  parse_diagnostics : Syn.Diagnostic.t list;
+  tree: Rule.green_tree;
+  diagnostics: Diagnostic.t list;
+  parse_diagnostics: Syn.Diagnostic.t list;
 }
 
 let make = fun ~rules () -> {rules}
 
 type builtin_rule_factory = {
-  category : string;
-  id : string;
-  make : unit -> Rule.t;
+  category: string;
+  id: string;
+  make: unit -> Rule.t;
 }
 
 let builtin_rule_factories = fun () ->
@@ -214,11 +214,10 @@ let builtin_rule_factories = fun () ->
 
   ]
 
-let builtin_rule_category =
-  fun rule_id ->
-    builtin_rule_factories () |> List.find_opt
-      (fun factory ->
-        String.equal factory.id rule_id) |> Option.map (fun factory -> factory.category)
+let builtin_rule_category = fun rule_id ->
+  builtin_rule_factories () |> List.find_opt
+    (fun factory ->
+      String.equal factory.id rule_id) |> Option.map (fun factory -> factory.category)
 
 let package_rules = fun () -> Provider_registry.rules ()
 

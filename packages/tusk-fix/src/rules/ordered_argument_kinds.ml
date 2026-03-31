@@ -31,8 +31,8 @@ let kind_name =
   | Syn.Cst.Parameter.Positional _ -> "positional"
   | Syn.Cst.Parameter.LocallyAbstract _ -> "locally abstract"
 
-let parameter_span = fun parameter ->
-  Syn.Cst.Parameter.syntax_node parameter |> Syn.Ceibo.Red.SyntaxNode.span
+let parameter_span = fun parameter -> Syn.Cst.Parameter.syntax_node parameter
+|> Syn.Ceibo.Red.SyntaxNode.span
 
 let make_diagnostic = fun parameter ->
   let current_kind = kind_name parameter in
@@ -40,7 +40,7 @@ let make_diagnostic = fun parameter ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(parameter_span parameter)
-  ~suggestion:(("Move this " ^ current_kind ^ " argument earlier so parameters stay ordered as labeled, optional, then positional"))
+  ~suggestion:(((("Move this " ^ current_kind ^ " argument earlier so parameters stay ordered as labeled, optional, then positional"))))
   ()
 
 let diagnostic_for_binding = fun binding ->
@@ -70,5 +70,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.filter Syn.Cst.LetBinding.is_function
   |> List.filter_map diagnostic_for_binding
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

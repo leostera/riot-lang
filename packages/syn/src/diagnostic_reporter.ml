@@ -4,8 +4,8 @@ open Tty
 module Array = Std.Collections.Array
 
 type source_layout = {
-  lines : string array;
-  line_starts : int array;
+  lines: string array;
+  line_starts: int array;
 }
 
 let make_source_layout = fun source ->

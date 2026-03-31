@@ -70,23 +70,23 @@ type same_site =
   | None
 (** Allow all cross-site (requires Secure flag) *)
 type t = {
-  name : string;
+  name: string;
   (** Cookie name *)
-  value : string;
+  value: string;
   (** Cookie value *)
-  max_age : int option;
+  max_age: int option;
   (** Lifetime in seconds *)
-  expires : string option;
+  expires: string option;
   (** HTTP date format expiration *)
-  domain : string option;
+  domain: string option;
   (** Domain scope *)
-  path : string;
+  path: string;
   (** Path scope (default: "/") *)
-  secure : bool;
+  secure: bool;
   (** HTTPS only *)
-  http_only : bool;
+  http_only: bool;
   (** No JavaScript access *)
-  same_site : same_site option;
+  same_site: same_site option;
   (** CSRF protection *)
 }
 (** {2 Parsing} *)
@@ -101,7 +101,7 @@ type t = {
     - Multiple cookies separated by semicolons
     - Optional whitespace around names/values
     - Missing values (treated as empty string) *)
-val parse : string -> (string * string) list
+val parse: string -> (string * string) list
 
 (** Parse Set-Cookie header into cookie record.
     
@@ -112,7 +112,7 @@ val parse : string -> (string * string) list
     ]}
     
     Returns [None] if header is malformed. *)
-val parse_set_cookie : string -> t option
+val parse_set_cookie: string -> t option
 
 (** {2 Serialization} *)
 (** Serialize cookie to Set-Cookie header value.
@@ -124,7 +124,7 @@ val parse_set_cookie : string -> t option
     ]}
     
     Automatically includes all set attributes in correct format. *)
-val to_set_cookie : t -> string
+val to_set_cookie: t -> string
 
 (** {2 Construction} *)
 (** Create a cookie with sensible defaults.
@@ -140,17 +140,17 @@ val to_set_cookie : t -> string
       make ~name:"session" ~value:"abc123" 
            ~max_age:3600 ~secure:true ()
     ]} *)
-val make : name:string ->
-value:string ->
-?max_age:int ->
-?expires:string ->
-?path:string ->
-?domain:string ->
-?secure:bool ->
-?http_only:bool ->
-?same_site:same_site ->
-unit ->
-t
+val make: name:string ->
+  value:string ->
+  ?max_age:int ->
+  ?expires:string ->
+  ?path:string ->
+  ?domain:string ->
+  ?secure:bool ->
+  ?http_only:bool ->
+  ?same_site:same_site ->
+  unit ->
+  t
 
 (** Create a cookie with validation.
     
@@ -159,25 +159,26 @@ t
     - Value contains no control characters or semicolons
     
     Returns [Error msg] if validation fails. *)
-val make_validated : name:string ->
-value:string ->
-?max_age:int ->
-?expires:string ->
-?path:string ->
-?domain:string ->
-?secure:bool ->
-?http_only:bool ->
-?same_site:same_site ->
-unit ->
-(t, string) result
+val make_validated:
+  name:string ->
+  value:string ->
+  ?max_age:int ->
+  ?expires:string ->
+  ?path:string ->
+  ?domain:string ->
+  ?secure:bool ->
+  ?http_only:bool ->
+  ?same_site:same_site ->
+  unit ->
+  (t, string) result
 
 (** {2 Validation} *)
 (** Check if cookie name is valid (alphanumeric + underscore + hyphen). *)
-val is_valid_name : string -> bool
+val is_valid_name: string -> bool
 
 (** Check if cookie value is valid (no control characters). *)
-val is_valid_value : string -> bool
+val is_valid_value: string -> bool
 
 (** {2 Utilities} *)
 (** Convert SameSite to string ("Strict", "Lax", or "None"). *)
-val same_site_to_string : same_site -> string
+val same_site_to_string: same_site -> string

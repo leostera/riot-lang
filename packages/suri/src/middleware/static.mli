@@ -74,26 +74,26 @@ open Std
 (** {1 Configuration} *)
 
 type config = {
-  show_directory : bool;
+  show_directory: bool;
   (** Enable directory browsing with HTML listings. Default: [false] *)
-  index_files : string list;
+  index_files: string list;
   (** Index files to try for directories. Default: [["index.html"; "index.htm"]] *)
-  dotfiles :
+  dotfiles:
     [
       `Allow
       | `Deny
       | `Ignore
     ];
   (** How to handle dotfiles (.env, .git, etc). Default: [`Deny] *)
-  symlinks :
+  symlinks:
     [
       `Follow
       | `Deny
     ];
   (** How to handle symbolic links. Default: [`Follow] *)
-  headers : (string * string) list;
+  headers: (string * string) list;
   (** Additional headers to add to all responses. Default: [[]] *)
-  cache_control : string option;
+  cache_control: string option;
   (** Cache-Control header value. Default: [Some "public, max-age=3600"] *)
 }
 (** Static file serving configuration.
@@ -121,7 +121,7 @@ type config = {
     - [cache_control]: Cache-Control header. Use [None] for no caching,
       [Some "public, max-age=3600"] for 1 hour, or
       [Some "public, max-age=31536000, immutable"] for fingerprinted assets. *)
-val default_config : config
+val default_config: config
 
 (** Default configuration:
     - [show_directory = false] - No directory browsing
@@ -132,7 +132,7 @@ val default_config : config
     - [cache_control = Some "public, max-age=3600"] - 1 hour cache *)
 (** {1 Middleware} *)
 
-val middleware : ?config:config -> at:string -> Path.t -> unit -> Pipeline.middleware
+val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middleware
 
 (** Create static file serving middleware.
 

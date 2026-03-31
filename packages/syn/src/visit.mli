@@ -123,247 +123,247 @@ open Std
     how subtree skipping works in this model.
 *)
 type 'ctx walker = {
-  apply_argument : 'ctx -> Cst.apply_argument -> 'ctx;
-  attribute : 'ctx -> Cst.attribute -> 'ctx;
-  binding_operator_binding : 'ctx -> Cst.binding_operator_binding -> 'ctx;
-  class_declaration : 'ctx -> Cst.ClassDeclaration.t -> 'ctx;
-  class_definition : 'ctx -> Cst.ClassDefinition.t -> 'ctx;
-  class_expression : 'ctx -> Cst.ClassExpression.t -> 'ctx;
-  class_field : 'ctx -> Cst.class_field -> 'ctx;
-  class_type : 'ctx -> Cst.ClassType.t -> 'ctx;
-  class_type_declaration : 'ctx -> Cst.class_type_declaration -> 'ctx;
-  class_type_field : 'ctx -> Cst.ClassTypeField.t -> 'ctx;
-  core_type : 'ctx -> Cst.CoreType.t -> 'ctx;
-  exception_declaration : 'ctx -> Cst.exception_declaration -> 'ctx;
-  expression : 'ctx -> Cst.Expression.t -> 'ctx;
-  extension : 'ctx -> Cst.extension -> 'ctx;
-  external_declaration : 'ctx -> Cst.external_declaration -> 'ctx;
-  functor_parameter : 'ctx -> Cst.FunctorParameter.t -> 'ctx;
-  implementation : 'ctx -> Cst.implementation -> 'ctx;
-  include_statement : 'ctx -> Cst.include_statement -> 'ctx;
-  interface : 'ctx -> Cst.interface -> 'ctx;
-  let_binding : 'ctx -> Cst.LetBinding.t -> 'ctx;
-  match_case : 'ctx -> Cst.match_case -> 'ctx;
-  module_signature : 'ctx -> Cst.ModuleSignature.t -> 'ctx;
-  module_structure : 'ctx -> Cst.ModuleStructure.t -> 'ctx;
-  module_expression : 'ctx -> Cst.ModuleExpression.t -> 'ctx;
-  module_type : 'ctx -> Cst.ModuleType.t -> 'ctx;
-  module_type_constraint : 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
-  module_type_declaration : 'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx;
-  object_member : 'ctx -> Cst.ObjectMember.t -> 'ctx;
-  object_type_field : 'ctx -> Cst.object_type_field -> 'ctx;
-  open_statement : 'ctx -> Cst.OpenStatement.t -> 'ctx;
-  parameter : 'ctx -> Cst.Parameter.t -> 'ctx;
-  pattern : 'ctx -> Cst.Pattern.t -> 'ctx;
-  payload : 'ctx -> Cst.Payload.t -> 'ctx;
-  record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
-  record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
-  row_field : 'ctx -> Cst.RowField.t -> 'ctx;
-  signature_item : 'ctx -> Cst.SignatureItem.t -> 'ctx;
-  source_file : 'ctx -> Cst.SourceFile.t -> 'ctx;
-  structure_item : 'ctx -> Cst.StructureItem.t -> 'ctx;
-  type_binder : 'ctx -> Cst.TypeBinder.t -> 'ctx;
-  type_constraint : 'ctx -> Cst.TypeConstraint.t -> 'ctx;
-  type_declaration : 'ctx -> Cst.TypeDeclaration.t -> 'ctx;
-  type_definition : 'ctx -> Cst.TypeDefinition.t -> 'ctx;
-  type_extension : 'ctx -> Cst.TypeExtension.t -> 'ctx;
-  type_parameter : 'ctx -> Cst.TypeParameter.t -> 'ctx;
-  value_declaration : 'ctx -> Cst.value_declaration -> 'ctx;
-  variant_constructor : 'ctx -> Cst.VariantConstructor.t -> 'ctx;
-  descend_apply_argument : 'ctx -> Cst.apply_argument -> 'ctx;
-  descend_attribute : 'ctx -> Cst.attribute -> 'ctx;
-  descend_binding_operator_binding : 'ctx -> Cst.binding_operator_binding -> 'ctx;
-  descend_class_declaration : 'ctx -> Cst.ClassDeclaration.t -> 'ctx;
-  descend_class_definition : 'ctx -> Cst.ClassDefinition.t -> 'ctx;
-  descend_class_expression : 'ctx -> Cst.ClassExpression.t -> 'ctx;
-  descend_class_field : 'ctx -> Cst.class_field -> 'ctx;
-  descend_class_type : 'ctx -> Cst.ClassType.t -> 'ctx;
-  descend_class_type_declaration : 'ctx -> Cst.class_type_declaration -> 'ctx;
-  descend_class_type_field : 'ctx -> Cst.ClassTypeField.t -> 'ctx;
-  descend_core_type : 'ctx -> Cst.CoreType.t -> 'ctx;
-  descend_exception_declaration : 'ctx -> Cst.exception_declaration -> 'ctx;
-  descend_expression : 'ctx -> Cst.Expression.t -> 'ctx;
-  descend_extension : 'ctx -> Cst.extension -> 'ctx;
-  descend_external_declaration : 'ctx -> Cst.external_declaration -> 'ctx;
-  descend_functor_parameter : 'ctx -> Cst.FunctorParameter.t -> 'ctx;
-  descend_implementation : 'ctx -> Cst.implementation -> 'ctx;
-  descend_include_statement : 'ctx -> Cst.include_statement -> 'ctx;
-  descend_interface : 'ctx -> Cst.interface -> 'ctx;
-  descend_let_binding : 'ctx -> Cst.LetBinding.t -> 'ctx;
-  descend_match_case : 'ctx -> Cst.match_case -> 'ctx;
-  descend_module_signature : 'ctx -> Cst.ModuleSignature.t -> 'ctx;
-  descend_module_structure : 'ctx -> Cst.ModuleStructure.t -> 'ctx;
-  descend_module_expression : 'ctx -> Cst.ModuleExpression.t -> 'ctx;
-  descend_module_type : 'ctx -> Cst.ModuleType.t -> 'ctx;
-  descend_module_type_constraint : 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
-  descend_module_type_declaration : 'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx;
-  descend_object_member : 'ctx -> Cst.ObjectMember.t -> 'ctx;
-  descend_object_type_field : 'ctx -> Cst.object_type_field -> 'ctx;
-  descend_open_statement : 'ctx -> Cst.OpenStatement.t -> 'ctx;
-  descend_parameter : 'ctx -> Cst.Parameter.t -> 'ctx;
-  descend_pattern : 'ctx -> Cst.Pattern.t -> 'ctx;
-  descend_payload : 'ctx -> Cst.Payload.t -> 'ctx;
-  descend_record_expression : 'ctx -> Cst.RecordExpression.t -> 'ctx;
-  descend_record_type_field : 'ctx -> Cst.record_type_field -> 'ctx;
-  descend_row_field : 'ctx -> Cst.RowField.t -> 'ctx;
-  descend_signature_item : 'ctx -> Cst.SignatureItem.t -> 'ctx;
-  descend_source_file : 'ctx -> Cst.SourceFile.t -> 'ctx;
-  descend_structure_item : 'ctx -> Cst.StructureItem.t -> 'ctx;
-  descend_type_binder : 'ctx -> Cst.TypeBinder.t -> 'ctx;
-  descend_type_constraint : 'ctx -> Cst.TypeConstraint.t -> 'ctx;
-  descend_type_declaration : 'ctx -> Cst.TypeDeclaration.t -> 'ctx;
-  descend_type_definition : 'ctx -> Cst.TypeDefinition.t -> 'ctx;
-  descend_type_extension : 'ctx -> Cst.TypeExtension.t -> 'ctx;
-  descend_type_parameter : 'ctx -> Cst.TypeParameter.t -> 'ctx;
-  descend_value_declaration : 'ctx -> Cst.value_declaration -> 'ctx;
-  descend_variant_constructor : 'ctx -> Cst.VariantConstructor.t -> 'ctx;
+  apply_argument: 'ctx -> Cst.apply_argument -> 'ctx;
+  attribute: 'ctx -> Cst.attribute -> 'ctx;
+  binding_operator_binding: 'ctx -> Cst.binding_operator_binding -> 'ctx;
+  class_declaration: 'ctx -> Cst.ClassDeclaration.t -> 'ctx;
+  class_definition: 'ctx -> Cst.ClassDefinition.t -> 'ctx;
+  class_expression: 'ctx -> Cst.ClassExpression.t -> 'ctx;
+  class_field: 'ctx -> Cst.class_field -> 'ctx;
+  class_type: 'ctx -> Cst.ClassType.t -> 'ctx;
+  class_type_declaration: 'ctx -> Cst.class_type_declaration -> 'ctx;
+  class_type_field: 'ctx -> Cst.ClassTypeField.t -> 'ctx;
+  core_type: 'ctx -> Cst.CoreType.t -> 'ctx;
+  exception_declaration: 'ctx -> Cst.exception_declaration -> 'ctx;
+  expression: 'ctx -> Cst.Expression.t -> 'ctx;
+  extension: 'ctx -> Cst.extension -> 'ctx;
+  external_declaration: 'ctx -> Cst.external_declaration -> 'ctx;
+  functor_parameter: 'ctx -> Cst.FunctorParameter.t -> 'ctx;
+  implementation: 'ctx -> Cst.implementation -> 'ctx;
+  include_statement: 'ctx -> Cst.include_statement -> 'ctx;
+  interface: 'ctx -> Cst.interface -> 'ctx;
+  let_binding: 'ctx -> Cst.LetBinding.t -> 'ctx;
+  match_case: 'ctx -> Cst.match_case -> 'ctx;
+  module_signature: 'ctx -> Cst.ModuleSignature.t -> 'ctx;
+  module_structure: 'ctx -> Cst.ModuleStructure.t -> 'ctx;
+  module_expression: 'ctx -> Cst.ModuleExpression.t -> 'ctx;
+  module_type: 'ctx -> Cst.ModuleType.t -> 'ctx;
+  module_type_constraint: 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
+  module_type_declaration: 'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx;
+  object_member: 'ctx -> Cst.ObjectMember.t -> 'ctx;
+  object_type_field: 'ctx -> Cst.object_type_field -> 'ctx;
+  open_statement: 'ctx -> Cst.OpenStatement.t -> 'ctx;
+  parameter: 'ctx -> Cst.Parameter.t -> 'ctx;
+  pattern: 'ctx -> Cst.Pattern.t -> 'ctx;
+  payload: 'ctx -> Cst.Payload.t -> 'ctx;
+  record_expression: 'ctx -> Cst.RecordExpression.t -> 'ctx;
+  record_type_field: 'ctx -> Cst.record_type_field -> 'ctx;
+  row_field: 'ctx -> Cst.RowField.t -> 'ctx;
+  signature_item: 'ctx -> Cst.SignatureItem.t -> 'ctx;
+  source_file: 'ctx -> Cst.SourceFile.t -> 'ctx;
+  structure_item: 'ctx -> Cst.StructureItem.t -> 'ctx;
+  type_binder: 'ctx -> Cst.TypeBinder.t -> 'ctx;
+  type_constraint: 'ctx -> Cst.TypeConstraint.t -> 'ctx;
+  type_declaration: 'ctx -> Cst.TypeDeclaration.t -> 'ctx;
+  type_definition: 'ctx -> Cst.TypeDefinition.t -> 'ctx;
+  type_extension: 'ctx -> Cst.TypeExtension.t -> 'ctx;
+  type_parameter: 'ctx -> Cst.TypeParameter.t -> 'ctx;
+  value_declaration: 'ctx -> Cst.value_declaration -> 'ctx;
+  variant_constructor: 'ctx -> Cst.VariantConstructor.t -> 'ctx;
+  descend_apply_argument: 'ctx -> Cst.apply_argument -> 'ctx;
+  descend_attribute: 'ctx -> Cst.attribute -> 'ctx;
+  descend_binding_operator_binding: 'ctx -> Cst.binding_operator_binding -> 'ctx;
+  descend_class_declaration: 'ctx -> Cst.ClassDeclaration.t -> 'ctx;
+  descend_class_definition: 'ctx -> Cst.ClassDefinition.t -> 'ctx;
+  descend_class_expression: 'ctx -> Cst.ClassExpression.t -> 'ctx;
+  descend_class_field: 'ctx -> Cst.class_field -> 'ctx;
+  descend_class_type: 'ctx -> Cst.ClassType.t -> 'ctx;
+  descend_class_type_declaration: 'ctx -> Cst.class_type_declaration -> 'ctx;
+  descend_class_type_field: 'ctx -> Cst.ClassTypeField.t -> 'ctx;
+  descend_core_type: 'ctx -> Cst.CoreType.t -> 'ctx;
+  descend_exception_declaration: 'ctx -> Cst.exception_declaration -> 'ctx;
+  descend_expression: 'ctx -> Cst.Expression.t -> 'ctx;
+  descend_extension: 'ctx -> Cst.extension -> 'ctx;
+  descend_external_declaration: 'ctx -> Cst.external_declaration -> 'ctx;
+  descend_functor_parameter: 'ctx -> Cst.FunctorParameter.t -> 'ctx;
+  descend_implementation: 'ctx -> Cst.implementation -> 'ctx;
+  descend_include_statement: 'ctx -> Cst.include_statement -> 'ctx;
+  descend_interface: 'ctx -> Cst.interface -> 'ctx;
+  descend_let_binding: 'ctx -> Cst.LetBinding.t -> 'ctx;
+  descend_match_case: 'ctx -> Cst.match_case -> 'ctx;
+  descend_module_signature: 'ctx -> Cst.ModuleSignature.t -> 'ctx;
+  descend_module_structure: 'ctx -> Cst.ModuleStructure.t -> 'ctx;
+  descend_module_expression: 'ctx -> Cst.ModuleExpression.t -> 'ctx;
+  descend_module_type: 'ctx -> Cst.ModuleType.t -> 'ctx;
+  descend_module_type_constraint: 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx;
+  descend_module_type_declaration: 'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx;
+  descend_object_member: 'ctx -> Cst.ObjectMember.t -> 'ctx;
+  descend_object_type_field: 'ctx -> Cst.object_type_field -> 'ctx;
+  descend_open_statement: 'ctx -> Cst.OpenStatement.t -> 'ctx;
+  descend_parameter: 'ctx -> Cst.Parameter.t -> 'ctx;
+  descend_pattern: 'ctx -> Cst.Pattern.t -> 'ctx;
+  descend_payload: 'ctx -> Cst.Payload.t -> 'ctx;
+  descend_record_expression: 'ctx -> Cst.RecordExpression.t -> 'ctx;
+  descend_record_type_field: 'ctx -> Cst.record_type_field -> 'ctx;
+  descend_row_field: 'ctx -> Cst.RowField.t -> 'ctx;
+  descend_signature_item: 'ctx -> Cst.SignatureItem.t -> 'ctx;
+  descend_source_file: 'ctx -> Cst.SourceFile.t -> 'ctx;
+  descend_structure_item: 'ctx -> Cst.StructureItem.t -> 'ctx;
+  descend_type_binder: 'ctx -> Cst.TypeBinder.t -> 'ctx;
+  descend_type_constraint: 'ctx -> Cst.TypeConstraint.t -> 'ctx;
+  descend_type_declaration: 'ctx -> Cst.TypeDeclaration.t -> 'ctx;
+  descend_type_definition: 'ctx -> Cst.TypeDefinition.t -> 'ctx;
+  descend_type_extension: 'ctx -> Cst.TypeExtension.t -> 'ctx;
+  descend_type_parameter: 'ctx -> Cst.TypeParameter.t -> 'ctx;
+  descend_value_declaration: 'ctx -> Cst.value_declaration -> 'ctx;
+  descend_variant_constructor: 'ctx -> Cst.VariantConstructor.t -> 'ctx;
 }
 (** Default visitor that performs the standard child traversal for every node
     family without modifying the context. *)
 type 'ctx visitor = {
-  visit_apply_argument : 'ctx -> 'ctx walker -> Cst.apply_argument -> 'ctx;
-  visit_attribute : 'ctx -> 'ctx walker -> Cst.attribute -> 'ctx;
-  visit_binding_operator_binding : 'ctx -> 'ctx walker -> Cst.binding_operator_binding -> 'ctx;
-  visit_class_declaration : 'ctx -> 'ctx walker -> Cst.ClassDeclaration.t -> 'ctx;
-  visit_class_definition : 'ctx -> 'ctx walker -> Cst.ClassDefinition.t -> 'ctx;
-  visit_class_expression : 'ctx -> 'ctx walker -> Cst.ClassExpression.t -> 'ctx;
-  visit_class_field : 'ctx -> 'ctx walker -> Cst.class_field -> 'ctx;
-  visit_class_type : 'ctx -> 'ctx walker -> Cst.ClassType.t -> 'ctx;
-  visit_class_type_declaration : 'ctx -> 'ctx walker -> Cst.class_type_declaration -> 'ctx;
-  visit_class_type_field : 'ctx -> 'ctx walker -> Cst.ClassTypeField.t -> 'ctx;
-  visit_core_type : 'ctx -> 'ctx walker -> Cst.CoreType.t -> 'ctx;
-  visit_exception_declaration : 'ctx -> 'ctx walker -> Cst.exception_declaration -> 'ctx;
-  visit_expression : 'ctx -> 'ctx walker -> Cst.Expression.t -> 'ctx;
-  visit_extension : 'ctx -> 'ctx walker -> Cst.extension -> 'ctx;
-  visit_external_declaration : 'ctx -> 'ctx walker -> Cst.external_declaration -> 'ctx;
-  visit_functor_parameter : 'ctx -> 'ctx walker -> Cst.FunctorParameter.t -> 'ctx;
-  visit_implementation : 'ctx -> 'ctx walker -> Cst.implementation -> 'ctx;
-  visit_include_statement : 'ctx -> 'ctx walker -> Cst.include_statement -> 'ctx;
-  visit_interface : 'ctx -> 'ctx walker -> Cst.interface -> 'ctx;
-  visit_let_binding : 'ctx -> 'ctx walker -> Cst.LetBinding.t -> 'ctx;
-  visit_match_case : 'ctx -> 'ctx walker -> Cst.match_case -> 'ctx;
-  visit_module_signature : 'ctx -> 'ctx walker -> Cst.ModuleSignature.t -> 'ctx;
-  visit_module_structure : 'ctx -> 'ctx walker -> Cst.ModuleStructure.t -> 'ctx;
-  visit_module_expression : 'ctx -> 'ctx walker -> Cst.ModuleExpression.t -> 'ctx;
-  visit_module_type : 'ctx -> 'ctx walker -> Cst.ModuleType.t -> 'ctx;
-  visit_module_type_constraint : 'ctx -> 'ctx walker -> Cst.ModuleTypeConstraint.t -> 'ctx;
-  visit_module_type_declaration : 'ctx -> 'ctx walker -> Cst.ModuleTypeDeclaration.t -> 'ctx;
-  visit_object_member : 'ctx -> 'ctx walker -> Cst.ObjectMember.t -> 'ctx;
-  visit_object_type_field : 'ctx -> 'ctx walker -> Cst.object_type_field -> 'ctx;
-  visit_open_statement : 'ctx -> 'ctx walker -> Cst.OpenStatement.t -> 'ctx;
-  visit_parameter : 'ctx -> 'ctx walker -> Cst.Parameter.t -> 'ctx;
-  visit_pattern : 'ctx -> 'ctx walker -> Cst.Pattern.t -> 'ctx;
-  visit_payload : 'ctx -> 'ctx walker -> Cst.Payload.t -> 'ctx;
-  visit_record_expression : 'ctx -> 'ctx walker -> Cst.RecordExpression.t -> 'ctx;
-  visit_record_type_field : 'ctx -> 'ctx walker -> Cst.record_type_field -> 'ctx;
-  visit_row_field : 'ctx -> 'ctx walker -> Cst.RowField.t -> 'ctx;
-  visit_signature_item : 'ctx -> 'ctx walker -> Cst.SignatureItem.t -> 'ctx;
-  visit_source_file : 'ctx -> 'ctx walker -> Cst.SourceFile.t -> 'ctx;
-  visit_structure_item : 'ctx -> 'ctx walker -> Cst.StructureItem.t -> 'ctx;
-  visit_type_binder : 'ctx -> 'ctx walker -> Cst.TypeBinder.t -> 'ctx;
-  visit_type_constraint : 'ctx -> 'ctx walker -> Cst.TypeConstraint.t -> 'ctx;
-  visit_type_declaration : 'ctx -> 'ctx walker -> Cst.TypeDeclaration.t -> 'ctx;
-  visit_type_definition : 'ctx -> 'ctx walker -> Cst.TypeDefinition.t -> 'ctx;
-  visit_type_extension : 'ctx -> 'ctx walker -> Cst.TypeExtension.t -> 'ctx;
-  visit_type_parameter : 'ctx -> 'ctx walker -> Cst.TypeParameter.t -> 'ctx;
-  visit_value_declaration : 'ctx -> 'ctx walker -> Cst.value_declaration -> 'ctx;
-  visit_variant_constructor : 'ctx -> 'ctx walker -> Cst.VariantConstructor.t -> 'ctx;
+  visit_apply_argument: 'ctx -> 'ctx walker -> Cst.apply_argument -> 'ctx;
+  visit_attribute: 'ctx -> 'ctx walker -> Cst.attribute -> 'ctx;
+  visit_binding_operator_binding: 'ctx -> 'ctx walker -> Cst.binding_operator_binding -> 'ctx;
+  visit_class_declaration: 'ctx -> 'ctx walker -> Cst.ClassDeclaration.t -> 'ctx;
+  visit_class_definition: 'ctx -> 'ctx walker -> Cst.ClassDefinition.t -> 'ctx;
+  visit_class_expression: 'ctx -> 'ctx walker -> Cst.ClassExpression.t -> 'ctx;
+  visit_class_field: 'ctx -> 'ctx walker -> Cst.class_field -> 'ctx;
+  visit_class_type: 'ctx -> 'ctx walker -> Cst.ClassType.t -> 'ctx;
+  visit_class_type_declaration: 'ctx -> 'ctx walker -> Cst.class_type_declaration -> 'ctx;
+  visit_class_type_field: 'ctx -> 'ctx walker -> Cst.ClassTypeField.t -> 'ctx;
+  visit_core_type: 'ctx -> 'ctx walker -> Cst.CoreType.t -> 'ctx;
+  visit_exception_declaration: 'ctx -> 'ctx walker -> Cst.exception_declaration -> 'ctx;
+  visit_expression: 'ctx -> 'ctx walker -> Cst.Expression.t -> 'ctx;
+  visit_extension: 'ctx -> 'ctx walker -> Cst.extension -> 'ctx;
+  visit_external_declaration: 'ctx -> 'ctx walker -> Cst.external_declaration -> 'ctx;
+  visit_functor_parameter: 'ctx -> 'ctx walker -> Cst.FunctorParameter.t -> 'ctx;
+  visit_implementation: 'ctx -> 'ctx walker -> Cst.implementation -> 'ctx;
+  visit_include_statement: 'ctx -> 'ctx walker -> Cst.include_statement -> 'ctx;
+  visit_interface: 'ctx -> 'ctx walker -> Cst.interface -> 'ctx;
+  visit_let_binding: 'ctx -> 'ctx walker -> Cst.LetBinding.t -> 'ctx;
+  visit_match_case: 'ctx -> 'ctx walker -> Cst.match_case -> 'ctx;
+  visit_module_signature: 'ctx -> 'ctx walker -> Cst.ModuleSignature.t -> 'ctx;
+  visit_module_structure: 'ctx -> 'ctx walker -> Cst.ModuleStructure.t -> 'ctx;
+  visit_module_expression: 'ctx -> 'ctx walker -> Cst.ModuleExpression.t -> 'ctx;
+  visit_module_type: 'ctx -> 'ctx walker -> Cst.ModuleType.t -> 'ctx;
+  visit_module_type_constraint: 'ctx -> 'ctx walker -> Cst.ModuleTypeConstraint.t -> 'ctx;
+  visit_module_type_declaration: 'ctx -> 'ctx walker -> Cst.ModuleTypeDeclaration.t -> 'ctx;
+  visit_object_member: 'ctx -> 'ctx walker -> Cst.ObjectMember.t -> 'ctx;
+  visit_object_type_field: 'ctx -> 'ctx walker -> Cst.object_type_field -> 'ctx;
+  visit_open_statement: 'ctx -> 'ctx walker -> Cst.OpenStatement.t -> 'ctx;
+  visit_parameter: 'ctx -> 'ctx walker -> Cst.Parameter.t -> 'ctx;
+  visit_pattern: 'ctx -> 'ctx walker -> Cst.Pattern.t -> 'ctx;
+  visit_payload: 'ctx -> 'ctx walker -> Cst.Payload.t -> 'ctx;
+  visit_record_expression: 'ctx -> 'ctx walker -> Cst.RecordExpression.t -> 'ctx;
+  visit_record_type_field: 'ctx -> 'ctx walker -> Cst.record_type_field -> 'ctx;
+  visit_row_field: 'ctx -> 'ctx walker -> Cst.RowField.t -> 'ctx;
+  visit_signature_item: 'ctx -> 'ctx walker -> Cst.SignatureItem.t -> 'ctx;
+  visit_source_file: 'ctx -> 'ctx walker -> Cst.SourceFile.t -> 'ctx;
+  visit_structure_item: 'ctx -> 'ctx walker -> Cst.StructureItem.t -> 'ctx;
+  visit_type_binder: 'ctx -> 'ctx walker -> Cst.TypeBinder.t -> 'ctx;
+  visit_type_constraint: 'ctx -> 'ctx walker -> Cst.TypeConstraint.t -> 'ctx;
+  visit_type_declaration: 'ctx -> 'ctx walker -> Cst.TypeDeclaration.t -> 'ctx;
+  visit_type_definition: 'ctx -> 'ctx walker -> Cst.TypeDefinition.t -> 'ctx;
+  visit_type_extension: 'ctx -> 'ctx walker -> Cst.TypeExtension.t -> 'ctx;
+  visit_type_parameter: 'ctx -> 'ctx walker -> Cst.TypeParameter.t -> 'ctx;
+  visit_value_declaration: 'ctx -> 'ctx walker -> Cst.value_declaration -> 'ctx;
+  visit_variant_constructor: 'ctx -> 'ctx walker -> Cst.VariantConstructor.t -> 'ctx;
 }
-val default : 'ctx visitor
+val default: 'ctx visitor
 
 (** Build a traversal engine from a visitor. *)
-val walker : 'ctx visitor -> 'ctx walker
+val walker: 'ctx visitor -> 'ctx walker
 
-val apply_argument : 'ctx visitor -> 'ctx -> Cst.apply_argument -> 'ctx
+val apply_argument: 'ctx visitor -> 'ctx -> Cst.apply_argument -> 'ctx
 
-val attribute : 'ctx visitor -> 'ctx -> Cst.attribute -> 'ctx
+val attribute: 'ctx visitor -> 'ctx -> Cst.attribute -> 'ctx
 
-val binding_operator_binding : 'ctx visitor -> 'ctx -> Cst.binding_operator_binding -> 'ctx
+val binding_operator_binding: 'ctx visitor -> 'ctx -> Cst.binding_operator_binding -> 'ctx
 
-val class_declaration : 'ctx visitor -> 'ctx -> Cst.ClassDeclaration.t -> 'ctx
+val class_declaration: 'ctx visitor -> 'ctx -> Cst.ClassDeclaration.t -> 'ctx
 
-val class_definition : 'ctx visitor -> 'ctx -> Cst.ClassDefinition.t -> 'ctx
+val class_definition: 'ctx visitor -> 'ctx -> Cst.ClassDefinition.t -> 'ctx
 
-val class_expression : 'ctx visitor -> 'ctx -> Cst.ClassExpression.t -> 'ctx
+val class_expression: 'ctx visitor -> 'ctx -> Cst.ClassExpression.t -> 'ctx
 
-val class_field : 'ctx visitor -> 'ctx -> Cst.class_field -> 'ctx
+val class_field: 'ctx visitor -> 'ctx -> Cst.class_field -> 'ctx
 
-val class_type : 'ctx visitor -> 'ctx -> Cst.ClassType.t -> 'ctx
+val class_type: 'ctx visitor -> 'ctx -> Cst.ClassType.t -> 'ctx
 
-val class_type_declaration : 'ctx visitor -> 'ctx -> Cst.class_type_declaration -> 'ctx
+val class_type_declaration: 'ctx visitor -> 'ctx -> Cst.class_type_declaration -> 'ctx
 
-val class_type_field : 'ctx visitor -> 'ctx -> Cst.ClassTypeField.t -> 'ctx
+val class_type_field: 'ctx visitor -> 'ctx -> Cst.ClassTypeField.t -> 'ctx
 
-val core_type : 'ctx visitor -> 'ctx -> Cst.CoreType.t -> 'ctx
+val core_type: 'ctx visitor -> 'ctx -> Cst.CoreType.t -> 'ctx
 
-val exception_declaration : 'ctx visitor -> 'ctx -> Cst.exception_declaration -> 'ctx
+val exception_declaration: 'ctx visitor -> 'ctx -> Cst.exception_declaration -> 'ctx
 
-val expression : 'ctx visitor -> 'ctx -> Cst.Expression.t -> 'ctx
+val expression: 'ctx visitor -> 'ctx -> Cst.Expression.t -> 'ctx
 
-val extension : 'ctx visitor -> 'ctx -> Cst.extension -> 'ctx
+val extension: 'ctx visitor -> 'ctx -> Cst.extension -> 'ctx
 
-val external_declaration : 'ctx visitor -> 'ctx -> Cst.external_declaration -> 'ctx
+val external_declaration: 'ctx visitor -> 'ctx -> Cst.external_declaration -> 'ctx
 
-val functor_parameter : 'ctx visitor -> 'ctx -> Cst.FunctorParameter.t -> 'ctx
+val functor_parameter: 'ctx visitor -> 'ctx -> Cst.FunctorParameter.t -> 'ctx
 
-val implementation : 'ctx visitor -> 'ctx -> Cst.implementation -> 'ctx
+val implementation: 'ctx visitor -> 'ctx -> Cst.implementation -> 'ctx
 
-val include_statement : 'ctx visitor -> 'ctx -> Cst.include_statement -> 'ctx
+val include_statement: 'ctx visitor -> 'ctx -> Cst.include_statement -> 'ctx
 
-val interface : 'ctx visitor -> 'ctx -> Cst.interface -> 'ctx
+val interface: 'ctx visitor -> 'ctx -> Cst.interface -> 'ctx
 
-val let_binding : 'ctx visitor -> 'ctx -> Cst.LetBinding.t -> 'ctx
+val let_binding: 'ctx visitor -> 'ctx -> Cst.LetBinding.t -> 'ctx
 
-val match_case : 'ctx visitor -> 'ctx -> Cst.match_case -> 'ctx
+val match_case: 'ctx visitor -> 'ctx -> Cst.match_case -> 'ctx
 
-val module_signature : 'ctx visitor -> 'ctx -> Cst.ModuleSignature.t -> 'ctx
+val module_signature: 'ctx visitor -> 'ctx -> Cst.ModuleSignature.t -> 'ctx
 
-val module_structure : 'ctx visitor -> 'ctx -> Cst.ModuleStructure.t -> 'ctx
+val module_structure: 'ctx visitor -> 'ctx -> Cst.ModuleStructure.t -> 'ctx
 
-val module_expression : 'ctx visitor -> 'ctx -> Cst.ModuleExpression.t -> 'ctx
+val module_expression: 'ctx visitor -> 'ctx -> Cst.ModuleExpression.t -> 'ctx
 
-val module_type : 'ctx visitor -> 'ctx -> Cst.ModuleType.t -> 'ctx
+val module_type: 'ctx visitor -> 'ctx -> Cst.ModuleType.t -> 'ctx
 
-val module_type_constraint : 'ctx visitor -> 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx
+val module_type_constraint: 'ctx visitor -> 'ctx -> Cst.ModuleTypeConstraint.t -> 'ctx
 
-val module_type_declaration : 'ctx visitor -> 'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx
+val module_type_declaration: 'ctx visitor -> 'ctx -> Cst.ModuleTypeDeclaration.t -> 'ctx
 
-val object_member : 'ctx visitor -> 'ctx -> Cst.ObjectMember.t -> 'ctx
+val object_member: 'ctx visitor -> 'ctx -> Cst.ObjectMember.t -> 'ctx
 
-val object_type_field : 'ctx visitor -> 'ctx -> Cst.object_type_field -> 'ctx
+val object_type_field: 'ctx visitor -> 'ctx -> Cst.object_type_field -> 'ctx
 
-val open_statement : 'ctx visitor -> 'ctx -> Cst.OpenStatement.t -> 'ctx
+val open_statement: 'ctx visitor -> 'ctx -> Cst.OpenStatement.t -> 'ctx
 
-val parameter : 'ctx visitor -> 'ctx -> Cst.Parameter.t -> 'ctx
+val parameter: 'ctx visitor -> 'ctx -> Cst.Parameter.t -> 'ctx
 
-val pattern : 'ctx visitor -> 'ctx -> Cst.Pattern.t -> 'ctx
+val pattern: 'ctx visitor -> 'ctx -> Cst.Pattern.t -> 'ctx
 
-val payload : 'ctx visitor -> 'ctx -> Cst.Payload.t -> 'ctx
+val payload: 'ctx visitor -> 'ctx -> Cst.Payload.t -> 'ctx
 
-val record_expression : 'ctx visitor -> 'ctx -> Cst.RecordExpression.t -> 'ctx
+val record_expression: 'ctx visitor -> 'ctx -> Cst.RecordExpression.t -> 'ctx
 
-val record_type_field : 'ctx visitor -> 'ctx -> Cst.record_type_field -> 'ctx
+val record_type_field: 'ctx visitor -> 'ctx -> Cst.record_type_field -> 'ctx
 
-val row_field : 'ctx visitor -> 'ctx -> Cst.RowField.t -> 'ctx
+val row_field: 'ctx visitor -> 'ctx -> Cst.RowField.t -> 'ctx
 
-val signature_item : 'ctx visitor -> 'ctx -> Cst.SignatureItem.t -> 'ctx
+val signature_item: 'ctx visitor -> 'ctx -> Cst.SignatureItem.t -> 'ctx
 
-val source_file : 'ctx visitor -> 'ctx -> Cst.SourceFile.t -> 'ctx
+val source_file: 'ctx visitor -> 'ctx -> Cst.SourceFile.t -> 'ctx
 
-val structure_item : 'ctx visitor -> 'ctx -> Cst.StructureItem.t -> 'ctx
+val structure_item: 'ctx visitor -> 'ctx -> Cst.StructureItem.t -> 'ctx
 
-val type_binder : 'ctx visitor -> 'ctx -> Cst.TypeBinder.t -> 'ctx
+val type_binder: 'ctx visitor -> 'ctx -> Cst.TypeBinder.t -> 'ctx
 
-val type_constraint : 'ctx visitor -> 'ctx -> Cst.TypeConstraint.t -> 'ctx
+val type_constraint: 'ctx visitor -> 'ctx -> Cst.TypeConstraint.t -> 'ctx
 
-val type_declaration : 'ctx visitor -> 'ctx -> Cst.TypeDeclaration.t -> 'ctx
+val type_declaration: 'ctx visitor -> 'ctx -> Cst.TypeDeclaration.t -> 'ctx
 
-val type_definition : 'ctx visitor -> 'ctx -> Cst.TypeDefinition.t -> 'ctx
+val type_definition: 'ctx visitor -> 'ctx -> Cst.TypeDefinition.t -> 'ctx
 
-val type_extension : 'ctx visitor -> 'ctx -> Cst.TypeExtension.t -> 'ctx
+val type_extension: 'ctx visitor -> 'ctx -> Cst.TypeExtension.t -> 'ctx
 
-val type_parameter : 'ctx visitor -> 'ctx -> Cst.TypeParameter.t -> 'ctx
+val type_parameter: 'ctx visitor -> 'ctx -> Cst.TypeParameter.t -> 'ctx
 
-val value_declaration : 'ctx visitor -> 'ctx -> Cst.value_declaration -> 'ctx
+val value_declaration: 'ctx visitor -> 'ctx -> Cst.value_declaration -> 'ctx
 
-val variant_constructor : 'ctx visitor -> 'ctx -> Cst.VariantConstructor.t -> 'ctx
+val variant_constructor: 'ctx visitor -> 'ctx -> Cst.VariantConstructor.t -> 'ctx

@@ -5,24 +5,28 @@ open Std.Collections
 
 module type Transport = sig
   type t
-  val send : t -> string -> (unit, string) result
+  val send: t -> string -> (unit, string) result
 
-  val receive : t -> (string, string) result
+  val receive: t -> (string, string) result
 
-  val close : t -> unit
+  val close: t -> unit
 end
 
 type ('request, 'response) t =
   | Client : {
-    transport_mod : (module Transport with type t = 'a);
-    transport : 'a;
-    protocol_mod :
+    transport_mod: (module Transport with type t = 'a);
+    transport: 'a;
+    protocol_mod:
       (module Common.ApplicationProtocol with type request = 'req and type response = 'res);
-    mutable next_id : int;
+    mutable next_id: int;
   } -> ('req, 'res) t
 
-let create = fun ~transport:transport_mod ~protocol:protocol_mod transport ->
-  Client {transport_mod; transport; protocol_mod; next_id = 1}
+let create = fun ~transport:transport_mod ~protocol:protocol_mod transport -> Client {
+  transport_mod;
+  transport;
+  protocol_mod;
+  next_id = 1
+}
 
 let send_raw_request = fun (Client { transport_mod; transport; _ }) json_str ->
   let module T = (val transport_mod : Transport with type t = _) in

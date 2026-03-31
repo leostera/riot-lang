@@ -151,9 +151,13 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
       let result =
         Coordinator.build_workspace ~workspace ~toolchain ~store ~target:planner_target
           ~scope:((
-            match scope with
-            | Protocol.Runtime -> Tusk_planner.Package_graph.Runtime
-            | Protocol.Dev -> Tusk_planner.Package_graph.Dev
+            (
+              (
+                match scope with
+                | Protocol.Runtime -> Tusk_planner.Package_graph.Runtime
+                | Protocol.Dev -> Tusk_planner.Package_graph.Dev
+              )
+            )
           ))
           ~concurrency
           ~build_ctx

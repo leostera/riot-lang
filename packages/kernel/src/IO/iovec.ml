@@ -4,9 +4,9 @@ open Sync
 open Sync.Cell
 
 type iov = {
-  ba : bytes;
-  off : int;
-  len : int;
+  ba: bytes;
+  off: int;
+  len: int;
 }
 
 type t = iov array

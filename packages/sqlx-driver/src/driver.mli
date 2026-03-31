@@ -66,14 +66,14 @@ module type Intf = sig
   type error
   (* ## Driver Information *)
   (* The name of the database driver (e.g., "PostgreSQL", "SQLite") *)
-  val name : string (* ## Error Conversion *)
+  val name: string (* ## Error Conversion *)
 
   (* ## Error Conversion *)
   (* Convert driver error to human-readable string *)
-  val error_to_string : error -> string (* Convert driver error to JSON for serialization *)
+  val error_to_string: error -> string (* Convert driver error to JSON for serialization *)
 
   (* Convert driver error to JSON for serialization *)
-  val error_to_json : error -> Data.Json.t (* ## Connection Management *)
+  val error_to_json: error -> Data.Json.t (* ## Connection Management *)
 
   (* ## Connection Management *)
   (* `connect config` establishes a new connection to the database.
@@ -84,17 +84,17 @@ module type Intf = sig
      - Perform authentication
      - Set up any initial session parameters
   *)
-  val connect : config -> (connection, error) result (* `close conn` closes the database connection and releases all resources.
+  val connect: config -> (connection, error) result (* `close conn` closes the database connection and releases all resources.
      This should be safe to call multiple times. *)
 
   (* `close conn` closes the database connection and releases all resources.
      This should be safe to call multiple times. *)
-  val close : connection -> unit (* `ping conn` checks if the connection is still alive.
+  val close: connection -> unit (* `ping conn` checks if the connection is still alive.
      Returns `true` if the connection is active, `false` otherwise. *)
 
   (* `ping conn` checks if the connection is still alive.
      Returns `true` if the connection is active, `false` otherwise. *)
-  val ping : connection -> bool (* ## Query Execution *)
+  val ping: connection -> bool (* ## Query Execution *)
 
   (* ## Query Execution *)
   (* `prepare conn sql` prepares a SQL statement for execution.
@@ -104,7 +104,7 @@ module type Intf = sig
      - Better performance when executing the same query multiple times
      - Protection against SQL injection when using parameters
   *)
-  val prepare : connection -> string -> (statement, error) result (* `execute stmt params` executes a prepared statement with the given parameters.
+  val prepare: connection -> string -> (statement, error) result (* `execute stmt params` executes a prepared statement with the given parameters.
      Returns `Ok result_set` on success or `Error error` on failure.
      
      Parameters are substituted for placeholders in the prepared statement.
@@ -121,7 +121,7 @@ module type Intf = sig
      - PostgreSQL: $1, $2, $3, ...
      - SQLite/MySQL: ?, ?, ?, ...
   *)
-  val execute : statement -> Value.t list -> (result_set, error) result (* ## Result Processing *)
+  val execute: statement -> Value.t list -> (result_set, error) result (* ## Result Processing *)
 
   (* ## Result Processing *)
   (* `fetch_row result_set` fetches the next row from the result set.
@@ -129,7 +129,7 @@ module type Intf = sig
      
      This function should be called repeatedly to iterate through all results.
   *)
-  val fetch_row : result_set -> Row.t option (* `rows_affected result_set` returns the number of rows affected by the query.
+  val fetch_row: result_set -> Row.t option (* `rows_affected result_set` returns the number of rows affected by the query.
      For INSERT, UPDATE, DELETE queries, this is the number of rows modified.
      For SELECT queries, this may return 0 or the total row count depending on the driver.
   *)
@@ -138,7 +138,7 @@ module type Intf = sig
      For INSERT, UPDATE, DELETE queries, this is the number of rows modified.
      For SELECT queries, this may return 0 or the total row count depending on the driver.
   *)
-  val rows_affected : result_set -> int (* ## Transaction Management *)
+  val rows_affected: result_set -> int (* ## Transaction Management *)
 
   (* ## Transaction Management *)
   (* `begin_transaction conn` starts a new database transaction.
@@ -147,7 +147,7 @@ module type Intf = sig
      After calling this, all subsequent operations on the connection
      are part of the transaction until `commit` or `rollback` is called.
   *)
-  val begin_transaction : connection -> (unit, error) result (* `commit conn` commits the current transaction.
+  val begin_transaction: connection -> (unit, error) result (* `commit conn` commits the current transaction.
      Returns `Ok ()` on success or `Error error` on failure.
      
      This makes all changes in the transaction permanent.
@@ -158,7 +158,7 @@ module type Intf = sig
      
      This makes all changes in the transaction permanent.
   *)
-  val commit : connection -> (unit, error) result (* `rollback conn` rolls back the current transaction.
+  val commit: connection -> (unit, error) result (* `rollback conn` rolls back the current transaction.
      Returns `Ok ()` on success or `Error error` on failure.
      
      This discards all changes made in the transaction.
@@ -169,7 +169,7 @@ module type Intf = sig
      
      This discards all changes made in the transaction.
   *)
-  val rollback : connection -> (unit, error) result (* `set_isolation_level conn level` sets the transaction isolation level.
+  val rollback: connection -> (unit, error) result (* `set_isolation_level conn level` sets the transaction isolation level.
      Returns `Ok ()` on success or `Error error` on failure.
      
      Isolation levels (from least to most isolated):
@@ -192,10 +192,10 @@ module type Intf = sig
      
      Not all databases support all isolation levels.
   *)
-  val set_isolation_level : connection -> [
-    `Read_uncommitted
-    | `Read_committed
-    | `Repeatable_read
-    | `Serializable
-  ] -> (unit, error) result
+  val set_isolation_level: connection -> [
+      `Read_uncommitted
+      | `Read_committed
+      | `Repeatable_read
+      | `Serializable
+    ] -> (unit, error) result
 end

@@ -50,24 +50,24 @@ type t = Kernel.Fs.File.Metadata.t
     ## Examples
 
     ```ocaml if Metadata.is_file meta then process_file path ``` *)
-val file_type : t -> [
-  | `Regular
-  | `Directory
-  | `Symlink
-  | `Block
-  | `Character
-  | `Fifo
-  | `Socket
-]
+val file_type: t -> [
+    | `Regular
+    | `Directory
+    | `Symlink
+    | `Block
+    | `Character
+    | `Fifo
+    | `Socket
+  ]
 
-val is_file : t -> bool
+val is_file: t -> bool
 
 (** Returns [true] if this is a directory.
 
     ## Examples
 
     ```ocaml if Metadata.is_dir meta then list_directory path ``` *)
-val is_dir : t -> bool
+val is_dir: t -> bool
 
 (** Returns [true] if this is a symbolic link.
 
@@ -75,7 +75,7 @@ val is_dir : t -> bool
 
     ```ocaml if Metadata.is_symlink meta then Log.warn "Following symlink" ```
 *)
-val is_symlink : t -> bool
+val is_symlink: t -> bool
 
 (** Returns file size in bytes.
 
@@ -88,7 +88,7 @@ val is_symlink : t -> bool
 
     For directories, this is the size of the directory structure itself, not the
     total size of contained files. *)
-val len : t -> int
+val len: t -> int
 
 (** Returns file permissions.
 
@@ -96,7 +96,7 @@ val len : t -> int
 
     ```ocaml let perms = Metadata.permissions meta in if Permissions.user_write
     perms then modify_file path ``` *)
-val permissions : t -> Permissions.t
+val permissions: t -> Permissions.t
 
 (** ## Timestamps *)
 (** Returns last access time (atime) as seconds since Unix epoch.
@@ -109,7 +109,7 @@ val permissions : t -> Permissions.t
     ## Note
 
     Some filesystems or mount options (noatime) may not update access times. *)
-val accessed : t -> float
+val accessed: t -> float
 
 (** Returns last modification time (mtime) as seconds since Unix epoch.
 
@@ -117,7 +117,7 @@ val accessed : t -> float
 
     ```ocaml let mtime = Metadata.modified meta in if mtime > last_build_time
     then rebuild_needed () ``` *)
-val modified : t -> float
+val modified: t -> float
 
 (** Returns creation time (birth time) if available.
 
@@ -131,7 +131,7 @@ val modified : t -> float
     - **macOS**: Returns creation time (birth time)
     - **Linux**: Returns None (most filesystems don't track creation time)
     - **Windows**: Returns creation time *)
-val created : t -> float option
+val created: t -> float option
 
 (** ## Unix-specific *)
 (** Returns Unix mode bits (permissions + file type).
@@ -140,7 +140,7 @@ val created : t -> float option
 
     ```ocaml let mode = Metadata.mode meta in Printf.printf "Mode: 0o%o\n" mode
     ``` *)
-val mode : t -> int
+val mode: t -> int
 
 (** Returns user ID of the file owner.
 
@@ -148,14 +148,14 @@ val mode : t -> int
 
     ```ocaml let uid = Metadata.uid meta in if uid = Unix.getuid () then
     Log.info "You own this file" ``` *)
-val uid : t -> int
+val uid: t -> int
 
 (** Returns group ID of the file.
 
     ## Examples
 
     ```ocaml let gid = Metadata.gid meta ``` *)
-val gid : t -> int
+val gid: t -> int
 
 (** Returns number of hard links to the file.
 
@@ -163,21 +163,21 @@ val gid : t -> int
 
     ```ocaml let links = Metadata.nlink meta in if links > 1 then Log.info "File
     has %d hard links" links ``` *)
-val nlink : t -> int
+val nlink: t -> int
 
 (** Returns inode number.
 
     ## Examples
 
     ```ocaml let inode = Metadata.ino meta ``` *)
-val ino : t -> int
+val ino: t -> int
 
 (** Returns device ID containing the file.
 
     ## Examples
 
     ```ocaml let device = Metadata.dev meta ``` *)
-val dev : t -> int
+val dev: t -> int
 
 (** Returns device ID for special files (block/character devices).
 
@@ -185,4 +185,4 @@ val dev : t -> int
 
     ```ocaml if Metadata.file_type meta = `Block then let dev_id = Metadata.rdev
     meta ``` *)
-val rdev : t -> int
+val rdev: t -> int

@@ -1,14 +1,18 @@
 open Std
 
 type t = {
-  status : Net.Http.Status.t;
-  headers : Net.Http.Header.t;
-  version : Net.Http.Version.t;
-  body : string;
+  status: Net.Http.Status.t;
+  headers: Net.Http.Header.t;
+  version: Net.Http.Version.t;
+  body: string;
 }
 
-let make = fun status ?(headers = []) ?(version = Net.Http.Version.Http11) ?(body = "") () ->
-  {status; version; headers = Net.Http.Header.of_list headers; body}
+let make = fun status ?(headers = []) ?(version = Net.Http.Version.Http11) ?(body = "") () -> {
+  status;
+  version;
+  headers = Net.Http.Header.of_list headers;
+  body
+}
 
 type response = ?headers:(string * string) list ->
 ?version:Net.Http.Version.t ->

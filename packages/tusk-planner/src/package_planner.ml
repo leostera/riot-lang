@@ -7,20 +7,20 @@ module G = Std.Graph.SimpleGraph
 
 type plan_result =
   | Planned of {
-      package_key : Package.key;
-      package : Package.t;
-      module_graph : Module_node.t G.t;
-      action_graph : Action_graph.t;
-      hash : Std.Crypto.hash;
-      depset : Dependency.t list;
+      package_key: Package.key;
+      package: Package.t;
+      module_graph: Module_node.t G.t;
+      action_graph: Action_graph.t;
+      hash: Std.Crypto.hash;
+      depset: Dependency.t list;
     }
   | MissingDependencies of {
-      package : Package.t;
-      missing : Package.t list;
+      package: Package.t;
+      missing: Package.t list;
     }
   | FailedDependencies of {
-      package : Package.t;
-      failed : Package.t list;
+      package: Package.t;
+      failed: Package.t list;
     }
 
 type check_deps_error =
@@ -304,14 +304,13 @@ let module_graph_of_json = fun json ->
       )
     | _ -> Error "module graph payload must be an object"
 
-let plan_bundle_to_json = fun ~(package:Package.t) ~(module_graph:Module_node.t G.t) ~(action_graph:Action_graph.t) ->
-  Std.Data.Json.Object [
-    ("version", Std.Data.Json.Int 1);
-    ("package", Std.Data.Json.String package.name);
-    ("module_graph", module_graph_to_json module_graph);
-    ("action_graph", Action_graph.to_json action_graph);
+let plan_bundle_to_json = fun ~(package:Package.t) ~(module_graph:Module_node.t G.t) ~(action_graph:Action_graph.t) -> Std.Data.Json.Object [
+  ("version", Std.Data.Json.Int 1);
+  ("package", Std.Data.Json.String package.name);
+  ("module_graph", module_graph_to_json module_graph);
+  ("action_graph", Action_graph.to_json action_graph);
 
-  ]
+]
 
 let plan_bundle_of_json = fun ~(package:Package.t) json ->
   let open Std.Data.Json in

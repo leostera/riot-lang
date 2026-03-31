@@ -11,10 +11,10 @@ type message =
   | Close of int option * string
 
 type t = {
-  stream : Net.TcpStream.t;
-  uri : Net.Uri.t;
-  mutable buffer : Buffer.t;
-  mutable closed : bool;
+  stream: Net.TcpStream.t;
+  uri: Net.Uri.t;
+  mutable buffer: Buffer.t;
+  mutable closed: bool;
 }
 
 let generate_websocket_key = fun () ->

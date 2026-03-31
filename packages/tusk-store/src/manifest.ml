@@ -7,17 +7,17 @@ type version =
   V0
 
 type file_entry = {
-  path : Path.t;
-  hash : string;  (* SHA512 hash of the file *)
-  size : int;
+  path: Path.t;
+  hash: string;  (* SHA512 hash of the file *)
+  size: int;
 }
 
 type t = {
-  version : version;
-  package : string;
-  build_hash : string;  (* The build hash *)
-  timestamp : Time.SystemTime.t;
-  files : file_entry list;
+  version: version;
+  package: string;
+  build_hash: string;  (* The build hash *)
+  timestamp: Time.SystemTime.t;
+  files: file_entry list;
 }
 
 (** Convert manifest to JSON *)

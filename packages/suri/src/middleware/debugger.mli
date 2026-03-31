@@ -144,7 +144,7 @@
     - {!Component} - HTML component system used to render error pages
     - [Printexc] - OCaml exception and backtrace utilities
 *)
-val debugger : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val debugger: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 (** Debugger middleware that catches exceptions and displays detailed error pages.
     

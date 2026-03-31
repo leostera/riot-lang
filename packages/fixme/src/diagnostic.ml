@@ -8,20 +8,20 @@ type severity =
 
 type kind =
   | Known of {
-      rule_id : string;
-      message : string;
+      rule_id: string;
+      message: string;
     }
   | Generic of {
-      rule_id : string;
-      message : string;
+      rule_id: string;
+      message: string;
     }
 
 type t = {
-  severity : severity;
-  kind : kind;
-  span : Syn.Ceibo.Span.t;
-  suggestion : string option;
-  fix : Fix.fix option;
+  severity: severity;
+  kind: kind;
+  span: Syn.Ceibo.Span.t;
+  suggestion: string option;
+  fix: Fix.fix option;
 }
 
 let make = fun ~severity ~kind ~span ?suggestion ?fix () -> {severity; kind; span; suggestion; fix}

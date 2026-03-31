@@ -6,7 +6,7 @@ type 'msg attr =
   | Event of string * (string -> 'msg)
 
 type 'msg t =
-  | El of { tag : string; attrs : 'msg attr list; children : 'msg t list; }
+  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list; }
   | Text of string
   | Fragment of 'msg t list
 
@@ -423,14 +423,13 @@ let rec to_html = fun t ->
       else
         let children_html = String.concat "" (List.map to_html children) in
         "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
-and attrs_to_string =
-  fun attrs ->
-    attrs |> List.filter_map
-      (
-        function
-        | Attr (k, v) -> Some (k ^ "=\"" ^ escape_attr v ^ "\"")
-        | Event _ -> None
-      ) |> String.concat " "
+and attrs_to_string = fun attrs ->
+  attrs |> List.filter_map
+    (
+      function
+      | Attr (k, v) -> Some (k ^ "=\"" ^ escape_attr v ^ "\"")
+      | Event _ -> None
+    ) |> String.concat " "
 and escape_attr = fun str ->
   (* HTML attribute escaping *)
   let buf = IO.Buffer.create (String.length str) in

@@ -5,8 +5,8 @@ open Collections
 type id = string
 
 type t = {
-  id : id;
-  fn : Event.t -> unit;
+  id: id;
+  fn: Event.t -> unit;
 }
 
 let handlers : (id, t) HashMap.t = HashMap.create ()

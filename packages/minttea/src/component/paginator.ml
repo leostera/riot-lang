@@ -6,14 +6,14 @@ type style =
   | Numerals
 
 type t = {
-  style : style;
-  page : int;
-  per_page : int;
-  total_pages : int;
-  active_dot : string;
-  inactive_dot : string;
-  numerals_format : int -> int -> string;
-  text_style : Style.t;
+  style: style;
+  page: int;
+  per_page: int;
+  total_pages: int;
+  active_dot: string;
+  inactive_dot: string;
+  numerals_format: int -> int -> string;
+  text_style: Style.t;
 }
 
 let set_total_pages = fun t ~total:items ->
@@ -57,8 +57,17 @@ let next_page = fun t ->
 let make = fun ?(style = Numerals) ?(page = 0) ?(per_page = 1) ?(total_pages = 1) ?(active_dot = "•") ?(inactive_dot = "○") ?(numerals_format = fun page total -> Int.to_string
 page
 ^ "/"
-^ Int.to_string total) ?(text_style = Style.default) () ->
-  {style; page; per_page; total_pages; active_dot; inactive_dot; numerals_format; text_style; }
+^ Int.to_string total) ?(text_style = Style.default) () -> {
+  style;
+  page;
+  per_page;
+  total_pages;
+  active_dot;
+  inactive_dot;
+  numerals_format;
+  text_style;
+
+}
 
 let update = fun t (e:Event.t) ->
   match e with

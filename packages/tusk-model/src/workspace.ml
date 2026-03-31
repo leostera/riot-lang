@@ -6,20 +6,20 @@ open Std.IO
 
 (** Types *)
 type t = {
-  root : Path.t;
-  target_dir_root : Path.t;
-  packages : Package.t list;
-  profile_overrides : (string * Package.profile_override) list;
+  root: Path.t;
+  target_dir_root: Path.t;
+  packages: Package.t list;
+  profile_overrides: (string * Package.profile_override) list;
 }
 
 (** Workspace TOML parsing *)
 type manifest = {
-  members : Path.t list;
-  dependencies : Package.dependency list;
-  dev_dependencies : Package.dependency list;
-  build_dependencies : Package.dependency list;
-  profile_overrides : (string * Package.profile_override) list;
-  target_dir : string option;
+  members: Path.t list;
+  dependencies: Package.dependency list;
+  dev_dependencies: Package.dependency list;
+  build_dependencies: Package.dependency list;
+  profile_overrides: (string * Package.profile_override) list;
+  target_dir: string option;
 }
 
 let parse_dependency : string -> Toml.value -> Package.dependency = fun name value ->
@@ -64,11 +64,13 @@ let parse_workspace_dependencies : Toml.value -> Package.dependency list = fun t
   Log.debug ("[WORKSPACE] parse_workspacE_dependencies has items: " ^ Toml.to_string toml);
   parse_dependency_section "dependencies" toml
 
-let parse_workspace_dev_dependencies : Toml.value -> Package.dependency list = fun toml ->
-  parse_dependency_section "dev-dependencies" toml
+let parse_workspace_dev_dependencies : Toml.value -> Package.dependency list = fun toml -> parse_dependency_section
+"dev-dependencies"
+toml
 
-let parse_workspace_build_dependencies : Toml.value -> Package.dependency list = fun toml ->
-  parse_dependency_section "build-dependencies" toml
+let parse_workspace_build_dependencies : Toml.value -> Package.dependency list = fun toml -> parse_dependency_section
+"build-dependencies"
+toml
 
 let parse_profile_overrides : Toml.value -> (string * Profile.profile_override) list = fun toml ->
   Log.debug "[WORKSPACE] parse_profile_overrides called";
@@ -178,8 +180,9 @@ let server_port = fun workspace ->
 let discover_commands : t -> Package_command.t list = fun workspace ->
   List.concat_map (fun (pkg:Package.t) -> pkg.commands) workspace.packages
 
-let find_command : t -> string -> Package_command.t option = fun workspace name ->
-  discover_commands workspace |> List.find_opt (fun (cmd:Package_command.t) -> cmd.name = name)
+let find_command : t -> string -> Package_command.t option = fun workspace name -> discover_commands
+workspace
+|> List.find_opt (fun (cmd:Package_command.t) -> cmd.name = name)
 
 let discover_fix_providers : t -> Fix_provider.t list = fun workspace ->
   List.concat_map (fun (pkg:Package.t) -> pkg.fix_providers) workspace.packages

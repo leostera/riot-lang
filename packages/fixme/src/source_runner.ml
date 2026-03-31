@@ -1,9 +1,9 @@
 open Std
 
 type result = {
-  tree : Rule.green_tree;
-  diagnostics : Diagnostic.t list;
-  parse_diagnostics : Syn.Diagnostic.t list;
+  tree: Rule.green_tree;
+  diagnostics: Diagnostic.t list;
+  parse_diagnostics: Syn.Diagnostic.t list;
 }
 
 let parse ?filename source : Syn.Parser.parse_result =
@@ -48,8 +48,9 @@ let has_errors = fun result ->
 let safe_fixes = fun result ->
   List.filter_map Diagnostic.fix result.diagnostics
 
-let can_apply_safe_fixes = fun result ->
-  not (has_parse_errors result) && not (has_errors result) && List.length (safe_fixes result) > 0
+let can_apply_safe_fixes = fun result -> not (has_parse_errors result)
+&& not (has_errors result)
+&& List.length (safe_fixes result) > 0
 
 let apply_safe_fixes = fun ~source result ->
   let fixes = safe_fixes result in

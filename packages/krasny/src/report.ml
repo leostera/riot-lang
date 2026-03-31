@@ -1,7 +1,7 @@
 open Std
 
 type event =
-  | Start of { mode : Runner.run_mode; concurrency : int; }
+  | Start of { mode: Runner.run_mode; concurrency: int; }
   | File of Runner.file_result
   | Summary of Runner.summary
 
@@ -35,21 +35,22 @@ let file_result_to_json = fun ~root (result:Runner.file_result) ->
 
     ]
 
-let summary_to_json = fun (summary:Runner.summary) ->
-  let open Data.Json in Object [
-    ("total_files", Int summary.total_files);
-    ("already_formatted", Int summary.already_formatted);
-    ("needs_formatting", Int summary.needs_formatting);
-    ("would_reformat", Int summary.would_reformat);
-    ("unsafe_to_format", Int summary.unsafe_to_format);
-    ("formatted_files", Int summary.formatted_files);
-    ("failed_files", Int summary.failed_files);
-    ("duration_secs", Float (Time.Duration.to_secs_float summary.duration));
+let summary_to_json = fun (summary:Runner.summary) -> let open Data.Json in Object [
+  ("total_files", Int summary.total_files);
+  ("already_formatted", Int summary.already_formatted);
+  ("needs_formatting", Int summary.needs_formatting);
+  ("would_reformat", Int summary.would_reformat);
+  ("unsafe_to_format", Int summary.unsafe_to_format);
+  ("formatted_files", Int summary.formatted_files);
+  ("failed_files", Int summary.failed_files);
+  ("duration_secs", Float (Time.Duration.to_secs_float summary.duration));
 
-  ]
+]
 
-let timestamp_field = fun () ->
-  ("timestamp", Data.Json.String (Datetime.now_utc () |> Datetime.to_iso8601))
+let timestamp_field = fun () -> (
+  "timestamp",
+  Data.Json.String (Datetime.now_utc () |> Datetime.to_iso8601)
+)
 
 let event_to_json = fun ~root ->
   function
@@ -78,7 +79,7 @@ let event_to_json = fun ~root ->
       | _ -> panic "expected JSON object"
     )
 
-let write_line = fun ~writer line -> IO.write_all writer ~buf:((line ^ "\n"))
+let write_line = fun ~writer line -> IO.write_all writer ~buf:((((line ^ "\n"))))
 
 let write_text_file_result = fun ~writer ~root (result:Runner.file_result) ->
   let status_char, suffix =
@@ -139,5 +140,6 @@ let write_text_summary = fun ~writer ~mode (summary:Runner.summary) ->
   in
   write_line ~writer line
 
-let write_json_event = fun ~writer ~root event ->
-  write_line ~writer (Data.Json.to_string (event_to_json ~root event))
+let write_json_event = fun ~writer ~root event -> write_line
+~writer
+(Data.Json.to_string (event_to_json ~root event))

@@ -5,10 +5,10 @@ open Tty
 type t = Pid.t
 
 type state = {
-  parent : Pid.t;
-  sigwinch_handler : int -> unit;
-  termios : Tty.t;
-  parser : Ansi_parser.parser;
+  parent: Pid.t;
+  sigwinch_handler: int -> unit;
+  termios: Tty.t;
+  parser: Ansi_parser.parser;
 }
 
 type Message.t +=

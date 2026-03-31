@@ -56,29 +56,26 @@ let receiver_looks_like_record =
   | _ ->
       false
 
-let make_diagnostic = fun ({ syntax_node; _ }:Syn.Cst.field_access_expression) ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-  ~suggestion:"Prefer Module.(value.field) style for module-qualified record access."
-  ()
+let make_diagnostic = fun ({ syntax_node; _ }:Syn.Cst.field_access_expression) -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+~suggestion:"Prefer Module.(value.field) style for module-qualified record access."
+()
 
-let make_record_diagnostic = fun syntax_node ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-  ~suggestion:"Prefer Module.{ field = value } style when all record fields share the same module qualifier."
-  ()
+let make_record_diagnostic = fun syntax_node -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+~suggestion:"Prefer Module.{ field = value } style when all record fields share the same module qualifier."
+()
 
-let make_local_open_diagnostic = fun syntax_node ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-  ~suggestion:"Prefer Module.[ ... ] or Module.( ... ) shorthand over let open when the body is a single bracketed form."
-  ()
+let make_local_open_diagnostic = fun syntax_node -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+~suggestion:"Prefer Module.[ ... ] or Module.( ... ) shorthand over let open when the body is a single bracketed form."
+()
 
 let ident_prefix_name = fun ident ->
   match Syn.Cst.Ident.segments ident |> List.map Syn.Cst.Token.text with
@@ -254,12 +251,13 @@ and diagnostics_for_apply_argument = fun ~inside_local_open ->
   | Syn.Cst.Labeled { value; _ }
   | Syn.Cst.Optional { value; _ } -> Option.to_list value
   |> List.concat_map (diagnostics_for_expression ~inside_local_open)
-and diagnostics_for_let_binding = fun binding ->
-  diagnostics_for_expression ~inside_local_open:false (Syn.Cst.LetBinding.value binding)
-and diagnostics_for_match_case =
-  fun ~inside_local_open ({ guard; body; _ }:Syn.Cst.match_case) ->
-    (Option.to_list guard |> List.concat_map (diagnostics_for_expression ~inside_local_open))
-    @ diagnostics_for_expression ~inside_local_open body
+and diagnostics_for_let_binding = fun binding -> diagnostics_for_expression
+~inside_local_open:false
+(Syn.Cst.LetBinding.value binding)
+and diagnostics_for_match_case = fun ~inside_local_open ({ guard; body; _ }:Syn.Cst.match_case) -> (Option.to_list
+guard
+|> List.concat_map (diagnostics_for_expression ~inside_local_open))
+@ diagnostics_for_expression ~inside_local_open body
 and diagnostics_for_object_member = fun ~inside_local_open ->
   function
   | Syn.Cst.ObjectMember.Method { body; _ }
@@ -278,5 +276,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file |> Option.unwrap_or ~default:[] |> List.concat_map diagnostics_for_structure_item
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

@@ -39,14 +39,14 @@ open Sync
 (** {1 Common Types} *)
 
 type from = {
-  pid : Pid.t;
-  subscription_ref : unit Ref.t;
+  pid: Pid.t;
+  subscription_ref: unit Ref.t;
 }
 
 type subscription_options = {
-  min_demand : int;
-  max_demand : int;
-  partition : string option;
+  min_demand: int;
+  max_demand: int;
+  partition: string option;
 }
 
 let default_subscription_options = {min_demand = 5; max_demand = 1_000; partition = None; }
@@ -55,18 +55,18 @@ let default_subscription_options = {min_demand = 5; max_demand = 1_000; partitio
 
 type Message.t +=
   | GenStage_subscribe of {
-      consumer : Pid.t;
-      subscription_ref : unit Ref.t;
-      options : subscription_options;
-      reply_to : Pid.t;
+      consumer: Pid.t;
+      subscription_ref: unit Ref.t;
+      options: subscription_options;
+      reply_to: Pid.t;
     }
-  | GenStage_subscribe_reply of { result : (unit, string) result; subscription_ref : unit Ref.t; }
-  | GenStage_ask of { subscription_ref : unit Ref.t; count : int; }
+  | GenStage_subscribe_reply of { result: (unit, string) result; subscription_ref: unit Ref.t; }
+  | GenStage_ask of { subscription_ref: unit Ref.t; count: int; }
   | GenStage_events : {
-    subscription_ref : unit Ref.t;
-    events : Message.t list;
+    subscription_ref: unit Ref.t;
+    events: Message.t list;
   } -> Message.t
-  | GenStage_cancel of { subscription_ref : unit Ref.t; }
+  | GenStage_cancel of { subscription_ref: unit Ref.t; }
 
 (** {1 Producer Stage} *)
 
@@ -84,13 +84,13 @@ module Producer = struct
     type args
     type state
     type event
-    val init : args -> (state, exn) result
+    val init: args -> (state, exn) result
 
-    val handle_demand : int -> state -> (event list, state) demand_result
+    val handle_demand: int -> state -> (event list, state) demand_result
 
-    val handle_cast : Message.t -> state -> state cast_result
+    val handle_cast: Message.t -> state -> state cast_result
 
-    val terminate : exn -> state -> unit
+    val terminate: exn -> state -> unit
   end
 
   module type S = sig
@@ -98,16 +98,16 @@ module Producer = struct
     type state
     type event
     type t
-    val start_link : args -> t
+    val start_link: args -> t
 
-    val start : args -> t
+    val start: args -> t
 
-    val cast : t -> Message.t -> unit
+    val cast: t -> Message.t -> unit
 
-    val stop : t -> unit
+    val stop: t -> unit
   end
 
-  module Make (Impl : Spec) : S with type args = Impl.args and type state = Impl.state and type event = Impl.event = struct
+  module Make (Impl : Spec): S with type args = Impl.args and type state = Impl.state and type event = Impl.event = struct
     type args = Impl.args
 
     type state = Impl.state
@@ -119,16 +119,16 @@ module Producer = struct
     (* Producer tracks downstream consumers *)
 
     type consumer_state = {
-      pid : Pid.t;
-      subscription_ref : unit Ref.t;
-      pending_demand : int;
-      options : subscription_options;
+      pid: Pid.t;
+      subscription_ref: unit Ref.t;
+      pending_demand: int;
+      options: subscription_options;
     }
 
     type internal_state = {
-      user_state : state;
-      consumers : consumer_state list Cell.t;
-      buffer : event list Cell.t;  (* Buffered events waiting to be sent *)
+      user_state: state;
+      consumers: consumer_state list Cell.t;
+      buffer: event list Cell.t;  (* Buffered events waiting to be sent *)
     }
 
     (* TODO: Implement producer loop with:
@@ -163,13 +163,13 @@ module Consumer = struct
     type args
     type state
     type event
-    val init : args -> (state, exn) result
+    val init: args -> (state, exn) result
 
-    val handle_events : event list -> from -> state -> state events_result
+    val handle_events: event list -> from -> state -> state events_result
 
-    val handle_cast : Message.t -> state -> state cast_result
+    val handle_cast: Message.t -> state -> state cast_result
 
-    val terminate : exn -> state -> unit
+    val terminate: exn -> state -> unit
   end
 
   module type S = sig
@@ -177,18 +177,18 @@ module Consumer = struct
     type state
     type event
     type t
-    val start_link : args -> t
+    val start_link: args -> t
 
-    val start : args -> t
+    val start: args -> t
 
-    val subscribe : t -> to_stage:Pid.t -> ?options:subscription_options -> unit -> (unit, string) result
+    val subscribe: t -> to_stage:Pid.t -> ?options:subscription_options -> unit -> (unit, string) result
 
-    val cast : t -> Message.t -> unit
+    val cast: t -> Message.t -> unit
 
-    val stop : t -> unit
+    val stop: t -> unit
   end
 
-  module Make (Impl : Spec) : S with type args = Impl.args and type state = Impl.state and type event = Impl.event = struct
+  module Make (Impl : Spec): S with type args = Impl.args and type state = Impl.state and type event = Impl.event = struct
     type args = Impl.args
 
     type state = Impl.state
@@ -200,15 +200,15 @@ module Consumer = struct
     (* Consumer tracks upstream producers *)
 
     type producer_state = {
-      pid : Pid.t;
-      subscription_ref : unit Ref.t;
-      pending_demand : int;  (* How much demand we've sent but not received *)
-      options : subscription_options;
+      pid: Pid.t;
+      subscription_ref: unit Ref.t;
+      pending_demand: int;  (* How much demand we've sent but not received *)
+      options: subscription_options;
     }
 
     type internal_state = {
-      user_state : state;
-      producers : producer_state list Cell.t;
+      user_state: state;
+      producers: producer_state list Cell.t;
     }
 
     (* TODO: Implement consumer loop with:
@@ -251,15 +251,15 @@ module ProducerConsumer = struct
     type state
     type in_event
     type out_event
-    val init : args -> (state, exn) result
+    val init: args -> (state, exn) result
 
-    val handle_events : in_event list -> from -> state -> (out_event list, state) events_result
+    val handle_events: in_event list -> from -> state -> (out_event list, state) events_result
 
-    val handle_demand : int -> state -> (out_event list, state) demand_result
+    val handle_demand: int -> state -> (out_event list, state) demand_result
 
-    val handle_cast : Message.t -> state -> state cast_result
+    val handle_cast: Message.t -> state -> state cast_result
 
-    val terminate : exn -> state -> unit
+    val terminate: exn -> state -> unit
   end
 
   module type S = sig
@@ -268,18 +268,18 @@ module ProducerConsumer = struct
     type in_event
     type out_event
     type t
-    val start_link : args -> t
+    val start_link: args -> t
 
-    val start : args -> t
+    val start: args -> t
 
-    val subscribe : t -> to_stage:Pid.t -> ?options:subscription_options -> unit -> (unit, string) result
+    val subscribe: t -> to_stage:Pid.t -> ?options:subscription_options -> unit -> (unit, string) result
 
-    val cast : t -> Message.t -> unit
+    val cast: t -> Message.t -> unit
 
-    val stop : t -> unit
+    val stop: t -> unit
   end
 
-  module Make (Impl : Spec) : S with type args = Impl.args and type state = Impl.state and type in_event = Impl.in_event and type out_event = Impl.out_event = struct
+  module Make (Impl : Spec): S with type args = Impl.args and type state = Impl.state and type in_event = Impl.in_event and type out_event = Impl.out_event = struct
     type args = Impl.args
 
     type state = Impl.state
@@ -293,10 +293,10 @@ module ProducerConsumer = struct
     (* ProducerConsumer tracks both upstream and downstream *)
 
     type internal_state = {
-      user_state : state;
-      producers : unit;  (* TODO: same as Consumer *)
-      consumers : unit;  (* TODO: same as Producer *)
-      buffer : out_event list Cell.t;
+      user_state: state;
+      producers: unit;  (* TODO: same as Consumer *)
+      consumers: unit;  (* TODO: same as Producer *)
+      buffer: out_event list Cell.t;
     }
 
     (* TODO: Implement producer-consumer loop:

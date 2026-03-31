@@ -1,9 +1,9 @@
 open Global0
 
 type t = {
-  source : string;
-  pos : int;
-  length : int;
+  source: string;
+  pos: int;
+  length: int;
 }
 
 let create = fun source -> {source; pos = 0; length = String.length source}

@@ -1,5 +1,5 @@
-val all : unit -> Explanation.t list
+val all: unit -> Explanation.t list
 
-val explain : string -> Explanation.t option
+val explain: string -> Explanation.t option
 
-val format : Explanation.t -> string
+val format: Explanation.t -> string

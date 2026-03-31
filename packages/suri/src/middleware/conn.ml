@@ -2,32 +2,32 @@ open Std
 open Std.Collections
 
 type peer = {
-  ip : Net.Addr.tcp_addr;
-  port : int;
+  ip: Net.Addr.tcp_addr;
+  port: int;
 }
 
 type upgrade_info = {
-  opts : Channel.Handler.upgrade_opts;
-  handler : Channel.Handler.t;
+  opts: Channel.Handler.upgrade_opts;
+  handler: Channel.Handler.t;
 }
 
 (** Extensible type for storing arbitrary data in connection *)
 type assign_value = ..
 
 type t = {
-  socket_conn : Socket_pool.Connection.t;
-  req : Web_server.Request.t;
-  peer : peer;
-  method_override : Net.Http.Method.t option;  (* For method override middleware *)
-  params : (string * string) list;
-  body_params : (string * string) list;
-  resp_status : Net.Http.Status.t;
-  resp_headers : (string * string) list;
-  resp_body : string;
-  halted : bool;
-  sent : bool;
-  upgrade : upgrade_info option;
-  assigns : (string, assign_value) HashMap.t;
+  socket_conn: Socket_pool.Connection.t;
+  req: Web_server.Request.t;
+  peer: peer;
+  method_override: Net.Http.Method.t option;  (* For method override middleware *)
+  params: (string * string) list;
+  body_params: (string * string) list;
+  resp_status: Net.Http.Status.t;
+  resp_headers: (string * string) list;
+  resp_body: string;
+  halted: bool;
+  sent: bool;
+  upgrade: upgrade_info option;
+  assigns: (string, assign_value) HashMap.t;
 }
 
 let make = fun socket_conn req ->
@@ -166,8 +166,11 @@ let upgrade_websocket = fun opts handler t -> {t with upgrade = Some {opts; hand
 
 let get_upgrade = fun t -> t.upgrade
 
-let to_response = fun t ->
-  Web_server.Response.make t.resp_status ~headers:t.resp_headers ~body:t.resp_body ()
+let to_response = fun t -> Web_server.Response.make
+t.resp_status
+~headers:t.resp_headers
+~body:t.resp_body
+()
 
 let assign = fun key value t ->
   let _ = HashMap.insert t.assigns key value in

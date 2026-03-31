@@ -1,8 +1,8 @@
 open Global0
 
 type 'a t = {
-  mutable data : 'a array;
-  mutable length : int;
+  mutable data: 'a array;
+  mutable length: int;
 }
 
 let create = fun () -> {data = [||]; length = 0}
@@ -152,8 +152,8 @@ let of_list = fun elements ->
 let into_iter : type item. item t -> item Iter.Iterator.t = fun vector ->
   let module VecIter = struct
     type state = {
-      vec : item t;
-      pos : int;
+      vec: item t;
+      pos: int;
     }
 
     type nonrec item = item
@@ -172,8 +172,8 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun vector ->
 let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun vector ->
   let module VecIter = struct
     type state = {
-      vec : item t;
-      mutable pos : int;
+      vec: item t;
+      mutable pos: int;
     }
 
     type nonrec item = item

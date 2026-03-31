@@ -18,6 +18,6 @@ open Std
     - `file` - Path to the source file
     - `source` - The source code content
     - `diagnostics` - List of diagnostics to report *)
-val print : file:string -> source:string -> Diagnostic.t list -> unit
+val print: file:string -> source:string -> Diagnostic.t list -> unit
 
-val format : file:string -> source:string -> Diagnostic.t list -> string
+val format: file:string -> source:string -> Diagnostic.t list -> string

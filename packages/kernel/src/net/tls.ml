@@ -8,30 +8,30 @@ type engine
 
 (* External FFI declarations *)
 
-external init : unit -> unit = "kernel_tls_init"
+external init: unit -> unit = "kernel_tls_init"
 
-external is_available : unit -> bool = "kernel_tls_is_available"
+external is_available: unit -> bool = "kernel_tls_is_available"
 
-external version : unit -> string = "kernel_tls_version"
+external version: unit -> string = "kernel_tls_version"
 
-external create_client_engine : hostname:string -> engine = "kernel_tls_create_client_engine"
+external create_client_engine: hostname:string -> engine = "kernel_tls_create_client_engine"
 
-external create_server_engine : cert_file:string -> key_file:string -> engine = "kernel_tls_create_server_engine"
+external create_server_engine: cert_file:string -> key_file:string -> engine = "kernel_tls_create_server_engine"
 
-external pump_encrypted_in : engine -> bytes -> pos:int -> len:int -> int = "kernel_tls_pump_encrypted_in"
+external pump_encrypted_in: engine -> bytes -> pos:int -> len:int -> int = "kernel_tls_pump_encrypted_in"
 
-external read_encrypted_out : engine -> bytes -> int = "kernel_tls_read_encrypted_out"
+external read_encrypted_out: engine -> bytes -> int = "kernel_tls_read_encrypted_out"
 
-external _read_decrypted : engine -> bytes -> pos:int -> len:int -> int = "kernel_tls_read_decrypted"
+external _read_decrypted: engine -> bytes -> pos:int -> len:int -> int = "kernel_tls_read_decrypted"
 
-external _write_plaintext : engine -> bytes -> pos:int -> len:int -> int = "kernel_tls_write_plaintext"
+external _write_plaintext: engine -> bytes -> pos:int -> len:int -> int = "kernel_tls_write_plaintext"
 
 type handshake_result =
   | Handshake_done
   | Need_network_read
   | Need_network_write
 
-external do_handshake_raw : engine -> int = "kernel_tls_do_handshake"
+external do_handshake_raw: engine -> int = "kernel_tls_do_handshake"
 
 let do_handshake = fun engine ->
   match do_handshake_raw engine with
@@ -40,9 +40,9 @@ let do_handshake = fun engine ->
   | -2 -> Need_network_write
   | _ -> panic "Invalid do_handshake result"
 
-external handshake_complete : engine -> bool = "kernel_tls_handshake_complete"
+external handshake_complete: engine -> bool = "kernel_tls_handshake_complete"
 
-external alpn_protocol : engine -> string option = "kernel_tls_alpn_protocol"
+external alpn_protocol: engine -> string option = "kernel_tls_alpn_protocol"
 
 (* Result types *)
 

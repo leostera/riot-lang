@@ -7,14 +7,13 @@ let test_toolchain = Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.def
 
 let planner_artifacts_version = "planner-artifacts:v5"
 
-let make_test_workspace = fun tmpdir packages ->
-  Tusk_model.Workspace.{
-    root = tmpdir;
-    target_dir_root = Path.(tmpdir / Path.v "target");
-    packages;
-    profile_overrides = [];
+let make_test_workspace = fun tmpdir packages -> Tusk_model.Workspace.{
+  root = tmpdir;
+  target_dir_root = Path.(tmpdir / Path.v "target");
+  packages;
+  profile_overrides = [];
 
-  }
+}
 
 let make_package = fun tmpdir name ->
   let pkg_dir = Path.(tmpdir / Path.v name) in

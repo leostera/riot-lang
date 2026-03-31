@@ -9,13 +9,13 @@ open Tusk_model
 
 (** Return the expected path to the dependency's `.cmxa` archive in the store. *)
 type t = {
-  package : Package.t;
-  artifact_dir : Path.t;
-  depset : t list;
-  hash : Crypto.hash;
+  package: Package.t;
+  artifact_dir: Path.t;
+  depset: t list;
+  hash: Crypto.hash;
 }
-val library_cmxa : t -> Path.t
+val library_cmxa: t -> Path.t
 
 (** Flatten dependencies and their transitive deps in dependency-first order,
     deduplicated by package name. *)
-val transitive_closure : t list -> t list
+val transitive_closure: t list -> t list

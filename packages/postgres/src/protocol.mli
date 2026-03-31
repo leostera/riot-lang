@@ -11,7 +11,7 @@ type message_type =
   | Describe
   | Close
   | Sync
-module Sqlstate : sig
+module Sqlstate: sig
   type t =
     (* Class 00 — Successful Completion *)
     | SuccessfulCompletion
@@ -126,73 +126,73 @@ module Sqlstate : sig
     | IndexCorrupted
     (* Other/Unknown *)
     | UnknownSqlstate of string
-  val of_string : string -> t
+  val of_string: string -> t
 
-  val to_string : t -> string
+  val to_string: t -> string
 end
 
-module Error : sig
+module Error: sig
   type t = {
-    severity : string option;
-    sqlstate : Sqlstate.t option;
-    message : string;
-    detail : string option;
-    hint : string option;
-    position : int option;
-    internal_position : int option;
-    internal_query : string option;
-    where_context : string option;
-    schema_name : string option;
-    table_name : string option;
-    column_name : string option;
-    datatype_name : string option;
-    constraint_name : string option;
-    source_file : string option;
-    source_line : int option;
-    source_routine : string option;
+    severity: string option;
+    sqlstate: Sqlstate.t option;
+    message: string;
+    detail: string option;
+    hint: string option;
+    position: int option;
+    internal_position: int option;
+    internal_query: string option;
+    where_context: string option;
+    schema_name: string option;
+    table_name: string option;
+    column_name: string option;
+    datatype_name: string option;
+    constraint_name: string option;
+    source_file: string option;
+    source_line: int option;
+    source_routine: string option;
   }
-  val severity : t -> string option
+  val severity: t -> string option
 
-  val sqlstate : t -> Sqlstate.t option
+  val sqlstate: t -> Sqlstate.t option
 
-  val message : t -> string
+  val message: t -> string
 
-  val detail : t -> string option
+  val detail: t -> string option
 
-  val hint : t -> string option
+  val hint: t -> string option
 
-  val position : t -> int option
+  val position: t -> int option
 
-  val internal_position : t -> int option
+  val internal_position: t -> int option
 
-  val internal_query : t -> string option
+  val internal_query: t -> string option
 
-  val where_context : t -> string option
+  val where_context: t -> string option
 
-  val schema_name : t -> string option
+  val schema_name: t -> string option
 
-  val table_name : t -> string option
+  val table_name: t -> string option
 
-  val column_name : t -> string option
+  val column_name: t -> string option
 
-  val datatype_name : t -> string option
+  val datatype_name: t -> string option
 
-  val constraint_name : t -> string option
+  val constraint_name: t -> string option
 
-  val source_file : t -> string option
+  val source_file: t -> string option
 
-  val source_line : t -> int option
+  val source_line: t -> int option
 
-  val source_routine : t -> string option
+  val source_routine: t -> string option
 
-  val to_string : t -> string
+  val to_string: t -> string
 
-  val to_json : t -> Data.Json.t
+  val to_json: t -> Data.Json.t
 
-  val from_json : Data.Json.t -> t
+  val from_json: Data.Json.t -> t
 end
 
-module TypeOid : sig
+module TypeOid: sig
   type t =
     | Bool
     | Bytea
@@ -215,78 +215,78 @@ module TypeOid : sig
     | Uuid
     | Jsonb
     | Unknown of int
-  val of_int : int -> t
+  val of_int: int -> t
 
-  val to_int : t -> int
+  val to_int: t -> int
 
-  val to_string : t -> string
+  val to_string: t -> string
 end
 
-module Oid : sig
+module Oid: sig
   type t = int
-  val of_int : int -> t
+  val of_int: int -> t
 
-  val to_int : t -> int
+  val to_int: t -> int
 
-  val zero : t
+  val zero: t
 
-  val to_string : t -> string
+  val to_string: t -> string
 end
 
-module ColumnAttr : sig
+module ColumnAttr: sig
   type t =
     | NotFromTable
     | Position of int
-  val of_int : int -> t
+  val of_int: int -> t
 
-  val to_int : t -> int
+  val to_int: t -> int
 
-  val to_string : t -> string
+  val to_string: t -> string
 end
 
-module TypeSize : sig
+module TypeSize: sig
   type t =
     | VariableLength
     | NullTerminated
     | Fixed of int
-  val of_int : int -> t
+  val of_int: int -> t
 
-  val to_int : t -> int
+  val to_int: t -> int
 
-  val to_string : t -> string
+  val to_string: t -> string
 end
 
-module TypeModifier : sig
+module TypeModifier: sig
   type t =
     | NoModifier
     | Modifier of int
-  val of_int : int -> t
+  val of_int: int -> t
 
-  val to_int : t -> int
+  val to_int: t -> int
 
-  val to_string : t -> string
+  val to_string: t -> string
 end
 
-module Format : sig
+module Format: sig
   type t =
     Text
     | Binary
-  val of_int : int -> t
+  val of_int: int -> t
 
-  val to_int : t -> int
+  val to_int: t -> int
 
-  val to_string : t -> string
+  val to_string: t -> string
 end
 
-module Row : sig
+module Row: sig
   type field = {
-    name : string;
-    table_oid : Oid.t;
-    column_attr : ColumnAttr.t;
-    type_oid : TypeOid.t;
-    type_size : TypeSize.t;
-    type_modifier : TypeModifier.t;
-    format : Format.t;
+    name: string;
+    table_oid: Oid.t;
+    column_attr: ColumnAttr.t;
+    type_oid: TypeOid.t;
+    type_size: TypeSize.t;
+    type_modifier: TypeModifier.t;
+    format: Format.t;
   }
   type description = field list
   type value =
@@ -299,8 +299,8 @@ type backend_message =
   | AuthenticationOk
   | AuthenticationCleartextPassword
   | AuthenticationMD5Password of bytes
-  | BackendKeyData of { process_id : int; secret_key : int; }
-  | ParameterStatus of { name : string; value : string; }
+  | BackendKeyData of { process_id: int; secret_key: int; }
+  | ParameterStatus of { name: string; value: string; }
   | ReadyForQuery of char
   | RowDescription of Row.description
   | DataRow of Row.data
@@ -313,26 +313,26 @@ type backend_message =
   | NoData
   | ParameterDescription of TypeOid.t list
   | EmptyQueryResponse
-module Writer : sig
-  val startup_message : user:string -> database:string -> application_name:string option -> string
+module Writer: sig
+  val startup_message: user:string -> database:string -> application_name:string option -> string
 
-  val query_message : string -> string
+  val query_message: string -> string
 
-  val parse_message : statement_name:string -> query:string -> param_types:int list -> string
+  val parse_message: statement_name:string -> query:string -> param_types:int list -> string
 
-  val bind_message : portal_name:string -> statement_name:string -> params:string list -> string
+  val bind_message: portal_name:string -> statement_name:string -> params:string list -> string
 
-  val execute_message : portal_name:string -> max_rows:int -> string
+  val execute_message: portal_name:string -> max_rows:int -> string
 
-  val describe_message : what:char -> name:string -> string
+  val describe_message: what:char -> name:string -> string
 
-  val sync_message : unit -> string
+  val sync_message: unit -> string
 
-  val close_message : what:char -> name:string -> string
+  val close_message: what:char -> name:string -> string
 
-  val terminate_message : unit -> string
+  val terminate_message: unit -> string
 end
 
-module Reader : sig
-  val parse_backend_message : int -> int -> bytes -> backend_message
+module Reader: sig
+  val parse_backend_message: int -> int -> bytes -> backend_message
 end

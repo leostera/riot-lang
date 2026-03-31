@@ -6,12 +6,12 @@ let ( let* ) = fun x f ->
   Result.and_then x f
 
 module type Intf = sig
-  val name : string
+  val name: string
 
-  val connect : Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result
+  val connect: Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result
 end
 
-module Tcp : Intf = struct
+module Tcp: Intf = struct
   let name = "tcp"
 
   let tcp_error_to_error =
@@ -29,7 +29,7 @@ module Tcp : Intf = struct
         Ok (Connection.make ~reader ~writer ~of_io_error:tcp_error_to_error ~uri)
 end
 
-module Tls : Intf = struct
+module Tls: Intf = struct
   let name = "tls"
 
   let connect = fun addr uri ->

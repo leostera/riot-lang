@@ -1,8 +1,8 @@
 open Std
 
 type 'msg t = {
-  handlers : (string, string -> 'msg) Std.Collections.HashMap.t;
-  mutable next_id : int;
+  handlers: (string, string -> 'msg) Std.Collections.HashMap.t;
+  mutable next_id: int;
 }
 
 let create = fun () -> {handlers = Std.Collections.HashMap.create (); next_id = 0; }

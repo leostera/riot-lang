@@ -5,7 +5,7 @@ open Event
 type Message.t +=
   | BracketedPasteStart
   | BracketedPasteEnd
-  | CursorPosition of { row : int; col : int; }
+  | CursorPosition of { row: int; col: int; }
   | WindowTitleChange of string
 
 (** ANSI Parser State Machine
@@ -30,24 +30,23 @@ type parser_state =
   | DcsPassthrough
 
 type parser = {
-  mutable state : parser_state;
-  mutable params : int list;
-  mutable intermediate : string;
-  mutable final_char : char option;
-  mutable osc_string : Buffer.t;
-  mutable current_param : int;
+  mutable state: parser_state;
+  mutable params: int list;
+  mutable intermediate: string;
+  mutable final_char: char option;
+  mutable osc_string: Buffer.t;
+  mutable current_param: int;
 }
 
-let create = fun () ->
-  {
-    state = Ground;
-    params = [];
-    intermediate = "";
-    final_char = None;
-    osc_string = Buffer.create 256;
-    current_param = 0;
+let create = fun () -> {
+  state = Ground;
+  params = [];
+  intermediate = "";
+  final_char = None;
+  osc_string = Buffer.create 256;
+  current_param = 0;
 
-  }
+}
 
 let reset = fun p ->
   p.state <- Ground;

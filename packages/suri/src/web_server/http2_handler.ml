@@ -34,37 +34,36 @@ let to_string_error =
 
 (** Stream state for multiplexed requests *)
 type stream_state = {
-  stream_id : int;
-  headers : Http.Http2.Hpack.header list Cell.t;
-  data_chunks : string list Cell.t;
-  end_stream : bool Cell.t;
+  stream_id: int;
+  headers: Http.Http2.Hpack.header list Cell.t;
+  data_chunks: string list Cell.t;
+  end_stream: bool Cell.t;
 }
 
 type state = {
-  config : Super.Config.t;
-  handler : Http_handler.t;
-  frame_parser : Http.Http2.Parser_reader.state;
-  hpack_decoder : Http.Http2.Hpack.decoder;
-  hpack_encoder : Http.Http2.Hpack.encoder;
-  streams : (int, stream_state) HashMap.t;
-  preface_verified : bool Cell.t;
-  settings_sent : bool Cell.t;
-  buffer : string Cell.t;  (** Accumulated data buffer *)
+  config: Super.Config.t;
+  handler: Http_handler.t;
+  frame_parser: Http.Http2.Parser_reader.state;
+  hpack_decoder: Http.Http2.Hpack.decoder;
+  hpack_encoder: Http.Http2.Hpack.encoder;
+  streams: (int, stream_state) HashMap.t;
+  preface_verified: bool Cell.t;
+  settings_sent: bool Cell.t;
+  buffer: string Cell.t;  (** Accumulated data buffer *)
 }
 
-let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
-  {
-    config;
-    handler;
-    frame_parser = Http.Http2.Parser_reader.create ();
-    hpack_decoder = Http.Http2.Hpack.create_decoder ();
-    hpack_encoder = Http.Http2.Hpack.create_encoder ();
-    streams = HashMap.create ();
-    preface_verified = Cell.create false;
-    settings_sent = Cell.create false;
-    buffer = Cell.create sniffed_data;
+let make_handler = fun ~config ~handler ?(sniffed_data = "") () -> {
+  config;
+  handler;
+  frame_parser = Http.Http2.Parser_reader.create ();
+  hpack_decoder = Http.Http2.Hpack.create_decoder ();
+  hpack_encoder = Http.Http2.Hpack.create_encoder ();
+  streams = HashMap.create ();
+  preface_verified = Cell.create false;
+  settings_sent = Cell.create false;
+  buffer = Cell.create sniffed_data;
 
-  }
+}
 
 (** Verify HTTP/2 connection preface *)
 let verify_preface = fun data ->

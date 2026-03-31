@@ -1,8 +1,8 @@
 open Std
 
 type t = {
-  start : int;
-  end_ : int;
+  start: int;
+  end_: int;
 }
 
 let make = fun ~start ~end_ -> {start; end_}

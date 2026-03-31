@@ -6,32 +6,32 @@ type input =
   | Roots of Path.t list
 
 type config = {
-  input : input;
-  concurrency : int;
-  limit : int option;
-  mode : Runner.mode;
-  scope : Fix_config.scope option;
-  owner : Pid.t;
+  input: input;
+  concurrency: int;
+  limit: int option;
+  mode: Runner.mode;
+  scope: Fix_config.scope option;
+  owner: Pid.t;
 }
 
 type state = {
-  file_queue : Path.t Queue.t;
-  idle_workers : Pid.t Queue.t;
-  busy_workers : (Pid.t, Path.t) HashMap.t;
-  mutable results_rev : Runner.file_result list;
-  mutable diagnostics_seen : int;
-  mutable stop_requested : bool;
-  mutable stopped_workers : int;
-  mutable discovery_complete : bool;
-  limit : int option;
-  total_workers : int;
-  mode : Runner.mode;
-  scope : Fix_config.scope option;
-  owner : Pid.t;
+  file_queue: Path.t Queue.t;
+  idle_workers: Pid.t Queue.t;
+  busy_workers: (Pid.t, Path.t) HashMap.t;
+  mutable results_rev: Runner.file_result list;
+  mutable diagnostics_seen: int;
+  mutable stop_requested: bool;
+  mutable stopped_workers: int;
+  mutable discovery_complete: bool;
+  limit: int option;
+  total_workers: int;
+  mode: Runner.mode;
+  scope: Fix_config.scope option;
+  owner: Pid.t;
 }
 
-let diagnostic_count = fun result ->
-  List.length result.Runner.parse_diagnostics + List.length result.diagnostics
+let diagnostic_count = fun result -> List.length result.Runner.parse_diagnostics
++ List.length result.diagnostics
 
 let should_ignore_file = fun scope file ->
   Fix_config.should_ignore_file scope file
@@ -63,11 +63,10 @@ let maybe_stop_waiting_workers = fun state ->
   if state.stop_requested || (state.discovery_complete && Queue.is_empty state.file_queue) then
     stop_idle_workers state
 
-let is_complete = fun state ->
-  HashMap.is_empty state.busy_workers
-  && state.stopped_workers = state.total_workers
-  && state.discovery_complete
-  && (state.stop_requested || Queue.is_empty state.file_queue)
+let is_complete = fun state -> HashMap.is_empty state.busy_workers
+&& state.stopped_workers = state.total_workers
+&& state.discovery_complete
+&& (state.stop_requested || Queue.is_empty state.file_queue)
 
 let handle_complete = fun state ->
   let summary = Runner.summarize (List.rev state.results_rev) in

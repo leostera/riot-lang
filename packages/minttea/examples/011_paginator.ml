@@ -24,8 +24,8 @@ open Minttea.Component
 (* Model *)
 
 type model = {
-  current_page : int;
-  pages : string list;
+  current_page: int;
+  pages: string list;
 }
 
 (* Generate sample pages *)

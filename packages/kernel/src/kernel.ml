@@ -78,4 +78,4 @@ let stdout =
     end in
     Writer.of_write_src (module Write) stdout
 
-external dangerous_unsafe_cast : 'a -> 'b = "%identity"
+external dangerous_unsafe_cast: 'a -> 'b = "%identity"

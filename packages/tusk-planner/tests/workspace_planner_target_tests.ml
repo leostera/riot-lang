@@ -6,38 +6,39 @@ module Workspace = Tusk_model.Workspace
 
 let dependency = fun name -> Package.{name; source = Workspace}
 
-let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name ->
-  Package.{
-    name;
-    path = Path.v ("packages/" ^ name);
-    relative_path = Path.v ("packages/" ^ name);
-    dependencies = List.map dependency dependencies;
-    dev_dependencies = List.map dependency dev_dependencies;
-    build_dependencies = List.map dependency build_dependencies;
-    foreign_dependencies = [];
-    binaries = [];
-    library = Some {path = Path.v "src/lib.ml"};
-    sources = {src = []; native = []; tests = []; examples = []; bench = []};
-    compiler = {profile_overrides = []; target_overrides = []};
-    commands = [];
-    fix_providers = [];
+let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name -> Package.{
+  name;
+  path = Path.v ("packages/" ^ name);
+  relative_path = Path.v ("packages/" ^ name);
+  dependencies = List.map dependency dependencies;
+  dev_dependencies = List.map dependency dev_dependencies;
+  build_dependencies = List.map dependency build_dependencies;
+  foreign_dependencies = [];
+  binaries = [];
+  library = Some {path = Path.v "src/lib.ml"};
+  sources = {src = []; native = []; tests = []; examples = []; bench = []};
+  compiler = {profile_overrides = []; target_overrides = []};
+  commands = [];
+  fix_providers = [];
 
-  }
+}
 
-let make_workspace = fun packages ->
-  Workspace.{
-    root = Path.v "/tmp/workspace_planner_target_tests";
-    target_dir_root = Path.v "/tmp/workspace_planner_target_tests/_build";
-    packages;
-    profile_overrides = [];
+let make_workspace = fun packages -> Workspace.{
+  root = Path.v "/tmp/workspace_planner_target_tests";
+  target_dir_root = Path.v "/tmp/workspace_planner_target_tests/_build";
+  packages;
+  profile_overrides = [];
 
-  }
+}
 
-let plan_workspace = fun workspace target scope ->
-  Workspace_planner.plan_workspace ~workspace ~target ~scope ~load_errors:[]
+let plan_workspace = fun workspace target scope -> Workspace_planner.plan_workspace
+~workspace
+~target
+~scope
+~load_errors:[]
 
-let package_names = fun plan ->
-  Workspace_planner.packages_in_plan plan |> List.map (fun (pkg:Package.t) -> pkg.name)
+let package_names = fun plan -> Workspace_planner.packages_in_plan plan
+|> List.map (fun (pkg:Package.t) -> pkg.name)
 
 let plan_all_runtime_returns_workspace_like_order = fun () ->
   let workspace = make_workspace
@@ -57,7 +58,7 @@ let plan_all_runtime_returns_workspace_like_order = fun () ->
       let names = package_names plan in
       let position = fun name ->
         List.find_index (String.equal name) names
-        |> Option.expect ~msg:(("missing package in plan: " ^ name)) in
+        |> Option.expect ~msg:(((("missing package in plan: " ^ name)))) in
       Test.assert_true (position "std" < position "kernel");
       Test.assert_true (position "kernel" < position "miniriot");
       Test.assert_true (position "miniriot" < position "tusk-model");

@@ -26,13 +26,12 @@ let rec is_unit_pattern =
   | Syn.Cst.Pattern.Literal _ -> false
   | _ -> false
 
-let make_diagnostic = fun (expr:Syn.Cst.let_expression) ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
-  ~suggestion:"Replace this let-unit binding with a `;` sequence."
-  ()
+let make_diagnostic = fun (expr:Syn.Cst.let_expression) -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
+~suggestion:"Replace this let-unit binding with a `;` sequence."
+()
 
 let diagnostic_for_expression =
   function
@@ -41,5 +40,9 @@ let diagnostic_for_expression =
 
 let check_tree = fun (ctx:Rule.context) _red_root -> Rule_query.expressions ctx |> List.filter_map diagnostic_for_expression
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

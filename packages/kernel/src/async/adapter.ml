@@ -8,32 +8,32 @@ type kevent
 type kqueue = Fd.t
 
 type event = {
-  fd : Fd.t;
-  filter : int;
-  flags : int;
-  token : int;
+  fd: Fd.t;
+  filter: int;
+  flags: int;
+  token: int;
 }
 
 module FFI = struct
-  external kernel_unix_kevent : max_events:int -> timeout:int64 -> kqueue -> event array = "kernel_unix_kevent"
+  external kernel_unix_kevent: max_events:int -> timeout:int64 -> kqueue -> event array = "kernel_unix_kevent"
 
   let kevent = fun ~max_events ~timeout kq ->
     try Ok (kernel_unix_kevent ~max_events ~timeout kq) with
     | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
-  external kernel_unix_kqueue : unit -> kqueue = "kernel_unix_kqueue"
+  external kernel_unix_kqueue: unit -> kqueue = "kernel_unix_kqueue"
 
   let kqueue = fun () ->
     try Ok (kernel_unix_kqueue ()) with
     | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
-  external kernel_unix_fcntl : Fd.t -> cmd:int -> arg:int -> int = "kernel_unix_fcntl"
+  external kernel_unix_fcntl: Fd.t -> cmd:int -> arg:int -> int = "kernel_unix_fcntl"
 
   let fcntl = fun fd cmd arg ->
     try Ok (kernel_unix_fcntl fd ~cmd ~arg) with
     | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
-  external kernel_unix_kevent_register : kqueue -> event array -> int array -> unit = "kernel_unix_kevent_register"
+  external kernel_unix_kevent_register: kqueue -> event array -> int array -> unit = "kernel_unix_kevent_register"
 
   let kevent_register = fun fd changes ignored_errors ->
     try Ok (kernel_unix_kevent_register fd changes ignored_errors) with
@@ -68,7 +68,7 @@ module Selector = struct
   let name = "kqueue"
 
   type t = {
-    kq : kqueue;
+    kq: kqueue;
   }
 
   let make = fun () ->

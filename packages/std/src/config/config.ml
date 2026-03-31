@@ -8,18 +8,18 @@ module Server = Server
 
 type error =
   | NotFound of {
-      app : string;
+      app: string;
     }
   | ValidationError of {
-      app : string;
-      errors : string list;
+      app: string;
+      errors: string list;
     }
   | ParseError of {
-      path : string;
-      message : string;
+      path: string;
+      message: string;
     }
   | FileNotFound of {
-      path : string;
+      path: string;
     }
 
 let error_to_string =
@@ -35,10 +35,10 @@ let error_to_string =
       "Config file not found: " ^ path
 
 module type ConfigSpec = sig
-  val spec : Spec.t
+  val spec: Spec.t
 
   type t
-  val get : Spec.value -> (t, error) result
+  val get: Spec.value -> (t, error) result
 end
 
 let config_server : Server.t option Sync.Cell.t = cell None

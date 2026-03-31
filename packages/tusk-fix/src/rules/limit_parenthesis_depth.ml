@@ -19,13 +19,12 @@ telling you that the current shape is too dense.
 
 let max_parenthesis_depth = 5
 
-let make_diagnostic = fun (expr:Syn.Cst.parenthesized_expression) depth ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
-  ~suggestion:(("Reduce parenthesis depth from " ^ Int.to_string depth ^ " by removing redundant grouping or extracting a named value"))
-  ()
+let make_diagnostic = fun (expr:Syn.Cst.parenthesized_expression) depth -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))))
+~suggestion:(((("Reduce parenthesis depth from " ^ Int.to_string depth ^ " by removing redundant grouping or extracting a named value"))))
+()
 
 let rec parenthesis_chain_depth =
   function
@@ -123,5 +122,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   ~inside_parenthesized_chain:false
   (Syn.Cst.LetBinding.value binding))
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

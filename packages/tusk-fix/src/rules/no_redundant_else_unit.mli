@@ -1,1 +1,1 @@
-val make : unit -> Fixme.Rule.t
+val make: unit -> Fixme.Rule.t

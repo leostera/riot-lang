@@ -35,16 +35,16 @@ let parameter_has_inline_type = fun parameter ->
   subtree_contains_kind node Syn.SyntaxKind.TYPED_PATTERN
   || subtree_contains_kind node Syn.SyntaxKind.TYPE_CONSTRAINT
 
-let make_diagnostic = fun parameter ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Parameter.syntax_node parameter))
-  ~suggestion:"Move the parameter type annotation into the function signature"
-  ()
+let make_diagnostic = fun parameter -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Parameter.syntax_node parameter))
+~suggestion:"Move the parameter type annotation into the function signature"
+()
 
-let diagnostic_for_binding = fun binding ->
-  Syn.Cst.LetBinding.parameters binding |> List.find_opt parameter_has_inline_type |> Option.map make_diagnostic
+let diagnostic_for_binding = fun binding -> Syn.Cst.LetBinding.parameters binding
+|> List.find_opt parameter_has_inline_type
+|> Option.map make_diagnostic
 
 let check_tree = fun (ctx:Rule.context) _red_root ->
   let source_file = ctx.cst in
@@ -54,5 +54,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.filter Syn.Cst.LetBinding.is_function
   |> List.filter_map diagnostic_for_binding
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

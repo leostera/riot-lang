@@ -4,19 +4,19 @@ type event = ..
 
 type event +=
   | SpanStarted of {
-      started_at : Time.Instant.t;
-      event : event;
+      started_at: Time.Instant.t;
+      event: event;
     }
   | SpanCompleted of {
-      completed_at : Time.Instant.t;
-      event : event;
+      completed_at: Time.Instant.t;
+      event: event;
     }
 
 type handler_id = string
 
 type handler = {
-  id : handler_id;
-  fn : event -> unit;
+  id: handler_id;
+  fn: event -> unit;
 }
 
 open Kernel.Sync
@@ -24,7 +24,7 @@ open Kernel.Collections
 
 module Server = struct
   type state = {
-    handlers : (handler_id, handler) HashMap.t;
+    handlers: (handler_id, handler) HashMap.t;
   }
 
   type reply_to = Pid.t
@@ -35,22 +35,22 @@ module Server = struct
     | AttachHandler of handler
     | DetachHandler of handler_id
     | DetachAll
-    | ListHandlers of { reply_to : reply_to; request_id : request_id; }
+    | ListHandlers of { reply_to: reply_to; request_id: request_id; }
     | Emit of event
-    | Stop of { reply_to : reply_to; request_id : request_id; }
+    | Stop of { reply_to: reply_to; request_id: request_id; }
 
   type Message.t +=
     Telemetry of message
 
   type Message.t +=
     HandlerList of {
-        request_id : request_id;
-        ids : string list;
+        request_id: request_id;
+        ids: string list;
       }
 
   type Message.t +=
     Stopped of {
-        request_id : request_id;
+        request_id: request_id;
       }
 
   let rec loop = fun state ->

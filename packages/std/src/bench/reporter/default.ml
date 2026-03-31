@@ -25,17 +25,16 @@ let on_result = fun index (result:Bench_result.t) ->
       println ("  Error: " ^ msg);
       println ""
 
-let finalize = fun (summary:Bench_result.summary) ->
-  println
-  ("Summary: "
-  ^ string_of_int summary.total
-  ^ " total, "
-  ^ string_of_int summary.completed
-  ^ " completed, "
-  ^ string_of_int summary.skipped
-  ^ " skipped, "
-  ^ string_of_int summary.failed
-  ^ " failed")
+let finalize = fun (summary:Bench_result.summary) -> println
+("Summary: "
+^ string_of_int summary.total
+^ " total, "
+^ string_of_int summary.completed
+^ " completed, "
+^ string_of_int summary.skipped
+^ " skipped, "
+^ string_of_int summary.failed
+^ " failed")
 
 (* Comparison reporting *)
 

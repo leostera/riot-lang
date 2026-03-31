@@ -2,8 +2,8 @@ open Global
 open Collections
 
 type 'a t = {
-  pid : Pid.t;
-  ref : 'a Ref.t;
+  pid: Pid.t;
+  ref: 'a Ref.t;
 }
 
 type Message.t +=

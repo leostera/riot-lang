@@ -6,11 +6,11 @@ open Suri
 (** Mock database module *)
 module DB = struct
   type user = {
-    id : int;
-    username : string;
-    password_hash : string;
-    role : string;
-    email : string;
+    id: int;
+    username: string;
+    password_hash: string;
+    role: string;
+    email: string;
   }
 
   (* Simulated user database *)

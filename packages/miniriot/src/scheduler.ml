@@ -29,10 +29,10 @@ let has_run = Cell.create false
 let trace_enabled = Atomic.make false
 
 type trace_counters = {
-  steals : int;
-  failed_steals : int;
-  remote_wakeups : int;
-  duplicate_enqueue_races : int;
+  steals: int;
+  failed_steals: int;
+  remote_wakeups: int;
+  duplicate_enqueue_races: int;
 }
 
 let create_counters () : runtime_counters = {
@@ -49,14 +49,13 @@ let trace = fun msg ->
   if Atomic.get trace_enabled then
     eprintln ("[Scheduler.Trace] " ^ msg)
 
-let snapshot_counters = fun (counters:runtime_counters) ->
-  {
-    steals = Atomic.get counters.steals;
-    failed_steals = Atomic.get counters.failed_steals;
-    remote_wakeups = Atomic.get counters.remote_wakeups;
-    duplicate_enqueue_races = Atomic.get counters.duplicate_enqueue_races;
+let snapshot_counters = fun (counters:runtime_counters) -> {
+  steals = Atomic.get counters.steals;
+  failed_steals = Atomic.get counters.failed_steals;
+  remote_wakeups = Atomic.get counters.remote_wakeups;
+  duplicate_enqueue_races = Atomic.get counters.duplicate_enqueue_races;
 
-  }
+}
 
 let enable_trace = fun () ->
   Atomic.set trace_enabled true
@@ -121,8 +120,13 @@ let with_reactor_commands = fun t f ->
       Mutex.unlock t.reactor_lock;
       raise exn
 
-let create_worker = fun id ->
-  {id; queue = Queue.create (); lock = Mutex.create (); cond = Condition.create (); }
+let create_worker = fun id -> {
+  id;
+  queue = Queue.create ();
+  lock = Mutex.create ();
+  cond = Condition.create ();
+
+}
 
 let default_worker_count = fun config ->
   let requested = Config.worker_count config in
@@ -150,15 +154,14 @@ let create_process_registry = fun worker_count ->
   in
   {shards; size = Atomic.make 0; }
 
-let create_process_slot = fun proc ~owner_worker ->
-  {
-    process = proc;
-    owner_worker = Atomic.make owner_worker;
-    queued = Atomic.make false;
-    executing = Atomic.make false;
-    pending = Atomic.make false;
+let create_process_slot = fun proc ~owner_worker -> {
+  process = proc;
+  owner_worker = Atomic.make owner_worker;
+  queued = Atomic.make false;
+  executing = Atomic.make false;
+  pending = Atomic.make false;
 
-  }
+}
 
 let slot_process = fun slot -> slot.process
 
@@ -410,8 +413,9 @@ let drain_reactor_commands = fun t ->
       in
       drain [])
 
-let has_pending_reactor_commands = fun t ->
-  with_reactor_commands t (fun () -> not (Queue.is_empty t.reactor_commands))
+let has_pending_reactor_commands = fun t -> with_reactor_commands
+t
+(fun () -> not (Queue.is_empty t.reactor_commands))
 
 let add_timer = fun t ~now ~duration_nanos ~mode ~action ->
   if Atomic.get t.stop then
@@ -932,7 +936,7 @@ let process_timers = fun t ->
                       deregister_io_in_reactor
                       t
                       source
-                      ~context:(("for timed out process " ^ Pid.to_string (Process.pid proc)))
+                      ~context:(((("for timed out process " ^ Pid.to_string (Process.pid proc)))))
                   | _ -> ()
                 );
               if Process.is_alive proc then
@@ -991,7 +995,7 @@ let poll_io = fun t ->
               deregister_io_in_reactor
               t
               source
-              ~context:(("for process " ^ Pid.to_string (Process.pid proc)));
+              ~context:(((("for process " ^ Pid.to_string (Process.pid proc)))));
               if Process.is_alive proc then
                 (
                   Process.add_ready_token proc token source;
@@ -1002,19 +1006,23 @@ let poll_io = fun t ->
     events
 
 module Reactor = struct
-  let loop = fun scheduler ->
-    Scheduler_reactor.loop
-    ~has_pending_commands:has_pending_reactor_commands
-    ~drain_commands:drain_reactor_commands
-    ~handle_command:handle_reactor_command
-    ~process_timers
-    ~poll_io
-    scheduler
+  let loop = fun scheduler -> Scheduler_reactor.loop
+  ~has_pending_commands:has_pending_reactor_commands
+  ~drain_commands:drain_reactor_commands
+  ~handle_command:handle_reactor_command
+  ~process_timers
+  ~poll_io
+  scheduler
 end
 
 module Worker = struct
-  let loop = fun scheduler worker ->
-    Scheduler_worker.loop ~pop_local ~step_process ~attempt_steal ~wait_for_local_work scheduler worker
+  let loop = fun scheduler worker -> Scheduler_worker.loop
+  ~pop_local
+  ~step_process
+  ~attempt_steal
+  ~wait_for_local_work
+  scheduler
+  worker
 end
 
 let runtime_deps : Scheduler_runtime.deps = {

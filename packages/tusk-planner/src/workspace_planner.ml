@@ -8,28 +8,28 @@ type target =
   | Packages of string list
 
 type package_plan = {
-  packages : Package.t list;
-  package_graph : Package_graph.t;
-  workspace : Workspace.t;
+  packages: Package.t list;
+  package_graph: Package_graph.t;
+  workspace: Workspace.t;
 }
 
 type plan_error =
   | PackageNotFound of {
-      name : string;
-      available : string list;
+      name: string;
+      available: string list;
     }
   | PackagesNotFound of {
-      names : string list;
-      available : string list;
+      names: string list;
+      available: string list;
     }
   | CycleDetected of {
-      cycle : string list;
+      cycle: string list;
     }
   | MissingDependencies of {
-      missing : Package_graph.missing_dependency list;
+      missing: Package_graph.missing_dependency list;
     }
   | PackageLoadFailed of {
-      errors : Workspace_manager.load_error list;
+      errors: Workspace_manager.load_error list;
     }
 
 let plan_workspace = fun ~workspace ~target ~(scope:Package_graph.build_scope) ~load_errors ->

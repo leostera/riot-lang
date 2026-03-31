@@ -11,7 +11,7 @@ open Std
 (** Decoder state *)
 type decoder
 (** Create a new decoder with optional dynamic table size *)
-val create : ?max_dynamic_table_size:int -> unit -> decoder
+val create: ?max_dynamic_table_size:int -> unit -> decoder
 
 (** Decode errors *)
 type decode_error =
@@ -57,13 +57,13 @@ type decode_result =
     @param reader The IO reader
     @return Decode result
 *)
-val decode : decoder -> ('src, 'err) IO.Reader.t -> decode_result
+val decode: decoder -> ('src, 'err) IO.Reader.t -> decode_result
 
 (** Update maximum dynamic table size (from SETTINGS frame) *)
-val update_max_table_size : decoder -> int -> unit
+val update_max_table_size: decoder -> int -> unit
 
 (** Reset decoder state for new connection *)
-val reset : decoder -> unit
+val reset: decoder -> unit
 
 (** Get dynamic table size *)
-val dynamic_table_size : decoder -> int
+val dynamic_table_size: decoder -> int

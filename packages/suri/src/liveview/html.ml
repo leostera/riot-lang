@@ -19,7 +19,7 @@ let attr_type = fun v -> attr "type" v
 let attr_src = fun v -> attr "src" v
 
 type 'msg t =
-  | El of { tag : string; attrs : 'msg attr list; children : 'msg t list; }
+  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list; }
   | Text of string
   | Splat of 'msg t list
 
@@ -31,14 +31,13 @@ let html = fun ?(children = []) () -> El {tag = "html"; attrs = []; children}
 
 let body = fun ?(children = []) () -> El {tag = "body"; attrs = []; children}
 
-let div = fun ?(attrs = []) ?id ?(children = []) () ->
-  El {
-    tag = "div";
-    attrs = List.filter_map (fun x -> x) [ Option.map attr_id id ]
-    @ List.map (fun ((k, v)) -> `attr (k, v)) attrs;
-    children;
+let div = fun ?(attrs = []) ?id ?(children = []) () -> El {
+  tag = "div";
+  attrs = List.filter_map (fun x -> x) [ Option.map attr_id id ]
+  @ List.map (fun ((k, v)) -> `attr (k, v)) attrs;
+  children;
 
-  }
+}
 
 let h1 = fun ?(children = []) () -> El {tag = "h1"; attrs = []; children}
 
@@ -56,14 +55,13 @@ let span = fun ?(children = []) () -> El {tag = "span"; attrs = []; children}
 
 let p = fun ?(children = []) () -> El {tag = "p"; attrs = []; children}
 
-let script = fun ?src ?id ?type_ ?(children = []) () ->
-  El {
-    tag = "script";
-    attrs = [ Option.map attr_id id; Option.map attr_type type_; Option.map attr_src src;  ]
-    |> List.filter_map (fun x -> x);
-    children;
+let script = fun ?src ?id ?type_ ?(children = []) () -> El {
+  tag = "script";
+  attrs = [ Option.map attr_id id; Option.map attr_type type_; Option.map attr_src src;  ]
+  |> List.filter_map (fun x -> x);
+  children;
 
-  }
+}
 
 let string = fun (str:string) -> Text str
 
@@ -82,15 +80,14 @@ let rec to_string = fun (t:'msg t) ->
   ^ "</"
   ^ tag
   ^ ">"
-and attrs_to_string =
-  fun attrs ->
-    List.map
-      (
-        function
-        | `attr (k, v) -> k ^ "=" ^ "\"" ^ v ^ "\""
-        | _ -> ""
-      )
-      attrs |> String.concat " "
+and attrs_to_string = fun attrs ->
+  List.map
+    (
+      function
+      | `attr (k, v) -> k ^ "=" ^ "\"" ^ v ^ "\""
+      | _ -> ""
+    )
+    attrs |> String.concat " "
 
 let event_handlers = fun attrs ->
   List.filter_map

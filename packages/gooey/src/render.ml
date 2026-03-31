@@ -1,28 +1,28 @@
 open Std
 
 type border_width = {
-  left : int;
-  right : int;
-  top : int;
-  bottom : int;
+  left: int;
+  right: int;
+  top: int;
+  bottom: int;
 }
 
 type rectangle_data = {
-  color : Colors.rgb;
-  corner_radius : Style.corner_radius;
+  color: Colors.rgb;
+  corner_radius: Style.corner_radius;
 }
 
 type text_data = {
-  content : string;
-  color : Colors.rgb;
-  size : int;
-  weight : Style.font_weight;
+  content: string;
+  color: Colors.rgb;
+  size: int;
+  weight: Style.font_weight;
 }
 
 type border_data = {
-  width : border_width;
-  color : Colors.rgb;
-  corner_radius : Style.corner_radius;
+  width: border_width;
+  color: Colors.rgb;
+  corner_radius: Style.corner_radius;
 }
 
 type command_type =
@@ -31,12 +31,12 @@ type command_type =
   | Border of border_data
   | ScissorStart of Geometry.Rect.t
   | ScissorEnd
-  | Custom of { data : string; }
+  | Custom of { data: string; }
 
 type command = {
-  bounding_box : Geometry.Rect.t;
-  command_type : command_type;
-  z_index : int;
+  bounding_box: Geometry.Rect.t;
+  command_type: command_type;
+  z_index: int;
 }
 
 type command_list = command list

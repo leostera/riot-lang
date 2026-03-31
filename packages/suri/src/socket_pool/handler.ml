@@ -1,19 +1,19 @@
 open Std
 
 type ('state, 'error) handler = {
-  to_string_error : 'error -> string;
-  handle_close : Connection.t -> 'state -> unit;
-  handle_connection : Connection.t -> 'state -> ('state, 'error) handler_result;
-  handle_data : string -> Connection.t -> 'state -> ('state, 'error) handler_result;
-  handle_error : 'error -> Connection.t -> 'state -> ('state, 'error) handler_result;
-  handle_shutdown : Connection.t -> 'state -> ('state, 'error) handler_result;
-  handle_message : Message.t -> Connection.t -> 'state -> ('state, 'error) handler_result;
+  to_string_error: 'error -> string;
+  handle_close: Connection.t -> 'state -> unit;
+  handle_connection: Connection.t -> 'state -> ('state, 'error) handler_result;
+  handle_data: string -> Connection.t -> 'state -> ('state, 'error) handler_result;
+  handle_error: 'error -> Connection.t -> 'state -> ('state, 'error) handler_result;
+  handle_shutdown: Connection.t -> 'state -> ('state, 'error) handler_result;
+  handle_message: Message.t -> Connection.t -> 'state -> ('state, 'error) handler_result;
 }
 
 and t =
   | H : {
-    handler : ('new_state, 'error) handler;
-    state : 'new_state;
+    handler: ('new_state, 'error) handler;
+    state: 'new_state;
   } -> t
 
 and ('state, 'error) handler_result =

@@ -3,15 +3,15 @@ open Collections
 open Sync
 open Sync.Cell
 
-module Node_id : sig
+module Node_id: sig
   type t
-  val next : unit -> t
+  val next: unit -> t
 
-  val eq : t -> t -> bool
+  val eq: t -> t -> bool
 
-  val to_int : t -> int
+  val to_int: t -> int
 
-  val to_string : t -> string
+  val to_string: t -> string
 end = struct
   type t = int
 
@@ -29,13 +29,13 @@ end = struct
 end
 
 type 'value node = {
-  id : Node_id.t;
-  mutable deps : Node_id.t list;
-  mutable value : 'value;
+  id: Node_id.t;
+  mutable deps: Node_id.t list;
+  mutable value: 'value;
 }
 
 type 'value t = {
-  nodes : (Node_id.t, 'value node) HashMap.t;
+  nodes: (Node_id.t, 'value node) HashMap.t;
 }
 
 let make = fun () -> {nodes = HashMap.with_capacity 100}
@@ -133,7 +133,6 @@ let topo_sort = fun graph ->
     (
       (* Find actual cycle using DFS from a node involved in the cycle *)
       let find_cycle = fun () ->
-        (* Find any node with in-degree > 0 (it's in a cycle) *)
         let start_node =
           HashMap.fold
             (fun id count acc ->

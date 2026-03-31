@@ -1,10 +1,10 @@
 open Std
 
 type 'value t = {
-  gen : 'value Generator.t;
-  shrink : 'value Shrinker.t option;
-  print : 'value Printer.t option;
-  small : ('value -> int) option;
+  gen: 'value Generator.t;
+  shrink: 'value Shrinker.t option;
+  print: 'value Printer.t option;
+  small: ('value -> int) option;
 }
 
 (* === BUILDING ARBITRARIES === *)

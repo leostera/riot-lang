@@ -18,11 +18,11 @@ type input =
     7. Send AllComplete message to owner when done
 *)
 type config = {
-  input : input;
-  concurrency : int;
-  limit : int option;
-  mode : Runner.mode;
-  scope : Fix_config.scope option;
-  owner : Pid.t;
+  input: input;
+  concurrency: int;
+  limit: int option;
+  mode: Runner.mode;
+  scope: Fix_config.scope option;
+  owner: Pid.t;
 }
-val start : config -> Pid.t
+val start: config -> Pid.t

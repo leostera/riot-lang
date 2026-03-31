@@ -47,12 +47,12 @@ open Std
     ```
 *)
 type t = {
-  rows : int;  (** Number of rows (lines) in terminal *)
-  cols : int;  (** Number of columns (characters per line) in terminal *)
+  rows: int;  (** Number of rows (lines) in terminal *)
+  cols: int;  (** Number of columns (characters per line) in terminal *)
 }
-val get : unit -> (t, [
-  `System_error of string
-]) result
+val get: unit -> (t, [
+    `System_error of string
+  ]) result
 
 (** Get current terminal size.
     
@@ -83,7 +83,7 @@ val get : unit -> (t, [
     ```
     
     Note: Size may change if user resizes terminal window. *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** Convert size to human-readable string.
     

@@ -1,9 +1,9 @@
 open Std
 
 type config = {
-  mode : Runner.mode;
-  scope : Fix_config.scope option;
-  coordinator : Pid.t;
+  mode: Runner.mode;
+  scope: Fix_config.scope option;
+  coordinator: Pid.t;
 }
 
 let run_file = fun config file_path ->

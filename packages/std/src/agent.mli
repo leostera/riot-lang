@@ -28,22 +28,22 @@
 (** Agent handle parametrized by state type *)
 type 'state t
 (** Start an agent with the given initial state *)
-val start : (unit -> 'state) -> 'state t
+val start: (unit -> 'state) -> 'state t
 
 (** Start an agent linked to the current process *)
-val start_link : (unit -> 'state) -> 'state t
+val start_link: (unit -> 'state) -> 'state t
 
 (** Get a value computed from the agent's state *)
-val get : 'state t -> ('state -> 'reply) -> 'reply
+val get: 'state t -> ('state -> 'reply) -> 'reply
 
 (** Update the agent's state synchronously *)
-val update : 'state t -> ('state -> 'state) -> unit
+val update: 'state t -> ('state -> 'state) -> unit
 
 (** Get a value and update state atomically *)
-val get_and_update : 'state t -> ('state -> 'reply * 'state) -> 'reply
+val get_and_update: 'state t -> ('state -> 'reply * 'state) -> 'reply
 
 (** Update the agent's state asynchronously (fire and forget) *)
-val cast : 'state t -> ('state -> 'state) -> unit
+val cast: 'state t -> ('state -> 'state) -> unit
 
 (** Stop the agent *)
-val stop : 'state t -> unit
+val stop: 'state t -> unit

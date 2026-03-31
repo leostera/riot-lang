@@ -20,37 +20,37 @@ type level = Level.t =
   | Error
 (** {1 Configuration} *)
 (** Sets the minimum log level *)
-val set_level : Level.t -> unit
+val set_level: Level.t -> unit
 
 (** Returns the current log level *)
-val get_level : unit -> Level.t
+val get_level: unit -> Level.t
 
 (** {1 Logging Functions} *)
-val trace : ?meta:Metadata.t -> string -> unit
+val trace: ?meta:Metadata.t -> string -> unit
 
-val debug : ?meta:Metadata.t -> string -> unit
+val debug: ?meta:Metadata.t -> string -> unit
 
-val info : ?meta:Metadata.t -> string -> unit
+val info: ?meta:Metadata.t -> string -> unit
 
-val warn : ?meta:Metadata.t -> string -> unit
+val warn: ?meta:Metadata.t -> string -> unit
 
-val error : ?meta:Metadata.t -> string -> unit
+val error: ?meta:Metadata.t -> string -> unit
 
 (** {1 Handler Management} *)
 (** Attach a custom handler *)
-val attach : string -> (Event.t -> unit) -> unit
+val attach: string -> (Event.t -> unit) -> unit
 
 (** Detach a handler by ID *)
-val detach : string -> unit
+val detach: string -> unit
 
 (** Detach all handlers *)
-val detach_all : unit -> unit
+val detach_all: unit -> unit
 
 (** List all registered handler IDs *)
-val list_handlers : unit -> string list
+val list_handlers: unit -> string list
 
 (** {1 Supervision} *)
-val start_link : unit -> Pid.t
+val start_link: unit -> Pid.t
 
 (** Get the supervisor child spec for the logging infrastructure *)
-val child_spec : Supervisor.child_spec
+val child_spec: Supervisor.child_spec

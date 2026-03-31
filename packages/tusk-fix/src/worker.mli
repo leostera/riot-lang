@@ -14,8 +14,8 @@ open Std
     If linting fails, the worker sends a failure message and continues.
 *)
 type config = {
-  mode : Runner.mode;
-  scope : Fix_config.scope option;
-  coordinator : Pid.t;
+  mode: Runner.mode;
+  scope: Fix_config.scope option;
+  coordinator: Pid.t;
 }
-val start : config -> Pid.t
+val start: config -> Pid.t

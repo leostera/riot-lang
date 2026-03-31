@@ -3,12 +3,12 @@ open Collections
 open Types
 
 type 'task state = {
-  owner : Pid.t;
-  idle_workers : Pid.t Queue.t;
-  busy_workers : (Pid.t, unit) HashMap.t;
-  pending_tasks : Task.t Queue.t;
-  all_workers : Pid.t list;
-  task_ref : 'task Ref.t;
+  owner: Pid.t;
+  idle_workers: Pid.t Queue.t;
+  busy_workers: (Pid.t, unit) HashMap.t;
+  pending_tasks: Task.t Queue.t;
+  all_workers: Pid.t list;
+  task_ref: 'task Ref.t;
 }
 
 let rec loop : type task. task state -> (unit, Process.exit_reason) result = fun state ->

@@ -11,13 +11,13 @@ type action =
   | Send_message of Pid.t * Message.t
 
 type t = {
-  id : id;
-  mode : mode;
-  mutable started_at : int64;
-  mutable expires_at : int64;
-  duration_nanos : int64;
-  action : action;
-  mutable status :
+  id: id;
+  mode: mode;
+  mutable started_at: int64;
+  mutable expires_at: int64;
+  duration_nanos: int64;
+  action: action;
+  mutable status:
     [
       `pending
       | `cancelled

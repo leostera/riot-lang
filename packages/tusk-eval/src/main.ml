@@ -14,8 +14,8 @@ open Std.IO
     code within the context of the current project.
 *)
 type eval_result =
-  | Success of { output : string; typ : string option; }
-  | Error of { message : string; backtrace : string option; }
+  | Success of { output: string; typ: string option; }
+  | Error of { message: string; backtrace: string option; }
   | ParseError of string
   | TypeError of string
 

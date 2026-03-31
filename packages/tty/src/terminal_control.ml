@@ -43,10 +43,10 @@ let disable_line_wrap = fun t ->
 (* Window size *)
 
 type window_size = {
-  rows : int;
-  columns : int;
-  width_px : int;
-  height_px : int;
+  rows: int;
+  columns: int;
+  width_px: int;
+  height_px: int;
 }
 
 let window_size = fun t ->

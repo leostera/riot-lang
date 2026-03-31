@@ -58,17 +58,16 @@ let is_emoji_modifier = fun c -> c >= 0x1_f3fb && c <= 0x1_f3ff
 let is_combining = fun c -> let open Width_tables in in_table combining c || is_emoji_modifier c
 
 (** Check if a code point is a control character *)
-let is_control = fun c ->
-  (c >= 0x0000 && c <= 0x001f)
-  || (c >= 0x007f && c <= 0x009f)
-  || (c = 0x00ad)
-  || (c = 0x061c)
-  || (c >= 0x180e && c <= 0x180e)
-  || (c >= 0x200b && c <= 0x200f)
-  || (c >= 0x2028 && c <= 0x202e)
-  || (c >= 0x2060 && c <= 0x206f)
-  || (c = 0xfeff)
-  || (c >= 0xfff9 && c <= 0xfffb)
+let is_control = fun c -> (c >= 0x0000 && c <= 0x001f)
+|| (c >= 0x007f && c <= 0x009f)
+|| (c = 0x00ad)
+|| (c = 0x061c)
+|| (c >= 0x180e && c <= 0x180e)
+|| (c >= 0x200b && c <= 0x200f)
+|| (c >= 0x2028 && c <= 0x202e)
+|| (c >= 0x2060 && c <= 0x206f)
+|| (c = 0xfeff)
+|| (c >= 0xfff9 && c <= 0xfffb)
 
 (* Interlinear annotation *)
 

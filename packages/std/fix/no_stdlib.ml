@@ -80,10 +80,9 @@ let make_suggestion = fun text ->
   | Some replacement -> Some ("Replace " ^ text ^ " with " ^ replacement)
   | None -> None
 
-let make_fix = fun token replacement ->
-  Api.Fix.make
-  ~title:(("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement))
-  ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:replacement;  ]
+let make_fix = fun token replacement -> Api.Fix.make
+~title:(((("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement))))
+~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:replacement;  ]
 
 let make_diagnostic = fun token ->
   let text = Syn.Ceibo.Red.SyntaxToken.text token in
@@ -182,10 +181,9 @@ let check_tree = fun (_ctx:Api.Rule.context) red_root ->
 
       ])
 
-let rule = fun () ->
-  Api.Rule.make
-  ~id:package_rule_id
-  ~description:rule_description
-  ~explain:rule_explain
-  ~run:check_tree
-  ()
+let rule = fun () -> Api.Rule.make
+~id:package_rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

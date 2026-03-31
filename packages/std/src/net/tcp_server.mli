@@ -11,12 +11,13 @@ type error =
 (** Create a TCP server with a bound listener and start accepting connections.
     This function blocks and runs the accept loop until an error occurs. *)
 type handler = req:string -> Kernel.Net.Tcp_stream.t -> unit
-val listen : ?reuse_addr:bool ->
-?reuse_port:bool ->
-?backlog:int ->
-Kernel.Net.Addr.stream_addr ->
-handler:handler ->
-(unit, error) result
+val listen:
+  ?reuse_addr:bool ->
+  ?reuse_port:bool ->
+  ?backlog:int ->
+  Kernel.Net.Addr.stream_addr ->
+  handler:handler ->
+  (unit, error) result
 
 (** Close the server *)
-val close : t -> unit
+val close: t -> unit

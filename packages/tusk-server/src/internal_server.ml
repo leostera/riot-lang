@@ -3,13 +3,13 @@ open Std
 open Tusk_model
 
 type server_state = {
-  workspace : Workspace.t;
-  toolchain : Tusk_toolchain.t;
-  concurrency : int;
-  package_graph : Tusk_planner.Package_graph.t;
-  load_errors : Workspace_manager.load_error list;
-  active_profile : string;
-  active_target : string;
+  workspace: Workspace.t;
+  toolchain: Tusk_toolchain.t;
+  concurrency: int;
+  package_graph: Tusk_planner.Package_graph.t;
+  load_errors: Workspace_manager.load_error list;
+  active_profile: string;
+  active_target: string;
 }
 
 let build_state = fun ~(workspace:Workspace.t) ~load_errors ~config ->

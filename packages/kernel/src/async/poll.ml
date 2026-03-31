@@ -1,7 +1,7 @@
 open Common
 
 type t = {
-  selector : Adapter.Selector.t;
+  selector: Adapter.Selector.t;
 }
 
 let make = fun () ->

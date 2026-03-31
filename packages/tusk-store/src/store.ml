@@ -7,27 +7,29 @@ open Tusk_model
 module Manifest = Manifest
 
 type t = {
-  root_dir : Path.t;  (* Root directory for the store *)
+  root_dir: Path.t;  (* Root directory for the store *)
 }
 
 type error = string
 
 type export_entry = {
-  name : string;
-  path : Path.t;
-  action_hash : string;
+  name: string;
+  path: Path.t;
+  action_hash: string;
 }
 
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir = Tusk_dirs.cache_dir_with_target ~workspace_root:workspace.root ~profile ~target in
   Fs.create_dir_all store_dir
-  |> Result.expect ~msg:(("Failed to create store directory: " ^ Path.to_string store_dir));
+  |> Result.expect ~msg:(((("Failed to create store directory: " ^ Path.to_string store_dir))));
   {root_dir = store_dir}
 
 (** Create a new store for the given workspace *)
-let create = fun ~(workspace:Workspace.t) ->
-  create_for_lane ~workspace ~profile:"debug" ~target:(Tusk_dirs.host_target ())
+let create = fun ~(workspace:Workspace.t) -> create_for_lane
+~workspace
+~profile:"debug"
+~target:(Tusk_dirs.host_target ())
 
 (** Get the path for a given hash in the store *)
 let get_hash_dir = fun store hash -> Path.(store.root_dir / Path.v (Std.Crypto.Digest.hex hash))
@@ -36,13 +38,15 @@ let manifest_path = fun hash_dir -> Path.(hash_dir / Path.v "manifest.json")
 
 let plans_dir = fun store -> Path.(store.root_dir / Path.v "plans")
 
-let plan_path = fun store hash ->
-  Path.(plans_dir store / Path.v (Std.Crypto.Digest.hex hash ^ ".json"))
+let plan_path = fun store hash -> Path.(plans_dir store
+/ Path.v (Std.Crypto.Digest.hex hash ^ ".json"))
 
 let exports_dir = fun store -> Path.(store.root_dir / Path.v "exports")
 
-let package_exports_path = fun store ~package ~profile ~target ->
-  Path.(exports_dir store / Path.v profile / Path.v target / Path.v (package ^ ".json"))
+let package_exports_path = fun store ~package ~profile ~target -> Path.(exports_dir store
+/ Path.v profile
+/ Path.v target
+/ Path.v (package ^ ".json"))
 
 (** Check if artifacts for a given hash exist in the store *)
 let exists = fun store hash ->
@@ -63,17 +67,18 @@ let promote = fun store hash ~target_dir ->
   match Manifest.load ~path:(manifest_path hash_dir) with
   | Ok manifest ->
       Fs.create_dir_all target_dir
-      |> Result.expect ~msg:(("Failed to create target directory: " ^ Path.to_string target_dir));
+      |> Result.expect ~msg:(((("Failed to create target directory: " ^ Path.to_string target_dir))));
       List.iter
         (fun (entry:Manifest.file_entry) ->
           let src = Path.(hash_dir / entry.path) in
           let dst = Path.(target_dir / entry.path) in
           let dst_parent = Path.dirname dst in
           Fs.create_dir_all dst_parent
-          |> Result.expect ~msg:(("Failed to create parent directory: " ^ Path.to_string dst_parent));
+          |> Result.expect
+          ~msg:(((("Failed to create parent directory: " ^ Path.to_string dst_parent))));
           Fs.copy ~src ~dst
           |> Result.expect
-          ~msg:(("Failed to copy file: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst)))
+          ~msg:(((("Failed to copy file: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst)))))
         manifest.files;
       Ok ()
   | Error _ -> Error "Hash not found in store"
@@ -87,7 +92,7 @@ let store_artifacts = fun store ~package hash sandbox_dir declared_outputs ->
     Path.(store.root_dir / Path.v temp_name)
   in
   Fs.create_dir_all temp_dir
-  |> Result.expect ~msg:(("Failed to create temp directory: " ^ Path.to_string temp_dir));
+  |> Result.expect ~msg:(((("Failed to create temp directory: " ^ Path.to_string temp_dir))));
   (* Copy declared outputs to store and track what was actually stored *)
   let stored_files_with_sizes =
     List.fold_left
@@ -99,12 +104,12 @@ let store_artifacts = fun store ~package hash sandbox_dir declared_outputs ->
             let dst_parent = Path.dirname dst in
             Fs.create_dir_all dst_parent
             |> Result.expect
-            ~msg:(("Failed to create parent directory: " ^ Path.to_string dst_parent));
+            ~msg:(((("Failed to create parent directory: " ^ Path.to_string dst_parent))));
             Fs.copy ~src ~dst
             |> Result.expect
-            ~msg:(("Failed to store artifact: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst));
+            ~msg:(((("Failed to store artifact: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst))));
             let size = Fs.metadata dst
-            |> Result.expect ~msg:(("Failed to get metadata for " ^ Path.to_string dst))
+            |> Result.expect ~msg:(((("Failed to get metadata for " ^ Path.to_string dst))))
             |> Fs.Metadata.len in
             (Path.v output_file, size) :: acc
         | _ -> acc)
@@ -198,7 +203,7 @@ let hash_dir_of = fun store hash -> get_hash_dir store hash
 let save_plan_bundle = fun store ~hash ~plan ->
   let plans_root = plans_dir store in
   Fs.create_dir_all plans_root
-  |> Result.expect ~msg:(("Failed to create plan cache directory: " ^ Path.to_string plans_root));
+  |> Result.expect ~msg:(((("Failed to create plan cache directory: " ^ Path.to_string plans_root))));
   let destination = plan_path store hash in
   let temp_path =
     let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
@@ -226,13 +231,12 @@ let load_plan_bundle = fun store ~hash ->
     )
   | Error _ -> None
 
-let export_entry_to_json = fun (entry:export_entry) ->
-  Std.Data.Json.Object [
-    ("name", Std.Data.Json.String entry.name);
-    ("path", Std.Data.Json.String (Path.to_string entry.path));
-    ("action_hash", Std.Data.Json.String entry.action_hash);
+let export_entry_to_json = fun (entry:export_entry) -> Std.Data.Json.Object [
+  ("name", Std.Data.Json.String entry.name);
+  ("path", Std.Data.Json.String (Path.to_string entry.path));
+  ("action_hash", Std.Data.Json.String entry.action_hash);
 
-  ]
+]
 
 let export_entry_of_json = fun json ->
   match json with
@@ -255,7 +259,7 @@ let save_package_exports = fun store ~package ~profile ~target ~exports ->
   let path = package_exports_path store ~package ~profile ~target in
   let parent = Path.dirname path in
   Fs.create_dir_all parent
-  |> Result.expect ~msg:(("Failed to create package export directory: " ^ Path.to_string parent));
+  |> Result.expect ~msg:(((("Failed to create package export directory: " ^ Path.to_string parent))));
   let payload = Std.Data.Json.Object [
     ("version", Std.Data.Json.Int 1);
     ("package", Std.Data.Json.String package);
@@ -305,7 +309,8 @@ let find_package_export_path = fun store ~package ~profile ~target ~name ->
 
 let materialize_package_exports = fun store ~exports ~target_dir ->
   Fs.create_dir_all target_dir
-  |> Result.expect ~msg:(("Failed to create package output directory: " ^ Path.to_string target_dir));
+  |> Result.expect
+  ~msg:(((("Failed to create package output directory: " ^ Path.to_string target_dir))));
   let copy_one = fun (entry:export_entry) ->
     if Path.is_absolute entry.path then
       Error ("Export path must be relative: " ^ Path.to_string entry.path)

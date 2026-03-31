@@ -22,8 +22,8 @@ let matches_pattern = fun ~pattern ~content_type ->
 (** {1 Accept Header Parsing} *)
 
 type accept_entry = {
-  media_type : string;
-  quality : float;
+  media_type: string;
+  quality: float;
 }
 
 (** Parse quality value from parameter string.
@@ -49,15 +49,14 @@ let parse_accept_entry = fun entry ->
 (** Parse full Accept header.
     
     Returns list sorted by quality (highest first). *)
-let parse_accept =
-  fun header ->
-    String.split_on_char ',' header
-    |> List.map String.trim
-    |> List.filter (fun s -> String.length s > 0)
-    |> List.map parse_accept_entry
-    |> List.sort
-      (fun a b ->
-        Float.compare b.quality a.quality)
+let parse_accept = fun header ->
+  String.split_on_char ',' header
+  |> List.map String.trim
+  |> List.filter (fun s -> String.length s > 0)
+  |> List.map parse_accept_entry
+  |> List.sort
+    (fun a b ->
+      Float.compare b.quality a.quality)
 
 (** {1 Content-Type Parsing} *)
 
@@ -80,10 +79,10 @@ let get_base_content_type = fun ct ->
 (** {1 Configuration} *)
 
 type config = {
-  types : string list;
-  check_accept : bool;
-  check_content_type : bool;
-  on_reject : (Conn.t -> string option -> Conn.t) option;
+  types: string list;
+  check_accept: bool;
+  check_content_type: bool;
+  on_reject: (Conn.t -> string option -> Conn.t) option;
 }
 
 let default_config = {

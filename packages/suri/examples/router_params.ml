@@ -4,9 +4,9 @@ open Suri
 (* Example showing router parameter extraction *)
 
 type article = {
-  id : int;
-  title : string;
-  content : string;
+  id: int;
+  title: string;
+  content: string;
 }
 
 (* Mock database *)

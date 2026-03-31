@@ -6,8 +6,8 @@ open Common
 let ( let* ) = Result.and_then
 
 type chunk_result = {
-  data : string;
-  remaining : string;
+  data: string;
+  remaining: string;
 }
 
 let parse_size = fun cursor ->

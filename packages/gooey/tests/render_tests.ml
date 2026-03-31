@@ -1,11 +1,10 @@
 open Std
 open Gooey
 
-let make_config = fun () ->
-  Config.make
-  ~viewport:(Viewport.make ~width:100.0 ~height:100.0)
-  ~text_measurer:Config.default_text_measurer
-  ()
+let make_config = fun () -> Config.make
+~viewport:(Viewport.make ~width:100.0 ~height:100.0)
+~text_measurer:Config.default_text_measurer
+()
 
 let test_render_text_command = fun () ->
   let elem = Element.text ~style:Style.(empty |> fg (`rgb (255, 0, 0))) "Test" in

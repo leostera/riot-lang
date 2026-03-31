@@ -27,18 +27,18 @@ type format_style =
 (** Handler configuration discriminated union *)
 type handler_config =
   | Stdout of {
-      format : format_style;
+      format: format_style;
     }
   | File of {
-      path : string;
-      format : format_style;
+      path: string;
+      format: format_style;
     }
 (** Log configuration containing list of handlers *)
 type t = {
-  handlers : handler_config list;
+  handlers: handler_config list;
 }
 (** Config spec for log configuration *)
-val spec : Config.Spec.t
+val spec: Config.Spec.t
 
 (** Parse configuration from validated config *)
-val get : Config.Spec.value -> (t, Config.error) result
+val get: Config.Spec.value -> (t, Config.error) result

@@ -41,13 +41,13 @@ open Std
 
 (* Configuration for SQLite connections *)
 
-module Config : sig
+module Config: sig
   (* SQLite connection configuration *)
 
   type t = {
-    path : Path.t;
+    path: Path.t;
     (* Path to the database file. Use ":memory:" for in-memory databases. *)
-    mode :
+    mode:
       [
         `ReadOnly
         | `ReadWrite
@@ -58,13 +58,13 @@ module Config : sig
        - `ReadWrite`: Open existing database for reading and writing
        - `Create`: Create database if it doesn't exist (implies ReadWrite)
     *)
-    busy_timeout : Time.Duration.t option;
+    busy_timeout: Time.Duration.t option;
     (* How long to wait when the database is locked before returning an error.
        `None` means return immediately with SQLITE_BUSY. *)
-    cache_size : int option;
+    cache_size: int option;
     (* Size of the page cache in pages (default is -2000, meaning 2MB).
        Negative values specify cache size in KB. *)
-    synchronous :
+    synchronous:
       ([
         `Off
         | `Normal
@@ -86,7 +86,7 @@ module Config : sig
      - cache_size = default (-2000)
      - synchronous = `Normal`
   *)
-  val default : Path.t -> t (* `in_memory ()` creates a configuration for an in-memory database.
+  val default: Path.t -> t (* `in_memory ()` creates a configuration for an in-memory database.
      
      In-memory databases are:
      - Very fast (no disk I/O)
@@ -109,9 +109,9 @@ module Config : sig
      - synchronous = `Off`
      - No busy timeout (single connection)
   *)
-  val in_memory : unit -> t
+  val in_memory: unit -> t
 end
 
 (* SQLite driver implementation for SQLx *)
 
-module Driver : Sqlx_driver.Driver.Intf with type config = Config.t
+module Driver: Sqlx_driver.Driver.Intf with type config = Config.t

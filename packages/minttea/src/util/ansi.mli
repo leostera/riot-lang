@@ -23,7 +23,7 @@
     ``` *)
 (** ## Width Calculation *)
 
-val width : string -> int
+val width: string -> int
 
 (** `width str` returns the display width of `str`, ignoring ANSI escape codes.
     
@@ -37,7 +37,7 @@ val width : string -> int
     - Zero-width characters (counts as 1)
     
     For basic ASCII and styled text, this is accurate. *)
-val strip : string -> string
+val strip: string -> string
 
 (** `strip str` removes all ANSI escape sequences from `str`.
     
@@ -47,7 +47,7 @@ val strip : string -> string
     - Length calculations when you need raw string length *)
 (** ## Truncation *)
 
-val truncate : width:int -> ?ellipsis:string -> string -> string
+val truncate: width:int -> ?ellipsis:string -> string -> string
 
 (** `truncate ~width ~ellipsis str` truncates `str` to fit in `width` columns.
     
@@ -63,27 +63,27 @@ val truncate : width:int -> ?ellipsis:string -> string -> string
     ``` *)
 (** ## Padding *)
 
-val pad_right : width:int -> char -> string -> string
+val pad_right: width:int -> char -> string -> string
 
 (** `pad_right ~width c str` pads `str` on the right with `c` to reach `width`.
     
     Measures display width correctly, accounting for ANSI codes.
     If `str` is already wider than `width`, returns it unchanged. *)
-val pad_left : width:int -> char -> string -> string
+val pad_left: width:int -> char -> string -> string
 
 (** `pad_left ~width c str` pads `str` on the left with `c` to reach `width`. *)
-val pad_center : width:int -> char -> string -> string
+val pad_center: width:int -> char -> string -> string
 
 (** `pad_center ~width c str` centers `str` and pads with `c` to reach `width`. *)
 (** ## Line Operations *)
 
-val split_lines : string -> string list
+val split_lines: string -> string list
 
 (** `split_lines str` splits on newlines, preserving ANSI state across lines.
     
     Each line retains its formatting. If a style spans multiple lines,
     the style is closed and reopened appropriately. *)
-val word_wrap : width:int -> string -> string list
+val word_wrap: width:int -> string -> string list
 
 (** `word_wrap ~width str` wraps text to fit within `width` columns.
     
@@ -101,19 +101,19 @@ val word_wrap : width:int -> string -> string list
 (** ## Low-level Parsing *)
 
 type ansi_state = {
-  bold : bool;
-  italic : bool;
-  underline : bool;
-  fg_color : string option;  (* SGR color code *)
-  bg_color : string option;  (* SGR color code *)
+  bold: bool;
+  italic: bool;
+  underline: bool;
+  fg_color: string option;  (* SGR color code *)
+  bg_color: string option;  (* SGR color code *)
 }
 (** Current ANSI formatting state *)
-val parse_state : string -> ansi_state
+val parse_state: string -> ansi_state
 
 (** `parse_state str` extracts the ANSI formatting state at the end of `str`.
     
     Useful for continuing formatting across line breaks or concatenations. *)
-val state_to_codes : ansi_state -> string
+val state_to_codes: ansi_state -> string
 
 (** `state_to_codes state` converts formatting state back to ANSI codes.
     

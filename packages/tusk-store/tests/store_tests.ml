@@ -1,14 +1,13 @@
 open Std
 module Test = Std.Test
 
-let make_test_workspace = fun tmpdir ->
-  Tusk_model.Workspace.{
-    root = tmpdir;
-    target_dir_root = Path.(tmpdir / Path.v "target");
-    packages = [];
-    profile_overrides = [];
+let make_test_workspace = fun tmpdir -> Tusk_model.Workspace.{
+  root = tmpdir;
+  target_dir_root = Path.(tmpdir / Path.v "target");
+  packages = [];
+  profile_overrides = [];
 
-  }
+}
 
 let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
 

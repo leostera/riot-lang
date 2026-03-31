@@ -2,7 +2,7 @@ open Global0
 
 (** Basic mutable cell *)
 type 'a t = 'a cell = {
-  mutable value : 'a;
+  mutable value: 'a;
 }
 
 (* Creation *)

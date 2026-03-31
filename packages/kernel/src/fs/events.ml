@@ -10,9 +10,9 @@ type t = int * Fd.t
 type watch_id = int
 
 type event = {
-  path : string;
-  flags : int32;
-  event_id : int64;
+  path: string;
+  flags: int32;
+  event_id: int64;
 }
 
 type event_kind =
@@ -24,11 +24,11 @@ type event_kind =
 
 (* Platform-specific FFI - macOS FSEvents *)
 
-external fsevents_create : unit -> int * Fd.t = "kernel_fsevents_create"
+external fsevents_create: unit -> int * Fd.t = "kernel_fsevents_create"
 
-external fsevents_watch : int -> string -> float -> unit = "kernel_fsevents_watch"
+external fsevents_watch: int -> string -> float -> unit = "kernel_fsevents_watch"
 
-external fsevents_stop : int -> unit = "kernel_fsevents_stop"
+external fsevents_stop: int -> unit = "kernel_fsevents_stop"
 
 (* FSEvents flag constants - Basic event types *)
 
@@ -123,11 +123,17 @@ let to_source = fun t ->
   let module Src = struct
     type nonrec t = t
 
-    let register = fun ((_ctx_ptr, fd)) selector token interest ->
-      Adapter.Selector.register selector ~fd ~token ~interest
+    let register = fun ((_ctx_ptr, fd)) selector token interest -> Adapter.Selector.register
+    selector
+    ~fd
+    ~token
+    ~interest
 
-    let reregister = fun ((_ctx_ptr, fd)) selector token interest ->
-      Adapter.Selector.reregister selector ~fd ~token ~interest
+    let reregister = fun ((_ctx_ptr, fd)) selector token interest -> Adapter.Selector.reregister
+    selector
+    ~fd
+    ~token
+    ~interest
 
     let deregister = fun ((_ctx_ptr, fd)) selector -> Adapter.Selector.deregister selector ~fd
   end in

@@ -83,8 +83,8 @@ let and_modify = fun map key f ->
 let into_iter : type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
   let module MapIter = struct
     type state = {
-      items : (k * v) list;
-      pos : int;
+      items: (k * v) list;
+      pos: int;
     }
 
     type item = k * v
@@ -104,8 +104,8 @@ let into_iter : type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
 let to_mut_iter : type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
   let module MapIter = struct
     type state = {
-      items : (k * v) list;
-      mutable pos : int;
+      items: (k * v) list;
+      mutable pos: int;
     }
 
     type item = k * v

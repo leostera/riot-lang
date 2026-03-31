@@ -59,7 +59,7 @@ module type Write = sig
   (** The type of the writable destination *)
   type err
   (** The error type for this destination *)
-  val write : t -> buf:string -> (int, err) result
+  val write: t -> buf:string -> (int, err) result
 
   (** [write dst ~buf] writes data from [buf] to [dst].
 
@@ -77,7 +77,7 @@ module type Write = sig
 
       Note: This may write less than the full buffer. Use {!write_all} to ensure
       all data is written. *)
-  val write_owned_vectored : t -> bufs:Iovec.t -> (int, err) result
+  val write_owned_vectored: t -> bufs:Iovec.t -> (int, err) result
 
   (** [write_owned_vectored dst ~bufs] writes data from multiple buffers atomically.
       
@@ -88,7 +88,7 @@ module type Write = sig
       @return Total number of bytes written across all buffers
       @see {!Iovec} for IO vector operations
   *)
-  val flush : t -> (unit, err) result
+  val flush: t -> (unit, err) result
 
   (** [flush dst] ensures all buffered data is written to the destination.
 
@@ -117,7 +117,7 @@ type ('dst, 'err) t
     - ['dst] is the underlying destination type (e.g.,
       [Kernel.Net.Tcp_stream.t])
     - ['err] is the error type for write operations *)
-val of_write_src : ('dst, 'err) write -> 'dst -> ('dst, 'err) t
+val of_write_src: ('dst, 'err) write -> 'dst -> ('dst, 'err) t
 
 (** [of_write_src (module Write) dst] creates a writer from a destination.
 
@@ -137,7 +137,7 @@ val of_write_src : ('dst, 'err) write -> 'dst -> ('dst, 'err) t
         end in
         IO.Writer.of_write_src (module Write) stream
     ]} *)
-val write : ('dst, 'err) t -> buf:string -> (int, 'err) result
+val write: ('dst, 'err) t -> buf:string -> (int, 'err) result
 
 (** [write writer ~buf] writes data to the writer.
 
@@ -153,7 +153,7 @@ val write : ('dst, 'err) t -> buf:string -> (int, 'err) result
       | Ok n -> Printf.printf "Wrote %d bytes\n" n
       | Error e -> handle_error e
     ]} *)
-val write_all : ('dst, 'err) t -> buf:string -> (unit, 'err) result
+val write_all: ('dst, 'err) t -> buf:string -> (unit, 'err) result
 
 (** [write_all writer ~buf] writes all data, retrying as needed.
 
@@ -180,7 +180,7 @@ val write_all : ('dst, 'err) t -> buf:string -> (unit, 'err) result
       in
       write_loop original_buf
     ]} *)
-val write_owned_vectored : ('dst, 'err) t -> bufs:Iovec.t -> (int, 'err) result
+val write_owned_vectored: ('dst, 'err) t -> bufs:Iovec.t -> (int, 'err) result
 
 (** [write_owned_vectored writer ~bufs] writes data from multiple buffers.
 
@@ -200,7 +200,7 @@ val write_owned_vectored : ('dst, 'err) t -> bufs:Iovec.t -> (int, 'err) result
       | Ok n -> Printf.printf "Wrote %d bytes total\n" n
       | Error e -> handle_error e
     ]} *)
-val write_all_vectored : ('dst, 'err) t -> bufs:Iovec.t -> (unit, 'err) result
+val write_all_vectored: ('dst, 'err) t -> bufs:Iovec.t -> (unit, 'err) result
 
 (** [write_all_vectored writer ~bufs] writes all data from IO vectors.
 
@@ -219,7 +219,7 @@ val write_all_vectored : ('dst, 'err) t -> bufs:Iovec.t -> (unit, 'err) result
       | Ok () -> print_endline "All data written"
       | Error e -> handle_error e
     ]} *)
-val map_err : ('dst, 'a) t -> fn:('a -> 'b) -> ('dst, 'b) t
+val map_err: ('dst, 'a) t -> fn:('a -> 'b) -> ('dst, 'b) t
 
 (** [map_err writer ~fn] transforms the error type of a writer.
     
@@ -232,7 +232,7 @@ val map_err : ('dst, 'a) t -> fn:('a -> 'b) -> ('dst, 'b) t
       let tls_writer = IO.Writer.map_err tcp_writer
         ~fn:(fun err -> Tls_error (Transport_error err))
     ]} *)
-val flush : ('dst, 'err) t -> (unit, 'err) result
+val flush: ('dst, 'err) t -> (unit, 'err) result
 
 (** [flush writer] ensures all buffered data is written.
 

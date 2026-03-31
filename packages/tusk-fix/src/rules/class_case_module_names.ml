@@ -37,12 +37,11 @@ let capitalize_piece = fun piece ->
     in
     first ^ rest
 
-let to_class_case = fun text ->
-  text
-  |> String.split_on_char '_'
-  |> List.filter (fun piece -> not (String.equal piece ""))
-  |> List.map capitalize_piece
-  |> String.concat ""
+let to_class_case = fun text -> text
+|> String.split_on_char '_'
+|> List.filter (fun piece -> not (String.equal piece ""))
+|> List.map capitalize_piece
+|> String.concat ""
 
 let should_flag_module_name = fun text -> contains_underscore text || not (starts_upper text)
 
@@ -53,7 +52,7 @@ let make_diagnostic = fun token ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-  ~suggestion:(("Rename " ^ original ^ " to " ^ replacement))
+  ~suggestion:(((("Rename " ^ original ^ " to " ^ replacement))))
   ()
 
 let diagnostic_for_module_structure = fun decl ->
@@ -80,13 +79,13 @@ let diagnostic_for_module_type_decl = fun decl ->
   else
     None
 
-let rec diagnostics_for_module_structure = fun decl ->
-  Option.to_list (diagnostic_for_module_structure decl)
-  @ (Syn.Cst.ModuleStructure.and_declarations decl |> List.concat_map diagnostics_for_module_structure)
+let rec diagnostics_for_module_structure = fun decl -> Option.to_list
+(diagnostic_for_module_structure decl)
+@ (Syn.Cst.ModuleStructure.and_declarations decl |> List.concat_map diagnostics_for_module_structure)
 
-let rec diagnostics_for_module_signature = fun decl ->
-  Option.to_list (diagnostic_for_module_signature decl)
-  @ (Syn.Cst.ModuleSignature.and_declarations decl |> List.concat_map diagnostics_for_module_signature)
+let rec diagnostics_for_module_signature = fun decl -> Option.to_list
+(diagnostic_for_module_signature decl)
+@ (Syn.Cst.ModuleSignature.and_declarations decl |> List.concat_map diagnostics_for_module_signature)
 
 let diagnostics_for_items = fun source_file ->
   match source_file with
@@ -113,5 +112,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   let source_file = ctx.cst in
   diagnostics_for_items source_file
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

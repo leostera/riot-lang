@@ -83,12 +83,11 @@ module Linear_RGB = struct
     else
       Float.pow ((v +. 0.055) /. 1.055) 2.4
 
-  let linearize = fun (`rgb (r, g, b)) ->
-    `lrgb (
-      r |> Float.of_int |> linearize,
-      g |> Float.of_int |> linearize,
-      b |> Float.of_int |> linearize
-    )
+  let linearize = fun (`rgb (r, g, b)) -> `lrgb (
+    r |> Float.of_int |> linearize,
+    g |> Float.of_int |> linearize,
+    b |> Float.of_int |> linearize
+  )
 
   let delinearize = fun v ->
     if v <= 0.003_130_8 then
@@ -96,12 +95,11 @@ module Linear_RGB = struct
     else
       (1.055 *. Float.pow v (1.0 /. 2.4)) -. 0.055
 
-  let delinearize = fun (`lrgb (r, g, b)) ->
-    `rgb (
-      r |> delinearize |> Float.to_int,
-      g |> delinearize |> Float.to_int,
-      b |> delinearize |> Float.to_int
-    )
+  let delinearize = fun (`lrgb (r, g, b)) -> `rgb (
+    r |> delinearize |> Float.to_int,
+    g |> delinearize |> Float.to_int,
+    b |> delinearize |> Float.to_int
+  )
 
   let to_xyz = fun (`lrgb (r, g, b)) ->
     let x = (0.412_390_799_265_959_48 *. r)

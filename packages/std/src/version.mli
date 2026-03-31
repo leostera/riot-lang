@@ -92,11 +92,11 @@ type pre_release_segment =
   | Alphanumeric of string
 (** Pre-release version segment - either numeric or alphanumeric *)
 type t = {
-  major : int;
-  minor : int;
-  patch : int;
-  pre : pre_release_segment list;
-  build : string option;
+  major: int;
+  minor: int;
+  patch: int;
+  pre: pre_release_segment list;
+  build: string option;
 }
 (** Semantic version with major.minor.patch, optional pre-release identifiers,
     and optional build metadata *)
@@ -129,7 +129,7 @@ type parse_error =
 (** Version parsing errors *)
 (** {1 Parsing} *)
 
-val parse : string -> (t, parse_error) result
+val parse: string -> (t, parse_error) result
 
 (** Parse a version string following SemVer format.
 
@@ -138,12 +138,12 @@ val parse : string -> (t, parse_error) result
     - "1.0.0-alpha.1" -> Ok {major=1; minor=0; patch=0; pre=[Alphanumeric "alpha"; Numeric 1]; build=None}
     - "1.0.0+build.123" -> Ok {major=1; minor=0; patch=0; pre=[]; build=Some "build.123"}
     *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** Convert a version to its string representation *)
 (** {1 Comparison} *)
 
-val compare : t -> t -> comparison
+val compare: t -> t -> comparison
 
 (** Compare two versions according to SemVer precedence rules.
 
@@ -151,24 +151,24 @@ val compare : t -> t -> comparison
     - Pre-release versions have lower precedence than normal versions
     - Pre-release identifiers are compared lexicographically
     - Build metadata is ignored in comparisons *)
-val equal : t -> t -> bool
+val equal: t -> t -> bool
 
 (** Check if two versions are equal *)
-val lt : t -> t -> bool
+val lt: t -> t -> bool
 
 (** Less than *)
-val lte : t -> t -> bool
+val lte: t -> t -> bool
 
 (** Less than or equal *)
-val gt : t -> t -> bool
+val gt: t -> t -> bool
 
 (** Greater than *)
-val gte : t -> t -> bool
+val gte: t -> t -> bool
 
 (** Greater than or equal *)
 (** {1 Requirements} *)
 
-val parse_requirement : string -> (requirement, parse_error) result
+val parse_requirement: string -> (requirement, parse_error) result
 
 (** Parse a version requirement string.
 
@@ -181,17 +181,12 @@ val parse_requirement : string -> (requirement, parse_error) result
     - "<= 1.2.3" - less than or equal
     - "~> 1.2.3" - allows patch-level changes (>= 1.2.3 and < 1.3.0)
     - "~> 1.2" - allows minor-level changes (>= 1.2.0 and < 2.0.0) *)
-val matches : requirement -> t -> bool
+val matches: requirement -> t -> bool
 
 (** Check if a version satisfies a requirement *)
 (** {1 Constructors} *)
 
-val make : major:int ->
-minor:int ->
-patch:int ->
-?pre:pre_release_segment list ->
-?build:string ->
-unit ->
-t
+val make:
+  major:int -> minor:int -> patch:int -> ?pre:pre_release_segment list -> ?build:string -> unit -> t
 
 (** Create a version with no pre-release or build metadata *)

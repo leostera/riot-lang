@@ -7,6 +7,6 @@ type stream_socket =
   ([
     `stream
   ]) socket
-val close : 'kind socket -> unit
+val close: 'kind socket -> unit
 
-val make : Unix.socket_domain -> Unix.socket_type -> 'kind socket
+val make: Unix.socket_domain -> Unix.socket_type -> 'kind socket

@@ -6,7 +6,7 @@ open Tusk_model
 module G = Std.Graph.SimpleGraph
 
 type t = {
-  graph : Action_node.action_spec G.t;
+  graph: Action_node.action_spec G.t;
 }
 
 let create = fun () -> {graph = G.make ()}

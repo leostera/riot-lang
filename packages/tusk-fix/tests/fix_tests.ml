@@ -41,7 +41,7 @@ let overlapping_replace_rule = fun ~rule_id ~needle ~replacement ~overlap_text -
       | None -> []
       | Some token ->
           let span = Syn.Ceibo.Red.SyntaxToken.span token in
-          let overlap_span = Syn.Ceibo.Span.make ~start:((((span.start + 1)))) ~end_:span.end_ in
+          let overlap_span = Syn.Ceibo.Span.make ~start:((((((span.start + 1)))))) ~end_:span.end_ in
           let overlap_token = synthetic_token ~span:overlap_span ~text:overlap_text in
           let fix = Tusk_fix.Fix.make
           ~title:message

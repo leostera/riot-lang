@@ -25,24 +25,24 @@
 open Std
 
 type t = {
-  host : string;
-  port : int;
-  acceptors : int;
-  max_request_line_length : int;
-  max_header_count : int;
-  max_header_length : int;
-  buffer_size : int;
-  liveview_secret : string;
+  host: string;
+  port: int;
+  acceptors: int;
+  max_request_line_length: int;
+  max_header_count: int;
+  max_header_length: int;
+  buffer_size: int;
+  liveview_secret: string;
   (** Secret key for signing LiveView session tokens.
       Must be at least 32 characters for security. *)
 }
-val default : t
+val default: t
 
 (** Default configuration with sensible defaults.
     Note: Uses a placeholder for liveview_secret - you should override this! *)
-val spec : Std.Config.Spec.t
+val spec: Std.Config.Spec.t
 
 (** Configuration spec for Std.Config - automatically registered on module load *)
-val get : Config.Spec.value -> (t, Config.error) result
+val get: Config.Spec.value -> (t, Config.error) result
 
 (** Extract typed config from validated spec values *)

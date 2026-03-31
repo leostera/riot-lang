@@ -85,12 +85,12 @@ let get_credentials = fun conn ->
    This is safe because we control the lifecycle. *)
 
 type 'a value_box = {
-  mutable data : 'a option;
+  mutable data: 'a option;
 }
 
 let make_box = fun value -> {data = Some value}
 
-external unsafe_coerce : 'a -> 'b = "%identity"
+external unsafe_coerce: 'a -> 'b = "%identity"
 
 type Conn.assign_value +=
   Basic_auth_value : 'a value_box -> Conn.assign_value

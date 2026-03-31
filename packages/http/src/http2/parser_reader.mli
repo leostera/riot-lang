@@ -10,25 +10,25 @@ open Std
 *)
 (** Parser configuration *)
 type config = {
-  max_frame_size : int;  (** Maximum frame size (default: 16384) *)
+  max_frame_size: int;  (** Maximum frame size (default: 16384) *)
 }
 (** Default configuration *)
-val default_config : config
+val default_config: config
 
 (** Parser state - opaque, tracks position in frame parsing *)
 type state
 (** Create a new parser state *)
-val create : ?config:config -> unit -> state
+val create: ?config:config -> unit -> state
 
 (** Parse errors *)
 type parse_error =
   | Incomplete_frame_header
   (** Frame header has fewer than 9 bytes *)
-  | Frame_size_exceeds_maximum of { size : int; max_size : int; }
+  | Frame_size_exceeds_maximum of { size: int; max_size: int; }
   (** Frame payload size exceeds configured maximum *)
   | Unknown_frame_type of int
   (** Unknown HTTP/2 frame type byte *)
-  | Invalid_payload_length of { frame_type : string; expected : int; actual : int; }
+  | Invalid_payload_length of { frame_type: string; expected: int; actual: int; }
   (** Payload length doesn't match frame type requirements *)
   | Incomplete_settings_payload
 (** SETTINGS payload is not multiple of 6 bytes *)
@@ -70,10 +70,10 @@ type parse_result =
     @param reader The IO reader to read from
     @return Parse result
 *)
-val parse : state -> ('src, 'err) IO.Reader.t -> parse_result
+val parse: state -> ('src, 'err) IO.Reader.t -> parse_result
 
 (** Reset parser state to initial (for connection reuse) *)
-val reset : state -> unit
+val reset: state -> unit
 
 (** Get bytes buffered in parser state (for debugging) *)
-val buffered_bytes : state -> int
+val buffered_bytes: state -> int

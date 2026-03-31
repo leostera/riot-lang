@@ -2,61 +2,61 @@ open Stdlib
 
 type t =
   | WriteFile of {
-      path : string;
-      content : string;
+      path: string;
+      content: string;
     }
   | CopyFile of {
-      src : string;
-      dst : string;
+      src: string;
+      dst: string;
     }
   | CompileInterface of {
-      sandbox_dir : string;
-      src_file : string;
-      output : string;
-      includes : string list;
-      opens : string list;
+      sandbox_dir: string;
+      src_file: string;
+      output: string;
+      includes: string list;
+      opens: string list;
     }
   | CompileImplementation of {
-      sandbox_dir : string;
-      src_file : string;
-      output : string;
-      includes : string list;
-      opens : string list;
-      is_aliases : bool;
+      sandbox_dir: string;
+      src_file: string;
+      output: string;
+      includes: string list;
+      opens: string list;
+      is_aliases: bool;
     }
   | CompileC of {
-      sandbox_dir : string;
-      src_file : string;
+      sandbox_dir: string;
+      src_file: string;
     }
   | CreateArchive of {
-      sandbox_dir : string;
-      archive_name : string;
-      object_files : string list;
-      includes : string list;
+      sandbox_dir: string;
+      archive_name: string;
+      object_files: string list;
+      includes: string list;
     }
   | CreateExecutable of {
-      sandbox_dir : string;
-      exe_name : string;
-      main_module : string;
-      archive : string;
-      dependencies : string list;  (* List of dependency package names *)
+      sandbox_dir: string;
+      exe_name: string;
+      main_module: string;
+      archive: string;
+      dependencies: string list;  (* List of dependency package names *)
     }
   | SetPermissions of {
-      path : string;
-      executable : bool;
+      path: string;
+      executable: bool;
     }
 
 type build_plan = {
-  package_name : Dep_graph.Module_name.t;
-  package : Package.t;
-  sandbox_dir : string;
-  actions : t list;
-  outputs : string list;
-  cc_flags : string list;
-  ld_flags : string list;
-  uses_stdlib : bool;
-  uses_unix : bool;
-  uses_dynlink : bool;
+  package_name: Dep_graph.Module_name.t;
+  package: Package.t;
+  sandbox_dir: string;
+  actions: t list;
+  outputs: string list;
+  cc_flags: string list;
+  ld_flags: string list;
+  uses_stdlib: bool;
+  uses_unix: bool;
+  uses_dynlink: bool;
 }
 
 let print = fun action ->
@@ -281,7 +281,7 @@ let execute_action = fun ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib
       ) @ wrapped_cc_flags @ wrapped_ld_flags
       in
       match Ocaml_platform.Ocamlc.run
-      ~includes:(("." :: final_includes))
+      ~includes:(((("." :: final_includes))))
       ~output:(Some archive_name)
       ~mode:Ocaml_platform.Library
       ~flags

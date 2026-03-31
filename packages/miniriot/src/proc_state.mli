@@ -4,8 +4,8 @@ exception Unwind
 
 type ('a, 'b) continuation
 type error_info = {
-  exn : exn;
-  backtrace : Kernel.Exception.raw_backtrace;
+  exn: exn;
+  backtrace: Kernel.Exception.raw_backtrace;
 }
 type 'a t =
   | Finished of ('a, error_info) result
@@ -21,12 +21,12 @@ type 'a step =
   | Terminate : 'a step
 type ('a, 'b) step_callback = ('a step -> 'b t) -> 'a Effect.t -> 'b t
 type perform = {
-  perform : 'a 'b. ('a, 'b) step_callback;
+  perform: 'a 'b. ('a, 'b) step_callback;
 } [@@unboxed]
-val make : ('a -> 'b) -> 'a Effect.t -> 'b t
+val make: ('a -> 'b) -> 'a Effect.t -> 'b t
 
-val run : consume_reduction:(unit -> bool) -> perform:perform -> 'a t -> 'a t option
+val run: consume_reduction:(unit -> bool) -> perform:perform -> 'a t -> 'a t option
 
-val is_finished : 'a t -> bool
+val is_finished: 'a t -> bool
 
-val unwind : id:string -> 'a t -> unit
+val unwind: id:string -> 'a t -> unit

@@ -58,7 +58,7 @@ type 'a t
     ## Examples
 
     ```ocaml let queue = Queue.create () in assert (Queue.is_empty queue) ``` *)
-val create : unit -> 'a t
+val create: unit -> 'a t
 
 (** Creates an empty queue with specified initial capacity.
 
@@ -69,7 +69,7 @@ val create : unit -> 'a t
 
     ```ocaml let queue = Queue.with_capacity 1000 in (* Can push ~1000 items
     without reallocation *) ``` *)
-val with_capacity : int -> 'a t
+val with_capacity: int -> 'a t
 
 (** Creates a queue from a list. The first list element becomes the front of the
     queue.
@@ -83,7 +83,7 @@ val with_capacity : int -> 'a t
 
     - Time: O(n)
     - Space: O(n) *)
-val of_list : 'a list -> 'a t
+val of_list: 'a list -> 'a t
 
 (** {1 Basic Operations} *)
 (** Adds an element to the back of the queue.
@@ -97,7 +97,7 @@ val of_list : 'a list -> 'a t
     ## Complexity
 
     - Time: O(1) amortized *)
-val push : 'a t -> 'a -> unit
+val push: 'a t -> 'a -> unit
 
 (** Removes and returns the front element. Returns [Some element] if the queue
     is not empty, [None] otherwise.
@@ -112,7 +112,7 @@ val push : 'a t -> 'a -> unit
     ## Complexity
 
     - Time: O(1) *)
-val pop : 'a t -> 'a option
+val pop: 'a t -> 'a option
 
 (** Returns the front element without removing it.
 
@@ -124,7 +124,7 @@ val pop : 'a t -> 'a option
     ## Complexity
 
     - Time: O(1) *)
-val front : 'a t -> 'a option
+val front: 'a t -> 'a option
 
 (** Returns the number of elements in the queue.
 
@@ -135,7 +135,7 @@ val front : 'a t -> 'a option
     ## Complexity
 
     - Time: O(1) *)
-val len : 'a t -> int
+val len: 'a t -> int
 
 (** Returns [true] if the queue contains no elements.
 
@@ -147,7 +147,7 @@ val len : 'a t -> int
     ## Complexity
 
     - Time: O(1) *)
-val is_empty : 'a t -> bool
+val is_empty: 'a t -> bool
 
 (** Removes all elements from the queue.
 
@@ -160,7 +160,7 @@ val is_empty : 'a t -> bool
 
     - Time: O(1)
     - Space: Capacity is preserved for reuse *)
-val clear : 'a t -> unit
+val clear: 'a t -> unit
 
 (** {1 Iteration} *)
 (** Applies function [f] to each element from front to back.
@@ -173,7 +173,7 @@ val clear : 'a t -> unit
     ## Complexity
 
     - Time: O(n) *)
-val iter : ('a -> unit) -> 'a t -> unit
+val iter: ('a -> unit) -> 'a t -> unit
 
 (** Folds over all elements from front to back.
 
@@ -197,9 +197,9 @@ val iter : ('a -> unit) -> 'a t -> unit
 
     - Time: O(n)
     - Space: O(n) *)
-val fold : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
+val fold: ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
 
-val to_list : 'a t -> 'a list
+val to_list: 'a t -> 'a list
 
 (** {1 Additional Operations} *)
 (** Returns [true] if the value exists anywhere in the queue.
@@ -212,7 +212,7 @@ val to_list : 'a t -> 'a list
     ## Complexity
 
     - Time: O(n) *)
-val contains : 'a t -> 'a -> bool
+val contains: 'a t -> 'a -> bool
 
 (** Moves all elements from [queue2] to the back of [queue1]. After this
     operation, [queue2] is empty.
@@ -225,7 +225,7 @@ val contains : 'a t -> 'a -> bool
     ## Complexity
 
     - Time: O(m) where m = len(queue2) *)
-val append : 'a t -> 'a t -> unit
+val append: 'a t -> 'a t -> unit
 
 (** Converts this queue into an immutable iterator over its elements in FIFO order.
 
@@ -245,7 +245,7 @@ val append : 'a t -> 'a t -> unit
 
     - Time: O(1) to create iterator
     - Space: O(1) *)
-val into_iter : 'a t -> 'a Iter.Iterator.t
+val into_iter: 'a t -> 'a Iter.Iterator.t
 
 (** Returns a mutable iterator over the queue's elements in FIFO order.
 
@@ -253,7 +253,7 @@ val into_iter : 'a t -> 'a Iter.Iterator.t
 
     ```ocaml let queue = Queue.of_list [1; 2; 3] in let iter = Queue.to_mut_iter
     queue in ``` *)
-val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
+val to_mut_iter: 'a t -> 'a Iter.MutIterator.t
 
 (** Efficiently transfers all elements from [src] to the back of [dst]. After
     this operation, [src] is empty. This is more efficient than [append] as it
@@ -268,4 +268,4 @@ val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 
     - Time: O(1)
     - Space: O(1) *)
-val transfer : src:'a t -> dst:'a t -> unit
+val transfer: src:'a t -> dst:'a t -> unit

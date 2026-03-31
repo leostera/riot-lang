@@ -93,8 +93,8 @@ let send = fun pid msg ->
 
 (* Cooperative I/O syscall for actor-aware I/O operations *)
 
-let syscall = fun ~name ~interest ~source ~timeout ->
-  Effect.perform (Proc_effect.Syscall {name; interest; source; timeout})
+let syscall = fun ~name ~interest ~source ~timeout -> Effect.perform
+(Proc_effect.Syscall {name; interest; source; timeout})
 
 module Timer = struct
   type id = Timer_id.t
@@ -141,10 +141,10 @@ let enable_trace = fun () -> Scheduler.enable_trace ()
 let disable_trace = fun () -> Scheduler.disable_trace ()
 
 type trace_counters = {
-  steals : int;
-  failed_steals : int;
-  remote_wakeups : int;
-  duplicate_enqueue_races : int;
+  steals: int;
+  failed_steals: int;
+  remote_wakeups: int;
+  duplicate_enqueue_races: int;
 }
 
 let trace_counters = fun () ->

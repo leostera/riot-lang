@@ -5,14 +5,13 @@ let make_test_build_ctx = fun () ->
   let session_id = Tusk_model.Session_id.make () in
   Tusk_model.Build_ctx.make ~session_id ~profile:Tusk_model.Profile.debug ()
 
-let make_test_workspace = fun tmpdir ->
-  Tusk_model.Workspace.{
-    root = tmpdir;
-    target_dir_root = Path.(tmpdir / Path.v "target");
-    packages = [];
-    profile_overrides = [];
+let make_test_workspace = fun tmpdir -> Tusk_model.Workspace.{
+  root = tmpdir;
+  target_dir_root = Path.(tmpdir / Path.v "target");
+  packages = [];
+  profile_overrides = [];
 
-  }
+}
 
 let make_simple_package = fun tmpdir name ->
   let pkg_dir = Path.(tmpdir / Path.v name) in

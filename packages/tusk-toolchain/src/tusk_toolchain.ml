@@ -18,13 +18,13 @@ module Ocamlformat = Ocamlformat
 module CrossCompilingToolchain = Cross_compiling_toolchain
 
 type t = {
-  version : string;
-  source : source;
-  target : string;  (* Target triple this toolchain compiles for *)
-  ocamlc : Ocamlc.t;
-  ocamlopt : Path.t;
-  ocamldep : Ocamldep.t;
-  ocamlformat : Ocamlformat.t;
+  version: string;
+  source: source;
+  target: string;  (* Target triple this toolchain compiles for *)
+  ocamlc: Ocamlc.t;
+  ocamlopt: Path.t;
+  ocamldep: Ocamldep.t;
+  ocamlformat: Ocamlformat.t;
 }
 
 let default_ocaml_version = "5.5.0-riot.1"
@@ -42,8 +42,9 @@ let get_toolchain_path = fun version ->
   let host_triple = get_host_triple () in
   Path.(toolchain_base_dir / Path.v version / Path.v host_triple)
 
-let get_toolchain_path_for_target = fun version target ->
-  Path.(toolchain_base_dir / Path.v version / Path.v target)
+let get_toolchain_path_for_target = fun version target -> Path.(toolchain_base_dir
+/ Path.v version
+/ Path.v target)
 
 let local_compiler_path = fun () -> Path.v "./vendor/ocaml/compiler"
 
@@ -143,13 +144,12 @@ let read_manifest_fingerprint = fun toolchain_path ->
   | Ok false
   | Error _ -> None
 
-let manifest_error = fun target manifest_path ->
-  "Missing or invalid manifest.json at "
-  ^ manifest_path
-  ^ " for "
-  ^ target
-  ^ ". Reinstall this toolchain from a republished archive that includes manifest.json "
-  ^ "(the release artifact must include a stable toolchain_fingerprint)."
+let manifest_error = fun target manifest_path -> "Missing or invalid manifest.json at "
+^ manifest_path
+^ " for "
+^ target
+^ ". Reinstall this toolchain from a republished archive that includes manifest.json "
+^ "(the release artifact must include a stable toolchain_fingerprint)."
 
 let ensure_manifest_present = fun toolchain_path target source ->
   match source with
@@ -162,13 +162,12 @@ let ensure_manifest_present = fun toolchain_path target source ->
       (Path.to_string Path.(toolchain_path / Path.v "manifest.json")))
     )
 
-let sysroot_candidates = fun ~toolchain_path ~target ->
-  [
-    Path.(toolchain_path / Path.v "sysroot");
-    Path.(toolchain_path / Path.v ("sysroot-" ^ target));
-    Path.(toolchain_path / Path.v "gcc" / Path.v target / Path.v "sysroot");
+let sysroot_candidates = fun ~toolchain_path ~target -> [
+  Path.(toolchain_path / Path.v "sysroot");
+  Path.(toolchain_path / Path.v ("sysroot-" ^ target));
+  Path.(toolchain_path / Path.v "gcc" / Path.v target / Path.v "sysroot");
 
-  ]
+]
 
 let explicit_sysroot_override = fun () ->
   let present = fun name ->
@@ -565,21 +564,21 @@ let get_for_target = fun ~config ~target -> init_for_target ~config ~target
 (** Toolchain management types and functions *)
 type toolchain_status =
   | Installed of {
-      path : Path.t;
+      path: Path.t;
     }
   | NotInstalled of {
-      expected_path : Path.t;
+      expected_path: Path.t;
     }
   | Incomplete of {
-      path : Path.t;
-      missing : string list;
+      path: Path.t;
+      missing: string list;
     }
 
 type toolchain_info = {
-  version : string;
-  target : string;
-  is_host : bool;
-  status : toolchain_status;
+  version: string;
+  target: string;
+  is_host: bool;
+  status: toolchain_status;
 }
 
 let check_toolchain_status = fun ~version ~target ->

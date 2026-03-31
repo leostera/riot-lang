@@ -2,18 +2,18 @@ open Std
 open Std.Collections
 
 type t = {
-  color :
+  color:
     [
       `Plain of Style.color
       | `Gradient of Style.color array
     ];
-  width : int;
-  mutable percent : float;
-  mutable finished : bool;
-  full_char : string;
-  empty_char : string;
-  trail_char : string;
-  show_percentage : bool;
+  width: int;
+  mutable percent: float;
+  mutable finished: bool;
+  full_char: string;
+  empty_char: string;
+  trail_char: string;
+  show_percentage: bool;
 }
 
 let default_full_char = "█"

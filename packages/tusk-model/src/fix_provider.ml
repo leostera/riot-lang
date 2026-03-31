@@ -2,11 +2,11 @@ open Std
 open Std.Data
 
 type t = {
-  name : string;
-  package_name : string;
-  package_path : Path.t;
-  source_path : Path.t;
-  rules : string list;
+  name: string;
+  package_name: string;
+  package_path: Path.t;
+  source_path: Path.t;
+  rules: string list;
 }
 
 let normalize_rule_id = fun package_name rule_id ->
@@ -65,12 +65,11 @@ let parse_from_toml = fun items ~package_name ~package_path ->
     )
   | _ -> []
 
-let to_json = fun provider ->
-  Json.Object [
-    ("name", Json.String provider.name);
-    ("package_name", Json.String provider.package_name);
-    ("package_path", Json.String (Path.to_string provider.package_path));
-    ("source_path", Json.String (Path.to_string provider.source_path));
-    ("rules", Json.Array (List.map (fun rule -> Json.String rule) provider.rules));
+let to_json = fun provider -> Json.Object [
+  ("name", Json.String provider.name);
+  ("package_name", Json.String provider.package_name);
+  ("package_path", Json.String (Path.to_string provider.package_path));
+  ("source_path", Json.String (Path.to_string provider.source_path));
+  ("rules", Json.Array (List.map (fun rule -> Json.String rule) provider.rules));
 
-  ]
+]

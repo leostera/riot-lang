@@ -38,18 +38,18 @@
     Printf.printf "%s and %s\n" (Style.styled red_bold "Red") (Style.styled
     blue_bold "Blue") ``` *)
 type t = {
-  fg : Color.t option;  (** Foreground (text) color *)
-  bg : Color.t option;  (** Background color *)
-  bold : bool;  (** Bold/bright text *)
-  faint : bool;  (** Faint/dim text *)
-  italic : bool;  (** Italic text *)
-  underline : bool;  (** Underlined text *)
-  blink : bool;  (** Blinking text *)
-  reverse : bool;  (** Reverse video (swap fg/bg) *)
-  strikethrough : bool;  (** Strikethrough/crossed-out text *)
-  overline : bool;  (** Overlined text *)
+  fg: Color.t option;  (** Foreground (text) color *)
+  bg: Color.t option;  (** Background color *)
+  bold: bool;  (** Bold/bright text *)
+  faint: bool;  (** Faint/dim text *)
+  italic: bool;  (** Italic text *)
+  underline: bool;  (** Underlined text *)
+  blink: bool;  (** Blinking text *)
+  reverse: bool;  (** Reverse video (swap fg/bg) *)
+  strikethrough: bool;  (** Strikethrough/crossed-out text *)
+  overline: bool;  (** Overlined text *)
 }
-val default : t
+val default: t
 
 (** Default style with no attributes.
 
@@ -57,68 +57,68 @@ val default : t
 
     Example: ```ocaml let plain_text = Style.styled Style.default "Hello" (*
     Same as "Hello" - no styling applied *) ``` *)
-val fg : Color.t -> t -> t
+val fg: Color.t -> t -> t
 
 (** Set foreground (text) color.
 
     Examples: ```ocaml Style.default |> Style.fg (Color.make "#FF0000") (* Red
     text *) Style.default |> Style.fg (Color.ansi 4) (* Blue text *) ``` *)
-val bg : Color.t -> t -> t
+val bg: Color.t -> t -> t
 
 (** Set background color.
 
     Examples: ```ocaml Style.default |> Style.bg (Color.make "#000000") (* Black
     background *) Style.default |> Style.bg (Color.ansi 7) (* White background
     *) ``` *)
-val bold : t -> t
+val bold: t -> t
 
 (** Make text bold/bright.
 
     Example: ```ocaml let bold_red = Style.default |> Style.fg (Color.ansi 1) |>
     Style.bold ``` *)
-val faint : t -> t
+val faint: t -> t
 
 (** Make text faint/dim.
 
     Not widely supported in all terminals.
 
     Example: ```ocaml let dimmed = Style.default |> Style.faint ``` *)
-val italic : t -> t
+val italic: t -> t
 
 (** Make text italic.
 
     Example: ```ocaml let emphasis = Style.default |> Style.italic ``` *)
-val underline : t -> t
+val underline: t -> t
 
 (** Underline text.
 
     Example: ```ocaml let underlined = Style.default |> Style.underline ``` *)
-val blink : t -> t
+val blink: t -> t
 
 (** Make text blink.
 
     Not recommended for accessibility. Limited terminal support.
 
     Example: ```ocaml let blinking = Style.default |> Style.blink ``` *)
-val reverse : t -> t
+val reverse: t -> t
 
 (** Reverse video - swap foreground and background colors.
 
     Example: ```ocaml let highlighted = Style.default |> Style.reverse ``` *)
-val strikethrough : t -> t
+val strikethrough: t -> t
 
 (** Strike through text (crossed out).
 
     Example: ```ocaml let deleted = Style.default |> Style.strikethrough
     print_endline (Style.styled deleted "Deprecated function") ``` *)
-val overline : t -> t
+val overline: t -> t
 
 (** Draw line over text.
 
     Limited terminal support.
 
     Example: ```ocaml let overlined = Style.default |> Style.overline ``` *)
-val to_escape_seq : t -> string
+val to_escape_seq: t -> string
 
 (** Convert style to ANSI escape sequence parameters.
     
@@ -135,7 +135,7 @@ val to_escape_seq : t -> string
     ```
     
     Note: Usually you want [styled] instead, which handles escapes for you. *)
-val styled : t -> string -> string
+val styled: t -> string -> string
 
 (** Apply style to a string.
 

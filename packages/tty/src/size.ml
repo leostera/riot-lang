@@ -1,8 +1,8 @@
 open Std
 
 type t = {
-  rows : int;
-  cols : int;
+  rows: int;
+  cols: int;
 }
 
 let get = fun () ->
@@ -16,5 +16,8 @@ let get = fun () ->
       Log.debug "[SIZE.GET] Failed to get terminal size from stdout";
       e
 
-let to_string = fun ({ rows; cols }) ->
-  "{ rows = " ^ Int.to_string rows ^ "; cols = " ^ Int.to_string cols ^ " }"
+let to_string = fun ({ rows; cols }) -> "{ rows = "
+^ Int.to_string rows
+^ "; cols = "
+^ Int.to_string cols
+^ " }"

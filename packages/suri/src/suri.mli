@@ -288,24 +288,24 @@ open Std
 
 (** {2 Top-Level API} *)
 
-module Config : sig
+module Config: sig
   (** Server Configuration
       
       Compound configuration for the entire Suri server including
       network settings, HTTP limits, protocol-specific options, and
       LiveView session security. *)
   type t = {
-    host : string;
-    port : int;
-    acceptors : int;
-    max_request_line_length : int;
-    max_header_count : int;
-    max_header_length : int;
-    buffer_size : int;
-    liveview_secret : string;
+    host: string;
+    port: int;
+    acceptors: int;
+    max_request_line_length: int;
+    max_header_count: int;
+    max_header_length: int;
+    buffer_size: int;
+    liveview_secret: string;
     (** Secret key for signing LiveView session tokens (min 32 characters) *)
   }
-  val default : t
+  val default: t
 
   (** Default configuration:
       - host: "0.0.0.0" (all interfaces)
@@ -318,21 +318,22 @@ module Config : sig
       - liveview_secret: "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS" (MUST change in production!) *)
 
   (** Configuration via Std.Config - see Config.mli for full documentation *)
-  val spec : Std.Config.Spec.t
+  val spec: Std.Config.Spec.t
 
-  val get : Std.Config.Spec.value -> (t, Std.Config.error) result
+  val get: Std.Config.Spec.value -> (t, Std.Config.error) result
 end
 
-val config : ?host:string ->
-?port:int ->
-?acceptors:int ->
-?max_request_line_length:int ->
-?max_header_count:int ->
-?max_header_length:int ->
-?buffer_size:int ->
-?liveview_secret:string ->
-unit ->
-Config.t
+val config:
+  ?host:string ->
+  ?port:int ->
+  ?acceptors:int ->
+  ?max_request_line_length:int ->
+  ?max_header_count:int ->
+  ?max_header_length:int ->
+  ?buffer_size:int ->
+  ?liveview_secret:string ->
+  unit ->
+  Config.t
 
 (** Create server configuration with optional parameters. *)
 (** {2 Core Types} *)
@@ -343,9 +344,9 @@ type handler = Middleware.Pipeline.t
 (** A handler is just a list of middleware functions *)
 (** {2 Starting the Server} *)
 
-val start_link : ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [>
-  `Bind_error
-]) result
+val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [>
+    `Bind_error
+  ]) result
 
 (** Start a Suri web server with a middleware pipeline.
     

@@ -2,14 +2,18 @@ open Std
 open Std.Collections
 
 type t = {
-  frames : string array;
-  current_frame : int;
-  fps : Fps.t;
-  loop : bool;
+  frames: string array;
+  current_frame: int;
+  fps: Fps.t;
+  loop: bool;
 }
 
-let make = fun ?(starting_frame = 0) ?(loop = true) ~fps frames ->
-  {frames; fps; loop; current_frame = starting_frame}
+let make = fun ?(starting_frame = 0) ?(loop = true) ~fps frames -> {
+  frames;
+  fps;
+  loop;
+  current_frame = starting_frame
+}
 
 let advance_frame = fun m ->
   let next_frame = m.current_frame + 1 in

@@ -100,17 +100,18 @@ open Std
         ()
     ]} *)
 type t = {
-  status : Net.Http.Status.t;
-  headers : Net.Http.Header.t;
-  version : Net.Http.Version.t;
-  body : string;
+  status: Net.Http.Status.t;
+  headers: Net.Http.Header.t;
+  version: Net.Http.Version.t;
+  body: string;
 }
-val make : Net.Http.Status.t ->
-?headers:(string * string) list ->
-?version:Net.Http.Version.t ->
-?body:string ->
-unit ->
-t
+val make:
+  Net.Http.Status.t ->
+  ?headers:(string * string) list ->
+  ?version:Net.Http.Version.t ->
+  ?body:string ->
+  unit ->
+  t
 
 (** Response builder function type.
 
@@ -129,10 +130,10 @@ t
 
     Example:
     {[ ok ~body:"Success" () ]} *)
-val ok : response
+val ok: response
 
 (** `200 OK` *)
-val ok : response
+val ok: response
 
 (** [201 Created] - Resource successfully created.
 
@@ -147,7 +148,7 @@ val ok : response
           ~body:(user_to_json user)
           ())
     ]} *)
-val created : response
+val created: response
 
 (** [202 Accepted] - Request accepted for processing (async).
 
@@ -155,10 +156,10 @@ val created : response
 
     Example:
     {[ accepted ~body:"Processing started" () ]} *)
-val accepted : response
+val accepted: response
 
 (** `203 Non-Authoritative Information` *)
-val non_authoritative_information : response
+val non_authoritative_information: response
 
 (** [204 No Content] - Success with no response body.
 
@@ -170,28 +171,28 @@ val non_authoritative_information : response
         delete_user id;
         no_content ())
     ]} *)
-val no_content : response
+val no_content: response
 
 (** `205 Reset Content` *)
-val reset_content : response
+val reset_content: response
 
 (** `206 Partial Content` *)
-val partial_content : response
+val partial_content: response
 
 (** `207 Multi-Status` (WebDAV) *)
-val multi_status : response
+val multi_status: response
 
 (** `208 Already Reported` (WebDAV) *)
-val already_reported : response
+val already_reported: response
 
 (** `226 IM Used` *)
-val im_used : response
+val im_used: response
 
 (** {1 Redirection Responses (3xx)}
 
     Redirects indicating the client should take additional action. *)
 (** [300 Multiple Choices] - Multiple redirect options available. *)
-val multiple_choices : response
+val multiple_choices: response
 
 (** [301 Moved Permanently] - Resource permanently moved.
 
@@ -203,7 +204,7 @@ val multiple_choices : response
         ~headers:[("Location", "/new-location")]
         ()
     ]} *)
-val moved_permanently : response
+val moved_permanently: response
 
 (** [302 Found] - Temporary redirect.
 
@@ -213,7 +214,7 @@ val moved_permanently : response
     {[
       found ~headers:[("Location", "/login")] ()
     ]} *)
-val found : response
+val found: response
 
 (** [303 See Other] - Redirect after POST.
 
@@ -227,22 +228,22 @@ val found : response
           ~headers:[("Location", "/users/" ^ user.id)]
           ())
     ]} *)
-val see_other : response
+val see_other: response
 
 (** `304 Not Modified` *)
-val not_modified : response
+val not_modified: response
 
 (** `305 Use Proxy` *)
-val use_proxy : response
+val use_proxy: response
 
 (** `306 Switch Proxy` *)
-val switch_proxy : response
+val switch_proxy: response
 
 (** `307 Temporary Redirect` *)
-val temporary_redirect : response
+val temporary_redirect: response
 
 (** `308 Permanent Redirect` *)
-val permanent_redirect : response
+val permanent_redirect: response
 
 (** {1 Client Error Responses (4xx)}
 
@@ -257,7 +258,7 @@ val permanent_redirect : response
       | Ok data -> ok ~body:(process data) ()
       | Error msg -> bad_request ~body:("Invalid: " ^ msg) ()
     ]} *)
-val bad_request : response
+val bad_request: response
 
 (** [401 Unauthorized] - Authentication required.
 
@@ -273,10 +274,10 @@ val bad_request : response
             ()
       | Some token -> (* ... *)
     ]} *)
-val unauthorized : response
+val unauthorized: response
 
 (** [402 Payment Required] - Reserved for future use. *)
-val payment_required : response
+val payment_required: response
 
 (** [403 Forbidden] - Authenticated but not authorized.
 
@@ -289,7 +290,7 @@ val payment_required : response
       else
         ok ~body:resource ()
     ]} *)
-val forbidden : response
+val forbidden: response
 
 (** [404 Not Found] - Resource doesn't exist.
 
@@ -301,7 +302,7 @@ val forbidden : response
       | Some user -> ok ~body:(user_to_json user) ()
       | None -> not_found ~body:"User not found" ()
     ]} *)
-val not_found : response
+val not_found: response
 
 (** [405 Method Not Allowed] - HTTP method not supported.
 
@@ -314,76 +315,76 @@ val not_found : response
         ~body:"Method not allowed"
         ()
     ]} *)
-val method_not_allowed : response
+val method_not_allowed: response
 
 (** `406 Not Acceptable` *)
-val not_acceptable : response
+val not_acceptable: response
 
 (** `407 Proxy Authentication Required` *)
-val proxy_authentication_required : response
+val proxy_authentication_required: response
 
 (** `408 Request Timeout` *)
-val request_timeout : response
+val request_timeout: response
 
 (** `409 Conflict` *)
-val conflict : response
+val conflict: response
 
 (** `410 Gone` *)
-val gone : response
+val gone: response
 
 (** `411 Length Required` *)
-val length_required : response
+val length_required: response
 
 (** `412 Precondition Failed` *)
-val precondition_failed : response
+val precondition_failed: response
 
 (** `413 Request Entity Too Large` *)
-val request_entity_too_large : response
+val request_entity_too_large: response
 
 (** `414 Request-URI Too Long` *)
-val request_uri_too_long : response
+val request_uri_too_long: response
 
 (** `415 Unsupported Media Type` *)
-val unsupported_media_type : response
+val unsupported_media_type: response
 
 (** `416 Requested Range Not Satisfiable` *)
-val requested_range_not_satisfiable : response
+val requested_range_not_satisfiable: response
 
 (** `417 Expectation Failed` *)
-val expectation_failed : response
+val expectation_failed: response
 
 (** `418 I'm a teapot` *)
-val im_a_teapot : response
+val im_a_teapot: response
 
 (** `420 Enhance Your Calm` (Twitter) *)
-val enhance_your_calm : response
+val enhance_your_calm: response
 
 (** `422 Unprocessable Entity` (WebDAV) *)
-val unprocessable_entity : response
+val unprocessable_entity: response
 
 (** `423 Locked` (WebDAV) *)
-val locked : response
+val locked: response
 
 (** `424 Failed Dependency` (WebDAV) *)
-val failed_dependency : response
+val failed_dependency: response
 
 (** `426 Upgrade Required` *)
-val upgrade_required : response
+val upgrade_required: response
 
 (** `428 Precondition Required` *)
-val precondition_required : response
+val precondition_required: response
 
 (** `429 Too Many Requests` *)
-val too_many_requests : response
+val too_many_requests: response
 
 (** `431 Request Header Fields Too Large` *)
-val request_header_fields_too_large : response
+val request_header_fields_too_large: response
 
 (** `450 Blocked by Windows Parental Controls` *)
-val blocked_by_windows_parental_controls : response
+val blocked_by_windows_parental_controls: response
 
 (** `499 Client Closed Request` (nginx) *)
-val client_closed_request : response
+val client_closed_request: response
 
 (** {1 Server Error Responses (5xx)}
 
@@ -400,7 +401,7 @@ val client_closed_request : response
         Log.error "Request failed: %s" (Printexc.to_string exn);
         internal_server_error ~body:"Internal server error" ()
     ]} *)
-val internal_server_error : response
+val internal_server_error: response
 
 (** [501 Not Implemented] - Feature not implemented.
 
@@ -408,10 +409,10 @@ val internal_server_error : response
     {[
       not_implemented ~body:"This feature is coming soon" ()
     ]} *)
-val not_implemented : response
+val not_implemented: response
 
 (** [502 Bad Gateway] - Invalid response from upstream server. *)
-val bad_gateway : response
+val bad_gateway: response
 
 (** [503 Service Unavailable] - Server temporarily unavailable.
 
@@ -427,56 +428,56 @@ val bad_gateway : response
       else
         process_request req
     ]} *)
-val service_unavailable : response
+val service_unavailable: response
 
 (** `504 Gateway Timeout` *)
-val gateway_timeout : response
+val gateway_timeout: response
 
 (** `505 HTTP Version Not Supported` *)
-val http_version_not_supported : response
+val http_version_not_supported: response
 
 (** `506 Variant Also Negotiates` *)
-val variant_also_negotiates : response
+val variant_also_negotiates: response
 
 (** `507 Insufficient Storage` (WebDAV) *)
-val insufficient_storage : response
+val insufficient_storage: response
 
 (** `508 Loop Detected` (WebDAV) *)
-val loop_detected : response
+val loop_detected: response
 
 (** `509 Bandwidth Limit Exceeded` *)
-val bandwidth_limit_exceeded : response
+val bandwidth_limit_exceeded: response
 
 (** `510 Not Extended` *)
-val not_extended : response
+val not_extended: response
 
 (** `511 Network Authentication Required` *)
-val network_authentication_required : response
+val network_authentication_required: response
 
 (** ## Unofficial Status Codes *)
 (** `103 Checkpoint` *)
-val checkpoint : response
+val checkpoint: response
 
 (** `102 Processing` *)
-val processing : response
+val processing: response
 
 (** `100 Continue` *)
-val continue : response
+val continue: response
 
 (** `101 Switching Protocols` *)
-val switching_protocols : response
+val switching_protocols: response
 
 (** `444 No Response` (nginx) *)
-val no_response : response
+val no_response: response
 
 (** `449 Retry With` (Microsoft) *)
-val retry_with : response
+val retry_with: response
 
 (** `451 Unavailable For Legal Reasons` *)
-val wrong_exchange_server : response
+val wrong_exchange_server: response
 
 (** `598 Network read timeout error` *)
-val network_read_timeout_error : response
+val network_read_timeout_error: response
 
 (** `599 Network connect timeout error` *)
-val network_connect_timeout_error : response
+val network_connect_timeout_error: response

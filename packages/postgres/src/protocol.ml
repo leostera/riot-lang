@@ -133,6 +133,10 @@ module Sqlstate = struct
 
   (* Other/Unknown *)
 
+  (* Other/Unknown *)
+
+  (* Other/Unknown *)
+
   (* Parse SQLSTATE string into typed variant *)
 
   let of_string = fun code ->
@@ -346,23 +350,23 @@ module Error = struct
   (* PostgreSQL error/notice structured type *)
 
   type t = {
-    severity : string option;  (* 'S' - ERROR, FATAL, PANIC, WARNING, NOTICE, etc. *)
-    sqlstate : Sqlstate.t option;  (* 'C' - 5-character SQLSTATE code *)
-    message : string;  (* 'M' - Primary human-readable error message *)
-    detail : string option;  (* 'D' - Optional detail message *)
-    hint : string option;  (* 'H' - Optional hint for fixing the error *)
-    position : int option;  (* 'P' - Character position in query string *)
-    internal_position : int option;  (* 'p' - Internal query position *)
-    internal_query : string option;  (* 'q' - Internal query text *)
-    where_context : string option;  (* 'W' - Context (stack trace) *)
-    schema_name : string option;  (* 's' - Schema name *)
-    table_name : string option;  (* 't' - Table name *)
-    column_name : string option;  (* 'c' - Column name *)
-    datatype_name : string option;  (* 'd' - Data type name *)
-    constraint_name : string option;  (* 'n' - Constraint name *)
-    source_file : string option;  (* 'F' - Source file name *)
-    source_line : int option;  (* 'L' - Source line number *)
-    source_routine : string option;  (* 'R' - Source routine name *)
+    severity: string option;  (* 'S' - ERROR, FATAL, PANIC, WARNING, NOTICE, etc. *)
+    sqlstate: Sqlstate.t option;  (* 'C' - 5-character SQLSTATE code *)
+    message: string;  (* 'M' - Primary human-readable error message *)
+    detail: string option;  (* 'D' - Optional detail message *)
+    hint: string option;  (* 'H' - Optional hint for fixing the error *)
+    position: int option;  (* 'P' - Character position in query string *)
+    internal_position: int option;  (* 'p' - Internal query position *)
+    internal_query: string option;  (* 'q' - Internal query text *)
+    where_context: string option;  (* 'W' - Context (stack trace) *)
+    schema_name: string option;  (* 's' - Schema name *)
+    table_name: string option;  (* 't' - Table name *)
+    column_name: string option;  (* 'c' - Column name *)
+    datatype_name: string option;  (* 'd' - Data type name *)
+    constraint_name: string option;  (* 'n' - Constraint name *)
+    source_file: string option;  (* 'F' - Source file name *)
+    source_line: int option;  (* 'L' - Source line number *)
+    source_routine: string option;  (* 'R' - Source routine name *)
   }
 
   (* Direct field accessors *)
@@ -669,6 +673,10 @@ module ColumnAttr = struct
 
   (* 0 - computed column or not from a specific table *)
 
+  (* 0 - computed column or not from a specific table *)
+
+  (* 0 - computed column or not from a specific table *)
+
   (* 1..n - column position in table *)
 
   let of_int =
@@ -699,6 +707,10 @@ module TypeSize = struct
     | NullTerminated
     (* -2: cstring *)
     | Fixed of int
+
+  (* -2: cstring *)
+
+  (* -2: cstring *)
 
   (* -2: cstring *)
 
@@ -733,6 +745,10 @@ module TypeModifier = struct
     | NoModifier
     (* -1: no type modifier *)
     | Modifier of int
+
+  (* -1: no type modifier *)
+
+  (* -1: no type modifier *)
 
   (* -1: no type modifier *)
 
@@ -782,13 +798,13 @@ end
 
 module Row = struct
   type field = {
-    name : string;
-    table_oid : Oid.t;
-    column_attr : ColumnAttr.t;
-    type_oid : TypeOid.t;
-    type_size : TypeSize.t;
-    type_modifier : TypeModifier.t;
-    format : Format.t;
+    name: string;
+    table_oid: Oid.t;
+    column_attr: ColumnAttr.t;
+    type_oid: TypeOid.t;
+    type_size: TypeSize.t;
+    type_modifier: TypeModifier.t;
+    format: Format.t;
   }
 
   type description = field list
@@ -804,8 +820,8 @@ type backend_message =
   | AuthenticationOk
   | AuthenticationCleartextPassword
   | AuthenticationMD5Password of bytes
-  | BackendKeyData of { process_id : int; secret_key : int; }
-  | ParameterStatus of { name : string; value : string; }
+  | BackendKeyData of { process_id: int; secret_key: int; }
+  | ParameterStatus of { name: string; value: string; }
   | ReadyForQuery of char
   | RowDescription of Row.description
   | DataRow of Row.data
@@ -977,25 +993,26 @@ module Reader = struct
           else
             let name = Binary_reader.read_string reader
             |> Option.expect
-            ~msg:(("Protocol error: expected field name (field "
-            ^ string_of_int (field_count - n + 1))) in
+            ~msg:(((("Protocol error: expected field name (field "
+            ^ string_of_int (field_count - n + 1))))) in
             let table_oid = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:(("Protocol error: expected table_oid (field " ^ name ^ ")"))
+            |> Option.expect ~msg:(((("Protocol error: expected table_oid (field " ^ name ^ ")"))))
             |> Oid.of_int in
             let column_attr = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:(("Protocol error: expected column_attr (field " ^ name ^ ")"))
+            |> Option.expect ~msg:(((("Protocol error: expected column_attr (field " ^ name ^ ")"))))
             |> ColumnAttr.of_int in
             let type_oid = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:(("Protocol error: expected type_oid (field " ^ name ^ ")"))
+            |> Option.expect ~msg:(((("Protocol error: expected type_oid (field " ^ name ^ ")"))))
             |> TypeOid.of_int in
             let type_size = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:(("Protocol error: expected type_size (field " ^ name ^ ")"))
+            |> Option.expect ~msg:(((("Protocol error: expected type_size (field " ^ name ^ ")"))))
             |> TypeSize.of_int in
             let type_modifier = Binary_reader.read_int32 reader
-            |> Option.expect ~msg:(("Protocol error: expected type_modifier (field " ^ name ^ ")"))
+            |> Option.expect
+            ~msg:(((("Protocol error: expected type_modifier (field " ^ name ^ ")"))))
             |> TypeModifier.of_int in
             let format = Binary_reader.read_int16 reader
-            |> Option.expect ~msg:(("Protocol error: expected format (field " ^ name ^ ")"))
+            |> Option.expect ~msg:(((("Protocol error: expected format (field " ^ name ^ ")"))))
             |> Format.of_int in
             let field : Row.field = {
               Row.name;
@@ -1018,19 +1035,19 @@ module Reader = struct
           else
             let col_len = Binary_reader.read_int32 reader
             |> Option.expect
-            ~msg:(("Protocol error: expected column_length (col "
+            ~msg:(((("Protocol error: expected column_length (col "
             ^ string_of_int (col_count - n + 1)
-            ^ ")")) in
+            ^ ")")))) in
             if col_len = (-1) then
               read_columns (n - 1) (Row.Null :: acc)
             else
               let value = Binary_reader.read_cstring reader col_len
               |> Option.expect
-              ~msg:(("Protocol error: expected column_value (col "
+              ~msg:(((("Protocol error: expected column_value (col "
               ^ string_of_int (col_count - n + 1)
               ^ ", len="
               ^ string_of_int col_len
-              ^ "). Buffer underrun - possible network issue.")) in
+              ^ "). Buffer underrun - possible network issue.")))) in
               read_columns (n - 1) (Row.Value value :: acc)
         in
         DataRow (read_columns col_count [])

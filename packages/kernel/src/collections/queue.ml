@@ -1,14 +1,14 @@
 open Global0
 
 type 'a node = {
-  value : 'a;
-  mutable next : 'a node option;
+  value: 'a;
+  mutable next: 'a node option;
 }
 
 type 'a t = {
-  mutable front : 'a node option;
-  mutable back : 'a node option;
-  mutable length : int;
+  mutable front: 'a node option;
+  mutable back: 'a node option;
+  mutable length: int;
 }
 
 let create = fun () -> {front = None; back = None; length = 0}

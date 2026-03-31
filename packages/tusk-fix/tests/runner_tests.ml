@@ -26,8 +26,9 @@ let with_tempdir = fun prefix fn ->
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
-let diagnostic_rule_ids = fun diagnostics ->
-  diagnostics |> List.map Tusk_fix.Diagnostic.rule_id |> List.sort String.compare
+let diagnostic_rule_ids = fun diagnostics -> diagnostics
+|> List.map Tusk_fix.Diagnostic.rule_id
+|> List.sort String.compare
 
 let assert_explanation_contains = fun ~rule_id ~snippet ->
   match Tusk_fix.Explanations.explain rule_id with
@@ -1982,7 +1983,7 @@ let render x y z =
       let bindings = Tusk_fix.Rule_query.let_bindings Tusk_fix.Rule.{file_path = "sample.ml"; cst; } in
       Test.assert_equal
       ~expected:[ "render"; "other" ]
-      ~actual:((bindings |> List.map Syn.Cst.LetBinding.name));
+      ~actual:((((bindings |> List.map Syn.Cst.LetBinding.name))));
       Ok ());
   Test.case "rule query collects type declarations from implementations and interfaces"
     (fun () ->

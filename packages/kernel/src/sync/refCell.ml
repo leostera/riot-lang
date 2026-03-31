@@ -10,8 +10,8 @@ type borrow_state =
 (* exclusive mutable borrow *)
 
 type 'a t = {
-  mutable value : 'a;
-  mutable state : borrow_state;
+  mutable value: 'a;
+  mutable state: borrow_state;
 }
 
 exception BorrowError of string

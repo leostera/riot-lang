@@ -9,51 +9,51 @@ module HashMap = Kernel.Collections.HashMap
 (* Simple user record *)
 
 type user = {
-  id : int;
-  name : string;
-  email : string;
+  id: int;
+  name: string;
+  email: string;
 }
 
 (* Address record *)
 
 type address = {
-  street : string;
-  city : string;
-  zip : int;
+  street: string;
+  city: string;
+  zip: int;
 }
 
 (* Event variants *)
 
 type event =
-  | Click of { x : int; y : int; }
+  | Click of { x: int; y: int; }
   | KeyPress of string
   | Scroll of int
-  | MouseMove of { x : int; y : int; button : int; }
+  | MouseMove of { x: int; y: int; button: int; }
 
 (* Order status *)
 
 type order_status =
   | Pending
   | Processing
-  | Shipped of { tracking : string; carrier : string; }
+  | Shipped of { tracking: string; carrier: string; }
   | Delivered
 
 (* Complex order record *)
 
 type order = {
-  order_id : int;
-  customer_name : string;
-  items : (string * int * float) list;  (* name, quantity, price *)
-  total : float;
-  status : order_status;
+  order_id: int;
+  customer_name: string;
+  items: (string * int * float) list;  (* name, quantity, price *)
+  total: float;
+  status: order_status;
 }
 
 (* Nested customer structure *)
 
 type customer = {
-  user : user;
-  address : address;
-  order_count : int;
+  user: user;
+  address: address;
+  order_count: int;
 }
 
 (* ========================================================================

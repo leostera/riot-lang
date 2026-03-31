@@ -6,8 +6,8 @@ type parser =
   | Multipart
 
 type config = {
-  parsers : parser list;
-  max_body_size : int;
+  parsers: parser list;
+  max_body_size: int;
 }
 
 let default_config = fun () -> {parsers = [ Urlencoded; Json ]; max_body_size = 10 * 1_024 * 1_024}

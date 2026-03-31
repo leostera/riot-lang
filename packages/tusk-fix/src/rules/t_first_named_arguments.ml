@@ -16,16 +16,15 @@ If `t` is buried after other positional arguments, callers have to relearn the c
 convention for each function instead of relying on a stable pattern.
 |}
 
-let parameter_span = fun parameter ->
-  Syn.Cst.Parameter.syntax_node parameter |> Syn.Ceibo.Red.SyntaxNode.span
+let parameter_span = fun parameter -> Syn.Cst.Parameter.syntax_node parameter
+|> Syn.Ceibo.Red.SyntaxNode.span
 
-let make_diagnostic = fun parameter ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(parameter_span parameter)
-  ~suggestion:"Move t to the front of the positional arguments so the function reads as named configuration followed by the receiver"
-  ()
+let make_diagnostic = fun parameter -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(parameter_span parameter)
+~suggestion:"Move t to the front of the positional arguments so the function reads as named configuration followed by the receiver"
+()
 
 let diagnostic_for_binding = fun binding ->
   let parameters = Syn.Cst.LetBinding.parameters binding in
@@ -67,5 +66,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.filter Syn.Cst.LetBinding.is_function
   |> List.filter_map diagnostic_for_binding
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

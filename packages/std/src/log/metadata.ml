@@ -2,12 +2,12 @@ open Global
 
 (** Metadata attached to log events *)
 type t = {
-  module_name : string option;
-  function_name : string option;
-  file : string option;
-  line : int option;
-  pid : Pid.t option;
-  custom : (string * string) list;
+  module_name: string option;
+  function_name: string option;
+  file: string option;
+  line: int option;
+  pid: Pid.t option;
+  custom: (string * string) list;
 }
 
 let empty = {
@@ -20,19 +20,24 @@ let empty = {
 
 }
 
-let make = fun ?module_name ?function_name ?file ?line ?pid ?(custom = []) () ->
-  {module_name; function_name; file; line; pid; custom}
+let make = fun ?module_name ?function_name ?file ?line ?pid ?(custom = []) () -> {
+  module_name;
+  function_name;
+  file;
+  line;
+  pid;
+  custom
+}
 
-let merge = fun t1 t2 ->
-  {
-    module_name = Option.or_ t2.module_name t1.module_name;
-    function_name = Option.or_ t2.function_name t1.function_name;
-    file = Option.or_ t2.file t1.file;
-    line = Option.or_ t2.line t1.line;
-    pid = Option.or_ t2.pid t1.pid;
-    custom = t2.custom @ t1.custom;
+let merge = fun t1 t2 -> {
+  module_name = Option.or_ t2.module_name t1.module_name;
+  function_name = Option.or_ t2.function_name t1.function_name;
+  file = Option.or_ t2.file t1.file;
+  line = Option.or_ t2.line t1.line;
+  pid = Option.or_ t2.pid t1.pid;
+  custom = t2.custom @ t1.custom;
 
-  }
+}
 
 let to_string = fun t ->
   let parts = [] in

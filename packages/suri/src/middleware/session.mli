@@ -116,15 +116,16 @@ type t
         | Some id -> Printf.printf "User: %s\n" id
         | None -> Printf.printf "Anonymous\n"
     ]} *)
-val middleware : secret:string ->
-?cookie_name:string ->
-?max_age:int ->
-?secure:bool ->
-?same_site:Http.Http1.Cookie.same_site ->
-unit ->
-(conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
+val middleware:
+  secret:string ->
+  ?cookie_name:string ->
+  ?max_age:int ->
+  ?secure:bool ->
+  ?same_site:Http.Http1.Cookie.same_site ->
+  unit ->
+  (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
-val get : Conn.t -> t
+val get: Conn.t -> t
 
 (** Get value from session by key.
     
@@ -136,7 +137,7 @@ val get : Conn.t -> t
       | Some id -> (* Use ID *)
       | None -> (* No user ID *)
     ]} *)
-val get_value : string -> t -> string option
+val get_value: string -> t -> string option
 
 (** Set value in session. Marks session as modified.
     
@@ -147,7 +148,7 @@ val get_value : string -> t -> string option
       Session.put "user_id" "123" session;
       Session.put "username" "alice" session;
     ]} *)
-val put : string -> string -> t -> unit
+val put: string -> string -> t -> unit
 
 (** Delete value from session by key.
     
@@ -157,7 +158,7 @@ val put : string -> string -> t -> unit
     {[
       Session.delete "user_id" session
     ]} *)
-val delete : string -> t -> unit
+val delete: string -> t -> unit
 
 (** Clear all session data.
     
@@ -170,15 +171,15 @@ val delete : string -> t -> unit
         Session.clear session;
         conn |> Conn.respond ~status:Ok ~body:"Logged out" |> Conn.send
     ]} *)
-val clear : t -> unit
+val clear: t -> unit
 
 (** Check if session is expired.
     
     Automatically handled by middleware, but can be useful
     for manual session validation. *)
-val is_expired : t -> bool
+val is_expired: t -> bool
 
 (** Check if session was modified.
     
     Used internally to determine if cookie needs updating. *)
-val is_modified : t -> bool
+val is_modified: t -> bool

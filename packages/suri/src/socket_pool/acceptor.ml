@@ -1,11 +1,11 @@
 open Std
 
 type ('ctx, 'err) state = {
-  listener : Net.TcpListener.t;
-  buffer_size : int;
-  handler : ('ctx, 'err) Handler.handler;
-  initial_ctx : 'ctx;
-  transport : Transport.t;
+  listener: Net.TcpListener.t;
+  buffer_size: int;
+  handler: ('ctx, 'err) Handler.handler;
+  initial_ctx: 'ctx;
+  transport: Transport.t;
 }
 
 type internal_msg =

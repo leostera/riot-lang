@@ -7,13 +7,13 @@ module G = Graph.SimpleGraph
 
 type action_error = Action_queue.action_error =
   | ExecutionFailed of {
-      message : string;
+      message: string;
     }
   | OutputsNotCreated of {
-      missing : Path.t list;
+      missing: Path.t list;
     }
   | DependenciesFailed of {
-      failed : G.Node_id.t list;
+      failed: G.Node_id.t list;
     }
 
 type action_status = Action_queue.action_status =
@@ -23,19 +23,19 @@ type action_status = Action_queue.action_status =
   | Skipped
 
 type execution_result = Action_queue.execution_result = {
-  node_id : G.Node_id.t;
-  status : action_status;
-  duration : Duration.t;
-  started_at : Instant.t;
-  completed_at : Instant.t;
+  node_id: G.Node_id.t;
+  status: action_status;
+  duration: Duration.t;
+  started_at: Instant.t;
+  completed_at: Instant.t;
 }
 
 type t = {
-  completed : (G.Node_id.t, execution_result) HashMap.t;
+  completed: (G.Node_id.t, execution_result) HashMap.t;
 }
 
 type Message.t +=
-  | ActionCompleted of { worker_pid : Pid.t; result : execution_result; }
+  | ActionCompleted of { worker_pid: Pid.t; result: execution_result; }
   | AssignAction of Action_node.t
 
 let make_flags_absolute = fun sandbox_dir flags ->
@@ -58,9 +58,8 @@ let resolve_include_paths = fun sandbox_dir includes ->
         Path.join sandbox_dir inc)
     includes
 
-let emit_action_command = fun ~session_id ~package ~node command ->
-  Telemetry.emit
-  Telemetry_events.(ActionCommandStarted {session_id; package; action = node; command; })
+let emit_action_command = fun ~session_id ~package ~node command -> Telemetry.emit
+Telemetry_events.(ActionCommandStarted {session_id; package; action = node; command; })
 
 let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
   match action with
@@ -446,7 +445,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           });
           let _ = Tusk_store.Store.promote store artifact.Tusk_store.Artifact.hash ~target_dir:sandbox_dir
           |> Result.expect
-          ~msg:(("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id)) in
+          ~msg:(((("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id)))) in
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
           Telemetry.emit
@@ -561,7 +560,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                     ~sandbox_dir
                     ~outs:(List.map (Path.join sandbox_dir) outputs)
                     |> Result.expect
-                    ~msg:(("Failed to store action artifact for node " ^ G.Node_id.to_string node.id)) in
+                    ~msg:(((("Failed to store action artifact for node " ^ G.Node_id.to_string node.id)))) in
                     Telemetry.emit
                     Telemetry_events.(ActionCompleted {
                       session_id;
@@ -599,8 +598,8 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                         ~sandbox_dir
                         ~outs:abs_outputs
                         |> Result.expect
-                        ~msg:(("Failed to store action artifact for node "
-                        ^ G.Node_id.to_string node.id)) in
+                        ~msg:(((("Failed to store action artifact for node "
+                        ^ G.Node_id.to_string node.id)))) in
                         Telemetry.emit
                         Telemetry_events.(ActionCompleted {
                           session_id;

@@ -44,6 +44,5 @@ let to_string = fun row ->
   in
   String.concat ", " parts
 
-let equal = fun a b ->
-  List.length a = List.length b
-  && List.for_all2 (fun ((f1, v1)) ((f2, v2)) -> f1 = f2 && Value.equal v1 v2) a b
+let equal = fun a b -> List.length a = List.length b
+&& List.for_all2 (fun ((f1, v1)) ((f2, v2)) -> f1 = f2 && Value.equal v1 v2) a b

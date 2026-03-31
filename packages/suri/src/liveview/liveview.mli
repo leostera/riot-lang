@@ -49,7 +49,7 @@ open Std
     - State management per connection (in dedicated process)
     - Automatic re-rendering on state changes *)
 (** {1 Component Interface} *)
-val id : string -> string
+val id: string -> string
 
 (** Generate a unique LiveView component ID.
     
@@ -77,7 +77,7 @@ type 'msg event =
     
     This allows components to handle both user interactions and server-driven updates. *)
 module type Component = sig
-  val id : string
+  val id: string
 
   (** Unique identifier for this LiveView component.
       Use [LiveView.id "name"] to generate a unique ID.
@@ -88,16 +88,16 @@ module type Component = sig
   (** Messages that can change state *)
   type args
   (** Initialization arguments passed from HTTP handler to WebSocket mount *)
-  val serialize_args : args -> Data.Json.t
+  val serialize_args: args -> Data.Json.t
 
   (** Serialize args to JSON for embedding in session token *)
-  val deserialize_args : Data.Json.t -> (args, Data.Json.t) result
+  val deserialize_args: Data.Json.t -> (args, Data.Json.t) result
 
   (** Deserialize args from JSON when mounting component *)
-  val init : Middleware.Conn.t -> args -> state
+  val init: Middleware.Conn.t -> args -> state
 
   (** Initialize state when client connects with initialization arguments *)
-  val update : msg event -> state -> state
+  val update: msg event -> state -> state
 
   (** Update state based on event (pure function).
       
@@ -109,13 +109,13 @@ module type Component = sig
           | Custom (Timer Tick) -> { state with time = current_time () }
           | _ -> state
       ]} *)
-  val render : state:state -> unit -> msg Component.t
+  val render: state:state -> unit -> msg Component.t
 
   (** Render state to Component tree (pure function) *)
 end
 
 (** {1 LiveView JavaScript Runtime} *)
-val serve_runtime : ?prefix:string -> unit -> Middleware.Pipeline.middleware
+val serve_runtime: ?prefix:string -> unit -> Middleware.Pipeline.middleware
 
 (** Middleware to serve the LiveView JavaScript runtime.
     
@@ -135,9 +135,10 @@ val serve_runtime : ?prefix:string -> unit -> Middleware.Pipeline.middleware
     ]} *)
 (** {1 Mounting LiveViews} *)
 
-val mount : (module Component with type state = 's and type msg = 'm) ->
-Middleware.Conn.t ->
-Channel.Handler.upgrade_opts * Channel.Handler.t
+val mount:
+  (module Component with type state = 's and type msg = 'm) ->
+  Middleware.Conn.t ->
+  Channel.Handler.upgrade_opts * Channel.Handler.t
 
 (** Create a LiveView Channel.Handler.
     
@@ -154,7 +155,7 @@ Channel.Handler.upgrade_opts * Channel.Handler.t
       let (opts, handler) = LiveView.mount (module Counter) conn in
       (* Use with WebSocket upgrade *)
     ]} *)
-val embed : (module Component with type args = 'args) -> 'args -> 'msg Component.t
+val embed: (module Component with type args = 'args) -> 'args -> 'msg Component.t
 
 (** Embed a LiveView component into a page with signed session token.
     
@@ -206,7 +207,7 @@ val embed : (module Component with type args = 'args) -> 'args -> 'msg Component
         ] in
         (* ... *)
     ]} *)
-val live : (module Component with type state = 's and type msg = 'm) -> Middleware.Router.route
+val live: (module Component with type state = 's and type msg = 'm) -> Middleware.Router.route
 
 (** Create a LiveView route.
     
@@ -242,7 +243,7 @@ val live : (module Component with type state = 's and type msg = 'm) -> Middlewa
     ]} *)
 (** {1 JavaScript Runtime} *)
 
-val javascript_runtime : string
+val javascript_runtime: string
 
 (** Get the LiveView JavaScript runtime code as a string.
     
@@ -255,7 +256,7 @@ val javascript_runtime : string
           ~body:LiveView.javascript_runtime
           ())
     ]} *)
-val client_script : 'msg Component.t
+val client_script: 'msg Component.t
 
 (** Script element containing the LiveView JavaScript runtime.
     
@@ -273,12 +274,8 @@ val client_script : 'msg Component.t
         ];
       ]
     ]} *)
-val html_template : element_id:string ->
-ws_path:string ->
-?title:string ->
-?styles:string ->
-'msg Component.t ->
-string
+val html_template:
+  element_id:string -> ws_path:string -> ?title:string -> ?styles:string -> 'msg Component.t -> string
 
 (** Generate HTML template with LiveView bootstrapping.
     

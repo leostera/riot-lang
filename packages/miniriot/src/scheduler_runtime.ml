@@ -4,12 +4,12 @@ open Kernel.Sync
 open Scheduler_types
 
 type deps = {
-  ensure_can_run_once : unit -> unit;
-  create : config:Config.t -> t;
-  spawn_on_worker :
+  ensure_can_run_once: unit -> unit;
+  create: config:Config.t -> t;
+  spawn_on_worker:
     t -> worker_id:Scheduler_id.t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t;
-  worker_loop : t -> worker -> unit;
-  reactor_loop : t -> unit;
+  worker_loop: t -> worker -> unit;
+  reactor_loop: t -> unit;
 }
 
 let run = fun deps ~config ~main ->

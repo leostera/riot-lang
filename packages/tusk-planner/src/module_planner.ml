@@ -6,20 +6,20 @@ open Tusk_model
 module G = Graph.SimpleGraph
 
 type plan_input = {
-  package : Package.t;
-  profile : Profile.t;
-  ctx : Build_ctx.t;
-  toolchain : Tusk_toolchain.t;
-  workspace : Workspace.t;
-  planning_root : Path.t;
-  depset : Dependency.t list;
-  store : Tusk_store.Store.t;
+  package: Package.t;
+  profile: Profile.t;
+  ctx: Build_ctx.t;
+  toolchain: Tusk_toolchain.t;
+  workspace: Workspace.t;
+  planning_root: Path.t;
+  depset: Dependency.t list;
+  store: Tusk_store.Store.t;
 }
 
 type plan_result = {
-  sources : Path.t list;
-  module_graph : Module_node.t G.t;
-  action_graph : Action_graph.t;
+  sources: Path.t list;
+  module_graph: Module_node.t G.t;
+  action_graph: Action_graph.t;
 }
 
 let plan_node = fun input ->

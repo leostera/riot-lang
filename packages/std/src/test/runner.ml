@@ -10,11 +10,11 @@ type target =
   | FilterBySubstring of string
 
 type config = {
-  concurrency : int;
-  reporter : (module Reporter.Intf);
-  mode : mode;
-  target : target;
-  suite_info : Reporter.suite_info;
+  concurrency: int;
+  reporter: (module Reporter.Intf);
+  mode: mode;
+  target: target;
+  suite_info: Reporter.suite_info;
 }
 
 type run_summary = Test_result.summary

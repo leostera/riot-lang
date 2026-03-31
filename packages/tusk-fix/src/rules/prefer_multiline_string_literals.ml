@@ -101,13 +101,12 @@ and string_literal_chain_size =
   | _ ->
       None
 
-let make_diagnostic = fun expr ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-  ~suggestion:"Use a multiline string literal like {| ... |} instead of concatenating string literals"
-  ()
+let make_diagnostic = fun expr -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+~suggestion:"Use a multiline string literal like {| ... |} instead of concatenating string literals"
+()
 
 let diagnostic_for_binding = fun binding ->
   match string_literal_chain_size (Syn.Cst.LetBinding.value binding) with
@@ -122,5 +121,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.let_bindings_of_structure_item
   |> List.filter_map diagnostic_for_binding
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

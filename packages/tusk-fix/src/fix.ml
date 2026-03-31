@@ -11,28 +11,28 @@ type replacement = Fixme.Fix.replacement =
 
 type operation = Fixme.Fix.operation =
   | Delete of {
-      target : target;
+      target: target;
     }
   | Replace of {
-      target : target;
-      replacement : replacement;
+      target: target;
+      replacement: replacement;
     }
   | Insert_before of {
-      anchor : target;
-      content : replacement;
+      anchor: target;
+      content: replacement;
     }
   | Insert_after of {
-      anchor : target;
-      content : replacement;
+      anchor: target;
+      content: replacement;
     }
   | Swap of {
-      left : target;
-      right : target;
+      left: target;
+      right: target;
     }
 
 type fix = Fixme.Fix.fix = {
-  title : string;
-  operations : operation list;
+  title: string;
+  operations: operation list;
 }
 
 let source_of_node = Fixme.Fix.source_of_node
@@ -169,9 +169,8 @@ let operation_to_json =
 
   ]
 
-let to_json = fun fix ->
-  Data.Json.Object [
-    ("title", Data.Json.String fix.title);
-    ("operations", Data.Json.Array (List.map operation_to_json fix.operations));
+let to_json = fun fix -> Data.Json.Object [
+  ("title", Data.Json.String fix.title);
+  ("operations", Data.Json.Array (List.map operation_to_json fix.operations));
 
-  ]
+]

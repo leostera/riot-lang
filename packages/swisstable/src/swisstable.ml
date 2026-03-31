@@ -16,7 +16,7 @@ open Std.Collections
 
 (* OCaml's polymorphic hash function - same as Hashtbl.hash uses internally *)
 
-external caml_hash : int -> int -> int -> 'a -> int = "caml_hash" [@@noalloc]
+external caml_hash: int -> int -> int -> 'a -> int = "caml_hash" [@@noalloc]
 
 (* Use OCaml's polymorphic hash for structural equality
  * This ensures two records/variants/tuples with same values hash equally
@@ -24,25 +24,25 @@ external caml_hash : int -> int -> int -> 'a -> int = "caml_hash" [@@noalloc]
 
 let hash_native : 'a -> int = fun key -> caml_hash 10 100 0 key
 
-external hash_h1 : int -> int -> int = "swisstable_h1"
+external hash_h1: int -> int -> int = "swisstable_h1"
 
-external hash_h2 : int -> int = "swisstable_h2"
+external hash_h2: int -> int = "swisstable_h2"
 
 (* === Native C SIMD Group Functions === *)
 
-external group_load_simd : bytes -> int -> int64 = "swisstable_group_load"
+external group_load_simd: bytes -> int -> int64 = "swisstable_group_load"
 
-external group_match_tag_simd : bytes -> int -> int -> int = "swisstable_group_match_tag"
+external group_match_tag_simd: bytes -> int -> int -> int = "swisstable_group_match_tag"
 
-external group_match_empty_simd : bytes -> int -> int = "swisstable_group_match_empty"
+external group_match_empty_simd: bytes -> int -> int = "swisstable_group_match_empty"
 
-external group_match_empty_or_deleted_simd : bytes -> int -> int = "swisstable_group_match_empty_or_deleted"
+external group_match_empty_or_deleted_simd: bytes -> int -> int = "swisstable_group_match_empty_or_deleted"
 
 (* === Native C High-Level Search Functions === *)
 
-external find_insert_slot_simd : bytes -> int -> int -> int = "swisstable_find_insert_slot"
+external find_insert_slot_simd: bytes -> int -> int -> int = "swisstable_find_insert_slot"
 
-external find_candidates_simd : bytes -> int -> int -> int -> int list = "swisstable_find_candidates"
+external find_candidates_simd: bytes -> int -> int -> int -> int list = "swisstable_find_candidates"
 
 (* === Internal Modules === *)
 
@@ -201,8 +201,8 @@ end
 (** ProbeSeq module - triangular/quadratic probing sequence *)
 module ProbeSeq = struct
   type t = {
-    mutable pos : int;
-    mutable stride : int;
+    mutable pos: int;
+    mutable stride: int;
   }
 
   (* Start probing from hash position *)
@@ -221,10 +221,10 @@ end
 (** RawTable module - core hash table implementation *)
 module RawTable = struct
   type ('k, 'v) t = {
-    mutable buckets : ('k * 'v) option array;
-    mutable ctrl : bytes;
-    mutable len : int;
-    mutable bucket_mask : int;
+    mutable buckets: ('k * 'v) option array;
+    mutable ctrl: bytes;
+    mutable len: int;
+    mutable bucket_mask: int;
   }
 
   (* Calculate number of buckets needed for given capacity *)
@@ -533,8 +533,8 @@ let and_modify = fun map key f ->
 let into_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.Iterator.t = fun map ->
   let module MapIter = struct
     type state = {
-      items : (k * v) list;
-      pos : int;
+      items: (k * v) list;
+      pos: int;
     }
 
     type item = k * v
@@ -554,8 +554,8 @@ let into_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.Iterator.t = fun map -
 let to_mut_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.MutIterator.t = fun map ->
   let module MapIter = struct
     type state = {
-      items : (k * v) list;
-      mutable pos : int;
+      items: (k * v) list;
+      mutable pos: int;
     }
 
     type item = k * v

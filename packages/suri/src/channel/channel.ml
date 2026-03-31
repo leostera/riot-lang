@@ -4,7 +4,7 @@ type topic = string
 
 module Handler = struct
   type upgrade_opts = {
-    do_upgrade : bool;
+    do_upgrade: bool;
   }
 
   type ('state, 'error) handle_result =
@@ -17,17 +17,17 @@ module Handler = struct
   module type Intf = sig
     type state
     type args
-    val init : args -> (state, [>
-      `Unknown_opcode of int
-    ]) handle_result
+    val init: args -> (state, [>
+        `Unknown_opcode of int
+      ]) handle_result
 
-    val handle_frame : Http.Ws.Frame.t -> Net.TcpStream.t -> state -> (state, [>
-      `Unknown_opcode of int
-    ]) handle_result
+    val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> state -> (state, [>
+        `Unknown_opcode of int
+      ]) handle_result
 
-    val handle_message : Message.t -> state -> (state, [>
-      `Unknown_opcode of int
-    ]) handle_result
+    val handle_message: Message.t -> state -> (state, [>
+        `Unknown_opcode of int
+      ]) handle_result
   end
 
   type t =

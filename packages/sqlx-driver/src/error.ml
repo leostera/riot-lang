@@ -3,23 +3,23 @@ open Std
 (* Database error type that can represent errors from any driver *)
 
 type db_error = {
-  code : string option;  (* Driver-specific error code (e.g., SQLSTATE for PostgreSQL) *)
-  message : string;  (* Primary error message *)
-  detail : string option;  (* Additional detail *)
-  hint : string option;  (* Hint for fixing the error *)
-  constraint_name : string option;  (* Name of violated constraint *)
-  table_name : string option;  (* Table involved in error *)
-  column_name : string option;  (* Column involved in error *)
-  position : int option;  (* Character position in query *)
-  context : string option;  (* Additional context *)
+  code: string option;  (* Driver-specific error code (e.g., SQLSTATE for PostgreSQL) *)
+  message: string;  (* Primary error message *)
+  detail: string option;  (* Additional detail *)
+  hint: string option;  (* Hint for fixing the error *)
+  constraint_name: string option;  (* Name of violated constraint *)
+  table_name: string option;  (* Table involved in error *)
+  column_name: string option;  (* Column involved in error *)
+  position: int option;  (* Character position in query *)
+  context: string option;  (* Additional context *)
 }
 
 type t =
-  | Connection_error of { message : string; cause : db_error option; }
-  | Query_error of { sql : string option; cause : db_error; }
-  | Preparation_error of { sql : string; cause : db_error; }
-  | Execution_error of { cause : db_error; }
-  | Transaction_error of { message : string; cause : db_error option; }
+  | Connection_error of { message: string; cause: db_error option; }
+  | Query_error of { sql: string option; cause: db_error; }
+  | Preparation_error of { sql: string; cause: db_error; }
+  | Execution_error of { cause: db_error; }
+  | Transaction_error of { message: string; cause: db_error option; }
   | Pool_error of string
   | Generic_error of string
 

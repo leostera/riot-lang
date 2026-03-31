@@ -6,12 +6,12 @@ type t =
   | Linux
   | Windows
   | Unknown of string
-val to_string : t -> string
+val to_string: t -> string
 
-val of_string : string -> t
+val of_string: string -> t
 
 (** Detect the current platform *)
-val detect : unit -> t
+val detect: unit -> t
 
 (** Get current platform as string *)
-val current_string : unit -> string
+val current_string: unit -> string

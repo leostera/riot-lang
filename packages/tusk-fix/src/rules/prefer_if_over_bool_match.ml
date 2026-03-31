@@ -103,13 +103,12 @@ let should_flag_match = fun (expr:Syn.Cst.match_expression) ->
       | _ -> false
       | _ -> false
 
-let make_diagnostic = fun (expr:Syn.Cst.match_expression) ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
-  ~suggestion:(suggestion_for_match expr)
-  ()
+let make_diagnostic = fun (expr:Syn.Cst.match_expression) -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
+~suggestion:(suggestion_for_match expr)
+()
 
 let safe_should_flag_match = fun expr ->
   try should_flag_match expr with
@@ -127,5 +126,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.expressions_of_structure_item
   |> List.filter_map diagnostic_for_expression
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

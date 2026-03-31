@@ -13,11 +13,11 @@ type frame_type =
   | Continuation
 
 type flags = {
-  end_stream : bool;
-  end_headers : bool;
-  padded : bool;
-  priority : bool;
-  ack : bool;
+  end_stream: bool;
+  end_headers: bool;
+  padded: bool;
+  priority: bool;
+  ack: bool;
 }
 
 type stream_id = int
@@ -47,33 +47,33 @@ type setting =
   | MaxHeaderListSize of int
 
 type payload =
-  | DataPayload of { data : string; pad_length : int option; }
+  | DataPayload of { data: string; pad_length: int option; }
   | HeadersPayload of {
-      pad_length : int option;
-      stream_dependency : int option;
-      weight : int option;
-      exclusive : bool;
-      header_block_fragment : string;
+      pad_length: int option;
+      stream_dependency: int option;
+      weight: int option;
+      exclusive: bool;
+      header_block_fragment: string;
     }
-  | PriorityPayload of { stream_dependency : int; exclusive : bool; weight : int; }
+  | PriorityPayload of { stream_dependency: int; exclusive: bool; weight: int; }
   | RstStreamPayload of error_code
   | SettingsPayload of setting list
   | PushPromisePayload of {
-      pad_length : int option;
-      promised_stream_id : int;
-      header_block_fragment : string;
+      pad_length: int option;
+      promised_stream_id: int;
+      header_block_fragment: string;
     }
   | PingPayload of string
-  | GoawayPayload of { last_stream_id : int; error_code : error_code; debug_data : string; }
+  | GoawayPayload of { last_stream_id: int; error_code: error_code; debug_data: string; }
   | WindowUpdatePayload of int
   | ContinuationPayload of string
 
 type t = {
-  length : int;
-  frame_type : frame_type;
-  flags : flags;
-  stream_id : stream_id;
-  payload : payload;
+  length: int;
+  frame_type: frame_type;
+  flags: flags;
+  stream_id: stream_id;
+  payload: payload;
 }
 
 let default_flags = {
@@ -140,25 +140,23 @@ let headers = fun ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_l
 
   }
 
-let priority = fun ~stream_id ~stream_dependency ~exclusive ~weight ->
-  {
-    length = 5;
-    frame_type = Priority;
-    flags = default_flags;
-    stream_id;
-    payload = PriorityPayload {stream_dependency; exclusive; weight};
+let priority = fun ~stream_id ~stream_dependency ~exclusive ~weight -> {
+  length = 5;
+  frame_type = Priority;
+  flags = default_flags;
+  stream_id;
+  payload = PriorityPayload {stream_dependency; exclusive; weight};
 
-  }
+}
 
-let rst_stream = fun ~stream_id error_code ->
-  {
-    length = 4;
-    frame_type = RstStream;
-    flags = default_flags;
-    stream_id;
-    payload = RstStreamPayload error_code;
+let rst_stream = fun ~stream_id error_code -> {
+  length = 4;
+  frame_type = RstStream;
+  flags = default_flags;
+  stream_id;
+  payload = RstStreamPayload error_code;
 
-  }
+}
 
 let settings = fun ?(ack = false) settings_list ->
   let flags = {default_flags with ack} in
@@ -191,15 +189,14 @@ let ping = fun ?(ack = false) opaque_data ->
   let flags = {default_flags with ack} in
   {length = 8; frame_type = Ping; flags; stream_id = 0; payload = PingPayload opaque_data; }
 
-let goaway = fun ~last_stream_id ~error_code ?(debug_data = "") () ->
-  {
-    length = 8 + String.length debug_data;
-    frame_type = Goaway;
-    flags = default_flags;
-    stream_id = 0;
-    payload = GoawayPayload {last_stream_id; error_code; debug_data};
+let goaway = fun ~last_stream_id ~error_code ?(debug_data = "") () -> {
+  length = 8 + String.length debug_data;
+  frame_type = Goaway;
+  flags = default_flags;
+  stream_id = 0;
+  payload = GoawayPayload {last_stream_id; error_code; debug_data};
 
-  }
+}
 
 let window_update = fun ~stream_id increment ->
   if increment <= 0 || increment > 0x7fff_ffff then

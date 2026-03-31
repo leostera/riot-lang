@@ -2,7 +2,7 @@
 open Std
 
 type t = {
-  width : float;
-  height : float;
+  width: float;
+  height: float;
 }
-val make : width:float -> height:float -> t
+val make: width:float -> height:float -> t

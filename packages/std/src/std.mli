@@ -1412,7 +1412,7 @@ module Application = Application
     - Web app with database app dependency
     - Microservices with shared infrastructure
     - Plugin systems *)
-val start : apps:Application.t list -> unit
+val start: apps:Application.t list -> unit
 
 (** Start the runtime with applications.
     
@@ -1425,35 +1425,35 @@ val start : apps:Application.t list -> unit
     ``` *)
 
 (** Helper Functions from Global *)
-val panic : string -> 'a
+val panic: string -> 'a
 
 (** Panic with a message - raises an uncatchable exception.
     
     **When to use:** Unrecoverable errors, invariant violations.
     **Don't use for:** Expected errors → use Result instead *)
-val cell : 'a -> 'a Sync.Cell.t
+val cell: 'a -> 'a Sync.Cell.t
 
 (** Create a mutable cell with the given value.
     
     **Example:** `let counter = cell 0 in Cell.update counter (fun n -> n + 1)` *)
-val print : string -> unit
+val print: string -> unit
 
 (** Print to stdout with immediate flush (no newline) *)
-val println : string -> unit
+val println: string -> unit
 
 (** Print to stdout with newline and immediate flush *)
-val eprint : string -> unit
+val eprint: string -> unit
 
 (** Print to stderr with immediate flush (no newline) *)
-val eprintln : string -> unit
+val eprintln: string -> unit
 
 (** Print to stderr with newline and immediate flush *)
-val todo : string -> 'a
+val todo: string -> 'a
 
 (** Mark code as TODO with a message - panics when called.
     
     **Use for:** Placeholder implementations during development *)
-val unimplemented : unit -> 'a
+val unimplemented: unit -> 'a
 
 (** Mark code as unimplemented - panics when called *)
 (** Collection Type Aliases and Constructors *)
@@ -1465,22 +1465,22 @@ type 'a set = 'a Collections.HashSet.t
 (** Set type alias - hash-based set *)
 type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
 (** Map type alias - hash-based map *)
-val vec : 'a list -> 'a vec
+val vec: 'a list -> 'a vec
 
 (** Create a vector from a list.
     
     **Example:** `let v = vec [1; 2; 3] in Vector.push v 4` *)
-val queue : 'a list -> 'a queue
+val queue: 'a list -> 'a queue
 
 (** Create a queue from a list.
     
     **Example:** `let q = queue [1; 2; 3] in Queue.dequeue q` *)
-val set : 'a list -> 'a set
+val set: 'a list -> 'a set
 
 (** Create a set from a list.
     
     **Example:** `let s = set [1; 2; 3; 2; 1] in HashSet.len s (* 3 *)` *)
-val map : ('k * 'v) list -> ('k, 'v) map
+val map: ('k * 'v) list -> ('k, 'v) map
 
 (** Create a map from a list of key-value pairs.
     
@@ -1495,31 +1495,31 @@ exception Syscall_timeout
 (** Raised when a syscall operation times out *)
 type 'msg selector = 'msg Miniriot.selector
 (** Message selector type *)
-val self : unit -> Pid.t
+val self: unit -> Pid.t
 
 (** Get the PID of the currently running process *)
-val spawn : (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
+val spawn: (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
 (** Spawn a new process *)
-val spawn_link : (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
+val spawn_link: (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
 (** Spawn a new process linked to the current process *)
-val send : Pid.t -> Message.t -> unit
+val send: Pid.t -> Message.t -> unit
 
 (** Send a message to a process *)
-val receive : selector:'value selector -> ?timeout:Time.Duration.t -> unit -> 'value
+val receive: selector:'value selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
 (** Receive a message using a selector *)
-val receive_any : ?timeout:Time.Duration.t -> unit -> Message.t
+val receive_any: ?timeout:Time.Duration.t -> unit -> Message.t
 
 (** Receive any message *)
-val sleep : Time.Duration.t -> unit
+val sleep: Time.Duration.t -> unit
 
 (** Sleeps the current process for at least the specified duration *)
-val yield : unit -> unit
+val yield: unit -> unit
 
 (** Yield control to the scheduler *)
-val shutdown : status:int -> unit
+val shutdown: status:int -> unit
 
 (** Shutdown the runtime with the given exit status *)
 module Dynlink = Kernel.Dynlink

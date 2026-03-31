@@ -24,19 +24,19 @@ open Minttea.Component
 (* Sample data type *)
 
 type user = {
-  id : int;
-  name : string;
-  email : string;
-  status : string;
-  joined : string;
+  id: int;
+  name: string;
+  email: string;
+  status: string;
+  joined: string;
 }
 
 (* Model *)
 
 type model = {
-  table : Table.t;
-  selected_user : user option;
-  users : user list;
+  table: Table.t;
+  selected_user: user option;
+  users: user list;
 }
 
 (* Sample data *)
@@ -128,8 +128,14 @@ let users = [
 
 (* Convert user to table row *)
 
-let user_to_row = fun user ->
-  [ Int.to_string user.id; user.name; user.email; user.status; user.joined;  ]
+let user_to_row = fun user -> [
+  Int.to_string user.id;
+  user.name;
+  user.email;
+  user.status;
+  user.joined;
+
+]
 
 (* Initialize *)
 

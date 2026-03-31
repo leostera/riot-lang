@@ -1,13 +1,13 @@
 (** Opaque scheduler/worker identifier. *)
 type t
-val zero : t
+val zero: t
 
-val of_int : int -> t
+val of_int: int -> t
 
-val to_int : t -> int
+val to_int: t -> int
 
-val succ : t -> t
+val succ: t -> t
 
-val equal : t -> t -> bool
+val equal: t -> t -> bool
 
-val compare : t -> t -> int
+val compare: t -> t -> int

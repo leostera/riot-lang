@@ -6,31 +6,30 @@ type same_site =
   | None
 
 type t = {
-  name : string;
-  value : string;
-  max_age : int option;
-  expires : string option;
-  domain : string option;
-  path : string;
-  secure : bool;
-  http_only : bool;
-  same_site : same_site option;
+  name: string;
+  value: string;
+  max_age: int option;
+  expires: string option;
+  domain: string option;
+  path: string;
+  secure: bool;
+  http_only: bool;
+  same_site: same_site option;
 }
 
 (** Parse Cookie header: "name1=value1; name2=value2" *)
-let parse =
-  fun header ->
-    String.split_on_char ';' header |> List.filter_map
-      (fun pair ->
-        let trimmed = String.trim pair in
-        match String.split_on_char '=' trimmed with
-        | [] ->
-            Option.none
-        | [ name ] ->
-            Some (String.trim name, "")
-        | name :: value_parts ->
-            let value = String.concat "=" value_parts in
-            Some (String.trim name, String.trim value))
+let parse = fun header ->
+  String.split_on_char ';' header |> List.filter_map
+    (fun pair ->
+      let trimmed = String.trim pair in
+      match String.split_on_char '=' trimmed with
+      | [] ->
+          Option.none
+      | [ name ] ->
+          Some (String.trim name, "")
+      | name :: value_parts ->
+          let value = String.concat "=" value_parts in
+          Some (String.trim name, String.trim value))
 
 (** Helper: Parse Set-Cookie attribute *)
 let parse_attribute = fun attr ->
@@ -162,8 +161,18 @@ let to_set_cookie = fun t ->
   String.concat "; " (List.rev parts)
 
 (** Create a cookie with defaults *)
-let make = fun ~name ~value ?max_age ?expires ?(path = "/") ?domain ?(secure = false) ?(http_only = true) ?(same_site = Lax) () ->
-  {name; value; max_age; expires; path; domain; secure; http_only; same_site = Some same_site; }
+let make = fun ~name ~value ?max_age ?expires ?(path = "/") ?domain ?(secure = false) ?(http_only = true) ?(same_site = Lax) () -> {
+  name;
+  value;
+  max_age;
+  expires;
+  path;
+  domain;
+  secure;
+  http_only;
+  same_site = Some same_site;
+
+}
 
 (** Validate cookie name (no special characters) *)
 let is_valid_name = fun name ->

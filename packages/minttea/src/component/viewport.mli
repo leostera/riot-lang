@@ -51,45 +51,45 @@ type wrap_mode =
     - `` `Soft`` - Soft wrap at word boundaries to fit viewport width *)
 (** ## Creation *)
 
-val make : width:int -> height:int -> t
+val make: width:int -> height:int -> t
 
 (** `make ~width ~height` creates a new viewport with the given dimensions.
     
     The viewport starts at the top (y_offset = 0) with no content. *)
 (** ## Content Management *)
 
-val set_content : t -> content:string -> t
+val set_content: t -> content:string -> t
 
 (** `set_content viewport ~content` sets the content to display.
     
     Content is split into lines. If current scroll position is past
     the new content's end, viewport scrolls to bottom. *)
-val get_content : t -> string
+val get_content: t -> string
 
 (** `get_content viewport` returns the full content (all lines joined). *)
-val total_lines : t -> int
+val total_lines: t -> int
 
 (** `total_lines viewport` returns the total number of lines in the content. *)
-val visible_lines : t -> int
+val visible_lines: t -> int
 
 (** `visible_lines viewport` returns how many lines are currently visible. *)
 (** ## Dimensions *)
 
-val set_width : t -> width:int -> t
+val set_width: t -> width:int -> t
 
 (** `set_width viewport ~width` changes the viewport width. *)
-val set_height : t -> height:int -> t
+val set_height: t -> height:int -> t
 
 (** `set_height viewport ~height` changes the viewport height. *)
-val width : t -> int
+val width: t -> int
 
 (** `width viewport` returns the current width. *)
-val height : t -> int
+val height: t -> int
 
 (** `height viewport` returns the current height. *)
 (** ## Text Wrapping *)
 
-val set_wrap_mode : t -> mode:wrap_mode -> t
+val set_wrap_mode: t -> mode:wrap_mode -> t
 
 (** `set_wrap_mode viewport ~mode` sets the text wrapping mode.
     
@@ -103,56 +103,56 @@ val set_wrap_mode : t -> mode:wrap_mode -> t
       |> Viewport.set_content ~content:"Very long message that exceeds width"
     (* Content will automatically wrap at word boundaries *)
     ``` *)
-val wrap_mode : t -> wrap_mode
+val wrap_mode: t -> wrap_mode
 
 (** `wrap_mode viewport` returns the current wrap mode. *)
 (** ## Scrolling *)
 
-val y_offset : t -> int
+val y_offset: t -> int
 
 (** `y_offset viewport` returns the current vertical scroll position (0-based). *)
-val set_y_offset : t -> offset:int -> t
+val set_y_offset: t -> offset:int -> t
 
 (** `set_y_offset viewport ~offset` sets the vertical scroll position.
     
     Automatically clamped to valid range `[0, max_offset]`. *)
-val scroll_up : t -> lines:int -> t
+val scroll_up: t -> lines:int -> t
 
 (** `scroll_up viewport ~lines` scrolls up by the given number of lines.
     
     Returns viewport unchanged if already at top. *)
-val scroll_down : t -> lines:int -> t
+val scroll_down: t -> lines:int -> t
 
 (** `scroll_down viewport ~lines` scrolls down by the given number of lines.
     
     Returns viewport unchanged if already at bottom. *)
-val page_up : t -> t
+val page_up: t -> t
 
 (** `page_up viewport` scrolls up by one viewport height ("page up"). *)
-val page_down : t -> t
+val page_down: t -> t
 
 (** `page_down viewport` scrolls down by one viewport height ("page down"). *)
-val half_page_up : t -> t
+val half_page_up: t -> t
 
 (** `half_page_up viewport` scrolls up by half a viewport height. *)
-val half_page_down : t -> t
+val half_page_down: t -> t
 
 (** `half_page_down viewport` scrolls down by half a viewport height. *)
-val goto_top : t -> t
+val goto_top: t -> t
 
 (** `goto_top viewport` scrolls to the very top (y_offset = 0). *)
-val goto_bottom : t -> t
+val goto_bottom: t -> t
 
 (** `goto_bottom viewport` scrolls to the very bottom. *)
 (** ## Position Queries *)
 
-val at_top : t -> bool
+val at_top: t -> bool
 
 (** `at_top viewport` returns true if scrolled to the very top. *)
-val at_bottom : t -> bool
+val at_bottom: t -> bool
 
 (** `at_bottom viewport` returns true if scrolled to or past the bottom. *)
-val scroll_percent : t -> float
+val scroll_percent: t -> float
 
 (** `scroll_percent viewport` returns scroll position as 0.0-1.0.
     
@@ -161,15 +161,15 @@ val scroll_percent : t -> float
     - Values in between = proportional position *)
 (** ## Mouse Support *)
 
-val set_mouse_wheel_enabled : t -> enabled:bool -> t
+val set_mouse_wheel_enabled: t -> enabled:bool -> t
 
 (** `set_mouse_wheel_enabled viewport ~enabled` enables/disables mouse wheel scrolling. *)
-val set_mouse_wheel_delta : t -> delta:int -> t
+val set_mouse_wheel_delta: t -> delta:int -> t
 
 (** `set_mouse_wheel_delta viewport ~delta` sets lines per mouse wheel notch (default: 3). *)
 (** ## Rendering *)
 
-val view : t -> string
+val view: t -> string
 
 (** `view viewport` renders the visible portion of the content.
     

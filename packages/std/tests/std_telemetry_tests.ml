@@ -3,12 +3,12 @@ open Std.Collections
 
 type Telemetry.event +=
   TestEvent of {
-      value : int;
+      value: int;
     }
 
 type Telemetry.event +=
   AnotherEvent of {
-      name : string;
+      name: string;
     }
 
 let test_emit_and_receive = Test.case "telemetry: emit and receive" @@ fun () ->

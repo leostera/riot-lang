@@ -8,14 +8,14 @@ open Std
 open Tusk_model
 
 type plan_input = {
-  package : Package.t;
-  profile : Profile.t;
-  ctx : Build_ctx.t;
-  toolchain : Tusk_toolchain.t;
-  workspace : Workspace.t;
-  planning_root : Path.t;
-  depset : Dependency.t list;
-  store : Tusk_store.Store.t;
+  package: Package.t;
+  profile: Profile.t;
+  ctx: Build_ctx.t;
+  toolchain: Tusk_toolchain.t;
+  workspace: Workspace.t;
+  planning_root: Path.t;
+  depset: Dependency.t list;
+  store: Tusk_store.Store.t;
 }
 (** Plan a complete build for a package.
     
@@ -32,8 +32,8 @@ type plan_input = {
     - Error msg if planning fails
 *)
 type plan_result = {
-  sources : Path.t list;
-  module_graph : Module_node.t Graph.SimpleGraph.t;
-  action_graph : Action_graph.t;
+  sources: Path.t list;
+  module_graph: Module_node.t Graph.SimpleGraph.t;
+  action_graph: Action_graph.t;
 }
-val plan_node : plan_input -> (plan_result, Planning_error.t) result
+val plan_node: plan_input -> (plan_result, Planning_error.t) result

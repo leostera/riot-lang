@@ -6,12 +6,12 @@ module Transport = Transport
 
 (** SocketPool supervisor state *)
 type ('s, 'e) pool_state = {
-  listener : Net.TcpListener.t;
-  buffer_size : int;
-  handler : ('s, 'e) Handler.handler;
-  initial_ctx : 's;
-  transport : Transport.t;
-  acceptor_supervisor : Supervisor.Dynamic.t;
+  listener: Net.TcpListener.t;
+  buffer_size: int;
+  handler: ('s, 'e) Handler.handler;
+  initial_ctx: 's;
+  transport: Transport.t;
+  acceptor_supervisor: Supervisor.Dynamic.t;
 }
 
 (** Start a supervised pool of acceptors *)
@@ -27,7 +27,7 @@ let start_link = fun ~host ~port ?(acceptors = 100) ?(buffer_size = 4_096) ?(tra
           (* Start a dynamic supervisor for acceptors *)
           let acceptor_supervisor = Supervisor.Dynamic.start_link
           ~intensity:{max_restarts = 10; window = Time.Duration.from_secs 60}
-          ~max_children:((acceptors * 2))
+          ~max_children:((((acceptors * 2))))
           () in
           (* Spawn acceptors under the supervisor *)
           for i = 1 to acceptors do

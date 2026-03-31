@@ -49,11 +49,10 @@ let api_info = fun conn _req ->
   |> Conn.send
 
 (** Root redirect *)
-let root = fun conn _req ->
-  conn
-  |> Conn.respond ~status:Net.Http.Status.MovedPermanently ~body:""
-  |> Conn.with_header "location" "/public/"
-  |> Conn.send
+let root = fun conn _req -> conn
+|> Conn.respond ~status:Net.Http.Status.MovedPermanently ~body:""
+|> Conn.with_header "location" "/public/"
+|> Conn.send
 
 (** API routes *)
 let routes = Middleware.Router.[get "/" root;

@@ -13,11 +13,11 @@ type case_delta =
 
 (** Special alternating upper/lower sequence *)
 type case_range = {
-  lo : int;  (** Start of range *)
-  hi : int;  (** End of range *)
-  to_upper : case_delta;  (** Delta to convert to uppercase *)
-  to_lower : case_delta;  (** Delta to convert to lowercase *)
-  to_title : case_delta;  (** Delta to convert to titlecase *)
+  lo: int;  (** Start of range *)
+  hi: int;  (** End of range *)
+  to_upper: case_delta;  (** Delta to convert to uppercase *)
+  to_lower: case_delta;  (** Delta to convert to lowercase *)
+  to_title: case_delta;  (** Delta to convert to titlecase *)
 }
 
 (* ============================================ *)

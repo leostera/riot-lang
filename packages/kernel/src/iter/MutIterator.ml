@@ -3,11 +3,11 @@ open Global0
 module type Intf = sig
   type state
   type item
-  val next : state -> item option
+  val next: state -> item option
 
-  val size : state -> int
+  val size: state -> int
 
-  val clone : state -> state
+  val clone: state -> state
 end
 
 type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
@@ -41,7 +41,7 @@ let singleton = fun (type a) (value:a) ->
     type item = a
 
     type state = {
-      mutable value : a option;
+      mutable value: a option;
     }
 
     let next = fun state ->
@@ -143,8 +143,8 @@ let filter_map : type a b. a t -> fn:(a -> b option) -> b t = fun iter ~fn ->
 let flat_map : type a b. a t -> fn:(a -> b t) -> b t = fun iter ~fn ->
   let module FlatMapIter = struct
     type state = {
-      outer : a t;
-      mutable current : b t option;
+      outer: a t;
+      mutable current: b t option;
     }
 
     type item = b
@@ -239,8 +239,8 @@ let all : type a. a t -> fn:(a -> bool) -> bool = fun iter ~fn ->
 let take : type a. a t -> int -> a t = fun iter n ->
   let module TakeIter = struct
     type state = {
-      iter : a t;
-      mutable remaining : int;
+      iter: a t;
+      mutable remaining: int;
     }
 
     type item = a
@@ -268,8 +268,8 @@ let drop : type a. a t -> int -> a t = fun iter n ->
 let enumerate : type a. a t -> (int * a) t = fun iter ->
   let module EnumIter = struct
     type state = {
-      iter : a t;
-      mutable index : int;
+      iter: a t;
+      mutable index: int;
     }
 
     type item = int * a
@@ -291,8 +291,8 @@ let enumerate : type a. a t -> (int * a) t = fun iter ->
 let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
   let module ZipIter = struct
     type state = {
-      iter1 : a t;
-      iter2 : b t;
+      iter1: a t;
+      iter2: b t;
     }
 
     type item = a * b
@@ -311,9 +311,9 @@ let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
 let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
   let module ChainIter = struct
     type state = {
-      first : a t;
-      second : a t;
-      mutable in_first : bool;
+      first: a t;
+      second: a t;
+      mutable in_first: bool;
     }
 
     type item = a
@@ -334,8 +334,12 @@ let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
       else
         size state.second
 
-    let clone = fun state ->
-      {first = clone state.first; second = clone state.second; in_first = state.in_first; }
+    let clone = fun state -> {
+      first = clone state.first;
+      second = clone state.second;
+      in_first = state.in_first;
+
+    }
   end in
   make (module ChainIter) {first = iter1; second = iter2; in_first = true}
 

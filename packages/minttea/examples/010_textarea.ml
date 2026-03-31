@@ -26,10 +26,10 @@ open Minttea
 (* Model *)
 
 type model = {
-  text : string;
-  cursor_row : int;
-  cursor_col : int;
-  saved : bool;
+  text: string;
+  cursor_row: int;
+  cursor_col: int;
+  saved: bool;
 }
 
 (* Sample initial text *)

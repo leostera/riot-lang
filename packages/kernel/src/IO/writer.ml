@@ -6,11 +6,11 @@ let ( let* ) = Result.and_then
 module type Write = sig
   type t
   type err
-  val write : t -> buf:string -> (int, err) result
+  val write: t -> buf:string -> (int, err) result
 
-  val write_owned_vectored : t -> bufs:Iovec.t -> (int, err) result
+  val write_owned_vectored: t -> bufs:Iovec.t -> (int, err) result
 
-  val flush : t -> (unit, err) result
+  val flush: t -> (unit, err) result
 end
 
 type ('dst, 'err) write = (module Write with type t = 'dst and type err = 'err)
@@ -52,7 +52,7 @@ let write_all_vectored : type dst err. (dst, err) t -> bufs:Iovec.t -> (unit, er
     if Iovec.length bufs > 0 then
       let* n = W.write_owned_vectored dst ~bufs in
       let rest = len - n in
-      write_loop (Iovec.sub bufs ~pos:n ~len:((len - n))) rest
+      write_loop (Iovec.sub bufs ~pos:n ~len:((((len - n))))) rest
     else
       Ok ()
   in

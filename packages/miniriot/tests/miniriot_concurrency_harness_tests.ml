@@ -14,9 +14,9 @@ type Message.t +=
   | Harness_result_error of string
 
 type scenario = {
-  seed : int;
-  sender_count : int;
-  messages_per_sender : int;
+  seed: int;
+  sender_count: int;
+  messages_per_sender: int;
 }
 
 let int_eq = fun a b ->

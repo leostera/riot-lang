@@ -156,8 +156,8 @@ open Std
         router routes;
       ]
     ]} *)
-val middleware : ?header:string ->
-proxies:string list ->
-conn:Conn.t ->
-next:(Conn.t -> Conn.t) ->
-Conn.t
+val middleware: ?header:string ->
+  proxies:string list ->
+  conn:Conn.t ->
+  next:(Conn.t -> Conn.t) ->
+  Conn.t

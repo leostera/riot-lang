@@ -7,21 +7,21 @@ let tusk_toml = Path.v "tusk.toml"
 
 type load_error =
   | PackageNotFound of {
-      dependant : string option;  (* None for workspace-level deps *)
-      package : string;
-      path : string;
+      dependant: string option;  (* None for workspace-level deps *)
+      package: string;
+      path: string;
     }
   | PackageTomlReadFailed of {
-      package : string;
-      path : string;
+      package: string;
+      path: string;
     }
   | PackageTomlParseFailed of {
-      package : string;
-      path : string;
+      package: string;
+      path: string;
     }
   | PackageFromTomlFailed of {
-      package : string;
-      path : string;
+      package: string;
+      path: string;
     }
 
 let rec find_workspace_root : Path.t -> Path.t option = fun start_dir ->

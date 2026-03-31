@@ -7,13 +7,13 @@ type action_node = Action_node.t
 
 type action_error =
   | ExecutionFailed of {
-      message : string;
+      message: string;
     }
   | OutputsNotCreated of {
-      missing : Path.t list;
+      missing: Path.t list;
     }
   | DependenciesFailed of {
-      failed : Graph.SimpleGraph.Node_id.t list;
+      failed: Graph.SimpleGraph.Node_id.t list;
     }
 
 type action_status =
@@ -23,28 +23,27 @@ type action_status =
   | Skipped
 
 type execution_result = {
-  node_id : Graph.SimpleGraph.Node_id.t;
-  status : action_status;
-  duration : Duration.t;
-  started_at : Instant.t;
-  completed_at : Instant.t;
+  node_id: Graph.SimpleGraph.Node_id.t;
+  status: action_status;
+  duration: Duration.t;
+  started_at: Instant.t;
+  completed_at: Instant.t;
 }
 
 type t = {
-  ready_queue : action_node Queue.t;
-  later_queue : action_node Queue.t;
-  busy_tasks : (Graph.SimpleGraph.Node_id.t, action_node) HashMap.t;
-  completed : (Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t;
+  ready_queue: action_node Queue.t;
+  later_queue: action_node Queue.t;
+  busy_tasks: (Graph.SimpleGraph.Node_id.t, action_node) HashMap.t;
+  completed: (Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t;
 }
 
-let create = fun () ->
-  {
-    ready_queue = Queue.create ();
-    later_queue = Queue.create ();
-    busy_tasks = HashMap.create ();
-    completed = HashMap.create ();
+let create = fun () -> {
+  ready_queue = Queue.create ();
+  later_queue = Queue.create ();
+  busy_tasks = HashMap.create ();
+  completed = HashMap.create ();
 
-  }
+}
 
 let is_in_queue = fun queue node_id ->
   let found = ref false in

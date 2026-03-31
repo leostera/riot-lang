@@ -17,25 +17,25 @@ type key =
   Key of string
 
 type dependency = {
-  name : string;
-  source : dependency_source;
+  name: string;
+  source: dependency_source;
 }
 
 type binary = {
-  name : string;
-  path : Path.t;
+  name: string;
+  path: Path.t;
 }
 
 type library = {
-  path : Path.t;
+  path: Path.t;
 }
 
 type sources = {
-  src : Path.t list;
-  native : Path.t list;
-  tests : Path.t list;
-  examples : Path.t list;
-  bench : Path.t list;
+  src: Path.t list;
+  native: Path.t list;
+  tests: Path.t list;
+  examples: Path.t list;
+  bench: Path.t list;
 }
 
 type target_platform = string
@@ -49,39 +49,39 @@ type profile_override = Profile.profile_override
 
 (** Target-specific override - can override any profile field for a specific platform *)
 type target_override = {
-  profile_override : Profile.profile_override option;  (* Profile fields that can be overridden *)
+  profile_override: Profile.profile_override option;  (* Profile fields that can be overridden *)
 }
 
 type compiler_config = {
-  profile_overrides : (string * profile_override) list;  (* "debug" -> override, "release" -> override *)
-  target_overrides : (target_platform * target_override) list;  (* "macos" -> override, etc. *)
+  profile_overrides: (string * profile_override) list;  (* "debug" -> override, "release" -> override *)
+  target_overrides: (target_platform * target_override) list;  (* "macos" -> override, etc. *)
 }
 
 type foreign_dependency = {
-  name : string;
-  path : Path.t;
-  inputs : Path.t list;
-  build_cmd : string list;
-  clean_cmd : string list option;
-  test_cmd : string list option;
-  outputs : Path.t list;
-  env : (string * string) list;
+  name: string;
+  path: Path.t;
+  inputs: Path.t list;
+  build_cmd: string list;
+  clean_cmd: string list option;
+  test_cmd: string list option;
+  outputs: Path.t list;
+  env: (string * string) list;
 }
 
 type t = {
-  name : string;
-  path : Path.t;
-  relative_path : Path.t;
-  dependencies : dependency list;
-  dev_dependencies : dependency list;
-  build_dependencies : dependency list;
-  foreign_dependencies : foreign_dependency list;
-  binaries : binary list;
-  library : library option;
-  sources : sources;
-  compiler : compiler_config;
-  commands : Package_command.t list;
-  fix_providers : Fix_provider.t list;
+  name: string;
+  path: Path.t;
+  relative_path: Path.t;
+  dependencies: dependency list;
+  dev_dependencies: dependency list;
+  build_dependencies: dependency list;
+  foreign_dependencies: foreign_dependency list;
+  binaries: binary list;
+  library: library option;
+  sources: sources;
+  compiler: compiler_config;
+  commands: Package_command.t list;
+  fix_providers: Fix_provider.t list;
 }
 
 let equal = fun a b -> a.name = b.name && a.path = b.path
@@ -761,7 +761,7 @@ relative_path:Path.t ->
       ^ " benchmark files");
       let all_binaries = merge_binaries
       ~declared:binaries
-      ~autodiscovered:((test_binaries @ example_binaries @ bench_binaries)) in
+      ~autodiscovered:((((test_binaries @ example_binaries @ bench_binaries)))) in
       (* Parse commands using Package_command module *)
       let commands =
         match List.assoc_opt "command" items with

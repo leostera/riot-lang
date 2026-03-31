@@ -8,10 +8,10 @@ type t =
 
 (** Cross-compilation - build for a different architecture *)
 and cross_config = {
-  target_triplet : System.Host.t;
-  sysroot : Path.t option;  (** Detected sysroot for cross-compiler *)
-  bin_dir : Path.t option;  (** Directory containing cross-compiler binaries *)
-  bin_prefix : string;  (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
+  target_triplet: System.Host.t;
+  sysroot: Path.t option;  (** Detected sysroot for cross-compiler *)
+  bin_dir: Path.t option;  (** Directory containing cross-compiler binaries *)
+  bin_prefix: string;  (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
 }
 
 (** Smart constructor that auto-detects sysroot and toolchain *)
@@ -21,8 +21,13 @@ let make_cross = fun ~target_triplet ->
   Cross {target_triplet; sysroot = None; bin_dir = None; bin_prefix = ""; }
 
 (** Create Cross target with explicit configuration *)
-let make_cross_with_config = fun ~target_triplet ~sysroot ~bin_dir ~bin_prefix ->
-  Cross {target_triplet; sysroot; bin_dir; bin_prefix; }
+let make_cross_with_config = fun ~target_triplet ~sysroot ~bin_dir ~bin_prefix -> Cross {
+  target_triplet;
+  sysroot;
+  bin_dir;
+  bin_prefix;
+
+}
 
 (** Get target triplet (works for both Host and Cross) *)
 let triplet =

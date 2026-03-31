@@ -2,23 +2,29 @@ open Std
 open Std.Collections
 
 type t = {
-  roots : Path.t list;
-  exclude_patterns : string list;
-  should_ignore : Path.t -> bool;
+  roots: Path.t list;
+  exclude_patterns: string list;
+  should_ignore: Path.t -> bool;
 }
 
 type state = {
-  scanner : t;
-  owner : Pid.t option;
-  seen : string HashSet.t;
-  mutable pending : Path.t list;
+  scanner: t;
+  owner: Pid.t option;
+  seen: string HashSet.t;
+  mutable pending: Path.t list;
 }
 
-let create_many = fun ~roots ?(exclude_patterns = [ "."; "_build"; "target" ]) ?(should_ignore = fun _ -> false) () ->
-  {roots; exclude_patterns; should_ignore}
+let create_many = fun ~roots ?(exclude_patterns = [ "."; "_build"; "target" ]) ?(should_ignore = fun _ -> false) () -> {
+  roots;
+  exclude_patterns;
+  should_ignore
+}
 
-let create = fun ~root ?exclude_patterns ?should_ignore () ->
-  create_many ~roots:[ root ] ?exclude_patterns ?should_ignore ()
+let create = fun ~root ?exclude_patterns ?should_ignore () -> create_many
+~roots:[ root ]
+?exclude_patterns
+?should_ignore
+()
 
 let is_non_source_test_path = fun path ->
   let path_str = Path.to_string path in
@@ -47,8 +53,13 @@ let sorted_directory_entries = fun dir ->
 let compare_paths = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
 
-let init_state = fun ?owner scanner ->
-  {scanner; owner; seen = HashSet.create (); pending = List.sort compare_paths scanner.roots; }
+let init_state = fun ?owner scanner -> {
+  scanner;
+  owner;
+  seen = HashSet.create ();
+  pending = List.sort compare_paths scanner.roots;
+
+}
 
 let rec next_discovered_file = fun state ->
   match state.pending with

@@ -4,7 +4,7 @@ open Minttea
 (* Model: contains a spinner sprite *)
 
 type model = {
-  spinner : Component.Sprite.t;
+  spinner: Component.Sprite.t;
 }
 
 (* Initialize with a spinner *)
@@ -34,10 +34,10 @@ let view = fun model ->
   Element.column
   [
     Element.text
-    ~style:((Style.empty
+    ~style:((((Style.empty
     |> Style.fg (`rgb (0, 255, 255))
     |> Style.bold
-    |> Style.padding (Style.Padding.make ~top:1 ~left:2 ())))
+    |> Style.padding (Style.Padding.make ~top:1 ~left:2 ())))))
     (spinner_view ^ " Loading...");
     Element.text "Press 'q' or Ctrl+C to quit";
 

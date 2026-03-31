@@ -8,8 +8,8 @@ end
 type bench_case = Bench_case.t
 
 type bench_config = Bench_case.bench_config = {
-  iterations : int;
-  warmup : int;
+  iterations: int;
+  warmup: int;
 }
 
 type comparison = Bench_comparison.t
@@ -30,8 +30,10 @@ let with_config = fun ~config name fn -> Single (Bench_case.with_config ~config 
 
 let compare = fun description cases -> Compare (Bench_comparison.compare description cases)
 
-let compare_with_config = fun ~config description cases ->
-  Compare (Bench_comparison.compare_with_config ~config description cases)
+let compare_with_config = fun ~config description cases -> Compare (Bench_comparison.compare_with_config
+~config
+description
+cases)
 
 (* Helper to make bench_case directly *)
 

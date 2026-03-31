@@ -2,23 +2,22 @@ open Std
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
-let make_package = fun name ->
-  Tusk_model.Package.{
-    name;
-    path = Path.v ".";
-    relative_path = Path.v ".";
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = None;
-    sources = {src = []; native = []; tests = []; examples = []; bench = []};
-    compiler = {profile_overrides = []; target_overrides = []};
-    commands = [];
-    fix_providers = [];
+let make_package = fun name -> Tusk_model.Package.{
+  name;
+  path = Path.v ".";
+  relative_path = Path.v ".";
+  dependencies = [];
+  dev_dependencies = [];
+  build_dependencies = [];
+  foreign_dependencies = [];
+  binaries = [];
+  library = None;
+  sources = {src = []; native = []; tests = []; examples = []; bench = []};
+  compiler = {profile_overrides = []; target_overrides = []};
+  commands = [];
+  fix_providers = [];
 
-  }
+}
 
 let test_transitive_closure_dependency_first_order = fun () ->
   let dep_c =

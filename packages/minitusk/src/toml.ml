@@ -9,27 +9,27 @@ type value =
 
 type error =
   | Invalid_path of {
-      path : string;
+      path: string;
     }
   | File_read_error of {
-      path : string;
-      reason : string;
+      path: string;
+      reason: string;
     }
   | Parse_error of {
-      position : int;
-      context : string;
-      reason : string;
+      position: int;
+      context: string;
+      reason: string;
     }
   | Unterminated_string of {
-      position : int;
+      position: int;
     }
   | Unterminated_array of {
-      position : int;
+      position: int;
     }
   | Unexpected_char of {
-      position : int;
-      found : char;
-      expected : string;
+      position: int;
+      found: char;
+      expected: string;
     }
 
 let error_to_string =
@@ -55,8 +55,8 @@ let error_to_string =
 exception Parse_exception of error
 
 type section = {
-  name : string;
-  items : (string * value) list;
+  name: string;
+  items: (string * value) list;
 }
 
 let parse = fun content ->
@@ -508,13 +508,13 @@ let rec to_string = fun ?(indent = 0) value ->
       else
         "false"
   | Array items ->
-      let items_str = String.concat ", " (List.map (to_string ~indent:((indent + 1))) items) in
+      let items_str = String.concat ", " (List.map (to_string ~indent:((((indent + 1))))) items) in
       "[" ^ items_str ^ "]"
   | Table items ->
       let items_str =
         String.concat
         ",\n"
-        (List.map (fun ((k, v)) -> ind ^ "  " ^ k ^ " = " ^ to_string ~indent:((indent + 1)) v) items)
+        (List.map (fun ((k, v)) -> ind ^ "  " ^ k ^ " = " ^ to_string ~indent:((((indent + 1)))) v) items)
       in
       if indent = 0 then
         "{\n" ^ items_str ^ "\n}"

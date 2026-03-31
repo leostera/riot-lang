@@ -16,20 +16,19 @@ type assignment =
 (* global_index *)
 
 type t = {
-  assignments : assignment list;
-  decisions : (package, version) Collections.HashMap.t;
-  decision_level : decision_level;
-  next_global_index : int;
+  assignments: assignment list;
+  decisions: (package, version) Collections.HashMap.t;
+  decision_level: decision_level;
+  next_global_index: int;
 }
 
-let empty = fun () ->
-  {
-    assignments = [];
-    decisions = Collections.HashMap.create ();
-    decision_level = 0;
-    next_global_index = 0;
+let empty = fun () -> {
+  assignments = [];
+  decisions = Collections.HashMap.create ();
+  decision_level = 0;
+  next_global_index = 0;
 
-  }
+}
 
 let current_decision_level = fun solution -> solution.decision_level
 

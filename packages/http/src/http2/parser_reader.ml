@@ -10,7 +10,7 @@ module Buffer = IO.Buffer
 module Cell = Sync.Cell
 
 type config = {
-  max_frame_size : int;
+  max_frame_size: int;
 }
 
 let default_config = {max_frame_size = 16_384}
@@ -18,26 +18,26 @@ let default_config = {max_frame_size = 16_384}
 (** Parser phases - what we're currently trying to parse *)
 type parse_phase =
   | ReadingFrameHeader of {
-      buffer : Buffer.t;  (** Accumulating 9-byte header *)
-      bytes_read : int;
+      buffer: Buffer.t;  (** Accumulating 9-byte header *)
+      bytes_read: int;
     }
   | ReadingFramePayload of {
-      header : Frame.t;  (** Parsed header *)
-      buffer : Buffer.t;  (** Accumulating payload *)
-      bytes_read : int;
-      total_length : int;
+      header: Frame.t;  (** Parsed header *)
+      buffer: Buffer.t;  (** Accumulating payload *)
+      bytes_read: int;
+      total_length: int;
     }
 
 type state = {
-  config : config;
-  phase : parse_phase Cell.t;
+  config: config;
+  phase: parse_phase Cell.t;
 }
 
 type parse_error =
   | Incomplete_frame_header
-  | Frame_size_exceeds_maximum of { size : int; max_size : int; }
+  | Frame_size_exceeds_maximum of { size: int; max_size: int; }
   | Unknown_frame_type of int
-  | Invalid_payload_length of { frame_type : string; expected : int; actual : int; }
+  | Invalid_payload_length of { frame_type: string; expected: int; actual: int; }
   | Incomplete_settings_payload
 
 type parse_result =
@@ -45,8 +45,11 @@ type parse_result =
   | Need_more
   | Error of parse_error
 
-let create = fun ?(config = default_config) () ->
-  {config; phase = Cell.create (ReadingFrameHeader {buffer = Buffer.create 9; bytes_read = 0}); }
+let create = fun ?(config = default_config) () -> {
+  config;
+  phase = Cell.create (ReadingFrameHeader {buffer = Buffer.create 9; bytes_read = 0});
+
+}
 
 let reset = fun state ->
   Cell.set state.phase (ReadingFrameHeader {buffer = Buffer.create 9; bytes_read = 0})

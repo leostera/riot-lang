@@ -95,13 +95,12 @@ let rec match_chain_depth =
   + (child_expressions (Syn.Cst.Expression.Match expr) |> List.map match_chain_depth |> max_list)
   | expr -> child_expressions expr |> List.map match_chain_depth |> max_list
 
-let make_diagnostic = fun (expr:Syn.Cst.match_expression) depth ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
-  ~suggestion:(("Reduce nested match depth from " ^ Int.to_string depth ^ " by extracting a helper or flattening the control flow."))
-  ()
+let make_diagnostic = fun (expr:Syn.Cst.match_expression) depth -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))))
+~suggestion:(((("Reduce nested match depth from " ^ Int.to_string depth ^ " by extracting a helper or flattening the control flow."))))
+()
 
 let rec diagnostics_for_expression = fun ~inside_match ->
   function
@@ -126,5 +125,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map
   (fun binding -> diagnostics_for_expression ~inside_match:false (Syn.Cst.LetBinding.value binding))
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

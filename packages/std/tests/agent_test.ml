@@ -1,8 +1,8 @@
 open Std
 
 type person = {
-  name : string;
-  age : int;
+  name: string;
+  age: int;
 }
 
 (* Helper to run in a miniriot process *)

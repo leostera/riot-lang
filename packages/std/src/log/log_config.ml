@@ -8,15 +8,15 @@ type format_style =
 
 type handler_config =
   | Stdout of {
-      format : format_style;
+      format: format_style;
     }
   | File of {
-      path : string;
-      format : format_style;
+      path: string;
+      format: format_style;
     }
 
 type t = {
-  handlers : handler_config list;
+  handlers: handler_config list;
 }
 
 let spec =

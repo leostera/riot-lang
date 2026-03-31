@@ -22,25 +22,25 @@ open Global0
 (** A cell that holds an optional value and can only be set once *)
 (** Create an empty OnceCell *)
 type 'a t
-val create : unit -> 'a t
+val create: unit -> 'a t
 
 (** Get the value if initialized *)
-val get : 'a t -> 'a option
+val get: 'a t -> 'a option
 
 (** Get the value, initializing it if necessary *)
 
 (** Try to get the value, initializing it if necessary, propagating errors *)
-val get_or_init : 'a t -> (unit -> 'a) -> 'a
+val get_or_init: 'a t -> (unit -> 'a) -> 'a
 
-val get_or_try_init : 'a t -> (unit -> ('a, 'e) result) -> ('a, 'e) result
+val get_or_try_init: 'a t -> (unit -> ('a, 'e) result) -> ('a, 'e) result
 
 (** Set the value if not already set, returns error if already initialized *)
-val set : 'a t -> 'a -> (unit, [
-  | `AlreadyInitialized
-]) result
+val set: 'a t -> 'a -> (unit, [
+    | `AlreadyInitialized
+  ]) result
 
 (** Check if the cell has been initialized *)
-val is_initialized : 'a t -> bool
+val is_initialized: 'a t -> bool
 
 (** Take the value out of the cell, leaving it uninitialized *)
-val take : 'a t -> 'a option
+val take: 'a t -> 'a option

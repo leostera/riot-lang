@@ -18,7 +18,7 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun seq ->
 let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun seq ->
   let module StreamMutIter = struct
     type state = {
-      mutable seq : item t;
+      mutable seq: item t;
     }
 
     type nonrec item = item

@@ -18,34 +18,32 @@ This rule is intentionally narrow. It only applies when the module clearly expos
 primary type. Modules with several important types should name them explicitly.
 |}
 
-let is_trivia = fun kind ->
-  let open Syn.SyntaxKind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
+let is_trivia = fun kind -> let open Syn.SyntaxKind in kind = WHITESPACE
+|| kind = COMMENT
+|| kind = DOCSTRING
 
-let direct_non_trivia_nodes =
-  fun node ->
-    Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.filter_map
-      (
-        function
-        | Syn.Ceibo.Red.Node child when not (is_trivia (Syn.Ceibo.Red.SyntaxNode.kind child)) -> Some child
-        | _ -> None
-      )
+let direct_non_trivia_nodes = fun node ->
+  Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.filter_map
+    (
+      function
+      | Syn.Ceibo.Red.Node child when not (is_trivia (Syn.Ceibo.Red.SyntaxNode.kind child)) -> Some child
+      | _ -> None
+    )
 
-let first_non_trivia_token =
-  fun node ->
-    Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.find_map
-      (
-        function
-        | Syn.Ceibo.Red.Token token when not (is_trivia (Syn.Ceibo.Red.SyntaxToken.kind token)) -> Some token
-        | _ -> None
-      )
+let first_non_trivia_token = fun node ->
+  Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.find_map
+    (
+      function
+      | Syn.Ceibo.Red.Token token when not (is_trivia (Syn.Ceibo.Red.SyntaxToken.kind token)) -> Some token
+      | _ -> None
+    )
 
-let type_name_token_from_decl_node =
-  fun node ->
-    direct_non_trivia_nodes node |> List.find_map
-      (fun child ->
-        match Syn.Ceibo.Red.SyntaxNode.kind child with
-        | Syn.SyntaxKind.MODULE_PATH -> first_non_trivia_token child
-        | _ -> None)
+let type_name_token_from_decl_node = fun node ->
+  direct_non_trivia_nodes node |> List.find_map
+    (fun child ->
+      match Syn.Ceibo.Red.SyntaxNode.kind child with
+      | Syn.SyntaxKind.MODULE_PATH -> first_non_trivia_token child
+      | _ -> None)
 
 let single_type_decl_token = fun item_nodes ->
   match item_nodes
@@ -59,7 +57,7 @@ let make_diagnostic = fun token ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-  ~suggestion:(("Rename " ^ original ^ " to t"))
+  ~suggestion:(((("Rename " ^ original ^ " to t"))))
   ()
 
 let diagnostic_for_module_structure = fun decl ->

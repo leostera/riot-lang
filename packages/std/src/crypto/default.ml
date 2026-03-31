@@ -6,7 +6,7 @@ open Collections
 (** Default hasher using kernel's default hash algorithm *)
 module DefaultHasher = struct
   type state = {
-    mutable buffer : Buffer.t;
+    mutable buffer: Buffer.t;
   }
 
   let create = fun () -> {buffer = Buffer.create 64}
@@ -122,8 +122,8 @@ end
 (** Random state for HashMap/HashSet - provides seeded hashing *)
 module RandomState = struct
   type t = {
-    seed1 : int64;
-    seed2 : int64;
+    seed1: int64;
+    seed2: int64;
   }
 
   let create = fun () ->

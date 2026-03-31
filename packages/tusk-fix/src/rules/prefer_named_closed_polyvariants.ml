@@ -18,13 +18,12 @@ If the closed set of tags matters enough to appear in public types, it usually m
 enough to deserve a proper name.
 |}
 
-let make_diagnostic = fun syntax_node ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-  ~suggestion:"Introduce a named type alias for this closed polymorphic variant and use that name instead"
-  ()
+let make_diagnostic = fun syntax_node -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+~suggestion:"Introduce a named type alias for this closed polymorphic variant and use that name instead"
+()
 
 let rec diagnostics_for_core_type = fun type_ ->
   match type_ with
@@ -102,18 +101,18 @@ let diagnostics_for_type_definition =
   (fun (field:Syn.Cst.RecordField.t) -> diagnostics_for_core_type field.field_type)
   | Syn.Cst.TypeDefinition.Variant { constructors; _ } -> constructors |> List.concat_map diagnostics_for_variant_constructor
 
-let diagnostics_for_type_declaration = fun decl ->
-  diagnostics_for_type_definition (Syn.Cst.TypeDeclaration.type_definition decl)
-  @ (Syn.Cst.TypeDeclaration.constraints decl
-  |> List.concat_map
-  (fun (constraint_:Syn.Cst.TypeConstraint.t) -> diagnostics_for_core_type constraint_.left
-  @ diagnostics_for_core_type constraint_.right))
+let diagnostics_for_type_declaration = fun decl -> diagnostics_for_type_definition
+(Syn.Cst.TypeDeclaration.type_definition decl)
+@ (Syn.Cst.TypeDeclaration.constraints decl
+|> List.concat_map
+(fun (constraint_:Syn.Cst.TypeConstraint.t) -> diagnostics_for_core_type constraint_.left
+@ diagnostics_for_core_type constraint_.right))
 
-let diagnostics_for_value_declaration = fun ({ type_; _ }:Syn.Cst.value_declaration) ->
-  diagnostics_for_core_type type_
+let diagnostics_for_value_declaration = fun ({ type_; _ }:Syn.Cst.value_declaration) -> diagnostics_for_core_type
+type_
 
-let diagnostics_for_external_declaration = fun ({ type_; _ }:Syn.Cst.external_declaration) ->
-  diagnostics_for_core_type type_
+let diagnostics_for_external_declaration = fun ({ type_; _ }:Syn.Cst.external_declaration) -> diagnostics_for_core_type
+type_
 
 let diagnostics_for_items = fun source_file ->
   match source_file with

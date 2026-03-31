@@ -10,28 +10,28 @@ open Std
 
 (** Border width specification *)
 type border_width = {
-  left : int;
-  right : int;
-  top : int;
-  bottom : int;
+  left: int;
+  right: int;
+  top: int;
+  bottom: int;
 }
 (** Rectangle render data *)
 type rectangle_data = {
-  color : Colors.rgb;
-  corner_radius : Style.corner_radius;
+  color: Colors.rgb;
+  corner_radius: Style.corner_radius;
 }
 (** Text render data *)
 type text_data = {
-  content : string;
-  color : Colors.rgb;
-  size : int;
-  weight : Style.font_weight;
+  content: string;
+  color: Colors.rgb;
+  size: int;
+  weight: Style.font_weight;
 }
 (** Border render data *)
 type border_data = {
-  width : border_width;
-  color : Colors.rgb;
-  corner_radius : Style.corner_radius;
+  width: border_width;
+  color: Colors.rgb;
+  corner_radius: Style.corner_radius;
 }
 (** Render command type *)
 type command_type =
@@ -42,13 +42,13 @@ type command_type =
   (** Start clipping region *)
   | ScissorEnd
   (** End clipping region *)
-  | Custom of { data : string; }
+  | Custom of { data: string; }
 (** Custom render data *)
 (** A single render command *)
 type command = {
-  bounding_box : Geometry.Rect.t;
-  command_type : command_type;
-  z_index : int;
+  bounding_box: Geometry.Rect.t;
+  command_type: command_type;
+  z_index: int;
 }
 (** List of render commands *)
 type command_list = command list

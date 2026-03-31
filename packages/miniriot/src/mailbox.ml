@@ -3,14 +3,19 @@ open Kernel.Collections
 open Kernel.Sync
 
 type t = {
-  producer_lock : Mutex.t;
-  mutable inbox_rev : Message.envelope list;
-  mutable outbox : Message.envelope list;
-  size : int Atomic.t;
+  producer_lock: Mutex.t;
+  mutable inbox_rev: Message.envelope list;
+  mutable outbox: Message.envelope list;
+  size: int Atomic.t;
 }
 
-let create = fun () ->
-  {producer_lock = Mutex.create (); inbox_rev = []; outbox = []; size = Atomic.make 0; }
+let create = fun () -> {
+  producer_lock = Mutex.create ();
+  inbox_rev = [];
+  outbox = [];
+  size = Atomic.make 0;
+
+}
 
 let queue = fun t msg ->
   Mutex.lock t.producer_lock;

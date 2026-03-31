@@ -3,9 +3,9 @@ open Std
 module ProtocolError = struct
   type t =
     P : {
-      error : 'err;
-      to_json : 'err -> Data.Json.t;
-      to_string : 'err -> string;
+      error: 'err;
+      to_json: 'err -> Data.Json.t;
+      to_string: 'err -> string;
     } -> t
 
   let to_json = fun (P { error; to_json; _ }) -> to_json error
@@ -22,13 +22,8 @@ type operation =
 
 type error =
   | PoolError of Pool.error
-  | InvalidValue of {
-      field : string;
-      value : string;
-      expected_type : string;
-      reason : string option;
-    }
-  | Timeout of { operation : operation; duration : Time.Duration.t; }
+  | InvalidValue of { field: string; value: string; expected_type: string; reason: string option; }
+  | Timeout of { operation: operation; duration: Time.Duration.t; }
 
 module Config = struct
   type isolation_level =
@@ -38,16 +33,16 @@ module Config = struct
     | Serializable
 
   type t = {
-    pool_size : int;
-    max_idle_time : Time.Duration.t;
-    acquire_timeout : Time.Duration.t;
-    idle_check_interval : Time.Duration.t;
-    max_lifetime : Time.Duration.t option;
-    auto_commit : bool;
-    isolation_level : isolation_level option;
-    query_timeout : Time.Duration.t option;
-    log_queries : bool;
-    log_slow_queries : Time.Duration.t option;
+    pool_size: int;
+    max_idle_time: Time.Duration.t;
+    acquire_timeout: Time.Duration.t;
+    idle_check_interval: Time.Duration.t;
+    max_lifetime: Time.Duration.t option;
+    auto_commit: bool;
+    isolation_level: isolation_level option;
+    query_timeout: Time.Duration.t option;
+    log_queries: bool;
+    log_slow_queries: Time.Duration.t option;
   }
 
   let default = {

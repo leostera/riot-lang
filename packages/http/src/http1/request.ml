@@ -103,7 +103,7 @@ let rec parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = [])
               Error "Header too long"
             else
               let cursor = Cursor.create remaining in
-              parse_headers ~max_count ~max_length ~acc:(((name, value) :: acc)) cursor
+              parse_headers ~max_count ~max_length ~acc:(((((name, value) :: acc)))) cursor
     )
 
 let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
@@ -123,7 +123,7 @@ let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_le
           (* Build Std.Net.Http.Request.t *)
           let method_ = Std.Net.Http.Method.of_string method_str in
           let uri = Std.Net.Uri.of_string path_str
-          |> Result.unwrap_or ~default:((Std.Net.Uri.of_string "/" |> Result.unwrap)) in
+          |> Result.unwrap_or ~default:((((Std.Net.Uri.of_string "/" |> Result.unwrap)))) in
           let version = Std.Net.Http.Version.of_string version_str
           |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11 in
           let headers = Std.Net.Http.Header.of_list headers_list in

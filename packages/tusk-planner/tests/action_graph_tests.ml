@@ -5,41 +5,39 @@ module G = Std.Graph.SimpleGraph
 let test_toolchain = Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let make_package = fun name ->
-  Tusk_model.Package.{
-    name;
-    path = Path.v ".";
-    relative_path = Path.v ".";
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = None;
-    sources = {src = []; native = []; tests = []; examples = []; bench = []};
-    compiler = {profile_overrides = []; target_overrides = []};
-    commands = [];
-    fix_providers = [];
+let make_package = fun name -> Tusk_model.Package.{
+  name;
+  path = Path.v ".";
+  relative_path = Path.v ".";
+  dependencies = [];
+  dev_dependencies = [];
+  build_dependencies = [];
+  foreign_dependencies = [];
+  binaries = [];
+  library = None;
+  sources = {src = []; native = []; tests = []; examples = []; bench = []};
+  compiler = {profile_overrides = []; target_overrides = []};
+  commands = [];
+  fix_providers = [];
 
-  }
+}
 
-let make_package_with_paths = fun ~name ~path ~relative_path ->
-  Tusk_model.Package.{
-    name;
-    path;
-    relative_path;
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = None;
-    sources = {src = []; native = []; tests = []; examples = []; bench = []};
-    compiler = {profile_overrides = []; target_overrides = []};
-    commands = [];
-    fix_providers = [];
+let make_package_with_paths = fun ~name ~path ~relative_path -> Tusk_model.Package.{
+  name;
+  path;
+  relative_path;
+  dependencies = [];
+  dev_dependencies = [];
+  build_dependencies = [];
+  foreign_dependencies = [];
+  binaries = [];
+  library = None;
+  sources = {src = []; native = []; tests = []; examples = []; bench = []};
+  compiler = {profile_overrides = []; target_overrides = []};
+  commands = [];
+  fix_providers = [];
 
-  }
+}
 
 let test_action_graph_json_round_trip_preserves_dependencies = fun () ->
   let package = make_package "pkg" in

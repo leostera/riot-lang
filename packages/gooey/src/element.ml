@@ -1,13 +1,13 @@
 open Std
 
 type t =
-  | Text of { style : Style.t; content : string; }
-  | Container of { style : Style.t; children : t list; }
+  | Text of { style: Style.t; content: string; }
+  | Container of { style: Style.t; children: t list; }
   | Empty
   | Custom of {
-      style : Style.t;
-      measure : unit -> Viewport.t;
-      render : Geometry.Rect.t -> Render.command list;
+      style: Style.t;
+      measure: unit -> Viewport.t;
+      render: Geometry.Rect.t -> Render.command list;
     }
 
 let text = fun ?(style = Style.empty) content -> Text {style; content}
@@ -22,5 +22,7 @@ let row = fun ?(style = Style.empty) children -> Container {style = Style.row st
 
 let column = fun ?(style = Style.empty) children -> Container {style = Style.column style; children}
 
-let spacer = fun ?(flex = 1.0) () ->
-  Container {style = Style.(empty |> size ~width:(Fixed flex) ~height:Grow); children = []}
+let spacer = fun ?(flex = 1.0) () -> Container {
+  style = Style.(empty |> size ~width:(Fixed flex) ~height:Grow);
+  children = []
+}

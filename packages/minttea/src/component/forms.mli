@@ -1,1 +1,1 @@
-val checkbox : ?checked:bool -> string -> string
+val checkbox: ?checked:bool -> string -> string

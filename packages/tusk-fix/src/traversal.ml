@@ -11,9 +11,9 @@ let rec binding_operator_bindings_of_chain = fun (binding:Syn.Cst.binding_operat
   )
 
 type binding_site = {
-  syntax_node : Syn.Cst.syntax_node;
-  name_token : Syn.Cst.Token.t;
-  is_function : bool;
+  syntax_node: Syn.Cst.syntax_node;
+  name_token: Syn.Cst.Token.t;
+  is_function: bool;
 }
 
 let direct_non_trivia_nodes = fun node ->
@@ -274,12 +274,12 @@ and binding_sites_of_apply_argument =
   | Syn.Cst.Positional argument -> binding_sites_of_expression argument
   | Syn.Cst.Labeled { value; _ }
   | Syn.Cst.Optional { value; _ } -> Option.to_list value |> List.concat_map binding_sites_of_expression
-and binding_sites_of_let_binding = fun binding ->
-  Option.to_list (binding_site_of_let_binding binding)
-  @ binding_sites_of_expression (Syn.Cst.LetBinding.value binding)
-and binding_sites_of_match_case = fun ({ guard; body; _ }:Syn.Cst.match_case) ->
-  (Option.to_list guard |> List.concat_map binding_sites_of_expression)
-  @ binding_sites_of_expression body
+and binding_sites_of_let_binding = fun binding -> Option.to_list
+(binding_site_of_let_binding binding)
+@ binding_sites_of_expression (Syn.Cst.LetBinding.value binding)
+and binding_sites_of_match_case = fun ({ guard; body; _ }:Syn.Cst.match_case) -> (Option.to_list guard
+|> List.concat_map binding_sites_of_expression)
+@ binding_sites_of_expression body
 and binding_sites_of_class_field =
   function
   | Syn.Cst.ClassField.Method { definition; _ } -> (

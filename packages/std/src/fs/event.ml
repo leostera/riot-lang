@@ -30,29 +30,29 @@ let file_type_to_string =
   | Unknown -> "UNKNOWN"
 
 type metadata_change = {
-  inode_meta : bool;  (* Permissions, timestamps *)
-  finder_info : bool;  (* macOS Finder metadata *)
-  owner : bool;  (* File ownership *)
-  xattr : bool;  (* Extended attributes *)
+  inode_meta: bool;  (* Permissions, timestamps *)
+  finder_info: bool;  (* macOS Finder metadata *)
+  owner: bool;  (* File ownership *)
+  xattr: bool;  (* Extended attributes *)
 }
 
 type system_flags = {
-  own_event : bool;  (* This process caused it *)
-  mount : bool;  (* Volume mount *)
-  unmount : bool;  (* Volume unmount *)
-  root_changed : bool;  (* Watched root changed *)
-  must_scan_subdirs : bool;  (* Too many events, rescan needed *)
-  user_dropped : bool;  (* Events lost in userspace *)
-  kernel_dropped : bool;  (* Events lost in kernel *)
+  own_event: bool;  (* This process caused it *)
+  mount: bool;  (* Volume mount *)
+  unmount: bool;  (* Volume unmount *)
+  root_changed: bool;  (* Watched root changed *)
+  must_scan_subdirs: bool;  (* Too many events, rescan needed *)
+  user_dropped: bool;  (* Events lost in userspace *)
+  kernel_dropped: bool;  (* Events lost in kernel *)
 }
 
 type t = {
-  path : Path.t;
-  kind : kind;
-  event_id : int64;  (* Monotonic sequence number *)
-  file_type : file_type;  (* What kind of filesystem object *)
-  metadata : metadata_change;
-  system : system_flags;
+  path: Path.t;
+  kind: kind;
+  event_id: int64;  (* Monotonic sequence number *)
+  file_type: file_type;  (* What kind of filesystem object *)
+  metadata: metadata_change;
+  system: system_flags;
 }
 
 (* Decode all flags from kernel event *)
@@ -94,37 +94,36 @@ let from_kernel_event : Ev.event -> t = fun ev ->
 
 (* Convert event to JSON *)
 
-let to_json : t -> Data.Json.t = fun t ->
-  Data.Json.(obj
-  [
-    ("path", string (Path.to_string t.path));
-    ("kind", string (kind_to_string t.kind));
-    ("event_id", string (Int64.to_string t.event_id));
-    ("file_type", string (file_type_to_string t.file_type));
-    (
-      "metadata",
-      obj
-      [
-        ("inode_meta", bool t.metadata.inode_meta);
-        ("finder_info", bool t.metadata.finder_info);
-        ("owner", bool t.metadata.owner);
-        ("xattr", bool t.metadata.xattr);
+let to_json : t -> Data.Json.t = fun t -> Data.Json.(obj
+[
+  ("path", string (Path.to_string t.path));
+  ("kind", string (kind_to_string t.kind));
+  ("event_id", string (Int64.to_string t.event_id));
+  ("file_type", string (file_type_to_string t.file_type));
+  (
+    "metadata",
+    obj
+    [
+      ("inode_meta", bool t.metadata.inode_meta);
+      ("finder_info", bool t.metadata.finder_info);
+      ("owner", bool t.metadata.owner);
+      ("xattr", bool t.metadata.xattr);
 
-      ]
-    );
-    (
-      "system",
-      obj
-      [
-        ("own_event", bool t.system.own_event);
-        ("mount", bool t.system.mount);
-        ("unmount", bool t.system.unmount);
-        ("root_changed", bool t.system.root_changed);
-        ("must_scan_subdirs", bool t.system.must_scan_subdirs);
-        ("user_dropped", bool t.system.user_dropped);
-        ("kernel_dropped", bool t.system.kernel_dropped);
+    ]
+  );
+  (
+    "system",
+    obj
+    [
+      ("own_event", bool t.system.own_event);
+      ("mount", bool t.system.mount);
+      ("unmount", bool t.system.unmount);
+      ("root_changed", bool t.system.root_changed);
+      ("must_scan_subdirs", bool t.system.must_scan_subdirs);
+      ("user_dropped", bool t.system.user_dropped);
+      ("kernel_dropped", bool t.system.kernel_dropped);
 
-      ]
-    );
+    ]
+  );
 
-  ])
+])

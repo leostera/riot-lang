@@ -73,17 +73,17 @@ type mouse_action =
   | Mouse_move
 
 type key_event = {
-  code : key;
-  modifiers : modifier list;
-  kind : key_event_kind;
+  code: key;
+  modifiers: modifier list;
+  kind: key_event_kind;
 }
 
 type mouse_event = {
-  button : mouse_button;
-  action : mouse_action;
-  x : int;
-  y : int;
-  modifiers : modifier list;
+  button: mouse_button;
+  action: mouse_action;
+  x: int;
+  y: int;
+  modifiers: modifier list;
 }
 
 type event =

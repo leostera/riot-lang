@@ -86,7 +86,7 @@ type t
 
     Example: ```ocaml let lexer = Lexer.create "let x = 1" in let tok =
     Lexer.next lexer ``` *)
-val create : string -> t
+val create: string -> t
 
 (** # Tokenization *)
 (** `next lexer delim_stack` returns the next token from the source.
@@ -100,7 +100,7 @@ val create : string -> t
     lexer [] in (* first token *) let tok2 = Lexer.next lexer [] in (* second
     token *) (* ... *) let last = Lexer.next lexer [] in (* eventually returns
     EOF *) ``` *)
-val next : t -> Token.delimiter list -> Token.t
+val next: t -> Token.delimiter list -> Token.t
 
 (** `tokenize source` lexes the entire source into a token list.
 
@@ -113,4 +113,4 @@ val next : t -> Token.delimiter list -> Token.t
 
     Example: ```ocaml let tokens = Lexer.tokenize "let x = 42" in List.length
     tokens (* typically 5: let, x, =, 42, EOF *) ``` *)
-val tokenize : string -> Token.t list
+val tokenize: string -> Token.t list

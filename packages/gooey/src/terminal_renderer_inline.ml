@@ -20,9 +20,9 @@ let format_with_bg = fun color text ->
   Ansi_formatter.format_string [ Ansi_formatter.Background color ] text
 
 type cell = {
-  mutable char : string;
-  mutable fg_color : Tty.Color.t option;
-  mutable bg_color : Tty.Color.t option;
+  mutable char: string;
+  mutable fg_color: Tty.Color.t option;
+  mutable bg_color: Tty.Color.t option;
 }
 
 let make_cell = fun () -> {char = " "; fg_color = None; bg_color = None}

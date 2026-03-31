@@ -12,4 +12,4 @@ include module type of Kernel.Float
       Float.to_string 42.0                  (* "42.0" or similar *)
     ]}
 *)
-val to_string : ?precision:int -> float -> string
+val to_string: ?precision:int -> float -> string

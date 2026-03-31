@@ -29,8 +29,9 @@ let home_handler = fun conn req ->
   |> Conn.with_body html
   |> Conn.send
 
-let about_handler = fun conn req ->
-  conn |> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework" |> Conn.send
+let about_handler = fun conn req -> conn
+|> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework"
+|> Conn.send
 
 let health_handler = fun conn req ->
   (* Get the request ID that was added by request_id middleware *)
@@ -49,8 +50,9 @@ let health_handler = fun conn req ->
   |> Conn.with_body (Data.Json.to_string json)
   |> Conn.send
 
-let not_found_handler = fun conn req ->
-  conn |> Conn.respond ~status:NotFound ~body:"404 - Page not found" |> Conn.send
+let not_found_handler = fun conn req -> conn
+|> Conn.respond ~status:NotFound ~body:"404 - Page not found"
+|> Conn.send
 
 (* Define routes *)
 

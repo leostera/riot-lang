@@ -22,7 +22,7 @@ open Std
 (** Keyword type from the `Keyword` module. *)
 type keyword = Keyword.t
 type literal =
-  | String of { value : string; terminated : bool; }
+  | String of { value: string; terminated: bool; }
   (** String literal. `terminated` is false if the closing quote is missing.
       *)
   | Int of int
@@ -50,12 +50,12 @@ type delimiter =
 (** `object` / `end` pair *)
 (** A token with its kind and source location. *)
 type trivia_kind =
-  | CommentTrivia of { value : string; terminated : bool; }
-  | DocstringTrivia of { value : string; terminated : bool; }
+  | CommentTrivia of { value: string; terminated: bool; }
+  | DocstringTrivia of { value: string; terminated: bool; }
   | WhitespaceTrivia
 type trivia = {
-  kind : trivia_kind;
-  span : Ceibo.Span.t;
+  kind: trivia_kind;
+  span: Ceibo.Span.t;
 }
 type token_kind =
   (* Keywords *)
@@ -73,9 +73,9 @@ type token_kind =
   | CloseDelim of delimiter
   (** Closing delimiter: `)`, `}`, `]`, `end` *)
   (* Trivia *)
-  | Comment of { value : string; terminated : bool; }
+  | Comment of { value: string; terminated: bool; }
   (** Block comment `(* ... *)`. `terminated` is false if unclosed. *)
-  | Docstring of { value : string; terminated : bool; }
+  | Docstring of { value: string; terminated: bool; }
   (** Documentation comment `(** ... *)`. `terminated` is false if unclosed.
       *)
   | Whitespace
@@ -180,9 +180,9 @@ type token_kind =
   | Unknown of char
 (** Unknown/invalid character. Used for error recovery. *)
 type t = {
-  kind : token_kind;
-  span : Ceibo.Span.t;
-  leading_trivia : trivia list;
+  kind: token_kind;
+  span: Ceibo.Span.t;
+  leading_trivia: trivia list;
 }
 (** # Utilities *)
 (** `delimiter_of_keyword kw` returns the delimiter type for keywords that act
@@ -194,17 +194,17 @@ type t = {
     Example: ```ocaml delimiter_of_keyword Keyword.Begin = Some BeginEnd
     delimiter_of_keyword Keyword.Struct = Some StructEnd delimiter_of_keyword
     Keyword.Let = None ``` *)
-val delimiter_of_keyword : keyword -> delimiter option
+val delimiter_of_keyword: keyword -> delimiter option
 
-val token_kind_of_trivia_kind : trivia_kind -> token_kind
+val token_kind_of_trivia_kind: trivia_kind -> token_kind
 
-val trivia_kind_of_token_kind : token_kind -> trivia_kind option
+val trivia_kind_of_token_kind: token_kind -> trivia_kind option
 
-val trivia_of_token : t -> trivia option
+val trivia_of_token: t -> trivia option
 
-val trivia_to_token : trivia -> t
+val trivia_to_token: trivia -> t
 
-val with_leading_trivia : t -> trivia list -> t
+val with_leading_trivia: t -> trivia list -> t
 
 (** `show_kind kind` returns a human-readable name for a token kind.
 
@@ -213,7 +213,7 @@ val with_leading_trivia : t -> trivia list -> t
     Example: ```ocaml show_kind (Ident "foo") = "identifier" show_kind (Literal
     (Int 42)) = "integer" show_kind Plus = "'+'" show_kind EOF = "end of file"
     ``` *)
-val show_kind : token_kind -> string
+val show_kind: token_kind -> string
 
 (** `to_string token` returns a human-readable description of the token.
     
@@ -223,4 +223,4 @@ val show_kind : token_kind -> string
     to_string { kind = Ident "foo"; span = ... } = "identifier"
     to_string { kind = EOF; span = ... } = "end of file"
     ``` *)
-val to_string : t -> string
+val to_string: t -> string

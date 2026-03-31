@@ -3,8 +3,8 @@ open IO
 open Common
 
 type t = {
-  fd : Kernel.Fd.t;
-  mutable closed : bool;
+  fd: Kernel.Fd.t;
+  mutable closed: bool;
 }
 
 (* Re-export OpenFlags from Kernel.Fd *)
@@ -30,34 +30,32 @@ let open_with_flags = fun path flags ~mode ->
   with
   | e -> Error (IO.Unknown_error ("Failed to open " ^ path_str ^ ": " ^ Exception.to_string e))
 
-let create = fun path ->
-  open_with_flags
-  path
-  [ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create; Kernel.Fd.OpenFlags.Truncate;  ]
-  ~mode:Permissions.read_write
+let create = fun path -> open_with_flags
+path
+[ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create; Kernel.Fd.OpenFlags.Truncate;  ]
+~mode:Permissions.read_write
 
-let create_new = fun path ->
-  open_with_flags
-  path
-  [ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create; Kernel.Fd.OpenFlags.Exclusive;  ]
-  ~mode:Permissions.read_write
+let create_new = fun path -> open_with_flags
+path
+[ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create; Kernel.Fd.OpenFlags.Exclusive;  ]
+~mode:Permissions.read_write
 
 let open_read = fun path -> open_with_flags path [ Kernel.Fd.OpenFlags.ReadOnly ] ~mode:Permissions.read_write
 
-let open_write = fun path ->
-  open_with_flags
-  path
-  [ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create ]
-  ~mode:Permissions.read_write
+let open_write = fun path -> open_with_flags
+path
+[ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create ]
+~mode:Permissions.read_write
 
-let open_append = fun path ->
-  open_with_flags
-  path
-  [ Kernel.Fd.OpenFlags.ReadWrite; Kernel.Fd.OpenFlags.Append; Kernel.Fd.OpenFlags.Create;  ]
-  ~mode:Permissions.read_write
+let open_append = fun path -> open_with_flags
+path
+[ Kernel.Fd.OpenFlags.ReadWrite; Kernel.Fd.OpenFlags.Append; Kernel.Fd.OpenFlags.Create;  ]
+~mode:Permissions.read_write
 
-let open_read_write = fun path ->
-  open_with_flags path [ Kernel.Fd.OpenFlags.ReadWrite ] ~mode:Permissions.read_write
+let open_read_write = fun path -> open_with_flags
+path
+[ Kernel.Fd.OpenFlags.ReadWrite ]
+~mode:Permissions.read_write
 
 (* Reading - with async/Miniriot support *)
 

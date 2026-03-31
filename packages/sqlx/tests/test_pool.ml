@@ -1,19 +1,19 @@
 open Std
 open Sqlx
 
-module MockDriver : Driver.Intf = struct
+module MockDriver: Driver.Intf = struct
   type config = unit
 
   type connection = {
-    id : int;
+    id: int;
   }
 
   type statement = {
-    sql : string;
+    sql: string;
   }
 
   type result_set = {
-    data : Row.t list;
+    data: Row.t list;
   }
 
   let name = "Mock"

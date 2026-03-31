@@ -2,8 +2,8 @@ open Global
 open Collections
 
 type config = {
-  reporter : (module Reporter.Intf.Intf);
-  suite_info : Reporter.Intf.suite_info;
+  reporter: (module Reporter.Intf.Intf);
+  suite_info: Reporter.Intf.suite_info;
 }
 
 type run_summary = Bench_result.summary

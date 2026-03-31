@@ -1,11 +1,10 @@
 open Std
 open Gooey
 
-let make_config = fun () ->
-  Config.make
-  ~viewport:(Viewport.make ~width:80.0 ~height:24.0)
-  ~text_measurer:Config.default_text_measurer
-  ()
+let make_config = fun () -> Config.make
+~viewport:(Viewport.make ~width:80.0 ~height:24.0)
+~text_measurer:Config.default_text_measurer
+()
 
 let test_complex_nested_layout = fun () ->
   let elem = Element.column

@@ -1,8 +1,8 @@
 open Kernel
 
 type timespec = {
-  secs : int;
-  nanos : int;
+  secs: int;
+  nanos: int;
 }
 
 type t = timespec

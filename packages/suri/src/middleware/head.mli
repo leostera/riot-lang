@@ -82,4 +82,4 @@ open Std
 
     {b Note}: This middleware must wrap around your handlers to strip
     the body after response is built. *)
-val middleware : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val middleware: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

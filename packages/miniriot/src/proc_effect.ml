@@ -10,12 +10,12 @@ type timeout =
 
 type _ Effect.t +=
   | Receive : {
-    selector :
+    selector:
       Message.t -> [
         `select of 'msg
         | `skip
       ];
-    timeout : timeout;
+    timeout: timeout;
   } -> 'msg Effect.t
 
 type _ Effect.t +=
@@ -25,8 +25,8 @@ type _ Effect.t +=
 
 type _ Effect.t +=
   | Syscall : {
-    name : string;
-    interest : Kernel.Async.Interest.t;
-    source : Kernel.Async.Source.t;
-    timeout : timeout;
+    name: string;
+    interest: Kernel.Async.Interest.t;
+    source: Kernel.Async.Source.t;
+    timeout: timeout;
   } -> unit Effect.t

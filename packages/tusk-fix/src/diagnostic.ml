@@ -10,20 +10,20 @@ type severity = Fixme.Diagnostic.severity =
 
 type kind = Fixme.Diagnostic.kind =
   | Known of {
-      rule_id : string;
-      message : string;
+      rule_id: string;
+      message: string;
     }
   | Generic of {
-      rule_id : string;
-      message : string;
+      rule_id: string;
+      message: string;
     }
 
 type t = Fixme.Diagnostic.t = {
-  severity : severity;
-  kind : kind;
-  span : Syn.Ceibo.Span.t;
-  suggestion : string option;
-  fix : Fix.fix option;
+  severity: severity;
+  kind: kind;
+  span: Syn.Ceibo.Span.t;
+  suggestion: string option;
+  fix: Fix.fix option;
 }
 
 let make = Fixme.Diagnostic.make
@@ -43,8 +43,8 @@ let severity_to_colored_string =
   | Hint -> "\027[1;90mhint\027[0m"
 
 type source_layout = {
-  lines : string array;
-  line_starts : int array;
+  lines: string array;
+  line_starts: int array;
 }
 
 let message = Fixme.Diagnostic.message
@@ -53,15 +53,16 @@ let rule_id = Fixme.Diagnostic.rule_id
 
 let header_label = fun severity rule_id -> "[" ^ severity_to_string severity ^ "] " ^ rule_id
 
-let colored_header_label = fun severity rule_id ->
-  "[" ^ severity_to_colored_string severity ^ "] " ^ rule_id
+let colored_header_label = fun severity rule_id -> "["
+^ severity_to_colored_string severity
+^ "] "
+^ rule_id
 
-let explain_hint = fun severity rule_id ->
-  "  For more information about this "
-  ^ severity_to_string severity
-  ^ ", try `tusk fix --explain "
-  ^ rule_id
-  ^ "`"
+let explain_hint = fun severity rule_id -> "  For more information about this "
+^ severity_to_string severity
+^ ", try `tusk fix --explain "
+^ rule_id
+^ "`"
 
 let to_string = fun diag ->
   let severity_str = severity_to_string diag.severity in
@@ -170,8 +171,9 @@ let extract_code_snippet_from_layout = fun layout (span:Syn.Ceibo.Span.t) ->
       let pointer_line = String.make start_col ' ' ^ "\027[1;33m" ^ String.make marker_width '^' ^ "\027[0m" in
       Some (code_line, pointer_line, start_idx + 1)
 
-let extract_code_snippet = fun source span ->
-  extract_code_snippet_from_layout (make_source_layout source) span
+let extract_code_snippet = fun source span -> extract_code_snippet_from_layout
+(make_source_layout source)
+span
 
 let to_formatted_output = fun ~file ~source diag ->
   let header = Path.to_string file ^ ":" in
@@ -233,12 +235,12 @@ let fix = Fixme.Diagnostic.fix
 (* Grouped diagnostics *)
 
 type grouped = {
-  severity : severity;
-  message : string;
-  spans : Syn.Ceibo.Span.t list;
-  rule_id : string;
-  suggestion : string option;
-  fix : Fix.fix option;
+  severity: severity;
+  message: string;
+  spans: Syn.Ceibo.Span.t list;
+  rule_id: string;
+  suggestion: string option;
+  fix: Fix.fix option;
 }
 
 let group_diagnostics : t list -> grouped list = fun diags ->

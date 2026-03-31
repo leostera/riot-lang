@@ -2,8 +2,8 @@ open Std
 
 module Point = struct
   type t = {
-    x : float;
-    y : float;
+    x: float;
+    y: float;
   }
 
   let make = fun ~x ~y -> {x; y}
@@ -13,10 +13,10 @@ end
 
 module Rect = struct
   type t = {
-    x : float;
-    y : float;
-    width : float;
-    height : float;
+    x: float;
+    y: float;
+    width: float;
+    height: float;
   }
 
   let make = fun ~x ~y ~width ~height -> {x; y; width; height}

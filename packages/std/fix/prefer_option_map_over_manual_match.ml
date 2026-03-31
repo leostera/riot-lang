@@ -98,17 +98,16 @@ let matches_option_map_shape = fun (expr:Syn.Cst.match_expression) ->
     )
   | _ -> false
 
-let make_diagnostic = fun (expr:Syn.Cst.match_expression) ->
-  Api.Diagnostic.make
-  ~severity:Warning
-  ~kind:(Api.Diagnostic.Known {
-    rule_id = package_rule_id;
-    message = explanation.Api.Explanation.message;
+let make_diagnostic = fun (expr:Syn.Cst.match_expression) -> Api.Diagnostic.make
+~severity:Warning
+~kind:(Api.Diagnostic.Known {
+  rule_id = package_rule_id;
+  message = explanation.Api.Explanation.message;
 
-  })
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
-  ~suggestion:"Prefer Option.map for this Some/None-preserving transformation."
-  ()
+})
+~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
+~suggestion:"Prefer Option.map for this Some/None-preserving transformation."
+()
 
 let diagnostic_for_expression =
   function
@@ -122,10 +121,9 @@ let check_tree = fun (ctx:Api.Rule.context) _red_root ->
   |> List.concat_map Api.Traversal.expressions_of_structure_item
   |> List.filter_map diagnostic_for_expression
 
-let rule = fun () ->
-  Api.Rule.make
-  ~id:package_rule_id
-  ~description:explanation.message
-  ~explain:explanation.body
-  ~run:check_tree
-  ()
+let rule = fun () -> Api.Rule.make
+~id:package_rule_id
+~description:explanation.message
+~explain:explanation.body
+~run:check_tree
+()

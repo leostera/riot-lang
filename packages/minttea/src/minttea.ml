@@ -16,9 +16,8 @@ let config = Config.make
 
 let app = App.make
 
-let run = fun ?(config = config ()) initial_model app ->
-  let open Std in Program.run ~app ~config ~initial_model
-  |> Result.map_err (fun reason -> Failure reason)
+let run = fun ?(config = config ()) initial_model app -> let open Std in Program.run ~app ~config ~initial_model
+|> Result.map_err (fun reason -> Failure reason)
 
 let start = fun ?(config = config ()) (app:'model App.t) initial_model ->
   let main = fun ~args:_ ->

@@ -5,10 +5,10 @@ open Std.Iter
 let ( let* ) = Result.and_then
 
 type event = {
-  data : string;
-  event_type : string option;
-  id : string option;
-  retry : int option;
+  data: string;
+  event_type: string option;
+  id: string option;
+  retry: int option;
 }
 
 let parse_line = fun line ->

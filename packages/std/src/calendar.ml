@@ -22,20 +22,20 @@ type last_day_of_month = int
 type week_number = int
 
 type date = {
-  year : year;
-  month : month;
-  day : day;
+  year: year;
+  month: month;
+  day: day;
 }
 
 type time = {
-  hour : hour;
-  minute : minute;
-  second : second;
+  hour: hour;
+  minute: minute;
+  second: second;
 }
 
 type year_and_week = {
-  year : year;
-  week : week_number;
+  year: year;
+  week: week_number;
 }
 
 (** {1 Constants} *)
@@ -308,8 +308,9 @@ let iso_week_number = fun ({ year; month; day } as date) ->
 
 (** {1 Time Conversions} *)
 
-let time_to_seconds = fun ({ hour; minute; second }) ->
-  (hour * seconds_per_hour) + (minute * seconds_per_minute) + second
+let time_to_seconds = fun ({ hour; minute; second }) -> (hour * seconds_per_hour)
++ (minute * seconds_per_minute)
++ second
 
 let seconds_to_time = fun secs ->
   if secs < 0 || secs >= seconds_per_day then

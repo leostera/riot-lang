@@ -15,48 +15,48 @@ type params =
   | NoParams
 
 type prerequest = {
-  method_ : string;
-  params : params;
+  method_: string;
+  params: params;
 }
 
 type request = {
-  jsonrpc : string;
-  method_ : string;
-  params : params;
-  id : id option;
+  jsonrpc: string;
+  method_: string;
+  params: params;
+  id: id option;
 }
 
 type error =
   | ParseError of {
-      raw_input : string;
-      parse_error : string;
+      raw_input: string;
+      parse_error: string;
     }
   | InvalidRequest of {
-      request_json : Json.t;
-      reason : string;
+      request_json: Json.t;
+      reason: string;
     }
   | MethodNotFound of {
-      method_name : string;
+      method_name: string;
     }
   | InvalidParams of {
-      method_name : string;
-      params : params;
-      reason : string;
+      method_name: string;
+      params: params;
+      reason: string;
     }
   | InternalError of {
-      context : string;
-      details : string;
+      context: string;
+      details: string;
     }
   | UnknownServerError of {
-      code : int;
-      message : string;
-      data : Json.t option;
+      code: int;
+      message: string;
+      data: Json.t option;
     }
 
 type 'res response = {
-  jsonrpc : string;
-  result : 'res;
-  id : id;
+  jsonrpc: string;
+  result: 'res;
+  id: id;
 }
 
 type batch_request = request list
@@ -147,8 +147,13 @@ let request_of_json = fun json ->
     parameterized type *)
 
 (** Helper to make a request *)
-let request = fun ~method_ ?params ?id () ->
-  {jsonrpc = version; method_; params = Option.unwrap_or params ~default:NoParams; id; }
+let request = fun ~method_ ?params ?id () -> {
+  jsonrpc = version;
+  method_;
+  params = Option.unwrap_or params ~default:NoParams;
+  id;
+
+}
 
 (** Create a successful response with result *)
 let result = fun res ~id -> {jsonrpc = version; result = Ok res; id}
@@ -156,8 +161,13 @@ let result = fun res ~id -> {jsonrpc = version; result = Ok res; id}
 let ok = fun ?(id = Null) res -> {jsonrpc = version; result = res; id}
 
 (** Helper to make a notification (request without id) *)
-let notification = fun ~method_ ?params () ->
-  {jsonrpc = version; method_; params = Option.unwrap_or params ~default:NoParams; id = None; }
+let notification = fun ~method_ ?params () -> {
+  jsonrpc = version;
+  method_;
+  params = Option.unwrap_or params ~default:NoParams;
+  id = None;
+
+}
 
 (** Check if a request is a notification *)
 let is_notification = fun (req:request) ->
@@ -170,11 +180,11 @@ let is_notification = fun (req:request) ->
 module type ApplicationProtocol = sig
   type request
   type response
-  val response_to_json : response -> Json.t
+  val response_to_json: response -> Json.t
 
-  val response_of_json : Json.t -> (response, Json.t) result
+  val response_of_json: Json.t -> (response, Json.t) result
 
-  val request_to_params : request -> prerequest
+  val request_to_params: request -> prerequest
 
-  val request_of_params : string -> params -> (request, Json.t) result
+  val request_of_params: string -> params -> (request, Json.t) result
 end

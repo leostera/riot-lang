@@ -1,20 +1,20 @@
 open Stdlib
 
 type binary = {
-  name : string;
-  path : string;
+  name: string;
+  path: string;
 }
 
 type t = {
-  name : string;
-  path : string;
-  deps : string list;
-  binaries : binary list;
-  uses_stdlib : bool;
-  uses_unix : bool;
-  uses_dynlink : bool;
-  cc_flags : string list;
-  ld_flags : string list;
+  name: string;
+  path: string;
+  deps: string list;
+  binaries: binary list;
+  uses_stdlib: bool;
+  uses_unix: bool;
+  uses_dynlink: bool;
+  cc_flags: string list;
+  ld_flags: string list;
 }
 
 let binaries = fun t -> t.binaries

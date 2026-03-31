@@ -9,30 +9,29 @@ module Config = struct
     | Prefer
 
   type t = {
-    host : string;
-    port : int;
-    database : string;
-    user : string;
-    password : string;
-    ssl_mode : ssl_mode;
-    application_name : string option;
-    connect_timeout : Time.Duration.t;
-    keepalives_idle : Time.Duration.t option;
+    host: string;
+    port: int;
+    database: string;
+    user: string;
+    password: string;
+    ssl_mode: ssl_mode;
+    application_name: string option;
+    connect_timeout: Time.Duration.t;
+    keepalives_idle: Time.Duration.t option;
   }
 
-  let default = fun () ->
-    {
-      host = "localhost";
-      port = 5_432;
-      database = "postgres";
-      user = "postgres";
-      password = "";
-      ssl_mode = Prefer;
-      application_name = None;
-      connect_timeout = Time.Duration.from_secs 10;
-      keepalives_idle = None;
+  let default = fun () -> {
+    host = "localhost";
+    port = 5_432;
+    database = "postgres";
+    user = "postgres";
+    password = "";
+    ssl_mode = Prefer;
+    application_name = None;
+    connect_timeout = Time.Duration.from_secs 10;
+    keepalives_idle = None;
 
-    }
+  }
 
   let from_string = fun str ->
     match Net.Uri.of_string str with
@@ -130,23 +129,23 @@ module Driver = struct
     | UnexpectedMessage of string
 
   type connection = {
-    id : string;
-    stream : Net.TcpStream.t option;
-    config : config;
-    mutable transaction_status : char;
-    mutable closed : bool;
-    prepared_statements : (string, statement) Collections.HashMap.t;
+    id: string;
+    stream: Net.TcpStream.t option;
+    config: config;
+    mutable transaction_status: char;
+    mutable closed: bool;
+    prepared_statements: (string, statement) Collections.HashMap.t;
   }
 
   and statement = {
-    name : string;
-    sql : string;
-    conn : connection;
+    name: string;
+    sql: string;
+    conn: connection;
   }
 
   type result_set = {
-    rows : Sqlx_driver.Row.t Collections.Queue.t;
-    mutable rows_affected : int;
+    rows: Sqlx_driver.Row.t Collections.Queue.t;
+    mutable rows_affected: int;
   }
 
   let name = "PostgreSQL"

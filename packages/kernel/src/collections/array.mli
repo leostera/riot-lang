@@ -18,7 +18,7 @@ include module type of Stdlib.Array
 
     - Time: O(1) to create iterator
     - Space: O(1) *)
-val into_iter : 'a array -> 'a Iter.Iterator.t
+val into_iter: 'a array -> 'a Iter.Iterator.t
 
 (** Converts this array into a mutable iterator.
 
@@ -38,4 +38,4 @@ val into_iter : 'a array -> 'a Iter.Iterator.t
 
     - Time: O(1) to create iterator
     - Space: O(1) *)
-val to_mut_iter : 'a array -> 'a Iter.MutIterator.t
+val to_mut_iter: 'a array -> 'a Iter.MutIterator.t

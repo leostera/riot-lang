@@ -5,7 +5,7 @@
 type t = ..
 (** Wrap a message in an envelope with a unique ID *)
 type envelope = private {
-  msg : t;
-  uid : int;
+  msg: t;
+  uid: int;
 }
-val envelope : t -> envelope
+val envelope: t -> envelope

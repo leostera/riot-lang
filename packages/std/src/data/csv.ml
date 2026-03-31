@@ -9,15 +9,15 @@ type row = string list
 type t = row list
 
 type config = {
-  delimiter : char;
-  quote : char;
-  escape : char;
-  trim_fields : bool;
+  delimiter: char;
+  quote: char;
+  escape: char;
+  trim_fields: bool;
 }
 
 type error =
-  | Unterminated_quote of { line : int; column : int; }
-  | Invalid_escape_sequence of { line : int; column : int; }
+  | Unterminated_quote of { line: int; column: int; }
+  | Invalid_escape_sequence of { line: int; column: int; }
   | Empty_input
   | Unknown_error of string
 
@@ -36,8 +36,12 @@ let error_to_string =
 
 let default_config = {delimiter = ','; quote = '"'; escape = '"'; trim_fields = false}
 
-let config = fun ?(delimiter = ',') ?(quote = '"') ?(escape = '"') ?(trim_fields = false) () ->
-  {delimiter; quote; escape; trim_fields}
+let config = fun ?(delimiter = ',') ?(quote = '"') ?(escape = '"') ?(trim_fields = false) () -> {
+  delimiter;
+  quote;
+  escape;
+  trim_fields
+}
 
 let of_string = fun ?(config = default_config) str ->
   let cursor = Iter.MutCursor.create str in

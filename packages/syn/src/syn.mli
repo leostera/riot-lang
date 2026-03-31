@@ -79,44 +79,44 @@ open Std
 module Ceibo = Ceibo
 
 (** Token types and utilities. *)
-module Error : module type of Error
+module Error: module type of Error
 
 (** OCaml keyword definitions. *)
-module Token : module type of Token
+module Token: module type of Token
 
 (** Low-level character stream cursor. *)
-module Keyword : module type of Keyword
+module Keyword: module type of Keyword
 
 (** Lexical analyzer (tokenizer). *)
-module Cursor : module type of Cursor
+module Cursor: module type of Cursor
 
 (** Syntax node kind enumeration for OCaml. *)
-module Lexer : module type of Lexer
+module Lexer: module type of Lexer
 
 (** Structured parse error types. *)
-module SyntaxKind : module type of Syntax_kind
+module SyntaxKind: module type of Syntax_kind
 
-module Diagnostic : module type of Diagnostic
+module Diagnostic: module type of Diagnostic
 
 (** Typed concrete syntax tree layered on top of the lossless Ceibo tree.
 
     `Cst` is only produced for parse results without diagnostics. *)
-module DiagnosticReporter : module type of Diagnostic_reporter
+module DiagnosticReporter: module type of Diagnostic_reporter
 
 (** Defaultable visitor-style traversal over the typed CST. *)
-module Cst : module type of Cst
+module Cst: module type of Cst
 
 (** Faithful Ceibo-to-CST lift with a result-based API. *)
-module Visit : module type of Visit
+module Visit: module type of Visit
 
 (** JSON serialization helpers for the typed CST and lift errors. *)
-module CstBuilder : module type of Cst_builder
+module CstBuilder: module type of Cst_builder
 
 (** OCaml parser that produces Ceibo trees. *)
-module CstJson : module type of Cst_json
+module CstJson: module type of Cst_json
 
 (** Why a typed CST could not be constructed from a parse result. *)
-module Parser : module type of Parser
+module Parser: module type of Parser
 
 type build_cst_error =
   | Parse_diagnostics of Diagnostic.t list
@@ -130,15 +130,15 @@ type build_cst_error =
     Example: ```ocaml let tokens = Syn.tokenize "let x = 42" in (* tokens =
     [Keyword Let; Ident "x"; Eq; Literal (Int 42); EOF] with trivia attached
     to the later tokens *) ``` *)
-val tokenize : string -> Token.t list
+val tokenize: string -> Token.t list
 
 (** `parse_interface source` parses .mli source code into a Ceibo green tree
     with diagnostics. *)
-val parse_interface : string -> Parser.parse_result
+val parse_interface: string -> Parser.parse_result
 
 (** `parse_implementation source` parses .ml source code into a Ceibo green tree
     with diagnostics. *)
-val parse_implementation : string -> Parser.parse_result
+val parse_implementation: string -> Parser.parse_result
 
 (** `parse ~filename source` parses source code into a Ceibo green tree with
     diagnostics.
@@ -162,7 +162,7 @@ val parse_implementation : string -> Parser.parse_result
     (* Or create a red view for positioned traversal *) let root =
     Ceibo.Red.new_root result.tree in let span = Ceibo.Red.SyntaxNode.span root
     in Printf.printf "Covers: %s\n" (Ceibo.Span.to_string span) ``` *)
-val parse : filename:Std.Path.t -> string -> Parser.parse_result
+val parse: filename:Std.Path.t -> string -> Parser.parse_result
 
 (** `build_cst result` lifts a diagnostics-free Ceibo parse result into the
     typed CST.
@@ -179,4 +179,4 @@ val parse : filename:Std.Path.t -> string -> Parser.parse_result
     - `Error (Cst_builder_error err)` when the current CST lift does not cover
       the parsed syntax
 *)
-val build_cst : Parser.parse_result -> (Cst.source_file, build_cst_error) result
+val build_cst: Parser.parse_result -> (Cst.source_file, build_cst_error) result

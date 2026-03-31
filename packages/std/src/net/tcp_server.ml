@@ -6,8 +6,8 @@ type handler = req:string -> Kernel.Net.Tcp_stream.t -> unit
 
 (** Handler receives request string and stream for responses *)
 type t = {
-  listener : Tcp_listener.t;
-  handler : handler;
+  listener: Tcp_listener.t;
+  handler: handler;
 }
 
 type error =

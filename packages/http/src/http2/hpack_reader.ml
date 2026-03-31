@@ -14,24 +14,24 @@ type decoder_phase =
   | WaitingForHeader
   (** Waiting for first byte of next header *)
   | ReadingIndexedName of {
-      first_byte : int;
-      prefix_bits : int;
-      accumulated_value : int;
-      multiplier : int;
+      first_byte: int;
+      prefix_bits: int;
+      accumulated_value: int;
+      multiplier: int;
     }
-  | ReadingLiteralName of { name_length : int; bytes_read : int; buffer : Buffer.t; }
+  | ReadingLiteralName of { name_length: int; bytes_read: int; buffer: Buffer.t; }
   | ReadingLiteralValue of {
-      name : string;
-      value_length : int;
-      bytes_read : int;
-      buffer : Buffer.t;
-      should_index : bool;
+      name: string;
+      value_length: int;
+      bytes_read: int;
+      buffer: Buffer.t;
+      should_index: bool;
     }
 
 type decoder = {
-  hpack_decoder : Hpack.decoder;
-  mutable phase : decoder_phase;
-  accumulated_headers : Hpack.header list Cell.t;
+  hpack_decoder: Hpack.decoder;
+  mutable phase: decoder_phase;
+  accumulated_headers: Hpack.header list Cell.t;
 }
 
 type decode_error =
@@ -46,13 +46,12 @@ type decode_result =
   | Need_more
   | Error of decode_error
 
-let create = fun ?(max_dynamic_table_size = 4_096) () ->
-  {
-    hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size ();
-    phase = WaitingForHeader;
-    accumulated_headers = Cell.create [];
+let create = fun ?(max_dynamic_table_size = 4_096) () -> {
+  hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size ();
+  phase = WaitingForHeader;
+  accumulated_headers = Cell.create [];
 
-  }
+}
 
 let update_max_table_size = fun decoder size ->
   Hpack.update_max_table_size decoder.hpack_decoder size

@@ -2,11 +2,11 @@ open Common
 
 module type Intf = sig
   type t
-  val deregister : t -> Adapter.Selector.t -> (unit, IO.error) result
+  val deregister: t -> Adapter.Selector.t -> (unit, IO.error) result
 
-  val register : t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, IO.error) result
+  val register: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, IO.error) result
 
-  val reregister : t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, IO.error) result
+  val reregister: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, IO.error) result
 end
 
 type t =

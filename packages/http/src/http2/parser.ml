@@ -3,7 +3,7 @@ open Std
 let ( let* ) = Result.and_then
 
 type 'a parse_result =
-  | Done of { value : 'a; remaining : string; }
+  | Done of { value: 'a; remaining: string; }
   | Need_more
   | Error of string
 
@@ -20,7 +20,7 @@ let absolute_max_frame_size = 16_777_215
 (* ~16 MB, RFC maximum *)
 
 type config = {
-  max_frame_size : int;
+  max_frame_size: int;
 }
 
 let default_config = {max_frame_size = default_max_frame_size}

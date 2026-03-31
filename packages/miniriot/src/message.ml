@@ -3,8 +3,8 @@ open Kernel
 type t = ..
 
 type envelope = {
-  msg : t;
-  uid : int;
+  msg: t;
+  uid: int;
 }
 
 let uid_counter = Sync.Atomic.make 0

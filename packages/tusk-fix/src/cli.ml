@@ -1,8 +1,8 @@
 open Std
 
 type run_outcome = {
-  result : Runner.run_result;
-  limit_reached : bool;
+  result: Runner.run_result;
+  limit_reached: bool;
 }
 
 let command =
@@ -60,8 +60,8 @@ let print_parse_diagnostics = fun result ->
     ~source:result.final_source
     result.parse_diagnostics)
 
-let diagnostic_count = fun result ->
-  List.length result.Runner.parse_diagnostics + List.length result.diagnostics
+let diagnostic_count = fun result -> List.length result.Runner.parse_diagnostics
++ List.length result.diagnostics
 
 let rec take = fun n xs ->
   if n <= 0 then
@@ -182,8 +182,9 @@ let start_event_to_json = fun ~mode ~concurrency ->
         )
       ); ("concurrency", Int concurrency);  ]
 
-let file_event_to_json = fun result ->
-  json_object_with_type "file" (Runner.file_result_to_json result)
+let file_event_to_json = fun result -> json_object_with_type
+"file"
+(Runner.file_result_to_json result)
 
 let summary_event_to_json = fun ~limit_reached summary ->
   let open Data.Json in
@@ -225,35 +226,32 @@ let display_rule_id_text = fun rule_id ->
 
 let display_rule_id = fun rule -> display_rule_id_text (Rule.id rule)
 
-let sorted_rules =
-  fun () ->
-    Pipeline.default_rules () |> List.sort
-      (fun left right ->
-        let left_package, left_local = split_rule_id (Rule.id left) in
-        let right_package, right_local = split_rule_id (Rule.id right) in
-        let package_cmp = compare_package_name left_package right_package in
-        if package_cmp != 0 then
-          package_cmp
-        else if String.equal left_package "riot" then
-          let left_category = Pipeline.builtin_rule_category left_local
-          |> Option.unwrap_or ~default:"Other" in
-          let right_category = Pipeline.builtin_rule_category right_local
-          |> Option.unwrap_or ~default:"Other" in
-          let category_cmp = String.compare left_category right_category in
-          if category_cmp != 0 then
-            category_cmp
-          else
-            String.compare left_local right_local
+let sorted_rules = fun () ->
+  Pipeline.default_rules () |> List.sort
+    (fun left right ->
+      let left_package, left_local = split_rule_id (Rule.id left) in
+      let right_package, right_local = split_rule_id (Rule.id right) in
+      let package_cmp = compare_package_name left_package right_package in
+      if package_cmp != 0 then
+        package_cmp
+      else if String.equal left_package "riot" then
+        let left_category = Pipeline.builtin_rule_category left_local |> Option.unwrap_or ~default:"Other" in
+        let right_category = Pipeline.builtin_rule_category right_local
+        |> Option.unwrap_or ~default:"Other" in
+        let category_cmp = String.compare left_category right_category in
+        if category_cmp != 0 then
+          category_cmp
         else
-          String.compare left_local right_local)
+          String.compare left_local right_local
+      else
+        String.compare left_local right_local)
 
-let sorted_diagnostics =
-  fun () ->
-    Explanations.all () |> List.sort
-      (fun left right ->
-        String.compare
-        (display_rule_id_text left.Explanation.rule_id)
-        (display_rule_id_text right.Explanation.rule_id))
+let sorted_diagnostics = fun () ->
+  Explanations.all () |> List.sort
+    (fun left right ->
+      String.compare
+      (display_rule_id_text left.Explanation.rule_id)
+      (display_rule_id_text right.Explanation.rule_id))
 
 let rule_to_json = fun rule ->
   let open Data.Json in
@@ -278,12 +276,11 @@ let rule_to_json = fun rule ->
 
     ]
 
-let diagnostic_to_json = fun entry ->
-  let open Data.Json in Object [
-    ("rule_id", string (display_rule_id_text entry.Explanation.rule_id));
-    ("message", string entry.Explanation.message);
+let diagnostic_to_json = fun entry -> let open Data.Json in Object [
+  ("rule_id", string (display_rule_id_text entry.Explanation.rule_id));
+  ("message", string entry.Explanation.message);
 
-  ]
+]
 
 let list_rules_text = fun rules ->
   let bold = fun text -> "\027[1m" ^ text ^ "\027[0m" in
@@ -407,8 +404,12 @@ let run_result_with = fun ~on_result ~mode ~scope ~limit ~files ->
   in
   loop [] 0 false
 
-let run_result = fun ~mode ~scope ~limit ~files ->
-  run_result_with ~mode ~scope ~limit ~files ~on_result:(fun _ -> ())
+let run_result = fun ~mode ~scope ~limit ~files -> run_result_with
+~mode
+~scope
+~limit
+~files
+~on_result:(fun _ -> ())
 
 let run_with_coordinator = fun ~format ~mode ~scope ~limit ~roots () ->
   let concurrency = recommended_concurrency ~limit in

@@ -14,15 +14,14 @@ let utf8_len = fun str ->
   (* For now, use byte length as approximation *)
   String.length (remove_color_sequences str)
 
-let split_lines =
-  fun text ->
-    (* Split on \n, handling optional \r before it *)
-    String.split_on_char '\n' text |> List.map
-      (fun line ->
-        if String.length line > 0 && line.[String.length line - 1] = '\r' then
-          String.sub line 0 (String.length line - 1)
-        else
-          line)
+let split_lines = fun text ->
+  (* Split on \n, handling optional \r before it *)
+  String.split_on_char '\n' text |> List.map
+    (fun line ->
+      if String.length line > 0 && line.[String.length line - 1] = '\r' then
+        String.sub line 0 (String.length line - 1)
+      else
+        line)
 
 let get_width = fun text ->
   List.fold_left
@@ -38,38 +37,37 @@ let get_width = fun text ->
 let get_height = fun text -> List.length (split_lines text)
 
 type t = {
-  top : string option;
-  left : string option;
-  bottom : string option;
-  right : string option;
-  top_left : string option;
-  top_right : string option;
-  bottom_left : string option;
-  bottom_right : string option;
-  middle_left : string option;
-  middle_right : string option;
-  middle : string option;
-  middle_top : string option;
-  middle_bottom : string option;
+  top: string option;
+  left: string option;
+  bottom: string option;
+  right: string option;
+  top_left: string option;
+  top_right: string option;
+  bottom_left: string option;
+  bottom_right: string option;
+  middle_left: string option;
+  middle_right: string option;
+  middle: string option;
+  middle_top: string option;
+  middle_bottom: string option;
 }
 
-let make = fun ?top ?left ?bottom ?right ?top_left ?top_right ?bottom_left ?bottom_right ?middle_left ?middle_right ?middle ?middle_top ?middle_bottom () ->
-  {
-    top;
-    left;
-    bottom;
-    right;
-    top_left;
-    top_right;
-    bottom_left;
-    bottom_right;
-    middle_left;
-    middle_right;
-    middle;
-    middle_top;
-    middle_bottom;
+let make = fun ?top ?left ?bottom ?right ?top_left ?top_right ?bottom_left ?bottom_right ?middle_left ?middle_right ?middle ?middle_top ?middle_bottom () -> {
+  top;
+  left;
+  bottom;
+  right;
+  top_left;
+  top_right;
+  bottom_left;
+  bottom_right;
+  middle_left;
+  middle_right;
+  middle;
+  middle_top;
+  middle_bottom;
 
-  }
+}
 
 let build_border = fun (border:t) text ->
   let top = Option.unwrap_or ~default:"" border.top in

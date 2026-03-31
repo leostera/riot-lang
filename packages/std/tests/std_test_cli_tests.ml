@@ -13,8 +13,9 @@ let self_executable = fun () ->
   | exe :: _ -> exe
   | [] -> panic "missing argv[0] for std_test_cli_tests"
 
-let split_lines = fun output ->
-  output |> String.split_on_char '\n' |> List.filter (fun line -> not (String.equal line ""))
+let split_lines = fun output -> output
+|> String.split_on_char '\n'
+|> List.filter (fun line -> not (String.equal line ""))
 
 let parse_json_output = fun stdout -> Data.Json.of_string stdout |> Result.expect ~msg:"failed to parse json output"
 
@@ -30,7 +31,7 @@ let test_names_from_json = fun stdout ->
   | _ -> []
 
 let run_sample_capture = fun args ->
-  let cmd = Command.make (self_executable ()) ~args:(("sample" :: args)) in
+  let cmd = Command.make (self_executable ()) ~args:(((("sample" :: args)))) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample test cli"
 
 let test_list_tests_lists_all_cases = fun () ->
@@ -87,7 +88,10 @@ let meta_tests = [
 
 let sample_main = fun ~args ->
   match args with
-  | exe :: _sample :: rest -> Test.Cli.main ~name:"sample" ~tests:sample_tests ~args:((exe :: rest))
+  | exe :: _sample :: rest -> Test.Cli.main
+  ~name:"sample"
+  ~tests:sample_tests
+  ~args:((((exe :: rest))))
   | _ -> Error (Failure "expected sample subcommand arguments")
 
 let meta_main = fun ~args ->

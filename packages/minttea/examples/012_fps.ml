@@ -24,15 +24,15 @@ open Minttea.Component
 (* Model *)
 
 type model = {
-  fps : Fps.t;
-  box_x : float;
-  box_y : float;
-  velocity_x : float;
-  velocity_y : float;
-  animating : bool;
-  speed : float;
-  width : int;
-  height : int;
+  fps: Fps.t;
+  box_x: float;
+  box_y: float;
+  velocity_x: float;
+  velocity_y: float;
+  animating: bool;
+  speed: float;
+  width: int;
+  height: int;
 }
 
 (* Initialize *)

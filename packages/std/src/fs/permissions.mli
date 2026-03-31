@@ -49,7 +49,7 @@ type t
 
     ```ocaml Permissions.of_mode 0o644 (* rw-r--r-- *) Permissions.of_mode 0o755
     (* rwxr-xr-x *) Permissions.of_mode 0o600 (* rw------- *) ``` *)
-val of_mode : int -> t
+val of_mode: int -> t
 
 (** Converts to Unix mode bits.
 
@@ -57,7 +57,7 @@ val of_mode : int -> t
 
     ```ocaml let perms = Permissions.read_write in Permissions.to_mode perms (*
     0o644 *) ``` *)
-val to_mode : t -> int
+val to_mode: t -> int
 
 (** ## Readonly Checks *)
 (** Returns [true] if no write bits are set (owner, group, or others).
@@ -76,7 +76,7 @@ val to_mode : t -> int
     - ACLs (Access Control Lists)
     - Actual user/group ownership
     - SELinux/AppArmor policies *)
-val readonly : t -> bool
+val readonly: t -> bool
 
 (** Sets or clears write permissions for owner, group, and others.
 
@@ -90,53 +90,53 @@ val readonly : t -> bool
 
     `set_readonly false` makes the file world-writable on Unix! This is rarely
     what you want. Consider setting specific bits instead. *)
-val set_readonly : t -> bool -> t
+val set_readonly: t -> bool -> t
 
 (** ## Permission Bits *)
 (** Checks if owner has read permission. *)
-val user_read : t -> bool
+val user_read: t -> bool
 
 (** Checks if owner has write permission. *)
-val user_write : t -> bool
+val user_write: t -> bool
 
 (** Checks if owner has execute permission. *)
-val user_execute : t -> bool
+val user_execute: t -> bool
 
 (** Checks if group has read permission. *)
-val group_read : t -> bool
+val group_read: t -> bool
 
 (** Checks if group has write permission. *)
-val group_write : t -> bool
+val group_write: t -> bool
 
 (** Checks if group has execute permission. *)
-val group_execute : t -> bool
+val group_execute: t -> bool
 
 (** Checks if others have read permission. *)
-val other_read : t -> bool
+val other_read: t -> bool
 
 (** Checks if others have write permission. *)
-val other_write : t -> bool
+val other_write: t -> bool
 
 (** Checks if others have execute permission. *)
-val other_execute : t -> bool
+val other_execute: t -> bool
 
 (** ## Common Modes *)
 (** `rw-r--r--` (0644) - Owner read/write, group/others read-only.
 
     Common for data files that need to be shared but not modified by others. *)
-val read_write : t
+val read_write: t
 
 (** `rwxr-xr-x` (0755) - Owner read/write/execute, group/others read/execute.
 
     Common for executable files and directories. *)
-val executable : t
+val executable: t
 
 (** `rw-------` (0600) - Owner read/write only, no access for others.
 
     Common for private data files like SSH keys or credentials. *)
-val private_read_write : t
+val private_read_write: t
 
 (** `rwx------` (0700) - Owner read/write/execute only, no access for others.
 
     Common for private executables or personal directories. *)
-val private_executable : t
+val private_executable: t

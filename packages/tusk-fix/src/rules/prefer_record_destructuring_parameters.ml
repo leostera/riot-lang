@@ -54,18 +54,17 @@ let bound_value_is_parameter_name = fun expected_name ->
   | _ -> false
 
 type parameter_usage = {
-  field_names : string list;
-  has_whole_value_use : bool;
+  field_names: string list;
+  has_whole_value_use: bool;
 }
 
 let empty_usage = {field_names = []; has_whole_value_use = false}
 
-let merge_usage = fun left right ->
-  {
-    field_names = left.field_names @ right.field_names;
-    has_whole_value_use = left.has_whole_value_use || right.has_whole_value_use;
+let merge_usage = fun left right -> {
+  field_names = left.field_names @ right.field_names;
+  has_whole_value_use = left.has_whole_value_use || right.has_whole_value_use;
 
-  }
+}
 
 let merge_all = fun usages ->
   List.fold_left merge_usage empty_usage usages
@@ -105,10 +104,9 @@ and usage_in_apply_argument = fun expected_name ->
   | Syn.Cst.Optional { value; _ } -> Option.to_list value
   |> List.map (usage_in_expression expected_name)
   |> merge_all
-and usage_in_match_case = fun expected_name ({ guard; body; _ }:Syn.Cst.match_case) ->
-  merge_all
-  ((Option.to_list guard |> List.map (usage_in_expression expected_name))
-  @ [ usage_in_expression expected_name body ])
+and usage_in_match_case = fun expected_name ({ guard; body; _ }:Syn.Cst.match_case) -> merge_all
+((Option.to_list guard |> List.map (usage_in_expression expected_name))
+@ [ usage_in_expression expected_name body ])
 and usage_in_object_member = fun expected_name ->
   function
   | Syn.Cst.ObjectMember.Method { body; _ } -> usage_in_expression expected_name body
@@ -284,9 +282,9 @@ let diagnostic_for_binding = fun binding ->
         ~severity:Warning
         ~kind:(Diagnostic.Known {rule_id; message = rule_description})
         ~span:(Syn.Cst.Token.span parameter_token)
-        ~suggestion:(("Destructure this record in the parameter list instead of binding "
+        ~suggestion:(((("Destructure this record in the parameter list instead of binding "
         ^ parameter_name
-        ^ " and immediately unpacking it in the function body"))
+        ^ " and immediately unpacking it in the function body"))))
         ())
       else
         None
@@ -299,5 +297,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.filter Syn.Cst.LetBinding.is_function
   |> List.filter_map diagnostic_for_binding
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

@@ -10,4 +10,4 @@ type Message.t +=
     @param ignore_prefixes List of path prefixes to ignore (default: [])
     @param root Root directory to watch
 *)
-val start_link : ?latency:Time.Duration.t -> ?ignore_prefixes:Path.t list -> root:Path.t -> unit -> t
+val start_link: ?latency:Time.Duration.t -> ?ignore_prefixes:Path.t list -> root:Path.t -> unit -> t

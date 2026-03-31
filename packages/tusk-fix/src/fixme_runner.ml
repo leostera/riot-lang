@@ -1,29 +1,29 @@
 open Std
 
 type generated_provider = {
-  provider : Tusk_model.Fix_provider.t;
-  module_name : string;
-  copied_source_path : Path.t;
-  support_module_sources : (string * Path.t) list;
+  provider: Tusk_model.Fix_provider.t;
+  module_name: string;
+  copied_source_path: Path.t;
+  support_module_sources: (string * Path.t) list;
 }
 
 type plan = {
-  provider_hash : string;
-  generated_dir : Path.t;
-  workspace_root : Path.t;
-  workspace_toml_path : Path.t;
-  toolchain_toml_path : Path.t;
-  package_dir : Path.t;
-  package_toml_path : Path.t;
-  src_dir : Path.t;
-  providers_dir : Path.t;
-  library_path : Path.t;
-  main_path : Path.t;
-  registry_path : Path.t;
-  binary_path : Path.t;
-  package_name : string;
-  binary_name : string;
-  providers : generated_provider list;
+  provider_hash: string;
+  generated_dir: Path.t;
+  workspace_root: Path.t;
+  workspace_toml_path: Path.t;
+  toolchain_toml_path: Path.t;
+  package_dir: Path.t;
+  package_toml_path: Path.t;
+  src_dir: Path.t;
+  providers_dir: Path.t;
+  library_path: Path.t;
+  main_path: Path.t;
+  registry_path: Path.t;
+  binary_path: Path.t;
+  package_name: string;
+  binary_name: string;
+  providers: generated_provider list;
 }
 
 let sanitize_component = fun text ->
@@ -35,8 +35,10 @@ let sanitize_component = fun text ->
         '_')
     text
 
-let generated_module_name = fun (provider:Tusk_model.Fix_provider.t) ->
-  "Provider_" ^ sanitize_component provider.package_name ^ "_" ^ sanitize_component provider.name
+let generated_module_name = fun (provider:Tusk_model.Fix_provider.t) -> "Provider_"
+^ sanitize_component provider.package_name
+^ "_"
+^ sanitize_component provider.name
 
 let ocaml_module_name_of_path = fun path ->
   let base = Path.basename path |> Path.v |> Path.remove_extension |> Path.to_string in
@@ -78,12 +80,11 @@ let provider_fingerprint = fun (provider:Tusk_model.Fix_provider.t) ->
 
   ]
 
-let provider_hash =
-  fun providers ->
-    providers |> List.sort
-      (fun (left:Tusk_model.Fix_provider.t) right ->
-        String.compare (provider_fingerprint left) (provider_fingerprint right)) |> List.map provider_fingerprint |> String.concat
-    "\n" |> Crypto.hash_string |> Crypto.Digest.hex
+let provider_hash = fun providers ->
+  providers |> List.sort
+    (fun (left:Tusk_model.Fix_provider.t) right ->
+      String.compare (provider_fingerprint left) (provider_fingerprint right)) |> List.map provider_fingerprint |> String.concat
+  "\n" |> Crypto.hash_string |> Crypto.Digest.hex
 
 let generated_provider = fun plan provider ->
   let module_name = generated_module_name provider in
@@ -131,8 +132,9 @@ let plan = fun ~workspace_root ~target_dir_root providers ->
   } in
   {plan with providers = List.map (generated_provider plan) providers; }
 
-let provider_module_line = fun (provider:generated_provider) ->
-  "    (module " ^ provider.module_name ^ " : Tusk_fix.Provider.S);"
+let provider_module_line = fun (provider:generated_provider) -> "    (module "
+^ provider.module_name
+^ " : Tusk_fix.Provider.S);"
 
 let registry_source = fun providers ->
   let plan = plan ~workspace_root:(Path.v ".") ~target_dir_root:(Path.v "_build") providers in
@@ -153,7 +155,7 @@ let registry_source = fun providers ->
 let embedded_provider_module_source = fun (provider:generated_provider) ->
   let source = Fs.read provider.provider.source_path
   |> Result.expect
-  ~msg:(("failed to read provider source " ^ Path.to_string provider.provider.source_path)) in
+  ~msg:(((("failed to read provider source " ^ Path.to_string provider.provider.source_path)))) in
   String.concat "\n"
     [ "module " ^ provider.module_name ^ " = struct"; String.concat "\n"
         (
@@ -161,7 +163,7 @@ let embedded_provider_module_source = fun (provider:generated_provider) ->
             (fun ((module_name, source_path)) ->
               let source = Fs.read source_path
               |> Result.expect
-              ~msg:(("failed to read provider support source " ^ Path.to_string source_path)) in
+              ~msg:(((("failed to read provider support source " ^ Path.to_string source_path)))) in
               String.concat "\n" [ "module " ^ module_name ^ " = struct"; source; "end"; "" ])
             provider.support_module_sources
         ); source; "end"; "";  ]
@@ -284,30 +286,31 @@ let toolchain_toml_source = fun compiler_path ->
 let ensure_directories = fun plan ->
   List.iter
   (fun path -> Fs.create_dir_all path
-  |> Result.expect ~msg:(("failed to create generated fixme runner dir " ^ Path.to_string path)))
+  |> Result.expect ~msg:(((("failed to create generated fixme runner dir " ^ Path.to_string path)))))
   [ plan.workspace_root; plan.package_dir; plan.src_dir; plan.providers_dir ]
 
 let remove_if_exists = fun path remove ->
   match Fs.exists path with
-  | Ok true -> remove path |> Result.expect ~msg:(("failed to clean " ^ Path.to_string path))
+  | Ok true -> remove path |> Result.expect ~msg:(((("failed to clean " ^ Path.to_string path))))
   | _ -> ()
 
 let cleanup_stale_sources = fun plan ->
   remove_if_exists plan.registry_path Fs.remove_file;
   remove_if_exists plan.providers_dir Fs.remove_dir_all
 
-let write_file = fun path content ->
-  Fs.write content path |> Result.expect ~msg:(("failed to write " ^ Path.to_string path))
+let write_file = fun path content -> Fs.write content path
+|> Result.expect ~msg:(((("failed to write " ^ Path.to_string path))))
 
-let copy_provider_source = fun (provider:generated_provider) ->
-  Fs.copy ~src:provider.provider.source_path ~dst:provider.copied_source_path
-  |> Result.expect
-  ~msg:(("failed to copy provider source " ^ Path.to_string provider.provider.source_path))
+let copy_provider_source = fun (provider:generated_provider) -> Fs.copy
+~src:provider.provider.source_path
+~dst:provider.copied_source_path
+|> Result.expect
+~msg:(((("failed to copy provider source " ^ Path.to_string provider.provider.source_path))))
 
 let materialize_toolchain = fun workspace_root plan ->
   match local_toolchain_source workspace_root with
   | Some (`Copy source_path) -> Fs.copy ~src:source_path ~dst:plan.toolchain_toml_path
-  |> Result.expect ~msg:(("failed to copy " ^ Path.to_string source_path ^ " into fixme runner"))
+  |> Result.expect ~msg:(((("failed to copy " ^ Path.to_string source_path ^ " into fixme runner"))))
   | Some (`Generate compiler_path) -> write_file
   plan.toolchain_toml_path
   (toolchain_toml_source compiler_path)

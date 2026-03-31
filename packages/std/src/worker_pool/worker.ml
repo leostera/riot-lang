@@ -2,10 +2,10 @@ open Global
 open Types
 
 type 'task state = {
-  coordinator : Pid.t;
-  owner : Pid.t;
-  worker_fn : owner:Pid.t -> task:'task -> unit;
-  task_ref : 'task Ref.t;
+  coordinator: Pid.t;
+  owner: Pid.t;
+  worker_fn: owner:Pid.t -> task:'task -> unit;
+  task_ref: 'task Ref.t;
 }
 
 (** Worker loop - receives tasks from coordinator and executes them *)
@@ -31,5 +31,5 @@ let init = fun ~coordinator ~owner ~worker_fn ~task_ref () ->
   let state = {coordinator; owner; worker_fn; task_ref} in
   loop state
 
-let start = fun ~coordinator ~owner ~worker_fn ~task_ref ->
-  spawn (init ~coordinator ~owner ~worker_fn ~task_ref)
+let start = fun ~coordinator ~owner ~worker_fn ~task_ref -> spawn
+(init ~coordinator ~owner ~worker_fn ~task_ref)

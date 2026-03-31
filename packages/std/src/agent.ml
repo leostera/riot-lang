@@ -11,36 +11,36 @@ open Global
     ```
 *)
 type 'state t = {
-  pid : Pid.t;
-  state_ref : 'state Ref.t;
+  pid: Pid.t;
+  state_ref: 'state Ref.t;
 }
 
 (* Message types *)
 
 type agent_request =
   | Get : {
-    reply_to : Pid.t;
-    fn : 'state -> 'reply;
-    state_ref : 'state Ref.t;
-    reply_ref : 'reply Ref.t;
+    reply_to: Pid.t;
+    fn: 'state -> 'reply;
+    state_ref: 'state Ref.t;
+    reply_ref: 'reply Ref.t;
   } -> agent_request
   | Update : {
-    reply_to : Pid.t;
-    fn : 'state -> 'state;
-    state_ref : 'state Ref.t;
+    reply_to: Pid.t;
+    fn: 'state -> 'state;
+    state_ref: 'state Ref.t;
   } -> agent_request
   | GetAndUpdate : {
-    reply_to : Pid.t;
-    fn : 'state -> 'reply * 'state;
-    state_ref : 'state Ref.t;
-    reply_ref : 'reply Ref.t;
+    reply_to: Pid.t;
+    fn: 'state -> 'reply * 'state;
+    state_ref: 'state Ref.t;
+    reply_ref: 'reply Ref.t;
   } -> agent_request
   | Cast : {
-    fn : 'state -> 'state;
-    state_ref : 'state Ref.t;
+    fn: 'state -> 'state;
+    state_ref: 'state Ref.t;
   } -> agent_request
   | Stop : {
-    reply_to : Pid.t;
+    reply_to: Pid.t;
   } -> agent_request
 
 type agent_response =

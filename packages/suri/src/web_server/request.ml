@@ -1,9 +1,9 @@
 open Std
 
 type t = {
-  http_request : Net.Http.Request.t;
-  body : string;
-  remaining : int;
+  http_request: Net.Http.Request.t;
+  body: string;
+  remaining: int;
 }
 
 let of_http = fun ~body http_request ->

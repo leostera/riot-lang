@@ -5,12 +5,12 @@ type Message.t +=
   | ShutdownComplete
 
 type 'model state = {
-  app : 'model App.t;
-  config : Super.Config.t;
-  renderer : Renderer.t;
-  io : Io_loop.t;
-  model : 'model;
-  tty : Tty.t;
+  app: 'model App.t;
+  config: Super.Config.t;
+  renderer: Renderer.t;
+  io: Io_loop.t;
+  model: 'model;
+  tty: Tty.t;
 }
 
 type control_flow =

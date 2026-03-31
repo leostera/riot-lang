@@ -9,23 +9,25 @@ type module_plan_result = Module_planner.plan_result
 (** Plan the workspace - returns ordered packages to build and package graph.
     Does NOT plan module/action graphs - that's done on-demand per package. *)
 type package_plan_result = Package_planner.plan_result
-val plan_workspace : workspace:Workspace.t ->
-target:build_target ->
-scope:Package_graph.build_scope ->
-load_errors:Workspace_manager.load_error list ->
-(workspace_plan_result, plan_error) result
+val plan_workspace:
+  workspace:Workspace.t ->
+  target:build_target ->
+  scope:Package_graph.build_scope ->
+  load_errors:Workspace_manager.load_error list ->
+  (workspace_plan_result, plan_error) result
 
 (** Plan a single package with dependency-aware hashing. Checks if all
     dependencies are planned first. Returns MissingDependencies if deps not
     ready, or Planned with hash. *)
-val plan_package_with_graph : workspace:Workspace.t ->
-toolchain:Tusk_toolchain.t ->
-store:Tusk_store.Store.t ->
-package_graph:Package_graph.t ->
-package_key:Package.key ->
-package:Package.t ->
-build_ctx:Build_ctx.t ->
-(package_plan_result, Planning_error.t) result
+val plan_package_with_graph:
+  workspace:Workspace.t ->
+  toolchain:Tusk_toolchain.t ->
+  store:Tusk_store.Store.t ->
+  package_graph:Package_graph.t ->
+  package_key:Package.key ->
+  package:Package.t ->
+  build_ctx:Build_ctx.t ->
+  (package_plan_result, Planning_error.t) result
 
 (* Legacy/testing function - commented out, use plan_package_with_graph instead *)
 

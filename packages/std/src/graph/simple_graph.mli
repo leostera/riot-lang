@@ -44,53 +44,53 @@ open Global
     - Module dependency analysis
     - Any DAG (Directed Acyclic Graph) operations *)
 
-module Node_id : sig
+module Node_id: sig
   type t
   (** Unique node identifier. *)
-  val next : unit -> t
+  val next: unit -> t
 
   (** Generate a new unique node ID. *)
-  val eq : t -> t -> bool
+  val eq: t -> t -> bool
 
   (** Check node ID equality. *)
-  val to_int : t -> int
+  val to_int: t -> int
 
   (** Convert to integer. *)
-  val to_string : t -> string
+  val to_string: t -> string
 
   (** Convert to string. *)
 end
 
 type 'value node = {
-  id : Node_id.t;
-  mutable deps : Node_id.t list;
-  mutable value : 'value;
+  id: Node_id.t;
+  mutable deps: Node_id.t list;
+  mutable value: 'value;
 }
 (** Graph node with value and dependencies. *)
 type 'value t
 (** Graph type. *)
-val make : unit -> 'a t
+val make: unit -> 'a t
 
 (** Create an empty graph. *)
-val add_node : 'a t -> 'a -> 'a node
+val add_node: 'a t -> 'a -> 'a node
 
 (** Add a node with the given value. *)
-val get_node : 'a t -> Node_id.t -> 'a node option
+val get_node: 'a t -> Node_id.t -> 'a node option
 
 (** Retrieve a node by ID. Returns None if not found. *)
-val add_edge : 'a node -> depends_on:'b node -> unit
+val add_edge: 'a node -> depends_on:'b node -> unit
 
 (** Add a dependency edge (from depends on to). *)
-val iter : 'a t -> fn:(Node_id.t -> 'a node -> unit) -> unit
+val iter: 'a t -> fn:(Node_id.t -> 'a node -> unit) -> unit
 
 (** Iterate over all nodes. *)
-val map : 'a t -> fn:(Node_id.t * 'a node -> 'b) -> 'b list
+val map: 'a t -> fn:(Node_id.t * 'a node -> 'b) -> 'b list
 
 (** Map over all nodes. *)
-val topo_sort : 'a t -> ('a node list, Node_id.t list) result
+val topo_sort: 'a t -> ('a node list, Node_id.t list) result
 
 (** Topological sort. Returns Ok with sorted nodes, or Error with cycle node IDs if graph has cycles. *)
-val reachable_from : 'a t -> 'a node list -> Node_id.t list
+val reachable_from: 'a t -> 'a node list -> Node_id.t list
 
 (** Get all nodes reachable from a given starting set through their
     dependency edges. Returns a list of node IDs that can be reached. *)

@@ -3,57 +3,53 @@ open Tusk_model
 open Tusk_server
 
 type t = {
-  server_pid : Pid.t;
-  workspace_root : Path.t;
+  server_pid: Pid.t;
+  workspace_root: Path.t;
 }
 
 type build_stats = {
-  duration_ms : int;
-  packages_built : int;
-  packages_failed : int;
-  total_modules : int;
-  cache_hits : int;
-  cache_misses : int;
+  duration_ms: int;
+  packages_built: int;
+  packages_failed: int;
+  total_modules: int;
+  cache_hits: int;
+  cache_misses: int;
 }
 
 type error =
   | PackageNotFound of {
-      package_name : string;
-      available_packages : string list;
+      package_name: string;
+      available_packages: string list;
     }
   | PackagesNotFound of {
-      package_names : string list;
-      available_packages : string list;
+      package_names: string list;
+      available_packages: string list;
     }
   | BuildAlreadyRunning of {
-      lock_path : Path.t;
+      lock_path: Path.t;
     }
   | UnexpectedEvent of {
-      reason : string;
+      reason: string;
     }
 
 type streaming_event =
   | BuildStarted of Session_id.t
   | BuildEvent of Telemetry.event
   | BuildCompleted of {
-      session_id : Session_id.t;
-      completed_at : Datetime.t;
-      stats : build_stats;
-      results : Tusk_executor.Package_builder.build_result list;
+      session_id: Session_id.t;
+      completed_at: Datetime.t;
+      stats: build_stats;
+      results: Tusk_executor.Package_builder.build_result list;
     }
   | BuildFailed of {
-      session_id : Session_id.t;
-      failed_at : Datetime.t;
-      stats : build_stats;
-      built : Tusk_executor.Package_builder.build_result list;
-      errors : Tusk_executor.Package_builder.build_result list;
+      session_id: Session_id.t;
+      failed_at: Datetime.t;
+      stats: build_stats;
+      built: Tusk_executor.Package_builder.build_result list;
+      errors: Tusk_executor.Package_builder.build_result list;
     }
-  | PlanningFailed of { session_id : Session_id.t; failed_at : Datetime.t; reason : string; }
-  | CycleDetected of {
-      session_id : Session_id.t;
-      detected_at : Datetime.t;
-      cycle_nodes : string list;
-    }
+  | PlanningFailed of { session_id: Session_id.t; failed_at: Datetime.t; reason: string; }
+  | CycleDetected of { session_id: Session_id.t; detected_at: Datetime.t; cycle_nodes: string list; }
 
 type build_target =
   BuildPackage of string
@@ -86,22 +82,26 @@ let scan_workspace = fun t ~current_dir ->
 
 module BuildLock = struct
   type nonrec t = {
-    path : Path.t;
-    file : Fs.File.t;
+    path: Path.t;
+    file: Fs.File.t;
   }
 
   let retry_interval = Time.Duration.from_millis 500
 
-  let path = fun ~workspace_root ~profile ~target ->
-    Tusk_model.Tusk_dirs.build_lock_path_with_target ~workspace_root ~profile ~target
+  let path = fun ~workspace_root ~profile ~target -> Tusk_model.Tusk_dirs.build_lock_path_with_target
+  ~workspace_root
+  ~profile
+  ~target
 
   let release = fun t ->
     let _ = Fs.File.unlock t.file in
     let _ = Fs.File.close t.file in
     ()
 
-  let lock_failure = fun action path ->
-    Failure ("Failed to " ^ action ^ " build lock file at " ^ Path.to_string path)
+  let lock_failure = fun action path -> Failure ("Failed to "
+  ^ action
+  ^ " build lock file at "
+  ^ Path.to_string path)
 
   let rec retry = fun ?(announced = false) t ->
     if not announced then
@@ -149,16 +149,15 @@ module BuildLock = struct
             raise exn
 end
 
-let convert_build_stats : Protocol.BuildStats.t -> build_stats = fun stats ->
-  {
-    duration_ms = int_of_float (Protocol.BuildStats.get_build_duration stats *. 1000.0);
-    packages_built = Protocol.BuildStats.get_packages_built stats;
-    packages_failed = Protocol.BuildStats.get_packages_failed stats;
-    total_modules = Protocol.BuildStats.get_total_modules stats;
-    cache_hits = Protocol.BuildStats.get_cache_hits stats;
-    cache_misses = Protocol.BuildStats.get_cache_misses stats;
+let convert_build_stats : Protocol.BuildStats.t -> build_stats = fun stats -> {
+  duration_ms = int_of_float (Protocol.BuildStats.get_build_duration stats *. 1000.0);
+  packages_built = Protocol.BuildStats.get_packages_built stats;
+  packages_failed = Protocol.BuildStats.get_packages_failed stats;
+  total_modules = Protocol.BuildStats.get_total_modules stats;
+  cache_hits = Protocol.BuildStats.get_cache_hits stats;
+  cache_misses = Protocol.BuildStats.get_cache_misses stats;
 
-  }
+}
 
 let same_session = fun left right -> Session_id.to_string left = Session_id.to_string right
 

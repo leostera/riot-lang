@@ -1,11 +1,11 @@
 open Std
 
 type t = {
-  host_triplet : System.Host.t;
-  target : Target.t;  (* Changed from target_triplet *)
-  profile : Profile.t;
-  available_parallelism : int;
-  session_id : Session_id.t;
+  host_triplet: System.Host.t;
+  target: Target.t;  (* Changed from target_triplet *)
+  profile: Profile.t;
+  available_parallelism: int;
+  session_id: Session_id.t;
 }
 
 let make = fun ~session_id ~profile ?target ?(available_parallelism = System.available_parallelism) () ->

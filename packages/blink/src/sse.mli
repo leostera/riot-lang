@@ -30,11 +30,11 @@ open Std
 
 (** SSE event type *)
 type event = {
-  data : string;  (** Event payload *)
-  event_type : string option;  (** Optional event type field *)
-  id : string option;  (** Optional event ID field *)
+  data: string;  (** Event payload *)
+  event_type: string option;  (** Optional event type field *)
+  id: string option;  (** Optional event ID field *)
 }
-val await : Connection.t -> event Iter.MutIterator.t
+val await: Connection.t -> event Iter.MutIterator.t
 
 (** Returns a mutable iterator over SSE events from the connection.
     

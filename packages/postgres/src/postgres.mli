@@ -64,16 +64,16 @@ open Std
    process-per-connection model. The SQLx pool handles this automatically.
 *)
 
-module Error : sig
+module Error: sig
   type t
-  val to_string : t -> string
+  val to_string: t -> string
 
-  val to_json : t -> Data.Json.t
+  val to_json: t -> Data.Json.t
 end
 
 (* Configuration for PostgreSQL connections *)
 
-module Config : sig
+module Config: sig
   (* PostgreSQL connection configuration *)
 
   type ssl_mode =
@@ -81,28 +81,28 @@ module Config : sig
     | Require
     | Prefer
   type t = {
-    host : string;
+    host: string;
     (* Database server hostname or IP address.
        Use "localhost" for local connections, or "/var/run/postgresql" for Unix sockets. *)
-    port : int;  (* Database server port (default PostgreSQL port is 5432) *)
-    database : string;  (* Name of the database to connect to *)
-    user : string;  (* Username for authentication *)
-    password : string;
+    port: int;  (* Database server port (default PostgreSQL port is 5432) *)
+    database: string;  (* Name of the database to connect to *)
+    user: string;  (* Username for authentication *)
+    password: string;
     (* Password for authentication.
        Consider using environment variables or secure vaults for production. *)
-    ssl_mode : ssl_mode;
+    ssl_mode: ssl_mode;
     (* SSL/TLS connection mode:
        - `Disable`: Never use SSL (not recommended for production)
        - `Require`: Always use SSL, fail if server doesn't support it
        - `Prefer`: Try SSL first, fall back to non-SSL if unavailable
     *)
-    application_name : string option;
+    application_name: string option;
     (* Application name to report to PostgreSQL.
        Visible in pg_stat_activity and useful for monitoring. *)
-    connect_timeout : Time.Duration.t;
+    connect_timeout: Time.Duration.t;
     (* Maximum time to wait when establishing a connection.
        This includes DNS resolution, TCP connection, and authentication. *)
-    keepalives_idle : Time.Duration.t option;
+    keepalives_idle: Time.Duration.t option;
     (* Time before sending TCP keepalive probes on idle connections.
        Helps detect broken connections behind firewalls/NAT.
        `None` uses system defaults. *)
@@ -122,7 +122,7 @@ module Config : sig
      
      You should override at least the database, user, and password fields.
   *)
-  val default : unit -> t (* `from_string str` parses a connection string in either format:
+  val default: unit -> t (* `from_string str` parses a connection string in either format:
      
      1. PostgreSQL URI format:
         postgresql://user:password@host:port/database
@@ -153,9 +153,9 @@ module Config : sig
      
      Returns an error if the format is invalid or required components are missing.
   *)
-  val from_string : string -> (t, string) Result.t
+  val from_string: string -> (t, string) Result.t
 end
 
 (* PostgreSQL driver implementation for SQLx *)
 
-module Driver : Sqlx_driver.Driver.Intf with type config = Config.t
+module Driver: Sqlx_driver.Driver.Intf with type config = Config.t

@@ -265,7 +265,7 @@ module Property = Property
 
 (** {2 Property Creation} *)
 
-val property : string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test_case
+val property: string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test_case
 
 (** [property name arb predicate] creates a property test that can be run
     with Std.Test.
@@ -287,7 +287,7 @@ val property : string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test
     - If a failure is found, shrink to find minimal counter-example
     - Return Pass or Fail with error message
 *)
-val for_all : 'value Arbitrary.t -> ('value -> bool) -> Property.test_property
+val for_all: 'value Arbitrary.t -> ('value -> bool) -> Property.test_property
 
 (** [for_all arb predicate] creates a property without a name.
     
@@ -300,7 +300,7 @@ val for_all : 'value Arbitrary.t -> ('value -> bool) -> Property.test_property
 *)
 (** {2 Assumptions} *)
 
-val implies : bool -> bool -> bool
+val implies: bool -> bool -> bool
 
 (** [implies precondition conclusion] expresses a conditional property.
     
@@ -319,7 +319,7 @@ val implies : bool -> bool -> bool
       if not precondition then true else conclusion
     ]}
 *)
-val assume : bool -> unit
+val assume: bool -> unit
 
 (** [assume condition] filters test cases where the condition is false.
     
@@ -338,7 +338,7 @@ val assume : bool -> unit
     {b Warning:} Too many failing assumptions can slow down testing
     or cause tests to fail with "too many assumptions violated".
 *)
-val assume_fail : unit -> 'value
+val assume_fail: unit -> 'value
 
 (** [assume_fail ()] unconditionally fails the current assumption.
     
@@ -356,7 +356,7 @@ val assume_fail : unit -> 'value
 *)
 (** {2 Explicit Failures} *)
 
-val fail : string -> 'value
+val fail: string -> 'value
 
 (** [fail message] explicitly fails a property with a custom error message.
     

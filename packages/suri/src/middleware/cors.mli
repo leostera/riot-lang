@@ -160,11 +160,12 @@ open Std
         router routes;
       ]
     ]} *)
-val middleware : origins:string list ->
-?methods:Net.Http.Method.t list ->
-?headers:string list ->
-?credentials:bool ->
-?expose:string list ->
-?max_age:int ->
-unit ->
-Pipeline.middleware
+val middleware:
+  origins:string list ->
+  ?methods:Net.Http.Method.t list ->
+  ?headers:string list ->
+  ?credentials:bool ->
+  ?expose:string list ->
+  ?max_age:int ->
+  unit ->
+  Pipeline.middleware

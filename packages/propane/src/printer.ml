@@ -63,8 +63,13 @@ let heap = fun elem_printer h ->
 
 let pair = fun printer_a printer_b ((a, b)) -> "(" ^ printer_a a ^ ", " ^ printer_b b ^ ")"
 
-let triple = fun printer_a printer_b printer_c ((a, b, c)) ->
-  "(" ^ printer_a a ^ ", " ^ printer_b b ^ ", " ^ printer_c c ^ ")"
+let triple = fun printer_a printer_b printer_c ((a, b, c)) -> "("
+^ printer_a a
+^ ", "
+^ printer_b b
+^ ", "
+^ printer_c c
+^ ")"
 
 (* === OPTION & RESULT PRINTERS === *)
 

@@ -2,8 +2,8 @@ open Std
 open Std.IO
 
 type t = {
-  bytes : bytes;
-  mutable offset : int;
+  bytes: bytes;
+  mutable offset: int;
 }
 
 let create = fun bytes -> {bytes; offset = 0}

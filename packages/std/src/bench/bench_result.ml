@@ -2,18 +2,18 @@ open Global
 open Collections
 
 type timing = {
-  iteration : int;
-  duration : Time.Duration.t;
+  iteration: int;
+  duration: Time.Duration.t;
 }
 
 type statistics = {
-  min : Time.Duration.t;
-  max : Time.Duration.t;
-  mean : Time.Duration.t;
-  median : Time.Duration.t;
-  std_dev : Time.Duration.t;
-  iterations : int;
-  total_time : Time.Duration.t;
+  min: Time.Duration.t;
+  max: Time.Duration.t;
+  mean: Time.Duration.t;
+  median: Time.Duration.t;
+  std_dev: Time.Duration.t;
+  iterations: int;
+  total_time: Time.Duration.t;
 }
 
 type bench_result =
@@ -22,9 +22,9 @@ type bench_result =
   | Skipped
 
 type t = {
-  index : int;
-  name : string;
-  result : bench_result;
+  index: int;
+  name: string;
+  result: bench_result;
 }
 
 let make_statistics = fun timings ->
@@ -70,10 +70,10 @@ let make_statistics = fun timings ->
   }
 
 type summary = {
-  total : int;
-  completed : int;
-  skipped : int;
-  failed : int;
+  total: int;
+  completed: int;
+  skipped: int;
+  failed: int;
 }
 
 let make_summary = fun results ->
@@ -89,15 +89,15 @@ let make_summary = fun results ->
 (* Comparison results *)
 
 type case_result = {
-  name : string;
-  statistics : statistics;
+  name: string;
+  statistics: statistics;
 }
 
 type comparison_result = {
-  description : string;
-  case_results : case_result list;
-  fastest : string;
-  speedup_ratios : (string * float) list;
+  description: string;
+  case_results: case_result list;
+  fastest: string;
+  speedup_ratios: (string * float) list;
 }
 
 let find_fastest = fun results ->

@@ -141,4 +141,4 @@ open Std
         Conn.respond conn ~status:Ok ~body:"Deleted" |> Conn.send
       )
     ]} *)
-val middleware : ?param:string -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val middleware: ?param:string -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

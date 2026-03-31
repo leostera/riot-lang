@@ -111,9 +111,9 @@ type node_shape =
   | Trapezoid
 (** [\text/] - Trapezoid *)
 type node = {
-  id : string;
-  label : string;
-  shape : node_shape;
+  id: string;
+  label: string;
+  shape: node_shape;
 }
 (** Node with label and shape. *)
 type edge_style =
@@ -124,33 +124,28 @@ type edge_style =
   | Thick
 (** ==> Thick arrow *)
 type edge = {
-  from_node : string;
-  to_node : string;
-  label : string option;
-  style : edge_style;
+  from_node: string;
+  to_node: string;
+  label: string option;
+  style: edge_style;
 }
 (** Edge with optional label and style. *)
 type t = {
-  direction : direction;
-  nodes : node list;
-  edges : edge list;
+  direction: direction;
+  nodes: node list;
+  edges: edge list;
 }
 (** Mermaid diagram representation. *)
-val create : ?direction:direction -> unit -> t
+val create: ?direction:direction -> unit -> t
 
 (** Create a new Mermaid graph with optional direction (default: TD). *)
-val add_node : t -> id:string -> label:string -> ?shape:node_shape -> unit -> t
+val add_node: t -> id:string -> label:string -> ?shape:node_shape -> unit -> t
 
 (** Add a node to the graph. *)
-val add_edge : t ->
-from_node:string ->
-to_node:string ->
-?label:string ->
-?style:edge_style ->
-unit ->
-t
+val add_edge:
+  t -> from_node:string -> to_node:string -> ?label:string -> ?style:edge_style -> unit -> t
 
 (** Add an edge between two nodes. *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** Convert to Mermaid diagram string. *)

@@ -17,7 +17,7 @@ type mouse_mode =
 
 type Message.t +=
   | Render of Gooey.Element.t
-  | Resize of { width : int; height : int; }
+  | Resize of { width: int; height: int; }
   | EnterAltScreen
   | ExitAltScreen
   | Tick
@@ -39,27 +39,27 @@ type Message.t +=
 type t = Pid.t
 
 type state = {
-  fps : int;
-  runner : Pid.t;
-  tty : Tty.t;
-  render_mode : Conf.render_mode;
-  output_target : Conf.output_target;
-  mutable lines_rendered : int;
-  mutable is_altscreen_active : bool;
-  mutable needs_altscreen_setup : bool;  (* Flag to defer alt screen setup *)
-  mutable cursor_visibility :
+  fps: int;
+  runner: Pid.t;
+  tty: Tty.t;
+  render_mode: Conf.render_mode;
+  output_target: Conf.output_target;
+  mutable lines_rendered: int;
+  mutable is_altscreen_active: bool;
+  mutable needs_altscreen_setup: bool;  (* Flag to defer alt screen setup *)
+  mutable cursor_visibility:
     [
       `hidden
       | `visible
     ];
-  mutable mouse_enabled : bool;
-  mutable mouse_mode : mouse_mode option;
-  mutable bracketed_paste_enabled : bool;
-  mutable focus_tracking_enabled : bool;
+  mutable mouse_enabled: bool;
+  mutable mouse_mode: mouse_mode option;
+  mutable bracketed_paste_enabled: bool;
+  mutable focus_tracking_enabled: bool;
   (* Current element to render *)
-  mutable current_root_element : Gooey.Element.t;
+  mutable current_root_element: Gooey.Element.t;
   (* Frame counter for debugging *)
-  mutable frame_count : int;
+  mutable frame_count: int;
 }
 
 (* Empty element for initialization *)

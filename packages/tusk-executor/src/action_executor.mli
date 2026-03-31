@@ -7,13 +7,13 @@ module G = Graph.SimpleGraph
 (** Errors that can occur during action execution *)
 type action_error = Action_queue.action_error =
   | ExecutionFailed of {
-      message : string;
+      message: string;
     }
   | OutputsNotCreated of {
-      missing : Path.t list;
+      missing: Path.t list;
     }
   | DependenciesFailed of {
-      failed : G.Node_id.t list;
+      failed: G.Node_id.t list;
     }
 (** Status of an executed action *)
 type action_status = Action_queue.action_status =
@@ -23,15 +23,15 @@ type action_status = Action_queue.action_status =
   | Skipped
 (** Result of executing a single action *)
 type execution_result = Action_queue.execution_result = {
-  node_id : G.Node_id.t;
-  status : action_status;
-  duration : Time.Duration.t;
-  started_at : Time.Instant.t;
-  completed_at : Time.Instant.t;
+  node_id: G.Node_id.t;
+  status: action_status;
+  duration: Time.Duration.t;
+  started_at: Time.Instant.t;
+  completed_at: Time.Instant.t;
 }
 (** Collection of execution results *)
 type t = {
-  completed : (G.Node_id.t, execution_result) HashMap.t;
+  completed: (G.Node_id.t, execution_result) HashMap.t;
 }
 (** Execute a single planned action node.
 
@@ -44,13 +44,14 @@ type t = {
 
     Source staging supports both package-relative and workspace-relative source
     paths to stay compatible with serialized plans loaded from cache. *)
-val execute_node : completed:(G.Node_id.t, execution_result) HashMap.t ->
-store:Tusk_store.Store.t ->
-session_id:Tusk_model.Session_id.t ->
-Tusk_toolchain.t ->
-Path.t ->
-Action_node.t ->
-execution_result
+val execute_node:
+  completed:(G.Node_id.t, execution_result) HashMap.t ->
+  store:Tusk_store.Store.t ->
+  session_id:Tusk_model.Session_id.t ->
+  Tusk_toolchain.t ->
+  Path.t ->
+  Action_node.t ->
+  execution_result
 
 (** Execute an action graph with dependency-aware parallelism.
 
@@ -59,10 +60,11 @@ execution_result
 
     The executor performs cache lookup/save per action node hash and emits
     action telemetry events scoped to the provided `session_id`. *)
-val execute : action_graph:Action_graph.t ->
-sandbox:Sandbox.t ->
-store:Tusk_store.Store.t ->
-session_id:Tusk_model.Session_id.t ->
-Tusk_toolchain.t ->
-concurrency:int ->
-t
+val execute:
+  action_graph:Action_graph.t ->
+  sandbox:Sandbox.t ->
+  store:Tusk_store.Store.t ->
+  session_id:Tusk_model.Session_id.t ->
+  Tusk_toolchain.t ->
+  concurrency:int ->
+  t

@@ -91,15 +91,15 @@ type t =
 (** JSON value representation. Supports all standard JSON types: null,
           booleans, numbers (int/float), strings, arrays, and objects. *)
 type error =
-  | Unterminated_string of { position : int; }
-  | Invalid_literal of { expected : string; position : int; found : string; }
-  | Invalid_number of { position : int; text : string; }
-  | Expected_comma_or_bracket of { kind : string; position : int; found : char option; }
-  | Expected_string_key of { position : int; found : char option; }
-  | Expected_colon of { position : int; found : char option; }
-  | Unexpected_end_of_input of { expected : string; }
-  | Unexpected_character of { position : int; character : char; expected : string; }
-  | Extra_input_after_value of { position : int; }
+  | Unterminated_string of { position: int; }
+  | Invalid_literal of { expected: string; position: int; found: string; }
+  | Invalid_number of { position: int; text: string; }
+  | Expected_comma_or_bracket of { kind: string; position: int; found: char option; }
+  | Expected_string_key of { position: int; found: char option; }
+  | Expected_colon of { position: int; found: char option; }
+  | Unexpected_end_of_input of { expected: string; }
+  | Unexpected_character of { position: int; character: char; expected: string; }
+  | Extra_input_after_value of { position: int; }
   | Unknown_error of string
 (** JSON parsing errors with position information for debugging. *)
 (** {1 Parsing and Serialization} *)
@@ -123,7 +123,7 @@ type error =
     - Invalid escape sequences in strings
     - Invalid number formats
 *)
-val of_string : string -> (t, error) result
+val of_string: string -> (t, error) result
 
 (** Serializes a JSON value to a compact string (no pretty-printing).
     
@@ -136,7 +136,7 @@ val of_string : string -> (t, error) result
     Json.to_string (Json.array [Json.int 1; Json.int 2])  (* [1,2] *)
     ```
 *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** Converts a parse error to a human-readable error message.
 
@@ -144,7 +144,7 @@ val to_string : t -> string
 
     ```ocaml match Json.of_string bad_input with | Ok _ -> () | Error err ->
     Log.error "JSON parse failed: %s" (Json.error_to_string err) ``` *)
-val error_to_string : error -> string
+val error_to_string: error -> string
 
 (** {1 Constructors} *)
 (** Creates a JSON null value.
@@ -152,7 +152,7 @@ val error_to_string : error -> string
     ## Examples
 
     ```ocaml Json.null (* Null *) Json.to_string Json.null (* "null" *) ``` *)
-val null : t
+val null: t
 
 (** Creates a JSON boolean value.
 
@@ -160,14 +160,14 @@ val null : t
 
     ```ocaml Json.bool true (* Bool true *) Json.bool false (* Bool false *) ```
 *)
-val bool : bool -> t
+val bool: bool -> t
 
 (** Creates a JSON integer value.
 
     ## Examples
 
     ```ocaml Json.int 42 (* Int 42 *) Json.int (-100) (* Int (-100) *) ``` *)
-val int : int -> t
+val int: int -> t
 
 (** Creates a JSON floating-point value.
 
@@ -175,7 +175,7 @@ val int : int -> t
 
     ```ocaml Json.float 3.14 (* Float 3.14 *) Json.float (-0.5) (* Float (-0.5)
     *) ``` *)
-val float : float -> t
+val float: float -> t
 
 (** Creates a JSON string value.
 
@@ -183,7 +183,7 @@ val float : float -> t
 
     ```ocaml Json.string "hello" (* String "hello" *) Json.to_string
     (Json.string "test") (* "\"test\"" *) ``` *)
-val string : string -> t
+val string: string -> t
 
 (** Creates a JSON array from a list of values.
 
@@ -193,7 +193,7 @@ val string : string -> t
     [Int 1; Int 2; Int 3] *)
 
     Json.array [] (* Array [] *) ``` *)
-val array : t list -> t
+val array: t list -> t
 
 (** Creates a JSON object from key-value pairs.
 
@@ -204,7 +204,7 @@ val array : t list -> t
      true) ] (* Object [("name", String "Alice"); ...] *)
 
     Json.obj [] (* Object [] - empty object *) ``` *)
-val obj : (string * t) list -> t
+val obj: (string * t) list -> t
 
 (** {1 Extractors} *)
 (** Extracts a field from a JSON object by key name. Returns [None] if the value
@@ -217,7 +217,7 @@ val obj : (string * t) list -> t
     \- field doesn't exist *)
 
     Json.get_field "x" (Json.int 5) (* None - not an object *) ``` *)
-val get_field : string -> t -> t option
+val get_field: string -> t -> t option
 
 (** Extracts a string value. Returns [None] if not a string.
 
@@ -226,7 +226,7 @@ val get_field : string -> t -> t option
     ```ocaml Json.get_string (Json.string "hello") (* Some "hello" *)
     Json.get_string (Json.int 42) (* None *) Json.get_string Json.null (* None
     *) ``` *)
-val get_string : t -> string option
+val get_string: t -> string option
 
 (** Extracts an integer value. Returns [None] if not an integer.
 
@@ -235,7 +235,7 @@ val get_string : t -> string option
     ```ocaml Json.get_int (Json.int 42) (* Some 42 *) Json.get_int (Json.float
     3.14) (* None - is a float *) Json.get_int (Json.string "42") (* None - is a
     string *) ``` *)
-val get_int : t -> int option
+val get_int: t -> int option
 
 (** Extracts a boolean value. Returns [None] if not a boolean.
 
@@ -243,7 +243,7 @@ val get_int : t -> int option
 
     ```ocaml Json.get_bool (Json.bool true) (* Some true *) Json.get_bool
     (Json.int 1) (* None - not a bool *) ``` *)
-val get_bool : t -> bool option
+val get_bool: t -> bool option
 
 (** Extracts an array as a list of values. Returns [None] if not an array.
 
@@ -253,7 +253,7 @@ val get_bool : t -> bool option
     json (* Some [Int 1; Int 2] *)
 
     Json.get_array (Json.string "test") (* None *) ``` *)
-val get_array : t -> t list option
+val get_array: t -> t list option
 
 (** Extracts an object as a list of key-value pairs. Returns [None] if not an
     object.
@@ -264,7 +264,7 @@ val get_array : t -> t list option
     Some [("a", Int 1)] *)
 
     Json.get_object (Json.array []) (* None *) ``` *)
-val get_object : t -> (string * t) list option
+val get_object: t -> (string * t) list option
 
 (** {1 Diffing} *)
 (** Computes deep differences between two JSON values.
@@ -302,4 +302,4 @@ val get_object : t -> (string * t) list option
     ```ocaml let diff = Json.diff o1 o2 in let additions = Diff.additions diff
     in let removals = Diff.removals diff in let changes = Diff.changes diff in
     let user_changes = Diff.at_path ["user"] diff ``` *)
-val diff : t -> t -> t Diff.change list
+val diff: t -> t -> t Diff.change list

@@ -1,21 +1,21 @@
 open Std
 
 type config = {
-  show_directory : bool;
-  index_files : string list;
-  dotfiles :
+  show_directory: bool;
+  index_files: string list;
+  dotfiles:
     [
       `Allow
       | `Deny
       | `Ignore
     ];
-  symlinks :
+  symlinks:
     [
       `Follow
       | `Deny
     ];
-  headers : (string * string) list;
-  cache_control : string option;
+  headers: (string * string) list;
+  cache_control: string option;
 }
 
 let default_config = {
@@ -282,10 +282,10 @@ end
 (** Directory listing HTML generation *)
 module Directory = struct
   type entry = {
-    name : string;
-    is_dir : bool;
-    size : int;
-    modified : float;
+    name: string;
+    is_dir: bool;
+    size: int;
+    modified: float;
   }
 
   let format_float_1dp = fun f ->

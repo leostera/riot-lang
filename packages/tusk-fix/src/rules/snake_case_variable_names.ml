@@ -52,7 +52,7 @@ let make_diagnostic = fun token ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-  ~suggestion:(("Rename " ^ original ^ " to " ^ replacement))
+  ~suggestion:(((("Rename " ^ original ^ " to " ^ replacement))))
   ()
 
 let diagnostic_for_binding_site = fun (site:Traversal.binding_site) ->
@@ -72,5 +72,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.binding_sites_of_structure_item
   |> List.filter_map diagnostic_for_binding_site
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

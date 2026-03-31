@@ -62,7 +62,7 @@ exception Parse_error of string
 (** Raised when parsing fails. Contains a description of the error. *)
 (** {1 Parsing} *)
 
-val of_string : string -> (t, string) result
+val of_string: string -> (t, string) result
 
 (** Parses a string into an S-expression.
 
@@ -77,7 +77,7 @@ val of_string : string -> (t, string) result
     - Atoms: Any sequence of characters without spaces or parens
     - Lists: Enclosed in parentheses [(...]
     - Whitespace: Separates atoms, ignored otherwise *)
-val parse_exn : string -> t
+val parse_exn: string -> t
 
 (** Parses a string, raising [Parse_error] on failure.
 
@@ -89,7 +89,7 @@ val parse_exn : string -> t
     ## Raises
 
     [Parse_error] with error message if parsing fails. *)
-val parse_many : string -> (t list, string) result
+val parse_many: string -> (t list, string) result
 
 (** Parses multiple S-expressions from a string.
 
@@ -99,7 +99,7 @@ val parse_many : string -> (t list, string) result
     List.length sexps (* 3 *) | Error msg -> () ``` *)
 (** {1 Printing} *)
 
-val to_string : t -> string
+val to_string: t -> string
 
 (** Converts an S-expression to a compact string.
 
@@ -107,7 +107,7 @@ val to_string : t -> string
 
     ```ocaml let s = Sexp.list [Sexp.atom "a"; Sexp.atom "b"] in Sexp.to_string
     s (* "(a b)" *) ``` *)
-val pretty_print : t -> string
+val pretty_print: t -> string
 
 (** Pretty-prints an S-expression with indentation for readability.
 
@@ -119,14 +119,14 @@ val pretty_print : t -> string
     Sexp.pretty_print nested (* "(outer (inner value))" *) ``` *)
 (** {1 Constructors} *)
 
-val atom : string -> t
+val atom: string -> t
 
 (** Creates an atom S-expression.
 
     ## Examples
 
     ```ocaml Sexp.atom "hello" (* Atom "hello" *) ``` *)
-val list : t list -> t
+val list: t list -> t
 
 (** Creates a list S-expression.
 
@@ -136,7 +136,7 @@ val list : t list -> t
     [Atom "a"; Atom "b"] *) Sexp.list [] (* List [] - empty list *) ``` *)
 (** {1 Accessors} *)
 
-val is_atom : t -> bool
+val is_atom: t -> bool
 
 (** Returns [true] if the S-expression is an atom.
 
@@ -144,7 +144,7 @@ val is_atom : t -> bool
 
     ```ocaml Sexp.is_atom (Sexp.atom "foo") (* true *) Sexp.is_atom (Sexp.list
     []) (* false *) ``` *)
-val is_list : t -> bool
+val is_list: t -> bool
 
 (** Returns [true] if the S-expression is a list.
 
@@ -152,7 +152,7 @@ val is_list : t -> bool
 
     ```ocaml Sexp.is_list (Sexp.list []) (* true *) Sexp.is_list (Sexp.atom
     "foo") (* false *) ``` *)
-val to_atom : t -> string option
+val to_atom: t -> string option
 
 (** Extracts the string value if the S-expression is an atom.
 
@@ -160,7 +160,7 @@ val to_atom : t -> string option
 
     ```ocaml Sexp.to_atom (Sexp.atom "hello") (* Some "hello" *) Sexp.to_atom
     (Sexp.list []) (* None *) ``` *)
-val to_list : t -> t list option
+val to_list: t -> t list option
 
 (** Extracts the list if the S-expression is a list.
 
@@ -170,7 +170,7 @@ val to_list : t -> t list option
     (* Some [Atom "a"; Atom "b"] *)
 
     Sexp.to_list (Sexp.atom "foo") (* None *) ``` *)
-val find_atom : string -> t list -> t option
+val find_atom: string -> t list -> t option
 
 (** Searches for an atom by name in a nested structure.
 
@@ -182,7 +182,7 @@ val find_atom : string -> t list -> t option
 
     Sexp.find_atom "name" data (* Some (List [Atom "name"; Atom "Alice"]) *) ```
 *)
-val assoc : string -> t list -> t option
+val assoc: string -> t list -> t option
 
 (** Association list lookup - finds the value for a key in a list of key-value
     pairs.
@@ -197,8 +197,8 @@ val assoc : string -> t list -> t option
     "Port: %s\n" port | _ -> () ``` *)
 (** {1 Canonical S-expressions (Csexp)} *)
 
-module Csexp : sig
-  val to_string : t -> string
+module Csexp: sig
+  val to_string: t -> string
 
   (** Converts to canonical S-expression format - a length-prefixed, unambiguous
       encoding.
@@ -209,7 +209,7 @@ module Csexp : sig
 
       let lst = Sexp.list [Sexp.atom "a"; Sexp.atom "b"] in Csexp.to_string lst
       (* "(1:a1:b)" *) ``` *)
-  val of_string : string -> (t, string) result
+  val of_string: string -> (t, string) result
 
   (** Parses canonical S-expression format.
 

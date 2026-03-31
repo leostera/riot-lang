@@ -2,18 +2,18 @@
 (** Send a message to a process after a delay. Returns a timer ID
     that can be used to cancel the timer. *)
 type id = Miniriot.Timer.id
-val send_after : Pid.t -> Message.t -> after:Time.Duration.t -> id
+val send_after: Pid.t -> Message.t -> after:Time.Duration.t -> id
 
 (** Send a message to a process repeatedly at a given interval.
     Returns a timer ID that can be used to cancel the timer. *)
-val send_interval : Pid.t -> Message.t -> interval:Time.Duration.t -> id
+val send_interval: Pid.t -> Message.t -> interval:Time.Duration.t -> id
 
 (** Cancel a timer by its ID. If the timer has already fired or doesn't exist,
     this is a no-op. *)
-val cancel : id -> unit
+val cancel: id -> unit
 
 (** Compare two timer IDs for equality *)
-val equal : id -> id -> bool
+val equal: id -> id -> bool
 
 (** [measure f] executes function [f] and returns both its result and the 
     time elapsed during execution.
@@ -40,4 +40,4 @@ val equal : id -> id -> bool
     
     Uses monotonic clock for accuracy. Time includes any GC pauses that 
     occur during execution. *)
-val measure : (unit -> 'a) -> ('a * Time.Duration.t)
+val measure: (unit -> 'a) -> ('a * Time.Duration.t)

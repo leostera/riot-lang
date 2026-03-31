@@ -1,8 +1,8 @@
 open Std
 
 type t = {
-  frame_rate : float;
-  mutable next_frame : Time.Instant.t;
+  frame_rate: float;
+  mutable next_frame: Time.Instant.t;
 }
 
 let add_duration = fun time rate ->

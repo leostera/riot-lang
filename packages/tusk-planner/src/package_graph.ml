@@ -8,13 +8,13 @@ module G = Graph.SimpleGraph
 exception Cycle_detected of string list
 
 type missing_dependency = {
-  package : string;
-  dependency : string;
+  package: string;
+  dependency: string;
 }
 
 type create_error =
   | MissingPackages of {
-      missing : missing_dependency list;
+      missing: missing_dependency list;
     }
 
 type build_status =
@@ -30,41 +30,41 @@ type package_scope = build_scope
 
 type package_node =
   | Unplanned of {
-      package : Package.t;
-      scope : package_scope;
+      package: Package.t;
+      scope: package_scope;
     }
   | Planned of {
-      package : Package.t;
-      scope : package_scope;
-      module_graph : Module_node.t G.t;
-      action_graph : Action_graph.t;
-      hash : Std.Crypto.hash;
+      package: Package.t;
+      scope: package_scope;
+      module_graph: Module_node.t G.t;
+      action_graph: Action_graph.t;
+      hash: Std.Crypto.hash;
     }
   | Built of {
-      package : Package.t;
-      scope : package_scope;
-      module_graph : Module_node.t G.t;
-      action_graph : Action_graph.t;
-      hash : Std.Crypto.hash;
-      artifact : Artifact.t;
-      status : build_status;
-      depset : Dependency.t list;
+      package: Package.t;
+      scope: package_scope;
+      module_graph: Module_node.t G.t;
+      action_graph: Action_graph.t;
+      hash: Std.Crypto.hash;
+      artifact: Artifact.t;
+      status: build_status;
+      depset: Dependency.t list;
     }
   | Failed of {
-      package : Package.t;
-      scope : package_scope;
-      hash : Std.Crypto.hash;
-      error : string;
+      package: Package.t;
+      scope: package_scope;
+      hash: Std.Crypto.hash;
+      error: string;
     }
   | Skipped of {
-      package : Package.t;
-      scope : package_scope;
-      reason : string;
+      package: Package.t;
+      scope: package_scope;
+      reason: string;
     }
 
 type t = {
-  graph : package_node G.t;
-  name_to_node : (Package.key, package_node G.node) HashMap.t;
+  graph: package_node G.t;
+  name_to_node: (Package.key, package_node G.node) HashMap.t;
 }
 
 let get_package =

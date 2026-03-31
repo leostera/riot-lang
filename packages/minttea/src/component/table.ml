@@ -3,37 +3,36 @@ open Std.IO
 open Std.Collections
 
 type column = {
-  title : string;
-  width : int;
+  title: string;
+  width: int;
 }
 
 type row = string list
 
 type t = {
-  columns : column list;
-  rows : row list;
-  cursor : int;
-  focused : bool;
-  height : int;  (* 0 = unlimited *)
-  width : int;  (* total width *)
-  show_header : bool;
-  cursor_char : string;
+  columns: column list;
+  rows: row list;
+  cursor: int;
+  focused: bool;
+  height: int;  (* 0 = unlimited *)
+  width: int;  (* total width *)
+  show_header: bool;
+  cursor_char: string;
 }
 
 let column = fun ~title ~width -> {title; width}
 
-let make = fun columns rows ->
-  {
-    columns;
-    rows;
-    cursor = 0;
-    focused = false;
-    height = 0;
-    width = 0;
-    show_header = true;
-    cursor_char = "> ";
+let make = fun columns rows -> {
+  columns;
+  rows;
+  cursor = 0;
+  focused = false;
+  height = 0;
+  width = 0;
+  show_header = true;
+  cursor_char = "> ";
 
-  }
+}
 
 let set_height = fun t ~height:h -> {t with height = max 0 h}
 

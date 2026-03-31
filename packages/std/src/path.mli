@@ -39,9 +39,9 @@ type t
 (** # Errors *)
 
 type error =
-  | InvalidUtf8 of { path : string; }
+  | InvalidUtf8 of { path: string; }
   (** Path contains invalid UTF-8 bytes *)
-  | SystemInvalidUtf8 of { syscall : string; path : string; }
+  | SystemInvalidUtf8 of { syscall: string; path: string; }
   (** System call returned invalid UTF-8 *)
   | SystemError of string
 (** Other system-level error *)
@@ -63,7 +63,7 @@ type error =
       |> Result.map_err (fun _ -> "Invalid path provided")
     ```
 *)
-val of_string : string -> (t, error) Result.t
+val of_string: string -> (t, error) Result.t
 
 (** Creates a path from a string literal.
 
@@ -79,7 +79,7 @@ val of_string : string -> (t, error) Result.t
 
     (* Building paths *) let full_path = home / config (* full_path =
     "/home/user/config.toml" *) ``` *)
-val v : string -> t
+val v: string -> t
 
 (** Converts a path to a UTF-8 string.
 
@@ -93,7 +93,7 @@ val v : string -> t
 
     (* Use with string functions *) let contains_local path = String.contains
     (Path.to_string path) "local" ``` *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** # Path Operations *)
 (** Joins two paths together with a path separator.
@@ -106,7 +106,7 @@ val to_string : t -> string
     (* Joining absolute paths replaces the first path *) let path1 = Path.v
     "/home/user" in let path2 = Path.v "/etc" in let result = Path.join path1
     path2 in (* result = "/etc" *) ``` *)
-val join : t -> t -> t
+val join: t -> t -> t
 
 (** Infix operator for joining paths.
 
@@ -120,7 +120,7 @@ val join : t -> t -> t
     (* Build paths incrementally *) let home = Path.v (Sys.getenv "HOME") in let
     config = home / Path.v ".config" / Path.v "myapp" in let settings = config /
     Path.v "settings.json" ``` *)
-val ( / ) : t -> t -> t
+val ( / ): t -> t -> t
 
 (** Returns the parent directory, if any.
 
@@ -135,7 +135,7 @@ val ( / ) : t -> t -> t
 
     let relative = Path.v "file.txt" in assert (Path.parent relative = None) ```
 *)
-val parent : t -> t option
+val parent: t -> t option
 
 (** Returns the final component of a path as a string.
 
@@ -147,7 +147,7 @@ val parent : t -> t option
     assert (Path.basename (Path.v "/home/user/") = "user"); assert
     (Path.basename (Path.v "/") = ""); assert (Path.basename (Path.v "file.txt")
     = "file.txt") ``` *)
-val basename : t -> string
+val basename: t -> string
 
 (** Returns the directory portion of a path.
 
@@ -162,7 +162,7 @@ val basename : t -> string
     "/home");
 
     let root = Path.v "/" in assert (Path.dirname root = Path.v "/") ``` *)
-val dirname : t -> t
+val dirname: t -> t
 
 (** # Extensions and Properties *)
 (** Returns the file extension, if any.
@@ -176,7 +176,7 @@ val dirname : t -> t
     (Path.extension (Path.v "README") = None); assert (Path.extension (Path.v
     ".gitignore") = None); assert (Path.extension (Path.v "file.") = Some "")
     ``` *)
-val extension : t -> string option
+val extension: t -> string option
 
 (** Removes the file extension, if present.
 
@@ -190,7 +190,7 @@ val extension : t -> string option
 
     (* Only removes last extension *) let archive = Path.v "file.tar.gz" in
     assert (Path.remove_extension archive = Path.v "file.tar") ``` *)
-val remove_extension : t -> t
+val remove_extension: t -> t
 
 (** Adds or replaces the file extension.
 
@@ -207,7 +207,7 @@ val remove_extension : t -> t
 
     (* Create backup files *) let backup path = Path.add_extension path
     ~ext:"bak" ``` *)
-val add_extension : t -> ext:string -> t
+val add_extension: t -> ext:string -> t
 
 (** Returns `true` if the path is absolute.
 
@@ -221,7 +221,7 @@ val add_extension : t -> ext:string -> t
 
     (* Platform-specific on Windows *) (* Path.is_absolute (Path.v
     "C:\\Windows") = true on Windows *) ``` *)
-val is_absolute : t -> bool
+val is_absolute: t -> bool
 
 (** Returns `true` if the path is relative.
 
@@ -232,7 +232,7 @@ val is_absolute : t -> bool
     ```ocaml assert (Path.is_relative (Path.v "file.txt")); assert
     (Path.is_relative (Path.v "./subdir")); assert (Path.is_relative (Path.v
     "../parent")); assert (not (Path.is_relative (Path.v "/absolute"))) ``` *)
-val is_relative : t -> bool
+val is_relative: t -> bool
 
 (** # Path Analysis *)
 (** Splits a path into its components.
@@ -250,7 +250,7 @@ val is_relative : t -> bool
     (* Special components are preserved *) let with_dots = Path.components
     (Path.v "a/./b/../c") in (* with_dots =
     [Path.v "a"; Path.v "."; Path.v "b"; Path.v ".."; Path.v "c"] *) ``` *)
-val components : t -> t list
+val components: t -> t list
 
 (** Normalizes a path by resolving `.` and `..` components.
 
@@ -266,7 +266,7 @@ val components : t -> t list
 
     (* Can't go above root *) let above_root = Path.v "/../.." in assert
     (Path.normalize above_root = Path.v "/") ``` *)
-val normalize : t -> t
+val normalize: t -> t
 
 (** # Filesystem Queries *)
 (** Checks if the path exists on the filesystem.
@@ -283,7 +283,7 @@ val normalize : t -> t
 
     Subject to TOCTOU race conditions. The file may be created or deleted
     between this check and subsequent operations. *)
-val exists : t -> bool
+val exists: t -> bool
 
 (** Returns `true` if the path exists and is a directory.
 
@@ -295,7 +295,7 @@ val exists : t -> bool
 
     (* Returns false if path doesn't exist *) let missing = Path.v
     "/does/not/exist" in assert (not (Path.is_directory missing)) ``` *)
-val is_directory : t -> bool
+val is_directory: t -> bool
 
 (** Returns `true` if the path exists and is a regular file.
 
@@ -308,7 +308,7 @@ val is_directory : t -> bool
     (* Process only files *) let process_if_file path = if Path.is_file path
     then process_file path else println "Not a file: %s" (Path.to_string path)
     ``` *)
-val is_file : t -> bool
+val is_file: t -> bool
 
 (** # Comparison and Manipulation *)
 (** Compares two paths for equality.
@@ -325,7 +325,7 @@ val is_file : t -> bool
 
     (* Normalize first for semantic equality *) assert (Path.equal
     (Path.normalize p1) (Path.normalize p3)) ``` *)
-val equal : t -> t -> bool
+val equal: t -> t -> bool
 
 (** Removes a prefix from a path if it matches.
 
@@ -342,4 +342,4 @@ val equal : t -> t -> bool
 
     (* Make paths relative to a base directory *) let make_relative ~base path =
     Path.strip_prefix path ~prefix:base |> Result.unwrap_or ~default:path ``` *)
-val strip_prefix : t -> prefix:t -> (t, error) Result.t
+val strip_prefix: t -> prefix:t -> (t, error) Result.t

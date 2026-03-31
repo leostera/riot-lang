@@ -50,9 +50,9 @@ let pretty_print = fun sexp -> pp_sexp "" sexp
 (** Parser implementation *)
 module Parser = struct
   type state = {
-    input : string;
-    mutable pos : int;
-    len : int;
+    input: string;
+    mutable pos: int;
+    len: int;
   }
 
   let create = fun input -> {input; pos = 0; len = String.length input}

@@ -75,29 +75,29 @@ open Global
 
 type error =
   | NotFound of {
-      app : string;
+      app: string;
     }
   (** Config section not found in TOML file *)
   | ValidationError of {
-      app : string;
-      errors : string list;
+      app: string;
+      errors: string list;
     }
   (** Configuration validation failed *)
   | ParseError of {
-      path : string;
-      message : string;
+      path: string;
+      message: string;
     }
   (** TOML parsing error *)
   | FileNotFound of {
-      path : string;
+      path: string;
     }
 (** Configuration file not found *)
 (** {1 Configuration Providers} *)
 
-module Provider : sig
+module Provider: sig
   type t
   (** Configuration source - environment-based path, explicit path, or static TOML string *)
-  val env : ?env:Loader.env -> unit -> t
+  val env: ?env:Loader.env -> unit -> t
 
   (** Load from file based on environment (RIOT_ENV or default to dev).
       
@@ -107,7 +107,7 @@ module Provider : sig
       Provider.env ~env:Loader.Prod ()  (* Explicitly load ./config/prod.toml *)
       ```
   *)
-  val file : Path.t -> t
+  val file: Path.t -> t
 
   (** Load from explicit file path.
       
@@ -117,7 +117,7 @@ module Provider : sig
       Provider.file (Path.of_string "/etc/myapp/config.toml" |> Result.expect "invalid path")
       ```
   *)
-  val static : string -> t
+  val static: string -> t
 
   (** Load from inline TOML string (useful for tests and examples).
       
@@ -138,12 +138,12 @@ module Spec = Spec
 
 (** Configuration schema DSL. See {!Spec} for the complete API. *)
 module type ConfigSpec = sig
-  val spec : Spec.t
+  val spec: Spec.t
 
   (** The configuration schema *)
   type t
   (** Your application's configuration type *)
-  val get : Spec.value -> (t, error) result
+  val get: Spec.value -> (t, error) result
 
   (** Extract your config type from validated values.
       Use the helper functions like {!get_string}, {!get_int}, etc. *)
@@ -162,7 +162,7 @@ end
 *)
 (** {1 Core API} *)
 
-val load : ?provider:Provider.t -> unit -> unit
+val load: ?provider:Provider.t -> unit -> unit
 
 (** Load configuration into the global config state.
     
@@ -186,7 +186,7 @@ val load : ?provider:Provider.t -> unit -> unit
     Config.load ~provider:(Config.Provider.file path) ()
     ```
 *)
-val load_string : string -> unit
+val load_string: string -> unit
 
 (** Load configuration from inline TOML string.
     
@@ -200,7 +200,7 @@ val load_string : string -> unit
     |}
     ```
 *)
-val load_file : Path.t -> unit
+val load_file: Path.t -> unit
 
 (** Load configuration from specific file path.
     
@@ -212,7 +212,7 @@ val load_file : Path.t -> unit
     Config.load_file path
     ```
 *)
-val get : (module ConfigSpec with type t = 'a) -> ('a, error) result
+val get: (module ConfigSpec with type t = 'a) -> ('a, error) result
 
 (** Retrieve validated configuration from the server.
     
@@ -233,7 +233,7 @@ val get : (module ConfigSpec with type t = 'a) -> ('a, error) result
     
     Returns [NotFound] if the config wasn't loaded (check your [child_spec]).
 *)
-val error_to_string : error -> string
+val error_to_string: error -> string
 
 (** Convert a configuration error to a human-readable string.
     
@@ -242,7 +242,7 @@ val error_to_string : error -> string
     | Error err -> Log.error "Config error: %s" (Config.error_to_string err)
     ```
 *)
-val reload : ?provider:Provider.t -> unit -> (unit, string) result
+val reload: ?provider:Provider.t -> unit -> (unit, string) result
 
 (** Hot reload configuration at runtime.
     
@@ -268,7 +268,7 @@ val reload : ?provider:Provider.t -> unit -> (unit, string) result
     
     Returns [Error] if the config server is not running.
 *)
-val patch : app:string -> (string * Spec.value) list -> (unit, string) result
+val patch: app:string -> (string * Spec.value) list -> (unit, string) result
 
 (** Patch specific config values at runtime (useful for testing/debugging).
     
@@ -317,7 +317,7 @@ val patch : app:string -> (string * Spec.value) list -> (unit, string) result
     ```
 *)
 
-val get_string : Spec.value -> string -> string
+val get_string: Spec.value -> string -> string
 
 (** Extract a string value from a map.
     
@@ -325,7 +325,7 @@ val get_string : Spec.value -> string -> string
     
     @raise Panic if key not found or value is not a string
 *)
-val get_char : Spec.value -> string -> char
+val get_char: Spec.value -> string -> char
 
 (** Extract a char value from a map.
     
@@ -333,7 +333,7 @@ val get_char : Spec.value -> string -> char
     
     @raise Panic if key not found or value is not a char
 *)
-val get_int : Spec.value -> string -> int
+val get_int: Spec.value -> string -> int
 
 (** Extract an int value from a map.
     
@@ -341,7 +341,7 @@ val get_int : Spec.value -> string -> int
     
     @raise Panic if key not found or value is not an int
 *)
-val get_int32 : Spec.value -> string -> int32
+val get_int32: Spec.value -> string -> int32
 
 (** Extract an int32 value from a map.
     
@@ -349,7 +349,7 @@ val get_int32 : Spec.value -> string -> int32
     
     @raise Panic if key not found or value is not an int32
 *)
-val get_int64 : Spec.value -> string -> int64
+val get_int64: Spec.value -> string -> int64
 
 (** Extract an int64 value from a map.
     
@@ -357,7 +357,7 @@ val get_int64 : Spec.value -> string -> int64
     
     @raise Panic if key not found or value is not an int64
 *)
-val get_bool : Spec.value -> string -> bool
+val get_bool: Spec.value -> string -> bool
 
 (** Extract a bool value from a map.
     
@@ -365,7 +365,7 @@ val get_bool : Spec.value -> string -> bool
     
     @raise Panic if key not found or value is not a bool
 *)
-val get_float : Spec.value -> string -> float
+val get_float: Spec.value -> string -> float
 
 (** Extract a float value from a map.
     
@@ -373,7 +373,7 @@ val get_float : Spec.value -> string -> float
     
     @raise Panic if key not found or value is not a float
 *)
-val get_uri : Spec.value -> string -> Net.Uri.t
+val get_uri: Spec.value -> string -> Net.Uri.t
 
 (** Extract a URI value from a map.
     
@@ -381,7 +381,7 @@ val get_uri : Spec.value -> string -> Net.Uri.t
     
     @raise Panic if key not found or value is not a URI
 *)
-val get_datetime : Spec.value -> string -> Datetime.t
+val get_datetime: Spec.value -> string -> Datetime.t
 
 (** Extract a datetime value from a map.
     
@@ -389,7 +389,7 @@ val get_datetime : Spec.value -> string -> Datetime.t
     
     @raise Panic if key not found or value is not a datetime
 *)
-val get_path : Spec.value -> string -> Path.t
+val get_path: Spec.value -> string -> Path.t
 
 (** Extract a path value from a map.
     
@@ -397,7 +397,7 @@ val get_path : Spec.value -> string -> Path.t
     
     @raise Panic if key not found or value is not a path
 *)
-val get_uuid : Spec.value -> string -> Uuid.t
+val get_uuid: Spec.value -> string -> Uuid.t
 
 (** Extract a UUID value from a map.
     
@@ -405,7 +405,7 @@ val get_uuid : Spec.value -> string -> Uuid.t
     
     @raise Panic if key not found or value is not a UUID
 *)
-val get_list : Spec.value -> string -> Spec.value list
+val get_list: Spec.value -> string -> Spec.value list
 
 (** Extract a list value from a map.
     
@@ -417,7 +417,7 @@ val get_list : Spec.value -> string -> Spec.value list
     
     @raise Panic if key not found or value is not a list
 *)
-val get_discriminated_union : Spec.value -> string -> string * string * (string * Spec.value) list
+val get_discriminated_union: Spec.value -> string -> string * string * (string * Spec.value) list
 
 (** Extract a discriminated union from a map by key.
     
@@ -434,7 +434,7 @@ val get_discriminated_union : Spec.value -> string -> string * string * (string 
     
     @raise Panic if key not found or value is not a discriminated union
 *)
-val get_map : Spec.value -> string -> Spec.value
+val get_map: Spec.value -> string -> Spec.value
 
 (** Extract a nested map value from a map.
     
@@ -452,79 +452,79 @@ val get_map : Spec.value -> string -> Spec.value
     Useful when you already have a {!Spec.value} to unwrap.
 *)
 
-val as_string : Spec.value -> string
+val as_string: Spec.value -> string
 
 (** Extract the string from a String value.
     
     @raise Panic if the value is not a string
 *)
-val as_char : Spec.value -> char
+val as_char: Spec.value -> char
 
 (** Extract the char from a Char value.
     
     @raise Panic if the value is not a char
 *)
-val as_int : Spec.value -> int
+val as_int: Spec.value -> int
 
 (** Extract the int from an Int value.
     
     @raise Panic if the value is not an int
 *)
-val as_int32 : Spec.value -> int32
+val as_int32: Spec.value -> int32
 
 (** Extract the int32 from an Int32 value.
     
     @raise Panic if the value is not an int32
 *)
-val as_int64 : Spec.value -> int64
+val as_int64: Spec.value -> int64
 
 (** Extract the int64 from an Int64 value.
     
     @raise Panic if the value is not an int64
 *)
-val as_bool : Spec.value -> bool
+val as_bool: Spec.value -> bool
 
 (** Extract the bool from a Bool value.
     
     @raise Panic if the value is not a bool
 *)
-val as_float : Spec.value -> float
+val as_float: Spec.value -> float
 
 (** Extract the float from a Float value.
     
     @raise Panic if the value is not a float
 *)
-val as_uri : Spec.value -> Net.Uri.t
+val as_uri: Spec.value -> Net.Uri.t
 
 (** Extract the URI from a Uri value.
     
     @raise Panic if the value is not a URI
 *)
-val as_datetime : Spec.value -> Datetime.t
+val as_datetime: Spec.value -> Datetime.t
 
 (** Extract the datetime from a Datetime value.
     
     @raise Panic if the value is not a datetime
 *)
-val as_path : Spec.value -> Path.t
+val as_path: Spec.value -> Path.t
 
 (** Extract the path from a Path value.
     
     @raise Panic if the value is not a path
 *)
-val as_uuid : Spec.value -> Uuid.t
+val as_uuid: Spec.value -> Uuid.t
 
 (** Extract the UUID from a Uuid value.
     
     @raise Panic if the value is not a UUID
 *)
-val as_list : Spec.value -> Spec.value list
+val as_list: Spec.value -> Spec.value list
 
 (** Extract the items from a List value.
     
     @raise Panic if the value is not a List
 *)
-val as_discriminated_union : Spec.value -> string * string * (string * Spec.value) list
+val as_discriminated_union: Spec.value -> string * string * (string * Spec.value) list
 
 (** Extract (discriminant_name, variant_value, fields) from a DiscriminatedUnion.
     
@@ -538,7 +538,7 @@ val as_discriminated_union : Spec.value -> string * string * (string * Spec.valu
     
     @raise Panic if value is not a DiscriminatedUnion
 *)
-val as_map : Spec.value -> (string * Spec.value) list
+val as_map: Spec.value -> (string * Spec.value) list
 
 (** Extract the field list from a Map value.
     

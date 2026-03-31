@@ -67,14 +67,14 @@ module Terminal_renderer_inline = Terminal_renderer_inline
 (** Function type for measuring text dimensions.
     Takes text content and style, returns dimensions. *)
 type text_measurer = string -> Style.t -> Viewport.t
-module Config : sig
+module Config: sig
   type t
   (** Create a layout configuration *)
-  val make : viewport:Viewport.t -> text_measurer:text_measurer -> unit -> t
+  val make: viewport:Viewport.t -> text_measurer:text_measurer -> unit -> t
 
   (** Simple terminal-based text measurement:
       width = character count * 8.0, height = font size *)
-  val default_text_measurer : text_measurer
+  val default_text_measurer: text_measurer
 end
 
 (** {1 Layout Algorithm} *)
@@ -87,4 +87,4 @@ end
     @param element The root element to layout
     @return List of render commands to draw the UI
 *)
-val layout : config:Config.t -> Element.t -> Render.command_list
+val layout: config:Config.t -> Element.t -> Render.command_list

@@ -54,14 +54,14 @@
 
 (** {1 Time Zones} *)
 
-module Tz : sig
+module Tz: sig
   type t =
     | Etc_UTC
     | Local
   (** Time zone representation:
             - [Etc_UTC]: UTC/GMT timezone
             - [Local]: System's local timezone *)
-  val to_string : t -> string
+  val to_string: t -> string
 
   (** Converts timezone to string representation.
 
@@ -76,28 +76,28 @@ end
 open Global
 
 type t = {
-  microseconds : int * int;
+  microseconds: int * int;
   (** Microseconds and precision, e.g. (426822, 6) means 426822 microseconds
           with 6 digits of precision *)
-  second : int;  (** Second (0-59) *)
-  minute : int;  (** Minute (0-59) *)
-  hour : int;  (** Hour (0-23) *)
-  day : int;  (** Day of month (1-31) *)
-  month : int;  (** Month (1-12) *)
-  year : int;  (** Year *)
-  time_zone : Tz.t;  (** Time zone *)
-  utc_offset : int;  (** UTC offset in seconds *)
-  std_offset : int;  (** Standard time offset *)
+  second: int;  (** Second (0-59) *)
+  minute: int;  (** Minute (0-59) *)
+  hour: int;  (** Hour (0-23) *)
+  day: int;  (** Day of month (1-31) *)
+  month: int;  (** Month (1-12) *)
+  year: int;  (** Year *)
+  time_zone: Tz.t;  (** Time zone *)
+  utc_offset: int;  (** UTC offset in seconds *)
+  std_offset: int;  (** Standard time offset *)
 }
 (** A date and time with calendar fields and timezone information. *)
 type naive = {
-  year : int;  (** Year *)
-  month : int;  (** Month (1-12) *)
-  day : int;  (** Day of month (1-31) *)
-  hour : int;  (** Hour (0-23) *)
-  minute : int;  (** Minute (0-59) *)
-  second : int;  (** Second (0-59) *)
-  microsecond : int;  (** Microseconds (0-999999) *)
+  year: int;  (** Year *)
+  month: int;  (** Month (1-12) *)
+  day: int;  (** Day of month (1-31) *)
+  hour: int;  (** Hour (0-23) *)
+  minute: int;  (** Minute (0-59) *)
+  second: int;  (** Second (0-59) *)
+  microsecond: int;  (** Microseconds (0-999999) *)
 }
 (** A naive datetime without timezone information.
     
@@ -110,7 +110,7 @@ type naive = {
     To work with actual wall-clock times, convert to {!t} using {!from_naive}. *)
 (** {1 Creation} *)
 
-val epoch : t
+val epoch: t
 
 (** The Unix epoch: January 1, 1970 00:00:00 UTC.
     
@@ -121,7 +121,7 @@ val epoch : t
     (* epoch.year = 1970, epoch.month = 1, epoch.day = 1 *)
     (* epoch.hour = 0, epoch.minute = 0, epoch.second = 0 *)
     ``` *)
-val now : unit -> t
+val now: unit -> t
 
 (** Returns the current date and time in the system's local timezone.
 
@@ -130,7 +130,7 @@ val now : unit -> t
     ```ocaml let now = DateTime.now () in Printf.printf "%04d-%02d-%02d
     %02d:%02d:%02d\n" now.year now.month now.day now.hour now.minute now.second
     (* "2025-08-27 14:07:31" *) ``` *)
-val now_utc : unit -> t
+val now_utc: unit -> t
 
 (** Returns the current date and time in UTC.
 
@@ -138,7 +138,7 @@ val now_utc : unit -> t
 
     ```ocaml let utc = DateTime.now_utc () in assert (utc.time_zone =
     Tz.Etc_UTC); assert (utc.utc_offset = 0) ``` *)
-val now_naive : unit -> naive
+val now_naive: unit -> naive
 
 (** Returns the current date and time as a naive datetime (no timezone).
     
@@ -160,7 +160,7 @@ val now_naive : unit -> naive
     - Logging timestamps without timezone information
     - Storing local times in databases
     - Display times that don't need timezone conversion *)
-val from_system_time : Time.SystemTime.t -> t
+val from_system_time: Time.SystemTime.t -> t
 
 (** Creates a datetime from a system time.
 
@@ -182,7 +182,7 @@ val from_system_time : Time.SystemTime.t -> t
     The resulting datetime is in UTC timezone. *)
 (** {1 Conversion} *)
 
-val to_system_time : t -> Time.SystemTime.t
+val to_system_time: t -> Time.SystemTime.t
 
 (** Converts datetime to system time.
 
@@ -197,7 +197,7 @@ val to_system_time : t -> Time.SystemTime.t
     ## Note
     
     Timezone information is preserved during conversion. *)
-val to_naive : t -> naive
+val to_naive: t -> naive
 
 (** Converts a timezone-aware datetime to a naive datetime by dropping timezone information.
     
@@ -218,7 +218,7 @@ val to_naive : t -> naive
     - Storing local times without timezone conversion
     - Calendar computations that don't depend on timezone
     - Displaying times without timezone context *)
-val from_naive : naive -> tz:Tz.t -> t
+val from_naive: naive -> tz:Tz.t -> t
 
 (** Converts a naive datetime to a timezone-aware datetime.
     
@@ -247,7 +247,7 @@ val from_naive : naive -> tz:Tz.t -> t
     
     When using [Tz.Local], the UTC offset is determined by the system's
     current timezone setting at the time of conversion. *)
-val to_iso8601 : t -> string
+val to_iso8601: t -> string
 
 (** Converts to ISO 8601 format string with microsecond precision.
 
@@ -274,7 +274,7 @@ val to_iso8601 : t -> string
     - Interoperability with other systems *)
 (** {1 Comparison} *)
 
-val equal : t -> t -> bool
+val equal: t -> t -> bool
 
 (** Tests equality of two datetimes.
     
@@ -308,7 +308,7 @@ type error =
 (** Timezone offset is malformed *)
 
 (** Errors that can occur when parsing datetime strings. *)
-val parse : string -> (t, error) result
+val parse: string -> (t, error) result
 
 (** Parses an ISO 8601 datetime string into a DateTime.
 

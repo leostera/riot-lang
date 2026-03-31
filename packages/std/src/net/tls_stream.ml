@@ -17,17 +17,17 @@ type error =
   | Unsupported_vectored_operation
 
 type 'src t = {
-  reader : ('src, error) IO.Reader.t;
-  writer : ('src, error) IO.Writer.t;
-  engine : Kernel.Net.Tls.engine;
-  mutable state :
+  reader: ('src, error) IO.Reader.t;
+  writer: ('src, error) IO.Writer.t;
+  engine: Kernel.Net.Tls.engine;
+  mutable state:
     [
       `Active
       | `Eof
       | `Error of exn
     ];
-  network_in_buf : bytes;
-  network_out_buf : bytes;
+  network_in_buf: bytes;
+  network_out_buf: bytes;
 }
 
 (* Helper: Read encrypted data from network and pump into TLS engine *)
@@ -149,8 +149,9 @@ let of_tcp_socket = fun ~mode sock ->
 
 let of_tcp_client = fun ~hostname tcp -> of_tcp_socket ~mode:(`Client hostname) tcp
 
-let of_tcp_server = fun ~cert_file ~key_file tcp ->
-  of_tcp_socket ~mode:(`Server (cert_file, key_file)) tcp
+let of_tcp_server = fun ~cert_file ~key_file tcp -> of_tcp_socket
+~mode:(`Server (cert_file, key_file))
+tcp
 
 (* Read plaintext from TLS stream *)
 

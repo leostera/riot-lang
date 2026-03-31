@@ -100,38 +100,38 @@ type last_day_of_month = int
 type week_number = int
 (** A time without date or timezone *)
 type date = {
-  year : year;
-  month : month;
-  day : day;
+  year: year;
+  month: month;
+  day: day;
 }
 (** Year and ISO week number *)
 type time = {
-  hour : hour;
-  minute : minute;
-  second : second;
+  hour: hour;
+  minute: minute;
+  second: second;
 }
 type year_and_week = {
-  year : year;
-  week : week_number;
+  year: year;
+  week: week_number;
 }
 (** {1 Constants} *)
 (** 60 seconds per minute *)
-val seconds_per_minute : int
+val seconds_per_minute: int
 
 (** 3600 seconds per hour *)
-val seconds_per_hour : int
+val seconds_per_hour: int
 
 (** 86400 seconds per day *)
-val seconds_per_day : int
+val seconds_per_day: int
 
 (** 365 days per ordinary year *)
-val days_per_year : int
+val days_per_year: int
 
 (** 366 days per leap year *)
-val days_per_leap_year : int
+val days_per_leap_year: int
 
 (** 719528 days from year 0 to Unix epoch (1970-01-01) *)
-val days_from_0_to_1970 : int
+val days_from_0_to_1970: int
 
 (** {1 Leap Years and Month Information} *)
 (** Returns [true] if the year is a leap year.
@@ -149,7 +149,7 @@ val days_from_0_to_1970 : int
     Calendar.is_leap_year 2023;;  (* false *)
     ```
 *)
-val is_leap_year : year -> bool
+val is_leap_year: year -> bool
 
 (** Returns the last day of the month (28, 29, 30, or 31).
 
@@ -166,7 +166,7 @@ val is_leap_year : year -> bool
 
     @raise Invalid_argument if month is not in range 1-12
 *)
-val last_day_of_month : year:int -> month:int -> last_day_of_month
+val last_day_of_month: year:int -> month:int -> last_day_of_month
 
 (** {1 Date Validation} *)
 (** Validates if a date is valid in the Gregorian calendar.
@@ -186,7 +186,7 @@ val last_day_of_month : year:int -> month:int -> last_day_of_month
     Calendar.is_valid_date {year=2024; month=12; day=31};;  (* true *)
     ```
 *)
-val is_valid_date : date -> bool
+val is_valid_date: date -> bool
 
 (** {1 Gregorian Days Conversions} *)
 (** Converts a date to the number of days since year 0, January 1st.
@@ -203,7 +203,7 @@ val is_valid_date : date -> bool
 
     @raise Invalid_argument if the date is invalid
 *)
-val date_to_gregorian_days : date -> int
+val date_to_gregorian_days: date -> int
 
 (** Converts gregorian days back to a date.
 
@@ -227,7 +227,7 @@ val date_to_gregorian_days : date -> int
     (* true *)
     ```
 *)
-val gregorian_days_to_date : int -> date
+val gregorian_days_to_date: int -> date
 
 (** {1 Gregorian Seconds Conversions} *)
 (** Converts a date and time to seconds since year 0, midnight.
@@ -244,7 +244,7 @@ val gregorian_days_to_date : int -> date
     (* 62167219200 - seconds from year 0 to Unix epoch *)
     ```
 *)
-val naive_to_gregorian_seconds : date -> time -> int
+val naive_to_gregorian_seconds: date -> time -> int
 
 (** Converts gregorian seconds to a date and time.
 
@@ -257,7 +257,7 @@ val naive_to_gregorian_seconds : date -> time -> int
     (* ({year=0; month=1; day=1}, {hour=0; minute=0; second=0}) *)
     ```
 *)
-val gregorian_seconds_to_naive : int -> date * time
+val gregorian_seconds_to_naive: int -> date * time
 
 (** {1 Day of Week} *)
 (** Returns the day of week: 1=Monday, 2=Tuesday, ..., 7=Sunday.
@@ -274,7 +274,7 @@ val gregorian_seconds_to_naive : int -> date * time
 
     @raise Invalid_argument if the date is invalid
 *)
-val day_of_week : date -> day_number
+val day_of_week: date -> day_number
 
 (** {1 ISO Week Number} *)
 (** Calculates the ISO 8601 week number.
@@ -301,7 +301,7 @@ val day_of_week : date -> day_number
 
     @raise Invalid_argument if the date is invalid
 *)
-val iso_week_number : date -> year_and_week
+val iso_week_number: date -> year_and_week
 
 (** {1 Time Conversions} *)
 (** Converts time to seconds since midnight (0-86399).
@@ -314,7 +314,7 @@ val iso_week_number : date -> year_and_week
     Calendar.time_to_seconds {hour=23; minute=59; second=59};; (* 86399 *)
     ```
 *)
-val time_to_seconds : time -> int
+val time_to_seconds: time -> int
 
 (** Converts seconds since midnight to time.
 
@@ -329,7 +329,7 @@ val time_to_seconds : time -> int
 
     @raise Invalid_argument if seconds is not in range 0-86399
 *)
-val seconds_to_time : int -> time
+val seconds_to_time: int -> time
 
 (** Converts any number of seconds to [(days, time)].
 
@@ -348,7 +348,7 @@ val seconds_to_time : int -> time
     (* (-1, {hour=23; minute=0; second=0}) - -1 day + 23 hours *)
     ```
 *)
-val seconds_to_daystime : int -> int * time
+val seconds_to_daystime: int -> int * time
 
 (** {1 Date/Time Arithmetic} *)
 (** Computes the difference between two date/time pairs.
@@ -370,4 +370,4 @@ val seconds_to_daystime : int -> int * time
     (* (1, {hour=2; minute=30; second=0}) - 1 day, 2.5 hours *)
     ```
 *)
-val time_difference : date -> time -> date -> time -> int * time
+val time_difference: date -> time -> date -> time -> int * time

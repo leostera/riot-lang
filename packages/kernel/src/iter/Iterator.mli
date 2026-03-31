@@ -56,11 +56,11 @@ module type Intf = sig
   (** The internal iterator state *)
   type item
   (** The type of items produced *)
-  val next : state -> item option * state
+  val next: state -> item option * state
 
   (** Returns the next item and new state. Returns (None, state) when exhausted.
   *)
-  val size : state -> int
+  val size: state -> int
 
   (** Returns the number of remaining items (may be approximate). *)
 end
@@ -69,14 +69,14 @@ type ('item, 'state) iter = (module Intf with type item = 'item and type state =
 (** First-class module type for iterators. *)
 type 'item t
 (** An immutable iterator over items of type ['item]. *)
-val make : ('item, 'state) iter -> 'state -> 'item t
+val make: ('item, 'state) iter -> 'state -> 'item t
 
 (** Creates an iterator from a module and initial state.
 
     ## Examples
 
     ```ocaml let iter = Iterator.make (module MyIter) initial_state ``` *)
-val next : 'item t -> 'item option * 'item t
+val next: 'item t -> 'item option * 'item t
 
 (** Returns the next item and a new iterator.
 
@@ -84,7 +84,7 @@ val next : 'item t -> 'item option * 'item t
 
     ```ocaml let (item, iter') = Iterator.next iter in match item with | Some x
     -> process x | None -> () (* Iterator exhausted *) ``` *)
-val size : 'item t -> int
+val size: 'item t -> int
 
 (** Returns the number of remaining items (may be approximate).
 
@@ -92,7 +92,7 @@ val size : 'item t -> int
 
     ```ocaml let remaining = Iterator.size iter in Log.info "Items left: %d"
     remaining ``` *)
-val to_list : 'item t -> 'item list
+val to_list: 'item t -> 'item list
 
 (** Consumes the iterator and collects all items into a list.
 
@@ -101,7 +101,7 @@ val to_list : 'item t -> 'item list
     ```ocaml let items = Iterator.to_list iter ``` *)
 (** {1 Transformation} *)
 
-val map : 'a t -> fn:('a -> 'b) -> 'b t
+val map: 'a t -> fn:('a -> 'b) -> 'b t
 
 (** Transforms each element using the provided function.
     
@@ -114,7 +114,7 @@ val map : 'a t -> fn:('a -> 'b) -> 'b t
     (* [2; 4; 6; 8] if iter was [1; 2; 3; 4] *)
     ```
 *)
-val filter : 'a t -> fn:('a -> bool) -> 'a t
+val filter: 'a t -> fn:('a -> bool) -> 'a t
 
 (** Keeps only elements that satisfy the predicate.
     
@@ -127,7 +127,7 @@ val filter : 'a t -> fn:('a -> bool) -> 'a t
     (* [2; 4] if iter was [1; 2; 3; 4] *)
     ```
 *)
-val filter_map : 'a t -> fn:('a -> 'b option) -> 'b t
+val filter_map: 'a t -> fn:('a -> 'b option) -> 'b t
 
 (** Maps and filters in one operation. Elements mapping to None are dropped.
     
@@ -141,7 +141,7 @@ val filter_map : 'a t -> fn:('a -> 'b option) -> 'b t
 *)
 (** {1 Reduction} *)
 
-val fold : 'a t -> init:'acc -> fn:('a -> 'acc -> 'acc) -> 'acc
+val fold: 'a t -> init:'acc -> fn:('a -> 'acc -> 'acc) -> 'acc
 
 (** Reduces the iterator to a single value.
     
@@ -153,7 +153,7 @@ val fold : 'a t -> init:'acc -> fn:('a -> 'acc -> 'acc) -> 'acc
     (* Sum of all elements *)
     ```
 *)
-val reduce : 'a t -> fn:('a -> 'a -> 'a) -> 'a option
+val reduce: 'a t -> fn:('a -> 'a -> 'a) -> 'a option
 
 (** Reduces using the first element as initial value.
     
@@ -165,7 +165,7 @@ val reduce : 'a t -> fn:('a -> 'a -> 'a) -> 'a option
     (* Same as fold but returns None if empty *)
     ```
 *)
-val count : 'a t -> int
+val count: 'a t -> int
 
 (** Counts the number of elements.
     
@@ -175,7 +175,7 @@ val count : 'a t -> int
 *)
 (** {1 Search} *)
 
-val find : 'a t -> fn:('a -> bool) -> 'a option
+val find: 'a t -> fn:('a -> bool) -> 'a option
 
 (** Returns the first element satisfying the predicate.
     
@@ -186,7 +186,7 @@ val find : 'a t -> fn:('a -> bool) -> 'a option
     (* Some(11) or None *)
     ```
 *)
-val any : 'a t -> fn:('a -> bool) -> bool
+val any: 'a t -> fn:('a -> bool) -> bool
 
 (** Returns true if any element satisfies the predicate.
     
@@ -194,7 +194,7 @@ val any : 'a t -> fn:('a -> bool) -> bool
     
     ```ocaml iter |> Iterator.any ~fn:(fun x -> x < 0) ```
 *)
-val all : 'a t -> fn:('a -> bool) -> bool
+val all: 'a t -> fn:('a -> bool) -> bool
 
 (** Returns true if all elements satisfy the predicate.
     
@@ -204,7 +204,7 @@ val all : 'a t -> fn:('a -> bool) -> bool
 *)
 (** {1 Combinators} *)
 
-val take : 'a t -> int -> 'a t
+val take: 'a t -> int -> 'a t
 
 (** Takes at most n elements.
     
@@ -215,7 +215,7 @@ val take : 'a t -> int -> 'a t
     (* [1; 2; 3] *)
     ```
 *)
-val drop : 'a t -> int -> 'a t
+val drop: 'a t -> int -> 'a t
 
 (** Skips the first n elements.
     
@@ -226,7 +226,7 @@ val drop : 'a t -> int -> 'a t
     (* [3; 4; 5] if iter was [1; 2; 3; 4; 5] *)
     ```
 *)
-val enumerate : 'a t -> (int * 'a) t
+val enumerate: 'a t -> (int * 'a) t
 
 (** Adds indices to elements, starting from 0.
     
@@ -237,7 +237,7 @@ val enumerate : 'a t -> (int * 'a) t
     (* [(0, 'a'); (1, 'b'); (2, 'c')] *)
     ```
 *)
-val zip : 'a t -> 'b t -> ('a * 'b) t
+val zip: 'a t -> 'b t -> ('a * 'b) t
 
 (** Combines two iterators into pairs. Stops when either is exhausted.
     
@@ -248,7 +248,7 @@ val zip : 'a t -> 'b t -> ('a * 'b) t
     (* [(1, 'a'); (2, 'b'); (3, 'c')] *)
     ```
 *)
-val chain : 'a t -> 'a t -> 'a t
+val chain: 'a t -> 'a t -> 'a t
 
 (** Chains two iterators together.
     
@@ -261,7 +261,7 @@ val chain : 'a t -> 'a t -> 'a t
 *)
 (** {1 Side Effects} *)
 
-val for_each : 'a t -> fn:('a -> unit) -> unit
+val for_each: 'a t -> fn:('a -> unit) -> unit
 
 (** Applies a function to each element for side effects.
     

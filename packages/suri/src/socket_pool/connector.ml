@@ -1,13 +1,13 @@
 open Std
 
 type ('s, 'e) conn_state = {
-  transport : Transport.t;
-  stream : Net.TcpStream.t;
-  buffer_size : int;
-  handler : ('s, 'e) Handler.handler;
-  peer : Net.Addr.stream_addr;
-  accepted_at : Time.Instant.t;
-  ctx : 's;
+  transport: Transport.t;
+  stream: Net.TcpStream.t;
+  buffer_size: int;
+  handler: ('s, 'e) Handler.handler;
+  peer: Net.Addr.stream_addr;
+  accepted_at: Time.Instant.t;
+  ctx: 's;
 }
 
 type internal_msg =

@@ -5,10 +5,10 @@ module Sys = Stdlib.Sys
 (** Host triplet module *)
 module Host = struct
   type t = {
-    architecture : string;
-    vendor : string;
-    os : string;
-    abi : string option;
+    architecture: string;
+    vendor: string;
+    os: string;
+    abi: string option;
   }
 
   let to_string = fun t ->
@@ -24,8 +24,10 @@ module Host = struct
     | [arch;vendor;os;abi] -> Ok {architecture = arch; vendor; os; abi = Some abi}
     | _ -> Error ("Invalid host triplet format: " ^ s)
 
-  let equal = fun a b ->
-    a.architecture = b.architecture && a.vendor = b.vendor && a.os = b.os && a.abi = b.abi
+  let equal = fun a b -> a.architecture = b.architecture
+  && a.vendor = b.vendor
+  && a.os = b.os
+  && a.abi = b.abi
 
   let current =
     let arch = Host_stubs.get_arch () in

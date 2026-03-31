@@ -16,7 +16,7 @@ let self_executable = fun () ->
   | [] -> panic "missing argv[0] for std_bench_cli_tests"
 
 let run_sample_capture = fun args ->
-  let cmd = Command.make (self_executable ()) ~args:(("sample" :: args)) in
+  let cmd = Command.make (self_executable ()) ~args:(((("sample" :: args)))) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample bench cli"
 
 let test_list_benchmarks_lists_all_cases = fun () ->
@@ -72,7 +72,7 @@ let sample_main = fun ~args ->
   | exe :: _sample :: rest -> Bench.Cli.main
   ~name:"sample"
   ~benchmarks:sample_benchmarks
-  ~args:((exe :: rest))
+  ~args:((((exe :: rest))))
   | _ -> Error (Failure "expected sample subcommand arguments")
 
 let meta_main = fun ~args ->

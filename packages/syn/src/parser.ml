@@ -12,22 +12,22 @@ open Std.Collections
     - TDD approach with test_runner.py *)
 (** Parse result type *)
 type parse_result = {
-  source : string;
-  tokens : Token.t list;
-  kind :
+  source: string;
+  tokens: Token.t list;
+  kind:
     [
       | `Implementation
       | `Interface
     ];
-  tree : (Syntax_kind.t, string) Ceibo.Green.node;
-  diagnostics : Diagnostic.t list;
+  tree: (Syntax_kind.t, string) Ceibo.Green.node;
+  diagnostics: Diagnostic.t list;
 }
 
 type parser = {
-  cursor : Token_cursor.t;
-  diagnostics : Diagnostic.t list Cell.t;
-  mutable object_update_depth : int;
-  mutable case_expr_depth : int;
+  cursor: Token_cursor.t;
+  diagnostics: Diagnostic.t list Cell.t;
+  mutable object_update_depth: int;
+  mutable case_expr_depth: int;
 }
 
 let create = fun ~source tokens -> {
@@ -1251,7 +1251,6 @@ and parse_tuple_type = fun parser ->
     Handles chains like: int list option -> ((int list) option) *)
 and parse_parametric_type = fun parser ->
   let rec parse_with_arg = fun arg_type ->
-    (* Check if followed by type constructor (for parametric types) *)
     let trivia_after_arg_start = position parser in
     let trivia_after_arg = consume_trivia parser in
     match peek_kind parser with
@@ -1871,7 +1870,6 @@ and parse_or_pattern = fun parser ->
     let trivia_after_first = consume_trivia parser in
     (* Parse remaining patterns after | *)
     let rec parse_pipe_patterns = fun acc ->
-      (* Consume trivia before checking for next pipe *)
       let trivia_before_pipe = consume_trivia parser in
       if peek_kind parser = Token.Pipe then
         let pipe = consume parser in
@@ -3232,7 +3230,7 @@ and parse_char_literal = fun parser ->
               (* 'a (unclosed) - missing closing quote after the character *)
               let pos = ident.Token.span.end_ in
               let span = point_span pos in
-              let diagnostic = Diagnostic.unclosed_char_literal ~text:(("'" ^ ident_text)) ~span in
+              let diagnostic = Diagnostic.unclosed_char_literal ~text:(((("'" ^ ident_text)))) ~span in
               make_error_node parser ~diagnostic ~consumed_tokens:[ quote; ident ]
         )
       | Token.EOF ->
@@ -3917,7 +3915,6 @@ and parse_fun_expr = fun parser ->
       let ext_nodes, trivia_after_ext, attr_nodes = parse_keyword_extension_and_attributes parser in
       (* Parse parameters until we hit -> *)
       let rec collect_params = fun acc depth ->
-        (* Safety: prevent infinite loops by limiting depth *)
         if depth > 100 then
           (
             let found = peek parser in
@@ -4897,7 +4894,6 @@ and parse_application_expr = fun parser ->
   let func = parse_postfix_expr parser in
   (* Keep parsing arguments while we can *)
   let rec parse_args = fun func_expr ->
-    (* Check if trivia contains a newline *)
     if can_start_arg_expr parser then
       let func_trivia = peek_trivia parser in
       let has_newline =

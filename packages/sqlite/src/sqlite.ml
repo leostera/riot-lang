@@ -2,16 +2,16 @@ open Std
 
 module Config = struct
   type t = {
-    path : Path.t;
-    mode :
+    path: Path.t;
+    mode:
       [
         `ReadOnly
         | `ReadWrite
         | `Create
       ];
-    busy_timeout : Time.Duration.t option;
-    cache_size : int option;
-    synchronous :
+    busy_timeout: Time.Duration.t option;
+    cache_size: int option;
+    synchronous:
       ([
         `Off
         | `Normal
@@ -20,45 +20,43 @@ module Config = struct
       ]) option;
   }
 
-  let default = fun path ->
-    {
-      path;
-      mode = `Create;
-      busy_timeout = Some (Time.Duration.from_secs 5);
-      cache_size = None;
-      synchronous = Some `Normal;
+  let default = fun path -> {
+    path;
+    mode = `Create;
+    busy_timeout = Some (Time.Duration.from_secs 5);
+    cache_size = None;
+    synchronous = Some `Normal;
 
-    }
+  }
 
-  let in_memory = fun () ->
-    {
-      path = Path.v ":memory:";
-      mode = `Create;
-      busy_timeout = None;
-      cache_size = None;
-      synchronous = Some `Off;
+  let in_memory = fun () -> {
+    path = Path.v ":memory:";
+    mode = `Create;
+    busy_timeout = None;
+    cache_size = None;
+    synchronous = Some `Off;
 
-    }
+  }
 end
 
 module Driver = struct
   type config = Config.t
 
   type connection = {
-    id : string;
-    path : Path.t;
-    handle : unit;  (* Will be replaced with actual SQLite handle via FFI *)
-    mutable closed : bool;
+    id: string;
+    path: Path.t;
+    handle: unit;  (* Will be replaced with actual SQLite handle via FFI *)
+    mutable closed: bool;
   }
 
   type statement = {
-    sql : string;
-    conn : connection;
+    sql: string;
+    conn: connection;
   }
 
   type result_set = {
-    rows : Sqlx_driver.Row.t list;
-    rows_affected : int;
+    rows: Sqlx_driver.Row.t list;
+    rows_affected: int;
   }
 
   type error =

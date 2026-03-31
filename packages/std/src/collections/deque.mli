@@ -63,7 +63,7 @@ type 'a t
     ## Examples
 
     ```ocaml let deque = Deque.create () in assert (Deque.is_empty deque) ``` *)
-val create : unit -> 'a t
+val create: unit -> 'a t
 
 (** Creates a new empty deque with specified initial capacity.
 
@@ -74,7 +74,7 @@ val create : unit -> 'a t
 
     ```ocaml let deque = Deque.with_capacity 1000 in (* Can push ~1000 elements
     without reallocation *) ``` *)
-val with_capacity : int -> 'a t
+val with_capacity: int -> 'a t
 
 (** Creates a deque from a list. The first list element becomes the front of the
     deque.
@@ -88,7 +88,7 @@ val with_capacity : int -> 'a t
 
     - Time: O(n)
     - Space: O(n) *)
-val of_list : 'a list -> 'a t
+val of_list: 'a list -> 'a t
 
 (** {1 Adding Elements} *)
 (** Adds an element to the front of the deque.
@@ -101,7 +101,7 @@ val of_list : 'a list -> 'a t
     ## Complexity
 
     - Time: O(1) amortized *)
-val push_front : 'a t -> 'a -> unit
+val push_front: 'a t -> 'a -> unit
 
 (** Adds an element to the back of the deque.
 
@@ -113,7 +113,7 @@ val push_front : 'a t -> 'a -> unit
     ## Complexity
 
     - Time: O(1) amortized *)
-val push_back : 'a t -> 'a -> unit
+val push_back: 'a t -> 'a -> unit
 
 (** Inserts an element at the given index. Existing elements at and after this
     index are shifted back.
@@ -126,7 +126,7 @@ val push_back : 'a t -> 'a -> unit
     ## Complexity
 
     - Time: O(n) where n is distance from nearest end *)
-val insert : 'a t -> int -> 'a -> unit
+val insert: 'a t -> int -> 'a -> unit
 
 (** {1 Removing Elements} *)
 (** Removes and returns the front element. Returns [Some element] if the deque
@@ -140,7 +140,7 @@ val insert : 'a t -> int -> 'a -> unit
     ## Complexity
 
     - Time: O(1) *)
-val pop_front : 'a t -> 'a option
+val pop_front: 'a t -> 'a option
 
 (** Removes and returns the back element. Returns [Some element] if the deque is
     not empty, [None] otherwise.
@@ -153,7 +153,7 @@ val pop_front : 'a t -> 'a option
     ## Complexity
 
     - Time: O(1) *)
-val pop_back : 'a t -> 'a option
+val pop_back: 'a t -> 'a option
 
 (** Removes and returns the element at the given index. Returns [Some element]
     if the index is valid, [None] otherwise.
@@ -166,7 +166,7 @@ val pop_back : 'a t -> 'a option
     ## Complexity
 
     - Time: O(n) where n is distance from nearest end *)
-val remove : 'a t -> int -> 'a option
+val remove: 'a t -> int -> 'a option
 
 (** Removes all elements from the deque.
 
@@ -179,7 +179,7 @@ val remove : 'a t -> int -> 'a option
 
     - Time: O(1)
     - Space: Capacity is preserved for reuse *)
-val clear : 'a t -> unit
+val clear: 'a t -> unit
 
 (** {1 Accessing Elements} *)
 (** Returns the front element without removing it.
@@ -192,7 +192,7 @@ val clear : 'a t -> unit
     ## Complexity
 
     - Time: O(1) *)
-val front : 'a t -> 'a option
+val front: 'a t -> 'a option
 
 (** Returns the back element without removing it.
 
@@ -204,7 +204,7 @@ val front : 'a t -> 'a option
     ## Complexity
 
     - Time: O(1) *)
-val back : 'a t -> 'a option
+val back: 'a t -> 'a option
 
 (** Returns the element at the given index without removing it.
 
@@ -217,7 +217,7 @@ val back : 'a t -> 'a option
     ## Complexity
 
     - Time: O(1) *)
-val get : 'a t -> int -> 'a option
+val get: 'a t -> int -> 'a option
 
 (** {1 Collection Information} *)
 (** Returns the number of elements in the deque.
@@ -229,7 +229,7 @@ val get : 'a t -> int -> 'a option
     ## Complexity
 
     - Time: O(1) *)
-val len : 'a t -> int
+val len: 'a t -> int
 
 (** Returns [true] if the deque contains no elements.
 
@@ -241,7 +241,7 @@ val len : 'a t -> int
     ## Complexity
 
     - Time: O(1) *)
-val is_empty : 'a t -> bool
+val is_empty: 'a t -> bool
 
 (** {1 Iteration} *)
 (** Applies function [f] to each element from front to back.
@@ -254,7 +254,7 @@ val is_empty : 'a t -> bool
     ## Complexity
 
     - Time: O(n) *)
-val iter : ('a -> unit) -> 'a t -> unit
+val iter: ('a -> unit) -> 'a t -> unit
 
 (** Folds over all elements from front to back.
 
@@ -278,9 +278,9 @@ val iter : ('a -> unit) -> 'a t -> unit
 
     - Time: O(n)
     - Space: O(n) *)
-val fold : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
+val fold: ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
 
-val to_list : 'a t -> 'a list
+val to_list: 'a t -> 'a list
 
 (** {1 Additional Operations} *)
 (** Returns [true] if the value exists anywhere in the deque.
@@ -293,7 +293,7 @@ val to_list : 'a t -> 'a list
     ## Complexity
 
     - Time: O(n) *)
-val contains : 'a t -> 'a -> bool
+val contains: 'a t -> 'a -> bool
 
 (** Moves all elements from [deque2] to the back of [deque1]. After this
     operation, [deque2] is empty.
@@ -307,7 +307,7 @@ val contains : 'a t -> 'a -> bool
     ## Complexity
 
     - Time: O(m) where m = len(deque2) *)
-val append : 'a t -> 'a t -> unit
+val append: 'a t -> 'a t -> unit
 
 (** Splits the deque at the given index. Elements from [index] onwards are moved
     to a new deque and returned.
@@ -322,7 +322,7 @@ val append : 'a t -> 'a t -> unit
 
     - Time: O(n) where n = len - index
     - Space: O(n) *)
-val split_off : 'a t -> int -> 'a t
+val split_off: 'a t -> int -> 'a t
 
 (** Converts this deque into an immutable iterator over its elements from front to back.
 
@@ -342,7 +342,7 @@ val split_off : 'a t -> int -> 'a t
 
     - Time: O(1) to create iterator
     - Space: O(1) *)
-val into_iter : 'a t -> 'a Iter.Iterator.t
+val into_iter: 'a t -> 'a Iter.Iterator.t
 
 (** Returns a mutable iterator over the deque's elements from front to back.
 
@@ -350,4 +350,4 @@ val into_iter : 'a t -> 'a Iter.Iterator.t
 
     ```ocaml let deque = Deque.of_list [1; 2; 3] in let iter = Deque.to_mut_iter
     deque in ``` *)
-val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
+val to_mut_iter: 'a t -> 'a Iter.MutIterator.t

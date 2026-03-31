@@ -2,9 +2,9 @@
 open Std
 
 type t = {
-  filename : Path.t;
-  namespace : Namespace.t;
-  name : string;
+  filename: Path.t;
+  namespace: Namespace.t;
+  name: string;
 }
 
 let make = fun ~filename ~namespace ~name -> {filename; namespace; name}
@@ -24,7 +24,8 @@ let of_filename = fun ?(namespace = Namespace.empty) filename ->
 
 let of_string = fun ?(namespace = Namespace.empty) s ->
   let name = sanitize_name s |> String.capitalize_ascii in
-  let filename = Path.of_string s |> Result.expect ~msg:(("Expected '" ^ s ^ "' to be a valid Path")) in
+  let filename = Path.of_string s
+  |> Result.expect ~msg:(((("Expected '" ^ s ^ "' to be a valid Path")))) in
   {filename; namespace; name}
 
 let of_path = fun path ->
@@ -70,7 +71,6 @@ let canonical_mli = fun t -> qualified_name t ^ ".mli" |> Path.v
 
 let canonical_ml = fun t -> qualified_name t ^ ".ml" |> Path.v
 
-let binary =
-  fun t ->
-    (* Get the base name without extension from the original filename *)
-    Path.remove_extension t.filename |> Path.basename |> sanitize_name
+let binary = fun t ->
+  (* Get the base name without extension from the original filename *)
+  Path.remove_extension t.filename |> Path.basename |> sanitize_name

@@ -133,10 +133,14 @@ let handle_print_cst = fun sub_matches ->
             ~kind:((
               (
                 (
-                  if String.ends_with ~suffix:".mli" file then
-                    `Interface
-                  else
-                    `Implementation
+                  (
+                    (
+                      if String.ends_with ~suffix:".mli" file then
+                        `Interface
+                      else
+                        `Implementation
+                    )
+                  )
                 )
               )
             ))

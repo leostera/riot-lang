@@ -54,7 +54,7 @@ type 'msg attr =
 (** Event handler that produces a message *)
 
 (** HTML attribute - either a static attribute or an event handler *)
-val attr : string -> string -> 'msg attr
+val attr: string -> string -> 'msg attr
 
 (** Create a static attribute.
     
@@ -62,9 +62,9 @@ val attr : string -> string -> 'msg attr
     ```ocaml
     attr "class" "btn btn-primary"
     ```*)
-val attr_id : string -> [>
-  `attr of string * string
-]
+val attr_id: string -> [>
+    `attr of string * string
+  ]
 
 (** Create an id attribute.
     
@@ -72,9 +72,9 @@ val attr_id : string -> [>
     ```ocaml
     attr_id "main-content"
     ```*)
-val attr_type : string -> [>
-  `attr of string * string
-]
+val attr_type: string -> [>
+    `attr of string * string
+  ]
 
 (** Create a type attribute for inputs/buttons.
     
@@ -82,9 +82,9 @@ val attr_type : string -> [>
     ```ocaml
     attr_type "submit"
     ```*)
-val attr_src : string -> [>
-  `attr of string * string
-]
+val attr_src: string -> [>
+    `attr of string * string
+  ]
 
 (** Create a src attribute for images/scripts.
     
@@ -93,7 +93,7 @@ val attr_src : string -> [>
     attr_src "/static/logo.png"
     ```*)
 type 'msg t =
-  | El of { tag : string; attrs : 'msg attr list; children : 'msg t list; }
+  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list; }
   (** HTML element with tag, attributes, and children *)
   | Text of string
   (** Text node *)
@@ -101,7 +101,7 @@ type 'msg t =
 (** List of elements to render inline *)
 
 (** HTML tree - elements, text nodes, or lists of nodes *)
-val list : 'msg t list -> 'msg t
+val list: 'msg t list -> 'msg t
 
 (** Create a list of elements to render inline (no wrapper element).
     
@@ -113,7 +113,7 @@ val list : 'msg t list -> 'msg t
     ] in
     list items
     ```*)
-val button : on_click:'msg attr -> ?children:'msg t list -> unit -> 'msg t
+val button: on_click:'msg attr -> ?children:'msg t list -> unit -> 'msg t
 
 (** Create a button element with click handler.
     
@@ -121,13 +121,13 @@ val button : on_click:'msg attr -> ?children:'msg t list -> unit -> 'msg t
     ```ocaml
     button ~on_click:(fun _ -> Submit) [ string "Submit" ] ()
     ```*)
-val html : ?children:'msg t list -> unit -> 'msg t
+val html: ?children:'msg t list -> unit -> 'msg t
 
 (** Create an <html> root element *)
-val body : ?children:'msg t list -> unit -> 'msg t
+val body: ?children:'msg t list -> unit -> 'msg t
 
 (** Create a <body> element *)
-val div : ?attrs:(string * string) list -> ?id:string -> ?children:'msg t list -> unit -> 'msg t
+val div: ?attrs:(string * string) list -> ?id:string -> ?children:'msg t list -> unit -> 'msg t
 
 (** Create a <div> element.
     
@@ -137,31 +137,31 @@ val div : ?attrs:(string * string) list -> ?id:string -> ?children:'msg t list -
       h1 [ string "Title" ] ()
     ] ()
     ```*)
-val h1 : ?children:'msg t list -> unit -> 'msg t
+val h1: ?children:'msg t list -> unit -> 'msg t
 
 (** Create an <h1> heading element *)
-val h2 : ?children:'msg t list -> unit -> 'msg t
+val h2: ?children:'msg t list -> unit -> 'msg t
 
 (** Create an <h2> heading element *)
-val h3 : ?children:'msg t list -> unit -> 'msg t
+val h3: ?children:'msg t list -> unit -> 'msg t
 
 (** Create an <h3> heading element *)
-val h4 : ?children:'msg t list -> unit -> 'msg t
+val h4: ?children:'msg t list -> unit -> 'msg t
 
 (** Create an <h4> heading element *)
-val h5 : ?children:'msg t list -> unit -> 'msg t
+val h5: ?children:'msg t list -> unit -> 'msg t
 
 (** Create an <h5> heading element *)
-val h6 : ?children:'msg t list -> unit -> 'msg t
+val h6: ?children:'msg t list -> unit -> 'msg t
 
 (** Create an <h6> heading element *)
-val span : ?children:'msg t list -> unit -> 'msg t
+val span: ?children:'msg t list -> unit -> 'msg t
 
 (** Create a <span> inline element *)
-val p : ?children:'msg t list -> unit -> 'msg t
+val p: ?children:'msg t list -> unit -> 'msg t
 
 (** Create a <p> paragraph element *)
-val script : ?src:string -> ?id:string -> ?type_:string -> ?children:'msg t list -> unit -> 'msg t
+val script: ?src:string -> ?id:string -> ?type_:string -> ?children:'msg t list -> unit -> 'msg t
 
 (** Create a <script> element for JavaScript.
     
@@ -169,7 +169,7 @@ val script : ?src:string -> ?id:string -> ?type_:string -> ?children:'msg t list
     ```ocaml
     script ~src:"/static/app.js" ~type_:"text/javascript" () ()
     ```*)
-val event : string -> (string -> 'msg) -> 'msg attr
+val event: string -> (string -> 'msg) -> 'msg attr
 
 (** Create an event handler attribute.
     
@@ -179,7 +179,7 @@ val event : string -> (string -> 'msg) -> 'msg attr
     ```ocaml
     event "mouseover" (fun _ -> Hover)
     ```*)
-val on_click : (string -> 'msg) -> 'msg attr
+val on_click: (string -> 'msg) -> 'msg attr
 
 (** Create a click event handler.
     
@@ -189,7 +189,7 @@ val on_click : (string -> 'msg) -> 'msg attr
     ```ocaml
     button ~on_click:(fun _ -> Clicked) [ string "Click me" ] ()
     ```*)
-val string : string -> 'msg t
+val string: string -> 'msg t
 
 (** Create a text node from a string.
     
@@ -197,7 +197,7 @@ val string : string -> 'msg t
     ```ocaml
     h1 [ string "Hello, world!" ] ()
     ```*)
-val int : int -> 'msg t
+val int: int -> 'msg t
 
 (** Create a text node from an integer.
     
@@ -205,7 +205,7 @@ val int : int -> 'msg t
     ```ocaml
     div [ string "Count: "; int 42 ] ()
     ```*)
-val to_string : 'msg t -> string
+val to_string: 'msg t -> string
 
 (** Render an HTML tree to a string.
     
@@ -217,17 +217,17 @@ val to_string : 'msg t -> string
     let html_str = to_string html
     (* "<div><h1>Title</h1></div>" *)
     ```*)
-val attrs_to_string : 'msg attr list -> string
+val attrs_to_string: 'msg attr list -> string
 
 (** Convert attributes to HTML attribute string (internal use).
     
     Example output: {v id="main" class="container" v}*)
-val event_handlers : 'msg attr list -> (string * (string -> 'msg)) list
+val event_handlers: 'msg attr list -> (string * (string -> 'msg)) list
 
 (** Extract event handlers from attribute list (internal use).
     
     Used by the LiveView runtime to register event handlers. *)
-val map_action : ('msg_a -> 'msg_b) -> 'msg_a t -> 'msg_b t
+val map_action: ('msg_a -> 'msg_b) -> 'msg_a t -> 'msg_b t
 
 (** Map event handlers to a different message type.
     

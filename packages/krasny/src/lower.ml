@@ -57,7 +57,7 @@ message
 let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
   let kind = Syn.Cst.syntax_kind syntax_node in
   unsupported_with_context_entries
-  ~context:(((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ])))
+  ~context:((((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ]))))
   message
 
 let extension_payload_context = [ "extension"; "payload" ]
@@ -906,8 +906,8 @@ and render_record_core_type_field = fun (field:Syn.Cst.record_type_field) ->
   [ prefix; doc_of_token field.colon_token; Doc.indent 2 (Doc.concat [ separator; type_doc ]) ])
 and render_tight_colon_rhs = fun head colon_token rhs -> Doc.group
 (Doc.concat [ head; doc_of_token colon_token; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
-and render_tight_colon_block_rhs = fun head colon_token rhs ->
-  Doc.concat [ head; doc_of_token colon_token; Doc.space; rhs ]
+and render_tight_colon_block_rhs = fun head colon_token rhs -> Doc.concat
+[ head; doc_of_token colon_token; Doc.space; rhs ]
 and render_record_type_field_separator = fun (field:Syn.Cst.record_type_field) ->
   match field.semicolon_token with
   | Some semicolon_token -> doc_of_token semicolon_token
@@ -1288,8 +1288,8 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         let payload_doc, payload_multiline = inline_separator_or_multiline_block
         ~fallback_separator_doc:Doc.empty
         ~separator_token:(Some separator_token)
-        ~next_syntax_node:(((Syn.Cst.VariantConstructor.payload_type constructor
-        |> Option.map Syn.Cst.CoreType.syntax_node)))
+        ~next_syntax_node:((((Syn.Cst.VariantConstructor.payload_type constructor
+        |> Option.map Syn.Cst.CoreType.syntax_node))))
         ~render_next:payload in
         let arrow_token = Syn.Cst.VariantConstructor.arrow_token constructor in
         let arrow_leading_trivia =
@@ -1341,8 +1341,8 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         let payload_doc, _payload_multiline = inline_separator_or_multiline_block
         ~fallback_separator_doc:Doc.empty
         ~separator_token:(Some separator_token)
-        ~next_syntax_node:(((Syn.Cst.VariantConstructor.payload_type constructor
-        |> Option.map Syn.Cst.CoreType.syntax_node)))
+        ~next_syntax_node:((((Syn.Cst.VariantConstructor.payload_type constructor
+        |> Option.map Syn.Cst.CoreType.syntax_node))))
         ~render_next:payload in
         Doc.concat [ head; payload_doc;  ]
     | None, Some result_type ->
@@ -1594,7 +1594,8 @@ let render_external_declaration = fun (decl:Syn.Cst.external_declaration) ->
   (Doc.concat
   [
     type_doc;
-    Doc.indent 2
+    Doc.indent
+    2
     (Doc.concat
     [
       Doc.break ();
@@ -1602,6 +1603,7 @@ let render_external_declaration = fun (decl:Syn.Cst.external_declaration) ->
       Doc.space;
       primitive_names;
       attributes;
+
     ]);
 
   ])
@@ -5061,9 +5063,9 @@ let make_lowerer =
     match Syn.CstBuilder.signature_items_of_module_type module_type with
     | Ok items -> items
     | Error error -> unsupported_with_context_entries
-    ~context:(((Context_label "module_type"
+    ~context:((((Context_label "module_type"
     :: Context_syntax_kind error.syntax_kind
-    :: List.map (fun label -> Context_label label) error.context)))
+    :: List.map (fun label -> Context_label label) error.context))))
     error.message
   and render_module_type_constraint = fun ~keyword (constraint_:Syn.Cst.module_type_constraint) ->
     let separator = Doc.concat [ Doc.space; doc_of_token constraint_.separator_token; Doc.space ] in
@@ -5157,9 +5159,9 @@ let make_lowerer =
           match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
           | Ok items -> render_structure_items ~source_node:syntax_node items
           | Error error -> unsupported_with_context_entries
-          ~context:(((Context_label "module_expression"
+          ~context:((((Context_label "module_expression"
           :: Context_syntax_kind error.syntax_kind
-          :: List.map (fun label -> Context_label label) error.context)))
+          :: List.map (fun label -> Context_label label) error.context))))
           error.message
         in
         Doc.concat [ Doc.text "struct"; Doc.line; Doc.indent 2 body; Doc.line; Doc.text "end";  ]

@@ -7,23 +7,23 @@ open Collections
 open Types
 
 type ('task, 'result) state = {
-  owner : Pid.t;
-  pool : 'task Dynamic.t;
-  task_queue : 'task Queue.t;
-  mutable results : (int * 'result) list;
-  result_ref : 'result Ref.t;
-  mutable tasks_in_flight : int;
+  owner: Pid.t;
+  pool: 'task Dynamic.t;
+  task_queue: 'task Queue.t;
+  mutable results: (int * 'result) list;
+  result_ref: 'result Ref.t;
+  mutable tasks_in_flight: int;
 }
 
 type Message.t +=
   | TaskResult : {
-    idx : int;
-    result : 'result;
-    result_ref : 'result Ref.t;
+    idx: int;
+    result: 'result;
+    result_ref: 'result Ref.t;
   } -> Message.t
   | Completed : {
-    results : (int * 'result) list;
-    result_ref : 'result Ref.t;
+    results: (int * 'result) list;
+    result_ref: 'result Ref.t;
   } -> Message.t
 
 let rec loop : type task res. (task, res) state -> (unit, Process.exit_reason) result = fun state ->

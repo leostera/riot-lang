@@ -21,15 +21,15 @@ open Tusk_model
     - Binary path comparison requires converting absolute paths to relative
       paths *)
 type t = {
-  library_module_name : string;
-  child_files : Module.t list;
-  child_dirs : Module.t list;
-  child_modules : Module.t list;
-  has_concrete_ml : bool;
-  has_concrete_mli : bool;
-  concrete_ml_path : Path.t option;
-  concrete_mli_path : Path.t option;
-  children_without_lib : Module_scanner.entry list;
+  library_module_name: string;
+  child_files: Module.t list;
+  child_dirs: Module.t list;
+  child_modules: Module.t list;
+  has_concrete_ml: bool;
+  has_concrete_mli: bool;
+  concrete_ml_path: Path.t option;
+  concrete_mli_path: Path.t option;
+  children_without_lib: Module_scanner.entry list;
 }
 
 (** Convert an absolute path to be relative to a base path.

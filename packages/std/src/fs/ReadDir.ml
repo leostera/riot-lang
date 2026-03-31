@@ -2,9 +2,9 @@ open Global
 open Common
 
 type t = {
-  path : Path.t;
-  handle : Kernel.Fs.ReadDir.t;
-  mutable closed : bool;
+  path: Path.t;
+  handle: Kernel.Fs.ReadDir.t;
+  mutable closed: bool;
 }
 
 (** Directory reading iterator *)
@@ -50,7 +50,8 @@ let rec next = fun t ->
         | Error _ -> next t
     with
     | End_of_file ->
-        close t |> Result.expect ~msg:(("Could not close ReadDir.t for " ^ Path.to_string t.path));
+        close t
+        |> Result.expect ~msg:(((("Could not close ReadDir.t for " ^ Path.to_string t.path))));
         None
 
 (* MutIterator.Intf implementation *)

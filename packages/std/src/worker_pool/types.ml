@@ -1,8 +1,8 @@
 open Global
 
 type 'task worker = {
-  pid : Pid.t;
-  task_ref : 'task Ref.t;
+  pid: Pid.t;
+  task_ref: 'task Ref.t;
 }
 
 (** Internal Messages to Workers *)

@@ -1,18 +1,18 @@
 open Std
 
 type event = {
-  data : string;
-  event_type : string option;
-  id : string option;
+  data: string;
+  event_type: string option;
+  id: string option;
 }
 
 (* Internal state for SSE iterator *)
 
 module SSEIterator = struct
   type state = {
-    conn : Connection.t;
-    mutable buffer : string;
-    mutable done_ : bool;
+    conn: Connection.t;
+    mutable buffer: string;
+    mutable done_: bool;
   }
 
   type item = event

@@ -328,32 +328,32 @@ end
 
 (** Stack frame extracted from backtrace *)
 type stack_frame = {
-  file : string option;
-  line : int option;
-  char_range : (int * int) option;
-  function_name : string option;
-  raw : string;
+  file: string option;
+  line: int option;
+  char_range: (int * int) option;
+  function_name: string option;
+  raw: string;
 }
 
 (** Source code snippet with context *)
 type source_snippet = {
-  start_line : int;
-  lines : (int * string) list;  (* line_num, content *)
-  error_line : int;
-  source_path : string;  (* Clean workspace-relative path *)
-  found_via_tusk : bool;  (* Whether tusk server helped resolve *)
+  start_line: int;
+  lines: (int * string) list;  (* line_num, content *)
+  error_line: int;
+  source_path: string;  (* Clean workspace-relative path *)
+  found_via_tusk: bool;  (* Whether tusk server helped resolve *)
 }
 
 (** Resolved source path information *)
 type resolved_path = {
-  resolved_path : string;
-  found_via_tusk : bool;
+  resolved_path: string;
+  found_via_tusk: bool;
 }
 
 (** Sandbox path parsing result *)
 type sandbox_info = {
-  package_name : string;
-  relative_path : string;
+  package_name: string;
+  relative_path: string;
 }
 
 (** Find substring in string, returns start index *)
@@ -598,11 +598,10 @@ let should_hide_frame = fun frame ->
   | None -> false
 
 (** Parse full backtrace into list of stack frames *)
-let parse_backtrace = fun backtrace ->
-  String.split_on_char '\n' backtrace
-  |> List.filter (fun line -> String.trim line != "")
-  |> List.map parse_frame_line
-  |> List.filter (fun frame -> not (should_hide_frame frame))
+let parse_backtrace = fun backtrace -> String.split_on_char '\n' backtrace
+|> List.filter (fun line -> String.trim line != "")
+|> List.map parse_frame_line
+|> List.filter (fun frame -> not (should_hide_frame frame))
 
 (** Try to find and read a source file using tusk server resolution *)
 let try_read_file = fun file ->

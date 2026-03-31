@@ -2,8 +2,8 @@
 open Std
 
 type file_result = {
-  worker : Pid.t;
-  result : Runner.file_result;
+  worker: Pid.t;
+  result: Runner.file_result;
 }
 type Message.t +=
   | ScannerDiscovered of Path.t

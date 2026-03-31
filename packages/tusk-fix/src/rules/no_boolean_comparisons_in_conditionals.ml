@@ -70,13 +70,12 @@ let suggestion_for_condition = fun expr ->
     )
   | None -> "Simplify this boolean comparison."
 
-let make_diagnostic = fun (if_expr:Syn.Cst.if_expression) ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
-  ~suggestion:(suggestion_for_condition if_expr.condition)
-  ()
+let make_diagnostic = fun (if_expr:Syn.Cst.if_expression) -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
+~suggestion:(suggestion_for_condition if_expr.condition)
+()
 
 let diagnostic_for_expression =
   function
@@ -91,5 +90,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.expressions_of_structure_item
   |> List.filter_map diagnostic_for_expression
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

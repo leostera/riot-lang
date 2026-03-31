@@ -79,12 +79,12 @@ type 'a queue = 'a Collections.Queue.t
 type 'a set = 'a Collections.HashSet.t
 type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
 (* Constructor functions for collections *)
-val vec : 'a list -> 'a vec
+val vec: 'a list -> 'a vec
 
-val queue : 'a list -> 'a queue
+val queue: 'a list -> 'a queue
 
-val set : 'a list -> 'a set
+val set: 'a list -> 'a set
 
-val map : ('k * 'v) list -> ('k, 'v) map
+val map: ('k * 'v) list -> ('k, 'v) map
 
-val dangerous_unsafe_cast : 'a -> 'b
+val dangerous_unsafe_cast: 'a -> 'b

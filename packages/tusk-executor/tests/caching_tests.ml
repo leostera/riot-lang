@@ -1,14 +1,13 @@
 open Std
 module Test = Std.Test
 
-let make_test_workspace = fun tmpdir ->
-  Tusk_model.Workspace.{
-    root = tmpdir;
-    target_dir_root = Path.(tmpdir / Path.v "target");
-    packages = [];
-    profile_overrides = [];
+let make_test_workspace = fun tmpdir -> Tusk_model.Workspace.{
+  root = tmpdir;
+  target_dir_root = Path.(tmpdir / Path.v "target");
+  packages = [];
+  profile_overrides = [];
 
-  }
+}
 
 let test_cache_store_creation = fun () ->
   match

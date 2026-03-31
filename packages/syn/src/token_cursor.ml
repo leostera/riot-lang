@@ -2,11 +2,11 @@ open Std
 open Std.Collections
 
 type t = {
-  tokens : Token.t array;
-  mutable pos : int;
-  mutable leading_trivia_consumed : bool;
-  length : int;
-  source : string;
+  tokens: Token.t array;
+  mutable pos: int;
+  mutable leading_trivia_consumed: bool;
+  length: int;
+  source: string;
   (* Keep source for span-based debug views. *)
 }
 

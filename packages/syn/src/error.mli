@@ -53,10 +53,10 @@ type id =
   | E0050_MissingModuleExpr
   | E0051_MissingWithKeyword
   | E0052_InvalidModuleName
-val id_to_string : id -> string
+val id_to_string: id -> string
 
-val id_of_string : string -> id option
+val id_of_string: string -> id option
 
-val name : id -> string
+val name: id -> string
 
-val explain : id -> string
+val explain: id -> string

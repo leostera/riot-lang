@@ -61,14 +61,14 @@ type 'a t = 'a option =
     ## Examples
 
     ```ocaml let x = Option.some 5 in assert (x = Some 5) ``` *)
-val some : 'a -> 'a t
+val some: 'a -> 'a t
 
 (** The [`None`] value.
 
     ## Examples
 
     ```ocaml let x : int option = Option.none in assert (x = None) ``` *)
-val none : 'a t
+val none: 'a t
 
 (** # Querying *)
 (** Returns `true` if two options are equal using the provided equality function.
@@ -82,7 +82,7 @@ val none : 'a t
     assert (not (eq (Some 5) None));
     assert (eq None None)
     ``` *)
-val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+val equal: ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
 (** Returns `true` if the option is a [`Some`] value.
 
@@ -91,7 +91,7 @@ val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
     ```ocaml let x = Some 2 in assert (Option.is_some x);
 
     let y = None in assert (not (Option.is_some y)) ``` *)
-val is_some : 'a t -> bool
+val is_some: 'a t -> bool
 
 (** Returns `true` if the option is a [`None`] value.
 
@@ -100,7 +100,7 @@ val is_some : 'a t -> bool
     ```ocaml let x = Some 2 in assert (not (Option.is_none x));
 
     let y = None in assert (Option.is_none y) ``` *)
-val is_none : 'a t -> bool
+val is_none: 'a t -> bool
 
 (** Returns `true` if the option is [`Some`] and the value matches the
     predicate.
@@ -111,7 +111,7 @@ val is_none : 'a t -> bool
     assert (not (Option.is_some_and (fun x -> x > 5) x));
 
     let y = None in assert (not (Option.is_some_and (fun x -> x > 1) y)) ``` *)
-val is_some_and : ('a -> bool) -> 'a t -> bool
+val is_some_and: ('a -> bool) -> 'a t -> bool
 
 (** Returns `true` if the option is [`None`] or the value matches the predicate.
 
@@ -121,7 +121,7 @@ val is_some_and : ('a -> bool) -> 'a t -> bool
 
     assert (is_small None); assert (is_small (Some 5)); assert (not (is_small
     (Some 20))) ``` *)
-val is_none_or : ('a -> bool) -> 'a t -> bool
+val is_none_or: ('a -> bool) -> 'a t -> bool
 
 (** # Transforming *)
 (** Maps an `Option<'a>` to `Option<'b>` by applying a function to the contained
@@ -134,7 +134,7 @@ val is_none_or : ('a -> bool) -> 'a t -> bool
 
     let none_string : string option = None in let none_len = Option.map
     String.length none_string in assert (none_len = None) ``` *)
-val map : ('a -> 'b) -> 'a t -> 'b t
+val map: ('a -> 'b) -> 'a t -> 'b t
 
 (** Returns the result of applying function to [`Some`] value, or default if
     [`None`].
@@ -163,7 +163,7 @@ val map : ('a -> 'b) -> 'a t -> 'b t
 
     let y = None in assert (Option.map_or_default ~default:(fun () -> 2 * k)
     (fun v -> v * v) y = 20) ``` *)
-val map_or : default:'b -> ('a -> 'b) -> 'a t -> 'b
+val map_or: default:'b -> ('a -> 'b) -> 'a t -> 'b
 
 (** Maps an `Option<'a>` to `'b` by applying function to [`Some`], or computing
     default.
@@ -177,9 +177,9 @@ val map_or : default:'b -> ('a -> 'b) -> 'a t -> 'b
 
     let y = None in assert (Option.map_or_else ~default:(fun () -> 2 * k)
     String.length y = 42) ``` *)
-val map_or_default : default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
+val map_or_default: default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
 
-val map_or_else : default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
+val map_or_else: default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
 
 (** # Chaining *)
 (** Returns [`None`] if the first option is [`None`], otherwise returns the
@@ -196,7 +196,7 @@ val map_or_else : default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
 
     let x = None in let y : string option = None in assert (Option.and_ x y =
     None) ``` *)
-val and_ : 'a t -> 'b t -> 'b t
+val and_: 'a t -> 'b t -> 'b t
 
 (** Returns [`None`] if the option is [`None`], otherwise calls function with
     the wrapped value and returns the result.
@@ -214,7 +214,7 @@ val and_ : 'a t -> 'b t -> 'b t
     (* Chaining fallible operations *) let result = Sys.getenv_opt "CONFIG_PATH"
     |> Option.and_then (fun path -> try Some (Fs.read (Path.v path) |>
     Result.unwrap) with _ -> None) |> Option.and_then parse_config ``` *)
-val and_then : 'a t -> ('a -> 'b t) -> 'b t
+val and_then: 'a t -> ('a -> 'b t) -> 'b t
 
 (** Returns the first option if [`Some`], otherwise returns the second option.
 
@@ -226,7 +226,7 @@ val and_then : 'a t -> ('a -> 'b t) -> 'b t
 
     let x = Some 2 in let y = Some 100 in assert (Option.or_ x y = Some 2) ```
 *)
-val or_ : 'a t -> 'a t -> 'a t
+val or_: 'a t -> 'a t -> 'a t
 
 (** Returns the option if [`Some`], otherwise calls function and returns its
     result.
@@ -239,7 +239,7 @@ val or_ : 'a t -> 'a t -> 'a t
     assert (Option.or_else (Some "barbarians") vikings = Some "barbarians");
     assert (Option.or_else None vikings = Some "vikings"); assert
     (Option.or_else None nobody = None) ``` *)
-val or_else : 'a t -> (unit -> 'a t) -> 'a t
+val or_else: 'a t -> (unit -> 'a t) -> 'a t
 
 (** Returns [`Some`] if exactly one of the options is [`Some`], otherwise
     [`None`].
@@ -253,7 +253,7 @@ val or_else : 'a t -> (unit -> 'a t) -> 'a t
     let x = Some 4 in let y = Some 5 in assert (Option.xor x y = None);
 
     let x = None in let y = None in assert (Option.xor x y = None) ``` *)
-val xor : 'a t -> 'a t -> 'a t
+val xor: 'a t -> 'a t -> 'a t
 
 (** # Extracting values *)
 (** Returns the contained [`Some`] value, consuming the option.
@@ -282,7 +282,7 @@ val xor : 'a t -> 'a t -> 'a t
 
     ```ocaml assert (Option.unwrap_or ~default:"bike" (Some "car") = "car");
     assert (Option.unwrap_or ~default:"bike" None = "bike") ``` *)
-val unwrap : 'a t -> 'a
+val unwrap: 'a t -> 'a
 
 (** Returns the contained [`Some`] value or computes it from a closure.
 
@@ -291,7 +291,7 @@ val unwrap : 'a t -> 'a
     ```ocaml let k = 10 in assert (Option.unwrap_or_else ~fn:(fun () -> 2 * k)
     (Some 4) = 4); assert (Option.unwrap_or_else ~fn:(fun () -> 2 * k) None =
     20) ``` *)
-val unwrap_or : default:'a -> 'a t -> 'a
+val unwrap_or: default:'a -> 'a t -> 'a
 
 (** Returns the contained [`Some`] value, consuming the option.
 
@@ -315,7 +315,7 @@ val unwrap_or : default:'a -> 'a t -> 'a
 
     ```ocaml let config = Sys.getenv_opt "CONFIG_FILE" |> Option.expect
     ~msg:"env variable CONFIG_FILE should be set by wrapper script" ``` *)
-val unwrap_or_else : fn:(unit -> 'a) -> 'a t -> 'a
+val unwrap_or_else: fn:(unit -> 'a) -> 'a t -> 'a
 
 (** Consumes the option, panicking if it is [`Some`].
 
@@ -329,52 +329,52 @@ val unwrap_or_else : fn:(unit -> 'a) -> 'a t -> 'a
 
     (* This will panic: *) Option.unwrap_none (Some "value") (* panic: "Called
     Option.unwrap_none on Some: value" *) ``` *)
-val expect : msg:string -> 'a t -> 'a
+val expect: msg:string -> 'a t -> 'a
 
-val unwrap_none : 'a t -> unit
+val unwrap_none: 'a t -> unit
 
 (** # Inspecting *)
 (** Calls function on Some value if present, returns unchanged option *)
-val inspect : ('a -> unit) -> 'a t -> 'a t
+val inspect: ('a -> unit) -> 'a t -> 'a t
 
 (** {1 Iterating} *)
 (** Calls function on Some value if present *)
-val iter : ('a -> unit) -> 'a t -> unit
+val iter: ('a -> unit) -> 'a t -> unit
 
 (** {1 Converting} *)
 (** Convert Some to Ok, None to Error *)
-val ok_or : error:'e -> 'a t -> ('a, 'e) Result.t
+val ok_or: error:'e -> 'a t -> ('a, 'e) Result.t
 
 (** Convert Some to Ok, None to Error computed from function *)
-val ok_or_else : error:(unit -> 'e) -> 'a t -> ('a, 'e) Result.t
+val ok_or_else: error:(unit -> 'e) -> 'a t -> ('a, 'e) Result.t
 
 (** Alias for ok_or *)
-val to_result : error:'e -> 'a t -> ('a, 'e) Result.t
+val to_result: error:'e -> 'a t -> ('a, 'e) Result.t
 
 (** Convert Some to single-element list, None to empty list *)
-val to_list : 'a t -> 'a list
+val to_list: 'a t -> 'a list
 
 (** Transpose Option of Result to Result of Option *)
-val transpose : ('a, 'e) Result.t t -> ('a t, 'e) Result.t
+val transpose: ('a, 'e) Result.t t -> ('a t, 'e) Result.t
 
 (** {1 Filtering} *)
 (** Returns Some if the value matches predicate, otherwise None *)
-val filter : ('a -> bool) -> 'a t -> 'a t
+val filter: ('a -> bool) -> 'a t -> 'a t
 
 (** {1 Flattening} *)
 (** Flatten nested Options *)
-val flatten : 'a t t -> 'a t
+val flatten: 'a t t -> 'a t
 
 (** {1 Zipping} *)
 (** Combine two options into an option of a tuple *)
-val zip : 'a t -> 'b t -> ('a * 'b) t
+val zip: 'a t -> 'b t -> ('a * 'b) t
 
 (** Combine two options with a function *)
-val zip_with : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+val zip_with: ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
 
 (** Unzip an option of a tuple into a tuple of options *)
-val unzip : ('a * 'b) t -> 'a t * 'b t
+val unzip: ('a * 'b) t -> 'a t * 'b t
 
 (** {1 Collecting} *)
 (** Convert list of Options to Option of list, returns None if any is None *)
-val all : 'a t list -> 'a list t
+val all: 'a t list -> 'a list t

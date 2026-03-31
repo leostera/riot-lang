@@ -50,10 +50,9 @@ let home_handler = fun conn _req ->
   |> Conn.with_body html
   |> Conn.send
 
-let about_handler = fun conn _req ->
-  conn
-  |> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework with OTP-style supervision"
-  |> Conn.send
+let about_handler = fun conn _req -> conn
+|> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework with OTP-style supervision"
+|> Conn.send
 
 let api_data_handler = fun conn _req ->
   (* Get the request ID from the response headers (set by request_id middleware) *)
@@ -83,8 +82,9 @@ let api_data_handler = fun conn _req ->
   |> Conn.with_body (Data.Json.to_string data)
   |> Conn.send
 
-let not_found_handler = fun conn _req ->
-  conn |> Conn.respond ~status:NotFound ~body:"404 - Not Found" |> Conn.send
+let not_found_handler = fun conn _req -> conn
+|> Conn.respond ~status:NotFound ~body:"404 - Not Found"
+|> Conn.send
 
 (* Define routes *)
 

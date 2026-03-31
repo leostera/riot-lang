@@ -2,25 +2,25 @@ open Global
 open Collections
 
 type t = {
-  configs : (string, Spec.value) HashMap.t;
-  provider : Provider.t;
+  configs: (string, Spec.value) HashMap.t;
+  provider: Provider.t;
 }
 
 let empty = {configs = HashMap.create (); provider = Provider.empty}
 
 type error =
   | App_not_found of {
-      app : string;
+      app: string;
     }
   | Load_failed of {
-      message : string;
+      message: string;
     }
   | Validation_failed of {
-      app : string;
-      message : string;
+      app: string;
+      message: string;
     }
   | Patch_failed of {
-      message : string;
+      message: string;
     }
 
 let error_to_string =

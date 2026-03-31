@@ -11,14 +11,19 @@ let to_string_error =
   | `Detection_error msg -> "Protocol detection error: " ^ msg
 
 type state = {
-  config : Super.Config.t;
-  handler : Http_handler.t;
-  buffer : string Cell.t;
-  detected : bool Cell.t;
+  config: Super.Config.t;
+  handler: Http_handler.t;
+  buffer: string Cell.t;
+  detected: bool Cell.t;
 }
 
-let make_handler = fun ~config ~handler () ->
-  {config; handler; buffer = Cell.create ""; detected = Cell.create false; }
+let make_handler = fun ~config ~handler () -> {
+  config;
+  handler;
+  buffer = Cell.create "";
+  detected = Cell.create false;
+
+}
 
 let http1_handler =
   Socket_pool.Handler.{

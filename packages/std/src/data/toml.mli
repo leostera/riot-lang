@@ -71,27 +71,27 @@ type value =
           tables. *)
 type error =
   | Invalid_path of {
-      path : string;
+      path: string;
     }
   | File_read_error of {
-      path : string;
-      reason : string;
+      path: string;
+      reason: string;
     }
   | Parse_error of {
-      position : int;
-      context : string;
-      reason : string;
+      position: int;
+      context: string;
+      reason: string;
     }
   | Unterminated_string of {
-      position : int;
+      position: int;
     }
   | Unterminated_array of {
-      position : int;
+      position: int;
     }
   | Unexpected_char of {
-      position : int;
-      found : char;
-      expected : string;
+      position: int;
+      found: char;
+      expected: string;
     }
 (** TOML parsing errors with position information for debugging. *)
 (** {1 Parsing} *)
@@ -121,7 +121,7 @@ type error =
     - Unterminated strings or arrays
     - Unexpected characters
 *)
-val parse : string -> (value, error) result
+val parse: string -> (value, error) result
 
 (** Converts a TOML parse error to a human-readable error message.
 
@@ -129,7 +129,7 @@ val parse : string -> (value, error) result
 
     ```ocaml match Toml.parse "bad.toml" with | Ok _ -> () | Error err ->
     Printf.printf "Error: %s\n" (Toml.error_to_string err) ``` *)
-val error_to_string : error -> string
+val error_to_string: error -> string
 
 (** {1 Extractors} *)
 (** Extracts a string value. Returns [None] if not a string.
@@ -141,7 +141,7 @@ val error_to_string : error -> string
 
     (* Or using extractor: *) Toml.get_string value |> Option.iter
     (Printf.printf "Got: %s\n") ``` *)
-val get_string : value -> string option
+val get_string: value -> string option
 
 (** Extracts an integer value. Returns [None] if not an integer.
 
@@ -152,7 +152,7 @@ val get_string : value -> string option
 
     (* Or using extractor: *) Toml.get_int value |> Option.iter
     (Printf.printf "Port: %d\n") ``` *)
-val get_int : value -> int option
+val get_int: value -> int option
 
 (** Extracts an array value. Returns [None] if not an array.
 
@@ -161,7 +161,7 @@ val get_int : value -> int option
     ```ocaml match Toml.get_array value with | Some items -> List.iter (fun item
     -> match Toml.get_string item with | Some s -> Printf.printf "Item: %s\n" s
     | None -> () ) items | None -> () ``` *)
-val get_array : value -> value list option
+val get_array: value -> value list option
 
 (** Extracts a table (section) as a list of key-value pairs. Returns [None] if
     not a table.
@@ -172,7 +172,7 @@ val get_array : value -> value list option
     specific field *) (match List.assoc_opt "server" fields with | Some
     server_table -> (* process server config *) | None -> Log.warn "No server
     config") | None -> () ``` *)
-val get_table : value -> (string * value) list option
+val get_table: value -> (string * value) list option
 
 (** Converts a TOML value to a string representation for debugging.
 
@@ -181,4 +181,4 @@ val get_table : value -> (string * value) list option
     ```ocaml let toml = Toml.Table
     [("name", Toml.String "my-app");  ("debug", Toml.Bool true)] in
     Printf.printf "%s\n" (Toml.to_string toml) ``` *)
-val to_string : ?indent:int -> value -> string
+val to_string: ?indent:int -> value -> string

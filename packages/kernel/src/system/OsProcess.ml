@@ -9,21 +9,21 @@ type status =
   | Stopped of int
 
 type stdio_config = {
-  stdin :
+  stdin:
     [
       `Null
       | `Pipe
       | `Inherit
       | `File of Fd.t
     ];
-  stdout :
+  stdout:
     [
       `Null
       | `Pipe
       | `Inherit
       | `File of Fd.t
     ];
-  stderr :
+  stderr:
     [
       `Null
       | `Pipe
@@ -34,11 +34,11 @@ type stdio_config = {
 }
 
 type t = {
-  pid : int;
-  stdin_fd : Fd.t option;
-  stdout_fd : Fd.t option;
-  stderr_fd : Fd.t option;
-  mutable status : status;
+  pid: int;
+  stdin_fd: Fd.t option;
+  stdout_fd: Fd.t option;
+  stderr_fd: Fd.t option;
+  mutable status: status;
 }
 
 let pid = fun t -> t.pid
@@ -105,7 +105,7 @@ let spawn = fun ~program ~args ?(env = []) ?cwd ~stdio () ->
             (fun acc ((k, v)) ->
               let kv = k ^ "=" ^ v in
               let without_key =
-                List.filter (fun s -> not (String.starts_with ~prefix:((k ^ "=")) s)) acc
+                List.filter (fun s -> not (String.starts_with ~prefix:((((k ^ "=")))) s)) acc
               in
               kv :: without_key)
             base_env

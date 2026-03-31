@@ -54,39 +54,57 @@ let workspace_build_dir_name = fun ~workspace_root ->
         )
     )
 
-let build_dir_root = fun ~workspace_root ->
-  resolve_build_dir_root ~workspace_root (workspace_build_dir_name ~workspace_root)
+let build_dir_root = fun ~workspace_root -> resolve_build_dir_root
+~workspace_root
+(workspace_build_dir_name ~workspace_root)
 
 (** Get current host triple *)
 let host_target = fun () -> System.Host.to_string System.host_triplet
 
 (** New target-aware path functions *)
-let profile_dir = fun ~workspace_root ~profile ->
-  Path.(build_dir_root ~workspace_root / Path.v profile)
+let profile_dir = fun ~workspace_root ~profile -> Path.(build_dir_root ~workspace_root / Path.v profile)
 
-let target_dir = fun ~workspace_root ~profile ~target ->
-  Path.(profile_dir ~workspace_root ~profile / Path.v target)
+let target_dir = fun ~workspace_root ~profile ~target -> Path.(profile_dir ~workspace_root ~profile
+/ Path.v target)
 
-let out_dir_with_target = fun ~workspace_root ~profile ~target ->
-  Path.(target_dir ~workspace_root ~profile ~target / Path.v "out")
+let out_dir_with_target = fun ~workspace_root ~profile ~target -> Path.(target_dir
+~workspace_root
+~profile
+~target
+/ Path.v "out")
 
-let sandbox_dir_with_target = fun ~workspace_root ~profile ~target ->
-  Path.(target_dir ~workspace_root ~profile ~target / Path.v "sandbox")
+let sandbox_dir_with_target = fun ~workspace_root ~profile ~target -> Path.(target_dir
+~workspace_root
+~profile
+~target
+/ Path.v "sandbox")
 
-let cache_dir_with_target = fun ~workspace_root ~profile ~target ->
-  Path.(target_dir ~workspace_root ~profile ~target / Path.v "cache")
+let cache_dir_with_target = fun ~workspace_root ~profile ~target -> Path.(target_dir
+~workspace_root
+~profile
+~target
+/ Path.v "cache")
 
-let build_lock_path_with_target = fun ~workspace_root ~profile ~target ->
-  Path.(target_dir ~workspace_root ~profile ~target / Path.v "tusk.lock")
+let build_lock_path_with_target = fun ~workspace_root ~profile ~target -> Path.(target_dir
+~workspace_root
+~profile
+~target
+/ Path.v "tusk.lock")
 
 (** Backward compatible functions - default to debug profile + host target *)
 let debug_dir = fun ~workspace_root -> profile_dir ~workspace_root ~profile:"debug"
 
-let cache_dir = fun ~workspace_root ->
-  cache_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+let cache_dir = fun ~workspace_root -> cache_dir_with_target
+~workspace_root
+~profile:"debug"
+~target:(host_target ())
 
-let out_dir = fun ~workspace_root ->
-  out_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+let out_dir = fun ~workspace_root -> out_dir_with_target
+~workspace_root
+~profile:"debug"
+~target:(host_target ())
 
-let sandbox_dir = fun ~workspace_root ->
-  sandbox_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+let sandbox_dir = fun ~workspace_root -> sandbox_dir_with_target
+~workspace_root
+~profile:"debug"
+~target:(host_target ())

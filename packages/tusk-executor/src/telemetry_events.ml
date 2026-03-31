@@ -7,10 +7,10 @@ open Tusk_store
 (** Error types for package builds *)
 type package_error =
   | PlanningFailed of Planning_error.t
-  | ExecutionFailed of { message : string; }
-  | ActionExecutionFailed of { message : string; }
-  | ActionOutputsNotCreated of { missing : Path.t list; }
-  | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list; }
+  | ExecutionFailed of { message: string; }
+  | ActionExecutionFailed of { message: string; }
+  | ActionOutputsNotCreated of { missing: Path.t list; }
+  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list; }
 
 type package_planning_status =
 [
@@ -22,112 +22,112 @@ type package_planning_status =
 
 type Telemetry.event +=
   | BuildStarted of {
-      session_id : Session_id.t;
-      package : Package.t;
-      target : Workspace_planner.target;
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
     }
   | PlanningWorkspaceStarted of {
-      session_id : Session_id.t;
-      target : Workspace_planner.target;
-      package_count : int;
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      package_count: int;
     }
   | PlanningWorkspaceCompleted of {
-      session_id : Session_id.t;
-      target : Workspace_planner.target;
-      duration : Time.Duration.t;
-      planned_count : int;
-      missing_count : int;
-      failed_count : int;
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      duration: Time.Duration.t;
+      planned_count: int;
+      missing_count: int;
+      failed_count: int;
     }
   | PackagePlanningResult of {
-      session_id : Session_id.t;
-      package : Package.t;
-      target : Workspace_planner.target;
-      status : package_planning_status;
-      duration : Time.Duration.t;
-      reason : string option;
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      status: package_planning_status;
+      duration: Time.Duration.t;
+      reason: string option;
     }
   | CompilationStarted of {
-      session_id : Session_id.t;
-      package : Package.t;
-      target : Workspace_planner.target;
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
     }
   | BuildCompleted of {
-      session_id : Session_id.t;
-      package : Package.t;
-      target : Workspace_planner.target;
-      status :
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      status:
         [
           `Fresh
           | `Cached
         ];
-      duration : Time.Duration.t;
+      duration: Time.Duration.t;
     }
   | BuildFailed of {
-      session_id : Session_id.t;
-      package : Package.t;
-      target : Workspace_planner.target;
-      error : package_error;
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      error: package_error;
     }
   | BuildSkipped of {
-      session_id : Session_id.t;
-      package : Package.t;
-      target : Workspace_planner.target;
-      reason : string;
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      reason: string;
     }
   | ActionStarted of {
-      session_id : Session_id.t;
-      package : Package.t;
-      action : Action_node.t;
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
     }
   | ActionCommandStarted of {
-      session_id : Session_id.t;
-      package : Package.t;
-      action : Action_node.t;
-      command : string;
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      command: string;
     }
   | ActionCompleted of {
-      session_id : Session_id.t;
-      package : Package.t;
-      action : Action_node.t;
-      artifact : Artifact.t;
-      status :
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      artifact: Artifact.t;
+      status:
         [
           `Fresh
           | `Cached
         ];
-      duration : Time.Duration.t;
+      duration: Time.Duration.t;
     }
   | ActionFailed of {
-      session_id : Session_id.t;
-      package : Package.t;
-      action : Action_node.t;
-      error : string;
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      error: string;
     }
   | CacheHit of {
-      session_id : Session_id.t;
-      package : Package.t;
-      action : Action_node.t;
-      hash : Crypto.hash;
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      hash: Crypto.hash;
     }
   | CacheMiss of {
-      session_id : Session_id.t;
-      package : Package.t;
-      action : Action_node.t;
-      hash : Crypto.hash;
+      session_id: Session_id.t;
+      package: Package.t;
+      action: Action_node.t;
+      hash: Crypto.hash;
     }
   | WorkspaceStarted of {
-      session_id : Session_id.t;
-      target : Workspace_planner.target;
-      package_count : int;
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      package_count: int;
     }
   | WorkspaceCompleted of {
-      session_id : Session_id.t;
-      target : Workspace_planner.target;
-      total_duration : Time.Duration.t;
-      cached_count : int;
-      built_count : int;
-      failed_count : int;
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      total_duration: Time.Duration.t;
+      cached_count: int;
+      built_count: int;
+      failed_count: int;
     }
 
 let target_to_json = fun target ->

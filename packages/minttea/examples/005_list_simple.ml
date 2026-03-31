@@ -24,8 +24,8 @@ open Minttea.Component
 (* Model: Just the listbox component *)
 
 type model = {
-  list : string Listbox.t;
-  selected : string option;
+  list: string Listbox.t;
+  selected: string option;
 }
 
 (* Sample items for the list *)

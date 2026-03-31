@@ -3,16 +3,20 @@ open Sync
 open Kernel.Collections
 
 type 'a t = {
-  mutable data : 'a option array;
-  mutable front : int;
-  mutable back : int;
-  mutable size : int;
+  mutable data: 'a option array;
+  mutable front: int;
+  mutable back: int;
+  mutable size: int;
 }
 
 let create = fun () -> {data = Array.make 16 None; front = 0; back = 0; size = 0}
 
-let with_capacity = fun capacity ->
-  {data = Array.make (max 1 capacity) None; front = 0; back = 0; size = 0}
+let with_capacity = fun capacity -> {
+  data = Array.make (max 1 capacity) None;
+  front = 0;
+  back = 0;
+  size = 0
+}
 
 let len = fun deque -> deque.size
 
@@ -216,8 +220,8 @@ let of_list = fun elements ->
 let into_iter : type v. v t -> v Iter.Iterator.t = fun deque ->
   let module DequeIter = struct
     type state = {
-      deque : v t;
-      idx : int;
+      deque: v t;
+      idx: int;
     }
 
     type nonrec item = v

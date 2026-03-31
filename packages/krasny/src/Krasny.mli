@@ -8,7 +8,7 @@ open Std
 type format_error = Format_core.format_error =
   | Cannot_build_cst of Syn.build_cst_error
   | Cannot_lower of string
-val format_error_to_string : format_error -> string
+val format_error_to_string: format_error -> string
 
 (** `format_error_to_string err` renders formatter failures into a concise
     human-readable string. *)
@@ -21,19 +21,19 @@ val format_error_to_string : format_error -> string
     purely structural lowering. Broken files also fail because formatting
     requires a successful CST lift. Non-empty formatted output always ends
     with a final newline. *)
-val format : Syn.Parser.parse_result -> (string, format_error) result
+val format: Syn.Parser.parse_result -> (string, format_error) result
 
 (** `syntax_hash result` computes a normalized hash of the parsed concrete
     syntax tree, ignoring formatting-only punctuation and wrappers that
     `krasny` canonicalizes. *)
-val syntax_hash : Syn.Parser.parse_result -> string
+val syntax_hash: Syn.Parser.parse_result -> string
 
 (** `write ~writer result` renders a parse result into the provided writer. *)
-val write : writer:('dst, 'err) IO.Writer.t -> Syn.Parser.parse_result -> (unit, [
-  `Format of format_error
-  | `Write of 'err
-]) result
+val write: writer:('dst, 'err) IO.Writer.t -> Syn.Parser.parse_result -> (unit, [
+    `Format of format_error
+    | `Write of 'err
+  ]) result
 
-module Runner : module type of Runner
+module Runner: module type of Runner
 
-module Report : module type of Report
+module Report: module type of Report

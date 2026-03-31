@@ -35,27 +35,27 @@ open Tusk_model
 module G = Std.Graph.SimpleGraph
 
 type config = {
-  root : Path.t;
-  source_dir : Path.t;
-  allowed_source_files : Path.t list;
-  namespace : string;
-  package : Package.t;
-  toolchain : Tusk_toolchain.t;
-  workspace : Workspace.t;
+  root: Path.t;
+  source_dir: Path.t;
+  allowed_source_files: Path.t list;
+  namespace: string;
+  package: Package.t;
+  toolchain: Tusk_toolchain.t;
+  workspace: Workspace.t;
 }
 
 type t = {
-  config : config;
-  graph : Module_node.t G.t;
-  registry : Module_registry.t;
-  entries : Module_scanner.entry list;
+  config: config;
+  graph: Module_node.t G.t;
+  registry: Module_registry.t;
+  entries: Module_scanner.entry list;
 }
 
 type scan_ctx = {
-  ns : Namespace.t;
-  parent_intf : Module_node.t G.node;
-  parent_impl : Module_node.t G.node;
-  aliases : Module_node.t G.node list;
+  ns: Namespace.t;
+  parent_intf: Module_node.t G.node;
+  parent_impl: Module_node.t G.node;
+  aliases: Module_node.t G.node list;
 }
 
 (** Scan context passed through recursive directory traversal.

@@ -66,7 +66,7 @@
 (** A point in wall-clock time from the system's real-time clock. Can be used
     for timestamps but may not be monotonic. *)
 type t
-val epoch : t
+val epoch: t
 
 (** {1 Accessors} *)
 (** Returns seconds since Unix epoch as an int
@@ -79,7 +79,7 @@ val epoch : t
     (* 1724789251 *)
     ```
 *)
-val secs : t -> int
+val secs: t -> int
 
 (** Returns seconds since Unix epoch as a float, including fractional seconds.
     
@@ -91,7 +91,7 @@ val secs : t -> int
     (* 1724789251.426822 *)
     ```
 *)
-val secs_float : t -> float
+val secs_float: t -> float
 
 (** Returns nanoseconds since Unix epoch as int64.
     
@@ -105,7 +105,7 @@ val secs_float : t -> float
     (* 1724789251426822000L *)
     ```
 *)
-val nanos : t -> int64
+val nanos: t -> int64
 
 (** Creates a system time from floating-point seconds since Unix epoch.
     
@@ -115,7 +115,7 @@ val nanos : t -> int64
     let sys_time = SystemTime.from_seconds 1724789251.426822
     ```
 *)
-val from_seconds : float -> t
+val from_seconds: float -> t
 
 (** Creates a system time from int64 nanoseconds since Unix epoch.
     
@@ -125,7 +125,7 @@ val from_seconds : float -> t
     let sys_time = SystemTime.from_nanos 1724789251426822000L
     ```
 *)
-val from_nanos : int64 -> t
+val from_nanos: int64 -> t
 
 (** {1 Creation} *)
 (** Returns the current system time from the real-time clock.
@@ -145,10 +145,10 @@ val from_nanos : int64 -> t
     ## Note
 
     This can go backwards if the system clock is adjusted. *)
-val now : unit -> t
+val now: unit -> t
 
 (** {1 Duration Operations} *)
-val duration_since_epoch : unit -> Duration.t
+val duration_since_epoch: unit -> Duration.t
 
 (** Returns the time elapsed from [earlier] to the given time.
 
@@ -163,7 +163,7 @@ val duration_since_epoch : unit -> Duration.t
     If the system clock is adjusted backwards between measurements, this may
     panic or return an incorrect duration. For reliable duration measurement,
     use [Instant.duration_since] instead. *)
-val duration_since : earlier:t -> t -> Duration.t
+val duration_since: earlier:t -> t -> Duration.t
 
 (** Returns the time elapsed since this system time. Equivalent to
     [duration_since ~earlier:self (now ())].
@@ -180,7 +180,7 @@ val duration_since : earlier:t -> t -> Duration.t
 
     Subject to clock adjustments. Use [Instant.elapsed] for monotonic time
     measurement. *)
-val elapsed : t -> Duration.t
+val elapsed: t -> Duration.t
 
 (** {1 Arithmetic Operations} *)
 (** Adds a duration to a system time, returning a future time.
@@ -189,7 +189,7 @@ val elapsed : t -> Duration.t
 
     ```ocaml let now = SystemTime.now () in let expiry = SystemTime.add now
     (Duration.from_hours 24) in (* expiry is 24 hours from now *) ``` *)
-val add : t -> Duration.t -> t
+val add: t -> Duration.t -> t
 
 (** Subtracts a duration from a system time, returning a past time.
 
@@ -197,7 +197,7 @@ val add : t -> Duration.t -> t
 
     ```ocaml let now = SystemTime.now () in let yesterday = SystemTime.sub now
     (Duration.from_days 1) ``` *)
-val sub : t -> Duration.t -> t
+val sub: t -> Duration.t -> t
 
 (** {1 Checked Operations} *)
 (** Adds a duration if the result can be represented, returns [None] on
@@ -207,7 +207,7 @@ val sub : t -> Duration.t -> t
 
     ```ocaml match SystemTime.checked_add time Duration.max with | Some future
     -> (* OK *) | None -> (* Overflow - time too far in future *) ``` *)
-val checked_add : t -> Duration.t -> t option
+val checked_add: t -> Duration.t -> t option
 
 (** Subtracts a duration if the result can be represented, returns [None] if it
     would underflow.
@@ -216,7 +216,7 @@ val checked_add : t -> Duration.t -> t option
 
     ```ocaml match SystemTime.checked_sub time (Duration.from_secs 1000000) with
     | Some past -> (* OK *) | None -> (* Would be before epoch *) ``` *)
-val checked_sub : t -> Duration.t -> t option
+val checked_sub: t -> Duration.t -> t option
 
 (** {1 Comparison} *)
 (** Compares two system times. Returns negative if first < second, 0 if equal,
@@ -226,7 +226,7 @@ val checked_sub : t -> Duration.t -> t option
 
     ```ocaml let t1 = SystemTime.now () in sleep 0.1; let t2 = SystemTime.now ()
     in SystemTime.compare t1 t2 (* < 0, t1 is earlier *) ``` *)
-val compare : t -> t -> int
+val compare: t -> t -> int
 
 (** Tests equality of two system times.
 
@@ -234,21 +234,21 @@ val compare : t -> t -> int
 
     ```ocaml let t1 = SystemTime.now () in SystemTime.equal t1 t1 (* true *) ```
 *)
-val equal : t -> t -> bool
+val equal: t -> t -> bool
 
 (** Returns the earlier of two system times.
 
     ## Examples
 
     ```ocaml let earliest = SystemTime.min time1 time2 ``` *)
-val min : t -> t -> t
+val min: t -> t -> t
 
 (** Returns the later of two system times.
 
     ## Examples
 
     ```ocaml let latest = SystemTime.max time1 time2 ``` *)
-val max : t -> t -> t
+val max: t -> t -> t
 
 (** {1 Unix Timestamp Conversion} *)
 (** Converts a system time to a Unix timestamp (seconds since epoch).
@@ -257,14 +257,14 @@ val max : t -> t -> t
 
     ```ocaml let now = SystemTime.now () in let timestamp =
     SystemTime.to_unix_timestamp now ``` *)
-val to_unix_timestamp : t -> int
+val to_unix_timestamp: t -> int
 
 (** Creates a system time from a Unix timestamp (seconds since epoch).
 
     ## Examples
 
     ```ocaml let time = SystemTime.from_unix_timestamp 1234567890 ``` *)
-val from_unix_timestamp : int -> t
+val from_unix_timestamp: int -> t
 
 (** Returns the duration since the Unix epoch (January 1, 1970 00:00:00 UTC).
 
@@ -281,4 +281,4 @@ val from_unix_timestamp : int -> t
 
     Subject to system clock adjustments. The value may jump backwards if the
     system clock is adjusted. *)
-val duration_since_epoch : unit -> Duration.t
+val duration_since_epoch: unit -> Duration.t

@@ -16,34 +16,34 @@ type file_status =
   | Failed
 
 type file_result = {
-  file : Path.t;
-  status : file_status;
-  needs_formatting : bool;
-  error : string option;
-  duration : Time.Duration.t;
+  file: Path.t;
+  status: file_status;
+  needs_formatting: bool;
+  error: string option;
+  duration: Time.Duration.t;
 }
 
 type summary = {
-  total_files : int;
-  already_formatted : int;
-  needs_formatting : int;
-  would_reformat : int;
-  unsafe_to_format : int;
-  formatted_files : int;
-  failed_files : int;
-  duration : Time.Duration.t;
+  total_files: int;
+  already_formatted: int;
+  needs_formatting: int;
+  would_reformat: int;
+  unsafe_to_format: int;
+  formatted_files: int;
+  failed_files: int;
+  duration: Time.Duration.t;
 }
 
 type run_result = {
-  files : file_result list;
-  summary : summary;
+  files: file_result list;
+  summary: summary;
 }
 
 type Message.t +=
-  | ScannerDiscovered of { scanner_ref : unit Ref.t; file : Path.t; }
+  | ScannerDiscovered of { scanner_ref: unit Ref.t; file: Path.t; }
   | ScannerComplete of unit Ref.t
-  | DispatchFileChecked of { result_ref : file_result Ref.t; result : file_result; }
-  | StreamFileResult of { run_ref : unit Ref.t; result : file_result; }
+  | DispatchFileChecked of { result_ref: file_result Ref.t; result: file_result; }
+  | StreamFileResult of { run_ref: unit Ref.t; result: file_result; }
   | StreamCompleted of unit Ref.t
 
 let is_ocaml_source = fun path ->
@@ -79,21 +79,20 @@ let rec walk_dir = fun dir ->
               else
                 [])
 
-let collect_ocaml_files =
-  fun ?(should_ignore = fun _ -> false) ~roots () ->
-    roots |> List.concat_map
-      (fun root ->
-        if should_ignore root then
-          []
-        else
-          match Fs.is_dir root with
-          | Ok true -> walk_dir root
-          | Ok false
-          | Error _ ->
-              if is_ocaml_source root then
-                [ root ]
-              else
-                []) |> List.filter (fun path -> not (should_ignore path)) |> List.sort_uniq compare_paths
+let collect_ocaml_files = fun ?(should_ignore = fun _ -> false) ~roots () ->
+  roots |> List.concat_map
+    (fun root ->
+      if should_ignore root then
+        []
+      else
+        match Fs.is_dir root with
+        | Ok true -> walk_dir root
+        | Ok false
+        | Error _ ->
+            if is_ocaml_source root then
+              [ root ]
+            else
+              []) |> List.filter (fun path -> not (should_ignore path)) |> List.sort_uniq compare_paths
 
 let is_trivia_kind =
   function
@@ -239,8 +238,14 @@ let syntax_hash = fun (result:Syn.Parser.parse_result) ->
   IO.Buffer.add_string buffer (IO.Buffer.contents docstring_buffer);
   IO.Buffer.contents buffer |> Crypto.Sha256.hash_string |> Crypto.Digest.hex
 
-let finalize = fun file start ~status ~needs_formatting ~error ->
-  {file; status; needs_formatting; error; duration = Time.Instant.elapsed start; }
+let finalize = fun file start ~status ~needs_formatting ~error -> {
+  file;
+  status;
+  needs_formatting;
+  error;
+  duration = Time.Instant.elapsed start;
+
+}
 
 let format_file = fun ~mode file ->
   let start = Time.Instant.now () in
@@ -303,11 +308,11 @@ let check_file = fun file -> format_file ~mode:Check file
 let verify_file = fun file -> format_file ~mode:Verify file
 
 type scanner_state = {
-  owner : Pid.t;
-  scanner_ref : unit Ref.t;
-  should_ignore : Path.t -> bool;
-  seen : string HashSet.t;
-  mutable pending : Path.t list;
+  owner: Pid.t;
+  scanner_ref: unit Ref.t;
+  should_ignore: Path.t -> bool;
+  seen: string HashSet.t;
+  mutable pending: Path.t list;
 }
 
 let sorted_directory_entries = fun dir ->
@@ -360,15 +365,15 @@ let start_scanner = fun ~owner ~roots ~scanner_ref ~should_ignore ->
   spawn (fun () -> scanner_loop state)
 
 type dispatch_state = {
-  owner : Pid.t;
-  run_ref : unit Ref.t;
-  scanner_ref : unit Ref.t;
-  pool : Path.t WorkerPool.DynamicWorkerPool.t;
-  result_ref : file_result Ref.t;
-  pending_files : Path.t Queue.t;
-  idle_workers : Path.t WorkerPool.DynamicWorkerPool.worker Queue.t;
-  mutable tasks_in_flight : int;
-  mutable discovery_complete : bool;
+  owner: Pid.t;
+  run_ref: unit Ref.t;
+  scanner_ref: unit Ref.t;
+  pool: Path.t WorkerPool.DynamicWorkerPool.t;
+  result_ref: file_result Ref.t;
+  pending_files: Path.t Queue.t;
+  idle_workers: Path.t WorkerPool.DynamicWorkerPool.worker Queue.t;
+  mutable tasks_in_flight: int;
+  mutable discovery_complete: bool;
 }
 
 let dispatch_ready_workers = fun state ->
@@ -384,8 +389,9 @@ let dispatch_ready_workers = fun state ->
   in
   loop ()
 
-let is_dispatch_complete = fun state ->
-  state.discovery_complete && state.tasks_in_flight = 0 && Queue.is_empty state.pending_files
+let is_dispatch_complete = fun state -> state.discovery_complete
+&& state.tasks_in_flight = 0
+&& Queue.is_empty state.pending_files
 
 let rec dispatch_loop = fun state ->
   if is_dispatch_complete state then
@@ -542,14 +548,29 @@ let run_streaming = fun ~mode ?(concurrency = System.available_parallelism) ?(sh
   in
   collect []
 
-let run_checks_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () ->
-  run_streaming ~mode:Check ?concurrency ?should_ignore ~roots ~on_result ()
+let run_checks_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () -> run_streaming
+~mode:Check
+?concurrency
+?should_ignore
+~roots
+~on_result
+()
 
-let run_verify_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () ->
-  run_streaming ~mode:Verify ?concurrency ?should_ignore ~roots ~on_result ()
+let run_verify_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () -> run_streaming
+~mode:Verify
+?concurrency
+?should_ignore
+~roots
+~on_result
+()
 
-let run_format_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () ->
-  run_streaming ~mode:Format ?concurrency ?should_ignore ~roots ~on_result ()
+let run_format_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () -> run_streaming
+~mode:Format
+?concurrency
+?should_ignore
+~roots
+~on_result
+()
 
 let run_batch = fun ~mode ?(concurrency = System.available_parallelism) ?(should_ignore = fun _ -> false) files ->
   let concurrency = max 1 concurrency in
@@ -567,11 +588,20 @@ let run_batch = fun ~mode ?(concurrency = System.available_parallelism) ?(should
   let duration = Time.Instant.elapsed start in
   {files = results; summary = summarize ~duration results}
 
-let run_checks = fun ?concurrency ?should_ignore files ->
-  run_batch ~mode:Check ?concurrency ?should_ignore files
+let run_checks = fun ?concurrency ?should_ignore files -> run_batch
+~mode:Check
+?concurrency
+?should_ignore
+files
 
-let run_verify = fun ?concurrency ?should_ignore files ->
-  run_batch ~mode:Verify ?concurrency ?should_ignore files
+let run_verify = fun ?concurrency ?should_ignore files -> run_batch
+~mode:Verify
+?concurrency
+?should_ignore
+files
 
-let run_format = fun ?concurrency ?should_ignore files ->
-  run_batch ~mode:Format ?concurrency ?should_ignore files
+let run_format = fun ?concurrency ?should_ignore files -> run_batch
+~mode:Format
+?concurrency
+?should_ignore
+files

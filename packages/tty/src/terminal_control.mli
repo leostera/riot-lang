@@ -35,7 +35,7 @@
     ]} *)
 (** {1 Synchronized Updates} *)
 
-val begin_synchronized_update : Terminal.t -> unit
+val begin_synchronized_update: Terminal.t -> unit
 
 (** [begin_synchronized_update tty] instructs the terminal to buffer updates.
     
@@ -46,7 +46,7 @@ val begin_synchronized_update : Terminal.t -> unit
     
     Not all terminals support this feature. Unsupported terminals will
     ignore these sequences. *)
-val end_synchronized_update : Terminal.t -> unit
+val end_synchronized_update: Terminal.t -> unit
 
 (** [end_synchronized_update tty] flushes buffered updates to the screen.
     
@@ -69,7 +69,7 @@ type cursor_style =
   (** Blinking bar cursor (|) *)
   | SteadyBar
 (** Steady bar cursor *)
-val set_cursor_style : Terminal.t -> cursor_style -> unit
+val set_cursor_style: Terminal.t -> cursor_style -> unit
 
 (** [set_cursor_style tty style] changes the terminal cursor appearance.
     
@@ -77,13 +77,13 @@ val set_cursor_style : Terminal.t -> cursor_style -> unit
     may be ignored or fall back to a default. *)
 (** {1 Line Wrapping} *)
 
-val enable_line_wrap : Terminal.t -> unit
+val enable_line_wrap: Terminal.t -> unit
 
 (** [enable_line_wrap tty] enables automatic line wrapping.
     
     When enabled (the default), text that exceeds the terminal width
     automatically continues on the next line. *)
-val disable_line_wrap : Terminal.t -> unit
+val disable_line_wrap: Terminal.t -> unit
 
 (** [disable_line_wrap tty] disables automatic line wrapping.
     
@@ -93,12 +93,12 @@ val disable_line_wrap : Terminal.t -> unit
 
 (** Window size information including pixel dimensions *)
 type window_size = {
-  rows : int;  (** Terminal height in rows *)
-  columns : int;  (** Terminal width in columns *)
-  width_px : int;  (** Terminal width in pixels (may be 0) *)
-  height_px : int;  (** Terminal height in pixels (may be 0) *)
+  rows: int;  (** Terminal height in rows *)
+  columns: int;  (** Terminal width in columns *)
+  width_px: int;  (** Terminal width in pixels (may be 0) *)
+  height_px: int;  (** Terminal height in pixels (may be 0) *)
 }
-val window_size : Terminal.t -> window_size
+val window_size: Terminal.t -> window_size
 
 (** [window_size tty] queries the terminal size.
     
@@ -110,7 +110,7 @@ val window_size : Terminal.t -> window_size
     rows and columns. *)
 (** {1 Raw Mode Queries} *)
 
-val is_raw_mode_enabled : Terminal.t -> bool
+val is_raw_mode_enabled: Terminal.t -> bool
 
 (** [is_raw_mode_enabled tty] checks if the terminal is in raw mode.
     

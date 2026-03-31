@@ -2,22 +2,22 @@
 (** Abstract type for namespaces *)
 (** Empty namespace *)
 type t
-val empty : t
+val empty: t
 
 (** Create namespace from string (splits on __) *)
-val of_string : string -> t
+val of_string: string -> t
 
 (** Create namespace from list of components *)
-val of_list : string list -> t
+val of_list: string list -> t
 
 (** Append a component to namespace *)
-val append : t -> string -> t
+val append: t -> string -> t
 
 (** Convert to string with __ separator *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** Get list of namespace components *)
-val to_list : t -> string list
+val to_list: t -> string list
 
 (** Check if namespace is empty *)
-val is_empty : t -> bool
+val is_empty: t -> bool

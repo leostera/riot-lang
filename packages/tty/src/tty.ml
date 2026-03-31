@@ -3,8 +3,8 @@ open Std.IO
 
 (** Re-export types from Terminal module *)
 type size = Terminal.size = {
-  rows : int;
-  cols : int;
+  rows: int;
+  cols: int;
 }
 
 type error = Terminal.error =
@@ -16,9 +16,9 @@ type mode = Terminal.mode =
   | Immediate
 
 type input_buffer = Terminal.input_buffer = {
-  data : bytes;  (* 4KB buffer *)
-  mutable pos : int;  (* Current read position *)
-  mutable len : int;  (* Valid data length *)
+  data: bytes;  (* 4KB buffer *)
+  mutable pos: int;  (* Current read position *)
+  mutable len: int;  (* Valid data length *)
 }
 
 type input_mode = Terminal.input_mode =
@@ -26,9 +26,9 @@ type input_mode = Terminal.input_mode =
   (* Traditional single FD mode *)
   | DualFd of {
       (* Dual FD mode for piped input + TTY control *)
-      data_fd : Kernel.Fd.t;  (* stdin for data *)
-      control_fd : Kernel.Fd.t;  (* /dev/tty for control *)
-      mutable active :
+      data_fd: Kernel.Fd.t;  (* stdin for data *)
+      control_fd: Kernel.Fd.t;  (* /dev/tty for control *)
+      mutable active:
         [
           `Data
           | `Control
@@ -36,15 +36,15 @@ type input_mode = Terminal.input_mode =
     }
 
 type t = Terminal.t = {
-  fd : Kernel.Fd.t;  (* Primary TTY fd - used for termios operations *)
-  input : input_mode;  (* Input configuration *)
-  stdout : Kernel.Fd.t;  (* Output file descriptor *)
-  stderr : Kernel.Fd.t;  (* Error output file descriptor *)
-  original_attrs : Kernel.Terminal.termios;
-  mutable size : size;
-  mutable mode : mode;
-  mutable input_buffer : input_buffer option;  (* Buffered input *)
-  mutable data_buffer : input_buffer option;  (* Separate buffer for data FD in dual mode *)
+  fd: Kernel.Fd.t;  (* Primary TTY fd - used for termios operations *)
+  input: input_mode;  (* Input configuration *)
+  stdout: Kernel.Fd.t;  (* Output file descriptor *)
+  stderr: Kernel.Fd.t;  (* Error output file descriptor *)
+  original_attrs: Kernel.Terminal.termios;
+  mutable size: size;
+  mutable mode: mode;
+  mutable input_buffer: input_buffer option;  (* Buffered input *)
+  mutable data_buffer: input_buffer option;  (* Separate buffer for data FD in dual mode *)
 }
 
 (* Helper to open /dev/tty *)
@@ -384,7 +384,7 @@ let rec read_utf8 = fun t ->
           Read (Bytes.sub_string bytes 0 1)
         else
           (
-            match Fs.File.read file bytes ~offset:1 ~len:((len - 1)) with
+            match Fs.File.read file bytes ~offset:1 ~len:((((len - 1)))) with
             | Ok n when n = len - 1 -> Read (Bytes.sub_string bytes 0 len)
             | Ok _ -> Malformed "Incomplete UTF-8 sequence"
             | Error _ -> Malformed "Read error"

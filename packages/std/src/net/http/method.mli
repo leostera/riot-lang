@@ -57,7 +57,7 @@ type t =
   (** PATCH - Partial modification *)
   | Extension of string
 (** Non-standard methods *)
-val of_string : string -> t
+val of_string: string -> t
 
 (** Parses an HTTP method from string. Case-insensitive for standard methods.
 
@@ -65,7 +65,7 @@ val of_string : string -> t
 
     ```ocaml Method.of_string "GET" (* Get *) Method.of_string "get" (* Get *)
     Method.of_string "PURGE" (* Extension "PURGE" *) ``` *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** Converts HTTP method to uppercase string.
 
@@ -73,7 +73,7 @@ val to_string : t -> string
 
     ```ocaml Method.to_string Method.Get (* "GET" *) Method.to_string
     (Method.Extension "PURGE") (* "PURGE" *) ``` *)
-val is_safe : t -> bool
+val is_safe: t -> bool
 
 (** Returns [true] if the method is safe (read-only, doesn't modify state).
 
@@ -83,7 +83,7 @@ val is_safe : t -> bool
 
     ```ocaml Method.is_safe Method.Get (* true *) Method.is_safe Method.Post (*
     false *) ``` *)
-val is_idempotent : t -> bool
+val is_idempotent: t -> bool
 
 (** Returns [true] if the method is idempotent (same result when repeated).
 
@@ -94,7 +94,7 @@ val is_idempotent : t -> bool
     ```ocaml Method.is_idempotent Method.Put (* true - PUT same resource twice =
     same result *) Method.is_idempotent Method.Post (* false - POST twice
     creates two resources *) ``` *)
-val is_cacheable : t -> bool
+val is_cacheable: t -> bool
 
 (** Returns [true] if responses to this method can be cached.
 
@@ -104,14 +104,14 @@ val is_cacheable : t -> bool
 
     ```ocaml Method.is_cacheable Method.Get (* true *) Method.is_cacheable
     Method.Delete (* false *) ``` *)
-val compare : t -> t -> int
+val compare: t -> t -> int
 
 (** Compares two HTTP methods.
 
     ## Examples
 
     ```ocaml Method.compare Method.Get Method.Post (* < 0 *) ``` *)
-val equal : t -> t -> bool
+val equal: t -> t -> bool
 
 (** Checks if two HTTP methods are equal.
 

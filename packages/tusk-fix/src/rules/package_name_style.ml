@@ -32,14 +32,12 @@ let rec find_package_root_components = fun prefix ->
   | "packages" :: package_dir :: _ -> Some (List.rev_append prefix [ "packages"; package_dir ])
   | segment :: rest -> find_package_root_components (segment :: prefix) rest
 
-let package_root_for_file = fun path ->
-  split_path path
-  |> find_package_root_components []
-  |> Option.map (fun components -> Path.v (String.concat "/" components))
+let package_root_for_file = fun path -> split_path path
+|> find_package_root_components []
+|> Option.map (fun components -> Path.v (String.concat "/" components))
 
-let package_toml_for_file = fun path ->
-  package_root_for_file path
-  |> Option.map (fun package_root -> Path.(package_root / Path.v "tusk.toml"))
+let package_toml_for_file = fun path -> package_root_for_file path
+|> Option.map (fun package_root -> Path.(package_root / Path.v "tusk.toml"))
 
 let get_table =
   function
@@ -92,26 +90,24 @@ let is_kebab_case_char =
   | '-' -> true
   | _ -> false
 
-let is_kebab_case =
-  fun name ->
-    String.length name > 0 && String.for_all is_kebab_case_char name && String.exists
-      (
-        function
-        | 'A' .. 'Z' -> true
-        | _ -> false
-      )
-      name |> not
+let is_kebab_case = fun name ->
+  String.length name > 0 && String.for_all is_kebab_case_char name && String.exists
+    (
+      function
+      | 'A' .. 'Z' -> true
+      | _ -> false
+    )
+    name |> not
 
-let has_trailing_separator = fun name ->
-  String.ends_with ~suffix:"-" name || String.ends_with ~suffix:"_" name
+let has_trailing_separator = fun name -> String.ends_with ~suffix:"-" name
+|| String.ends_with ~suffix:"_" name
 
-let make_diagnostic = fun ~suggestion path ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-  ~suggestion:((suggestion ^ " In `" ^ Path.to_string path ^ "`."))
-  ()
+let make_diagnostic = fun ~suggestion path -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
+~suggestion:((((suggestion ^ " In `" ^ Path.to_string path ^ "`."))))
+()
 
 let diagnostics_for_name = fun path name ->
   let starts_with_letter_diagnostic =
@@ -119,7 +115,9 @@ let diagnostics_for_name = fun path name ->
       []
     else
       [
-        make_diagnostic ~suggestion:(("Rename package `" ^ name ^ "` so it starts with a letter")) path;
+        make_diagnostic
+        ~suggestion:(((("Rename package `" ^ name ^ "` so it starts with a letter"))))
+        path;
 
       ]
   in
@@ -129,7 +127,7 @@ let diagnostics_for_name = fun path name ->
     else
       [
         make_diagnostic
-        ~suggestion:(("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only"))
+        ~suggestion:(((("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only"))))
         path;
 
       ]
@@ -138,7 +136,7 @@ let diagnostics_for_name = fun path name ->
     if has_trailing_separator name then
       [
         make_diagnostic
-        ~suggestion:(("Rename package `" ^ name ^ "` so it does not end with `-` or `_`"))
+        ~suggestion:(((("Rename package `" ^ name ^ "` so it does not end with `-` or `_`"))))
         path;
 
       ]
@@ -153,5 +151,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   | Some name -> diagnostics_for_name path name
   | None -> []
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

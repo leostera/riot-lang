@@ -56,7 +56,7 @@ type echo_mode =
   (* Mask with echo character *)
   | None
 (** ## Creation *)
-val make : unit -> t
+val make: unit -> t
 
 (** `make ()` creates a new empty text input.
     
@@ -68,85 +68,85 @@ val make : unit -> t
     - echo_mode: Normal *)
 (** ## Content *)
 
-val value : t -> string
+val value: t -> string
 
 (** `value input` returns the current input value. *)
-val set_value : t -> value:string -> t
+val set_value: t -> value:string -> t
 
 (** `set_value input str` sets the input value and moves cursor to end. *)
-val clear : t -> t
+val clear: t -> t
 
 (** `clear input` clears all text (equivalent to `set_value input ""`). *)
-val is_empty : t -> bool
+val is_empty: t -> bool
 
 (** `is_empty input` returns true if value is empty string. *)
 (** ## Display *)
 
-val set_prompt : t -> prompt:string -> t
+val set_prompt: t -> prompt:string -> t
 
 (** `set_prompt input prompt` sets the text shown before the input (e.g. "> "). *)
-val set_placeholder : t -> placeholder:string -> t
+val set_placeholder: t -> placeholder:string -> t
 
 (** `set_placeholder input text` sets the text shown when input is empty. *)
-val set_width : t -> width:int -> t
+val set_width: t -> width:int -> t
 
 (** `set_width input width` sets the maximum display width.
     
     Input acts as a horizontally scrolling viewport if text exceeds width.
     Set to 0 for unlimited width. *)
-val set_char_limit : t -> limit:int -> t
+val set_char_limit: t -> limit:int -> t
 
 (** `set_char_limit input limit` sets the maximum number of characters.
     
     Prevents typing beyond this limit. Set to 0 for unlimited. *)
 (** ## Echo Mode *)
 
-val set_echo_mode : t -> mode:echo_mode -> t
+val set_echo_mode: t -> mode:echo_mode -> t
 
 (** `set_echo_mode input mode` controls how text is displayed.
     
     - Normal: show actual text
     - Password: show echo character for each char
     - None: show nothing (useful for hidden password entry) *)
-val set_echo_char : t -> char:char -> t
+val set_echo_char: t -> char:char -> t
 
 (** `set_echo_char input c` sets the character used in Password mode (default: '*'). *)
 (** ## Focus *)
 
-val focus : t -> t
+val focus: t -> t
 
 (** `focus input` gives focus to the input (enables editing, shows cursor). *)
-val blur : t -> t
+val blur: t -> t
 
 (** `blur input` removes focus (disables editing, hides cursor). *)
-val is_focused : t -> bool
+val is_focused: t -> bool
 
 (** `is_focused input` returns true if input has focus. *)
 (** ## Cursor *)
 
-val cursor_position : t -> int
+val cursor_position: t -> int
 
 (** `cursor_position input` returns the cursor position (0-based index). *)
-val set_cursor_position : t -> pos:int -> t
+val set_cursor_position: t -> pos:int -> t
 
 (** `set_cursor_position input pos` moves cursor to position (clamped to valid range). *)
 (** ## Validation *)
 
-val set_validator : t -> validator:(string -> (unit, string) result) option -> t
+val set_validator: t -> validator:(string -> (unit, string) result) option -> t
 
 (** `set_validator input validator` sets an optional validation function.
     
     The validator is called after each edit. If it returns `Error msg`,
     the input is marked as invalid (but still editable). *)
-val is_valid : t -> bool
+val is_valid: t -> bool
 
 (** `is_valid input` returns true if validation passed or no validator is set. *)
-val validation_error : t -> string option
+val validation_error: t -> string option
 
 (** `validation_error input` returns the validation error message, if any. *)
 (** ## Input Handling *)
 
-val handle_key : t -> Event.key -> Event.modifier -> t
+val handle_key: t -> Event.key -> Event.modifier -> t
 
 (** `handle_key input key modifier` processes a keyboard event.
     
@@ -161,14 +161,14 @@ val handle_key : t -> Event.key -> Event.modifier -> t
     - Character keys: insert at cursor
     
     Returns updated input. No-op if input is not focused. *)
-val handle_paste : t -> string -> t
+val handle_paste: t -> string -> t
 
 (** `handle_paste input text` inserts pasted text at cursor position.
     
     Respects char_limit. Only works if focused. *)
 (** ## Rendering *)
 
-val view : t -> string
+val view: t -> string
 
 (** `view input` renders the text input for display.
     

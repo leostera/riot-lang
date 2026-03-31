@@ -8,8 +8,8 @@ open Types
 type 'task worker = 'task Types.worker
 
 type 'task t = {
-  coordinator_pid : Pid.t;
-  task_ref : 'task Ref.t;
+  coordinator_pid: Pid.t;
+  task_ref: 'task Ref.t;
 }
 
 include PublicMessages

@@ -13,9 +13,9 @@ type Message.t +=
   | Syscall_unexpected_success
 
 type tracking_state = {
-  mutable registered : bool;
-  mutable register_count : int;
-  mutable deregister_count : int;
+  mutable registered: bool;
+  mutable register_count: int;
+  mutable deregister_count: int;
 }
 
 module Tracking_source = struct

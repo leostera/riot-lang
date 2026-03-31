@@ -45,15 +45,14 @@ let rec flatten_apply = fun expr ->
       (head, arguments @ [ argument ])
   | _ -> (unwrap_expression expr, [])
 
-let positional_arguments =
-  fun arguments ->
-    arguments |> List.filter_map
-      (
-        function
-        | Syn.Cst.Positional expr -> Some expr
-        | Syn.Cst.Labeled _
-        | Syn.Cst.Optional _ -> None
-      )
+let positional_arguments = fun arguments ->
+  arguments |> List.filter_map
+    (
+      function
+      | Syn.Cst.Positional expr -> Some expr
+      | Syn.Cst.Labeled _
+      | Syn.Cst.Optional _ -> None
+    )
 
 let rec expression_last_name = fun expr ->
   match unwrap_expression expr with
@@ -81,17 +80,16 @@ let body_starts_with_yield = fun expr ->
     )
   | other -> is_yield_call other
 
-let make_diagnostic = fun syntax_node ->
-  Api.Diagnostic.make
-  ~severity:Warning
-  ~kind:(Api.Diagnostic.Known {
-    rule_id = package_rule_id;
-    message = explanation.Api.Explanation.message;
+let make_diagnostic = fun syntax_node -> Api.Diagnostic.make
+~severity:Warning
+~kind:(Api.Diagnostic.Known {
+  rule_id = package_rule_id;
+  message = explanation.Api.Explanation.message;
 
-  })
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-  ~suggestion:"Start the loop body with `yield ()` so each iteration cooperates with the scheduler."
-  ()
+})
+~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+~suggestion:"Start the loop body with `yield ()` so each iteration cooperates with the scheduler."
+()
 
 let diagnostic_for_expression =
   function
@@ -108,10 +106,9 @@ let check_tree = fun (ctx:Api.Rule.context) _red_root ->
   |> List.concat_map Api.Traversal.expressions_of_structure_item
   |> List.filter_map diagnostic_for_expression
 
-let rule = fun () ->
-  Api.Rule.make
-  ~id:package_rule_id
-  ~description:explanation.message
-  ~explain:explanation.body
-  ~run:check_tree
-  ()
+let rule = fun () -> Api.Rule.make
+~id:package_rule_id
+~description:explanation.message
+~explain:explanation.body
+~run:check_tree
+()

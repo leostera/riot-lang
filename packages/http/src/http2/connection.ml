@@ -27,27 +27,27 @@ type stream_state =
   | StreamClosed
 
 type stream = {
-  id : int;
-  state : stream_state Cell.t;
-  window_size : int Cell.t;
-  headers : Hpack.header list Cell.t;
-  data_chunks : bytes list Cell.t;
+  id: int;
+  state: stream_state Cell.t;
+  window_size: int Cell.t;
+  headers: Hpack.header list Cell.t;
+  data_chunks: bytes list Cell.t;
 }
 
 type settings = {
-  header_table_size : int Cell.t;
-  enable_push : bool Cell.t;
-  max_concurrent_streams : int option Cell.t;
-  initial_window_size : int Cell.t;
-  max_frame_size : int Cell.t;
-  max_header_list_size : int option Cell.t;
+  header_table_size: int Cell.t;
+  enable_push: bool Cell.t;
+  max_concurrent_streams: int option Cell.t;
+  initial_window_size: int Cell.t;
+  max_frame_size: int Cell.t;
+  max_header_list_size: int option Cell.t;
 }
 
 type config = {
-  max_frame_size : int;
-  initial_window_size : int;
-  max_concurrent_streams : int;
-  enable_push : bool;
+  max_frame_size: int;
+  initial_window_size: int;
+  max_concurrent_streams: int;
+  enable_push: bool;
 }
 
 type role =
@@ -55,30 +55,30 @@ type role =
   | Server
 
 type t = {
-  role : role;
-  state : state Cell.t;
-  streams : (int, stream) HashMap.t;
-  next_stream_id : int Cell.t;
-  connection_window_size : int Cell.t;
-  local_settings : settings;
-  remote_settings : settings;
-  hpack_encoder : Hpack.encoder;
-  hpack_decoder : Hpack.decoder;
-  last_stream_id : int Cell.t;  (** Last stream ID we initiated *)
-  peer_last_stream_id : int Cell.t;  (** Last stream ID peer initiated *)
+  role: role;
+  state: state Cell.t;
+  streams: (int, stream) HashMap.t;
+  next_stream_id: int Cell.t;
+  connection_window_size: int Cell.t;
+  local_settings: settings;
+  remote_settings: settings;
+  hpack_encoder: Hpack.encoder;
+  hpack_decoder: Hpack.decoder;
+  last_stream_id: int Cell.t;  (** Last stream ID we initiated *)
+  peer_last_stream_id: int Cell.t;  (** Last stream ID peer initiated *)
 }
 
 type event =
-  | HeadersReceived of { stream_id : int; headers : Hpack.header list; end_stream : bool; }
-  | DataReceived of { stream_id : int; data : bytes; end_stream : bool; }
+  | HeadersReceived of { stream_id: int; headers: Hpack.header list; end_stream: bool; }
+  | DataReceived of { stream_id: int; data: bytes; end_stream: bool; }
   | SettingsReceived of Frame.setting list
   | SettingsAckReceived
-  | PingReceived of { data : string; }
-  | PingAckReceived of { data : string; }
-  | GoawayReceived of { last_stream_id : int; error_code : Frame.error_code; debug_data : string; }
-  | RstStreamReceived of { stream_id : int; error_code : Frame.error_code; }
-  | WindowUpdateReceived of { stream_id : int; increment : int; }
-  | PriorityReceived of { stream_id : int; stream_dependency : int; weight : int; exclusive : bool; }
+  | PingReceived of { data: string; }
+  | PingAckReceived of { data: string; }
+  | GoawayReceived of { last_stream_id: int; error_code: Frame.error_code; debug_data: string; }
+  | RstStreamReceived of { stream_id: int; error_code: Frame.error_code; }
+  | WindowUpdateReceived of { stream_id: int; increment: int; }
+  | PriorityReceived of { stream_id: int; stream_dependency: int; weight: int; exclusive: bool; }
 
 (** {1 Constants} *)
 
@@ -94,16 +94,15 @@ let default_config = {
 
 }
 
-let create_settings = fun config ->
-  {
-    header_table_size = Cell.create 4_096;
-    enable_push = Cell.create config.enable_push;
-    max_concurrent_streams = Cell.create (Some config.max_concurrent_streams);
-    initial_window_size = Cell.create config.initial_window_size;
-    max_frame_size = Cell.create config.max_frame_size;
-    max_header_list_size = Cell.create None;
+let create_settings = fun config -> {
+  header_table_size = Cell.create 4_096;
+  enable_push = Cell.create config.enable_push;
+  max_concurrent_streams = Cell.create (Some config.max_concurrent_streams);
+  initial_window_size = Cell.create config.initial_window_size;
+  max_frame_size = Cell.create config.max_frame_size;
+  max_header_list_size = Cell.create None;
 
-  }
+}
 
 (** {1 Connection Lifecycle} *)
 

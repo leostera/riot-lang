@@ -12,30 +12,29 @@ type target =
 
 module BuildStats = struct
   type t = {
-    mutable start_time : Time.Instant.t option;
-    mutable end_time : Time.Instant.t option;
-    mutable packages_built : int;
-    mutable packages_failed : int;
-    mutable total_modules : int;
-    mutable cache_hits : int;
-    mutable cache_misses : int;
-    mutable action_cache_hits : int;
-    mutable action_cache_misses : int;
+    mutable start_time: Time.Instant.t option;
+    mutable end_time: Time.Instant.t option;
+    mutable packages_built: int;
+    mutable packages_failed: int;
+    mutable total_modules: int;
+    mutable cache_hits: int;
+    mutable cache_misses: int;
+    mutable action_cache_hits: int;
+    mutable action_cache_misses: int;
   }
 
-  let make = fun () ->
-    {
-      start_time = None;
-      end_time = None;
-      packages_built = 0;
-      packages_failed = 0;
-      total_modules = 0;
-      cache_hits = 0;
-      cache_misses = 0;
-      action_cache_hits = 0;
-      action_cache_misses = 0;
+  let make = fun () -> {
+    start_time = None;
+    end_time = None;
+    packages_built = 0;
+    packages_failed = 0;
+    total_modules = 0;
+    cache_hits = 0;
+    cache_misses = 0;
+    action_cache_hits = 0;
+    action_cache_misses = 0;
 
-    }
+  }
 
   let mark_started = fun t -> t.start_time <- Some (Time.Instant.now ())
 
@@ -79,114 +78,110 @@ end
 (** Request types that can be sent to the server *)
 type request =
   | Build of {
-      client_pid : Pid.t;
-      target : target;
-      scope : build_scope;
-      target_arch : string option;
-      session_id : Session_id.t;
+      client_pid: Pid.t;
+      target: target;
+      scope: build_scope;
+      target_arch: string option;
+      session_id: Session_id.t;
     }
   | Ping of {
-      client_pid : Pid.t;
+      client_pid: Pid.t;
     }
   | ScanWorkspace of {
-      client_pid : Pid.t;
-      current_dir : Path.t;
+      client_pid: Pid.t;
+      current_dir: Path.t;
     }
   | GetWorkspaceConfig of {
-      client_pid : Pid.t;
+      client_pid: Pid.t;
     }
   | GetPackageInfo of {
-      client_pid : Pid.t;
-      package_name : string;
+      client_pid: Pid.t;
+      package_name: string;
     }
   | GetPackageGraph of {
-      client_pid : Pid.t;
+      client_pid: Pid.t;
     }
   | FindExecutable of {
-      client_pid : Pid.t;
-      name : string;
+      client_pid: Pid.t;
+      name: string;
     }
   | FindArtifact of {
-      client_pid : Pid.t;
-      package : string;
-      kind : string;  (* currently only "binary" *)
-      name : string;
+      client_pid: Pid.t;
+      package: string;
+      kind: string;  (* currently only "binary" *)
+      name: string;
     }
   | FormatFile of {
-      client_pid : Pid.t;
-      file_path : Path.t;
-      check_only : bool;
+      client_pid: Pid.t;
+      file_path: Path.t;
+      check_only: bool;
     }
   | FormatCode of {
-      client_pid : Pid.t;
-      code : string;
-      file_path : Path.t option;
+      client_pid: Pid.t;
+      code: string;
+      file_path: Path.t option;
     }
   | FormatAll of {
-      client_pid : Pid.t;
-      mode :
+      client_pid: Pid.t;
+      mode:
         [
           `check
           | `write
         ];
     }
   | NewPackage of {
-      client_pid : Pid.t;
-      path : Path.t;
-      name : string;
-      is_library : bool;
+      client_pid: Pid.t;
+      path: Path.t;
+      name: string;
+      is_library: bool;
     }
 
 (** Response types from the server *)
 type response =
   | Pong
   | WorkspaceScanned
-  | BuildStarted of { session_id : Session_id.t; started_at : Datetime.t; }
-  | BuildEvent of { session_id : Session_id.t; event : Telemetry.event; }
+  | BuildStarted of { session_id: Session_id.t; started_at: Datetime.t; }
+  | BuildEvent of { session_id: Session_id.t; event: Telemetry.event; }
   | BuildCompleted of {
-      session_id : Session_id.t;
-      completed_at : Datetime.t;
-      stats : BuildStats.t;
-      results : Tusk_executor.Package_builder.build_result list;
+      session_id: Session_id.t;
+      completed_at: Datetime.t;
+      stats: BuildStats.t;
+      results: Tusk_executor.Package_builder.build_result list;
     }
   | BuildFailed of {
-      session_id : Session_id.t;
-      failed_at : Datetime.t;
-      stats : BuildStats.t;
-      built : Tusk_executor.Package_builder.build_result list;
-      errors : Tusk_executor.Package_builder.build_result list;
+      session_id: Session_id.t;
+      failed_at: Datetime.t;
+      stats: BuildStats.t;
+      built: Tusk_executor.Package_builder.build_result list;
+      errors: Tusk_executor.Package_builder.build_result list;
     }
-  | PlanningFailed of { session_id : Session_id.t; failed_at : Datetime.t; reason : string; }
+  | PlanningFailed of { session_id: Session_id.t; failed_at: Datetime.t; reason: string; }
   | CycleDetected of {
-      session_id : Session_id.t;
-      cycle_nodes : string list;
-      detected_at : Datetime.t;  (* List of package names involved in the cycle *)
+      session_id: Session_id.t;
+      cycle_nodes: string list;
+      detected_at: Datetime.t;  (* List of package names involved in the cycle *)
     }
-  | WorkspaceConfig of { workspace : Workspace.t; toolchain : Tusk_toolchain.t; }
-  | PackageInfo of { package : Package.t; sources : Path.t list; dependencies : Package.t list; }
-  | PackageGraph of { nodes : Package.t list; }
-  | ExecutableFound of { package : string; binary : string; }
+  | WorkspaceConfig of { workspace: Workspace.t; toolchain: Tusk_toolchain.t; }
+  | PackageInfo of { package: Package.t; sources: Path.t list; dependencies: Package.t list; }
+  | PackageGraph of { nodes: Package.t list; }
+  | ExecutableFound of { package: string; binary: string; }
   | ExecutableNotFound
-  | ArtifactFound of { path : Path.t; }
-  | ArtifactNotFound of { error : string; }
-  | FormatResult of { formatted_code : string; changed : bool; }
-  | FormatError of { error : string; }
-  | FormatAllResult of {
-      files_formatted : int;
-      files_failed : int;
-      errors : (string * string) list;
-    }
-  | PackageCreated of { path : string; name : string; }
-  | PackageCreationError of { error : string; }
+  | ArtifactFound of { path: Path.t; }
+  | ArtifactNotFound of { error: string; }
+  | FormatResult of { formatted_code: string; changed: bool; }
+  | FormatError of { error: string; }
+  | FormatAllResult of { files_formatted: int; files_failed: int; errors: (string * string) list; }
+  | PackageCreated of { path: string; name: string; }
+  | PackageCreationError of { error: string; }
   | PackageNotFound of {
-      session_id : Session_id.t;
-      package_name : string;
-      available_packages : string list;
+      session_id: Session_id.t;
+      package_name: string;
+      available_packages: string list;
     }
   | PackagesNotFound of {
-      session_id : Session_id.t;
-      package_names : string list;
-      available_packages : string list;
+      session_id: Session_id.t;
+      package_names: string list;
+      available_packages: string list;
     }
 
 (** Message types for server communication *)

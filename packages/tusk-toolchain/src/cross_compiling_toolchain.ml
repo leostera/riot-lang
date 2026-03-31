@@ -3,10 +3,10 @@ open Tusk_model
 
 (** Cross-compilation toolchain detection and configuration *)
 type detection_result = {
-  sysroot : Path.t option;
-  bin_dir : Path.t option;
-  bin_prefix : string;
-  c_compiler : Path.t option;
+  sysroot: Path.t option;
+  bin_dir: Path.t option;
+  bin_prefix: string;
+  c_compiler: Path.t option;
 }
 
 (** Derive binary prefix from target triplet *)
@@ -64,13 +64,12 @@ let first_existing = fun paths ->
       | _ -> None)
     paths
 
-let bundled_c_compiler = fun ~toolchain_root ~bin_prefix ->
-  first_existing
-  [
-    Path.(toolchain_root / v "bin" / v (bin_prefix ^ "gcc"));
-    Path.(toolchain_root / v "gcc" / v "bin" / v (bin_prefix ^ "gcc"));
+let bundled_c_compiler = fun ~toolchain_root ~bin_prefix -> first_existing
+[
+  Path.(toolchain_root / v "bin" / v (bin_prefix ^ "gcc"));
+  Path.(toolchain_root / v "gcc" / v "bin" / v (bin_prefix ^ "gcc"));
 
-  ]
+]
 
 let bundled_sysroot = fun ~toolchain_root ~target_triplet ->
   let target = System.Host.to_string target_triplet in

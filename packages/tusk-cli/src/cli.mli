@@ -1,3 +1,3 @@
 open Std
 
-val main : args:string list -> (unit, exn) result
+val main: args:string list -> (unit, exn) result

@@ -8,14 +8,14 @@ open Std.Collections
    we use a unified request type for simplicity. *)
 
 type ('req, 'res) handler = {
-  method_ : string;
-  fn : ('res -> unit) -> 'req -> unit;
+  method_: string;
+  fn: ('res -> unit) -> 'req -> unit;
 }
 
 type ('request, 'response) t = {
-  protocol_mod :
+  protocol_mod:
     (module Common.ApplicationProtocol with type request = 'request and type response = 'response);
-  handlers : ('request, 'response) handler list;
+  handlers: ('request, 'response) handler list;
 }
 
 let create = fun ~protocol:protocol_mod ~methods:handlers -> {protocol_mod; handlers}
@@ -80,7 +80,6 @@ let handle_message = fun (type req res) (server:(req, res) t) (reply:string -> u
                   else
                     (* Regular request - response expected *)
                     let typed_reply = fun res ->
-                      (* Convert typed response to JSON *)
                       let response_json = P.response_to_json res in
                       (* Wrap in JSON-RPC response *)
                       let id = Option.unwrap_or request.id ~default:Common.Null in

@@ -1,16 +1,16 @@
 open Std
 
 type t = {
-  fg : Color.t option;
-  bg : Color.t option;
-  bold : bool;
-  faint : bool;
-  italic : bool;
-  underline : bool;
-  blink : bool;
-  reverse : bool;
-  strikethrough : bool;
-  overline : bool;
+  fg: Color.t option;
+  bg: Color.t option;
+  bold: bool;
+  faint: bool;
+  italic: bool;
+  underline: bool;
+  blink: bool;
+  reverse: bool;
+  strikethrough: bool;
+  overline: bool;
 }
 
 let default = {

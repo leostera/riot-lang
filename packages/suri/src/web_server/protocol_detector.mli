@@ -18,7 +18,7 @@ type error =
 [
   | `Detection_error of string
 ]
-val to_string_error : error -> string
+val to_string_error: error -> string
 
 (** Create protocol detector
 
@@ -26,19 +26,17 @@ val to_string_error : error -> string
     @param handler Request handler (used by both HTTP/1.1 and HTTP/2)
     @return Initial state
 *)
-val make_handler : config:Super.Config.t -> handler:Http_handler.t -> unit -> state
+val make_handler: config:Super.Config.t -> handler:Http_handler.t -> unit -> state
 
-val handle_close : Socket_pool.Connection.t -> state -> unit
+val handle_close: Socket_pool.Connection.t -> state -> unit
 
-val handle_connection : Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+val handle_connection: Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
 
-val handle_data : string -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+val handle_data: string -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
 
-val handle_error : error -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+val handle_error: error -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
 
-val handle_shutdown : Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
+val handle_shutdown: Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result
 
-val handle_message : Std.Message.t ->
-Socket_pool.Connection.t ->
-state ->
-(state, error) Socket_pool.Handler.handler_result
+val handle_message:
+  Std.Message.t -> Socket_pool.Connection.t -> state -> (state, error) Socket_pool.Handler.handler_result

@@ -11,8 +11,8 @@ module Cell = Sync.Cell
 
 (** HPACK: Header Compression for HTTP/2 (RFC 7541) *)
 type header = {
-  name : string;
-  value : string;
+  name: string;
+  value: string;
 }
 
 type encoding_type =
@@ -139,13 +139,16 @@ let header_size = fun header -> String.length header.name + String.length header
 
 module DynamicTable = struct
   type t = {
-    entries : header list Cell.t;
-    current_size : int Cell.t;
-    max_size : int Cell.t;
+    entries: header list Cell.t;
+    current_size: int Cell.t;
+    max_size: int Cell.t;
   }
 
-  let create = fun max_size ->
-    {entries = Cell.create []; current_size = Cell.create 0; max_size = Cell.create max_size}
+  let create = fun max_size -> {
+    entries = Cell.create [];
+    current_size = Cell.create 0;
+    max_size = Cell.create max_size
+  }
 
   let size = fun t -> Cell.get t.current_size
 
@@ -322,16 +325,15 @@ end
 (** {1 Encoder} *)
 
 type encoder = {
-  dynamic_table : DynamicTable.t;
-  sensitive_headers : string list Cell.t;
+  dynamic_table: DynamicTable.t;
+  sensitive_headers: string list Cell.t;
 }
 
-let create_encoder = fun ?(max_dynamic_table_size = 4_096) () ->
-  {
-    dynamic_table = DynamicTable.create max_dynamic_table_size;
-    sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ];
+let create_encoder = fun ?(max_dynamic_table_size = 4_096) () -> {
+  dynamic_table = DynamicTable.create max_dynamic_table_size;
+  sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ];
 
-  }
+}
 
 let update_max_table_size = fun encoder new_size ->
   DynamicTable.update_max_size encoder.dynamic_table new_size
@@ -455,11 +457,12 @@ let encode = fun encoder ~headers ?(sensitive_headers = []) ->
 (** {1 Decoder} *)
 
 type decoder = {
-  dynamic_table : DynamicTable.t;
+  dynamic_table: DynamicTable.t;
 }
 
-let create_decoder = fun ?(max_dynamic_table_size = 4_096) () ->
-  {dynamic_table = DynamicTable.create max_dynamic_table_size}
+let create_decoder = fun ?(max_dynamic_table_size = 4_096) () -> {
+  dynamic_table = DynamicTable.create max_dynamic_table_size
+}
 
 let update_max_table_size = fun decoder new_size ->
   DynamicTable.update_max_size decoder.dynamic_table new_size

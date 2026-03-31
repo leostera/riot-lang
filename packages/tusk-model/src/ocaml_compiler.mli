@@ -26,11 +26,11 @@ type warning =
   (** Warning 49: missing cmi when looking up module alias *)
   | All
 (** All warnings *)
-val warning_to_number : warning -> int
+val warning_to_number: warning -> int
 
-val warning_to_string : warning -> string
+val warning_to_string: warning -> string
 
-val warning_of_string : string -> warning option
+val warning_of_string: string -> warning option
 
 (** OCaml compiler flags - commonly used options *)
 type flag =
@@ -52,6 +52,6 @@ type compilation_kind =
   (** ocamlc - fast compilation, slower runtime *)
   | Native
 (** ocamlopt - slower compilation, optimized runtime *)
-val compilation_kind_to_string : compilation_kind -> string
+val compilation_kind_to_string: compilation_kind -> string
 
-val compilation_kind_of_string : string -> compilation_kind option
+val compilation_kind_of_string: string -> compilation_kind option

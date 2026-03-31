@@ -72,7 +72,7 @@ type 'a t
 
     match Task.await failing_task with | Ok _ -> assert false | Error exn ->
     println "Caught: %s" (Printexc.to_string exn) ``` *)
-val async : (unit -> 'a) -> 'a t
+val async: (unit -> 'a) -> 'a t
 
 (** Waits for a task to complete and returns its result.
 
@@ -94,7 +94,7 @@ val async : (unit -> 'a) -> 'a t
 
     This function blocks the calling thread. Don't call it from within another
     task if you need to maintain parallelism. *)
-val await : 'a t -> ('a, exn) result
+val await: 'a t -> ('a, exn) result
 
 (** Waits for multiple tasks to complete.
 
@@ -127,4 +127,4 @@ val await : 'a t -> ('a, exn) result
 
     Results are returned in the same order as the input task list, regardless of
     completion order. *)
-val await_all : 'a t list -> ('a, exn) result list
+val await_all: 'a t list -> ('a, exn) result list

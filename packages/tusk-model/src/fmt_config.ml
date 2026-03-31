@@ -2,7 +2,7 @@ open Std
 open Std.Data
 
 type t = {
-  ignore_patterns : string list;
+  ignore_patterns: string list;
 }
 
 let empty = {ignore_patterns = []}

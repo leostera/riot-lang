@@ -6,17 +6,17 @@ type t = bytes
 
 (** {1 External Functions} *)
 
-external v4 : unit -> bytes = "kernel_uuid_v4"
+external v4: unit -> bytes = "kernel_uuid_v4"
 
-external v7 : unit -> bytes = "kernel_uuid_v7"
+external v7: unit -> bytes = "kernel_uuid_v7"
 
-external to_string : bytes -> string = "kernel_uuid_to_string"
+external to_string: bytes -> string = "kernel_uuid_to_string"
 
-external of_string_native : string -> bytes = "kernel_uuid_of_string"
+external of_string_native: string -> bytes = "kernel_uuid_of_string"
 
-external compare : bytes -> bytes -> int = "kernel_uuid_compare"
+external compare: bytes -> bytes -> int = "kernel_uuid_compare"
 
-external is_nil_native : bytes -> bool = "kernel_uuid_is_nil"
+external is_nil_native: bytes -> bool = "kernel_uuid_is_nil"
 
 (** {1 Safe Wrappers} *)
 

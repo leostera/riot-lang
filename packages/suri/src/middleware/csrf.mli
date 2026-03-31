@@ -98,12 +98,13 @@
 
 open Std
 
-val middleware : ?param_name:string ->
-?header_name:string ->
-?skip_safe_methods:bool ->
-?skip:(Conn.t -> bool) ->
-unit ->
-(conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
+val middleware:
+  ?param_name:string ->
+  ?header_name:string ->
+  ?skip_safe_methods:bool ->
+  ?skip:(Conn.t -> bool) ->
+  unit ->
+  (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
 (** CSRF protection middleware.
     
@@ -126,7 +127,7 @@ unit ->
         router routes;
       ]
     ]} *)
-val get_token : Conn.t -> string
+val get_token: Conn.t -> string
 
 (** Get current CSRF token for this request.
     
@@ -138,7 +139,7 @@ val get_token : Conn.t -> string
       let token = Csrf.get_token conn in
       (* Use token in custom HTML *)
     ]} *)
-val hidden_field : Conn.t -> 'msg Component.t
+val hidden_field: Conn.t -> 'msg Component.t
 
 (** Generate HTML hidden input field with CSRF token.
     
@@ -155,7 +156,7 @@ val hidden_field : Conn.t -> 'msg Component.t
           Component.button [Component.text "Submit"];
         ]
     ]} *)
-val meta_tag : Conn.t -> 'msg Component.t
+val meta_tag: Conn.t -> 'msg Component.t
 
 (** Generate HTML meta tag for AJAX requests.
     

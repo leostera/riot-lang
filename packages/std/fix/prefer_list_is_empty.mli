@@ -1,3 +1,3 @@
-val rule : unit -> Fixme.Rule.t
+val rule: unit -> Fixme.Rule.t
 
-val explanations : unit -> Fixme.Explanation.t list
+val explanations: unit -> Fixme.Explanation.t list

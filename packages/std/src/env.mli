@@ -26,7 +26,7 @@
 
 (** # Command Line *)
 
-val args : string list
+val args: string list
 
 (** Command-line arguments passed to the program.
 
@@ -45,7 +45,7 @@ val args : string list
     (List.tl Env.args) ``` *)
 (** # Working Directory *)
 
-val current_dir : unit -> (Path.t, Path.error) Result.t
+val current_dir: unit -> (Path.t, Path.error) Result.t
 
 (** Returns the current working directory.
 
@@ -58,7 +58,7 @@ val current_dir : unit -> (Path.t, Path.error) Result.t
     (* Build relative paths *) let config_path = Env.current_dir () |>
     Result.map (fun cwd -> cwd / Path.v "config.toml") |> Result.expect
     ~msg:"Cannot determine config path" ``` *)
-val set_current_dir : Path.t -> (unit, Path.error) Result.t
+val set_current_dir: Path.t -> (unit, Path.error) Result.t
 
 (** Changes the current working directory.
 
@@ -78,7 +78,7 @@ val set_current_dir : Path.t -> (unit, Path.error) Result.t
     - Directory doesn't exist
     - Permission denied
     - Path is not a directory *)
-val home_dir : unit -> Path.t option
+val home_dir: unit -> Path.t option
 
 (** Returns the user's home directory.
 
@@ -111,7 +111,7 @@ type 't var_type =
   (** Boolean values (true/false, 1/0, yes/no) *)
   | Char : char var_type
 (** Single character values *)
-val var : 't var_type -> name:string -> 't option
+val var: 't var_type -> name:string -> 't option
 
 (** Reads and parses a typed environment variable.
     
@@ -158,7 +158,7 @@ val var : 't var_type -> name:string -> 't option
     - `Char`: Takes first character of the string
     - `String`: Returns value as-is
 *)
-val set_var : name:string -> value:string -> 't option
+val set_var: name:string -> value:string -> 't option
 
 (** Sets an environment variable.
 
@@ -172,7 +172,7 @@ val set_var : name:string -> value:string -> 't option
     (* Save and restore *) let old_path = Env.set_var ~name:"PATH"
     ~value:new_path in (* ... do work ... *) Option.iter (fun p -> Env.set_var
     ~name:"PATH" ~value:p |> ignore ) old_path ``` *)
-val vars : unit -> (string * string) list
+val vars: unit -> (string * string) list
 
 (** Returns all environment variables as key-value pairs.
 

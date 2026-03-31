@@ -1,1 +1,1 @@
-val make : unit -> Rule.t
+val make: unit -> Rule.t

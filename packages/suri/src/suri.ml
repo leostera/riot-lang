@@ -24,18 +24,17 @@ module Connection = Socket_pool.Connection
 module Handler = Web_server.Handler
 
 (** Suri.config () -> creates configuration with optional parameters *)
-let config = fun ?(host = "0.0.0.0") ?(port = 4_000) ?(acceptors = Std.System.available_parallelism) ?(max_request_line_length = 8_192) ?(max_header_count = 100) ?(max_header_length = 8_192) ?(buffer_size = 4_096) ?(liveview_secret = "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS") () ->
-  Config.{
-    host;
-    port;
-    acceptors;
-    max_request_line_length;
-    max_header_count;
-    max_header_length;
-    buffer_size;
-    liveview_secret;
+let config = fun ?(host = "0.0.0.0") ?(port = 4_000) ?(acceptors = Std.System.available_parallelism) ?(max_request_line_length = 8_192) ?(max_header_count = 100) ?(max_header_length = 8_192) ?(buffer_size = 4_096) ?(liveview_secret = "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS") () -> Config.{
+  host;
+  port;
+  acceptors;
+  max_request_line_length;
+  max_header_count;
+  max_header_length;
+  buffer_size;
+  liveview_secret;
 
-  }
+}
 
 (** Suri.start_link app -> starts the web server
     
@@ -45,7 +44,6 @@ let config = fun ?(host = "0.0.0.0") ?(port = 4_000) ?(acceptors = Std.System.av
 let start_link = fun ?(config = Config.default) (app:Middleware.Pipeline.t) ->
   (* Internal adapter: converts middleware pipeline to low-level handler *)
   let handler = fun socket_conn req ->
-    (* Create middleware connection *)
     let conn = Middleware.Conn.make socket_conn req in
     (* Run the middleware pipeline *)
     let conn = Middleware.Pipeline.run conn app in

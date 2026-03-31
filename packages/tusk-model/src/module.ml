@@ -2,10 +2,10 @@
 open Std
 
 type t = {
-  module_name : Module_name.t;
-  namespace : Namespace.t;
-  filename : Path.t;
-  kind :
+  module_name: Module_name.t;
+  namespace: Namespace.t;
+  filename: Path.t;
+  kind:
     [
       `implementation
       | `interface

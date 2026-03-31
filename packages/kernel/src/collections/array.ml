@@ -5,8 +5,8 @@ include Stdlib.Array
 let into_iter : type item. item array -> item Iter.Iterator.t = fun arr ->
   let module ArrayIter = struct
     type state = {
-      arr : item array;
-      idx : int;
+      arr: item array;
+      idx: int;
     }
 
     type nonrec item = item
@@ -25,8 +25,8 @@ let into_iter : type item. item array -> item Iter.Iterator.t = fun arr ->
 let to_mut_iter : type item. item array -> item Iter.MutIterator.t = fun arr ->
   let module ArrayMutIter = struct
     type state = {
-      arr : item array;
-      mutable idx : int;
+      arr: item array;
+      mutable idx: int;
     }
 
     type nonrec item = item

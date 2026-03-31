@@ -93,8 +93,8 @@ let is_disjoint = fun set1 set2 ->
 let into_iter : type item. item t -> item Iter.Iterator.t = fun set ->
   let module SetIter = struct
     type state = {
-      items : item list;
-      pos : int;
+      items: item list;
+      pos: int;
     }
 
     type nonrec item = item
@@ -114,8 +114,8 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun set ->
 let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun set ->
   let module SetIter = struct
     type state = {
-      items : item list;
-      mutable pos : int;
+      items: item list;
+      mutable pos: int;
     }
 
     type nonrec item = item

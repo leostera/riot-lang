@@ -33,10 +33,10 @@ type output_mode =
   | WriteStdoutToFile of Path.t
 
 type invocation = {
-  cwd : Path.t;
-  env : (string * string) list;
-  command_string : string;
-  output_mode : output_mode;
+  cwd: Path.t;
+  env: (string * string) list;
+  command_string: string;
+  output_mode: output_mode;
 }
 
 let make = fun path -> path
@@ -80,8 +80,13 @@ let flags_to_string = fun flags ->
 
 let make_include_flags = fun dirs -> dirs |> List.map (fun dir -> "-I " ^ dir) |> String.concat " "
 
-let make_invocation = fun ?(output_mode = Normal) ~cwd command_string ->
-  {cwd; env = [ ("OCAML_COLOR", "always") ]; command_string; output_mode; }
+let make_invocation = fun ?(output_mode = Normal) ~cwd command_string -> {
+  cwd;
+  env = [ ("OCAML_COLOR", "always") ];
+  command_string;
+  output_mode;
+
+}
 
 let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ccopt_flags = []) ?(cclib_flags = []) ?(output = None) ?(mode = Compile) ?(flags = []) sources ->
   let ocamlc = base_command t in
@@ -212,22 +217,20 @@ let generate_interface = fun t ~cwd ~includes ~flags ~output source ->
   ~cwd
   (String.concat " " ([ base_command t ] @ args))
 
-let compile_c = fun t ~cwd ~includes ?(ccflags = []) ~output source ->
-  build_invocation
-  t
-  ~cwd
-  ~includes
-  ~ccflags
-  ~output:(Some output)
-  ~mode:Compile [ Path.to_string source ]
+let compile_c = fun t ~cwd ~includes ?(ccflags = []) ~output source -> build_invocation
+t
+~cwd
+~includes
+~ccflags
+~output:(Some output)
+~mode:Compile [ Path.to_string source ]
 
-let create_library = fun t ~cwd ~includes ~output objects ->
-  build_invocation
-  t
-  ~cwd
-  ~includes
-  ~output:(Some output)
-  ~mode:Library (List.map Path.to_string objects)
+let create_library = fun t ~cwd ~includes ~output objects -> build_invocation
+t
+~cwd
+~includes
+~output:(Some output)
+~mode:Library (List.map Path.to_string objects)
 
 let create_executable = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
   let includes_with_dot = Path.v "." :: includes in

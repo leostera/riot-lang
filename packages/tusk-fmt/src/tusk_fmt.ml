@@ -30,18 +30,18 @@ let output_writer =
   end in
   IO.Writer.of_write_src (module Write) ()
 
-let workspace_roots = fun workspace ->
-  workspace.Workspace.packages |> List.map (fun (pkg:Package.t) -> Path.(workspace.root / pkg.path))
+let workspace_roots = fun workspace -> workspace.Workspace.packages
+|> List.map (fun (pkg:Package.t) -> Path.(workspace.root / pkg.path))
 
 type package_scope = {
-  package_root : Path.t;
-  config : Fmt_config.t;
+  package_root: Path.t;
+  config: Fmt_config.t;
 }
 
 type fmt_scope = {
-  workspace_root : Path.t;
-  workspace_config : Fmt_config.t;
-  packages : package_scope list;
+  workspace_root: Path.t;
+  workspace_config: Fmt_config.t;
+  packages: package_scope list;
 }
 
 let resolve_root =
@@ -92,17 +92,16 @@ let compare_paths = fun left right ->
 let matches_ignore_pattern = fun ~root pattern path ->
   String.contains (relative_or_absolute ~root path) pattern
 
-let find_package_scope =
-  fun scope file ->
-    scope.packages |> List.filter_map
-      (fun package_scope ->
-        match Path.strip_prefix file ~prefix:package_scope.package_root with
-        | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
-        | Error _ -> None) |> List.sort
-      (fun ((left_len, _)) ((right_len, _)) ->
-        Int.compare right_len left_len) |> List.map snd |> function
-    | package_scope :: _ -> Some package_scope
-    | [] -> None
+let find_package_scope = fun scope file ->
+  scope.packages |> List.filter_map
+    (fun package_scope ->
+      match Path.strip_prefix file ~prefix:package_scope.package_root with
+      | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
+      | Error _ -> None) |> List.sort
+    (fun ((left_len, _)) ((right_len, _)) ->
+      Int.compare right_len left_len) |> List.map snd |> function
+  | package_scope :: _ -> Some package_scope
+  | [] -> None
 
 let should_ignore_file = fun scope file ->
   match scope with
@@ -118,24 +117,35 @@ let should_ignore_file = fun scope file ->
         | Some package_scope -> matches package_scope.config.ignore_patterns ~root:package_scope.package_root
         | None -> false
 
-let write_text_file = fun ~root file_result ->
-  Krasny.Report.write_text_file_result ~writer:output_writer ~root file_result
-  |> Result.expect ~msg:"failed to write fmt result"
+let write_text_file = fun ~root file_result -> Krasny.Report.write_text_file_result
+~writer:output_writer
+~root
+file_result
+|> Result.expect ~msg:"failed to write fmt result"
 
-let write_json_event = fun ~root event ->
-  Krasny.Report.write_json_event ~writer:output_writer ~root event |> Result.expect ~msg:"failed to write fmt JSON event"
+let write_json_event = fun ~root event -> Krasny.Report.write_json_event
+~writer:output_writer
+~root
+event
+|> Result.expect ~msg:"failed to write fmt JSON event"
 
-let write_json_start = fun ~root ~mode ~concurrency ->
-  write_json_event ~root (Krasny.Report.Start {mode; concurrency})
+let write_json_start = fun ~root ~mode ~concurrency -> write_json_event
+~root
+(Krasny.Report.Start {mode; concurrency})
 
-let write_json_file = fun ~root file_result ->
-  write_json_event ~root (Krasny.Report.File file_result)
+let write_json_file = fun ~root file_result -> write_json_event
+~root
+(Krasny.Report.File file_result)
 
-let write_json_summary = fun ~root (summary:Krasny.Runner.summary) ->
-  write_json_event ~root (Krasny.Report.Summary summary)
+let write_json_summary = fun ~root (summary:Krasny.Runner.summary) -> write_json_event
+~root
+(Krasny.Report.Summary summary)
 
-let write_text_summary = fun ~mode (summary:Krasny.Runner.summary) ->
-  Krasny.Report.write_text_summary ~writer:output_writer ~mode summary |> Result.expect ~msg:"failed to write fmt summary"
+let write_text_summary = fun ~mode (summary:Krasny.Runner.summary) -> Krasny.Report.write_text_summary
+~writer:output_writer
+~mode
+summary
+|> Result.expect ~msg:"failed to write fmt summary"
 
 let stream_result_writer = fun ~json ~root ~mode ~concurrency ->
   if json then
@@ -146,8 +156,9 @@ let stream_result_writer = fun ~json ~root ~mode ~concurrency ->
     else
       write_text_file ~root file_result
 
-let explicit_targets = fun matches ->
-  ArgParser.get_many matches "path" |> List.map Path.v |> List.sort_uniq compare_paths
+let explicit_targets = fun matches -> ArgParser.get_many matches "path"
+|> List.map Path.v
+|> List.sort_uniq compare_paths
 
 let expand_explicit_targets = fun targets ->
   let rec loop = fun acc ->

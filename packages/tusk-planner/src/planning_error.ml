@@ -3,20 +3,20 @@ open Std.Collections
 
 type t =
   | CyclicDependency of {
-      cycle : string list;
+      cycle: string list;
     }
   | ScanFailed of {
-      path : Path.t;
-      reason : string;
+      path: Path.t;
+      reason: string;
     }
   | DependencyAnalysisFailed of {
-      reason : string;
+      reason: string;
     }
   | GraphBuildFailed of {
-      reason : string;
+      reason: string;
     }
   | Exception of {
-      exn : exn;
+      exn: exn;
     }
 
 let to_string =

@@ -54,13 +54,12 @@ let is_redundant_reraise_case = fun ({ pattern; guard; body; _ }:Syn.Cst.match_c
   body
   | _ -> false
 
-let make_diagnostic = fun ({ syntax_node; _ }:Syn.Cst.try_expression) ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-  ~suggestion:"Remove this try/with and use the body directly."
-  ()
+let make_diagnostic = fun ({ syntax_node; _ }:Syn.Cst.try_expression) -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+~suggestion:"Remove this try/with and use the body directly."
+()
 
 let diagnostic_for_expression =
   function
@@ -75,5 +74,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.expressions_of_structure_item
   |> List.filter_map diagnostic_for_expression
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

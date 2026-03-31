@@ -26,8 +26,8 @@ let make_diagnostic = fun type_variable ->
   Diagnostic.make
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:((Syn.Cst.TypeVariable.syntax_node type_variable |> Syn.Ceibo.Red.SyntaxNode.span))
-  ~suggestion:(("Prefer a descriptive type variable name instead of " ^ original ^ ", for example 'value or 'error"))
+  ~span:((((Syn.Cst.TypeVariable.syntax_node type_variable |> Syn.Ceibo.Red.SyntaxNode.span))))
+  ~suggestion:(((("Prefer a descriptive type variable name instead of " ^ original ^ ", for example 'value or 'error"))))
   ()
 
 let diagnostic_for_type_param =
@@ -40,8 +40,8 @@ let diagnostic_for_type_param =
         None
   | Syn.Cst.TypeParameter.{ type_variable=None; _ } -> None
 
-let diagnostic_for_decl = fun (Syn.Cst.TypeDeclaration.{ type_params; _ }) ->
-  type_params |> List.filter_map diagnostic_for_type_param
+let diagnostic_for_decl = fun (Syn.Cst.TypeDeclaration.{ type_params; _ }) -> type_params
+|> List.filter_map diagnostic_for_type_param
 
 let diagnostics_for_items = fun source_file ->
   match source_file with
@@ -64,5 +64,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   let source_file = ctx.cst in
   diagnostics_for_items source_file
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

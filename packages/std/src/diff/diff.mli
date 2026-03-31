@@ -52,8 +52,8 @@ type 'value kind =
   | Removed of 'value
   | Changed of 'value * 'value
 type 'value change = {
-  path : path;
-  kind : 'value kind;
+  path: path;
+  kind: 'value kind;
 }
 type 'value diff =
   | Equal
@@ -62,18 +62,18 @@ type 'value diff =
 
 module type Diffable = sig
   type t
-  val diff : t -> t -> t diff list
+  val diff: t -> t -> t diff list
 
-  val equal : t -> t -> bool
+  val equal: t -> t -> bool
 end
 
 (** {1 Helper Functions} *)
-val has_changes : 'a change list -> bool
+val has_changes: 'a change list -> bool
 
-val additions : 'a change list -> 'a change list
+val additions: 'a change list -> 'a change list
 
-val removals : 'a change list -> 'a change list
+val removals: 'a change list -> 'a change list
 
-val changes : 'a change list -> 'a change list
+val changes: 'a change list -> 'a change list
 
-val at_path : path -> 'a change list -> 'a change list
+val at_path: path -> 'a change list -> 'a change list

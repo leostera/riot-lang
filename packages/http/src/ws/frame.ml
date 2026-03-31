@@ -28,13 +28,13 @@ type opcode =
 (* 0xA *)
 
 type t = {
-  fin : bool;
-  rsv1 : bool;
-  rsv2 : bool;
-  rsv3 : bool;
-  opcode : opcode;
-  masked : bool;
-  payload : string;
+  fin: bool;
+  rsv1: bool;
+  rsv2: bool;
+  rsv3: bool;
+  opcode: opcode;
+  masked: bool;
+  payload: string;
 }
 
 let opcode_to_int =
@@ -78,20 +78,68 @@ let apply_mask = fun mask payload -> unmask mask payload
 
 (* Create frame helpers *)
 
-let text = fun ?(fin = true) payload ->
-  {fin; rsv1 = false; rsv2 = false; rsv3 = false; opcode = Text; masked = false; payload; }
+let text = fun ?(fin = true) payload -> {
+  fin;
+  rsv1 = false;
+  rsv2 = false;
+  rsv3 = false;
+  opcode = Text;
+  masked = false;
+  payload;
 
-let binary = fun ?(fin = true) payload ->
-  {fin; rsv1 = false; rsv2 = false; rsv3 = false; opcode = Binary; masked = false; payload; }
+}
 
-let close = fun ?(payload = "") () ->
-  {fin = true; rsv1 = false; rsv2 = false; rsv3 = false; opcode = Close; masked = false; payload; }
+let binary = fun ?(fin = true) payload -> {
+  fin;
+  rsv1 = false;
+  rsv2 = false;
+  rsv3 = false;
+  opcode = Binary;
+  masked = false;
+  payload;
 
-let ping = fun ?(payload = "") () ->
-  {fin = true; rsv1 = false; rsv2 = false; rsv3 = false; opcode = Ping; masked = false; payload; }
+}
 
-let pong = fun ?(payload = "") () ->
-  {fin = true; rsv1 = false; rsv2 = false; rsv3 = false; opcode = Pong; masked = false; payload; }
+let close = fun ?(payload = "") () -> {
+  fin = true;
+  rsv1 = false;
+  rsv2 = false;
+  rsv3 = false;
+  opcode = Close;
+  masked = false;
+  payload;
 
-let continuation = fun ?(fin = false) payload ->
-  {fin; rsv1 = false; rsv2 = false; rsv3 = false; opcode = Continuation; masked = false; payload; }
+}
+
+let ping = fun ?(payload = "") () -> {
+  fin = true;
+  rsv1 = false;
+  rsv2 = false;
+  rsv3 = false;
+  opcode = Ping;
+  masked = false;
+  payload;
+
+}
+
+let pong = fun ?(payload = "") () -> {
+  fin = true;
+  rsv1 = false;
+  rsv2 = false;
+  rsv3 = false;
+  opcode = Pong;
+  masked = false;
+  payload;
+
+}
+
+let continuation = fun ?(fin = false) payload -> {
+  fin;
+  rsv1 = false;
+  rsv2 = false;
+  rsv3 = false;
+  opcode = Continuation;
+  masked = false;
+  payload;
+
+}

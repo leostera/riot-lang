@@ -61,27 +61,25 @@ let path_matches = fun ~expected expr ->
   | Some actual -> String.equal actual expected
   | None -> false
 
-let positional_arguments =
-  fun args ->
-    args |> List.filter_map
-      (
-        function
-        | Syn.Cst.Positional expr -> Some expr
-        | Syn.Cst.Labeled _
-        | Syn.Cst.Optional _ -> None
-      )
+let positional_arguments = fun args ->
+  args |> List.filter_map
+    (
+      function
+      | Syn.Cst.Positional expr -> Some expr
+      | Syn.Cst.Labeled _
+      | Syn.Cst.Optional _ -> None
+    )
 
-let make_diagnostic = fun ~iter_name expr ->
-  Api.Diagnostic.make
-  ~severity:Warning
-  ~kind:(Api.Diagnostic.Known {
-    rule_id = package_rule_id;
-    message = explanation.Api.Explanation.message;
+let make_diagnostic = fun ~iter_name expr -> Api.Diagnostic.make
+~severity:Warning
+~kind:(Api.Diagnostic.Known {
+  rule_id = package_rule_id;
+  message = explanation.Api.Explanation.message;
 
-  })
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-  ~suggestion:(("Use " ^ iter_name ^ " when the mapped result is ignored and the traversal exists only for side effects."))
-  ()
+})
+~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+~suggestion:(((("Use " ^ iter_name ^ " when the mapped result is ignored and the traversal exists only for side effects."))))
+()
 
 let diagnostic_for_expression = fun expr ->
   let head, arguments = flatten_apply expr in
@@ -109,10 +107,9 @@ let check_tree = fun (ctx:Api.Rule.context) _red_root ->
   |> List.concat_map Api.Traversal.expressions_of_structure_item
   |> List.filter_map diagnostic_for_expression
 
-let rule = fun () ->
-  Api.Rule.make
-  ~id:package_rule_id
-  ~description:explanation.message
-  ~explain:explanation.body
-  ~run:check_tree
-  ()
+let rule = fun () -> Api.Rule.make
+~id:package_rule_id
+~description:explanation.message
+~explain:explanation.body
+~run:check_tree
+()

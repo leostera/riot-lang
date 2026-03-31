@@ -2,15 +2,15 @@ open Stdlib
 open Ocaml_platform
 open Printf
 
-module Module_name : sig
+module Module_name: sig
   type t
-  val of_string : string -> t
+  val of_string: string -> t
 
-  val of_path : string -> t
+  val of_path: string -> t
 
-  val to_string : t -> string
+  val to_string: t -> string
 
-  val cma : t -> string
+  val cma: t -> string
 end = struct
   type t = string
 
@@ -51,17 +51,17 @@ end = struct
   let cma = fun t -> t ^ ".cma"
 end
 
-module Namespace : sig
+module Namespace: sig
   type t
-  val empty : t
+  val empty: t
 
-  val of_parts : Module_name.t list -> t
+  val of_parts: Module_name.t list -> t
 
-  val to_string : t -> string
+  val to_string: t -> string
 
-  val add : t -> Module_name.t -> t
+  val add: t -> Module_name.t -> t
 
-  val is_empty : t -> bool
+  val is_empty: t -> bool
 end = struct
   type t = Module_name.t list
 
@@ -79,33 +79,33 @@ end = struct
   let is_empty = fun t -> t = []
 end
 
-module Module : sig
+module Module: sig
   type t
-  val of_path : ns:Namespace.t -> string -> t
+  val of_path: ns:Namespace.t -> string -> t
 
-  val module_name : t -> Module_name.t
+  val module_name: t -> Module_name.t
 
-  val namespaced_name : t -> string
+  val namespaced_name: t -> string
 
-  val path : t -> string
+  val path: t -> string
 
-  val cmi : t -> string
+  val cmi: t -> string
 
-  val cmo : t -> string
+  val cmo: t -> string
 
-  val eq : t -> t -> bool
+  val eq: t -> t -> bool
 
-  val kind : t -> [
-    `implementation
-    | `interface
-  ]
+  val kind: t -> [
+      `implementation
+      | `interface
+    ]
 
-  val is_aliases : t -> bool
+  val is_aliases: t -> bool
 end = struct
   type t = {
-    module_name : Module_name.t;
-    file_path : string;
-    namespaced_name : Namespace.t;
+    module_name: Module_name.t;
+    file_path: string;
+    namespaced_name: Namespace.t;
   }
 
   let eq = fun a b ->
@@ -134,34 +134,34 @@ end = struct
   let is_aliases = fun t -> Module_name.to_string t.module_name = "Aliases"
 end
 
-module Build_results : sig
+module Build_results: sig
   type t
-  val create : unit -> t (* Register a package with it's module interface *)
+  val create: unit -> t (* Register a package with it's module interface *)
 
   (* Register a package with it's module interface *)
-  val register : t ->
-  Package.t ->
-  Module_name.t ->
-  outputs:string list ->
-  cc_flags:string list ->
-  ld_flags:string list ->
-  unit
+  val register: t ->
+    Package.t ->
+    Module_name.t ->
+    outputs:string list ->
+    cc_flags:string list ->
+    ld_flags:string list ->
+    unit
 
-  val has_module : t -> Module_name.t -> bool
+  val has_module: t -> Module_name.t -> bool
 
-  val copy_to_sandbox : t -> string -> unit
+  val copy_to_sandbox: t -> string -> unit
 
-  val get_package_names : t -> string list
+  val get_package_names: t -> string list
 
-  val get_transitive_cc_flags : t -> string list -> string list
+  val get_transitive_cc_flags: t -> string list -> string list
 
-  val get_transitive_ld_flags : t -> string list -> string list
+  val get_transitive_ld_flags: t -> string list -> string list
 
-  val has_stdlib : t -> string list -> bool
+  val has_stdlib: t -> string list -> bool
 
-  val has_unix : t -> string list -> bool
+  val has_unix: t -> string list -> bool
 
-  val has_dynlink : t -> string list -> bool
+  val has_dynlink: t -> string list -> bool
 end = struct
   (* Build results tracking for cross-package dependencies *)
 
@@ -182,21 +182,21 @@ end = struct
   *)
 
   type entry = {
-    package : Package.t;
-    module_name : Module_name.t;
-    outputs : string list;
-    cc_flags : string list;
-    ld_flags : string list;
-    uses_stdlib : bool;
-    uses_unix : bool;
-    uses_dynlink : bool;
+    package: Package.t;
+    module_name: Module_name.t;
+    outputs: string list;
+    cc_flags: string list;
+    ld_flags: string list;
+    uses_stdlib: bool;
+    uses_unix: bool;
+    uses_dynlink: bool;
   }
 
   type t = {
     (* Map from package name (e.g., "kernel") to list of output paths *)
-    packages : (Module_name.t, entry) Hashtbl.t;
+    packages: (Module_name.t, entry) Hashtbl.t;
     (* Track order of registration *)
-    mutable order : Module_name.t list;
+    mutable order: Module_name.t list;
   }
 
   let create = fun () -> {packages = Hashtbl.create 8; order = []}
@@ -307,31 +307,30 @@ end = struct
       t.packages
 end
 
-module Module_registry : sig
+module Module_registry: sig
   type t
-  val create : unit -> t
+  val create: unit -> t
 
-  val register : t -> Module.t -> Graph.Node_id.t -> unit
+  val register: t -> Module.t -> Graph.Node_id.t -> unit
 
-  val get : t -> Graph.Node_id.t -> Module.t
+  val get: t -> Graph.Node_id.t -> Module.t
 
-  val get_by_name : t -> Module_name.t -> Graph.Node_id.t list (* Returns list of nodes *)
+  val get_by_name: t -> Module_name.t -> Graph.Node_id.t list (* Returns list of nodes *)
 
-  val print : t -> unit
+  val print: t -> unit
 end = struct
   type t = {
-    modules : (Graph.Node_id.t, Module.t) Hashtbl.t;
-    intf_by_name : (Module_name.t, Graph.Node_id.t) Hashtbl.t;
-    impl_by_name : (Module_name.t, Graph.Node_id.t) Hashtbl.t;
+    modules: (Graph.Node_id.t, Module.t) Hashtbl.t;
+    intf_by_name: (Module_name.t, Graph.Node_id.t) Hashtbl.t;
+    impl_by_name: (Module_name.t, Graph.Node_id.t) Hashtbl.t;
   }
 
-  let create = fun () ->
-    {
-      modules = Hashtbl.create 16;
-      intf_by_name = Hashtbl.create 16;
-      impl_by_name = Hashtbl.create 16;
+  let create = fun () -> {
+    modules = Hashtbl.create 16;
+    intf_by_name = Hashtbl.create 16;
+    impl_by_name = Hashtbl.create 16;
 
-    }
+  }
 
   let register = fun t mod_ node_id ->
     Hashtbl.add t.modules node_id mod_;
@@ -391,7 +390,7 @@ type kind =
 
 type file =
   | Concrete of string
-  | Generated of { path : string; contents : string; }
+  | Generated of { path: string; contents: string; }
 
 let file_to_string = fun file ->
   match file with
@@ -399,21 +398,21 @@ let file_to_string = fun file ->
   | Generated { path; _ } -> path ^ " (generated)"
 
 type dep = {
-  file : file;
-  mutable open_modules : dep Graph.node list;
+  file: file;
+  mutable open_modules: dep Graph.node list;
   (* Alias modules to open when compiling *)
-  kind : kind;
+  kind: kind;
 }
 
 type t = {
-  root : string;
-  src_root : string;
-  file_tree : File_scanner.file_tree;
-  graph : dep Graph.t;
-  registry : Module_registry.t;
-  build_results : Build_results.t;
-  package_name : Module_name.t;
-  package : Package.t;
+  root: string;
+  src_root: string;
+  file_tree: File_scanner.file_tree;
+  graph: dep Graph.t;
+  registry: Module_registry.t;
+  build_results: Build_results.t;
+  package_name: Module_name.t;
+  package: Package.t;
 }
 
 let root_node = {file = Concrete ""; open_modules = []; kind = Root}
@@ -605,10 +604,10 @@ module Dependency_rules = struct
 end
 
 type scan_ctx = {
-  ns : Namespace.t;
-  parent_intf : dep Graph.node;
-  parent_impl : dep Graph.node;
-  aliases : dep Graph.node list;
+  ns: Namespace.t;
+  parent_intf: dep Graph.node;
+  parent_impl: dep Graph.node;
+  aliases: dep Graph.node list;
 }
 
 let rec do_scan = fun ~t ~ctx (file_tree:File_scanner.file_tree) ->

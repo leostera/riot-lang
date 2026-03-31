@@ -15,17 +15,17 @@ type dependencies =
   | Unavailable of string
 
 type 'error t = {
-  choose_version : package -> version_ranges -> (version option, 'error) result;
-  get_dependencies : package -> version -> (dependencies, 'error) result;
+  choose_version: package -> version_ranges -> (version option, 'error) result;
+  get_dependencies: package -> version -> (dependencies, 'error) result;
 }
 
 type offline_entry = {
-  version : version;
-  deps : dependency_list;
+  version: version;
+  deps: dependency_list;
 }
 
 type offline = {
-  packages : (package, offline_entry list) Collections.HashMap.t;
+  packages: (package, offline_entry list) Collections.HashMap.t;
 }
 
 let create_offline = fun () -> {packages = Collections.HashMap.create ()}

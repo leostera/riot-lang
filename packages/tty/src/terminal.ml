@@ -2,8 +2,8 @@ open Std
 
 (** Terminal dimensions *)
 type size = {
-  rows : int;
-  cols : int;
+  rows: int;
+  cols: int;
 }
 
 (** Error types *)
@@ -18,9 +18,9 @@ type mode =
 
 (** Input buffer for efficient reading *)
 type input_buffer = {
-  data : bytes;  (* 4KB buffer *)
-  mutable pos : int;  (* Current read position *)
-  mutable len : int;  (* Valid data length *)
+  data: bytes;  (* 4KB buffer *)
+  mutable pos: int;  (* Current read position *)
+  mutable len: int;  (* Valid data length *)
 }
 
 (** Input source configuration *)
@@ -29,9 +29,9 @@ type input_mode =
   (* Traditional single FD mode *)
   | DualFd of {
       (* Dual FD mode for piped input + TTY control *)
-      data_fd : Kernel.Fd.t;  (* stdin for data *)
-      control_fd : Kernel.Fd.t;  (* /dev/tty for control *)
-      mutable active :
+      data_fd: Kernel.Fd.t;  (* stdin for data *)
+      control_fd: Kernel.Fd.t;  (* /dev/tty for control *)
+      mutable active:
         [
           `Data
           | `Control
@@ -40,15 +40,15 @@ type input_mode =
 
 (** Terminal handle *)
 type t = {
-  fd : Kernel.Fd.t;  (* Primary TTY fd - used for termios operations *)
-  input : input_mode;  (* Input configuration *)
-  stdout : Kernel.Fd.t;  (* Output file descriptor *)
-  stderr : Kernel.Fd.t;  (* Error output file descriptor *)
-  original_attrs : Kernel.Terminal.termios;
-  mutable size : size;
-  mutable mode : mode;
-  mutable input_buffer : input_buffer option;  (* Buffered input *)
-  mutable data_buffer : input_buffer option;  (* Separate buffer for data FD in dual mode *)
+  fd: Kernel.Fd.t;  (* Primary TTY fd - used for termios operations *)
+  input: input_mode;  (* Input configuration *)
+  stdout: Kernel.Fd.t;  (* Output file descriptor *)
+  stderr: Kernel.Fd.t;  (* Error output file descriptor *)
+  original_attrs: Kernel.Terminal.termios;
+  mutable size: size;
+  mutable mode: mode;
+  mutable input_buffer: input_buffer option;  (* Buffered input *)
+  mutable data_buffer: input_buffer option;  (* Separate buffer for data FD in dual mode *)
 }
 
 (* Helper to write to file descriptor using async-friendly Fs.File.write_all *)

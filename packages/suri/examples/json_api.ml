@@ -2,9 +2,9 @@ open Std
 open Suri
 
 type user = {
-  id : int;
-  name : string;
-  email : string;
+  id: int;
+  name: string;
+  email: string;
 }
 
 (* In-memory database *)
@@ -16,8 +16,8 @@ let users = [
 
 ]
 
-let user_to_json = fun user ->
-  Data.Json.(obj [ ("id", int user.id); ("name", string user.name); ("email", string user.email);  ])
+let user_to_json = fun user -> Data.Json.(obj
+[ ("id", int user.id); ("name", string user.name); ("email", string user.email);  ])
 
 let users_to_json = fun users ->
   let user_jsons = List.map user_to_json users in

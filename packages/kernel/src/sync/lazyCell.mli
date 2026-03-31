@@ -25,17 +25,17 @@
 (** A lazy cell that computes its value on first access *)
 (** Create a lazy cell with the given initialization function *)
 type 'a t
-val create : (unit -> 'a) -> 'a t
+val create: (unit -> 'a) -> 'a t
 
 (** Get the value, computing it if necessary (alias for force) *)
 
 (** Force the computation and get the value *)
-val get : 'a t -> 'a
+val get: 'a t -> 'a
 
 (** Check if the value has been computed *)
-val force : 'a t -> 'a
+val force: 'a t -> 'a
 
-val is_initialized : 'a t -> bool
+val is_initialized: 'a t -> bool
 
 (** Take the value out if initialized, leaving it uninitialized *)
-val take : 'a t -> 'a option
+val take: 'a t -> 'a option

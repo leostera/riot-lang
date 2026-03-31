@@ -6,36 +6,35 @@ type echo_mode =
   | None
 
 type t = {
-  value : string;
-  cursor_pos : int;
-  prompt : string;
-  placeholder : string;
-  width : int;
-  char_limit : int;
-  echo_mode : echo_mode;
-  echo_char : char;
-  focused : bool;
-  validator : (string -> (unit, string) result) option;
-  validation_error : string option;
-  offset : int;  (* Horizontal scroll offset for wide content *)
+  value: string;
+  cursor_pos: int;
+  prompt: string;
+  placeholder: string;
+  width: int;
+  char_limit: int;
+  echo_mode: echo_mode;
+  echo_char: char;
+  focused: bool;
+  validator: (string -> (unit, string) result) option;
+  validation_error: string option;
+  offset: int;  (* Horizontal scroll offset for wide content *)
 }
 
-let make = fun () ->
-  {
-    value = "";
-    cursor_pos = 0;
-    prompt = "";
-    placeholder = "";
-    width = 0;
-    char_limit = 0;
-    echo_mode = Normal;
-    echo_char = '*';
-    focused = false;
-    validator = None;
-    validation_error = None;
-    offset = 0;
+let make = fun () -> {
+  value = "";
+  cursor_pos = 0;
+  prompt = "";
+  placeholder = "";
+  width = 0;
+  char_limit = 0;
+  echo_mode = Normal;
+  echo_char = '*';
+  focused = false;
+  validator = None;
+  validation_error = None;
+  offset = 0;
 
-  }
+}
 
 let value = fun t -> t.value
 
@@ -171,8 +170,8 @@ let handle_key = fun t (key:Event.key) modifier ->
     t
   else
     match ((key:Event.key)) with
-    | Event.Left -> set_cursor_position t ~pos:((t.cursor_pos - 1))
-    | Event.Right -> set_cursor_position t ~pos:((t.cursor_pos + 1))
+    | Event.Left -> set_cursor_position t ~pos:((((t.cursor_pos - 1))))
+    | Event.Right -> set_cursor_position t ~pos:((((t.cursor_pos + 1))))
     | Event.Home -> set_cursor_position t ~pos:0
     | Event.End -> set_cursor_position t ~pos:(String.length t.value)
     | Event.Backspace when modifier = Event.NoModifier -> delete_char_backward t
@@ -185,8 +184,8 @@ let handle_key = fun t (key:Event.key) modifier ->
     | Event.Key "h" when modifier = Event.Ctrl -> delete_char_backward t
     | Event.Key "a" when modifier = Event.Ctrl -> set_cursor_position t ~pos:0
     | Event.Key "e" when modifier = Event.Ctrl -> set_cursor_position t ~pos:(String.length t.value)
-    | Event.Key "b" when modifier = Event.Ctrl -> set_cursor_position t ~pos:((t.cursor_pos - 1))
-    | Event.Key "f" when modifier = Event.Ctrl -> set_cursor_position t ~pos:((t.cursor_pos + 1))
+    | Event.Key "b" when modifier = Event.Ctrl -> set_cursor_position t ~pos:((((t.cursor_pos - 1))))
+    | Event.Key "f" when modifier = Event.Ctrl -> set_cursor_position t ~pos:((((t.cursor_pos + 1))))
     | Event.Key s when modifier = Event.NoModifier && String.length s = 1 -> insert_at_cursor t s
     | Event.Key s when modifier = Event.Shift && String.length s = 1 -> insert_at_cursor t s
     | Event.Space -> insert_at_cursor t " "

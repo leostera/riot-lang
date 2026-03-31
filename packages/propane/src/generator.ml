@@ -3,7 +3,7 @@ open Std
 (* Internal representation: a generator is a function from (Random.State, size) to value *)
 
 type 'value t = {
-  run : Random.State.t -> int -> 'value;
+  run: Random.State.t -> int -> 'value;
 }
 
 (* Helper: convert char list to string *)
@@ -394,15 +394,14 @@ let heap_size = fun size_gen gen ->
 
 let option = fun gen -> frequency [ (1, return None); (3, map (fun v -> Some v) gen);  ]
 
-let weighted_option = fun weight_some weight_none gen ->
-  frequency [ (weight_none, return None); (weight_some, map (fun v -> Some v) gen);  ]
+let weighted_option = fun weight_some weight_none gen -> frequency
+[ (weight_none, return None); (weight_some, map (fun v -> Some v) gen);  ]
 
-let result = fun ok_gen err_gen ->
-  frequency [ (3, map (fun v -> Ok v) ok_gen); (1, map (fun e -> Error e) err_gen);  ]
+let result = fun ok_gen err_gen -> frequency
+[ (3, map (fun v -> Ok v) ok_gen); (1, map (fun e -> Error e) err_gen);  ]
 
-let weighted_result = fun weight_ok weight_error ok_gen err_gen ->
-  frequency
-  [ (weight_ok, map (fun v -> Ok v) ok_gen); (weight_error, map (fun e -> Error e) err_gen);  ]
+let weighted_result = fun weight_ok weight_error ok_gen err_gen -> frequency
+[ (weight_ok, map (fun v -> Ok v) ok_gen); (weight_error, map (fun e -> Error e) err_gen);  ]
 
 (* === LOW-LEVEL INTERFACE === *)
 

@@ -8,9 +8,9 @@ type source =
   | Url of Net.Uri.t
 
 type t = {
-  version : string;
-  source : source;
-  targets : string list;  (* Target architectures for cross-compilation *)
+  version: string;
+  source: source;
+  targets: string list;  (* Target architectures for cross-compilation *)
 }
 
 let default_ocaml_version = "5.5.0-riot.1"

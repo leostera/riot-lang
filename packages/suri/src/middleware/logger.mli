@@ -38,4 +38,4 @@ open Std
     GET /api/users -> 200 in 5ms
     POST /api/login -> 401 in 2ms
     v} *)
-val logger : Pipeline.middleware
+val logger: Pipeline.middleware

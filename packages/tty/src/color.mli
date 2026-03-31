@@ -53,7 +53,7 @@ type t =
   (** Extended ANSI 256-color palette (0-255) *)
   | No_color
 (** No color / disabled *)
-val make : string -> t
+val make: string -> t
 
 (** Parse color from string.
 
@@ -67,7 +67,7 @@ val make : string -> t
     *) ```
 
     @raise Invalid_color if string format is invalid *)
-val of_rgb : int * int * int -> t
+val of_rgb: int * int * int -> t
 
 (** Create RGB color from (red, green, blue) tuple.
 
@@ -76,7 +76,7 @@ val of_rgb : int * int * int -> t
     Examples: ```ocaml Color.of_rgb (255, 0, 0) (* Red *) Color.of_rgb (0, 255,
     0) (* Green *) Color.of_rgb (300, -10, 128) (* Clamped to (255, 0, 128) *)
     ``` *)
-val ansi : int -> t
+val ansi: int -> t
 
 (** Create basic ANSI color (0-15).
 
@@ -93,7 +93,7 @@ val ansi : int -> t
 
     Examples: ```ocaml Color.ansi 1 (* Red *) Color.ansi 4 (* Blue *) Color.ansi
     9 (* Bright red *) ``` *)
-val ansi256 : int -> t
+val ansi256: int -> t
 
 (** Create ANSI 256-color palette color (0-255).
 
@@ -104,7 +104,7 @@ val ansi256 : int -> t
 
     Examples: ```ocaml Color.ansi256 196 (* Bright red *) Color.ansi256 46 (*
     Bright green *) Color.ansi256 240 (* Gray *) ``` *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** Convert color to human-readable string.
 
@@ -121,37 +121,37 @@ exception Invalid_color_param of string
 exception Invalid_color_num of string * int
 
 (** Raised when color number is out of range *)
-val no_color : t
+val no_color: t
 
 (** Disabled color - produces no escape sequence *)
-val is_no_color : t -> bool
+val is_no_color: t -> bool
 
 (** Check if color is [no_color].
 
     Example: ```ocaml Color.is_no_color Color.no_color (* true *)
     Color.is_no_color (Color.ansi 1) (* false *) ``` *)
-val is_rgb : t -> bool
+val is_rgb: t -> bool
 
 (** Check if color is RGB type.
 
     Example: ```ocaml Color.is_rgb (Color.make "#FF0000") (* true *)
     Color.is_rgb (Color.ansi 1) (* false *) ``` *)
-val is_ansi : t -> bool
+val is_ansi: t -> bool
 
 (** Check if color is basic ANSI (0-15).
 
     Example: ```ocaml Color.is_ansi (Color.ansi 4) (* true *) Color.is_ansi
     (Color.ansi256 16) (* false *) ``` *)
-val is_ansi256 : t -> bool
+val is_ansi256: t -> bool
 
 (** Check if color is ANSI256 (0-255).
 
     Example: ```ocaml Color.is_ansi256 (Color.ansi256 196) (* true *)
     Color.is_ansi256 (Color.ansi 1) (* false *) ``` *)
-val to_escape_seq : mode:[>
-  `bg
-  | `fg
-] -> t -> string
+val to_escape_seq: mode:[>
+    `bg
+    | `fg
+  ] -> t -> string
 
 (** Convert color to ANSI escape sequence parameters.
     

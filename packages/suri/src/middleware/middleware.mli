@@ -324,7 +324,7 @@ module Debugger = Debugger
         ];
       ]
     ]} *)
-val router : Router.route list -> Pipeline.middleware
+val router: Router.route list -> Pipeline.middleware
 
 (** Request logger middleware.
     
@@ -341,7 +341,7 @@ val router : Router.route list -> Pipeline.middleware
     Logs format: [METHOD /path -> STATUS in DURATIONms]
     
     See {!Logger} for full documentation. *)
-val logger : Pipeline.middleware
+val logger: Pipeline.middleware
 
 (** Request ID middleware.
     
@@ -360,7 +360,7 @@ val logger : Pipeline.middleware
     the request (for handlers) and response (for clients).
     
     See {!Request_id} for full documentation. *)
-val request_id : Pipeline.middleware
+val request_id: Pipeline.middleware
 
 (** Visual debugger middleware for development.
     
@@ -385,7 +385,7 @@ val request_id : Pipeline.middleware
     - Automatic console logging
     
     See {!Debugger} for full documentation and production safety patterns. *)
-val debugger : Pipeline.middleware
+val debugger: Pipeline.middleware
 
 module Cors = Cors
 
@@ -436,14 +436,14 @@ module Cors = Cors
     - Be specific with [~headers]
     
      See {!Cors.middleware} for full documentation. *)
-val cors : origins:string list ->
-?methods:Net.Http.Method.t list ->
-?headers:string list ->
-?credentials:bool ->
-?expose:string list ->
-?max_age:int ->
-unit ->
-Pipeline.middleware
+val cors: origins:string list ->
+  ?methods:Net.Http.Method.t list ->
+  ?headers:string list ->
+  ?credentials:bool ->
+  ?expose:string list ->
+  ?max_age:int ->
+  unit ->
+  Pipeline.middleware
 
 module Session = Session
 
@@ -520,13 +520,13 @@ module Session = Session
     ]}
     
     See {!Session.middleware} for full documentation. *)
-val session : secret:string ->
-?cookie_name:string ->
-?max_age:int ->
-?secure:bool ->
-?same_site:Http.Http1.Cookie.same_site ->
-unit ->
-Pipeline.middleware
+val session: secret:string ->
+  ?cookie_name:string ->
+  ?max_age:int ->
+  ?secure:bool ->
+  ?same_site:Http.Http1.Cookie.same_site ->
+  unit ->
+  Pipeline.middleware
 
 module Csrf = Csrf
 
@@ -592,12 +592,12 @@ module Csrf = Csrf
     ]}
     
     See {!Csrf.middleware} for full documentation. *)
-val csrf : ?param_name:string ->
-?header_name:string ->
-?skip_safe_methods:bool ->
-?skip:(Conn.t -> bool) ->
-unit ->
-Pipeline.middleware
+val csrf: ?param_name:string ->
+  ?header_name:string ->
+  ?skip_safe_methods:bool ->
+  ?skip:(Conn.t -> bool) ->
+  unit ->
+  Pipeline.middleware
 
 module Body_parser = Body_parser
 
@@ -656,7 +656,7 @@ module Body_parser = Body_parser
     Bodies exceeding [max_body_size] are not parsed (left empty).
     
     See {!Body_parser.make} for full documentation. *)
-val body_parser : ?config:Body_parser.config -> unit -> Pipeline.middleware
+val body_parser: ?config:Body_parser.config -> unit -> Pipeline.middleware
 
 module Static = Static
 
@@ -736,7 +736,7 @@ module Static = Static
     - Validates paths are within root
     
     See {!Static.middleware} for full documentation. *)
-val static : ?config:Static.config -> at:string -> Path.t -> unit -> Pipeline.middleware
+val static: ?config:Static.config -> at:string -> Path.t -> unit -> Pipeline.middleware
 
 module Basic_auth = Basic_auth
 
@@ -810,12 +810,12 @@ module Basic_auth = Basic_auth
     - {b REQUIRES HTTPS in production!}
     
     See {!Basic_auth.middleware} for full documentation. *)
-val basic_auth : ?realm:string ->
-?skip:(Conn.t -> bool) ->
-username:string ->
-password:string ->
-unit ->
-Pipeline.middleware
+val basic_auth: ?realm:string ->
+  ?skip:(Conn.t -> bool) ->
+  username:string ->
+  password:string ->
+  unit ->
+  Pipeline.middleware
 
 (** Basic Auth with custom validation function.
     
@@ -849,11 +849,12 @@ Pipeline.middleware
     ]}
     
     See {!Basic_auth.middleware_with_validation} for full documentation. *)
-val basic_auth_with_validation : ?realm:string ->
-?skip:(Conn.t -> bool) ->
-validate:'a Basic_auth.validation_fn ->
-unit ->
-Pipeline.middleware
+val basic_auth_with_validation:
+  ?realm:string ->
+  ?skip:(Conn.t -> bool) ->
+  validate:'a Basic_auth.validation_fn ->
+  unit ->
+  Pipeline.middleware
 
 module Accepts = Accepts
 
@@ -932,7 +933,7 @@ module Accepts = Accepts
     {b Order matters}: Place before body_parser to avoid parsing unsupported content!
     
     See {!Accepts.middleware} for full documentation. *)
-val accepts : ?config:Accepts.config -> string list -> Pipeline.middleware
+val accepts: ?config:Accepts.config -> string list -> Pipeline.middleware
 
 module Head = Head
 
@@ -970,7 +971,7 @@ module Head = Head
     
     Automatically strips response bodies for HEAD requests while
     preserving all headers. No configuration required. *)
-val head : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val head: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Runtime = Runtime
 
@@ -1006,7 +1007,7 @@ module Runtime = Runtime
     ]}
     
     Adds [X-Runtime] header with processing time in seconds. *)
-val runtime : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val runtime: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Method_override = Method_override
 
@@ -1054,7 +1055,7 @@ module Method_override = Method_override
     For custom parameter names, use [Method_override.middleware ~param:"..."].
     
     Place {b after} body_parser so form data is available. *)
-val method_override : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val method_override: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Remote_ip = Remote_ip
 
@@ -1143,7 +1144,7 @@ module Etag = Etag
     
     Generates ETags using SHA256 hash of response body.
     Place before conditional_get in pipeline. *)
-val etag : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val etag: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 
 module Conditional_get = Conditional_get
 
@@ -1202,4 +1203,4 @@ module Conditional_get = Conditional_get
     Returns 304 Not Modified when content hasn't changed.
     
     Only applies to GET and HEAD requests. *)
-val conditional_get : conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val conditional_get: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

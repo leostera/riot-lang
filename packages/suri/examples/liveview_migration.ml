@@ -108,30 +108,29 @@ let page_styles = {|
 |}
 
 (** Step 1: Static Component (No Interactivity) *)
-let counter_view_static = fun count ->
+let counter_view_static = fun count -> div
+~attrs:[ class_ "card" ]
+[
+  h1 [ text "Counter (Static HTML)" ];
+  span ~attrs:[ class_ "label" ] [ text "A static component preview" ];
+  div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
   div
-  ~attrs:[ class_ "card" ]
+  ~attrs:[ class_ "buttons" ]
   [
-    h1 [ text "Counter (Static HTML)" ];
-    span ~attrs:[ class_ "label" ] [ text "A static component preview" ];
-    div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
-    div
-    ~attrs:[ class_ "buttons" ]
-    [
-      button ~attrs:[ class_ "btn btn-secondary" ] [ text "-" ];
-      button ~attrs:[ class_ "btn btn-primary" ] [ text "+" ];
+    button ~attrs:[ class_ "btn btn-secondary" ] [ text "-" ];
+    button ~attrs:[ class_ "btn btn-primary" ] [ text "+" ];
 
-    ];
-    div
-    ~attrs:[ class_ "note" ]
-    [
-      strong [ text "Note: " ];
-      text "Buttons are not interactive in static HTML rendering. ";
-      text "This is just a preview of what the component looks like.";
+  ];
+  div
+  ~attrs:[ class_ "note" ]
+  [
+    strong [ text "Note: " ];
+    text "Buttons are not interactive in static HTML rendering. ";
+    text "This is just a preview of what the component looks like.";
 
-    ];
+  ];
 
-  ]
+]
 
 let static_page : unit t = html
   [
@@ -184,31 +183,30 @@ type msg =
   | Decrement
   | Reset
 
-let counter_view_interactive = fun count ->
+let counter_view_interactive = fun count -> div
+~attrs:[ class_ "card" ]
+[
+  h1 [ text "Counter (LiveView)" ];
+  span ~attrs:[ class_ "label" ] [ text "Interactive component with server-side handlers" ];
+  div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
   div
-  ~attrs:[ class_ "card" ]
+  ~attrs:[ class_ "buttons" ]
   [
-    h1 [ text "Counter (LiveView)" ];
-    span ~attrs:[ class_ "label" ] [ text "Interactive component with server-side handlers" ];
-    div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
-    div
-    ~attrs:[ class_ "buttons" ]
-    [
-      button ~attrs:[ class_ "btn btn-secondary"; on_click (fun _ -> Decrement) ] [ text "-" ];
-      button ~attrs:[ class_ "btn btn-secondary"; on_click (fun _ -> Reset) ] [ text "Reset" ];
-      button ~attrs:[ class_ "btn btn-primary"; on_click (fun _ -> Increment) ] [ text "+" ];
+    button ~attrs:[ class_ "btn btn-secondary"; on_click (fun _ -> Decrement) ] [ text "-" ];
+    button ~attrs:[ class_ "btn btn-secondary"; on_click (fun _ -> Reset) ] [ text "Reset" ];
+    button ~attrs:[ class_ "btn btn-primary"; on_click (fun _ -> Increment) ] [ text "+" ];
 
-    ];
-    div
-    ~attrs:[ class_ "success" ]
-    [
-      strong [ text "✓ Interactive: " ];
-      text "Buttons are wired to LiveView event handlers. ";
-      text "Clicks are processed on the server and the UI updates automatically.";
+  ];
+  div
+  ~attrs:[ class_ "success" ]
+  [
+    strong [ text "✓ Interactive: " ];
+    text "Buttons are wired to LiveView event handlers. ";
+    text "Clicks are processed on the server and the UI updates automatically.";
 
-    ];
+  ];
 
-  ]
+]
 
 let interactive_page count : msg t = html
   [

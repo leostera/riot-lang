@@ -3,24 +3,24 @@ open Std.Collections
 open Std.Sync
 
 type error =
-  | Exhausted of { waiting : int; max_connections : int; timeout : Time.Duration.t; }
+  | Exhausted of { waiting: int; max_connections: int; timeout: Time.Duration.t; }
   | ConnectionError of Connection.error
   | Timeout of Time.Duration.t
 
 type config =
   | Config : {
-    driver : (module Sqlx_driver.Driver.Intf with type config = 'config);
-    driver_config : 'config;
-    min_connections : int;
-    max_connections : int;
-    acquire_timeout : Time.Duration.t;
-    idle_timeout : Time.Duration.t;
-    max_lifetime : Time.Duration.t option;
+    driver: (module Sqlx_driver.Driver.Intf with type config = 'config);
+    driver_config: 'config;
+    min_connections: int;
+    max_connections: int;
+    acquire_timeout: Time.Duration.t;
+    idle_timeout: Time.Duration.t;
+    max_lifetime: Time.Duration.t option;
   } -> config
 
 type t = {
-  config : config;
-  supervisor : Pid.t;
+  config: config;
+  supervisor: Pid.t;
 }
 
 type connection_state =
@@ -51,17 +51,17 @@ type Message.t +=
   PoolResponse of pool_response
 
 type pool_state = {
-  connections : connection_state list Cell.t;
-  waiting : Pid.t Queue.t;
-  config : config;
-  min_connections : int;
-  max_connections : int;
-  idle_timeout : Time.Duration.t;
-  max_lifetime : Time.Duration.t option;
+  connections: connection_state list Cell.t;
+  waiting: Pid.t Queue.t;
+  config: config;
+  min_connections: int;
+  max_connections: int;
+  idle_timeout: Time.Duration.t;
+  max_lifetime: Time.Duration.t option;
 }
 
-let spawn_connection = fun (Config { driver; driver_config; _ }) ->
-  Connection.create (Connection.Config {driver; config = driver_config})
+let spawn_connection = fun (Config { driver; driver_config; _ }) -> Connection.create
+(Connection.Config {driver; config = driver_config})
 
 let find_available = fun connections ->
   List.find_opt

@@ -6,8 +6,8 @@ include Kernel.String
 
 module MutIter = struct
   type state = {
-    source : string;
-    mutable current_pos : int;
+    source: string;
+    mutable current_pos: int;
   }
 
   type item = Uchar.t
@@ -34,8 +34,8 @@ let into_mut_iter = fun source ->
 
 module Iter = struct
   type state = {
-    source : string;
-    current_pos : int;
+    source: string;
+    current_pos: int;
   }
 
   type item = Uchar.t
@@ -57,12 +57,9 @@ let into_iter = fun source ->
 
 (* Unicode-aware operations *)
 
-let width =
-  fun s ->
-    (* Calculate display width by summing rune widths *)
-    into_iter s
-    |> Iterator.to_list
-    |> List.fold_left (fun acc rune -> acc + Unicode.Rune.width rune) 0
+let width = fun s ->
+  (* Calculate display width by summing rune widths *)
+  into_iter s |> Iterator.to_list |> List.fold_left (fun acc rune -> acc + Unicode.Rune.width rune) 0
 
 let rune_count = fun s -> into_iter s |> Iterator.to_list |> List.length
 
@@ -140,8 +137,8 @@ let pad_center = fun ~width:target_width pad_char s ->
 
 module GraphemeMutIter = struct
   type state = {
-    source : string;
-    mutable current_pos : int;
+    source: string;
+    mutable current_pos: int;
   }
 
   type item = Unicode.Grapheme.t
@@ -168,8 +165,8 @@ let into_grapheme_mut_iter = fun source ->
 
 module GraphemeIter = struct
   type state = {
-    source : string;
-    current_pos : int;
+    source: string;
+    current_pos: int;
   }
 
   type item = Unicode.Grapheme.t
@@ -215,10 +212,9 @@ let split_words = fun s ->
 
 let line_breaks = fun s -> Unicode.Segmentation.find_line_breaks s
 
-let wrap =
-  fun ~width:_ s ->
-    (* Simplified: split on whitespace *)
-    split_on_char ' ' s |> List.filter (fun w -> w != "")
+let wrap = fun ~width:_ s ->
+  (* Simplified: split on whitespace *)
+  split_on_char ' ' s |> List.filter (fun w -> w != "")
 
 let wrap_words = fun ~width:target_width s ->
   let words = split_words s in

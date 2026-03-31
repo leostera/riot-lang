@@ -49,7 +49,7 @@ module type Read = sig
   (** The type of the readable source *)
   type err
   (** The error type for this source *)
-  val read : t -> ?timeout:int64 -> bytes -> (int, err) result
+  val read: t -> ?timeout:int64 -> bytes -> (int, err) result
 
   (** [read src ?timeout buf] reads data from [src] into [buf].
 
@@ -66,7 +66,7 @@ module type Read = sig
       - Return [Error] with appropriate error if the source is closed
       - Suspend the calling process if no data is available (for async sources)
   *)
-  val read_vectored : t -> Iovec.t -> (int, err) result
+  val read_vectored: t -> Iovec.t -> (int, err) result
 
   (** [read_vectored src iov] reads data into multiple buffers atomically.
       
@@ -96,7 +96,7 @@ type ('src, 'err) t
     Type parameters:
     - ['src] is the underlying source type (e.g., [Kernel.Net.Tcp_stream.t])
     - ['err] is the error type for read operations *)
-val of_read_src : ('src, 'err) read -> 'src -> ('src, 'err) t
+val of_read_src: ('src, 'err) read -> 'src -> ('src, 'err) t
 
 (** [of_read_src (module Read) src] creates a reader from a source.
 
@@ -115,7 +115,7 @@ val of_read_src : ('src, 'err) read -> 'src -> ('src, 'err) t
         end in
         IO.Reader.of_read_src (module Read) stream
     ]} *)
-val read : ('src, 'err) t -> ?timeout:int64 -> bytes -> (int, 'err) result
+val read: ('src, 'err) t -> ?timeout:int64 -> bytes -> (int, 'err) result
 
 (** [read reader ?timeout buf] reads data from the reader into a buffer.
 
@@ -130,7 +130,7 @@ val read : ('src, 'err) t -> ?timeout:int64 -> bytes -> (int, 'err) result
       | Ok n -> process_data (Bytes.sub buf 0 n)
       | Error e -> handle_error e
     ]} *)
-val read_vectored : ('src, 'err) t -> Iovec.t -> (int, 'err) result
+val read_vectored: ('src, 'err) t -> Iovec.t -> (int, 'err) result
 
 (** [read_vectored reader iov] reads data into multiple buffers.
 
@@ -144,7 +144,7 @@ val read_vectored : ('src, 'err) t -> Iovec.t -> (int, 'err) result
       | Ok n -> Printf.printf "Read %d bytes total\n" n
       | Error e -> handle_error e
     ]} *)
-val read_to_end : ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
+val read_to_end: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
 
 (** [read_to_end reader ~buf] reads all available data until EOF.
 
@@ -166,7 +166,7 @@ val read_to_end : ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
           Printf.printf "Read %d bytes: %s\n" total contents
       | Error e -> handle_error e
     ]} *)
-val map_err : ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t
+val map_err: ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t
 
 (** [map_err reader ~fn] transforms the error type of a reader.
     
@@ -179,7 +179,7 @@ val map_err : ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t
       let tls_reader = IO.Reader.map_err tcp_reader 
         ~fn:(fun err -> Tls_error (Transport_error err))
     ]} *)
-val empty : (unit, unit) t
+val empty: (unit, unit) t
 
 (** [empty] is a reader that immediately returns 0 (EOF) on every read.
 
@@ -192,7 +192,7 @@ val empty : (unit, unit) t
       | Ok 0 -> print_endline "EOF as expected"
       | _ -> assert false
     ]} *)
-val from_bytes : bytes -> (bytes, unit) t
+val from_bytes: bytes -> (bytes, unit) t
 
 (** [from_bytes data] creates a reader that reads from in-memory bytes.
 
@@ -208,7 +208,7 @@ val from_bytes : bytes -> (bytes, unit) t
       | Ok 5 -> print_endline (Bytes.to_string buf)  (* prints "Hello" *)
       | _ -> assert false
     ]} *)
-val from_string : string -> (string, unit) t
+val from_string: string -> (string, unit) t
 
 (** [from_string str] creates a reader that reads from a string.
 

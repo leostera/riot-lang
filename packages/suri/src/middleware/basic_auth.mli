@@ -165,12 +165,12 @@ type 'a validation_fn = username:string -> password:string -> 'a option
         )
         ()
     ]} *)
-val middleware : ?realm:string ->
-?skip:(Conn.t -> bool) ->
-username:string ->
-password:string ->
-unit ->
-Pipeline.middleware
+val middleware: ?realm:string ->
+  ?skip:(Conn.t -> bool) ->
+  username:string ->
+  password:string ->
+  unit ->
+  Pipeline.middleware
 
 (** Create Basic Auth middleware with custom validation.
     
@@ -203,11 +203,8 @@ Pipeline.middleware
         | Some user -> (* user is what validate returned *)
         | None -> (* should never happen if middleware passed *)
     ]} *)
-val middleware_with_validation : ?realm:string ->
-?skip:(Conn.t -> bool) ->
-validate:'a validation_fn ->
-unit ->
-Pipeline.middleware
+val middleware_with_validation:
+  ?realm:string -> ?skip:(Conn.t -> bool) -> validate:'a validation_fn -> unit -> Pipeline.middleware
 
 (** {1 Helper Functions} *)
 (** Extract username and password from Authorization header.
@@ -226,7 +223,7 @@ Pipeline.middleware
     
     This is exposed for advanced use cases. Most applications should use
     {!middleware} or {!middleware_with_validation} instead. *)
-val get_credentials : Conn.t -> (string * string) option
+val get_credentials: Conn.t -> (string * string) option
 
 (** Store authenticated user data in connection.
     
@@ -241,7 +238,7 @@ val get_credentials : Conn.t -> (string * string) option
       | Some role -> Printf.printf "Role: %s\n" role
       | None -> ()
     ]} *)
-val assign : string -> 'a -> Conn.t -> Conn.t
+val assign: string -> 'a -> Conn.t -> Conn.t
 
 (** Get authenticated user data from connection.
     
@@ -256,4 +253,4 @@ val assign : string -> 'a -> Conn.t -> Conn.t
     
     {b Note}: The default key used by {!middleware_with_validation} is
     ["basic_auth_user"]. *)
-val get : string -> Conn.t -> 'a option
+val get: string -> Conn.t -> 'a option

@@ -40,56 +40,62 @@ type child_type =
 (** {1 Child Specification} *)
 
 type child_spec = {
-  id : string;
-  start : unit -> Pid.t;
-  restart : restart;
-  shutdown : shutdown;
-  child_type : child_type;
-  significant : bool;
+  id: string;
+  start: unit -> Pid.t;
+  restart: restart;
+  shutdown: shutdown;
+  child_type: child_type;
+  significant: bool;
 }
 
 let child_spec = fun ~id ~start ?(restart = Permanent) ?(shutdown = Timeout (Time.Duration.from_secs
-5)) ?(child_type = Worker) ?(significant = false) () ->
-  {id; start; restart; shutdown; child_type; significant}
+5)) ?(child_type = Worker) ?(significant = false) () -> {
+  id;
+  start;
+  restart;
+  shutdown;
+  child_type;
+  significant
+}
 
 (** {1 Intensity (Restart Limits)} *)
 
 type intensity = {
-  max_restarts : int;
-  window : Time.Duration.t;
+  max_restarts: int;
+  window: Time.Duration.t;
 }
 
 (** {1 Child State} *)
 
 type child_state = {
-  spec : child_spec;
-  pid : Pid.t option;
-  monitor : Process.Monitor.t option;
+  spec: child_spec;
+  pid: Pid.t option;
+  monitor: Process.Monitor.t option;
 }
 
 (** {1 Supervisor State} *)
 
 type supervisor_state = {
-  strategy : strategy;
-  intensity : intensity;
-  children : child_state list Cell.t;
-  restarts : (Time.Instant.t * string) list Cell.t;  (* (timestamp, child_id) *)
+  strategy: strategy;
+  intensity: intensity;
+  children: child_state list Cell.t;
+  restarts: (Time.Instant.t * string) list Cell.t;  (* (timestamp, child_id) *)
 }
 
 (** {1 Public Types for Messages} *)
 
 type child_info = {
-  id : string;
-  pid : Pid.t option;
-  child_type : child_type;
-  restart : restart;
+  id: string;
+  pid: Pid.t option;
+  child_type: child_type;
+  restart: restart;
 }
 
 type child_count = {
-  specs : int;
-  active : int;
-  supervisors : int;
-  workers : int;
+  specs: int;
+  active: int;
+  supervisors: int;
+  workers: int;
 }
 
 type count = child_count
@@ -97,17 +103,17 @@ type count = child_count
 (** {1 Supervisor Messages} *)
 
 type Message.t +=
-  | Supervisor_which_children of { reply_to : Pid.t; }
-  | Supervisor_which_children_reply of { children : child_info list; }
-  | Supervisor_count_children of { reply_to : Pid.t; }
-  | Supervisor_count_children_reply of { count : child_count; }
-  | Supervisor_delete_child of { reply_to : Pid.t; id : string; }
-  | Supervisor_delete_child_reply of { result : (unit, string) result; }
-  | Supervisor_restart_child of { reply_to : Pid.t; id : string; }
-  | Supervisor_restart_child_reply of { result : (Pid.t, string) result; }
-  | Supervisor_terminate_child of { reply_to : Pid.t; id : string; }
-  | Supervisor_terminate_child_reply of { result : (unit, string) result; }
-  | Supervisor_stop of { reply_to : Pid.t; }
+  | Supervisor_which_children of { reply_to: Pid.t; }
+  | Supervisor_which_children_reply of { children: child_info list; }
+  | Supervisor_count_children of { reply_to: Pid.t; }
+  | Supervisor_count_children_reply of { count: child_count; }
+  | Supervisor_delete_child of { reply_to: Pid.t; id: string; }
+  | Supervisor_delete_child_reply of { result: (unit, string) result; }
+  | Supervisor_restart_child of { reply_to: Pid.t; id: string; }
+  | Supervisor_restart_child_reply of { result: (Pid.t, string) result; }
+  | Supervisor_terminate_child of { reply_to: Pid.t; id: string; }
+  | Supervisor_terminate_child_reply of { result: (unit, string) result; }
+  | Supervisor_stop of { reply_to: Pid.t; }
   | Supervisor_stop_reply
 
 let start_child = fun spec ->
@@ -541,11 +547,11 @@ let init_supervisor = fun strategy intensity children () ->
   let state = {strategy; intensity; children = cell child_states; restarts = cell []; } in
   loop state
 
-let start_link = fun ~strategy ?intensity ~children () ->
-  spawn (init_supervisor strategy intensity children)
+let start_link = fun ~strategy ?intensity ~children () -> spawn
+(init_supervisor strategy intensity children)
 
-let start = fun ~strategy ?intensity ~children () ->
-  spawn (init_supervisor strategy intensity children)
+let start = fun ~strategy ?intensity ~children () -> spawn
+(init_supervisor strategy intensity children)
 
 (** {1 Child Management} *)
 
@@ -613,47 +619,47 @@ module Dynamic = struct
   let to_pid = fun t -> t
 
   type dynamic_child = {
-    pid : Pid.t;
-    monitor : Process.Monitor.t;
-    restart : restart;
-    shutdown : shutdown;
+    pid: Pid.t;
+    monitor: Process.Monitor.t;
+    restart: restart;
+    shutdown: shutdown;
   }
 
   type dynamic_state = {
-    intensity : intensity;
-    max_children : int option;
-    children : (Pid.t, dynamic_child) HashMap.t;
-    restarts : (Time.Instant.t * Pid.t) list Cell.t;
+    intensity: intensity;
+    max_children: int option;
+    children: (Pid.t, dynamic_child) HashMap.t;
+    restarts: (Time.Instant.t * Pid.t) list Cell.t;
   }
 
   type Message.t +=
     | Dynamic_start_child of {
-        reply_to : Pid.t;
-        start : unit -> Pid.t;
-        restart : restart;
-        shutdown : shutdown;
+        reply_to: Pid.t;
+        start: unit -> Pid.t;
+        restart: restart;
+        shutdown: shutdown;
       }
     | Dynamic_start_child_reply of {
-        result : (Pid.t, string) result;
+        result: (Pid.t, string) result;
       }
     | Dynamic_terminate_child of {
-        reply_to : Pid.t;
-        pid : Pid.t;
+        reply_to: Pid.t;
+        pid: Pid.t;
       }
     | Dynamic_terminate_child_reply of {
-        result : (unit, string) result;
+        result: (unit, string) result;
       }
     | Dynamic_which_children of {
-        reply_to : Pid.t;
+        reply_to: Pid.t;
       }
     | Dynamic_which_children_reply of {
-        children : Pid.t list;
+        children: Pid.t list;
       }
     | Dynamic_count_children of {
-        reply_to : Pid.t;
+        reply_to: Pid.t;
       }
     | Dynamic_count_children_reply of {
-        count : child_count;
+        count: child_count;
       }
 
   let rec dynamic_loop = fun state ->

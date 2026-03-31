@@ -1,10 +1,10 @@
 open Std
 
 type t = {
-  ignore_patterns : string list;
+  ignore_patterns: string list;
 }
-val empty : t
+val empty: t
 
-val of_toml : Std.Data.Toml.value -> t
+val of_toml: Std.Data.Toml.value -> t
 
-val load : Path.t -> t
+val load: Path.t -> t

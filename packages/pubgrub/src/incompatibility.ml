@@ -12,14 +12,14 @@ type external_cause =
 
 type t =
   | External of {
-      terms : Term.t list;
-      cause : external_cause;
+      terms: Term.t list;
+      cause: external_cause;
     }
   | Derived of {
-      terms : Term.t list;
-      cause1 : t;
-      cause2 : t;
-      shared_id : int option;
+      terms: Term.t list;
+      cause1: t;
+      cause2: t;
+      shared_id: int option;
     }
 
 let create_external = fun terms cause -> External {terms; cause}
@@ -74,8 +74,8 @@ let is_terminal = fun incompat root_pkg root_ver ->
       && Ranges.contains ~compare_v:version_compare (Term.ranges term) root_ver
   | _ -> false
 
-let ranges_equal = fun ~compare_v r1 r2 ->
-  Ranges.subset_of ~compare_v r1 r2 && Ranges.subset_of ~compare_v r2 r1
+let ranges_equal = fun ~compare_v r1 r2 -> Ranges.subset_of ~compare_v r1 r2
+&& Ranges.subset_of ~compare_v r2 r1
 
 let as_dependency = fun incompat ->
   match incompat with

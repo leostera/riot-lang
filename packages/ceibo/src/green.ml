@@ -2,22 +2,22 @@ open Std
 open Std.Collections
 
 type ('kind, 'text) trivia = {
-  kind : 'kind;
-  text : 'text;
-  width : int;
+  kind: 'kind;
+  text: 'text;
+  width: int;
 }
 
 type ('kind, 'text) token = {
-  kind : 'kind;
-  text : 'text;
-  width : int;
-  leading_trivia : ('kind, 'text) trivia list;
+  kind: 'kind;
+  text: 'text;
+  width: int;
+  leading_trivia: ('kind, 'text) trivia list;
 }
 
 type ('kind, 'text) node = {
-  kind : 'kind;
-  width : int;
-  children : ('kind, 'text) element array;
+  kind: 'kind;
+  width: int;
+  children: ('kind, 'text) element array;
 }
 
 and ('kind, 'text) element =

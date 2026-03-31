@@ -70,7 +70,7 @@ type syntax_trivia = (Syntax_kind.t, string) Ceibo.Red.syntax_trivia
     lifts directly; richer functor application syntax is modeled elsewhere.
 *)
 type green_node = (Syntax_kind.t, string) Ceibo.Green.node
-module Token : sig
+module Token: sig
   type fixed_operator =
     | BooleanAnd
     | BooleanOr
@@ -84,43 +84,43 @@ module Token : sig
       `operator_token` in `a + b`.
   *)
   type t = {
-    syntax_token : syntax_token;
+    syntax_token: syntax_token;
   }
-  val syntax_token : t -> syntax_token
+  val syntax_token: t -> syntax_token
 
-  val text : t -> string
+  val text: t -> string
 
-  val full_text : t -> string
+  val full_text: t -> string
 
-  val leading_trivia : t -> syntax_trivia list
+  val leading_trivia: t -> syntax_trivia list
 
-  val span : t -> Ceibo.Span.t
+  val span: t -> Ceibo.Span.t
 
-  val same_text : t -> t -> bool
+  val same_text: t -> t -> bool
 
-  val fixed_operator : t -> fixed_operator option
+  val fixed_operator: t -> fixed_operator option
 
-  val is_operator_like_name : t -> bool
+  val is_operator_like_name: t -> bool
 
-  val is_identifier_like_name : t -> bool
+  val is_identifier_like_name: t -> bool
 end
 
 type docstring_kind =
   | Ordinary
   | Section
 type docstring = {
-  syntax_node : syntax_node;
-  docstring_token : Token.t;
-  kind : docstring_kind;
+  syntax_node: syntax_node;
+  docstring_token: Token.t;
+  kind: docstring_kind;
 }
 type comment = {
-  syntax_node : syntax_node;
-  comment_token : Token.t;
+  syntax_node: syntax_node;
+  comment_token: Token.t;
 }
 type trivia =
   | Docstring of docstring
   | Comment of comment
-val trivia_of_syntax_trivia : syntax_trivia -> trivia option
+val trivia_of_syntax_trivia: syntax_trivia -> trivia option
 
 (** An OCaml attribute attached to some surrounding grammar node.
 
@@ -136,41 +136,41 @@ val trivia_of_syntax_trivia : syntax_trivia -> trivia option
     [@@@warning "-32"]
     ```
 *)
-module Ident : sig
+module Ident: sig
   type t =
     | Ident of {
-        syntax_node : syntax_node;
-        name_token : Token.t;
+        syntax_node: syntax_node;
+        name_token: Token.t;
       }
     (** A single unqualified segment such as `x`, `result`, or `List`. *)
     | Qualified of {
-        syntax_node : syntax_node;
-        prefix : t;
-        dot_token : Token.t;
-        name_token : Token.t;
+        syntax_node: syntax_node;
+        prefix: t;
+        dot_token: Token.t;
+        name_token: Token.t;
       }
   (** A dotted path segment appended to an earlier path.
 
             Examples include `Std.List`, `M.N`, and `Foo.Bar.baz`.
         *)
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val segments : t -> Token.t list
+  val segments: t -> Token.t list
 
-  val last_segment : t -> Token.t option
+  val last_segment: t -> Token.t option
 
-  val name : t -> string option
+  val name: t -> string option
 
-  val from_string : string -> t
+  val from_string: string -> t
 
-  val equal : t -> t -> bool
+  val equal: t -> t -> bool
 end
 
 type attribute = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  name : Ident.t;
-  payload : payload option;
+  syntax_node: syntax_node;
+  sigil_token: Token.t;
+  name: Ident.t;
+  payload: payload option;
 }
 
 (** A PPX extension node.
@@ -186,11 +186,11 @@ type attribute = {
     ```
 *)
 and extension = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  name : Ident.t;
-  payload : payload option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  sigil_token: Token.t;
+  name: Ident.t;
+  payload: payload option;
+  attributes: attribute list;
 }
 
 (** Payloads attached to attributes and extensions.
@@ -201,7 +201,7 @@ and extension = {
 *)
 and payload =
   | Opaque of {
-      tokens : Token.t list;
+      tokens: Token.t list;
     }
 
 (** A lossless opaque payload preserved as its raw shell-local token
@@ -222,11 +222,11 @@ and payload =
     ```
 *)
 and object_type_field = {
-  syntax_node : syntax_node;
-  field_name : Token.t;
-  colon_token : Token.t;
-  field_type : core_type;
-  semicolon_token : Token.t option;
+  syntax_node: syntax_node;
+  field_name: Token.t;
+  colon_token: Token.t;
+  field_type: core_type;
+  semicolon_token: Token.t option;
 }
 
 (** Binder names introduced by explicitly polymorphic type syntax.
@@ -236,15 +236,15 @@ and object_type_field = {
 *)
 and type_binder =
   | Quoted of {
-      syntax_node : syntax_node;
-      name_token : Token.t;
+      syntax_node: syntax_node;
+      name_token: Token.t;
     }
   (** A quoted type binder written with a leading apostrophe.
 
           Example: `'a` in `'a. 'a -> 'a`.
       *)
   | Bare of {
-      name_token : Token.t;
+      name_token: Token.t;
     }
 
 (** A bare binder reconstructed from `type ... .` syntax.
@@ -268,13 +268,13 @@ and type_binder =
     ```
 *)
 and record_type_field = {
-  syntax_node : syntax_node;
-  field_name : Token.t;
-  mutable_token : Token.t option;
-  colon_token : Token.t;
-  field_type : core_type;
-  semicolon_token : Token.t option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  field_name: Token.t;
+  mutable_token: Token.t option;
+  colon_token: Token.t;
+  field_type: core_type;
+  semicolon_token: Token.t option;
+  attributes: attribute list;
 }
 
 (** A tag inside a polymorphic variant type.
@@ -287,12 +287,12 @@ and record_type_field = {
     ```
 *)
 and poly_variant_tag = {
-  syntax_node : syntax_node;
-  attributes : attribute list;
-  bar_token : Token.t option;
-  tag_name : Token.t;
-  separator_token : Token.t option;
-  payload_type : core_type option;
+  syntax_node: syntax_node;
+  attributes: attribute list;
+  bar_token: Token.t option;
+  tag_name: Token.t;
+  separator_token: Token.t option;
+  payload_type: core_type option;
 }
 
 (** The bound marker on a polymorphic variant type.
@@ -311,12 +311,12 @@ and poly_variant_bound =
 
           Example: `[ `A | `B ]`.
       *)
-  | UpperBound of { marker_token : Token.t; }
+  | UpperBound of { marker_token: Token.t; }
   (** An upper-bounded row introduced with `<`.
 
           Example: `[< `A | `B ]`.
       *)
-  | LowerBound of { marker_token : Token.t; }
+  | LowerBound of { marker_token: Token.t; }
 
 (** A lower-bounded row introduced with `>`.
 
@@ -336,7 +336,7 @@ and poly_variant_bound =
 and row_field =
   | Tag of poly_variant_tag
   (** A concrete tag row such as `` `Ok of int ``. *)
-  | Inherit of { bar_token : Token.t option; syntax_node : syntax_node; type_ : core_type; }
+  | Inherit of { bar_token: Token.t option; syntax_node: syntax_node; type_: core_type; }
 
 (** An inherited row type such as `color` in
           `[ color | `Yellow ]`.
@@ -347,11 +347,11 @@ and row_field =
     fields in source order.
 *)
 and poly_variant = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  kind : poly_variant_bound;
-  fields : row_field list;
-  closing_token : Token.t;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  kind: poly_variant_bound;
+  fields: row_field list;
+  closing_token: Token.t;
 }
 
 (** A `constraint ... = ...` attached to a type declaration.
@@ -367,10 +367,10 @@ and poly_variant = {
     ```
 *)
 and type_constraint = {
-  syntax_node : syntax_node;
-  left : core_type;
-  equals_token : Token.t;
-  right : core_type;
+  syntax_node: syntax_node;
+  left: core_type;
+  equals_token: Token.t;
+  right: core_type;
 }
 
 (** Whether a type declaration is public or explicitly `private`.
@@ -386,7 +386,7 @@ and type_constraint = {
 and private_flag =
   | Public
   (** A declaration with no `private` keyword, such as `type t = int`. *)
-  | Private of { private_token : Token.t; }
+  | Private of { private_token: Token.t; }
 
 (** A declaration introduced with `private`, such as
           `type t = private int`.
@@ -406,10 +406,10 @@ and private_flag =
     ```
 *)
 and module_type_constraint = {
-  syntax_node : syntax_node;
-  constrained_type : core_type;
-  replacement_type : core_type;
-  separator_token : Token.t;
+  syntax_node: syntax_node;
+  constrained_type: core_type;
+  replacement_type: core_type;
+  separator_token: Token.t;
 }
 
 (** A package type used in first-class module positions.
@@ -439,10 +439,10 @@ and module_type_constraint = {
     ```
 *)
 and package_type = {
-  syntax_node : syntax_node;
-  module_type_path : Ident.t;
-  constraints : module_type_constraint list;
-  attribute : attribute option;
+  syntax_node: syntax_node;
+  module_type_path: Ident.t;
+  constraints: module_type_constraint list;
+  attribute: attribute option;
 }
 
 (** A named functor parameter.
@@ -455,10 +455,10 @@ and package_type = {
     ```
 *)
 and functor_parameter = {
-  syntax_node : syntax_node;
-  name_token : Token.t;
-  colon_token : Token.t;
-  module_type : module_type;
+  syntax_node: syntax_node;
+  name_token: Token.t;
+  colon_token: Token.t;
+  module_type: module_type;
 }
 
 (** A named label attached to an arrow parameter type.
@@ -476,9 +476,9 @@ and functor_parameter = {
 *)
 and arrow_label =
   | Named of {
-      sigil_token : Token.t option;
-      label_token : Token.t;
-      colon_token : Token.t;
+      sigil_token: Token.t option;
+      label_token: Token.t;
+      colon_token: Token.t;
     }
   (** A regular labeled arrow parameter such as `x:int -> ...`.
 
@@ -486,9 +486,9 @@ and arrow_label =
           with an explicit `~`.
       *)
   | OptionalNamed of {
-      sigil_token : Token.t;
-      label_token : Token.t;
-      colon_token : Token.t;
+      sigil_token: Token.t;
+      label_token: Token.t;
+      colon_token: Token.t;
     }
 
 (** An optional arrow parameter such as `?state:string -> ...`. *)
@@ -501,16 +501,16 @@ and arrow_label =
     the underlying Ceibo tree.
 *)
 and core_type =
-  | Wildcard of { syntax_node : syntax_node; wildcard_token : Token.t; }
+  | Wildcard of { syntax_node: syntax_node; wildcard_token: Token.t; }
   (** An anonymous type variable written as `_`.
 
           Examples include `_` in `type (_, 'a) t` or `_` in
           `let f (_ : _) = ...`.
       *)
-  | Var of { syntax_node : syntax_node; sigil_token : Token.t option; name_token : Token.t; }
+  | Var of { syntax_node: syntax_node; sigil_token: Token.t option; name_token: Token.t; }
   (** A named type variable such as `'a`, `'state`, `'msg`, or bare `a` in
           locally abstract `type a. ...` syntax. *)
-  | Constr of { syntax_node : syntax_node; constructor_path : Ident.t; arguments : core_type list; }
+  | Constr of { syntax_node: syntax_node; constructor_path: Ident.t; arguments: core_type list; }
   (** A named type constructor, optionally applied to arguments.
 
           Covered grammar includes plain constructor names and type
@@ -518,10 +518,10 @@ and core_type =
           `Map.S.t`.
       *)
   | Class of {
-      syntax_node : syntax_node;
-      hash_token : Token.t;
-      class_path : Ident.t;
-      arguments : core_type list;
+      syntax_node: syntax_node;
+      hash_token: Token.t;
+      class_path: Ident.t;
+      arguments: core_type list;
     }
   (** A class type written with `#`.
 
@@ -533,16 +533,16 @@ and core_type =
           ```
       *)
   | Alias of {
-      syntax_node : syntax_node;
-      type_ : core_type;
-      sigil_token : Token.t option;
-      name_token : Token.t;
+      syntax_node: syntax_node;
+      type_: core_type;
+      sigil_token: Token.t option;
+      name_token: Token.t;
     }
   (** A type aliased with `as`.
 
           Example: `('a list as 'whole)`.
       *)
-  | Attribute of { syntax_node : syntax_node; type_ : core_type; attribute : attribute; }
+  | Attribute of { syntax_node: syntax_node; type_: core_type; attribute: attribute; }
   (** A type expression with an attached attribute.
 
           Example: `int [@boxed]`.
@@ -553,11 +553,11 @@ and core_type =
           Example: `[%foo: int]`.
       *)
   | Poly of {
-      syntax_node : syntax_node;
-      type_keyword_token : Token.t option;
-      dot_token : Token.t;
-      binders : type_binder list;
-      body : core_type;
+      syntax_node: syntax_node;
+      type_keyword_token: Token.t option;
+      dot_token: Token.t;
+      binders: type_binder list;
+      body: core_type;
     }
   (** An explicitly quantified type.
 
@@ -572,10 +572,10 @@ and core_type =
           ```
       *)
   | Arrow of {
-      syntax_node : syntax_node;
-      label : arrow_label option;
-      parameter_type : core_type;
-      result_type : core_type;
+      syntax_node: syntax_node;
+      label: arrow_label option;
+      parameter_type: core_type;
+      result_type: core_type;
     }
   (** A function type.
 
@@ -589,12 +589,12 @@ and core_type =
           ?state:string -> bool
           ```
       *)
-  | Tuple of { syntax_node : syntax_node; elements : core_type list; }
+  | Tuple of { syntax_node: syntax_node; elements: core_type list; }
   (** A tuple type with two or more elements.
 
           Example: `int * string * bool`.
       *)
-  | Parenthesized of { syntax_node : syntax_node; inner : core_type; }
+  | Parenthesized of { syntax_node: syntax_node; inner: core_type; }
   (** A parenthesized type used for grouping.
 
           Examples:
@@ -617,21 +617,21 @@ and core_type =
           ```
       *)
   | Record of {
-      syntax_node : syntax_node;
-      opening_token : Token.t;
-      fields : record_type_field list;
-      separator_tokens : Token.t list;
-      closing_token : Token.t;
+      syntax_node: syntax_node;
+      opening_token: Token.t;
+      fields: record_type_field list;
+      separator_tokens: Token.t list;
+      closing_token: Token.t;
     }
   (** A record type definition written between `{` and `}`.
 
           Example: `{ name : string; mutable visits : int }`.
       *)
   | FirstClassModule of {
-      syntax_node : syntax_node;
-      opening_token : Token.t;
-      package_type : package_type;
-      closing_token : Token.t;
+      syntax_node: syntax_node;
+      opening_token: Token.t;
+      package_type: package_type;
+      closing_token: Token.t;
     }
   (** A first-class module type.
 
@@ -643,10 +643,10 @@ and core_type =
           ```
       *)
   | Object of {
-      syntax_node : syntax_node;
-      opening_token : Token.t;
-      fields : object_type_field list;
-      closing_token : Token.t;
+      syntax_node: syntax_node;
+      opening_token: Token.t;
+      fields: object_type_field list;
+      closing_token: Token.t;
     }
 
 (** An object type written between `<` and `>`.
@@ -662,12 +662,12 @@ and core_type =
 and module_type =
   | Path of Ident.t
   (** A named module type path such as `S`, `Set.S`, or `Driver.Intf`. *)
-  | TypeOf of { syntax_node : syntax_node; of_token : Token.t; module_path : Ident.t; }
+  | TypeOf of { syntax_node: syntax_node; of_token: Token.t; module_path: Ident.t; }
   (** A `module type of` expression.
 
           Example: `module type of M`.
       *)
-  | Signature of { syntax_node : syntax_node; signature_syntax_node : syntax_node; }
+  | Signature of { syntax_node: syntax_node; signature_syntax_node: syntax_node; }
   (** A raw `sig ... end` module type.
 
           The signature body is preserved as `signature_syntax_node` rather than
@@ -675,11 +675,7 @@ and module_type =
 
           Example: `sig type t val make : unit -> t end`.
       *)
-  | Functor of {
-      syntax_node : syntax_node;
-      parameters : functor_parameter list;
-      result : module_type;
-    }
+  | Functor of { syntax_node: syntax_node; parameters: functor_parameter list; result: module_type; }
   (** A functor module type.
 
           Examples:
@@ -690,9 +686,9 @@ and module_type =
           ```
       *)
   | With of {
-      syntax_node : syntax_node;
-      base : module_type;
-      constraints : module_type_constraint list;
+      syntax_node: syntax_node;
+      base: module_type;
+      constraints: module_type_constraint list;
     }
   (** A constrained module type using `with`.
 
@@ -704,16 +700,16 @@ and module_type =
           ```
       *)
   | Parenthesized of {
-      syntax_node : syntax_node;
-      opening_token : Token.t;
-      inner : module_type;
-      closing_token : Token.t;
+      syntax_node: syntax_node;
+      opening_token: Token.t;
+      inner: module_type;
+      closing_token: Token.t;
     }
   (** A parenthesized module type used for grouping.
 
           Example: `(S with type t = int)`.
       *)
-  | Attribute of { syntax_node : syntax_node; module_type : module_type; attribute : attribute; }
+  | Attribute of { syntax_node: syntax_node; module_type: module_type; attribute: attribute; }
   (** A module type with an attached attribute.
 
           Example: `(module type of M [@foo])`.
@@ -732,7 +728,7 @@ and module_type =
 and class_type =
   | Path of Ident.t
   (** A named class type path such as `c`, `Widget.t`, or `Driver.class_t`. *)
-  | Signature of { syntax_node : syntax_node; fields : class_type_field list; }
+  | Signature of { syntax_node: syntax_node; fields: class_type_field list; }
   (** An `object ... end` class signature.
 
           Example:
@@ -747,10 +743,10 @@ and class_type =
           ```
       *)
   | Arrow of {
-      syntax_node : syntax_node;
-      label : arrow_label option;
-      parameter_type : core_type;
-      result_type : class_type;
+      syntax_node: syntax_node;
+      label: arrow_label option;
+      parameter_type: core_type;
+      result_type: class_type;
     }
   (** An arrow-style class type.
 
@@ -762,16 +758,16 @@ and class_type =
           ```
       *)
   | Parenthesized of {
-      syntax_node : syntax_node;
-      opening_token : Token.t;
-      inner : class_type;
-      closing_token : Token.t;
+      syntax_node: syntax_node;
+      opening_token: Token.t;
+      inner: class_type;
+      closing_token: Token.t;
     }
   (** A parenthesized class type used for grouping.
 
           Example: `([%driver])`.
       *)
-  | Attribute of { syntax_node : syntax_node; class_type : class_type; attribute : attribute; }
+  | Attribute of { syntax_node: syntax_node; class_type: class_type; attribute: attribute; }
   (** A class type with an attached attribute.
 
           Example: `object method x : int end [@foo]`.
@@ -784,17 +780,17 @@ and class_type =
       *)
 (** Fields inside an `object ... end` class signature. *)
 and class_type_field =
-  | Inherit of { syntax_node : syntax_node; class_type : class_type; }
+  | Inherit of { syntax_node: syntax_node; class_type: class_type; }
   (** An inherited class type field.
 
           Example: `inherit base`.
       *)
   | Value of {
-      syntax_node : syntax_node;
-      name_token : Token.t;
-      colon_token : Token.t;
-      type_ : core_type;
-      modifier_tokens : Token.t list;
+      syntax_node: syntax_node;
+      name_token: Token.t;
+      colon_token: Token.t;
+      type_: core_type;
+      modifier_tokens: Token.t list;
     }
   (** A value declaration in a class signature.
 
@@ -806,11 +802,11 @@ and class_type_field =
           ```
       *)
   | Method of {
-      syntax_node : syntax_node;
-      name_token : Token.t;
-      colon_token : Token.t;
-      type_ : core_type;
-      modifier_tokens : Token.t list;
+      syntax_node: syntax_node;
+      name_token: Token.t;
+      colon_token: Token.t;
+      type_: core_type;
+      modifier_tokens: Token.t list;
     }
   (** A method declaration in a class signature.
 
@@ -822,16 +818,16 @@ and class_type_field =
           ```
       *)
   | Constraint of {
-      syntax_node : syntax_node;
-      left : core_type;
-      equals_token : Token.t;
-      right : core_type;
+      syntax_node: syntax_node;
+      left: core_type;
+      equals_token: Token.t;
+      right: core_type;
     }
   (** A class-type constraint.
 
           Example: `constraint t = int`.
       *)
-  | Attribute of { syntax_node : syntax_node; field : class_type_field; attribute : attribute; }
+  | Attribute of { syntax_node: syntax_node; field: class_type_field; attribute: attribute; }
   (** A class-type field with an attached attribute.
 
           Example: `val x : int [@@foo]`.
@@ -879,65 +875,61 @@ and class_type_field =
     type ('a, 'b) t constraint 'a = 'b
     ```
 *)
-module CoreType : sig
+module CoreType: sig
   type t = core_type =
-    | Wildcard of { syntax_node : syntax_node; wildcard_token : Token.t; }
-    | Var of { syntax_node : syntax_node; sigil_token : Token.t option; name_token : Token.t; }
-    | Constr of {
-        syntax_node : syntax_node;
-        constructor_path : Ident.t;
-        arguments : core_type list;
-      }
+    | Wildcard of { syntax_node: syntax_node; wildcard_token: Token.t; }
+    | Var of { syntax_node: syntax_node; sigil_token: Token.t option; name_token: Token.t; }
+    | Constr of { syntax_node: syntax_node; constructor_path: Ident.t; arguments: core_type list; }
     | Class of {
-        syntax_node : syntax_node;
-        hash_token : Token.t;
-        class_path : Ident.t;
-        arguments : core_type list;
+        syntax_node: syntax_node;
+        hash_token: Token.t;
+        class_path: Ident.t;
+        arguments: core_type list;
       }
     | Alias of {
-        syntax_node : syntax_node;
-        type_ : core_type;
-        sigil_token : Token.t option;
-        name_token : Token.t;
+        syntax_node: syntax_node;
+        type_: core_type;
+        sigil_token: Token.t option;
+        name_token: Token.t;
       }
-    | Attribute of { syntax_node : syntax_node; type_ : core_type; attribute : attribute; }
+    | Attribute of { syntax_node: syntax_node; type_: core_type; attribute: attribute; }
     | Extension of extension
     | Poly of {
-        syntax_node : syntax_node;
-        type_keyword_token : Token.t option;
-        dot_token : Token.t;
-        binders : type_binder list;
-        body : core_type;
+        syntax_node: syntax_node;
+        type_keyword_token: Token.t option;
+        dot_token: Token.t;
+        binders: type_binder list;
+        body: core_type;
       }
     | Arrow of {
-        syntax_node : syntax_node;
-        label : arrow_label option;
-        parameter_type : core_type;
-        result_type : core_type;
+        syntax_node: syntax_node;
+        label: arrow_label option;
+        parameter_type: core_type;
+        result_type: core_type;
       }
-    | Tuple of { syntax_node : syntax_node; elements : core_type list; }
-    | Parenthesized of { syntax_node : syntax_node; inner : core_type; }
+    | Tuple of { syntax_node: syntax_node; elements: core_type list; }
+    | Parenthesized of { syntax_node: syntax_node; inner: core_type; }
     | PolyVariant of poly_variant
     | Record of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        fields : record_type_field list;
-        separator_tokens : Token.t list;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        fields: record_type_field list;
+        separator_tokens: Token.t list;
+        closing_token: Token.t;
       }
     | FirstClassModule of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        package_type : package_type;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        package_type: package_type;
+        closing_token: Token.t;
       }
     | Object of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        fields : object_type_field list;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        fields: object_type_field list;
+        closing_token: Token.t;
       }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** A function-arrow label.
@@ -946,12 +938,12 @@ end
     The label itself is kept as written rather than normalized into a plain
     string.
 *)
-module ModuleTypeConstraint : sig
+module ModuleTypeConstraint: sig
   type t = module_type_constraint = {
-    syntax_node : syntax_node;
-    constrained_type : core_type;
-    replacement_type : core_type;
-    separator_token : Token.t;
+    syntax_node: syntax_node;
+    constrained_type: core_type;
+    replacement_type: core_type;
+    separator_token: Token.t;
   }
 end
 
@@ -963,12 +955,12 @@ end
     functor (X : S) -> T
     ```
 *)
-module TypeConstraint : sig
+module TypeConstraint: sig
   type t = type_constraint = {
-    syntax_node : syntax_node;
-    left : core_type;
-    equals_token : Token.t;
-    right : core_type;
+    syntax_node: syntax_node;
+    left: core_type;
+    equals_token: Token.t;
+    right: core_type;
   }
 end
 
@@ -987,27 +979,27 @@ end
     anchor today. That keeps the CST faithful and lossless without pretending
     signature items are already reified more deeply than they are.
 *)
-module ArrowLabel : sig
+module ArrowLabel: sig
   type t = arrow_label =
     | Named of {
-        sigil_token : Token.t option;
-        label_token : Token.t;
-        colon_token : Token.t;
+        sigil_token: Token.t option;
+        label_token: Token.t;
+        colon_token: Token.t;
       }
     | OptionalNamed of {
-        sigil_token : Token.t;
-        label_token : Token.t;
-        colon_token : Token.t;
+        sigil_token: Token.t;
+        label_token: Token.t;
+        colon_token: Token.t;
       }
-  val sigil_token : t -> Token.t option
+  val sigil_token: t -> Token.t option
 
-  val label_token : t -> Token.t
+  val label_token: t -> Token.t
 
-  val colon_token : t -> Token.t
+  val colon_token: t -> Token.t
 
-  val name : t -> string
+  val name: t -> string
 
-  val is_optional : t -> bool
+  val is_optional: t -> bool
 end
 
 (** Class type syntax.
@@ -1020,12 +1012,12 @@ end
     label:int -> service
     ```
 *)
-module FunctorParameter : sig
+module FunctorParameter: sig
   type t = functor_parameter = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
-    colon_token : Token.t;
-    module_type : module_type;
+    syntax_node: syntax_node;
+    name_token: Token.t;
+    colon_token: Token.t;
+    module_type: module_type;
   }
 end
 
@@ -1034,30 +1026,30 @@ end
     This covers inherited class types, values, methods, constraints, and the
     attribute/extension shells that can wrap them.
 *)
-module ModuleType : sig
+module ModuleType: sig
   type t = module_type =
     | Path of Ident.t
-    | TypeOf of { syntax_node : syntax_node; of_token : Token.t; module_path : Ident.t; }
-    | Signature of { syntax_node : syntax_node; signature_syntax_node : syntax_node; }
+    | TypeOf of { syntax_node: syntax_node; of_token: Token.t; module_path: Ident.t; }
+    | Signature of { syntax_node: syntax_node; signature_syntax_node: syntax_node; }
     | Functor of {
-        syntax_node : syntax_node;
-        parameters : functor_parameter list;
-        result : module_type;
+        syntax_node: syntax_node;
+        parameters: functor_parameter list;
+        result: module_type;
       }
     | With of {
-        syntax_node : syntax_node;
-        base : module_type;
-        constraints : module_type_constraint list;
+        syntax_node: syntax_node;
+        base: module_type;
+        constraints: module_type_constraint list;
       }
     | Parenthesized of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        inner : module_type;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        inner: module_type;
+        closing_token: Token.t;
       }
-    | Attribute of { syntax_node : syntax_node; module_type : module_type; attribute : attribute; }
+    | Attribute of { syntax_node: syntax_node; module_type: module_type; attribute: attribute; }
     | Extension of extension
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** How a string literal is delimited in source.
@@ -1072,60 +1064,60 @@ end
     {tag|hello|tag}
     ```
 *)
-module ClassType : sig
+module ClassType: sig
   type t = class_type =
     | Path of Ident.t
-    | Signature of { syntax_node : syntax_node; fields : class_type_field list; }
+    | Signature of { syntax_node: syntax_node; fields: class_type_field list; }
     | Arrow of {
-        syntax_node : syntax_node;
-        label : arrow_label option;
-        parameter_type : core_type;
-        result_type : class_type;
+        syntax_node: syntax_node;
+        label: arrow_label option;
+        parameter_type: core_type;
+        result_type: class_type;
       }
     | Parenthesized of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        inner : class_type;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        inner: class_type;
+        closing_token: Token.t;
       }
-    | Attribute of { syntax_node : syntax_node; class_type : class_type; attribute : attribute; }
+    | Attribute of { syntax_node: syntax_node; class_type: class_type; attribute: attribute; }
     | Extension of extension
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
-module ClassTypeField : sig
+module ClassTypeField: sig
   type t = class_type_field =
-    | Inherit of { syntax_node : syntax_node; class_type : class_type; }
+    | Inherit of { syntax_node: syntax_node; class_type: class_type; }
     | Value of {
-        syntax_node : syntax_node;
-        name_token : Token.t;
-        colon_token : Token.t;
-        type_ : core_type;
-        modifier_tokens : Token.t list;
+        syntax_node: syntax_node;
+        name_token: Token.t;
+        colon_token: Token.t;
+        type_: core_type;
+        modifier_tokens: Token.t list;
       }
     | Method of {
-        syntax_node : syntax_node;
-        name_token : Token.t;
-        colon_token : Token.t;
-        type_ : core_type;
-        modifier_tokens : Token.t list;
+        syntax_node: syntax_node;
+        name_token: Token.t;
+        colon_token: Token.t;
+        type_: core_type;
+        modifier_tokens: Token.t list;
       }
     | Constraint of {
-        syntax_node : syntax_node;
-        left : core_type;
-        equals_token : Token.t;
-        right : core_type;
+        syntax_node: syntax_node;
+        left: core_type;
+        equals_token: Token.t;
+        right: core_type;
       }
-    | Attribute of { syntax_node : syntax_node; field : class_type_field; attribute : attribute; }
+    | Attribute of { syntax_node: syntax_node; field: class_type_field; attribute: attribute; }
     | Extension of extension
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** The numeric base of an integer literal. *)
 type string_delimiter =
   | DoubleQuote
   (** An ordinary double-quoted string such as `"hello"`. *)
-  | Quoted of { marker : string; }
+  | Quoted of { marker: string; }
 (** A quoted string such as `{sql|select 1|sql}`.
 
           `marker` stores the identifier between `{` and `|`.
@@ -1163,26 +1155,26 @@ type exponent_sign =
     ```
 *)
 type string_constant = {
-  syntax_node : syntax_node;
-  literal_token : Token.t;
-  delimiter : string_delimiter;
-  contents : string;
-  terminated : bool;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  literal_token: Token.t;
+  delimiter: string_delimiter;
+  contents: string;
+  terminated: bool;
+  attributes: attribute list;
 }
 (** The exponent part of a floating-point literal.
 
     Examples include the `e-5` in `1.0e-5` and the `E10` in `3.14E10`.
 *)
 type integer_constant = {
-  syntax_node : syntax_node;
-  sign_token : Token.t option;
-  literal_token : Token.t;
-  base : integer_base;
-  prefix : string option;
-  digits : string;
-  suffix : string option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  sign_token: Token.t option;
+  literal_token: Token.t;
+  base: integer_base;
+  prefix: string option;
+  digits: string;
+  suffix: string option;
+  attributes: attribute list;
 }
 (** A floating-point literal with its written pieces preserved.
 
@@ -1198,30 +1190,30 @@ type integer_constant = {
     ```
 *)
 type float_exponent = {
-  marker : string;
-  sign : exponent_sign option;
-  digits : string;
+  marker: string;
+  sign: exponent_sign option;
+  digits: string;
 }
 (** A character literal with its inner contents preserved exactly as written.
 
     For example, `contents = "\\n"` for the literal `'\n'`.
 *)
 type float_constant = {
-  syntax_node : syntax_node;
-  sign_token : Token.t option;
-  literal_token : Token.t;
-  integral_digits : string;
-  fractional_digits : string;
-  exponent : float_exponent option;
-  suffix : string option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  sign_token: Token.t option;
+  literal_token: Token.t;
+  integral_digits: string;
+  fractional_digits: string;
+  exponent: float_exponent option;
+  suffix: string option;
+  attributes: attribute list;
 }
 (** A boolean literal such as `true` or `false`. *)
 type char_constant = {
-  syntax_node : syntax_node;
-  literal_token : Token.t;
-  contents : string;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  literal_token: Token.t;
+  contents: string;
+  attributes: attribute list;
 }
 (** Literal forms accepted directly in pattern and expression position.
 
@@ -1230,13 +1222,13 @@ type char_constant = {
 *)
 (** Alias of {!Constant} used for direct literal patterns. *)
 type bool_constant = {
-  syntax_node : syntax_node;
-  literal_token : Token.t;
-  value : bool;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  literal_token: Token.t;
+  value: bool;
+  attributes: attribute list;
 }
 (** Alias for `PatternLiteral.t`. *)
-module Constant : sig
+module Constant: sig
   type t =
     | String of string_constant
     (** String literals such as `"hello"` or `{tag|hello|tag}`. *)
@@ -1248,9 +1240,9 @@ module Constant : sig
     (** Character literals such as `'a'` or `'\n'`. *)
     | Bool of bool_constant
     (** Boolean literals `true` and `false`. *)
-    | Unit of { syntax_node : syntax_node; attributes : attribute list; }
+    | Unit of { syntax_node: syntax_node; attributes: attribute list; }
   (** The unit literal `()`. *)
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 module PatternLiteral = Constant
@@ -1268,22 +1260,22 @@ module PatternLiteral = Constant
     types below to expose the relevant nested grammar.
 *)
 type pattern_literal = PatternLiteral.t
-module TypeBinder : sig
+module TypeBinder: sig
   type t = type_binder =
     | Quoted of {
-        syntax_node : syntax_node;
-        name_token : Token.t;
+        syntax_node: syntax_node;
+        name_token: Token.t;
       }
     | Bare of {
-        name_token : Token.t;
+        name_token: Token.t;
       }
-  val name_token : t -> Token.t
+  val name_token: t -> Token.t
 
-  val name : t -> string
+  val name: t -> string
 
-  val text : t -> string
+  val text: t -> string
 
-  val is_quoted : t -> bool
+  val is_quoted: t -> bool
 end
 
 type pattern =
@@ -1375,9 +1367,9 @@ type pattern =
     as patterns.
 *)
 and identifier_pattern = {
-  syntax_node : syntax_node;
-  name_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  name_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Wildcard`.
@@ -1385,8 +1377,8 @@ and identifier_pattern = {
     Carries the original `syntax_node` for `_`.
 *)
 and wildcard_pattern = {
-  syntax_node : syntax_node;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Literal`.
@@ -1395,9 +1387,9 @@ and wildcard_pattern = {
     while attaching outer `[@attr]` metadata orthogonally.
 *)
 and literal_pattern = {
-  syntax_node : syntax_node;
-  literal : pattern_literal;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  literal: pattern_literal;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Extension`.
@@ -1407,9 +1399,9 @@ and literal_pattern = {
     `([%foo? p] [@bar])`.
 *)
 and extension_pattern = {
-  syntax_node : syntax_node;
-  extension : extension;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  extension: extension;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Lazy`.
@@ -1417,9 +1409,9 @@ and extension_pattern = {
     Covers `lazy p`.
 *)
 and lazy_pattern = {
-  syntax_node : syntax_node;
-  pattern : pattern;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  pattern: pattern;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Exception`.
@@ -1427,10 +1419,10 @@ and lazy_pattern = {
     Covers handler patterns like `exception Exit`.
 *)
 and exception_pattern = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  pattern : pattern;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  pattern: pattern;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Range`.
@@ -1439,10 +1431,10 @@ and exception_pattern = {
     written interval structure without reparsing token text.
 *)
 and range_pattern = {
-  syntax_node : syntax_node;
-  lower : pattern_literal;
-  upper : pattern_literal;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  lower: pattern_literal;
+  upper: pattern_literal;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Operator`.
@@ -1451,9 +1443,9 @@ and range_pattern = {
     instead of an alphanumeric identifier.
 *)
 and operator_pattern = {
-  syntax_node : syntax_node;
-  operator_tokens : Token.t list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  operator_tokens: Token.t list;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.FirstClassModule`.
@@ -1463,11 +1455,11 @@ and operator_pattern = {
 *)
 and first_class_module_pattern_binding =
   | Named of {
-      name_token : Token.t;
+      name_token: Token.t;
     }
   (** A named unpack binding such as `M` in `(module M : S)`. *)
   | Anonymous of {
-      wildcard_token : Token.t;
+      wildcard_token: Token.t;
     }
 
 (** An anonymous unpack binding such as `_` in `(module _ : S)`. *)
@@ -1477,13 +1469,13 @@ and first_class_module_pattern_binding =
     `(module M : S)`, and `(module _ : S)`.
 *)
 and first_class_module_pattern = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  binding : first_class_module_pattern_binding;
-  colon_token : Token.t option;
-  package_type : package_type option;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  binding: first_class_module_pattern_binding;
+  colon_token: Token.t option;
+  package_type: package_type option;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.PolyVariant`.
@@ -1495,10 +1487,10 @@ and first_class_module_pattern = {
     like `` `Done ``.
 *)
 and poly_variant_pattern = {
-  syntax_node : syntax_node;
-  tag_token : Token.t;
-  payload : pattern option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  tag_token: Token.t;
+  payload: pattern option;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.PolyVariantInherit`.
@@ -1507,9 +1499,9 @@ and poly_variant_pattern = {
     `#message` or `#M.message`.
 *)
 and poly_variant_inherit_pattern = {
-  syntax_node : syntax_node;
-  type_path : Ident.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  type_path: Ident.t;
+  attributes: attribute list;
 }
 
 (** Existential binders introduced by a constructor pattern.
@@ -1518,11 +1510,11 @@ and poly_variant_inherit_pattern = {
     `Closure (type a) ((f, x) : (a -> _) * _)`.
 *)
 and constructor_pattern_existentials = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  type_keyword_token : Token.t;
-  binders : type_binder list;
-  closing_token : Token.t;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  type_keyword_token: Token.t;
+  binders: type_binder list;
+  closing_token: Token.t;
 }
 
 (** Payload for `Pattern.Constructor`.
@@ -1532,11 +1524,11 @@ and constructor_pattern_existentials = {
     order, so both unary and tupled payloads can be inspected structurally.
 *)
 and constructor_pattern = {
-  syntax_node : syntax_node;
-  constructor_path : Ident.t;
-  existentials : constructor_pattern_existentials option;
-  arguments : pattern list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  constructor_path: Ident.t;
+  existentials: constructor_pattern_existentials option;
+  arguments: pattern list;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Tuple`.
@@ -1544,10 +1536,10 @@ and constructor_pattern = {
     Covers tuple patterns such as `(x, y)`, `(~x, y)`, and `(~x, y, ..)`.
 *)
 and tuple_pattern = {
-  syntax_node : syntax_node;
-  elements : tuple_pattern_element list;
-  open_tail : tuple_pattern_open_tail option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  elements: tuple_pattern_element list;
+  open_tail: tuple_pattern_open_tail option;
+  attributes: attribute list;
 }
 
 (** One element inside a tuple pattern.
@@ -1557,8 +1549,8 @@ and tuple_pattern = {
     label, or the implicit binder for punning forms like `~x`.
 *)
 and tuple_pattern_element = {
-  label_token : Token.t option;
-  pattern : pattern;
+  label_token: Token.t option;
+  pattern: pattern;
 }
 
 (** Explicit open tail on a tuple pattern.
@@ -1567,7 +1559,7 @@ and tuple_pattern_element = {
     `(~x, ~y, ..)`.
 *)
 and tuple_pattern_open_tail = {
-  dotdot_token : Token.t;
+  dotdot_token: Token.t;
 }
 
 (** Payload for `Pattern.List`.
@@ -1575,12 +1567,12 @@ and tuple_pattern_open_tail = {
     Covers list patterns such as `[x]` and `[head; tail]`.
 *)
 and list_pattern = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  elements : pattern list;
-  separator_tokens : Token.t list;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  elements: pattern list;
+  separator_tokens: Token.t list;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Array`.
@@ -1588,12 +1580,12 @@ and list_pattern = {
     Covers array patterns such as `[| x; y |]`.
 *)
 and array_pattern = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  elements : pattern list;
-  separator_tokens : Token.t list;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  elements: pattern list;
+  separator_tokens: Token.t list;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Record`.
@@ -1603,13 +1595,13 @@ and array_pattern = {
     an explicit `_` wildcard tail.
 *)
 and record_pattern = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  fields : record_pattern_field list;
-  separator_tokens : Token.t list;
-  closedness : record_pattern_closedness;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  fields: record_pattern_field list;
+  separator_tokens: Token.t list;
+  closedness: record_pattern_closedness;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Whether a record pattern is closed or explicitly open.
@@ -1624,7 +1616,7 @@ and record_pattern = {
 and record_pattern_closedness =
   | Closed
   (** A closed record pattern such as `{ user; name }`. *)
-  | Open of { wildcard_token : Token.t; }
+  | Open of { wildcard_token: Token.t; }
 
 (** An open record pattern such as `{ user; _ }`. *)
 (** A single field inside a record pattern.
@@ -1634,10 +1626,10 @@ and record_pattern_closedness =
     `{ field = p }`.
 *)
 and record_pattern_field = {
-  syntax_node : syntax_node;
-  field_path : Ident.t;
-  equals_token : Token.t option;
-  pattern : pattern option;
+  syntax_node: syntax_node;
+  field_path: Ident.t;
+  equals_token: Token.t option;
+  pattern: pattern option;
 }
 
 (** Payload for `Pattern.Cons`.
@@ -1645,10 +1637,10 @@ and record_pattern_field = {
     Covers `head :: tail`.
 *)
 and cons_pattern = {
-  syntax_node : syntax_node;
-  head : pattern;
-  tail : pattern;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  head: pattern;
+  tail: pattern;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Or`.
@@ -1656,10 +1648,10 @@ and cons_pattern = {
     Alternatives are preserved in source order from left to right.
 *)
 and or_pattern = {
-  syntax_node : syntax_node;
-  alternatives : pattern list;
-  separator_tokens : Token.t list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  alternatives: pattern list;
+  separator_tokens: Token.t list;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Alias`.
@@ -1667,10 +1659,10 @@ and or_pattern = {
     Covers `p as name`.
 *)
 and alias_pattern = {
-  syntax_node : syntax_node;
-  pattern : pattern;
-  name_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  pattern: pattern;
+  name_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Typed`.
@@ -1678,11 +1670,11 @@ and alias_pattern = {
     Covers `(p : t)` and related parenthesized type-constrained patterns.
 *)
 and typed_pattern = {
-  syntax_node : syntax_node;
-  pattern : pattern;
-  colon_token : Token.t;
-  type_ : core_type;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  pattern: pattern;
+  colon_token: Token.t;
+  type_: core_type;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Effect`.
@@ -1691,10 +1683,10 @@ and typed_pattern = {
     is the continuation binder pattern.
 *)
 and effect_pattern = {
-  syntax_node : syntax_node;
-  effect_pattern : pattern;
-  continuation : pattern;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  effect_pattern: pattern;
+  continuation: pattern;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.LocalOpen`.
@@ -1702,20 +1694,20 @@ and effect_pattern = {
     Covers locally opened patterns such as `M.(Some x)`.
 *)
 and local_open_pattern = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  dot_token : Token.t;
-  opening_token : Token.t option;
-  pattern : pattern;
-  closing_token : Token.t option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  module_path: Ident.t;
+  dot_token: Token.t;
+  opening_token: Token.t option;
+  pattern: pattern;
+  closing_token: Token.t option;
+  attributes: attribute list;
 }
 
 (** Payload for `Pattern.Parenthesized`. *)
 and parenthesized_pattern = {
-  syntax_node : syntax_node;
-  inner : pattern;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  inner: pattern;
+  attributes: attribute list;
 }
 module Literal = Constant
 
@@ -1728,9 +1720,9 @@ type literal = Literal.t
     function-like `let` bindings, such as `x`, `_`, or `(x : int)`.
 *)
 and positional_parameter = {
-  syntax_node : syntax_node;
-  pattern : pattern;
-  name_token : Token.t option;
+  syntax_node: syntax_node;
+  pattern: pattern;
+  name_token: Token.t option;
 }
 
 (** A labeled parameter introduced with `~`.
@@ -1738,13 +1730,13 @@ and positional_parameter = {
     Examples include `~x` and `~label`.
 *)
 and labeled_parameter = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  label_token : Token.t;
-  colon_token : Token.t option;
-  binding_name_token : Token.t option;
-  binding_name_matches_label : bool;
-  binding_pattern : pattern option;
+  syntax_node: syntax_node;
+  sigil_token: Token.t;
+  label_token: Token.t;
+  colon_token: Token.t option;
+  binding_name_token: Token.t option;
+  binding_name_matches_label: bool;
+  binding_pattern: pattern option;
 }
 
 (** An optional parameter introduced with `?`.
@@ -1757,15 +1749,15 @@ and labeled_parameter = {
     `?(x = expr)`.
 *)
 and optional_parameter = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  label_token : Token.t;
-  colon_token : Token.t option;
-  equals_token : Token.t option;
-  binding_name_token : Token.t option;
-  binding_name_matches_label : bool;
-  default_value : expression option;
-  binding_pattern : pattern option;
+  syntax_node: syntax_node;
+  sigil_token: Token.t;
+  label_token: Token.t;
+  colon_token: Token.t option;
+  equals_token: Token.t option;
+  binding_name_token: Token.t option;
+  binding_name_matches_label: bool;
+  default_value: expression option;
+  binding_pattern: pattern option;
 }
 
 (** A locally abstract type parameter in function parameter position.
@@ -1778,11 +1770,11 @@ and optional_parameter = {
     ```
 *)
 and locally_abstract_type_parameter = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  type_keyword_token : Token.t;
-  binders : type_binder list;
-  closing_token : Token.t;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  type_keyword_token: Token.t;
+  binders: type_binder list;
+  closing_token: Token.t;
 }
 
 (** Function parameter syntax.
@@ -1822,19 +1814,19 @@ and parameter =
 *)
 and exception_rhs =
   | Alias of {
-      equals_token : Token.t;
-      alias : Ident.t;
+      equals_token: Token.t;
+      alias: Ident.t;
     }
   | Payload of {
-      of_token : Token.t;
-      payload_type : core_type;
+      of_token: Token.t;
+      payload_type: core_type;
     }
 
 and exception_declaration = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  name_token : Token.t;
-  rhs : exception_rhs option;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  name_token: Token.t;
+  rhs: exception_rhs option;
 }
 
 (** Expression syntax.
@@ -1994,9 +1986,9 @@ and expression =
     Covers path expressions such as `x`, `M.value`, and `List.map`.
 *)
 and path_expression = {
-  syntax_node : syntax_node;
-  path : Ident.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  path: Ident.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Constructor`.
@@ -2006,10 +1998,10 @@ and path_expression = {
     nested `payload` expression, for example as `Expression.Tuple`.
 *)
 and constructor_expression = {
-  syntax_node : syntax_node;
-  constructor_path : Ident.t;
-  payload : expression option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  constructor_path: Ident.t;
+  payload: expression option;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Operator`.
@@ -2018,9 +2010,9 @@ and constructor_expression = {
     infix application.
 *)
 and operator_expression = {
-  syntax_node : syntax_node;
-  operator_tokens : Token.t list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  operator_tokens: Token.t list;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Unreachable`.
@@ -2028,9 +2020,9 @@ and operator_expression = {
     Covers the standalone `.` expression used in impossible branches.
 *)
 and unreachable_expression = {
-  syntax_node : syntax_node;
-  dot_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  dot_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Object`.
@@ -2038,10 +2030,10 @@ and unreachable_expression = {
     `self_pattern` is present for forms such as `object (self) ... end`.
 *)
 and object_expression = {
-  syntax_node : syntax_node;
-  self_pattern : pattern option;
-  members : object_member list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  self_pattern: pattern option;
+  members: object_member list;
+  attributes: attribute list;
 }
 
 (** Members inside an object expression body. *)
@@ -2067,12 +2059,12 @@ and object_member =
 *)
 and method_definition =
   | ConcreteMethod of {
-      body : expression;
-      type_ : (Token.t * core_type) option;
+      body: expression;
+      type_: (Token.t * core_type) option;
     }
   | VirtualMethod of {
-      virtual_token : Token.t;
-      type_ : core_type;
+      virtual_token: Token.t;
+      type_: core_type;
     }
 
 (** The valid definition forms for values.
@@ -2083,12 +2075,12 @@ and method_definition =
 *)
 and value_definition =
   | ConcreteValue of {
-      value : expression;
-      type_ : (Token.t * core_type) option;
+      value: expression;
+      type_: (Token.t * core_type) option;
     }
   | VirtualValue of {
-      virtual_token : Token.t;
-      type_ : core_type;
+      virtual_token: Token.t;
+      type_: core_type;
     }
 
 (** Payload for `object_member` methods.
@@ -2097,14 +2089,14 @@ and value_definition =
     forms such as `method!`.
 *)
 and object_method = {
-  syntax_node : syntax_node;
-  attributes : attribute list;
-  name_token : Token.t;
-  body : expression;
-  equals_token : Token.t;
-  type_ : core_type option;
-  colon_token : Token.t option;
-  modifier_tokens : Token.t list;
+  syntax_node: syntax_node;
+  attributes: attribute list;
+  name_token: Token.t;
+  body: expression;
+  equals_token: Token.t;
+  type_: core_type option;
+  colon_token: Token.t option;
+  modifier_tokens: Token.t list;
 }
 
 (** Payload for `object_member` values.
@@ -2113,21 +2105,21 @@ and object_method = {
     `mutable` and overriding forms.
 *)
 and object_value = {
-  syntax_node : syntax_node;
-  attributes : attribute list;
-  name_token : Token.t;
-  value : expression;
-  equals_token : Token.t;
-  type_ : core_type option;
-  colon_token : Token.t option;
-  modifier_tokens : Token.t list;
+  syntax_node: syntax_node;
+  attributes: attribute list;
+  name_token: Token.t;
+  value: expression;
+  equals_token: Token.t;
+  type_: core_type option;
+  colon_token: Token.t option;
+  modifier_tokens: Token.t list;
 }
 
 (** Payload for `object_member` inheritance clauses. *)
 and object_inherit = {
-  syntax_node : syntax_node;
-  attributes : attribute list;
-  expression : expression;
+  syntax_node: syntax_node;
+  attributes: attribute list;
+  expression: expression;
 }
 
 (** Payload for `object_member` initializers.
@@ -2135,8 +2127,8 @@ and object_inherit = {
     Covers `initializer expr`.
 *)
 and object_initializer = {
-  syntax_node : syntax_node;
-  body : expression;
+  syntax_node: syntax_node;
+  body: expression;
 }
 
 (** Payload for `Expression.PolyVariant`.
@@ -2145,10 +2137,10 @@ and object_initializer = {
     for bare tags like `` `Done ``.
 *)
 and poly_variant_expression = {
-  syntax_node : syntax_node;
-  tag_token : Token.t;
-  payload : expression option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  tag_token: Token.t;
+  payload: expression option;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.ModulePack`.
@@ -2162,13 +2154,13 @@ and poly_variant_expression = {
     as a nested `ModuleExpression.Constraint`.
 *)
 and module_pack_expression = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  module_expression : module_expression;
-  colon_token : Token.t option;
-  package_type : package_type option;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  module_expression: module_expression;
+  colon_token: Token.t option;
+  package_type: package_type option;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.LetModule`.
@@ -2176,12 +2168,12 @@ and module_pack_expression = {
     Covers local module bindings such as `let module M = struct ... end in body`.
 *)
 and let_module_expression = {
-  syntax_node : syntax_node;
-  module_name_token : Token.t;
-  equals_token : Token.t;
-  module_expression : module_expression;
-  body : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  module_name_token: Token.t;
+  equals_token: Token.t;
+  module_expression: module_expression;
+  body: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.LetException`.
@@ -2190,10 +2182,10 @@ and let_module_expression = {
     `let exception Panic of string in body`.
 *)
 and let_exception_expression = {
-  syntax_node : syntax_node;
-  exception_declaration : exception_declaration;
-  body : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  exception_declaration: exception_declaration;
+  body: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Assert`.
@@ -2201,9 +2193,9 @@ and let_exception_expression = {
     Covers `assert expr`.
 *)
 and assert_expression = {
-  syntax_node : syntax_node;
-  asserted : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  asserted: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Lazy`.
@@ -2211,9 +2203,9 @@ and assert_expression = {
     Covers `lazy expr`.
 *)
 and lazy_expression = {
-  syntax_node : syntax_node;
-  body : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  body: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.While`.
@@ -2221,10 +2213,10 @@ and lazy_expression = {
     Covers `while cond do body done`.
 *)
 and while_expression = {
-  syntax_node : syntax_node;
-  condition : expression;
-  body : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  condition: expression;
+  body: expression;
+  attributes: attribute list;
 }
 
 (** The iteration direction of a `for` loop.
@@ -2241,11 +2233,11 @@ and while_expression = {
 *)
 and for_direction =
   | To of {
-      direction_token : Token.t;
+      direction_token: Token.t;
     }
   (** An ascending loop written with `to`. *)
   | Downto of {
-      direction_token : Token.t;
+      direction_token: Token.t;
     }
 
 (** A descending loop written with `downto`. *)
@@ -2255,14 +2247,14 @@ and for_direction =
     the original keyword token.
 *)
 and for_expression = {
-  syntax_node : syntax_node;
-  iterator_token : Token.t;
-  equals_token : Token.t;
-  start_expr : expression;
-  direction : for_direction;
-  end_expr : expression;
-  body : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  iterator_token: Token.t;
+  equals_token: Token.t;
+  start_expr: expression;
+  direction: for_direction;
+  end_expr: expression;
+  body: expression;
+  attributes: attribute list;
 }
 
 (** A single function-application argument. *)
@@ -2279,10 +2271,10 @@ and apply_argument =
     Covers call-site arguments such as `~limit:10`.
 *)
 and labeled_apply_argument = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  label_token : Token.t;
-  value : expression option;
+  syntax_node: syntax_node;
+  sigil_token: Token.t;
+  label_token: Token.t;
+  value: expression option;
 }
 
 (** Payload for optional application arguments.
@@ -2291,10 +2283,10 @@ and labeled_apply_argument = {
     like `?state`.
 *)
 and optional_apply_argument = {
-  syntax_node : syntax_node;
-  sigil_token : Token.t;
-  label_token : Token.t;
-  value : expression option;
+  syntax_node: syntax_node;
+  sigil_token: Token.t;
+  label_token: Token.t;
+  value: expression option;
 }
 
 (** Payload for `Expression.Apply`.
@@ -2303,10 +2295,10 @@ and optional_apply_argument = {
     as `f x y` appears as nested `Apply` nodes.
 *)
 and apply_expression = {
-  syntax_node : syntax_node;
-  callee : expression;
-  argument : apply_argument;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  callee: expression;
+  argument: apply_argument;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.MethodCall`.
@@ -2314,10 +2306,10 @@ and apply_expression = {
     Covers `receiver#method_name`.
 *)
 and method_call_expression = {
-  syntax_node : syntax_node;
-  receiver : expression;
-  method_name : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  receiver: expression;
+  method_name: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.New`.
@@ -2325,9 +2317,9 @@ and method_call_expression = {
     Covers `new Class_name`.
 *)
 and new_expression = {
-  syntax_node : syntax_node;
-  class_path : Ident.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  class_path: Ident.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Prefix`.
@@ -2335,10 +2327,10 @@ and new_expression = {
     Covers prefix operators such as `!cell`, `~-x`, and similar unary forms.
 *)
 and prefix_expression = {
-  syntax_node : syntax_node;
-  operator_token : Token.t;
-  operand : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  operator_token: Token.t;
+  operand: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.FieldAccess`.
@@ -2346,10 +2338,10 @@ and prefix_expression = {
     Covers `receiver.field`.
 *)
 and field_access_expression = {
-  syntax_node : syntax_node;
-  receiver : expression;
-  field_name : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  receiver: expression;
+  field_name: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Index`.
@@ -2357,12 +2349,12 @@ and field_access_expression = {
     Covers both array indexing `arr.(i)` and string indexing `s.[i]`.
 *)
 and index_expression = {
-  syntax_node : syntax_node;
-  collection : expression;
-  opening_tokens : Token.t list;
-  index : expression;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  collection: expression;
+  opening_tokens: Token.t list;
+  index: expression;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.ObjectOverride`.
@@ -2376,12 +2368,12 @@ and index_expression = {
     ```
 *)
 and object_override_expression = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  fields : object_override_field list;
-  separator_tokens : Token.t list;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  fields: object_override_field list;
+  separator_tokens: Token.t list;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.InstanceVariableAssign`.
@@ -2390,11 +2382,11 @@ and object_override_expression = {
     variable name and the operator is `<-`.
 *)
 and instance_variable_assign_expression = {
-  syntax_node : syntax_node;
-  name_token : Token.t;
-  operator_token : Token.t;
-  value : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  name_token: Token.t;
+  operator_token: Token.t;
+  value: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.FieldAssign`.
@@ -2409,11 +2401,11 @@ and instance_variable_assign_expression = {
     ```
 *)
 and field_assign_expression = {
-  syntax_node : syntax_node;
-  target : field_access_expression;
-  operator_token : Token.t;
-  value : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  target: field_access_expression;
+  operator_token: Token.t;
+  value: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Assign`.
@@ -2422,11 +2414,11 @@ and field_assign_expression = {
     `InstanceVariableAssign` or `FieldAssign`.
 *)
 and assign_expression = {
-  syntax_node : syntax_node;
-  target : expression;
-  operator_token : Token.t;
-  value : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  target: expression;
+  operator_token: Token.t;
+  value: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Infix`.
@@ -2434,11 +2426,11 @@ and assign_expression = {
     Covers binary operator applications such as `a + b` and `x |> f`.
 *)
 and infix_expression = {
-  syntax_node : syntax_node;
-  left : expression;
-  operator_token : Token.t;
-  right : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  left: expression;
+  operator_token: Token.t;
+  right: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.TypeAscription`.
@@ -2447,26 +2439,26 @@ and infix_expression = {
     `let value : t = expr`.
 *)
 and type_ascription_expression = {
-  syntax_node : syntax_node;
-  expression : expression;
-  kind : type_ascription_kind;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  expression: expression;
+  kind: type_ascription_kind;
+  attributes: attribute list;
 }
 
 and type_ascription_kind =
   | Type of {
-      colon_token : Token.t;
-      type_ : core_type;
+      colon_token: Token.t;
+      type_: core_type;
     }
   | Coerce of {
-      coercion_token : Token.t;
-      type_ : core_type;
+      coercion_token: Token.t;
+      type_: core_type;
     }
   | ConstraintCoerce of {
-      colon_token : Token.t;
-      from_type : core_type;
-      coercion_token : Token.t;
-      to_type : core_type;
+      colon_token: Token.t;
+      from_type: core_type;
+      coercion_token: Token.t;
+      to_type: core_type;
     }
 
 (** Payload for `Expression.Polymorphic`.
@@ -2480,11 +2472,11 @@ and type_ascription_kind =
     The `type_` payload is expected to be a `CoreType.Poly`.
 *)
 and polymorphic_expression = {
-  syntax_node : syntax_node;
-  expression : expression;
-  colon_token : Token.t;
-  type_ : core_type;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  expression: expression;
+  colon_token: Token.t;
+  type_: core_type;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Sequence`.
@@ -2492,11 +2484,11 @@ and polymorphic_expression = {
     Covers `e1; e2; e3`.
 *)
 and sequence_expression = {
-  syntax_node : syntax_node;
-  separator_token : Token.t;
-  separator_tokens : Token.t list;
-  expressions : expression list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  separator_token: Token.t;
+  separator_tokens: Token.t list;
+  expressions: expression list;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Tuple`.
@@ -2504,9 +2496,9 @@ and sequence_expression = {
     Covers tuple expressions such as `(a, b)` and `(a, b, c)`.
 *)
 and tuple_expression = {
-  syntax_node : syntax_node;
-  elements : expression list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  elements: expression list;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.List`.
@@ -2514,12 +2506,12 @@ and tuple_expression = {
     Covers list expressions such as `[a; b; c]`.
 *)
 and list_expression = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  elements : expression list;
-  separator_tokens : Token.t list;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  elements: expression list;
+  separator_tokens: Token.t list;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Array`.
@@ -2527,12 +2519,12 @@ and list_expression = {
     Covers array expressions such as `[| a; b; c |]`.
 *)
 and array_expression = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  elements : expression list;
-  separator_tokens : Token.t list;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  elements: expression list;
+  separator_tokens: Token.t list;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Record expression syntax.
@@ -2547,24 +2539,24 @@ and record_expression =
 (** A record update such as `{ base with x = 1 }`. *)
 (** Payload for `record_expression` literals. *)
 and record_literal_expression = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  fields : record_expression_field list;
-  separator_tokens : Token.t list;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  fields: record_expression_field list;
+  separator_tokens: Token.t list;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Payload for `record_expression` updates. *)
 and record_update_expression = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  base : expression;
-  with_token : Token.t;
-  fields : record_expression_field list;
-  separator_tokens : Token.t list;
-  closing_token : Token.t;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  base: expression;
+  with_token: Token.t;
+  fields: record_expression_field list;
+  separator_tokens: Token.t list;
+  closing_token: Token.t;
+  attributes: attribute list;
 }
 
 (** Whether a record field used `=` or shorthand punning syntax. *)
@@ -2584,12 +2576,12 @@ and record_expression_field_source =
     an explicit `Expression.Path` and marked with `source = Punned`.
 *)
 and record_expression_field = {
-  syntax_node : syntax_node;
-  field_path : Ident.t;
-  field_name : Token.t;
-  equals_token : Token.t option;
-  value : expression;
-  source : record_expression_field_source;
+  syntax_node: syntax_node;
+  field_path: Ident.t;
+  field_name: Token.t;
+  equals_token: Token.t option;
+  value: expression;
+  source: record_expression_field_source;
 }
 
 (** A single field inside an object override expression.
@@ -2601,10 +2593,10 @@ and record_expression_field = {
     `{< current >}`.
 *)
 and object_override_field = {
-  syntax_node : syntax_node;
-  field_name : Token.t;
-  equals_token : Token.t option;
-  value : expression option;
+  syntax_node: syntax_node;
+  field_name: Token.t;
+  equals_token: Token.t option;
+  value: expression option;
 }
 
 (** Payload for `Expression.LocalOpen`.
@@ -2614,22 +2606,22 @@ and object_override_field = {
 *)
 and local_open_expression =
   | LetOpen of {
-      syntax_node : syntax_node;
-      let_token : Token.t;
-      open_token : Token.t;
-      module_path : Ident.t;
-      in_token : Token.t;
-      body : expression;
-      attributes : attribute list;
+      syntax_node: syntax_node;
+      let_token: Token.t;
+      open_token: Token.t;
+      module_path: Ident.t;
+      in_token: Token.t;
+      body: expression;
+      attributes: attribute list;
     }
   | Delimited of {
-      syntax_node : syntax_node;
-      module_path : Ident.t;
-      dot_token : Token.t;
-      opening_token : Token.t option;
-      body : expression;
-      closing_token : Token.t option;
-      attributes : attribute list;
+      syntax_node: syntax_node;
+      module_path: Ident.t;
+      dot_token: Token.t;
+      opening_token: Token.t option;
+      body: expression;
+      closing_token: Token.t option;
+      attributes: attribute list;
     }
 
 (** A `function`-style case body.
@@ -2646,8 +2638,8 @@ and local_open_expression =
     ```
 *)
 and function_case_body = {
-  syntax_node : syntax_node;
-  cases : match_case list;
+  syntax_node: syntax_node;
+  cases: match_case list;
 }
 
 (** The body of a `fun` expression.
@@ -2669,12 +2661,12 @@ and fun_body =
     `fun x ~label ?opt -> body` or `fun x -> function | Some y -> y`.
 *)
 and fun_expression = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  arrow_token : Token.t;
-  parameters : parameter list;
-  body : fun_body;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  arrow_token: Token.t;
+  parameters: parameter list;
+  body: fun_body;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Function`.
@@ -2688,10 +2680,10 @@ and fun_expression = {
     ```
 *)
 and function_expression = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  cases : match_case list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  cases: match_case list;
+  attributes: attribute list;
 }
 
 (** A single `let` binding.
@@ -2701,15 +2693,15 @@ and function_expression = {
     `and_binding` chains the trailing clauses under the leading binding.
 *)
 and let_binding = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  rec_token : Token.t option;
-  equals_token : Token.t;
-  attributes : attribute list;
-  binding_pattern : pattern;
-  parameters : parameter list;
-  value : expression;
-  and_binding : let_binding option;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  rec_token: Token.t option;
+  equals_token: Token.t;
+  attributes: attribute list;
+  binding_pattern: pattern;
+  parameters: parameter list;
+  value: expression;
+  and_binding: let_binding option;
 }
 
 (** A single binding-operator clause inside a `let*`/`let+`-style expression.
@@ -2722,12 +2714,12 @@ and let_binding = {
     nodes for binding operators.
 *)
 and binding_operator_binding = {
-  keyword_token : Token.t;
-  operator_token : Token.t;
-  equals_token : Token.t;
-  binding_pattern : pattern;
-  bound_value : expression;
-  and_binding : binding_operator_binding option;
+  keyword_token: Token.t;
+  operator_token: Token.t;
+  equals_token: Token.t;
+  binding_pattern: pattern;
+  bound_value: expression;
+  and_binding: binding_operator_binding option;
 }
 
 (** Payload for `Expression.LetOperator`.
@@ -2740,11 +2732,11 @@ and binding_operator_binding = {
     ```
 *)
 and let_operator_expression = {
-  syntax_node : syntax_node;
-  binding : binding_operator_binding;
-  in_token : Token.t;
-  body : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  binding: binding_operator_binding;
+  in_token: Token.t;
+  body: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Let`.
@@ -2755,17 +2747,17 @@ and let_operator_expression = {
     chain.
 *)
 and let_expression = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  rec_token : Token.t option;
-  equals_token : Token.t;
-  in_token : Token.t;
-  binding_pattern : pattern;
-  parameters : parameter list;
-  bound_value : expression;
-  and_binding : let_binding option;
-  body : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  rec_token: Token.t option;
+  equals_token: Token.t;
+  in_token: Token.t;
+  binding_pattern: pattern;
+  parameters: parameter list;
+  bound_value: expression;
+  and_binding: let_binding option;
+  body: expression;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Match`.
@@ -2773,12 +2765,12 @@ and let_expression = {
     Covers `match scrutinee with ...`.
 *)
 and match_expression = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  with_token : Token.t;
-  scrutinee : expression;
-  cases : match_case list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  with_token: Token.t;
+  scrutinee: expression;
+  cases: match_case list;
+  attributes: attribute list;
 }
 
 (** Payload for `Expression.Try`.
@@ -2786,12 +2778,12 @@ and match_expression = {
     Covers `try body with ...`.
 *)
 and try_expression = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  with_token : Token.t;
-  body : expression;
-  cases : match_case list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  with_token: Token.t;
+  body: expression;
+  cases: match_case list;
+  attributes: attribute list;
 }
 
 (** A single match or handler case.
@@ -2800,13 +2792,13 @@ and try_expression = {
     `| p when cond -> e`.
 *)
 and match_case = {
-  syntax_node : syntax_node;
-  bar_token : Token.t option;
-  when_token : Token.t option;
-  arrow_token : Token.t;
-  pattern : pattern;
-  guard : expression option;
-  body : expression;
+  syntax_node: syntax_node;
+  bar_token: Token.t option;
+  when_token: Token.t option;
+  arrow_token: Token.t;
+  pattern: pattern;
+  guard: expression option;
+  body: expression;
 }
 
 (** Payload for `Expression.If`.
@@ -2815,14 +2807,14 @@ and match_case = {
     `if` expressions.
 *)
 and if_expression = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  then_token : Token.t;
-  else_token : Token.t option;
-  condition : expression;
-  then_branch : expression;
-  else_branch : expression option;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  then_token: Token.t;
+  else_token: Token.t option;
+  condition: expression;
+  then_branch: expression;
+  else_branch: expression option;
+  attributes: attribute list;
 }
 
 (** Concrete grouping shell used around `Expression.Parenthesized`.
@@ -2842,12 +2834,12 @@ and expression_grouping =
     delimiter family was written.
 *)
 and parenthesized_expression = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  closing_token : Token.t;
-  grouping : expression_grouping;
-  inner : expression;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  closing_token: Token.t;
+  grouping: expression_grouping;
+  inner: expression;
+  attributes: attribute list;
 }
 
 (** Class expression syntax.
@@ -2917,9 +2909,9 @@ and class_expression =
   | Parenthesized of parenthesized_class_expression
   (** A parenthesized class expression used for grouping. *)
   | Attribute of {
-      syntax_node : syntax_node;
-      class_expression : class_expression;
-      attribute : attribute;
+      syntax_node: syntax_node;
+      class_expression: class_expression;
+      attribute: attribute;
     }
   (** A class expression with an attached attribute. *)
   | Extension of extension
@@ -2930,9 +2922,9 @@ and class_expression =
       *)
 (** The structured payload of `ClassExpression.Structure`. *)
 and class_structure = {
-  syntax_node : syntax_node;
-  self_pattern : pattern option;
-  fields : class_field list;
+  syntax_node: syntax_node;
+  self_pattern: pattern option;
+  fields: class_field list;
 }
 
 (** Fields inside an `object ... end` class structure. *)
@@ -2947,7 +2939,7 @@ and class_field =
   (** A `constraint t = u` field. *)
   | Initializer of class_initializer
   (** An `initializer expr` field. *)
-  | Attribute of { syntax_node : syntax_node; field : class_field; attribute : attribute; }
+  | Attribute of { syntax_node: syntax_node; field: class_field; attribute: attribute; }
   (** A class field with an attached attribute.
 
           Example: `method run = 1 [@@foo]`.
@@ -2964,12 +2956,12 @@ and class_field =
     overriding methods such as `method!`.
 *)
 and class_method = {
-  syntax_node : syntax_node;
-  name_token : Token.t;
-  concrete_equals_token : Token.t option;
-  virtual_colon_token : Token.t option;
-  definition : method_definition;
-  modifier_tokens : Token.t list;
+  syntax_node: syntax_node;
+  name_token: Token.t;
+  concrete_equals_token: Token.t option;
+  virtual_colon_token: Token.t option;
+  definition: method_definition;
+  modifier_tokens: Token.t list;
 }
 
 (** Payload for `ClassField.Value`.
@@ -2978,18 +2970,18 @@ and class_method = {
     `virtual`, and overriding forms.
 *)
 and class_value = {
-  syntax_node : syntax_node;
-  name_token : Token.t;
-  concrete_equals_token : Token.t option;
-  virtual_colon_token : Token.t option;
-  definition : value_definition;
-  modifier_tokens : Token.t list;
+  syntax_node: syntax_node;
+  name_token: Token.t;
+  concrete_equals_token: Token.t option;
+  virtual_colon_token: Token.t option;
+  definition: value_definition;
+  modifier_tokens: Token.t list;
 }
 
 (** Payload for `ClassField.Inherit`. *)
 and class_inherit = {
-  syntax_node : syntax_node;
-  class_expression : class_expression;
+  syntax_node: syntax_node;
+  class_expression: class_expression;
 }
 
 (** Payload for `ClassField.Constraint`.
@@ -2997,10 +2989,10 @@ and class_inherit = {
     Example: `constraint t = int`.
 *)
 and class_constraint = {
-  syntax_node : syntax_node;
-  left : core_type;
-  equals_token : Token.t;
-  right : core_type;
+  syntax_node: syntax_node;
+  left: core_type;
+  equals_token: Token.t;
+  right: core_type;
 }
 
 (** Payload for `ClassField.Initializer`.
@@ -3008,71 +3000,71 @@ and class_constraint = {
     Covers `initializer expr`.
 *)
 and class_initializer = {
-  syntax_node : syntax_node;
-  body : expression;
+  syntax_node: syntax_node;
+  body: expression;
 }
 
 (** Payload for `ClassExpression.Apply`. *)
 and class_apply_expression = {
-  syntax_node : syntax_node;
-  callee : class_expression;
-  argument : apply_argument;
+  syntax_node: syntax_node;
+  callee: class_expression;
+  argument: apply_argument;
 }
 
 (** Payload for `ClassExpression.Fun`. *)
 and class_fun_expression = {
-  syntax_node : syntax_node;
-  parameters : parameter list;
-  body : class_expression;
+  syntax_node: syntax_node;
+  parameters: parameter list;
+  body: class_expression;
 }
 
 (** Payload for `ClassExpression.Let`. *)
 and class_let_expression = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  rec_token : Token.t option;
-  equals_token : Token.t;
-  in_token : Token.t;
-  binding_pattern : pattern;
-  parameters : parameter list;
-  bound_value : expression;
-  and_binding : let_binding option;
-  body : class_expression;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  rec_token: Token.t option;
+  equals_token: Token.t;
+  in_token: Token.t;
+  binding_pattern: pattern;
+  parameters: parameter list;
+  bound_value: expression;
+  and_binding: let_binding option;
+  body: class_expression;
 }
 
 (** Payload for `ClassExpression.Constraint`. *)
 and class_constraint_expression = {
-  syntax_node : syntax_node;
-  class_expression : class_expression;
-  colon_token : Token.t;
-  class_type : class_type;
+  syntax_node: syntax_node;
+  class_expression: class_expression;
+  colon_token: Token.t;
+  class_type: class_type;
 }
 
 (** Payload for `ClassExpression.LocalOpen`. *)
 and local_open_class_expression =
   | LetOpen of {
-      syntax_node : syntax_node;
-      let_token : Token.t;
-      open_token : Token.t;
-      module_path : Ident.t;
-      in_token : Token.t;
-      body : class_expression;
+      syntax_node: syntax_node;
+      let_token: Token.t;
+      open_token: Token.t;
+      module_path: Ident.t;
+      in_token: Token.t;
+      body: class_expression;
     }
   | Delimited of {
-      syntax_node : syntax_node;
-      module_path : Ident.t;
-      dot_token : Token.t;
-      opening_token : Token.t option;
-      body : class_expression;
-      closing_token : Token.t option;
+      syntax_node: syntax_node;
+      module_path: Ident.t;
+      dot_token: Token.t;
+      opening_token: Token.t option;
+      body: class_expression;
+      closing_token: Token.t option;
     }
 
 (** Payload for `ClassExpression.Parenthesized`. *)
 and parenthesized_class_expression = {
-  syntax_node : syntax_node;
-  opening_token : Token.t;
-  inner : class_expression;
-  closing_token : Token.t;
+  syntax_node: syntax_node;
+  opening_token: Token.t;
+  inner: class_expression;
+  closing_token: Token.t;
 }
 
 (** Module expression syntax.
@@ -3084,24 +3076,24 @@ and parenthesized_class_expression = {
 and module_expression =
   | Path of Ident.t
   (** A module path such as `M`, `Stdlib.List`, or `Driver.Sqlite`. *)
-  | Structure of { syntax_node : syntax_node; item_syntax_nodes : syntax_node list; }
+  | Structure of { syntax_node: syntax_node; item_syntax_nodes: syntax_node list; }
   (** A raw `struct ... end` expression.
 
           The contained items are preserved as raw `syntax_node`s rather than a
           separate public structure-item tree.
       *)
   | Functor of {
-      syntax_node : syntax_node;
-      parameters : functor_parameter list;
-      body : module_expression;
+      syntax_node: syntax_node;
+      parameters: functor_parameter list;
+      body: module_expression;
     }
   (** A functor expression.
 
           Example: `functor (X : S) -> struct ... end`.
       *)
-  | Apply of { syntax_node : syntax_node; callee : module_expression; argument : module_expression; }
+  | Apply of { syntax_node: syntax_node; callee: module_expression; argument: module_expression; }
   (** A functor application such as `F(X)` or `F(X)(Y)`. *)
-  | ApplyUnit of { syntax_node : syntax_node; callee : module_expression; }
+  | ApplyUnit of { syntax_node: syntax_node; callee: module_expression; }
   (** A unit functor application such as `F()` or `F()()`.
 
           This preserves the stock parsetree distinction between ordinary
@@ -3109,10 +3101,10 @@ and module_expression =
           argument list.
       *)
   | Constraint of {
-      syntax_node : syntax_node;
-      module_expression : module_expression;
-      colon_token : Token.t;
-      module_type : module_type;
+      syntax_node: syntax_node;
+      module_expression: module_expression;
+      colon_token: Token.t;
+      module_type: module_type;
     }
   (** A module expression constrained by a module type.
 
@@ -3128,12 +3120,12 @@ and module_expression =
           dedicated module-expression node.
       *)
   | ModuleUnpack of {
-      syntax_node : syntax_node;
-      opening_token : Token.t;
-      expression : expression;
-      colon_token : Token.t option;
-      package_type : package_type option;
-      closing_token : Token.t;
+      syntax_node: syntax_node;
+      opening_token: Token.t;
+      expression: expression;
+      colon_token: Token.t option;
+      package_type: package_type option;
+      closing_token: Token.t;
     }
   (** A first-class module unpacking expression.
 
@@ -3145,16 +3137,16 @@ and module_expression =
           ```
       *)
   | Parenthesized of {
-      syntax_node : syntax_node;
-      opening_token : Token.t;
-      inner : module_expression;
-      closing_token : Token.t;
+      syntax_node: syntax_node;
+      opening_token: Token.t;
+      inner: module_expression;
+      closing_token: Token.t;
     }
   (** A parenthesized module expression used for grouping. *)
   | Attribute of {
-      syntax_node : syntax_node;
-      module_expression : module_expression;
-      attribute : attribute;
+      syntax_node: syntax_node;
+      module_expression: module_expression;
+      attribute: attribute;
     }
   (** A module expression with an attached attribute. *)
   | Extension of extension
@@ -3183,7 +3175,7 @@ and module_expression =
     C(arg)
     ```
 *)
-module Expression : sig
+module Expression: sig
   type t = expression =
     | Path of path_expression
     | Constructor of constructor_expression
@@ -3227,43 +3219,43 @@ module Expression : sig
     | Try of try_expression
     | If of if_expression
     | Parenthesized of parenthesized_expression
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val attributes : t -> attribute list
+  val attributes: t -> attribute list
 end
 
-module Parameter : sig
+module Parameter: sig
   type t = parameter =
     | Positional of positional_parameter
     | Labeled of labeled_parameter
     | Optional of optional_parameter
     | LocallyAbstract of locally_abstract_type_parameter
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val sigil_token : t -> Token.t option
+  val sigil_token: t -> Token.t option
 
-  val name_token : t -> Token.t option
+  val name_token: t -> Token.t option
 
-  val name : t -> string option
+  val name: t -> string option
 
-  val is_named : t -> bool
+  val is_named: t -> bool
 
-  val binding_name_matches_label : t -> bool
+  val binding_name_matches_label: t -> bool
 
-  val default_value : t -> expression option
+  val default_value: t -> expression option
 
-  val binding_pattern : t -> pattern option
+  val binding_pattern: t -> pattern option
 end
 
 (** A field inside a class structure body. *)
-module ObjectMember : sig
+module ObjectMember: sig
   type t = object_member =
     | Method of object_method
     | Value of object_value
     | Inherit of object_inherit
     | Extension of extension
     | Initializer of object_initializer
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** Module expression syntax.
@@ -3281,7 +3273,7 @@ end
     `item_syntax_nodes` rather than exposing a second fully typed item tree
     here.
 *)
-module ClassExpression : sig
+module ClassExpression: sig
   type t = class_expression =
     | Path of Ident.t
     | Structure of class_structure
@@ -3292,12 +3284,12 @@ module ClassExpression : sig
     | LocalOpen of local_open_class_expression
     | Parenthesized of parenthesized_class_expression
     | Attribute of {
-        syntax_node : syntax_node;
-        class_expression : class_expression;
-        attribute : attribute;
+        syntax_node: syntax_node;
+        class_expression: class_expression;
+        attribute: attribute;
       }
     | Extension of extension
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** Pattern syntax helper namespace.
@@ -3306,16 +3298,16 @@ end
     qualified matches such as `Pattern.Constructor ...` when that reads more
     clearly than matching the raw variant directly.
 *)
-module ClassField : sig
+module ClassField: sig
   type t = class_field =
     | Method of class_method
     | Value of class_value
     | Inherit of class_inherit
     | Constraint of class_constraint
     | Initializer of class_initializer
-    | Attribute of { syntax_node : syntax_node; field : class_field; attribute : attribute; }
+    | Attribute of { syntax_node: syntax_node; field: class_field; attribute: attribute; }
     | Extension of extension
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** Helper view over `infix_expression`.
@@ -3323,48 +3315,44 @@ end
     This module is convenient when callers specifically want to work with infix
     operators and use helper accessors such as `operator`.
 *)
-module ModuleExpression : sig
+module ModuleExpression: sig
   type t = module_expression =
     | Path of Ident.t
-    | Structure of { syntax_node : syntax_node; item_syntax_nodes : syntax_node list; }
+    | Structure of { syntax_node: syntax_node; item_syntax_nodes: syntax_node list; }
     | Functor of {
-        syntax_node : syntax_node;
-        parameters : functor_parameter list;
-        body : module_expression;
+        syntax_node: syntax_node;
+        parameters: functor_parameter list;
+        body: module_expression;
       }
-    | Apply of {
-        syntax_node : syntax_node;
-        callee : module_expression;
-        argument : module_expression;
-      }
-    | ApplyUnit of { syntax_node : syntax_node; callee : module_expression; }
+    | Apply of { syntax_node: syntax_node; callee: module_expression; argument: module_expression; }
+    | ApplyUnit of { syntax_node: syntax_node; callee: module_expression; }
     | Constraint of {
-        syntax_node : syntax_node;
-        module_expression : module_expression;
-        colon_token : Token.t;
-        module_type : module_type;
+        syntax_node: syntax_node;
+        module_expression: module_expression;
+        colon_token: Token.t;
+        module_type: module_type;
       }
     | ModuleUnpack of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        expression : expression;
-        colon_token : Token.t option;
-        package_type : package_type option;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        expression: expression;
+        colon_token: Token.t option;
+        package_type: package_type option;
+        closing_token: Token.t;
       }
     | Parenthesized of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        inner : module_expression;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        inner: module_expression;
+        closing_token: Token.t;
       }
     | Attribute of {
-        syntax_node : syntax_node;
-        module_expression : module_expression;
-        attribute : attribute;
+        syntax_node: syntax_node;
+        module_expression: module_expression;
+        attribute: attribute;
       }
     | Extension of extension
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** Helper view over `record_expression`.
@@ -3372,7 +3360,7 @@ end
     The constructors mirror `record_expression` exactly, so the literal/update
     distinction documented above applies here unchanged.
 *)
-module Pattern : sig
+module Pattern: sig
   type t = pattern =
     | Identifier of identifier_pattern
     | Wildcard of wildcard_pattern
@@ -3397,34 +3385,34 @@ module Pattern : sig
     | Effect of effect_pattern
     | LocalOpen of local_open_pattern
     | Parenthesized of parenthesized_pattern
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val attributes : t -> attribute list
+  val attributes: t -> attribute list
 end
 
 (** A type variable as it appears in a declaration parameter list.
 
     Examples include `'a` in `type 'a t = ...` and `_` in `type _ t = ...`.
 *)
-module InfixExpression : sig
+module InfixExpression: sig
   type t = infix_expression = {
-    syntax_node : syntax_node;
-    left : expression;
-    operator_token : Token.t;
-    right : expression;
-    attributes : attribute list;
+    syntax_node: syntax_node;
+    left: expression;
+    operator_token: Token.t;
+    right: expression;
+    attributes: attribute list;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val left : t -> Expression.t
+  val left: t -> Expression.t
 
-  val operator_token : t -> Token.t
+  val operator_token: t -> Token.t
 
-  val operator : t -> string
+  val operator: t -> string
 
-  val right : t -> Expression.t
+  val right: t -> Expression.t
 
-  val attributes : t -> attribute list
+  val attributes: t -> attribute list
 end
 
 (** A single type parameter in a type or class declaration.
@@ -3435,11 +3423,11 @@ end
     Examples include `+'a` in `type +'a t = ...`, `!'a`-style injective
     parameters, and `_` in `type _ t = ...`.
 *)
-module RecordExpression : sig
+module RecordExpression: sig
   type t = record_expression =
     | Literal of record_literal_expression
     | Update of record_update_expression
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** A full declared type parameter.
@@ -3456,18 +3444,18 @@ end
     _ 
     ```
 *)
-module TypeVariable : sig
+module TypeVariable: sig
   type t = {
-    syntax_node : syntax_node;
-    name_token : Token.t;
+    syntax_node: syntax_node;
+    name_token: Token.t;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val name_token : t -> Token.t
+  val name_token: t -> Token.t
 
-  val name : t -> string
+  val name: t -> string
 
-  val text : t -> string
+  val text: t -> string
 end
 
 (** Helper view over `private_flag`.
@@ -3475,17 +3463,17 @@ end
     This keeps the written `private` keyword when one was present instead of
     flattening the declaration down to a boolean.
 *)
-module TypeParameterVariance : sig
+module TypeParameterVariance: sig
   type t =
     | Covariant of {
-        marker_token : Token.t;
+        marker_token: Token.t;
       }
     (** A `+` variance marker, as in `type +'a t = ...`. *)
     | Contravariant of {
-        marker_token : Token.t;
+        marker_token: Token.t;
       }
   (** A `-` variance marker, as in `type -'a sink = ...`. *)
-  val marker_token : t -> Token.t
+  val marker_token: t -> Token.t
 end
 
 (** A field inside a record type definition.
@@ -3493,20 +3481,20 @@ end
     Covers entries such as `name : string`, `mutable count : int`, and
     `count : int [@deprecated]`.
 *)
-module TypeParameter : sig
+module TypeParameter: sig
   type t = {
-    syntax_node : syntax_node;
-    variance : TypeParameterVariance.t option;
-    injectivity_token : Token.t option;
-    type_variable : TypeVariable.t option;
+    syntax_node: syntax_node;
+    variance: TypeParameterVariance.t option;
+    injectivity_token: Token.t option;
+    type_variable: TypeVariable.t option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val variance : t -> TypeParameterVariance.t option
+  val variance: t -> TypeParameterVariance.t option
 
-  val injectivity_token : t -> Token.t option
+  val injectivity_token: t -> Token.t option
 
-  val type_variable : t -> TypeVariable.t option
+  val type_variable: t -> TypeVariable.t option
 end
 
 (** Structured argument forms for variant constructors.
@@ -3522,15 +3510,15 @@ end
     type _ expr = Val : 'a -> 'a expr
     ```
 *)
-module PrivateFlag : sig
+module PrivateFlag: sig
   type t = private_flag =
     | Public
     (** A public declaration such as `type t = int`. *)
-    | Private of { private_token : Token.t; }
+    | Private of { private_token: Token.t; }
   (** A private declaration such as `type t = private int`. *)
-  val private_token : t -> Token.t option
+  val private_token: t -> Token.t option
 
-  val is_private : t -> bool
+  val is_private: t -> bool
 end
 
 (** A constructor inside a variant type definition or type extension.
@@ -3552,31 +3540,31 @@ end
     type _ expr = Val : 'a -> 'a expr
     ```
 *)
-module RecordField : sig
+module RecordField: sig
   type t = {
-    syntax_node : syntax_node;
-    field_name : Token.t;
-    mutable_token : Token.t option;
-    colon_token : Token.t;
-    field_type : core_type;
-    semicolon_token : Token.t option;
-    attributes : attribute list;
+    syntax_node: syntax_node;
+    field_name: Token.t;
+    mutable_token: Token.t option;
+    colon_token: Token.t;
+    field_type: core_type;
+    semicolon_token: Token.t option;
+    attributes: attribute list;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val field_name_token : t -> Token.t
+  val field_name_token: t -> Token.t
 
-  val mutable_token : t -> Token.t option
+  val mutable_token: t -> Token.t option
 
-  val colon_token : t -> Token.t
+  val colon_token: t -> Token.t
 
-  val field_type : t -> core_type
+  val field_type: t -> core_type
 
-  val semicolon_token : t -> Token.t option
+  val semicolon_token: t -> Token.t option
 
-  val name : t -> string
+  val name: t -> string
 
-  val attributes : t -> attribute list
+  val attributes: t -> attribute list
 end
 
 (** Helper view over `poly_variant_tag`.
@@ -3584,7 +3572,7 @@ end
     The structure matches `poly_variant_tag` exactly and is typically used while
     inspecting polymorphic variant type definitions.
 *)
-module ConstructorArguments : sig
+module ConstructorArguments: sig
   (** Inline record constructor arguments.
 
             Example:
@@ -3604,7 +3592,7 @@ module ConstructorArguments : sig
             type t = Wrapped of (int * string)
             ```
         *)
-    | Record of { opening_token : Token.t; fields : RecordField.t list; closing_token : Token.t; }
+    | Record of { opening_token: Token.t; fields: RecordField.t list; closing_token: Token.t; }
   (** Inline record constructor arguments.
 
             Example:
@@ -3634,37 +3622,37 @@ module ConstructorArguments : sig
 end
 
 (** Helper view over `poly_variant_bound`. *)
-module VariantConstructor : sig
+module VariantConstructor: sig
   type t = {
-    syntax_node : syntax_node;
-    attributes : attribute list;
-    bar_token : Token.t option;
-    constructor_name : Token.t;
-    separator_token : Token.t option;
-    arguments : ConstructorArguments.t option;
-    payload_type : core_type option;
-    arrow_token : Token.t option;
-    result_type : core_type option;
+    syntax_node: syntax_node;
+    attributes: attribute list;
+    bar_token: Token.t option;
+    constructor_name: Token.t;
+    separator_token: Token.t option;
+    arguments: ConstructorArguments.t option;
+    payload_type: core_type option;
+    arrow_token: Token.t option;
+    result_type: core_type option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val attributes : t -> attribute list
+  val attributes: t -> attribute list
 
-  val bar_token : t -> Token.t option
+  val bar_token: t -> Token.t option
 
-  val constructor_name_token : t -> Token.t
+  val constructor_name_token: t -> Token.t
 
-  val separator_token : t -> Token.t option
+  val separator_token: t -> Token.t option
 
-  val arguments : t -> ConstructorArguments.t option
+  val arguments: t -> ConstructorArguments.t option
 
-  val payload_type : t -> core_type option
+  val payload_type: t -> core_type option
 
-  val arrow_token : t -> Token.t option
+  val arrow_token: t -> Token.t option
 
-  val result_type : t -> core_type option
+  val result_type: t -> core_type option
 
-  val name : t -> string
+  val name: t -> string
 end
 
 (** Helper view over `row_field`.
@@ -3672,37 +3660,37 @@ end
     This distinguishes explicit variant tags from inherited rows such as
     `color` in `[ color | `Yellow ]`.
 *)
-module PolyVariantTag : sig
+module PolyVariantTag: sig
   type t = poly_variant_tag = {
-    syntax_node : syntax_node;
-    attributes : attribute list;
-    bar_token : Token.t option;
-    tag_name : Token.t;
-    separator_token : Token.t option;
-    payload_type : core_type option;
+    syntax_node: syntax_node;
+    attributes: attribute list;
+    bar_token: Token.t option;
+    tag_name: Token.t;
+    separator_token: Token.t option;
+    payload_type: core_type option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val attributes : t -> attribute list
+  val attributes: t -> attribute list
 
-  val bar_token : t -> Token.t option
+  val bar_token: t -> Token.t option
 
-  val tag_name_token : t -> Token.t
+  val tag_name_token: t -> Token.t
 
-  val separator_token : t -> Token.t option
+  val separator_token: t -> Token.t option
 
-  val payload_type : t -> core_type option
+  val payload_type: t -> core_type option
 
-  val name : t -> string
+  val name: t -> string
 end
 
 (** Helper view over `poly_variant`. *)
-module PolyVariantBound : sig
+module PolyVariantBound: sig
   type t = poly_variant_bound =
     | Exact
-    | UpperBound of { marker_token : Token.t; }
-    | LowerBound of { marker_token : Token.t; }
-  val marker_token : t -> Token.t option
+    | UpperBound of { marker_token: Token.t; }
+    | LowerBound of { marker_token: Token.t; }
+  val marker_token: t -> Token.t option
 end
 
 (** The right-hand side of a `type` declaration.
@@ -3710,17 +3698,17 @@ end
     This is intentionally a broad summary layer over the successful parse. The
     most common declaration shapes are modeled directly. 
 *)
-module RowField : sig
+module RowField: sig
   type t = row_field =
     | Tag of poly_variant_tag
-    | Inherit of { bar_token : Token.t option; syntax_node : syntax_node; type_ : core_type; }
-  val syntax_node : t -> syntax_node
+    | Inherit of { bar_token: Token.t option; syntax_node: syntax_node; type_: core_type; }
+  val syntax_node: t -> syntax_node
 
-  val bar_token : t -> Token.t option
+  val bar_token: t -> Token.t option
 
-  val tag : t -> PolyVariantTag.t option
+  val tag: t -> PolyVariantTag.t option
 
-  val inherited_type : t -> core_type option
+  val inherited_type: t -> core_type option
 end
 
 (** A `type` declaration item.
@@ -3733,21 +3721,21 @@ end
     type t := string
     ```
 *)
-module PolyVariant : sig
+module PolyVariant: sig
   type t = poly_variant = {
-    syntax_node : syntax_node;
-    opening_token : Token.t;
-    kind : poly_variant_bound;
-    fields : row_field list;
-    closing_token : Token.t;
+    syntax_node: syntax_node;
+    opening_token: Token.t;
+    kind: poly_variant_bound;
+    fields: row_field list;
+    closing_token: Token.t;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val kind : t -> PolyVariantBound.t
+  val kind: t -> PolyVariantBound.t
 
-  val fields : t -> RowField.t list
+  val fields: t -> RowField.t list
 
-  val tags : t -> PolyVariantTag.t list
+  val tags: t -> PolyVariantTag.t list
 end
 
 (** A `type ... += ...` extension item.
@@ -3759,7 +3747,7 @@ end
     type message += Ack
     ```
 *)
-module TypeDefinition : sig
+module TypeDefinition: sig
   (** A polymorphic variant definition such as
             `type t = [ `A | `B of int ]` or
             `type t = [ color | `Yellow ]`.
@@ -3774,7 +3762,7 @@ module TypeDefinition : sig
             type t
             ```
         *)
-    | Alias of { syntax_node : syntax_node; manifest : core_type; }
+    | Alias of { syntax_node: syntax_node; manifest: core_type; }
     (** A manifest alias.
 
             Examples:
@@ -3785,7 +3773,7 @@ module TypeDefinition : sig
             type t = Outer.Inner.(request -> response)
             ```
         *)
-    | Extensible of { syntax_node : syntax_node; }
+    | Extensible of { syntax_node: syntax_node; }
     (** An extensible variant declaration introduced with `= ..`.
 
             Example:
@@ -3795,31 +3783,31 @@ module TypeDefinition : sig
             ```
         *)
     | FirstClassModule of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        package_type : package_type;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        package_type: package_type;
+        closing_token: Token.t;
       }
     (** A manifest first-class module type.
 
             Example: `type handler = (module Handler with type t = int)`.
         *)
     | Object of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        fields : object_type_field list;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        fields: object_type_field list;
+        closing_token: Token.t;
       }
     (** An object type definition such as `type t = < run : unit -> unit >`. *)
     | Record of {
-        syntax_node : syntax_node;
-        opening_token : Token.t;
-        fields : RecordField.t list;
-        closing_token : Token.t;
+        syntax_node: syntax_node;
+        opening_token: Token.t;
+        fields: RecordField.t list;
+        closing_token: Token.t;
       }
     (** A record type definition such as
             `type t = { name : string; mutable count : int }`. *)
-    | Variant of { syntax_node : syntax_node; constructors : VariantConstructor.t list; }
+    | Variant of { syntax_node: syntax_node; constructors: VariantConstructor.t list; }
     (** A variant definition whose constructors are lifted structurally.
 
             This includes ordinary constructors like `type t = A | B of int`
@@ -3847,65 +3835,65 @@ end
     This is useful both for top-level `let` items and for nested `and` bindings
     collected from expression forms.
 *)
-module TypeDeclaration : sig
+module TypeDeclaration: sig
   type t = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    nonrec_token : Token.t option;
-    type_name : Ident.t;
-    type_params : TypeParameter.t list;
-    type_definition : TypeDefinition.t;
-    manifest_equals_token : Token.t option;
-    manifest_alias : core_type option;
-    definition_equals_token : Token.t option;
-    destructive_substitution_token : Token.t option;
-    private_flag : private_flag;
-    constraints : type_constraint list;
-    attributes : attribute list;
-    next_and_declaration : t option;
+    syntax_node: syntax_node;
+    keyword_token: Token.t;
+    nonrec_token: Token.t option;
+    type_name: Ident.t;
+    type_params: TypeParameter.t list;
+    type_definition: TypeDefinition.t;
+    manifest_equals_token: Token.t option;
+    manifest_alias: core_type option;
+    definition_equals_token: Token.t option;
+    destructive_substitution_token: Token.t option;
+    private_flag: private_flag;
+    constraints: type_constraint list;
+    attributes: attribute list;
+    next_and_declaration: t option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val keyword_token : t -> Token.t
+  val keyword_token: t -> Token.t
 
-  val nonrec_token : t -> Token.t option
+  val nonrec_token: t -> Token.t option
 
-  val type_name : t -> Ident.t
+  val type_name: t -> Ident.t
 
-  val type_params : t -> TypeParameter.t list
+  val type_params: t -> TypeParameter.t list
 
-  val type_definition : t -> TypeDefinition.t
+  val type_definition: t -> TypeDefinition.t
 
   (** Preserves the leading manifest alias in declarations such as
       `type t = Base.t = A | B`.
   *)
-  val manifest_equals_token : t -> Token.t option
+  val manifest_equals_token: t -> Token.t option
 
-  val manifest_alias : t -> core_type option
+  val manifest_alias: t -> core_type option
 
-  val definition_equals_token : t -> Token.t option
+  val definition_equals_token: t -> Token.t option
 
-  val destructive_substitution_token : t -> Token.t option
+  val destructive_substitution_token: t -> Token.t option
 
-  val private_flag : t -> private_flag
+  val private_flag: t -> private_flag
 
   (** Preserves whether the declaration was written with `private`.
 
       Examples include `type t = private int` and
       `type color = private Red | Blue`.
   *)
-  val constraints : t -> TypeConstraint.t list
+  val constraints: t -> TypeConstraint.t list
 
   (** Declaration-level attributes such as `type t = int [@@immediate]`. *)
-  val attributes : t -> attribute list
+  val attributes: t -> attribute list
 
-  val and_declarations : t -> t list
+  val and_declarations: t -> t list
 
-  val next_and_declaration : t -> t option
+  val next_and_declaration: t -> t option
 
-  val is_private : t -> bool
+  val is_private: t -> bool
 
-  val name_token : t -> Token.t
+  val name_token: t -> Token.t
 end
 
 (** A single module binding.
@@ -3921,25 +3909,25 @@ end
     module F (X : S) : T = struct end
     ```
 *)
-module TypeExtension : sig
+module TypeExtension: sig
   type t = {
-    syntax_node : syntax_node;
-    type_name : Ident.t;
-    type_params : TypeParameter.t list;
-    extension_operator_tokens : Token.t list;
-    constructors : VariantConstructor.t list;
+    syntax_node: syntax_node;
+    type_name: Ident.t;
+    type_params: TypeParameter.t list;
+    extension_operator_tokens: Token.t list;
+    constructors: VariantConstructor.t list;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val type_name : t -> Ident.t
+  val type_name: t -> Ident.t
 
-  val type_params : t -> TypeParameter.t list
+  val type_params: t -> TypeParameter.t list
 
-  val extension_operator_tokens : t -> Token.t list
+  val extension_operator_tokens: t -> Token.t list
 
-  val constructors : t -> VariantConstructor.t list
+  val constructors: t -> VariantConstructor.t list
 
-  val name_token : t -> Token.t
+  val name_token: t -> Token.t
 end
 
 (** A recursive module structure item.
@@ -3954,48 +3942,48 @@ end
     and B : T = Y
     ```
 *)
-module LetBinding : sig
+module LetBinding: sig
   type t = let_binding = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    rec_token : Token.t option;
-    equals_token : Token.t;
-    attributes : attribute list;
-    binding_pattern : pattern;
-    parameters : Parameter.t list;
-    value : expression;
-    and_binding : let_binding option;
+    syntax_node: syntax_node;
+    keyword_token: Token.t;
+    rec_token: Token.t option;
+    equals_token: Token.t;
+    attributes: attribute list;
+    binding_pattern: pattern;
+    parameters: Parameter.t list;
+    value: expression;
+    and_binding: let_binding option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val keyword_token : t -> Token.t
+  val keyword_token: t -> Token.t
 
-  val rec_token : t -> Token.t option
+  val rec_token: t -> Token.t option
 
-  val equals_token : t -> Token.t
+  val equals_token: t -> Token.t
 
-  val attributes : t -> attribute list
+  val attributes: t -> attribute list
 
-  val binding_pattern : t -> Pattern.t
+  val binding_pattern: t -> Pattern.t
 
   (** Derived only when `binding_pattern` has a simple recoverable name. *)
-  val binding_name_token : t -> Token.t option
+  val binding_name_token: t -> Token.t option
 
-  val name : t -> string
+  val name: t -> string
 
-  val parameters : t -> Parameter.t list
+  val parameters: t -> Parameter.t list
 
-  val value : t -> Expression.t
+  val value: t -> Expression.t
 
-  val and_bindings : t -> t list
+  val and_bindings: t -> t list
 
-  val and_binding : t -> t option
+  val and_binding: t -> t option
 
-  val value_syntax_node : t -> syntax_node
+  val value_syntax_node: t -> syntax_node
 
-  val is_recursive : t -> bool
+  val is_recursive: t -> bool
 
-  val is_function : t -> bool
+  val is_function: t -> bool
 end
 
 (** A `module` item that appears in signatures.
@@ -4006,48 +3994,48 @@ end
     module M : S
     ```
 *)
-module ModuleSignature : sig
+module ModuleSignature: sig
   type definition =
     | Signature of module_type
     | Alias of module_expression
   type t = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    rec_token : Token.t option;
-    module_name : Token.t;
-    functor_parameters : functor_parameter list;
-    colon_token : Token.t option;
-    equals_token : Token.t option;
-    definition : definition;
-    next_and_declaration : t option;
+    syntax_node: syntax_node;
+    keyword_token: Token.t;
+    rec_token: Token.t option;
+    module_name: Token.t;
+    functor_parameters: functor_parameter list;
+    colon_token: Token.t option;
+    equals_token: Token.t option;
+    definition: definition;
+    next_and_declaration: t option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val keyword_token : t -> Token.t
+  val keyword_token: t -> Token.t
 
-  val rec_token : t -> Token.t option
+  val rec_token: t -> Token.t option
 
-  val module_name_token : t -> Token.t
+  val module_name_token: t -> Token.t
 
-  val functor_parameters : t -> functor_parameter list
+  val functor_parameters: t -> functor_parameter list
 
-  val colon_token : t -> Token.t option
+  val colon_token: t -> Token.t option
 
-  val equals_token : t -> Token.t option
+  val equals_token: t -> Token.t option
 
-  val definition : t -> definition
+  val definition: t -> definition
 
-  val module_type : t -> module_type option
+  val module_type: t -> module_type option
 
-  val module_expression : t -> module_expression option
+  val module_expression: t -> module_expression option
 
-  val and_declarations : t -> t list
+  val and_declarations: t -> t list
 
-  val next_and_declaration : t -> t option
+  val next_and_declaration: t -> t option
 
-  val is_recursive : t -> bool
+  val is_recursive: t -> bool
 
-  val name : t -> string
+  val name: t -> string
 end
 
 (** A `module` item that appears in implementations.
@@ -4059,44 +4047,44 @@ end
     module F (X : S) : T = struct end
     ```
 *)
-module ModuleStructure : sig
+module ModuleStructure: sig
   type t = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    rec_token : Token.t option;
-    module_name : Token.t;
-    functor_parameters : functor_parameter list;
-    colon_token : Token.t option;
-    equals_token : Token.t;
-    module_type : module_type option;
-    module_expression : module_expression;
-    next_and_declaration : t option;
+    syntax_node: syntax_node;
+    keyword_token: Token.t;
+    rec_token: Token.t option;
+    module_name: Token.t;
+    functor_parameters: functor_parameter list;
+    colon_token: Token.t option;
+    equals_token: Token.t;
+    module_type: module_type option;
+    module_expression: module_expression;
+    next_and_declaration: t option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val keyword_token : t -> Token.t
+  val keyword_token: t -> Token.t
 
-  val rec_token : t -> Token.t option
+  val rec_token: t -> Token.t option
 
-  val module_name_token : t -> Token.t
+  val module_name_token: t -> Token.t
 
-  val functor_parameters : t -> functor_parameter list
+  val functor_parameters: t -> functor_parameter list
 
-  val colon_token : t -> Token.t option
+  val colon_token: t -> Token.t option
 
-  val equals_token : t -> Token.t
+  val equals_token: t -> Token.t
 
-  val module_type : t -> module_type option
+  val module_type: t -> module_type option
 
-  val module_expression : t -> module_expression
+  val module_expression: t -> module_expression
 
-  val and_declarations : t -> t list
+  val and_declarations: t -> t list
 
-  val next_and_declaration : t -> t option
+  val next_and_declaration: t -> t option
 
-  val is_recursive : t -> bool
+  val is_recursive: t -> bool
 
-  val name : t -> string
+  val name: t -> string
 end
 
 (** An `open` statement item.
@@ -4110,28 +4098,28 @@ end
     definition and instead contribute directly to the surrounding module or
     signature documentation.
 *)
-module ModuleTypeDeclaration : sig
+module ModuleTypeDeclaration: sig
   type t = {
-    syntax_node : syntax_node;
-    module_keyword_token : Token.t;
-    type_keyword_token : Token.t;
-    module_type_name : Token.t;
-    equals_token : Token.t option;
-    module_type : module_type option;
+    syntax_node: syntax_node;
+    module_keyword_token: Token.t;
+    type_keyword_token: Token.t;
+    module_type_name: Token.t;
+    equals_token: Token.t option;
+    module_type: module_type option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val module_keyword_token : t -> Token.t
+  val module_keyword_token: t -> Token.t
 
-  val type_keyword_token : t -> Token.t
+  val type_keyword_token: t -> Token.t
 
-  val module_type_name_token : t -> Token.t
+  val module_type_name_token: t -> Token.t
 
-  val equals_token : t -> Token.t option
+  val equals_token: t -> Token.t option
 
-  val module_type : t -> module_type option
+  val module_type: t -> module_type option
 
-  val name : t -> string
+  val name: t -> string
 end
 
 (** A `val` declaration item.
@@ -4146,7 +4134,7 @@ end
     val ( + ) : int -> int -> int
     ```
 *)
-module OpenStatement : sig
+module OpenStatement: sig
   type target =
     | Path of Ident.t
     (** A path-style open target such as `open Std.List`.
@@ -4165,95 +4153,95 @@ module OpenStatement : sig
             ```
         *)
   type t = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    target : target;
-    bang_token : Token.t option;
+    syntax_node: syntax_node;
+    keyword_token: Token.t;
+    target: target;
+    bang_token: Token.t option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val keyword_token : t -> Token.t
+  val keyword_token: t -> Token.t
 
-  val target : t -> target
+  val target: t -> target
 
-  val module_expression : t -> module_expression option
+  val module_expression: t -> module_expression option
 
-  val module_path : t -> Ident.t option
+  val module_path: t -> Ident.t option
 
-  val bang_token : t -> Token.t option
+  val bang_token: t -> Token.t option
 
-  val has_bang : t -> bool
+  val has_bang: t -> bool
 end
 
-module Docstring : sig
+module Docstring: sig
   type kind = docstring_kind =
     | Ordinary
     | Section
   type t = docstring = {
-    syntax_node : syntax_node;
-    docstring_token : Token.t;
-    kind : kind;
+    syntax_node: syntax_node;
+    docstring_token: Token.t;
+    kind: kind;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val token : t -> Token.t
+  val token: t -> Token.t
 
-  val kind : t -> kind
+  val kind: t -> kind
 
-  val is_section : t -> bool
+  val is_section: t -> bool
 
-  val text : t -> string
+  val text: t -> string
 end
 
-module Comment : sig
+module Comment: sig
   type t = comment = {
-    syntax_node : syntax_node;
-    comment_token : Token.t;
+    syntax_node: syntax_node;
+    comment_token: Token.t;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val token : t -> Token.t
+  val token: t -> Token.t
 
-  val text : t -> string
+  val text: t -> string
 end
 
-module Trivia : sig
+module Trivia: sig
   type t = trivia =
     | Docstring of docstring
     | Comment of comment
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val token : t -> Token.t
+  val token: t -> Token.t
 
-  val text : t -> string
+  val text: t -> string
 
-  val is_docstring : t -> bool
+  val is_docstring: t -> bool
 
-  val is_comment : t -> bool
+  val is_comment: t -> bool
 end
 
 (** Filter a token's leading trivia down to the trivia entries that begin at or
     after the given source offset. *)
-val leading_trivia_after : after:int -> Token.t -> trivia list
+val leading_trivia_after: after:int -> Token.t -> trivia list
 
 (** Return the first token's leading trivia for a syntax node, filtered to
     entries that begin at or after the given source offset. *)
-val leading_trivia_before_node : after:int -> syntax_node -> trivia list
+val leading_trivia_before_node: after:int -> syntax_node -> trivia list
 
 (** Return boundary trivia between a token and the next syntax node by combining
     the token's remaining leading trivia with the node's first-token leading
     trivia after the token ends. *)
-val leading_trivia_after_token_before_node : after:int -> Token.t -> syntax_node -> trivia list
+val leading_trivia_after_token_before_node: after:int -> Token.t -> syntax_node -> trivia list
 
 (** Return the span covered by the syntax node's real tokens, excluding any
     leading token-attached trivia. *)
-val token_body_span : syntax_node -> Ceibo.Span.t
+val token_body_span: syntax_node -> Ceibo.Span.t
 
 (** Return the syntax kind for a raw syntax node.
 
     This keeps diagnostics-only kind labeling behind `Syn.Cst` so downstream
     tools can keep the value typed and stringify it only at the edge. *)
-val syntax_kind : syntax_node -> Syntax_kind.t
+val syntax_kind: syntax_node -> Syntax_kind.t
 
 (** A `val` declaration item.
 
@@ -4264,12 +4252,12 @@ val syntax_kind : syntax_node -> Syntax_kind.t
     ```
 *)
 type value_declaration = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  name_tokens : Token.t list;
-  colon_token : Token.t;
-  type_ : core_type;
-  trailing_comment : comment option;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  name_tokens: Token.t list;
+  colon_token: Token.t;
+  type_: core_type;
+  trailing_comment: comment option;
 }
 (** An `external` declaration item.
 
@@ -4282,37 +4270,37 @@ type value_declaration = {
     external strlen : string -> int = "caml_strlen"
     ```
 *)
-module ValueDeclaration : sig
+module ValueDeclaration: sig
   type t = value_declaration = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    name_tokens : Token.t list;
-    colon_token : Token.t;
-    type_ : core_type;
-    trailing_comment : comment option;
+    syntax_node: syntax_node;
+    keyword_token: Token.t;
+    name_tokens: Token.t list;
+    colon_token: Token.t;
+    type_: core_type;
+    trailing_comment: comment option;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val keyword_token : t -> Token.t
+  val keyword_token: t -> Token.t
 
-  val name_tokens : t -> Token.t list
+  val name_tokens: t -> Token.t list
 
-  val colon_token : t -> Token.t
+  val colon_token: t -> Token.t
 
-  val type_ : t -> core_type
+  val type_: t -> core_type
 
-  val trailing_comment : t -> comment option
+  val trailing_comment: t -> comment option
 end
 
 type external_declaration = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  name_tokens : Token.t list;
-  colon_token : Token.t;
-  type_ : core_type;
-  equals_token : Token.t;
-  primitive_name_tokens : Token.t list;
-  attributes : attribute list;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  name_tokens: Token.t list;
+  colon_token: Token.t;
+  type_: core_type;
+  equals_token: Token.t;
+  primitive_name_tokens: Token.t list;
+  attributes: attribute list;
 }
 (** A `class` declaration item that appears in signatures.
 
@@ -4322,34 +4310,34 @@ type external_declaration = {
     class service : object method run : unit -> unit end
     ```
 *)
-module ClassDeclaration : sig
+module ClassDeclaration: sig
   type t = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    type_params : TypeParameter.t list;
-    declaration_extension : extension option;
-    declaration_attributes : attribute list;
-    class_name : Token.t;
-    colon_token : Token.t;
-    class_type : class_type;
+    syntax_node: syntax_node;
+    keyword_token: Token.t;
+    type_params: TypeParameter.t list;
+    declaration_extension: extension option;
+    declaration_attributes: attribute list;
+    class_name: Token.t;
+    colon_token: Token.t;
+    class_type: class_type;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val keyword_token : t -> Token.t
+  val keyword_token: t -> Token.t
 
-  val type_params : t -> TypeParameter.t list
+  val type_params: t -> TypeParameter.t list
 
-  val declaration_extension : t -> extension option
+  val declaration_extension: t -> extension option
 
-  val declaration_attributes : t -> attribute list
+  val declaration_attributes: t -> attribute list
 
-  val class_name_token : t -> Token.t
+  val class_name_token: t -> Token.t
 
-  val colon_token : t -> Token.t
+  val colon_token: t -> Token.t
 
-  val class_type : t -> class_type
+  val class_type: t -> class_type
 
-  val name : t -> string
+  val name: t -> string
 end
 
 (** A `class` definition item that appears in implementations.
@@ -4361,40 +4349,40 @@ end
     class service : object method run : unit end = object method run = () end
     ```
 *)
-module ClassDefinition : sig
+module ClassDefinition: sig
   type t = {
-    syntax_node : syntax_node;
-    keyword_token : Token.t;
-    type_params : TypeParameter.t list;
-    declaration_extension : extension option;
-    declaration_attributes : attribute list;
-    class_name : Token.t;
-    colon_token : Token.t option;
-    class_type : class_type option;
-    equals_token : Token.t;
-    class_body : class_expression;
+    syntax_node: syntax_node;
+    keyword_token: Token.t;
+    type_params: TypeParameter.t list;
+    declaration_extension: extension option;
+    declaration_attributes: attribute list;
+    class_name: Token.t;
+    colon_token: Token.t option;
+    class_type: class_type option;
+    equals_token: Token.t;
+    class_body: class_expression;
   }
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val keyword_token : t -> Token.t
+  val keyword_token: t -> Token.t
 
-  val type_params : t -> TypeParameter.t list
+  val type_params: t -> TypeParameter.t list
 
-  val declaration_extension : t -> extension option
+  val declaration_extension: t -> extension option
 
-  val declaration_attributes : t -> attribute list
+  val declaration_attributes: t -> attribute list
 
-  val class_name_token : t -> Token.t
+  val class_name_token: t -> Token.t
 
-  val colon_token : t -> Token.t option
+  val colon_token: t -> Token.t option
 
-  val class_type : t -> class_type option
+  val class_type: t -> class_type option
 
-  val equals_token : t -> Token.t
+  val equals_token: t -> Token.t
 
-  val class_body : t -> class_expression
+  val class_body: t -> class_expression
 
-  val name : t -> string
+  val name: t -> string
 end
 
 (** A `class type` declaration item.
@@ -4409,15 +4397,15 @@ end
     ```
 *)
 type class_type_declaration = {
-  syntax_node : syntax_node;
-  class_keyword_token : Token.t;
-  type_keyword_token : Token.t;
-  type_params : TypeParameter.t list;
-  declaration_extension : extension option;
-  declaration_attributes : attribute list;
-  class_type_name : Token.t;
-  equals_token : Token.t;
-  class_type_body : class_type;
+  syntax_node: syntax_node;
+  class_keyword_token: Token.t;
+  type_keyword_token: Token.t;
+  type_params: TypeParameter.t list;
+  declaration_extension: extension option;
+  declaration_attributes: attribute list;
+  class_type_name: Token.t;
+  equals_token: Token.t;
+  class_type_body: class_type;
 }
 (** The payload of an `include` item.
 
@@ -4435,21 +4423,21 @@ type include_target =
     collapsing implementation and interface includes to a shared raw path.
 *)
 type include_statement = {
-  syntax_node : syntax_node;
-  keyword_token : Token.t;
-  target : include_target;
+  syntax_node: syntax_node;
+  keyword_token: Token.t;
+  target: include_target;
 }
 (** Top-level items that can appear in an implementation source file.
 
     This covers structure items such as `let`, `module`, `type`, floating
     attributes, and standalone expressions.
 *)
-module Payload : sig
+module Payload: sig
   type t = payload =
     | Opaque of {
-        tokens : Token.t list;
+        tokens: Token.t list;
       }
-  val tokens : t -> Token.t list
+  val tokens: t -> Token.t list
 end
 
 (** A parsed implementation source file.
@@ -4458,7 +4446,7 @@ end
     with specific item families should iterate that list directly so
     interleaved `let`, `module`, attribute, and expression items stay in order.
 *)
-module StructureItem : sig
+module StructureItem: sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
     (** A `type` declaration item. *)
@@ -4492,10 +4480,10 @@ module StructureItem : sig
     (** An `include` item. *)
     | ExceptionDeclaration of exception_declaration
   (** An `exception` declaration item. *)
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
-module SignatureItem : sig
+module SignatureItem: sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
     (** A `type` declaration item. *)
@@ -4527,7 +4515,7 @@ module SignatureItem : sig
     (** An `include` item. *)
     | ExceptionDeclaration of exception_declaration
   (** An `exception` declaration item. *)
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 end
 
 (** A parsed interface source file.
@@ -4537,18 +4525,18 @@ end
     instead of relying on flattened projections.
 *)
 type implementation = {
-  syntax_node : syntax_node;
-  items : StructureItem.t list;
-  phrase_separator_tokens : Token.t list;
-  trailing_phrase_separator_tokens : Token.t list list;
+  syntax_node: syntax_node;
+  items: StructureItem.t list;
+  phrase_separator_tokens: Token.t list;
+  trailing_phrase_separator_tokens: Token.t list list;
 }
 (** A parsed source file, distinguished by whether the grammar was an
     implementation or an interface. *)
 type interface = {
-  syntax_node : syntax_node;
-  items : SignatureItem.t list;
-  phrase_separator_tokens : Token.t list;
-  trailing_phrase_separator_tokens : Token.t list list;
+  syntax_node: syntax_node;
+  items: SignatureItem.t list;
+  phrase_separator_tokens: Token.t list;
+  trailing_phrase_separator_tokens: Token.t list list;
 }
 (** Alias for the full-file CST root. *)
 type t =
@@ -4564,22 +4552,22 @@ type t =
 *)
 (** Returns the root `syntax_node` for the parsed source file. *)
 type source_file = t
-module SourceFile : sig
+module SourceFile: sig
   type t = source_file
-  val syntax_node : t -> syntax_node
+  val syntax_node: t -> syntax_node
 
-  val structure_items : t -> StructureItem.t list option
+  val structure_items: t -> StructureItem.t list option
 
-  val signature_items : t -> SignatureItem.t list option
+  val signature_items: t -> SignatureItem.t list option
 
-  val phrase_separator_tokens : t -> Token.t list
+  val phrase_separator_tokens: t -> Token.t list
 
-  val trailing_phrase_separator_tokens : t -> Token.t list list
+  val trailing_phrase_separator_tokens: t -> Token.t list list
 
-  val kind : t -> [
-    | `Implementation
-    | `Interface
-  ]
+  val kind: t -> [
+      | `Implementation
+      | `Interface
+    ]
 end
 
-val syntax_node_of_source_file : source_file -> syntax_node
+val syntax_node_of_source_file: source_file -> syntax_node

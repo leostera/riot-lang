@@ -3,9 +3,9 @@ open Global0
 module type Intf = sig
   type state
   type item
-  val next : state -> item option * state
+  val next: state -> item option * state
 
-  val size : state -> int
+  val size: state -> int
 end
 
 type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
@@ -162,8 +162,8 @@ let all : type a. a t -> fn:(a -> bool) -> bool = fun iter ~fn ->
 let take : type a. a t -> int -> a t = fun iter n ->
   let module TakeIter = struct
     type state = {
-      iter : a t;
-      remaining : int;
+      iter: a t;
+      remaining: int;
     }
 
     type item = a
@@ -193,8 +193,8 @@ let drop : type a. a t -> int -> a t = fun iter n ->
 let enumerate : type a. a t -> (int * a) t = fun iter ->
   let module EnumIter = struct
     type state = {
-      iter : a t;
-      index : int;
+      iter: a t;
+      index: int;
     }
 
     type item = int * a
@@ -212,8 +212,8 @@ let enumerate : type a. a t -> (int * a) t = fun iter ->
 let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
   let module ZipIter = struct
     type state = {
-      iter1 : a t;
-      iter2 : b t;
+      iter1: a t;
+      iter2: b t;
     }
 
     type item = a * b
@@ -232,9 +232,9 @@ let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
 let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
   let module ChainIter = struct
     type state = {
-      first : a t;
-      second : a t;
-      in_first : bool;
+      first: a t;
+      second: a t;
+      in_first: bool;
     }
 
     type item = a

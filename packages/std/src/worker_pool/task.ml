@@ -1,7 +1,7 @@
 type t =
   Task : {
-    value : 'v;
-    ref : 'v Ref.t;
+    value: 'v;
+    ref: 'v Ref.t;
   } -> t
 
 let make = fun value ref -> Task {value; ref}

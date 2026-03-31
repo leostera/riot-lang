@@ -12,11 +12,11 @@ type error =
   | TooLong
 
 type url_parts = {
-  scheme : string option;
-  authority : string option;
-  path : string;
-  query : string option;
-  fragment : string option;
+  scheme: string option;
+  authority: string option;
+  path: string;
+  query: string option;
+  fragment: string option;
 }
 
 type t = url_parts
@@ -358,8 +358,8 @@ end
 
 module PathAndQuery = struct
   type t = {
-    path : string;
-    query : string option;
+    path: string;
+    query: string option;
   }
 
   let of_string = fun s ->
@@ -384,26 +384,25 @@ end
 
 module Builder = struct
   type t = {
-    scheme : string option;
-    authority : string option;
-    host : string option;
-    port : int option;
-    path : string option;
-    query : string option;
-    fragment : string option;
+    scheme: string option;
+    authority: string option;
+    host: string option;
+    port: int option;
+    path: string option;
+    query: string option;
+    fragment: string option;
   }
 
-  let create = fun () ->
-    {
-      scheme = None;
-      authority = None;
-      host = None;
-      port = None;
-      path = None;
-      query = None;
-      fragment = None;
+  let create = fun () -> {
+    scheme = None;
+    authority = None;
+    host = None;
+    port = None;
+    path = None;
+    query = None;
+    fragment = None;
 
-    }
+  }
 
   let scheme = fun builder s -> {builder with scheme = Some s}
 
@@ -670,16 +669,15 @@ module Query = struct
     try Some (List.assoc key params) with
     | Not_found -> None
 
-  let get_all =
-    fun params key ->
-      List.fold_left
-        (fun acc ((k, v)) ->
-          if String.equal k key then
-            v :: acc
-          else
-            acc)
-        []
-        params |> List.rev
+  let get_all = fun params key ->
+    List.fold_left
+      (fun acc ((k, v)) ->
+        if String.equal k key then
+          v :: acc
+        else
+          acc)
+      []
+      params |> List.rev
 
   let add = fun params key value -> (key, value) :: params
 

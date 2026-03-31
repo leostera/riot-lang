@@ -16,8 +16,9 @@ let rec binding_operator_bindings_of_chain = fun (binding:Syn.Cst.binding_operat
     | None -> []
   )
 
-let is_trivia = fun kind ->
-  let open Syn.SyntaxKind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
+let is_trivia = fun kind -> let open Syn.SyntaxKind in kind = WHITESPACE
+|| kind = COMMENT
+|| kind = DOCSTRING
 
 (* Core traversal that collects elements *)
 
@@ -39,38 +40,38 @@ let traverse = fun ~visit_node ~visit_token tree ->
 
 (* Find nodes matching predicate *)
 
-let find_nodes =
-  fun predicate tree ->
-    traverse
-      ~visit_node:(fun node acc ->
-        if predicate node then
-          node :: acc
-        else
-          acc)
-      ~visit_token:(fun _token acc -> acc)
-      tree |> List.rev
+let find_nodes = fun predicate tree ->
+  traverse
+    ~visit_node:(fun node acc ->
+      if predicate node then
+        node :: acc
+      else
+        acc)
+    ~visit_token:(fun _token acc -> acc)
+    tree |> List.rev
 
 (* Find nodes by kind *)
 
-let find_by_kind = fun kind tree ->
-  find_nodes (fun node -> let open Syn.Ceibo.Red in SyntaxNode.kind node = kind) tree
+let find_by_kind = fun kind tree -> find_nodes
+(fun node -> let open Syn.Ceibo.Red in SyntaxNode.kind node = kind)
+tree
 
 (* Find nodes by multiple kinds *)
 
-let find_by_kinds = fun kinds tree ->
-  find_nodes (fun node -> let open Syn.Ceibo.Red in List.mem (SyntaxNode.kind node) kinds) tree
+let find_by_kinds = fun kinds tree -> find_nodes
+(fun node -> let open Syn.Ceibo.Red in List.mem (SyntaxNode.kind node) kinds)
+tree
 
 (* Find tokens matching predicate *)
 
-let find_tokens =
-  fun predicate tree ->
-    traverse ~visit_node:(fun _node acc -> acc)
-      ~visit_token:(fun token acc ->
-        if predicate token then
-          token :: acc
-        else
-          acc)
-      tree |> List.rev
+let find_tokens = fun predicate tree ->
+  traverse ~visit_node:(fun _node acc -> acc)
+    ~visit_token:(fun token acc ->
+      if predicate token then
+        token :: acc
+      else
+        acc)
+    tree |> List.rev
 
 (* First non-trivia child *)
 
@@ -97,8 +98,8 @@ let first_non_trivia_token = fun node ->
 (* Visitor pattern *)
 
 type 'acc visitor = {
-  visit_node : red_node -> 'acc -> 'acc;
-  visit_token : red_token -> 'acc -> 'acc;
+  visit_node: red_node -> 'acc -> 'acc;
+  visit_token: red_token -> 'acc -> 'acc;
 }
 
 let fold = fun visitor init tree ->
@@ -221,10 +222,11 @@ and let_bindings_of_apply_argument =
   | Syn.Cst.Positional argument -> let_bindings_of_expression argument
   | Syn.Cst.Labeled { value; _ }
   | Syn.Cst.Optional { value; _ } -> Option.to_list value |> List.concat_map let_bindings_of_expression
-and let_bindings_of_let_binding = fun binding ->
-  binding :: let_bindings_of_expression (Syn.Cst.LetBinding.value binding)
-and let_bindings_of_match_case = fun ({ guard; body; _ }:Syn.Cst.match_case) ->
-  (Option.to_list guard |> List.concat_map let_bindings_of_expression) @ let_bindings_of_expression body
+and let_bindings_of_let_binding = fun binding -> binding
+:: let_bindings_of_expression (Syn.Cst.LetBinding.value binding)
+and let_bindings_of_match_case = fun ({ guard; body; _ }:Syn.Cst.match_case) -> (Option.to_list guard
+|> List.concat_map let_bindings_of_expression)
+@ let_bindings_of_expression body
 and let_bindings_of_class_field =
   function
   | Syn.Cst.ClassField.Method { definition=Syn.Cst.ConcreteMethod { body; _ }; _ } -> let_bindings_of_expression
@@ -384,10 +386,11 @@ and expressions_of_apply_argument =
   | Syn.Cst.Positional argument -> expressions_of_expression argument
   | Syn.Cst.Labeled { value; _ }
   | Syn.Cst.Optional { value; _ } -> Option.to_list value |> List.concat_map expressions_of_expression
-and expressions_of_let_binding = fun binding ->
-  expressions_of_expression (Syn.Cst.LetBinding.value binding)
-and expressions_of_match_case = fun ({ guard; body; _ }:Syn.Cst.match_case) ->
-  (Option.to_list guard |> List.concat_map expressions_of_expression) @ expressions_of_expression body
+and expressions_of_let_binding = fun binding -> expressions_of_expression
+(Syn.Cst.LetBinding.value binding)
+and expressions_of_match_case = fun ({ guard; body; _ }:Syn.Cst.match_case) -> (Option.to_list guard
+|> List.concat_map expressions_of_expression)
+@ expressions_of_expression body
 and expressions_of_class_field =
   function
   | Syn.Cst.ClassField.Method { definition=Syn.Cst.ConcreteMethod { body; _ }; _ } -> expressions_of_expression

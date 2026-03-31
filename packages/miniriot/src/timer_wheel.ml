@@ -13,14 +13,14 @@ open Kernel.Sync.Cell
 *)
 
 type t = {
-  config : Config.t;
-  slots : Timer.t list array;
-  overflow : Timer.t list Cell.t;
-  num_slots : int;
-  slot_duration : int64;
-  mutable current_time : int64;
-  mutable current_slot : int;
-  timers_by_id : (Timer_id.t, Timer.t) HashMap.t;
+  config: Config.t;
+  slots: Timer.t list array;
+  overflow: Timer.t list Cell.t;
+  num_slots: int;
+  slot_duration: int64;
+  mutable current_time: int64;
+  mutable current_slot: int;
+  timers_by_id: (Timer_id.t, Timer.t) HashMap.t;
 }
 
 let create = fun ~config ->

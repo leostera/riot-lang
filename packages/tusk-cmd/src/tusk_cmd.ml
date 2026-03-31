@@ -1,16 +1,16 @@
 open Std
 
 module type Command = sig
-  val name : string
+  val name: string
 
-  val command : ArgParser.command
+  val command: ArgParser.command
 
-  val run : args:ArgParser.matches -> (unit, string) result
+  val run: args:ArgParser.matches -> (unit, string) result
 end
 
 module Registry = struct
   type state = {
-    mutable commands : (string * (module Command)) list;
+    mutable commands: (string * (module Command)) list;
   }
 
   let registry = {commands = []}

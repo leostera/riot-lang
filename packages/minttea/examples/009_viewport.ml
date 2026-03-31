@@ -25,8 +25,8 @@ open Minttea.Component
 (* Model *)
 
 type model = {
-  viewport : Viewport.t;
-  content : string;
+  viewport: Viewport.t;
+  content: string;
 }
 
 (* Generate sample content *)

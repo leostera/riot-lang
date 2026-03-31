@@ -5,9 +5,9 @@ type package = string
 type version_ranges = Version.t Ranges.t
 
 type t = {
-  package : package;
-  ranges : version_ranges;
-  positive : bool;
+  package: package;
+  ranges: version_ranges;
+  positive: bool;
 }
 
 let version_compare = fun a b ->
@@ -26,8 +26,8 @@ let positive = fun pkg ranges -> {package = pkg; ranges; positive = true}
 
 let negative = fun pkg ranges -> {package = pkg; ranges; positive = false}
 
-let is_any = fun t ->
-  (t.positive && Ranges.is_empty t.ranges) || ((not t.positive) && t.ranges = Ranges.full)
+let is_any = fun t -> (t.positive && Ranges.is_empty t.ranges)
+|| ((not t.positive) && t.ranges = Ranges.full)
 
 let negate = fun t -> {t with positive = not t.positive}
 

@@ -6,52 +6,46 @@ module Workspace = Tusk_model.Workspace
 
 let dependency = fun name -> Package.{name; source = Workspace}
 
-let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name ->
-  Package.{
-    name;
-    path = Path.v ("packages/" ^ name);
-    relative_path = Path.v ("packages/" ^ name);
-    dependencies = List.map dependency dependencies;
-    dev_dependencies = List.map dependency dev_dependencies;
-    build_dependencies = List.map dependency build_dependencies;
-    foreign_dependencies = [];
-    binaries = [];
-    library = Some {path = Path.v "src/lib.ml"};
-    sources = {src = []; native = []; tests = []; examples = []; bench = []};
-    compiler = {profile_overrides = []; target_overrides = []};
-    commands = [];
-    fix_providers = [];
+let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name -> Package.{
+  name;
+  path = Path.v ("packages/" ^ name);
+  relative_path = Path.v ("packages/" ^ name);
+  dependencies = List.map dependency dependencies;
+  dev_dependencies = List.map dependency dev_dependencies;
+  build_dependencies = List.map dependency build_dependencies;
+  foreign_dependencies = [];
+  binaries = [];
+  library = Some {path = Path.v "src/lib.ml"};
+  sources = {src = []; native = []; tests = []; examples = []; bench = []};
+  compiler = {profile_overrides = []; target_overrides = []};
+  commands = [];
+  fix_providers = [];
 
-  }
+}
 
-let make_workspace = fun packages ->
-  Workspace.{
-    root = Path.v "/tmp/workspace_like_graph_tests";
-    target_dir_root = Path.v "/tmp/workspace_like_graph_tests/_build";
-    packages;
-    profile_overrides = [];
+let make_workspace = fun packages -> Workspace.{
+  root = Path.v "/tmp/workspace_like_graph_tests";
+  target_dir_root = Path.v "/tmp/workspace_like_graph_tests/_build";
+  packages;
+  profile_overrides = [];
 
-  }
+}
 
-let node_for = fun graph package_name scope ->
-  Package_graph.package_key ~package_name scope
-  |> Package_graph.get_node_by_key graph
-  |> Option.expect ~msg:(("missing node: " ^ package_name))
+let node_for = fun graph package_name scope -> Package_graph.package_key ~package_name scope
+|> Package_graph.get_node_by_key graph
+|> Option.expect ~msg:(((("missing node: " ^ package_name))))
 
-let dependency_keys_for_node = fun graph node ->
-  Package_graph.get_dependencies_for_node graph node
-  |> List.map Package_graph.get_key
-  |> List.sort Package.key_compare
+let dependency_keys_for_node = fun graph node -> Package_graph.get_dependencies_for_node graph node
+|> List.map Package_graph.get_key
+|> List.sort Package.key_compare
 
-let package_keys_for_scope = fun scope names ->
-  names
-  |> List.map (fun name -> Package_graph.package_key ~package_name:name scope)
-  |> List.sort Package.key_compare
+let package_keys_for_scope = fun scope names -> names
+|> List.map (fun name -> Package_graph.package_key ~package_name:name scope)
+|> List.sort Package.key_compare
 
-let assert_same_keys = fun ~expected ~actual ->
-  Test.assert_equal
-  ~expected:(List.sort Package.key_compare expected)
-  ~actual:(List.sort Package.key_compare actual)
+let assert_same_keys = fun ~expected ~actual -> Test.assert_equal
+~expected:(List.sort Package.key_compare expected)
+~actual:(List.sort Package.key_compare actual)
 
 let runtime_scope_wires_workspace_like_graph = fun () ->
   let packages = [
@@ -147,7 +141,7 @@ let topological_sort_places_dependencies_before_dependents = fun () ->
   let sorted = Package_graph.topological_sort graph |> List.map Package_graph.get_key in
   let position_of = fun key ->
     List.find_index (Package.key_equal key) sorted
-    |> Option.expect ~msg:(("missing key in topo sort: " ^ Package.key_to_string key)) in
+    |> Option.expect ~msg:(((("missing key in topo sort: " ^ Package.key_to_string key)))) in
   let std_runtime = Package_graph.package_key ~package_name:"std" Runtime in
   let kernel_runtime = Package_graph.package_key ~package_name:"kernel" Runtime in
   let miniriot_runtime = Package_graph.package_key ~package_name:"miniriot" Runtime in

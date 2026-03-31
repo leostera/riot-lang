@@ -16,19 +16,19 @@ open Propane
 (* Record types *)
 
 type user = {
-  id : int;
-  name : string;
+  id: int;
+  name: string;
 }
 
 type point = {
-  x : int;
-  y : int;
+  x: int;
+  y: int;
 }
 
 type person = {
-  age : int;
-  email : string;
-  active : bool;
+  age: int;
+  email: string;
+  active: bool;
 }
 
 (* Variant types *)
@@ -48,9 +48,9 @@ type status =
 (* Nested types *)
 
 type customer = {
-  user : user;
-  location : point;
-  status : status;
+  user: user;
+  location: point;
+  status: status;
 }
 
 (** {1 Custom Generators} *)

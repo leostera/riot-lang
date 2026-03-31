@@ -6,7 +6,7 @@ type test_result = Test_case.test_result
 
 type test_type =
   | UnitTest
-  | Property of { examples : int; }
+  | Property of { examples: int; }
 
 type test_case = Test_case.t
 

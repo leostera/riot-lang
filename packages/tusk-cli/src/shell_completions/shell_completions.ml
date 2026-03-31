@@ -18,24 +18,24 @@ let shell_from_string =
   | "fish" -> Some Fish
   | _ -> None
 
-let list_packages = fun (workspace:Tusk_model.Workspace.t) ->
-  workspace.packages |> List.map (fun (pkg:Tusk_model.Package.t) -> pkg.name) |> List.sort String.compare
+let list_packages = fun (workspace:Tusk_model.Workspace.t) -> workspace.packages
+|> List.map (fun (pkg:Tusk_model.Package.t) -> pkg.name)
+|> List.sort String.compare
 
 (** List binaries as "package:binary" for display in completions, excluding tests *)
-let list_binaries =
-  fun (workspace:Tusk_model.Workspace.t) ->
-    workspace.packages |> List.filter Tusk_model.Package.is_workspace_member |> List.concat_map
-      (fun (pkg:Tusk_model.Package.t) ->
-        List.filter_map
-          (fun (bin:Tusk_model.Package.binary) ->
-            (* Filter out test binaries *)
-            if
-              String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
-            then
-              None
-            else
-              Some (pkg.name ^ ":" ^ bin.name))
-          pkg.binaries) |> List.sort_uniq String.compare
+let list_binaries = fun (workspace:Tusk_model.Workspace.t) ->
+  workspace.packages |> List.filter Tusk_model.Package.is_workspace_member |> List.concat_map
+    (fun (pkg:Tusk_model.Package.t) ->
+      List.filter_map
+        (fun (bin:Tusk_model.Package.binary) ->
+          (* Filter out test binaries *)
+          if
+            String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
+          then
+            None
+          else
+            Some (pkg.name ^ ":" ^ bin.name))
+        pkg.binaries) |> List.sort_uniq String.compare
 
 (** List package names, package wildcards, and test binaries for completions *)
 let list_tests = fun (workspace:Tusk_model.Workspace.t) ->
@@ -110,31 +110,29 @@ let list_benchmarks = fun (workspace:Tusk_model.Workspace.t) ->
   (package_wildcards @ individual_benches) |> List.sort_uniq String.compare
 
 (** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
-let list_commands =
-  fun (workspace:Tusk_model.Workspace.t) ->
-    Tusk_model.Workspace.discover_commands workspace |> List.map
-      (fun (cmd:Tusk_model.Package_command.t) ->
-        let name = cmd.package_name ^ ":" ^ cmd.name in
-        (* Use help text from TOML, or provide fallback *)
-        let desc =
-          if String.length cmd.description = 0 then
-            "Package command"
-          else
-            cmd.description
-        in
-        let tab = Char.chr 9 in
-        (* Explicit tab character *)
-        name ^ String.make 1 tab ^ desc) |> List.sort_uniq String.compare
+let list_commands = fun (workspace:Tusk_model.Workspace.t) ->
+  Tusk_model.Workspace.discover_commands workspace |> List.map
+    (fun (cmd:Tusk_model.Package_command.t) ->
+      let name = cmd.package_name ^ ":" ^ cmd.name in
+      (* Use help text from TOML, or provide fallback *)
+      let desc =
+        if String.length cmd.description = 0 then
+          "Package command"
+        else
+          cmd.description
+      in
+      let tab = Char.chr 9 in
+      (* Explicit tab character *)
+      name ^ String.make 1 tab ^ desc) |> List.sort_uniq String.compare
 
 (** List package command descriptions matching the order of list_commands *)
-let list_command_descriptions =
-  fun (workspace:Tusk_model.Workspace.t) ->
-    list_commands workspace |> List.map
-      (fun line ->
-        (* Extract description after tab *)
-        match String.index_opt line '\t' with
-        | Some idx -> String.sub line (idx + 1) (String.length line - idx - 1)
-        | None -> "Package command")
+let list_command_descriptions = fun (workspace:Tusk_model.Workspace.t) ->
+  list_commands workspace |> List.map
+    (fun line ->
+      (* Extract description after tab *)
+      match String.index_opt line '\t' with
+      | Some idx -> String.sub line (idx + 1) (String.length line - idx - 1)
+      | None -> "Package command")
 
 let generate_zsh_script = fun () ->
   {|#compdef tusk

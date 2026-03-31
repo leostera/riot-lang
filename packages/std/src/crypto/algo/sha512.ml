@@ -5,7 +5,7 @@ module List = Collections.List
 module Array = Collections.Array
 
 type state = {
-  mutable buffer : IO.Buffer.t;
+  mutable buffer: IO.Buffer.t;
 }
 
 let create = fun () -> {buffer = IO.Buffer.create 512}

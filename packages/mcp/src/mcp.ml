@@ -15,28 +15,28 @@ type request_id =
 type error_code = int
 
 type error = {
-  code : error_code;
-  message : string;
-  data : json option;
+  code: error_code;
+  message: string;
+  data: json option;
 }
 
 type client_info = {
-  name : string;
-  version : string;
+  name: string;
+  version: string;
 }
 
 (** Client/Server Info *)
 type server_info = {
-  name : string;
-  version : string;
+  name: string;
+  version: string;
 }
 
 type tool_capability = unit
 
 (** Capabilities *)
 type resource_capability = {
-  subscribe : bool option;
-  list_changed : bool option;
+  subscribe: bool option;
+  list_changed: bool option;
 }
 
 type prompt_capability = unit
@@ -44,25 +44,25 @@ type prompt_capability = unit
 type sampling_capability = unit
 
 type client_capabilities = {
-  tools : tool_capability option;
-  resources : resource_capability option;
-  prompts : prompt_capability option;
-  sampling : sampling_capability option;
+  tools: tool_capability option;
+  resources: resource_capability option;
+  prompts: prompt_capability option;
+  sampling: sampling_capability option;
 }
 
 type server_capabilities = {
-  tools : tool_capability option;
-  resources : resource_capability option;
-  prompts : prompt_capability option;
+  tools: tool_capability option;
+  resources: resource_capability option;
+  prompts: prompt_capability option;
 }
 
 type tool_input_schema = json
 
 (** Tools *)
 type tool = {
-  name : string;
-  description : string option;
-  input_schema : tool_input_schema;
+  name: string;
+  description: string option;
+  input_schema: tool_input_schema;
 }
 
 type resource_uri = string
@@ -70,32 +70,32 @@ type resource_uri = string
 (** Resources *)
 type resource_contents =
   | TextContent of {
-      text : string;
-      mime_type : string option;
+      text: string;
+      mime_type: string option;
     }
   | BlobContent of {
-      data : string;
-      mime_type : string;
+      data: string;
+      mime_type: string;
     }
 
 type resource = {
-  uri : resource_uri;
-  name : string option;
-  description : string option;
-  mime_type : string option;
+  uri: resource_uri;
+  name: string option;
+  description: string option;
+  mime_type: string option;
 }
 
 type prompt_argument = {
-  name : string;
-  description : string option;
-  required : bool option;
+  name: string;
+  description: string option;
+  required: bool option;
 }
 
 (** Prompts *)
 type prompt = {
-  name : string;
-  description : string option;
-  arguments : prompt_argument list option;
+  name: string;
+  description: string option;
+  arguments: prompt_argument list option;
 }
 
 (** Messages *)
@@ -104,8 +104,8 @@ type message_content =
   | Resource of resource_contents
 
 type message = {
-  role : string;
-  content : message_content;
+  role: string;
+  content: message_content;
 }
 
 (** Protocol Messages *)
@@ -125,71 +125,71 @@ type request_method =
 
 type request_params =
   | InitializeParams of {
-      protocol_version : protocol_version;
-      capabilities : client_capabilities;
-      client_info : client_info;
+      protocol_version: protocol_version;
+      capabilities: client_capabilities;
+      client_info: client_info;
     }
   | InitializedParams
   | ShutdownParams
   | ListToolsParams
-  | CallToolParams of { name : string; arguments : json option; }
+  | CallToolParams of { name: string; arguments: json option; }
   | ListResourcesParams
-  | ReadResourceParams of { uri : resource_uri; }
+  | ReadResourceParams of { uri: resource_uri; }
   | ListPromptsParams
-  | GetPromptParams of { name : string; arguments : (string * string) list option; }
+  | GetPromptParams of { name: string; arguments: (string * string) list option; }
   | CompleteSamplingParams of {
-      messages : message list;
-      model_preferences : json option;
-      system_prompt : string option;
-      include_context : string option;
-      temperature : float option;
-      max_tokens : int option;
-      stop_sequences : string list option;
-      metadata : json option;
+      messages: message list;
+      model_preferences: json option;
+      system_prompt: string option;
+      include_context: string option;
+      temperature: float option;
+      max_tokens: int option;
+      stop_sequences: string list option;
+      metadata: json option;
     }
   | PingParams
   | CustomParams of json
 
 type request = {
-  jsonrpc : string;
-  id : request_id;
-  method_name : string;
-  params : request_params option;
+  jsonrpc: string;
+  id: request_id;
+  method_name: string;
+  params: request_params option;
 }
 
 type response_result =
   | InitializeResult of {
-      protocol_version : protocol_version;
-      capabilities : server_capabilities;
-      server_info : server_info;
-      instructions : string option;
+      protocol_version: protocol_version;
+      capabilities: server_capabilities;
+      server_info: server_info;
+      instructions: string option;
     }
   | InitializedResult
   | ShutdownResult
-  | ListToolsResult of { tools : tool list; next_cursor : string option; }
-  | CallToolResult of { content : message_content list; is_error : bool option; }
-  | ListResourcesResult of { resources : resource list; next_cursor : string option; }
-  | ReadResourceResult of { contents : resource_contents list; }
-  | ListPromptsResult of { prompts : prompt list; next_cursor : string option; }
-  | GetPromptResult of { description : string option; messages : message list; }
+  | ListToolsResult of { tools: tool list; next_cursor: string option; }
+  | CallToolResult of { content: message_content list; is_error: bool option; }
+  | ListResourcesResult of { resources: resource list; next_cursor: string option; }
+  | ReadResourceResult of { contents: resource_contents list; }
+  | ListPromptsResult of { prompts: prompt list; next_cursor: string option; }
+  | GetPromptResult of { description: string option; messages: message list; }
   | CompleteSamplingResult of {
-      messages : message list;
-      model : string option;
-      stop_reason : string option;
+      messages: message list;
+      model: string option;
+      stop_reason: string option;
     }
   | PingResult
   | CustomResult of json
 
 type response =
   | SuccessResponse of {
-      jsonrpc : string;
-      id : request_id;
-      result : response_result;
+      jsonrpc: string;
+      id: request_id;
+      result: response_result;
     }
   | ErrorResponse of {
-      jsonrpc : string;
-      id : request_id;
-      error : error;
+      jsonrpc: string;
+      id: request_id;
+      error: error;
     }
 
 type notification_method =
@@ -204,19 +204,14 @@ type notification_params =
   | ResourceListChangedParams
   | ToolListChangedParams
   | PromptListChangedParams
-  | ProgressParams of { progress_token : string; progress : float; total : float option; }
-  | LogMessageParams of {
-      level : string;
-      logger : string option;
-      data : json option;
-      message : string;
-    }
+  | ProgressParams of { progress_token: string; progress: float; total: float option; }
+  | LogMessageParams of { level: string; logger: string option; data: json option; message: string; }
   | CustomNotificationParams of json
 
 type notification = {
-  jsonrpc : string;
-  method_name : string;
-  params : notification_params option;
+  jsonrpc: string;
+  method_name: string;
+  params: notification_params option;
 }
 
 (** Standard JSON-RPC error codes *)
@@ -361,22 +356,20 @@ let client_capabilities_to_json = fun (caps:client_capabilities) ->
         Json.Object []
     );  ]
 
-let tool_to_json = fun (t:tool) ->
-  Json.Object [
-    ("name", Json.String t.name);
-    ("description", option_to_json (fun s -> Json.String s) t.description);
-    ("inputSchema", t.input_schema);
+let tool_to_json = fun (t:tool) -> Json.Object [
+  ("name", Json.String t.name);
+  ("description", option_to_json (fun s -> Json.String s) t.description);
+  ("inputSchema", t.input_schema);
 
-  ]
+]
 
-let resource_to_json = fun (r:resource) ->
-  Json.Object [
-    ("uri", Json.String r.uri);
-    ("name", option_to_json (fun s -> Json.String s) r.name);
-    ("description", option_to_json (fun s -> Json.String s) r.description);
-    ("mimeType", option_to_json (fun s -> Json.String s) r.mime_type);
+let resource_to_json = fun (r:resource) -> Json.Object [
+  ("uri", Json.String r.uri);
+  ("name", option_to_json (fun s -> Json.String s) r.name);
+  ("description", option_to_json (fun s -> Json.String s) r.description);
+  ("mimeType", option_to_json (fun s -> Json.String s) r.mime_type);
 
-  ]
+]
 
 let resource_contents_to_json =
   function
@@ -398,27 +391,28 @@ let message_content_to_json =
   | Text s -> Json.Object [ ("type", Json.String "text"); ("text", Json.String s) ]
   | Resource rc -> resource_contents_to_json rc
 
-let message_to_json = fun (m:message) ->
-  Json.Object [ ("role", Json.String m.role); ("content", message_content_to_json m.content);  ]
+let message_to_json = fun (m:message) -> Json.Object [
+  ("role", Json.String m.role);
+  ("content", message_content_to_json m.content);
 
-let prompt_argument_to_json = fun (arg:prompt_argument) ->
-  Json.Object [
-    ("name", Json.String arg.name);
-    ("description", option_to_json (fun s -> Json.String s) arg.description);
-    ("required", option_to_json (fun b -> Json.Bool b) arg.required);
+]
 
-  ]
+let prompt_argument_to_json = fun (arg:prompt_argument) -> Json.Object [
+  ("name", Json.String arg.name);
+  ("description", option_to_json (fun s -> Json.String s) arg.description);
+  ("required", option_to_json (fun b -> Json.Bool b) arg.required);
 
-let prompt_to_json = fun (p:prompt) ->
-  Json.Object [
-    ("name", Json.String p.name);
-    ("description", option_to_json (fun s -> Json.String s) p.description);
-    (
-      "arguments",
-      option_to_json (fun args -> Json.Array (List.map prompt_argument_to_json args)) p.arguments
-    );
+]
 
-  ]
+let prompt_to_json = fun (p:prompt) -> Json.Object [
+  ("name", Json.String p.name);
+  ("description", option_to_json (fun s -> Json.String s) p.description);
+  (
+    "arguments",
+    option_to_json (fun args -> Json.Array (List.map prompt_argument_to_json args)) p.arguments
+  );
+
+]
 
 let request_params_to_json =
   function
@@ -544,13 +538,12 @@ let response_result_to_json =
   | CustomResult j ->
       j
 
-let error_to_json = fun (e:error) ->
-  Json.Object [
-    ("code", Json.Int e.code);
-    ("message", Json.String e.message);
-    ("data", option_to_json (fun j -> j) e.data);
+let error_to_json = fun (e:error) -> Json.Object [
+  ("code", Json.Int e.code);
+  ("message", Json.String e.message);
+  ("data", option_to_json (fun j -> j) e.data);
 
-  ]
+]
 
 let request_to_json = fun (req:request) ->
   let params_field =
@@ -622,18 +615,29 @@ let response_of_json _json : (response, string) result = Error "Not implemented"
 let notification_of_json _json : (notification, string) result = Error "Not implemented"
 
 (** Helper functions *)
-let make_request = fun ?params id method_type ->
-  {jsonrpc = "2.0"; id; method_name = method_to_string method_type; params}
+let make_request = fun ?params id method_type -> {
+  jsonrpc = "2.0";
+  id;
+  method_name = method_to_string method_type;
+  params
+}
 
 let make_success = fun id result -> SuccessResponse {jsonrpc = "2.0"; id; result}
 
-let make_error = fun id code message ->
-  ErrorResponse {jsonrpc = "2.0"; id; error = {code; message; data = None}}
+let make_error = fun id code message -> ErrorResponse {
+  jsonrpc = "2.0";
+  id;
+  error = {code; message; data = None}
+}
 
-let make_notification = fun ?params method_type ->
-  {jsonrpc = "2.0"; method_name = notification_method_to_string method_type; params; }
+let make_notification = fun ?params method_type -> {
+  jsonrpc = "2.0";
+  method_name = notification_method_to_string method_type;
+  params;
 
-module Protocol : Jsonrpc.ApplicationProtocol with type request = request and type response = response = struct
+}
+
+module Protocol: Jsonrpc.ApplicationProtocol with type request = request and type response = response = struct
   type nonrec request = request
 
   type nonrec response = response
@@ -666,15 +670,15 @@ end
 module type ToolProtocol = sig
   type tool_request
   type tool_response
-  val tools : tool list
+  val tools: tool list
 
-  val resources : resource list
+  val resources: resource list
 
-  val tool_call_to_request : string -> json option -> (tool_request, string) result
+  val tool_call_to_request: string -> json option -> (tool_request, string) result
 
-  val tool_response_to_content : tool_response -> message_content list * bool
+  val tool_response_to_content: tool_response -> message_content list * bool
 
-  val resource_uri_to_content : string -> (resource_contents list, string) result
+  val resource_uri_to_content: string -> (resource_contents list, string) result
 end
 
 module type McpApplicationProtocol = sig
@@ -682,88 +686,89 @@ module type McpApplicationProtocol = sig
   type tool_response
   type request =
     | Initialize of {
-        protocol_version : string;
-        capabilities : client_capabilities;
-        client_info : client_info;
+        protocol_version: string;
+        capabilities: client_capabilities;
+        client_info: client_info;
       }
     | Initialized
     | ListTools
     | CallTool of tool_request
     | ListResources
-    | ReadResource of { uri : string; }
+    | ReadResource of { uri: string; }
     | Ping
     | Shutdown
   type response =
     | InitializeResult of {
-        protocol_version : string;
-        capabilities : server_capabilities;
-        server_info : server_info;
-        instructions : string option;
+        protocol_version: string;
+        capabilities: server_capabilities;
+        server_info: server_info;
+        instructions: string option;
       }
     | InitializedResult
-    | ListToolsResult of { tools : tool list; }
+    | ListToolsResult of { tools: tool list; }
     | CallToolResult of tool_response
-    | ListResourcesResult of { resources : resource list; }
-    | ReadResourceResult of { contents : resource_contents list; }
+    | ListResourcesResult of { resources: resource list; }
+    | ReadResourceResult of { contents: resource_contents list; }
     | PingResult
     | ShutdownResult
     | Error of string
   include Jsonrpc.ApplicationProtocol with type request := request and type response := response
 
-  val make_initialize_result : protocol_version:string ->
-  capabilities:server_capabilities ->
-  server_info:server_info ->
-  instructions:string option ->
-  response
+  val make_initialize_result:
+    protocol_version:string ->
+    capabilities:server_capabilities ->
+    server_info:server_info ->
+    instructions:string option ->
+    response
 
-  val make_initialized_result : response
+  val make_initialized_result: response
 
-  val make_list_tools_result : tools:tool list -> response
+  val make_list_tools_result: tools:tool list -> response
 
-  val make_call_tool_result : tool_response -> response
+  val make_call_tool_result: tool_response -> response
 
-  val make_list_resources_result : resources:resource list -> response
+  val make_list_resources_result: resources:resource list -> response
 
-  val make_read_resource_result : contents:resource_contents list -> response
+  val make_read_resource_result: contents:resource_contents list -> response
 
-  val make_ping_result : response
+  val make_ping_result: response
 
-  val make_shutdown_result : response
+  val make_shutdown_result: response
 
-  val make_error : string -> response
+  val make_error: string -> response
 end
 
-module MakeProtocol (T : ToolProtocol) : McpApplicationProtocol with type tool_request = T.tool_request and type tool_response = T.tool_response = struct
+module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_request = T.tool_request and type tool_response = T.tool_response = struct
   type tool_request = T.tool_request
 
   type tool_response = T.tool_response
 
   type request =
     | Initialize of {
-        protocol_version : string;
-        capabilities : client_capabilities;
-        client_info : client_info;
+        protocol_version: string;
+        capabilities: client_capabilities;
+        client_info: client_info;
       }
     | Initialized
     | ListTools
     | CallTool of T.tool_request
     | ListResources
-    | ReadResource of { uri : string; }
+    | ReadResource of { uri: string; }
     | Ping
     | Shutdown
 
   type response =
     | InitializeResult of {
-        protocol_version : string;
-        capabilities : server_capabilities;
-        server_info : server_info;
-        instructions : string option;
+        protocol_version: string;
+        capabilities: server_capabilities;
+        server_info: server_info;
+        instructions: string option;
       }
     | InitializedResult
-    | ListToolsResult of { tools : tool list; }
+    | ListToolsResult of { tools: tool list; }
     | CallToolResult of T.tool_response
-    | ListResourcesResult of { resources : resource list; }
-    | ReadResourceResult of { contents : resource_contents list; }
+    | ListResourcesResult of { resources: resource list; }
+    | ReadResourceResult of { contents: resource_contents list; }
     | PingResult
     | ShutdownResult
     | Error of string
@@ -897,8 +902,12 @@ module MakeProtocol (T : ToolProtocol) : McpApplicationProtocol with type tool_r
 
   let response_of_json _json : (response, Json.t) result = Error (Json.String "Not implemented")
 
-  let make_initialize_result = fun ~protocol_version ~capabilities ~server_info ~instructions ->
-    InitializeResult {protocol_version; capabilities; server_info; instructions}
+  let make_initialize_result = fun ~protocol_version ~capabilities ~server_info ~instructions -> InitializeResult {
+    protocol_version;
+    capabilities;
+    server_info;
+    instructions
+  }
 
   let make_initialized_result = InitializedResult
 

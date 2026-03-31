@@ -1,8 +1,9 @@
 open Std
 open Std.Collections
 
-let is_trivia = fun kind ->
-  let open Syn.SyntaxKind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
+let is_trivia = fun kind -> let open Syn.SyntaxKind in kind = WHITESPACE
+|| kind = COMMENT
+|| kind = DOCSTRING
 
 let rule_id = "no-positional-bool-parameters"
 
@@ -22,14 +23,13 @@ This rule fires because the ambiguity shows up at every caller, not just in the
 definition where the author already knows what the boolean means.
 |}
 
-let rec direct_non_trivia_nodes =
-  fun (node:Syn.Cst.syntax_node) ->
-    Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.filter_map
-      (
-        function
-        | Syn.Ceibo.Red.Node child when not (is_trivia (Syn.Ceibo.Red.SyntaxNode.kind child)) -> Some child
-        | _ -> None
-      )
+let rec direct_non_trivia_nodes = fun (node:Syn.Cst.syntax_node) ->
+  Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.filter_map
+    (
+      function
+      | Syn.Ceibo.Red.Node child when not (is_trivia (Syn.Ceibo.Red.SyntaxNode.kind child)) -> Some child
+      | _ -> None
+    )
 
 let is_type_syntax_kind =
   function
@@ -132,13 +132,12 @@ let typed_value_function_type = fun binding ->
   in
   go (Syn.Cst.LetBinding.value binding)
 
-let make_diagnostic = fun ~span ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span
-  ~suggestion:"Replace this positional bool with a named parameter like ~enabled, or introduce an explicit enum"
-  ()
+let make_diagnostic = fun ~span -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span
+~suggestion:"Replace this positional bool with a named parameter like ~enabled, or introduce an explicit enum"
+()
 
 let diagnostic_for_parameter = fun parameter ->
   match parameter_inline_type parameter with
@@ -236,5 +235,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   in
   structure_diagnostics @ signature_diagnostics
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

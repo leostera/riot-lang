@@ -2,38 +2,37 @@ open Std
 open Std.IO
 
 type 'a t = {
-  all_items : 'a list;
-  filtered_items : 'a list;
-  selected : int;  (* Index in filtered_items *)
-  height : int;  (* 0 = unlimited *)
-  width : int;  (* 0 = unlimited *)
-  cursor_char : string;
-  filter_enabled : bool;
-  filter_query : string;
-  filtering_active : bool;  (* User is typing filter *)
-  render : 'a -> string;
-  scroll_offset : int;  (* For pagination when height is limited *)
+  all_items: 'a list;
+  filtered_items: 'a list;
+  selected: int;  (* Index in filtered_items *)
+  height: int;  (* 0 = unlimited *)
+  width: int;  (* 0 = unlimited *)
+  cursor_char: string;
+  filter_enabled: bool;
+  filter_query: string;
+  filtering_active: bool;  (* User is typing filter *)
+  render: 'a -> string;
+  scroll_offset: int;  (* For pagination when height is limited *)
 }
 
 let default_render = fun _x ->
   (* Default render that cannot know about the type *)
   "<item>"
 
-let make = fun ?(render = default_render) items ->
-  {
-    all_items = items;
-    filtered_items = items;
-    selected = 0;
-    height = 0;
-    width = 0;
-    cursor_char = "> ";
-    filter_enabled = true;
-    filter_query = "";
-    filtering_active = false;
-    render;
-    scroll_offset = 0;
+let make = fun ?(render = default_render) items -> {
+  all_items = items;
+  filtered_items = items;
+  selected = 0;
+  height = 0;
+  width = 0;
+  cursor_char = "> ";
+  filter_enabled = true;
+  filter_query = "";
+  filtering_active = false;
+  render;
+  scroll_offset = 0;
 
-  }
+}
 
 let set_height = fun t ~height:h -> {t with height = max 0 h}
 
@@ -73,16 +72,15 @@ let clamp_selection = fun t ->
     let selected = max 0 (min (len - 1) t.selected) in
     {t with selected}
 
-let set_items = fun t ~items ->
-  {
-    t
-    with all_items = items;
-    filtered_items = items;
-    selected = 0;
-    scroll_offset = 0;
-    filter_query = "";
+let set_items = fun t ~items -> {
+  t
+  with all_items = items;
+  filtered_items = items;
+  selected = 0;
+  scroll_offset = 0;
+  filter_query = "";
 
-  }
+}
 
 let string_contains = fun haystack needle ->
   (* Simple substring search *)
@@ -128,8 +126,12 @@ let apply_filter = fun t query ->
 
 let set_filter = fun t ~filter:query -> apply_filter t query
 
-let clear_filter = fun t ->
-  {t with filter_query = ""; filtered_items = t.all_items; filtering_active = false}
+let clear_filter = fun t -> {
+  t
+  with filter_query = "";
+  filtered_items = t.all_items;
+  filtering_active = false
+}
 
 let start_filtering = fun t ->
   if t.filter_enabled then

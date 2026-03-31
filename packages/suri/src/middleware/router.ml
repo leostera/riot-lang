@@ -8,13 +8,13 @@ type route_method =
 
 type route =
   | Route of {
-      meth : route_method;
-      path : string;
-      handler : handler;
+      meth: route_method;
+      path: string;
+      handler: handler;
     }
   | Scope of {
-      prefix : string;
-      routes : route list;
+      prefix: string;
+      routes: route list;
     }
 
 type t = route list

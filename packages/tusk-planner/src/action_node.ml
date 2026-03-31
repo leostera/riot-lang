@@ -4,12 +4,12 @@ open Tusk_model
 module G = Std.Graph.SimpleGraph
 
 type action_spec = {
-  actions : Action.t list;
-  outs : Path.t list;
-  srcs : Path.t list;
-  package : Package.t;
-  toolchain : Tusk_toolchain.t;
-  hash : Crypto.hash;
+  actions: Action.t list;
+  outs: Path.t list;
+  srcs: Path.t list;
+  package: Package.t;
+  toolchain: Tusk_toolchain.t;
+  hash: Crypto.hash;
 }
 
 type t = action_spec G.node

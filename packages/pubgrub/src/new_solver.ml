@@ -22,11 +22,11 @@ type solve_result =
 (* Dependency information: which packages depend on what *)
 
 type dependency = {
-  dependent : package;  (* The package that has this dependency *)
-  dependent_version : version;  (* At which version *)
-  dependency : package;  (* The package it depends on *)
-  ranges : version Ranges.t;  (* The version range required *)
-  decision_level : int;  (* When this dependency was added *)
+  dependent: package;  (* The package that has this dependency *)
+  dependent_version: version;  (* At which version *)
+  dependency: package;  (* The package it depends on *)
+  ranges: version Ranges.t;  (* The version range required *)
+  decision_level: int;  (* When this dependency was added *)
 }
 
 (* The dependency graph tracks all dependencies explicitly *)
@@ -34,9 +34,9 @@ type dependency = {
 module DependencyGraph = struct
   type t = {
     (* Map from (package, version) to its list of dependencies *)
-    deps : (package * version, (package * version Ranges.t) list) HashMap.t;
+    deps: (package * version, (package * version Ranges.t) list) HashMap.t;
     (* Map from package to which packages depend on it (reverse index) *)
-    reverse : (package, (package * version) list) HashMap.t;
+    reverse: (package, (package * version) list) HashMap.t;
   }
 
   let empty = fun () -> {deps = HashMap.create (); reverse = HashMap.create ()}
@@ -71,12 +71,12 @@ end
 (* State type - notice NO pending field! *)
 
 type state = {
-  solution : Partial_solution.t;
-  incompatibilities : (package, Incompatibility.t list) HashMap.t;
-  dependency_graph : DependencyGraph.t;
+  solution: Partial_solution.t;
+  incompatibilities: (package, Incompatibility.t list) HashMap.t;
+  dependency_graph: DependencyGraph.t;
   (* Track which incompatibilities are already contradicted at which decision level.
      We skip these during unit propagation until we backtrack past their level. *)
-  contradicted : (Incompatibility.t, int) HashMap.t;
+  contradicted: (Incompatibility.t, int) HashMap.t;
 }
 
 (* ============================================================================
@@ -685,7 +685,6 @@ let solve = fun provider root_package root_version ->
               | Ok propagated_state -> (
                   (* Pick next highest priority package *)
                   let prioritizer = fun pkg ranges ->
-                    (* Simple prioritizer: more constrained = higher priority *)
                     let num_incompats =
                       match HashMap.get state.incompatibilities pkg with
                       | Some incompats -> List.length incompats

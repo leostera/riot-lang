@@ -33,9 +33,9 @@ type node_shape =
 (* [\text/] *)
 
 type node = {
-  id : string;
-  label : string;
-  shape : node_shape;
+  id: string;
+  label: string;
+  shape: node_shape;
 }
 
 type edge_style =
@@ -44,16 +44,16 @@ type edge_style =
   | Thick
 
 type edge = {
-  from_node : string;
-  to_node : string;
-  label : string option;
-  style : edge_style;
+  from_node: string;
+  to_node: string;
+  label: string option;
+  style: edge_style;
 }
 
 type t = {
-  direction : direction;
-  nodes : node list;
-  edges : edge list;
+  direction: direction;
+  nodes: node list;
+  edges: edge list;
 }
 
 let create = fun ?(direction = TD) () -> {direction; nodes = []; edges = []}

@@ -3,24 +3,23 @@ open Std.IO
 
 type t =
   | Conn : {
-    protocol : string option;
-    stream : Net.TcpStream.t;
-    peer : Net.Addr.stream_addr;
-    default_read_size : int;
-    accepted_at : Time.Instant.t;
-    connected_at : Time.Instant.t;
+    protocol: string option;
+    stream: Net.TcpStream.t;
+    peer: Net.Addr.stream_addr;
+    default_read_size: int;
+    accepted_at: Time.Instant.t;
+    connected_at: Time.Instant.t;
   } -> t
 
-let make = fun ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () ->
-  Conn {
-    stream;
-    protocol;
-    peer;
-    default_read_size = buffer_size;
-    accepted_at;
-    connected_at = Time.Instant.now ();
+let make = fun ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () -> Conn {
+  stream;
+  protocol;
+  peer;
+  default_read_size = buffer_size;
+  accepted_at;
+  connected_at = Time.Instant.now ();
 
-  }
+}
 
 let negotiated_protocol = fun (Conn t) -> t.protocol
 

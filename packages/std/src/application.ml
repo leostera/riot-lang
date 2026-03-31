@@ -4,10 +4,10 @@ open Iter
 
 (** Application - Supervision tree management with dependency resolution *)
 type t = {
-  name : string;
-  deps : t list;
-  start : unit -> (Pid.t, exn) result;
-  stop : Pid.t -> unit;
+  name: string;
+  deps: t list;
+  start: unit -> (Pid.t, exn) result;
+  stop: Pid.t -> unit;
 }
 
 (* Build dependency graph using SimpleGraph *)
@@ -16,7 +16,6 @@ let build_dep_graph = fun apps ->
   let graph = Graph.SimpleGraph.make () in
   (* Build a mapping from app to node using the graph itself *)
   let rec add_nodes_and_deps = fun app visited_apps ->
-    (* Check if we already processed this app *)
     match HashMap.get visited_apps app.name with
     | Some node -> node
     | None ->

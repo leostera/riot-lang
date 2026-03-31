@@ -3,17 +3,17 @@ open Std.Sync
 open Std.IO
 
 type content_type = {
-  media_type : string;
-  subtype : string;
-  parameters : (string * string) List.t;
+  media_type: string;
+  subtype: string;
+  parameters: (string * string) List.t;
 }
 
 type content_disposition =
   | Inline of {
-      filename : string Option.t;
+      filename: string Option.t;
     }
   | Attachment of {
-      filename : string Option.t;
+      filename: string Option.t;
     }
 
 type encoding =
@@ -33,13 +33,13 @@ type header =
   | Other of string * string
 
 type part = {
-  headers : header List.t;
-  content : string;
+  headers: header List.t;
+  content: string;
 }
 
 type t =
   | SinglePart of part
-  | MultiPart of { boundary : string; parts : t List.t; }
+  | MultiPart of { boundary: string; parts: t List.t; }
 
 let find_header = fun name headers ->
   let name_lower = String.lowercase_ascii name in

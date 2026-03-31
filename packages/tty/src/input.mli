@@ -123,11 +123,11 @@ type mouse_action =
   | Mouse_move
 (** Mouse moved without button pressed *)
 type mouse_event = {
-  button : mouse_button;
-  action : mouse_action;
-  x : int;  (** Column (1-based) *)
-  y : int;  (** Row (1-based) *)
-  modifiers : modifier list;
+  button: mouse_button;
+  action: mouse_action;
+  x: int;  (** Column (1-based) *)
+  y: int;  (** Row (1-based) *)
+  modifiers: modifier list;
 }
 (** Key event kind distinguishes press, release, and repeat *)
 type key_event_kind =
@@ -139,9 +139,9 @@ type key_event_kind =
 (** Key auto-repeat *)
 (** Keyboard event with kind information *)
 type key_event = {
-  code : key;
-  modifiers : modifier list;
-  kind : key_event_kind;
+  code: key;
+  modifiers: modifier list;
+  kind: key_event_kind;
 }
 (** Terminal events *)
 type event =
@@ -161,7 +161,7 @@ type event =
   | `End
 ]
 (** {1 Reading Events} *)
-val read_event : unit -> event
+val read_event: unit -> event
 
 (** [read_event ()] reads and parses the next terminal event.
 
@@ -178,30 +178,30 @@ val read_event : unit -> event
     The terminal must be in raw mode (call {!Stdin.setup} first).
     Enable mouse tracking, bracketed paste, or focus tracking separately
     using functions from {!Escape_seq} module. *)
-val try_read : unit -> event option
+val try_read: unit -> event option
 
 (** [try_read ()] attempts to read an event without blocking.
     
     Returns [None] if no event is available, [Some event] otherwise.
     This is a convenience wrapper around {!read_event} that filters
     out [`Retry] and [`End] results. *)
-val parse_escape : string -> event option
+val parse_escape: string -> event option
 
 (** [parse_escape seq] parses an ANSI escape sequence into an event.
 
     Returns [None] if the sequence is incomplete or unrecognized.
     This is used internally by {!read_event} but exposed for testing. *)
-val key_to_string : key -> string
+val key_to_string: key -> string
 
 (** [key_to_string key] returns a human-readable name for the key. *)
-val modifier_to_string : modifier -> string
+val modifier_to_string: modifier -> string
 
 (** [modifier_to_string mod] returns a human-readable name for the modifier. *)
-val button_to_string : mouse_button -> string
+val button_to_string: mouse_button -> string
 
 (** [button_to_string btn] returns a human-readable name for the mouse button. *)
 (** {1 Event Formatting} *)
 
-val event_to_string : event -> string
+val event_to_string: event -> string
 
 (** [event_to_string event] converts an event to a readable string. *)

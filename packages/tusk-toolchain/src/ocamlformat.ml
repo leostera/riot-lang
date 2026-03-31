@@ -7,7 +7,7 @@ let make = fun path -> path
 let path = fun t -> t
 
 type format_result =
-  | Formatted of { code : string; changed : bool; }
+  | Formatted of { code: string; changed: bool; }
   | Error of string
 
 let find_ocamlformat_config = fun path ->

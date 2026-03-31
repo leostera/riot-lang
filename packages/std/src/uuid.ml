@@ -24,8 +24,8 @@ let v4_from_bytes = fun bytes ->
   | Ok uuid -> uuid
   | Error _ -> raise (Invalid_argument "UUID.v4_from_bytes: invalid bytes")
 
-let v7_from_parts = fun ~time_ms:_ ~rand_a:_ ~rand_b:_ ->
-  raise (Invalid_argument "UUID.v7_from_parts not yet implemented")
+let v7_from_parts = fun ~time_ms:_ ~rand_a:_ ~rand_b:_ -> raise
+(Invalid_argument "UUID.v7_from_parts not yet implemented")
 
 (** {1 Constants} *)
 
@@ -98,7 +98,7 @@ module Monotonic = struct
   open Sync
 
   type state = {
-    last_timestamp_ms : int64 Cell.t;
+    last_timestamp_ms: int64 Cell.t;
   }
 
   let create = fun () -> {last_timestamp_ms = cell 0L; }

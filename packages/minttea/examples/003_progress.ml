@@ -5,8 +5,8 @@ open Minttea.Component
 (* Model: contains a progress bar and completion state *)
 
 type model = {
-  progress : Progress.t;
-  waiting_to_quit : bool;
+  progress: Progress.t;
+  waiting_to_quit: bool;
 }
 
 (* Initialize with a progress bar and start a timer *)
@@ -51,7 +51,7 @@ let view = fun model ->
   in
   Element.column
   [
-    Element.text ~style:((Style.empty |> Style.fg (`rgb (0, 255, 255)) |> Style.bold)) "Downloading...";
+    Element.text ~style:((((Style.empty |> Style.fg (`rgb (0, 255, 255)) |> Style.bold)))) "Downloading...";
     progress_view;
     Element.text instructions;
 

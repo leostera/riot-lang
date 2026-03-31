@@ -6,19 +6,19 @@ type id = string
     Handlers are called synchronously in the caller process.
     If a handler crashes, the exception is caught and ignored. *)
 type t = {
-  id : id;
-  fn : Event.t -> unit;
+  id: id;
+  fn: Event.t -> unit;
 }
-val emit : Event.t -> unit
+val emit: Event.t -> unit
 
 (** Attach a handler with the given ID and callback function *)
-val attach : id -> (Event.t -> unit) -> unit
+val attach: id -> (Event.t -> unit) -> unit
 
 (** Detach a handler by ID *)
-val detach : id -> unit
+val detach: id -> unit
 
 (** Detach all handlers *)
-val detach_all : unit -> unit
+val detach_all: unit -> unit
 
 (** List all registered handler IDs *)
-val list : unit -> id list
+val list: unit -> id list

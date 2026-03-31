@@ -102,7 +102,7 @@ type t
     For cryptographically secure UUIDs, use [v4_from_bytes] with bytes
     from a CSPRNG (to be added in future versions).
 *)
-val v4 : unit -> t
+val v4: unit -> t
 
 (** Generates a timestamp-ordered UUID v7 (sortable).
     
@@ -133,7 +133,7 @@ val v4 : unit -> t
     For transaction IDs or other use cases where strict monotonicity is
     required, use {!v7_monotonic} instead.
 *)
-val v7 : unit -> t
+val v7: unit -> t
 
 (** Generates a monotonically increasing UUID v7 safe for transaction IDs.
     
@@ -162,7 +162,7 @@ val v7 : unit -> t
     
     @since 1.0.0
 *)
-val v7_monotonic : unit -> t
+val v7_monotonic: unit -> t
 
 (** Generates a name-based UUID v5 using SHA-1 hashing.
     
@@ -183,7 +183,7 @@ val v7_monotonic : unit -> t
     - [ns_oid]: For ISO OIDs
     - [ns_x500]: For X.500 DNs
 *)
-val v5 : namespace:t -> name:string -> t
+val v5: namespace:t -> name:string -> t
 
 (** Generates a name-based UUID v3 using MD5 hashing.
     
@@ -195,7 +195,7 @@ val v5 : namespace:t -> name:string -> t
     let uuid = UUID.v3 ~namespace:UUID.ns_url ~name:"https://example.com" in
     ```
 *)
-val v3 : namespace:t -> name:string -> t
+val v3: namespace:t -> name:string -> t
 
 (** Creates a UUID v4 from 16 bytes of random data.
     
@@ -209,7 +209,7 @@ val v3 : namespace:t -> name:string -> t
     let uuid = UUID.v4_from_bytes random_bytes in
     ```
 *)
-val v4_from_bytes : bytes -> t
+val v4_from_bytes: bytes -> t
 
 (** Creates a UUID v7 from explicit timestamp and random parts.
     
@@ -224,26 +224,26 @@ val v4_from_bytes : bytes -> t
     let uuid = UUID.v7_from_parts ~time_ms:now ~rand_a:0x123 ~rand_b:0xFFL in
     ```
 *)
-val v7_from_parts : time_ms:int64 -> rand_a:int -> rand_b:int64 -> t
+val v7_from_parts: time_ms:int64 -> rand_a:int -> rand_b:int64 -> t
 
 (** {1 Constants} *)
 (** The nil UUID (all zeros): [00000000-0000-0000-0000-000000000000]. *)
-val nil : t
+val nil: t
 
 (** The max UUID (all ones): [ffffffff-ffff-ffff-ffff-ffffffffffff]. *)
-val max : t
+val max: t
 
 (** DNS namespace UUID for use with [v3] and [v5]. *)
-val ns_dns : t
+val ns_dns: t
 
 (** URL namespace UUID for use with [v3] and [v5]. *)
-val ns_url : t
+val ns_url: t
 
 (** ISO OID namespace UUID for use with [v3] and [v5]. *)
-val ns_oid : t
+val ns_oid: t
 
 (** X.500 DN namespace UUID for use with [v3] and [v5]. *)
-val ns_x500 : t
+val ns_x500: t
 
 (** {1 Parsing} *)
 (** Parses a UUID from string format.
@@ -264,9 +264,9 @@ val ns_x500 : t
     (* Error (`Invalid_uuid "...") *)
     ```
 *)
-val of_string : string -> (t, [
-  | `Invalid_uuid of string
-]) result
+val of_string: string -> (t, [
+    | `Invalid_uuid of string
+  ]) result
 
 (** Creates a UUID from 16-byte binary representation.
     
@@ -279,9 +279,9 @@ val of_string : string -> (t, [
     | Error _ -> ()
     ```
 *)
-val of_bytes : bytes -> (t, [
-  | `Invalid_uuid of string
-]) result
+val of_bytes: bytes -> (t, [
+    | `Invalid_uuid of string
+  ]) result
 
 (** {1 Serialization} *)
 (** Converts UUID to string format.
@@ -298,7 +298,7 @@ val of_bytes : bytes -> (t, [
     (* "550E8400-E29B-41D4-A716-446655440000" *)
     ```
 *)
-val to_string : ?upper:bool -> t -> string
+val to_string: ?upper:bool -> t -> string
 
 (** Converts UUID to compact string format (no dashes).
     
@@ -309,10 +309,10 @@ val to_string : ?upper:bool -> t -> string
     (* "550e8400e29b41d4a716446655440000" *)
     ```
 *)
-val to_string_nodash : ?upper:bool -> t -> string
+val to_string_nodash: ?upper:bool -> t -> string
 
 (** Converts UUID to 16-byte binary representation. *)
-val to_bytes : t -> bytes
+val to_bytes: t -> bytes
 
 (** {1 Comparison} *)
 (** Tests if two UUIDs are equal.
@@ -323,7 +323,7 @@ val to_bytes : t -> bytes
     UUID.equal uuid1 uuid2
     ```
 *)
-val equal : t -> t -> bool
+val equal: t -> t -> bool
 
 (** Binary comparison of UUIDs.
     
@@ -335,7 +335,7 @@ val equal : t -> t -> bool
     UUID.compare uuid1 uuid2
     ```
 *)
-val compare : t -> t -> int
+val compare: t -> t -> int
 
 (** Tests if UUID is the nil UUID (all zeros).
     
@@ -346,7 +346,7 @@ val compare : t -> t -> int
     UUID.is_nil (UUID.v4 ())  (* false *)
     ```
 *)
-val is_nil : t -> bool
+val is_nil: t -> bool
 
 (** {1 Query} *)
 (** Returns the UUID version (3, 4, 5, 7, 8) or [None] for nil/invalid.
@@ -358,10 +358,10 @@ val is_nil : t -> bool
     UUID.version UUID.nil  (* None *)
     ```
 *)
-val version : t -> int option
+val version: t -> int option
 
 (** Returns the UUID variant field (typically 0x8-0xB for RFC 4122 UUIDs). *)
-val variant : t -> int
+val variant: t -> int
 
 (** Returns the creation timestamp for v7 UUIDs as a [Duration].
     
@@ -376,4 +376,4 @@ val variant : t -> int
         (* not a v7 UUID *)
     ```
 *)
-val time : t -> Time.Duration.t option
+val time: t -> Time.Duration.t option

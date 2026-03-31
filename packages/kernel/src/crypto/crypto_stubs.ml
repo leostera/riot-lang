@@ -1,17 +1,17 @@
 (** C stub bindings for cryptographic functions *)
 open IO
 
-external sha1_bytes : bytes -> bytes = "kernel_crypto_sha1"
+external sha1_bytes: bytes -> bytes = "kernel_crypto_sha1"
 
-external sha256_bytes : bytes -> bytes = "kernel_crypto_sha256"
+external sha256_bytes: bytes -> bytes = "kernel_crypto_sha256"
 
-external sha512_bytes : bytes -> bytes = "kernel_crypto_sha512"
+external sha512_bytes: bytes -> bytes = "kernel_crypto_sha512"
 
-external md5_bytes : bytes -> bytes = "kernel_crypto_md5"
+external md5_bytes: bytes -> bytes = "kernel_crypto_md5"
 
-external simple_hash_bytes : bytes -> bytes = "kernel_crypto_simple_hash"
+external simple_hash_bytes: bytes -> bytes = "kernel_crypto_simple_hash"
 
-external hmac_sha256_bytes : string -> string -> bytes = "kernel_crypto_hmac_sha256"
+external hmac_sha256_bytes: string -> string -> bytes = "kernel_crypto_hmac_sha256"
 
 (* High-level wrappers that return raw bytes - crypto.ml will wrap them as hashes *)
 

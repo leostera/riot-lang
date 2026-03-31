@@ -66,13 +66,12 @@ let set_var = fun ~name ~value ->
   Kernel.Env.putenv name value;
   None
 
-let vars =
-  fun () ->
-    Kernel.Env.environment () |> Array.to_list |> List.filter_map
-      (fun s ->
-        match String.index_opt s '=' with
-        | None -> None
-        | Some idx ->
-            let name = String.sub s 0 idx in
-            let value = String.sub s (idx + 1) (String.length s - idx - 1) in
-            Some (name, value))
+let vars = fun () ->
+  Kernel.Env.environment () |> Array.to_list |> List.filter_map
+    (fun s ->
+      match String.index_opt s '=' with
+      | None -> None
+      | Some idx ->
+          let name = String.sub s 0 idx in
+          let value = String.sub s (idx + 1) (String.length s - idx - 1) in
+          Some (name, value))

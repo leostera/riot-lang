@@ -17,20 +17,20 @@ type 'msg event =
 
 (** Component interface *)
 module type Component = sig
-  val id : string
+  val id: string
 
   type state
   type msg
   type args
-  val serialize_args : args -> Data.Json.t
+  val serialize_args: args -> Data.Json.t
 
-  val deserialize_args : Data.Json.t -> (args, Data.Json.t) result
+  val deserialize_args: Data.Json.t -> (args, Data.Json.t) result
 
-  val init : Middleware.Conn.t -> args -> state
+  val init: Middleware.Conn.t -> args -> state
 
-  val update : msg event -> state -> state
+  val update: msg event -> state -> state
 
-  val render : state:state -> unit -> msg Component.t
+  val render: state:state -> unit -> msg Component.t
 end
 
 (** Message type for sending patches from component to handler *)
@@ -40,7 +40,7 @@ type Message.t +=
 (** Component process messages *)
 type Message.t +=
   | ComponentMount
-  | ComponentEvent of { handler_id : string; event_data : string; }
+  | ComponentEvent of { handler_id: string; event_data: string; }
 
 (** Attach handler IDs to component tree and register handlers *)
 let rec attach_handler_ids registry (component:'msg Component.t) : 'msg Component.t =
@@ -87,11 +87,11 @@ let render_with_handlers = fun registry component ->
 (** Component process - manages state and rendering *)
 module ComponentProcess = struct
   type ('state, 'msg) t = {
-    mutable state : 'state;
-    update : 'msg event -> 'state -> 'state;
-    render : state:'state -> unit -> 'msg Component.t;
-    registry : 'msg HandlerRegistry.t;
-    handler_pid : Pid.t;
+    mutable state: 'state;
+    update: 'msg event -> 'state -> 'state;
+    render: state:'state -> unit -> 'msg Component.t;
+    registry: 'msg HandlerRegistry.t;
+    handler_pid: Pid.t;
   }
 
   let rec loop = fun (t:('state, 'msg) t) ->
@@ -160,7 +160,7 @@ module MountHandler (C : Component) = struct
   type args = Middleware.Conn.t
 
   type state = {
-    component : Pid.t;
+    component: Pid.t;
   }
 
   (** Extract session token from query parameters *)
@@ -247,9 +247,7 @@ module MountHandler (C : Component) = struct
 end
 
 (** JavaScript runtime string - included inline *)
-let javascript_runtime =
-  Morphdom.javascript
-  ^ {|
+let javascript_runtime = Morphdom.javascript ^ {|
 
 class LiveView {
   constructor(elementId, wsPath) {
@@ -577,7 +575,6 @@ let embed = fun (type a) ((module C : Component with type args = a)) (args_value
 let live = fun (type s m) ((module C : Component with type state = s and type msg = m)) ->
   let ws_path = "/suri/live/" ^ C.id in
   let handler = fun conn req ->
-    (* This route only handles WebSocket upgrades *)
     let headers = Middleware.Conn.headers conn in
     let is_websocket_upgrade =
       match (Net.Http.Header.get headers "upgrade", Net.Http.Header.get headers "connection") with

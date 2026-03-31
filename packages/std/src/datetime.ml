@@ -39,26 +39,26 @@ module Tz = struct
 end
 
 type t = {
-  microseconds : int * int;  (* (microseconds, precision) e.g. (426822, 6) *)
-  second : int;
-  minute : int;
-  hour : int;
-  day : int;
-  month : int;
-  year : int;
-  time_zone : Tz.t;
-  utc_offset : int;
-  std_offset : int;
+  microseconds: int * int;  (* (microseconds, precision) e.g. (426822, 6) *)
+  second: int;
+  minute: int;
+  hour: int;
+  day: int;
+  month: int;
+  year: int;
+  time_zone: Tz.t;
+  utc_offset: int;
+  std_offset: int;
 }
 
 type naive = {
-  year : int;
-  month : int;
-  day : int;
-  hour : int;
-  minute : int;
-  second : int;
-  microsecond : int;
+  year: int;
+  month: int;
+  day: int;
+  hour: int;
+  minute: int;
+  second: int;
+  microsecond: int;
 }
 
 let now = fun () ->

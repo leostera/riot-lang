@@ -1,17 +1,16 @@
 open Std
 module Test = Std.Test
 
-let make_command = fun () ->
-  Tusk_model.Package_command.{
-    name = "demo";
-    description = "Run the demo";
-    package_name = "minttea";
-    package_path = Path.v "packages/minttea";
-    command_module = "Demo_cmd";
-    command_source = Path.v "src/demo_cmd.ml";
-    command_binary = Path.v "_build/debug/out/minttea/demo";
+let make_command = fun () -> Tusk_model.Package_command.{
+  name = "demo";
+  description = "Run the demo";
+  package_name = "minttea";
+  package_path = Path.v "packages/minttea";
+  command_module = "Demo_cmd";
+  command_source = Path.v "src/demo_cmd.ml";
+  command_binary = Path.v "_build/debug/out/minttea/demo";
 
-  }
+}
 
 let make_package = fun () ->
   let command = make_command () in

@@ -19,16 +19,16 @@ The goal here is not just naming. It is to steer APIs away from using exceptions
 ordinary control flow.
 |}
 
-let should_flag_binding_site = fun (site:Traversal.binding_site) ->
-  site.is_function && String.ends_with ~suffix:"_exn" (Syn.Cst.Token.text site.name_token)
+let should_flag_binding_site = fun (site:Traversal.binding_site) -> site.is_function
+&& String.ends_with ~suffix:"_exn" (Syn.Cst.Token.text site.name_token)
 
 let make_diagnostic = fun (site:Traversal.binding_site) ->
   let name = Syn.Cst.Token.text site.name_token in
   Diagnostic.make
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:((Syn.Cst.Token.syntax_token site.name_token |> Syn.Ceibo.Red.SyntaxToken.span))
-  ~suggestion:(("Rename " ^ name ^ " to remove the _exn suffix and prefer a Result/Option API."))
+  ~span:((((Syn.Cst.Token.syntax_token site.name_token |> Syn.Ceibo.Red.SyntaxToken.span))))
+  ~suggestion:(((("Rename " ^ name ^ " to remove the _exn suffix and prefer a Result/Option API."))))
   ()
 
 let diagnostic_for_binding_site = fun (site:Traversal.binding_site) ->
@@ -44,5 +44,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.binding_sites_of_structure_item
   |> List.filter_map diagnostic_for_binding_site
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

@@ -45,4 +45,4 @@
 type middleware = conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
 (** Run a pipeline on a connection, stopping if halted *)
 type t = middleware list
-val run : Conn.t -> t -> Conn.t
+val run: Conn.t -> t -> Conn.t

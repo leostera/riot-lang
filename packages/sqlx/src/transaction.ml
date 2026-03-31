@@ -1,7 +1,7 @@
 open Std
 
 type t = {
-  connection : Connection.t;
+  connection: Connection.t;
 }
 
 type isolation_level =

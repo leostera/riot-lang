@@ -33,9 +33,9 @@ let test_element_equality = fun () ->
     assert (Element.equal nested1 nested2);
     print_endline "✓ Nested structures compare correctly";
     (* Test with styles *)
-    let styled1 = text ~style:((Style.default |> Style.fg (Tty.Color.ansi 2))) "Green" in
-    let styled2 = text ~style:((Style.default |> Style.fg (Tty.Color.ansi 2))) "Green" in
-    let styled3 = text ~style:((Style.default |> Style.fg (Tty.Color.ansi 3))) "Green" in
+    let styled1 = text ~style:((((Style.default |> Style.fg (Tty.Color.ansi 2))))) "Green" in
+    let styled2 = text ~style:((((Style.default |> Style.fg (Tty.Color.ansi 2))))) "Green" in
+    let styled3 = text ~style:((((Style.default |> Style.fg (Tty.Color.ansi 3))))) "Green" in
     assert (Element.equal styled1 styled2);
     assert (not (Element.equal styled1 styled3));
     print_endline "✓ Style comparison works correctly"

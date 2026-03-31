@@ -11,12 +11,12 @@ type sizing_type =
   | Percent of float
 
 type sizing = {
-  width : sizing_type;
-  height : sizing_type;
-  min_width : float option;
-  max_width : float option;
-  min_height : float option;
-  max_height : float option;
+  width: sizing_type;
+  height: sizing_type;
+  min_width: float option;
+  max_width: float option;
+  min_height: float option;
+  max_height: float option;
 }
 
 type h_align =
@@ -30,22 +30,22 @@ type v_align =
   | Bottom
 
 type alignment = {
-  x : h_align;
-  y : v_align;
+  x: h_align;
+  y: v_align;
 }
 
 type padding = {
-  left : int;
-  right : int;
-  top : int;
-  bottom : int;
+  left: int;
+  right: int;
+  top: int;
+  bottom: int;
 }
 
 type margin = {
-  left : int;
-  right : int;
-  top : int;
-  bottom : int;
+  left: int;
+  right: int;
+  top: int;
+  bottom: int;
 }
 
 type text_wrap =
@@ -68,30 +68,30 @@ type text_decoration =
   | Strikethrough
 
 type corner_radius = {
-  top_left : float;
-  top_right : float;
-  bottom_left : float;
-  bottom_right : float;
+  top_left: float;
+  top_right: float;
+  bottom_left: float;
+  bottom_right: float;
 }
 
 type t = {
-  direction : direction;
-  sizing : sizing;
-  alignment : alignment;
-  child_gap : int;
-  padding : padding;
-  margin : margin;
-  background : Colors.rgb option;
-  foreground : Colors.rgb option;
-  border_width : int;
-  border_color : Colors.rgb option;
-  corner_radius : corner_radius;
-  text_size : int;
-  text_wrap : text_wrap;
-  text_align : text_align;
-  font_weight : font_weight;
-  text_decoration : text_decoration;
-  z_index : int;
+  direction: direction;
+  sizing: sizing;
+  alignment: alignment;
+  child_gap: int;
+  padding: padding;
+  margin: margin;
+  background: Colors.rgb option;
+  foreground: Colors.rgb option;
+  border_width: int;
+  border_color: Colors.rgb option;
+  corner_radius: corner_radius;
+  text_size: int;
+  text_wrap: text_wrap;
+  text_align: text_align;
+  font_weight: font_weight;
+  text_decoration: text_decoration;
+  z_index: int;
 }
 
 let empty = {
@@ -154,8 +154,7 @@ let border = fun ?(width = 1) ?color ?(radius = {
   top_right = 0.0;
   bottom_left = 0.0;
   bottom_right = 0.0
-}) () t ->
-  {t with border_width = width; border_color = color; corner_radius = radius}
+}) () t -> {t with border_width = width; border_color = color; corner_radius = radius}
 
 let text_size = fun size t -> {t with text_size = size}
 
@@ -173,8 +172,10 @@ let align_right = fun t -> {t with alignment = {t.alignment with x = Right}}
 
 let grow = fun t -> {t with sizing = {t.sizing with width = Grow; height = Grow}}
 
-let fixed = fun ~width ~height t ->
-  {t with sizing = {t.sizing with width = Fixed width; height = Fixed height}}
+let fixed = fun ~width ~height t -> {
+  t
+  with sizing = {t.sizing with width = Fixed width; height = Fixed height}
+}
 
 let child_gap = fun gap t -> {t with child_gap = gap}
 
@@ -206,8 +207,12 @@ module Margin = struct
 end
 
 module CornerRadius = struct
-  let make = fun ?(top_left = 0.0) ?(top_right = 0.0) ?(bottom_left = 0.0) ?(bottom_right = 0.0) () ->
-    {top_left; top_right; bottom_left; bottom_right}
+  let make = fun ?(top_left = 0.0) ?(top_right = 0.0) ?(bottom_left = 0.0) ?(bottom_right = 0.0) () -> {
+    top_left;
+    top_right;
+    bottom_left;
+    bottom_right
+  }
 
   let all = fun r -> {top_left = r; top_right = r; bottom_left = r; bottom_right = r}
 

@@ -79,19 +79,18 @@ and child_expressions =
   | _ ->
       []
 
-let opens_with_begin =
-  fun ({ syntax_node; _ }:Syn.Cst.parenthesized_expression) ->
-    Syn.Ceibo.Red.SyntaxNode.children syntax_node |> Std.Collections.Array.to_list |> List.find_map
-      (
-        function
-        | Syn.Ceibo.Red.Token token ->
-            let text = Syn.Ceibo.Red.SyntaxToken.text token in
-            if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
-              None
-            else
-              Some (String.equal text "begin")
-        | _ -> None
-      ) |> Option.unwrap_or ~default:false
+let opens_with_begin = fun ({ syntax_node; _ }:Syn.Cst.parenthesized_expression) ->
+  Syn.Ceibo.Red.SyntaxNode.children syntax_node |> Std.Collections.Array.to_list |> List.find_map
+    (
+      function
+      | Syn.Ceibo.Red.Token token ->
+          let text = Syn.Ceibo.Red.SyntaxToken.text token in
+          if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
+            None
+          else
+            Some (String.equal text "begin")
+      | _ -> None
+    ) |> Option.unwrap_or ~default:false
 
 let is_obviously_redundant =
   function
@@ -109,20 +108,19 @@ let is_obviously_redundant =
   | Syn.Cst.Expression.If _ -> false
   | _ -> false
 
-let make_diagnostic = fun (expr:Syn.Cst.parenthesized_expression) ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
-  ~suggestion:"Remove these redundant parentheses."
-  ()
+let make_diagnostic = fun (expr:Syn.Cst.parenthesized_expression) -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))))
+~suggestion:"Remove these redundant parentheses."
+()
 
 let rec diagnostics_for_expression = fun ~inside_redundant_chain ->
   function
   | Syn.Cst.Expression.Parenthesized expr ->
       let inner = expr.inner in
       let nested = diagnostics_for_expression
-      ~inside_redundant_chain:((inside_redundant_chain || is_obviously_redundant inner))
+      ~inside_redundant_chain:((((inside_redundant_chain || is_obviously_redundant inner))))
       inner in
       if opens_with_begin expr then
         nested
@@ -143,5 +141,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   ~inside_redundant_chain:false
   (Syn.Cst.LetBinding.value binding))
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

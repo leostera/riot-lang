@@ -52,11 +52,17 @@ let to_source = fun t ->
   let module Src = struct
     type nonrec t = t
 
-    let register = fun t selector token interest ->
-      Adapter.Selector.register selector ~fd:t ~token ~interest
+    let register = fun t selector token interest -> Adapter.Selector.register
+    selector
+    ~fd:t
+    ~token
+    ~interest
 
-    let reregister = fun t selector token interest ->
-      Adapter.Selector.reregister selector ~fd:t ~token ~interest
+    let reregister = fun t selector token interest -> Adapter.Selector.reregister
+    selector
+    ~fd:t
+    ~token
+    ~interest
 
     let deregister = fun t selector -> Adapter.Selector.deregister selector ~fd:t
   end in

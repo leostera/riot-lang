@@ -5,39 +5,38 @@ type mode =
   | Apply
 
 type file_result = {
-  file : Path.t;
-  final_source : string;
-  diagnostics : Diagnostic.t list;
-  parse_diagnostics : Syn.Diagnostic.t list;
-  applied_fixes : Fix.fix list;
-  changed : bool;
-  error : string option;
+  file: Path.t;
+  final_source: string;
+  diagnostics: Diagnostic.t list;
+  parse_diagnostics: Syn.Diagnostic.t list;
+  applied_fixes: Fix.fix list;
+  changed: bool;
+  error: string option;
 }
 
 type summary = {
-  total_files : int;
-  changed_files : int;
-  remaining_diagnostics : int;
-  applied_fixes : int;
-  failed_files : int;
+  total_files: int;
+  changed_files: int;
+  remaining_diagnostics: int;
+  applied_fixes: int;
+  failed_files: int;
 }
 
 type run_result = {
-  files : file_result list;
-  summary : summary;
+  files: file_result list;
+  summary: summary;
 }
 
-let empty_result = fun file error ->
-  {
-    file;
-    final_source = "";
-    diagnostics = [];
-    parse_diagnostics = [];
-    applied_fixes = [];
-    changed = false;
-    error;
+let empty_result = fun file error -> {
+  file;
+  final_source = "";
+  diagnostics = [];
+  parse_diagnostics = [];
+  applied_fixes = [];
+  changed = false;
+  error;
 
-  }
+}
 
 let run_pipeline = fun pipeline file source -> Pipeline.run pipeline ~filename:file source
 
@@ -135,15 +134,14 @@ let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
   in
   {files = results; summary = summarize results}
 
-let summary_to_json = fun summary ->
-  let open Data.Json in Object [
-    ("total_files", Int summary.total_files);
-    ("changed_files", Int summary.changed_files);
-    ("remaining_diagnostics", Int summary.remaining_diagnostics);
-    ("applied_fixes", Int summary.applied_fixes);
-    ("failed_files", Int summary.failed_files);
+let summary_to_json = fun summary -> let open Data.Json in Object [
+  ("total_files", Int summary.total_files);
+  ("changed_files", Int summary.changed_files);
+  ("remaining_diagnostics", Int summary.remaining_diagnostics);
+  ("applied_fixes", Int summary.applied_fixes);
+  ("failed_files", Int summary.failed_files);
 
-  ]
+]
 
 let file_result_to_json = fun result ->
   let open Data.Json in
@@ -157,9 +155,8 @@ let file_result_to_json = fun result ->
         Array (List.map Syn.Diagnostic.to_json result.parse_diagnostics)
       ); ("diagnostics", Array (List.map Diagnostic.to_json result.diagnostics));  ]
 
-let run_result_to_json = fun result ->
-  let open Data.Json in Object [
-    ("summary", summary_to_json result.summary);
-    ("files", Array (List.map file_result_to_json result.files));
+let run_result_to_json = fun result -> let open Data.Json in Object [
+  ("summary", summary_to_json result.summary);
+  ("files", Array (List.map file_result_to_json result.files));
 
-  ]
+]

@@ -4,9 +4,9 @@ open Global0
 module type Read = sig
   type t
   type err
-  val read : t -> ?timeout:int64 -> bytes -> (int, err) result
+  val read: t -> ?timeout:int64 -> bytes -> (int, err) result
 
-  val read_vectored : t -> Iovec.t -> (int, err) result
+  val read_vectored: t -> Iovec.t -> (int, err) result
 end
 
 type ('src, 'err) read = (module Read with type t = 'src and type err = 'err)
@@ -72,12 +72,12 @@ let empty =
   of_read_src (module EmptyRead) ()
 
 type offset_state = {
-  mutable offset : int;
+  mutable offset: int;
 }
 
 type read_state = {
-  mutable total : int;
-  mutable continue : bool;
+  mutable total: int;
+  mutable continue: bool;
 }
 
 let from_bytes = fun data ->

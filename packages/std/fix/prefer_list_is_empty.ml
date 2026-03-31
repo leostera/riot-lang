@@ -58,15 +58,14 @@ let rec flatten_apply = fun expr ->
       (head, arguments @ [ argument ])
   | _ -> (unwrap_expression expr, [])
 
-let positional_arguments =
-  fun arguments ->
-    arguments |> List.filter_map
-      (
-        function
-        | Syn.Cst.Positional expr -> Some expr
-        | Syn.Cst.Labeled _
-        | Syn.Cst.Optional _ -> None
-      )
+let positional_arguments = fun arguments ->
+  arguments |> List.filter_map
+    (
+      function
+      | Syn.Cst.Positional expr -> Some expr
+      | Syn.Cst.Labeled _
+      | Syn.Cst.Optional _ -> None
+    )
 
 let is_zero_literal = fun expr ->
   match unwrap_expression expr with
@@ -80,17 +79,16 @@ let list_length_argument = fun expr ->
   | Some "List.length", [ argument ] -> Some argument
   | _ -> None
 
-let make_diagnostic = fun ~suggestion expr ->
-  Api.Diagnostic.make
-  ~severity:Warning
-  ~kind:(Api.Diagnostic.Known {
-    rule_id = package_rule_id;
-    message = explanation.Api.Explanation.message;
+let make_diagnostic = fun ~suggestion expr -> Api.Diagnostic.make
+~severity:Warning
+~kind:(Api.Diagnostic.Known {
+  rule_id = package_rule_id;
+  message = explanation.Api.Explanation.message;
 
-  })
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-  ~suggestion
-  ()
+})
+~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+~suggestion
+()
 
 let diagnostic_for_expression = fun expr ->
   match unwrap_expression expr with
@@ -116,10 +114,9 @@ let check_tree = fun (ctx:Api.Rule.context) _red_root ->
   |> List.concat_map Api.Traversal.expressions_of_structure_item
   |> List.filter_map diagnostic_for_expression
 
-let rule = fun () ->
-  Api.Rule.make
-  ~id:package_rule_id
-  ~description:explanation.message
-  ~explain:explanation.body
-  ~run:check_tree
-  ()
+let rule = fun () -> Api.Rule.make
+~id:package_rule_id
+~description:explanation.message
+~explain:explanation.body
+~run:check_tree
+()

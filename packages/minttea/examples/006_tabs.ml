@@ -23,8 +23,8 @@ open Minttea
 (* Model: Current tab index *)
 
 type model = {
-  active_tab : int;
-  tabs : (string * string) list;
+  active_tab: int;
+  tabs: (string * string) list;
 }
 
 (* Tab content *)

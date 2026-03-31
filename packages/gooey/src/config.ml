@@ -3,8 +3,8 @@ open Std
 type text_measurer = string -> Style.t -> Viewport.t
 
 type t = {
-  viewport : Viewport.t;
-  text_measurer : text_measurer;
+  viewport: Viewport.t;
+  text_measurer: text_measurer;
 }
 
 let default_text_measurer = fun text style ->

@@ -7,24 +7,24 @@ type graph_style =
   | Undirected
 
 type node = {
-  id : string;
-  label : string option;
-  attrs : (string * string) list;
+  id: string;
+  label: string option;
+  attrs: (string * string) list;
 }
 
 type edge = {
-  from_node : string;
-  to_node : string;
-  label : string option;
-  attrs : (string * string) list;
+  from_node: string;
+  to_node: string;
+  label: string option;
+  attrs: (string * string) list;
 }
 
 type t = {
-  name : string;
-  style : graph_style;
-  nodes : node list;
-  edges : edge list;
-  graph_attrs : (string * string) list;
+  name: string;
+  style: graph_style;
+  nodes: node list;
+  edges: edge list;
+  graph_attrs: (string * string) list;
 }
 
 let create = fun ~name ~style -> {name; style; nodes = []; edges = []; graph_attrs = []}

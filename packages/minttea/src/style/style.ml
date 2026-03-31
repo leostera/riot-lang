@@ -42,47 +42,47 @@ type overflow =
 (* Constraints for Auto/Flex *)
 
 type constraints = {
-  min_width : int option;
-  max_width : int option;
-  min_height : int option;
-  max_height : int option;
+  min_width: int option;
+  max_width: int option;
+  min_height: int option;
+  max_height: int option;
 }
 
 type t = {
-  background : color option;
-  blink : bool;
-  bold : bool;
-  faint : bool;
-  foreground : color option;
-  height : size;
-  italic : bool;
-  margin_bottom : int;
-  margin_left : int;
-  margin_right : int;
-  margin_top : int;
-  padding_bottom : int;
-  padding_left : int;
-  padding_right : int;
-  padding_top : int;
-  reverse : bool;
-  strikethrough : bool;
-  underline : bool;
-  width : size;
-  border : Border.t option;
-  align_horizontal :
+  background: color option;
+  blink: bool;
+  bold: bool;
+  faint: bool;
+  foreground: color option;
+  height: size;
+  italic: bool;
+  margin_bottom: int;
+  margin_left: int;
+  margin_right: int;
+  margin_top: int;
+  padding_bottom: int;
+  padding_left: int;
+  padding_right: int;
+  padding_top: int;
+  reverse: bool;
+  strikethrough: bool;
+  underline: bool;
+  width: size;
+  border: Border.t option;
+  align_horizontal:
     ([
       `Left
       | `Center
       | `Right
     ]) option;
-  align_vertical :
+  align_vertical:
     ([
       `Top
       | `Center
       | `Bottom
     ]) option;
-  overflow : overflow;
-  constraints : constraints;
+  overflow: overflow;
+  constraints: constraints;
 }
 
 (* Structural equality for styles *)

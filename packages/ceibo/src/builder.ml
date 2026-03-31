@@ -2,13 +2,13 @@ open Std
 open Std.Collections
 
 type ('kind, 'text) frame = {
-  kind : 'kind;
-  children : ('kind, 'text) Green.element list;
+  kind: 'kind;
+  children: ('kind, 'text) Green.element list;
 }
 
 type ('kind, 'text) t = {
-  stack : ('kind, 'text) frame list;
-  current : ('kind, 'text) Green.element list;
+  stack: ('kind, 'text) frame list;
+  current: ('kind, 'text) Green.element list;
 }
 
 let create = fun () -> {stack = []; current = []}

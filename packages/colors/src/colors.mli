@@ -144,10 +144,10 @@ type color = [
   | luv
   | uv
 ]
-val to_string : color -> string
+val to_string: color -> string
 
-module ANSI : sig
-  val to_rgb : ansi -> rgb
+module ANSI: sig
+  val to_rgb: ansi -> rgb
 
   (** Convert an ANSI 256-color palette entry to RGB.
 
@@ -158,8 +158,8 @@ module ANSI : sig
       (255, 0, 0) *) ``` *)
 end
 
-module White_reference : sig
-  val d65 : xyz
+module White_reference: sig
+  val d65: xyz
 
   (** Standard D65 white point (daylight illuminant at 6504K).
 
@@ -173,7 +173,7 @@ module White_reference : sig
   *)
 end
 
-module Linear_RGB : sig
+module Linear_RGB: sig
   (** Convert standard RGB to linear RGB by removing gamma correction.
 
       Applies the inverse of sRGB gamma curve:
@@ -182,7 +182,7 @@ module Linear_RGB : sig
 
       Example: ```ocaml let linear = Linear_RGB.linearize (`rgb (128, 128, 128))
       in (* Returns: `lrgb (0.2158, 0.2158, 0.2158) *) ``` *)
-  val linearize : rgb -> lrgb
+  val linearize: rgb -> lrgb
 
   (** Convert linear RGB back to standard RGB with gamma correction.
 
@@ -191,9 +191,9 @@ module Linear_RGB : sig
       - For values > 0.0031308: srgb = 1.055 * value^(1/2.4) - 0.055
 
       This is the inverse of `linearize`. *)
-  val delinearize : lrgb -> rgb
+  val delinearize: lrgb -> rgb
 
-  val to_xyz : lrgb -> xyz
+  val to_xyz: lrgb -> xyz
 
   (** Convert linear RGB to CIE XYZ color space.
 
@@ -202,7 +202,7 @@ module Linear_RGB : sig
       uniform color spaces. *)
 end
 
-module XYZ : sig
+module XYZ: sig
   (** Convert CIE XYZ to linear RGB.
 
       Uses the XYZ to sRGB transformation matrix (D65 illuminant). This is the
@@ -210,7 +210,7 @@ module XYZ : sig
 
       Note: Some XYZ colors may be outside the RGB gamut, resulting in clamped
       or out-of-range RGB values. *)
-  val to_linear_rgb : xyz -> lrgb
+  val to_linear_rgb: xyz -> lrgb
 
   (** Convert XYZ to chromaticity coordinates.
 
@@ -219,7 +219,7 @@ module XYZ : sig
       - v = 9Y / (X + 15Y + 3Z)
 
       Returns (0.0, 0.0) if denominator is zero. *)
-  val to_uv : xyz -> uv
+  val to_uv: xyz -> uv
 
   (** Convert XYZ to LUV using a custom white reference.
 
@@ -227,9 +227,9 @@ module XYZ : sig
       Different illuminants (D65, D50, etc.) produce different LUV values.
 
       Use this when you need to match specific lighting conditions. *)
-  val to_luv_with_ref : xyz -> wref:xyz -> luv
+  val to_luv_with_ref: xyz -> wref:xyz -> luv
 
-  val to_luv : xyz -> luv
+  val to_luv: xyz -> luv
 
   (** Convert XYZ to LUV using the D65 white reference.
 
@@ -237,19 +237,19 @@ module XYZ : sig
       Equivalent to `to_luv_with_ref xyz ~wref:White_reference.d65`. *)
 end
 
-module LUV : sig
+module LUV: sig
   (** Convert LUV back to XYZ using a custom white reference.
 
       The white reference must match the one used in the forward conversion.
       This is the inverse of `XYZ.to_luv_with_ref`. *)
-  val to_xyz_with_ref : luv -> wref:xyz -> xyz
+  val to_xyz_with_ref: luv -> wref:xyz -> xyz
 
   (** Convert LUV to XYZ using the D65 white reference.
 
       This is the inverse of `XYZ.to_luv`. *)
-  val to_xyz : luv -> xyz
+  val to_xyz: luv -> xyz
 
-  val blend : luv -> luv -> mix:float -> luv
+  val blend: luv -> luv -> mix:float -> luv
 
   (** Blend two colors in LUV space.
 
@@ -268,8 +268,8 @@ module LUV : sig
       (* Produces perceptually accurate blue-green *) ``` *)
 end
 
-module RGB : sig
-  val blend : rgb -> rgb -> mix:float -> rgb
+module RGB: sig
+  val blend: rgb -> rgb -> mix:float -> rgb
 
   (** Blend two RGB colors in perceptually uniform LUV space.
 

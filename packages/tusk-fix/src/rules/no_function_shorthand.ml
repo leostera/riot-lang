@@ -17,13 +17,12 @@ This rule nudges named functions toward the clearer form while still leaving `fu
 available for places where the shorthand is genuinely a better fit.
 |}
 
-let make_diagnostic = fun binding ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.LetBinding.value_syntax_node binding))
-  ~suggestion:"Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`"
-  ()
+let make_diagnostic = fun binding -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.LetBinding.value_syntax_node binding))
+~suggestion:"Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`"
+()
 
 let diagnostic_for_binding = fun binding ->
   if
@@ -41,5 +40,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.filter Syn.Cst.LetBinding.is_function
   |> List.filter_map diagnostic_for_binding
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

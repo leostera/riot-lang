@@ -25,23 +25,21 @@ back toward older OCaml style in the middle of Riot code.
 
 let explanations = fun () -> [ explanation ]
 
-let make_fix = fun token ->
-  Api.Fix.make
-  ~title:"Replace <> with !="
-  ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:"!=";  ]
+let make_fix = fun token -> Api.Fix.make
+~title:"Replace <> with !="
+~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:"!=";  ]
 
-let make_diagnostic = fun token ->
-  Api.Diagnostic.make
-  ~severity:Warning
-  ~kind:(Api.Diagnostic.Known {
-    rule_id = explanation.Api.Explanation.rule_id;
-    message = explanation.Api.Explanation.message;
+let make_diagnostic = fun token -> Api.Diagnostic.make
+~severity:Warning
+~kind:(Api.Diagnostic.Known {
+  rule_id = explanation.Api.Explanation.rule_id;
+  message = explanation.Api.Explanation.message;
 
-  })
-  ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-  ~suggestion:"Replace <> with !=."
-  ~fix:(make_fix token)
-  ()
+})
+~span:(Syn.Ceibo.Red.SyntaxToken.span token)
+~suggestion:"Replace <> with !=."
+~fix:(make_fix token)
+()
 
 let check_tree = fun (ctx:Api.Rule.context) _red_root ->
   match ctx.cst with
@@ -56,10 +54,9 @@ let check_tree = fun (ctx:Api.Rule.context) _red_root ->
         )
   | Syn.Cst.Interface _ -> []
 
-let rule = fun () ->
-  Api.Rule.make
-  ~id:package_rule_id
-  ~description:"Prefer != over <> for inequality checks"
-  ~explain:explanation.body
-  ~run:check_tree
-  ()
+let rule = fun () -> Api.Rule.make
+~id:package_rule_id
+~description:"Prefer != over <> for inequality checks"
+~explain:explanation.body
+~run:check_tree
+()

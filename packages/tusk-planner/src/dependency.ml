@@ -4,10 +4,10 @@ open Std.Iter
 open Tusk_model
 
 type t = {
-  package : Package.t;
-  artifact_dir : Path.t;
-  depset : t list;
-  hash : Crypto.hash;
+  package: Package.t;
+  artifact_dir: Path.t;
+  depset: t list;
+  hash: Crypto.hash;
 }
 
 let library_cmxa : t -> Path.t = fun dep ->

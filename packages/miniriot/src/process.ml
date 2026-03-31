@@ -15,13 +15,13 @@ type 'a atomic_ref = 'a Sync.Atomic.t
 module Messages = struct
   type Message.t +=
     | EXIT of {
-        from : Pid.t;
-        reason : (unit, exit_reason) result;
+        from: Pid.t;
+        reason: (unit, exit_reason) result;
       }
     | DOWN of {
-        ref : monitor_ref;
-        pid : Pid.t;
-        reason : (unit, exit_reason) result;
+        ref: monitor_ref;
+        pid: Pid.t;
+        reason: (unit, exit_reason) result;
       }
 end
 
@@ -29,7 +29,7 @@ type state =
   | Uninitialized
   | Runnable
   | Waiting_message
-  | Waiting_io of { name : string; token : Async.Token.t; source : Async.Source.t; }
+  | Waiting_io of { name: string; token: Async.Token.t; source: Async.Source.t; }
   | Running
   | Exited of (unit, exit_reason) result
   | Finalized
@@ -41,27 +41,27 @@ type reduction_result =
 let default_reduction_budget = 100
 
 type t = {
-  pid : Pid.t;
-  state : state atomic_ref;
-  receive_timeout_fired : bool atomic_ref;
-  syscall_timeout_fired : bool atomic_ref;
-  lock : Mutex.t;
-  mutable cont : (unit, exit_reason) result Proc_state.t option;
-  mutable fn : (unit -> (unit, exit_reason) result) option;
-  mailbox : Mailbox.t;
+  pid: Pid.t;
+  state: state atomic_ref;
+  receive_timeout_fired: bool atomic_ref;
+  syscall_timeout_fired: bool atomic_ref;
+  lock: Mutex.t;
+  mutable cont: (unit, exit_reason) result Proc_state.t option;
+  mutable fn: (unit -> (unit, exit_reason) result) option;
+  mailbox: Mailbox.t;
   (* Owner-local FIFO for selective-receive skips. Only the owning worker
      mutates this queue while mailbox sends remain cross-domain MPSC. *)
-  save_queue : Message.envelope Queue.t;
-  mutable save_queue_size : int;
-  mutable ready_tokens : (Async.Token.t * Async.Source.t) list;
-  mutable receive_timeout : Timer_id.t option;
-  mutable syscall_timeout : Timer_id.t option;
+  save_queue: Message.envelope Queue.t;
+  mutable save_queue_size: int;
+  mutable ready_tokens: (Async.Token.t * Async.Source.t) list;
+  mutable receive_timeout: Timer_id.t option;
+  mutable syscall_timeout: Timer_id.t option;
   (* Process links and monitors *)
-  mutable links : Pid.t list;
-  mutable monitors : (monitor_ref * Pid.t) list;
-  mutable monitored_by : (Pid.t * monitor_ref) list;
-  trap_exit : bool atomic_ref;
-  mutable reductions_remaining : int;
+  mutable links: Pid.t list;
+  mutable monitors: (monitor_ref * Pid.t) list;
+  mutable monitored_by: (Pid.t * monitor_ref) list;
+  trap_exit: bool atomic_ref;
+  mutable reductions_remaining: int;
 }
 
 let monitor_ref_counter = Sync.Atomic.make 0
@@ -183,8 +183,9 @@ let try_mark_awaiting_message = fun t ->
 let try_mark_runnable_from_waiting_message = fun t ->
   Sync.Atomic.compare_and_set t.state Waiting_message Runnable
 
-let has_empty_mailbox = fun t ->
-  with_lock t (fun () -> Int.equal t.save_queue_size 0 && Mailbox.is_empty t.mailbox)
+let has_empty_mailbox = fun t -> with_lock
+t
+(fun () -> Int.equal t.save_queue_size 0 && Mailbox.is_empty t.mailbox)
 
 let has_messages = fun t -> not (has_empty_mailbox t)
 
@@ -252,8 +253,9 @@ let mark_as_awaiting_io = fun t ~name token source ->
   if is_alive t then
     Sync.Atomic.set t.state (Waiting_io {name; token; source})
 
-let add_ready_token = fun t token source ->
-  with_lock t (fun () -> t.ready_tokens <- (token, source) :: t.ready_tokens)
+let add_ready_token = fun t token source -> with_lock
+t
+(fun () -> t.ready_tokens <- (token, source) :: t.ready_tokens)
 
 let get_ready_token = fun t ->
   with_lock t
@@ -328,10 +330,9 @@ let link = fun proc target_pid ->
       if not (List.mem target_pid proc.links) then
         proc.links <- target_pid :: proc.links)
 
-let unlink = fun proc target_pid ->
-  with_lock
-  proc
-  (fun () -> proc.links <- List.filter (fun pid -> not (Pid.equal pid target_pid)) proc.links)
+let unlink = fun proc target_pid -> with_lock
+proc
+(fun () -> proc.links <- List.filter (fun pid -> not (Pid.equal pid target_pid)) proc.links)
 
 let monitor = fun proc target_pid ->
   with_lock proc
@@ -383,8 +384,9 @@ let get_monitors = fun proc -> with_lock proc (fun () -> proc.monitors)
 
 let get_monitored_by = fun proc -> with_lock proc (fun () -> proc.monitored_by)
 
-let add_monitored_by = fun proc monitor_pid ref ->
-  with_lock proc (fun () -> proc.monitored_by <- (monitor_pid, ref) :: proc.monitored_by)
+let add_monitored_by = fun proc monitor_pid ref -> with_lock
+proc
+(fun () -> proc.monitored_by <- (monitor_pid, ref) :: proc.monitored_by)
 
 let remove_monitored_by = fun proc monitor_pid ref ->
   with_lock proc

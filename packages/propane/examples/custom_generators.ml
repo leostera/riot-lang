@@ -45,8 +45,8 @@ let color_arb = Arbitrary.make ~print:color_printer color_gen
 (* === Custom Type with Fields === *)
 
 type point = {
-  x : int;
-  y : int;
+  x: int;
+  y: int;
 }
 
 (* Generator using map and pair *)

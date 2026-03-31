@@ -21,8 +21,8 @@ open Minttea
 (* Model: Current time and timer reference *)
 
 type model = {
-  time : Datetime.t;
-  timer_ref : Timer.id Ref.t;
+  time: Datetime.t;
+  timer_ref: Timer.id Ref.t;
 }
 
 (* ASCII art for digits 0-9 and colon *)

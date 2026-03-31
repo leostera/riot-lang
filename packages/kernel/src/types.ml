@@ -16,7 +16,7 @@ type ('a, 'e) result = ('a, 'e) Stdlib.result =
   | Error of 'e
 
 type 'a cell = {
-  mutable value : 'a;
+  mutable value: 'a;
 }
 
 type signal_behavior = Stdlib.Sys.signal_behavior =

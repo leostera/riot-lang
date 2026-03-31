@@ -12,37 +12,37 @@ type action =
   | Count
 
 type 'a arg = {
-  name : string;
-  short : char option;
-  long : string option;
-  help : string option;
-  value_name : string option;
-  default : string option;
-  required : bool;
-  action : action;
-  multiple : bool;
-  env : string option;
-  possible_values : string list option;
-  conflicts_with : string list;
-  requires : string list;
+  name: string;
+  short: char option;
+  long: string option;
+  help: string option;
+  value_name: string option;
+  default: string option;
+  required: bool;
+  action: action;
+  multiple: bool;
+  env: string option;
+  possible_values: string list option;
+  conflicts_with: string list;
+  requires: string list;
 }
 
 type command = {
-  name : string;
-  version : string option;
-  about : string option;
-  author : string option;
-  args : unit arg list;
-  subcommands : command list;
-  allow_trailing : bool;
+  name: string;
+  version: string option;
+  about: string option;
+  author: string option;
+  args: unit arg list;
+  subcommands: command list;
+  allow_trailing: bool;
 }
 
 type matches = {
-  command_name : string;
-  values : (string, string list) HashMap.t;
-  flags : (string, int) HashMap.t;
-  mutable subcommand : (string * matches) option;
-  mutable trailing_args : string list;
+  command_name: string;
+  values: (string, string list) HashMap.t;
+  flags: (string, int) HashMap.t;
+  mutable subcommand: (string * matches) option;
+  mutable trailing_args: string list;
 }
 
 type error =
@@ -58,23 +58,22 @@ type error =
 module Arg = struct
   type 'a t = 'a arg
 
-  let make = fun name ->
-    {
-      name;
-      short = None;
-      long = None;
-      help = None;
-      value_name = None;
-      default = None;
-      required = false;
-      action = Set;
-      multiple = false;
-      env = None;
-      possible_values = None;
-      conflicts_with = [];
-      requires = [];
+  let make = fun name -> {
+    name;
+    short = None;
+    long = None;
+    help = None;
+    value_name = None;
+    default = None;
+    required = false;
+    action = Set;
+    multiple = false;
+    env = None;
+    possible_values = None;
+    conflicts_with = [];
+    requires = [];
 
-    }
+  }
 
   let flag = fun name -> {(make name) with action = SetTrue}
 
@@ -111,17 +110,16 @@ module Arg = struct
   let requires = fun name arg -> {arg with requires = name :: arg.requires}
 end
 
-let command = fun name ->
-  {
-    name;
-    version = None;
-    about = None;
-    author = None;
-    args = [];
-    subcommands = [];
-    allow_trailing = false;
+let command = fun name -> {
+  name;
+  version = None;
+  about = None;
+  author = None;
+  args = [];
+  subcommands = [];
+  allow_trailing = false;
 
-  }
+}
 
 let version = fun v cmd -> {cmd with version = Some v}
 
@@ -139,20 +137,18 @@ let subcommands = fun sub_list cmd -> {cmd with subcommands = cmd.subcommands @ 
 
 let allow_trailing_args = fun cmd -> {cmd with allow_trailing = true}
 
-let create_matches = fun name ->
-  {
-    command_name = name;
-    values = HashMap.create ();
-    flags = HashMap.create ();
-    subcommand = None;
-    trailing_args = [];
+let create_matches = fun name -> {
+  command_name = name;
+  values = HashMap.create ();
+  flags = HashMap.create ();
+  subcommand = None;
+  trailing_args = [];
 
-  }
+}
 
 let rec get_matches_internal = fun cmd args ->
   let matches = create_matches cmd.name in
   let validate_required = fun () ->
-    (* Check that all required args have values *)
     let missing =
       List.find_opt
         (fun arg ->
@@ -247,7 +243,6 @@ let rec get_matches_internal = fun cmd args ->
         parse_args rest
   and parse_short_arg = fun arg c rest -> parse_long_arg arg arg.name rest
   and parse_positional = fun pos_args ->
-    (* Find positional args that haven't been filled yet *)
     let positional_args : unit arg list =
       List.filter
       (fun positional_arg -> positional_arg.short = None && positional_arg.long = None)

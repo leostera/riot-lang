@@ -4,8 +4,8 @@ open Collections
 type t = Unix.file_descr
 
 type pipe = {
-  read_fd : t;
-  write_fd : t;
+  read_fd: t;
+  write_fd: t;
 }
 
 module OpenFlags = struct

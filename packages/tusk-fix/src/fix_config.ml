@@ -7,26 +7,26 @@ type rule_state =
   | Disabled
 
 type rule_override = {
-  name : string;
-  state : rule_state;
+  name: string;
+  state: rule_state;
 }
 
 type fix_config = {
-  ignore_patterns : string list;
-  rules : rule_override list;
+  ignore_patterns: string list;
+  rules: rule_override list;
 }
 
 type package_scope = {
-  package_root : Path.t;
-  config : fix_config;
+  package_root: Path.t;
+  config: fix_config;
 }
 
 type scope = {
-  workspace_root : Path.t;
-  target_dir_root : Path.t;
-  workspace_config : fix_config;
-  packages : package_scope list;
-  providers : Tusk_model.Fix_provider.t list;
+  workspace_root: Path.t;
+  target_dir_root: Path.t;
+  workspace_config: fix_config;
+  packages: package_scope list;
+  providers: Tusk_model.Fix_provider.t list;
 }
 
 let empty_fix_config = {ignore_patterns = []; rules = []; }
@@ -152,17 +152,16 @@ let matches_pattern = fun pattern candidate ->
     || String.equal pattern (Path.basename (Path.v candidate))
     || String.contains candidate pattern
 
-let find_package_scope =
-  fun scope file ->
-    scope.packages |> List.filter_map
-      (fun package_scope ->
-        match Path.strip_prefix file ~prefix:package_scope.package_root with
-        | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
-        | Error _ -> None) |> List.sort
-      (fun ((left_len, _)) ((right_len, _)) ->
-        Int.compare right_len left_len) |> List.map snd |> function
-    | package_scope :: _ -> Some package_scope
-    | [] -> None
+let find_package_scope = fun scope file ->
+  scope.packages |> List.filter_map
+    (fun package_scope ->
+      match Path.strip_prefix file ~prefix:package_scope.package_root with
+      | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
+      | Error _ -> None) |> List.sort
+    (fun ((left_len, _)) ((right_len, _)) ->
+      Int.compare right_len left_len) |> List.map snd |> function
+  | package_scope :: _ -> Some package_scope
+  | [] -> None
 
 let matches_ignore_patterns = fun file patterns ->
   let path = Path.to_string file in
@@ -180,8 +179,8 @@ let should_ignore_file = fun scope file ->
         | Some package_scope -> matches_ignore_patterns file package_scope.config.ignore_patterns
         | None -> false
 
-let set_rule_state = fun states name enabled ->
-  (name, enabled) :: List.filter (fun ((existing, _)) -> not (String.equal existing name)) states
+let set_rule_state = fun states name enabled -> (name, enabled)
+:: List.filter (fun ((existing, _)) -> not (String.equal existing name)) states
 
 let matching_rule_names = fun states name ->
   if String.contains name ":" then
@@ -219,8 +218,8 @@ let apply_rule_overrides = fun states overrides ->
     states
     overrides
 
-let default_rule_states = fun () ->
-  Pipeline.default_rule_ids () |> List.map (fun name -> (name, true))
+let default_rule_states = fun () -> Pipeline.default_rule_ids ()
+|> List.map (fun name -> (name, true))
 
 let effective_rule_states = fun scope file ->
   match scope with

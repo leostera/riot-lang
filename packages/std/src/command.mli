@@ -46,9 +46,9 @@ type status = int
     - Non-zero indicates failure
     - Specific codes may have special meanings per command *)
 type output = {
-  stdout : string;  (** Standard output captured as string *)
-  stderr : string;  (** Standard error captured as string *)
-  status : status;  (** Exit status code *)
+  stdout: string;  (** Standard output captured as string *)
+  stderr: string;  (** Standard error captured as string *)
+  status: status;  (** Exit status code *)
 }
 (** Output from a completed process including streams and exit status *)
 type t
@@ -61,7 +61,7 @@ type error =
           failures to start the process return [`Error`]. *)
 (** # Building Commands *)
 
-val make : ?cwd:string -> ?env:(string * string) list -> ?args:string list -> string -> t
+val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> string -> t
 
 (** Creates a new command configuration.
 
@@ -93,7 +93,7 @@ val make : ?cwd:string -> ?env:(string * string) list -> ?args:string list -> st
 
     The command is resolved using the system's PATH environment variable unless
     an absolute path is provided. *)
-val to_string : t -> string
+val to_string: t -> string
 
 (** Render a command as a shell-style string for logging and debugging.
 
@@ -101,7 +101,7 @@ val to_string : t -> string
     structured command value and does not invoke a shell. *)
 (** # Execution *)
 
-val output : t -> (output, error) result
+val output: t -> (output, error) result
 
 (** Executes command and captures its output.
 
@@ -130,7 +130,7 @@ val output : t -> (output, error) result
 
     Output is expected to be UTF-8. Invalid UTF-8 bytes may be replaced with
     replacement characters. *)
-val status : t -> (status, error) result
+val status: t -> (status, error) result
 
 (** Executes command and returns only its exit status.
 

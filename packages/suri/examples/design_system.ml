@@ -36,109 +36,110 @@ module MyDesign = struct
 
   (* Layout Components *)
 
-  let container = fun ?(max_width = "1200px") children ->
-    div
-    ~attrs:[
-      class_ "container";
-      style_ ("max-width: " ^ max_width ^ "; margin: 0 auto; padding: 0 " ^ spacing_md);
+  let container = fun ?(max_width = "1200px") children -> div
+  ~attrs:[
+    class_ "container";
+    style_ ("max-width: " ^ max_width ^ "; margin: 0 auto; padding: 0 " ^ spacing_md);
 
-    ]
-    children
+  ]
+  children
 
-  let grid = fun ?(columns = 3) ?(gap = spacing_md) children ->
-    div
-    ~attrs:[
-      class_ "grid";
-      style_
-      ("display: grid; grid-template-columns: repeat("
-      ^ Int.to_string columns
-      ^ ", 1fr); gap: "
-      ^ gap
-      ^ ";");
+  let grid = fun ?(columns = 3) ?(gap = spacing_md) children -> div
+  ~attrs:[
+    class_ "grid";
+    style_
+    ("display: grid; grid-template-columns: repeat("
+    ^ Int.to_string columns
+    ^ ", 1fr); gap: "
+    ^ gap
+    ^ ";");
 
-    ]
-    children
+  ]
+  children
 
-  let stack = fun ?(spacing = spacing_md) children ->
-    div
-    ~attrs:[
-      class_ "stack";
-      style_ ("display: flex; flex-direction: column; gap: " ^ spacing ^ ";");
+  let stack = fun ?(spacing = spacing_md) children -> div
+  ~attrs:[
+    class_ "stack";
+    style_ ("display: flex; flex-direction: column; gap: " ^ spacing ^ ";");
 
-    ]
-    children
+  ]
+  children
 
-  let row = fun ?(spacing = spacing_md) ?(align = "start") children ->
-    div
-    ~attrs:[
-      class_ "row";
-      style_ ("display: flex; gap: " ^ spacing ^ "; align-items: " ^ align ^ ";");
+  let row = fun ?(spacing = spacing_md) ?(align = "start") children -> div
+  ~attrs:[
+    class_ "row";
+    style_ ("display: flex; gap: " ^ spacing ^ "; align-items: " ^ align ^ ";");
 
-    ]
-    children
+  ]
+  children
 
   (* Typography *)
 
-  let page_header = fun title subtitle ->
-    header
-    ~attrs:[ class_ "page-header" ]
-    [
-      h1 ~attrs:[ style_ ("margin: 0 0 " ^ spacing_sm ^ " 0") ] [ text title ];
-      when_
-      (subtitle != "")
-      (p
-      ~attrs:[ class_ "subtitle"; style_ "color: #666; margin: 0; font-size: 1.2em";  ]
-      [ text subtitle ]);
+  let page_header = fun title subtitle -> header
+  ~attrs:[ class_ "page-header" ]
+  [
+    h1 ~attrs:[ style_ ("margin: 0 0 " ^ spacing_sm ^ " 0") ] [ text title ];
+    when_
+    (subtitle != "")
+    (p
+    ~attrs:[ class_ "subtitle"; style_ "color: #666; margin: 0; font-size: 1.2em";  ]
+    [ text subtitle ]);
 
-    ]
+  ]
 
   (* Components *)
 
-  let card = fun ?(class_extra = "") ?(style_extra = "") children ->
-    div
-    ~attrs:[
-      class_ ("card " ^ class_extra);
-      style_
-      ("border: 1px solid #e0e0e0; border-radius: "
-      ^ radius_md
-      ^ "; padding: "
-      ^ spacing_lg
-      ^ "; background: white; "
-      ^ "box-shadow: 0 2px 4px rgba(0,0,0,0.1); "
-      ^ style_extra);
+  let card = fun ?(class_extra = "") ?(style_extra = "") children -> div
+  ~attrs:[
+    class_ ("card " ^ class_extra);
+    style_
+    ("border: 1px solid #e0e0e0; border-radius: "
+    ^ radius_md
+    ^ "; padding: "
+    ^ spacing_lg
+    ^ "; background: white; "
+    ^ "box-shadow: 0 2px 4px rgba(0,0,0,0.1); "
+    ^ style_extra);
 
-    ]
-    children
+  ]
+  children
 
-  let button_base = fun ?(class_extra = "") ?(bg_color = primary_color) ?(text_color = "white") children ->
-    button
-    ~attrs:[
-      class_ ("btn " ^ class_extra);
-      style_
-      ("background: "
-      ^ bg_color
-      ^ "; color: "
-      ^ text_color
-      ^ "; border: none; "
-      ^ "padding: 10px 20px; border-radius: "
-      ^ radius_sm
-      ^ "; cursor: pointer; "
-      ^ "font-weight: 600; transition: opacity 0.2s;");
+  let button_base = fun ?(class_extra = "") ?(bg_color = primary_color) ?(text_color = "white") children -> button
+  ~attrs:[
+    class_ ("btn " ^ class_extra);
+    style_
+    ("background: "
+    ^ bg_color
+    ^ "; color: "
+    ^ text_color
+    ^ "; border: none; "
+    ^ "padding: 10px 20px; border-radius: "
+    ^ radius_sm
+    ^ "; cursor: pointer; "
+    ^ "font-weight: 600; transition: opacity 0.2s;");
 
-    ]
-    children
+  ]
+  children
 
-  let button_primary = fun ?(class_extra = "") children ->
-    button_base ~class_extra:(("btn-primary " ^ class_extra)) ~bg_color:primary_color children
+  let button_primary = fun ?(class_extra = "") children -> button_base
+  ~class_extra:(((("btn-primary " ^ class_extra))))
+  ~bg_color:primary_color
+  children
 
-  let button_secondary = fun ?(class_extra = "") children ->
-    button_base ~class_extra:(("btn-secondary " ^ class_extra)) ~bg_color:secondary_color children
+  let button_secondary = fun ?(class_extra = "") children -> button_base
+  ~class_extra:(((("btn-secondary " ^ class_extra))))
+  ~bg_color:secondary_color
+  children
 
-  let button_success = fun ?(class_extra = "") children ->
-    button_base ~class_extra:(("btn-success " ^ class_extra)) ~bg_color:success_color children
+  let button_success = fun ?(class_extra = "") children -> button_base
+  ~class_extra:(((("btn-success " ^ class_extra))))
+  ~bg_color:success_color
+  children
 
-  let button_danger = fun ?(class_extra = "") children ->
-    button_base ~class_extra:(("btn-danger " ^ class_extra)) ~bg_color:danger_color children
+  let button_danger = fun ?(class_extra = "") children -> button_base
+  ~class_extra:(((("btn-danger " ^ class_extra))))
+  ~bg_color:danger_color
+  children
 
   let badge = fun ?(variant = "primary") content ->
     let bg_color =
@@ -249,10 +250,14 @@ let product_card = fun ~name ~price ~in_stock ~discount ->
               MyDesign.row ~spacing:MyDesign.spacing_sm ~align:"center"
                 [ MyDesign.badge
                     ~variant:((
-                      if in_stock then
-                        "success"
-                      else
-                        "danger"
+                      (
+                        (
+                          if in_stock then
+                            "success"
+                          else
+                            "danger"
+                        )
+                      )
                     ))
                     (
                       if in_stock then

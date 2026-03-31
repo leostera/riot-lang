@@ -172,10 +172,9 @@ let rec intersection = fun ~compare_v r1 r2 ->
         else
           intersection ~compare_v r1 rest2
 
-let union = fun ~compare_v r1 r2 ->
-  complement
-  ~compare_v
-  (intersection ~compare_v (complement ~compare_v r1) (complement ~compare_v r2))
+let union = fun ~compare_v r1 r2 -> complement
+~compare_v
+(intersection ~compare_v (complement ~compare_v r1) (complement ~compare_v r2))
 
 let is_disjoint = fun ~compare_v r1 r2 -> intersection ~compare_v r1 r2 = empty
 

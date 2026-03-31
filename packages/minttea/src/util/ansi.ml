@@ -1,11 +1,11 @@
 open Std
 
 type ansi_state = {
-  bold : bool;
-  italic : bool;
-  underline : bool;
-  fg_color : string option;
-  bg_color : string option;
+  bold: bool;
+  italic: bool;
+  underline: bool;
+  fg_color: string option;
+  bg_color: string option;
 }
 
 (* Strip all ANSI escape sequences *)
@@ -82,15 +82,14 @@ let contains_substring = fun haystack needle ->
 
 (* Parse ANSI state from string (simplified) *)
 
-let parse_state = fun str ->
-  {
-    bold = contains_substring str "\027[1m";
-    italic = contains_substring str "\027[3m";
-    underline = contains_substring str "\027[4m";
-    fg_color = None;
-    bg_color = None;
+let parse_state = fun str -> {
+  bold = contains_substring str "\027[1m";
+  italic = contains_substring str "\027[3m";
+  underline = contains_substring str "\027[4m";
+  fg_color = None;
+  bg_color = None;
 
-  }
+}
 
 (* Convert state to ANSI codes *)
 

@@ -73,18 +73,18 @@ type mouse_event_type =
   | Motion
 
 type mouse_event = {
-  button : mouse_button;
-  event_type : mouse_event_type;
-  x : int;
-  y : int;
-  ctrl : bool;
-  alt : bool;
-  shift : bool;
+  button: mouse_button;
+  event_type: mouse_event_type;
+  x: int;
+  y: int;
+  ctrl: bool;
+  alt: bool;
+  shift: bool;
 }
 
 type window_size = {
-  width : int;
-  height : int;
+  width: int;
+  height: int;
 }
 
 type t =

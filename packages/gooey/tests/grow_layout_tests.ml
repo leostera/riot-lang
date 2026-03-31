@@ -18,13 +18,13 @@ let test_three_column_with_grow = fun () ->
   let ui = Element.row
   [
     Element.container
-    ~style:((Style.empty |> Style.width (Style.Fixed 20.0) |> Style.bg (`rgb (255, 0, 0))))
+    ~style:((((Style.empty |> Style.width (Style.Fixed 20.0) |> Style.bg (`rgb (255, 0, 0))))))
     [ Element.text "Left" ];
     Element.container
-    ~style:((Style.empty |> Style.width Style.Grow |> Style.bg (`rgb (0, 255, 0))))
+    ~style:((((Style.empty |> Style.width Style.Grow |> Style.bg (`rgb (0, 255, 0))))))
     [ Element.text "Middle" ];
     Element.container
-    ~style:((Style.empty |> Style.width (Style.Fixed 15.0) |> Style.bg (`rgb (0, 0, 255))))
+    ~style:((((Style.empty |> Style.width (Style.Fixed 15.0) |> Style.bg (`rgb (0, 0, 255))))))
     [ Element.text "Right" ];
 
   ] in

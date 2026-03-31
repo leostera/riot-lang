@@ -7,10 +7,10 @@ open Telemetry_events
 
 type package_error = Telemetry_events.package_error =
   | PlanningFailed of Tusk_planner.Planning_error.t
-  | ExecutionFailed of { message : string; }
-  | ActionExecutionFailed of { message : string; }
-  | ActionOutputsNotCreated of { missing : Path.t list; }
-  | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list; }
+  | ExecutionFailed of { message: string; }
+  | ActionExecutionFailed of { message: string; }
+  | ActionOutputsNotCreated of { missing: Path.t list; }
+  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list; }
 
 let convert_action_error =
   function
@@ -88,23 +88,22 @@ let build_status_to_json =
   ]
 
 type build_result = {
-  package_key : Package.key;
-  package : Package.t;
-  status : build_status;
-  duration : Duration.t;
+  package_key: Package.key;
+  package: Package.t;
+  status: build_status;
+  duration: Duration.t;
 }
 
-let build_result_to_json = fun result ->
-  Std.Data.Json.Object [
-    ("package_key", Std.Data.Json.String (Package.key_to_string result.package_key));
-    ("package", Package.to_json result.package);
-    ("status", build_status_to_json result.status);
-    (
-      "duration_ms",
-      Std.Data.Json.Int (int_of_float (Duration.to_secs_float result.duration *. 1000.0))
-    );
+let build_result_to_json = fun result -> Std.Data.Json.Object [
+  ("package_key", Std.Data.Json.String (Package.key_to_string result.package_key));
+  ("package", Package.to_json result.package);
+  ("status", build_status_to_json result.status);
+  (
+    "duration_ms",
+    Std.Data.Json.Int (int_of_float (Duration.to_secs_float result.duration *. 1000.0))
+  );
 
-  ]
+]
 
 let collect_source_files = fun package ->
   let src_dir = Path.(package.Package.path / Path.v "src") in
@@ -380,9 +379,9 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           ~profile:profile_name
           ~target:target_triple_str
           ~exports:export_entries
-          |> Result.expect ~msg:(("Failed to save package export manifest for " ^ package.name)) in
+          |> Result.expect ~msg:(((("Failed to save package export manifest for " ^ package.name)))) in
           Tusk_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
-          |> Result.expect ~msg:(("Failed to materialize package exports for " ^ package.name));
+          |> Result.expect ~msg:(((("Failed to materialize package exports for " ^ package.name))));
           let package_outs =
             List.map
             (fun (entry:Tusk_store.Store.export_entry) -> Path.(target_dir / Path.v entry.name))
@@ -394,7 +393,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           ~hash:package_hash
           ~sandbox_dir:target_dir
           ~outs:package_outs
-          |> Result.expect ~msg:(("Failed to save package hash artifact for " ^ package.name)) in
+          |> Result.expect ~msg:(((("Failed to save package hash artifact for " ^ package.name)))) in
           (* Mark as Built with Fresh status *)
           (
             match Tusk_planner.Package_graph.get_node_by_key package_graph planned_key with

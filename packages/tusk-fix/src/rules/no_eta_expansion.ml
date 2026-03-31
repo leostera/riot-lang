@@ -157,13 +157,12 @@ let should_flag_fun = fun (expr:Syn.Cst.fun_expression) ->
           && not (expression_mentions_any_name parameter_names callee)
     )
 
-let make_diagnostic = fun (expr:Syn.Cst.fun_expression) ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
-  ~suggestion:"Replace this eta-expanded function with the callee directly."
-  ()
+let make_diagnostic = fun (expr:Syn.Cst.fun_expression) -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))))
+~suggestion:"Replace this eta-expanded function with the callee directly."
+()
 
 let rec diagnostic_for_expression =
   function
@@ -177,5 +176,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.let_bindings_of_structure_item
   |> List.concat_map (fun binding -> diagnostic_for_expression (Syn.Cst.LetBinding.value binding))
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

@@ -21,7 +21,7 @@ module Counter = struct
   let id = LiveView.id "counter"
 
   type state = {
-    count : int;
+    count: int;
   }
 
   type msg =
@@ -44,35 +44,32 @@ module Counter = struct
     | App Reset -> {count = 0}
     | _ -> state
 
-  let render = fun ~state () ->
+  let render = fun ~state () -> div
+  ~attrs:[ class_ "component-card" ]
+  [
     div
-    ~attrs:[ class_ "component-card" ]
+    ~attrs:[ class_ "card-header" ]
     [
-      div
-      ~attrs:[ class_ "card-header" ]
-      [
-        h2 [ text "Counter" ];
-        p ~attrs:[ class_ "card-subtitle" ] [ text "Click buttons to change the count" ];
+      h2 [ text "Counter" ];
+      p ~attrs:[ class_ "card-subtitle" ] [ text "Click buttons to change the count" ];
 
-      ];
+    ];
+    div
+    ~attrs:[ class_ "card-body" ]
+    [
+      div ~attrs:[ class_ "display-value" ] [ text (Int.to_string state.count) ];
       div
-      ~attrs:[ class_ "card-body" ]
+      ~attrs:[ class_ "button-group" ]
       [
-        div ~attrs:[ class_ "display-value" ] [ text (Int.to_string state.count) ];
-        div
-        ~attrs:[ class_ "button-group" ]
-        [
-          button
-          ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement);  ]
-          [ text "−" ];
-          button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset);  ] [ text "Reset" ];
-          button ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment);  ] [ text "+" ];
-
-        ];
+        button ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement);  ] [ text "−" ];
+        button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset);  ] [ text "Reset" ];
+        button ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment);  ] [ text "+" ];
 
       ];
 
-    ]
+    ];
+
+  ]
 end
 
 (** Status LiveView - Shows current server timestamp *)
@@ -83,9 +80,9 @@ module Status = struct
   open Component
 
   type state = {
-    timer : Timer.id;
-    updates : int;
-    last_update : string;
+    timer: Timer.id;
+    updates: int;
+    last_update: string;
   }
 
   type msg =
@@ -115,28 +112,27 @@ module Status = struct
         {state with updates = state.updates + 1; last_update = timestamp; }
     | _ -> state
 
-  let render = fun ~state () ->
+  let render = fun ~state () -> div
+  ~attrs:[ class_ "component-card" ]
+  [
     div
-    ~attrs:[ class_ "component-card" ]
+    ~attrs:[ class_ "card-header" ]
     [
+      h2 [ text "Status" ];
+      p ~attrs:[ class_ "card-subtitle" ] [ text "Click to get server timestamp" ];
+
+    ];
+    div
+    ~attrs:[ class_ "card-body" ]
+    [
+      div ~attrs:[ class_ "display-value status-display" ] [ text state.last_update;  ];
       div
-      ~attrs:[ class_ "card-header" ]
-      [
-        h2 [ text "Status" ];
-        p ~attrs:[ class_ "card-subtitle" ] [ text "Click to get server timestamp" ];
+      ~attrs:[ class_ "status-info" ]
+      [ text ("Refreshed " ^ Int.to_string state.updates ^ " times");  ];
 
-      ];
-      div
-      ~attrs:[ class_ "card-body" ]
-      [
-        div ~attrs:[ class_ "display-value status-display" ] [ text state.last_update;  ];
-        div
-        ~attrs:[ class_ "status-info" ]
-        [ text ("Refreshed " ^ Int.to_string state.updates ^ " times");  ];
+    ];
 
-      ];
-
-    ]
+  ]
 end
 
 (** Page styles *)

@@ -7,8 +7,8 @@ exception Unwind
 type ('a, 'b) continuation = ('a, 'b) Effect.Shallow.continuation
 
 type error_info = {
-  exn : exn;
-  backtrace : Exception.raw_backtrace;
+  exn: exn;
+  backtrace: Exception.raw_backtrace;
 }
 
 type 'a t =
@@ -33,7 +33,7 @@ type 'a step =
 type ('a, 'b) step_callback = ('a step -> 'b t) -> 'a Effect.t -> 'b t
 
 type perform = {
-  perform : 'a 'b. ('a, 'b) step_callback;
+  perform: 'a 'b. ('a, 'b) step_callback;
 } [@@unboxed]
 
 let finished = fun x -> Finished x
@@ -43,7 +43,6 @@ let suspended_with = fun k e -> Suspended (k, e)
 let handler_continue =
   let retc = fun signal -> finished (Ok signal) in
   let exnc = fun exn ->
-    (* Capture exception backtrace while still in fiber, before crossing effect boundary *)
     let backtrace = Exception.get_raw_backtrace () in
     finished (Error {exn; backtrace})
   in

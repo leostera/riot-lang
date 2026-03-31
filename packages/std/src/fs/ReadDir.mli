@@ -30,15 +30,15 @@ type t
 type state = t
 (** Open a directory for reading. *)
 type item = Path.t
-val create : Path.t -> (t, error) result
+val create: Path.t -> (t, error) result
 
 (** Get next entry from directory, skipping . and .. *)
-val next : t -> Path.t option
+val next: t -> Path.t option
 
 (** Close the directory handle. *)
-val close : t -> (unit, error) Result.t
+val close: t -> (unit, error) Result.t
 
 (** MutIterator interface. *)
-val size : t -> int
+val size: t -> int
 
-val clone : t -> t
+val clone: t -> t

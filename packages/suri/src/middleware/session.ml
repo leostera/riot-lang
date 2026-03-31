@@ -3,17 +3,17 @@ open Std.Collections
 
 (** Session data stored in cookie *)
 type session_data = {
-  values : (string, string) HashMap.t;
-  created_at : int64;
-  mutable expires_at : int64 option;
+  values: (string, string) HashMap.t;
+  created_at: int64;
+  mutable expires_at: int64 option;
 }
 
 (** Session handle *)
 type t = {
-  data : session_data;
-  cookie_name : string;
-  secret : string;
-  mutable modified : bool;
+  data: session_data;
+  cookie_name: string;
+  secret: string;
+  mutable modified: bool;
 }
 
 (** Extend Conn.assign_value to store sessions *)

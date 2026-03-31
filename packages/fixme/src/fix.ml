@@ -11,33 +11,33 @@ type replacement =
 
 type operation =
   | Delete of {
-      target : target;
+      target: target;
     }
   | Replace of {
-      target : target;
-      replacement : replacement;
+      target: target;
+      replacement: replacement;
     }
   | Insert_before of {
-      anchor : target;
-      content : replacement;
+      anchor: target;
+      content: replacement;
     }
   | Insert_after of {
-      anchor : target;
-      content : replacement;
+      anchor: target;
+      content: replacement;
     }
   | Swap of {
-      left : target;
-      right : target;
+      left: target;
+      right: target;
     }
 
 type fix = {
-  title : string;
-  operations : operation list;
+  title: string;
+  operations: operation list;
 }
 
 type text_edit = {
-  span : Syn.Ceibo.Span.t;
-  new_text : string;
+  span: Syn.Ceibo.Span.t;
+  new_text: string;
 }
 
 let source_of_node = fun node -> Source_of_node node
@@ -52,14 +52,17 @@ let delete_node = fun target -> delete ~target:(Node target)
 
 let replace = fun ~target ~replacement -> Replace {target; replacement}
 
-let replace_node = fun ~target ~replacement ->
-  replace ~target:(Node target) ~replacement:(source_of_node replacement)
+let replace_node = fun ~target ~replacement -> replace
+~target:(Node target)
+~replacement:(source_of_node replacement)
 
-let replace_node_with_text = fun ~target ~text:value ->
-  replace ~target:(Node target) ~replacement:(text value)
+let replace_node_with_text = fun ~target ~text:value -> replace
+~target:(Node target)
+~replacement:(text value)
 
-let replace_token_with_text = fun ~target ~text:value ->
-  replace ~target:(Token target) ~replacement:(text value)
+let replace_token_with_text = fun ~target ~text:value -> replace
+~target:(Token target)
+~replacement:(text value)
 
 let insert_before = fun ~anchor ~content -> Insert_before {anchor; content}
 
@@ -121,8 +124,9 @@ let compare_text_edit = fun a b ->
   | 0 -> Int.compare a.span.end_ b.span.end_
   | n -> n
 
-let same_text_edit = fun a b ->
-  a.span.start = b.span.start && a.span.end_ = b.span.end_ && String.equal a.new_text b.new_text
+let same_text_edit = fun a b -> a.span.start = b.span.start
+&& a.span.end_ = b.span.end_
+&& String.equal a.new_text b.new_text
 
 let dedupe_text_edits = fun edits ->
   let sorted = List.sort compare_text_edit edits in

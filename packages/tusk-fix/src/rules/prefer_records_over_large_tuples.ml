@@ -45,21 +45,19 @@ let should_prefer_record = fun elements ->
               rest
       )
 
-let make_diagnostic = fun (decl:Syn.Cst.TypeDeclaration.t) ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl))
-  ~suggestion:"Replace this tuple alias with a record type so each position has a stable field name."
-  ()
+let make_diagnostic = fun (decl:Syn.Cst.TypeDeclaration.t) -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl))
+~suggestion:"Replace this tuple alias with a record type so each position has a stable field name."
+()
 
-let make_type_diagnostic = fun syntax_node ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-  ~suggestion:"Replace this tuple type with a record type so each position has a stable field name."
-  ()
+let make_type_diagnostic = fun syntax_node -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+~suggestion:"Replace this tuple type with a record type so each position has a stable field name."
+()
 
 let rec diagnostics_for_core_type = fun type_ ->
   match type_ with
@@ -146,11 +144,11 @@ let diagnostics_for_type_declaration = fun decl ->
   (fun (constraint_:Syn.Cst.TypeConstraint.t) -> diagnostics_for_core_type constraint_.left
   @ diagnostics_for_core_type constraint_.right))
 
-let diagnostics_for_value_declaration = fun ({ type_; _ }:Syn.Cst.value_declaration) ->
-  diagnostics_for_core_type type_
+let diagnostics_for_value_declaration = fun ({ type_; _ }:Syn.Cst.value_declaration) -> diagnostics_for_core_type
+type_
 
-let diagnostics_for_external_declaration = fun ({ type_; _ }:Syn.Cst.external_declaration) ->
-  diagnostics_for_core_type type_
+let diagnostics_for_external_declaration = fun ({ type_; _ }:Syn.Cst.external_declaration) -> diagnostics_for_core_type
+type_
 
 let diagnostics_for_source_file =
   function
@@ -175,5 +173,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   let source_file = ctx.cst in
   diagnostics_for_source_file source_file
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

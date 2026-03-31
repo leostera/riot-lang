@@ -3,20 +3,25 @@ open Std.Iter
 
 type t =
   | Cursor : {
-    id : string;
-    driver : (module Sqlx_driver.Driver.Intf with type result_set = 'rs);
-    mutable result_set : 'rs;
-    mutable exhausted : bool;
-    mutable row_count : int;
+    id: string;
+    driver: (module Sqlx_driver.Driver.Intf with type result_set = 'rs);
+    mutable result_set: 'rs;
+    mutable exhausted: bool;
+    mutable row_count: int;
   } -> t
 
-let make = fun (type rs) id (result_set:rs) (driver:(module Sqlx_driver.Driver.Intf with type result_set = rs)) ->
-  Cursor {id; driver; result_set; exhausted = false; row_count = 0}
+let make = fun (type rs) id (result_set:rs) (driver:(module Sqlx_driver.Driver.Intf with type result_set = rs)) -> Cursor {
+  id;
+  driver;
+  result_set;
+  exhausted = false;
+  row_count = 0
+}
 
 module RowIterator = struct
   type state = {
-    cursor : t;
-    mutable exhausted : bool;
+    cursor: t;
+    mutable exhausted: bool;
   }
 
   type item = Sqlx_driver.Row.t

@@ -1,10 +1,10 @@
 open Std
 
 type result = {
-  initial : Source_runner.result;
-  fixed_source : string option;
-  applied_fixes : Fix.fix list;
-  after : Source_runner.result option;
+  initial: Source_runner.result;
+  fixed_source: string option;
+  applied_fixes: Fix.fix list;
+  after: Source_runner.result option;
 }
 
 let run = fun ~rules ?filename source ->

@@ -7,26 +7,25 @@ type wrap_mode =
 ]
 
 type t = {
-  width : int;
-  height : int;
-  y_offset : int;
-  lines : string list;
-  mouse_wheel_enabled : bool;
-  mouse_wheel_delta : int;
-  wrap_mode : wrap_mode;
+  width: int;
+  height: int;
+  y_offset: int;
+  lines: string list;
+  mouse_wheel_enabled: bool;
+  mouse_wheel_delta: int;
+  wrap_mode: wrap_mode;
 }
 
-let make = fun ~width ~height ->
-  {
-    width;
-    height;
-    y_offset = 0;
-    lines = [];
-    mouse_wheel_enabled = true;
-    mouse_wheel_delta = 3;
-    wrap_mode = `None;
+let make = fun ~width ~height -> {
+  width;
+  height;
+  y_offset = 0;
+  lines = [];
+  mouse_wheel_enabled = true;
+  mouse_wheel_delta = 3;
+  wrap_mode = `None;
 
-  }
+}
 
 let set_content = fun t ~content ->
   let lines = String.split_on_char '\n' content in
@@ -97,21 +96,21 @@ let scroll_up = fun t ~lines ->
   if at_top t || lines <= 0 then
     t
   else
-    set_y_offset t ~offset:((t.y_offset - lines))
+    set_y_offset t ~offset:((((t.y_offset - lines))))
 
 let scroll_down = fun t ~lines ->
   if at_bottom t || lines <= 0 then
     t
   else
-    set_y_offset t ~offset:((t.y_offset + lines))
+    set_y_offset t ~offset:((((t.y_offset + lines))))
 
 let page_up = fun t -> scroll_up t ~lines:t.height
 
 let page_down = fun t -> scroll_down t ~lines:t.height
 
-let half_page_up = fun t -> scroll_up t ~lines:((t.height / 2))
+let half_page_up = fun t -> scroll_up t ~lines:((((t.height / 2))))
 
-let half_page_down = fun t -> scroll_down t ~lines:((t.height / 2))
+let half_page_down = fun t -> scroll_down t ~lines:((((t.height / 2))))
 
 let goto_top = fun t -> set_y_offset t ~offset:0
 

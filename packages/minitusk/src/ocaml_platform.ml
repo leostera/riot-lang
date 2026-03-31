@@ -262,8 +262,13 @@ module Ocamlc = struct
       Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
 
   (** Create a library (.cma) from object files *)
-  let create_library = fun ?(extra_args = []) ~includes ~output objects ->
-    run ~includes ~output:(Some output) ~mode:Library ~flags:[ NoStdlib ] ~extra_args objects
+  let create_library = fun ?(extra_args = []) ~includes ~output objects -> run
+  ~includes
+  ~output:(Some output)
+  ~mode:Library
+  ~flags:[ NoStdlib ]
+  ~extra_args
+  objects
 
   (** Create an executable from object files and libraries *)
   let create_executable = fun ~includes ~output ~libs objects ->

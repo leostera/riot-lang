@@ -39,13 +39,12 @@ let rec nested_call_count = fun expr ->
 
 let threshold = 4
 
-let make_diagnostic = fun expr ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-  ~suggestion:"Rewrite this call chain as a pipeline."
-  ()
+let make_diagnostic = fun expr -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+~suggestion:"Rewrite this call chain as a pipeline."
+()
 
 let diagnostic_for_expression = fun expr ->
   match unwrap_parens expr with
@@ -59,5 +58,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
   |> List.concat_map Traversal.expressions_of_structure_item
   |> List.filter_map diagnostic_for_expression
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

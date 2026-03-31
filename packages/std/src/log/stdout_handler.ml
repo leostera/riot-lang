@@ -7,7 +7,7 @@ let handler_id = "log_stdout"
 
 module Server = struct
   type state = {
-    style : Log_config.format_style;
+    style: Log_config.format_style;
   }
 
   type message =

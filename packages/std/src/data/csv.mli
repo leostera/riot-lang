@@ -85,14 +85,14 @@ type row = string list
     - [trim_fields]: Whether to trim whitespace from fields (default: false) *)
 type t = row list
 type config = {
-  delimiter : char;
-  quote : char;
-  escape : char;
-  trim_fields : bool;
+  delimiter: char;
+  quote: char;
+  escape: char;
+  trim_fields: bool;
 }
 type error =
-  | Unterminated_quote of { line : int; column : int; }
-  | Invalid_escape_sequence of { line : int; column : int; }
+  | Unterminated_quote of { line: int; column: int; }
+  | Invalid_escape_sequence of { line: int; column: int; }
   | Empty_input
   | Unknown_error of string
 (** CSV parsing errors with position information *)
@@ -103,7 +103,7 @@ type error =
     - quote: '"'
     - escape: '"'
     - trim_fields: false *)
-val default_config : config
+val default_config: config
 
 (** Creates a custom CSV configuration.
 
@@ -111,7 +111,7 @@ val default_config : config
 
     ```ocaml let tsv_config = Csv.config ~delimiter:'\t' () let excel_config =
     Csv.config ~delimiter:',' ~trim_fields:true () ``` *)
-val config : ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool -> unit -> config
+val config: ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool -> unit -> config
 
 (** {1 Reading CSV Data} *)
 (** Parses CSV data from a Reader incrementally, returning a mutable iterator over rows.
@@ -158,7 +158,7 @@ val config : ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool
     Returns an iterator that yields [Error] items if:
     - Parse errors occur (unterminated quotes, invalid escape sequences, etc.)
     - Reader errors occur during the initial read *)
-val parse : ?config:config -> ('src, 'err) IO.Reader.t -> (row, error) result Iter.MutIterator.t
+val parse: ?config:config -> ('src, 'err) IO.Reader.t -> (row, error) result Iter.MutIterator.t
 
 (** Parses a CSV string incrementally, returning a mutable iterator over rows.
     Useful for parsing CSV data from strings, network responses, or testing.
@@ -175,7 +175,7 @@ val parse : ?config:config -> ('src, 'err) IO.Reader.t -> (row, error) result It
 
     ```ocaml let config = Csv.config ~delimiter:';' () in let iter =
     Csv.of_string ~config "a;b;c\n1;2;3" in ``` *)
-val of_string : ?config:config -> string -> (row, error) result Iter.MutIterator.t
+val of_string: ?config:config -> string -> (row, error) result Iter.MutIterator.t
 
 (** Converts a parse error to a human-readable message.
 
@@ -183,7 +183,7 @@ val of_string : ?config:config -> string -> (row, error) result Iter.MutIterator
 
     ```ocaml match Csv.of_string bad_input with | Ok _ -> () | Error err ->
     Log.error "CSV parse failed: %s" (Csv.error_to_string err) ``` *)
-val error_to_string : error -> string
+val error_to_string: error -> string
 
 (** {1 Writing CSV Data} *)
 (** Writes CSV rows to a Writer. Fields containing delimiters, quotes, or newlines
@@ -214,11 +214,11 @@ val error_to_string : error -> string
     let config = Csv.config ~delimiter:'\t' () in 
     Csv.write ~config ~headers ~data writer |> Result.unwrap 
     ``` *)
-val write : ?config:config ->
-?headers:string list ->
-data:string list list ->
-('dst, 'err) IO.Writer.t ->
-(unit, 'err) result
+val write: ?config:config ->
+  ?headers:string list ->
+  data:string list list ->
+  ('dst, 'err) IO.Writer.t ->
+  (unit, 'err) result
 
 (** Serializes CSV rows to a string. Fields containing delimiters, quotes, or
     newlines are automatically quoted.
@@ -240,4 +240,4 @@ data:string list list ->
 
     ```ocaml let config = Csv.config ~delimiter:';' () in Csv.to_string ~config
     ~headers data (* "col1;col2\na;b\nc;d\n" *) ``` *)
-val to_string : ?config:config -> ?headers:string list -> string list list -> string
+val to_string: ?config:config -> ?headers:string list -> string list list -> string

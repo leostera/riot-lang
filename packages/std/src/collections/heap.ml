@@ -3,9 +3,9 @@ open Sync
 open Kernel.Collections
 
 type 'a t = {
-  mutable data : 'a array;
-  mutable size : int;
-  compare : 'a -> 'a -> int;
+  mutable data: 'a array;
+  mutable size: int;
+  compare: 'a -> 'a -> int;
 }
 
 let create_with = fun ~compare () -> {data = [||]; size = 0; compare}
@@ -185,7 +185,11 @@ let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun heap ->
 
     let size = fun state -> state.size
 
-    let clone = fun state ->
-      {data = Array.copy state.data; size = state.size; compare = state.compare; }
+    let clone = fun state -> {
+      data = Array.copy state.data;
+      size = state.size;
+      compare = state.compare;
+
+    }
   end in
   Iter.MutIterator.make (module HeapIter) heap

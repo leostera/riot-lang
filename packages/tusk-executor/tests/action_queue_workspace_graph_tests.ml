@@ -2,26 +2,25 @@ open Std
 module Test = Std.Test
 module G = Graph.SimpleGraph
 
-let test_toolchain = fun () ->
-  Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default |> Result.expect ~msg:"failed to initialize toolchain"
+let test_toolchain = fun () -> Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
+|> Result.expect ~msg:"failed to initialize toolchain"
 
-let make_test_package = fun name ->
-  Tusk_model.Package.{
-    name;
-    path = Path.v ("packages/" ^ name);
-    relative_path = Path.v ("packages/" ^ name);
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    foreign_dependencies = [];
-    binaries = [];
-    library = Some {path = Path.v "src/lib.ml"};
-    sources = {src = []; native = []; tests = []; examples = []; bench = []};
-    compiler = {profile_overrides = []; target_overrides = []};
-    commands = [];
-    fix_providers = [];
+let make_test_package = fun name -> Tusk_model.Package.{
+  name;
+  path = Path.v ("packages/" ^ name);
+  relative_path = Path.v ("packages/" ^ name);
+  dependencies = [];
+  dev_dependencies = [];
+  build_dependencies = [];
+  foreign_dependencies = [];
+  binaries = [];
+  library = Some {path = Path.v "src/lib.ml"};
+  sources = {src = []; native = []; tests = []; examples = []; bench = []};
+  compiler = {profile_overrides = []; target_overrides = []};
+  commands = [];
+  fix_providers = [];
 
-  }
+}
 
 let make_action_node = fun ?(deps = []) ?(outs = []) ?(actions = []) package_name ->
   let package = make_test_package package_name in

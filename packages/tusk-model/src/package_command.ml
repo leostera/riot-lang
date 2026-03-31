@@ -2,13 +2,13 @@ open Std
 open Std.Data
 
 type t = {
-  name : string;
-  description : string;
-  package_name : string;
-  package_path : Path.t;
-  command_module : string;
-  command_source : Path.t;
-  command_binary : Path.t;
+  name: string;
+  description: string;
+  package_name: string;
+  package_path: Path.t;
+  command_module: string;
+  command_source: Path.t;
+  command_binary: Path.t;
 }
 
 let is_built : t -> bool = fun cmd ->
@@ -64,12 +64,11 @@ let parse_from_toml : Toml.value list -> package_name:string -> package_path:Pat
 
 (* Note: discover_all and find_by_name moved to Workspace module to avoid circular dependency *)
 
-let to_json : t -> Json.t = fun cmd ->
-  Json.Object [
-    ("name", Json.String cmd.name);
-    ("description", Json.String cmd.description);
-    ("package", Json.String cmd.package_name);
-    ("command_binary", Json.String (Path.to_string cmd.command_binary));
-    ("is_built", Json.Bool (is_built cmd));
+let to_json : t -> Json.t = fun cmd -> Json.Object [
+  ("name", Json.String cmd.name);
+  ("description", Json.String cmd.description);
+  ("package", Json.String cmd.package_name);
+  ("command_binary", Json.String (Path.to_string cmd.command_binary));
+  ("is_built", Json.Bool (is_built cmd));
 
-  ]
+]

@@ -1,8 +1,8 @@
 type t = {
-  status : Status.t;
-  version : Version.t;
-  headers : Header.t;
-  body : string option;
+  status: Status.t;
+  version: Version.t;
+  headers: Header.t;
+  body: string option;
 }
 
 let create = fun status -> {status; version = Version.Http11; headers = Header.empty; body = None}
@@ -25,14 +25,20 @@ let with_body = fun response body -> {response with body = Some body}
 
 let without_body = fun response -> {response with body = None}
 
-let with_header = fun response name value ->
-  {response with headers = Header.set response.headers name value}
+let with_header = fun response name value -> {
+  response
+  with headers = Header.set response.headers name value
+}
 
-let add_header = fun response name value ->
-  {response with headers = Header.add response.headers name value}
+let add_header = fun response name value -> {
+  response
+  with headers = Header.add response.headers name value
+}
 
-let remove_header = fun response name ->
-  {response with headers = Header.remove response.headers name}
+let remove_header = fun response name -> {
+  response
+  with headers = Header.remove response.headers name
+}
 
 let get_header = fun response name ->
   Header.get response.headers name
@@ -44,10 +50,10 @@ module Builder = struct
   type response = t
 
   type t = {
-    status : Status.t;
-    version : Version.t;
-    headers : Header.t;
-    body : string option;
+    status: Status.t;
+    version: Version.t;
+    headers: Header.t;
+    body: string option;
   }
 
   let create = fun status -> {status; version = Version.Http11; headers = Header.empty; body = None}
@@ -60,8 +66,10 @@ module Builder = struct
 
   let body = fun builder body -> {builder with body = Some body}
 
-  let header = fun builder name value ->
-    {builder with headers = Header.set builder.headers name value}
+  let header = fun builder name value -> {
+    builder
+    with headers = Header.set builder.headers name value
+  }
 
   let build builder : response = {
     status = builder.status;

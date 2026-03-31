@@ -4,34 +4,30 @@ open Std
 type version =
   V0
 type file_entry = {
-  path : Path.t;
-  hash : string;
-  size : int;
+  path: Path.t;
+  hash: string;
+  size: int;
 }
 type t = {
-  version : version;
-  package : string;
-  build_hash : string;
-  timestamp : Std.Time.SystemTime.t;
-  files : file_entry list;
+  version: version;
+  package: string;
+  build_hash: string;
+  timestamp: Std.Time.SystemTime.t;
+  files: file_entry list;
 }
-val create : ?base_dir:Path.t ->
-package:string ->
-build_hash:string ->
-files:(Path.t * int) list ->
-t
+val create: ?base_dir:Path.t -> package:string -> build_hash:string -> files:(Path.t * int) list -> t
 
 (** Create a manifest for stored files. Takes a list of (file_path, size) pairs
     and calculates hashes. *)
-val save : t -> path:Path.t -> (unit, string) result
+val save: t -> path:Path.t -> (unit, string) result
 
 (** Save manifest to a JSON file *)
-val load : path:Path.t -> (t, string) result
+val load: path:Path.t -> (t, string) result
 
 (** Load manifest from a JSON file *)
-val to_json : t -> Std.Data.Json.t
+val to_json: t -> Std.Data.Json.t
 
 (** Convert manifest to JSON *)
-val of_json : Std.Data.Json.t -> (t, string) result
+val of_json: Std.Data.Json.t -> (t, string) result
 
 (** Parse manifest from JSON *)

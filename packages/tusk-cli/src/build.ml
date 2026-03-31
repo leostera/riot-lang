@@ -22,59 +22,58 @@ let telemetry_event_to_json = fun event ->
   | Some json -> json
   | None -> Data.Json.Null
 
-let build_stats_to_json = fun (stats:Local_session.build_stats) ->
-  Data.Json.Object [
-    ("duration_ms", Data.Json.Int stats.duration_ms);
-    ("packages_built", Data.Json.Int stats.packages_built);
-    ("packages_failed", Data.Json.Int stats.packages_failed);
-    ("total_modules", Data.Json.Int stats.total_modules);
-    ("cache_hits", Data.Json.Int stats.cache_hits);
-    ("cache_misses", Data.Json.Int stats.cache_misses);
+let build_stats_to_json = fun (stats:Local_session.build_stats) -> Data.Json.Object [
+  ("duration_ms", Data.Json.Int stats.duration_ms);
+  ("packages_built", Data.Json.Int stats.packages_built);
+  ("packages_failed", Data.Json.Int stats.packages_failed);
+  ("total_modules", Data.Json.Int stats.total_modules);
+  ("cache_hits", Data.Json.Int stats.cache_hits);
+  ("cache_misses", Data.Json.Int stats.cache_misses);
 
-  ]
+]
 
-let package_results_to_json = fun (results:Tusk_executor.Package_builder.build_result list) ->
-  Data.Json.Array (List.map Tusk_executor.Package_builder.build_result_to_json results)
+let package_results_to_json = fun (results:Tusk_executor.Package_builder.build_result list) -> Data.Json.Array (List.map
+Tusk_executor.Package_builder.build_result_to_json
+results)
 
-let build_failed_event_to_json = fun session_id failed_at errors ->
-  Data.Json.Object [
-    ("type", Data.Json.String "BuildFailed");
-    ("session_id", Data.Json.String (Session_id.to_string session_id));
-    ("failed_at", Data.Json.String (Datetime.to_iso8601 failed_at));
-    ("errors", package_results_to_json errors);
+let build_failed_event_to_json = fun session_id failed_at errors -> Data.Json.Object [
+  ("type", Data.Json.String "BuildFailed");
+  ("session_id", Data.Json.String (Session_id.to_string session_id));
+  ("failed_at", Data.Json.String (Datetime.to_iso8601 failed_at));
+  ("errors", package_results_to_json errors);
 
-  ]
+]
 
-let build_completed_event_to_json = fun session_id completed_at stats results ->
-  Data.Json.Object [
-    ("type", Data.Json.String "BuildCompleted");
-    ("session_id", Data.Json.String (Session_id.to_string session_id));
-    ("completed_at", Data.Json.String (Datetime.to_iso8601 completed_at));
-    ("stats", build_stats_to_json stats);
-    ("results", package_results_to_json results);
+let build_completed_event_to_json = fun session_id completed_at stats results -> Data.Json.Object [
+  ("type", Data.Json.String "BuildCompleted");
+  ("session_id", Data.Json.String (Session_id.to_string session_id));
+  ("completed_at", Data.Json.String (Datetime.to_iso8601 completed_at));
+  ("stats", build_stats_to_json stats);
+  ("results", package_results_to_json results);
 
-  ]
+]
 
-let planning_failed_event_to_json = fun session_id failed_at reason ->
-  Data.Json.Object [
-    ("type", Data.Json.String "PlanningFailed");
-    ("session_id", Data.Json.String (Session_id.to_string session_id));
-    ("failed_at", Data.Json.String (Datetime.to_iso8601 failed_at));
-    ("reason", Data.Json.String reason);
+let planning_failed_event_to_json = fun session_id failed_at reason -> Data.Json.Object [
+  ("type", Data.Json.String "PlanningFailed");
+  ("session_id", Data.Json.String (Session_id.to_string session_id));
+  ("failed_at", Data.Json.String (Datetime.to_iso8601 failed_at));
+  ("reason", Data.Json.String reason);
 
-  ]
+]
 
-let cycle_detected_event_to_json = fun session_id detected_at cycle_nodes ->
-  Data.Json.Object [
-    ("type", Data.Json.String "CycleDetected");
-    ("session_id", Data.Json.String (Session_id.to_string session_id));
-    ("detected_at", Data.Json.String (Datetime.to_iso8601 detected_at));
-    ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes));
+let cycle_detected_event_to_json = fun session_id detected_at cycle_nodes -> Data.Json.Object [
+  ("type", Data.Json.String "CycleDetected");
+  ("session_id", Data.Json.String (Session_id.to_string session_id));
+  ("detected_at", Data.Json.String (Datetime.to_iso8601 detected_at));
+  ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes));
 
-  ]
+]
 
-let command_error_event_to_json = fun kind details ->
-  Data.Json.Object (("type", Data.Json.String kind) :: details)
+let command_error_event_to_json = fun kind details -> Data.Json.Object ((
+  "type",
+  Data.Json.String kind
+)
+:: details)
 
 (** Helper functions for target resolution *)
 let ensure_toolchains_for_targets = fun workspace targets ->
@@ -186,9 +185,13 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
   let result =
     Local_session.build_streaming client request
       ~scope:((
-        match scope with
-        | Runtime -> Local_session.Runtime
-        | Dev -> Local_session.Dev
+        (
+          (
+            match scope with
+            | Runtime -> Local_session.Runtime
+            | Dev -> Local_session.Dev
+          )
+        )
       ))
       ?target_arch
       (fun event ->

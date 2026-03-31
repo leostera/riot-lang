@@ -2,17 +2,16 @@ open Std
 open Std.Collections
 module Test = Std.Test
 
-let test_toolchain = fun () ->
-  Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default |> Result.expect ~msg:"failed to initialize toolchain"
+let test_toolchain = fun () -> Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
+|> Result.expect ~msg:"failed to initialize toolchain"
 
-let make_workspace = fun root ->
-  Tusk_model.Workspace.{
-    root;
-    target_dir_root = Path.(root / Path.v "target");
-    packages = [];
-    profile_overrides = [];
+let make_workspace = fun root -> Tusk_model.Workspace.{
+  root;
+  target_dir_root = Path.(root / Path.v "target");
+  packages = [];
+  profile_overrides = [];
 
-  }
+}
 
 let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
 

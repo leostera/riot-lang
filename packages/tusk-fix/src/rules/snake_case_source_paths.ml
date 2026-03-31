@@ -57,13 +57,12 @@ let path_segments = fun path ->
       let stem = Path.(v file_name |> remove_extension |> basename) in
       List.rev rev_dirs @ [ stem ]
 
-let make_diagnostic = fun name ->
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-  ~suggestion:(("Rename `" ^ name ^ "` to use lowercase letters, digits, and underscores only."))
-  ()
+let make_diagnostic = fun name -> Diagnostic.make
+~severity:Warning
+~kind:(Diagnostic.Known {rule_id; message = rule_description})
+~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
+~suggestion:(((("Rename `" ^ name ^ "` to use lowercase letters, digits, and underscores only."))))
+()
 
 let check_tree = fun (ctx:Rule.context) _red_root ->
   let path = Path.v ctx.file_path in
@@ -82,5 +81,9 @@ let check_tree = fun (ctx:Rule.context) _red_root ->
         else
           Some (make_diagnostic name))
 
-let make = fun () ->
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+let make = fun () -> Rule.make
+~id:rule_id
+~description:rule_description
+~explain:rule_explain
+~run:check_tree
+()

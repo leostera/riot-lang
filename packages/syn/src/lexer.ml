@@ -88,9 +88,9 @@ let is_binary_digit_or_underscore =
   | _ -> false
 
 type quoted_string_info = {
-  pipe_offset : int;
-  delimiter : string;
-  is_extension : bool;
+  pipe_offset: int;
+  delimiter: string;
+  is_extension: bool;
 }
 
 let is_quoted_string_header_char =

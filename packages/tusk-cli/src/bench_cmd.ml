@@ -3,8 +3,8 @@ open Tusk_model
 open ArgParser
 
 type suite_binary = {
-  package_name : string;
-  suite_name : string;
+  package_name: string;
+  suite_name: string;
 }
 
 let reconnect = fun ~workspace -> Local_session.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session"
@@ -32,35 +32,37 @@ let trailing_args = fun matches ->
   | "--" :: rest -> rest
   | _ -> args
 
-let is_benchmark_binary_name = fun name ->
-  String.ends_with ~suffix:"_bench" name || String.ends_with ~suffix:"-bench" name
+let is_benchmark_binary_name = fun name -> String.ends_with ~suffix:"_bench" name
+|| String.ends_with ~suffix:"-bench" name
 
 let compare_suite_binary = fun left right ->
   String.compare
   (left.package_name ^ ":" ^ left.suite_name)
   (right.package_name ^ ":" ^ right.suite_name)
 
-let collect_suite_binaries =
-  fun (workspace:Workspace.t) ?package_filter () ->
-    workspace.packages |> List.filter Package.is_workspace_member |> List.filter
-      (fun (pkg:Package.t) ->
-        match package_filter with
-        | None -> true
-        | Some package_name -> String.equal pkg.name package_name) |> List.concat_map
-      (fun (pkg:Package.t) ->
-        List.filter_map
-          (fun (bin:Package.binary) ->
-            if is_benchmark_binary_name bin.name then
-              Some {package_name = pkg.name; suite_name = bin.name}
-            else
-              None)
-          pkg.binaries) |> List.sort compare_suite_binary
+let collect_suite_binaries = fun (workspace:Workspace.t) ?package_filter () ->
+  workspace.packages |> List.filter Package.is_workspace_member |> List.filter
+    (fun (pkg:Package.t) ->
+      match package_filter with
+      | None -> true
+      | Some package_name -> String.equal pkg.name package_name) |> List.concat_map
+    (fun (pkg:Package.t) ->
+      List.filter_map
+        (fun (bin:Package.binary) ->
+          if is_benchmark_binary_name bin.name then
+            Some {package_name = pkg.name; suite_name = bin.name}
+          else
+            None)
+        pkg.binaries) |> List.sort compare_suite_binary
 
-let find_suite_binary_path = fun client (suite:suite_binary) ->
-  Local_session.find_artifact client ~package:suite.package_name ~kind:"binary" ~name:suite.suite_name
+let find_suite_binary_path = fun client (suite:suite_binary) -> Local_session.find_artifact
+client
+~package:suite.package_name
+~kind:"binary"
+~name:suite.suite_name
 
 let run_suite_binary_capture = fun ~extra_args binary_path ->
-  let cmd = Command.make binary_path ~args:(("run-benchmarks" :: extra_args)) in
+  let cmd = Command.make binary_path ~args:(((("run-benchmarks" :: extra_args)))) in
   Command.output cmd
 
 let print_command_output = fun (output:Command.output) ->
