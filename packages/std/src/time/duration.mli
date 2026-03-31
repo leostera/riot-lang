@@ -52,7 +52,6 @@
 (** A span of time stored as seconds + nanoseconds. Always non-negative. *)
 type t
 (** {1 Constants} *)
-
 (** A duration of zero time.
 
     ## Examples
@@ -71,7 +70,6 @@ val zero : t
 val max : t
 
 (** {1 Creation} *)
-
 (** Creates a duration from seconds and nanoseconds.
 
     ## Examples
@@ -155,7 +153,6 @@ val from_weeks : int -> t
 val from_secs_float : float -> t
 
 (** {1 Conversion} *)
-
 (** Extracts the whole seconds component, discarding fractional part.
 
     ## Examples
@@ -205,7 +202,6 @@ val to_micros : t -> int
 val to_nanos : t -> int64
 
 (** {1 Subsecond Components} *)
-
 (** Returns only the fractional milliseconds (0-999).
 
     ## Examples
@@ -231,7 +227,6 @@ val subsec_micros : t -> int
 val subsec_nanos : t -> int
 
 (** {1 Predicates} *)
-
 (** Returns [true] if duration is zero.
 
     ## Examples
@@ -242,7 +237,6 @@ val subsec_nanos : t -> int
 val is_zero : t -> bool
 
 (** {1 Arithmetic Operations} *)
-
 (** Adds two durations. Panics on overflow.
 
     ## Examples
@@ -281,7 +275,6 @@ val mul : t -> int -> t
 val div : t -> int -> t
 
 (** {1 Checked Operations} *)
-
 (** Returns [Some result] if addition doesn't overflow, [None] otherwise.
 
     ## Examples
@@ -316,7 +309,6 @@ val checked_mul : t -> int -> t option
 val checked_div : t -> int -> t option
 
 (** {1 Saturating Operations} *)
-
 (** Adds durations, clamping to [max] on overflow.
 
     ## Examples
@@ -344,7 +336,6 @@ val saturating_sub : t -> t -> t
 val saturating_mul : t -> int -> t
 
 (** {1 Floating Point Operations} *)
-
 (** Multiplies duration by a floating-point factor.
 
     ## Examples
@@ -362,7 +353,6 @@ val mul_f64 : t -> float -> t
 val div_f64 : t -> float -> t
 
 (** {1 Utility} *)
-
 (** Returns the absolute difference between two durations.
 
     ## Examples

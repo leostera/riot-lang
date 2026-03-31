@@ -1,17 +1,31 @@
 (**************************************************************************)
+
 (*                                                                        *)
+
 (*                                 OCaml                                  *)
+
 (*                                                                        *)
+
 (*             Xavier Leroy, projet Cristal, INRIA Rocquencourt           *)
+
 (*                                                                        *)
+
 (*   Copyright 1996 Institut National de Recherche en Informatique et     *)
+
 (*     en Automatique.                                                    *)
+
 (*                                                                        *)
+
 (*   All rights reserved.  This file is distributed under the terms of    *)
+
 (*   the GNU Lesser General Public License version 2.1, with the          *)
+
 (*   special exception on linking described in the file LICENSE.          *)
+
 (*                                                                        *)
+
 (**************************************************************************)
+
 (** 32-bit integers.
 
    This module provides operations on the type [int32]
@@ -146,14 +160,10 @@ val unsigned_to_int : int32 -> int option
    If the truncated floating-point number is outside the range
    \[{!Int32.min_int}, {!Int32.max_int}\], no exception is raised, and
    an unspecified, platform-dependent integer is returned. *)
-external of_float : float -> int32
-  = "caml_int32_of_float" "caml_int32_of_float_unboxed"
-  [@@unboxed] [@@noalloc]
+external of_float : float -> int32 = "caml_int32_of_float" "caml_int32_of_float_unboxed" [@@unboxed] [@@noalloc]
 
 (** Convert the given 32-bit integer to a floating-point number. *)
-external to_float : int32 -> float
-  = "caml_int32_to_float" "caml_int32_to_float_unboxed"
-  [@@unboxed] [@@noalloc]
+external to_float : int32 -> float = "caml_int32_to_float" "caml_int32_to_float_unboxed" [@@unboxed] [@@noalloc]
 
 (** Convert the given string to a 32-bit integer.
    The string is read in decimal (by default, or if the string
@@ -184,16 +194,12 @@ val to_string : int32 -> string
    Bit 31 of the result represents the sign of the float;
    bits 30 to 23 represent the (biased) exponent; bits 22 to 0
    represent the mantissa. *)
-external bits_of_float : float -> int32
-  = "caml_int32_bits_of_float" "caml_int32_bits_of_float_unboxed"
-  [@@unboxed] [@@noalloc]
+external bits_of_float : float -> int32 = "caml_int32_bits_of_float" "caml_int32_bits_of_float_unboxed" [@@unboxed] [@@noalloc]
 
 (** Return the floating-point number whose internal representation,
    according to the IEEE 754 floating-point 'single format' bit layout,
    is the given [int32]. *)
-external float_of_bits : int32 -> float
-  = "caml_int32_float_of_bits" "caml_int32_float_of_bits_unboxed"
-  [@@unboxed] [@@noalloc]
+external float_of_bits : int32 -> float = "caml_int32_float_of_bits" "caml_int32_float_of_bits_unboxed" [@@unboxed] [@@noalloc]
 
 (** An alias for the type of 32-bit integers. *)
 (** The comparison function for 32-bit integers, with the same specification as

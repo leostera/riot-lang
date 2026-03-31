@@ -46,7 +46,6 @@ open Global
     Uses characters from '!' (33) to 'u' (117) in ASCII, plus special 'z' 
     for all-zero groups. Total: 85 characters.
 *)
-
 (** Encodes a string to Ascii85.
 
     ## Examples

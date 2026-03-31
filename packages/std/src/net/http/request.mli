@@ -63,7 +63,6 @@
 (** An HTTP request with method, URI, headers, and optional body. *)
 type t
 (** ## Construction *)
-
 (** Creates a new HTTP request with the given method and URI.
 
     ## Examples
@@ -73,7 +72,6 @@ type t
 val create : Method.t -> Uri.t -> t
 
 (** ## Access *)
-
 (** Returns the HTTP method.
 
     ## Examples
@@ -113,7 +111,6 @@ val headers : t -> Header.t
 val body : t -> string option
 
 (** ## Modification *)
-
 (** Returns a new request with the given method.
 
     ## Examples
@@ -216,7 +213,6 @@ module Builder : sig
         |> Request.Builder.build
       ```
   *)
-
   (** The final request type *)
   (** The builder type *)
   type request = t
@@ -243,11 +239,11 @@ module Builder : sig
   val body : t -> string -> t
 
   val build : t -> request
+
   (** Builds the final request. *)
 end
 
 (** ## Convenience Constructors *)
-
 (** Creates a GET request.
 
     ## Examples

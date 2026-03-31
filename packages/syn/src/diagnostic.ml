@@ -10,172 +10,58 @@ type found_token = {
 
 type kind =
   (* Specific parsing errors with helpful hints *)
-  | MalformedTypeVariable of {
-      found : found_token;
-    }
-  | MissingLetBindingPattern of {
-      found : found_token;
-    }
-  | MissingLetBindingEquals of {
-      found : found_token;
-    }
-  | MissingLetBindingExpr of {
-      found : found_token;
-    }
-  | UnexpectedStructureItem of {
-      found : found_token;
-    }
-  | UnexpectedSignatureItem of {
-      found : found_token;
-    }
-  | InvalidPattern of {
-      found : found_token;
-    }
-  | InvalidExpression of {
-      found : found_token;
-    }
-  | InvalidConstant of {
-      found : found_token;
-    }
-  | InvalidTypeExpression of {
-      found : found_token;
-    }
-  | MissingLetKeyword of {
-      found : found_token;
-    }
-  | MissingTypeKeyword of {
-      found : found_token;
-    }
-  | MissingTypeName of {
-      found : found_token;
-    }
-  | MissingTypeDeclEquals of {
-      found : found_token;
-    }
-  | UnclosedDelimiter of {
-      opener : string;
-      found : found_token;
-    }
-  | UnclosedTypeParams of {
-      found : found_token;
-    }
+  | MalformedTypeVariable of { found : found_token; }
+  | MissingLetBindingPattern of { found : found_token; }
+  | MissingLetBindingEquals of { found : found_token; }
+  | MissingLetBindingExpr of { found : found_token; }
+  | UnexpectedStructureItem of { found : found_token; }
+  | UnexpectedSignatureItem of { found : found_token; }
+  | InvalidPattern of { found : found_token; }
+  | InvalidExpression of { found : found_token; }
+  | InvalidConstant of { found : found_token; }
+  | InvalidTypeExpression of { found : found_token; }
+  | MissingLetKeyword of { found : found_token; }
+  | MissingTypeKeyword of { found : found_token; }
+  | MissingTypeName of { found : found_token; }
+  | MissingTypeDeclEquals of { found : found_token; }
+  | UnclosedDelimiter of { opener : string; found : found_token; }
+  | UnclosedTypeParams of { found : found_token; }
   | EmptyCharLiteral
-  | MultiCharLiteral of {
-      text : string;
-    }
-  | UnclosedCharLiteral of {
-      text : string;
-    }
-  | MissingBinaryOperand of {
-      operator : string;
-      side : string;
-      found : found_token;
-    }
-  | ConsecutiveBinaryOperators of {
-      operators : string;
-      found : found_token;
-    }
-  | InvalidTypeParameter of {
-      text : string;
-      found : found_token;
-    }
-  | UppercaseTypeVariable of {
-      text : string;
-      found : found_token;
-    }
-  | UppercaseTypeName of {
-      text : string;
-      found : found_token;
-    }
-  | BracketedTypeParameters of {
-      type_name : string;
-      found : found_token;
-    }
-  | ListDoubleSemicolon of {
-      found : found_token;
-    }
-  | IfMissingThen of {
-      found : found_token;
-    }
-  | MatchMissingScrutinee of {
-      found : found_token;
-    }
-  | MatchMissingWith of {
-      found : found_token;
-    }
-  | MatchMissingPattern of {
-      found : found_token;
-    }
-  | MatchGuardMissingExpr of {
-      found : found_token;
-    }
-  | TuplePatternExtraComma of {
-      found : found_token;
-    }
-  | ConstructorPatternNeedsParens of {
-      constructor : string;
-      found : found_token;
-    }
-  | ConsPatternMissingHead of {
-      found : found_token;
-    }
-  | ConsPatternMissingTail of {
-      found : found_token;
-    }
-  | OrPatternMissing of {
-      found : found_token;
-    }
-  | OrPatternDouble of {
-      found : found_token;
-    }
-  | MutableFieldMissingName of {
-      found : found_token;
-    }
-  | RecordFieldMissingColon of {
-      field_name : string;
-      found : found_token;
-    }
-  | RecordFieldMissingType of {
-      field_name : string;
-      found : found_token;
-    }
-  | PolyTypeMissingVarName of {
-      found : found_token;
-    }
-  | PolyTypeMissingDot of {
-      found : found_token;
-    }
-  | UnexpectedClosingDelimiter of {
-      delimiter : string;
-      found : found_token;
-    }
-  | MissingModuleDeclEquals of {
-      found : found_token;
-    }
-  | MissingExternalColon of {
-      found : found_token;
-    }
-  | MissingExceptionName of {
-      found : found_token;
-    }
-  | MissingModulePath of {
-      found : found_token;
-    }
-  | MissingModuleTypeName of {
-      found : found_token;
-    }
-  | MissingModuleTypeExpr of {
-      found : found_token;
-    }
-  | MissingModuleExpr of {
-      found : found_token;
-    }
-  | MissingWithKeyword of {
-      found : found_token;
-    }
-  | InvalidModuleName of {
-      found : found_token;
-    }
+  | MultiCharLiteral of { text : string; }
+  | UnclosedCharLiteral of { text : string; }
+  | MissingBinaryOperand of { operator : string; side : string; found : found_token; }
+  | ConsecutiveBinaryOperators of { operators : string; found : found_token; }
+  | InvalidTypeParameter of { text : string; found : found_token; }
+  | UppercaseTypeVariable of { text : string; found : found_token; }
+  | UppercaseTypeName of { text : string; found : found_token; }
+  | BracketedTypeParameters of { type_name : string; found : found_token; }
+  | ListDoubleSemicolon of { found : found_token; }
+  | IfMissingThen of { found : found_token; }
+  | MatchMissingScrutinee of { found : found_token; }
+  | MatchMissingWith of { found : found_token; }
+  | MatchMissingPattern of { found : found_token; }
+  | MatchGuardMissingExpr of { found : found_token; }
+  | TuplePatternExtraComma of { found : found_token; }
+  | ConstructorPatternNeedsParens of { constructor : string; found : found_token; }
+  | ConsPatternMissingHead of { found : found_token; }
+  | ConsPatternMissingTail of { found : found_token; }
+  | OrPatternMissing of { found : found_token; }
+  | OrPatternDouble of { found : found_token; }
+  | MutableFieldMissingName of { found : found_token; }
+  | RecordFieldMissingColon of { field_name : string; found : found_token; }
+  | RecordFieldMissingType of { field_name : string; found : found_token; }
+  | PolyTypeMissingVarName of { found : found_token; }
+  | PolyTypeMissingDot of { found : found_token; }
+  | UnexpectedClosingDelimiter of { delimiter : string; found : found_token; }
+  | MissingModuleDeclEquals of { found : found_token; }
+  | MissingExternalColon of { found : found_token; }
+  | MissingExceptionName of { found : found_token; }
+  | MissingModulePath of { found : found_token; }
+  | MissingModuleTypeName of { found : found_token; }
+  | MissingModuleTypeExpr of { found : found_token; }
+  | MissingModuleExpr of { found : found_token; }
+  | MissingWithKeyword of { found : found_token; }
+  | InvalidModuleName of { found : found_token; }
 
 type t = {
   kind : kind;
@@ -581,11 +467,10 @@ let fix_message = fun diag ->
       Some "add ) to close the type parameter list"
   | InvalidPattern { found } -> (
       match found.kind with
-      | "keyword" ->
-          Some ("use a different name like "
-          ^ found.text
-          ^ "_ or a raw identifier like \\#"
-          ^ found.text)
+      | "keyword" -> Some ("use a different name like "
+      ^ found.text
+      ^ "_ or a raw identifier like \\#"
+      ^ found.text)
       | _ -> Some "add a variable name, \"_\" (underscore) to ignore it."
     )
   | EmptyCharLiteral ->
@@ -846,7 +731,8 @@ let to_json = fun err ->
       | Some fix -> [ ("fix", String fix) ]
       | None -> []
     in
-    Object [ (
+    Object [
+      (
         "kind",
         Object ([
           ("id", String (Error.id_to_string err_id));
@@ -856,9 +742,12 @@ let to_json = fun err ->
         ]
         @ fix_fields
         @ [ ("hint", String (hint_message err)) ])
-      ); ("span", Object [ ("start", Int err.span.start); ("end", Int err.span.end_) ]) ]
+      );
+      ("span", Object [ ("start", Int err.span.start); ("end", Int err.span.end_) ])
+    ]
 
 (* parse_result removed - now in Parser module *)
+
 let from_json = fun json ->
   let open Data.Json in
     match json with

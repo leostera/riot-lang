@@ -56,10 +56,11 @@
 *)
 
 module Dot = Dot
+
 (** DOT format generation for Graphviz. *)
-
 module Mermaid = Mermaid
-(** Mermaid diagram format generation. *)
 
+(** Mermaid diagram format generation. *)
 module SimpleGraph = Simple_graph
+
 (** Simple dependency graph with topological sorting. *)

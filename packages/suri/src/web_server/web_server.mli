@@ -1,4 +1,3 @@
-
 (** {1 WebServer - HTTP/1.1 Server}
 
     Production-ready HTTP/1.1 server with connection pooling, keep-alive support,
@@ -164,6 +163,7 @@
     {1 API Reference} *)
 
 module Config = Config
+
 (** {b Server Configuration}
 
     Configure server behavior, buffer sizes, and connection limits.
@@ -179,6 +179,7 @@ module Config = Config
     See {!Config} for all options. *)
 
 module Request = Request
+
 (** {b HTTP Request}
 
     Inspect incoming HTTP requests.
@@ -202,6 +203,7 @@ module Request = Request
     See {!Request} for full API. *)
 
 module Response = Response
+
 (** {b HTTP Response}
 
     Build HTTP responses with status codes, headers, and body.
@@ -233,6 +235,7 @@ module Response = Response
     See {!Response} for full API. *)
 
 module Handler = Http_handler
+
 (** {b HTTP Handler}
 
     Handler functions that can return either HTTP responses or protocol upgrades (WebSocket).
@@ -240,6 +243,7 @@ module Handler = Http_handler
     See {!Handler} for full API. *)
 
 module Http1 = Http1_handler
+
 (** {b HTTP/1.1 Protocol Handler}
 
     Low-level HTTP/1.1 protocol implementation.
@@ -249,19 +253,21 @@ module Http1 = Http1_handler
     See {!Http1} for internals. *)
 
 module Http2 = Http2_handler
+
 (** HTTP/2 protocol handler *)
-
 module ProtocolDetector = Protocol_detector
-(** Auto-detect HTTP/1.1 vs HTTP/2 and switch handlers *)
 
-val start_link :
-  ?host:string ->
-  port:int ->
-  ?acceptors:int ->
-  config:Config.t ->
-  handler:Handler.t ->
-  unit ->
-  (Std.Supervisor.Dynamic.t, [> `Bind_error ]) Std.result
+(** Auto-detect HTTP/1.1 vs HTTP/2 and switch handlers *)
+val start_link : ?host:string ->
+port:int ->
+?acceptors:int ->
+config:Config.t ->
+handler:Handler.t ->
+unit ->
+(Std.Supervisor.Dynamic.t, [>
+  `Bind_error
+]) Std.result
+
 (** Start a supervised HTTP/1.1 server.
 
     This is the main entry point for starting a Suri web server.

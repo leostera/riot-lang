@@ -1,5 +1,4 @@
 (** Red tree representation - positioned syntax trees *)
-
 open Std
 
 (** A syntax node with position information *)
@@ -49,6 +48,7 @@ module SyntaxNode : sig
   val direct_nodes : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node list
 
   (** Get the syntax kind *)
+
   (** Get the next sibling *)
   val kind : ('kind, 'text) syntax_node -> 'kind
 
@@ -70,6 +70,7 @@ module SyntaxNode : sig
   val postorder : ('kind, 'text) syntax_node -> (('kind, 'text) syntax_element -> unit) -> unit
 
   val tokens : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
+
   (** Get every token in the subtree in source order *)
 end
 
@@ -102,6 +103,7 @@ module SyntaxToken : sig
   val span : ('kind, 'text) syntax_token -> Span.t
 
   (** Get the syntax kind *)
+
   (** Get the text *)
   val kind : ('kind, 'text) syntax_token -> 'kind
 

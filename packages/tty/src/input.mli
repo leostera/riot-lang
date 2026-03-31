@@ -45,14 +45,15 @@
           insert_text content
       | _ -> ()
     ]} *)
-
 (** {1 Types} *)
 
 type key =
-  | Char of char  (** Regular character *)
+  | Char of char
+  (** Regular character *)
   | Enter
   | Tab
-  | BackTab  (** Shift+Tab *)
+  | BackTab
+  (** Shift+Tab *)
   | Backspace
   | Escape
   | Space
@@ -66,20 +67,24 @@ type key =
   | PageDown
   | Insert
   | Delete
-  | F of int  (** Function keys F1-F12 *)
+  | F of int
+  (** Function keys F1-F12 *)
   | CapsLock
   | ScrollLock
   | NumLock
   | PrintScreen
   | Pause
   | Menu
-  | KeypadBegin  (** Often keypad 5 with NumLock off *)
-  | Media of media_key  (** Media control keys *)
+  | KeypadBegin
+  (** Often keypad 5 with NumLock off *)
+  | Media of media_key
 
+(** Media control keys *)
 (** Media control keys *)
 and media_key =
   | Play
-  | Pause_media  (** Named to avoid conflict with Pause key *)
+  | Pause_media
+  (** Named to avoid conflict with Pause key *)
   | PlayPause
   | Stop
   | FastForward
@@ -90,30 +95,33 @@ and media_key =
   | LowerVolume
   | RaiseVolume
   | MuteVolume
-
 type modifier =
   | Shift
   | Alt
   | Ctrl
   | Meta
-  | Super  (** Windows/Command key *)
+  | Super
+  (** Windows/Command key *)
   | Hyper
-
 type mouse_button =
   | Left
   | Middle
   | Right
   | ScrollUp
   | ScrollDown
-  | ScrollLeft  (** Touchpad horizontal scroll *)
-  | ScrollRight  (** Touchpad horizontal scroll *)
-
+  | ScrollLeft
+  (** Touchpad horizontal scroll *)
+  | ScrollRight
+(** Touchpad horizontal scroll *)
 type mouse_action =
-  | Mouse_press  (** Mouse button pressed *)
-  | Mouse_release  (** Mouse button released *)
-  | Mouse_drag  (** Mouse moved with button held *)
-  | Mouse_move  (** Mouse moved without button pressed *)
-
+  | Mouse_press
+  (** Mouse button pressed *)
+  | Mouse_release
+  (** Mouse button released *)
+  | Mouse_drag
+  (** Mouse moved with button held *)
+  | Mouse_move
+(** Mouse moved without button pressed *)
 type mouse_event = {
   button : mouse_button;
   action : mouse_action;
@@ -121,36 +129,40 @@ type mouse_event = {
   y : int;  (** Row (1-based) *)
   modifiers : modifier list;
 }
-
 (** Key event kind distinguishes press, release, and repeat *)
 type key_event_kind =
-  | Press  (** Key pressed *)
-  | Release  (** Key released *)
-  | Repeat  (** Key auto-repeat *)
-
+  | Press
+  (** Key pressed *)
+  | Release
+  (** Key released *)
+  | Repeat
+(** Key auto-repeat *)
 (** Keyboard event with kind information *)
 type key_event = {
   code : key;
   modifiers : modifier list;
   kind : key_event_kind;
 }
-
 (** Terminal events *)
 type event =
-  [ `Key of key_event
+[
+  `Key of key_event
   | `Mouse of mouse_event
-  | `Resize of int * int  (** width × height *)
-  | `Paste of string  (** Bracketed paste content *)
+  | `Resize of int * int
+  (** width × height *)
+  | `Paste of string
+  (** Bracketed paste content *)
   | `FocusGained
   | `FocusLost
-  | `Unknown of string  (** Unknown escape sequence *)
-  | `Retry  (** No data available, try again *)
-  | `End  (** End of input *)
-  ]
-
+  | `Unknown of string
+  (** Unknown escape sequence *)
+  | `Retry
+  (** No data available, try again *)
+  | `End
+]
 (** {1 Reading Events} *)
-
 val read_event : unit -> event
+
 (** [read_event ()] reads and parses the next terminal event.
 
     This is a non-blocking read that returns immediately with [`Retry] if no
@@ -166,30 +178,30 @@ val read_event : unit -> event
     The terminal must be in raw mode (call {!Stdin.setup} first).
     Enable mouse tracking, bracketed paste, or focus tracking separately
     using functions from {!Escape_seq} module. *)
-
 val try_read : unit -> event option
+
 (** [try_read ()] attempts to read an event without blocking.
     
     Returns [None] if no event is available, [Some event] otherwise.
     This is a convenience wrapper around {!read_event} that filters
     out [`Retry] and [`End] results. *)
-
 val parse_escape : string -> event option
+
 (** [parse_escape seq] parses an ANSI escape sequence into an event.
 
     Returns [None] if the sequence is incomplete or unrecognized.
     This is used internally by {!read_event} but exposed for testing. *)
-
 val key_to_string : key -> string
+
 (** [key_to_string key] returns a human-readable name for the key. *)
-
 val modifier_to_string : modifier -> string
+
 (** [modifier_to_string mod] returns a human-readable name for the modifier. *)
-
 val button_to_string : mouse_button -> string
-(** [button_to_string btn] returns a human-readable name for the mouse button. *)
 
+(** [button_to_string btn] returns a human-readable name for the mouse button. *)
 (** {1 Event Formatting} *)
 
 val event_to_string : event -> string
+
 (** [event_to_string event] converts an event to a readable string. *)

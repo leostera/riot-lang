@@ -7,29 +7,35 @@ type size = {
 }
 
 (** Error types *)
-type error = 
+type error =
   | NoTtyConnected
   | SystemError of IO.error
 
 (** Terminal mode *)
-type mode = 
+type mode =
   | LineBuffered
   | Immediate
 
 (** Input buffer for efficient reading *)
 type input_buffer = {
-  data : bytes;           (* 4KB buffer *)
-  mutable pos : int;      (* Current read position *)
-  mutable len : int;      (* Valid data length *)
+  data : bytes;  (* 4KB buffer *)
+  mutable pos : int;  (* Current read position *)
+  mutable len : int;  (* Valid data length *)
 }
 
 (** Input source configuration *)
-type input_mode = 
-  | SingleFd of Kernel.Fd.t        (* Traditional single FD mode *)
-  | DualFd of {                     (* Dual FD mode for piped input + TTY control *)
-      data_fd : Kernel.Fd.t;        (* stdin for data *)
-      control_fd : Kernel.Fd.t;     (* /dev/tty for control *)
-      mutable active : [`Data | `Control];  (* Which FD to read from *)
+type input_mode =
+  | SingleFd of Kernel.Fd.t
+  (* Traditional single FD mode *)
+  | DualFd of {
+      (* Dual FD mode for piped input + TTY control *)
+      data_fd : Kernel.Fd.t;  (* stdin for data *)
+      control_fd : Kernel.Fd.t;  (* /dev/tty for control *)
+      mutable active :
+        [
+          `Data
+          | `Control
+        ];  (* Which FD to read from *)
     }
 
 (** Terminal handle *)
@@ -46,12 +52,15 @@ type t = {
 }
 
 (* Helper to write to file descriptor using async-friendly Fs.File.write_all *)
-let write_to_fd fd str =
+
+let write_to_fd = fun fd str ->
   let file = Fs.File.from_fd fd in
   match Fs.File.write_all file str with
   | Ok () -> ()
-  | Error _ -> () (* Silently ignore write errors for now *)
+  | Error _ -> ()
+
+(* Silently ignore write errors for now *)
 
 (* Helper to write escape sequence *)
-let write_escape t code =
-  write_to_fd t.stdout (Escape_seq.csi ^ code)
+
+let write_escape = fun t code -> write_to_fd t.stdout (Escape_seq.csi ^ code)

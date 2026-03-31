@@ -1,5 +1,4 @@
 (** Shared message types for coordinator and worker communication *)
-
 open Std
 
 type file_result = {

@@ -1,35 +1,37 @@
 open Std
 
 (* These are functions that create NEW sprite instances, not shared values *)
-let line () = Sprite.make [| "|"; "/"; "-"; "\\" |] ~fps:(Fps.of_int 10)
 
-let dot () =
+let line = fun () -> Sprite.make [|"|"; "/"; "-"; "\\"|] ~fps:(Fps.of_int 10)
+
+let dot = fun () ->
+  Sprite.make [|"⣾ "; "⣽ "; "⣻ "; "⢿ "; "⡿ "; "⣟ "; "⣯ "; "⣷ "|] ~fps:(Fps.of_int 10)
+
+let mini_dot = fun () ->
   Sprite.make
-    [| "⣾ "; "⣽ "; "⣻ "; "⢿ "; "⡿ "; "⣟ "; "⣯ "; "⣷ " |]
-    ~fps:(Fps.of_int 10)
+  [|"⠋"; "⠙"; "⠹"; "⠸"; "⠼"; "⠴"; "⠦"; "⠧"; "⠇"; "⠏"|]
+  ~fps:(Fps.of_int 12)
 
-let mini_dot () =
+let jump = fun () ->
+  Sprite.make [|"⢄"; "⢂"; "⢁"; "⡁"; "⡈"; "⡐"; "⡠"|] ~fps:(Fps.of_int 10)
+
+let pulse = fun () -> Sprite.make [|"█"; "▓"; "▒"; "░"|] ~fps:(Fps.of_int 8)
+
+let points = fun () ->
+  Sprite.make [|"∙∙∙"; "●∙∙"; "∙●∙"; "∙∙●"|] ~fps:(Fps.of_int 7)
+
+let meter = fun () ->
   Sprite.make
-    [| "⠋"; "⠙"; "⠹"; "⠸"; "⠼"; "⠴"; "⠦"; "⠧"; "⠇"; "⠏" |]
-    ~fps:(Fps.of_int 12)
+  [|"▱▱▱"; "▰▱▱"; "▰▰▱"; "▰▰▰"; "▰▰▱"; "▰▱▱"; "▱▱▱"|]
+  ~fps:(Fps.of_int 7)
 
-let jump () =
-  Sprite.make [| "⢄"; "⢂"; "⢁"; "⡁"; "⡈"; "⡐"; "⡠" |] ~fps:(Fps.of_int 10)
+let globe = fun () -> Sprite.make [|"🌍"; "🌎"; "🌏"|] ~fps:(Fps.of_int 4)
 
-let pulse () = Sprite.make [| "█"; "▓"; "▒"; "░" |] ~fps:(Fps.of_int 8)
+let moon = fun () ->
+  Sprite.make [|"🌑"; "🌒"; "🌓"; "🌔"; "🌕"; "🌖"; "🌗"; "🌘"|] ~fps:(Fps.of_int 8)
 
-let points () = Sprite.make [| "∙∙∙"; "●∙∙"; "∙●∙"; "∙∙●" |] ~fps:(Fps.of_int 7)
+let monkey = fun () -> Sprite.make [|"🙈"; "🙉"; "🙊"|] ~fps:(Fps.of_int 3)
 
-let meter () =
-  Sprite.make
-    [| "▱▱▱"; "▰▱▱"; "▰▰▱"; "▰▰▰"; "▰▰▱"; "▰▱▱"; "▱▱▱" |]
-    ~fps:(Fps.of_int 7)
+let hamburger = fun () -> Sprite.make [|"☱"; "☲"; "☴"; "☲"|] ~fps:(Fps.of_int 3)
 
-let globe () = Sprite.make [| "🌍"; "🌎"; "🌏" |] ~fps:(Fps.of_int 4)
-
-let moon () =
-  Sprite.make [| "🌑"; "🌒"; "🌓"; "🌔"; "🌕"; "🌖"; "🌗"; "🌘" |] ~fps:(Fps.of_int 8)
-
-let monkey () = Sprite.make [| "🙈"; "🙉"; "🙊" |] ~fps:(Fps.of_int 3)
-let hamburger () = Sprite.make [| "☱"; "☲"; "☴"; "☲" |] ~fps:(Fps.of_int 3)
-let ellipsis () = Sprite.make [| ""; "."; ".."; "..." |] ~fps:(Fps.of_int 3)
+let ellipsis = fun () -> Sprite.make [|""; "."; ".."; "..."|] ~fps:(Fps.of_int 3)

@@ -1,12 +1,12 @@
 (** Core primitives from Stdlib that don't depend on any other modules *)
-
 (* Re-export basic types *)
+
 include module type of Types
 
 (* Comparison operators *)
 val ( = ) : 'a -> 'a -> bool
 
-val (!=) : 'a -> 'a -> bool
+val ( != ) : 'a -> 'a -> bool
 
 val ptr_eq : 'a -> 'a -> bool
 
@@ -27,6 +27,7 @@ val min : 'a -> 'a -> 'a
 val max : 'a -> 'a -> 'a
 
 (* Exception handling *)
+
 exception Exit
 
 val raise : exn -> 'a

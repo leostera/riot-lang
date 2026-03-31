@@ -1,8 +1,8 @@
 open Std
-(** Server configuration *)
 
+(** Server configuration *)
 type t = unit
 
 let default = ()
 
-let equal _ _ = true
+let equal = fun _ _ -> true

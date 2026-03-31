@@ -4,9 +4,8 @@ open Suri
 (** Example app demonstrating body_parser middleware with CSRF protection *)
 
 (** Home page with form *)
-let home conn _req =
-  let html =
-    {|<!DOCTYPE html>
+let home = fun conn _req ->
+  let html = {|<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -28,9 +27,7 @@ let home conn _req =
   
   <h2>HTML Form (urlencoded)</h2>
   <form method="POST" action="/submit">
-    |}
-    ^ Component.to_html (Middleware.Csrf.hidden_field conn)
-    ^ {|
+    |} ^ Component.to_html (Middleware.Csrf.hidden_field conn) ^ {|
     <label for="name">Name:</label>
     <input type="text" id="name" name="name" value="Alice" required>
     
@@ -61,27 +58,16 @@ let home conn _req =
 </body>
 </html>|}
   in
-  conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html
-  |> Conn.send
+  conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
 
 (** Handle form submission *)
-let submit_form conn _req =
+let submit_form = fun conn _req ->
   let body_params = Conn.body_params conn in
-
   (* Extract form fields *)
-  let name =
-    List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown"
-  in
-  let email =
-    List.assoc_opt "email" body_params
-    |> Option.unwrap_or ~default:"unknown@example.com"
-  in
-  let message =
-    List.assoc_opt "message" body_params |> Option.unwrap_or ~default:""
-  in
-
-  let html =
-    {|<!DOCTYPE html>
+  let name = List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown" in
+  let email = List.assoc_opt "email" body_params |> Option.unwrap_or ~default:"unknown@example.com" in
+  let message = List.assoc_opt "message" body_params |> Option.unwrap_or ~default:"" in
+  let html = {|<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -102,78 +88,59 @@ let submit_form conn _req =
   
   <h2>Received Data (from Conn.body_params):</h2>
   <div class="data">
-    <p><strong>Name:</strong> |}
-    ^ name
-    ^ {|</p>
-    <p><strong>Email:</strong> |}
-    ^ email
-    ^ {|</p>
-    <p><strong>Message:</strong> |}
-    ^ message
-    ^ {|</p>
+    <p><strong>Name:</strong> |} ^ name ^ {|</p>
+    <p><strong>Email:</strong> |} ^ email ^ {|</p>
+    <p><strong>Message:</strong> |} ^ message ^ {|</p>
   </div>
   
   <p><a href="/">← Back to form</a></p>
 </body>
 </html>|}
   in
-  conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html
-  |> Conn.send
+  conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
 
 (** Handle JSON API request *)
-let api_handler conn _req =
+let api_handler = fun conn _req ->
   let body_params = Conn.body_params conn in
-
   (* Extract JSON fields *)
-  let name =
-    List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown"
-  in
-  let action =
-    List.assoc_opt "action" body_params |> Option.unwrap_or ~default:"none"
-  in
-
+  let name = List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown" in
+  let action = List.assoc_opt "action" body_params |> Option.unwrap_or ~default:"none" in
   (* Create JSON response *)
-  let response_json =
-    Data.Json.(
-      Object
-        [
-          ("success", Bool true);
-          ("message", String "Data received and parsed");
-          ("received", Object [ ("name", String name); ("action", String action) ]);
-          ("middleware", String "body_parser automatically parsed the JSON body");
-        ])
-  in
+  let response_json = Data.Json.(Object [
+    ("success", Bool true);
+    ("message", String "Data received and parsed");
+    ("received", Object [ ("name", String name); ("action", String action) ]);
+    ("middleware", String "body_parser automatically parsed the JSON body");
 
+  ]) in
   let body = Data.Json.to_string response_json in
-
-  conn |> Conn.with_status Net.Http.Status.Ok
+  conn
+  |> Conn.with_status Net.Http.Status.Ok
   |> Conn.with_header "content-type" "application/json"
-  |> Conn.with_body body |> Conn.send
+  |> Conn.with_body body
+  |> Conn.send
 
 (** Routes *)
-let routes =
-  Middleware.Router.
-    [ get "/" home; post "/submit" submit_form; post "/api/data" api_handler ]
+let routes = Middleware.Router.[get "/" home;
+post "/submit" submit_form;
+post "/api/data" api_handler]
 
 (** Application with body_parser + CSRF *)
 let app =
-  Middleware.
-    [
-      logger;
-      session ~secret:"development-secret-key-change-in-production" ();
-      body_parser ();
-      (* Parse body BEFORE CSRF! *)
-      csrf ~skip:(fun conn -> String.starts_with ~prefix:"/api/" (Conn.path conn)) ();
-      (* Now CSRF can read token from body_params *)
-      router routes;
-    ]
+  Middleware.[
+    logger;
+    session ~secret:"development-secret-key-change-in-production" ();
+    body_parser ();
+    csrf ~skip:(fun conn -> String.starts_with ~prefix:"/api/" (Conn.path conn)) ();
+    router routes;
+
+  ]
 
 let () =
   Miniriot.run
     ~main:(fun ~args:_ ->
-      let port = 8080 in
+      let port = 8_080 in
       let config = Suri.config ~port () in
-      
       Log.info "===========================================";
       Log.info "🚀 Body Parser + CSRF Example";
       Log.info "===========================================";
@@ -183,10 +150,9 @@ let () =
       Log.info "  - JSON API endpoint (/api/data)";
       Log.info "  - Automatic body parsing (urlencoded & JSON)";
       Log.info "===========================================";
-
       match Suri.start_link ~config app with
       | Ok _supervisor ->
-          let rec loop () =
+          let rec loop = fun () ->
             sleep (Time.Duration.from_secs 100);
             loop ()
           in
@@ -194,4 +160,5 @@ let () =
       | Error `Bind_error ->
           Log.error "Failed to bind to port 8080";
           Error (Failure "Failed to start server"))
-    ~args:Env.args ()
+    ~args:Env.args
+    ()

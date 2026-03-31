@@ -88,47 +88,20 @@ type t =
   | String of string
   | Array of t list
   | Object of (string * t) list
-  (** JSON value representation. Supports all standard JSON types: null,
+(** JSON value representation. Supports all standard JSON types: null,
           booleans, numbers (int/float), strings, arrays, and objects. *)
 type error =
-  | Unterminated_string of {
-      position : int;
-    }
-  | Invalid_literal of {
-      expected : string;
-      position : int;
-      found : string;
-    }
-  | Invalid_number of {
-      position : int;
-      text : string;
-    }
-  | Expected_comma_or_bracket of {
-      kind : string;
-      position : int;
-      found : char option;
-    }
-  | Expected_string_key of {
-      position : int;
-      found : char option;
-    }
-  | Expected_colon of {
-      position : int;
-      found : char option;
-    }
-  | Unexpected_end_of_input of {
-      expected : string;
-    }
-  | Unexpected_character of {
-      position : int;
-      character : char;
-      expected : string;
-    }
-  | Extra_input_after_value of {
-      position : int;
-    }
+  | Unterminated_string of { position : int; }
+  | Invalid_literal of { expected : string; position : int; found : string; }
+  | Invalid_number of { position : int; text : string; }
+  | Expected_comma_or_bracket of { kind : string; position : int; found : char option; }
+  | Expected_string_key of { position : int; found : char option; }
+  | Expected_colon of { position : int; found : char option; }
+  | Unexpected_end_of_input of { expected : string; }
+  | Unexpected_character of { position : int; character : char; expected : string; }
+  | Extra_input_after_value of { position : int; }
   | Unknown_error of string
-  (** JSON parsing errors with position information for debugging. *)
+(** JSON parsing errors with position information for debugging. *)
 (** {1 Parsing and Serialization} *)
 
 (** Parses a JSON string into a [t] value.
@@ -174,7 +147,6 @@ val to_string : t -> string
 val error_to_string : error -> string
 
 (** {1 Constructors} *)
-
 (** Creates a JSON null value.
 
     ## Examples
@@ -235,7 +207,6 @@ val array : t list -> t
 val obj : (string * t) list -> t
 
 (** {1 Extractors} *)
-
 (** Extracts a field from a JSON object by key name. Returns [None] if the value
     is not an object or the field doesn't exist.
 
@@ -296,7 +267,6 @@ val get_array : t -> t list option
 val get_object : t -> (string * t) list option
 
 (** {1 Diffing} *)
-
 (** Computes deep differences between two JSON values.
 
     Recursively compares nested structures and returns a list of all differences

@@ -62,9 +62,7 @@ open Std
         router routes;
       ]
     ]} *)
-
 (** {1 Middleware} *)
-
 (** Runtime header middleware.
 
     Measures request processing time and adds X-Runtime header.

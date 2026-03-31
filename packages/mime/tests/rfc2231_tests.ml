@@ -1,86 +1,78 @@
 open Std
 open Mime
 
-let test_simple_filename () =
-  let headers =
-    [ ("Content-Disposition", "attachment; filename=\"test.txt\"") ]
-  in
+let test_simple_filename = fun () ->
+  let headers = [ ("Content-Disposition", "attachment; filename=\"test.txt\"") ] in
   let body = "test content" in
   match parse ~headers ~body with
   | Ok (SinglePart part) -> (
       match get_filename part with
       | Some "test.txt" -> Ok ()
       | Some other -> Error ("Expected 'test.txt', got '" ^ other ^ "'")
-      | None -> Error "No filename found")
+      | None -> Error "No filename found"
+    )
   | _ -> Error "Parse failed"
 
-let test_rfc2231_encoded () =
-  let headers =
-    [
-      ("Content-Disposition", "attachment; filename*=utf-8'en'Hello%20World.txt");
-    ]
-  in
+let test_rfc2231_encoded = fun () ->
+  let headers = [ ("Content-Disposition", "attachment; filename*=utf-8'en'Hello%20World.txt");  ] in
   let body = "test content" in
   match parse ~headers ~body with
   | Ok (SinglePart part) -> (
       match get_filename part with
       | Some "Hello World.txt" -> Ok ()
-      | Some other ->
-          Error ("Expected 'Hello World.txt', got '" ^ other ^ "'")
-      | None -> Error "No filename found")
+      | Some other -> Error ("Expected 'Hello World.txt', got '" ^ other ^ "'")
+      | None -> Error "No filename found"
+    )
   | _ -> Error "Parse failed"
 
-let test_rfc2231_continuation () =
-  let headers =
-    [
-      ( "Content-Disposition",
-        "attachment; filename*0=\"Long\"; filename*1=\"Filename\"; \
-         filename*2=\".pdf\"" );
-    ]
+let test_rfc2231_continuation = fun () ->
+  let headers = [ (
+      "Content-Disposition",
+      "attachment; filename*0=\"Long\"; filename*1=\"Filename\"; \
+         filename*2=\".pdf\""
+    );  ]
   in
   let body = "test content" in
   match parse ~headers ~body with
   | Ok (SinglePart part) -> (
       match get_filename part with
       | Some "LongFilename.pdf" -> Ok ()
-      | Some other ->
-          Error ("Expected 'LongFilename.pdf', got '" ^ other ^ "'")
-      | None -> Error "No filename found")
+      | Some other -> Error ("Expected 'LongFilename.pdf', got '" ^ other ^ "'")
+      | None -> Error "No filename found"
+    )
   | _ -> Error "Parse failed"
 
-let test_base64_encoding () =
-  let headers =
-    [ ("Content-Type", "text/plain"); ("Content-Transfer-Encoding", "base64") ]
-  in
+let test_base64_encoding = fun () ->
+  let headers = [ ("Content-Type", "text/plain"); ("Content-Transfer-Encoding", "base64") ] in
   let body = "SGVsbG8gV29ybGQ=" in
   match parse ~headers ~body with
   | Ok (SinglePart part) -> (
       match get_decoded_content part with
       | Ok "Hello World" -> Ok ()
       | Ok other -> Error ("Expected 'Hello World', got '" ^ other ^ "'")
-      | Error e -> Error ("Decode failed: " ^ e))
+      | Error e -> Error ("Decode failed: " ^ e)
+    )
   | _ -> Error "Parse failed"
 
-let test_quoted_printable () =
-  let headers =
-    [
-      ("Content-Type", "text/plain");
-      ("Content-Transfer-Encoding", "quoted-printable");
-    ]
-  in
+let test_quoted_printable = fun () ->
+  let headers = [
+    ("Content-Type", "text/plain");
+    ("Content-Transfer-Encoding", "quoted-printable");
+
+  ] in
   let body = "Hello=20World=21" in
   match parse ~headers ~body with
   | Ok (SinglePart part) -> (
       match get_decoded_content part with
       | Ok "Hello World!" -> Ok ()
       | Ok other -> Error ("Expected 'Hello World!', got '" ^ other ^ "'")
-      | Error e -> Error ("Decode failed: " ^ e))
+      | Error e -> Error ("Decode failed: " ^ e)
+    )
   | _ -> Error "Parse failed"
 
-let test_nested_multipart () =
+let test_nested_multipart = fun () ->
   let headers = [ ("Content-Type", "multipart/mixed; boundary=outer") ] in
-  let body =
-    "--outer\r\n\
+  let body = "--outer\r\n\
      Content-Type: multipart/alternative; boundary=inner\r\n\
      \r\n\
      --inner\r\n\
@@ -105,19 +97,20 @@ let test_nested_multipart () =
         Error ("Expected 2 top-level parts, got " ^ string_of_int (List.length parts))
       else
         match List.nth_opt parts 0 with
-        | Some (MultiPart { parts = inner_parts; _ }) ->
-            if List.length inner_parts = 2 then Ok ()
+        | Some (MultiPart { parts=inner_parts; _ }) ->
+            if List.length inner_parts = 2 then
+              Ok ()
             else
-              Error
-                ("Expected 2 inner parts, got " ^
-                   string_of_int (List.length inner_parts))
-        | Some (SinglePart _) ->
-            Error "First part is SinglePart, expected MultiPart"
-        | None -> Error "No first part found")
-  | Ok (SinglePart _) -> Error "Expected MultiPart, got SinglePart"
-  | Error e -> Error ("Parse failed: " ^ e)
+              Error ("Expected 2 inner parts, got " ^ string_of_int (List.length inner_parts))
+        | Some (SinglePart _) -> Error "First part is SinglePart, expected MultiPart"
+        | None -> Error "No first part found"
+    )
+  | Ok (SinglePart _) ->
+      Error "Expected MultiPart, got SinglePart"
+  | Error e ->
+      Error ("Parse failed: " ^ e)
 
-let test_content_type_parsing () =
+let test_content_type_parsing = fun () ->
   let headers = [ ("Content-Type", "text/html; charset=utf-8") ] in
   let body = "test" in
   match parse ~headers ~body with
@@ -127,16 +120,15 @@ let test_content_type_parsing () =
           if ct.media_type = "text" && ct.subtype = "html" then
             match List.assoc_opt "charset" ct.parameters with
             | Some "utf-8" -> Ok ()
-            | Some other ->
-                Error ("Expected charset=utf-8, got " ^ other)
+            | Some other -> Error ("Expected charset=utf-8, got " ^ other)
             | None -> Error "No charset parameter found"
           else
-            Error
-              ("Expected text/html, got " ^ ct.media_type ^ "/" ^ ct.subtype)
-      | None -> Error "No Content-Type found")
+            Error ("Expected text/html, got " ^ ct.media_type ^ "/" ^ ct.subtype)
+      | None -> Error "No Content-Type found"
+    )
   | _ -> Error "Parse failed"
 
-let test_encoding_detection () =
+let test_encoding_detection = fun () ->
   let headers = [ ("Content-Transfer-Encoding", "base64") ] in
   let body = "test" in
   match parse ~headers ~body with
@@ -144,12 +136,12 @@ let test_encoding_detection () =
       match get_encoding part with
       | Some Base64 -> Ok ()
       | Some other -> Error "Expected Base64 encoding"
-      | None -> Error "No encoding found")
+      | None -> Error "No encoding found"
+    )
   | _ -> Error "Parse failed"
 
 let tests =
-  let open Test in
-  [
+  let open Test in [
     case "Simple filename parameter" test_simple_filename;
     case "RFC 2231 encoded filename with charset" test_rfc2231_encoded;
     case "RFC 2231 parameter continuation" test_rfc2231_continuation;
@@ -158,9 +150,8 @@ let tests =
     case "Nested multipart parsing" test_nested_multipart;
     case "Content-Type parameter parsing" test_content_type_parsing;
     case "Encoding variant detection" test_encoding_detection;
+
   ]
 
 let () =
-  Miniriot.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"mime" ~tests ~args)
-    ~args:Env.args ()
+  Miniriot.run ~main:(fun ~args -> Test.Cli.main ~name:"mime" ~tests ~args) ~args:Env.args ()

@@ -3,17 +3,16 @@ open Suri
 open Suri.Component
 
 (* Simple static page showcasing component system *)
-let welcome_page : unit t =
-  html
-    [ head
-        [
-          title [ text "Welcome to Suri Components" ];
-          meta ~attrs:[
-            attr "charset" "UTF-8";
-            attr "viewport" "width=device-width, initial-scale=1.0"
-          ] ();
-          style
-            {|
+
+let welcome_page : unit t = html
+  [ head
+      [
+        title [ text "Welcome to Suri Components" ];
+        meta
+        ~attrs:[ attr "charset" "UTF-8"; attr "viewport" "width=device-width, initial-scale=1.0" ]
+        ();
+        style
+          {|
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           max-width: 800px; 
@@ -122,83 +121,106 @@ let welcome_page : unit t =
           font-family: 'Monaco', 'Courier New', monospace;
         }
       |}
-        ]; body
+      ]; body
+      [
+        header
+        ~attrs:[ class_ "hero" ]
         [
-          header ~attrs:[ class_ "hero" ] [
-            h1 [ text "Welcome to Suri Components" ];
-            p [ text "Build type-safe, composable HTML with the power of OCaml" ]
-          ];
-          main
+          h1 [ text "Welcome to Suri Components" ];
+          p [ text "Build type-safe, composable HTML with the power of OCaml" ]
+        ];
+        main
+          [
+            section
             [
-              section [
-                h2 [ text "Why Components?" ];
-                p [
-                  text "Suri Components provide a React-style way of building UIs that work ";
-                  text "seamlessly with both static HTML generation and LiveView interactive apps."
-                ]
+              h2 [ text "Why Components?" ];
+              p
+              [
+                text "Suri Components provide a React-style way of building UIs that work ";
+                text "seamlessly with both static HTML generation and LiveView interactive apps."
+              ]
+            ];
+            section
+            [
+              h2 [ text "Features" ];
+              ul
+              [
+                li [ text "Type-safe HTML generation - catch errors at compile time" ];
+                li [ text "React-style component composition" ];
+                li [ text "Works with static HTML and LiveView" ];
+                li [ text "No inline JavaScript - use LiveView for interactivity" ];
+                li [ text "Build reusable design systems" ];
+                li [ text "Self-closing tags handled correctly" ]
+              ]
+            ];
+            section
+            [
+              h2 [ text "Example: Contact Form" ];
+              p
+              [
+                text "This form is rendered entirely with components. ";
+                text "Add LiveView handlers to make it interactive!"
               ];
-              section [
-                h2 [ text "Features" ];
-                ul [
-                  li [ text "Type-safe HTML generation - catch errors at compile time" ];
-                  li [ text "React-style component composition" ];
-                  li [ text "Works with static HTML and LiveView" ];
-                  li [ text "No inline JavaScript - use LiveView for interactivity" ];
-                  li [ text "Build reusable design systems" ];
-                  li [ text "Self-closing tags handled correctly" ]
-                ]
-              ];
-              section [
-                h2 [ text "Example: Contact Form" ];
-                p [
-                  text "This form is rendered entirely with components. ";
-                  text "Add LiveView handlers to make it interactive!"
-                ];
-                form ~attrs:[ action "/submit"; method_ "POST" ] [
-                  fieldset [
-                    legend [ text "Contact Information" ];
-                    div ~attrs:[ class_ "form-group" ] [
-                      label ~attrs:[ for_ "name" ] [ text "Name" ];
-                      input ~attrs:[
-                        type_ "text";
-                        id "name";
-                        name "name";
-                        placeholder "Enter your name";
-                        required
-                      ] ()
-                    ];
-                    div ~attrs:[ class_ "form-group" ] [
-                      label ~attrs:[ for_ "email" ] [ text "Email" ];
-                      input ~attrs:[
-                        type_ "email";
-                        id "email";
-                        name "email";
-                        placeholder "you@example.com";
-                        required
-                      ] ()
-                    ];
-                    div ~attrs:[ class_ "form-group" ] [
-                      label ~attrs:[ for_ "message" ] [ text "Message" ];
-                      textarea ~attrs:[
-                        id "message";
-                        name "message";
-                        placeholder "Your message here...";
-                        attr "rows" "4";
-                        required
-                      ] []
-                    ];
-                    button ~attrs:[ type_ "submit"; class_ "btn" ] [ text "Send Message" ]
-                  ]
-                ]
-              ];
-              section
+              form
+              ~attrs:[ action "/submit"; method_ "POST" ]
+              [
+                fieldset
                 [
-                  h2 [ text "Code Example" ];
-                  p [ text "This entire page is built with components:" ];
-                  pre
-                    [ code
-                        [ text
-                            {|open Suri.Component
+                  legend [ text "Contact Information" ];
+                  div
+                  ~attrs:[ class_ "form-group" ]
+                  [
+                    label ~attrs:[ for_ "name" ] [ text "Name" ];
+                    input
+                    ~attrs:[
+                      type_ "text";
+                      id "name";
+                      name "name";
+                      placeholder "Enter your name";
+                      required
+                    ]
+                    ()
+                  ];
+                  div
+                  ~attrs:[ class_ "form-group" ]
+                  [
+                    label ~attrs:[ for_ "email" ] [ text "Email" ];
+                    input
+                    ~attrs:[
+                      type_ "email";
+                      id "email";
+                      name "email";
+                      placeholder "you@example.com";
+                      required
+                    ]
+                    ()
+                  ];
+                  div
+                  ~attrs:[ class_ "form-group" ]
+                  [
+                    label ~attrs:[ for_ "message" ] [ text "Message" ];
+                    textarea
+                    ~attrs:[
+                      id "message";
+                      name "message";
+                      placeholder "Your message here...";
+                      attr "rows" "4";
+                      required
+                    ]
+                    []
+                  ];
+                  button ~attrs:[ type_ "submit"; class_ "btn" ] [ text "Send Message" ]
+                ]
+              ]
+            ];
+            section
+              [
+                h2 [ text "Code Example" ];
+                p [ text "This entire page is built with components:" ];
+                pre
+                  [ code
+                      [ text
+                          {|open Suri.Component
 
 let my_page =
   div ~attrs:[class_ "container"] [
@@ -210,10 +232,10 @@ let my_page =
   ]
 
 let html = to_html my_page|} ] ]
-                ]
-            ];
-          footer [ p [ text "Built with "; strong [ text "Suri.Component" ]; text " | © 2025" ] ]
-        ] ]
+              ]
+          ];
+        footer [ p [ text "Built with "; strong [ text "Suri.Component" ]; text " | © 2025" ] ]
+      ] ]
 
 let () =
   let html = to_html welcome_page in

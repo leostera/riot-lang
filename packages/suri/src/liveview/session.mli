@@ -4,8 +4,8 @@ open Std
     
     Provides cryptographically signed session tokens to securely pass
     initialization arguments from HTTP embed to WebSocket mount. *)
-
 val encode : secret:string -> json:Data.Json.t -> string
+
 (** Encode a JSON value as a signed session token.
     
     Process:
@@ -21,8 +21,8 @@ val encode : secret:string -> json:Data.Json.t -> string
     (* Returns: "eyJpZCI6ImFiYy0xMjMifQ.a1b2c3..." *)
     ```
 *)
-
 val decode : secret:string -> token:string -> (Data.Json.t, string) result
+
 (** Decode and verify a signed session token.
     
     Process:
@@ -44,15 +44,15 @@ val decode : secret:string -> token:string -> (Data.Json.t, string) result
     | Error err -> Log.error ("Invalid session: " ^ err)
     ```
 *)
-
 val sign : secret:string -> data:string -> string
+
 (** Sign data with HMAC-SHA256 and return base64-encoded signature.
     
     Low-level function for signing arbitrary data.
     Most users should use {!encode} instead.
 *)
-
 val verify : secret:string -> data:string -> signature:string -> bool
+
 (** Verify an HMAC-SHA256 signature using constant-time comparison.
     
     Low-level function for signature verification.

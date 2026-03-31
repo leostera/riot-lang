@@ -9,21 +9,16 @@ type t = {
   size : int Atomic.t;
 }
 
-let create () =
-  {
-    producer_lock = Mutex.create ();
-    inbox_rev = [];
-    outbox = [];
-    size = Atomic.make 0;
-  }
+let create = fun () ->
+  {producer_lock = Mutex.create (); inbox_rev = []; outbox = []; size = Atomic.make 0; }
 
-let queue t msg =
+let queue = fun t msg ->
   Mutex.lock t.producer_lock;
   t.inbox_rev <- msg :: t.inbox_rev;
   ignore (Atomic.fetch_and_add t.size 1);
   Mutex.unlock t.producer_lock
 
-let pop_outbox t =
+let pop_outbox = fun t ->
   match t.outbox with
   | [] -> None
   | msg :: rest ->
@@ -31,7 +26,7 @@ let pop_outbox t =
       ignore (Atomic.fetch_and_add t.size (-1));
       Some msg
 
-let next t =
+let next = fun t ->
   match pop_outbox t with
   | Some _ as msg -> msg
   | None ->
@@ -43,7 +38,10 @@ let next t =
         None
       else (
         t.outbox <- List.rev drained;
-        pop_outbox t)
+        pop_outbox t
+      )
 
-let size t = Atomic.get t.size
-let is_empty t = Int.equal (Atomic.get t.size) 0
+let size = fun t -> Atomic.get t.size
+
+let is_empty = fun t ->
+  Int.equal (Atomic.get t.size) 0

@@ -8,28 +8,20 @@ type t = {
   session_id : Session_id.t;
 }
 
-let make ~session_id ~profile ?target ?(available_parallelism = System.available_parallelism) () =
+let make = fun ~session_id ~profile ?target ?(available_parallelism = System.available_parallelism) () ->
   let host_triplet = System.Host.current in
-  
   (* Use provided target or default to Host (native compilation) *)
-  let target = match target with
+  let target =
+    match target with
     | Some t -> t
     | None -> Target.Host
   in
-  
-  {
-    host_triplet;
-    target;
-    profile;
-    available_parallelism;
-    session_id;
-  }
+  {host_triplet; target; profile; available_parallelism; session_id; }
 
 (** Get target platform name for package.target.* lookups *)
-let target_platform_name ctx =
-  Target.platform_name ctx.target
+let target_platform_name = fun ctx -> Target.platform_name ctx.target
 
-let host_platform_name ctx =
+let host_platform_name = fun ctx ->
   match ctx.host_triplet.os with
   | "darwin" -> "macos"
   | "linux" -> "linux"
@@ -37,19 +29,16 @@ let host_platform_name ctx =
   | other -> other
 
 (** Check if cross-compiling *)
-let is_cross_compile ctx =
-  Target.is_cross ctx.target
+let is_cross_compile = fun ctx -> Target.is_cross ctx.target
 
 (** Get sysroot if cross-compiling *)
-let sysroot ctx =
-  Target.sysroot ctx.target
+let sysroot = fun ctx -> Target.sysroot ctx.target
 
 (** Get target triplet *)
-let target_triplet ctx =
-  Target.triplet ctx.target
+let target_triplet = fun ctx -> Target.triplet ctx.target
 
 (** Hash build context into a Sha256 hasher state *)
-let hash state ctx =
+let hash = fun state ctx ->
   let module H = Crypto.Sha256 in
   H.write_string state (System.Host.to_string ctx.host_triplet);
   Target.hash state ctx.target;

@@ -8,11 +8,10 @@ let parse_file = fun ~file ~source ->
   else
     Parser.parse_implementation ~source tokens
 
-let span_to_json = fun span ->
-  Data.Json.Object [
-    ("start", Data.Json.int span.Ceibo.Span.start);
-    ("end", Data.Json.int span.Ceibo.Span.end_)
-  ]
+let span_to_json = fun span -> Data.Json.Object [
+  ("start", Data.Json.int span.Ceibo.Span.start);
+  ("end", Data.Json.int span.Ceibo.Span.end_)
+]
 
 let span_text = fun source span ->
   let width = span.Ceibo.Span.end_ - span.Ceibo.Span.start in
@@ -23,39 +22,31 @@ let span_text = fun source span ->
 
 let trivia_kind_to_json =
   function
-  | Token.CommentTrivia {terminated; _} ->
-      Data.Json.Object [
-        ("kind", Data.Json.string "comment");
-        ("terminated", Data.Json.bool terminated)
-      ]
-  | Token.DocstringTrivia {terminated; _} ->
-      Data.Json.Object [
-        ("kind", Data.Json.string "docstring");
-        ("terminated", Data.Json.bool terminated)
-      ]
-  | Token.WhitespaceTrivia ->
-      Data.Json.Object [ ("kind", Data.Json.string "whitespace") ]
+  | Token.CommentTrivia { terminated; _ } -> Data.Json.Object [
+    ("kind", Data.Json.string "comment");
+    ("terminated", Data.Json.bool terminated)
+  ]
+  | Token.DocstringTrivia { terminated; _ } -> Data.Json.Object [
+    ("kind", Data.Json.string "docstring");
+    ("terminated", Data.Json.bool terminated)
+  ]
+  | Token.WhitespaceTrivia -> Data.Json.Object [ ("kind", Data.Json.string "whitespace") ]
 
-let trivia_to_json = fun ~source (trivia : Token.trivia) ->
+let trivia_to_json = fun ~source (trivia:Token.trivia) ->
   match trivia_kind_to_json trivia.kind with
-  | Data.Json.Object fields ->
-      Data.Json.Object (
-        [
-          ("span", span_to_json trivia.span);
-          ("text", Data.Json.string (span_text source trivia.span))
-        ]
-        @ fields
-      )
+  | Data.Json.Object fields -> Data.Json.Object ([
+    ("span", span_to_json trivia.span);
+    ("text", Data.Json.string (span_text source trivia.span))
+  ]
+  @ fields)
   | json -> json
 
-let token_to_json = fun ~source (token : Token.t) ->
-  Data.Json.Object [
-    ("kind", Data.Json.string (Token.show_kind token.kind));
-    ("span", span_to_json token.span);
-    ("text", Data.Json.string (span_text source token.span));
-    ("leading_trivia",
-     Data.Json.Array (List.map (trivia_to_json ~source) token.leading_trivia))
-  ]
+let token_to_json = fun ~source (token:Token.t) -> Data.Json.Object [
+  ("kind", Data.Json.string (Token.show_kind token.kind));
+  ("span", span_to_json token.span);
+  ("text", Data.Json.string (span_text source token.span));
+  ("leading_trivia", Data.Json.Array (List.map (trivia_to_json ~source) token.leading_trivia))
+]
 
 let parse_result_to_ceibo_json = fun result ->
   let kind_to_json = fun kind -> Data.Json.String (SyntaxKind.to_string kind) in
@@ -65,9 +56,10 @@ let parse_result_to_ceibo_json = fun result ->
   ~text_to_json
   (Ceibo.Green.Node result.Parser.tree) in
   Data.Json.Object [
-    ("tokens",
-     Data.Json.Array
-       (List.map (token_to_json ~source:result.Parser.source) result.Parser.tokens));
+    (
+      "tokens",
+      Data.Json.Array (List.map (token_to_json ~source:result.Parser.source) result.Parser.tokens)
+    );
     ("tree", tree_json);
     ("diagnostics", Data.Json.Array (List.map Diagnostic.to_json result.diagnostics))
   ]
@@ -120,8 +112,7 @@ let handle_print_ceibo = fun sub_matches ->
   | Error _err ->
       Log.error ("Error reading file " ^ file);
       exit 1
-  | Ok source ->
-      parse_file ~file ~source |> parse_result_to_ceibo_json |> Data.Json.to_string |> println
+  | Ok source -> parse_file ~file ~source |> parse_result_to_ceibo_json |> Data.Json.to_string |> println
 
 let handle_print_cst = fun sub_matches ->
   let file = ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required" in
@@ -141,13 +132,16 @@ let handle_print_cst = fun sub_matches ->
           CstBuilder.create_from_ceibo
             ~kind:((
               (
-                if String.ends_with ~suffix:".mli" file then
-                  `Interface
-                else
-                  `Implementation
+                (
+                  if String.ends_with ~suffix:".mli" file then
+                    `Interface
+                  else
+                    `Implementation
+                )
               )
             ))
-            ~source ~tokens:result.tokens
+            ~source
+            ~tokens:result.tokens
             result.tree |> CstJson.of_result
       in
       println (Data.Json.to_string json)
@@ -164,37 +158,38 @@ let main = fun ~args ->
   (* Parse command line arguments *)
   let cmd =
     let open ArgParser in
-      let open Arg in
-        command "syn" |> version "0.1.0" |> about "OCaml syntax analysis tool" |> subcommands
-          [
-            (* token-stream subcommand *)
-            command "tokenize"
-            |> about "Print token stream for a file"
-            |> args [
-              positional "FILE" |> help "OCaml source file to tokenize" |> required true;
-              flag "json" |> long "json" |> help "Output in JSON format"
-            ];
-            (* parse subcommand *)
-            command "parse"
-            |> about "Parse file into Ceibo syntax tree"
-            |> args [
-              positional "FILE" |> help "OCaml source file to parse" |> required true;
-              flag "json" |> long "json" |> help "Output syntax tree as JSON";
-              flag "red-tree" |> long "red-tree" |> help "Output red tree (with spans) instead of green tree"
-            ];
-            command "print-ceibo"
-            |> about "Print lossless Ceibo parse result as JSON"
-            |> args [ positional "FILE" |> help "OCaml source file to parse" |> required true ];
-            command "print-cst"
-            |> about "Print typed CST lift result as JSON"
-            |> args [ positional "FILE" |> help "OCaml source file to lift" |> required true ];
-            (* explain subcommand *)
-            command "explain"
-            |> about "Explain an error code"
-            |> args [
-              positional "ERROR_CODE" |> help "Error code to explain (e.g., E0001)" |> required true
-            ];
-          ]
+      let open Arg in command "syn"
+      |> version "0.1.0"
+      |> about "OCaml syntax analysis tool"
+      |> subcommands
+      [
+        command "tokenize"
+        |> about "Print token stream for a file"
+        |> args
+        [
+          positional "FILE" |> help "OCaml source file to tokenize" |> required true;
+          flag "json" |> long "json" |> help "Output in JSON format"
+        ];
+        command "parse"
+        |> about "Parse file into Ceibo syntax tree"
+        |> args
+        [
+          positional "FILE" |> help "OCaml source file to parse" |> required true;
+          flag "json" |> long "json" |> help "Output syntax tree as JSON";
+          flag "red-tree" |> long "red-tree" |> help "Output red tree (with spans) instead of green tree"
+        ];
+        command "print-ceibo"
+        |> about "Print lossless Ceibo parse result as JSON"
+        |> args [ positional "FILE" |> help "OCaml source file to parse" |> required true ];
+        command "print-cst"
+        |> about "Print typed CST lift result as JSON"
+        |> args [ positional "FILE" |> help "OCaml source file to lift" |> required true ];
+        command "explain"
+        |> about "Explain an error code"
+        |> args
+        [ positional "ERROR_CODE" |> help "Error code to explain (e.g., E0001)" |> required true ];
+
+      ]
   in
   match ArgParser.get_matches cmd args with
   | Error err ->

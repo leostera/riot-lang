@@ -1,7 +1,6 @@
 open Std
 
 (* Diagnostic reporting module for pretty-printing parse errors with source context *)
-
 (* Print diagnostics in a human-readable format with source context.
     
     Example output:

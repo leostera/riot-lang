@@ -1,17 +1,31 @@
 (**************************************************************************)
+
 (*                                                                        *)
+
 (*                                 OCaml                                  *)
+
 (*                                                                        *)
+
 (*             Xavier Leroy, projet Cristal, INRIA Rocquencourt           *)
+
 (*                                                                        *)
+
 (*   Copyright 1996 Institut National de Recherche en Informatique et     *)
+
 (*     en Automatique.                                                    *)
+
 (*                                                                        *)
+
 (*   All rights reserved.  This file is distributed under the terms of    *)
+
 (*   the GNU Lesser General Public License version 2.1, with the          *)
+
 (*   special exception on linking described in the file LICENSE.          *)
+
 (*                                                                        *)
+
 (**************************************************************************)
+
 (** 64-bit integers.
 
    This module provides operations on the type [int64] of
@@ -146,14 +160,10 @@ val unsigned_to_int : int64 -> int option
    If the truncated floating-point number is outside the range
    \[{!Int64.min_int}, {!Int64.max_int}\], no exception is raised, and
    an unspecified, platform-dependent integer is returned. *)
-external of_float : float -> int64
-  = "caml_int64_of_float" "caml_int64_of_float_unboxed"
-  [@@unboxed] [@@noalloc]
+external of_float : float -> int64 = "caml_int64_of_float" "caml_int64_of_float_unboxed" [@@unboxed] [@@noalloc]
 
 (** Convert the given 64-bit integer to a floating-point number. *)
-external to_float : int64 -> float
-  = "caml_int64_to_float" "caml_int64_to_float_unboxed"
-  [@@unboxed] [@@noalloc]
+external to_float : int64 -> float = "caml_int64_to_float" "caml_int64_to_float_unboxed" [@@unboxed] [@@noalloc]
 
 (** Convert the given 32-bit integer (type [int32])
    to a 64-bit integer (type [int64]). *)
@@ -204,16 +214,12 @@ val to_string : int64 -> string
    Bit 63 of the result represents the sign of the float;
    bits 62 to 52 represent the (biased) exponent; bits 51 to 0
    represent the mantissa. *)
-external bits_of_float : float -> int64
-  = "caml_int64_bits_of_float" "caml_int64_bits_of_float_unboxed"
-  [@@unboxed] [@@noalloc]
+external bits_of_float : float -> int64 = "caml_int64_bits_of_float" "caml_int64_bits_of_float_unboxed" [@@unboxed] [@@noalloc]
 
 (** Return the floating-point number whose internal representation,
    according to the IEEE 754 floating-point 'double format' bit layout,
    is the given [int64]. *)
-external float_of_bits : int64 -> float
-  = "caml_int64_float_of_bits" "caml_int64_float_of_bits_unboxed"
-  [@@unboxed] [@@noalloc]
+external float_of_bits : int64 -> float = "caml_int64_float_of_bits" "caml_int64_float_of_bits_unboxed" [@@unboxed] [@@noalloc]
 
 (** An alias for the type of 64-bit integers. *)
 (** The comparison function for 64-bit integers, with the same specification as

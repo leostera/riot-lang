@@ -69,7 +69,6 @@ open Std
     (Syntax_kind.to_string kind) (Ceibo.Span.to_string span) | Ceibo.Red.Token
     tok -> let text = Ceibo.Red.SyntaxToken.text tok in Printf.printf " Token:
     %s\n" text ) ``` *)
-
 (** # Types *)
 
 (** Result of parsing.
@@ -107,7 +106,6 @@ type parse_result = {
           specific problem with its location in the source. *)
 }
 (** # Parsing *)
-
 (** Parse an interface file (.mli) *)
 val parse_interface : source:string -> Token.t list -> parse_result
 

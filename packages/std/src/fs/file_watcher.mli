@@ -1,8 +1,8 @@
 (** High-level file watching with process-based event delivery *)
-
 (** File watcher process handle *)
 type t = Pid.t
-type Message.t += | FileEvents of Event.t list
+type Message.t +=
+  | FileEvents of Event.t list
 
 (** Start file watcher process, sending events to owner_pid
     

@@ -4,7 +4,6 @@ open Std
 
     Abstracts over different transport protocols (TCP, TLS, etc.) to allow
     pluggable connection handling. *)
-
 (** Transport layer type *)
 (** [tcp ()] creates a plain TCP transport *)
 type t

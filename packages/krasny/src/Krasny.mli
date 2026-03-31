@@ -8,8 +8,8 @@ open Std
 type format_error = Format_core.format_error =
   | Cannot_build_cst of Syn.build_cst_error
   | Cannot_lower of string
-
 val format_error_to_string : format_error -> string
+
 (** `format_error_to_string err` renders formatter failures into a concise
     human-readable string. *)
 
@@ -29,10 +29,10 @@ val format : Syn.Parser.parse_result -> (string, format_error) result
 val syntax_hash : Syn.Parser.parse_result -> string
 
 (** `write ~writer result` renders a parse result into the provided writer. *)
-val write :
-  writer:('dst, 'err) IO.Writer.t ->
-  Syn.Parser.parse_result ->
-  (unit, [ `Format of format_error | `Write of 'err ]) result
+val write : writer:('dst, 'err) IO.Writer.t -> Syn.Parser.parse_result -> (unit, [
+  `Format of format_error
+  | `Write of 'err
+]) result
 
 module Runner : module type of Runner
 

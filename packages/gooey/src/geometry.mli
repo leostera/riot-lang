@@ -1,5 +1,4 @@
 (** Geometric primitives *)
-
 open Std
 
 module Point : sig
@@ -7,8 +6,8 @@ module Point : sig
     x : float;
     y : float;
   }
-  
   val make : x:float -> y:float -> t
+
   val zero : t
 end
 
@@ -19,7 +18,7 @@ module Rect : sig
     width : float;
     height : float;
   }
-  
   val make : x:float -> y:float -> width:float -> height:float -> t
+
   val zero : t
 end

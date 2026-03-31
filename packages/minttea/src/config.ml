@@ -1,6 +1,10 @@
-type render_mode = Clear | Persist
+type render_mode =
+  Clear
+  | Persist
 
-type output_target = Stdout | Stderr
+type output_target =
+  Stdout
+  | Stderr
 
 type t = {
   render_mode : render_mode;
@@ -8,5 +12,4 @@ type t = {
   output : output_target;
 }
 
-let make ?(render_mode = Clear) ?(fps = 60) ?(output = Stdout) () =
-  { render_mode; fps;  output }
+let make = fun ?(render_mode = Clear) ?(fps = 60) ?(output = Stdout) () -> {render_mode; fps; output}

@@ -1,5 +1,4 @@
 (** Coordinator actor for managing lint workers *)
-
 open Std
 
 (** Either a pre-resolved file list or root paths to stream from. *)

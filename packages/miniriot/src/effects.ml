@@ -2,31 +2,41 @@ open Kernel
 
 module Exception = struct
   exception Receive_timeout
+
   exception Syscall_timeout
 end
 
-let yield () = Effect.perform Proc_effect.Yield
+let yield = fun () -> Effect.perform Proc_effect.Yield
 
-type 'msg selector = Message.t -> [ `select of 'msg | `skip ]
+type 'msg selector =
+  Message.t -> [
+    `select of 'msg
+    | `skip
+  ]
 
-let receive_any ?timeout () =
+let receive_any = fun ?timeout () ->
   let timeout =
-    match timeout with None -> `infinity | Some after -> `after after
+    match timeout with
+    | None -> `infinity
+    | Some after -> `after after
   in
-  Effect.perform
-    (Proc_effect.Receive { selector = (fun msg -> `select msg); timeout })
+  Effect.perform (Proc_effect.Receive {selector = (fun msg -> `select msg); timeout})
 
-let receive ~selector ?timeout () =
+let receive = fun ~selector ?timeout () ->
   let timeout =
-    match timeout with None -> `infinity | Some after -> `after after
+    match timeout with
+    | None -> `infinity
+    | Some after -> `after after
   in
-  Effect.perform (Proc_effect.Receive { selector; timeout })
+  Effect.perform (Proc_effect.Receive {selector; timeout})
 
-let exit () = Ok ()
+let exit = fun () -> Ok ()
 
-let syscall ?timeout ~name ~interest ~source cb =
+let syscall = fun ?timeout ~name ~interest ~source cb ->
   let timeout =
-    match timeout with None -> `infinity | Some after -> `after after
+    match timeout with
+    | None -> `infinity
+    | Some after -> `after after
   in
-  Effect.perform (Proc_effect.Syscall { name; interest; source; timeout });
+  Effect.perform (Proc_effect.Syscall {name; interest; source; timeout});
   cb ()

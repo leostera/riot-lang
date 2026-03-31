@@ -1,5 +1,4 @@
 (** Worker actor for linting individual files *)
-
 open Std
 
 (** Worker configuration *)

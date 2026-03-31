@@ -59,7 +59,6 @@
     - [TERM] contains "256color" → 256-color support
     - [TERM] contains "color" → Basic ANSI color support
     - Otherwise → No color support *)
-
 (** Terminal color profile representing color capability level *)
 (** [from_env ()] detects the terminal's color capability from environment
     variables like [COLORTERM] and [TERM].

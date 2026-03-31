@@ -1,5 +1,4 @@
 (** Opaque timer identifier *)
-
 (** An opaque identifier for a timer. Can be used to cancel timers. *)
 (** Generate a new unique timer ID *)
 type t

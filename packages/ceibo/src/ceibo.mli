@@ -47,7 +47,6 @@ open Std
 
     - Use **Green** when building or transforming trees
     - Use **Red** when traversing or querying positions *)
-
 (** # Span
 
     Source position spans with start/end offsets. *)
@@ -74,6 +73,7 @@ module Span : sig
   val union : t -> t -> t
 
   val to_string : t -> string
+
   (** `to_string span` formats span for debugging. *)
 end
 
@@ -104,7 +104,6 @@ module Green : sig
     text : 'text;
     width : int;
   }
-
   (** Green token - leaf node containing source text and its leading trivia.
 
       Tokens represent atomic elements like keywords, identifiers, and literals.
@@ -147,24 +146,20 @@ module Green : sig
   and ('kind, 'text) element =
     | Token of ('kind, 'text) token
     | Node of ('kind, 'text) node
-
-    (** ## Construction *)
-
-    (** ## Construction *)
-    (** `make_token ~kind ~text ~width` creates a new token.
+  (** ## Construction *)
+  (** ## Construction *)
+  (** `make_token ~kind ~text ~width` creates a new token.
 
       The width should be the byte length of the text for correct positioning.
 
       Example: `make_token ~kind:IDENT ~text:"foo" ~width:3` *)
-
   (** ## Construction *)
-
   (** ## Construction *)
   (** `make_trivia ~kind ~text ~width` creates a trivia entry that can be
       attached to a token's `leading_trivia`. *)
   val make_trivia : kind:'kind -> text:'text -> width:int -> ('kind, 'text) trivia
 
-    (** `make_token ~leading_trivia ~kind ~text ~width` creates a new token.
+  (** `make_token ~leading_trivia ~kind ~text ~width` creates a new token.
 
       The width should be the byte length of the token body text for correct
       positioning.
@@ -191,7 +186,6 @@ module Green : sig
   val make_node_list : kind:'kind -> ('kind, 'text) element list -> ('kind, 'text) node
 
   (** ## Accessors *)
-
   (** `width elem` returns the total byte length of the element.
 
       For tokens, this includes leading trivia plus the token body width. For
@@ -199,12 +193,17 @@ module Green : sig
 
       This is O(1) due to caching. *)
   val width : ('kind, 'text) element -> int
+
   val trivia_width : ('kind, 'text) trivia -> int
+
   val token_width : ('kind, 'text) token -> int
+
   val token_full_width : ('kind, 'text) token -> int
+
   val leading_trivia : ('kind, 'text) token -> ('kind, 'text) trivia list
 
   (** `kind elem` returns the kind identifier. *)
+
   (** `text elem` returns the text if element is a token, None if it's a node.
   *)
   val kind : ('kind, 'text) element -> 'kind
@@ -218,7 +217,6 @@ module Green : sig
   val is_node : ('kind, 'text) element -> bool
 
   (** ## Node Operations *)
-
   (** `replace_child node ~index ~child` creates a new node with one child
       replaced.
 
@@ -245,11 +243,11 @@ module Green : sig
   val children : ('kind, 'text) node -> ('kind, 'text) element array
 
   (** ## Serialization *)
-
   val to_json : kind_to_json:('kind -> Data.Json.t) ->
   text_to_json:('text -> Data.Json.t) ->
   ('kind, 'text) element ->
   Data.Json.t
+
   (** `to_json ~kind_to_json ~text_to_json elem` serializes a green element to
       JSON.
 
@@ -342,6 +340,7 @@ module Red : sig
     val direct_nodes : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_node list
 
     (** `kind node` returns the kind from the underlying green node. *)
+
     (** `next_sibling node` returns the next sibling, or `None` if last. *)
     val kind : ('kind, 'text) syntax_node -> 'kind
 
@@ -363,6 +362,7 @@ module Red : sig
     val postorder : ('kind, 'text) syntax_node -> (('kind, 'text) syntax_element -> unit) -> unit
 
     val tokens : ('kind, 'text) syntax_node -> ('kind, 'text) syntax_token list
+
     (** `tokens node` returns every token in the subtree in source order. *)
   end
 
@@ -370,9 +370,13 @@ module Red : sig
 
   module SyntaxTrivia : sig
     val green : ('kind, 'text) syntax_trivia -> ('kind, 'text) Green.trivia
+
     val offset : ('kind, 'text) syntax_trivia -> int
+
     val span : ('kind, 'text) syntax_trivia -> Span.t
+
     val kind : ('kind, 'text) syntax_trivia -> 'kind
+
     val text : ('kind, 'text) syntax_trivia -> 'text
   end
 
@@ -387,21 +391,23 @@ module Red : sig
     val span : ('kind, 'text) syntax_token -> Span.t
 
     (** `kind token` returns the kind from the underlying green token. *)
+
     (** `text token` returns the text from the underlying green token. *)
     val kind : ('kind, 'text) syntax_token -> 'kind
 
     val text : ('kind, 'text) syntax_token -> 'text
+
     (** `leading_trivia token` returns the trivia attached to the token in
         source order, with absolute offsets and spans. *)
     val leading_trivia : ('kind, 'text) syntax_token -> ('kind, 'text) syntax_trivia list
   end
 
   (** ## Serialization *)
-
   val to_json : kind_to_json:('kind -> Data.Json.t) ->
   text_to_json:('text -> Data.Json.t) ->
   ('kind, 'text) syntax_element ->
   Data.Json.t
+
   (** `to_json ~kind_to_json ~text_to_json elem` serializes a red element to
       JSON.
 
@@ -450,13 +456,12 @@ module Builder : sig
 
   (** `token_with_leading_trivia builder ~leading_trivia ~kind ~text ~width`
       adds a token with explicit leading trivia to the current node. *)
-  val token_with_leading_trivia :
-    ('kind, 'text) t ->
-    leading_trivia:('kind, 'text) Green.trivia list ->
-    kind:'kind ->
-    text:'text ->
-    width:int ->
-    ('kind, 'text) t
+  val token_with_leading_trivia : ('kind, 'text) t ->
+  leading_trivia:('kind, 'text) Green.trivia list ->
+  kind:'kind ->
+  text:'text ->
+  width:int ->
+  ('kind, 'text) t
 
   (** `start_node builder ~kind` starts a new node (pushes stack frame). *)
   val start_node : ('kind, 'text) t -> kind:'kind -> ('kind, 'text) t
@@ -472,20 +477,19 @@ module Builder : sig
   val build : ('kind, 'text) t -> 'kind -> ('kind, 'text) Green.node
 
   (** ## Direct Construction *)
-
   (** `make_token ~kind ~text ~width` creates a token element directly with no
       leading trivia. *)
   val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) Green.element
 
   (** `make_token_with_leading_trivia ~leading_trivia ~kind ~text ~width`
       creates a token element directly with explicit leading trivia. *)
-  val make_token_with_leading_trivia :
-    leading_trivia:('kind, 'text) Green.trivia list ->
-    kind:'kind ->
-    text:'text ->
-    width:int ->
-    ('kind, 'text) Green.element
+  val make_token_with_leading_trivia : leading_trivia:('kind, 'text) Green.trivia list ->
+  kind:'kind ->
+  text:'text ->
+  width:int ->
+  ('kind, 'text) Green.element
 
   val make_node : kind:'kind -> ('kind, 'text) Green.element list -> ('kind, 'text) Green.element
+
   (** `make_node ~kind elements` creates a node element directly from a list. *)
 end

@@ -10,7 +10,6 @@ open Suri.Component
 *)
 
 (** Common Styles *)
-
 let page_styles = {|
   body { 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -109,49 +108,60 @@ let page_styles = {|
 |}
 
 (** Step 1: Static Component (No Interactivity) *)
+let counter_view_static = fun count ->
+  div
+  ~attrs:[ class_ "card" ]
+  [
+    h1 [ text "Counter (Static HTML)" ];
+    span ~attrs:[ class_ "label" ] [ text "A static component preview" ];
+    div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
+    div
+    ~attrs:[ class_ "buttons" ]
+    [
+      button ~attrs:[ class_ "btn btn-secondary" ] [ text "-" ];
+      button ~attrs:[ class_ "btn btn-primary" ] [ text "+" ];
 
-let counter_view_static count =
-  div ~attrs:[class_ "card"] [
-    h1 [text "Counter (Static HTML)"];
-    span ~attrs:[class_ "label"] [text "A static component preview"];
-    div ~attrs:[class_ "count"] [
-      text (Int.to_string count)
     ];
-    div ~attrs:[class_ "buttons"] [
-      button ~attrs:[class_ "btn btn-secondary"] [text "-"];
-      button ~attrs:[class_ "btn btn-primary"] [text "+"];
-    ];
-    div ~attrs:[class_ "note"] [
-      strong [text "Note: "];
+    div
+    ~attrs:[ class_ "note" ]
+    [
+      strong [ text "Note: " ];
       text "Buttons are not interactive in static HTML rendering. ";
       text "This is just a preview of what the component looks like.";
+
     ];
+
   ]
 
-let static_page : unit t =
-  html [
-    head [
-      title [text "Counter - Static Preview"];
-      meta ~attrs:[attr "charset" "UTF-8"] ();
+let static_page : unit t = html
+  [
+    head
+    [
+      title [ text "Counter - Static Preview" ];
+      meta ~attrs:[ attr "charset" "UTF-8" ] ();
       style page_styles;
+
     ];
-    body [
-      counter_view_static 0;
-      
-      div ~attrs:[class_ "card"; style_ "text-align: left"] [
-        h2 [text "What is this?"];
-        p [
-          text "This is a ";
-          strong [text "static HTML component"];
-          text ". It's rendered server-side to a plain HTML string with ";
-          code [text "to_html"];
-          text ".";
-        ];
-        p [
-          text "The component tree looks like this:";
-        ];
-        pre ~attrs:[style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto"] [
-          code [text {|div ~attrs:[class_ "card"] [
+    body
+      [ counter_view_static 0; div ~attrs:[ class_ "card"; style_ "text-align: left" ]
+          [
+            h2 [ text "What is this?" ];
+            p
+            [
+              text "This is a ";
+              strong [ text "static HTML component" ];
+              text ". It's rendered server-side to a plain HTML string with ";
+              code [ text "to_html" ];
+              text ".";
+
+            ];
+            p [ text "The component tree looks like this:";  ];
+            pre ~attrs:[
+              style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto"
+            ]
+              [ code
+                  [ text
+                      {|div ~attrs:[class_ "card"] [
   h1 [text "Counter"];
   div ~attrs:[class_ "count"] [
     text (Int.to_string count)
@@ -160,72 +170,75 @@ let static_page : unit t =
     button ~attrs:[class_ "btn"] [text "-"];
     button ~attrs:[class_ "btn"] [text "+"];
   ];
-]|}];
-        ];
-      ];
-    ];
+]|} ];  ];
+
+          ];  ];
+
   ]
 
 (** Step 2: LiveView Component (With Event Handlers) *)
-
 (* Define our message type for LiveView *)
-type msg = Increment | Decrement | Reset
 
-let counter_view_interactive count =
-  div ~attrs:[class_ "card"] [
-    h1 [text "Counter (LiveView)"];
-    span ~attrs:[class_ "label"] [text "Interactive component with server-side handlers"];
-    div ~attrs:[class_ "count"] [
-      text (Int.to_string count)
+type msg =
+  Increment
+  | Decrement
+  | Reset
+
+let counter_view_interactive = fun count ->
+  div
+  ~attrs:[ class_ "card" ]
+  [
+    h1 [ text "Counter (LiveView)" ];
+    span ~attrs:[ class_ "label" ] [ text "Interactive component with server-side handlers" ];
+    div ~attrs:[ class_ "count" ] [ text (Int.to_string count) ];
+    div
+    ~attrs:[ class_ "buttons" ]
+    [
+      button ~attrs:[ class_ "btn btn-secondary"; on_click (fun _ -> Decrement) ] [ text "-" ];
+      button ~attrs:[ class_ "btn btn-secondary"; on_click (fun _ -> Reset) ] [ text "Reset" ];
+      button ~attrs:[ class_ "btn btn-primary"; on_click (fun _ -> Increment) ] [ text "+" ];
+
     ];
-    div ~attrs:[class_ "buttons"] [
-      (* Add event handlers - only active in LiveView! *)
-      button ~attrs:[
-        class_ "btn btn-secondary";
-        on_click (fun _ -> Decrement)  (* Event handler! *)
-      ] [text "-"];
-      
-      button ~attrs:[
-        class_ "btn btn-secondary";
-        on_click (fun _ -> Reset)
-      ] [text "Reset"];
-      
-      button ~attrs:[
-        class_ "btn btn-primary";
-        on_click (fun _ -> Increment)  (* Event handler! *)
-      ] [text "+"];
-    ];
-    div ~attrs:[class_ "success"] [
-      strong [text "✓ Interactive: "];
+    div
+    ~attrs:[ class_ "success" ]
+    [
+      strong [ text "✓ Interactive: " ];
       text "Buttons are wired to LiveView event handlers. ";
       text "Clicks are processed on the server and the UI updates automatically.";
+
     ];
+
   ]
 
-let interactive_page count : msg t =
-  html [
-    head [
-      title [text "Counter - LiveView Interactive"];
-      meta ~attrs:[attr "charset" "UTF-8"] ();
+let interactive_page count : msg t = html
+  [
+    head
+    [
+      title [ text "Counter - LiveView Interactive" ];
+      meta ~attrs:[ attr "charset" "UTF-8" ] ();
       style page_styles;
+
     ];
-    body [
-      counter_view_interactive count;
-      
-      div ~attrs:[class_ "card"; style_ "text-align: left"] [
-        h2 [text "How does it work?"];
-        p [
-          text "This is the ";
-          strong [text "same component structure"];
-          text " as the static version, but with ";
-          code [text "on_click"];
-          text " event handlers added!";
-        ];
-        p [
-          text "The enhanced component looks like:";
-        ];
-        pre ~attrs:[style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto"] [
-          code [text {|type msg = Increment | Decrement | Reset
+    body
+      [ counter_view_interactive count; div ~attrs:[ class_ "card"; style_ "text-align: left" ]
+          [
+            h2 [ text "How does it work?" ];
+            p
+            [
+              text "This is the ";
+              strong [ text "same component structure" ];
+              text " as the static version, but with ";
+              code [ text "on_click" ];
+              text " event handlers added!";
+
+            ];
+            p [ text "The enhanced component looks like:";  ];
+            pre ~attrs:[
+              style_ "background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto"
+            ]
+              [ code
+                  [ text
+                      {|type msg = Increment | Decrement | Reset
 
 let counter_view count =
   div ~attrs:[class_ "card"] [
@@ -243,28 +256,30 @@ let counter_view count =
         on_click (fun _ -> Increment)  (* 👈 Add handler! *)
       ] [text "+"];
     ];
-  ]|}];
-        ];
-        p [
-          text "In LiveView, these handlers are wired to your ";
-          code [text "update"];
-          text " function. In static HTML (";
-          code [text "to_html"];
-          text "), they're ignored.";
-        ];
-      ];
-    ];
+  ]|} ];  ];
+            p
+            [
+              text "In LiveView, these handlers are wired to your ";
+              code [ text "update" ];
+              text " function. In static HTML (";
+              code [ text "to_html" ];
+              text "), they're ignored.";
+
+            ];
+
+          ];  ];
+
   ]
 
 (** Step 3: Comparison Page *)
-
-let comparison_page : msg t =
-  html [
-    head [
-      title [text "Static vs LiveView Comparison"];
-      meta ~attrs:[attr "charset" "UTF-8"] ();
-      style page_styles;
-      style {|
+let comparison_page : msg t = html
+  [ head
+      [
+        title [ text "Static vs LiveView Comparison" ];
+        meta ~attrs:[ attr "charset" "UTF-8" ] ();
+        style page_styles;
+        style
+          {|
         .comparison {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -276,64 +291,65 @@ let comparison_page : msg t =
           .comparison { grid-template-columns: 1fr; }
         }
       |};
-    ];
-    body [
-      div ~attrs:[class_ "card"] [
-        h1 [text "Progressive Enhancement"];
-        p [
-          text "Start with static components, add LiveView when you need interactivity.";
-        ];
-      ];
-      
-      div ~attrs:[class_ "comparison"] [
-        (* Static Version *)
-        div [
-          counter_view_static 5;
-        ];
-        
-        (* Interactive Version *)
-        div [
-          counter_view_interactive 5;
-        ];
-      ];
 
-      div ~attrs:[class_ "card"; style_ "text-align: left; max-width: 800px; margin: 40px auto"] [
-        h2 [text "The Power of Unified Components"];
-        
-        h3 [text "Same Structure, Different Rendering"];
-        ul [
-          li [
-            strong [text "Static HTML: "];
-            code [text "to_html component"];
+      ]; body
+    [
+      div
+      ~attrs:[ class_ "card" ]
+      [
+        h1 [ text "Progressive Enhancement" ];
+        p [ text "Start with static components, add LiveView when you need interactivity.";  ];
+
+      ];
+      div
+      ~attrs:[ class_ "comparison" ]
+      [ div [ counter_view_static 5;  ]; div [ counter_view_interactive 5;  ];  ];
+      div
+      ~attrs:[ class_ "card"; style_ "text-align: left; max-width: 800px; margin: 40px auto" ]
+      [
+        h2 [ text "The Power of Unified Components" ];
+        h3 [ text "Same Structure, Different Rendering" ];
+        ul
+        [
+          li
+          [
+            strong [ text "Static HTML: " ];
+            code [ text "to_html component" ];
             text " - Event handlers ignored, clean HTML output";
+
           ];
-          li [
-            strong [text "LiveView: "];
+          li
+          [
+            strong [ text "LiveView: " ];
             text "Event handlers wired to server, automatic UI updates";
+
           ];
+
+        ];
+        h3 [ text "Benefits" ];
+        ul
+        [
+          li [ text "Write components once" ];
+          li [ text "Preview statically during development" ];
+          li [ text "Add interactivity incrementally" ];
+          li [ text "Type-safe all the way" ];
+          li [ text "No client-side JavaScript required" ];
+
+        ];
+        h3 [ text "Migration Path" ];
+        ol
+        [
+          li [ text "Build your UI with components and static HTML" ];
+          li [ text "When you need interactivity, add event handlers" ];
+          li [ text "Wire to LiveView - the component structure stays the same!" ];
+
         ];
 
-        h3 [text "Benefits"];
-        ul [
-          li [text "Write components once"];
-          li [text "Preview statically during development"];
-          li [text "Add interactivity incrementally"];
-          li [text "Type-safe all the way"];
-          li [text "No client-side JavaScript required"];
-        ];
-
-        h3 [text "Migration Path"];
-        ol [
-          li [text "Build your UI with components and static HTML"];
-          li [text "When you need interactivity, add event handlers"];
-          li [text "Wire to LiveView - the component structure stays the same!"];
-        ];
       ];
-    ];
-  ]
+
+    ];  ]
 
 (** Demo Output *)
-
 let () =
   println "=== STATIC HTML (No Interactivity) ===";
   println (to_html static_page);

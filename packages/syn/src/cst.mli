@@ -25,7 +25,6 @@
     When that happens, the documentation calls it out explicitly so consumers
     know which details live in the red tree instead of dedicated fields.
 *)
-
 open Std
 
 (** A red-tree node from Ceibo.
@@ -150,7 +149,7 @@ module Ident : sig
         dot_token : Token.t;
         name_token : Token.t;
       }
-    (** A dotted path segment appended to an earlier path.
+  (** A dotted path segment appended to an earlier path.
 
             Examples include `Std.List`, `M.N`, and `Foo.Bar.baz`.
         *)
@@ -204,14 +203,14 @@ and payload =
   | Opaque of {
       tokens : Token.t list;
     }
-      (** A lossless opaque payload preserved as its raw shell-local token
+
+(** A lossless opaque payload preserved as its raw shell-local token
           slice.
 
           This covers both foreign mini-languages such as
           `[%sql SELECT * FROM users]` and OCaml-shaped payload bodies we are
           intentionally leaving opaque for now.
       *)
-
 (** A field inside an object type.
 
     This covers method-like object type members written between `<` and `>`.
@@ -240,21 +239,21 @@ and type_binder =
       syntax_node : syntax_node;
       name_token : Token.t;
     }
-      (** A quoted type binder written with a leading apostrophe.
+  (** A quoted type binder written with a leading apostrophe.
 
           Example: `'a` in `'a. 'a -> 'a`.
       *)
   | Bare of {
       name_token : Token.t;
     }
-      (** A bare binder reconstructed from `type ... .` syntax.
+
+(** A bare binder reconstructed from `type ... .` syntax.
 
           Example: `a` in `type a. a -> a`.
 
           Bare binders do not currently expose their own `syntax_node`; they are
           recovered from the token stream of the surrounding quantified type.
       *)
-
 (** A field inside a record type.
 
     This covers immutable and mutable record fields declared between `{` and
@@ -308,25 +307,21 @@ and poly_variant_tag = {
 *)
 and poly_variant_bound =
   | Exact
-      (** An exact row with no explicit bound marker.
+  (** An exact row with no explicit bound marker.
 
           Example: `[ `A | `B ]`.
       *)
-  | UpperBound of {
-      marker_token : Token.t;
-    }
-      (** An upper-bounded row introduced with `<`.
+  | UpperBound of { marker_token : Token.t; }
+  (** An upper-bounded row introduced with `<`.
 
           Example: `[< `A | `B ]`.
       *)
-  | LowerBound of {
-      marker_token : Token.t;
-    }
-      (** A lower-bounded row introduced with `>`.
+  | LowerBound of { marker_token : Token.t; }
+
+(** A lower-bounded row introduced with `>`.
 
           Example: `[> `A | `B ]`.
       *)
-
 (** A row field inside a polymorphic variant type.
 
     This covers both concrete tags and inherited rows.
@@ -340,16 +335,12 @@ and poly_variant_bound =
 *)
 and row_field =
   | Tag of poly_variant_tag
-      (** A concrete tag row such as `` `Ok of int ``. *)
-  | Inherit of {
-      bar_token : Token.t option;
-      syntax_node : syntax_node;
-      type_ : core_type;
-    }
-      (** An inherited row type such as `color` in
+  (** A concrete tag row such as `` `Ok of int ``. *)
+  | Inherit of { bar_token : Token.t option; syntax_node : syntax_node; type_ : core_type; }
+
+(** An inherited row type such as `color` in
           `[ color | `Yellow ]`.
       *)
-
 (** A full polymorphic variant row.
 
     The row keeps the surrounding syntax node, the bound marker, and the row
@@ -394,14 +385,12 @@ and type_constraint = {
 *)
 and private_flag =
   | Public
-      (** A declaration with no `private` keyword, such as `type t = int`. *)
-  | Private of {
-      private_token : Token.t;
-    }
-      (** A declaration introduced with `private`, such as
+  (** A declaration with no `private` keyword, such as `type t = int`. *)
+  | Private of { private_token : Token.t; }
+
+(** A declaration introduced with `private`, such as
           `type t = private int`.
       *)
-
 (** A `with type` equation attached to a module type.
 
     The left-hand side is preserved as a lifted core type so constraints like
@@ -491,7 +480,7 @@ and arrow_label =
       label_token : Token.t;
       colon_token : Token.t;
     }
-      (** A regular labeled arrow parameter such as `x:int -> ...`.
+  (** A regular labeled arrow parameter such as `x:int -> ...`.
 
           The optional `sigil_token` preserves syntaxes that spell the label
           with an explicit `~`.
@@ -501,8 +490,8 @@ and arrow_label =
       label_token : Token.t;
       colon_token : Token.t;
     }
-      (** An optional arrow parameter such as `?state:string -> ...`. *)
 
+(** An optional arrow parameter such as `?state:string -> ...`. *)
 (** Core type syntax.
 
     This family covers the type grammar used in annotations, manifests, record
@@ -512,28 +501,17 @@ and arrow_label =
     the underlying Ceibo tree.
 *)
 and core_type =
-  | Wildcard of {
-      syntax_node : syntax_node;
-      wildcard_token : Token.t;
-    }
-      (** An anonymous type variable written as `_`.
+  | Wildcard of { syntax_node : syntax_node; wildcard_token : Token.t; }
+  (** An anonymous type variable written as `_`.
 
           Examples include `_` in `type (_, 'a) t` or `_` in
           `let f (_ : _) = ...`.
       *)
-  | Var of {
-      syntax_node : syntax_node;
-      sigil_token : Token.t option;
-      name_token : Token.t;
-    }
-      (** A named type variable such as `'a`, `'state`, `'msg`, or bare `a` in
+  | Var of { syntax_node : syntax_node; sigil_token : Token.t option; name_token : Token.t; }
+  (** A named type variable such as `'a`, `'state`, `'msg`, or bare `a` in
           locally abstract `type a. ...` syntax. *)
-  | Constr of {
-      syntax_node : syntax_node;
-      constructor_path : Ident.t;
-      arguments : core_type list;
-    }
-      (** A named type constructor, optionally applied to arguments.
+  | Constr of { syntax_node : syntax_node; constructor_path : Ident.t; arguments : core_type list; }
+  (** A named type constructor, optionally applied to arguments.
 
           Covered grammar includes plain constructor names and type
           applications such as `int`, `'a list`, `(int, string) result`, or
@@ -545,7 +523,7 @@ and core_type =
       class_path : Ident.t;
       arguments : core_type list;
     }
-      (** A class type written with `#`.
+  (** A class type written with `#`.
 
           Examples:
 
@@ -560,21 +538,17 @@ and core_type =
       sigil_token : Token.t option;
       name_token : Token.t;
     }
-      (** A type aliased with `as`.
+  (** A type aliased with `as`.
 
           Example: `('a list as 'whole)`.
       *)
-  | Attribute of {
-      syntax_node : syntax_node;
-      type_ : core_type;
-      attribute : attribute;
-    }
-      (** A type expression with an attached attribute.
+  | Attribute of { syntax_node : syntax_node; type_ : core_type; attribute : attribute; }
+  (** A type expression with an attached attribute.
 
           Example: `int [@boxed]`.
       *)
   | Extension of extension
-      (** A PPX extension parsed in type position.
+  (** A PPX extension parsed in type position.
 
           Example: `[%foo: int]`.
       *)
@@ -585,7 +559,7 @@ and core_type =
       binders : type_binder list;
       body : core_type;
     }
-      (** An explicitly quantified type.
+  (** An explicitly quantified type.
 
           Covered grammar includes both apostrophe binders and locally abstract
           `type` binders.
@@ -603,7 +577,7 @@ and core_type =
       parameter_type : core_type;
       result_type : core_type;
     }
-      (** A function type.
+  (** A function type.
 
           This covers simple, labeled, and optional arrows.
 
@@ -615,19 +589,13 @@ and core_type =
           ?state:string -> bool
           ```
       *)
-  | Tuple of {
-      syntax_node : syntax_node;
-      elements : core_type list;
-    }
-      (** A tuple type with two or more elements.
+  | Tuple of { syntax_node : syntax_node; elements : core_type list; }
+  (** A tuple type with two or more elements.
 
           Example: `int * string * bool`.
       *)
-  | Parenthesized of {
-      syntax_node : syntax_node;
-      inner : core_type;
-    }
-      (** A parenthesized type used for grouping.
+  | Parenthesized of { syntax_node : syntax_node; inner : core_type; }
+  (** A parenthesized type used for grouping.
 
           Examples:
 
@@ -637,7 +605,7 @@ and core_type =
           ```
       *)
   | PolyVariant of poly_variant
-      (** A polymorphic variant type.
+  (** A polymorphic variant type.
 
           Examples:
 
@@ -655,7 +623,7 @@ and core_type =
       separator_tokens : Token.t list;
       closing_token : Token.t;
     }
-      (** A record type definition written between `{` and `}`.
+  (** A record type definition written between `{` and `}`.
 
           Example: `{ name : string; mutable visits : int }`.
       *)
@@ -665,7 +633,7 @@ and core_type =
       package_type : package_type;
       closing_token : Token.t;
     }
-      (** A first-class module type.
+  (** A first-class module type.
 
           Examples:
 
@@ -680,11 +648,11 @@ and core_type =
       fields : object_type_field list;
       closing_token : Token.t;
     }
-      (** An object type written between `<` and `>`.
+
+(** An object type written between `<` and `>`.
 
           Example: `< push : int -> unit; close : unit -> unit >`.
       *)
-
 (** Module type expressions.
 
     These nodes cover signature-like grammar that appears in module
@@ -693,21 +661,14 @@ and core_type =
 *)
 and module_type =
   | Path of Ident.t
-      (** A named module type path such as `S`, `Set.S`, or `Driver.Intf`. *)
-  | TypeOf of {
-      syntax_node : syntax_node;
-      of_token : Token.t;
-      module_path : Ident.t;
-    }
-      (** A `module type of` expression.
+  (** A named module type path such as `S`, `Set.S`, or `Driver.Intf`. *)
+  | TypeOf of { syntax_node : syntax_node; of_token : Token.t; module_path : Ident.t; }
+  (** A `module type of` expression.
 
           Example: `module type of M`.
       *)
-  | Signature of {
-      syntax_node : syntax_node;
-      signature_syntax_node : syntax_node;
-    }
-      (** A raw `sig ... end` module type.
+  | Signature of { syntax_node : syntax_node; signature_syntax_node : syntax_node; }
+  (** A raw `sig ... end` module type.
 
           The signature body is preserved as `signature_syntax_node` rather than
           being reified into a separate public signature-item tree.
@@ -719,7 +680,7 @@ and module_type =
       parameters : functor_parameter list;
       result : module_type;
     }
-      (** A functor module type.
+  (** A functor module type.
 
           Examples:
 
@@ -733,7 +694,7 @@ and module_type =
       base : module_type;
       constraints : module_type_constraint list;
     }
-      (** A constrained module type using `with`.
+  (** A constrained module type using `with`.
 
           Examples:
 
@@ -748,25 +709,21 @@ and module_type =
       inner : module_type;
       closing_token : Token.t;
     }
-      (** A parenthesized module type used for grouping.
+  (** A parenthesized module type used for grouping.
 
           Example: `(S with type t = int)`.
       *)
-  | Attribute of {
-      syntax_node : syntax_node;
-      module_type : module_type;
-      attribute : attribute;
-    }
-      (** A module type with an attached attribute.
+  | Attribute of { syntax_node : syntax_node; module_type : module_type; attribute : attribute; }
+  (** A module type with an attached attribute.
 
           Example: `(module type of M [@foo])`.
       *)
   | Extension of extension
-      (** A PPX extension parsed in module-type position.
+
+(** A PPX extension parsed in module-type position.
 
           Example: `[%foo: S]`.
       *)
-
 (** Class type syntax.
 
     This family covers the type grammar used by `class ... : ...` annotations
@@ -774,12 +731,9 @@ and module_type =
 *)
 and class_type =
   | Path of Ident.t
-      (** A named class type path such as `c`, `Widget.t`, or `Driver.class_t`. *)
-  | Signature of {
-      syntax_node : syntax_node;
-      fields : class_type_field list;
-    }
-      (** An `object ... end` class signature.
+  (** A named class type path such as `c`, `Widget.t`, or `Driver.class_t`. *)
+  | Signature of { syntax_node : syntax_node; fields : class_type_field list; }
+  (** An `object ... end` class signature.
 
           Example:
 
@@ -798,7 +752,7 @@ and class_type =
       parameter_type : core_type;
       result_type : class_type;
     }
-      (** An arrow-style class type.
+  (** An arrow-style class type.
 
           Examples:
 
@@ -813,32 +767,25 @@ and class_type =
       inner : class_type;
       closing_token : Token.t;
     }
-      (** A parenthesized class type used for grouping.
+  (** A parenthesized class type used for grouping.
 
           Example: `([%driver])`.
       *)
-  | Attribute of {
-      syntax_node : syntax_node;
-      class_type : class_type;
-      attribute : attribute;
-    }
-      (** A class type with an attached attribute.
+  | Attribute of { syntax_node : syntax_node; class_type : class_type; attribute : attribute; }
+  (** A class type with an attached attribute.
 
           Example: `object method x : int end [@foo]`.
       *)
   | Extension of extension
-      (** A PPX extension parsed in class-type position.
+
+(** A PPX extension parsed in class-type position.
 
           Example: `[%foo]`.
       *)
-
 (** Fields inside an `object ... end` class signature. *)
 and class_type_field =
-  | Inherit of {
-      syntax_node : syntax_node;
-      class_type : class_type;
-    }
-      (** An inherited class type field.
+  | Inherit of { syntax_node : syntax_node; class_type : class_type; }
+  (** An inherited class type field.
 
           Example: `inherit base`.
       *)
@@ -849,7 +796,7 @@ and class_type_field =
       type_ : core_type;
       modifier_tokens : Token.t list;
     }
-      (** A value declaration in a class signature.
+  (** A value declaration in a class signature.
 
           Examples:
 
@@ -865,7 +812,7 @@ and class_type_field =
       type_ : core_type;
       modifier_tokens : Token.t list;
     }
-      (** A method declaration in a class signature.
+  (** A method declaration in a class signature.
 
           Examples:
 
@@ -880,26 +827,20 @@ and class_type_field =
       equals_token : Token.t;
       right : core_type;
     }
-      (** A class-type constraint.
+  (** A class-type constraint.
 
           Example: `constraint t = int`.
       *)
-  | Attribute of {
-      syntax_node : syntax_node;
-      field : class_type_field;
-      attribute : attribute;
-    }
-      (** A class-type field with an attached attribute.
+  | Attribute of { syntax_node : syntax_node; field : class_type_field; attribute : attribute; }
+  (** A class-type field with an attached attribute.
 
           Example: `val x : int [@@foo]`.
       *)
   | Extension of extension
-      (** A PPX extension parsed as a class-type field.
+(** A PPX extension parsed as a class-type field.
 
           Example: `[%%foo]`.
       *)
-
-
 
 (** Core type syntax.
 
@@ -919,6 +860,7 @@ and class_type_field =
     This view stays faithful to the parsed source. Parentheses, local opens,
     attributes, and extensions remain explicit instead of being normalized away.
 *)
+
 (** A single `with`-constraint inside a module type.
 
     Examples:
@@ -928,6 +870,7 @@ and class_type_field =
     S with type t := int
     ```
 *)
+
 (** A type equality constraint attached to a declaration.
 
     Example:
@@ -938,15 +881,8 @@ and class_type_field =
 *)
 module CoreType : sig
   type t = core_type =
-    | Wildcard of {
-        syntax_node : syntax_node;
-        wildcard_token : Token.t;
-      }
-    | Var of {
-        syntax_node : syntax_node;
-        sigil_token : Token.t option;
-        name_token : Token.t;
-      }
+    | Wildcard of { syntax_node : syntax_node; wildcard_token : Token.t; }
+    | Var of { syntax_node : syntax_node; sigil_token : Token.t option; name_token : Token.t; }
     | Constr of {
         syntax_node : syntax_node;
         constructor_path : Ident.t;
@@ -964,11 +900,7 @@ module CoreType : sig
         sigil_token : Token.t option;
         name_token : Token.t;
       }
-    | Attribute of {
-        syntax_node : syntax_node;
-        type_ : core_type;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; type_ : core_type; attribute : attribute; }
     | Extension of extension
     | Poly of {
         syntax_node : syntax_node;
@@ -983,14 +915,8 @@ module CoreType : sig
         parameter_type : core_type;
         result_type : core_type;
       }
-    | Tuple of {
-        syntax_node : syntax_node;
-        elements : core_type list;
-      }
-    | Parenthesized of {
-        syntax_node : syntax_node;
-        inner : core_type;
-      }
+    | Tuple of { syntax_node : syntax_node; elements : core_type list; }
+    | Parenthesized of { syntax_node : syntax_node; inner : core_type; }
     | PolyVariant of poly_variant
     | Record of {
         syntax_node : syntax_node;
@@ -1111,15 +1037,8 @@ end
 module ModuleType : sig
   type t = module_type =
     | Path of Ident.t
-    | TypeOf of {
-        syntax_node : syntax_node;
-        of_token : Token.t;
-        module_path : Ident.t;
-      }
-    | Signature of {
-        syntax_node : syntax_node;
-        signature_syntax_node : syntax_node;
-      }
+    | TypeOf of { syntax_node : syntax_node; of_token : Token.t; module_path : Ident.t; }
+    | Signature of { syntax_node : syntax_node; signature_syntax_node : syntax_node; }
     | Functor of {
         syntax_node : syntax_node;
         parameters : functor_parameter list;
@@ -1136,11 +1055,7 @@ module ModuleType : sig
         inner : module_type;
         closing_token : Token.t;
       }
-    | Attribute of {
-        syntax_node : syntax_node;
-        module_type : module_type;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; module_type : module_type; attribute : attribute; }
     | Extension of extension
   val syntax_node : t -> syntax_node
 end
@@ -1160,10 +1075,7 @@ end
 module ClassType : sig
   type t = class_type =
     | Path of Ident.t
-    | Signature of {
-        syntax_node : syntax_node;
-        fields : class_type_field list;
-      }
+    | Signature of { syntax_node : syntax_node; fields : class_type_field list; }
     | Arrow of {
         syntax_node : syntax_node;
         label : arrow_label option;
@@ -1176,21 +1088,14 @@ module ClassType : sig
         inner : class_type;
         closing_token : Token.t;
       }
-    | Attribute of {
-        syntax_node : syntax_node;
-        class_type : class_type;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; class_type : class_type; attribute : attribute; }
     | Extension of extension
   val syntax_node : t -> syntax_node
 end
 
 module ClassTypeField : sig
   type t = class_type_field =
-    | Inherit of {
-        syntax_node : syntax_node;
-        class_type : class_type;
-      }
+    | Inherit of { syntax_node : syntax_node; class_type : class_type; }
     | Value of {
         syntax_node : syntax_node;
         name_token : Token.t;
@@ -1211,11 +1116,7 @@ module ClassTypeField : sig
         equals_token : Token.t;
         right : core_type;
       }
-    | Attribute of {
-        syntax_node : syntax_node;
-        field : class_type_field;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; field : class_type_field; attribute : attribute; }
     | Extension of extension
   val syntax_node : t -> syntax_node
 end
@@ -1224,10 +1125,8 @@ end
 type string_delimiter =
   | DoubleQuote
   (** An ordinary double-quoted string such as `"hello"`. *)
-  | Quoted of {
-      marker : string;
-    }
-  (** A quoted string such as `{sql|select 1|sql}`.
+  | Quoted of { marker : string; }
+(** A quoted string such as `{sql|select 1|sql}`.
 
           `marker` stores the identifier between `{` and `|`.
       *)
@@ -1240,7 +1139,7 @@ type integer_base =
   | Octal
   (** Base-8 digits, introduced with `0o` or `0O`. *)
   | Binary
-  (** Base-2 digits, introduced with `0b` or `0B`. *)
+(** Base-2 digits, introduced with `0b` or `0B`. *)
 (** A string literal with delimiter and body details preserved.
 
     `contents` stores the literal body exactly as written between the
@@ -1250,7 +1149,7 @@ type exponent_sign =
   | Positive
   (** A `+` exponent sign, as in `1.0e+5`. *)
   | Negative
-  (** A `-` exponent sign, as in `1.0e-5`. *)
+(** A `-` exponent sign, as in `1.0e-5`. *)
 (** An integer literal with its base and optional suffix preserved.
 
     `digits` stores the exact digits as written, including underscores.
@@ -1349,11 +1248,8 @@ module Constant : sig
     (** Character literals such as `'a'` or `'\n'`. *)
     | Bool of bool_constant
     (** Boolean literals `true` and `false`. *)
-    | Unit of {
-        syntax_node : syntax_node;
-        attributes : attribute list;
-      }
-    (** The unit literal `()`. *)
+    | Unit of { syntax_node : syntax_node; attributes : attribute list; }
+  (** The unit literal `()`. *)
   val syntax_node : t -> syntax_node
 end
 
@@ -1392,38 +1288,38 @@ end
 
 type pattern =
   | Identifier of identifier_pattern
-      (** A binding-name pattern such as `x`, `value`, or `state`. *)
+  (** A binding-name pattern such as `x`, `value`, or `state`. *)
   | Wildcard of wildcard_pattern
-      (** A wildcard pattern written as `_`. *)
+  (** A wildcard pattern written as `_`. *)
   | Extension of extension_pattern
-      (** A PPX extension parsed in pattern position.
+  (** A PPX extension parsed in pattern position.
 
           Example: `[%foo? p]`.
       *)
   | Literal of literal_pattern
-      (** A literal pattern such as `"hello"`, `true`, `2112`, or `()`. *)
+  (** A literal pattern such as `"hello"`, `true`, `2112`, or `()`. *)
   | Lazy of lazy_pattern
-      (** A lazy pattern.
+  (** A lazy pattern.
 
           Example: `lazy p`.
       *)
   | Exception of exception_pattern
-      (** An exception pattern used in handlers.
+  (** An exception pattern used in handlers.
 
           Example: `exception Not_found`.
       *)
   | Range of range_pattern
-      (** A range pattern.
+  (** A range pattern.
 
           Examples include `'a' .. 'z'` and `0 .. 9`.
       *)
   | Operator of operator_pattern
-      (** An operator identifier used as a pattern name.
+  (** An operator identifier used as a pattern name.
 
           Example: `( :: )`.
       *)
   | FirstClassModule of first_class_module_pattern
-      (** A first-class module unpacking pattern.
+  (** A first-class module unpacking pattern.
 
           Examples:
 
@@ -1433,46 +1329,46 @@ type pattern =
           ```
       *)
   | PolyVariant of poly_variant_pattern
-      (** A polymorphic variant tag pattern such as `` `Ok x `` or `` `Done ``. *)
+  (** A polymorphic variant tag pattern such as `` `Ok x `` or `` `Done ``. *)
   | PolyVariantInherit of poly_variant_inherit_pattern
-      (** A polymorphic variant type inheritance pattern such as `#message`. *)
+  (** A polymorphic variant type inheritance pattern such as `#message`. *)
   | Constructor of constructor_pattern
-      (** A constructor pattern such as `Some x`, `Ok (a, b)`, or `M.Error`. *)
+  (** A constructor pattern such as `Some x`, `Ok (a, b)`, or `M.Error`. *)
   | Tuple of tuple_pattern
-      (** A tuple pattern such as `(x, y)` or `(x, y, z)`. *)
+  (** A tuple pattern such as `(x, y)` or `(x, y, z)`. *)
   | List of list_pattern
-      (** A list pattern such as `[x; y; z]`. *)
+  (** A list pattern such as `[x; y; z]`. *)
   | Array of array_pattern
-      (** An array pattern such as `[| x; y |]`. *)
+  (** An array pattern such as `[| x; y |]`. *)
   | Record of record_pattern
-      (** A record pattern such as `{ x; y = Some z }`. *)
+  (** A record pattern such as `{ x; y = Some z }`. *)
   | Cons of cons_pattern
-      (** A cons pattern written with `::`, such as `x :: xs`. *)
+  (** A cons pattern written with `::`, such as `x :: xs`. *)
   | Or of or_pattern
-      (** An alternative pattern such as `None | Some _`. *)
+  (** An alternative pattern such as `None | Some _`. *)
   | Alias of alias_pattern
-      (** A pattern alias introduced with `as`.
+  (** A pattern alias introduced with `as`.
 
           Example: `(Some x as whole)`.
       *)
   | Typed of typed_pattern
-      (** A type-constrained pattern.
+  (** A type-constrained pattern.
 
           Example: `(p : t)`.
       *)
   | Effect of effect_pattern
-      (** An effect pattern.
+  (** An effect pattern.
 
           Example: `effect Yield k`.
       *)
   | LocalOpen of local_open_pattern
-      (** A locally opened module path in pattern position.
+  (** A locally opened module path in pattern position.
 
           Example: `M.(Some x)`.
       *)
   | Parenthesized of parenthesized_pattern
-      (** A parenthesized pattern used for grouping, such as `(Some x)`. *)
 
+(** A parenthesized pattern used for grouping, such as `(Some x)`. *)
 (** Payload for `Pattern.Identifier`.
 
     This covers simple lowercase binding names and raw identifiers when parsed
@@ -1569,12 +1465,12 @@ and first_class_module_pattern_binding =
   | Named of {
       name_token : Token.t;
     }
-      (** A named unpack binding such as `M` in `(module M : S)`. *)
+  (** A named unpack binding such as `M` in `(module M : S)`. *)
   | Anonymous of {
       wildcard_token : Token.t;
     }
-      (** An anonymous unpack binding such as `_` in `(module _ : S)`. *)
 
+(** An anonymous unpack binding such as `_` in `(module _ : S)`. *)
 (** Payload for `Pattern.FirstClassModule`.
 
     This covers patterns of the form `(module M)`, `(module _)`,
@@ -1727,12 +1623,10 @@ and record_pattern = {
 *)
 and record_pattern_closedness =
   | Closed
-      (** A closed record pattern such as `{ user; name }`. *)
-  | Open of {
-      wildcard_token : Token.t;
-    }
-      (** An open record pattern such as `{ user; _ }`. *)
+  (** A closed record pattern such as `{ user; name }`. *)
+  | Open of { wildcard_token : Token.t; }
 
+(** An open record pattern such as `{ user; _ }`. *)
 (** A single field inside a record pattern.
 
     When `pattern` is `None`, the source used punning syntax such as `{ field }`.
@@ -1823,8 +1717,8 @@ and parenthesized_pattern = {
   inner : pattern;
   attributes : attribute list;
 }
-
 module Literal = Constant
+
 (** Alias of {!Constant} used for direct literal expressions. *)
 type literal = Literal.t
 
@@ -1838,6 +1732,7 @@ and positional_parameter = {
   pattern : pattern;
   name_token : Token.t option;
 }
+
 (** A labeled parameter introduced with `~`.
 
     Examples include `~x` and `~label`.
@@ -1851,6 +1746,7 @@ and labeled_parameter = {
   binding_name_matches_label : bool;
   binding_pattern : pattern option;
 }
+
 (** An optional parameter introduced with `?`.
 
     This covers both plain optional parameters like `?x` and parameters with a
@@ -1871,6 +1767,7 @@ and optional_parameter = {
   default_value : expression option;
   binding_pattern : pattern option;
 }
+
 (** A locally abstract type parameter in function parameter position.
 
     Examples:
@@ -1903,8 +1800,8 @@ and parameter =
   | Optional of optional_parameter
   (** An optional parameter such as `?x` or `?(x = 0)`. *)
   | LocallyAbstract of locally_abstract_type_parameter
-  (** A locally abstract type binder such as `(type a)`. *)
 
+(** A locally abstract type binder such as `(type a)`. *)
 (** Namespace helpers for `parameter`.
 
     The constructors mirror `parameter` exactly, so the parameter grammar
@@ -1939,6 +1836,7 @@ and exception_declaration = {
   name_token : Token.t;
   rhs : exception_rhs option;
 }
+
 (** Expression syntax.
 
     This is the main term-level grammar family. It covers evaluated expressions,
@@ -1951,28 +1849,28 @@ and exception_declaration = {
 *)
 and expression =
   | Path of path_expression
-      (** A value path used as an expression, such as `x`, `M.value`, or
+  (** A value path used as an expression, such as `x`, `M.value`, or
           `List.map`. *)
   | Constructor of constructor_expression
-      (** A constructor expression such as `None`, `Some value`, or
+  (** A constructor expression such as `None`, `Some value`, or
           `Result.Error message`.
 
           This mirrors the parsetree's `Pexp_construct` shape: the constructor
           path is preserved directly and the payload remains optional.
       *)
   | Operator of operator_expression
-      (** An operator identifier used as an expression, such as `(+)` or `(@@)`. *)
+  (** An operator identifier used as an expression, such as `(+)` or `(@@)`. *)
   | Literal of literal
-      (** A literal expression such as `"hello"`, `42`, `true`, or `()`. *)
+  (** A literal expression such as `"hello"`, `42`, `true`, or `()`. *)
   | Unreachable of unreachable_expression
-      (** An unreachable expression written as `.`.
+  (** An unreachable expression written as `.`.
 
           Example: `| None -> .`.
       *)
   | Extension of extension
-      (** A PPX extension parsed in expression position, such as `[%sql "..."]`. *)
+  (** A PPX extension parsed in expression position, such as `[%sql "..."]`. *)
   | Object of object_expression
-      (** An object expression.
+  (** An object expression.
 
           Example:
 
@@ -1983,9 +1881,9 @@ and expression =
           ```
       *)
   | PolyVariant of poly_variant_expression
-      (** A polymorphic variant expression such as `` `Ok value `` or `` `Done ``. *)
+  (** A polymorphic variant expression such as `` `Ok value `` or `` `Done ``. *)
   | ModulePack of module_pack_expression
-      (** A packed first-class module expression.
+  (** A packed first-class module expression.
 
           Examples:
 
@@ -1995,53 +1893,53 @@ and expression =
           ```
       *)
   | LetModule of let_module_expression
-      (** A local module binding expression.
+  (** A local module binding expression.
 
           Example: `let module M = N in body`.
       *)
   | LetException of let_exception_expression
-      (** A local exception declaration expression.
+  (** A local exception declaration expression.
 
           Example: `let exception Panic of string in body`.
       *)
   | Assert of assert_expression
-      (** An assertion expression: `assert cond`. *)
+  (** An assertion expression: `assert cond`. *)
   | Lazy of lazy_expression
-      (** A lazy expression: `lazy expr`. *)
+  (** A lazy expression: `lazy expr`. *)
   | While of while_expression
-      (** A `while ... do ... done` loop. *)
+  (** A `while ... do ... done` loop. *)
   | For of for_expression
-      (** A `for ... = ... to|downto ... do ... done` loop. *)
+  (** A `for ... = ... to|downto ... do ... done` loop. *)
   | Apply of apply_expression
-      (** A function application, including labeled and optional arguments. *)
+  (** A function application, including labeled and optional arguments. *)
   | MethodCall of method_call_expression
-      (** An object method call such as `obj#run`. *)
+  (** An object method call such as `obj#run`. *)
   | New of new_expression
-      (** An object instantiation such as `new queue`. *)
+  (** An object instantiation such as `new queue`. *)
   | Prefix of prefix_expression
-      (** A prefix operator application such as `!cell` or `~-x`. *)
+  (** A prefix operator application such as `!cell` or `~-x`. *)
   | FieldAccess of field_access_expression
-      (** A field access such as `record.field`. *)
+  (** A field access such as `record.field`. *)
   | Index of index_expression
-      (** An indexing expression such as `arr.(i)` or `s.[i]`. *)
+  (** An indexing expression such as `arr.(i)` or `s.[i]`. *)
   | ObjectOverride of object_override_expression
-      (** An object override expression such as `{< x = 1; y = 2 >}`.
+  (** An object override expression such as `{< x = 1; y = 2 >}`.
 
           This mirrors the parsetree's `Pexp_override` shape: the overridden
           instance variables are modeled directly instead of being reused as
           record fields.
       *)
   | InstanceVariableAssign of instance_variable_assign_expression
-      (** An instance-variable assignment inside object syntax, such as
+  (** An instance-variable assignment inside object syntax, such as
           `count <- count + 1`. *)
   | FieldAssign of field_assign_expression
-      (** A record-field assignment such as `record.field <- value`. *)
+  (** A record-field assignment such as `record.field <- value`. *)
   | Assign of assign_expression
-      (** A general assignment expression such as `r := 1` or `arr.(i) <- x`. *)
+  (** A general assignment expression such as `r := 1` or `arr.(i) <- x`. *)
   | Infix of infix_expression
-      (** An infix operator expression such as `a + b` or `x |> f`. *)
+  (** An infix operator expression such as `a + b` or `x |> f`. *)
   | TypeAscription of type_ascription_expression
-      (** A type-constrained or coerced expression such as `(expr : t)`,
+  (** A type-constrained or coerced expression such as `(expr : t)`,
           `(expr :> t)`, `(expr : s :> t)`, or `let value : t = expr`.
 
           When lifted from a binding annotation, `syntax_node` is the enclosing
@@ -2049,48 +1947,48 @@ and expression =
           annotation expression node.
       *)
   | Polymorphic of polymorphic_expression
-      (** An explicitly polymorphic binding annotation such as
+  (** An explicitly polymorphic binding annotation such as
           `let id : 'a. 'a -> 'a = fun x -> x`.
 
           This is reconstructed from the surrounding binding or typed
           expression syntax when the annotated type is a quoted `CoreType.Poly`.
       *)
   | Sequence of sequence_expression
-      (** A sequence expression such as `e1; e2`. *)
+  (** A sequence expression such as `e1; e2`. *)
   | Tuple of tuple_expression
-      (** A tuple expression such as `(a, b, c)`. *)
+  (** A tuple expression such as `(a, b, c)`. *)
   | List of list_expression
-      (** A list expression such as `[a; b; c]`. *)
+  (** A list expression such as `[a; b; c]`. *)
   | Array of array_expression
-      (** An array expression such as `[| a; b; c |]`. *)
+  (** An array expression such as `[| a; b; c |]`. *)
   | Record of record_expression
-      (** A record literal or record update expression. *)
+  (** A record literal or record update expression. *)
   | LocalOpen of local_open_expression
-      (** A local module open expression.
+  (** A local module open expression.
 
           Covered forms include `M.(expr)` and `let open M in expr`.
       *)
   | Fun of fun_expression
-      (** A `fun` expression with explicit parameters and either a direct body
+  (** A `fun` expression with explicit parameters and either a direct body
           expression or a nested `function`-style case body. *)
   | Function of function_expression
-      (** A `function` expression with case clauses and no explicit
+  (** A `function` expression with case clauses and no explicit
           parameter list. *)
   | LetOperator of let_operator_expression
-      (** A binding-operator expression such as
+  (** A binding-operator expression such as
           `let* x = expr in body` or
           `let* x = expr and* y = expr in body`. *)
   | Let of let_expression
-      (** A `let ... in ...` or `let rec ... in ...` expression. *)
+  (** A `let ... in ...` or `let rec ... in ...` expression. *)
   | Match of match_expression
-      (** A `match ... with ...` expression. *)
+  (** A `match ... with ...` expression. *)
   | Try of try_expression
-      (** A `try ... with ...` expression. *)
+  (** A `try ... with ...` expression. *)
   | If of if_expression
-      (** An `if ... then ... else ...` expression. *)
+  (** An `if ... then ... else ...` expression. *)
   | Parenthesized of parenthesized_expression
-      (** A parenthesized expression used for grouping. *)
 
+(** A parenthesized expression used for grouping. *)
 (** Payload for `Expression.Path`.
 
     Covers path expressions such as `x`, `M.value`, and `List.map`.
@@ -2149,19 +2047,19 @@ and object_expression = {
 (** Members inside an object expression body. *)
 and object_member =
   | Method of object_method
-      (** A `method` declaration inside `object ... end`. *)
+  (** A `method` declaration inside `object ... end`. *)
   | Value of object_value
-      (** A `val` declaration inside `object ... end`. *)
+  (** A `val` declaration inside `object ... end`. *)
   | Inherit of object_inherit
-      (** An `inherit expr` member. *)
+  (** An `inherit expr` member. *)
   | Extension of extension
-      (** A PPX extension member inside `object ... end`.
+  (** A PPX extension member inside `object ... end`.
 
           Example: `[%%foo]`.
       *)
   | Initializer of object_initializer
-      (** An `initializer expr` member. *)
 
+(** An `initializer expr` member. *)
 (** The valid definition forms for methods.
 
     Concrete methods require a body and may optionally carry a type
@@ -2345,12 +2243,12 @@ and for_direction =
   | To of {
       direction_token : Token.t;
     }
-      (** An ascending loop written with `to`. *)
+  (** An ascending loop written with `to`. *)
   | Downto of {
       direction_token : Token.t;
     }
-      (** A descending loop written with `downto`. *)
 
+(** A descending loop written with `downto`. *)
 (** Payload for `Expression.For`.
 
     `direction` distinguishes `to` and `downto` structurally while preserving
@@ -2370,12 +2268,12 @@ and for_expression = {
 (** A single function-application argument. *)
 and apply_argument =
   | Positional of expression
-      (** An unlabeled argument such as `x` in `f x`. *)
+  (** An unlabeled argument such as `x` in `f x`. *)
   | Labeled of labeled_apply_argument
-      (** A labeled argument such as `~label:value`. *)
+  (** A labeled argument such as `~label:value`. *)
   | Optional of optional_apply_argument
-      (** An optional argument such as `?state:value`. *)
 
+(** An optional argument such as `?state:value`. *)
 (** Payload for labeled application arguments.
 
     Covers call-site arguments such as `~limit:10`.
@@ -2643,10 +2541,10 @@ and array_expression = {
 *)
 and record_expression =
   | Literal of record_literal_expression
-      (** A record literal such as `{ x = 1; y = 2 }`. *)
+  (** A record literal such as `{ x = 1; y = 2 }`. *)
   | Update of record_update_expression
-      (** A record update such as `{ base with x = 1 }`. *)
 
+(** A record update such as `{ base with x = 1 }`. *)
 (** Payload for `record_expression` literals. *)
 and record_literal_expression = {
   syntax_node : syntax_node;
@@ -2672,10 +2570,10 @@ and record_update_expression = {
 (** Whether a record field used `=` or shorthand punning syntax. *)
 and record_expression_field_source =
   | Explicit
-      (** A field written with `=` such as `{ x = 1 }`. *)
+  (** A field written with `=` such as `{ x = 1 }`. *)
   | Punned
-      (** A field written in shorthand form such as `{ x }`. *)
 
+(** A field written in shorthand form such as `{ x }`. *)
 (** A single field inside a record literal or record update.
 
     `field_path` mirrors the label stored by the stock parsetree's
@@ -2760,11 +2658,11 @@ and function_case_body = {
 *)
 and fun_body =
   | Expression of expression
-      (** A direct expression body, such as `fun x -> x + 1`. *)
+  (** A direct expression body, such as `fun x -> x + 1`. *)
   | Cases of function_case_body
-      (** A case list body introduced by `function`, such as
-          `fun x -> function | Some y -> y`. *)
 
+(** A case list body introduced by `function`, such as
+          `fun x -> function | Some y -> y`. *)
 (** Payload for `Expression.Fun`.
 
     Covers `fun` expressions with explicit parameter lists, such as
@@ -2934,10 +2832,10 @@ and if_expression = {
 *)
 and expression_grouping =
   | Parens
-      (** Ordinary parentheses, such as `(expr)`. *)
+  (** Ordinary parentheses, such as `(expr)`. *)
   | BeginEnd
-      (** `begin ... end` grouping. *)
 
+(** `begin ... end` grouping. *)
 (** Payload for `Expression.Parenthesized`.
 
     Covers grouping syntax around an expression while preserving which concrete
@@ -2961,7 +2859,7 @@ and parenthesized_expression = {
 *)
 and class_expression =
   | Path of Ident.t
-      (** A named class constructor reference such as `c`, `Widget.t`, or
+  (** A named class constructor reference such as `c`, `Widget.t`, or
           `Driver.make`.
 
           Examples:
@@ -2972,7 +2870,7 @@ and class_expression =
           ```
       *)
   | Structure of class_structure
-      (** An `object ... end` class structure body.
+  (** An `object ... end` class structure body.
 
           Example:
 
@@ -2984,7 +2882,7 @@ and class_expression =
           ```
       *)
   | Fun of class_fun_expression
-      (** A function-style class expression.
+  (** A function-style class expression.
 
           Example:
 
@@ -2993,9 +2891,9 @@ and class_expression =
           ```
       *)
   | Apply of class_apply_expression
-      (** A class application such as `builder x` or `make ~clock`. *)
+  (** A class application such as `builder x` or `make ~clock`. *)
   | Let of class_let_expression
-      (** A let-bound class expression.
+  (** A let-bound class expression.
 
           Example:
 
@@ -3004,7 +2902,7 @@ and class_expression =
           ```
       *)
   | Constraint of class_constraint_expression
-      (** A class expression constrained by a class type.
+  (** A class expression constrained by a class type.
 
           Example:
 
@@ -3013,23 +2911,23 @@ and class_expression =
           ```
       *)
   | LocalOpen of local_open_class_expression
-      (** A locally opened class expression such as `M.(builder)` or
+  (** A locally opened class expression such as `M.(builder)` or
           `let open M in object end`.
       *)
   | Parenthesized of parenthesized_class_expression
-      (** A parenthesized class expression used for grouping. *)
+  (** A parenthesized class expression used for grouping. *)
   | Attribute of {
       syntax_node : syntax_node;
       class_expression : class_expression;
       attribute : attribute;
     }
-      (** A class expression with an attached attribute. *)
+  (** A class expression with an attached attribute. *)
   | Extension of extension
-      (** A PPX extension parsed in class-expression position.
+
+(** A PPX extension parsed in class-expression position.
 
           Example: `[%driver]`.
       *)
-
 (** The structured payload of `ClassExpression.Structure`. *)
 and class_structure = {
   syntax_node : syntax_node;
@@ -3040,30 +2938,26 @@ and class_structure = {
 (** Fields inside an `object ... end` class structure. *)
 and class_field =
   | Method of class_method
-      (** A `method` declaration inside a class structure. *)
+  (** A `method` declaration inside a class structure. *)
   | Value of class_value
-      (** A `val` declaration inside a class structure. *)
+  (** A `val` declaration inside a class structure. *)
   | Inherit of class_inherit
-      (** An `inherit class_expr` field. *)
+  (** An `inherit class_expr` field. *)
   | Constraint of class_constraint
-      (** A `constraint t = u` field. *)
+  (** A `constraint t = u` field. *)
   | Initializer of class_initializer
-      (** An `initializer expr` field. *)
-  | Attribute of {
-      syntax_node : syntax_node;
-      field : class_field;
-      attribute : attribute;
-    }
-      (** A class field with an attached attribute.
+  (** An `initializer expr` field. *)
+  | Attribute of { syntax_node : syntax_node; field : class_field; attribute : attribute; }
+  (** A class field with an attached attribute.
 
           Example: `method run = 1 [@@foo]`.
       *)
   | Extension of extension
-      (** A PPX extension parsed as a class field.
+
+(** A PPX extension parsed as a class field.
 
           Example: `[%%foo]`.
       *)
-
 (** Payload for `ClassField.Method`.
 
     This covers concrete methods, virtual methods, private methods, and
@@ -3189,12 +3083,9 @@ and parenthesized_class_expression = {
 *)
 and module_expression =
   | Path of Ident.t
-      (** A module path such as `M`, `Stdlib.List`, or `Driver.Sqlite`. *)
-  | Structure of {
-      syntax_node : syntax_node;
-      item_syntax_nodes : syntax_node list;
-    }
-      (** A raw `struct ... end` expression.
+  (** A module path such as `M`, `Stdlib.List`, or `Driver.Sqlite`. *)
+  | Structure of { syntax_node : syntax_node; item_syntax_nodes : syntax_node list; }
+  (** A raw `struct ... end` expression.
 
           The contained items are preserved as raw `syntax_node`s rather than a
           separate public structure-item tree.
@@ -3204,21 +3095,14 @@ and module_expression =
       parameters : functor_parameter list;
       body : module_expression;
     }
-      (** A functor expression.
+  (** A functor expression.
 
           Example: `functor (X : S) -> struct ... end`.
       *)
-  | Apply of {
-      syntax_node : syntax_node;
-      callee : module_expression;
-      argument : module_expression;
-    }
-      (** A functor application such as `F(X)` or `F(X)(Y)`. *)
-  | ApplyUnit of {
-      syntax_node : syntax_node;
-      callee : module_expression;
-    }
-      (** A unit functor application such as `F()` or `F()()`.
+  | Apply of { syntax_node : syntax_node; callee : module_expression; argument : module_expression; }
+  (** A functor application such as `F(X)` or `F(X)(Y)`. *)
+  | ApplyUnit of { syntax_node : syntax_node; callee : module_expression; }
+  (** A unit functor application such as `F()` or `F()()`.
 
           This preserves the stock parsetree distinction between ordinary
           module application and generative application with an empty unit
@@ -3230,7 +3114,7 @@ and module_expression =
       colon_token : Token.t;
       module_type : module_type;
     }
-      (** A module expression constrained by a module type.
+  (** A module expression constrained by a module type.
 
           Examples:
 
@@ -3251,7 +3135,7 @@ and module_expression =
       package_type : package_type option;
       closing_token : Token.t;
     }
-      (** A first-class module unpacking expression.
+  (** A first-class module unpacking expression.
 
           Examples:
 
@@ -3266,20 +3150,18 @@ and module_expression =
       inner : module_expression;
       closing_token : Token.t;
     }
-      (** A parenthesized module expression used for grouping. *)
+  (** A parenthesized module expression used for grouping. *)
   | Attribute of {
       syntax_node : syntax_node;
       module_expression : module_expression;
       attribute : attribute;
     }
-      (** A module expression with an attached attribute. *)
+  (** A module expression with an attached attribute. *)
   | Extension of extension
-      (** A PPX extension parsed in module-expression position.
+(** A PPX extension parsed in module-expression position.
 
           Example: `[%driver]`.
       *)
-
-
 
 (** Expression syntax.
 
@@ -3288,7 +3170,9 @@ and module_expression =
     as `fun` versus `function`, `record` literals versus updates, and explicit
     parentheses.
 *)
+
 (** A member inside an object expression body. *)
+
 (** Class expression syntax.
 
     Examples:
@@ -3429,11 +3313,7 @@ module ClassField : sig
     | Inherit of class_inherit
     | Constraint of class_constraint
     | Initializer of class_initializer
-    | Attribute of {
-        syntax_node : syntax_node;
-        field : class_field;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; field : class_field; attribute : attribute; }
     | Extension of extension
   val syntax_node : t -> syntax_node
 end
@@ -3446,10 +3326,7 @@ end
 module ModuleExpression : sig
   type t = module_expression =
     | Path of Ident.t
-    | Structure of {
-        syntax_node : syntax_node;
-        item_syntax_nodes : syntax_node list;
-      }
+    | Structure of { syntax_node : syntax_node; item_syntax_nodes : syntax_node list; }
     | Functor of {
         syntax_node : syntax_node;
         parameters : functor_parameter list;
@@ -3460,10 +3337,7 @@ module ModuleExpression : sig
         callee : module_expression;
         argument : module_expression;
       }
-    | ApplyUnit of {
-        syntax_node : syntax_node;
-        callee : module_expression;
-      }
+    | ApplyUnit of { syntax_node : syntax_node; callee : module_expression; }
     | Constraint of {
         syntax_node : syntax_node;
         module_expression : module_expression;
@@ -3610,7 +3484,7 @@ module TypeParameterVariance : sig
     | Contravariant of {
         marker_token : Token.t;
       }
-    (** A `-` variance marker, as in `type -'a sink = ...`. *)
+  (** A `-` variance marker, as in `type -'a sink = ...`. *)
   val marker_token : t -> Token.t
 end
 
@@ -3652,10 +3526,8 @@ module PrivateFlag : sig
   type t = private_flag =
     | Public
     (** A public declaration such as `type t = int`. *)
-    | Private of {
-        private_token : Token.t;
-      }
-    (** A private declaration such as `type t = private int`. *)
+    | Private of { private_token : Token.t; }
+  (** A private declaration such as `type t = private int`. *)
   val private_token : t -> Token.t option
 
   val is_private : t -> bool
@@ -3705,7 +3577,6 @@ module RecordField : sig
   val name : t -> string
 
   val attributes : t -> attribute list
-
 end
 
 (** Helper view over `poly_variant_tag`.
@@ -3733,19 +3604,7 @@ module ConstructorArguments : sig
             type t = Wrapped of (int * string)
             ```
         *)
-    | Record of {
-        opening_token : Token.t;
-        fields : RecordField.t list;
-        closing_token : Token.t;
-      }
-    (** Inline record constructor arguments.
-
-            Example:
-
-            ```ocaml,norun
-            type t = Person of { name : string; age : int }
-            ```
-        *)
+    | Record of { opening_token : Token.t; fields : RecordField.t list; closing_token : Token.t; }
   (** Inline record constructor arguments.
 
             Example:
@@ -3754,6 +3613,16 @@ module ConstructorArguments : sig
             type t = Person of { name : string; age : int }
             ```
         *)
+
+  (** Inline record constructor arguments.
+
+            Example:
+
+            ```ocaml,norun
+            type t = Person of { name : string; age : int }
+            ```
+        *)
+
   (** Inline record constructor arguments.
 
             Example:
@@ -3795,7 +3664,6 @@ module VariantConstructor : sig
 
   val result_type : t -> core_type option
 
-
   val name : t -> string
 end
 
@@ -3832,12 +3700,8 @@ end
 module PolyVariantBound : sig
   type t = poly_variant_bound =
     | Exact
-    | UpperBound of {
-        marker_token : Token.t;
-      }
-    | LowerBound of {
-        marker_token : Token.t;
-      }
+    | UpperBound of { marker_token : Token.t; }
+    | LowerBound of { marker_token : Token.t; }
   val marker_token : t -> Token.t option
 end
 
@@ -3849,11 +3713,7 @@ end
 module RowField : sig
   type t = row_field =
     | Tag of poly_variant_tag
-    | Inherit of {
-        bar_token : Token.t option;
-        syntax_node : syntax_node;
-        type_ : core_type;
-      }
+    | Inherit of { bar_token : Token.t option; syntax_node : syntax_node; type_ : core_type; }
   val syntax_node : t -> syntax_node
 
   val bar_token : t -> Token.t option
@@ -3914,10 +3774,7 @@ module TypeDefinition : sig
             type t
             ```
         *)
-    | Alias of {
-        syntax_node : syntax_node;
-        manifest : core_type;
-      }
+    | Alias of { syntax_node : syntax_node; manifest : core_type; }
     (** A manifest alias.
 
             Examples:
@@ -3928,9 +3785,7 @@ module TypeDefinition : sig
             type t = Outer.Inner.(request -> response)
             ```
         *)
-    | Extensible of {
-        syntax_node : syntax_node;
-      }
+    | Extensible of { syntax_node : syntax_node; }
     (** An extensible variant declaration introduced with `= ..`.
 
             Example:
@@ -3964,24 +3819,23 @@ module TypeDefinition : sig
       }
     (** A record type definition such as
             `type t = { name : string; mutable count : int }`. *)
-    | Variant of {
-        syntax_node : syntax_node;
-        constructors : VariantConstructor.t list;
-      }
+    | Variant of { syntax_node : syntax_node; constructors : VariantConstructor.t list; }
     (** A variant definition whose constructors are lifted structurally.
 
             This includes ordinary constructors like `type t = A | B of int`
             and GADT-style constructors like `type _ expr = Int : int expr`.
         *)
     | PolyVariant of PolyVariant.t
-    (** A polymorphic variant definition such as
-            `type t = [ `A | `B of int ]` or
-            `type t = [ color | `Yellow ]`.
-        *)
   (** A polymorphic variant definition such as
             `type t = [ `A | `B of int ]` or
             `type t = [ color | `Yellow ]`.
         *)
+
+  (** A polymorphic variant definition such as
+            `type t = [ `A | `B of int ]` or
+            `type t = [ color | `Yellow ]`.
+        *)
+
   (** A polymorphic variant definition such as
             `type t = [ `A | `B of int ]` or
             `type t = [ color | `Yellow ]`.
@@ -4049,7 +3903,6 @@ module TypeDeclaration : sig
 
   val next_and_declaration : t -> t option
 
-
   val is_private : t -> bool
 
   val name_token : t -> Token.t
@@ -4085,7 +3938,6 @@ module TypeExtension : sig
   val extension_operator_tokens : t -> Token.t list
 
   val constructors : t -> VariantConstructor.t list
-
 
   val name_token : t -> Token.t
 end
@@ -4158,7 +4010,6 @@ module ModuleSignature : sig
   type definition =
     | Signature of module_type
     | Alias of module_expression
-
   type t = {
     syntax_node : syntax_node;
     keyword_token : Token.t;
@@ -4195,7 +4046,6 @@ module ModuleSignature : sig
   val next_and_declaration : t -> t option
 
   val is_recursive : t -> bool
-
 
   val name : t -> string
 end
@@ -4246,7 +4096,6 @@ module ModuleStructure : sig
 
   val is_recursive : t -> bool
 
-
   val name : t -> string
 end
 
@@ -4282,7 +4131,6 @@ module ModuleTypeDeclaration : sig
 
   val module_type : t -> module_type option
 
-
   val name : t -> string
 end
 
@@ -4306,7 +4154,7 @@ module OpenStatement : sig
             This is the only form accepted in signatures.
         *)
     | ModuleExpression of module_expression
-    (** An implementation open target lifted through `module_expression`.
+  (** An implementation open target lifted through `module_expression`.
 
             Examples:
 
@@ -4335,7 +4183,6 @@ module OpenStatement : sig
   val bang_token : t -> Token.t option
 
   val has_bang : t -> bool
-
 end
 
 module Docstring : sig
@@ -4396,8 +4243,7 @@ val leading_trivia_before_node : after:int -> syntax_node -> trivia list
 (** Return boundary trivia between a token and the next syntax node by combining
     the token's remaining leading trivia with the node's first-token leading
     trivia after the token ends. *)
-val leading_trivia_after_token_before_node :
-  after:int -> Token.t -> syntax_node -> trivia list
+val leading_trivia_after_token_before_node : after:int -> Token.t -> syntax_node -> trivia list
 
 (** Return the span covered by the syntax node's real tokens, excluding any
     leading token-attached trivia. *)
@@ -4456,7 +4302,6 @@ module ValueDeclaration : sig
   val type_ : t -> core_type
 
   val trailing_comment : t -> comment option
-
 end
 
 type external_declaration = {
@@ -4504,7 +4349,6 @@ module ClassDeclaration : sig
 
   val class_type : t -> class_type
 
-
   val name : t -> string
 end
 
@@ -4550,7 +4394,6 @@ module ClassDefinition : sig
 
   val class_body : t -> class_expression
 
-
   val name : t -> string
 end
 
@@ -4576,7 +4419,6 @@ type class_type_declaration = {
   equals_token : Token.t;
   class_type_body : class_type;
 }
-
 (** The payload of an `include` item.
 
     Implementations include module expressions such as `include M` or
@@ -4586,8 +4428,7 @@ type include_target =
   | ModuleExpression of module_expression
   (** An included module expression such as `include M` or `include F(X)`. *)
   | ModuleType of module_type
-  (** An included module type such as `include S` inside a signature. *)
-
+(** An included module type such as `include S` inside a signature. *)
 (** An `include` item.
 
     This keeps the include target in its native grammar family instead of
@@ -4620,74 +4461,72 @@ end
 module StructureItem : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
-        (** A `type` declaration item. *)
+    (** A `type` declaration item. *)
     | TypeExtension of TypeExtension.t
-        (** A `type ... += ...` extension item. *)
+    (** A `type ... += ...` extension item. *)
     | LetBinding of LetBinding.t
-        (** A `let` or `let rec` item. *)
+    (** A `let` or `let rec` item. *)
     | Expression of Expression.t
-        (** A standalone expression item, typically in implementation files. *)
+    (** A standalone expression item, typically in implementation files. *)
     | Attribute of attribute
-        (** A floating attribute item such as `[@@@warning "-32"]`. *)
+    (** A floating attribute item such as `[@@@warning "-32"]`. *)
     | Extension of extension
-        (** A floating extension item. *)
+    (** A floating extension item. *)
     | ClassDeclaration of ClassDefinition.t
-        (** A `class` declaration item. *)
+    (** A `class` declaration item. *)
     | ClassTypeDeclaration of class_type_declaration
-        (** A `class type` declaration item. *)
+    (** A `class type` declaration item. *)
     | ModuleDeclaration of ModuleStructure.t
-        (** A non-recursive `module` declaration item. *)
+    (** A non-recursive `module` declaration item. *)
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
-        (** A `module type` declaration item. *)
+    (** A `module type` declaration item. *)
     | OpenStatement of OpenStatement.t
-        (** An `open` item. *)
+    (** An `open` item. *)
     | Docstring of Docstring.t
-        (** A standalone top-level docstring item. *)
+    (** A standalone top-level docstring item. *)
     | Comment of Comment.t
-        (** A standalone top-level comment item. *)
+    (** A standalone top-level comment item. *)
     | ExternalDeclaration of external_declaration
-        (** An `external` declaration item. *)
+    (** An `external` declaration item. *)
     | IncludeStatement of include_statement
-        (** An `include` item. *)
+    (** An `include` item. *)
     | ExceptionDeclaration of exception_declaration
-        (** An `exception` declaration item. *)
-
+  (** An `exception` declaration item. *)
   val syntax_node : t -> syntax_node
 end
 
 module SignatureItem : sig
   type t =
     | TypeDeclaration of TypeDeclaration.t
-        (** A `type` declaration item. *)
+    (** A `type` declaration item. *)
     | TypeExtension of TypeExtension.t
-        (** A `type ... += ...` extension item. *)
+    (** A `type ... += ...` extension item. *)
     | Attribute of attribute
-        (** A floating attribute item such as `[@@@warning "-32"]`. *)
+    (** A floating attribute item such as `[@@@warning "-32"]`. *)
     | Extension of extension
-        (** A floating extension item. *)
+    (** A floating extension item. *)
     | ClassDeclaration of ClassDeclaration.t
-        (** A `class` declaration item. *)
+    (** A `class` declaration item. *)
     | ClassTypeDeclaration of class_type_declaration
-        (** A `class type` declaration item. *)
+    (** A `class type` declaration item. *)
     | ModuleDeclaration of ModuleSignature.t
-        (** A non-recursive `module` declaration item. *)
+    (** A non-recursive `module` declaration item. *)
     | ModuleTypeDeclaration of ModuleTypeDeclaration.t
-        (** A `module type` declaration item. *)
+    (** A `module type` declaration item. *)
     | OpenStatement of OpenStatement.t
-        (** An `open` item. *)
+    (** An `open` item. *)
     | Docstring of Docstring.t
-        (** A standalone top-level docstring item. *)
+    (** A standalone top-level docstring item. *)
     | Comment of Comment.t
-        (** A standalone top-level comment item. *)
+    (** A standalone top-level comment item. *)
     | ValueDeclaration of value_declaration
-        (** A `val` declaration item. *)
+    (** A `val` declaration item. *)
     | ExternalDeclaration of external_declaration
-        (** An `external` declaration item. *)
+    (** An `external` declaration item. *)
     | IncludeStatement of include_statement
-        (** An `include` item. *)
+    (** An `include` item. *)
     | ExceptionDeclaration of exception_declaration
-        (** An `exception` declaration item. *)
-
+  (** An `exception` declaration item. *)
   val syntax_node : t -> syntax_node
 end
 
@@ -4716,7 +4555,7 @@ type t =
   | Implementation of implementation
   (** An implementation file such as an `.ml`. *)
   | Interface of interface
-  (** An interface file such as an `.mli`. *)
+(** An interface file such as an `.mli`. *)
 (** Namespace helpers for the file-level CST root.
 
     This provides convenient access to the common projections shared by both

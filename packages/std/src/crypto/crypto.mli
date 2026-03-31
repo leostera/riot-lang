@@ -39,43 +39,53 @@
 
 type hash = Kernel.Crypto.hash
 (** Universal hash type produced by all hash algorithms. *)
-
 (** ## Modules *)
 
 module Hash = Kernel.Crypto.Hash
 
 module Hasher = Hasher
+
 (** Hasher interface and utilities *)
-
 module Digest = Digest
-(** Digest formatting functions *)
 
+(** Digest formatting functions *)
 (** ## Algorithms *)
 
 module Sha1 : Hasher.Intf
+
 module Sha256 : Hasher.Intf
+
 module Sha512 : Hasher.Intf
+
 module Md5 : Hasher.Intf
 
 (** ## Defaults *)
 
 module DefaultHasher = Default.DefaultHasher
+
 (** Default hasher for general use *)
-
 module RandomState = Default.RandomState
-(** Random state for HashMap/HashSet *)
 
+(** Random state for HashMap/HashSet *)
 (** ## Convenience Functions *)
 
 val hash_string : string -> Kernel.Crypto.hash
-(** Hash a string directly. *)
 
+(** Hash a string directly. *)
 val hash_bytes : bytes -> Kernel.Crypto.hash
+
 val hash_unit : unit -> Kernel.Crypto.hash
+
 val hash_int : int -> Kernel.Crypto.hash
+
 val hash_int32 : int32 -> Kernel.Crypto.hash
+
 val hash_int64 : int64 -> Kernel.Crypto.hash
+
 val hash_float : float -> Kernel.Crypto.hash
+
 val hash_bool : bool -> Kernel.Crypto.hash
+
 val hash_list : ('a -> Kernel.Crypto.hash) -> 'a list -> Kernel.Crypto.hash
+
 val hash_array : ('a -> Kernel.Crypto.hash) -> 'a array -> Kernel.Crypto.hash

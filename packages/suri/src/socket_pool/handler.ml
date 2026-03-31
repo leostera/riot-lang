@@ -13,7 +13,7 @@ type ('state, 'error) handler = {
 and t =
   | H : {
     handler : ('new_state, 'error) handler;
-    state : 'new_state
+    state : 'new_state;
   } -> t
 
 and ('state, 'error) handler_result =

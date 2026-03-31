@@ -1,5 +1,4 @@
 (** Standard library extensions and utilities *)
-
 module Agent = Agent
 module Application = Application
 module ArgParser = Arg_parser
@@ -54,22 +53,23 @@ module WorkerPool = Worker_pool
 module Ops = Kernel.Ops
 
 (* Include std's Global module which re-exports from Kernel *)
+
 include Global
 
 (* Application startup *)
-let start ~apps =
+
+let start = fun ~apps ->
   let config = Miniriot.Config.default in
-  let main ~args:_ =
+  let main = fun ~args:_ ->
     match Application.start_applications apps with
     | Ok _app_pids ->
         (* Keep system running indefinitely *)
-        let rec keep_alive () =
-          sleep (Time.Duration.from_secs 100000);
+        let rec keep_alive = fun () ->
+          sleep (Time.Duration.from_secs 100_000);
           keep_alive ()
         in
         keep_alive ();
         Ok ()
-    | Error e -> 
-        Error e
+    | Error e -> Error e
   in
   Miniriot.run ~config ~main ~args:[] ()

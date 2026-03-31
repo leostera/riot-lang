@@ -123,7 +123,6 @@ t
 (** {1 Success Responses (2xx)}
 
     Successful responses indicating the request was received and processed. *)
-
 (** [200 OK] - Standard success response.
 
     Most common response for successful requests.
@@ -191,7 +190,6 @@ val im_used : response
 (** {1 Redirection Responses (3xx)}
 
     Redirects indicating the client should take additional action. *)
-
 (** [300 Multiple Choices] - Multiple redirect options available. *)
 val multiple_choices : response
 
@@ -249,7 +247,6 @@ val permanent_redirect : response
 (** {1 Client Error Responses (4xx)}
 
     Errors caused by invalid client requests. *)
-
 (** [400 Bad Request] - Invalid request syntax or parameters.
 
     Use for validation errors or malformed requests.
@@ -391,7 +388,6 @@ val client_closed_request : response
 (** {1 Server Error Responses (5xx)}
 
     Errors caused by server failures. *)
-
 (** [500 Internal Server Error] - Generic server error.
 
     Use when an unexpected error occurs.
@@ -458,7 +454,6 @@ val not_extended : response
 val network_authentication_required : response
 
 (** ## Unofficial Status Codes *)
-
 (** `103 Checkpoint` *)
 val checkpoint : response
 

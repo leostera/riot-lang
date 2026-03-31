@@ -1,5 +1,4 @@
 (** HTTP/1.1 Request Parser *)
-
 open Std
 open Std.Iter
 open Common

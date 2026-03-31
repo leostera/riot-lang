@@ -1,53 +1,64 @@
 open Std
 open Std.Data
-  open Std.Collections
+open Std.Collections
+
 (** Event system for tusk - pure data types for events *)
 
 (** Strip ANSI escape codes from a string *)
-let strip_ansi_codes str =
+let strip_ansi_codes = fun str ->
   (* ANSI escape codes pattern: ESC[...m where ESC is \027 *)
-  let rec strip acc chars =
+  let rec strip = fun acc chars ->
     match chars with
-    | [] -> List.rev acc |> List.to_seq |> String.of_seq
+    | [] ->
+        List.rev acc |> List.to_seq |> String.of_seq
     | '\027' :: '[' :: rest ->
         (* Found start of ANSI escape sequence, skip until 'm' *)
-        let rec skip_until_m chars =
+        let rec skip_until_m = fun chars ->
           match chars with
           | [] -> []
           | 'm' :: rest -> rest
           | _ :: rest -> skip_until_m rest
         in
         strip acc (skip_until_m rest)
-    | c :: rest -> strip (c :: acc) rest
+    | c :: rest ->
+        strip (c :: acc) rest
   in
-  strip [] (String.to_seq str |> List.of_seq)
+  strip []
+    (String.to_seq str |> List.of_seq)
 
-type level = Error | Warn | Info | Debug | Trace
+type level =
+  Error
+  | Warn
+  | Info
+  | Debug
+  | Trace
 
-let level_to_string = function
+let level_to_string =
+  function
   | Error -> "error"
   | Warn -> "warn"
   | Info -> "info"
   | Debug -> "debug"
   | Trace -> "trace"
 
-type skip_reason = DependenciesFailed of string list
+type skip_reason =
+  DependenciesFailed of string list
 
 type error_kind =
   | SyntaxError
-  | TypeError of { description : string }
-  | UnboundValue of { name : string }
-  | UnboundModule of { name : string }
-  | FileNotFound of { filename : string }
-  | OtherError of { message : string }
+  | TypeError of { description : string; }
+  | UnboundValue of { name : string; }
+  | UnboundModule of { name : string; }
+  | FileNotFound of { filename : string; }
+  | OtherError of { message : string; }
 
 type build_error = {
   file : string;
   line : int;
-  span : int * int; (* start, end character positions *)
-  hint : string; (* The source line with caret pointing to error *)
+  span : int * int;  (* start, end character positions *)
+  hint : string;  (* The source line with caret pointing to error *)
   kind : error_kind;
-  raw : string; (* Raw compiler output *)
+  raw : string;  (* Raw compiler output *)
 }
 
 type build_result = {
@@ -67,52 +78,52 @@ type kind =
       succeeded : string list;
       failed : string list;
     }
-  | BuildGraphCreated of { nodes : int; duration_ms : int }
+  | BuildGraphCreated of { nodes : int; duration_ms : int; }
   | BuildGraphCreating
-  | BuildStarted of {
-      packages : string list;
-      total_modules : int;
-      workers : int;
-    }
-  | CacheHit of { package : string; hash : string }
-  | CacheMiss of { package : string; hash : string }
-  | CacheStored of { package : string; hash : string; artifacts : string list }
-  | CompileError of { package : string; error : build_error }
-  | CompilingImplementation of { package : string; file : string }
-  | CompilingInterface of { package : string; file : string }
-  | ComputingHash of { package : string }
-  | CopyingFile of { source : string; dest : string }
-  | CreatingDirectory of { path : string }
-  | CycleDetected of { packages : string list }
-  | DependencyMissing of { package : string; missing : string list }
-  | DependencySatisfied of { package : string }
-  | HashComputed of { package : string; hash : string }
-  | LinkingExecutable of { package : string; output : string }
-  | LinkingLibrary of { package : string; output : string }
-  | McpToolCall of { tool : string; args : Json.t }
+  | BuildStarted of { packages : string list; total_modules : int; workers : int; }
+  | CacheHit of { package : string; hash : string; }
+  | CacheMiss of { package : string; hash : string; }
+  | CacheStored of { package : string; hash : string; artifacts : string list; }
+  | CompileError of { package : string; error : build_error; }
+  | CompilingImplementation of { package : string; file : string; }
+  | CompilingInterface of { package : string; file : string; }
+  | ComputingHash of { package : string; }
+  | CopyingFile of { source : string; dest : string; }
+  | CreatingDirectory of { path : string; }
+  | CycleDetected of { packages : string list; }
+  | DependencyMissing of { package : string; missing : string list; }
+  | DependencySatisfied of { package : string; }
+  | HashComputed of { package : string; hash : string; }
+  | LinkingExecutable of { package : string; output : string; }
+  | LinkingLibrary of { package : string; output : string; }
+  | McpToolCall of { tool : string; args : Json.t; }
   | PackageComplete of build_result
-  | PackageSkipped of { package : string; reason : skip_reason }
-  | PackageStarted of { package : string }
-  | QueuePackage of { package : string; queue_type : [ `Ready | `Waiting ] }
-  | QueueStats of { ready : int; waiting : int; busy : int }
-  | RpcRequestReceived of { request_type : string; args : Json.t }
-  | RpcResponseSent of { result : (unit, string) result }
-  | ServerRestarted of { packages : int; toolchain : string }
-  | ServerScanning of { root : string }
+  | PackageSkipped of { package : string; reason : skip_reason; }
+  | PackageStarted of { package : string; }
+  | QueuePackage of { package : string; queue_type :
+        [
+          `Ready
+          | `Waiting
+        ]; }
+  | QueueStats of { ready : int; waiting : int; busy : int; }
+  | RpcRequestReceived of { request_type : string; args : Json.t; }
+  | RpcResponseSent of { result : (unit, string) result; }
+  | ServerRestarted of { packages : int; toolchain : string; }
+  | ServerScanning of { root : string; }
   | ServerShutdown
-  | ServerStarted of { pid : string }
-  | WorkerAssigned of { worker_id : Worker_id.t; package : string }
-  | WorkerIdle of { worker_id : Worker_id.t }
-  | WorkerPoolStarted of { workers : int }
-  | WorkerStarted of { worker_id : Worker_id.t }
+  | ServerStarted of { pid : string; }
+  | WorkerAssigned of { worker_id : Worker_id.t; package : string; }
+  | WorkerIdle of { worker_id : Worker_id.t; }
+  | WorkerPoolStarted of { workers : int; }
+  | WorkerStarted of { worker_id : Worker_id.t; }
   | StoreCreating
-  | StoreCreated of { duration_ms : int }
-  | WorkerPoolCreating of { workers : int }
-  | WorkerPoolCreated of { workers : int; duration_ms : int }
+  | StoreCreated of { duration_ms : int; }
+  | WorkerPoolCreating of { workers : int; }
+  | WorkerPoolCreated of { workers : int; duration_ms : int; }
   | WorkspaceEmpty
   | WorkspaceScanning
-  | WorkspaceScanned of { packages : int; duration_ms : int }
-  | WritingFile of { path : string }
+  | WorkspaceScanned of { packages : int; duration_ms : int; }
+  | WritingFile of { path : string; }
 
 type t = {
   timestamp : Datetime.t;
@@ -122,13 +133,13 @@ type t = {
 }
 
 (** Create a new event with current timestamp *)
-let create ~session_id ~level kind =
-  { timestamp = Datetime.now (); session_id; level; kind }
+let create = fun ~session_id ~level kind -> {timestamp = Datetime.now (); session_id; level; kind}
 
 (** Format timestamp for display *)
 
 (** Get the machine-readable event name *)
-let name = function
+let name =
+  function
   | BuildComplete _ -> "tusk.build.completed"
   | BuildGraphCreated _ -> "tusk.build_graph.created"
   | BuildGraphCreating -> "tusk.build_graph.creating"
@@ -174,25 +185,35 @@ let name = function
   | WorkerPoolCreated _ -> "tusk.worker_pool.created"
 
 (** Get human-readable display message *)
-let display = function
+let display =
+  function
   | BuildStarted { packages; _ } ->
       "Build started for " ^ Int.to_string (List.length packages) ^ " packages"
   | BuildComplete { duration_ms; succeeded; failed; _ } ->
-      "Build completed in " ^ Int.to_string duration_ms ^ "ms (" ^ Int.to_string (List.length succeeded) ^ " succeeded, " ^ Int.to_string (List.length failed) ^ " failed)"
-  | PackageStarted { package } -> "Building " ^ package ^ "..."
+      "Build completed in "
+      ^ Int.to_string duration_ms
+      ^ "ms ("
+      ^ Int.to_string (List.length succeeded)
+      ^ " succeeded, "
+      ^ Int.to_string (List.length failed)
+      ^ " failed)"
+  | PackageStarted { package } ->
+      "Building " ^ package ^ "..."
   | PackageComplete { package; success; duration_ms; _ } ->
-      if success then "✓ Built " ^ package ^ " in " ^ Int.to_string duration_ms ^ "ms"
-      else "✗ Failed to build " ^ package
+      if success then
+        "✓ Built " ^ package ^ " in " ^ Int.to_string duration_ms ^ "ms"
+      else
+        "✗ Failed to build " ^ package
   | PackageSkipped { package; reason } ->
       let reason_str =
         match reason with
-        | DependenciesFailed deps ->
-            "dependencies failed: " ^ String.concat ", " deps
+        | DependenciesFailed deps -> "dependencies failed: " ^ String.concat ", " deps
       in
       "⊘ Skipped " ^ package ^ " (" ^ reason_str ^ ")"
   | CompileError { package; error } ->
       let col_start, _ = error.span in
-      let kind_msg = match error.kind with
+      let kind_msg =
+        match error.kind with
         | SyntaxError -> "Syntax error"
         | TypeError { description } -> description
         | UnboundValue { name } -> "Unbound value " ^ name
@@ -200,11 +221,22 @@ let display = function
         | FileNotFound { filename } -> "Cannot find file " ^ filename
         | OtherError { message } -> message
       in
-      "Error in " ^ package ^ " [" ^ error.file ^ ":" ^ Int.to_string error.line ^ ":" ^ Int.to_string col_start ^ "]: " ^ kind_msg
+      "Error in "
+      ^ package
+      ^ " ["
+      ^ error.file
+      ^ ":"
+      ^ Int.to_string error.line
+      ^ ":"
+      ^ Int.to_string col_start
+      ^ "]: "
+      ^ kind_msg
   | CycleDetected { packages } ->
       "Circular dependency detected: " ^ String.concat " -> " packages
-  | CacheHit { package; _ } -> "Cached " ^ package
-  | CacheMiss { package; _ } -> "Cache miss for " ^ package
+  | CacheHit { package; _ } ->
+      "Cached " ^ package
+  | CacheMiss { package; _ } ->
+      "Cache miss for " ^ package
   | CacheStored { package; artifacts; _ } ->
       "Cached " ^ package ^ " (" ^ Int.to_string (List.length artifacts) ^ " artifacts)"
   | WorkerPoolStarted { workers } ->
@@ -215,25 +247,43 @@ let display = function
       "Worker " ^ Worker_id.to_string worker_id ^ " assigned to " ^ package
   | WorkerIdle { worker_id } ->
       "Worker " ^ Worker_id.to_string worker_id ^ " idle"
-  | ServerStarted { pid } -> "Server started (pid: " ^ pid ^ ")"
-  | ServerScanning { root } -> "Scanning workspace: " ^ root
+  | ServerStarted { pid } ->
+      "Server started (pid: " ^ pid ^ ")"
+  | ServerScanning { root } ->
+      "Scanning workspace: " ^ root
   | ServerRestarted { packages; toolchain } ->
       "Server restarted with " ^ Int.to_string packages ^ " packages (toolchain: " ^ toolchain ^ ")"
-  | WorkspaceEmpty -> "No packages found in workspace"
-  | WorkspaceScanning -> "Scanning workspace..."
+  | WorkspaceEmpty ->
+      "No packages found in workspace"
+  | WorkspaceScanning ->
+      "Scanning workspace..."
   | WorkspaceScanned { packages; duration_ms } ->
-      "Scanned workspace: " ^ Int.to_string packages ^ " packages in " ^ Int.to_string duration_ms ^ "ms"
-  | BuildGraphCreating -> "Creating build graph..."
+      "Scanned workspace: "
+      ^ Int.to_string packages
+      ^ " packages in "
+      ^ Int.to_string duration_ms
+      ^ "ms"
+  | BuildGraphCreating ->
+      "Creating build graph..."
   | BuildGraphCreated { nodes; duration_ms } ->
       "Created build graph: " ^ Int.to_string nodes ^ " nodes in " ^ Int.to_string duration_ms ^ "ms"
-  | ServerShutdown -> "Server shutting down"
+  | ServerShutdown ->
+      "Server shutting down"
   | QueuePackage { package; queue_type } ->
       let typ =
-        match queue_type with `Ready -> "ready" | `Waiting -> "waiting"
+        match queue_type with
+        | `Ready -> "ready"
+        | `Waiting -> "waiting"
       in
       "Queued " ^ package ^ " (" ^ typ ^ ")"
   | QueueStats { ready; waiting; busy } ->
-      "Queue: " ^ Int.to_string ready ^ " ready, " ^ Int.to_string waiting ^ " waiting, " ^ Int.to_string busy ^ " busy"
+      "Queue: "
+      ^ Int.to_string ready
+      ^ " ready, "
+      ^ Int.to_string waiting
+      ^ " waiting, "
+      ^ Int.to_string busy
+      ^ " busy"
   | DependencyMissing { package; missing } ->
       package ^ " waiting for: " ^ String.concat ", " missing
   | DependencySatisfied { package } ->
@@ -246,25 +296,42 @@ let display = function
       "[" ^ package ^ "] Linking library " ^ output
   | LinkingExecutable { package; output } ->
       "[" ^ package ^ "] Linking executable " ^ output
-  | ComputingHash { package } -> "Computing hash for " ^ package
-  | HashComputed { package; hash } -> "Hash for " ^ package ^ ": " ^ hash
-  | CopyingFile { source; dest } -> "Copying " ^ source ^ " -> " ^ dest
-  | WritingFile { path } -> "Writing " ^ path
-  | CreatingDirectory { path } -> "Creating directory " ^ path
+  | ComputingHash { package } ->
+      "Computing hash for " ^ package
+  | HashComputed { package; hash } ->
+      "Hash for " ^ package ^ ": " ^ hash
+  | CopyingFile { source; dest } ->
+      "Copying " ^ source ^ " -> " ^ dest
+  | WritingFile { path } ->
+      "Writing " ^ path
+  | CreatingDirectory { path } ->
+      "Creating directory " ^ path
   | RpcRequestReceived { request_type; _ } ->
       "RPC request: " ^ request_type
   | RpcResponseSent { result } ->
-      "RPC response sent (success: " ^ Bool.to_string (match result with Ok _ -> true | Error _ -> false) ^ ")"
-  | McpToolCall { tool; _ } -> "MCP tool call: " ^ tool
-  | StoreCreating -> "Creating build cache store"
-  | StoreCreated { duration_ms } -> "Store created in " ^ Int.to_string duration_ms ^ "ms"
+      "RPC response sent (success: " ^ Bool.to_string
+        (
+          match result with
+          | Ok _ -> true
+          | Error _ -> false
+        ) ^ ")"
+  | McpToolCall { tool; _ } ->
+      "MCP tool call: " ^ tool
+  | StoreCreating ->
+      "Creating build cache store"
+  | StoreCreated { duration_ms } ->
+      "Store created in " ^ Int.to_string duration_ms ^ "ms"
   | WorkerPoolCreating { workers } ->
       "Creating worker pool with " ^ Int.to_string workers ^ " workers"
   | WorkerPoolCreated { workers; duration_ms } ->
-      "Worker pool created with " ^ Int.to_string workers ^ " workers in " ^ Int.to_string duration_ms ^ "ms"
+      "Worker pool created with "
+      ^ Int.to_string workers
+      ^ " workers in "
+      ^ Int.to_string duration_ms
+      ^ "ms"
 
 (** Convert to human-readable string with timestamp *)
-let to_string event =
+let to_string = fun event ->
   let timestamp = Datetime.to_iso8601 event.timestamp in
   let level_str =
     match event.level with
@@ -275,66 +342,65 @@ let to_string event =
     | Trace -> "[TRACE]"
   in
   let msg = display event.kind in
-  if level_str = "" then "[" ^ timestamp ^ "] " ^ msg
-  else "[" ^ timestamp ^ "] " ^ level_str ^ " " ^ msg
+  if level_str = "" then
+    "[" ^ timestamp ^ "] " ^ msg
+  else
+    "[" ^ timestamp ^ "] " ^ level_str ^ " " ^ msg
 
 (** Convert kind to JSON *)
-let kind_to_json = function
+let kind_to_json =
+  function
   | BuildComplete { duration_ms; results; succeeded; failed } ->
-      Json.Object
-        [
-          ("duration_ms", Json.Int duration_ms);
-          ("succeeded", Json.Array (List.map (fun s -> Json.String s) succeeded));
-          ("failed", Json.Array (List.map (fun s -> Json.String s) failed));
-        ]
+      Json.Object [
+        ("duration_ms", Json.Int duration_ms);
+        ("succeeded", Json.Array (List.map (fun s -> Json.String s) succeeded));
+        ("failed", Json.Array (List.map (fun s -> Json.String s) failed));
+
+      ]
   | BuildGraphCreated { nodes; duration_ms } ->
-      Json.Object
-        [ ("nodes", Json.Int nodes); ("duration_ms", Json.Int duration_ms) ]
-  | BuildGraphCreating -> Json.Object []
+      Json.Object [ ("nodes", Json.Int nodes); ("duration_ms", Json.Int duration_ms) ]
+  | BuildGraphCreating ->
+      Json.Object []
   | BuildStarted { packages; total_modules; workers } ->
-      Json.Object
-        [
-          ("packages", Json.Array (List.map (fun p -> Json.String p) packages));
-          ("total_modules", Json.Int total_modules);
-          ("workers", Json.Int workers);
-        ]
+      Json.Object [
+        ("packages", Json.Array (List.map (fun p -> Json.String p) packages));
+        ("total_modules", Json.Int total_modules);
+        ("workers", Json.Int workers);
+
+      ]
   | CacheHit { package; hash } ->
-      Json.Object
-        [ ("package", Json.String package); ("hash", Json.String hash) ]
+      Json.Object [ ("package", Json.String package); ("hash", Json.String hash) ]
   | CacheMiss { package; hash } ->
-      Json.Object
-        [ ("package", Json.String package); ("hash", Json.String hash) ]
+      Json.Object [ ("package", Json.String package); ("hash", Json.String hash) ]
   | PackageStarted { package } ->
       Json.Object [ ("package", Json.String package) ]
-  | PackageComplete
-      {
-        package;
-        success;
-        duration_ms;
-        modules_compiled;
-        cache_hits;
-        cache_misses;
-        _;
-      } ->
-      Json.Object
-        [
-          ("package", Json.String package);
-          ("success", Json.Bool success);
-          ("duration_ms", Json.Int duration_ms);
-          ("modules_compiled", Json.Int modules_compiled);
-          ("cache_hits", Json.Int cache_hits);
-          ("cache_misses", Json.Int cache_misses);
-        ]
+  | PackageComplete {
+    package;
+    success;
+    duration_ms;
+    modules_compiled;
+    cache_hits;
+    cache_misses;
+    _;
+
+  } ->
+      Json.Object [
+        ("package", Json.String package);
+        ("success", Json.Bool success);
+        ("duration_ms", Json.Int duration_ms);
+        ("modules_compiled", Json.Int modules_compiled);
+        ("cache_hits", Json.Int cache_hits);
+        ("cache_misses", Json.Int cache_misses);
+
+      ]
   | PackageSkipped { package; reason } ->
       let reason_json =
         match reason with
-        | DependenciesFailed deps ->
-            Json.Object
-              [
-                ("type", Json.String "dependencies_failed");
-                ( "dependencies",
-                  Json.Array (List.map (fun d -> Json.String d) deps) );
-              ]
+        | DependenciesFailed deps -> Json.Object [
+          ("type", Json.String "dependencies_failed");
+          ("dependencies", Json.Array (List.map (fun d -> Json.String d) deps));
+
+        ]
       in
       Json.Object [ ("package", Json.String package); ("reason", reason_json) ]
   | CompileError { package; error } ->
@@ -348,159 +414,153 @@ let kind_to_json = function
         | FileNotFound { filename } -> "Cannot find file " ^ filename
         | OtherError { message } -> strip_ansi_codes message
       in
-      Json.Object
-        [
-          ("package", Json.String package);
-          ("file", Json.String error.file);
-          ("line", Json.Int error.line);
-          ("span", Json.Array [ Json.Int col_start; Json.Int col_end ]);
-          ("message", Json.String (strip_ansi_codes error_message));
-          ("hint", Json.String (strip_ansi_codes error.hint));
-          ("raw", Json.String (strip_ansi_codes error.raw));
-        ]
+      Json.Object [
+        ("package", Json.String package);
+        ("file", Json.String error.file);
+        ("line", Json.Int error.line);
+        ("span", Json.Array [ Json.Int col_start; Json.Int col_end ]);
+        ("message", Json.String (strip_ansi_codes error_message));
+        ("hint", Json.String (strip_ansi_codes error.hint));
+        ("raw", Json.String (strip_ansi_codes error.raw));
+
+      ]
   | CacheStored { package; hash; artifacts } ->
-      Json.Object
-        [
-          ("package", Json.String package);
-          ("hash", Json.String hash);
-          ("artifacts", Json.Array (List.map (fun a -> Json.String a) artifacts));
-        ]
+      Json.Object [
+        ("package", Json.String package);
+        ("hash", Json.String hash);
+        ("artifacts", Json.Array (List.map (fun a -> Json.String a) artifacts));
+
+      ]
   | CompilingImplementation { package; file } ->
-      Json.Object
-        [ ("package", Json.String package); ("file", Json.String file) ]
+      Json.Object [ ("package", Json.String package); ("file", Json.String file) ]
   | CompilingInterface { package; file } ->
-      Json.Object
-        [ ("package", Json.String package); ("file", Json.String file) ]
+      Json.Object [ ("package", Json.String package); ("file", Json.String file) ]
   | ComputingHash { package } ->
       Json.Object [ ("package", Json.String package) ]
   | CopyingFile { source; dest } ->
       Json.Object [ ("source", Json.String source); ("dest", Json.String dest) ]
-  | CreatingDirectory { path } -> Json.Object [ ("path", Json.String path) ]
+  | CreatingDirectory { path } ->
+      Json.Object [ ("path", Json.String path) ]
   | CycleDetected { packages } ->
-      Json.Object
-        [
-          ("packages", Json.Array (List.map (fun p -> Json.String p) packages));
-        ]
+      Json.Object [ ("packages", Json.Array (List.map (fun p -> Json.String p) packages));  ]
   | DependencyMissing { package; missing } ->
-      Json.Object
-        [
-          ("package", Json.String package);
-          ("missing", Json.Array (List.map (fun m -> Json.String m) missing));
-        ]
+      Json.Object [
+        ("package", Json.String package);
+        ("missing", Json.Array (List.map (fun m -> Json.String m) missing));
+
+      ]
   | DependencySatisfied { package } ->
       Json.Object [ ("package", Json.String package) ]
   | HashComputed { package; hash } ->
-      Json.Object
-        [ ("package", Json.String package); ("hash", Json.String hash) ]
-  | StoreCreating -> Json.Object []
+      Json.Object [ ("package", Json.String package); ("hash", Json.String hash) ]
+  | StoreCreating ->
+      Json.Object []
   | StoreCreated { duration_ms } ->
       Json.Object [ ("duration_ms", Json.Int duration_ms) ]
   | WorkerPoolCreating { workers } ->
       Json.Object [ ("workers", Json.Int workers) ]
   | WorkerPoolCreated { workers; duration_ms } ->
-      Json.Object
-        [ ("workers", Json.Int workers); ("duration_ms", Json.Int duration_ms) ]
+      Json.Object [ ("workers", Json.Int workers); ("duration_ms", Json.Int duration_ms) ]
   | LinkingExecutable { package; output } ->
-      Json.Object
-        [ ("package", Json.String package); ("output", Json.String output) ]
+      Json.Object [ ("package", Json.String package); ("output", Json.String output) ]
   | LinkingLibrary { package; output } ->
-      Json.Object
-        [ ("package", Json.String package); ("output", Json.String output) ]
+      Json.Object [ ("package", Json.String package); ("output", Json.String output) ]
   | McpToolCall { tool; args } ->
       Json.Object [ ("tool", Json.String tool); ("args", args) ]
   | QueuePackage { package; queue_type } ->
-      Json.Object
-        [
-          ("package", Json.String package);
-          ( "queue_type",
-            Json.String
-              (match queue_type with
-              | `Ready -> "ready"
-              | `Waiting -> "waiting") );
-        ]
+      Json.Object [ ("package", Json.String package); (
+          "queue_type",
+          Json.String (
+            match queue_type with
+            | `Ready -> "ready"
+            | `Waiting -> "waiting"
+          )
+        );  ]
   | QueueStats { ready; waiting; busy } ->
-      Json.Object
-        [
-          ("ready", Json.Int ready);
-          ("waiting", Json.Int waiting);
-          ("busy", Json.Int busy);
-        ]
+      Json.Object [
+        ("ready", Json.Int ready);
+        ("waiting", Json.Int waiting);
+        ("busy", Json.Int busy);
+
+      ]
   | RpcRequestReceived { request_type; args } ->
       Json.Object [ ("request_type", Json.String request_type); ("args", args) ]
   | RpcResponseSent { result } ->
-      Json.Object
-        [
-          ( "success",
-            Json.Bool (match result with Ok _ -> true | Error _ -> false) );
-          ( "error",
-            match result with Ok _ -> Json.Null | Error e -> Json.String e );
-        ]
+      Json.Object [ (
+          "success",
+          Json.Bool (
+            match result with
+            | Ok _ -> true
+            | Error _ -> false
+          )
+        ); (
+          "error",
+          match result with
+          | Ok _ -> Json.Null
+          | Error e -> Json.String e
+        );  ]
   | ServerRestarted { packages; toolchain } ->
-      Json.Object
-        [
-          ("packages", Json.Int packages); ("toolchain", Json.String toolchain);
-        ]
-  | ServerScanning { root } -> Json.Object [ ("root", Json.String root) ]
-  | ServerShutdown -> Json.Object []
-  | ServerStarted { pid } -> Json.Object [ ("pid", Json.String pid) ]
+      Json.Object [ ("packages", Json.Int packages); ("toolchain", Json.String toolchain);  ]
+  | ServerScanning { root } ->
+      Json.Object [ ("root", Json.String root) ]
+  | ServerShutdown ->
+      Json.Object []
+  | ServerStarted { pid } ->
+      Json.Object [ ("pid", Json.String pid) ]
   | WorkerAssigned { worker_id; package } ->
-      Json.Object
-        [
-          ("worker_id", Json.String (Worker_id.to_string worker_id));
-          ("package", Json.String package);
-        ]
+      Json.Object [
+        ("worker_id", Json.String (Worker_id.to_string worker_id));
+        ("package", Json.String package);
+
+      ]
   | WorkerIdle { worker_id } ->
       Json.Object [ ("worker_id", Json.String (Worker_id.to_string worker_id)) ]
   | WorkerPoolStarted { workers } ->
       Json.Object [ ("workers", Json.Int workers) ]
   | WorkerStarted { worker_id } ->
       Json.Object [ ("worker_id", Json.String (Worker_id.to_string worker_id)) ]
-  | WorkspaceEmpty -> Json.Object []
-  | WorkspaceScanning -> Json.Object []
+  | WorkspaceEmpty ->
+      Json.Object []
+  | WorkspaceScanning ->
+      Json.Object []
   | WorkspaceScanned { packages; duration_ms } ->
-      Json.Object
-        [
-          ("packages", Json.Int packages); ("duration_ms", Json.Int duration_ms);
-        ]
-  | WritingFile { path } -> Json.Object [ ("path", Json.String path) ]
+      Json.Object [ ("packages", Json.Int packages); ("duration_ms", Json.Int duration_ms);  ]
+  | WritingFile { path } ->
+      Json.Object [ ("path", Json.String path) ]
 
 (** Convert event to JSON *)
-let to_json event =
+let to_json = fun event ->
   let timestamp = Datetime.to_iso8601 event.timestamp in
   (* Strip ANSI codes from the event before converting to JSON *)
   let clean_event =
     match event.kind with
     | CompileError { package; error } ->
-        let clean_error =
-          {
-            error with
-            raw = strip_ansi_codes error.raw;
-            hint = strip_ansi_codes error.hint;
-          }
-        in
-        { event with kind = CompileError { package; error = clean_error } }
+        let clean_error = {
+          error
+          with raw = strip_ansi_codes error.raw;
+          hint = strip_ansi_codes error.hint;
+
+        } in
+        {event with kind = CompileError {package; error = clean_error}}
     | _ -> event
   in
-  Json.Object
-    [
-      ("timestamp", Json.String timestamp);
-      ("session_id", Json.String (Session_id.to_string event.session_id));
-      ("level", Json.String (level_to_string event.level));
-      ("event", Json.String (name clean_event.kind));
-      ("message", Json.String (strip_ansi_codes (display clean_event.kind)));
-      ("data", kind_to_json clean_event.kind);
-    ]
+  Json.Object [
+    ("timestamp", Json.String timestamp);
+    ("session_id", Json.String (Session_id.to_string event.session_id));
+    ("level", Json.String (level_to_string event.level));
+    ("event", Json.String (name clean_event.kind));
+    ("message", Json.String (strip_ansi_codes (display clean_event.kind)));
+    ("data", kind_to_json clean_event.kind);
+
+  ]
 
 (** Convert kind from JSON *)
-let kind_from_json json =
+let kind_from_json = fun json ->
   match json with
   | Json.Object fields -> (
       match List.assoc_opt "event" fields with
       | Some (Json.String event_name) -> (
-          let data =
-            List.assoc_opt "data" fields
-            |> Option.unwrap_or ~default:(Json.Object [])
-          in
+          let data = List.assoc_opt "data" fields |> Option.unwrap_or ~default:(Json.Object []) in
           match event_name with
           | "tusk.build.completed" -> (
               match data with
@@ -514,7 +574,11 @@ let kind_from_json json =
                     match List.assoc_opt "succeeded" data_fields with
                     | Some (Json.Array arr) ->
                         List.filter_map
-                          (function Json.String s -> Some s | _ -> None)
+                          (
+                            function
+                            | Json.String s -> Some s
+                            | _ -> None
+                          )
                           arr
                     | _ -> []
                   in
@@ -522,14 +586,17 @@ let kind_from_json json =
                     match List.assoc_opt "failed" data_fields with
                     | Some (Json.Array arr) ->
                         List.filter_map
-                          (function Json.String s -> Some s | _ -> None)
+                          (
+                            function
+                            | Json.String s -> Some s
+                            | _ -> None
+                          )
                           arr
                     | _ -> []
                   in
-                  Ok
-                    (BuildComplete
-                       { duration_ms; results = []; succeeded; failed })
-              | _ -> Error "Invalid BuildComplete data")
+                  Ok (BuildComplete {duration_ms; results = []; succeeded; failed})
+              | _ -> Error "Invalid BuildComplete data"
+            )
           | "tusk.build.started" -> (
               match data with
               | Json.Object data_fields ->
@@ -537,7 +604,11 @@ let kind_from_json json =
                     match List.assoc_opt "packages" data_fields with
                     | Some (Json.Array arr) ->
                         List.filter_map
-                          (function Json.String s -> Some s | _ -> None)
+                          (
+                            function
+                            | Json.String s -> Some s
+                            | _ -> None
+                          )
                           arr
                     | _ -> []
                   in
@@ -551,8 +622,9 @@ let kind_from_json json =
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (BuildStarted { packages; total_modules; workers })
-              | _ -> Error "Invalid BuildStarted data")
+                  Ok (BuildStarted {packages; total_modules; workers})
+              | _ -> Error "Invalid BuildStarted data"
+            )
           | "tusk.build.package.started" -> (
               match data with
               | Json.Object data_fields ->
@@ -561,8 +633,9 @@ let kind_from_json json =
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
-                  Ok (PackageStarted { package })
-              | _ -> Error "Invalid PackageStarted data")
+                  Ok (PackageStarted {package})
+              | _ -> Error "Invalid PackageStarted data"
+            )
           | "tusk.build.package.completed" -> (
               match data with
               | Json.Object data_fields ->
@@ -596,18 +669,18 @@ let kind_from_json json =
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok
-                    (PackageComplete
-                       {
-                         package;
-                         success;
-                         duration_ms;
-                         modules_compiled;
-                         cache_hits;
-                         cache_misses;
-                         errors = [];
-                       })
-              | _ -> Error "Invalid PackageComplete data")
+                  Ok (PackageComplete {
+                    package;
+                    success;
+                    duration_ms;
+                    modules_compiled;
+                    cache_hits;
+                    cache_misses;
+                    errors = [];
+
+                  })
+              | _ -> Error "Invalid PackageComplete data"
+            )
           | "tusk.build.package.skipped" -> (
               match data with
               | Json.Object data_fields ->
@@ -621,23 +694,27 @@ let kind_from_json json =
                     | Some (Json.Object reason_fields) -> (
                         match List.assoc_opt "type" reason_fields with
                         | Some (Json.String "dependencies_failed") -> (
-                            match
-                              List.assoc_opt "dependencies" reason_fields
-                            with
+                            match List.assoc_opt "dependencies" reason_fields with
                             | Some (Json.Array deps) ->
                                 let dep_names =
                                   List.filter_map
-                                    (function
-                                      | Json.String s -> Some s | _ -> None)
+                                    (
+                                      function
+                                      | Json.String s -> Some s
+                                      | _ -> None
+                                    )
                                     deps
                                 in
                                 DependenciesFailed dep_names
-                            | _ -> DependenciesFailed [])
-                        | _ -> DependenciesFailed [])
+                            | _ -> DependenciesFailed []
+                          )
+                        | _ -> DependenciesFailed []
+                      )
                     | _ -> DependenciesFailed []
                   in
-                  Ok (PackageSkipped { package; reason })
-              | _ -> Error "Invalid PackageSkipped data")
+                  Ok (PackageSkipped {package; reason})
+              | _ -> Error "Invalid PackageSkipped data"
+            )
           | "tusk.build.cache.hit" -> (
               match data with
               | Json.Object data_fields ->
@@ -651,8 +728,9 @@ let kind_from_json json =
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
-                  Ok (CacheHit { package; hash })
-              | _ -> Error "Invalid CacheHit data")
+                  Ok (CacheHit {package; hash})
+              | _ -> Error "Invalid CacheHit data"
+            )
           | "tusk.build.cache.miss" -> (
               match data with
               | Json.Object data_fields ->
@@ -666,8 +744,9 @@ let kind_from_json json =
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
-                  Ok (CacheMiss { package; hash })
-              | _ -> Error "Invalid CacheMiss data")
+                  Ok (CacheMiss {package; hash})
+              | _ -> Error "Invalid CacheMiss data"
+            )
           | "tusk.build.cache.stored" -> (
               match data with
               | Json.Object data_fields ->
@@ -685,12 +764,17 @@ let kind_from_json json =
                     match List.assoc_opt "artifacts" data_fields with
                     | Some (Json.Array arr) ->
                         List.filter_map
-                          (function Json.String s -> Some s | _ -> None)
+                          (
+                            function
+                            | Json.String s -> Some s
+                            | _ -> None
+                          )
                           arr
                     | _ -> []
                   in
-                  Ok (CacheStored { package; hash; artifacts })
-              | _ -> Error "Invalid CacheStored data")
+                  Ok (CacheStored {package; hash; artifacts})
+              | _ -> Error "Invalid CacheStored data"
+            )
           | "tusk.build.compile.interface" -> (
               match data with
               | Json.Object data_fields ->
@@ -704,8 +788,9 @@ let kind_from_json json =
                     | Some (Json.String f) -> f
                     | _ -> ""
                   in
-                  Ok (CompilingInterface { package; file })
-              | _ -> Error "Invalid CompilingInterface data")
+                  Ok (CompilingInterface {package; file})
+              | _ -> Error "Invalid CompilingInterface data"
+            )
           | "tusk.build.compile.implementation" -> (
               match data with
               | Json.Object data_fields ->
@@ -719,8 +804,9 @@ let kind_from_json json =
                     | Some (Json.String f) -> f
                     | _ -> ""
                   in
-                  Ok (CompilingImplementation { package; file })
-              | _ -> Error "Invalid CompilingImplementation data")
+                  Ok (CompilingImplementation {package; file})
+              | _ -> Error "Invalid CompilingImplementation data"
+            )
           | "tusk.build.compile.error" -> (
               match data with
               | Json.Object data_fields ->
@@ -741,10 +827,8 @@ let kind_from_json json =
                   in
                   let span =
                     match List.assoc_opt "span" data_fields with
-                    | Some (Json.Array [ Json.Int start; Json.Int end_ ]) ->
-                        (start, end_)
+                    | Some (Json.Array [Json.Int start;Json.Int end_]) -> (start, end_)
                     | _ -> (0, 0)
-                    (* default span *)
                   in
                   let message =
                     match List.assoc_opt "message" data_fields with
@@ -761,49 +845,31 @@ let kind_from_json json =
                     | Some (Json.String r) -> r
                     | _ -> message
                   in
-                  let hint_str = match hint with Some h -> h | None -> "" in
+                  let hint_str =
+                    match hint with
+                    | Some h -> h
+                    | None -> ""
+                  in
                   (* Try to parse error kind from message *)
                   let error_kind =
-                    if message = "Syntax error" then SyntaxError
-                    else if String.starts_with ~prefix:"Unbound value " message
-                    then
-                      UnboundValue
-                        {
-                          name =
-                            String.sub message 14 (String.length message - 14);
-                        }
-                    else if String.starts_with ~prefix:"Unbound module " message
-                    then
-                      UnboundModule
-                        {
-                          name =
-                            String.sub message 15 (String.length message - 15);
-                        }
-                    else if
-                      String.starts_with ~prefix:"Cannot find file " message
-                    then
-                      FileNotFound
-                        {
-                          filename =
-                            String.sub message 17 (String.length message - 17);
-                        }
-                    else OtherError { message }
+                    if message = "Syntax error" then
+                      SyntaxError
+                    else if String.starts_with ~prefix:"Unbound value " message then
+                      UnboundValue {name = String.sub message 14 (String.length message - 14); }
+                    else if String.starts_with ~prefix:"Unbound module " message then
+                      UnboundModule {name = String.sub message 15 (String.length message - 15); }
+                    else if String.starts_with ~prefix:"Cannot find file " message then
+                      FileNotFound {filename = String.sub message 17 (String.length message - 17); }
+                    else
+                      OtherError {message}
                   in
-                  Ok
-                    (CompileError
-                       {
-                         package;
-                         error =
-                           {
-                             file;
-                             line;
-                             span;
-                             hint = hint_str;
-                             kind = error_kind;
-                             raw;
-                           };
-                       })
-              | _ -> Error "Invalid CompileError data")
+                  Ok (CompileError {
+                    package;
+                    error = {file; line; span; hint = hint_str; kind = error_kind; raw; };
+
+                  })
+              | _ -> Error "Invalid CompileError data"
+            )
           | "tusk.build.link.library" -> (
               match data with
               | Json.Object data_fields ->
@@ -817,8 +883,9 @@ let kind_from_json json =
                     | Some (Json.String o) -> o
                     | _ -> ""
                   in
-                  Ok (LinkingLibrary { package; output })
-              | _ -> Error "Invalid LinkingLibrary data")
+                  Ok (LinkingLibrary {package; output})
+              | _ -> Error "Invalid LinkingLibrary data"
+            )
           | "tusk.build.hash.computing" -> (
               match data with
               | Json.Object data_fields ->
@@ -827,8 +894,9 @@ let kind_from_json json =
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
-                  Ok (ComputingHash { package })
-              | _ -> Error "Invalid ComputingHash data")
+                  Ok (ComputingHash {package})
+              | _ -> Error "Invalid ComputingHash data"
+            )
           | "tusk.build.hash.computed" -> (
               match data with
               | Json.Object data_fields ->
@@ -842,8 +910,9 @@ let kind_from_json json =
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
-                  Ok (HashComputed { package; hash })
-              | _ -> Error "Invalid HashComputed data")
+                  Ok (HashComputed {package; hash})
+              | _ -> Error "Invalid HashComputed data"
+            )
           | "tusk.build.link.executable" -> (
               match data with
               | Json.Object data_fields ->
@@ -857,9 +926,11 @@ let kind_from_json json =
                     | Some (Json.String o) -> o
                     | _ -> ""
                   in
-                  Ok (LinkingExecutable { package; output })
-              | _ -> Error "Invalid LinkingExecutable data")
-          | "tusk.workspace.scanning" -> Ok WorkspaceScanning
+                  Ok (LinkingExecutable {package; output})
+              | _ -> Error "Invalid LinkingExecutable data"
+            )
+          | "tusk.workspace.scanning" ->
+              Ok WorkspaceScanning
           | "tusk.workspace.scanned" -> (
               match data with
               | Json.Object data_fields ->
@@ -873,9 +944,11 @@ let kind_from_json json =
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (WorkspaceScanned { packages; duration_ms })
-              | _ -> Error "Invalid WorkspaceScanned data")
-          | "tusk.build_graph.creating" -> Ok BuildGraphCreating
+                  Ok (WorkspaceScanned {packages; duration_ms})
+              | _ -> Error "Invalid WorkspaceScanned data"
+            )
+          | "tusk.build_graph.creating" ->
+              Ok BuildGraphCreating
           | "tusk.build_graph.created" -> (
               match data with
               | Json.Object data_fields ->
@@ -889,9 +962,11 @@ let kind_from_json json =
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (BuildGraphCreated { nodes; duration_ms })
-              | _ -> Error "Invalid BuildGraphCreated data")
-          | "tusk.store.creating" -> Ok StoreCreating
+                  Ok (BuildGraphCreated {nodes; duration_ms})
+              | _ -> Error "Invalid BuildGraphCreated data"
+            )
+          | "tusk.store.creating" ->
+              Ok StoreCreating
           | "tusk.store.created" -> (
               match data with
               | Json.Object data_fields ->
@@ -900,8 +975,9 @@ let kind_from_json json =
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (StoreCreated { duration_ms })
-              | _ -> Error "Invalid StoreCreated data")
+                  Ok (StoreCreated {duration_ms})
+              | _ -> Error "Invalid StoreCreated data"
+            )
           | "tusk.worker_pool.creating" -> (
               match data with
               | Json.Object data_fields ->
@@ -910,8 +986,9 @@ let kind_from_json json =
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (WorkerPoolCreating { workers })
-              | _ -> Error "Invalid WorkerPoolCreating data")
+                  Ok (WorkerPoolCreating {workers})
+              | _ -> Error "Invalid WorkerPoolCreating data"
+            )
           | "tusk.worker_pool.created" -> (
               match data with
               | Json.Object data_fields ->
@@ -925,14 +1002,18 @@ let kind_from_json json =
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (WorkerPoolCreated { workers; duration_ms })
-              | _ -> Error "Invalid WorkerPoolCreated data")
-          | _ -> Error ("Unknown event type: " ^ event_name))
-      | _ -> Error "Missing event field")
+                  Ok (WorkerPoolCreated {workers; duration_ms})
+              | _ -> Error "Invalid WorkerPoolCreated data"
+            )
+          | _ ->
+              Error ("Unknown event type: " ^ event_name)
+        )
+      | _ -> Error "Missing event field"
+    )
   | _ -> Error "Invalid JSON format"
 
 (** Convert from JSON *)
-let from_json json =
+let from_json = fun json ->
   match json with
   | Json.Object fields -> (
       let timestamp =
@@ -957,6 +1038,7 @@ let from_json json =
         | _ -> Info
       in
       match kind_from_json json with
-      | Ok kind -> Ok { timestamp; session_id; level; kind }
-      | Error e -> Error e)
+      | Ok kind -> Ok {timestamp; session_id; level; kind}
+      | Error e -> Error e
+    )
   | _ -> Error "Invalid JSON format for Event"

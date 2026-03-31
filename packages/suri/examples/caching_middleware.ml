@@ -18,15 +18,15 @@ let users = [
   ("1", "Alice", "alice@example.com");
   ("2", "Bob", "bob@example.com");
   ("3", "Charlie", "charlie@example.com");
+
 ]
 
-let find_user id =
-  List.find_opt (fun (uid, _, _) -> uid = id) users
+let find_user = fun id ->
+  List.find_opt (fun ((uid, _, _)) -> uid = id) users
 
 (** Routes demonstrating the middleware *)
-let routes = Middleware.Router.[
-  (* Home page with explanation *)
-  get "/" (fun conn req ->
+let routes = Middleware.Router.[get "/"
+  (fun conn req ->
     let html = {|
 <!DOCTYPE html>
 <html>
@@ -109,151 +109,143 @@ curl http://localhost:4000/api/ip \
   </div>
 </body>
 </html>
-|} in
+|}
+    in
     conn
     |> Conn.respond ~status:Net.Http.Status.Ok ~body:html
     |> Conn.with_header "content-type" "text/html; charset=utf-8"
-    |> Conn.send
-  );
-
-  (* List users - demonstrates ETag and conditional GET *)
-  get "/api/users" (fun conn req ->
+    |> Conn.send);
+(* List users - demonstrates ETag and conditional GET *)
+get "/api/users"
+  (fun conn req ->
     let json = {|{"users":[
   {"id":"1","name":"Alice","email":"alice@example.com"},
   {"id":"2","name":"Bob","email":"bob@example.com"},
   {"id":"3","name":"Charlie","email":"charlie@example.com"}
-]}|} in
+]}|}
+    in
     conn
     |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
     |> Conn.with_header "content-type" "application/json"
-    |> Conn.send
-  );
-
-  (* Get user - demonstrates ETag, conditional GET, and HEAD support *)
-  get "/api/user/:id" (fun conn req ->
+    |> Conn.send);
+(* Get user - demonstrates ETag, conditional GET, and HEAD support *)
+get "/api/user/:id"
+  (fun conn req ->
     let params = Conn.params conn in
     match List.assoc_opt "id" params with
     | Some id -> (
         match find_user id with
         | Some (_, name, email) ->
-            let json = 
-              "{\"id\":\"" ^ id ^ "\"," ^
-              "\"name\":\"" ^ name ^ "\"," ^
-              "\"email\":\"" ^ email ^ "\"}"
+            let json =
+              "{\"id\":\""
+              ^ id
+              ^ "\","
+              ^ "\"name\":\""
+              ^ name
+              ^ "\","
+              ^ "\"email\":\""
+              ^ email
+              ^ "\"}"
             in
             conn
             |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
             |> Conn.with_header "content-type" "application/json"
             |> Conn.send
-        | None ->
-            conn
-            |> Conn.respond ~status:Net.Http.Status.NotFound 
-               ~body:{|{"error":"User not found"}|}
-            |> Conn.with_header "content-type" "application/json"
-            |> Conn.send
-      )
-    | None ->
-        conn
-        |> Conn.respond ~status:Net.Http.Status.BadRequest
-           ~body:{|{"error":"Missing user ID"}|}
+        | None -> conn
+        |> Conn.respond ~status:Net.Http.Status.NotFound ~body:{|{"error":"User not found"}|}
         |> Conn.with_header "content-type" "application/json"
         |> Conn.send
-  );
-
-  (* Delete user - demonstrates method override *)
-  delete "/api/user/:id" (fun conn req ->
+      )
+    | None -> conn
+    |> Conn.respond ~status:Net.Http.Status.BadRequest ~body:{|{"error":"Missing user ID"}|}
+    |> Conn.with_header "content-type" "application/json"
+    |> Conn.send);
+(* Delete user - demonstrates method override *)
+delete "/api/user/:id"
+  (fun conn req ->
     let params = Conn.params conn in
     match List.assoc_opt "id" params with
     | Some id ->
         let method_str = Net.Http.Method.to_string (Conn.method_ conn) in
-        let message = 
-          "{\"message\":\"User " ^ id ^ " would be deleted (demo only)\"," ^
-          "\"method\":\"" ^ method_str ^ "\"}"
-        in
+        let message = "{\"message\":\"User "
+        ^ id
+        ^ " would be deleted (demo only)\","
+        ^ "\"method\":\""
+        ^ method_str
+        ^ "\"}" in
         conn
         |> Conn.respond ~status:Net.Http.Status.Ok ~body:message
         |> Conn.with_header "content-type" "application/json"
         |> Conn.send
-    | None ->
-        conn
-        |> Conn.respond ~status:Net.Http.Status.BadRequest
-           ~body:{|{"error":"Missing user ID"}|}
-        |> Conn.with_header "content-type" "application/json"
-        |> Conn.send
-  );
-
-  (* Show detected IP - demonstrates Remote IP middleware *)
-  get "/api/ip" (fun conn req ->
+    | None -> conn
+    |> Conn.respond ~status:Net.Http.Status.BadRequest ~body:{|{"error":"Missing user ID"}|}
+    |> Conn.with_header "content-type" "application/json"
+    |> Conn.send);
+(* Show detected IP - demonstrates Remote IP middleware *)
+get "/api/ip"
+  (fun conn req ->
     let peer = Conn.peer conn in
     let client_ip = peer.ip in
     let headers = Conn.headers conn in
     let forwarded_for = Net.Http.Header.get headers "x-forwarded-for" in
-    
-    let json = match forwarded_for with
-    | Some fwd ->
-        "{\"detected_ip\":\"" ^ client_ip ^ "\"," ^
-        "\"x_forwarded_for\":\"" ^ fwd ^ "\"," ^
-        "\"note\":\"IP extracted from proxy headers\"}"
-    | None ->
-        "{\"detected_ip\":\"" ^ client_ip ^ "\"," ^
-        "\"note\":\"Direct connection, no proxy\"}"
+    let json =
+      match forwarded_for with
+      | Some fwd -> "{\"detected_ip\":\""
+      ^ client_ip
+      ^ "\","
+      ^ "\"x_forwarded_for\":\""
+      ^ fwd
+      ^ "\","
+      ^ "\"note\":\"IP extracted from proxy headers\"}"
+      | None -> "{\"detected_ip\":\"" ^ client_ip ^ "\"," ^ "\"note\":\"Direct connection, no proxy\"}"
     in
-    
     conn
     |> Conn.respond ~status:Net.Http.Status.Ok ~body:json
     |> Conn.with_header "content-type" "application/json"
-    |> Conn.send
-  );
-]
+    |> Conn.send);]
 
 let () =
-  Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
-    (* Middleware pipeline showcasing all 6 new features *)
-    (* NOTE: remote_ip commented out due to optional parameter type issues in lists *)
-    (* To use: let mw = Remote_ip.middleware ~proxies:["..."] in ... mw :: rest ... *)
-    
-    let app = 
-      let open Middleware in
-      [
-        request_id;
-        logger;
-        runtime;                                     (* ⭐ NEW: Add X-Runtime timing header *)
-        head;                                        (* ⭐ NEW: Handle HEAD requests *)
-        (* remote_ip ~proxies:[...] *)               (* ⭐ NEW: Extract real client IP - see note above *)
-        body_parser ();                              (* Parse body before method override *)
-        method_override;                             (* ⭐ NEW: Enable PUT/DELETE in forms *)
-        conditional_get;                             (* ⭐ NEW: Check cache headers first *)
-        etag;                                        (* ⭐ NEW: Generate ETags *)
-        router routes;
-      ]
-    in
-    
-    let config = Suri.config ~port:4000 () in
-    match Suri.start_link ~config app with
-    | Ok _supervisor ->
-        Log.info "===========================================";
-        Log.info "🚀 HTTP Caching & Middleware Demo";
-        Log.info "===========================================";
-        Log.info "Server: http://localhost:4000";
-        Log.info "";
-        Log.info "⭐ NEW MIDDLEWARE ACTIVE (5 features):";
-        Log.info "  ✅ Head Handler - Auto HEAD support";
-        Log.info "  ✅ Runtime - X-Runtime timing header";
-        Log.info "  ✅ Method Override - Forms can DELETE/PUT";
-        Log.info "  ✅ ETag - Content-based cache IDs";
-        Log.info "  ✅ Conditional Get - 304 Not Modified";
-        Log.info "";
-        Log.info "Visit http://localhost:4000 for interactive examples!";
-        Log.info "===========================================";
-        
-        (* Keep alive *)
-        let rec loop () =
-          sleep (Time.Duration.from_secs 100);
+  Miniriot.run ~args:Env.args ()
+    ~main:(fun ~args:_ ->
+      (* Middleware pipeline showcasing all 6 new features *)
+      (* NOTE: remote_ip commented out due to optional parameter type issues in lists *)
+      (* To use: let mw = Remote_ip.middleware ~proxies:["..."] in ... mw :: rest ... *)
+      let app =
+        let open Middleware in [
+          request_id;
+          logger;
+          runtime;
+          head;
+          body_parser ();
+          method_override;
+          conditional_get;
+          etag;
+          router routes;
+
+        ] in
+      let config = Suri.config ~port:4_000 () in
+      match Suri.start_link ~config app with
+      | Ok _supervisor ->
+          Log.info "===========================================";
+          Log.info "🚀 HTTP Caching & Middleware Demo";
+          Log.info "===========================================";
+          Log.info "Server: http://localhost:4000";
+          Log.info "";
+          Log.info "⭐ NEW MIDDLEWARE ACTIVE (5 features):";
+          Log.info "  ✅ Head Handler - Auto HEAD support";
+          Log.info "  ✅ Runtime - X-Runtime timing header";
+          Log.info "  ✅ Method Override - Forms can DELETE/PUT";
+          Log.info "  ✅ ETag - Content-based cache IDs";
+          Log.info "  ✅ Conditional Get - 304 Not Modified";
+          Log.info "";
+          Log.info "Visit http://localhost:4000 for interactive examples!";
+          Log.info "===========================================";
+          (* Keep alive *)
+          let rec loop = fun () ->
+            sleep (Time.Duration.from_secs 100);
+            loop ()
+          in
           loop ()
-        in
-        loop ()
-    
-    | Error `Bind_error ->
-        Log.error "Failed to bind to port 4000";
-        Error (Failure "Failed to start server")
-  )
+      | Error `Bind_error ->
+          Log.error "Failed to bind to port 4000";
+          Error (Failure "Failed to start server"))

@@ -6,21 +6,28 @@ open Std
     
     Prevents timing attacks by always comparing the full length of both strings
     and using bitwise operations instead of short-circuit boolean logic. *)
-let secure_equal s1 s2 =
+let secure_equal = fun s1 s2 ->
   let len1 = String.length s1 in
   let len2 = String.length s2 in
-  
   (* Always compare full lengths to prevent length-based timing *)
   let result = ref 0 in
   for i = 0 to max len1 len2 - 1 do
-    let c1 = if i < len1 then Char.code (String.get s1 i) else 0 in
-    let c2 = if i < len2 then Char.code (String.get s2 i) else 0 in
+    let c1 =
+      if i < len1 then
+        Char.code (String.get s1 i)
+      else
+        0
+    in
+    let c2 =
+      if i < len2 then
+        Char.code (String.get s2 i)
+      else
+        0
+    in
     result := !result lor (c1 lxor c2)
   done;
-  
   (* Length difference also contributes *)
   result := !result lor (len1 lxor len2);
-  
   !result = 0
 
 (** Sanitize realm value to prevent header injection.
@@ -29,12 +36,13 @@ let secure_equal s1 s2 =
     - carriage return
     - newline  
     - quotes (interfere with realm quoting) *)
-let sanitize_realm realm =
+let sanitize_realm = fun realm ->
   let chars = ref [] in
-  String.iter (fun c ->
-    if c != '\r' && c != '\n' && c != '"' then
-      chars := c :: !chars
-  ) realm;
+  String.iter
+    (fun c ->
+      if c != '\r' && c != '\n' && c != '"' then
+        chars := c :: !chars)
+    realm;
   !chars |> List.rev |> List.to_seq |> String.of_seq
 
 (** {1 Credential Parsing} *)
@@ -46,25 +54,25 @@ let sanitize_realm realm =
     
     Handles passwords containing colons correctly by only splitting on
     the first colon. *)
-let decode_credentials auth_header =
+let decode_credentials = fun auth_header ->
   (* Split "Basic <encoded>" *)
   match String.split_on_char ' ' auth_header with
-  | ["Basic"; encoded] -> (
+  | ["Basic";encoded] -> (
       match Data.Base64.decode encoded with
       | Result.Ok decoded -> (
           (* Split on first colon only - password can contain colons *)
           match String.index_opt decoded ':' with
           | Option.Some idx ->
               let username = String.sub decoded 0 idx in
-              let password = 
-                String.sub decoded (idx + 1) (String.length decoded - idx - 1) 
-              in
+              let password = String.sub decoded (idx + 1) (String.length decoded - idx - 1) in
               Option.some (username, password)
-          | Option.None -> Option.none)
-      | Result.Error _ -> Option.none)
+          | Option.None -> Option.none
+        )
+      | Result.Error _ -> Option.none
+    )
   | _ -> Option.none
 
-let get_credentials conn =
+let get_credentials = fun conn ->
   let headers = Conn.headers conn in
   match Net.Http.Header.get headers "authorization" with
   | Option.Some auth -> decode_credentials auth
@@ -76,31 +84,35 @@ let get_credentials conn =
    For now, we'll use a workaround: store as a ref and use physical equality.
    This is safe because we control the lifecycle. *)
 
-type 'a value_box = { mutable data : 'a option }
+type 'a value_box = {
+  mutable data : 'a option;
+}
 
-let make_box value = { data = Some value }
+let make_box = fun value -> {data = Some value}
 
 external unsafe_coerce : 'a -> 'b = "%identity"
 
-type Conn.assign_value += Basic_auth_value : 'a value_box -> Conn.assign_value
+type Conn.assign_value +=
+  Basic_auth_value : 'a value_box -> Conn.assign_value
 
-let assign key value conn =
+let assign = fun key value conn ->
   let box = make_box value in
   Conn.assign key (Basic_auth_value box) conn;
   conn
 
-let get key conn =
+let get = fun key conn ->
   match Conn.get_assign key conn with
   | Some (Basic_auth_value box) -> (
       match box.data with
       | Some value -> Some (unsafe_coerce value)
-      | None -> None)
+      | None -> None
+    )
   | _ -> None
 
 (** {1 HTTP Responses} *)
 
 (** Send 401 Unauthorized with WWW-Authenticate header *)
-let unauthorized conn realm =
+let unauthorized = fun conn realm ->
   let sanitized_realm = sanitize_realm realm in
   let auth_header = "Basic realm=\"" ^ sanitized_realm ^ "\"" in
   Conn.respond conn ~status:Unauthorized ~body:"Unauthorized"
@@ -111,14 +123,16 @@ let unauthorized conn realm =
 
 type 'a validation_fn = username:string -> password:string -> 'a option
 
-let middleware ?realm:(realm = "Restricted Area") ?skip ~username ~password () =
+let middleware = fun ?(realm = "Restricted Area") ?skip ~username ~password () ->
   fun ~conn ~next ->
     (* Check skip condition *)
     let should_skip =
-      match skip with Option.Some f -> f conn | Option.None -> false
+      match skip with
+      | Option.Some f -> f conn
+      | Option.None -> false
     in
-
-    if should_skip then next conn
+    if should_skip then
+      next conn
     else
       (* Extract credentials from Authorization header *)
       match get_credentials conn with
@@ -126,9 +140,7 @@ let middleware ?realm:(realm = "Restricted Area") ?skip ~username ~password () =
           (* Constant-time comparison for both username and password *)
           let user_match = secure_equal req_user username in
           let pass_match = secure_equal req_pass password in
-
           if user_match && pass_match then
-            (* Success - continue to next middleware *)
             next conn
           else
             (* Invalid credentials - return 401 *)
@@ -137,14 +149,15 @@ let middleware ?realm:(realm = "Restricted Area") ?skip ~username ~password () =
           (* No credentials provided - return 401 *)
           unauthorized conn realm
 
-let middleware_with_validation ?realm:(realm = "Restricted Area") ?skip
-    ~validate () =
+let middleware_with_validation = fun ?(realm = "Restricted Area") ?skip ~validate () ->
   fun ~conn ~next ->
     let should_skip =
-      match skip with Option.Some f -> f conn | Option.None -> false
+      match skip with
+      | Option.Some f -> f conn
+      | Option.None -> false
     in
-
-    if should_skip then next conn
+    if should_skip then
+      next conn
     else
       match get_credentials conn with
       | Option.Some (username, password) -> (
@@ -153,5 +166,6 @@ let middleware_with_validation ?realm:(realm = "Restricted Area") ?skip
               (* Store authenticated user in connection *)
               let conn' = assign "basic_auth_user" user_data conn in
               next conn'
-          | Option.None -> unauthorized conn realm)
+          | Option.None -> unauthorized conn realm
+        )
       | Option.None -> unauthorized conn realm

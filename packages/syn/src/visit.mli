@@ -92,7 +92,6 @@ open Std
     syntactic helpers belong in `Syn.Matchers`; faithful syntax representation
     belongs in `Syn.Cst`; explicit recursion belongs here.
 *)
-
 (** Traversal engine built from a visitor.
 
     The `walker` exposes two families of functions for every supported node

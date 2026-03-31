@@ -3,7 +3,7 @@ open IO
 
 type t
 type connect_result =
-  [
+[
   | `Connected of t
   | `In_progress of t
 ]

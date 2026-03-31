@@ -1,5 +1,4 @@
 (** Module namespace handling with double-underscore convention *)
-
 (** Abstract type for namespaces *)
 (** Empty namespace *)
 type t

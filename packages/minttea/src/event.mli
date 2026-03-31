@@ -1,5 +1,4 @@
 (** Terminal events for Minttea applications *)
-
 open Std
 
 (** Keyboard modifiers *)
@@ -12,7 +11,6 @@ type modifier =
   | CtrlShift
   | AltShift
   | CtrlAltShift
-
 (** Keyboard keys *)
 type key =
   | Up
@@ -30,15 +28,16 @@ type key =
   | End
   | PageUp
   | PageDown
-  | F of int  (** Function keys F1-F12 *)
-  | Key of string  (** Any other character(s) *)
-
+  | F of int
+  (** Function keys F1-F12 *)
+  | Key of string
+(** Any other character(s) *)
 val key_to_string : key -> string
+
 (** Convert a key to a human-readable string *)
-
 val modifier_to_string : modifier -> string
-(** Convert a modifier to a human-readable string *)
 
+(** Convert a modifier to a human-readable string *)
 (** Mouse button *)
 type mouse_button =
   | Left
@@ -46,13 +45,14 @@ type mouse_button =
   | Right
   | WheelUp
   | WheelDown
-
 (** Mouse event type *)
 type mouse_event_type =
-  | Click  (** Mouse button pressed *)
-  | Release  (** Mouse button released *)
-  | Motion  (** Mouse moved (with or without button pressed) *)
-
+  | Click
+  (** Mouse button pressed *)
+  | Release
+  (** Mouse button released *)
+  | Motion
+(** Mouse moved (with or without button pressed) *)
 (** Mouse event *)
 type mouse_event = {
   button : mouse_button;
@@ -63,13 +63,11 @@ type mouse_event = {
   alt : bool;
   shift : bool;
 }
-
 (** Window size *)
 type window_size = {
   width : int;  (** Terminal width in columns *)
   height : int;  (** Terminal height in rows *)
 }
-
 (** Terminal events *)
 type t =
   | KeyDown of key * modifier
@@ -77,10 +75,11 @@ type t =
   | Resize of window_size
   | Timer of Timer.id Ref.t
   | Frame of Time.Instant.t
-  | Paste of string  (** Bracketed paste content *)
+  | Paste of string
+  (** Bracketed paste content *)
   | FocusGained
   | FocusLost
   | Custom of Message.t
-
 val to_string : t -> string
+
 (** Convert an event to a human-readable string *)

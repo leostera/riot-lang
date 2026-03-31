@@ -1,5 +1,4 @@
 (** Text spans and positions *)
-
 open Std
 
 (** A span represents a range in source text *)

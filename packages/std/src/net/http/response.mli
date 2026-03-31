@@ -56,7 +56,6 @@
 (** An HTTP response with status, headers, and optional body. *)
 type t
 (** ## Construction *)
-
 (** Creates a new HTTP response with the given status code.
 
     ## Examples
@@ -65,7 +64,6 @@ type t
 val create : Status.t -> t
 
 (** ## Access *)
-
 (** Returns the HTTP status code.
 
     ## Examples
@@ -98,7 +96,6 @@ val headers : t -> Header.t
 val body : t -> string option
 
 (** ## Modification *)
-
 (** Returns a new response with the given status.
 
     ## Examples
@@ -192,7 +189,6 @@ module Builder : sig
         |> Response.Builder.build
       ```
   *)
-
   (** The final response type *)
   (** The builder type *)
   type response = t
@@ -216,11 +212,11 @@ module Builder : sig
   val body : t -> string -> t
 
   val build : t -> response
+
   (** Builds the final response. *)
 end
 
 (** ## Convenience Constructors *)
-
 (** Creates a 200 OK response with body.
     
     ## Examples

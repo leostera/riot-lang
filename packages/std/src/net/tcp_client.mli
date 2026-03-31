@@ -18,7 +18,6 @@
           | Error msg -> println ("Error: " ^ msg))
       | Error err -> println "Connection failed"
     ]} *)
-
 open Global
 
 (** The client connection type. Contains the TCP stream and internal buffers. *)

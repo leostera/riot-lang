@@ -44,7 +44,7 @@ let line_for_pos = fun layout pos ->
   in
   (line_idx, Int.max 0 (pos - start_offset))
 
-let extract_code_snippet_from_layout = fun layout (span : Ceibo.Span.t) ->
+let extract_code_snippet_from_layout = fun layout (span:Ceibo.Span.t) ->
   if Array.length layout.lines = 0 then
     None
   else
@@ -58,6 +58,7 @@ let extract_code_snippet_from_layout = fun layout (span : Ceibo.Span.t) ->
       None
 
 (* Extract just the message from a diagnostic, without span info *)
+
 let diagnostic_message = fun diag -> Diagnostic.main_message diag
 
 let format_hint = fun text -> text
@@ -79,40 +80,38 @@ let format_diagnostic = fun ~layout diag ->
       let styled_pointer = Style.styled error_style pointer_line in
       let styled_msg = Style.styled error_style ("expected " ^ expected) in
       match fix with
-      | Some fix ->
-          error_label
-          ^ " "
-          ^ main_msg
-          ^ "\n  |\n"
-          ^ Int.to_string line_num
-          ^ " | "
-          ^ code_line
-          ^ "\n  | "
-          ^ styled_pointer
-          ^ " "
-          ^ styled_msg
-          ^ "\n  |\n\n"
-          ^ fix_label
-          ^ " "
-          ^ fix
-          ^ "\n\n"
-          ^ explain_msg
-          ^ "\n"
-      | None ->
-          error_label
-          ^ " "
-          ^ main_msg
-          ^ "\n  |\n"
-          ^ Int.to_string line_num
-          ^ " | "
-          ^ code_line
-          ^ "\n  | "
-          ^ styled_pointer
-          ^ " "
-          ^ styled_msg
-          ^ "\n  |\n\n"
-          ^ explain_msg
-          ^ "\n"
+      | Some fix -> error_label
+      ^ " "
+      ^ main_msg
+      ^ "\n  |\n"
+      ^ Int.to_string line_num
+      ^ " | "
+      ^ code_line
+      ^ "\n  | "
+      ^ styled_pointer
+      ^ " "
+      ^ styled_msg
+      ^ "\n  |\n\n"
+      ^ fix_label
+      ^ " "
+      ^ fix
+      ^ "\n\n"
+      ^ explain_msg
+      ^ "\n"
+      | None -> error_label
+      ^ " "
+      ^ main_msg
+      ^ "\n  |\n"
+      ^ Int.to_string line_num
+      ^ " | "
+      ^ code_line
+      ^ "\n  | "
+      ^ styled_pointer
+      ^ " "
+      ^ styled_msg
+      ^ "\n  |\n\n"
+      ^ explain_msg
+      ^ "\n"
     )
   | None ->
       panic
@@ -124,4 +123,5 @@ let format = fun ~file ~source diagnostics ->
   file ^ "\n\n" ^ (diagnostics |> List.map (format_diagnostic ~layout) |> String.concat "") ^ "\n"
 
 (* Print diagnostics in a nice formatted way *)
+
 let print = fun ~file ~source diagnostics -> print (format ~file ~source diagnostics)

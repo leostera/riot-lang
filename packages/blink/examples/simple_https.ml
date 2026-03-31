@@ -6,7 +6,8 @@ let () =
       (* Parse command-line arguments *)
       let cmd = ArgParser.command "simple_https"
       |> ArgParser.about "Simple HTTPS client example"
-      |> ArgParser.args [
+      |> ArgParser.args
+      [
         ArgParser.Arg.option "method"
         |> ArgParser.Arg.long "method"
         |> ArgParser.Arg.value_name "METHOD"
@@ -94,7 +95,8 @@ let () =
       (* Get full response *)
       let response, body = Blink.await conn |> Result.expect ~msg:"Failed to receive response" in
       let status = Net.Http.Response.status response in
-      println ("HTTP Status: "
+      println
+      ("HTTP Status: "
       ^ (Int.to_string (Net.Http.Status.to_int status))
       ^ " "
       ^ (Net.Http.Status.reason_phrase status));

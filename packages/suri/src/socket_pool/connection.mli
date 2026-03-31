@@ -4,7 +4,6 @@ open Std
 
     Represents a single active connection to a client with operations for
     sending, receiving, and querying connection metadata. *)
-
 (** An active TCP connection with GADT constructor for protocol negotiation *)
 (** [make ~accepted_at ~stream ~buffer_size ~peer ()] creates a new connection.
 

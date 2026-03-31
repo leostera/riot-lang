@@ -18,7 +18,7 @@
 
 type state
 type error =
-  [
+[
   | `ParseError of string
   | `ExcessBodyRead
   | `IoError of string

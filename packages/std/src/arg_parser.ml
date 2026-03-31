@@ -4,7 +4,12 @@ open Collections
 
 let ( let* ) = Result.and_then
 
-type action = Set | SetTrue | SetFalse | Append | Count
+type action =
+  Set
+  | SetTrue
+  | SetFalse
+  | Append
+  | Count
 
 type 'a arg = {
   name : string;
@@ -53,7 +58,7 @@ type error =
 module Arg = struct
   type 'a t = 'a arg
 
-  let make name =
+  let make = fun name ->
     {
       name;
       short = None;
@@ -68,31 +73,45 @@ module Arg = struct
       possible_values = None;
       conflicts_with = [];
       requires = [];
+
     }
 
-  let flag name = { (make name) with action = SetTrue }
-  let option name = make name
-  let positional name = { (make name) with required = true }
-  let trailing name = { (make name) with multiple = true }
-  let short c arg = { arg with short = Some c }
-  let long s arg = { arg with long = Some s }
-  let help s arg = { arg with help = Some s }
-  let value_name s arg = { arg with value_name = Some s }
-  let default v arg = { arg with default = Some v }
-  let required b arg = { arg with required = b }
-  let env s arg = { arg with env = Some s }
-  let action a arg = { arg with action = a }
-  let multiple arg = { arg with multiple = true }
-  let count arg = { arg with action = Count }
-  let possible_values vals arg = { arg with possible_values = Some vals }
+  let flag = fun name -> {(make name) with action = SetTrue}
 
-  let conflicts_with name arg =
-    { arg with conflicts_with = name :: arg.conflicts_with }
+  let option = fun name -> make name
 
-  let requires name arg = { arg with requires = name :: arg.requires }
+  let positional = fun name -> {(make name) with required = true}
+
+  let trailing = fun name -> {(make name) with multiple = true}
+
+  let short = fun c arg -> {arg with short = Some c}
+
+  let long = fun s arg -> {arg with long = Some s}
+
+  let help = fun s arg -> {arg with help = Some s}
+
+  let value_name = fun s arg -> {arg with value_name = Some s}
+
+  let default = fun v arg -> {arg with default = Some v}
+
+  let required = fun b arg -> {arg with required = b}
+
+  let env = fun s arg -> {arg with env = Some s}
+
+  let action = fun a arg -> {arg with action = a}
+
+  let multiple = fun arg -> {arg with multiple = true}
+
+  let count = fun arg -> {arg with action = Count}
+
+  let possible_values = fun vals arg -> {arg with possible_values = Some vals}
+
+  let conflicts_with = fun name arg -> {arg with conflicts_with = name :: arg.conflicts_with}
+
+  let requires = fun name arg -> {arg with requires = name :: arg.requires}
 end
 
-let command name =
+let command = fun name ->
   {
     name;
     version = None;
@@ -101,39 +120,43 @@ let command name =
     args = [];
     subcommands = [];
     allow_trailing = false;
+
   }
 
-let version v cmd = { cmd with version = Some v }
-let about a cmd = { cmd with about = Some a }
-let author a cmd = { cmd with author = Some a }
-let arg a cmd = { cmd with args = cmd.args @ [ a ] }
-let args a_list cmd = { cmd with args = cmd.args @ a_list }
-let subcommand sub cmd = { cmd with subcommands = cmd.subcommands @ [ sub ] }
+let version = fun v cmd -> {cmd with version = Some v}
 
-let subcommands sub_list cmd =
-  { cmd with subcommands = cmd.subcommands @ sub_list }
+let about = fun a cmd -> {cmd with about = Some a}
 
-let allow_trailing_args cmd = { cmd with allow_trailing = true }
+let author = fun a cmd -> {cmd with author = Some a}
 
-let create_matches name =
+let arg = fun a cmd -> {cmd with args = cmd.args @ [ a ]}
+
+let args = fun a_list cmd -> {cmd with args = cmd.args @ a_list}
+
+let subcommand = fun sub cmd -> {cmd with subcommands = cmd.subcommands @ [ sub ]}
+
+let subcommands = fun sub_list cmd -> {cmd with subcommands = cmd.subcommands @ sub_list}
+
+let allow_trailing_args = fun cmd -> {cmd with allow_trailing = true}
+
+let create_matches = fun name ->
   {
     command_name = name;
-    values = HashMap.create () ;
-    flags = HashMap.create () ;
+    values = HashMap.create ();
+    flags = HashMap.create ();
     subcommand = None;
     trailing_args = [];
+
   }
 
-let rec get_matches_internal cmd args =
+let rec get_matches_internal = fun cmd args ->
   let matches = create_matches cmd.name in
-  let validate_required () =
+  let validate_required = fun () ->
     (* Check that all required args have values *)
     let missing =
       List.find_opt
         (fun arg ->
-          arg.required
-          &&
-          match HashMap.get matches.values arg.name with
+          arg.required && match HashMap.get matches.values arg.name with
           | None -> true
           | Some [] -> true
           | Some _ -> false)
@@ -147,15 +170,19 @@ let rec get_matches_internal cmd args =
         exit 1
     | None -> Ok matches
   in
-  let rec parse_args args_list =
+  let rec parse_args = fun args_list ->
     match args_list with
     | [] ->
         (* If command has subcommands but none provided, show help *)
-        if List.length cmd.subcommands > 0 then (
-          print_help cmd;
-          exit 0)
-        else validate_required ()
-    | "--help" :: _ | "-h" :: _ ->
+        if List.length cmd.subcommands > 0 then
+          (
+            print_help cmd;
+            exit 0
+          )
+        else
+          validate_required ()
+    | "--help" :: _
+    | "-h" :: _ ->
         print_help cmd;
         exit 0
     | "--version" :: _ when Option.is_some cmd.version ->
@@ -166,21 +193,27 @@ let rec get_matches_internal cmd args =
         match find_arg_by_long cmd name with
         | Some arg -> parse_long_arg arg name rest
         | None ->
-            if cmd.allow_trailing then (
-              matches.trailing_args <- args_list;
-              Ok matches)
-            else Error (UnknownArgument arg_str))
-    | arg_str :: rest
-      when String.starts_with ~prefix:"-" arg_str && String.length arg_str > 1
-      -> (
+            if cmd.allow_trailing then
+              (
+                matches.trailing_args <- args_list;
+                Ok matches
+              )
+            else
+              Error (UnknownArgument arg_str)
+      )
+    | arg_str :: rest when String.starts_with ~prefix:"-" arg_str && String.length arg_str > 1 -> (
         let c = String.get arg_str 1 in
         match find_arg_by_short cmd c with
         | Some arg -> parse_short_arg arg c rest
         | None ->
-            if cmd.allow_trailing then (
-              matches.trailing_args <- args_list;
-              Ok matches)
-            else Error (UnknownArgument arg_str))
+            if cmd.allow_trailing then
+              (
+                matches.trailing_args <- args_list;
+                Ok matches
+              )
+            else
+              Error (UnknownArgument arg_str)
+      )
     | subcmd :: rest -> (
         match List.find_opt (fun sub -> sub.name = subcmd) cmd.subcommands with
         | Some sub ->
@@ -189,43 +222,40 @@ let rec get_matches_internal cmd args =
             Ok matches
         | None ->
             (* Prefer consuming as positional when not a subcommand *)
-            parse_positional args_list)
-  and parse_long_arg arg name rest =
+            parse_positional args_list
+      )
+  and parse_long_arg = fun arg name rest ->
     match arg.action with
     | SetTrue ->
         let _ = HashMap.insert matches.flags name 1 in
         parse_args rest
     | Count ->
-        let count =
-          HashMap.get matches.flags name |> Option.unwrap_or ~default:0
-        in
+        let count = HashMap.get matches.flags name |> Option.unwrap_or ~default:0 in
         let _ = HashMap.insert matches.flags name (count + 1) in
         parse_args rest
-    | Set | Append -> (
+    | Set
+    | Append -> (
         match rest with
         | [] -> Error (InvalidValue (name, "missing value"))
         | value :: rest' ->
-            let current =
-              HashMap.get matches.values name
-              |> Option.unwrap_or ~default:[]
-            in
+            let current = HashMap.get matches.values name |> Option.unwrap_or ~default:[] in
             let _ = HashMap.insert matches.values name (current @ [ value ]) in
-            parse_args rest')
+            parse_args rest'
+      )
     | SetFalse ->
         let _ = HashMap.insert matches.flags name 0 in
         parse_args rest
-  and parse_short_arg arg c rest = parse_long_arg arg arg.name rest
-  and parse_positional pos_args =
+  and parse_short_arg = fun arg c rest -> parse_long_arg arg arg.name rest
+  and parse_positional = fun pos_args ->
     (* Find positional args that haven't been filled yet *)
     let positional_args : unit arg list =
       List.filter
-        (fun positional_arg ->
-          positional_arg.short = None && positional_arg.long = None)
-        cmd.args
+      (fun positional_arg -> positional_arg.short = None && positional_arg.long = None)
+      cmd.args
     in
     let unfilled_positionals : unit arg list =
       List.filter
-        (fun (positional_arg : unit arg) ->
+        (fun (positional_arg:unit arg) ->
           let current = HashMap.get matches.values positional_arg.name in
           match current with
           | None -> true
@@ -234,31 +264,29 @@ let rec get_matches_internal cmd args =
         positional_args
     in
     match (unfilled_positionals, pos_args) with
-    | [], _ -> Error (UnknownArgument (List.hd pos_args))
+    | [], _ ->
+        Error (UnknownArgument (List.hd pos_args))
     | arg :: _, value :: rest ->
-        let current =
-          HashMap.get matches.values arg.name
-          |> Option.unwrap_or ~default:[]
-        in
+        let current = HashMap.get matches.values arg.name |> Option.unwrap_or ~default:[] in
         let _ = HashMap.insert matches.values arg.name (current @ [ value ]) in
         parse_args rest
-    | arg :: _, [] when arg.required -> Error (MissingRequired arg.name)
-    | _, [] -> validate_required ()
+    | arg :: _, [] when arg.required ->
+        Error (MissingRequired arg.name)
+    | _, [] ->
+        validate_required ()
   in
   parse_args args
-
-and find_arg_by_long cmd long_name =
+and find_arg_by_long = fun cmd long_name ->
   List.find_opt (fun arg -> arg.long = Some long_name) cmd.args
-
-and find_arg_by_short cmd short_char =
+and find_arg_by_short = fun cmd short_char ->
   List.find_opt (fun arg -> arg.short = Some short_char) cmd.args
-
-and print_help cmd =
+and print_help = fun cmd ->
   (* Title/about on first line *)
-  (match cmd.about with
-  | Some a -> println (a ^ "\n")
-  | None -> println (cmd.name ^ "\n"));
-
+  (
+    match cmd.about with
+    | Some a -> println (a ^ "\n")
+    | None -> println (cmd.name ^ "\n")
+  );
   (* Separate positional args from options *)
   let positionals =
     List.filter (fun arg -> arg.short = None && arg.long = None) cmd.args
@@ -266,153 +294,191 @@ and print_help cmd =
   let options =
     List.filter (fun arg -> arg.short != None || arg.long != None) cmd.args
   in
-
   (* Usage section *)
   let usage_buf = Buffer.create 128 in
   Buffer.add_string usage_buf ("Usage: " ^ cmd.name);
-  if List.length options > 0 then Buffer.add_string usage_buf " [OPTIONS]";
+  if List.length options > 0 then
+    Buffer.add_string usage_buf " [OPTIONS]";
   List.iter
     (fun arg ->
       let name =
-        if arg.multiple then arg.name ^ "..."
-        else arg.name
+        if arg.multiple then
+          arg.name ^ "..."
+        else
+          arg.name
       in
-      if arg.required then Buffer.add_string usage_buf (" <" ^ name ^ ">")
-      else Buffer.add_string usage_buf (" [" ^ name ^ "]"))
+      if arg.required then
+        Buffer.add_string usage_buf (" <" ^ name ^ ">")
+      else
+        Buffer.add_string usage_buf (" [" ^ name ^ "]"))
     positionals;
-  if cmd.allow_trailing then Buffer.add_string usage_buf " [-- ARGS...]";
+  if cmd.allow_trailing then
+    Buffer.add_string usage_buf " [-- ARGS...]";
   if List.length cmd.subcommands > 0 then
     Buffer.add_string usage_buf " [COMMAND]";
   println (Buffer.contents usage_buf);
-
-  (* Arguments section (positionals) *)
-  if List.length positionals > 0 then (
-    println "\nArguments:";
-    let max_arg_width : int =
-      List.fold_left
-        (fun (acc : int) (arg : unit arg) ->
+  if List.length positionals > 0 then
+    (
+      println "\nArguments:";
+      let max_arg_width : int =
+        List.fold_left
+          (fun (acc:int) (arg:unit arg) ->
+            let name =
+              if arg.multiple then
+                arg.name ^ "..."
+              else
+                arg.name
+            in
+            max acc (String.length name))
+          0
+          positionals
+      in
+      List.iter
+        (fun (arg:unit arg) ->
           let name =
-            if arg.multiple then arg.name ^ "..."
-            else arg.name
+            if arg.multiple then
+              arg.name ^ "..."
+            else
+              arg.name
           in
-          max acc (String.length name))
-        0
+          let arg_str =
+            if arg.required then
+              "<" ^ name ^ ">"
+            else
+              "[" ^ name ^ "]"
+          in
+          let padding_len = max 2 (max_arg_width - String.length name + 4) in
+          let padding = String.make padding_len ' ' in
+          let help_str =
+            match arg.help with
+            | Some h -> h
+            | None -> ""
+          in
+          println ("  " ^ arg_str ^ padding ^ help_str))
         positionals
-    in
-    List.iter
-      (fun (arg : unit arg) ->
-        let name =
-          if arg.multiple then arg.name ^ "..."
-          else arg.name
-        in
-        let arg_str =
-          if arg.required then "<" ^ name ^ ">"
-          else "[" ^ name ^ "]"
-        in
-        let padding_len = max 2 (max_arg_width - String.length name + 4) in
-        let padding = String.make padding_len ' ' in
-        let help_str = match arg.help with Some h -> h | None -> "" in
-        println ("  " ^ arg_str ^ padding ^ help_str))
-      positionals);
-
-  (* Options section *)
-  if List.length options > 0 then (
-    println "\nOptions:";
-    (* Calculate max width for alignment *)
-    let max_opt_width =
-      List.fold_left
-        (fun acc arg ->
-          let short_len = match arg.short with Some _ -> 4 | None -> 0 in
-          let long_len =
-            match arg.long with Some l -> String.length l + 2 | None -> 0
+    );
+  if List.length options > 0 then
+    (
+      println "\nOptions:";
+      (* Calculate max width for alignment *)
+      let max_opt_width =
+        List.fold_left
+          (fun acc arg ->
+            let short_len =
+              match arg.short with
+              | Some _ -> 4
+              | None -> 0
+            in
+            let long_len =
+              match arg.long with
+              | Some l -> String.length l + 2
+              | None -> 0
+            in
+            max acc (short_len + long_len))
+          0
+          options
+      in
+      List.iter
+        (fun arg ->
+          let short_str =
+            match arg.short with
+            | Some c -> "-" ^ String.make 1 c ^ ", "
+            | None -> "    "
           in
-          max acc (short_len + long_len))
-        0 options
-    in
-    List.iter
-      (fun arg ->
-        let short_str =
-          match arg.short with Some c -> "-" ^ String.make 1 c ^ ", " | None -> "    "
-        in
-        let long_str =
-          match arg.long with Some l -> "--" ^ l | None -> ""
-        in
-        let opt_str = short_str ^ long_str in
-        let padding_len = max 2 (max_opt_width - String.length opt_str + 2) in
-        let padding = String.make padding_len ' ' in
-        let help_str = match arg.help with Some h -> h | None -> "" in
-        println ("  " ^ opt_str ^ padding ^ help_str))
-      options);
+          let long_str =
+            match arg.long with
+            | Some l -> "--" ^ l
+            | None -> ""
+          in
+          let opt_str = short_str ^ long_str in
+          let padding_len = max 2 (max_opt_width - String.length opt_str + 2) in
+          let padding = String.make padding_len ' ' in
+          let help_str =
+            match arg.help with
+            | Some h -> h
+            | None -> ""
+          in
+          println ("  " ^ opt_str ^ padding ^ help_str))
+        options
+    );
+  if List.length cmd.subcommands > 0 then
+    (
+      println "\nCommands:";
+      (* Sort subcommands alphabetically *)
+      let sorted_subs =
+        List.sort
+          (fun a b ->
+            String.compare a.name b.name)
+          cmd.subcommands
+      in
+      let max_name_len =
+        List.fold_left (fun acc sub -> max acc (String.length sub.name)) 0 sorted_subs
+      in
+      List.iter
+        (fun sub ->
+          let padding = String.make (max_name_len - String.length sub.name + 4) ' ' in
+          let about_str =
+            match sub.about with
+            | Some a -> a
+            | None -> ""
+          in
+          println ("    " ^ sub.name ^ padding ^ about_str))
+        sorted_subs;
+      println
+      ("\nSee '" ^ cmd.name ^ " <command> --help' for more information on a specific command.")
+    )
 
-  (* Commands section *)
-  if List.length cmd.subcommands > 0 then (
-    println "\nCommands:";
-    (* Sort subcommands alphabetically *)
-    let sorted_subs =
-      List.sort (fun a b -> String.compare a.name b.name) cmd.subcommands
-    in
-    let max_name_len =
-      List.fold_left
-        (fun acc sub -> max acc (String.length sub.name))
-        0 sorted_subs
-    in
-    List.iter
-      (fun sub ->
-        let padding =
-          String.make (max_name_len - String.length sub.name + 4) ' '
-        in
-        let about_str = match sub.about with Some a -> a | None -> "" in
-        println ("    " ^ sub.name ^ padding ^ about_str))
-      sorted_subs;
-    println
-      ("\nSee '" ^ cmd.name ^ " <command> --help' for more information on a specific command."))
-
-let get_matches cmd args =
+let get_matches = fun cmd args ->
   match args with
   | [] -> get_matches_internal cmd []
   | _ :: rest -> get_matches_internal cmd rest
 
-let get_one matches name =
+let get_one = fun matches name ->
   match HashMap.get matches.values name with
   | Some (v :: _) -> Some v
   | _ -> None
 
-let get_flag matches name =
-  HashMap.get matches.flags name |> Option.unwrap_or ~default:0 > 0
+let get_flag = fun matches name -> HashMap.get matches.flags name |> Option.unwrap_or ~default:0 > 0
 
-let get_count matches name =
-  HashMap.get matches.flags name |> Option.unwrap_or ~default:0
+let get_count = fun matches name -> HashMap.get matches.flags name |> Option.unwrap_or ~default:0
 
-let get_many matches name =
-  HashMap.get matches.values name |> Option.unwrap_or ~default:[]
+let get_many = fun matches name -> HashMap.get matches.values name |> Option.unwrap_or ~default:[]
 
-let get_int matches name =
-  match get_one matches name with Some s -> int_of_string_opt s | None -> None
+let get_int = fun matches name ->
+  match get_one matches name with
+  | Some s -> int_of_string_opt s
+  | None -> None
 
-let get_float matches name =
+let get_float = fun matches name ->
   match get_one matches name with
   | Some s -> float_of_string_opt s
   | None -> None
 
-let get_path matches name =
+let get_path = fun matches name ->
   match get_one matches name with
   | Some s -> (
-      match Path.of_string s with Ok path -> Some path | Error _ -> None)
+      match Path.of_string s with
+      | Ok path -> Some path
+      | Error _ -> None
+    )
   | None -> None
 
-let get_subcommand matches = matches.subcommand
+let get_subcommand = fun matches -> matches.subcommand
 
-let subcommand_name matches =
-  match matches.subcommand with Some (name, _) -> Some name | None -> None
+let subcommand_name = fun matches ->
+  match matches.subcommand with
+  | Some (name, _) -> Some name
+  | None -> None
 
-let subcommand_matches matches name =
+let subcommand_matches = fun matches name ->
   match matches.subcommand with
   | Some (n, m) when n = name -> Some m
   | _ -> None
 
-let trailing_args matches = matches.trailing_args
+let trailing_args = fun matches -> matches.trailing_args
 
-let error_message = function
+let error_message =
+  function
   | UnknownArgument arg -> "Unknown argument: " ^ arg
   | MissingRequired name -> "Missing required argument: " ^ name
   | InvalidValue (name, msg) -> "Invalid value for " ^ name ^ ": " ^ msg
@@ -422,35 +488,36 @@ let error_message = function
   | TooManyValues name -> "Too many values for: " ^ name
   | TooFewValues name -> "Too few values for: " ^ name
 
-let print_error err = println ("error: " ^ error_message err)
+let print_error = fun err -> println ("error: " ^ error_message err)
 
-let usage_string cmd =
+let usage_string = fun cmd ->
   let buf = Buffer.create 256 in
   Buffer.add_string buf ("Usage: " ^ cmd.name);
-
   (* Add options if any *)
   let has_options =
     List.exists (fun arg -> arg.short != None || arg.long != None) cmd.args
   in
-  if has_options then Buffer.add_string buf " [OPTIONS]";
-
-  (* Add positional args *)
+  if has_options then
+    Buffer.add_string buf " [OPTIONS]";
   let positionals =
     List.filter (fun arg -> arg.short = None && arg.long = None) cmd.args
   in
   List.iter
     (fun arg ->
       let name =
-        if arg.multiple then arg.name ^ "..."
-        else arg.name
+        if arg.multiple then
+          arg.name ^ "..."
+        else
+          arg.name
       in
-      if arg.required then Buffer.add_string buf (" <" ^ name ^ ">")
-      else Buffer.add_string buf (" [" ^ name ^ "]"))
+      if arg.required then
+        Buffer.add_string buf (" <" ^ name ^ ">")
+      else
+        Buffer.add_string buf (" [" ^ name ^ "]"))
     positionals;
-
   (* Add subcommands indicator *)
-  if List.length cmd.subcommands > 0 then Buffer.add_string buf " [COMMAND]";
-
+  if List.length cmd.subcommands > 0 then
+    Buffer.add_string buf " [COMMAND]";
   Buffer.contents buf
 
-let print_usage cmd = println (usage_string cmd)
+let print_usage = fun cmd -> println (usage_string cmd)

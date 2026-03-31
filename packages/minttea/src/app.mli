@@ -1,5 +1,4 @@
 (** Elm-style application definition *)
-
 (** An application with Model-View-Update architecture *)
 (** Create a new application *)
 type 'model t = {

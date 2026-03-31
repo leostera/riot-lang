@@ -71,13 +71,12 @@ type t =
   (* Extension *)
   | Extension of int
 
-let to_int = function
-  (* 1xx *)
+let to_int =
+  function
   | Continue -> 100
   | SwitchingProtocols -> 101
   | Processing -> 102
   | EarlyHints -> 103
-  (* 2xx *)
   | Ok -> 200
   | Created -> 201
   | Accepted -> 202
@@ -88,7 +87,6 @@ let to_int = function
   | MultiStatus -> 207
   | AlreadyReported -> 208
   | ImUsed -> 226
-  (* 3xx *)
   | MultipleChoices -> 300
   | MovedPermanently -> 301
   | Found -> 302
@@ -97,7 +95,6 @@ let to_int = function
   | UseProxy -> 305
   | TemporaryRedirect -> 307
   | PermanentRedirect -> 308
-  (* 4xx *)
   | BadRequest -> 400
   | Unauthorized -> 401
   | PaymentRequired -> 402
@@ -127,7 +124,6 @@ let to_int = function
   | TooManyRequests -> 429
   | RequestHeaderFieldsTooLarge -> 431
   | UnavailableForLegalReasons -> 451
-  (* 5xx *)
   | InternalServerError -> 500
   | NotImplemented -> 501
   | BadGateway -> 502
@@ -139,16 +135,14 @@ let to_int = function
   | LoopDetected -> 508
   | NotExtended -> 510
   | NetworkAuthenticationRequired -> 511
-  (* Extension *)
   | Extension code -> code
 
-let of_int = function
-  (* 1xx *)
+let of_int =
+  function
   | 100 -> Continue
   | 101 -> SwitchingProtocols
   | 102 -> Processing
   | 103 -> EarlyHints
-  (* 2xx *)
   | 200 -> Ok
   | 201 -> Created
   | 202 -> Accepted
@@ -159,7 +153,6 @@ let of_int = function
   | 207 -> MultiStatus
   | 208 -> AlreadyReported
   | 226 -> ImUsed
-  (* 3xx *)
   | 300 -> MultipleChoices
   | 301 -> MovedPermanently
   | 302 -> Found
@@ -168,7 +161,6 @@ let of_int = function
   | 305 -> UseProxy
   | 307 -> TemporaryRedirect
   | 308 -> PermanentRedirect
-  (* 4xx *)
   | 400 -> BadRequest
   | 401 -> Unauthorized
   | 402 -> PaymentRequired
@@ -198,7 +190,6 @@ let of_int = function
   | 429 -> TooManyRequests
   | 431 -> RequestHeaderFieldsTooLarge
   | 451 -> UnavailableForLegalReasons
-  (* 5xx *)
   | 500 -> InternalServerError
   | 501 -> NotImplemented
   | 502 -> BadGateway
@@ -210,22 +201,20 @@ let of_int = function
   | 508 -> LoopDetected
   | 510 -> NotExtended
   | 511 -> NetworkAuthenticationRequired
-  (* Extension *)
   | code -> Extension code
 
-let of_string s =
-  try Result.Ok (of_int (int_of_string s))
-  with Failure _ -> Result.Error `InvalidStatus
+let of_string = fun s ->
+  try Result.Ok (of_int (int_of_string s)) with
+  | Failure _ -> Result.Error `InvalidStatus
 
-let to_string status = string_of_int (to_int status)
+let to_string = fun status -> string_of_int (to_int status)
 
-let reason_phrase = function
-  (* 1xx *)
+let reason_phrase =
+  function
   | Continue -> "Continue"
   | SwitchingProtocols -> "Switching Protocols"
   | Processing -> "Processing"
   | EarlyHints -> "Early Hints"
-  (* 2xx *)
   | Ok -> "OK"
   | Created -> "Created"
   | Accepted -> "Accepted"
@@ -236,7 +225,6 @@ let reason_phrase = function
   | MultiStatus -> "Multi-Status"
   | AlreadyReported -> "Already Reported"
   | ImUsed -> "IM Used"
-  (* 3xx *)
   | MultipleChoices -> "Multiple Choices"
   | MovedPermanently -> "Moved Permanently"
   | Found -> "Found"
@@ -245,7 +233,6 @@ let reason_phrase = function
   | UseProxy -> "Use Proxy"
   | TemporaryRedirect -> "Temporary Redirect"
   | PermanentRedirect -> "Permanent Redirect"
-  (* 4xx *)
   | BadRequest -> "Bad Request"
   | Unauthorized -> "Unauthorized"
   | PaymentRequired -> "Payment Required"
@@ -275,7 +262,6 @@ let reason_phrase = function
   | TooManyRequests -> "Too Many Requests"
   | RequestHeaderFieldsTooLarge -> "Request Header Fields Too Large"
   | UnavailableForLegalReasons -> "Unavailable For Legal Reasons"
-  (* 5xx *)
   | InternalServerError -> "Internal Server Error"
   | NotImplemented -> "Not Implemented"
   | BadGateway -> "Bad Gateway"
@@ -287,28 +273,29 @@ let reason_phrase = function
   | LoopDetected -> "Loop Detected"
   | NotExtended -> "Not Extended"
   | NetworkAuthenticationRequired -> "Network Authentication Required"
-  (* Extension *)
   | Extension code -> string_of_int code
 
-let is_informational status =
+let is_informational = fun status ->
   let code = to_int status in
   code >= 100 && code < 200
 
-let is_success status =
+let is_success = fun status ->
   let code = to_int status in
   code >= 200 && code < 300
 
-let is_redirection status =
+let is_redirection = fun status ->
   let code = to_int status in
   code >= 300 && code < 400
 
-let is_client_error status =
+let is_client_error = fun status ->
   let code = to_int status in
   code >= 400 && code < 500
 
-let is_server_error status =
+let is_server_error = fun status ->
   let code = to_int status in
   code >= 500 && code < 600
 
-let compare s1 s2 = Int.compare (to_int s1) (to_int s2)
-let equal s1 s2 = compare s1 s2 = 0
+let compare = fun s1 s2 ->
+  Int.compare (to_int s1) (to_int s2)
+
+let equal = fun s1 s2 -> compare s1 s2 = 0

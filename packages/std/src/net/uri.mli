@@ -49,13 +49,20 @@ type t
 (** URL parsing errors. *)
 type url = t
 type error =
-  | InvalidScheme (** Invalid or unsupported scheme *)
-  | InvalidAuthority (** Malformed authority section *)
-  | InvalidPath (** Invalid path component *)
-  | InvalidQuery (** Malformed query string *)
-  | InvalidFragment (** Invalid fragment identifier *)
-  | InvalidFormat (** General parsing error *)
-  | TooLong (** URL exceeds maximum length *)
+  | InvalidScheme
+  (** Invalid or unsupported scheme *)
+  | InvalidAuthority
+  (** Malformed authority section *)
+  | InvalidPath
+  (** Invalid path component *)
+  | InvalidQuery
+  (** Malformed query string *)
+  | InvalidFragment
+  (** Invalid fragment identifier *)
+  | InvalidFormat
+  (** General parsing error *)
+  | TooLong
+(** URL exceeds maximum length *)
 (** ## Creation and Parsing *)
 
 (** Parse a string into a URL *)
@@ -65,7 +72,6 @@ val of_string : string -> (t, error) result
 val to_string : t -> string
 
 (** ## Components Access *)
-
 (** Get the scheme (e.g., "http", "https") *)
 val scheme : t -> string option
 
@@ -91,7 +97,6 @@ val fragment : t -> string option
 val path_and_query : t -> string
 
 (** ## Percent Encoding/Decoding *)
-
 (** Encode string per RFC 3986, encoding all except unreserved characters.
     
     Unreserved: a-z A-Z 0-9 - . _ ~
@@ -209,7 +214,6 @@ module Builder : sig
 end
 
 (** ## Utilities *)
-
 (** Check if URL is absolute (has scheme) *)
 val is_absolute : t -> bool
 
@@ -276,5 +280,6 @@ module Query : sig
   val add : t -> string -> string -> t
 
   val remove : t -> string -> t
+
   (** Remove all parameters with given name *)
 end

@@ -1,82 +1,86 @@
 (* Capture sibling Config module before it gets shadowed by Std.Config *)
+
 module SuriConfig = Config
-
 open Std
-
 module Protocol = Protocol
 module HandlerRegistry = Handler_registry
 
 (** Generate a unique LiveView component ID *)
-let id base_name =
+let id = fun base_name ->
   let uuid = Std.UUID.v7 () in
   let uuid_hex = Std.UUID.to_string_nodash uuid in
   base_name ^ "-" ^ uuid_hex
 
-type 'msg event = Custom of Message.t | App of 'msg
+type 'msg event =
+  Custom of Message.t
+  | App of 'msg
 
 (** Component interface *)
 module type Component = sig
   val id : string
-  
+
   type state
   type msg
   type args
-
   val serialize_args : args -> Data.Json.t
+
   val deserialize_args : Data.Json.t -> (args, Data.Json.t) result
-  
+
   val init : Middleware.Conn.t -> args -> state
+
   val update : msg event -> state -> state
+
   val render : state:state -> unit -> msg Component.t
 end
 
 (** Message type for sending patches from component to handler *)
-type Message.t += RenderPatch of string
+type Message.t +=
+  RenderPatch of string
 
 (** Component process messages *)
-type Message.t += 
+type Message.t +=
   | ComponentMount
-  | ComponentEvent of { handler_id : string; event_data : string }
+  | ComponentEvent of { handler_id : string; event_data : string; }
 
 (** Attach handler IDs to component tree and register handlers *)
-let rec attach_handler_ids registry (component : 'msg Component.t) : 'msg Component.t =
+let rec attach_handler_ids registry (component:'msg Component.t) : 'msg Component.t =
   match component with
-  | Component.Text _ -> component
+  | Component.Text _ ->
+      component
   | Component.Fragment children ->
       Component.Fragment (List.map (attach_handler_ids registry) children)
   | Component.El { tag; attrs; children } ->
       (* Process attributes and extract event handlers *)
-      let (regular_attrs, event_handlers) = 
-        List.partition (fun attr ->
-          match attr with
-          | Component.Attr _ -> true
-          | Component.Event _ -> false
-        ) attrs
+      let (regular_attrs, event_handlers) =
+        List.partition
+          (fun attr ->
+            match attr with
+            | Component.Attr _ -> true
+            | Component.Event _ -> false)
+          attrs
       in
-      
       (* Register event handlers and create data attributes *)
-      let handler_attrs = List.map (fun attr ->
-        match attr with
-        | Component.Event (event_name, handler) ->
-            let handler_id = HandlerRegistry.register registry handler in
-            [
-              Component.Attr ("data-lv-handler", handler_id);
-              Component.Attr ("data-lv-event", event_name);
-            ]
-        | _ -> []
-      ) event_handlers |> List.flatten in
-      
+      let handler_attrs =
+        List.map
+          (fun attr ->
+            match attr with
+            | Component.Event (event_name, handler) ->
+                let handler_id = HandlerRegistry.register registry handler in
+                [
+                  Component.Attr ("data-lv-handler", handler_id);
+                  Component.Attr ("data-lv-event", event_name);
+
+                ]
+            | _ -> [])
+          event_handlers
+        |> List.flatten
+      in
       (* Process children recursively *)
       let new_children = List.map (attach_handler_ids registry) children in
-      
-      Component.El {
-        tag;
-        attrs = regular_attrs @ handler_attrs;
-        children = new_children;
-      }
+      Component.El {tag; attrs = regular_attrs @ handler_attrs; children = new_children; }
 
 (** Render component with handler IDs attached *)
-let render_with_handlers registry component =
+let render_with_handlers = fun registry component ->
   let component_with_ids = attach_handler_ids registry component in
   Component.to_html component_with_ids
 
@@ -89,8 +93,8 @@ module ComponentProcess = struct
     registry : 'msg HandlerRegistry.t;
     handler_pid : Pid.t;
   }
-  
-  let rec loop (t : ('state, 'msg) t) =
+
+  let rec loop = fun (t:('state, 'msg) t) ->
     match receive_any () with
     | ComponentMount ->
         Log.info "Component mounted";
@@ -101,32 +105,30 @@ module ComponentProcess = struct
         let patch = Protocol.serialize_server_msg (Protocol.Patch html) in
         send t.handler_pid (RenderPatch patch);
         loop t
-    
     | ComponentEvent { handler_id; event_data } ->
         Log.debug ("Component event: " ^ handler_id ^ " -> " ^ event_data);
-        (match HandlerRegistry.find t.registry handler_id with
-         | None ->
-             Log.warn ("Unknown handler: " ^ handler_id);
-             loop t
-         | Some handler ->
-             (* Process event - wrap in App *)
-             let msg = handler event_data in
-             let new_state = t.update (App msg) t.state in
-             t.state <- new_state;
-             
-             (* Re-render *)
-             HandlerRegistry.clear t.registry;
-             let component = t.render ~state:t.state () in
-             let html = render_with_handlers t.registry component in
-             let patch = Protocol.serialize_server_msg (Protocol.Patch html) in
-             send t.handler_pid (RenderPatch patch);
-             loop t)
-    
+        (
+          match HandlerRegistry.find t.registry handler_id with
+          | None ->
+              Log.warn ("Unknown handler: " ^ handler_id);
+              loop t
+          | Some handler ->
+              (* Process event - wrap in App *)
+              let msg = handler event_data in
+              let new_state = t.update (App msg) t.state in
+              t.state <- new_state;
+              (* Re-render *)
+              HandlerRegistry.clear t.registry;
+              let component = t.render ~state:t.state () in
+              let html = render_with_handlers t.registry component in
+              let patch = Protocol.serialize_server_msg (Protocol.Patch html) in
+              send t.handler_pid (RenderPatch patch);
+              loop t
+        )
     | msg ->
         (* Catch any other message (timers, process messages, etc.) *)
         let new_state = t.update (Custom msg) t.state in
         t.state <- new_state;
-        
         (* Re-render *)
         HandlerRegistry.clear t.registry;
         let component = t.render ~state:t.state () in
@@ -134,57 +136,62 @@ module ComponentProcess = struct
         let patch = Protocol.serialize_server_msg (Protocol.Patch html) in
         send t.handler_pid (RenderPatch patch);
         loop t
-  
-  let start_link handler_pid (type s m a)
-      (module C : Component with type state = s and type msg = m and type args = a) 
-      conn (args : a) =
-    spawn_link (fun () ->
-      Log.info "Component process started";
-      loop {
-        state = C.init conn args;
-        update = C.update;
-        render = C.render;
-        registry = HandlerRegistry.create ();
-        handler_pid;
-      };
-      Ok ())
+
+  let start_link = fun handler_pid (type s m a) ((module C : Component with type state = s and type msg = m and type args = a)) conn (args:a) ->
+    spawn_link
+      (fun () ->
+        Log.info "Component process started";
+        loop
+        {
+          state = C.init conn args;
+          update = C.update;
+          render = C.render;
+          registry = HandlerRegistry.create ();
+          handler_pid;
+
+        };
+        Ok ())
 end
 
 (** Create a Channel.Handler for a LiveView component *)
 module MountHandler (C : Component) = struct
   include Channel.Handler.Default
-  
+
   type args = Middleware.Conn.t
-  type state = { component : Pid.t }
-  
+
+  type state = {
+    component : Pid.t;
+  }
+
   (** Extract session token from query parameters *)
-  let extract_session_token conn =
+  let extract_session_token = fun conn ->
     let params = Middleware.Conn.query_params conn in
     List.assoc_opt "session" params
-  
+
   (** Get secret from Suri config *)
-  let get_secret () =
+  let get_secret = fun () ->
     (* Try to get from Std.Config, fall back to default *)
     match Std.Config.get (module SuriConfig) with
     | Ok c -> c.liveview_secret
-    | Error _ -> 
+    | Error _ ->
         Log.warn "Could not load Suri config from Std.Config, using default";
         SuriConfig.default.liveview_secret
-  
-  let init conn =
+
+  let init = fun conn ->
     let this = self () in
-    
     (* Extract and verify session token, then deserialize args *)
-    let component_args = match extract_session_token conn with
+    let component_args =
+      match extract_session_token conn with
       | None ->
           (* No session token - try deserializing null for backward compatibility *)
           Log.warn "No session token found, using default args";
-          (match C.deserialize_args Data.Json.Null with
-          | Ok args -> args
-          | Error err ->
-              Log.error ("Failed to create default args: " ^ Data.Json.to_string err);
-              panic "LiveView component requires valid args")
-      
+          (
+            match C.deserialize_args Data.Json.Null with
+            | Ok args -> args
+            | Error err ->
+                Log.error ("Failed to create default args: " ^ Data.Json.to_string err);
+                panic "LiveView component requires valid args"
+          )
       | Some token ->
           (* Verify and deserialize session token *)
           let secret = get_secret () in
@@ -192,10 +199,11 @@ module MountHandler (C : Component) = struct
           | Error err ->
               Log.error ("Invalid session token: " ^ err);
               (* Fall back to default args *)
-              (match C.deserialize_args Data.Json.Null with
-              | Ok args -> args
-              | Error _ -> panic "LiveView session token invalid and no default args available")
-          
+              (
+                match C.deserialize_args Data.Json.Null with
+                | Ok args -> args
+                | Error _ -> panic "LiveView session token invalid and no default args available"
+              )
           | Ok json ->
               match C.deserialize_args json with
               | Ok args -> args
@@ -203,11 +211,12 @@ module MountHandler (C : Component) = struct
                   Log.error ("Failed to deserialize args: " ^ Data.Json.to_string err);
                   panic "LiveView args deserialization failed"
     in
-    
-    let component = ComponentProcess.start_link this (module C) conn component_args in
-    `ok { component }
-  
-  let handle_frame (frame : Http.Ws.Frame.t) _conn state =
+    let component =
+      ComponentProcess.start_link this (module C) conn component_args
+    in
+    `ok {component}
+
+  let handle_frame = fun (frame:Http.Ws.Frame.t) _conn state ->
     match frame.opcode with
     | Http.Ws.Frame.Text -> (
         match Protocol.deserialize_client_msg frame.payload with
@@ -217,30 +226,30 @@ module MountHandler (C : Component) = struct
             `ok state
         | Ok Protocol.Event { handler_id; event_data } ->
             Log.debug ("Received Event: " ^ handler_id);
-            send state.component (ComponentEvent { handler_id; event_data });
+            send state.component (ComponentEvent {handler_id; event_data});
             `ok state
         | Error err ->
             Log.error ("Failed to deserialize: " ^ err);
-            `ok state)
+            `ok state
+      )
     | Http.Ws.Frame.Ping ->
         `push ([ Http.Ws.Frame.pong () ], state)
     | _ ->
         `ok state
-  
-  let handle_message msg state =
+
+  let handle_message = fun msg state ->
     match msg with
     | RenderPatch patch ->
         Log.debug ("Sending patch to client (" ^ string_of_int (String.length patch) ^ " bytes)");
         let frame = Http.Ws.Frame.text patch in
         `push ([ frame ], state)
-    | _ ->
-        `ok state
+    | _ -> `ok state
 end
 
 (** JavaScript runtime string - included inline *)
-let javascript_runtime = 
-  (* Include morphdom library for efficient DOM patching *)
-  Morphdom.javascript ^ {|
+let javascript_runtime =
+  Morphdom.javascript
+  ^ {|
 
 class LiveView {
   constructor(elementId, wsPath) {
@@ -436,34 +445,37 @@ window.LiveView = LiveView;
 
 (** Client script as a Component element *)
 let client_script : 'msg Component.t =
-  let open Component in
-  script ~attrs:[attr "type" "text/javascript"] javascript_runtime
+  let open Component in script ~attrs:[ attr "type" "text/javascript" ] javascript_runtime
 
 (** Generate HTML template with LiveView bootstrap *)
-let html_template ~element_id ~ws_path ?title ?styles initial_content =
+let html_template = fun ~element_id ~ws_path ?title ?styles initial_content ->
   let title_text = Option.unwrap_or title ~default:"LiveView App" in
   let open Component in
-  let head_elements = [
-    meta ~attrs:[attr "charset" "UTF-8"] ();
-    meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
-    title [text title_text];
-    script ~attrs:[attr "type" "text/javascript"] javascript_runtime;
-  ] in
-  let head_elements = match styles with
-    | Some css -> head_elements @ [style css]
-    | None -> head_elements
-  in
-  let page = html [
-    head head_elements;
-    body [
-      div ~attrs:[id element_id] [initial_content];
-      script (
-        "const lv = new LiveView('" ^ element_id ^ "', '" ^ ws_path ^ "');\n" ^
-        "lv.connect();"
-      );
-    ];
-  ] in
-  Component.to_html page
+    let head_elements = [
+      meta ~attrs:[ attr "charset" "UTF-8" ] ();
+      meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
+      title [ text title_text ];
+      script ~attrs:[ attr "type" "text/javascript" ] javascript_runtime;
+
+    ] in
+    let head_elements =
+      match styles with
+      | Some css -> head_elements @ [ style css ]
+      | None -> head_elements
+    in
+    let page = html
+    [
+      head head_elements;
+      body
+      [
+        div ~attrs:[ id element_id ] [ initial_content ];
+        script
+        ("const lv = new LiveView('" ^ element_id ^ "', '" ^ ws_path ^ "');\n" ^ "lv.connect();");
+
+      ];
+
+    ] in
+    Component.to_html page
 
 (** Serve the LiveView JavaScript runtime as middleware.
     
@@ -477,24 +489,23 @@ let html_template ~element_id ~ws_path ?title ?styles initial_content =
         Middleware.router routes;
       ]
     ]} *)
-let serve_runtime ?(prefix = "/assets/liveview.js") () : Middleware.Pipeline.middleware =
-  fun ~conn ~next ->
-    let req_path = Middleware.Conn.uri conn in
-    if req_path = prefix then
-      conn
-      |> Middleware.Conn.with_status Net.Http.Status.Ok
-      |> Middleware.Conn.with_header "Content-Type" "application/javascript; charset=utf-8"
-      |> Middleware.Conn.with_body javascript_runtime
-      |> Middleware.Conn.send
-    else
-      next conn  (* Pass to next middleware *)
+let serve_runtime ?(prefix = "/assets/liveview.js") () : Middleware.Pipeline.middleware = fun ~conn ~next ->
+  let req_path = Middleware.Conn.uri conn in
+  if req_path = prefix then
+    conn
+    |> Middleware.Conn.with_status Net.Http.Status.Ok
+    |> Middleware.Conn.with_header "Content-Type" "application/javascript; charset=utf-8"
+    |> Middleware.Conn.with_body javascript_runtime
+    |> Middleware.Conn.send
+  else
+    next conn
+
+(* Pass to next middleware *)
 
 (** Create a LiveView mount handler *)
-let mount (type s m) 
-    (module C : Component with type state = s and type msg = m)
-    (conn : Middleware.Conn.t) =
+let mount = fun (type s m) ((module C : Component with type state = s and type msg = m)) (conn:Middleware.Conn.t) ->
   let module M = MountHandler (C) in
-  let opts = Channel.Handler.{ do_upgrade = true } in
+  let opts = Channel.Handler.{do_upgrade = true} in
   (opts, Channel.Handler.make (module M) conn)
 
 (** Embed a LiveView component into a page.
@@ -504,38 +515,44 @@ let mount (type s m)
     
     @param module Component module to embed
     @param args Initialization arguments to pass to the component *)
-let embed 
-    (type a) (module C : Component with type args = a)
-    (args_value : a)
-  =
+let embed = fun (type a) ((module C : Component with type args = a)) (args_value:a) ->
   let open Component in
-  let element_id = "liveview-" ^ C.id in
-  let ws_path = "/suri/live/" ^ C.id in
-  (* JavaScript variable names can't contain hyphens, replace with underscores *)
-  let js_var_name = "lv_" ^ String.map (fun c -> if c = '-' then '_' else c) element_id in
-  
-  (* Get secret from config *)
-  let secret = match Std.Config.get (module SuriConfig) with
-    | Ok c -> c.liveview_secret
-    | Error _ -> 
-        Log.warn "Could not load Suri config from Std.Config, using default";
-        SuriConfig.default.liveview_secret
-  in
-  
-  (* Serialize and sign the arguments *)
-  let json = C.serialize_args args_value in
-  let session_token = Session.encode ~secret ~json in
-  
-  Fragment [
-    div ~attrs:[
-      id element_id;
-      Attr ("data-lv-session", session_token);
-    ] [];
-    script (
-      "const " ^ js_var_name ^ " = new LiveView('" ^ element_id ^ "', '" ^ ws_path ^ "');\n" ^
-      js_var_name ^ ".connect();"
-    );
-  ]
+    let element_id = "liveview-" ^ C.id in
+    let ws_path = "/suri/live/" ^ C.id in
+    (* JavaScript variable names can't contain hyphens, replace with underscores *)
+    let js_var_name = "lv_" ^ String.map
+      (fun c ->
+        if c = '-' then
+          '_'
+        else
+          c)
+      element_id
+    in
+    (* Get secret from config *)
+    let secret =
+      match Std.Config.get (module SuriConfig) with
+      | Ok c -> c.liveview_secret
+      | Error _ ->
+          Log.warn "Could not load Suri config from Std.Config, using default";
+          SuriConfig.default.liveview_secret
+    in
+    (* Serialize and sign the arguments *)
+    let json = C.serialize_args args_value in
+    let session_token = Session.encode ~secret ~json in
+    Fragment [
+      div ~attrs:[ id element_id; Attr ("data-lv-session", session_token);  ] [];
+      script
+      ("const "
+      ^ js_var_name
+      ^ " = new LiveView('"
+      ^ element_id
+      ^ "', '"
+      ^ ws_path
+      ^ "');\n"
+      ^ js_var_name
+      ^ ".connect();");
+
+    ]
 
 (** Create a LiveView route.
     
@@ -557,35 +574,33 @@ let embed
         LiveView.live (module Counter);  (* Creates route at /suri/live/counter-<uuid> *)
       ]
     ]} *)
-let live (type s m)
-    (module C : Component with type state = s and type msg = m) =
+let live = fun (type s m) ((module C : Component with type state = s and type msg = m)) ->
   let ws_path = "/suri/live/" ^ C.id in
-  let handler conn req =
+  let handler = fun conn req ->
     (* This route only handles WebSocket upgrades *)
     let headers = Middleware.Conn.headers conn in
     let is_websocket_upgrade =
-      match (
-        Net.Http.Header.get headers "upgrade",
-        Net.Http.Header.get headers "connection"
-      ) with
-      | Some upgrade, Some conn_header
-        when String.lowercase_ascii upgrade = "websocket"
-        && let conn_header = String.lowercase_ascii conn_header in
-           conn_header = "upgrade" || String.contains conn_header "upgrade" ->
-          true
+      match (Net.Http.Header.get headers "upgrade", Net.Http.Header.get headers "connection") with
+      | Some upgrade, Some conn_header when String.lowercase_ascii upgrade = "websocket"
+      && let conn_header = String.lowercase_ascii conn_header in
+      conn_header = "upgrade" || String.contains conn_header "upgrade" -> true
       | _ -> false
     in
-    
-    if is_websocket_upgrade then begin
-      Log.info ("LiveView: Mounting component at " ^ ws_path);
-      let (opts, handler) = mount (module C) conn in
-      Middleware.Conn.upgrade_websocket opts handler conn
-    end else begin
-      (* Not a WebSocket upgrade - return error *)
-      conn
-      |> Middleware.Conn.with_status Net.Http.Status.BadRequest
-      |> Middleware.Conn.with_body "This endpoint only accepts WebSocket connections"
-      |> Middleware.Conn.send
-    end
+    if is_websocket_upgrade then
+      begin
+        Log.info ("LiveView: Mounting component at " ^ ws_path);
+        let (opts, handler) =
+          mount (module C) conn
+        in
+        Middleware.Conn.upgrade_websocket opts handler conn
+      end
+    else
+      begin
+        (* Not a WebSocket upgrade - return error *)
+        conn
+        |> Middleware.Conn.with_status Net.Http.Status.BadRequest
+        |> Middleware.Conn.with_body "This endpoint only accepts WebSocket connections"
+        |> Middleware.Conn.send
+      end
   in
   Middleware.Router.any ws_path handler

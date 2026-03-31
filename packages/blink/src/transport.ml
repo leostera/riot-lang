@@ -1,22 +1,26 @@
 open Std
 
 (* Result monad for cleaner error handling *)
-let ( let* ) x f = Result.and_then x f
+
+let ( let* ) = fun x f ->
+  Result.and_then x f
 
 module type Intf = sig
   val name : string
+
   val connect : Net.Addr.stream_addr -> Net.Uri.t -> (Connection.t, Error.t) result
 end
 
 module Tcp : Intf = struct
   let name = "tcp"
 
-  let tcp_error_to_error = function
+  let tcp_error_to_error =
+    function
     | Net.TcpStream.Closed -> Error.Net_error Net.Closed
     | Net.TcpStream.Connection_refused -> Error.Net_error Net.Connection_refused
     | Net.TcpStream.System_error s -> Error.Net_error (Net.System_error s)
 
-  let connect addr uri =
+  let connect = fun addr uri ->
     match Net.TcpStream.connect addr with
     | Error e -> Error (tcp_error_to_error e)
     | Ok sock ->
@@ -28,11 +32,14 @@ end
 module Tls : Intf = struct
   let name = "tls"
 
-  let connect addr uri =
+  let connect = fun addr uri ->
     match Net.TcpStream.connect addr with
-    | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
-    | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
-    | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
+    | Error Net.TcpStream.Closed ->
+        Error (Error.Net_error Net.Closed)
+    | Error Net.TcpStream.Connection_refused ->
+        Error (Error.Net_error Net.Connection_refused)
+    | Error (Net.TcpStream.System_error s) ->
+        Error (Error.Net_error (Net.System_error s))
     | Ok sock ->
         let hostname = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
         match Net.TlsStream.of_tcp_client ~hostname sock with
@@ -43,21 +50,26 @@ module Tls : Intf = struct
             Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_tls_error ~uri)
 end
 
-let connect uri =
+let connect = fun uri ->
   let host = Net.Uri.host uri |> Option.unwrap_or ~default:"localhost" in
-  let default_port = match Net.Uri.scheme uri with
+  let default_port =
+    match Net.Uri.scheme uri with
     | Some "https" -> 443
     | _ -> 80
   in
   let port = Net.Uri.port uri |> Option.unwrap_or ~default:default_port in
-
   Log.info "connecting!";
   match Net.Addr.of_host_and_port ~host ~port with
-  | Error (Net.Addr.System_error io_err) -> Error (Error.Net_error (Net.System_error io_err))
+  | Error (Net.Addr.System_error io_err) ->
+      Error (Error.Net_error (Net.System_error io_err))
   | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
       Error (Error.Net_error (Net.System_error IO.Invalid_argument))
   | Ok addr -> (
       match Net.Uri.scheme uri with
-      | Some "https" | Some "wss" -> Tls.connect addr uri
-      | Some "http" | Some "ws" | None -> Tcp.connect addr uri
-      | Some _ -> Tcp.connect addr uri)
+      | Some "https"
+      | Some "wss" -> Tls.connect addr uri
+      | Some "http"
+      | Some "ws"
+      | None -> Tcp.connect addr uri
+      | Some _ -> Tcp.connect addr uri
+    )

@@ -156,7 +156,6 @@ val error_to_unix : error -> Unix.error
 val error_message : error -> string
 
 (** {2 Unix Syscall Helpers} *)
-
 (** [unix_syscall fn] wraps a Unix syscall to automatically retry on EINTR.
     EAGAIN/EWOULDBLOCK are returned as errors for async handling at the Std layer.
     
@@ -182,7 +181,6 @@ val file_kind_of_unix : Unix.file_kind -> file_kind
 val file_kind_to_unix : file_kind -> Unix.file_kind
 
 (** {2 Standard File Descriptors} *)
-
 val stdin : Fd.t
 
 val stdout : Fd.t
@@ -192,6 +190,7 @@ val stderr : Fd.t
 (** {2 Generic I/O Abstractions} *)
 
 (** Growable byte buffers. See {!Buffer}. *)
+
 (** Byte sequences. See {!Bytes}. *)
 module Buffer : module type of Buffer
 
@@ -207,9 +206,7 @@ module Reader : module type of Reader
 module Writer : module type of Writer
 
 (** {2 Standard File Descriptors} *)
-
 (** Standard input file descriptor *)
-
 val stdin : Fd.t
 
 (** Standard output file descriptor *)
@@ -222,7 +219,6 @@ val stderr : Fd.t
 
     These are shortcuts to the corresponding functions in {!Reader} and
     {!Writer}. *)
-
 (** [read reader ?timeout buf] reads data into [buf]. Equivalent to
     [Reader.read reader ?timeout buf]. *)
 val read : ('src, 'err) Reader.t -> ?timeout:int64 -> bytes -> (int, 'err) result

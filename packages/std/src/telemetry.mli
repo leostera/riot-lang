@@ -21,7 +21,6 @@
           | BuildStarted { package } -> Log.info "Building %s" package
           | _ -> ())
     ]} *)
-
 (** Extensible variant type for telemetry events. Any module can extend this
     with their own events. *)
 (** Start the telemetry server process. Returns the server's PID. Must be called

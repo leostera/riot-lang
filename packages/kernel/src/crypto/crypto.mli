@@ -1,5 +1,4 @@
 (** Core cryptographic types and operations *)
-
 (** The universal hash type produced by all hash algorithms *)
 type hash = Hash.t
 module Hash = Hash

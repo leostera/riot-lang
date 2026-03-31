@@ -1,5 +1,4 @@
 (** Opaque worker ID type for type safety *)
-
 (** Opaque type representing a worker ID *)
 (** Create a worker ID from an integer *)
 type t

@@ -49,42 +49,40 @@ open Global
 
 type name = string
 (** Header name (case-insensitive) *)
-
 type value = string
 (** Header value *)
-
 type t
 (** Collection of HTTP headers *)
-
 (** {1 Construction} *)
 
 val empty : t
+
 (** Creates an empty header collection.
 
     ## Examples
 
     ```ocaml let headers = Header.empty in assert (Header.is_empty headers) ```
 *)
-
 val of_list : (name * value) list -> t
+
 (** Creates headers from a list of name-value pairs.
 
     ## Examples
 
     ```ocaml let headers = Header.of_list
     [ ("Content-Type", "text/html"); ("Accept", "text/html") ] ``` *)
-
 val to_list : t -> (name * value) list
+
 (** Converts headers to a list of name-value pairs.
 
     ## Examples
 
     ```ocaml let headers = Header.of_list [("Host", "example.com")] in
     Header.to_list headers (* [("host", "example.com")] *) ``` *)
-
 (** {1 Modification} *)
 
 val add : t -> name -> value -> t
+
 (** Adds a header, allowing multiple values for the same name.
 
     ## Examples
@@ -95,8 +93,8 @@ val add : t -> name -> value -> t
 
     Header.get_all headers "Accept" (* ["text/html"; "application/json"] *) ```
 *)
-
 val set : t -> name -> value -> t
+
 (** Sets a header, replacing any existing values for that name.
 
     ## Examples
@@ -105,8 +103,8 @@ val set : t -> name -> value -> t
     "Host" "old.com" in let headers = Header.set headers "Host" "new.com" in
 
     Header.get headers "Host" (* Some "new.com" *) ``` *)
-
 val remove : t -> name -> t
+
 (** Removes all headers with the given name.
 
     ## Examples
@@ -115,10 +113,10 @@ val remove : t -> name -> t
     headers = Header.remove headers "Host" in
 
     Header.has headers "Host" (* false *) ``` *)
-
 (** {1 Access} *)
 
 val get : t -> name -> value option
+
 (** Returns the first value for the given header name.
 
     ## Examples
@@ -128,8 +126,8 @@ val get : t -> name -> value option
 
     (* Case-insensitive *) Header.get headers "content-type" (* Some "text/html"
     *) ``` *)
-
 val get_all : t -> name -> value list
+
 (** Returns all values for the given header name.
 
     ## Examples
@@ -139,36 +137,36 @@ val get_all : t -> name -> value list
 
     Header.get_all headers "Accept" (* ["text/html"; "application/json"] *) ```
 *)
-
 val has : t -> name -> bool
+
 (** Checks if a header with the given name exists.
 
     ## Examples
 
     ```ocaml Header.has headers "Content-Type" (* true *) Header.has headers
     "Missing" (* false *) ``` *)
-
 (** {1 Iteration} *)
 
 val iter : (name -> value -> unit) -> t -> unit
+
 (** Applies function to each header name-value pair.
 
     ## Examples
 
     ```ocaml Header.iter (fun name value -> Printf.printf "%s: %s\n" name value
     ) headers ``` *)
-
 val fold : (name -> value -> 'a -> 'a) -> t -> 'a -> 'a
+
 (** Folds over all header name-value pairs.
 
     ## Examples
 
     ```ocaml let count = Header.fold (fun _ _ acc -> acc + 1) headers 0 in ```
 *)
-
 (** {1 Properties} *)
 
 val length : t -> int
+
 (** Returns the number of header entries (including duplicates).
 
     ## Examples
@@ -177,14 +175,13 @@ val length : t -> int
     Header.add "Accept" "application/json" in
 
     Header.length headers (* 2 *) ``` *)
-
 val is_empty : t -> bool
+
 (** Checks if headers collection is empty.
 
     ## Examples
 
     ```ocaml Header.is_empty Header.empty (* true *) ``` *)
-
 (** {1 Common Header Names} *)
 
 module Name : sig
@@ -195,83 +192,83 @@ module Name : sig
 
       ```ocaml Header.set headers Header.Name.content_type "text/html"
       Header.set headers Header.Name.authorization "Bearer token" ``` *)
-
   val content_type : name
+
   (** "Content-Type" - Media type of the resource *)
-
   val content_length : name
+
   (** "Content-Length" - Size of the resource in bytes *)
-
   val authorization : name
+
   (** "Authorization" - Authentication credentials *)
-
   val user_agent : name
+
   (** "User-Agent" - Client software information *)
-
   val accept : name
+
   (** "Accept" - Acceptable media types *)
-
   val accept_encoding : name
+
   (** "Accept-Encoding" - Acceptable content encodings *)
-
   val accept_language : name
+
   (** "Accept-Language" - Acceptable languages *)
-
   val cache_control : name
+
   (** "Cache-Control" - Caching directives *)
-
   val connection : name
+
   (** "Connection" - Connection options *)
-
   val cookie : name
+
   (** "Cookie" - HTTP cookies *)
-
   val host : name
+
   (** "Host" - Target host and port *)
-
   val referer : name
+
   (** "Referer" - Previous page URL *)
-
   val server : name
+
   (** "Server" - Server software information *)
-
   val set_cookie : name
+
   (** "Set-Cookie" - Set HTTP cookies *)
-
   val transfer_encoding : name
+
   (** "Transfer-Encoding" - Transfer encoding method *)
-
   val location : name
+
   (** "Location" - Redirect target URL *)
-
   val www_authenticate : name
+
   (** "WWW-Authenticate" - Authentication method *)
-
   val date : name
+
   (** "Date" - Message origination date/time *)
-
   val etag : name
+
   (** "ETag" - Entity tag for cache validation *)
-
   val expires : name
+
   (** "Expires" - Expiration date/time *)
-
   val last_modified : name
+
   (** "Last-Modified" - Last modification date/time *)
-
   val if_modified_since : name
+
   (** "If-Modified-Since" - Conditional request *)
-
   val if_none_match : name
+
   (** "If-None-Match" - Conditional request with ETag *)
-
   val vary : name
+
   (** "Vary" - Variance in content negotiation *)
-
   val x_forwarded_for : name
-  (** "X-Forwarded-For" - Original client IP (proxy) *)
 
+  (** "X-Forwarded-For" - Original client IP (proxy) *)
   val x_real_ip : name
+
   (** "X-Real-IP" - Original client IP (nginx) *)
 end
 
@@ -287,9 +284,10 @@ module Value : sig
       Header.Value.parse_content_type ct with | Ok (media_type, params) -> (*
       media_type = "application/json" *) (* params = [("charset", "utf-8")] *) |
       Error _ -> () ``` *)
+  val parse_content_type : value -> (string * (string * string) list, [
+    `InvalidContentType
+  ]) result
 
-  val parse_content_type :
-    value -> (string * (string * string) list, [ `InvalidContentType ]) result
   (** Parses Content-Type header into media type and parameters.
 
       ## Examples
@@ -299,9 +297,10 @@ module Value : sig
 
       Header.Value.parse_content_type "application/json" (* Ok
       ("application/json", []) *) ``` *)
+  val parse_authorization : value -> (string * string, [
+    `InvalidAuthorization
+  ]) result
 
-  val parse_authorization :
-    value -> (string * string, [ `InvalidAuthorization ]) result
   (** Parses Authorization header into scheme and credentials.
 
       ## Examples
@@ -311,17 +310,16 @@ module Value : sig
 
       Header.Value.parse_authorization "Basic dXNlcjpwYXNz" (* Ok ("Basic",
       "dXNlcjpwYXNz") *) ``` *)
-
   val parse_cache_control : value -> (string * string option) list
+
   (** Parses Cache-Control directives into list of (directive, value) pairs.
 
       ## Examples
 
       ```ocaml Header.Value.parse_cache_control "max-age=3600, must-revalidate"
       (* [("max-age", Some "3600"); ("must-revalidate", None)] *) ``` *)
+  val parse_accept : value -> (string * float option * (string * string) list) list
 
-  val parse_accept :
-    value -> (string * float option * (string * string) list) list
   (** Parses Accept header with quality values and parameters. Returns list of
       (media_type, quality, parameters).
 

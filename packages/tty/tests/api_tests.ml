@@ -2,44 +2,53 @@ open Std
 module Test = Std.Test
 
 (** Tests for TTY API - focusing on state management and input, not output *)
-
-let test_make_tty () =
+let test_make_tty = fun () ->
   (* Test that we can create a TTY (may fail in non-interactive mode) *)
   match Tty.make () with
-  | Ok _tty -> Ok () (* TTY available *)
-  | Error Tty.NoTtyConnected -> Ok () (* Expected in non-interactive mode *)
-  | Error (Tty.SystemError _err) -> Ok () (* Also acceptable *)
+  | Ok _tty -> Ok ()
+  | Error Tty.NoTtyConnected -> Ok ()
+  | Error (Tty.SystemError _err) -> Ok ()
 
-let test_make_raw () =
+(* Also acceptable *)
+
+let test_make_raw = fun () ->
   (* Test creating a raw mode TTY *)
   match Tty.make_raw () with
   | Ok tty ->
       let mode = Tty.mode tty in
-      if mode = Tty.Immediate then Ok ()
-      else Error "Expected Immediate mode for make_raw"
-  | Error Tty.NoTtyConnected -> Ok () (* Expected in non-interactive mode *)
-  | Error (Tty.SystemError _err) -> Ok ()
+      if mode = Tty.Immediate then
+        Ok ()
+      else
+        Error "Expected Immediate mode for make_raw"
+  | Error Tty.NoTtyConnected ->
+      Ok ()
+  | Error (Tty.SystemError _err) ->
+      Ok ()
 
-let test_size_accessors () =
+let test_size_accessors = fun () ->
   (* Test size accessor when TTY is available *)
   match Tty.make () with
-  | Error _ -> Ok () (* Skip test if no TTY *)
+  | Error _ -> Ok ()
   | Ok tty ->
       let size = Tty.size tty in
-      if size.cols > 0 && size.rows > 0 then Ok ()
-      else Error ("Invalid size: " ^ Int.to_string size.cols ^ "x" ^ Int.to_string size.rows)
+      if size.cols > 0 && size.rows > 0 then
+        Ok ()
+      else
+        Error ("Invalid size: " ^ Int.to_string size.cols ^ "x" ^ Int.to_string size.rows)
 
-let test_refresh_size () =
+let test_refresh_size = fun () ->
   (* Test that refresh_size doesn't crash *)
   match Tty.make () with
   | Error _ -> Ok ()
   | Ok tty ->
       Tty.refresh_size tty;
       let size = Tty.size tty in
-      if size.cols > 0 && size.rows > 0 then Ok ()
-      else Error "Size invalid after refresh"
+      if size.cols > 0 && size.rows > 0 then
+        Ok ()
+      else
+        Error "Size invalid after refresh"
 
-let test_mode_switching () =
+let test_mode_switching = fun () ->
   (* Test switching between raw and line-buffered modes *)
   match Tty.make () with
   | Error _ -> Ok ()
@@ -57,11 +66,12 @@ let test_mode_switching () =
           Tty.set_line_buffered tty;
           if Tty.mode tty != Tty.LineBuffered then
             Error "Expected LineBuffered mode after set_line_buffered"
-          else Ok ()
+          else
+            Ok ()
         )
       )
 
-let test_escape_sequences_are_strings () =
+let test_escape_sequences_are_strings = fun () ->
   (* Test that escape sequences are pure strings, not functions *)
   try
     let sequences = [
@@ -75,41 +85,50 @@ let test_escape_sequences_are_strings () =
       Tty.Escape_seq.disable_focus_events_seq;
       Tty.Escape_seq.enable_kitty_keyboard_seq;
       Tty.Escape_seq.disable_kitty_keyboard_seq;
-    ] in
+
+    ]
+    in
     (* Verify they're all non-empty strings starting with ESC *)
-    if List.for_all (fun s -> 
-      String.length s > 0 && String.get s 0 = '\x1b'
-    ) sequences then Ok ()
-    else Error "Some escape sequences are invalid"
-  with e -> Error ("Escape sequence error: " ^ (Exception.to_string e))
+    if List.for_all (fun s -> String.length s > 0 && String.get s 0 = '\x1b') sequences then
+      Ok ()
+    else
+      Error "Some escape sequences are invalid"
+  with
+  | e -> Error ("Escape sequence error: " ^ (Exception.to_string e))
 
-let test_csi_constant () =
+let test_csi_constant = fun () ->
   (* Test the CSI constant *)
-  if Tty.Escape_seq.csi = "\x1b[" then Ok ()
-  else Error ("Invalid CSI: " ^ Tty.Escape_seq.csi)
+  if Tty.Escape_seq.csi = "\x1b[" then
+    Ok ()
+  else
+    Error ("Invalid CSI: " ^ Tty.Escape_seq.csi)
 
-let test_strip_ansi () =
+let test_strip_ansi = fun () ->
   (* Test stripping ANSI codes *)
   let text_with_ansi = "\x1b[31mRed Text\x1b[0m" in
   let stripped = Tty.Escape_seq.strip text_with_ansi in
-  if stripped = "Red Text" then Ok ()
-  else Error ("Strip failed: got '" ^ stripped)
+  if stripped = "Red Text" then
+    Ok ()
+  else
+    Error ("Strip failed: got '" ^ stripped)
 
-let test_width_calculation () =
+let test_width_calculation = fun () ->
   (* Test width calculation ignoring ANSI codes *)
   let text_with_ansi = "\x1b[1;32mBold Green\x1b[0m" in
   let width = Tty.Escape_seq.width text_with_ansi in
-  if width = 10 then Ok ()
-  else Error ("Width calculation failed: got " ^ Int.to_string width ^ ", expected 10")
+  if width = 10 then
+    Ok ()
+  else
+    Error ("Width calculation failed: got " ^ Int.to_string width ^ ", expected 10")
 
-let test_is_tty () =
+let test_is_tty = fun () ->
   (* Test is_tty function *)
   let stdin_is_tty = Tty.is_tty (Tty.stdin_fd ()) in
   (* We don't know if stdin is a TTY or not, just test it doesn't crash *)
   let _ = stdin_is_tty in
   Ok ()
 
-let test_stdin_stdout_stderr_fds () =
+let test_stdin_stdout_stderr_fds = fun () ->
   (* Test that we can get standard file descriptors *)
   let _stdin = Tty.stdin_fd () in
   let _stdout = Tty.stdout_fd () in
@@ -130,9 +149,8 @@ let tests =
       case "width_calculation" test_width_calculation;
       case "is_tty" test_is_tty;
       case "stdin_stdout_stderr_fds" test_stdin_stdout_stderr_fds;
+
     ]
 
 let () =
-  Miniriot.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"tty_api" ~tests ~args)
-    ~args:Env.args ()
+  Miniriot.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_api" ~tests ~args) ~args:Env.args ()

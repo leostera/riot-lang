@@ -11,17 +11,16 @@ type workspace_result = {
   failed_count : int;
   package_graph : Package_graph.t;
 }
+val build_workspace : workspace:Workspace.t ->
+toolchain:Tusk_toolchain.t ->
+store:Tusk_store.Store.t ->
+target:Workspace_planner.target ->
+scope:Package_graph.build_scope ->
+concurrency:int ->
+build_ctx:Build_ctx.t ->
+session_id:Session_id.t ->
+(workspace_result, Workspace_planner.plan_error) result
 
-val build_workspace :
-  workspace:Workspace.t ->
-  toolchain:Tusk_toolchain.t ->
-  store:Tusk_store.Store.t ->
-  target:Workspace_planner.target ->
-  scope:Package_graph.build_scope ->
-  concurrency:int ->
-  build_ctx:Build_ctx.t ->
-  session_id:Session_id.t ->
-  (workspace_result, Workspace_planner.plan_error) result
 (** Plan and execute a workspace build.
 
     Concurrency ownership is action-scoped: [concurrency] must be threaded into

@@ -10,7 +10,6 @@ type red_node = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_node
 type red_token = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_token
 type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
 (** {1 Finding Nodes} *)
-
 (** [find_nodes predicate tree] returns all nodes in [tree] that satisfy [predicate].
     
     Example:
@@ -42,7 +41,6 @@ val find_by_kind : Syn.SyntaxKind.t -> red_tree -> red_node list
 val find_by_kinds : Syn.SyntaxKind.t list -> red_tree -> red_node list
 
 (** {1 Token Queries} *)
-
 (** [find_tokens predicate tree] returns all tokens that satisfy [predicate].
     
     Example:
@@ -95,12 +93,10 @@ type 'acc visitor = {
 val fold : 'acc visitor -> 'acc -> red_tree -> 'acc
 
 (** {1 Utilities} *)
-
 (** [is_trivia kind] returns true if [kind] is whitespace, comment, or docstring. *)
 val is_trivia : Syn.SyntaxKind.t -> bool
 
 (** {1 Typed CST Helpers} *)
-
 (** [expressions_of_structure_item item] returns the expressions reachable from
     [item] in the same pre-order traversal used by lint rules.
 

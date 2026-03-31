@@ -20,6 +20,7 @@ open Std
 *)
 
 (* The type of database values *)
+
 type t =
   | Null
   | Int of int
@@ -36,47 +37,69 @@ type t =
   | Uuid of string
   | Json of string
   | Numeric of string
-
 (* ## Constructors *)
-
 val null : t
+
 val int : int -> t
+
 val int64 : int64 -> t
+
 val int16 : int -> t
+
 val string : string -> t
+
 val bool : bool -> t
+
 val float : float -> t
+
 val bytes : bytes -> t
+
 val timestamp : Datetime.t -> t
+
 val timestamp_with_timezone : Datetime.t -> t
+
 val date : int -> int -> int -> t
+
 val time : int -> int -> int -> int -> t
+
 val uuid : string -> t
+
 val json : string -> t
+
 val numeric : string -> t
 
 (* ## Conversions *)
-
 val to_int : t -> int option
+
 val to_int64 : t -> int64 option
+
 val to_int16 : t -> int option
+
 val to_string_value : t -> string option
+
 val to_bool : t -> bool option
+
 val to_float : t -> float option
+
 val to_bytes : t -> bytes option
+
 val to_timestamp : t -> Datetime.t option
 
 val to_timestamp_with_timezone : t -> Datetime.t option
 
 val to_date : t -> (int * int * int) option
+
 val to_time : t -> (int * int * int * int) option
+
 val to_uuid : t -> string option
+
 val to_json : t -> string option
+
 val to_numeric : t -> string option
+
 val is_null : t -> bool
 
 (* ## Utility Functions *)
-
 (* `to_string v` converts a value to its string representation *)
 val to_string : t -> string
 

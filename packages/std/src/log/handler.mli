@@ -1,5 +1,4 @@
 (** Log handler management *)
-
 (** Handler identifier *)
 (** A handler with an ID and a callback function *)
 type id = string

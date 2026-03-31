@@ -1,16 +1,18 @@
 open Std
 
 (** Parse method string to Method.t, returning None for invalid/disallowed methods *)
-let parse_override_method str =
+let parse_override_method = fun str ->
   let upper = String.uppercase_ascii str in
   match upper with
   | "PUT" -> Some Net.Http.Method.Put
   | "PATCH" -> Some Patch
   | "DELETE" -> Some Delete
-  | _ -> None  (* Only allow PUT, PATCH, DELETE *)
+  | _ -> None
+
+(* Only allow PUT, PATCH, DELETE *)
 
 (** Method override middleware *)
-let middleware ?(param = "_method") ~conn ~next =
+let middleware = fun ?(param = "_method") ~conn ~next ->
   (* Only override POST requests *)
   match Conn.method_ conn with
   | Net.Http.Method.Post -> (
@@ -26,10 +28,12 @@ let middleware ?(param = "_method") ~conn ~next =
               next conn'
           | None ->
               (* Invalid method - ignore and continue as POST *)
-              next conn)
+              next conn
+        )
       | None ->
           (* No _method parameter - continue as POST *)
-          next conn)
+          next conn
+    )
   | _ ->
       (* Not a POST - pass through unchanged *)
       next conn

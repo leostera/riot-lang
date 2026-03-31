@@ -1,7 +1,8 @@
 (* Comparison operators *)
+
 val ( = ) : 'a -> 'a -> bool
 
-val (!=) : 'a -> 'a -> bool
+val ( != ) : 'a -> 'a -> bool
 
 val ptr_eq : 'a -> 'a -> bool
 

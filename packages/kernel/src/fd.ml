@@ -2,7 +2,11 @@ open Global0
 open Collections
 
 type t = Unix.file_descr
-type pipe = { read_fd : t; write_fd : t }
+
+type pipe = {
+  read_fd : t;
+  write_fd : t;
+}
 
 module OpenFlags = struct
   type t =
@@ -14,39 +18,44 @@ module OpenFlags = struct
     | Append
     | Exclusive
 
-  let to_unix flags =
+  let to_unix = fun flags ->
     List.map
-      (function
+      (
+        function
         | ReadOnly -> Unix.O_RDONLY
         | WriteOnly -> Unix.O_WRONLY
         | ReadWrite -> Unix.O_RDWR
         | Create -> Unix.O_CREAT
         | Truncate -> Unix.O_TRUNC
         | Append -> Unix.O_APPEND
-        | Exclusive -> Unix.O_EXCL)
+        | Exclusive -> Unix.O_EXCL
+      )
       flags
 end
 
-let to_int fd = Obj.magic fd
-let to_unix fd = fd
+let to_int = fun fd -> Obj.magic fd
 
-let of_unix fd =
+let to_unix = fun fd -> fd
+
+let of_unix = fun fd ->
   Unix.set_nonblock fd;
   fd
 
-let make_blocking fd = fd
+let make_blocking = fun fd -> fd
 
-let set_blocking fd =
-  Unix.clear_nonblock fd
-let close t = Unix.close t
-let equal a b = Int.equal (Obj.magic a) (Obj.magic b)
+let set_blocking = fun fd -> Unix.clear_nonblock fd
 
-let open_file path flags perm =
+let close = fun t -> Unix.close t
+
+let equal = fun a b ->
+  Int.equal (Obj.magic a) (Obj.magic b)
+
+let open_file = fun path flags perm ->
   let fd = Unix.openfile path (OpenFlags.to_unix flags) perm in
   of_unix fd
 
-let pipe () =
+let pipe = fun () ->
   let read_fd, write_fd = Unix.pipe () in
-  { read_fd = of_unix read_fd; write_fd = of_unix write_fd }
+  {read_fd = of_unix read_fd; write_fd = of_unix write_fd}
 
-let is_tty fd = Unix.isatty fd
+let is_tty = fun fd -> Unix.isatty fd

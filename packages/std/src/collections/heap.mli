@@ -76,7 +76,6 @@
 (** A binary heap containing elements of type ['a]. *)
 type 'a t
 (** {1 Creation} *)
-
 (** Creates an empty min-heap using [compare].
 
     ## Examples
@@ -121,7 +120,6 @@ val of_list : 'a list -> 'a t
 val of_list_with : compare:('a -> 'a -> int) -> 'a list -> 'a t
 
 (** {1 Operations} *)
-
 (** Adds an element to the heap. O(log n).
 
     ## Examples
@@ -153,13 +151,13 @@ val peek : 'a t -> 'a option
     ## Examples
 
     ```ocaml let heap = Heap.of_list [3; 1] in Heap.pop_exn heap (* 1 *) ``` *)
+
 (** Returns the top element. Raises [Not_found] if empty. *)
 val pop_exn : 'a t -> 'a
 
 val peek_exn : 'a t -> 'a
 
 (** {1 Query} *)
-
 (** Returns [true] if the heap is empty.
 
     ## Examples
@@ -184,7 +182,6 @@ val size : 'a t -> int
 val clear : 'a t -> unit
 
 (** {1 Conversion} *)
-
 (** Returns all elements as a sorted list. Empties the heap. O(n log n).
 
     ## Examples
@@ -216,6 +213,7 @@ val iter : ('a -> unit) -> 'a t -> unit
 
     ```ocaml let heap = Heap.of_list [1; 2; 3] in Heap.fold (fun acc x -> acc +
     x) 0 heap (* 6 *) ``` *)
+
 (** Converts this heap into an immutable iterator over its elements in priority order.
     Creates a copy of the heap, so the original is unchanged.
 

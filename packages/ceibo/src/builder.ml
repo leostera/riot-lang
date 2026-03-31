@@ -40,10 +40,16 @@ let build = fun builder default_kind ->
       let children = Array.of_list (List.rev builder.current) in
       Green.make_node ~kind:default_kind ~children
 
-let make_token = fun ~kind ~text ~width ->
-  Green.Token (Green.make_token ~leading_trivia:[] ~kind ~text ~width)
+let make_token = fun ~kind ~text ~width -> Green.Token (Green.make_token
+~leading_trivia:[]
+~kind
+~text
+~width)
 
-let make_token_with_leading_trivia = fun ~leading_trivia ~kind ~text ~width ->
-  Green.Token (Green.make_token ~leading_trivia ~kind ~text ~width)
+let make_token_with_leading_trivia = fun ~leading_trivia ~kind ~text ~width -> Green.Token (Green.make_token
+~leading_trivia
+~kind
+~text
+~width)
 
 let make_node = fun ~kind children -> Green.Node (Green.make_node_list ~kind children)

@@ -298,9 +298,7 @@ module Debugger = Debugger
     ]}
 
     See {!Debugger} for full API and examples. *)
-
 (** {2 Convenience Functions} *)
-
 (** Create router middleware from a list of routes.
     
     This is a convenience alias for [Router.middleware routes].
@@ -414,7 +412,6 @@ module Cors = Cors
     ]}
     
     See {!Cors} for full documentation and examples. *)
-
 (** CORS middleware - simple and direct.
     
     {[
@@ -483,7 +480,6 @@ module Session = Session
     AES-256-GCM for production.
     
     See {!Session} for full documentation. *)
-
 (** Session middleware - secure cookie-based sessions.
     
     {[
@@ -564,7 +560,6 @@ module Csrf = Csrf
     - Safe methods (GET, HEAD, OPTIONS) skipped by default
     
     See {!Csrf} for full documentation. *)
-
 (** CSRF protection middleware - validates tokens on unsafe requests.
     
     {[
@@ -632,7 +627,6 @@ module Body_parser = Body_parser
     ]}
     
     See {!Body_parser} for full documentation. *)
-
 (** Body parser middleware - parses request bodies automatically.
     
     {[
@@ -695,7 +689,6 @@ module Static = Static
     - File Types: Only serves regular files, not special files
     
     See {!Static} for full documentation. *)
-
 (** Serve static files from a directory.
     
     {[
@@ -784,7 +777,6 @@ module Basic_auth = Basic_auth
     - ✅ RFC 7617 compliant
     
     See {!Basic_auth} for full documentation. *)
-
 (** Basic Auth with static credentials.
     
     {[
@@ -900,7 +892,6 @@ module Accepts = Accepts
     {b Important}: Place {b before} body parsing middleware!
     
     See {!Accepts} for full documentation. *)
-
 (** Content negotiation middleware - validates Accept and Content-Type headers.
     
     {[
@@ -968,7 +959,6 @@ module Head = Head
     No configuration needed - it's completely automatic.
     
     See {!Head} for full documentation. *)
-
 (** HEAD request handler middleware.
     
     {[
@@ -1005,7 +995,6 @@ module Runtime = Runtime
     Clients receive: [X-Runtime: 0.0234] (seconds)
     
     See {!Runtime} for full documentation. *)
-
 (** Runtime timing middleware.
     
     {[
@@ -1050,7 +1039,6 @@ module Method_override = Method_override
     - Reads from [_method] parameter by default
     
     See {!Method_override} for full documentation. *)
-
 (** Method override middleware for HTML forms (uses default "_method" param).
     
     {[
@@ -1106,6 +1094,7 @@ module Remote_ip = Remote_ip
     See {!Remote_ip} for full documentation. *)
 
 (* No convenience function - use Remote_ip.middleware ~proxies:[...] directly *)
+
 module Etag = Etag
 
 (** {b ETag Generation}
@@ -1139,7 +1128,6 @@ module Etag = Etag
     Pair with {!Conditional_get} for automatic 304 responses.
     
     See {!Etag} for full documentation. *)
-
 (** ETag generation middleware (uses strong ETags by default).
     
     {[
@@ -1200,7 +1188,6 @@ module Conditional_get = Conditional_get
     - Standard HTTP caching
     
     See {!Conditional_get} for full documentation. *)
-
 (** Conditional GET middleware for 304 responses.
     
     {[

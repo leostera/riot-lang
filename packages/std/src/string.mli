@@ -81,11 +81,9 @@ open Iter
     - [`make`] - Create string of repeated character
     - [`init`] - Create with initialization function
     - [`empty`] - Empty string constant *)
-
 include module type of Kernel.String
 
 (** # UTF-8 Iteration *)
-
 (** Creates a mutable iterator over UTF-8 characters.
 
     Iterates over Unicode characters (not bytes) in the string. Invalid UTF-8
@@ -132,7 +130,6 @@ val into_mut_iter : string -> Uchar.t MutIterator.t
 val into_iter : string -> Uchar.t Iterator.t
 
 (** # Unicode-Aware Operations *)
-
 (** Calculate display width for monospace fonts/terminals.
 
     Accounts for:

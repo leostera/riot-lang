@@ -28,34 +28,26 @@ module Token = struct
   let text = fun token -> Ceibo.Red.SyntaxToken.text token.syntax_token
 
   let full_text = fun token ->
-    let leading =
-      Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
-      |> List.map Ceibo.Red.SyntaxTrivia.text
-      |> String.concat ""
-    in
+    let leading = Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
+    |> List.map Ceibo.Red.SyntaxTrivia.text
+    |> String.concat "" in
     leading ^ text token
 
-  let leading_trivia = fun token ->
-    Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
+  let leading_trivia = fun token -> Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
 
   let span = fun token -> Ceibo.Red.SyntaxToken.span token.syntax_token
 
-  let same_text = fun left right -> String.equal (text left) (text right)
+  let same_text = fun left right ->
+    String.equal (text left) (text right)
 
   let fixed_operator = fun token ->
     match text token with
-    | "&&" ->
-        Some BooleanAnd
-    | "||" ->
-        Some BooleanOr
-    | "|>" ->
-        Some PipeForward
-    | "-" ->
-        Some PrefixMinus
-    | "~-" ->
-        Some PrefixNegate
-    | _ ->
-        None
+    | "&&" -> Some BooleanAnd
+    | "||" -> Some BooleanOr
+    | "|>" -> Some PipeForward
+    | "-" -> Some PrefixMinus
+    | "~-" -> Some PrefixNegate
+    | _ -> None
 
   let is_keyword_operator_name =
     function
@@ -66,10 +58,8 @@ module Token = struct
     | "lsl"
     | "lsr"
     | "asr"
-    | "or" ->
-        true
-    | _ ->
-        false
+    | "or" -> true
+    | _ -> false
 
   let is_identifier_char =
     function
@@ -77,10 +67,8 @@ module Token = struct
     | 'A' .. 'Z'
     | '0' .. '9'
     | '_'
-    | '\'' ->
-        true
-    | _ ->
-        false
+    | '\'' -> true
+    | _ -> false
 
   let is_operator_like_name = fun token ->
     let token_text = text token in
@@ -153,26 +141,28 @@ module Ident = struct
   let from_string = fun text ->
     let open Ceibo in
       let make_ident_segment = fun segment ->
-        let green_token =
-          Green.make_token ~leading_trivia:[] ~kind:Syntax_kind.IDENT_EXPR
-            ~text:segment ~width:(String.length segment)
-        in
-        let syntax_token = Red.new_token green_token (Span.make ~start:0 ~end_:(String.length segment)) in
+        let green_token = Green.make_token
+        ~leading_trivia:[]
+        ~kind:Syntax_kind.IDENT_EXPR
+        ~text:segment
+        ~width:(String.length segment) in
+        let syntax_token = Red.new_token
+        green_token
+        (Span.make ~start:0 ~end_:(String.length segment)) in
         {Token.syntax_token = syntax_token}
       in
       let make_node = fun () -> Green.make_node_list ~kind:Syntax_kind.PATH_EXPR [] |> Red.new_root in
       let segments = String.split_on_char '.' text in
       match segments with
       | []
-      | [ "" ] ->
-          raise (Failure "Syn.Cst.Ident.from_string requires a non-empty path")
+      | [ "" ] -> raise (Failure "Syn.Cst.Ident.from_string requires a non-empty path")
       | first :: rest ->
           let first_token = make_ident_segment first in
           let first_width = String.length first in
           let first_node = make_node () in
           let initial = Ident {syntax_node = first_node; name_token = first_token} in
           List.fold_left
-            (fun (prefix, width) segment ->
+            (fun ((prefix, width)) segment ->
               if String.length segment = 0 then
                 raise (Failure "Syn.Cst.Ident.from_string does not allow empty path segments");
               let name_token = make_ident_segment segment in
@@ -246,20 +236,12 @@ and poly_variant_tag = {
 
 and poly_variant_bound =
   | Exact
-  | UpperBound of {
-      marker_token : Token.t;
-    }
-  | LowerBound of {
-      marker_token : Token.t;
-    }
+  | UpperBound of { marker_token : Token.t; }
+  | LowerBound of { marker_token : Token.t; }
 
 and row_field =
   | Tag of poly_variant_tag
-  | Inherit of {
-      bar_token : Token.t option;
-      syntax_node : syntax_node;
-      type_ : core_type;
-    }
+  | Inherit of { bar_token : Token.t option; syntax_node : syntax_node; type_ : core_type; }
 
 and poly_variant = {
   syntax_node : syntax_node;
@@ -278,9 +260,7 @@ and type_constraint = {
 
 and private_flag =
   | Public
-  | Private of {
-      private_token : Token.t;
-    }
+  | Private of { private_token : Token.t; }
 
 and module_type_constraint = {
   syntax_node : syntax_node;
@@ -316,20 +296,9 @@ and arrow_label =
     }
 
 and core_type =
-  | Wildcard of {
-      syntax_node : syntax_node;
-      wildcard_token : Token.t;
-    }
-  | Var of {
-      syntax_node : syntax_node;
-      sigil_token : Token.t option;
-      name_token : Token.t;
-    }
-  | Constr of {
-      syntax_node : syntax_node;
-      constructor_path : Ident.t;
-      arguments : core_type list;
-    }
+  | Wildcard of { syntax_node : syntax_node; wildcard_token : Token.t; }
+  | Var of { syntax_node : syntax_node; sigil_token : Token.t option; name_token : Token.t; }
+  | Constr of { syntax_node : syntax_node; constructor_path : Ident.t; arguments : core_type list; }
   | Class of {
       syntax_node : syntax_node;
       hash_token : Token.t;
@@ -342,11 +311,7 @@ and core_type =
       sigil_token : Token.t option;
       name_token : Token.t;
     }
-  | Attribute of {
-      syntax_node : syntax_node;
-      type_ : core_type;
-      attribute : attribute;
-    }
+  | Attribute of { syntax_node : syntax_node; type_ : core_type; attribute : attribute; }
   | Extension of extension
   | Poly of {
       syntax_node : syntax_node;
@@ -361,14 +326,8 @@ and core_type =
       parameter_type : core_type;
       result_type : core_type;
     }
-  | Tuple of {
-      syntax_node : syntax_node;
-      elements : core_type list;
-    }
-  | Parenthesized of {
-      syntax_node : syntax_node;
-      inner : core_type;
-    }
+  | Tuple of { syntax_node : syntax_node; elements : core_type list; }
+  | Parenthesized of { syntax_node : syntax_node; inner : core_type; }
   | PolyVariant of poly_variant
   | Record of {
       syntax_node : syntax_node;
@@ -392,15 +351,8 @@ and core_type =
 
 and module_type =
   | Path of Ident.t
-  | TypeOf of {
-      syntax_node : syntax_node;
-      of_token : Token.t;
-      module_path : Ident.t;
-    }
-  | Signature of {
-      syntax_node : syntax_node;
-      signature_syntax_node : syntax_node;
-    }
+  | TypeOf of { syntax_node : syntax_node; of_token : Token.t; module_path : Ident.t; }
+  | Signature of { syntax_node : syntax_node; signature_syntax_node : syntax_node; }
   | Functor of {
       syntax_node : syntax_node;
       parameters : functor_parameter list;
@@ -417,19 +369,12 @@ and module_type =
       inner : module_type;
       closing_token : Token.t;
     }
-  | Attribute of {
-      syntax_node : syntax_node;
-      module_type : module_type;
-      attribute : attribute;
-    }
+  | Attribute of { syntax_node : syntax_node; module_type : module_type; attribute : attribute; }
   | Extension of extension
 
 and class_type =
   | Path of Ident.t
-  | Signature of {
-      syntax_node : syntax_node;
-      fields : class_type_field list;
-    }
+  | Signature of { syntax_node : syntax_node; fields : class_type_field list; }
   | Arrow of {
       syntax_node : syntax_node;
       label : arrow_label option;
@@ -442,18 +387,11 @@ and class_type =
       inner : class_type;
       closing_token : Token.t;
     }
-  | Attribute of {
-      syntax_node : syntax_node;
-      class_type : class_type;
-      attribute : attribute;
-    }
+  | Attribute of { syntax_node : syntax_node; class_type : class_type; attribute : attribute; }
   | Extension of extension
 
 and class_type_field =
-  | Inherit of {
-      syntax_node : syntax_node;
-      class_type : class_type;
-    }
+  | Inherit of { syntax_node : syntax_node; class_type : class_type; }
   | Value of {
       syntax_node : syntax_node;
       name_token : Token.t;
@@ -474,24 +412,13 @@ and class_type_field =
       equals_token : Token.t;
       right : core_type;
     }
-  | Attribute of {
-      syntax_node : syntax_node;
-      field : class_type_field;
-      attribute : attribute;
-    }
+  | Attribute of { syntax_node : syntax_node; field : class_type_field; attribute : attribute; }
   | Extension of extension
 
 module CoreType = struct
   type t = core_type =
-    | Wildcard of {
-        syntax_node : syntax_node;
-        wildcard_token : Token.t;
-      }
-    | Var of {
-        syntax_node : syntax_node;
-        sigil_token : Token.t option;
-        name_token : Token.t;
-      }
+    | Wildcard of { syntax_node : syntax_node; wildcard_token : Token.t; }
+    | Var of { syntax_node : syntax_node; sigil_token : Token.t option; name_token : Token.t; }
     | Constr of {
         syntax_node : syntax_node;
         constructor_path : Ident.t;
@@ -509,11 +436,7 @@ module CoreType = struct
         sigil_token : Token.t option;
         name_token : Token.t;
       }
-    | Attribute of {
-        syntax_node : syntax_node;
-        type_ : core_type;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; type_ : core_type; attribute : attribute; }
     | Extension of extension
     | Poly of {
         syntax_node : syntax_node;
@@ -528,14 +451,8 @@ module CoreType = struct
         parameter_type : core_type;
         result_type : core_type;
       }
-    | Tuple of {
-        syntax_node : syntax_node;
-        elements : core_type list;
-      }
-    | Parenthesized of {
-        syntax_node : syntax_node;
-        inner : core_type;
-      }
+    | Tuple of { syntax_node : syntax_node; elements : core_type list; }
+    | Parenthesized of { syntax_node : syntax_node; inner : core_type; }
     | PolyVariant of poly_variant
     | Record of {
         syntax_node : syntax_node;
@@ -572,10 +489,8 @@ module CoreType = struct
     | Parenthesized { syntax_node; _ }
     | Record { syntax_node; _ }
     | FirstClassModule { syntax_node; _ }
-    | Object { syntax_node; _ } ->
-        syntax_node
-    | PolyVariant poly_variant ->
-        poly_variant.syntax_node
+    | Object { syntax_node; _ } -> syntax_node
+    | PolyVariant poly_variant -> poly_variant.syntax_node
 end
 
 module ModuleTypeConstraint = struct
@@ -617,14 +532,12 @@ module ArrowLabel = struct
   let label_token =
     function
     | Named { label_token; _ }
-    | OptionalNamed { label_token; _ } ->
-        label_token
+    | OptionalNamed { label_token; _ } -> label_token
 
   let colon_token =
     function
     | Named { colon_token; _ }
-    | OptionalNamed { colon_token; _ } ->
-        colon_token
+    | OptionalNamed { colon_token; _ } -> colon_token
 
   let name = fun label -> Token.text (label_token label)
 
@@ -646,15 +559,8 @@ end
 module ModuleType = struct
   type t = module_type =
     | Path of Ident.t
-    | TypeOf of {
-        syntax_node : syntax_node;
-        of_token : Token.t;
-        module_path : Ident.t;
-      }
-    | Signature of {
-        syntax_node : syntax_node;
-        signature_syntax_node : syntax_node;
-      }
+    | TypeOf of { syntax_node : syntax_node; of_token : Token.t; module_path : Ident.t; }
+    | Signature of { syntax_node : syntax_node; signature_syntax_node : syntax_node; }
     | Functor of {
         syntax_node : syntax_node;
         parameters : functor_parameter list;
@@ -671,11 +577,7 @@ module ModuleType = struct
         inner : module_type;
         closing_token : Token.t;
       }
-    | Attribute of {
-        syntax_node : syntax_node;
-        module_type : module_type;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; module_type : module_type; attribute : attribute; }
     | Extension of extension
 
   let syntax_node =
@@ -686,19 +588,14 @@ module ModuleType = struct
     | Functor { syntax_node; _ }
     | With { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
-    | Attribute { syntax_node; _ } ->
-        syntax_node
-    | Extension extension ->
-        extension.syntax_node
+    | Attribute { syntax_node; _ } -> syntax_node
+    | Extension extension -> extension.syntax_node
 end
 
 module ClassType = struct
   type t = class_type =
     | Path of Ident.t
-    | Signature of {
-        syntax_node : syntax_node;
-        fields : class_type_field list;
-      }
+    | Signature of { syntax_node : syntax_node; fields : class_type_field list; }
     | Arrow of {
         syntax_node : syntax_node;
         label : arrow_label option;
@@ -711,11 +608,7 @@ module ClassType = struct
         inner : class_type;
         closing_token : Token.t;
       }
-    | Attribute of {
-        syntax_node : syntax_node;
-        class_type : class_type;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; class_type : class_type; attribute : attribute; }
     | Extension of extension
 
   let syntax_node =
@@ -724,18 +617,13 @@ module ClassType = struct
     | Signature { syntax_node; _ }
     | Arrow { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
-    | Attribute { syntax_node; _ } ->
-        syntax_node
-    | Extension extension ->
-        extension.syntax_node
+    | Attribute { syntax_node; _ } -> syntax_node
+    | Extension extension -> extension.syntax_node
 end
 
 module ClassTypeField = struct
   type t = class_type_field =
-    | Inherit of {
-        syntax_node : syntax_node;
-        class_type : class_type;
-      }
+    | Inherit of { syntax_node : syntax_node; class_type : class_type; }
     | Value of {
         syntax_node : syntax_node;
         name_token : Token.t;
@@ -756,11 +644,7 @@ module ClassTypeField = struct
         equals_token : Token.t;
         right : core_type;
       }
-    | Attribute of {
-        syntax_node : syntax_node;
-        field : class_type_field;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; field : class_type_field; attribute : attribute; }
     | Extension of extension
 
   let syntax_node =
@@ -769,17 +653,13 @@ module ClassTypeField = struct
     | Value { syntax_node; _ }
     | Method { syntax_node; _ }
     | Constraint { syntax_node; _ }
-    | Attribute { syntax_node; _ } ->
-        syntax_node
-    | Extension extension ->
-        extension.syntax_node
+    | Attribute { syntax_node; _ } -> syntax_node
+    | Extension extension -> extension.syntax_node
 end
 
 type string_delimiter =
   | DoubleQuote
-  | Quoted of {
-      marker : string;
-    }
+  | Quoted of { marker : string; }
 
 type integer_base =
   | Decimal
@@ -848,10 +728,7 @@ type constant =
   | Float of float_constant
   | Char of char_constant
   | Bool of bool_constant
-  | Unit of {
-      syntax_node : syntax_node;
-      attributes : attribute list;
-    }
+  | Unit of { syntax_node : syntax_node; attributes : attribute list; }
 
 module Constant = struct
   type t = constant =
@@ -860,10 +737,7 @@ module Constant = struct
     | Float of float_constant
     | Char of char_constant
     | Bool of bool_constant
-    | Unit of {
-        syntax_node : syntax_node;
-        attributes : attribute list;
-      }
+    | Unit of { syntax_node : syntax_node; attributes : attribute list; }
 
   let syntax_node =
     function
@@ -872,8 +746,7 @@ module Constant = struct
     | Float { syntax_node; _ }
     | Char { syntax_node; _ }
     | Bool { syntax_node; _ }
-    | Unit { syntax_node; _ } ->
-        syntax_node
+    | Unit { syntax_node; _ } -> syntax_node
 
   let attributes =
     function
@@ -882,8 +755,7 @@ module Constant = struct
     | Float { attributes; _ }
     | Char { attributes; _ }
     | Bool { attributes; _ }
-    | Unit { attributes; _ } ->
-        attributes
+    | Unit { attributes; _ } -> attributes
 end
 
 module PatternLiteral = Constant
@@ -901,24 +773,19 @@ module TypeBinder = struct
   let name_token =
     function
     | Quoted { name_token; _ }
-    | Bare { name_token } ->
-        name_token
+    | Bare { name_token } -> name_token
 
   let name = fun binder -> Token.text (name_token binder)
 
   let text =
     function
-    | Quoted { name_token; _ } ->
-        "'" ^ Token.text name_token
-    | Bare { name_token } ->
-        Token.text name_token
+    | Quoted { name_token; _ } -> "'" ^ Token.text name_token
+    | Bare { name_token } -> Token.text name_token
 
   let is_quoted =
     function
-    | Quoted _ ->
-        true
-    | Bare _ ->
-        false
+    | Quoted _ -> true
+    | Bare _ -> false
 end
 
 type pattern_literal = PatternLiteral.t
@@ -1090,9 +957,7 @@ and record_pattern = {
 
 and record_pattern_closedness =
   | Closed
-  | Open of {
-      wildcard_token : Token.t;
-    }
+  | Open of { wildcard_token : Token.t; }
 
 and record_pattern_field = {
   syntax_node : syntax_node;
@@ -1801,11 +1666,7 @@ and class_field =
   | Inherit of class_inherit
   | Constraint of class_constraint
   | Initializer of class_initializer
-  | Attribute of {
-      syntax_node : syntax_node;
-      field : class_field;
-      attribute : attribute;
-    }
+  | Attribute of { syntax_node : syntax_node; field : class_field; attribute : attribute; }
   | Extension of extension
 
 and class_method = {
@@ -1902,24 +1763,14 @@ and parenthesized_class_expression = {
 
 and module_expression =
   | Path of Ident.t
-  | Structure of {
-      syntax_node : syntax_node;
-      item_syntax_nodes : syntax_node list;
-    }
+  | Structure of { syntax_node : syntax_node; item_syntax_nodes : syntax_node list; }
   | Functor of {
       syntax_node : syntax_node;
       parameters : functor_parameter list;
       body : module_expression;
     }
-  | Apply of {
-      syntax_node : syntax_node;
-      callee : module_expression;
-      argument : module_expression;
-    }
-  | ApplyUnit of {
-      syntax_node : syntax_node;
-      callee : module_expression;
-    }
+  | Apply of { syntax_node : syntax_node; callee : module_expression; argument : module_expression; }
+  | ApplyUnit of { syntax_node : syntax_node; callee : module_expression; }
   | Constraint of {
       syntax_node : syntax_node;
       module_expression : module_expression;
@@ -2066,8 +1917,7 @@ module Expression = struct
     | LocalOpen expr -> (
         match expr with
         | LetOpen { syntax_node; _ }
-        | Delimited { syntax_node; _ } ->
-            syntax_node
+        | Delimited { syntax_node; _ } -> syntax_node
       )
     | Fun expr ->
         expr.syntax_node
@@ -2160,8 +2010,7 @@ module Expression = struct
     | LocalOpen expr -> (
         match expr with
         | LetOpen { attributes; _ }
-        | Delimited { attributes; _ } ->
-            attributes
+        | Delimited { attributes; _ } -> attributes
       )
     | Fun expr ->
         expr.attributes
@@ -2198,20 +2047,16 @@ module Parameter = struct
   let sigil_token =
     function
     | Positional _
-    | LocallyAbstract _ ->
-        None
-    | Labeled param ->
-        Some param.sigil_token
-    | Optional param ->
-        Some param.sigil_token
+    | LocallyAbstract _ -> None
+    | Labeled param -> Some param.sigil_token
+    | Optional param -> Some param.sigil_token
 
   let name_token =
     function
     | Positional param -> param.name_token
     | Labeled param -> Some param.label_token
     | Optional param -> Some param.label_token
-    | LocallyAbstract _ ->
-        None
+    | LocallyAbstract _ -> None
 
   let name = fun param ->
     match name_token param with
@@ -2223,36 +2068,28 @@ module Parameter = struct
     | Labeled _
     | Optional _ -> true
     | Positional _
-    | LocallyAbstract _ ->
-        false
+    | LocallyAbstract _ -> false
 
   let binding_name_matches_label =
     function
     | Labeled param -> param.binding_name_matches_label
     | Optional param -> param.binding_name_matches_label
     | Positional _
-    | LocallyAbstract _ ->
-        false
+    | LocallyAbstract _ -> false
 
   let default_value =
     function
-    | Optional param ->
-        param.default_value
+    | Optional param -> param.default_value
     | Positional _
     | Labeled _
-    | LocallyAbstract _ ->
-        None
+    | LocallyAbstract _ -> None
 
   let binding_pattern =
     function
-    | Positional param ->
-        Some param.pattern
-    | Labeled param ->
-        param.binding_pattern
-    | Optional param ->
-        param.binding_pattern
-    | LocallyAbstract _ ->
-        None
+    | Positional param -> Some param.pattern
+    | Labeled param -> param.binding_pattern
+    | Optional param -> param.binding_pattern
+    | LocallyAbstract _ -> None
 end
 
 module ObjectMember = struct
@@ -2291,21 +2128,29 @@ module ClassExpression = struct
 
   let syntax_node =
     function
-    | Path path -> Ident.syntax_node path
-    | Structure structure -> structure.syntax_node
-    | Fun expr -> expr.syntax_node
-    | Apply expr -> expr.syntax_node
-    | Let expr -> expr.syntax_node
-    | Constraint expr -> expr.syntax_node
+    | Path path ->
+        Ident.syntax_node path
+    | Structure structure ->
+        structure.syntax_node
+    | Fun expr ->
+        expr.syntax_node
+    | Apply expr ->
+        expr.syntax_node
+    | Let expr ->
+        expr.syntax_node
+    | Constraint expr ->
+        expr.syntax_node
     | LocalOpen expr -> (
         match expr with
         | LetOpen { syntax_node; _ }
-        | Delimited { syntax_node; _ } ->
-            syntax_node
+        | Delimited { syntax_node; _ } -> syntax_node
       )
-    | Parenthesized expr -> expr.syntax_node
-    | Attribute { syntax_node; _ } -> syntax_node
-    | Extension extension -> extension.syntax_node
+    | Parenthesized expr ->
+        expr.syntax_node
+    | Attribute { syntax_node; _ } ->
+        syntax_node
+    | Extension extension ->
+        extension.syntax_node
 end
 
 module ClassField = struct
@@ -2315,11 +2160,7 @@ module ClassField = struct
     | Inherit of class_inherit
     | Constraint of class_constraint
     | Initializer of class_initializer
-    | Attribute of {
-        syntax_node : syntax_node;
-        field : class_field;
-        attribute : attribute;
-      }
+    | Attribute of { syntax_node : syntax_node; field : class_field; attribute : attribute; }
     | Extension of extension
 
   let syntax_node =
@@ -2336,10 +2177,7 @@ end
 module ModuleExpression = struct
   type t = module_expression =
     | Path of Ident.t
-    | Structure of {
-        syntax_node : syntax_node;
-        item_syntax_nodes : syntax_node list;
-      }
+    | Structure of { syntax_node : syntax_node; item_syntax_nodes : syntax_node list; }
     | Functor of {
         syntax_node : syntax_node;
         parameters : functor_parameter list;
@@ -2350,10 +2188,7 @@ module ModuleExpression = struct
         callee : module_expression;
         argument : module_expression;
       }
-    | ApplyUnit of {
-        syntax_node : syntax_node;
-        callee : module_expression;
-      }
+    | ApplyUnit of { syntax_node : syntax_node; callee : module_expression; }
     | Constraint of {
         syntax_node : syntax_node;
         module_expression : module_expression;
@@ -2391,10 +2226,8 @@ module ModuleExpression = struct
     | Constraint { syntax_node; _ }
     | ModuleUnpack { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
-    | Attribute { syntax_node; _ } ->
-        syntax_node
-    | Extension extension ->
-        extension.syntax_node
+    | Attribute { syntax_node; _ } -> syntax_node
+    | Extension extension -> extension.syntax_node
 end
 
 module Pattern = struct
@@ -2515,9 +2348,9 @@ module Payload = struct
         tokens : Token.t list;
       }
 
-  let tokens = function
-    | Opaque { tokens } ->
-        tokens
+  let tokens =
+    function
+    | Opaque { tokens } -> tokens
 end
 
 module TypeVariable = struct
@@ -2534,8 +2367,8 @@ module TypeVariable = struct
     Ceibo.Red.SyntaxNode.children type_variable.syntax_node |> Array.to_list |> List.filter_map
       (
         function
-        | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) ->
-            Some (Ceibo.Red.SyntaxToken.text tok)
+        | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) -> Some (Ceibo.Red.SyntaxToken.text
+        tok)
         | _ -> None
       ) |> String.concat ""
 
@@ -2554,8 +2387,7 @@ module TypeParameterVariance = struct
   let marker_token =
     function
     | Covariant { marker_token }
-    | Contravariant { marker_token } ->
-        marker_token
+    | Contravariant { marker_token } -> marker_token
 end
 
 module TypeParameter = struct
@@ -2578,9 +2410,7 @@ end
 module PrivateFlag = struct
   type t = private_flag =
     | Public
-    | Private of {
-        private_token : Token.t;
-      }
+    | Private of { private_token : Token.t; }
 
   let private_token =
     function
@@ -2619,17 +2449,12 @@ module RecordField = struct
   let name = fun field -> Token.text field.field_name
 
   let attributes = fun field -> field.attributes
-
 end
 
 module ConstructorArguments = struct
   type t =
     | Tuple of core_type list
-    | Record of {
-        opening_token : Token.t;
-        fields : RecordField.t list;
-        closing_token : Token.t;
-      }
+    | Record of { opening_token : Token.t; fields : RecordField.t list; closing_token : Token.t; }
 end
 
 module VariantConstructor = struct
@@ -2663,7 +2488,6 @@ module VariantConstructor = struct
 
   let result_type = fun constr -> constr.result_type
 
-
   let name = fun constr -> Token.text constr.constructor_name
 end
 
@@ -2695,29 +2519,20 @@ end
 module PolyVariantBound = struct
   type t = poly_variant_bound =
     | Exact
-    | UpperBound of {
-        marker_token : Token.t;
-      }
-    | LowerBound of {
-        marker_token : Token.t;
-      }
+    | UpperBound of { marker_token : Token.t; }
+    | LowerBound of { marker_token : Token.t; }
 
   let marker_token =
     function
     | Exact -> None
     | UpperBound { marker_token }
-    | LowerBound { marker_token } ->
-        Some marker_token
+    | LowerBound { marker_token } -> Some marker_token
 end
 
 module RowField = struct
   type t = row_field =
     | Tag of poly_variant_tag
-    | Inherit of {
-        bar_token : Token.t option;
-        syntax_node : syntax_node;
-        type_ : core_type;
-      }
+    | Inherit of { bar_token : Token.t option; syntax_node : syntax_node; type_ : core_type; }
 
   let syntax_node =
     function
@@ -2767,13 +2582,8 @@ end
 module TypeDefinition = struct
   type t =
     | Abstract
-    | Alias of {
-        syntax_node : syntax_node;
-        manifest : core_type;
-      }
-    | Extensible of {
-        syntax_node : syntax_node;
-      }
+    | Alias of { syntax_node : syntax_node; manifest : core_type; }
+    | Extensible of { syntax_node : syntax_node; }
     | FirstClassModule of {
         syntax_node : syntax_node;
         opening_token : Token.t;
@@ -2792,10 +2602,7 @@ module TypeDefinition = struct
         fields : RecordField.t list;
         closing_token : Token.t;
       }
-    | Variant of {
-        syntax_node : syntax_node;
-        constructors : VariantConstructor.t list;
-      }
+    | Variant of { syntax_node : syntax_node; constructors : VariantConstructor.t list; }
     | PolyVariant of PolyVariant.t
 end
 
@@ -2850,7 +2657,6 @@ module TypeDeclaration = struct
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
-
   let is_private = fun decl -> PrivateFlag.is_private decl.private_flag
 
   let name_token = fun decl ->
@@ -2877,7 +2683,6 @@ module TypeExtension = struct
   let extension_operator_tokens = fun decl -> decl.extension_operator_tokens
 
   let constructors = fun decl -> decl.constructors
-
 
   let name_token = fun decl ->
     match Ident.last_segment decl.type_name with
@@ -2912,21 +2717,15 @@ module LetBinding = struct
 
   let rec binding_name_token_from_pattern =
     function
-    | Pattern.Identifier { name_token; _ } ->
-        Some name_token
+    | Pattern.Identifier { name_token; _ } -> Some name_token
     | Pattern.Typed { pattern; _ }
     | Pattern.Lazy { pattern; _ }
-    | Pattern.LocalOpen { pattern; _ } ->
-        binding_name_token_from_pattern pattern
-    | Pattern.Parenthesized { inner; _ } ->
-        binding_name_token_from_pattern inner
-    | Pattern.Alias { name_token; _ } ->
-        Some name_token
-    | _ ->
-        None
+    | Pattern.LocalOpen { pattern; _ } -> binding_name_token_from_pattern pattern
+    | Pattern.Parenthesized { inner; _ } -> binding_name_token_from_pattern inner
+    | Pattern.Alias { name_token; _ } -> Some name_token
+    | _ -> None
 
-  let binding_name_token = fun binding ->
-    binding_name_token_from_pattern binding.binding_pattern
+  let binding_name_token = fun binding -> binding_name_token_from_pattern binding.binding_pattern
 
   let name = fun binding ->
     match binding_name_token binding with
@@ -2946,14 +2745,14 @@ module LetBinding = struct
 
   let value_syntax_node = fun binding -> Expression.syntax_node binding.value
 
-  let has_direct_token_text node expected =
-    Ceibo.Red.SyntaxNode.direct_tokens node
-    |> List.exists (fun token ->
-           String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+  let has_direct_token_text =
+    fun node expected ->
+      Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
+        (fun token ->
+          String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun binding ->
-    Option.is_some binding.rec_token
-    || match Ceibo.Red.SyntaxNode.parent binding.syntax_node with
+    Option.is_some binding.rec_token || match Ceibo.Red.SyntaxNode.parent binding.syntax_node with
     | Some parent -> has_direct_token_text parent "rec"
     | None -> false
 
@@ -2998,13 +2797,15 @@ module ModuleSignature = struct
 
   let definition = fun decl -> decl.definition
 
-  let module_type = function
-    | {definition = Signature module_type; _} -> Some module_type
-    | {definition = Alias _; _} -> None
+  let module_type =
+    function
+    | { definition=Signature module_type; _ } -> Some module_type
+    | { definition=Alias _; _ } -> None
 
-  let module_expression = function
-    | {definition = Signature _; _} -> None
-    | {definition = Alias module_expression; _} -> Some module_expression
+  let module_expression =
+    function
+    | { definition=Signature _; _ } -> None
+    | { definition=Alias module_expression; _ } -> Some module_expression
 
   let rec and_declarations = fun decl ->
     match decl.next_and_declaration with
@@ -3013,24 +2814,22 @@ module ModuleSignature = struct
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
-  let has_direct_token_text node expected =
-    Ceibo.Red.SyntaxNode.direct_tokens node
-    |> List.exists (fun token ->
-           String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+  let has_direct_token_text =
+    fun node expected ->
+      Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
+        (fun token ->
+          String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun decl ->
-    Option.is_some decl.rec_token
-    || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
+    Option.is_some decl.rec_token || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
     | Some parent -> has_direct_token_text parent "rec"
     | None -> false
-
 
   let name = fun decl -> Token.text decl.module_name
 end
 
 module ModuleStructure = struct
-  type t =
-    {
+  type t = {
     syntax_node : syntax_node;
     keyword_token : Token.t;
     rec_token : Token.t option;
@@ -3068,17 +2867,16 @@ module ModuleStructure = struct
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
-  let has_direct_token_text node expected =
-    Ceibo.Red.SyntaxNode.direct_tokens node
-    |> List.exists (fun token ->
-           String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+  let has_direct_token_text =
+    fun node expected ->
+      Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
+        (fun token ->
+          String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun decl ->
-    Option.is_some decl.rec_token
-    || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
+    Option.is_some decl.rec_token || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
     | Some parent -> has_direct_token_text parent "rec"
     | None -> false
-
 
   let name = fun decl -> Token.text decl.module_name
 end
@@ -3104,7 +2902,6 @@ module ModuleTypeDeclaration = struct
   let equals_token = fun decl -> decl.equals_token
 
   let module_type = fun decl -> decl.module_type
-
 
   let name = fun decl -> Token.text decl.module_type_name
 end
@@ -3141,7 +2938,6 @@ module OpenStatement = struct
   let bang_token = fun stmt -> stmt.bang_token
 
   let has_bang = fun stmt -> Option.is_some stmt.bang_token
-
 end
 
 module Docstring = struct
@@ -3163,10 +2959,8 @@ module Docstring = struct
 
   let is_section =
     function
-    | {kind = Section; _} ->
-        true
-    | {kind = Ordinary; _} ->
-        false
+    | { kind=Section; _ } -> true
+    | { kind=Ordinary; _ } -> false
 
   let text = fun doc -> Token.text doc.docstring_token
 end
@@ -3214,19 +3008,14 @@ end
 
 let synthetic_syntax_node_wrapping_token = fun syntax_token ->
   let green_token = Ceibo.Red.SyntaxToken.green syntax_token in
-  let wrapped_node =
-    Ceibo.Green.make_node_list ~kind:(Ceibo.Red.SyntaxToken.kind syntax_token)
-      [ Ceibo.Green.Token green_token ]
-  in
-  let root =
-    Ceibo.Green.make_node_list ~kind:Syntax_kind.SOURCE_FILE
-      [ Ceibo.Green.Node wrapped_node ]
-  in
+  let wrapped_node = Ceibo.Green.make_node_list
+  ~kind:(Ceibo.Red.SyntaxToken.kind syntax_token)
+  [ Ceibo.Green.Token green_token ] in
+  let root = Ceibo.Green.make_node_list
+  ~kind:Syntax_kind.SOURCE_FILE [ Ceibo.Green.Node wrapped_node ] in
   match Ceibo.Red.SyntaxNode.child (Ceibo.Red.new_root root) 0 with
-  | Some (Ceibo.Red.Node node) ->
-      node
-  | _ ->
-      panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
+  | Some (Ceibo.Red.Node node) -> node
+  | _ -> panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
 
 let docstring_kind_from_text = fun comment_text ->
   let len = String.length comment_text in
@@ -3241,72 +3030,64 @@ let docstring_kind_from_text = fun comment_text ->
 
 let syntax_token_from_trivia = fun trivia ->
   let span = Ceibo.Red.SyntaxTrivia.span trivia in
-  let green_token =
-    Ceibo.Green.make_token ~leading_trivia:[]
-      ~kind:(Ceibo.Red.SyntaxTrivia.kind trivia)
-      ~text:(Ceibo.Red.SyntaxTrivia.text trivia)
-      ~width:(span.end_ - span.start)
-  in
+  let green_token = Ceibo.Green.make_token
+  ~leading_trivia:[]
+  ~kind:(Ceibo.Red.SyntaxTrivia.kind trivia)
+  ~text:(Ceibo.Red.SyntaxTrivia.text trivia)
+  ~width:((span.end_ - span.start)) in
   Ceibo.Red.new_token green_token span
 
 let trivia_of_syntax_trivia = fun trivia ->
   let syntax_token = syntax_token_from_trivia trivia in
   match Ceibo.Red.SyntaxTrivia.kind trivia with
-  | Syntax_kind.COMMENT ->
-      Some
-        (Comment
-           {
-             syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
-             comment_token = { Token.syntax_token = syntax_token };
-           })
-  | Syntax_kind.DOCSTRING ->
-      Some
-        (Docstring
-           {
-             syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
-             docstring_token = { Token.syntax_token = syntax_token };
-             kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text syntax_token);
-           })
-  | _ ->
-      None
+  | Syntax_kind.COMMENT -> Some (Comment {
+    syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
+    comment_token = {Token.syntax_token = syntax_token};
+
+  })
+  | Syntax_kind.DOCSTRING -> Some (Docstring {
+    syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
+    docstring_token = {Token.syntax_token = syntax_token};
+    kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text syntax_token);
+
+  })
+  | _ -> None
 
 let leading_trivia_after = fun ~after token ->
-  Ceibo.Red.SyntaxToken.leading_trivia token.Token.syntax_token
-  |> List.filter_map (fun trivia ->
-         let span = Ceibo.Red.SyntaxTrivia.span trivia in
-         if span.start >= after then
-           trivia_of_syntax_trivia trivia
-         else
-           None)
+  Ceibo.Red.SyntaxToken.leading_trivia token.Token.syntax_token |> List.filter_map
+    (fun trivia ->
+      let span = Ceibo.Red.SyntaxTrivia.span trivia in
+      if span.start >= after then
+        trivia_of_syntax_trivia trivia
+      else
+        None)
 
 let leading_trivia_before_node = fun ~after syntax_node ->
   match Ceibo.Red.SyntaxNode.first_token syntax_node with
-  | None ->
-      []
-  | Some first_token ->
-      leading_trivia_after ~after { Token.syntax_token = first_token }
+  | None -> []
+  | Some first_token -> leading_trivia_after ~after {Token.syntax_token = first_token}
 
 let leading_trivia_after_token_before_node = fun ~after token syntax_node ->
   let pending = leading_trivia_after ~after token in
   match Ceibo.Red.SyntaxNode.first_token syntax_node with
-  | None ->
-      pending
-  | Some first_token ->
-      pending
-      @ leading_trivia_after
-          ~after:(Ceibo.Red.SyntaxToken.span token.Token.syntax_token).end_
-          { Token.syntax_token = first_token }
+  | None -> pending
+  | Some first_token -> pending
+  @ leading_trivia_after
+  ~after:(Ceibo.Red.SyntaxToken.span token.Token.syntax_token).end_
+  {Token.syntax_token = first_token}
 
 let token_body_span = fun syntax_node ->
   let full_span = Ceibo.Red.SyntaxNode.span syntax_node in
   match Ceibo.Red.SyntaxNode.tokens syntax_node with
-  | [] ->
-      full_span
+  | [] -> full_span
   | first :: rest ->
-      let last = List.fold_left (fun _ token -> token) first rest in
+      let last =
+        List.fold_left (fun _ token -> token) first rest
+      in
       {
         Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
         end_ = (Ceibo.Red.SyntaxToken.span last).end_;
+
       }
 
 let syntax_kind = fun syntax_node -> Ceibo.Red.SyntaxNode.kind syntax_node
@@ -3341,7 +3122,6 @@ module ValueDeclaration = struct
   let type_ = fun decl -> decl.type_
 
   let trailing_comment = fun decl -> decl.trailing_comment
-
 end
 
 type external_declaration = {
@@ -3368,13 +3148,21 @@ module ClassDeclaration = struct
   }
 
   let syntax_node = fun declaration -> declaration.syntax_node
+
   let keyword_token = fun declaration -> declaration.keyword_token
+
   let type_params = fun declaration -> declaration.type_params
+
   let declaration_extension = fun declaration -> declaration.declaration_extension
+
   let declaration_attributes = fun declaration -> declaration.declaration_attributes
+
   let class_name_token = fun declaration -> declaration.class_name
+
   let colon_token = fun declaration -> declaration.colon_token
+
   let class_type = fun declaration -> declaration.class_type
+
   let name = fun declaration -> Token.text declaration.class_name
 end
 
@@ -3393,15 +3181,25 @@ module ClassDefinition = struct
   }
 
   let syntax_node = fun definition -> definition.syntax_node
+
   let keyword_token = fun definition -> definition.keyword_token
+
   let type_params = fun definition -> definition.type_params
+
   let declaration_extension = fun definition -> definition.declaration_extension
+
   let declaration_attributes = fun definition -> definition.declaration_attributes
+
   let class_name_token = fun definition -> definition.class_name
+
   let colon_token = fun definition -> definition.colon_token
+
   let class_type = fun definition -> definition.class_type
+
   let equals_token = fun definition -> definition.equals_token
+
   let class_body = fun definition -> definition.class_body
+
   let name = fun definition -> Token.text definition.class_name
 end
 

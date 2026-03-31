@@ -1,18 +1,20 @@
 open Common
 
-type t = { selector : Adapter.Selector.t }
+type t = {
+  selector : Adapter.Selector.t;
+}
 
-let make () =
+let make = fun () ->
   let* selector = Adapter.Selector.make () in
-  Ok { selector }
+  Ok {selector}
 
-let poll ?max_events ?timeout t =
-  Adapter.Selector.select ?timeout ?max_events t.selector
+let poll = fun ?max_events ?timeout t -> Adapter.Selector.select ?timeout ?max_events t.selector
 
-let register (t : t) token interests source =
+let register = fun (t:t) token interests source ->
   Source.register source t.selector token interests
 
-let reregister (t : t) token interests source =
+let reregister = fun (t:t) token interests source ->
   Source.reregister source t.selector token interests
 
-let deregister (t : t) source = Source.deregister source t.selector
+let deregister = fun (t:t) source ->
+  Source.deregister source t.selector

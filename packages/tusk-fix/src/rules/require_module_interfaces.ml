@@ -1,11 +1,10 @@
 open Std
 
 let rule_id = "require-module-interfaces"
-let rule_description =
-  "Library source modules should usually have a matching .mli file"
 
-let rule_explain =
-  {|
+let rule_description = "Library source modules should usually have a matching .mli file"
+
+let rule_explain = {|
 An `.mli` file turns the boundary of a module into a deliberate choice instead of an
 accident of whatever happens to be defined in the implementation today.
 
@@ -17,37 +16,32 @@ This rule is biased toward explicit library boundaries. Even a small module ofte
 easier to maintain once its public surface is written down separately.
 |}
 
-let is_source_module path =
+let is_source_module = fun path ->
   String.ends_with ~suffix:".ml" path
   && String.contains path "/src/"
   && not (String.ends_with ~suffix:".mli" path)
   && not (String.ends_with ~suffix:"/main.ml" path)
 
-let interface_path_for path =
-  Path.(add_extension (remove_extension path) ~ext:"mli")
+let interface_path_for = fun path -> Path.(add_extension (remove_extension path) ~ext:"mli")
 
-let make_diagnostic path =
-  Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-    ~suggestion:
-      ("Add a matching interface file at `"
-      ^ Path.to_string (interface_path_for path)
-      ^ "`.")
-    ()
+let make_diagnostic = fun path ->
+  Diagnostic.make
+  ~severity:Warning
+  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+  ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
+  ~suggestion:(("Add a matching interface file at `" ^ Path.to_string (interface_path_for path) ^ "`."))
+  ()
 
-let check_tree (ctx : Rule.context) _red_root =
+let check_tree = fun (ctx:Rule.context) _red_root ->
   let path = Path.v ctx.file_path in
   if not (is_source_module ctx.file_path) then
     []
   else
     let interface_path = interface_path_for path in
     match Fs.exists interface_path with
-    | Ok true ->
-        []
-    | Ok false | Error _ ->
-        [ make_diagnostic path ]
+    | Ok true -> []
+    | Ok false
+    | Error _ -> [ make_diagnostic path ]
 
-let make () =
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
-    ~run:check_tree ()
+let make = fun () ->
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

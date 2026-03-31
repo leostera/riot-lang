@@ -1,5 +1,4 @@
 (** Line Wrapping Example - Demonstrates text wrapping for terminal display *)
-
 open Std
 open Std.Collections
 

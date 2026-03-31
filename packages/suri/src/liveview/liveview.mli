@@ -48,10 +48,9 @@ open Std
     - Event routing from browser to server
     - State management per connection (in dedicated process)
     - Automatic re-rendering on state changes *)
-
 (** {1 Component Interface} *)
-
 val id : string -> string
+
 (** Generate a unique LiveView component ID.
     
     Takes a base name and appends a UUID v7 suffix to ensure uniqueness.
@@ -65,42 +64,41 @@ val id : string -> string
         (* ... *)
       end
     ]} *)
+type 'msg event =
+  | Custom of Message.t
+  (** Any Miniriot message from other processes *)
+  | App of 'msg
+(** Component-specific messages from UI events *)
 
-type 'msg event = 
-  | Custom of Message.t  (** Any Miniriot message from other processes *)
-  | App of 'msg          (** Component-specific messages from UI events *)
 (** Event wrapper for component messages.
     
     - [App msg] wraps UI events (clicks, form submissions, etc.)
     - [Custom msg] wraps any Miniriot process message (timers, notifications, etc.)
     
     This allows components to handle both user interactions and server-driven updates. *)
-
 module type Component = sig
   val id : string
+
   (** Unique identifier for this LiveView component.
       Use [LiveView.id "name"] to generate a unique ID.
       This is used to create both the WebSocket endpoint path and DOM element ID. *)
-  
   type state
   (** Application state *)
-  
   type msg
   (** Messages that can change state *)
-  
   type args
   (** Initialization arguments passed from HTTP handler to WebSocket mount *)
-  
   val serialize_args : args -> Data.Json.t
+
   (** Serialize args to JSON for embedding in session token *)
-  
   val deserialize_args : Data.Json.t -> (args, Data.Json.t) result
+
   (** Deserialize args from JSON when mounting component *)
-  
   val init : Middleware.Conn.t -> args -> state
+
   (** Initialize state when client connects with initialization arguments *)
-  
   val update : msg event -> state -> state
+
   (** Update state based on event (pure function).
       
       Handle both UI events ([App msg]) and process messages ([Custom msg]):
@@ -111,14 +109,14 @@ module type Component = sig
           | Custom (Timer Tick) -> { state with time = current_time () }
           | _ -> state
       ]} *)
-  
   val render : state:state -> unit -> msg Component.t
+
   (** Render state to Component tree (pure function) *)
 end
 
 (** {1 LiveView JavaScript Runtime} *)
-
 val serve_runtime : ?prefix:string -> unit -> Middleware.Pipeline.middleware
+
 (** Middleware to serve the LiveView JavaScript runtime.
     
     This automatically serves the LiveView JavaScript at the specified path.
@@ -135,12 +133,12 @@ val serve_runtime : ?prefix:string -> unit -> Middleware.Pipeline.middleware
         Middleware.router routes;
       ]
     ]} *)
-
 (** {1 Mounting LiveViews} *)
 
-val mount : (module Component with type state = 's and type msg = 'm) -> 
-            Middleware.Conn.t ->
-            Channel.Handler.upgrade_opts * Channel.Handler.t
+val mount : (module Component with type state = 's and type msg = 'm) ->
+Middleware.Conn.t ->
+Channel.Handler.upgrade_opts * Channel.Handler.t
+
 (** Create a LiveView Channel.Handler.
     
     Returns a tuple of (upgrade_opts, handler) that can be used with
@@ -156,10 +154,8 @@ val mount : (module Component with type state = 's and type msg = 'm) ->
       let (opts, handler) = LiveView.mount (module Counter) conn in
       (* Use with WebSocket upgrade *)
     ]} *)
+val embed : (module Component with type args = 'args) -> 'args -> 'msg Component.t
 
-val embed : (module Component with type args = 'args) ->
-            'args ->
-            'msg Component.t
 (** Embed a LiveView component into a page with signed session token.
     
     The secret is automatically retrieved from Suri.Config via Std.Config.
@@ -210,10 +206,8 @@ val embed : (module Component with type args = 'args) ->
         ] in
         (* ... *)
     ]} *)
+val live : (module Component with type state = 's and type msg = 'm) -> Middleware.Router.route
 
-val live : 
-  (module Component with type state = 's and type msg = 'm) ->
-  Middleware.Router.route
 (** Create a LiveView route.
     
     Reads the path from the module's [path] field and automatically prefixes it
@@ -246,10 +240,10 @@ val live :
       
       Suri.start_link app
     ]} *)
-
 (** {1 JavaScript Runtime} *)
 
 val javascript_runtime : string
+
 (** Get the LiveView JavaScript runtime code as a string.
     
     You typically don't need this directly - use [client_script] instead.
@@ -261,8 +255,8 @@ val javascript_runtime : string
           ~body:LiveView.javascript_runtime
           ())
     ]} *)
-
 val client_script : 'msg Component.t
+
 (** Script element containing the LiveView JavaScript runtime.
     
     Include this once in your page's <head> section to load the LiveView client.
@@ -279,14 +273,13 @@ val client_script : 'msg Component.t
         ];
       ]
     ]} *)
+val html_template : element_id:string ->
+ws_path:string ->
+?title:string ->
+?styles:string ->
+'msg Component.t ->
+string
 
-val html_template : 
-  element_id:string -> 
-  ws_path:string -> 
-  ?title:string ->
-  ?styles:string ->
-  'msg Component.t -> 
-  string
 (** Generate HTML template with LiveView bootstrapping.
     
     @param element_id DOM element ID to mount LiveView

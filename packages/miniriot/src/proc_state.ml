@@ -16,7 +16,10 @@ type 'a t =
   | Suspended : ('a, 'b) continuation * 'a Effect.t -> 'b t
   | Unhandled : ('a, 'b) continuation * 'a -> 'b t
 
-let is_finished x = match x with Finished _ -> true | _ -> false
+let is_finished = fun x ->
+  match x with
+  | Finished _ -> true
+  | _ -> false
 
 type 'a step =
   | Continue of 'a
@@ -28,60 +31,67 @@ type 'a step =
   | Terminate : 'a step
 
 type ('a, 'b) step_callback = ('a step -> 'b t) -> 'a Effect.t -> 'b t
-type perform = { perform : 'a 'b. ('a, 'b) step_callback } [@@unboxed]
 
-let finished x = Finished x
-let suspended_with k e = Suspended (k, e)
+type perform = {
+  perform : 'a 'b. ('a, 'b) step_callback;
+} [@@unboxed]
+
+let finished = fun x -> Finished x
+
+let suspended_with = fun k e -> Suspended (k, e)
 
 let handler_continue =
-  let retc signal = finished (Ok signal) in
-  let exnc exn = 
+  let retc = fun signal -> finished (Ok signal) in
+  let exnc = fun exn ->
     (* Capture exception backtrace while still in fiber, before crossing effect boundary *)
     let backtrace = Exception.get_raw_backtrace () in
-    finished (Error { exn; backtrace })
+    finished (Error {exn; backtrace})
   in
-  let effc : type c. c Effect.t -> ((c, 'a) continuation -> 'b) option =
-   fun e -> Some (fun k -> suspended_with k e)
-  in
-  Effect.Shallow.{ retc; exnc; effc }
+  let effc : type c. c Effect.t -> ((c, 'a) continuation -> 'b) option = fun e -> Some (fun k -> suspended_with
+  k
+  e) in
+  Effect.Shallow.{retc; exnc; effc}
 
-let continue_with k v = Effect.Shallow.continue_with k v handler_continue
+let continue_with = fun k v ->
+  Effect.Shallow.continue_with k v handler_continue
 
-let discontinue_with k exn =
+let discontinue_with = fun k exn ->
   Effect.Shallow.discontinue_with k exn handler_continue
 
-let unhandled_with k v = Unhandled (k, v)
+let unhandled_with = fun k v -> Unhandled (k, v)
 
-let make fn eff =
+let make = fun fn eff ->
   let k = Effect.Shallow.fiber fn in
   Suspended (k, eff)
 
-let run :
-    type a.
-    consume_reduction:(unit -> bool) ->
-    perform:perform ->
-    a t ->
-    a t option =
- fun ~consume_reduction ~perform t ->
+let run : type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> a t option = fun ~consume_reduction ~perform t ->
   let exception Yield of a t in
   let exception Unwind in
   let t = Cell.create t in
   try
     while true do
-      if consume_reduction () then raise_notrace (Yield !t);
+      if consume_reduction () then
+        raise_notrace (Yield !t);
       match !t with
-      | Finished _ as finished -> raise_notrace (Yield finished)
-      | Unhandled (fn, v) -> raise_notrace (Yield (continue_with fn v))
+      | Finished _ as finished ->
+          raise_notrace (Yield finished)
+      | Unhandled (fn, v) ->
+          raise_notrace (Yield (continue_with fn v))
       | Suspended (fn, e) as suspended ->
-          let k : type c. (c, a) continuation -> c step -> a t =
-           fun fn step ->
+          let k : type c. (c, a) continuation -> c step -> a t = fun fn step ->
             match step with
-            | Delay -> suspended
-            | Continue v -> continue_with fn v
-            | Discontinue exn -> discontinue_with fn exn
-            | Reperform eff -> unhandled_with fn (Effect.perform eff)
-            | Yield -> raise_notrace (Yield (continue_with fn ()))
-            | Suspend -> raise_notrace (Yield suspended)
+            | Delay ->
+                suspended
+            | Continue v ->
+                continue_with fn v
+            | Discontinue exn ->
+                discontinue_with fn exn
+            | Reperform eff ->
+                unhandled_with fn (Effect.perform eff)
+            | Yield ->
+                raise_notrace (Yield (continue_with fn ()))
+            | Suspend ->
+                raise_notrace (Yield suspended)
             | Terminate ->
                 ignore (discontinue_with fn Unwind);
                 raise Unwind
@@ -93,14 +103,14 @@ let run :
   | Yield t -> Some t
   | Unwind -> None
 
-let drop k exn _id =
-  let retc _signal = () in
-  let exnc _exn = () in
-  let effc _eff = None in
-  let handler = Effect.Shallow.{ retc; exnc; effc } in
+let drop = fun k exn _id ->
+  let retc = fun _signal -> () in
+  let exnc = fun _exn -> () in
+  let effc = fun _eff -> None in
+  let handler = Effect.Shallow.{retc; exnc; effc} in
   Effect.Shallow.discontinue_with k exn handler
 
-let unwind ~id (t : 'a t) =
+let unwind = fun ~id (t:'a t) ->
   match t with
   | Finished result -> ignore result
   | Suspended (k, _) -> ignore (drop k Unwind id)

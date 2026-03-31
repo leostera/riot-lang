@@ -1,8 +1,8 @@
 open Std
-
 module Api = Fixme
 
 let package_name = "std"
+
 let package_rule_id = package_name ^ ":prefer-result-map-over-manual-match"
 
 let explanation =
@@ -10,8 +10,7 @@ let explanation =
     {
       rule_id = package_rule_id;
       message = "Manual result matches that only rebuild Ok/Error should use Result.map.";
-      body =
-        {|
+      body = {|
 `Result.map` already names the pattern where you transform the `Ok` value and leave the
 `Error` branch alone.
 
@@ -26,124 +25,103 @@ clear immediately: success is transformed, failure is preserved.
 This rule only targets the narrow case where the error branch is forwarded unchanged and
 the success branch rebuilds `Ok`.
 |};
+
     }
 
-let explanations () = [ explanation ]
+let explanations = fun () -> [ explanation ]
 
-let rec unwrap_expression expr =
+let rec unwrap_expression = fun expr ->
   match expr with
-  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
-      unwrap_expression inner
+  | Syn.Cst.Expression.Parenthesized { inner; _ } -> unwrap_expression inner
   | Syn.Cst.Expression.Typed { expression; _ }
   | Syn.Cst.Expression.Polymorphic { expression; _ }
-  | Syn.Cst.Expression.Coerce { expression; _ } ->
-      unwrap_expression expression
-  | _ ->
-      expr
+  | Syn.Cst.Expression.Coerce { expression; _ } -> unwrap_expression expression
+  | _ -> expr
 
-let constructor_name_of_ident ident = Syn.Cst.Ident.name ident
+let constructor_name_of_ident = fun ident -> Syn.Cst.Ident.name ident
 
-let identifier_name_of_pattern = function
-  | Syn.Cst.Pattern.Identifier { name_token; _ } ->
-      Some (Syn.Cst.Token.text name_token)
-  | _ ->
-      None
+let identifier_name_of_pattern =
+  function
+  | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some (Syn.Cst.Token.text name_token)
+  | _ -> None
 
-let result_case_kind (case : Syn.Cst.match_case) =
+let result_case_kind = fun (case:Syn.Cst.match_case) ->
   if Option.is_some case.guard then
     `Other
   else
     match case.pattern with
-    | Syn.Cst.Pattern.Constructor
-        {
-          constructor_path;
-          arguments = [ argument_pattern ];
-          _;
-        } -> (
-            match constructor_name_of_ident constructor_path, identifier_name_of_pattern argument_pattern with
-            | Some "Ok", Some name ->
-                `OkCase name
-            | Some "Error", Some name ->
-                `ErrorCase name
-            | _ ->
-                `Other)
-    | _ ->
-        `Other
+    | Syn.Cst.Pattern.Constructor { constructor_path; arguments=[ argument_pattern ]; _;  } -> (
+        match constructor_name_of_ident constructor_path, identifier_name_of_pattern argument_pattern with
+        | Some "Ok", Some name -> `OkCase name
+        | Some "Error", Some name -> `ErrorCase name
+        | _ -> `Other
+      )
+    | _ -> `Other
 
-let is_constructor_with_path_name expected name expr =
+let is_constructor_with_path_name = fun expected name expr ->
   match unwrap_expression expr with
-  | Syn.Cst.Expression.Constructor
-      {
-        constructor_path;
-        payload = Some payload;
-        _;
-      } -> (
-          match constructor_name_of_ident constructor_path, unwrap_expression payload with
-          | Some ctor_name, Syn.Cst.Expression.Path { path; _ } ->
-              String.equal ctor_name expected
-              &&
-              match Syn.Cst.Ident.name path with
-              | Some path_name ->
-                  String.equal path_name name
-              | None ->
-                  false
-          | _ ->
-              false)
-  | _ ->
-      false
+  | Syn.Cst.Expression.Constructor { constructor_path; payload=Some payload; _;  } -> (
+      match constructor_name_of_ident constructor_path, unwrap_expression payload with
+      | Some ctor_name, Syn.Cst.Expression.Path { path; _ } ->
+          String.equal ctor_name expected && match Syn.Cst.Ident.name path with
+          | Some path_name -> String.equal path_name name
+          | None -> false
+          | _ -> false
+    )
+  | _ -> false
 
-let is_ok_expression expr =
+let is_ok_expression = fun expr ->
   match unwrap_expression expr with
-  | Syn.Cst.Expression.Constructor { constructor_path; payload = Some _; _ } -> (
+  | Syn.Cst.Expression.Constructor { constructor_path; payload=Some _; _ } -> (
       match constructor_name_of_ident constructor_path with
-      | Some "Ok" ->
-          true
-      | _ ->
-          false)
-  | _ ->
-      false
+      | Some "Ok" -> true
+      | _ -> false
+    )
+  | _ -> false
 
-let matches_result_map_shape (expr : Syn.Cst.match_expression) =
+let matches_result_map_shape = fun (expr:Syn.Cst.match_expression) ->
   match expr.cases with
-  | [ first_case; second_case ] -> (
+  | [first_case;second_case] -> (
       match result_case_kind first_case, result_case_kind second_case with
-      | `OkCase _ok_name, `ErrorCase error_name ->
-          is_ok_expression first_case.body
-          && is_constructor_with_path_name "Error" error_name second_case.body
-      | `ErrorCase error_name, `OkCase _ok_name ->
-          is_constructor_with_path_name "Error" error_name first_case.body
-          && is_ok_expression second_case.body
-      | _ ->
-          false)
-  | _ ->
-      false
+      | `OkCase _ok_name, `ErrorCase error_name -> is_ok_expression first_case.body
+      && is_constructor_with_path_name "Error" error_name second_case.body
+      | `ErrorCase error_name, `OkCase _ok_name -> is_constructor_with_path_name
+      "Error"
+      error_name
+      first_case.body
+      && is_ok_expression second_case.body
+      | _ -> false
+    )
+  | _ -> false
 
-let make_diagnostic (expr : Syn.Cst.match_expression) =
-  Api.Diagnostic.make ~severity:Warning
-    ~kind:
-      (Api.Diagnostic.Known
-         {
-           rule_id = package_rule_id;
-           message = explanation.Api.Explanation.message;
-         })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
-    ~suggestion:"Prefer Result.map when the Ok branch changes and Error is forwarded unchanged."
-    ()
+let make_diagnostic = fun (expr:Syn.Cst.match_expression) ->
+  Api.Diagnostic.make
+  ~severity:Warning
+  ~kind:(Api.Diagnostic.Known {
+    rule_id = package_rule_id;
+    message = explanation.Api.Explanation.message;
 
-let diagnostic_for_expression = function
-  | Syn.Cst.Expression.Match expr when matches_result_map_shape expr ->
-      Some (make_diagnostic expr)
-  | _ ->
-      None
+  })
+  ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
+  ~suggestion:"Prefer Result.map when the Ok branch changes and Error is forwarded unchanged."
+  ()
 
-let check_tree (ctx : Api.Rule.context) _red_root =
+let diagnostic_for_expression =
+  function
+  | Syn.Cst.Expression.Match expr when matches_result_map_shape expr -> Some (make_diagnostic expr)
+  | _ -> None
+
+let check_tree = fun (ctx:Api.Rule.context) _red_root ->
   let source_file = ctx.cst in
-      Syn.Cst.SourceFile.structure_items source_file
-      |> Option.unwrap_or ~default:[]
-      |> List.concat_map Api.Traversal.expressions_of_structure_item
-      |> List.filter_map diagnostic_for_expression
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Api.Traversal.expressions_of_structure_item
+  |> List.filter_map diagnostic_for_expression
 
-let rule () =
-  Api.Rule.make ~id:package_rule_id
-    ~description:explanation.message
-    ~explain:explanation.body ~run:check_tree ()
+let rule = fun () ->
+  Api.Rule.make
+  ~id:package_rule_id
+  ~description:explanation.message
+  ~explain:explanation.body
+  ~run:check_tree
+  ()

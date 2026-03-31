@@ -5,19 +5,19 @@ type t = {
   ignore_patterns : string list;
 }
 
-let empty = { ignore_patterns = [] }
+let empty = {ignore_patterns = []}
 
-let parse_fmt_table = function
+let parse_fmt_table =
+  function
   | Toml.Table fmt_items -> (
       match List.assoc_opt "ignore" fmt_items with
-      | Some (Toml.Array items) ->
-          {
-            ignore_patterns = List.filter_map Toml.get_string items;
-          }
-      | _ -> empty)
+      | Some (Toml.Array items) -> {ignore_patterns = List.filter_map Toml.get_string items; }
+      | _ -> empty
+    )
   | _ -> empty
 
-let of_toml = function
+let of_toml =
+  function
   | Toml.Table items -> (
       match List.assoc_opt "tusk" items with
       | Some (Toml.Table tusk_items) -> (
@@ -26,17 +26,22 @@ let of_toml = function
           | None -> (
               match List.assoc_opt "fmt" items with
               | Some fmt_table -> parse_fmt_table fmt_table
-              | None -> empty))
+              | None -> empty
+            )
+        )
       | _ -> (
           match List.assoc_opt "fmt" items with
           | Some fmt_table -> parse_fmt_table fmt_table
-          | None -> empty))
+          | None -> empty
+        )
+    )
   | _ -> empty
 
-let load path =
+let load = fun path ->
   match Fs.read_to_string path with
   | Error _ -> empty
   | Ok content -> (
       match Toml.parse content with
       | Ok toml -> of_toml toml
-      | Error _ -> empty)
+      | Error _ -> empty
+    )

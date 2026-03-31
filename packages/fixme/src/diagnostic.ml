@@ -1,6 +1,10 @@
 open Std
 
-type severity = Error | Warning | Info | Hint
+type severity =
+  Error
+  | Warning
+  | Info
+  | Hint
 
 type kind =
   | Known of {
@@ -20,21 +24,24 @@ type t = {
   fix : Fix.fix option;
 }
 
-let make ~severity ~kind ~span ?suggestion ?fix () =
-  { severity; kind; span; suggestion; fix }
+let make = fun ~severity ~kind ~span ?suggestion ?fix () -> {severity; kind; span; suggestion; fix}
 
-let kind diag = diag.kind
-let severity diag = diag.severity
+let kind = fun diag -> diag.kind
 
-let message = function
-  | { kind = Known { message; _ }; _ } -> message
-  | { kind = Generic { message; _ }; _ } -> message
+let severity = fun diag -> diag.severity
 
-let span diag = diag.span
+let message =
+  function
+  | { kind=Known { message; _ }; _ } -> message
+  | { kind=Generic { message; _ }; _ } -> message
 
-let rule_id = function
-  | { kind = Known { rule_id; _ }; _ } -> rule_id
-  | { kind = Generic { rule_id; _ }; _ } -> rule_id
+let span = fun diag -> diag.span
 
-let suggestion diag = diag.suggestion
-let fix diag = diag.fix
+let rule_id =
+  function
+  | { kind=Known { rule_id; _ }; _ } -> rule_id
+  | { kind=Generic { rule_id; _ }; _ } -> rule_id
+
+let suggestion = fun diag -> diag.suggestion
+
+let fix = fun diag -> diag.fix

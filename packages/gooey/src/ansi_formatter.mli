@@ -1,5 +1,4 @@
 (** ANSI formatting for terminal output *)
-
 open Std
 open Tty
 
@@ -15,11 +14,11 @@ type format =
   | Overline
   | Foreground of Color.t
   | Background of Color.t
-
 val to_string : format -> string
-(** Convert a format to its ANSI escape sequence *)
 
+(** Convert a format to its ANSI escape sequence *)
 val format_string : format list -> string -> string
+
 (** [format_string formats text] applies ANSI formatting to text.
     
     Example:

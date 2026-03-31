@@ -1,15 +1,11 @@
 (** HTTP/2 Frame Parser *)
-
 open Std
 
 type config = {
   max_frame_size : int;
 }
 type 'a parse_result =
-  | Done of {
-      value : 'a;
-      remaining : string;
-    }
+  | Done of { value : 'a; remaining : string; }
   | Need_more
   | Error of string
 val parse_frame : string -> Frame.t parse_result

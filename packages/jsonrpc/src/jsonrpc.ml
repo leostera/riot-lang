@@ -1,12 +1,13 @@
 (** JSON-RPC 2.0 Protocol Implementation *)
-
 open Std
 open Std.Data
 
 (* Re-export all types and functions from Common *)
+
 include Common
 
 (* ApplicationProtocol module type needs to be defined here *)
+
 module type ApplicationProtocol = sig
   type request
   type response
@@ -20,9 +21,11 @@ module type ApplicationProtocol = sig
 end
 
 (* Client module *)
+
 module Client = Client
 
 (* Server module *)
+
 module Server = Server
 
 (* Helper functions - use the ones from Common instead *)

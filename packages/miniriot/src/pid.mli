@@ -1,5 +1,4 @@
 (** Process identifiers *)
-
 (** Opaque process identifier *)
 (** The PID of the main process *)
 type t

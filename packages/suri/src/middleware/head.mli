@@ -60,9 +60,7 @@ open Std
         router routes;
       ]
     ]} *)
-
 (** {1 Middleware} *)
-
 (** HEAD request handler middleware.
 
     Automatically converts HEAD requests to GET for processing,

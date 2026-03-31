@@ -1,14 +1,12 @@
 open Std
 
 (** Cross-compilation toolchain detection and configuration *)
-
 type detection_result = {
   sysroot : Path.t option;  (** Detected sysroot path *)
   bin_dir : Path.t option;  (** Directory containing cross-compiler binaries *)
-  bin_prefix : string;      (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
+  bin_prefix : string;  (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
   c_compiler : Path.t option;  (** Path to C compiler *)
 }
-
 (** Derive binary prefix from target triplet
     
     Examples:
@@ -38,10 +36,7 @@ val bin_dir_of_compiler : Path.t -> Path.t option
     If no compiler is found, returns a minimal config with [`bin_prefix`] set
     but the other fields left as [`None`].
 *)
-val detect :
-  ?toolchain_root:Path.t ->
-  target_triplet:System.Host.t ->
-  detection_result
+val detect : ?toolchain_root:Path.t -> target_triplet:System.Host.t -> detection_result
 
 (** Get full path to a cross-compilation binary
     

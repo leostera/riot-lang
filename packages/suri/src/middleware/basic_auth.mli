@@ -130,7 +130,6 @@ open Std
     ]} *)
 type 'a validation_fn = username:string -> password:string -> 'a option
 (** {1 Middleware} *)
-
 (** Create Basic Auth middleware with static credentials.
     
     @param realm Realm name shown in browser prompt (default: "Restricted Area")
@@ -211,7 +210,6 @@ unit ->
 Pipeline.middleware
 
 (** {1 Helper Functions} *)
-
 (** Extract username and password from Authorization header.
     
     Returns [Some (username, password)] if Authorization header is present

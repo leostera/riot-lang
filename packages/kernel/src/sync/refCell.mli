@@ -39,7 +39,6 @@
       | Error msg ->
           Printf.printf "Cannot borrow: %s\n" msg
     ]} *)
-
 open Types
 
 (** A mutable cell with runtime borrow checking *)
@@ -71,6 +70,7 @@ val release_borrow : 'a borrow -> unit
 val borrow_mut : 'a t -> 'a borrow_mut
 
 (** Get the value from a mutable borrow *)
+
 (** Set the value through a mutable borrow *)
 val get_mut : 'a borrow_mut -> 'a
 
@@ -80,7 +80,6 @@ val set_mut : 'a borrow_mut -> 'a -> unit
 val release_borrow_mut : 'a borrow_mut -> unit
 
 (** {2 Safe accessors} *)
-
 (** Safely borrow the value for the duration of a function *)
 (** Safely mutably borrow the value for the duration of a function. The
     function receives a getter and setter. *)
@@ -89,7 +88,6 @@ val with_borrow : 'a t -> ('a -> 'b) -> 'b
 val with_borrow_mut : 'a t -> ((unit -> 'a) -> ('a -> unit) -> 'b) -> 'b
 
 (** {2 Try variants} *)
-
 (** Try to borrow immutably, returning Error instead of raising *)
 val try_borrow : 'a t -> ('a borrow, string) result
 
@@ -97,7 +95,6 @@ val try_borrow : 'a t -> ('a borrow, string) result
 val try_borrow_mut : 'a t -> ('a borrow_mut, string) result
 
 (** {2 Unsafe access} *)
-
 (** Get the value without borrow checking (unsafe) *)
 (** Set the value without borrow checking (unsafe) *)
 val get_unchecked : 'a t -> 'a
@@ -105,7 +102,6 @@ val get_unchecked : 'a t -> 'a
 val set_unchecked : 'a t -> 'a -> unit
 
 (** {2 Query} *)
-
 (** Check if the cell is currently borrowed *)
 val is_borrowed : 'a t -> bool
 

@@ -1,8 +1,9 @@
 open Std
 
 (** Generate ETag from response body *)
-let generate_etag ?(weak = false) body =
-  if String.length body = 0 then None
+let generate_etag = fun ?(weak = false) body ->
+  if String.length body = 0 then
+    None
   else
     (* Hash the body content *)
     let hash = Crypto.Sha256.hash_string body in
@@ -22,16 +23,11 @@ let generate_etag ?(weak = false) body =
 let middleware = fun ?(weak = false) ~conn ~next ->
   (* Process request *)
   let conn' = next conn in
-  
   (* Check if ETag already set *)
   let has_etag =
-    List.exists
-      (fun (name, _) -> String.lowercase_ascii name = "etag")
-      (Conn.resp_headers conn')
+    List.exists (fun ((name, _)) -> String.lowercase_ascii name = "etag") (Conn.resp_headers conn')
   in
-  
   if has_etag then
-    (* ETag already set, don't override *)
     conn'
   else
     (* Generate ETag from response body *)

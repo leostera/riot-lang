@@ -7,7 +7,7 @@ open Minttea
    - Only rendering when scenes change
 *)
 
-let test_scene_diff_optimization () =
+let test_scene_diff_optimization = fun () ->
   (* This would need to be run in a TTY environment *)
   print_endline "Scene diff optimization test would verify:";
   print_endline "• Element -> Scene graph generation (cheap)";

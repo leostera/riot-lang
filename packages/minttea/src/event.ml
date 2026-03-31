@@ -29,7 +29,7 @@ type key =
   | F of int
   | Key of string
 
-let key_to_string key =
+let key_to_string = fun key ->
   match key with
   | Up -> "up"
   | Down -> "down"
@@ -49,7 +49,8 @@ let key_to_string key =
   | F n -> "f" ^ Int.to_string n
   | Key key -> key
 
-let modifier_to_string = function
+let modifier_to_string =
+  function
   | NoModifier -> ""
   | Ctrl -> "ctrl"
   | Alt -> "alt"
@@ -81,7 +82,10 @@ type mouse_event = {
   shift : bool;
 }
 
-type window_size = { width : int; height : int }
+type window_size = {
+  width : int;
+  height : int;
+}
 
 type t =
   | KeyDown of key * modifier
@@ -94,13 +98,22 @@ type t =
   | FocusLost
   | Custom of Message.t
 
-let to_string = function
+let to_string =
+  function
   | KeyDown (key, mod_) ->
       let mod_str = modifier_to_string mod_ in
       let key_str = key_to_string key in
-      if mod_str = "" then "KeyDown(" ^ key_str ^ ")"
-      else "KeyDown(" ^ mod_str ^ "+" ^ key_str ^ ")"
-  | Mouse { button; event_type; x; y; _ } ->
+      if mod_str = "" then
+        "KeyDown(" ^ key_str ^ ")"
+      else
+        "KeyDown(" ^ mod_str ^ "+" ^ key_str ^ ")"
+  | Mouse {
+    button;
+    event_type;
+    x;
+    y;
+    _
+  } ->
       let btn =
         match button with
         | Left -> "left"
@@ -118,15 +131,21 @@ let to_string = function
       "Mouse(" ^ btn ^ "," ^ evt ^ ",x=" ^ Int.to_string x ^ ",y=" ^ Int.to_string y ^ ")"
   | Resize { width; height } ->
       "Resize(w=" ^ Int.to_string width ^ ",h=" ^ Int.to_string height ^ ")"
-  | Timer _ref -> "Timer(...)"
-  | Frame _instant -> "Frame(...)"
+  | Timer _ref ->
+      "Timer(...)"
+  | Frame _instant ->
+      "Frame(...)"
   | Paste content ->
       let preview =
         if String.length content > 20 then
           String.sub content 0 17 ^ "..."
-        else content
+        else
+          content
       in
       "Paste(" ^ preview ^ ")"
-  | FocusGained -> "FocusGained"
-  | FocusLost -> "FocusLost"
-  | Custom _msg -> "Custom"
+  | FocusGained ->
+      "FocusGained"
+  | FocusLost ->
+      "FocusLost"
+  | Custom _msg ->
+      "Custom"

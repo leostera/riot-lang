@@ -39,15 +39,12 @@ type t
 (** # Errors *)
 
 type error =
-  | InvalidUtf8 of {
-      path : string;
-    } (** Path contains invalid UTF-8 bytes *)
-  | SystemInvalidUtf8 of {
-      syscall : string;
-      path : string;
-    }
+  | InvalidUtf8 of { path : string; }
+  (** Path contains invalid UTF-8 bytes *)
+  | SystemInvalidUtf8 of { syscall : string; path : string; }
   (** System call returned invalid UTF-8 *)
-  | SystemError of string (** Other system-level error *)
+  | SystemError of string
+(** Other system-level error *)
 (** # Construction and Conversion *)
 
 (** Creates a path from a string, validating UTF-8 encoding.
@@ -99,7 +96,6 @@ val v : string -> t
 val to_string : t -> string
 
 (** # Path Operations *)
-
 (** Joins two paths together with a path separator.
 
     ## Examples
@@ -169,7 +165,6 @@ val basename : t -> string
 val dirname : t -> t
 
 (** # Extensions and Properties *)
-
 (** Returns the file extension, if any.
 
     The extension is the part after the final `.` in the basename.
@@ -240,7 +235,6 @@ val is_absolute : t -> bool
 val is_relative : t -> bool
 
 (** # Path Analysis *)
-
 (** Splits a path into its components.
 
     Returns a list of path segments. Does not normalize the path.
@@ -275,7 +269,6 @@ val components : t -> t list
 val normalize : t -> t
 
 (** # Filesystem Queries *)
-
 (** Checks if the path exists on the filesystem.
 
     ## Examples
@@ -318,7 +311,6 @@ val is_directory : t -> bool
 val is_file : t -> bool
 
 (** # Comparison and Manipulation *)
-
 (** Compares two paths for equality.
 
     Comparison is byte-for-byte. Paths are not normalized before comparison.

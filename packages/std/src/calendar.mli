@@ -115,7 +115,6 @@ type year_and_week = {
   week : week_number;
 }
 (** {1 Constants} *)
-
 (** 60 seconds per minute *)
 val seconds_per_minute : int
 
@@ -135,7 +134,6 @@ val days_per_leap_year : int
 val days_from_0_to_1970 : int
 
 (** {1 Leap Years and Month Information} *)
-
 (** Returns [true] if the year is a leap year.
 
     A year is a leap year if:
@@ -171,7 +169,6 @@ val is_leap_year : year -> bool
 val last_day_of_month : year:int -> month:int -> last_day_of_month
 
 (** {1 Date Validation} *)
-
 (** Validates if a date is valid in the Gregorian calendar.
 
     Checks:
@@ -192,7 +189,6 @@ val last_day_of_month : year:int -> month:int -> last_day_of_month
 val is_valid_date : date -> bool
 
 (** {1 Gregorian Days Conversions} *)
-
 (** Converts a date to the number of days since year 0, January 1st.
 
     This is the foundation for date arithmetic and comparisons.
@@ -234,7 +230,6 @@ val date_to_gregorian_days : date -> int
 val gregorian_days_to_date : int -> date
 
 (** {1 Gregorian Seconds Conversions} *)
-
 (** Converts a date and time to seconds since year 0, midnight.
 
     Used for datetime arithmetic and comparisons. For working with
@@ -265,7 +260,6 @@ val naive_to_gregorian_seconds : date -> time -> int
 val gregorian_seconds_to_naive : int -> date * time
 
 (** {1 Day of Week} *)
-
 (** Returns the day of week: 1=Monday, 2=Tuesday, ..., 7=Sunday.
 
     Follows ISO 8601 convention where Monday is day 1.
@@ -283,7 +277,6 @@ val gregorian_seconds_to_naive : int -> date * time
 val day_of_week : date -> day_number
 
 (** {1 ISO Week Number} *)
-
 (** Calculates the ISO 8601 week number.
 
     ISO 8601 week rules:
@@ -311,7 +304,6 @@ val day_of_week : date -> day_number
 val iso_week_number : date -> year_and_week
 
 (** {1 Time Conversions} *)
-
 (** Converts time to seconds since midnight (0-86399).
 
     ## Examples
@@ -359,7 +351,6 @@ val seconds_to_time : int -> time
 val seconds_to_daystime : int -> int * time
 
 (** {1 Date/Time Arithmetic} *)
-
 (** Computes the difference between two date/time pairs.
 
     Returns [(days, time)] where:

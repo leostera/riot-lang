@@ -1,5 +1,5 @@
 let name = "miniriot"
 
-let rules () = [ Miniriot_loop_yield.rule () ]
+let rules = fun () -> [ Miniriot_loop_yield.rule () ]
 
-let explanations () = Miniriot_loop_yield.explanations ()
+let explanations = fun () -> Miniriot_loop_yield.explanations ()

@@ -7,7 +7,6 @@
     - UTF-8 encoding/decoding
     - Text segmentation (words, sentences, line breaks)
 *)
-
 (** {1 Submodules} *)
 
 (** Width tables for character display width calculation *)
@@ -41,6 +40,10 @@ module Segmentation = Segmentation
 
 (** Line break type for text segmentation *)
 type line_break = Segmentation.line_break =
-  | Must_break   (** Line must break here (e.g., newline) *)
-  | Can_break    (** Line may break here (word boundary) *)
-  | Dont_break   (** Line must not break here *)
+  | Must_break
+  (** Line must break here (e.g., newline) *)
+  | Can_break
+  (** Line may break here (word boundary) *)
+  | Dont_break
+
+(** Line must not break here *)

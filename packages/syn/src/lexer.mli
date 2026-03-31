@@ -77,13 +77,11 @@ open Std
     let tokens = loop ()
     ```
 *)
-
 (** # Types *)
 
 (** Lexer state (cursor over source). *)
 type t
 (** # Construction *)
-
 (** `create source` creates a new lexer for the given source code.
 
     Example: ```ocaml let lexer = Lexer.create "let x = 1" in let tok =
@@ -91,7 +89,6 @@ type t
 val create : string -> t
 
 (** # Tokenization *)
-
 (** `next lexer delim_stack` returns the next token from the source.
 
     Advances the lexer position past the returned token. Returns EOF token when

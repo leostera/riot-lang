@@ -32,94 +32,126 @@ module Uchar = Kernel.Uchar
 
 (** Line break opportunity type *)
 type break_opportunity =
-  | Must_break    (** Line MUST break here (newline, form feed) *)
-  | Can_break     (** Line MAY break here (space, after punctuation) *)
-  | Dont_break    (** Line must NOT break here (inside word, before punctuation) *)
+  | Must_break
+  (** Line MUST break here (newline, form feed) *)
+  | Can_break
+  (** Line MAY break here (space, after punctuation) *)
+  | Dont_break
 
+(** Line must NOT break here (inside word, before punctuation) *)
 (** Simplified line break class *)
 type line_class =
-  | Newline       (** LF, CR, NEL, etc - mandatory break *)
-  | Space         (** SP, NBSP variants *)
-  | Letter        (** Letters and digits - don't break inside words *)
-  | Punctuation   (** Most punctuation - can break after *)
-  | Open_punct    (** Opening brackets/quotes - don't break after *)
-  | Close_punct   (** Closing brackets/quotes - don't break before *)
-  | Hyphen        (** Hyphens - can break after *)
-  | CJK           (** CJK ideographs - can break between any *)
-  | Other         (** Everything else *)
+  | Newline
+  (** LF, CR, NEL, etc - mandatory break *)
+  | Space
+  (** SP, NBSP variants *)
+  | Letter
+  (** Letters and digits - don't break inside words *)
+  | Punctuation
+  (** Most punctuation - can break after *)
+  | Open_punct
+  (** Opening brackets/quotes - don't break after *)
+  | Close_punct
+  (** Closing brackets/quotes - don't break before *)
+  | Hyphen
+  (** Hyphens - can break after *)
+  | CJK
+  (** CJK ideographs - can break between any *)
+  | Other
+
+(** Everything else *)
 
 (** Get line break class for a rune *)
-let get_line_class c =
+let get_line_class = fun c ->
   match c with
-  (* Mandatory breaks *)
-  | 0x000A                                  (* LF *)
-  | 0x000D                                  (* CR *)
-  | 0x0085                                  (* NEL *)
-  | 0x2028                                  (* Line separator *)
-  | 0x2029 -> Newline                       (* Paragraph separator *)
-  
-  (* Spaces *)
-  | 0x0020                                  (* Space *)
-  | 0x00A0                                  (* Non-breaking space *)
-  | 0x1680 | 0x2000 | 0x2001 | 0x2002 
-  | 0x2003 | 0x2004 | 0x2005 | 0x2006 
-  | 0x2007 | 0x2008 | 0x2009 | 0x200A
-  | 0x202F | 0x205F | 0x3000 -> Space       (* Various Unicode spaces *)
-  
-  (* Opening punctuation - don't break after *)
-  | 0x0028                                  (* ( *)
-  | 0x005B                                  (* [ *)
-  | 0x007B                                  (* { *)
-  | 0x00AB                                  (* « *)
-  | 0x2018                                  (* ' *)
-  | 0x201C                                  (* " *)
-  | 0x2039                                  (* ‹ *)
-  | 0x27E8 | 0x27EA | 0x27EC | 0x27EE       (* ⟨ ⟪ ⟬ ⟮ *)
-  | 0x2983 | 0x2985 | 0x2987 | 0x2989
-  | 0x298B | 0x298D | 0x298F | 0x2991
-  | 0x2993 | 0x2995 | 0x2997 -> Open_punct
-  
-  (* Closing punctuation - don't break before *)
-  | 0x0021                                  (* ! *)
-  | 0x0029                                  (* ) *)
-  | 0x002C                                  (* , *)
-  | 0x002E                                  (* . *)
-  | 0x003A                                  (* : *)
-  | 0x003B                                  (* ; *)
-  | 0x003F                                  (* ? *)
-  | 0x005D                                  (* ] *)
-  | 0x007D                                  (* } *)
-  | 0x00BB                                  (* » *)
-  | 0x2019                                  (* ' *)
-  | 0x201D                                  (* " *)
-  | 0x203A                                  (* › *)
-  | 0x27E9 | 0x27EB | 0x27ED | 0x27EF       (* ⟩ ⟫ ⟭ ⟯ *)
-  | 0x2984 | 0x2986 | 0x2988 | 0x298A
-  | 0x298C | 0x298E | 0x2990 | 0x2992
-  | 0x2994 | 0x2996 | 0x2998 -> Close_punct
-  
-  (* Hyphens - can break after *)
-  | 0x002D                                  (* - *)
-  | 0x2010 | 0x2011 | 0x2012 | 0x2013 -> Hyphen  (* Various dashes *)
-  
-  (* CJK Ideographs - can break between *)
-  | c when c >= 0x4E00 && c <= 0x9FFF -> CJK  (* CJK Unified Ideographs *)
-  | c when c >= 0x3400 && c <= 0x4DBF -> CJK  (* CJK Extension A *)
-  | c when c >= 0xAC00 && c <= 0xD7AF -> CJK  (* Hangul Syllables *)
-  | c when c >= 0x3040 && c <= 0x309F -> CJK  (* Hiragana *)
-  | c when c >= 0x30A0 && c <= 0x30FF -> CJK  (* Katakana *)
-  
-  (* Letters and numbers - don't break inside words *)
+  | 0x000a
+  | 0x000d
+  | 0x0085
+  | 0x2028
+  | 0x2029 -> Newline
+  | 0x0020
+  | 0x00a0
+  | 0x1680
+  | 0x2000
+  | 0x2001
+  | 0x2002
+  | 0x2003
+  | 0x2004
+  | 0x2005
+  | 0x2006
+  | 0x2007
+  | 0x2008
+  | 0x2009
+  | 0x200a
+  | 0x202f
+  | 0x205f
+  | 0x3000 -> Space
+  | 0x0028
+  | 0x005b
+  | 0x007b
+  | 0x00ab
+  | 0x2018
+  | 0x201c
+  | 0x2039
+  | 0x27e8
+  | 0x27ea
+  | 0x27ec
+  | 0x27ee
+  | 0x2983
+  | 0x2985
+  | 0x2987
+  | 0x2989
+  | 0x298b
+  | 0x298d
+  | 0x298f
+  | 0x2991
+  | 0x2993
+  | 0x2995
+  | 0x2997 -> Open_punct
+  | 0x0021
+  | 0x0029
+  | 0x002c
+  | 0x002e
+  | 0x003a
+  | 0x003b
+  | 0x003f
+  | 0x005d
+  | 0x007d
+  | 0x00bb
+  | 0x2019
+  | 0x201d
+  | 0x203a
+  | 0x27e9
+  | 0x27eb
+  | 0x27ed
+  | 0x27ef
+  | 0x2984
+  | 0x2986
+  | 0x2988
+  | 0x298a
+  | 0x298c
+  | 0x298e
+  | 0x2990
+  | 0x2992
+  | 0x2994
+  | 0x2996
+  | 0x2998 -> Close_punct
+  | 0x002d
+  | 0x2010
+  | 0x2011
+  | 0x2012
+  | 0x2013 -> Hyphen
+  | c when c >= 0x4e00 && c <= 0x9fff -> CJK
+  | c when c >= 0x3400 && c <= 0x4dbf -> CJK
+  | c when c >= 0xac00 && c <= 0xd7af -> CJK
+  | c when c >= 0x3040 && c <= 0x309f -> CJK
+  | c when c >= 0x30a0 && c <= 0x30ff -> CJK
   | c when Word_break.is_letter_extended c -> Letter
   | c when Word_break.is_digit c -> Letter
-  
-  (* Other punctuation *)
-  | c when (c >= 0x0021 && c <= 0x002F) ||
-           (c >= 0x003A && c <= 0x0040) ||
-           (c >= 0x005B && c <= 0x0060) ||
-           (c >= 0x007B && c <= 0x007E) -> Punctuation
-  
-  (* Everything else *)
+  | c when (c >= 0x0021 && c <= 0x002f)
+  || (c >= 0x003a && c <= 0x0040)
+  || (c >= 0x005b && c <= 0x0060)
+  || (c >= 0x007b && c <= 0x007e) -> Punctuation
   | _ -> Other
 
 (** Determine line break opportunity between two characters
@@ -136,93 +168,71 @@ let get_line_class c =
     - LB28: Don't break between letters (via word break)
     - LB29: CJK: break between ideographs
 *)
-let get_break_opportunity ~prev_class ~curr_class =
+let get_break_opportunity = fun ~prev_class ~curr_class ->
   match prev_class, curr_class with
-  (* Always break at newlines *)
   | _, Newline -> Must_break
   | Newline, _ -> Must_break
-  
-  (* Break after spaces (LB18) *)
   | Space, Letter -> Can_break
   | Space, CJK -> Can_break
   | Space, Punctuation -> Can_break
   | Space, Hyphen -> Can_break
   | Space, Other -> Can_break
-  
-  (* Don't break before spaces (LB7) *)
   | _, Space -> Dont_break
-  
-  (* Don't break after opening punctuation (LB14) *)
   | Open_punct, _ -> Dont_break
-  
-  (* Don't break before closing punctuation (LB13) *)
   | _, Close_punct -> Dont_break
-  
-  (* Can break after closing punctuation *)
   | Close_punct, Letter -> Can_break
   | Close_punct, CJK -> Can_break
   | Close_punct, Punctuation -> Can_break
   | Close_punct, Open_punct -> Can_break
-  
-  (* Can break after hyphens *)
   | Hyphen, Letter -> Can_break
   | Hyphen, CJK -> Can_break
   | Hyphen, Other -> Can_break
-  
-  (* Can break after other punctuation *)
   | Punctuation, Letter -> Can_break
   | Punctuation, CJK -> Can_break
   | Punctuation, Space -> Can_break
-  
-  (* CJK: Can break between ideographs (LB29) *)
   | CJK, CJK -> Can_break
   | CJK, Letter -> Can_break
   | CJK, Punctuation -> Can_break
   | Letter, CJK -> Can_break
   | Punctuation, CJK -> Can_break
-  
-  (* Don't break inside words (LB28) *)
   | Letter, Letter -> Dont_break
-  
-  (* Default: don't break *)
   | _, _ -> Dont_break
 
 (** Find all line break opportunities in a string
     Returns (position, opportunity_type) pairs *)
-let find_line_breaks s =
+let find_line_breaks = fun s ->
   let len = String.length s in
-  if len = 0 then []
+  if len = 0 then
+    []
   else
-    let rec scan pos prev_class acc =
-      if pos >= len then List.rev acc
+    let rec scan = fun pos prev_class acc ->
+      if pos >= len then
+        List.rev acc
       else
         (* Decode current rune *)
         let decode = String.get_utf_8_uchar s pos in
         if not (Uchar.utf_decode_is_valid decode) then
-          (* Invalid UTF-8 - treat as break opportunity *)
           List.rev ((pos, Can_break) :: acc)
         else
           let rune = Uchar.utf_decode_uchar decode in
           let rune_len = Uchar.utf_decode_length decode in
           let curr_code = Rune.to_int rune in
           let curr_class = get_line_class curr_code in
-          
           (* Determine break opportunity *)
           let opp = get_break_opportunity ~prev_class ~curr_class in
-          
           (* Add to list if it's a break opportunity *)
-          let new_acc = 
+          let new_acc =
             match opp with
             | Dont_break -> acc
-            | Can_break | Must_break -> (pos, opp) :: acc
+            | Can_break
+            | Must_break -> (pos, opp) :: acc
           in
-          
           scan (pos + rune_len) curr_class new_acc
     in
-    
     (* Start scanning from first character *)
     let first_decode = String.get_utf_8_uchar s 0 in
-    if not (Uchar.utf_decode_is_valid first_decode) then []
+    if not (Uchar.utf_decode_is_valid first_decode) then
+      []
     else
       let first_rune = Uchar.utf_decode_uchar first_decode in
       let first_len = Uchar.utf_decode_length first_decode in
@@ -231,15 +241,14 @@ let find_line_breaks s =
 
 (** Wrap text to fit within a given width
     Returns a list of lines *)
-let wrap_lines ~width s =
-  if width <= 0 then []
+let wrap_lines = fun ~width s ->
+  if width <= 0 then
+    []
   else
     let len = String.length s in
     let breaks = find_line_breaks s in
-    
-    let rec wrap_text pos current_width line_start lines breaks =
+    let rec wrap_text = fun pos current_width line_start lines breaks ->
       if pos >= len then
-        (* Add final line if any *)
         if line_start < len then
           List.rev (String.sub s line_start (len - line_start) :: lines)
         else
@@ -254,21 +263,21 @@ let wrap_lines ~width s =
           let rune_len = Uchar.utf_decode_length decode in
           let rune_width = Rune.width rune in
           let new_width = current_width + rune_width in
-          
           (* Check for mandatory break *)
-          let is_newline = Rune.to_int rune = 0x000A || Rune.to_int rune = 0x000D in
-          
+          let is_newline = Rune.to_int rune = 0x000a || Rune.to_int rune = 0x000d in
           if is_newline then
-            (* Mandatory break - add line and continue *)
             let line = String.sub s line_start (pos - line_start) in
             wrap_text (pos + rune_len) 0 (pos + rune_len) (line :: lines) breaks
           else if new_width > width then
-            (* Line too long - find last break opportunity *)
-            let last_break = 
-              List.fold_left (fun acc (break_pos, _) ->
-                if break_pos > line_start && break_pos < pos then Some break_pos
-                else acc
-              ) None breaks
+            let last_break =
+              List.fold_left
+                (fun acc ((break_pos, _)) ->
+                  if break_pos > line_start && break_pos < pos then
+                    Some break_pos
+                  else
+                    acc)
+                None
+                breaks
             in
             match last_break with
             | Some break_pos ->
@@ -283,5 +292,4 @@ let wrap_lines ~width s =
             (* Continue on same line *)
             wrap_text (pos + rune_len) new_width line_start lines breaks
     in
-    
     wrap_text 0 0 0 [] breaks

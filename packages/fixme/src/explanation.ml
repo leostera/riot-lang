@@ -6,5 +6,4 @@ type t = {
   message : string;
 }
 
-let format entry =
-  entry.rule_id ^ "\n\n" ^ String.trim entry.body ^ "\n"
+let format = fun entry -> entry.rule_id ^ "\n\n" ^ String.trim entry.body ^ "\n"

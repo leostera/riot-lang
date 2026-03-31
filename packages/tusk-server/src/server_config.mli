@@ -1,9 +1,7 @@
 open Std
 
 (** Server configuration *)
-
 type t
-
 (** Default configuration with all features enabled *)
 val default : t
 

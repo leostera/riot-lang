@@ -12,7 +12,8 @@ type t =
   | Patch
   | Extension of string
 
-let of_string = function
+let of_string =
+  function
   | "GET" -> Get
   | "HEAD" -> Head
   | "POST" -> Post
@@ -24,7 +25,8 @@ let of_string = function
   | "PATCH" -> Patch
   | s -> Extension s
 
-let to_string = function
+let to_string =
+  function
   | Get -> "GET"
   | Head -> "HEAD"
   | Post -> "POST"
@@ -36,20 +38,48 @@ let to_string = function
   | Patch -> "PATCH"
   | Extension s -> s
 
-let is_safe = function
-  | Get | Head | Options | Trace -> true
-  | Post | Put | Delete | Connect | Patch | Extension _ -> false
+let is_safe =
+  function
+  | Get
+  | Head
+  | Options
+  | Trace -> true
+  | Post
+  | Put
+  | Delete
+  | Connect
+  | Patch
+  | Extension _ -> false
 
-let is_idempotent = function
-  | Get | Head | Put | Delete | Options | Trace -> true
-  | Post | Connect | Patch | Extension _ -> false
+let is_idempotent =
+  function
+  | Get
+  | Head
+  | Put
+  | Delete
+  | Options
+  | Trace -> true
+  | Post
+  | Connect
+  | Patch
+  | Extension _ -> false
 
-let is_cacheable = function
-  | Get | Head | Post -> true
-  | Put | Delete | Connect | Options | Trace | Patch | Extension _ -> false
+let is_cacheable =
+  function
+  | Get
+  | Head
+  | Post -> true
+  | Put
+  | Delete
+  | Connect
+  | Options
+  | Trace
+  | Patch
+  | Extension _ -> false
 
-let compare m1 m2 =
-  let method_priority = function
+let compare = fun m1 m2 ->
+  let method_priority =
+    function
     | Get -> 0
     | Head -> 1
     | Post -> 2
@@ -65,4 +95,4 @@ let compare m1 m2 =
   | Extension s1, Extension s2 -> String.compare s1 s2
   | _ -> Int.compare (method_priority m1) (method_priority m2)
 
-let equal m1 m2 = compare m1 m2 = 0
+let equal = fun m1 m2 -> compare m1 m2 = 0

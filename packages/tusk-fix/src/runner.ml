@@ -1,6 +1,8 @@
 open Std
 
-type mode = Check | Apply
+type mode =
+  Check
+  | Apply
 
 type file_result = {
   file : Path.t;
@@ -20,9 +22,12 @@ type summary = {
   failed_files : int;
 }
 
-type run_result = { files : file_result list; summary : summary }
+type run_result = {
+  files : file_result list;
+  summary : summary;
+}
 
-let empty_result file error =
+let empty_result = fun file error ->
   {
     file;
     final_source = "";
@@ -31,42 +36,39 @@ let empty_result file error =
     applied_fixes = [];
     changed = false;
     error;
+
   }
 
-let run_pipeline pipeline file source =
-  Pipeline.run pipeline ~filename:file source
+let run_pipeline = fun pipeline file source -> Pipeline.run pipeline ~filename:file source
 
-let resolve_pipeline ?pipeline ?pipeline_for_file file =
+let resolve_pipeline = fun ?pipeline ?pipeline_for_file file ->
   match pipeline_for_file with
   | Some resolve -> resolve file
   | None -> Option.unwrap_or ~default:(Pipeline.default ()) pipeline
 
-let run_file ?pipeline ?pipeline_for_file ~mode file =
+let run_file = fun ?pipeline ?pipeline_for_file ~mode file ->
   let pipeline = resolve_pipeline ?pipeline ?pipeline_for_file file in
   match Fs.read file with
-  | Error _ ->
-      empty_result file
-        (Some ("Failed to read " ^ Path.to_string file))
+  | Error _ -> empty_result file (Some ("Failed to read " ^ Path.to_string file))
   | Ok source -> (
       let initial = run_pipeline pipeline file source in
       match mode with
-      | Check ->
-          {
-            file;
-            final_source = source;
-            diagnostics = initial.diagnostics;
-            parse_diagnostics = initial.parse_diagnostics;
-            applied_fixes = [];
-            changed = false;
-            error = None;
-          }
+      | Check -> {
+        file;
+        final_source = source;
+        diagnostics = initial.diagnostics;
+        parse_diagnostics = initial.parse_diagnostics;
+        applied_fixes = [];
+        changed = false;
+        error = None;
+
+      }
       | Apply -> (
           match Fixme.Source_runner.apply_safe_fixes ~source initial with
           | Error reason ->
-              empty_result file
-                (Some
-                   ("Failed to apply fixes for " ^ Path.to_string file ^ ": "
-                  ^ reason))
+              empty_result
+              file
+              (Some ("Failed to apply fixes for " ^ Path.to_string file ^ ": " ^ reason))
           | Ok None ->
               {
                 file;
@@ -76,12 +78,11 @@ let run_file ?pipeline ?pipeline_for_file ~mode file =
                 applied_fixes = [];
                 changed = false;
                 error = None;
+
               }
           | Ok (Some (updated_source, applied_fixes)) -> (
               match Fs.write updated_source file with
-              | Error _ ->
-                  empty_result file
-                    (Some ("Failed to write " ^ Path.to_string file))
+              | Error _ -> empty_result file (Some ("Failed to write " ^ Path.to_string file))
               | Ok () ->
                   let final = run_pipeline pipeline file updated_source in
                   {
@@ -92,65 +93,73 @@ let run_file ?pipeline ?pipeline_for_file ~mode file =
                     applied_fixes;
                     changed = true;
                     error = None;
-                  })))
 
-let summarize files =
+                  }
+            )
+        )
+    )
+
+let summarize = fun files ->
   List.fold_left
     (fun acc result ->
-      {
-        total_files = acc.total_files + 1;
-        changed_files = acc.changed_files + if result.changed then 1 else 0;
-        remaining_diagnostics =
-          acc.remaining_diagnostics
-          + List.length result.diagnostics
-          + List.length result.parse_diagnostics;
-        applied_fixes = acc.applied_fixes + List.length result.applied_fixes;
-        failed_files = acc.failed_files + if Option.is_some result.error then 1 else 0;
-      })
+      {total_files = acc.total_files + 1; changed_files = acc.changed_files + if result.changed then
+          1
+        else
+          0;
+          remaining_diagnostics
+          = acc.remaining_diagnostics + List.length result.diagnostics + List.length result.parse_diagnostics;
+          applied_fixes = acc.applied_fixes + List.length result.applied_fixes;
+          failed_files = acc.failed_files + if Option.is_some result.error then
+            1
+          else
+            0;})
     {
       total_files = 0;
       changed_files = 0;
       remaining_diagnostics = 0;
       applied_fixes = 0;
       failed_files = 0;
+
     }
     files
 
-let run_files ?pipeline ?pipeline_for_file ~mode files =
-  let files = List.sort (fun a b -> String.compare (Path.to_string a) (Path.to_string b)) files in
+let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
+  let files =
+    List.sort
+      (fun a b ->
+        String.compare (Path.to_string a) (Path.to_string b))
+      files
+  in
   let results =
     List.map (fun file -> run_file ?pipeline ?pipeline_for_file ~mode file) files
   in
-  { files = results; summary = summarize results }
+  {files = results; summary = summarize results}
 
-let summary_to_json summary =
-  let open Data.Json in
-  Object
-    [
-      ("total_files", Int summary.total_files);
-      ("changed_files", Int summary.changed_files);
-      ("remaining_diagnostics", Int summary.remaining_diagnostics);
-      ("applied_fixes", Int summary.applied_fixes);
-      ("failed_files", Int summary.failed_files);
-    ]
+let summary_to_json = fun summary ->
+  let open Data.Json in Object [
+    ("total_files", Int summary.total_files);
+    ("changed_files", Int summary.changed_files);
+    ("remaining_diagnostics", Int summary.remaining_diagnostics);
+    ("applied_fixes", Int summary.applied_fixes);
+    ("failed_files", Int summary.failed_files);
 
-let file_result_to_json result =
-  let open Data.Json in
-  Object
-    [
-      ("file", String (Path.to_string result.file));
-      ("changed", Bool result.changed);
-      ("error", match result.error with Some err -> String err | None -> Null);
-      ("applied_fixes", Array (List.map Fix.to_json result.applied_fixes));
-      ( "parse_diagnostics",
-        Array (List.map Syn.Diagnostic.to_json result.parse_diagnostics) );
-      ("diagnostics", Array (List.map Diagnostic.to_json result.diagnostics));
-    ]
+  ]
 
-let run_result_to_json result =
+let file_result_to_json = fun result ->
   let open Data.Json in
-  Object
-    [
-      ("summary", summary_to_json result.summary);
-      ("files", Array (List.map file_result_to_json result.files));
-    ]
+    Object [ ("file", String (Path.to_string result.file)); ("changed", Bool result.changed); (
+        "error",
+        match result.error with
+        | Some err -> String err
+        | None -> Null
+      ); ("applied_fixes", Array (List.map Fix.to_json result.applied_fixes)); (
+        "parse_diagnostics",
+        Array (List.map Syn.Diagnostic.to_json result.parse_diagnostics)
+      ); ("diagnostics", Array (List.map Diagnostic.to_json result.diagnostics));  ]
+
+let run_result_to_json = fun result ->
+  let open Data.Json in Object [
+    ("summary", summary_to_json result.summary);
+    ("files", Array (List.map file_result_to_json result.files));
+
+  ]

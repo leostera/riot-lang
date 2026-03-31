@@ -22,10 +22,9 @@ open Std
 *)
 
 (* The type of a database row, represented as a list of field name and value pairs *)
+
 type t = (string * Value.t) list
-
 (* ## Field Access *)
-
 (* `get field row` returns the value associated with `field` in `row`, or `None` if the field doesn't exist *)
 val get : string -> t -> Value.t option
 
@@ -37,7 +36,6 @@ val fields : t -> string list
    These functions combine field lookup with type conversion, returning `None`
    if either the field doesn't exist or the value is not of the expected type.
 *)
-
 (* `int field row` returns the integer value of `field`, or `None` if the field doesn't exist or isn't an integer *)
 val int : string -> t -> int option
 
@@ -57,7 +55,6 @@ val bytes : string -> t -> bytes option
 val timestamp : string -> t -> Datetime.t option
 
 (* ## Utility Functions *)
-
 (* `to_string row` converts a row to its string representation *)
 val to_string : t -> string
 

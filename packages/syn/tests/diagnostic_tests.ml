@@ -10,8 +10,9 @@ let test_diagnostic = fun test_path diagnostic_path ->
   let expected_json = Json.of_string (String.trim diagnostic_json) |> Result.expect ~msg:"Failed to parse diagnostic JSON" in
   let expected_diagnostics =
     match expected_json with
-    | Json.Array items ->
-        List.map (fun item -> Diagnostic.from_json item |> Result.expect ~msg:"Failed to deserialize diagnostic") items
+    | Json.Array items -> List.map
+    (fun item -> Diagnostic.from_json item |> Result.expect ~msg:"Failed to deserialize diagnostic")
+    items
     | _ -> []
   in
   let actual_json = Json.Array (List.map Diagnostic.to_json actual_diagnostics) in
@@ -54,18 +55,20 @@ let discover_diagnostics = fun () ->
         else
           None)
       entries |> List.sort
-      (fun (a, _) (b, _) ->
+      (fun ((a, _)) ((b, _)) ->
         String.compare a b)
 
-let () = Miniriot.run
-  ~main:(fun ~args ->
-    let diagnostics = discover_diagnostics () in
-    let tests = List.map
-      (fun (test_path, diagnostic_path) ->
-        let name = Path.basename (Path.v test_path) in
-        Test.case name (fun () -> test_diagnostic test_path diagnostic_path))
-      diagnostics
-    in
-    Test.Cli.main ~name:"syn-diagnostics" ~tests ~args)
-  ~args:Env.args
-  ()
+let () =
+  Miniriot.run
+    ~main:(fun ~args ->
+      let diagnostics = discover_diagnostics () in
+      let tests =
+        List.map
+          (fun ((test_path, diagnostic_path)) ->
+            let name = Path.basename (Path.v test_path) in
+            Test.case name (fun () -> test_diagnostic test_path diagnostic_path))
+          diagnostics
+      in
+      Test.Cli.main ~name:"syn-diagnostics" ~tests ~args)
+    ~args:Env.args
+    ()

@@ -25,7 +25,7 @@ open Std
 
 type state
 type error =
-  [
+[
   | `Parse_error of Http.Http2.Parser_reader.parse_error
   | `Protocol_error of string
   | `Io_error of string

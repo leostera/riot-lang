@@ -17,18 +17,19 @@
  * - Enter - Select item and quit
  * - q/Escape - Quit without selecting
  *)
-
 open Std
 open Minttea
 open Minttea.Component
 
 (* Model: Just the listbox component *)
+
 type model = {
   list : string Listbox.t;
   selected : string option;
 }
 
 (* Sample items for the list *)
+
 let items = [
   "🍎 Apple";
   "🍌 Banana";
@@ -40,68 +41,59 @@ let items = [
   "🍑 Peach";
   "🍉 Watermelon";
   "🫐 Blueberry";
+
 ]
 
 (* Initialize: Create the listbox *)
-let init model =
-  (model, Command.Noop)
+
+let init = fun model -> (model, Command.Noop)
 
 (* Update: Handle events *)
-let update event model =
+
+let update = fun event model ->
   match event with
-  | Event.KeyDown (Event.Key "q", _) 
-  | Event.KeyDown (Event.Escape, _) -> 
+  | Event.KeyDown (Event.Key "q", _)
+  | Event.KeyDown (Event.Escape, _) ->
       (model, Command.Quit)
-  
   | Event.KeyDown (Event.Enter, _) ->
       (* Get the selected item and quit *)
       let selected = Listbox.selected_item model.list in
-      ({ model with selected }, Command.Quit)
-  
+      ({model with selected}, Command.Quit)
   | Event.KeyDown (Event.Up, _) ->
       let list = Listbox.select_prev model.list in
-      ({ model with list }, Command.Noop)
-      
+      ({model with list}, Command.Noop)
   | Event.KeyDown (Event.Down, _) ->
       let list = Listbox.select_next model.list in
-      ({ model with list }, Command.Noop)
-      
-  | _ -> (model, Command.Noop)
+      ({model with list}, Command.Noop)
+  | _ ->
+      (model, Command.Noop)
 
 (* View: Render the listbox *)
-let view model =
+
+let view = fun model ->
   let open Element in
-  
-  column ~style:Style.(empty
-    |> padding (Padding.all 1))
-    [
-      (* Show the listbox *)
-      text (Listbox.view model.list);
-      
-      (* Show instructions *)
-      text "";
-      text ~style:Style.(empty |> fg (`rgb (100, 100, 100)))
-        "↑↓ Navigate • Enter Select • q Quit";
-        
-      (* Show selection if made *)
-      (match model.selected with
-       | Some item ->
-           text ~style:Style.(empty 
-             |> fg (`rgb (0, 255, 0))
-             |> padding (Padding.make ~top:1 ()))
-              ("You selected: " ^ item)
-       | None -> empty);
-    ]
+    column ~style:Style.(empty |> padding (Padding.all 1))
+      [
+        text (Listbox.view model.list);
+        text "";
+        text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "↑↓ Navigate • Enter Select • q Quit";
+        (
+          match model.selected with
+          | Some item -> text
+          ~style:Style.(empty |> fg (`rgb (0, 255, 0)) |> padding (Padding.make ~top:1 ()))
+          ("You selected: " ^ item)
+          | None -> empty
+        );
+
+      ]
 
 (* Create and run the app *)
+
 let app = App.make ~init ~update ~view ()
 
 (* Run it *)
-let () = 
-  let initial_model = {
-    list = Listbox.make items
-      |> Listbox.set_height ~height:10;
-    selected = None;
-  } in
+
+let () =
+  let initial_model = {list = Listbox.make items |> Listbox.set_height ~height:10; selected = None; } in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

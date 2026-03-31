@@ -1,5 +1,4 @@
 (** Message passing primitives *)
-
 (** Extensible message type - modules can extend this with new message variants
 *)
 (** Message envelope with unique identifier *)

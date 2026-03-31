@@ -3,10 +3,8 @@ open Std.Data
 open Syn
 
 let parse_result_to_json = fun result ->
-  let span_to_json = fun span -> Json.Object [
-    ("start", Json.Int span.Ceibo.Span.start);
-    ("end", Json.Int span.Ceibo.Span.end_)
-  ] in
+  let span_to_json = fun span ->
+    Json.Object [ ("start", Json.Int span.Ceibo.Span.start); ("end", Json.Int span.Ceibo.Span.end_) ] in
   let span_text = fun span ->
     let width = span.Ceibo.Span.end_ - span.Ceibo.Span.start in
     if width <= 0 then
@@ -16,40 +14,32 @@ let parse_result_to_json = fun result ->
   in
   let trivia_kind_to_json =
     function
-    | Token.CommentTrivia {terminated; _} ->
-        Json.Object [
-          ("kind", Json.String "comment");
-          ("terminated", Json.Bool terminated)
-        ]
-    | Token.DocstringTrivia {terminated; _} ->
-        Json.Object [
-          ("kind", Json.String "docstring");
-          ("terminated", Json.Bool terminated)
-        ]
-    | Token.WhitespaceTrivia ->
-        Json.Object [ ("kind", Json.String "whitespace") ]
+    | Token.CommentTrivia { terminated; _ } -> Json.Object [
+      ("kind", Json.String "comment");
+      ("terminated", Json.Bool terminated)
+    ]
+    | Token.DocstringTrivia { terminated; _ } -> Json.Object [
+      ("kind", Json.String "docstring");
+      ("terminated", Json.Bool terminated)
+    ]
+    | Token.WhitespaceTrivia -> Json.Object [ ("kind", Json.String "whitespace") ]
   in
-  let trivia_to_json = fun (trivia : Token.trivia) ->
+  let trivia_to_json = fun (trivia:Token.trivia) ->
     match trivia_kind_to_json trivia.kind with
-    | Json.Object fields ->
-        Json.Object (
-          [
-            ("span", span_to_json trivia.span);
-            ("text", Json.String (span_text trivia.span))
-          ]
-          @ fields
-        )
-    | json ->
-        json
+    | Json.Object fields -> Json.Object ([
+      ("span", span_to_json trivia.span);
+      ("text", Json.String (span_text trivia.span))
+    ]
+    @ fields)
+    | json -> json
   in
-  let token_to_json = fun (token : Token.t) ->
+  let token_to_json = fun (token:Token.t) ->
     Json.Object [
       ("kind", Json.String (Token.show_kind token.kind));
       ("span", span_to_json token.span);
       ("text", Json.String (span_text token.span));
       ("leading_trivia", Json.Array (List.map trivia_to_json token.leading_trivia))
-    ]
-  in
+    ] in
   let kind_to_json = fun kind -> Json.String (SyntaxKind.to_string kind) in
   let text_to_json = fun text -> Json.String text in
   let tree_json = Ceibo.Green.to_json
@@ -97,9 +87,9 @@ let test_tagged_quoted_string_cst = fun () ->
     | Ok cst -> (
         match cst with
         | Syn.Cst.Implementation {
-          items = Syn.Cst.StructureItem.LetBinding {
-            value = Syn.Cst.Expression.Literal (Syn.Cst.Literal.String {
-              delimiter = Syn.Cst.Quoted { marker };
+          items=Syn.Cst.StructureItem.LetBinding {
+            value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.String {
+              delimiter=Syn.Cst.Quoted { marker };
               contents;
               terminated;
               _
@@ -117,8 +107,7 @@ let test_tagged_quoted_string_cst = fun () ->
               ^ contents
               ^ ", terminated="
               ^ Bool.to_string terminated)
-        | _ ->
-            Error "unexpected CST shape for tagged quoted string literal"
+        | _ -> Error "unexpected CST shape for tagged quoted string literal"
       )
     | Error (Syn.Cst_builder_error err) ->
         Error ("expected CST builder to succeed, got "
@@ -148,18 +137,19 @@ let discover_fixtures = fun () ->
       else
         None)
     entries |> List.sort
-    (fun (a, _) (b, _) ->
+    (fun ((a, _)) ((b, _)) ->
       String.compare a b)
 
-let () = Miniriot.run
-  ~main:(fun ~args ->
-    let fixtures = discover_fixtures () in
-    let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: List.map
-      (fun (fixture_path, expected_path) ->
-        let name = Path.basename (Path.v fixture_path) in
-        Test.case name (fun () -> test_fixture fixture_path expected_path))
-      fixtures
-    in
-    Test.Cli.main ~name:"syn-fixtures" ~tests ~args)
-  ~args:Env.args
-  ()
+let () =
+  Miniriot.run
+    ~main:(fun ~args ->
+      let fixtures = discover_fixtures () in
+      let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: List.map
+        (fun ((fixture_path, expected_path)) ->
+          let name = Path.basename (Path.v fixture_path) in
+          Test.case name (fun () -> test_fixture fixture_path expected_path))
+        fixtures
+      in
+      Test.Cli.main ~name:"syn-fixtures" ~tests ~args)
+    ~args:Env.args
+    ()

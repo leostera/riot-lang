@@ -104,9 +104,7 @@ open Std
     {v
     <input type="hidden" name="_http_method" value="DELETE">
     v} *)
-
 (** {1 Middleware} *)
-
 (** Method override middleware.
 
     Checks POST requests for a [_method] parameter and overrides the

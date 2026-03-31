@@ -2,13 +2,11 @@ open Std
 
 let name = "demo"
 
-let command = 
+let command =
   let open ArgParser in
-  let open Arg in
-  command name
-  |> about "Run a minttea TUI demo"
+    let open Arg in command name |> about "Run a minttea TUI demo"
 
-let main ~args =
+let main = fun ~args ->
   match ArgParser.get_matches command args with
   | Error err ->
       ArgParser.print_error err;
@@ -19,6 +17,6 @@ let main ~args =
       println "";
       println "The command system is working correctly!";
       Ok ()
-  )
+    )
 
 let () = Miniriot.run ~main ~args:Std.Env.args ()

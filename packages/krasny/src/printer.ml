@@ -1,8 +1,9 @@
 open Std
 
-let to_string doc =
-  let buffer = IO.Buffer.create 1024 in
-  let rec write ~line_start ~indent = function
+let to_string = fun doc ->
+  let buffer = IO.Buffer.create 1_024 in
+  let rec write = fun ~line_start ~indent ->
+    function
     | Doc.Empty ->
         line_start
     | Doc.Text value ->
@@ -12,7 +13,8 @@ let to_string doc =
           line_start
         else (
           IO.Buffer.add_char buffer ' ';
-          false)
+          false
+        )
     | Doc.Spaces count ->
         if line_start then
           line_start
@@ -20,7 +22,8 @@ let to_string doc =
           for _ = 1 to count do
             IO.Buffer.add_char buffer ' '
           done;
-          false)
+          false
+        )
     | Doc.Line ->
         IO.Buffer.add_char buffer '\n';
         true
@@ -31,9 +34,10 @@ let to_string doc =
     | Doc.Concat docs ->
         List.fold_left (fun line_start doc -> write ~line_start ~indent doc) line_start docs
     | Doc.Indent (extra, doc) ->
-        write ~line_start ~indent:(indent + extra) doc
-  and write_text ~line_start ~indent value =
-    let rec write_lines line_start is_first = function
+        write ~line_start ~indent:((indent + extra)) doc
+  and write_text = fun ~line_start ~indent value ->
+    let rec write_lines = fun line_start is_first ->
+      function
       | [] ->
           line_start
       | [ line ] ->

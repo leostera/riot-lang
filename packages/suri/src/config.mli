@@ -22,7 +22,6 @@
     
     If no config is provided, Suri will try to load from Std.Config,
     and if that fails, it will fall back to default values. *)
-
 open Std
 
 type t = {
@@ -37,13 +36,13 @@ type t = {
   (** Secret key for signing LiveView session tokens.
       Must be at least 32 characters for security. *)
 }
-
 val default : t
+
 (** Default configuration with sensible defaults.
     Note: Uses a placeholder for liveview_secret - you should override this! *)
-
 val spec : Std.Config.Spec.t
-(** Configuration spec for Std.Config - automatically registered on module load *)
 
+(** Configuration spec for Std.Config - automatically registered on module load *)
 val get : Config.Spec.value -> (t, Config.error) result
+
 (** Extract typed config from validated spec values *)

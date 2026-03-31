@@ -47,7 +47,7 @@ type setting =
   | MaxHeaderListSize of int
 
 type payload =
-  | DataPayload of { data : string; pad_length : int option }
+  | DataPayload of { data : string; pad_length : int option; }
   | HeadersPayload of {
       pad_length : int option;
       stream_dependency : int option;
@@ -55,11 +55,7 @@ type payload =
       exclusive : bool;
       header_block_fragment : string;
     }
-  | PriorityPayload of {
-      stream_dependency : int;
-      exclusive : bool;
-      weight : int;
-    }
+  | PriorityPayload of { stream_dependency : int; exclusive : bool; weight : int; }
   | RstStreamPayload of error_code
   | SettingsPayload of setting list
   | PushPromisePayload of {
@@ -68,11 +64,7 @@ type payload =
       header_block_fragment : string;
     }
   | PingPayload of string
-  | GoawayPayload of {
-      last_stream_id : int;
-      error_code : error_code;
-      debug_data : string;
-    }
+  | GoawayPayload of { last_stream_id : int; error_code : error_code; debug_data : string; }
   | WindowUpdatePayload of int
   | ContinuationPayload of string
 
@@ -84,138 +76,133 @@ type t = {
   payload : payload;
 }
 
-let default_flags =
-  {
-    end_stream = false;
-    end_headers = false;
-    padded = false;
-    priority = false;
-    ack = false;
-  }
+let default_flags = {
+  end_stream = false;
+  end_headers = false;
+  padded = false;
+  priority = false;
+  ack = false;
 
-let data ~stream_id ?(end_stream = false) ?pad_length data =
-  let flags =
-    { default_flags with end_stream; padded = Option.is_some pad_length }
-  in
-  let payload_len =
-    String.length data + match pad_length with Some n -> n + 1 | None -> 0
+}
+
+let data = fun ~stream_id ?(end_stream = false) ?pad_length data ->
+  let flags = {default_flags with end_stream; padded = Option.is_some pad_length} in
+  let payload_len = String.length data + match pad_length with
+  | Some n -> n + 1
+  | None -> 0
   in
   {
     length = payload_len;
     frame_type = Data;
     flags;
     stream_id;
-    payload = DataPayload { data; pad_length };
+    payload = DataPayload {data; pad_length};
+
   }
 
-let headers ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_length
-    ?priority header_block_fragment =
+let headers = fun ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_length ?priority header_block_fragment ->
   let has_priority = Option.is_some priority in
-  let flags =
-    {
-      default_flags with
-      end_stream;
-      end_headers;
-      padded = Option.is_some pad_length;
-      priority = has_priority;
-    }
-  in
+  let flags = {
+    default_flags
+    with end_stream;
+    end_headers;
+    padded = Option.is_some pad_length;
+    priority = has_priority;
+
+  } in
   let stream_dependency, weight, exclusive =
     match priority with
     | Some (dep, excl, w) -> (Some dep, Some w, excl)
     | None -> (None, None, false)
   in
-  let payload_len =
-    String.length header_block_fragment
-    + (match pad_length with Some n -> n + 1 | None -> 0)
-    + if has_priority then 5 else 0
+  let payload_len = String.length header_block_fragment + (
+    match pad_length with
+    | Some n -> n + 1
+    | None -> 0
+  ) + if has_priority then
+    5
+  else
+    0
   in
   {
     length = payload_len;
     frame_type = Headers;
     flags;
     stream_id;
-    payload =
-      HeadersPayload
-        {
-          pad_length;
-          stream_dependency;
-          weight;
-          exclusive;
-          header_block_fragment;
-        };
+    payload = HeadersPayload {
+      pad_length;
+      stream_dependency;
+      weight;
+      exclusive;
+      header_block_fragment;
+
+    };
+
   }
 
-let priority ~stream_id ~stream_dependency ~exclusive ~weight =
+let priority = fun ~stream_id ~stream_dependency ~exclusive ~weight ->
   {
     length = 5;
     frame_type = Priority;
     flags = default_flags;
     stream_id;
-    payload = PriorityPayload { stream_dependency; exclusive; weight };
+    payload = PriorityPayload {stream_dependency; exclusive; weight};
+
   }
 
-let rst_stream ~stream_id error_code =
+let rst_stream = fun ~stream_id error_code ->
   {
     length = 4;
     frame_type = RstStream;
     flags = default_flags;
     stream_id;
     payload = RstStreamPayload error_code;
+
   }
 
-let settings ?(ack = false) settings_list =
-  let flags = { default_flags with ack } in
-  let length = if ack then 0 else List.length settings_list * 6 in
-  {
-    length;
-    frame_type = Settings;
-    flags;
-    stream_id = 0;
-    payload = SettingsPayload settings_list;
-  }
+let settings = fun ?(ack = false) settings_list ->
+  let flags = {default_flags with ack} in
+  let length =
+    if ack then
+      0
+    else
+      List.length settings_list * 6
+  in
+  {length; frame_type = Settings; flags; stream_id = 0; payload = SettingsPayload settings_list; }
 
-let push_promise ~stream_id ~promised_stream_id ?pad_length
-    header_block_fragment =
-  let flags = { default_flags with padded = Option.is_some pad_length } in
-  let payload_len =
-    4
-    + String.length header_block_fragment
-    + match pad_length with Some n -> n + 1 | None -> 0
+let push_promise = fun ~stream_id ~promised_stream_id ?pad_length header_block_fragment ->
+  let flags = {default_flags with padded = Option.is_some pad_length} in
+  let payload_len = 4 + String.length header_block_fragment + match pad_length with
+  | Some n -> n + 1
+  | None -> 0
   in
   {
     length = payload_len;
     frame_type = PushPromise;
     flags;
     stream_id;
-    payload =
-      PushPromisePayload
-        { pad_length; promised_stream_id; header_block_fragment };
+    payload = PushPromisePayload {pad_length; promised_stream_id; header_block_fragment};
+
   }
 
-let ping ?(ack = false) opaque_data =
+let ping = fun ?(ack = false) opaque_data ->
   if String.length opaque_data != 8 then
     panic "ping: opaque_data must be exactly 8 bytes";
-  let flags = { default_flags with ack } in
-  {
-    length = 8;
-    frame_type = Ping;
-    flags;
-    stream_id = 0;
-    payload = PingPayload opaque_data;
-  }
+  let flags = {default_flags with ack} in
+  {length = 8; frame_type = Ping; flags; stream_id = 0; payload = PingPayload opaque_data; }
 
-let goaway ~last_stream_id ~error_code ?(debug_data = "") () =
+let goaway = fun ~last_stream_id ~error_code ?(debug_data = "") () ->
   {
     length = 8 + String.length debug_data;
     frame_type = Goaway;
     flags = default_flags;
     stream_id = 0;
-    payload = GoawayPayload { last_stream_id; error_code; debug_data };
+    payload = GoawayPayload {last_stream_id; error_code; debug_data};
+
   }
 
-let window_update ~stream_id increment =
-  if increment <= 0 || increment > 0x7FFFFFFF then
+let window_update = fun ~stream_id increment ->
+  if increment <= 0 || increment > 0x7fff_ffff then
     panic "window_update: increment must be 1 to 2^31-1";
   {
     length = 4;
@@ -223,19 +210,22 @@ let window_update ~stream_id increment =
     flags = default_flags;
     stream_id;
     payload = WindowUpdatePayload increment;
+
   }
 
-let continuation ~stream_id ?(end_headers = false) header_block_fragment =
-  let flags = { default_flags with end_headers } in
+let continuation = fun ~stream_id ?(end_headers = false) header_block_fragment ->
+  let flags = {default_flags with end_headers} in
   {
     length = String.length header_block_fragment;
     frame_type = Continuation;
     flags;
     stream_id;
     payload = ContinuationPayload header_block_fragment;
+
   }
 
-let error_code_to_int = function
+let error_code_to_int =
+  function
   | NoError -> 0x0
   | ProtocolError -> 0x1
   | InternalError -> 0x2
@@ -251,7 +241,8 @@ let error_code_to_int = function
   | InadequateSecurity -> 0xc
   | Http11Required -> 0xd
 
-let int_to_error_code = function
+let int_to_error_code =
+  function
   | 0x0 -> Some NoError
   | 0x1 -> Some ProtocolError
   | 0x2 -> Some InternalError

@@ -67,7 +67,7 @@ type value =
   | Array of value list
   | Table of (string * value) list
   | Bool of bool
-  (** TOML value representation supporting strings, integers, booleans, arrays, and
+(** TOML value representation supporting strings, integers, booleans, arrays, and
           tables. *)
 type error =
   | Invalid_path of {
@@ -93,7 +93,7 @@ type error =
       found : char;
       expected : string;
     }
-  (** TOML parsing errors with position information for debugging. *)
+(** TOML parsing errors with position information for debugging. *)
 (** {1 Parsing} *)
 
 (** Parses a string into TOML and returns the root table.
@@ -132,7 +132,6 @@ val parse : string -> (value, error) result
 val error_to_string : error -> string
 
 (** {1 Extractors} *)
-
 (** Extracts a string value. Returns [None] if not a string.
 
     ## Examples

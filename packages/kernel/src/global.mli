@@ -1,5 +1,4 @@
 (** Common types re-exported from Stdlib for use in nostdlib packages *)
-
 include module type of Global0
 
 (** Print to stdout *)

@@ -1,6 +1,8 @@
 open Std
 
-type mouse_mode = Cell_motion | All_motion
+type mouse_mode =
+  Cell_motion
+  | All_motion
 
 type t =
   | Noop
@@ -17,9 +19,8 @@ type t =
   | DisableFocusTracking
   | SetWindowTitle of string
   | Seq of t list
-  | SetTimer of { ref : Timer.id Ref.t; duration : Time.Duration.t }
+  | SetTimer of { ref : Timer.id Ref.t; duration : Time.Duration.t; }
 
-let timer ~after =
+let timer = fun ~after ->
   let ref = Ref.make () in
-  (ref, SetTimer { ref; duration = after })
-
+  (ref, SetTimer {ref; duration = after})

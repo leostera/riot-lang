@@ -52,7 +52,8 @@
 
 type 'a t = 'a option =
   | None
-  | Some of 'a (** The Option type - either [`Some`] value or [`None`] *)
+  | Some of 'a
+(** The Option type - either [`Some`] value or [`None`] *)
 (** # Constructors *)
 
 (** Creates a [`Some`] value.
@@ -70,7 +71,6 @@ val some : 'a -> 'a t
 val none : 'a t
 
 (** # Querying *)
-
 (** Returns `true` if two options are equal using the provided equality function.
     
     ## Examples
@@ -124,7 +124,6 @@ val is_some_and : ('a -> bool) -> 'a t -> bool
 val is_none_or : ('a -> bool) -> 'a t -> bool
 
 (** # Transforming *)
-
 (** Maps an `Option<'a>` to `Option<'b>` by applying a function to the contained
     value.
 
@@ -149,6 +148,7 @@ val map : ('a -> 'b) -> 'a t -> 'b t
 
     let y = None in assert (Option.map_or ~default:42 String.length y = 42) ```
 *)
+
 (** Returns result of applying function to [`Some`] value, or computes default
     if [`None`].
 
@@ -182,7 +182,6 @@ val map_or_default : default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
 val map_or_else : default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
 
 (** # Chaining *)
-
 (** Returns [`None`] if the first option is [`None`], otherwise returns the
     second option.
 
@@ -257,7 +256,6 @@ val or_else : 'a t -> (unit -> 'a t) -> 'a t
 val xor : 'a t -> 'a t -> 'a t
 
 (** # Extracting values *)
-
 (** Returns the contained [`Some`] value, consuming the option.
 
     ## Panics
@@ -336,17 +334,14 @@ val expect : msg:string -> 'a t -> 'a
 val unwrap_none : 'a t -> unit
 
 (** # Inspecting *)
-
 (** Calls function on Some value if present, returns unchanged option *)
 val inspect : ('a -> unit) -> 'a t -> 'a t
 
 (** {1 Iterating} *)
-
 (** Calls function on Some value if present *)
 val iter : ('a -> unit) -> 'a t -> unit
 
 (** {1 Converting} *)
-
 (** Convert Some to Ok, None to Error *)
 val ok_or : error:'e -> 'a t -> ('a, 'e) Result.t
 
@@ -363,17 +358,14 @@ val to_list : 'a t -> 'a list
 val transpose : ('a, 'e) Result.t t -> ('a t, 'e) Result.t
 
 (** {1 Filtering} *)
-
 (** Returns Some if the value matches predicate, otherwise None *)
 val filter : ('a -> bool) -> 'a t -> 'a t
 
 (** {1 Flattening} *)
-
 (** Flatten nested Options *)
 val flatten : 'a t t -> 'a t
 
 (** {1 Zipping} *)
-
 (** Combine two options into an option of a tuple *)
 val zip : 'a t -> 'b t -> ('a * 'b) t
 
@@ -384,6 +376,5 @@ val zip_with : ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
 val unzip : ('a * 'b) t -> 'a t * 'b t
 
 (** {1 Collecting} *)
-
 (** Convert list of Options to Option of list, returns None if any is None *)
 val all : 'a t list -> 'a list t

@@ -95,31 +95,31 @@ open Std
 
 type config = {
   types : string list;
-      (** List of accepted MIME types. Use wildcards like ["text/*"] or ["*/*"].
+  (** List of accepted MIME types. Use wildcards like ["text/*"] or ["*/*"].
           Examples: [["application/json"]; ["text/html"; "text/plain"]; ["*/*"]] *)
   check_accept : bool;
-      (** Check Accept header on all requests. Default: true.
+  (** Check Accept header on all requests. Default: true.
           When false, only Content-Type is checked (for POST/PUT/PATCH). *)
   check_content_type : bool;
-      (** Check Content-Type on POST/PUT/PATCH requests. Default: true.
+  (** Check Content-Type on POST/PUT/PATCH requests. Default: true.
           When false, only Accept header is checked. *)
   on_reject : (Conn.t -> string option -> Conn.t) option;
-      (** Custom rejection handler. Receives the connection and the received
+  (** Custom rejection handler. Receives the connection and the received
           header value (Accept or Content-Type that didn't match).
           Should return a halted connection with appropriate error response.
           Default: returns simple 406/415 with plain text body. *)
 }
-
 val default_config : config
+
 (** Default configuration:
     - types: [["*/*"]] (accept all)
     - check_accept: true
     - check_content_type: true
     - on_reject: None (use built-in 406/415 responses) *)
-
 (** {1 Middleware} *)
 
 val middleware : ?config:config -> string list -> Pipeline.middleware
+
 (** Create content negotiation middleware.
 
     {[
@@ -164,8 +164,8 @@ val middleware : ?config:config -> string list -> Pipeline.middleware
         router routes;
       ]
     ]} *)
-
 val make : config -> Pipeline.middleware
+
 (** Create middleware with full configuration.
 
     {[
@@ -189,10 +189,10 @@ val make : config -> Pipeline.middleware
     ]}
 
     @param config Full configuration object *)
-
 (** {1 Helper Functions} *)
 
 val matches_pattern : pattern:string -> content_type:string -> bool
+
 (** Check if a content type matches a pattern.
 
     Supports:
@@ -213,13 +213,15 @@ val matches_pattern : pattern:string -> content_type:string -> bool
       matches_pattern ~pattern:"application/json" ~content_type:"text/plain"
       (* false *)
     ]} *)
-
-type accept_entry = { media_type : string; quality : float }
+type accept_entry = {
+  media_type : string;
+  quality : float;
+}
 (** Entry in parsed Accept header.
     - media_type: MIME type (e.g., "application/json")
     - quality: Quality value from 0.0 to 1.0 (default: 1.0) *)
-
 val parse_accept : string -> accept_entry list
+
 (** Parse Accept header with quality values.
 
     Returns list sorted by quality (highest first).
@@ -235,8 +237,8 @@ val parse_accept : string -> accept_entry list
         { media_type = "*/*"; quality = 0.1 };
       ] *)
     ]} *)
-
 val get_base_content_type : string -> string option
+
 (** Extract base content type from Content-Type header.
 
     Strips parameters like charset, boundary, etc.

@@ -1,5 +1,4 @@
-  open Global0
-
+open Global0
 module Buffer = Buffer
 module Bytes = Bytes
 module Iovec = Iovec
@@ -76,7 +75,7 @@ type error =
   | Operation_now_in_progress
   | Unknown_error of string
 
-let error_of_unix e =
+let error_of_unix = fun e ->
   match e with
   | Unix.EACCES -> Permission_denied
   | Unix.ENOENT -> No_such_file_or_directory
@@ -141,21 +140,21 @@ let error_of_unix e =
 
 (** Retry helper for Unix syscalls that handles EINTR.
     EAGAIN/EWOULDBLOCK are returned as Operation_would_block for async handling at Std level. *)
-let rec unix_syscall fn =
-  try Ok (fn ())
-  with
+let rec unix_syscall = fun fn ->
+  try Ok (fn ()) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> unix_syscall fn
   | Unix.Unix_error (err, _, _) -> Error (error_of_unix err)
 
-let error_to_unix = function
-  | End_of_file -> Unix.EINVAL  (* No direct Unix equivalent *)
+let error_to_unix =
+  function
+  | End_of_file -> Unix.EINVAL
   | Timeout -> Unix.ETIMEDOUT
   | Closed -> Unix.EBADF
   | Connection_closed -> Unix.ECONNRESET
-  | Process_down -> Unix.EINVAL  (* No direct Unix equivalent *)
-  | No_info -> Unix.EINVAL  (* No direct Unix equivalent *)
-  | Noop -> Unix.EINVAL  (* No direct Unix equivalent *)
-  | Exception _ -> Unix.EINVAL  (* No direct Unix equivalent *)
+  | Process_down -> Unix.EINVAL
+  | No_info -> Unix.EINVAL
+  | Noop -> Unix.EINVAL
+  | Exception _ -> Unix.EINVAL
   | Permission_denied -> Unix.EACCES
   | No_such_file_or_directory -> Unix.ENOENT
   | Interrupted_system_call -> Unix.EINTR
@@ -217,7 +216,8 @@ let error_to_unix = function
   | Operation_now_in_progress -> Unix.EINPROGRESS
   | Unknown_error _ -> Unix.EINVAL
 
-let error_message = function
+let error_message =
+  function
   | End_of_file -> "End of file"
   | Timeout -> "Timeout"
   | Closed -> "Closed"
@@ -238,7 +238,8 @@ type file_kind =
   | Fifo
   | Socket
 
-let file_kind_of_unix = function
+let file_kind_of_unix =
+  function
   | Unix.S_REG -> Regular
   | Unix.S_DIR -> Directory
   | Unix.S_LNK -> Symlink
@@ -247,7 +248,8 @@ let file_kind_of_unix = function
   | Unix.S_FIFO -> Fifo
   | Unix.S_SOCK -> Socket
 
-let file_kind_to_unix = function
+let file_kind_to_unix =
+  function
   | Regular -> Unix.S_REG
   | Directory -> Unix.S_DIR
   | Symlink -> Unix.S_LNK
@@ -257,17 +259,27 @@ let file_kind_to_unix = function
   | Socket -> Unix.S_SOCK
 
 let stdin = Fd.make_blocking Unix.stdin
+
 let stdout = Fd.make_blocking Unix.stdout
+
 let stderr = Fd.make_blocking Unix.stderr
 
 (* Convenience functions *)
+
 let read = Reader.read
+
 let read_vectored = Reader.read_vectored
+
 let read_to_end = Reader.read_to_end
+
 let write = Writer.write
+
 let write_all = Writer.write_all
+
 let write_owned_vectored = Writer.write_owned_vectored
+
 let write_all_vectored = Writer.write_all_vectored
+
 let flush = Writer.flush
 
 type 'value io_result = ('value, error) result

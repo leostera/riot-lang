@@ -1,10 +1,11 @@
 open Std
 
 (** Override behavior - either inherit from base or override with new value *)
-type 'a override = 
-  | Inherit           (** Keep the value from the base profile *)
-  | Override of 'a    (** Replace with this value *)
-
+type 'a override =
+  | Inherit
+  (** Keep the value from the base profile *)
+  | Override of 'a
+(** Replace with this value *)
 (** Profile override - partially specified profile fields *)
 type profile_override = {
   kind : Ocaml_compiler.compilation_kind override;
@@ -20,32 +21,26 @@ type profile_override = {
   ld_flags : string list override;
   ocamlc_flags : string list override;
 }
-
 (** Build profile configuration with individual flag fields *)
 type t = {
-  name : string;              (** Profile name: "debug", "release", etc. *)
+  name : string;  (** Profile name: "debug", "release", etc. *)
   kind : Ocaml_compiler.compilation_kind;
-  
   (* Optimization flags *)
-  inline : int option;        (** -inline N: inlining threshold *)
-  no_assert : bool;           (** -noassert: remove assertions *)
-  compact : bool;             (** -compact: optimize for code size *)
-  unsafe : bool;              (** -unsafe: disable bounds checking *)
-  
+  inline : int option;  (** -inline N: inlining threshold *)
+  no_assert : bool;  (** -noassert: remove assertions *)
+  compact : bool;  (** -compact: optimize for code size *)
+  unsafe : bool;  (** -unsafe: disable bounds checking *)
   (* Module handling *)
-  no_alias_deps : bool;       (** -no-alias-deps: no deps for module aliases *)
-  open_modules : string list; (** -open Module: auto-open modules *)
-  
+  no_alias_deps : bool;  (** -no-alias-deps: no deps for module aliases *)
+  open_modules : string list;  (** -open Module: auto-open modules *)
   (* Warnings configuration *)
   warnings : Ocaml_compiler.warning list;  (** Warnings to enable *)
-  errors : Ocaml_compiler.warning list;     (** Warnings to treat as errors *)
-  
+  errors : Ocaml_compiler.warning list;  (** Warnings to treat as errors *)
   (* Additional flags *)
-  cc_flags : string list;     (** C compiler flags (passed with -ccopt) *)
-  ld_flags : string list;     (** Linker flags (passed with -cclib) *)
-  ocamlc_flags : string list; (** Additional raw ocamlc/ocamlopt flags *)
+  cc_flags : string list;  (** C compiler flags (passed with -ccopt) *)
+  ld_flags : string list;  (** Linker flags (passed with -cclib) *)
+  ocamlc_flags : string list;  (** Additional raw ocamlc/ocamlopt flags *)
 }
-
 (** Default debug profile - fast compilation, all checks enabled *)
 val debug : t
 

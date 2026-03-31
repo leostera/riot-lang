@@ -102,13 +102,13 @@ module DynamicWorkerPool : sig
   'task t
 
   val send_task : 'task t -> 'task worker -> 'task -> unit
+
   (** [send_task pool worker task] assigns a task to a specific worker.
 
       Only call this after receiving [WorkerReady worker] from the pool. Sending
       a task to a busy worker will queue it for that worker.
 
       Type safety: The worker and task must have matching types. *)
-
   (** {1 Lifecycle} *)
 end
 
@@ -120,6 +120,7 @@ module SimpleWorkerPool : sig
   fn:('task -> 'result) ->
   unit ->
   (int * 'result) list
+
   (** [run ~concurrency ~tasks ~fn ()] executes [fn] on each task in parallel
       using a pool of worker processes, collecting results in order.
 

@@ -6,18 +6,17 @@ open Tusk_store
 (** Error types for package builds *)
 type package_error =
   | PlanningFailed of Planning_error.t
-  | ExecutionFailed of { message : string }
-  | ActionExecutionFailed of { message : string }
-  | ActionOutputsNotCreated of { missing : Path.t list }
-  | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
-
-type package_planning_status = [
+  | ExecutionFailed of { message : string; }
+  | ActionExecutionFailed of { message : string; }
+  | ActionOutputsNotCreated of { missing : Path.t list; }
+  | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list; }
+type package_planning_status =
+[
   | `Planned
   | `MissingDependencies
   | `FailedDependencies
   | `Failed
 ]
-
 (** Telemetry events for build system operations.
     
     These events extend the Std.Telemetry.event type and provide
@@ -59,7 +58,11 @@ type Telemetry.event +=
       session_id : Session_id.t;
       package : Package.t;
       target : Workspace_planner.target;
-      status : [ `Fresh | `Cached ];
+      status :
+        [
+          `Fresh
+          | `Cached
+        ];
       duration : Time.Duration.t;
     }
   | BuildFailed of {
@@ -90,7 +93,11 @@ type Telemetry.event +=
       package : Package.t;
       action : Action_node.t;
       artifact : Artifact.t;
-      status : [ `Fresh | `Cached ];
+      status :
+        [
+          `Fresh
+          | `Cached
+        ];
       duration : Time.Duration.t;
     }
   | ActionFailed of {

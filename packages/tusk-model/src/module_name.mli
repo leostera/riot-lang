@@ -1,5 +1,4 @@
 (** A module name with namespace support *)
-
 open Std
 
 (** Abstract type representing a module name *)

@@ -14,7 +14,13 @@ let create = fun ~source tokens ->
   let tokens = Array.of_list tokens in
   {tokens; pos = 0; leading_trivia_consumed = false; length = Array.length tokens; source}
 
-let position = fun t -> (t.pos * 2) + (if t.leading_trivia_consumed then 1 else 0)
+let position = fun t ->
+  (t.pos * 2) + (
+    if t.leading_trivia_consumed then
+      1
+    else
+      0
+  )
 
 let set_position = fun t pos ->
   t.pos <- pos / 2;
@@ -26,6 +32,7 @@ let eof_token = fun () -> {
   Token.kind = Token.EOF;
   span = Ceibo.Span.make ~start:0 ~end_:0;
   leading_trivia = [];
+
 }
 
 let peek = fun t ->
@@ -41,10 +48,11 @@ let peek_n = fun t n ->
     t.tokens.(t.pos + n)
 
 let advance = fun t ->
-  if not (is_eof t) then (
-    t.pos <- t.pos + 1
-  ; t.leading_trivia_consumed <- false
-  )
+  if not (is_eof t) then
+    (
+      t.pos <- t.pos + 1;
+      t.leading_trivia_consumed <- false
+    )
 
 let skip_while = fun t f ->
   while (not (is_eof t)) && f (peek t) do

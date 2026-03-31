@@ -46,13 +46,14 @@ open Std
           draw_fallback_ui ()
     ```
 *)
-
 type t = {
   rows : int;  (** Number of rows (lines) in terminal *)
   cols : int;  (** Number of columns (characters per line) in terminal *)
 }
+val get : unit -> (t, [
+  `System_error of string
+]) result
 
-val get : unit -> (t, [ `System_error of string ]) result
 (** Get current terminal size.
     
     Queries the terminal for its dimensions using system calls.
@@ -82,8 +83,8 @@ val get : unit -> (t, [ `System_error of string ]) result
     ```
     
     Note: Size may change if user resizes terminal window. *)
-
 val to_string : t -> string
+
 (** Convert size to human-readable string.
     
     Examples:

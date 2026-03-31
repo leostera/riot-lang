@@ -1,10 +1,10 @@
 open Std
 
-type direction = 
-  | LeftToRight 
+type direction =
+  | LeftToRight
   | TopToBottom
 
-type sizing_type = 
+type sizing_type =
   | Fit
   | Grow
   | Fixed of float
@@ -19,13 +19,13 @@ type sizing = {
   max_height : float option;
 }
 
-type h_align = 
-  | Left 
-  | Center 
+type h_align =
+  | Left
+  | Center
   | Right
 
-type v_align = 
-  | Top 
+type v_align =
+  | Top
   | Middle
   | Bottom
 
@@ -48,23 +48,23 @@ type margin = {
   bottom : int;
 }
 
-type text_wrap = 
+type text_wrap =
   | Words
   | NoWrap
   | Character
 
-type text_align = 
-  | TextLeft 
-  | TextCenter 
+type text_align =
+  | TextLeft
+  | TextCenter
   | TextRight
 
-type font_weight = 
-  | Normal 
+type font_weight =
+  | Normal
   | Bold
 
-type text_decoration = 
-  | NoDecoration 
-  | Underline 
+type text_decoration =
+  | NoDecoration
+  | Underline
   | Strikethrough
 
 type corner_radius = {
@@ -103,91 +103,131 @@ let empty = {
     max_width = None;
     min_height = None;
     max_height = None;
+
   };
-  alignment = { x = Left; y = Top };
+  alignment = {x = Left; y = Top};
   child_gap = 0;
-  padding = { left = 0; right = 0; top = 0; bottom = 0 };
-  margin = { left = 0; right = 0; top = 0; bottom = 0 };
+  padding = {left = 0; right = 0; top = 0; bottom = 0};
+  margin = {left = 0; right = 0; top = 0; bottom = 0};
   background = None;
   foreground = None;
   border_width = 0;
   border_color = None;
-  corner_radius = { top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0 };
+  corner_radius = {top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0};
   text_size = 12;
   text_wrap = Words;
   text_align = TextLeft;
   font_weight = Normal;
   text_decoration = NoDecoration;
   z_index = 0;
+
 }
 
-let row t = { t with direction = LeftToRight }
-let column t = { t with direction = TopToBottom }
+let row = fun t -> {t with direction = LeftToRight}
 
-let size ~width ~height t = { t with sizing = { t.sizing with width; height } }
-let width w t = { t with sizing = { t.sizing with width = w } }
-let height h t = { t with sizing = { t.sizing with height = h } }
+let column = fun t -> {t with direction = TopToBottom}
 
-let min_width w t = { t with sizing = { t.sizing with min_width = Some w } }
-let max_width w t = { t with sizing = { t.sizing with max_width = Some w } }
-let min_height h t = { t with sizing = { t.sizing with min_height = Some h } }
-let max_height h t = { t with sizing = { t.sizing with max_height = Some h } }
+let size = fun ~width ~height t -> {t with sizing = {t.sizing with width; height}}
 
-let padding p t = { t with padding = p }
-let margin m t = { t with margin = m }
+let width = fun w t -> {t with sizing = {t.sizing with width = w}}
 
-let bg color t = { t with background = Some color }
-let fg color t = { t with foreground = Some color }
+let height = fun h t -> {t with sizing = {t.sizing with height = h}}
 
-let border ?(width=1) ?color ?(radius={ top_left=0.0; top_right=0.0; bottom_left=0.0; bottom_right=0.0 }) () t =
-  { t with border_width = width; border_color = color; corner_radius = radius }
+let min_width = fun w t -> {t with sizing = {t.sizing with min_width = Some w}}
 
-let text_size size t = { t with text_size = size }
-let bold t = { t with font_weight = Bold }
-let underline t = { t with text_decoration = Underline }
+let max_width = fun w t -> {t with sizing = {t.sizing with max_width = Some w}}
 
-let align ~x ~y t = { t with alignment = { x; y } }
-let align_left t = { t with alignment = { t.alignment with x = Left } }
-let align_center t = { t with alignment = { t.alignment with x = Center } }
-let align_right t = { t with alignment = { t.alignment with x = Right } }
+let min_height = fun h t -> {t with sizing = {t.sizing with min_height = Some h}}
 
-let grow t = { t with sizing = { t.sizing with width = Grow; height = Grow } }
-let fixed ~width ~height t = { t with sizing = { t.sizing with width = Fixed width; height = Fixed height } }
+let max_height = fun h t -> {t with sizing = {t.sizing with max_height = Some h}}
 
-let child_gap gap t = { t with child_gap = gap }
-let z_index z t = { t with z_index = z }
+let padding = fun p t -> {t with padding = p}
+
+let margin = fun m t -> {t with margin = m}
+
+let bg = fun color t -> {t with background = Some color}
+
+let fg = fun color t -> {t with foreground = Some color}
+
+let border = fun ?(width = 1) ?color ?(radius = {
+  top_left = 0.0;
+  top_right = 0.0;
+  bottom_left = 0.0;
+  bottom_right = 0.0
+}) () t ->
+  {t with border_width = width; border_color = color; corner_radius = radius}
+
+let text_size = fun size t -> {t with text_size = size}
+
+let bold = fun t -> {t with font_weight = Bold}
+
+let underline = fun t -> {t with text_decoration = Underline}
+
+let align = fun ~x ~y t -> {t with alignment = {x; y}}
+
+let align_left = fun t -> {t with alignment = {t.alignment with x = Left}}
+
+let align_center = fun t -> {t with alignment = {t.alignment with x = Center}}
+
+let align_right = fun t -> {t with alignment = {t.alignment with x = Right}}
+
+let grow = fun t -> {t with sizing = {t.sizing with width = Grow; height = Grow}}
+
+let fixed = fun ~width ~height t ->
+  {t with sizing = {t.sizing with width = Fixed width; height = Fixed height}}
+
+let child_gap = fun gap t -> {t with child_gap = gap}
+
+let z_index = fun z t -> {t with z_index = z}
 
 module Padding = struct
-  let make ?(left=0) ?(right=0) ?(top=0) ?(bottom=0) () : padding = 
-    { left; right; top; bottom }
-  let all n : padding = { left = n; right = n; top = n; bottom = n }
-  let symmetric ~h ~v : padding = { left = h; right = h; top = v; bottom = v }
-  let empty : padding = { left = 0; right = 0; top = 0; bottom = 0 }
+  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) () : padding = {
+    left;
+    right;
+    top;
+    bottom
+  }
+
+  let all n : padding = {left = n; right = n; top = n; bottom = n}
+
+  let symmetric ~h ~v : padding = {left = h; right = h; top = v; bottom = v}
+
+  let empty : padding = {left = 0; right = 0; top = 0; bottom = 0}
 end
 
 module Margin = struct
-  let make ?(left=0) ?(right=0) ?(top=0) ?(bottom=0) () : margin = 
-    { left; right; top; bottom }
-  let all n : margin = { left = n; right = n; top = n; bottom = n }
-  let symmetric ~h ~v : margin = { left = h; right = h; top = v; bottom = v }
-  let empty : margin = { left = 0; right = 0; top = 0; bottom = 0 }
+  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) () : margin = {left; right; top; bottom}
+
+  let all n : margin = {left = n; right = n; top = n; bottom = n}
+
+  let symmetric ~h ~v : margin = {left = h; right = h; top = v; bottom = v}
+
+  let empty : margin = {left = 0; right = 0; top = 0; bottom = 0}
 end
 
 module CornerRadius = struct
-  let make ?(top_left=0.0) ?(top_right=0.0) ?(bottom_left=0.0) ?(bottom_right=0.0) () =
-    { top_left; top_right; bottom_left; bottom_right }
-  let all r = { top_left = r; top_right = r; bottom_left = r; bottom_right = r }
-  let zero = { top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0 }
+  let make = fun ?(top_left = 0.0) ?(top_right = 0.0) ?(bottom_left = 0.0) ?(bottom_right = 0.0) () ->
+    {top_left; top_right; bottom_left; bottom_right}
+
+  let all = fun r -> {top_left = r; top_right = r; bottom_left = r; bottom_right = r}
+
+  let zero = {top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0}
 end
 
 (* Note: italic not implemented - terminal support is limited *)
+
 let italic = bold
 
 (* Color helper - parse hex color strings *)
-let color hex_str =
+
+let color = fun hex_str ->
   let hex = String.trim hex_str in
-  let hex = if String.starts_with ~prefix:"#" hex then String.sub hex 1 (String.length hex - 1) else hex in
-  
+  let hex =
+    if String.starts_with ~prefix:"#" hex then
+      String.sub hex 1 (String.length hex - 1)
+    else
+      hex
+  in
   match String.length hex with
   | 3 ->
       (* Short form like "F00" -> "FF0000" *)

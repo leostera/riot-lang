@@ -119,6 +119,7 @@ module Cli : sig
   benchmarks:bench_item list ->
   args:string list ->
   (unit, Miniriot.Process.exit_reason) result
+
   (** Main entry point for benchmark binaries with CLI support.
       
       Supports subcommands:

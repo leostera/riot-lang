@@ -1,5 +1,4 @@
 (** HTTP/2 Frame Types and Definitions (RFC 7540) *)
-
 open Std
 
 (** Frame type codes *)
@@ -14,7 +13,6 @@ type frame_type =
   | Goaway
   | WindowUpdate
   | Continuation
-
 type flags = {
   end_stream : bool;  (** Bit 0 *)
   end_headers : bool;  (** Bit 2 *)
@@ -23,10 +21,8 @@ type flags = {
   ack : bool;  (** Bit 0 for SETTINGS/PING *)
 }
 (** Frame flags *)
-
 type stream_id = int
 (** Stream identifier (31-bit unsigned integer) *)
-
 (** Error codes *)
 type error_code =
   | NoError
@@ -43,7 +39,6 @@ type error_code =
   | EnhanceYourCalm
   | InadequateSecurity
   | Http11Required
-
 (** SETTINGS parameters *)
 type setting =
   | HeaderTableSize of int
@@ -52,10 +47,9 @@ type setting =
   | InitialWindowSize of int
   | MaxFrameSize of int
   | MaxHeaderListSize of int
-
 (** Frame payload types *)
 type payload =
-  | DataPayload of { data : string; pad_length : int option }
+  | DataPayload of { data : string; pad_length : int option; }
   | HeadersPayload of {
       pad_length : int option;
       stream_dependency : int option;  (** Present if PRIORITY flag set *)
@@ -63,11 +57,7 @@ type payload =
       exclusive : bool;
       header_block_fragment : string;
     }
-  | PriorityPayload of {
-      stream_dependency : int;
-      exclusive : bool;
-      weight : int;
-    }
+  | PriorityPayload of { stream_dependency : int; exclusive : bool; weight : int; }
   | RstStreamPayload of error_code
   | SettingsPayload of setting list
   | PushPromisePayload of {
@@ -75,15 +65,13 @@ type payload =
       promised_stream_id : int;
       header_block_fragment : string;
     }
-  | PingPayload of string  (** 8 bytes *)
-  | GoawayPayload of {
-      last_stream_id : int;
-      error_code : error_code;
-      debug_data : string;
-    }
-  | WindowUpdatePayload of int  (** Window size increment *)
-  | ContinuationPayload of string  (** Header block fragment *)
-
+  | PingPayload of string
+  (** 8 bytes *)
+  | GoawayPayload of { last_stream_id : int; error_code : error_code; debug_data : string; }
+  | WindowUpdatePayload of int
+  (** Window size increment *)
+  | ContinuationPayload of string
+(** Header block fragment *)
 type t = {
   length : int;  (** Payload length (24-bit) *)
   frame_type : frame_type;
@@ -92,50 +80,39 @@ type t = {
   payload : payload;
 }
 (** HTTP/2 Frame *)
-
 val default_flags : flags
+
 (** Default flags (all false) *)
+val data : stream_id:stream_id -> ?end_stream:bool -> ?pad_length:int -> string -> t
 
-val data :
-  stream_id:stream_id -> ?end_stream:bool -> ?pad_length:int -> string -> t
 (** Create specific frame types *)
+val headers : stream_id:stream_id ->
+?end_stream:bool ->
+?end_headers:bool ->
+?pad_length:int ->
+?priority:int * bool * int ->
+string ->
+t
 
-val headers :
-  stream_id:stream_id ->
-  ?end_stream:bool ->
-  ?end_headers:bool ->
-  ?pad_length:int ->
-  ?priority:int * bool * int ->
-  string ->
-  t
-
-val priority :
-  stream_id:stream_id ->
-  stream_dependency:int ->
-  exclusive:bool ->
-  weight:int ->
-  t
+val priority : stream_id:stream_id -> stream_dependency:int -> exclusive:bool -> weight:int -> t
 
 val rst_stream : stream_id:stream_id -> error_code -> t
+
 val settings : ?ack:bool -> setting list -> t
 
-val push_promise :
-  stream_id:stream_id ->
-  promised_stream_id:int ->
-  ?pad_length:int ->
-  string ->
-  t
+val push_promise : stream_id:stream_id -> promised_stream_id:int -> ?pad_length:int -> string -> t
 
 val ping : ?ack:bool -> string -> t
 
-val goaway :
-  last_stream_id:int -> error_code:error_code -> ?debug_data:string -> unit -> t
+val goaway : last_stream_id:int -> error_code:error_code -> ?debug_data:string -> unit -> t
 
 val window_update : stream_id:stream_id -> int -> t
+
 val continuation : stream_id:stream_id -> ?end_headers:bool -> string -> t
 
 val error_code_to_int : error_code -> int
-(** Convert error code to integer *)
 
+(** Convert error code to integer *)
 val int_to_error_code : int -> error_code option
+
 (** Convert integer to error code *)

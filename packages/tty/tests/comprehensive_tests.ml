@@ -2,7 +2,6 @@ open Std
 module Test = Std.Test
 
 (** Comprehensive tests for TTY module - tests both TTY state management and Escape_seq *)
-
 (** ## Test Categories
     
     This test suite covers:
@@ -22,135 +21,181 @@ module Test = Std.Test
 
 (** ## 1. Cursor Visibility Tests *)
 
-let test_show_cursor () =
+let test_show_cursor = fun () ->
   let output = Tty.Escape_seq.show_cursor_seq in
-  if output = "\x1b[?25h" then Ok ()
-  else Error ("show_cursor: expected '\\x1b[?25h', got '" ^ output ^ "'")
+  if output = "\x1b[?25h" then
+    Ok ()
+  else
+    Error ("show_cursor: expected '\\x1b[?25h', got '" ^ output ^ "'")
 
-let test_hide_cursor () =
+let test_hide_cursor = fun () ->
   let output = Tty.Escape_seq.hide_cursor_seq in
-  if output = "\x1b[?25l" then Ok ()
-  else Error ("hide_cursor: expected '\\x1b[?25l', got '" ^ output ^ "'")
+  if output = "\x1b[?25l" then
+    Ok ()
+  else
+    Error ("hide_cursor: expected '\\x1b[?25l', got '" ^ output ^ "'")
 
-let test_show_hide_sequence () =
+let test_show_hide_sequence = fun () ->
   let hide = Tty.Escape_seq.hide_cursor_seq in
   let show = Tty.Escape_seq.show_cursor_seq in
   let output = hide ^ show in
-  if output = "\x1b[?25l\x1b[?25h" then Ok ()
-  else Error ("show/hide sequence failed, got '" ^ output ^ "'")
+  if output = "\x1b[?25l\x1b[?25h" then
+    Ok ()
+  else
+    Error ("show/hide sequence failed, got '" ^ output ^ "'")
 
 (** ## 2. Cursor Movement Tests *)
 
-let test_cursor_position_home () =
+let test_cursor_position_home = fun () ->
   let output = Tty.Escape_seq.cursor_position_seq 1 1 in
-  if output = "\x1b[1;1H" then Ok ()
-  else Error ("move to home: expected '\\x1b[1;1H', got '" ^ output ^ "'")
+  if output = "\x1b[1;1H" then
+    Ok ()
+  else
+    Error ("move to home: expected '\\x1b[1;1H', got '" ^ output ^ "'")
 
-let test_cursor_position_arbitrary () =
+let test_cursor_position_arbitrary = fun () ->
   let output = Tty.Escape_seq.cursor_position_seq 15 42 in
-  if output = "\x1b[15;42H" then Ok ()
-  else Error ("move arbitrary: expected '\\x1b[15;42H', got '" ^ output ^ "'")
+  if output = "\x1b[15;42H" then
+    Ok ()
+  else
+    Error ("move arbitrary: expected '\\x1b[15;42H', got '" ^ output ^ "'")
 
-let test_cursor_up () =
+let test_cursor_up = fun () ->
   let output = Tty.Escape_seq.cursor_up_seq 5 in
-  if output = "\x1b[5A" then Ok ()
-  else Error ("cursor up: expected '\\x1b[5A', got '" ^ output ^ "'")
+  if output = "\x1b[5A" then
+    Ok ()
+  else
+    Error ("cursor up: expected '\\x1b[5A', got '" ^ output ^ "'")
 
-let test_cursor_down () =
+let test_cursor_down = fun () ->
   let output = Tty.Escape_seq.cursor_down_seq 3 in
-  if output = "\x1b[3B" then Ok ()
-  else Error ("cursor down: expected '\\x1b[3B', got '" ^ output ^ "'")
+  if output = "\x1b[3B" then
+    Ok ()
+  else
+    Error ("cursor down: expected '\\x1b[3B', got '" ^ output ^ "'")
 
-let test_cursor_forward () =
+let test_cursor_forward = fun () ->
   let output = Tty.Escape_seq.cursor_forward_seq 10 in
-  if output = "\x1b[10C" then Ok ()
-  else Error ("cursor forward: expected '\\x1b[10C', got '" ^ output ^ "'")
+  if output = "\x1b[10C" then
+    Ok ()
+  else
+    Error ("cursor forward: expected '\\x1b[10C', got '" ^ output ^ "'")
 
-let test_cursor_back () =
+let test_cursor_back = fun () ->
   let output = Tty.Escape_seq.cursor_back_seq 2 in
-  if output = "\x1b[2D" then Ok ()
-  else Error ("cursor back: expected '\\x1b[2D', got '" ^ output ^ "'")
+  if output = "\x1b[2D" then
+    Ok ()
+  else
+    Error ("cursor back: expected '\\x1b[2D', got '" ^ output ^ "'")
 
-let test_cursor_next_line () =
+let test_cursor_next_line = fun () ->
   let output = Tty.Escape_seq.cursor_next_line_seq 3 in
-  if output = "\x1b[3E" then Ok ()
-  else Error ("cursor next line: expected '\\x1b[3E', got '" ^ output ^ "'")
+  if output = "\x1b[3E" then
+    Ok ()
+  else
+    Error ("cursor next line: expected '\\x1b[3E', got '" ^ output ^ "'")
 
-let test_cursor_previous_line () =
+let test_cursor_previous_line = fun () ->
   let output = Tty.Escape_seq.cursor_previous_line_seq 2 in
-  if output = "\x1b[2F" then Ok ()
-  else Error ("cursor prev line: expected '\\x1b[2F', got '" ^ output ^ "'")
+  if output = "\x1b[2F" then
+    Ok ()
+  else
+    Error ("cursor prev line: expected '\\x1b[2F', got '" ^ output ^ "'")
 
-let test_cursor_horizontal () =
+let test_cursor_horizontal = fun () ->
   let output = Tty.Escape_seq.cursor_horizontal_seq 25 in
-  if output = "\x1b[25G" then Ok ()
-  else Error ("cursor horizontal: expected '\\x1b[25G', got '" ^ output ^ "'")
+  if output = "\x1b[25G" then
+    Ok ()
+  else
+    Error ("cursor horizontal: expected '\\x1b[25G', got '" ^ output ^ "'")
 
-let test_save_restore_cursor () =
+let test_save_restore_cursor = fun () ->
   let save = Tty.Escape_seq.save_cursor_position_seq in
   let restore = Tty.Escape_seq.restore_cursor_position_seq in
-  if save = "\x1b[s" && restore = "\x1b[u" then Ok ()
-  else Error ("save/restore cursor failed: '" ^ save ^ "' '" ^ restore ^ "'")
+  if save = "\x1b[s" && restore = "\x1b[u" then
+    Ok ()
+  else
+    Error ("save/restore cursor failed: '" ^ save ^ "' '" ^ restore ^ "'")
 
 (** ## 3. Screen Clearing Tests *)
 
-let test_erase_display_below () =
+let test_erase_display_below = fun () ->
   let output = Tty.Escape_seq.erase_display_seq 0 in
-  if output = "\x1b[0J" then Ok ()
-  else Error ("erase below: expected '\\x1b[0J', got '" ^ output ^ "'")
+  if output = "\x1b[0J" then
+    Ok ()
+  else
+    Error ("erase below: expected '\\x1b[0J', got '" ^ output ^ "'")
 
-let test_erase_display_above () =
+let test_erase_display_above = fun () ->
   let output = Tty.Escape_seq.erase_display_seq 1 in
-  if output = "\x1b[1J" then Ok ()
-  else Error ("erase above: expected '\\x1b[1J', got '" ^ output ^ "'")
+  if output = "\x1b[1J" then
+    Ok ()
+  else
+    Error ("erase above: expected '\\x1b[1J', got '" ^ output ^ "'")
 
-let test_erase_display_all () =
+let test_erase_display_all = fun () ->
   let output = Tty.Escape_seq.erase_display_seq 2 in
-  if output = "\x1b[2J" then Ok ()
-  else Error ("erase all: expected '\\x1b[2J', got '" ^ output ^ "'")
+  if output = "\x1b[2J" then
+    Ok ()
+  else
+    Error ("erase all: expected '\\x1b[2J', got '" ^ output ^ "'")
 
-let test_erase_entire_line () =
+let test_erase_entire_line = fun () ->
   let output = Tty.Escape_seq.erase_entire_line_seq in
-  if output = "\x1b[2K" then Ok ()
-  else Error ("erase line: expected '\\x1b[2K', got '" ^ output ^ "'")
+  if output = "\x1b[2K" then
+    Ok ()
+  else
+    Error ("erase line: expected '\\x1b[2K', got '" ^ output ^ "'")
 
-let test_erase_line_right () =
+let test_erase_line_right = fun () ->
   let output = Tty.Escape_seq.erase_line_right_seq in
-  if output = "\x1b[0K" then Ok ()
-  else Error ("erase line right: expected '\\x1b[0K', got '" ^ output ^ "'")
+  if output = "\x1b[0K" then
+    Ok ()
+  else
+    Error ("erase line right: expected '\\x1b[0K', got '" ^ output ^ "'")
 
-let test_erase_line_left () =
+let test_erase_line_left = fun () ->
   let output = Tty.Escape_seq.erase_line_left_seq in
-  if output = "\x1b[1K" then Ok ()
-  else Error ("erase line left: expected '\\x1b[1K', got '" ^ output ^ "'")
+  if output = "\x1b[1K" then
+    Ok ()
+  else
+    Error ("erase line left: expected '\\x1b[1K', got '" ^ output ^ "'")
 
 (** ## 4. Alternate Screen Tests *)
 
-let test_alt_screen () =
+let test_alt_screen = fun () ->
   let enter = Tty.Escape_seq.alt_screen_seq in
   let exit = Tty.Escape_seq.exit_alt_screen_seq in
-  if enter = "\x1b[?1049h" && exit = "\x1b[?1049l" then Ok ()
-  else Error ("alt screen failed: '" ^ enter ^ "' '" ^ exit ^ "'")
+  if enter = "\x1b[?1049h" && exit = "\x1b[?1049l" then
+    Ok ()
+  else
+    Error ("alt screen failed: '" ^ enter ^ "' '" ^ exit ^ "'")
 
-let test_save_restore_screen () =
+let test_save_restore_screen = fun () ->
   let save = Tty.Escape_seq.save_screen_seq in
   let restore = Tty.Escape_seq.restore_screen_seq in
-  if save = "\x1b[?47h" && restore = "\x1b[?47l" then Ok ()
-  else Error ("save/restore screen failed: '" ^ save ^ "' '" ^ restore ^ "'")
+  if save = "\x1b[?47h" && restore = "\x1b[?47l" then
+    Ok ()
+  else
+    Error ("save/restore screen failed: '" ^ save ^ "' '" ^ restore ^ "'")
 
-let test_reset_scroll_region () =
+let test_reset_scroll_region = fun () ->
   let reset = Tty.Escape_seq.reset_scroll_region_seq in
-  if reset = "\x1b[r" then Ok ()
-  else Error ("reset scroll region: expected '\\x1b[r', got '" ^ reset ^ "'")
+  if reset = "\x1b[r" then
+    Ok ()
+  else
+    Error ("reset scroll region: expected '\\x1b[r', got '" ^ reset ^ "'")
 
-let test_change_scrolling_region () =
+let test_change_scrolling_region = fun () ->
   let output = Tty.Escape_seq.change_scrolling_region_seq 5 20 in
-  if output = "\x1b[5;20r" then Ok ()
-  else Error ("scrolling region: expected '\\x1b[5;20r', got '" ^ output ^ "'")
+  if output = "\x1b[5;20r" then
+    Ok ()
+  else
+    Error ("scrolling region: expected '\\x1b[5;20r', got '" ^ output ^ "'")
 
 (** ## 5. Mouse Support Tests *)
 
-let test_mouse_sequences () =
+let test_mouse_sequences = fun () ->
   let tests = [
     ("enable_press", Tty.Escape_seq.enable_mouse_press_seq, "\x1b[?9h");
     ("disable_press", Tty.Escape_seq.disable_mouse_press_seq, "\x1b[?9l");
@@ -166,72 +211,83 @@ let test_mouse_sequences () =
     ("disable_sgr", Tty.Escape_seq.disable_mouse_extended_mode_seq, "\x1b[?1006l");
     ("enable_pixels", Tty.Escape_seq.enable_mouse_pixels_mode_seq, "\x1b[?1016h");
     ("disable_pixels", Tty.Escape_seq.disable_mouse_pixels_mode_seq, "\x1b[?1016l");
-  ] in
-  
-  let errors = List.filter_map (fun (name, actual, expected) ->
-    if actual = expected then None
-    else Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'")
-  ) tests in
-  
+
+  ]
+  in
+  let errors =
+    List.filter_map
+      (fun ((name, actual, expected)) ->
+        if actual = expected then
+          None
+        else
+          Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'"))
+      tests
+  in
   match errors with
   | [] -> Ok ()
   | errs -> Error (String.concat "; " errs)
 
 (** ## 6. Bracketed Paste Tests *)
 
-let test_bracketed_paste () =
+let test_bracketed_paste = fun () ->
   let enable = Tty.Escape_seq.enable_bracketed_paste_seq in
   let disable = Tty.Escape_seq.disable_bracketed_paste_seq in
   let start = Tty.Escape_seq.start_bracketed_paste_seq in
   let end_paste = Tty.Escape_seq.end_bracketed_paste_seq in
-  
-  if enable = "\x1b[?2004h" && 
-     disable = "\x1b[?2004l" &&
-     start = "\x1b[200~" &&
-     end_paste = "\x1b[201~" then Ok ()
-  else Error "Bracketed paste sequences incorrect"
+  if
+    enable = "\x1b[?2004h" && disable = "\x1b[?2004l" && start = "\x1b[200~" && end_paste = "\x1b[201~"
+  then
+    Ok ()
+  else
+    Error "Bracketed paste sequences incorrect"
 
 (** ## 7. Focus Tracking Tests *)
 
-let test_focus_tracking () =
+let test_focus_tracking = fun () ->
   let enable = Tty.Escape_seq.enable_focus_events_seq in
   let disable = Tty.Escape_seq.disable_focus_events_seq in
-  if enable = "\x1b[?1004h" && disable = "\x1b[?1004l" then Ok ()
-  else Error "Focus tracking sequences incorrect"
+  if enable = "\x1b[?1004h" && disable = "\x1b[?1004l" then
+    Ok ()
+  else
+    Error "Focus tracking sequences incorrect"
 
 (** ## 8. Kitty Keyboard Tests *)
 
-let test_kitty_keyboard () =
+let test_kitty_keyboard = fun () ->
   let enable = Tty.Escape_seq.enable_kitty_keyboard_seq in
   let disable = Tty.Escape_seq.disable_kitty_keyboard_seq in
-  if enable = "\x1b[>1u" && disable = "\x1b[<u" then Ok ()
-  else Error "Kitty keyboard sequences incorrect"
+  if enable = "\x1b[>1u" && disable = "\x1b[<u" then
+    Ok ()
+  else
+    Error "Kitty keyboard sequences incorrect"
 
 (** ## 9. Synchronized Output Tests *)
 
-let test_sync_output () =
+let test_sync_output = fun () ->
   let begin_sync = Tty.Escape_seq.begin_sync_seq in
   let end_sync = Tty.Escape_seq.end_sync_seq in
-  if begin_sync = "\x1b[?2026h" && end_sync = "\x1b[?2026l" then Ok ()
-  else Error "Sync output sequences incorrect"
+  if begin_sync = "\x1b[?2026h" && end_sync = "\x1b[?2026l" then
+    Ok ()
+  else
+    Error "Sync output sequences incorrect"
 
 (** ## 10. Color and Title Tests *)
 
-let test_color_sequences () =
+let test_color_sequences = fun () ->
   let fg = Tty.Escape_seq.set_foreground_color_seq "255;0;0" in
   let bg = Tty.Escape_seq.set_background_color_seq "0;255;0" in
   let cursor = Tty.Escape_seq.set_cursor_color_seq "0;0;255" in
   let title = Tty.Escape_seq.set_window_title_seq "Test Title" in
-  
-  if fg = "\x1b[10;255;0;0" &&
-     bg = "\x1b[11;0;255;0" &&
-     cursor = "\x1b[12;0;0;255" &&
-     title = "\x1b[2;Test Title" then Ok ()
-  else Error "Color/title sequences incorrect"
+  if
+    fg = "\x1b[10;255;0;0" && bg = "\x1b[11;0;255;0" && cursor = "\x1b[12;0;0;255" && title = "\x1b[2;Test Title"
+  then
+    Ok ()
+  else
+    Error "Color/title sequences incorrect"
 
 (** ## 11. Text Attribute Tests *)
 
-let test_text_attributes () =
+let test_text_attributes = fun () ->
   let tests = [
     ("reset", Tty.Escape_seq.reset_seq, "0");
     ("bold", Tty.Escape_seq.bold_seq, "1");
@@ -244,76 +300,101 @@ let test_text_attributes () =
     ("overline", Tty.Escape_seq.overline_seq, "53");
     ("foreground", Tty.Escape_seq.foreground_seq, "38");
     ("background", Tty.Escape_seq.background_seq, "48");
-  ] in
-  
-  let errors = List.filter_map (fun (name, actual, expected) ->
-    if actual = expected then None
-    else Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'")
-  ) tests in
-  
+
+  ]
+  in
+  let errors =
+    List.filter_map
+      (fun ((name, actual, expected)) ->
+        if actual = expected then
+          None
+        else
+          Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'"))
+      tests
+  in
   match errors with
   | [] -> Ok ()
   | errs -> Error (String.concat "; " errs)
 
 (** ## 12. ANSI Stripping Tests *)
 
-let test_strip_simple () =
+let test_strip_simple = fun () ->
   let input = "\x1b[31mRed\x1b[0m" in
   let output = Tty.Escape_seq.strip input in
-  if output = "Red" then Ok ()
-  else Error ("strip simple: expected 'Red', got '" ^ output ^ "'")
+  if output = "Red" then
+    Ok ()
+  else
+    Error ("strip simple: expected 'Red', got '" ^ output ^ "'")
 
-let test_strip_multiple () =
+let test_strip_multiple = fun () ->
   let input = "\x1b[1m\x1b[32mBold Green\x1b[0m Normal \x1b[4mUnderline\x1b[0m" in
   let output = Tty.Escape_seq.strip input in
-  if output = "Bold Green Normal Underline" then Ok ()
-  else Error ("strip multiple: expected 'Bold Green Normal Underline', got '" ^ output ^ "'")
+  if output = "Bold Green Normal Underline" then
+    Ok ()
+  else
+    Error ("strip multiple: expected 'Bold Green Normal Underline', got '" ^ output ^ "'")
 
-let test_strip_complex () =
+let test_strip_complex = fun () ->
   let input = "\x1b[38;2;255;0;0mRGB Red\x1b[0m" in
   let output = Tty.Escape_seq.strip input in
-  if output = "RGB Red" then Ok ()
-  else Error ("strip complex: expected 'RGB Red', got '" ^ output ^ "'")
+  if output = "RGB Red" then
+    Ok ()
+  else
+    Error ("strip complex: expected 'RGB Red', got '" ^ output ^ "'")
 
-let test_width_simple () =
+let test_width_simple = fun () ->
   let input = "Hello" in
   let width = Tty.Escape_seq.width input in
-  if width = 5 then Ok ()
-  else Error ("width simple: expected 5, got " ^ Int.to_string width)
+  if width = 5 then
+    Ok ()
+  else
+    Error ("width simple: expected 5, got " ^ Int.to_string width)
 
-let test_width_with_ansi () =
+let test_width_with_ansi = fun () ->
   let input = "\x1b[31mHello\x1b[0m" in
   let width = Tty.Escape_seq.width input in
-  if width = 5 then Ok ()
-  else Error ("width with ANSI: expected 5, got " ^ Int.to_string width)
+  if width = 5 then
+    Ok ()
+  else
+    Error ("width with ANSI: expected 5, got " ^ Int.to_string width)
 
 (** ## TTY State Management Tests *)
 
-let test_tty_creation () =
+let test_tty_creation = fun () ->
   match Tty.make () with
   | Ok tty ->
       let size = Tty.size tty in
-      if size.cols > 0 && size.rows > 0 then Ok ()
-      else Error "Invalid TTY size"
-  | Error Tty.NoTtyConnected -> Ok () (* Expected in non-interactive *)
-  | Error (Tty.SystemError _) -> Ok ()
+      if size.cols > 0 && size.rows > 0 then
+        Ok ()
+      else
+        Error "Invalid TTY size"
+  | Error Tty.NoTtyConnected ->
+      Ok ()
+  | Error (Tty.SystemError _) ->
+      Ok ()
 
-let test_raw_mode () =
+let test_raw_mode = fun () ->
   match Tty.make_raw () with
   | Ok tty ->
-      if Tty.mode tty = Tty.Immediate then Ok ()
-      else Error "Expected Immediate mode"
-  | Error _ -> Ok () (* Skip if no TTY *)
+      if Tty.mode tty = Tty.Immediate then
+        Ok ()
+      else
+        Error "Expected Immediate mode"
+  | Error _ -> Ok ()
 
-let test_mode_switching () =
+(* Skip if no TTY *)
+
+let test_mode_switching = fun () ->
   match Tty.make () with
   | Ok tty ->
       Tty.set_raw tty;
       let is_raw = Tty.mode tty = Tty.Immediate in
       Tty.set_line_buffered tty;
       let is_line = Tty.mode tty = Tty.LineBuffered in
-      if is_raw && is_line then Ok ()
-      else Error "Mode switching failed"
+      if is_raw && is_line then
+        Ok ()
+      else
+        Error "Mode switching failed"
   | Error _ -> Ok ()
 
 let tests =
@@ -357,9 +438,11 @@ let tests =
       case "tty_creation" test_tty_creation;
       case "raw_mode" test_raw_mode;
       case "mode_switching" test_mode_switching;
+
     ]
 
 let () =
   Miniriot.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"tty_comprehensive" ~tests ~args)
-    ~args:Env.args ()
+  ~main:(fun ~args -> Test.Cli.main ~name:"tty_comprehensive" ~tests ~args)
+  ~args:Env.args
+  ()

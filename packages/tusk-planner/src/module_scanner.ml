@@ -11,7 +11,6 @@ open Std.Collections
     The sorting order ensures:
     - .mli files come before .ml files (interfaces must be compiled first)
     - Directories come last (allows processing files before descending) *)
-
 type entry =
   | ML of string * Path.t
   | MLI of string * Path.t
@@ -28,17 +27,18 @@ type entry =
 
     This ensures proper OCaml compilation order and allows processing all files
     in a directory before descending into subdirectories. *)
-let compare_entries e1 e2 =
-  let get_name = function
+let compare_entries = fun e1 e2 ->
+  let get_name =
+    function
     | ML (n, _)
     | MLI (n, _)
     | C (n, _)
     | H (n, _)
     | Other (n, _, _)
-    | Dir (n, _, _) ->
-        n
+    | Dir (n, _, _) -> n
   in
-  let get_priority = function
+  let get_priority =
+    function
     | MLI _ -> 0
     | ML _ -> 1
     | C _ -> 2
@@ -64,7 +64,7 @@ let compare_entries e1 e2 =
     filesystem operations use absolute paths.
 
     Returns entries sorted by type (MLI, ML, C, H, Other, Dir). *)
-let rec scan_directory ~from_dir ~rel_path =
+let rec scan_directory = fun ~from_dir ~rel_path ->
   match Fs.read_dir from_dir with
   | Error _ -> []
   | Ok iter ->
@@ -77,17 +77,17 @@ let rec scan_directory ~from_dir ~rel_path =
             let name = Path.basename entry in
             match Fs.is_dir source_path with
             | Ok true ->
-                let children =
-                  scan_directory ~from_dir:source_path ~rel_path:entry_rel_path
-                in
+                let children = scan_directory ~from_dir:source_path ~rel_path:entry_rel_path in
                 [ Dir (name, entry_rel_path, children) ]
             | Ok false -> (
                 match Path.extension source_path with
                 | Some ".ml" -> [ ML (name, entry_rel_path) ]
                 | Some ".mli" -> [ MLI (name, entry_rel_path) ]
                 | Some ext -> [ Other (name, entry_rel_path, ext) ]
-                | None -> [ Other (name, entry_rel_path, "") ])
-            | Error _ -> [])
+                | None -> [ Other (name, entry_rel_path, "") ]
+              )
+            | Error _ ->
+                [])
           entries
       in
       List.sort compare_entries scanned
@@ -98,6 +98,6 @@ let rec scan_directory ~from_dir ~rel_path =
 
     This scans /home/user/project/src and returns entries with paths like
     "src/main.ml", "src/utils/helper.ml" (relative to project root). *)
-let scan ~root ~source_dir =
+let scan = fun ~root ~source_dir ->
   let dir = Path.(root / source_dir) in
   scan_directory ~from_dir:dir ~rel_path:source_dir

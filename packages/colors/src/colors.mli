@@ -100,36 +100,35 @@
     - [go-colorful library](https://github.com/lucasb-eyer/go-colorful)
     - [CIE LUV color space](https://en.wikipedia.org/wiki/CIELUV)
     - [CIE 1931 XYZ](https://en.wikipedia.org/wiki/CIE_1931_color_space) *)
-
 (** ANSI 256-color palette entry (0-255) *)
 (** RGB color with integer values (0-255 per channel) *)
 type ansi =
-  [
+[
   | `ansi of int
 ]
 (** Linear RGB (gamma-corrected) with float values for calculations *)
 type rgb =
-  [
+[
   | `rgb of int * int * int
 ]
 (** CIE 1931 XYZ color space (device-independent representation) *)
 type lrgb =
-  [
+[
   | `lrgb of float * float * float
 ]
 (** CIE LUV perceptually uniform color space *)
 type xyz =
-  [
+[
   | `xyz of float * float * float
 ]
 (** Chromaticity coordinates derived from XYZ *)
 type luv =
-  [
+[
   | `luv of float * float * float
 ]
 (** Union of all color types *)
 type uv =
-  [
+[
   | `uv of float * float
 ]
 (** Convert any color type to a string representation.
@@ -149,6 +148,7 @@ val to_string : color -> string
 
 module ANSI : sig
   val to_rgb : ansi -> rgb
+
   (** Convert an ANSI 256-color palette entry to RGB.
 
       Uses a lookup table mapping ANSI color indices to their RGB equivalents.
@@ -160,6 +160,7 @@ end
 
 module White_reference : sig
   val d65 : xyz
+
   (** Standard D65 white point (daylight illuminant at 6504K).
 
       This is the default white reference used for most conversions. Corresponds
@@ -193,6 +194,7 @@ module Linear_RGB : sig
   val delinearize : lrgb -> rgb
 
   val to_xyz : lrgb -> xyz
+
   (** Convert linear RGB to CIE XYZ color space.
 
       Uses the sRGB to XYZ transformation matrix (D65 illuminant). XYZ is
@@ -228,6 +230,7 @@ module XYZ : sig
   val to_luv_with_ref : xyz -> wref:xyz -> luv
 
   val to_luv : xyz -> luv
+
   (** Convert XYZ to LUV using the D65 white reference.
 
       This is the most common conversion for typical display conditions.
@@ -247,6 +250,7 @@ module LUV : sig
   val to_xyz : luv -> xyz
 
   val blend : luv -> luv -> mix:float -> luv
+
   (** Blend two colors in LUV space.
 
       `mix` controls the blend ratio:
@@ -266,6 +270,7 @@ end
 
 module RGB : sig
   val blend : rgb -> rgb -> mix:float -> rgb
+
   (** Blend two RGB colors in perceptually uniform LUV space.
 
       This is the high-level blending function you should use for RGB colors. It

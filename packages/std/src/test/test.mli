@@ -3,9 +3,7 @@ open Global
 (** The type of test: regular unit test or property test with example count. *)
 type test_type =
   | UnitTest
-  | Property of {
-      examples : int;
-    }
+  | Property of { examples : int; }
 (** [case name fn] creates a regular unit test. *)
 type test_case
 val case : string -> (unit -> (unit, string) result) -> test_case

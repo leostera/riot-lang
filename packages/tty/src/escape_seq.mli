@@ -32,7 +32,6 @@
       print_string Escape_seq.disable_mouse_all_motion_seq;
       print_string Escape_seq.disable_mouse_extended_mode_seq
     ]} *)
-
 (** {1 Constants} *)
 
 (** The Control Sequence Introducer: ["\x1b["] *)
@@ -72,7 +71,6 @@ val foreground_seq : string
 val background_seq : string
 
 (** {1 Screen Management} *)
-
 (** Sequence to switch to alternate screen buffer *)
 val alt_screen_seq : string
 
@@ -110,7 +108,6 @@ val erase_line_left_seq : string
 val erase_line_right_seq : string
 
 (** {1 Cursor Control} *)
-
 (** [cursor_position_seq row col] returns sequence to move cursor to position (1-based) *)
 val cursor_position_seq : int -> int -> string
 
@@ -148,7 +145,6 @@ val show_cursor_seq : string
 val hide_cursor_seq : string
 
 (** {1 Line Manipulation} *)
-
 (** [insert_line_seq n] returns sequence to insert [n] blank lines at cursor *)
 val insert_line_seq : int -> string
 
@@ -156,7 +152,6 @@ val insert_line_seq : int -> string
 val delete_line_seq : int -> string
 
 (** {1 Scrolling} *)
-
 (** [scroll_up_seq n] returns sequence to scroll screen up [n] lines *)
 val scroll_up_seq : int -> string
 
@@ -167,7 +162,6 @@ val scroll_down_seq : int -> string
 val change_scrolling_region_seq : int -> int -> string
 
 (** {1 Colors} *)
-
 (** [set_foreground_color_seq color] returns sequence to set text color. 
     [color] should be RGB like ["255;128;0"] *)
 val set_foreground_color_seq : string -> string
@@ -180,12 +174,10 @@ val set_background_color_seq : string -> string
 val set_cursor_color_seq : string -> string
 
 (** {1 Window Control} *)
-
 (** [set_window_title_seq title] returns sequence to set terminal window title *)
 val set_window_title_seq : string -> string
 
 (** {1 Mouse Tracking} *)
-
 (** Sequence to enable basic mouse click tracking *)
 val enable_mouse_seq : string
 
@@ -229,7 +221,6 @@ val enable_mouse_pixels_mode_seq : string
 val disable_mouse_pixels_mode_seq : string
 
 (** {1 Bracketed Paste Mode} *)
-
 (** Sequence to enable bracketed paste mode (paste events are bracketed with markers) *)
 val enable_bracketed_paste_seq : string
 
@@ -243,7 +234,6 @@ val start_bracketed_paste_seq : string
 val end_bracketed_paste_seq : string
 
 (** {1 Focus Tracking} *)
-
 (** Sequence to enable focus tracking (terminal will send events on focus in/out) *)
 val enable_focus_events_seq : string
 
@@ -251,7 +241,6 @@ val enable_focus_events_seq : string
 val disable_focus_events_seq : string
 
 (** {1 Kitty Keyboard Protocol} *)
-
 (** Sequence to enable Kitty keyboard protocol for enhanced key input *)
 val enable_kitty_keyboard_seq : string
 
@@ -259,7 +248,6 @@ val enable_kitty_keyboard_seq : string
 val disable_kitty_keyboard_seq : string
 
 (** {1 Synchronized Output} *)
-
 (** Sequence to begin synchronized output (reduces screen flicker) *)
 val begin_sync_seq : string
 
@@ -267,7 +255,6 @@ val begin_sync_seq : string
 val end_sync_seq : string
 
 (** {1 String Utilities} *)
-
 (** [strip str] removes all ANSI escape sequences from [str].
     
     Returns the string with all ESC[ sequences removed, leaving only

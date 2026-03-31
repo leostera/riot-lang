@@ -26,7 +26,6 @@
     2025-01-15 10:30:52 | WARN | GET /missing -> 404 in 0ms
     2025-01-15 10:30:55 | ERROR | GET /error -> 500 in 5ms
     v} *)
-
 open Std
 
 (** Request logger middleware.

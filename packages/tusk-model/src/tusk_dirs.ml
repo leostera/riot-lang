@@ -8,15 +8,15 @@ let dot_tusk =
   in
   Path.(home / Path.v ".tusk")
 
-let toolchains_dir toolchain_config =
+let toolchains_dir = fun toolchain_config ->
   let version = toolchain_config.Toolchain_config.version in
   Path.(dot_tusk / Path.v "toolchains" / Path.v version)
 
-let project_dir workspace =
+let project_dir = fun workspace ->
   let project_id = Workspace.project_id workspace in
   Path.(dot_tusk / Path.v "projects" / Path.v project_id)
 
-let ensure_created () =
+let ensure_created = fun () ->
   let _ = Fs.create_dir_all dot_tusk in
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "projects") in
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "toolchains") in
@@ -29,12 +29,14 @@ let build_dir_name = "_build"
 (* Note: The following functions don't reference Workspace type to avoid circular dependency.
    They use the workspace root path directly. *)
 
-let resolve_build_dir_root ~workspace_root target_dir =
+let resolve_build_dir_root = fun ~workspace_root target_dir ->
   let target_dir_path = Path.v target_dir in
-  if Path.is_absolute target_dir_path then target_dir_path
-  else Path.(workspace_root / target_dir_path)
+  if Path.is_absolute target_dir_path then
+    target_dir_path
+  else
+    Path.(workspace_root / target_dir_path)
 
-let workspace_build_dir_name ~workspace_root =
+let workspace_build_dir_name = fun ~workspace_root ->
   let toml_path = Path.(workspace_root / Path.v "tusk.toml") in
   match Fs.read_to_string toml_path with
   | Error _ -> build_dir_name
@@ -46,46 +48,45 @@ let workspace_build_dir_name ~workspace_root =
           | Ok manifest -> (
               match manifest.target_dir with
               | Some target_dir -> target_dir
-              | None -> build_dir_name)
-          | Error _ -> build_dir_name))
+              | None -> build_dir_name
+            )
+          | Error _ -> build_dir_name
+        )
+    )
 
-let build_dir_root ~workspace_root =
+let build_dir_root = fun ~workspace_root ->
   resolve_build_dir_root ~workspace_root (workspace_build_dir_name ~workspace_root)
 
 (** Get current host triple *)
-let host_target () =
-  System.Host.to_string System.host_triplet
+let host_target = fun () -> System.Host.to_string System.host_triplet
 
 (** New target-aware path functions *)
-
-let profile_dir ~workspace_root ~profile =
+let profile_dir = fun ~workspace_root ~profile ->
   Path.(build_dir_root ~workspace_root / Path.v profile)
 
-let target_dir ~workspace_root ~profile ~target =
+let target_dir = fun ~workspace_root ~profile ~target ->
   Path.(profile_dir ~workspace_root ~profile / Path.v target)
 
-let out_dir_with_target ~workspace_root ~profile ~target =
+let out_dir_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "out")
 
-let sandbox_dir_with_target ~workspace_root ~profile ~target =
+let sandbox_dir_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "sandbox")
 
-let cache_dir_with_target ~workspace_root ~profile ~target =
+let cache_dir_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "cache")
 
-let build_lock_path_with_target ~workspace_root ~profile ~target =
+let build_lock_path_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "tusk.lock")
 
 (** Backward compatible functions - default to debug profile + host target *)
+let debug_dir = fun ~workspace_root -> profile_dir ~workspace_root ~profile:"debug"
 
-let debug_dir ~workspace_root =
-  profile_dir ~workspace_root ~profile:"debug"
-
-let cache_dir ~workspace_root =
+let cache_dir = fun ~workspace_root ->
   cache_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
 
-let out_dir ~workspace_root =
+let out_dir = fun ~workspace_root ->
   out_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
 
-let sandbox_dir ~workspace_root =
+let sandbox_dir = fun ~workspace_root ->
   sandbox_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())

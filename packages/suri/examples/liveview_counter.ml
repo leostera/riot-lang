@@ -10,79 +10,84 @@ open Suri
     
     Run with: tusk run suri:liveview_counter
     Then open: http://localhost:4000 *)
-
 module Counter = struct
   let id = LiveView.id "counter"
-  
+
   open LiveView
   open Component
-  
-  type state = { count: int }
-  type msg = Increment | Decrement | Reset
-  type args = unit  (* No args needed for simple counter *)
-  
-  let serialize_args () = Data.Json.Null
-  let deserialize_args _ = Ok ()
-  
-  let init _conn () = 
+
+  type state = {
+    count : int;
+  }
+
+  type msg =
+    Increment
+    | Decrement
+    | Reset
+
+  type args = unit
+
+  (* No args needed for simple counter *)
+
+  let serialize_args = fun () -> Data.Json.Null
+
+  let deserialize_args = fun _ -> Ok ()
+
+  let init = fun _conn () ->
     Log.info "Counter initialized";
-    { count = 0 }
-  
-  let update event state =
-    let new_state = match event with
-    | App Increment -> { count = state.count + 1 }
-    | App Decrement -> { count = state.count - 1 }
-    | App Reset -> { count = 0 }
-    | _ -> state
+    {count = 0}
+
+  let update = fun event state ->
+    let new_state =
+      match event with
+      | App Increment -> {count = state.count + 1}
+      | App Decrement -> {count = state.count - 1}
+      | App Reset -> {count = 0}
+      | _ -> state
     in
     Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
     new_state
-  
-  let render ~state () =
-    div ~attrs:[class_ "counter-app"] [
-      (* Header *)
-      header ~attrs:[class_ "header"] [
-        h1 [text "LiveView Counter"];
-        p ~attrs:[class_ "subtitle"] [
-          text "Server-side rendering with real-time updates"
-        ];
+
+  let render = fun ~state () ->
+    div
+    ~attrs:[ class_ "counter-app" ]
+    [
+      header
+      ~attrs:[ class_ "header" ]
+      [
+        h1 [ text "LiveView Counter" ];
+        p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
+
       ];
-      
-      (* Counter display *)
-      div ~attrs:[class_ "counter-display"] [
-        div ~attrs:[class_ "count-label"] [text "Current Count:"];
-        div ~attrs:[class_ "count-value"] [
-          text (Int.to_string state.count)
-        ];
+      div
+      ~attrs:[ class_ "counter-display" ]
+      [
+        div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
+        div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
+
       ];
-      
-      (* Controls *)
-      div ~attrs:[class_ "controls"] [
-        button ~attrs:[
-          class_ "btn btn-decrement";
-          on_click (fun _ -> Decrement);
-        ] [text "−"];
-        
-        button ~attrs:[
-          class_ "btn btn-reset";
-          on_click (fun _ -> Reset);
-        ] [text "Reset"];
-        
-        button ~attrs:[
-          class_ "btn btn-increment";
-          on_click (fun _ -> Increment);
-        ] [text "+"];
+      div
+      ~attrs:[ class_ "controls" ]
+      [
+        button ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement);  ] [ text "−" ];
+        button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset);  ] [ text "Reset" ];
+        button ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment);  ] [ text "+" ];
+
       ];
-      
-      (* Info section *)
-      footer ~attrs:[class_ "info"] [
-        p [
-          strong [text "How it works: "];
+      footer
+      ~attrs:[ class_ "info" ]
+      [
+        p
+        [
+          strong [ text "How it works: " ];
           text "Clicks are sent to the server over WebSocket. ";
           text "The server updates state and sends back only the HTML changes. ";
           text "No client-side framework needed!";
+
         ];
+
       ];
+
     ]
 end
 
@@ -230,40 +235,40 @@ let page_styles = {|
 |}
 
 (** Home page handler with embedded LiveView *)
-let home_page conn _req =
+let home_page = fun conn _req ->
   let open Component in
-  let page = html [
-    head [
-      meta ~attrs:[attr "charset" "UTF-8"] ();
-      meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
-      title [text "LiveView Counter"];
-      LiveView.client_script;  (* Include LiveView JS runtime *)
-      style page_styles;
-    ];
-    body [
-      div ~attrs:[id "app"] [
-        LiveView.embed (module Counter) ();
+    let page = html
+    [
+      head
+      [
+        meta ~attrs:[ attr "charset" "UTF-8" ] ();
+        meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
+        title [ text "LiveView Counter" ];
+        LiveView.client_script;
+        style page_styles;
+
       ];
-    ];
-  ] in
-  conn |> Conn.render_component Net.Http.Status.Ok page
+      body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) ();  ];  ];
+
+    ] in
+    conn |> Conn.render_component Net.Http.Status.Ok page
 
 (* Define routes *)
-let routes = Middleware.Router.[
-  get "/" home_page;                   (* Serve home page with custom styles *)
-  LiveView.live (module Counter);      (* WebSocket endpoint at /suri/live/counter *)
-]
+
+let routes = Middleware.Router.[get "/" home_page;
+(* Serve home page with custom styles *)
+LiveView.live (module Counter);]
 
 (* App is just a list of middleware! *)
-let app = [
-  Middleware.router routes;
-]
+
+let app = [ Middleware.router routes;  ]
 
 let () =
-    Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+  Miniriot.run ~args:Env.args ()
+    ~main:(fun ~args:_ ->
       Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
       let _ = Std.Log.start_link () in
-      let config = Suri.config ~port:9999 () in
+      let config = Suri.config ~port:9_999 () in
       match Suri.start_link ~config app with
       | Ok supervisor ->
           Log.info "╔═══════════════════════════════════════════════════╗";
@@ -272,16 +277,13 @@ let () =
           Log.info "║                                                   ║";
           Log.info "║  Open your browser and watch the magic happen!   ║";
           Log.info "╚═══════════════════════════════════════════════════╝";
-          
           let count = Supervisor.Dynamic.count_children supervisor in
           Log.info ("Started with " ^ Int.to_string count.active ^ " acceptors");
-          
-          let rec loop () =
+          let rec loop = fun () ->
             sleep (Time.Duration.from_secs 100);
             loop ()
           in
           loop ()
       | Error `Bind_error ->
           Log.error "Failed to bind to port 9999";
-          Error (Failure "Failed to start server")
-  )
+          Error (Failure "Failed to start server"))

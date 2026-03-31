@@ -110,17 +110,15 @@ type value =
     }
   (** Discriminated union - structure determined by discriminant field *)
   | Map of (string * value) list
-  (** Nested configuration object *)
-
+(** Nested configuration object *)
 (** {1 Schema Definition} *)
 
 type field_spec
 (** A field specification with type, defaults, and constraints *)
-
 type t
 (** A complete configuration specification for an application *)
-
 val for_app : app:string -> field_spec list -> t
+
 (** Create and **automatically register** a configuration spec for an application.
     
     The [app] parameter must match the TOML section name (e.g., [\[myapp\]]).
@@ -140,10 +138,10 @@ val for_app : app:string -> field_spec list -> t
     @param fields List of field specifications
     @return A registered configuration spec
 *)
-
 (** {1 Field Types} *)
 
 val string : ?default:string -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a string field.
     
     Strings can contain any UTF-8 text. In TOML, they're written as:
@@ -160,8 +158,8 @@ val string : ?default:string -> ?required:bool -> ?help:string -> string -> fiel
     @param help Human-readable description for documentation
     @param name Field name in the configuration
 *)
-
 val char : ?default:char -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a single character field.
     
     In TOML, written as a single-character string: ["x"]
@@ -176,8 +174,8 @@ val char : ?default:char -> ?required:bool -> ?help:string -> string -> field_sp
     @param help Human-readable description
     @param name Field name
 *)
-
 val int : ?default:int -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define an integer field (native int: 31-bit on 32-bit systems, 63-bit on 64-bit).
     
     In TOML: [port = 8080]
@@ -192,8 +190,8 @@ val int : ?default:int -> ?required:bool -> ?help:string -> string -> field_spec
     @param help Human-readable description
     @param name Field name
 *)
-
 val int32 : ?default:int32 -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a 32-bit signed integer field.
     
     Useful for values that must fit in 32 bits for interop or wire formats.
@@ -210,8 +208,8 @@ val int32 : ?default:int32 -> ?required:bool -> ?help:string -> string -> field_
     @param help Human-readable description
     @param name Field name
 *)
-
 val int64 : ?default:int64 -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a 64-bit signed integer field.
     
     Useful for large numbers like timestamps, file sizes, or database IDs.
@@ -228,8 +226,8 @@ val int64 : ?default:int64 -> ?required:bool -> ?help:string -> string -> field_
     @param help Human-readable description
     @param name Field name
 *)
-
 val bool : ?default:bool -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a boolean field.
     
     In TOML: [debug = true] or [ssl = false]
@@ -244,8 +242,8 @@ val bool : ?default:bool -> ?required:bool -> ?help:string -> string -> field_sp
     @param help Human-readable description
     @param name Field name
 *)
-
 val float : ?default:float -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a floating-point field (IEEE 754 double-precision).
     
     In TOML: [rate = 0.95] or [pi = 3.14159]
@@ -260,8 +258,8 @@ val float : ?default:float -> ?required:bool -> ?help:string -> string -> field_
     @param help Human-readable description
     @param name Field name
 *)
-
 val uri : ?default:Net.Uri.t -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a URI field.
     
     URIs are parsed and validated. Supports HTTP, HTTPS, and other schemes.
@@ -278,8 +276,8 @@ val uri : ?default:Net.Uri.t -> ?required:bool -> ?help:string -> string -> fiel
     @param help Human-readable description
     @param name Field name
 *)
-
 val datetime : ?default:Datetime.t -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a datetime field.
     
     Datetimes must be in ISO 8601 format: ["2025-11-21T19:30:00Z"]
@@ -296,8 +294,8 @@ val datetime : ?default:Datetime.t -> ?required:bool -> ?help:string -> string -
     @param help Human-readable description
     @param name Field name
 *)
-
 val path : ?default:Path.t -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a file system path field.
     
     Paths can be relative or absolute. Relative paths are resolved from the
@@ -316,8 +314,8 @@ val path : ?default:Path.t -> ?required:bool -> ?help:string -> string -> field_
     @param help Human-readable description
     @param name Field name
 *)
-
 val uuid : ?default:Uuid.t -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define a UUID field.
     
     UUIDs are validated for correct format (RFC 4122).
@@ -334,8 +332,8 @@ val uuid : ?default:Uuid.t -> ?required:bool -> ?help:string -> string -> field_
     @param help Human-readable description
     @param name Field name
 *)
-
 val list : field_spec -> ?default:value list -> ?required:bool -> ?help:string -> string -> field_spec
+
 (** Define an array field where all items have the same structure.
     
     Lists can contain any type of value - primitives, objects, or even nested lists.
@@ -379,8 +377,8 @@ val list : field_spec -> ?default:value list -> ?required:bool -> ?help:string -
     @param help Human-readable description
     @param name Field name in the configuration
 *)
-
 val discriminated_union : discriminant:string -> cases:(string * field_spec list) list -> field_spec
+
 (** Define a discriminated union where structure depends on a discriminant field.
     
     The discriminant field (e.g., "type") determines which case to validate against.
@@ -434,8 +432,8 @@ val discriminated_union : discriminant:string -> cases:(string * field_spec list
     @param cases List of (variant_value, field_specs) pairs
     @return A field spec for discriminated unions (typically wrapped with {!key})
 *)
-
 val enum : field_spec -> value list -> field_spec
+
 (** Restrict a field to a set of allowed values (enum combinator).
     
     This combinator works with ANY field type - string, int, uuid, etc.
@@ -468,8 +466,8 @@ val enum : field_spec -> value list -> field_spec
     @param choices List of allowed values (must match the field's type)
     @return A field spec with enum restrictions applied
 *)
-
 val map : field_spec list -> field_spec
+
 (** Define a nested configuration object.
     
     Maps allow you to group related configuration fields. In TOML, they
@@ -495,8 +493,8 @@ val map : field_spec list -> field_spec
     @param fields List of field specifications for the nested object
     @return A map field spec (usually wrapped with {!key})
 *)
-
 val key : string -> field_spec -> field_spec
+
 (** Name a field (typically a map).
     
     This associates a name with a field spec, especially useful for nested maps.
@@ -513,10 +511,10 @@ val key : string -> field_spec -> field_spec
     @param spec The field specification to name
     @return A named field spec
 *)
-
 (** {1 Introspection} *)
 
 val app_name : t -> string
+
 (** Get the application name from a spec.
     
     Example:
@@ -524,8 +522,8 @@ val app_name : t -> string
     let name = Config.Spec.app_name my_spec  (* "myapp" *)
     ```
 *)
-
 val all_specs : unit -> t list
+
 (** Get all registered specs.
     
     This is used internally by {!Config.child_spec} to load all configurations.
@@ -533,7 +531,6 @@ val all_specs : unit -> t list
     
     @return List of all specs registered via {!for_app}
 *)
-
 (** {1 Internal Types}
     
     These types are exposed for validation and testing but are not typically
@@ -541,25 +538,22 @@ val all_specs : unit -> t list
 *)
 
 type field_type =
-  | String of { default : string option }
-  | Char of { default : char option }
-  | Int of { default : int option }
-  | Int32 of { default : int32 option }
-  | Int64 of { default : int64 option }
-  | Bool of { default : bool option }
-  | Float of { default : float option }
-  | Uri of { default : Net.Uri.t option }
-  | Datetime of { default : Datetime.t option }
-  | Path of { default : Path.t option }
-  | Uuid of { default : Uuid.t option }
-  | List of { item_spec : field; default : value list option }
-  | DiscriminatedUnion of {
-      discriminant : string;
-      cases : (string * field list) list;
-    }
+  | String of { default : string option; }
+  | Char of { default : char option; }
+  | Int of { default : int option; }
+  | Int32 of { default : int32 option; }
+  | Int64 of { default : int64 option; }
+  | Bool of { default : bool option; }
+  | Float of { default : float option; }
+  | Uri of { default : Net.Uri.t option; }
+  | Datetime of { default : Datetime.t option; }
+  | Path of { default : Path.t option; }
+  | Uuid of { default : Uuid.t option; }
+  | List of { item_spec : field; default : value list option; }
+  | DiscriminatedUnion of { discriminant : string; cases : (string * field list) list; }
   | Map of field list
-(** Internal representation of field types with default values *)
 
+(** Internal representation of field types with default values *)
 and field = {
   name : string;
   (** Field name *)
@@ -573,20 +567,20 @@ and field = {
   (** Optional list of allowed values (enum restriction) *)
 }
 (** Internal representation of a field with all metadata *)
-
 val get_fields : t -> field list
+
 (** Get the list of fields from a spec.
     
     Used internally by the validator.
 *)
-
 val field_name : field_spec -> string
+
 (** Get the name of a field.
     
     Used internally by the validator.
 *)
-
 val field_type : field_spec -> field_type
+
 (** Get the type of a field.
     
     Used internally by the validator.

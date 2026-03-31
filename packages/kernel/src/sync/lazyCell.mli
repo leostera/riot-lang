@@ -22,13 +22,13 @@
       (* Subsequent accesses return cached value *)
       let value2 = LazyCell.get data (* No print, returns cached *)
     ]} *)
-
 (** A lazy cell that computes its value on first access *)
 (** Create a lazy cell with the given initialization function *)
 type 'a t
 val create : (unit -> 'a) -> 'a t
 
 (** Get the value, computing it if necessary (alias for force) *)
+
 (** Force the computation and get the value *)
 val get : 'a t -> 'a
 

@@ -95,8 +95,6 @@
    ```
 *)
 
-
-
 (** {1 Stage Types} *)
 
 open Global
@@ -106,61 +104,54 @@ type from = {
   subscription_ref : unit Ref.t;
 }
 (** Information about where events came from *)
-
 type subscription_options = {
   min_demand : int;
-      (** Minimum demand to send upstream (default: 5) *)
+  (** Minimum demand to send upstream (default: 5) *)
   max_demand : int;
-      (** Maximum demand to send upstream (default: 1000) *)
+  (** Maximum demand to send upstream (default: 1000) *)
   partition : string option;
-      (** Partition key for dispatching (optional) *)
+  (** Partition key for dispatching (optional) *)
 }
 (** Options for subscribing to a stage *)
-
 val default_subscription_options : subscription_options
-(** Default subscription options: min_demand=5, max_demand=1000 *)
 
+(** Default subscription options: min_demand=5, max_demand=1000 *)
 (** {1 Producer Stage} *)
 
 module Producer : sig
   (** Producer stages generate events in response to demand *)
-
   type ('event, 'state) demand_result =
     | Reply of 'event list * 'state
-        (** Send events and continue *)
+    (** Send events and continue *)
     | Noreply of 'state
-        (** Don't send events yet, continue *)
+    (** Don't send events yet, continue *)
     | Stop of exn * 'state
-        (** Stop the producer *)
-
+  (** Stop the producer *)
   type 'state cast_result =
     | Noreply of 'state
     | Stop of exn * 'state
-
   module type Spec = sig
     type args
     (** Arguments passed to init *)
-
     type state
     (** Internal producer state *)
-
     type event
     (** Type of events emitted *)
-
     val init : args -> (state, exn) result
-    (** Initialize the producer state *)
 
+    (** Initialize the producer state *)
     val handle_demand : int -> state -> (event list, state) demand_result
+
     (** Handle demand from downstream.
     
         The integer is how many events are being requested.
         Return a list of events (up to the requested amount) and new state.
     *)
-
     val handle_cast : Message.t -> state -> state cast_result
-    (** Handle cast messages (optional, for external control) *)
 
+    (** Handle cast messages (optional, for external control) *)
     val terminate : exn -> state -> unit
+
     (** Cleanup on termination *)
   end
 
@@ -169,17 +160,17 @@ module Producer : sig
     type state
     type event
     type t
-
     val start_link : args -> t
+
     val start : args -> t
+
     val cast : t -> Message.t -> unit
+
     val stop : t -> unit
   end
 
-  module Make (Impl : Spec) : S
-    with type args = Impl.args
-     and type state = Impl.state
-     and type event = Impl.event
+  module Make (Impl : Spec) : S with type args = Impl.args and type state = Impl.state and type event = Impl.event
+
   (** Create a Producer stage from a specification *)
 end
 
@@ -187,23 +178,20 @@ end
 
 module Consumer : sig
   (** Consumer stages receive events and send demand upstream *)
-
   type 'state events_result =
     | Noreply of 'state
     | Stop of exn * 'state
-
   type 'state cast_result =
     | Noreply of 'state
     | Stop of exn * 'state
-
   module type Spec = sig
     type args
     type state
     type event
-
     val init : args -> (state, exn) result
 
     val handle_events : event list -> from -> state -> state events_result
+
     (** Handle a batch of events from upstream.
     
         Events are delivered in order.
@@ -212,7 +200,6 @@ module Consumer : sig
         After processing, demand is automatically sent upstream
         based on subscription options (min_demand/max_demand).
     *)
-
     val handle_cast : Message.t -> state -> state cast_result
 
     val terminate : exn -> state -> unit
@@ -223,76 +210,63 @@ module Consumer : sig
     type state
     type event
     type t
-
     val start_link : args -> t
+
     val start : args -> t
 
-    val subscribe :
-      t ->
-      to_stage:Pid.t ->
-      ?options:subscription_options ->
-      unit ->
-      (unit, string) result
+    val subscribe : t -> to_stage:Pid.t -> ?options:subscription_options -> unit -> (unit, string) result
+
     (** Subscribe to a producer or producer-consumer.
     
         This starts the flow of events. The consumer will send initial demand
         based on max_demand.
     *)
-
     val cast : t -> Message.t -> unit
+
     val stop : t -> unit
   end
 
-  module Make (Impl : Spec) : S
-    with type args = Impl.args
-     and type state = Impl.state
-     and type event = Impl.event
+  module Make (Impl : Spec) : S with type args = Impl.args and type state = Impl.state and type event = Impl.event
 end
 
 (** {1 ProducerConsumer Stage} *)
 
 module ProducerConsumer : sig
   (** ProducerConsumer stages receive events, transform them, and emit new events *)
-
   type ('out_event, 'state) events_result =
     | Reply of 'out_event list * 'state
     | Noreply of 'state
     | Stop of exn * 'state
-
   type ('out_event, 'state) demand_result =
     | Reply of 'out_event list * 'state
     | Noreply of 'state
     | Stop of exn * 'state
-
   type 'state cast_result =
     | Noreply of 'state
     | Stop of exn * 'state
-
   module type Spec = sig
     type args
     type state
     type in_event
-        (** Type of events received from upstream *)
+    (** Type of events received from upstream *)
     type out_event
-        (** Type of events sent downstream *)
-
+    (** Type of events sent downstream *)
     val init : args -> (state, exn) result
 
-    val handle_events :
-      in_event list -> from -> state -> (out_event list, state) events_result
+    val handle_events : in_event list -> from -> state -> (out_event list, state) events_result
+
     (** Receive events, process them, emit transformed events.
     
         The events you return will be sent downstream.
         Demand is automatically forwarded upstream.
     *)
-
     val handle_demand : int -> state -> (out_event list, state) demand_result
+
     (** Handle demand from downstream (optional).
     
         Most producer-consumers just forward demand upstream automatically.
         Implement this if you need custom demand handling (e.g., buffering).
     *)
-
     val handle_cast : Message.t -> state -> state cast_result
 
     val terminate : exn -> state -> unit
@@ -304,43 +278,34 @@ module ProducerConsumer : sig
     type in_event
     type out_event
     type t
-
     val start_link : args -> t
+
     val start : args -> t
 
-    val subscribe :
-      t ->
-      to_stage:Pid.t ->
-      ?options:subscription_options ->
-      unit ->
-      (unit, string) result
-    (** Subscribe to an upstream producer *)
+    val subscribe : t -> to_stage:Pid.t -> ?options:subscription_options -> unit -> (unit, string) result
 
+    (** Subscribe to an upstream producer *)
     val cast : t -> Message.t -> unit
+
     val stop : t -> unit
   end
 
-  module Make (Impl : Spec) : S
-    with type args = Impl.args
-     and type state = Impl.state
-     and type in_event = Impl.in_event
-     and type out_event = Impl.out_event
+  module Make (Impl : Spec) : S with type args = Impl.args and type state = Impl.state and type in_event = Impl.in_event and type out_event = Impl.out_event
 end
 
 (** {1 Dispatchers} *)
 
 module Dispatcher : sig
   (** Dispatchers control how events are sent to multiple consumers *)
-
   type t =
     | Broadcast
-        (** Send all events to all consumers *)
+    (** Send all events to all consumers *)
     | Partition of (Message.t -> string)
-        (** Route events by partition key (consistent hashing) *)
+    (** Route events by partition key (consistent hashing) *)
     | RoundRobin
-        (** Distribute events evenly across consumers *)
+    (** Distribute events evenly across consumers *)
     | FirstAvailable
-        (** Send to the first consumer with available demand *)
+  (** Send to the first consumer with available demand *)
 
   (** Example: Partition by user ID
   
@@ -355,37 +320,35 @@ module Dispatcher : sig
 end
 
 (** {1 Advanced: Manual Subscription} *)
-
 val ask : Pid.t -> count:int -> unit
+
 (** Manually send demand to a producer.
 
     Usually not needed - subscription options handle this automatically.
     Use this for fine-grained demand control.
 *)
-
 val cancel : Pid.t -> subscription_ref:unit Ref.t -> unit
+
 (** Cancel a subscription.
 
     The consumer will stop receiving events from this producer.
 *)
-
 (** {1 Utilities} *)
 
-val sync_subscribe :
-  consumer:Pid.t ->
-  to_producer:Pid.t ->
-  ?options:subscription_options ->
-  unit ->
-  (unit, string) result
+val sync_subscribe : consumer:Pid.t ->
+to_producer:Pid.t ->
+?options:subscription_options ->
+unit ->
+(unit, string) result
+
 (** Subscribe and wait for confirmation.
 
     Useful for setting up pipelines during startup.
 *)
+val async_subscribe : consumer:Pid.t ->
+to_producer:Pid.t ->
+?options:subscription_options ->
+unit ->
+unit
 
-val async_subscribe :
-  consumer:Pid.t ->
-  to_producer:Pid.t ->
-  ?options:subscription_options ->
-  unit ->
-  unit
 (** Subscribe without waiting for confirmation *)

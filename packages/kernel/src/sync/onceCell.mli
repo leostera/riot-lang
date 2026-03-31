@@ -17,7 +17,6 @@
       (* Access the config *)
       let cfg = OnceCell.get_or_init config (fun () -> default_config ())
     ]} *)
-
 open Global0
 
 (** A cell that holds an optional value and can only be set once *)
@@ -29,6 +28,7 @@ val create : unit -> 'a t
 val get : 'a t -> 'a option
 
 (** Get the value, initializing it if necessary *)
+
 (** Try to get the value, initializing it if necessary, propagating errors *)
 val get_or_init : 'a t -> (unit -> 'a) -> 'a
 

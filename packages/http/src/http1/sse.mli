@@ -1,5 +1,4 @@
 (** Server-Sent Events Parser *)
-
 open Std
 
 (** Parse a single SSE line. Returns None for empty lines or comments. *)

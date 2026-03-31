@@ -68,7 +68,6 @@ module type Diffable = sig
 end
 
 (** {1 Helper Functions} *)
-
 val has_changes : 'a change list -> bool
 
 val additions : 'a change list -> 'a change list

@@ -1,11 +1,10 @@
 open Std
 
 let rule_id = "no-redundant-begin-end"
-let rule_description =
-  "begin/end blocks should be replaced by ordinary grouping or removed"
 
-let rule_explain =
-  {|
+let rule_description = "begin/end blocks should be replaced by ordinary grouping or removed"
+
+let rule_explain = {|
 `begin ... end` is a perfectly valid grouping construct, but for ordinary expression
 grouping it is usually heavier than necessary. Most readers parse parentheses faster
 than `begin` and `end`, especially when the grouped expression is short.
@@ -17,38 +16,39 @@ This keeps the visual weight of the code proportional to the job the grouping is
 actually doing.
 |}
 
-let opens_with_begin ({ syntax_node; _ } : Syn.Cst.parenthesized_expression) =
-  Syn.Ceibo.Red.SyntaxNode.children syntax_node
-  |> Std.Collections.Array.to_list
-  |> List.find_map (function
-         | Syn.Ceibo.Red.Token token ->
-             let text = Syn.Ceibo.Red.SyntaxToken.text token in
-             if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
-               None
-             else
-               Some (String.equal text "begin")
-         | _ -> None)
-  |> Option.unwrap_or ~default:false
+let opens_with_begin =
+  fun ({ syntax_node; _ }:Syn.Cst.parenthesized_expression) ->
+    Syn.Ceibo.Red.SyntaxNode.children syntax_node |> Std.Collections.Array.to_list |> List.find_map
+      (
+        function
+        | Syn.Ceibo.Red.Token token ->
+            let text = Syn.Ceibo.Red.SyntaxToken.text token in
+            if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
+              None
+            else
+              Some (String.equal text "begin")
+        | _ -> None
+      ) |> Option.unwrap_or ~default:false
 
-let make_diagnostic ({ syntax_node; _ } : Syn.Cst.parenthesized_expression) =
-  Diagnostic.make ~severity:Warning
-    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-    ~suggestion:"Replace begin/end with ordinary grouping or remove it entirely."
-    ()
+let make_diagnostic = fun ({ syntax_node; _ }:Syn.Cst.parenthesized_expression) ->
+  Diagnostic.make
+  ~severity:Warning
+  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+  ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+  ~suggestion:"Replace begin/end with ordinary grouping or remove it entirely."
+  ()
 
-let diagnostic_for_expression = function
-  | Syn.Cst.Expression.Parenthesized expr when opens_with_begin expr ->
-      Some (make_diagnostic expr)
+let diagnostic_for_expression =
+  function
+  | Syn.Cst.Expression.Parenthesized expr when opens_with_begin expr -> Some (make_diagnostic expr)
   | _ -> None
 
-let check_tree (ctx : Rule.context) _red_root =
+let check_tree = fun (ctx:Rule.context) _red_root ->
   let source_file = ctx.cst in
-      Syn.Cst.SourceFile.structure_items source_file
-      |> Option.unwrap_or ~default:[]
-      |> List.concat_map Traversal.expressions_of_structure_item
-      |> List.filter_map diagnostic_for_expression
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Traversal.expressions_of_structure_item
+  |> List.filter_map diagnostic_for_expression
 
-let make () =
-  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain
-    ~run:check_tree ()
+let make = fun () ->
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

@@ -91,16 +91,11 @@ type config = {
   trim_fields : bool;
 }
 type error =
-  | Unterminated_quote of {
-      line : int;
-      column : int;
-    }
-  | Invalid_escape_sequence of {
-      line : int;
-      column : int;
-    }
+  | Unterminated_quote of { line : int; column : int; }
+  | Invalid_escape_sequence of { line : int; column : int; }
   | Empty_input
-  | Unknown_error of string (** CSV parsing errors with position information *)
+  | Unknown_error of string
+(** CSV parsing errors with position information *)
 (** {1 Configuration} *)
 
 (** Default CSV configuration:
@@ -119,7 +114,6 @@ val default_config : config
 val config : ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool -> unit -> config
 
 (** {1 Reading CSV Data} *)
-
 (** Parses CSV data from a Reader incrementally, returning a mutable iterator over rows.
     
     Currently reads all data from the Reader first, then parses incrementally.
@@ -192,7 +186,6 @@ val of_string : ?config:config -> string -> (row, error) result Iter.MutIterator
 val error_to_string : error -> string
 
 (** {1 Writing CSV Data} *)
-
 (** Writes CSV rows to a Writer. Fields containing delimiters, quotes, or newlines
     are automatically quoted.
 

@@ -17,24 +17,23 @@
  * - Home/End - First/Last page
  * - q/Escape - Quit
  *)
-
 open Std
 open Minttea
 open Minttea.Component
 
 (* Model *)
+
 type model = {
   current_page : int;
   pages : string list;
 }
 
 (* Generate sample pages *)
-let generate_pages () =
+
+let generate_pages = fun () ->
   let pages = ref [] in
-  
   (* Page 1: Introduction *)
-  pages := 
-    "📖 WELCOME TO THE PAGINATOR EXAMPLE\n\
+  pages := "📖 WELCOME TO THE PAGINATOR EXAMPLE\n\
      \n\
      This example demonstrates page-based navigation\n\
      through multiple screens of content.\n\
@@ -45,10 +44,8 @@ let generate_pages () =
      • Home/End keys\n\
      \n\
      Current page: 1 of 5" :: !pages;
-  
   (* Page 2: Features *)
-  pages := 
-    "✨ KEY FEATURES\n\
+  pages := "✨ KEY FEATURES\n\
      \n\
      The paginator component provides:\n\
      \n\
@@ -59,10 +56,8 @@ let generate_pages () =
      • Customizable page content\n\
      \n\
      Current page: 2 of 5" :: !pages;
-  
   (* Page 3: Use Cases *)
-  pages := 
-    "💡 COMMON USE CASES\n\
+  pages := "💡 COMMON USE CASES\n\
      \n\
      Paginators are perfect for:\n\
      \n\
@@ -74,10 +69,8 @@ let generate_pages () =
      • Image galleries\n\
      \n\
      Current page: 3 of 5" :: !pages;
-  
   (* Page 4: Tips *)
-  pages := 
-    "💭 USAGE TIPS\n\
+  pages := "💭 USAGE TIPS\n\
      \n\
      Best practices:\n\
      \n\
@@ -88,10 +81,8 @@ let generate_pages () =
      • Save progress for multi-step forms\n\
      \n\
      Current page: 4 of 5" :: !pages;
-  
   (* Page 5: Conclusion *)
-  pages := 
-    "🎉 THAT'S ALL!\n\
+  pages := "🎉 THAT'S ALL!\n\
      \n\
      You've reached the end of the paginator demo.\n\
      \n\
@@ -101,100 +92,98 @@ let generate_pages () =
      Thank you for trying the Minttea Paginator!\n\
      \n\
      Current page: 5 of 5" :: !pages;
-  
   List.rev !pages
 
 (* Initialize *)
-let init model =
-  (model, Command.Noop)
+
+let init = fun model -> (model, Command.Noop)
 
 (* Update *)
-let update event model =
+
+let update = fun event model ->
   match event with
   | Event.KeyDown (Event.Key "q", _)
   | Event.KeyDown (Event.Escape, _) ->
       (model, Command.Quit)
-  
   | Event.KeyDown (Event.Left, _) ->
       let current_page = max 0 (model.current_page - 1) in
-      ({ model with current_page }, Command.Noop)
-      
+      ({model with current_page}, Command.Noop)
   | Event.KeyDown (Event.Right, _) ->
       let max_page = List.length model.pages - 1 in
       let current_page = min max_page (model.current_page + 1) in
-      ({ model with current_page }, Command.Noop)
-      
+      ({model with current_page}, Command.Noop)
   | Event.KeyDown (Event.Home, _) ->
-      ({ model with current_page = 0 }, Command.Noop)
-      
+      ({model with current_page = 0}, Command.Noop)
   | Event.KeyDown (Event.End, _) ->
       let current_page = List.length model.pages - 1 in
-      ({ model with current_page }, Command.Noop)
-      
-  | Event.KeyDown (Event.Key s, _) when String.length s = 1 ->
-      (* Jump to page by number *)
-      (match s.[0] with
-       | '1'..'5' as c ->
-           let page = Char.code c - Char.code '0' - 1 in
-           let max_page = List.length model.pages - 1 in
-           let current_page = min max_page (max 0 page) in
-           ({ model with current_page }, Command.Noop)
-       | _ -> (model, Command.Noop))
-      
-  | _ -> (model, Command.Noop)
+      ({model with current_page}, Command.Noop)
+  | Event.KeyDown (Event.Key s, _) when String.length s = 1 -> (* Jump to page by number *)
+    (
+      match s.[0] with
+      | '1' .. '5' as c ->
+          let page = Char.code c - Char.code '0' - 1 in
+          let max_page = List.length model.pages - 1 in
+          let current_page = min max_page (max 0 page) in
+          ({model with current_page}, Command.Noop)
+      | _ -> (model, Command.Noop)
+    )
+  | _ ->
+      (model, Command.Noop)
 
 (* View *)
-let view model =
+
+let view = fun model ->
   let open Element in
-  
-  let page_content = 
-    try List.nth model.pages model.current_page 
-    with _ -> "Page not found"
-  in
-  
-  (* Create page indicator dots *)
-  let total_pages = List.length model.pages in
-  let dots = 
-    List.init total_pages (fun i ->
-      if i = model.current_page then "●" else "○"
-    ) |> String.concat " "
-  in
-  
-  column ~style:Style.(empty |> padding (Padding.all 1))
+    let page_content =
+      try List.nth model.pages model.current_page with
+      | _ -> "Page not found"
+    in
+    (* Create page indicator dots *)
+    let total_pages = List.length model.pages in
+    let dots =
+      List.init total_pages
+        (fun i ->
+          if i = model.current_page then
+            "●"
+          else
+            "○")
+      |> String.concat " "
+    in
+    column
+    ~style:Style.(empty |> padding (Padding.all 1))
     [
-      (* Page content *)
-      container ~style:Style.(empty
-        |> border ~width:1 ~color:(`rgb (100, 150, 200)) ()
-        |> padding (Padding.all 2)
-        |> min_height 15.0)
-        [text page_content];
-      
+      container
+      ~style:Style.(empty
+      |> border ~width:1 ~color:(`rgb (100, 150, 200)) ()
+      |> padding (Padding.all 2)
+      |> min_height 15.0)
+      [ text page_content ];
       text "";
-      
-      (* Page indicator dots *)
       text ~style:Style.(empty |> align ~x:Center ~y:Middle) dots;
-      
       text "";
-      
-      (* Instructions *)
-      row ~style:Style.(empty |> fg (`rgb (100, 100, 100)))
-        [
-          text "← → Navigate";
-          text " • ";
-          text "1-5 Jump to page";
-          text " • ";
-          text "Home/End First/Last";
-          text " • ";
-          text "q Quit";
-        ];
+      row
+      ~style:Style.(empty |> fg (`rgb (100, 100, 100)))
+      [
+        text "← → Navigate";
+        text " • ";
+        text "1-5 Jump to page";
+        text " • ";
+        text "Home/End First/Last";
+        text " • ";
+        text "q Quit";
+
+      ];
+
     ]
 
 (* Create and run the app *)
+
 let app = App.make ~init ~update ~view ()
 
 (* Run it *)
-let () = 
+
+let () =
   let pages = generate_pages () in
-  let initial_model = { current_page = 0; pages } in
+  let initial_model = {current_page = 0; pages} in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

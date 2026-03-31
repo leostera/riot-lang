@@ -3,7 +3,6 @@
     This module implements the core layout computation based on Clay-TUI's algorithm.
     It's an internal module not exposed in the public API.
 *)
-
 (** Internal layout node with computed values *)
 (** Main layout computation function *)
 type layout_node = {

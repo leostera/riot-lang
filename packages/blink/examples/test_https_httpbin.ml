@@ -24,7 +24,8 @@ let () =
       println "Request sent! Awaiting response...";
       let response, body = Blink.await conn |> Result.expect ~msg:"Failed to receive response" in
       let status = Net.Http.Response.status response in
-      println ("HTTP Status: "
+      println
+      ("HTTP Status: "
       ^ (Int.to_string (Net.Http.Status.to_int status))
       ^ " "
       ^ (Net.Http.Status.reason_phrase status));

@@ -53,6 +53,7 @@ val spawn_link : (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) ->
 val send : Miniriot.Pid.t -> Miniriot.Message.t -> unit
 
 (** Receive a message using a selector *)
+
 (** Receive any message *)
 val receive : selector:'value Miniriot.selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
@@ -197,6 +198,7 @@ val eprintln : string -> unit
     - Placeholder for future implementation
     - Self-documenting incomplete code
     - Fails fast if accidentally called *)
+
 (** Marks code as unimplemented, panicking when called.
 
     ## Examples

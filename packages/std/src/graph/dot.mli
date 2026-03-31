@@ -61,15 +61,14 @@
 
 type graph_style =
   | Directed
-  | Undirected  (** Graph style - directed (->) or undirected (--). *)
-
+  | Undirected
+(** Graph style - directed (->) or undirected (--). *)
 type node = {
   id : string;
   label : string option;
   attrs : (string * string) list;
 }
 (** Node with optional label and Graphviz attributes. *)
-
 type edge = {
   from_node : string;
   to_node : string;
@@ -77,7 +76,6 @@ type edge = {
   attrs : (string * string) list;
 }
 (** Edge with optional label and Graphviz attributes. *)
-
 type t = {
   name : string;
   style : graph_style;
@@ -86,23 +84,21 @@ type t = {
   graph_attrs : (string * string) list;
 }
 (** DOT graph representation. *)
-
 val create : name:string -> style:graph_style -> t
+
 (** Create an empty graph. *)
+val add_node : t -> id:string -> ?label:string -> ?attrs:(string * string) list -> unit -> t
 
-val add_node :
-  t -> id:string -> ?label:string -> ?attrs:(string * string) list -> unit -> t
 (** Add a node to the graph. *)
+val add_edge : t ->
+from_node:string ->
+to_node:string ->
+?label:string ->
+?attrs:(string * string) list ->
+unit ->
+t
 
-val add_edge :
-  t ->
-  from_node:string ->
-  to_node:string ->
-  ?label:string ->
-  ?attrs:(string * string) list ->
-  unit ->
-  t
 (** Add an edge to the graph. *)
-
 val to_string : t -> string
+
 (** Convert graph to DOT format string. *)

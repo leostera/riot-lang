@@ -1,5 +1,4 @@
 (** File scanner for finding OCaml source files *)
-
 open Std
 
 (** A file scanner configured with a root directory and exclusion patterns *)

@@ -72,7 +72,6 @@
       let add_tls reader writer ~hostname =
         Net.TlsStream.of_client_io ~reader ~writer ~hostname ()
     ]} *)
-
 open Global
 
 (** TLS stream wrapping a reader/writer pair.
@@ -91,7 +90,6 @@ type error =
   | Tls_not_available
   | Unsupported_vectored_operation
 (** {2 Create TLS Streams} *)
-
 (** Create TLS client from any reader/writer pair.
     
     This performs the TLS handshake, which may suspend the calling process
@@ -118,7 +116,6 @@ unit ->
 (Tcp_stream.t t, error) result
 
 (** {2 Convenience TCP Wrappers} *)
-
 (** Create TLS stream from TCP socket.
     
     This is the core TCP wrapper that handles both client and server modes.
@@ -142,7 +139,6 @@ val of_tcp_client : hostname:string -> Tcp_stream.t -> (Tcp_stream.t t, error) r
 val of_tcp_server : cert_file:string -> key_file:string -> Tcp_stream.t -> (Tcp_stream.t t, error) result
 
 (** {2 Generic IO Interface} *)
-
 (** Convert TLS stream to a generic Reader.
     
     Reads return plaintext data decrypted from the underlying stream.
@@ -179,7 +175,6 @@ val to_reader : 'src t -> ('src t, error) IO.Reader.t
 val to_writer : 'src t -> ('src t, error) IO.Writer.t
 
 (** {2 TLS Information} *)
-
 (** Get negotiated ALPN protocol (e.g., "h2", "http/1.1").
     
     Returns [None] if no ALPN was negotiated. *)

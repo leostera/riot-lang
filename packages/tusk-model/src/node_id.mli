@@ -1,5 +1,4 @@
 (** Node identifier - ensures single source of truth for build nodes *)
-
 (** Abstract node identifier type *)
 (** Create a node ID from a package *)
 type t

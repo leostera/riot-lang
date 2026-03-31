@@ -245,20 +245,20 @@
 *)
 
 module Generator = Generator
+
 (** Random value generation. See {!Generator}. *)
-
 module Shrinker = Shrinker
+
 (** Counter-example minimization. See {!Shrinker}. *)
-
 module Printer = Printer
+
 (** Value pretty-printing. See {!Printer}. *)
-
 module Arbitrary = Arbitrary
+
 (** Arbitraries combine generators, shrinkers, and printers. See {!Arbitrary}. *)
-
 module Property = Property
-(** Property definition and checking. See {!Property}. *)
 
+(** Property definition and checking. See {!Property}. *)
 (** {1 Convenience API}
     
     These functions are re-exported from their respective modules for convenience. *)
@@ -266,6 +266,7 @@ module Property = Property
 (** {2 Property Creation} *)
 
 val property : string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test_case
+
 (** [property name arb predicate] creates a property test that can be run
     with Std.Test.
     
@@ -286,8 +287,8 @@ val property : string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test
     - If a failure is found, shrink to find minimal counter-example
     - Return Pass or Fail with error message
 *)
-
 val for_all : 'value Arbitrary.t -> ('value -> bool) -> Property.test_property
+
 (** [for_all arb predicate] creates a property without a name.
     
     Useful for composing properties or running manually:
@@ -297,10 +298,10 @@ val for_all : 'value Arbitrary.t -> ('value -> bool) -> Property.test_property
       Property.check prop  (* Run the property *)
     ]}
 *)
-
 (** {2 Assumptions} *)
 
 val implies : bool -> bool -> bool
+
 (** [implies precondition conclusion] expresses a conditional property.
     
     If the precondition is false, the test case is discarded. If true,
@@ -318,8 +319,8 @@ val implies : bool -> bool -> bool
       if not precondition then true else conclusion
     ]}
 *)
-
 val assume : bool -> unit
+
 (** [assume condition] filters test cases where the condition is false.
     
     If the condition is false, the current test case is discarded and
@@ -337,8 +338,8 @@ val assume : bool -> unit
     {b Warning:} Too many failing assumptions can slow down testing
     or cause tests to fail with "too many assumptions violated".
 *)
-
 val assume_fail : unit -> 'value
+
 (** [assume_fail ()] unconditionally fails the current assumption.
     
     Equivalent to [assume false] but clearer in intent:
@@ -353,10 +354,10 @@ val assume_fail : unit -> 'value
         )
     ]}
 *)
-
 (** {2 Explicit Failures} *)
 
 val fail : string -> 'value
+
 (** [fail message] explicitly fails a property with a custom error message.
     
     Useful for providing context about why a property failed:

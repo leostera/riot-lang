@@ -1,6 +1,6 @@
 (** Network address handling *)
-
 open Global
+
 include Kernel.Net.Addr
 
 type error =
@@ -8,12 +8,12 @@ type error =
   | Invalid_port_number of string
   | Invalid_format of string
 
-let of_host_and_port ~host ~port =
+let of_host_and_port = fun ~host ~port ->
   match Kernel.Net.Addr.of_host_and_port ~host ~port with
   | Ok addr -> Ok addr
   | Error err -> Error (System_error err)
 
-let parse s =
+let parse = fun s ->
   (* Try to parse host:port format *)
   match String.rindex_opt s ':' with
   | None -> Error (Invalid_format "missing port")
@@ -25,4 +25,6 @@ let parse s =
       | Some port -> (
           match of_host_and_port ~host ~port with
           | Ok addr -> Ok addr
-          | Error err -> Error err))
+          | Error err -> Error err
+        )
+    )

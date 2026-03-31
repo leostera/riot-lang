@@ -1,29 +1,25 @@
-  open Stdlib
+open Stdlib
+
 (** Minitusk - Minimal OCaml build system
 
     A self-contained build system that can bootstrap itself and build OCaml
     packages with proper module namespacing and nested library support. *)
-
 (* ===== Main ===== *)
 
-let build_package ~build_results ?(needs_stdlib_and_unix = false) pkg_name pkg_path =
+let build_package = fun ~build_results ?(needs_stdlib_and_unix = false) pkg_name pkg_path ->
   Printf.printf "\nBuilding package: %s\n" pkg_name;
   Printf.printf "  Path: %s\n" pkg_path;
-
   let pkg = Package.read pkg_path in
-  
   (* Override stdlib/unix dependencies if specified *)
   let pkg =
     if needs_stdlib_and_unix then
-      { pkg with uses_stdlib = true; uses_unix = true; uses_dynlink = true }
-    else pkg
+      {pkg with uses_stdlib = true; uses_unix = true; uses_dynlink = true}
+    else
+      pkg
   in
-
   (* Create dependency graph for the package, passing build_results for cross-package deps *)
   let dep_graph = Dep_graph.scan ~root:pkg_path ~package:pkg ~build_results in
-
   File_scanner.print_tree dep_graph.file_tree;
-
   (* For now, just print what we would build 
   Printf.printf "\n\nDependency Graph: %s\n" pkg_name;
   Dep_graph.iter
@@ -37,7 +33,6 @@ let build_package ~build_results ?(needs_stdlib_and_unix = false) pkg_name pkg_p
       Printf.printf "  - %s\n%!" filename)
     dep_graph;
 *)
-
   (* Dump graph as dot for debugging *)
   let dot_dir = Printf.sprintf "_build/bootstrap/out/%s" pkg_name in
   Io.mkdir_p dot_dir;
@@ -45,26 +40,25 @@ let build_package ~build_results ?(needs_stdlib_and_unix = false) pkg_name pkg_p
   let dot_content = Dep_graph.to_dot dep_graph in
   Io.write_file dot_file dot_content;
   Printf.printf "Dumped graph to %s\n" dot_file;
-
   let build_plan = Action.from_dep_graph dep_graph in
   (* Printf.printf "\n\nBuild Plan: %s\n" pkg_name;
   Action.print_build_plan build_plan; *)
   Action.execute_build_plan ~build_results build_plan;
   Action.promote_outputs build_plan;
-
   (* Register this package's outputs for other packages to use *)
   (* IMPORTANT: Only store this package's OWN flags, not accumulated ones! *)
-  Dep_graph.Build_results.register build_results pkg build_plan.package_name
-    ~outputs:build_plan.outputs
-    ~cc_flags:(Package.cc_flags pkg)
-    ~ld_flags:(Package.ld_flags pkg)
+  Dep_graph.Build_results.register
+  build_results
+  pkg
+  build_plan.package_name
+  ~outputs:build_plan.outputs
+  ~cc_flags:(Package.cc_flags pkg)
+  ~ld_flags:(Package.ld_flags pkg)
 
 let () =
   Printf.printf "=== Minitusk Build System ===\n";
-
   (* Create build results tracker for cross-package dependencies *)
   let build_results = Dep_graph.Build_results.create () in
-
   (* Build packages in dependency order *)
   build_package ~build_results ~needs_stdlib_and_unix:true "kernel" "packages/kernel";
   build_package ~build_results "miniriot" "packages/miniriot";
@@ -85,5 +79,4 @@ let () =
   build_package ~build_results "tusk-fix" "packages/tusk-fix";
   build_package ~build_results "tusk-fmt" "packages/tusk-fmt";
   build_package ~build_results "tusk-cli" "packages/tusk-cli";
-
   Printf.printf "\n=== Build complete! ===\n"

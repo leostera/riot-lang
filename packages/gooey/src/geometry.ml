@@ -5,10 +5,10 @@ module Point = struct
     x : float;
     y : float;
   }
-  
-  let make ~x ~y = { x; y }
-  
-  let zero = { x = 0.0; y = 0.0 }
+
+  let make = fun ~x ~y -> {x; y}
+
+  let zero = {x = 0.0; y = 0.0}
 end
 
 module Rect = struct
@@ -18,8 +18,8 @@ module Rect = struct
     width : float;
     height : float;
   }
-  
-  let make ~x ~y ~width ~height = { x; y; width; height }
-  
-  let zero = { x = 0.0; y = 0.0; width = 0.0; height = 0.0 }
+
+  let make = fun ~x ~y ~width ~height -> {x; y; width; height}
+
+  let zero = {x = 0.0; y = 0.0; width = 0.0; height = 0.0}
 end

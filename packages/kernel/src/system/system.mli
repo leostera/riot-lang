@@ -13,7 +13,6 @@ module Host : sig
     (** ABI: gnu, musl, msvc, mingw, etc. *)
     abi : string option;
   }
-
   val current : t
 
   (** Convert host triplet to standard string format: arch-vendor-os[-abi] *)
@@ -74,37 +73,64 @@ val signal : int -> (int -> unit) -> int -> unit
 val set_signal : int -> signal_behavior -> unit
 
 val sigabrt : int
+
 val sigalrm : int
+
 val sigfpe : int
+
 val sighup : int
+
 val sigill : int
+
 val sigint : int
+
 val sigkill : int
+
 val sigpipe : int
+
 val sigquit : int
+
 val sigsegv : int
+
 val sigterm : int
+
 val sigusr1 : int
+
 val sigusr2 : int
+
 val sigchld : int
+
 val sigcont : int
+
 val sigstop : int
+
 val sigtstp : int
+
 val sigttin : int
+
 val sigttou : int
+
 val sigvtalrm : int
+
 val sigprof : int
+
 val sigbus : int
+
 val sigpoll : int
+
 val sigsys : int
+
 val sigtrap : int
+
 val sigurg : int
+
 val sigxcpu : int
 
 (** Standard signal numbers *)
 val sigxfsz : int
 
 exception Break
+
 (** Exception raised on interactive interrupt if catch_break is on *)
 
 (** catch_break governs whether interactive interrupt (ctrl-C) raises Break *)

@@ -1,5 +1,4 @@
 (** WebSocket Frame Implementation *)
-
 open Std
 
 type opcode =

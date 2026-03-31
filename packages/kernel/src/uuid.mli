@@ -1,9 +1,7 @@
 (** Low-level UUID generation using platform libraries *)
-
 (** UUID represented as 16 bytes *)
 type t = bytes
 (** {1 Generation} *)
-
 (** Generate random UUID v4 using platform's cryptographic RNG *)
 val v4 : unit -> bytes
 
@@ -11,7 +9,6 @@ val v4 : unit -> bytes
 val v7 : unit -> bytes
 
 (** {1 Conversion} *)
-
 (** Convert UUID to canonical string format (lowercase with dashes) *)
 val to_string : bytes -> string
 
@@ -24,7 +21,6 @@ val of_string : string -> (bytes, [
 val compare : bytes -> bytes -> int
 
 (** {1 Query} *)
-
 (** Check if UUID is nil (all zeros) *)
 val is_nil : bytes -> bool
 
@@ -32,7 +28,6 @@ val is_nil : bytes -> bool
 val version : bytes -> int option
 
 (** {1 Constants} *)
-
 (** The nil UUID (all zeros) *)
 val nil : bytes
 
@@ -52,7 +47,6 @@ val ns_oid : bytes
 val ns_x500 : bytes
 
 (** {1 Helpers} *)
-
 (** Test UUID equality *)
 val equal : bytes -> bytes -> bool
 

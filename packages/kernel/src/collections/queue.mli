@@ -53,7 +53,6 @@
     back and removed from the front. *)
 type 'a t
 (** {1 Creation} *)
-
 (** Creates a new empty queue.
 
     ## Examples
@@ -87,7 +86,6 @@ val with_capacity : int -> 'a t
 val of_list : 'a list -> 'a t
 
 (** {1 Basic Operations} *)
-
 (** Adds an element to the back of the queue.
 
     ## Examples
@@ -165,7 +163,6 @@ val is_empty : 'a t -> bool
 val clear : 'a t -> unit
 
 (** {1 Iteration} *)
-
 (** Applies function [f] to each element from front to back.
 
     ## Examples
@@ -188,6 +185,7 @@ val iter : ('a -> unit) -> 'a t -> unit
     ## Complexity
 
     - Time: O(n) *)
+
 (** Converts the queue to a list in front-to-back order.
 
     ## Examples
@@ -204,7 +202,6 @@ val fold : ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
 val to_list : 'a t -> 'a list
 
 (** {1 Additional Operations} *)
-
 (** Returns [true] if the value exists anywhere in the queue.
 
     ## Examples

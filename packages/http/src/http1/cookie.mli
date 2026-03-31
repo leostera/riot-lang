@@ -63,9 +63,12 @@ open Std
 (** {2 Types} *)
 
 type same_site =
-  | Strict (** Strictest - no cross-site requests *)
-  | Lax (** Safe cross-site (GET only) - recommended default *)
-  | None (** Allow all cross-site (requires Secure flag) *)
+  | Strict
+  (** Strictest - no cross-site requests *)
+  | Lax
+  (** Safe cross-site (GET only) - recommended default *)
+  | None
+(** Allow all cross-site (requires Secure flag) *)
 type t = {
   name : string;
   (** Cookie name *)
@@ -87,7 +90,6 @@ type t = {
   (** CSRF protection *)
 }
 (** {2 Parsing} *)
-
 (** Parse Cookie header into name-value pairs.
     
     {b Example}:
@@ -113,7 +115,6 @@ val parse : string -> (string * string) list
 val parse_set_cookie : string -> t option
 
 (** {2 Serialization} *)
-
 (** Serialize cookie to Set-Cookie header value.
     
     {b Example}:
@@ -126,7 +127,6 @@ val parse_set_cookie : string -> t option
 val to_set_cookie : t -> string
 
 (** {2 Construction} *)
-
 (** Create a cookie with sensible defaults.
     
     {b Defaults}:
@@ -172,7 +172,6 @@ unit ->
 (t, string) result
 
 (** {2 Validation} *)
-
 (** Check if cookie name is valid (alphanumeric + underscore + hyphen). *)
 val is_valid_name : string -> bool
 
@@ -180,6 +179,5 @@ val is_valid_name : string -> bool
 val is_valid_value : string -> bool
 
 (** {2 Utilities} *)
-
 (** Convert SameSite to string ("Strict", "Lax", or "None"). *)
 val same_site_to_string : same_site -> string

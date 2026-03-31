@@ -58,11 +58,11 @@ module Tz : sig
   type t =
     | Etc_UTC
     | Local
-        (** Time zone representation:
+  (** Time zone representation:
             - [Etc_UTC]: UTC/GMT timezone
             - [Local]: System's local timezone *)
-
   val to_string : t -> string
+
   (** Converts timezone to string representation.
 
       ## Examples
@@ -77,7 +77,7 @@ open Global
 
 type t = {
   microseconds : int * int;
-      (** Microseconds and precision, e.g. (426822, 6) means 426822 microseconds
+  (** Microseconds and precision, e.g. (426822, 6) means 426822 microseconds
           with 6 digits of precision *)
   second : int;  (** Second (0-59) *)
   minute : int;  (** Minute (0-59) *)
@@ -90,7 +90,6 @@ type t = {
   std_offset : int;  (** Standard time offset *)
 }
 (** A date and time with calendar fields and timezone information. *)
-
 type naive = {
   year : int;  (** Year *)
   month : int;  (** Month (1-12) *)
@@ -109,10 +108,10 @@ type naive = {
     - Storing local times without conversion
     
     To work with actual wall-clock times, convert to {!t} using {!from_naive}. *)
-
 (** {1 Creation} *)
 
 val epoch : t
+
 (** The Unix epoch: January 1, 1970 00:00:00 UTC.
     
     ## Examples
@@ -122,8 +121,8 @@ val epoch : t
     (* epoch.year = 1970, epoch.month = 1, epoch.day = 1 *)
     (* epoch.hour = 0, epoch.minute = 0, epoch.second = 0 *)
     ``` *)
-
 val now : unit -> t
+
 (** Returns the current date and time in the system's local timezone.
 
     ## Examples
@@ -131,16 +130,16 @@ val now : unit -> t
     ```ocaml let now = DateTime.now () in Printf.printf "%04d-%02d-%02d
     %02d:%02d:%02d\n" now.year now.month now.day now.hour now.minute now.second
     (* "2025-08-27 14:07:31" *) ``` *)
-
 val now_utc : unit -> t
+
 (** Returns the current date and time in UTC.
 
     ## Examples
 
     ```ocaml let utc = DateTime.now_utc () in assert (utc.time_zone =
     Tz.Etc_UTC); assert (utc.utc_offset = 0) ``` *)
-
 val now_naive : unit -> naive
+
 (** Returns the current date and time as a naive datetime (no timezone).
     
     This is equivalent to [to_naive (now ())] but more convenient.
@@ -161,8 +160,8 @@ val now_naive : unit -> naive
     - Logging timestamps without timezone information
     - Storing local times in databases
     - Display times that don't need timezone conversion *)
-
 val from_system_time : Time.SystemTime.t -> t
+
 (** Creates a datetime from a system time.
 
     ## Examples
@@ -181,10 +180,10 @@ val from_system_time : Time.SystemTime.t -> t
     ## Note
 
     The resulting datetime is in UTC timezone. *)
-
 (** {1 Conversion} *)
 
 val to_system_time : t -> Time.SystemTime.t
+
 (** Converts datetime to system time.
 
     ## Examples
@@ -198,8 +197,8 @@ val to_system_time : t -> Time.SystemTime.t
     ## Note
     
     Timezone information is preserved during conversion. *)
-
 val to_naive : t -> naive
+
 (** Converts a timezone-aware datetime to a naive datetime by dropping timezone information.
     
     The resulting naive datetime represents the same calendar date and time,
@@ -219,8 +218,8 @@ val to_naive : t -> naive
     - Storing local times without timezone conversion
     - Calendar computations that don't depend on timezone
     - Displaying times without timezone context *)
-
 val from_naive : naive -> tz:Tz.t -> t
+
 (** Converts a naive datetime to a timezone-aware datetime.
     
     Interprets the naive datetime in the specified timezone. The calendar
@@ -248,8 +247,8 @@ val from_naive : naive -> tz:Tz.t -> t
     
     When using [Tz.Local], the UTC offset is determined by the system's
     current timezone setting at the time of conversion. *)
-
 val to_iso8601 : t -> string
+
 (** Converts to ISO 8601 format string with microsecond precision.
 
     ## Examples
@@ -273,10 +272,10 @@ val to_iso8601 : t -> string
     - Storing dates in databases
     - API responses
     - Interoperability with other systems *)
-
 (** {1 Comparison} *)
 
 val equal : t -> t -> bool
+
 (** Tests equality of two datetimes.
     
     Two datetimes are equal if they represent the same point in time,
@@ -296,21 +295,21 @@ val equal : t -> t -> bool
     This compares the actual point in time, taking timezones into account.
     Two datetimes with different timezone offsets but representing the
     same moment will be equal. *)
-
 (** {1 Parsing} *)
 
 type error =
   | Invalid_format of string
-      (** The input string doesn't match expected ISO 8601 format *)
+  (** The input string doesn't match expected ISO 8601 format *)
   | Invalid_date of string
-      (** Date components are invalid (e.g., February 30th) *)
+  (** Date components are invalid (e.g., February 30th) *)
   | Invalid_time of string
-      (** Time components are invalid (e.g., 25:00:00) *)
+  (** Time components are invalid (e.g., 25:00:00) *)
   | Invalid_timezone of string
-      (** Timezone offset is malformed *)
-(** Errors that can occur when parsing datetime strings. *)
+(** Timezone offset is malformed *)
 
+(** Errors that can occur when parsing datetime strings. *)
 val parse : string -> (t, error) result
+
 (** Parses an ISO 8601 datetime string into a DateTime.
 
     This function has full parity with Elixir's DateTime.from_iso8601/2 parser.

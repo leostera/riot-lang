@@ -38,7 +38,6 @@
 (** The type of vectors containing elements of type `'a` *)
 type 'a t
 (** # Creation *)
-
 (** Creates a new empty vector.
 
     ## Examples
@@ -67,7 +66,6 @@ val with_capacity : int -> 'a t
 val of_list : 'a list -> 'a t
 
 (** # Basic Operations *)
-
 (** [push vector value] adds an element to the end of the vector *)
 val push : 'a t -> 'a -> unit
 
@@ -90,7 +88,6 @@ val get : 'a t -> int -> 'a option
 val set : 'a t -> int -> 'a -> unit
 
 (** {1 Collection Information} *)
-
 (** [len vector] returns the number of elements in the vector *)
 val len : 'a t -> int
 
@@ -104,7 +101,6 @@ val capacity : 'a t -> int
 val clear : 'a t -> unit
 
 (** {1 Iteration} *)
-
 (** [iter f vector] applies function [f] to each element *)
 val iter : ('a -> unit) -> 'a t -> unit
 
@@ -120,7 +116,6 @@ val iter : ('a -> unit) -> 'a t -> unit
 val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
 
 (** {1 Additional Operations} *)
-
 (** [append vector1 vector2] moves all elements from [vector2] into [vector1] *)
 val append : 'a t -> 'a t -> unit
 
@@ -145,7 +140,6 @@ val first : 'a t -> 'a option
 val last : 'a t -> 'a option
 
 (** # Iteration *)
-
 (** Converts the vector into an immutable iterator.
     
     ## Examples

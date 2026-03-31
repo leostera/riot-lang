@@ -19,114 +19,123 @@ module Counter = struct
   open Component
 
   let id = LiveView.id "counter"
-  
-  type state = { count: int }
-  type msg = Increment | Decrement | Reset
+
+  type state = {
+    count : int;
+  }
+
+  type msg =
+    Increment
+    | Decrement
+    | Reset
+
   type args = unit
-  
-  let serialize_args () = Data.Json.Null
-  let deserialize_args _ = Ok ()
-  
-  let init _conn () = { count = 0 }
-  
-  let update event state =
+
+  let serialize_args = fun () -> Data.Json.Null
+
+  let deserialize_args = fun _ -> Ok ()
+
+  let init = fun _conn () -> {count = 0}
+
+  let update = fun event state ->
     match event with
-    | LiveView.App Increment -> { count = state.count + 1 }
-    | App Decrement -> { count = state.count - 1 }
-    | App Reset -> { count = 0 }
+    | LiveView.App Increment -> {count = state.count + 1}
+    | App Decrement -> {count = state.count - 1}
+    | App Reset -> {count = 0}
     | _ -> state
-  
-  let render ~state () =
-    div ~attrs:[class_ "component-card"] [
-      div ~attrs:[class_ "card-header"] [
-        h2 [text "Counter"];
-        p ~attrs:[class_ "card-subtitle"] [
-          text "Click buttons to change the count"
-        ];
+
+  let render = fun ~state () ->
+    div
+    ~attrs:[ class_ "component-card" ]
+    [
+      div
+      ~attrs:[ class_ "card-header" ]
+      [
+        h2 [ text "Counter" ];
+        p ~attrs:[ class_ "card-subtitle" ] [ text "Click buttons to change the count" ];
+
       ];
-      
-      div ~attrs:[class_ "card-body"] [
-        div ~attrs:[class_ "display-value"] [
-          text (Int.to_string state.count)
+      div
+      ~attrs:[ class_ "card-body" ]
+      [
+        div ~attrs:[ class_ "display-value" ] [ text (Int.to_string state.count) ];
+        div
+        ~attrs:[ class_ "button-group" ]
+        [
+          button
+          ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement);  ]
+          [ text "−" ];
+          button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset);  ] [ text "Reset" ];
+          button ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment);  ] [ text "+" ];
+
         ];
-        
-        div ~attrs:[class_ "button-group"] [
-          button ~attrs:[
-            class_ "btn btn-decrement";
-            on_click (fun _ -> Decrement);
-          ] [text "−"];
-          
-          button ~attrs:[
-            class_ "btn btn-reset";
-            on_click (fun _ -> Reset);
-          ] [text "Reset"];
-          
-          button ~attrs:[
-            class_ "btn btn-increment";
-            on_click (fun _ -> Increment);
-          ] [text "+"];
-        ];
+
       ];
+
     ]
 end
 
 (** Status LiveView - Shows current server timestamp *)
 module Status = struct
   let id = LiveView.id "status"
-  
+
   open LiveView
   open Component
-  
-  type state = { 
-    timer: Timer.id;
-    updates: int;
-    last_update: string;
+
+  type state = {
+    timer : Timer.id;
+    updates : int;
+    last_update : string;
   }
-  type msg = Refresh
+
+  type msg =
+    Refresh
+
   type args = unit
 
-  type Message.t += TimerTick of msg
-  
-  let serialize_args () = Data.Json.Null
-  let deserialize_args _ = Ok ()
-  
-  let init _conn () = 
-    let timer = Timer.send_interval (self ()) ~interval:(Time.Duration.from_secs 1) (TimerTick Refresh)  in
-    { 
-      timer;
-      updates = 0;
-      last_update = "Not refreshed yet";
-    }
-  
-  let update event state =
+  type Message.t +=
+    TimerTick of msg
+
+  let serialize_args = fun () -> Data.Json.Null
+
+  let deserialize_args = fun _ -> Ok ()
+
+  let init = fun _conn () ->
+    let timer = Timer.send_interval
+    (self ())
+    ~interval:(Time.Duration.from_secs 1)
+    (TimerTick Refresh) in
+    {timer; updates = 0; last_update = "Not refreshed yet"; }
+
+  let update = fun event state ->
     match event with
-    | Custom (TimerTick Refresh) | App Refresh -> 
+    | Custom (TimerTick Refresh)
+    | App Refresh ->
         let timestamp = Datetime.(now () |> to_iso8601) in
-        { 
-          state with
-          updates = state.updates + 1;
-          last_update = timestamp;
-        }
+        {state with updates = state.updates + 1; last_update = timestamp; }
     | _ -> state
-  
-  let render ~state () =
-    div ~attrs:[class_ "component-card"] [
-      div ~attrs:[class_ "card-header"] [
-        h2 [text "Status"];
-        p ~attrs:[class_ "card-subtitle"] [
-          text "Click to get server timestamp"
-        ];
+
+  let render = fun ~state () ->
+    div
+    ~attrs:[ class_ "component-card" ]
+    [
+      div
+      ~attrs:[ class_ "card-header" ]
+      [
+        h2 [ text "Status" ];
+        p ~attrs:[ class_ "card-subtitle" ] [ text "Click to get server timestamp" ];
+
       ];
-      
-      div ~attrs:[class_ "card-body"] [
-        div ~attrs:[class_ "display-value status-display"] [
-          text state.last_update;
-        ];
-        
-        div ~attrs:[class_ "status-info"] [
-          text ("Refreshed " ^ Int.to_string state.updates ^ " times");
-        ];
+      div
+      ~attrs:[ class_ "card-body" ]
+      [
+        div ~attrs:[ class_ "display-value status-display" ] [ text state.last_update;  ];
+        div
+        ~attrs:[ class_ "status-info" ]
+        [ text ("Refreshed " ^ Int.to_string state.updates ^ " times");  ];
+
       ];
+
     ]
 end
 
@@ -308,72 +317,86 @@ let page_styles = {|
 |}
 
 (** Home page handler with both LiveViews embedded *)
-let home_page conn _req =
+let home_page = fun conn _req ->
   let open Component in
-  let page = html [
-    head [
-      meta ~attrs:[attr "charset" "UTF-8"] ();
-      meta ~attrs:[attr "viewport" "width=device-width, initial-scale=1.0"] ();
-      title [text "Multiple LiveViews - Suri"];
-      LiveView.client_script;
-      style page_styles;
-    ];
-    body [
-      div ~attrs:[class_ "container"] [
-        (* Header *)
-        div ~attrs:[class_ "header"] [
-          h1 [text "Multiple LiveView Components"];
-          p [text "Each component is independent with its own state and WebSocket connection"];
-        ];
-        
-        (* Grid with both components *)
-        div ~attrs:[class_ "components-grid"] [
-          (LiveView.embed (module Counter) ());
-          (LiveView.embed (module Status) ());
-        ];
-        
-        (* Footer with explanation *)
-        div ~attrs:[class_ "footer"] [
-          h3 [text "How It Works"];
-          p [
-            strong [text "Counter: "];
-            text "User-driven interactions. Click the buttons to update the count. ";
-            text "Events are sent to the server, which updates state and sends back HTML patches.";
-          ];
-          p [
-            strong [text "Status: "];
-            text "Server timestamp rendering. Click the button to get the current server time. ";
-            text "The timestamp is generated on the server and sent back to the client.";
-          ];
-          p [
-            strong [text "Both components: "];
-            text "Have independent state, separate WebSocket connections, and update without affecting each other!";
-          ];
-        ];
+    let page = html
+    [
+      head
+      [
+        meta ~attrs:[ attr "charset" "UTF-8" ] ();
+        meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
+        title [ text "Multiple LiveViews - Suri" ];
+        LiveView.client_script;
+        style page_styles;
+
       ];
-    ];
-  ] in
-  conn
-  |> Middleware.Conn.with_status Net.Http.Status.Ok
-  |> Middleware.Conn.with_header "Content-Type" "text/html; charset=utf-8"
-  |> Middleware.Conn.with_body (Component.to_html page)
-  |> Middleware.Conn.send
+      body
+      [
+        div
+        ~attrs:[ class_ "container" ]
+        [
+          div
+          ~attrs:[ class_ "header" ]
+          [
+            h1 [ text "Multiple LiveView Components" ];
+            p [ text "Each component is independent with its own state and WebSocket connection" ];
+
+          ];
+          div
+          ~attrs:[ class_ "components-grid" ]
+          [ (LiveView.embed (module Counter) ()); (LiveView.embed (module Status) ());  ];
+          div
+          ~attrs:[ class_ "footer" ]
+          [
+            h3 [ text "How It Works" ];
+            p
+            [
+              strong [ text "Counter: " ];
+              text "User-driven interactions. Click the buttons to update the count. ";
+              text "Events are sent to the server, which updates state and sends back HTML patches.";
+
+            ];
+            p
+            [
+              strong [ text "Status: " ];
+              text "Server timestamp rendering. Click the button to get the current server time. ";
+              text "The timestamp is generated on the server and sent back to the client.";
+
+            ];
+            p
+            [
+              strong [ text "Both components: " ];
+              text "Have independent state, separate WebSocket connections, and update without affecting each other!";
+
+            ];
+
+          ];
+
+        ];
+
+      ];
+
+    ] in
+    conn
+    |> Middleware.Conn.with_status Net.Http.Status.Ok
+    |> Middleware.Conn.with_header "Content-Type" "text/html; charset=utf-8"
+    |> Middleware.Conn.with_body (Component.to_html page)
+    |> Middleware.Conn.send
 
 (* Define routes *)
-let routes = Middleware.Router.[
-  get "/" home_page;
-  LiveView.live (module Counter);
-  LiveView.live (module Status);
-]
+
+let routes = Middleware.Router.[get "/" home_page;
+LiveView.live (module Counter);
+LiveView.live (module Status);]
 
 (* App is just a list of middleware! *)
-let app = [
-  Middleware.router routes;
-]
+
+let app = [ Middleware.router routes;  ]
 
 let () =
-  Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
-      let config = Suri.config ~port:9998 () in
+  Miniriot.run ~args:Env.args ()
+    ~main:(fun ~args:_ ->
+      let config = Suri.config ~port:9_998 () in
       match Suri.start_link ~config app with
       | Ok supervisor ->
           Log.info "╔═══════════════════════════════════════════════════╗";
@@ -383,16 +406,13 @@ let () =
           Log.info "║  Counter: User interactions                      ║";
           Log.info "║  Status: Server-side timestamp rendering         ║";
           Log.info "╚═══════════════════════════════════════════════════╝";
-          
           let count = Supervisor.Dynamic.count_children supervisor in
           Log.info ("Started with " ^ Int.to_string count.active ^ " acceptors");
-          
-          let rec loop () =
+          let rec loop = fun () ->
             sleep (Time.Duration.from_secs 100);
             loop ()
           in
           loop ()
       | Error `Bind_error ->
           Log.error "Failed to bind to port 9998";
-          Error (Failure "Failed to start server")
-  )
+          Error (Failure "Failed to start server"))

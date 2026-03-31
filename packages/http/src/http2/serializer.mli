@@ -1,5 +1,4 @@
 (** HTTP/2 Frame Serializer *)
-
 open Std
 
 val serialize_frame : Frame.t -> string

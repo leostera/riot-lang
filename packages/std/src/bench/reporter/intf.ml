@@ -7,7 +7,7 @@ module type Intf = sig
 
   val on_result : int -> Bench_result.t -> unit
 
-  val finalize : Bench_result.summary -> unit
+  val finalize : Bench_result.summary -> unit (* Comparison reporting *)
 
   (* Comparison reporting *)
   val on_comparison_start : int -> string -> int -> unit

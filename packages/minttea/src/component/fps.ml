@@ -1,21 +1,28 @@
 open Std
 
-type t = { frame_rate : float; mutable next_frame : Time.Instant.t }
+type t = {
+  frame_rate : float;
+  mutable next_frame : Time.Instant.t;
+}
 
-let add_duration time rate =
+let add_duration = fun time rate ->
   Time.Instant.add time (Time.Duration.from_secs_float rate)
 
-let make frame_rate =
+let make = fun frame_rate ->
   (* Initialize next_frame to now, so the first tick will succeed immediately *)
   let now = Time.Instant.now () in
-  { frame_rate; next_frame = now }
+  {frame_rate; next_frame = now}
 
-let of_int i = make (1.0 /. float_of_int i)
-let of_float f = make (1.0 /. f)
+let of_int = fun i -> make (1.0 /. float_of_int i)
 
-let tick ?(now = Time.Instant.now ()) t =
-  if Time.Instant.compare now t.next_frame >= 0 then (
-    (* Add frame_rate to next_frame, not to now, to maintain consistent intervals *)
-    t.next_frame <- add_duration t.next_frame t.frame_rate;
-    `frame)
-  else `skip
+let of_float = fun f -> make (1.0 /. f)
+
+let tick = fun ?(now = Time.Instant.now ()) t ->
+  if Time.Instant.compare now t.next_frame >= 0 then
+    (
+      (* Add frame_rate to next_frame, not to now, to maintain consistent intervals *)
+      t.next_frame <- add_duration t.next_frame t.frame_rate;
+      `frame
+    )
+  else
+    `skip

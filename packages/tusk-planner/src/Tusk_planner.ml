@@ -2,21 +2,24 @@ open Std
 open Tusk_model
 
 type build_target = Workspace_planner.target
+
 type plan_error = Workspace_planner.plan_error
+
 type workspace_plan_result = Workspace_planner.package_plan
+
 type module_plan_result = Module_planner.plan_result
+
 type package_plan_result = Package_planner.plan_result
 
-let plan_workspace ~workspace ~target ~scope ~load_errors =
+let plan_workspace = fun ~workspace ~target ~scope ~load_errors ->
   Workspace_planner.plan_workspace ~workspace ~target ~scope ~load_errors
 
-let plan_package_with_graph ~workspace ~toolchain ~store ~package_graph
-    ~package_key ~package ~build_ctx =
-  Package_planner.plan_package ~workspace ~toolchain ~store ~package_graph
-    ~package_key ~package ~build_ctx
+let plan_package_with_graph = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
+  Package_planner.plan_package ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx
 
 (* Legacy/testing function - not used in production builds.
    Use plan_package_with_graph instead. *)
+
 (* let plan_package ~workspace ~toolchain ~package =
   let planning_root = Path.v "src" in
   let depset = [] in

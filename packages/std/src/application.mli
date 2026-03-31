@@ -1,5 +1,4 @@
 (** Application - Supervision tree management with dependency resolution *)
-
 open Global
 
 (** Start a list of applications in dependency order.

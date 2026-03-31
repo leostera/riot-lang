@@ -69,7 +69,6 @@ type t
 val epoch : t
 
 (** {1 Accessors} *)
-
 (** Returns seconds since Unix epoch as an int
     
     ## Examples
@@ -129,7 +128,6 @@ val from_seconds : float -> t
 val from_nanos : int64 -> t
 
 (** {1 Creation} *)
-
 (** Returns the current system time from the real-time clock.
 
     ## Examples
@@ -150,7 +148,6 @@ val from_nanos : int64 -> t
 val now : unit -> t
 
 (** {1 Duration Operations} *)
-
 val duration_since_epoch : unit -> Duration.t
 
 (** Returns the time elapsed from [earlier] to the given time.
@@ -186,7 +183,6 @@ val duration_since : earlier:t -> t -> Duration.t
 val elapsed : t -> Duration.t
 
 (** {1 Arithmetic Operations} *)
-
 (** Adds a duration to a system time, returning a future time.
 
     ## Examples
@@ -204,7 +200,6 @@ val add : t -> Duration.t -> t
 val sub : t -> Duration.t -> t
 
 (** {1 Checked Operations} *)
-
 (** Adds a duration if the result can be represented, returns [None] on
     overflow.
 
@@ -224,7 +219,6 @@ val checked_add : t -> Duration.t -> t option
 val checked_sub : t -> Duration.t -> t option
 
 (** {1 Comparison} *)
-
 (** Compares two system times. Returns negative if first < second, 0 if equal,
     positive if first > second.
 
@@ -257,7 +251,6 @@ val min : t -> t -> t
 val max : t -> t -> t
 
 (** {1 Unix Timestamp Conversion} *)
-
 (** Converts a system time to a Unix timestamp (seconds since epoch).
 
     ## Examples

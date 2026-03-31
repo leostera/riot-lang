@@ -19,7 +19,6 @@ type level = Level.t =
   | Warn
   | Error
 (** {1 Configuration} *)
-
 (** Sets the minimum log level *)
 val set_level : Level.t -> unit
 
@@ -27,7 +26,6 @@ val set_level : Level.t -> unit
 val get_level : unit -> Level.t
 
 (** {1 Logging Functions} *)
-
 val trace : ?meta:Metadata.t -> string -> unit
 
 val debug : ?meta:Metadata.t -> string -> unit
@@ -39,7 +37,6 @@ val warn : ?meta:Metadata.t -> string -> unit
 val error : ?meta:Metadata.t -> string -> unit
 
 (** {1 Handler Management} *)
-
 (** Attach a custom handler *)
 val attach : string -> (Event.t -> unit) -> unit
 
@@ -53,7 +50,6 @@ val detach_all : unit -> unit
 val list_handlers : unit -> string list
 
 (** {1 Supervision} *)
-
 val start_link : unit -> Pid.t
 
 (** Get the supervisor child spec for the logging infrastructure *)

@@ -73,7 +73,6 @@ open Std
 
     ```
 *)
-
 (** # Module Exports *)
 
 (** Red-green syntax tree library. See `Ceibo` module documentation. *)
@@ -123,7 +122,6 @@ type build_cst_error =
   | Parse_diagnostics of Diagnostic.t list
   | Cst_builder_error of CstBuilder.error
 (** # High-Level API *)
-
 (** `tokenize source` lexes source code into a flat list of real tokens.
 
     Leading whitespace/comments/docstrings are preserved on each token's

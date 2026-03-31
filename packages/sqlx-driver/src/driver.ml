@@ -6,7 +6,7 @@ module type Intf = sig
   type statement
   type result_set
   type error
-  val name : string
+  val name : string (* Error conversion - optional but recommended *)
 
   (* Error conversion - optional but recommended *)
   val error_to_string : error -> string

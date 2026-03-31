@@ -129,18 +129,23 @@ let delimiter_of_quoted_string_header = fun header ~is_extension ->
         | _ -> find_last_space (i - 1)
     in
     match find_last_space (String.length trimmed - 1) with
-    | Some i when i + 1 < String.length trimmed ->
-        String.sub trimmed (i + 1) (String.length trimmed - i - 1)
-    | _ ->
-        ""
+    | Some i when i + 1 < String.length trimmed -> String.sub
+    trimmed
+    (i + 1)
+    (String.length trimmed - i - 1)
+    | _ -> ""
 
 let rec find_quoted_string_pipe_offset = fun cursor offset ~is_extension ->
   match Cursor.peek_n cursor offset with
   | Some '|' -> Some offset
-  | Some c when is_extension && (is_quoted_string_header_char c || is_whitespace c) ->
-      find_quoted_string_pipe_offset cursor (offset + 1) ~is_extension
-  | Some c when is_quoted_string_header_char c ->
-      find_quoted_string_pipe_offset cursor (offset + 1) ~is_extension
+  | Some c when is_extension && (is_quoted_string_header_char c || is_whitespace c) -> find_quoted_string_pipe_offset
+  cursor
+  (offset + 1)
+  ~is_extension
+  | Some c when is_quoted_string_header_char c -> find_quoted_string_pipe_offset
+  cursor
+  (offset + 1)
+  ~is_extension
   | Some _ -> None
   | None -> None
 
@@ -152,10 +157,8 @@ let delimiter_matches_after_pipe = fun cursor delimiter ->
       | _ -> false
     else
       match Cursor.peek_n cursor (index + 1) with
-      | Some c when c = String.get delimiter index ->
-          loop (index + 1)
-      | _ ->
-          false
+      | Some c when c = String.get delimiter index -> loop (index + 1)
+      | _ -> false
   in
   loop 0
 
@@ -180,8 +183,7 @@ let quoted_string_info_at_cursor = fun cursor ->
         None
       else
         match find_quoted_string_pipe_offset cursor header_start ~is_extension with
-        | None ->
-            None
+        | None -> None
         | Some pipe_offset ->
             let header =
               if pipe_offset = header_start then
@@ -198,8 +200,7 @@ let quoted_string_info_at_cursor = fun cursor ->
             else
               Some {pipe_offset; delimiter; is_extension}
     )
-  | _ ->
-      None
+  | _ -> None
 
 let lex_whitespace = fun cursor start ->
   Cursor.skip_while cursor is_whitespace;
@@ -208,8 +209,7 @@ let lex_whitespace = fun cursor start ->
 
 let try_skip_quoted_string = fun cursor ->
   match quoted_string_info_at_cursor cursor with
-  | None ->
-      false
+  | None -> false
   | Some { pipe_offset; delimiter; _ } ->
       for _ = 0 to pipe_offset do
         Cursor.advance cursor
@@ -236,9 +236,7 @@ let rec lex_block_comment = fun cursor depth content_start token_start ->
   | None ->
       let value = Cursor.slice cursor content_start (Cursor.position cursor - content_start) in
       let end_ = Cursor.position cursor in
-      make_token
-        ~kind:(Token.Comment {value; terminated = false})
-        ~span:{start = token_start; end_}
+      make_token ~kind:(Token.Comment {value; terminated = false}) ~span:{start = token_start; end_}
   | Some '(' -> (
       Cursor.advance cursor;
       match Cursor.peek cursor with
@@ -259,8 +257,8 @@ let rec lex_block_comment = fun cursor depth content_start token_start ->
             (Cursor.position cursor - content_start - 2) in
             let end_ = Cursor.position cursor in
             make_token
-              ~kind:(Token.Comment {value; terminated = true})
-              ~span:{start = token_start; end_}
+            ~kind:(Token.Comment {value; terminated = true})
+            ~span:{start = token_start; end_}
           else
             lex_block_comment cursor (depth - 1) content_start token_start
       | _ -> lex_block_comment cursor depth content_start token_start
@@ -301,12 +299,12 @@ let lex_comment = fun cursor token_start ->
         let end_ = Cursor.position cursor in
         if is_docstring then
           make_token
-            ~kind:(Token.Docstring {value; terminated = false})
-            ~span:{start = token_start; end_}
+          ~kind:(Token.Docstring {value; terminated = false})
+          ~span:{start = token_start; end_}
         else
           make_token
-            ~kind:(Token.Comment {value; terminated = false})
-            ~span:{start = token_start; end_}
+          ~kind:(Token.Comment {value; terminated = false})
+          ~span:{start = token_start; end_}
     | Some '(' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
@@ -321,18 +319,19 @@ let lex_comment = fun cursor token_start ->
         | Some ')' ->
             Cursor.advance cursor;
             if depth = 1 then
-              let value = Cursor.slice cursor content_start (Cursor.position cursor
-              - content_start
-              - 2) in
+              let value = Cursor.slice
+              cursor
+              content_start
+              (Cursor.position cursor - content_start - 2) in
               let end_ = Cursor.position cursor in
               if is_docstring then
                 make_token
-                  ~kind:(Token.Docstring {value; terminated = true})
-                  ~span:{start = token_start; end_}
+                ~kind:(Token.Docstring {value; terminated = true})
+                ~span:{start = token_start; end_}
               else
                 make_token
-                  ~kind:(Token.Comment {value; terminated = true})
-                  ~span:{start = token_start; end_}
+                ~kind:(Token.Comment {value; terminated = true})
+                ~span:{start = token_start; end_}
             else
               lex_content (depth - 1)
         | _ -> lex_content depth
@@ -381,8 +380,7 @@ let lex_ident = fun cursor delim_stack token_start ->
             | Lsl
             | Lsr
             | Asr
-            | Mod ->
-                Token.Ident ident
+            | Mod -> Token.Ident ident
             | _ -> Token.Keyword kw
         )
       | None -> Token.Ident ident
@@ -415,8 +413,7 @@ let lex_number = fun cursor token_start ->
     | Some c when is_alpha c ->
         Cursor.advance cursor;
         true
-    | _ ->
-        false
+    | _ -> false
   in
   (* Check if this is a hex/octal/binary literal: 0x, 0o, 0b *)
   (* At this point, cursor is AT the first digit (not consumed yet) *)
@@ -426,9 +423,7 @@ let lex_number = fun cursor token_start ->
       (* consume '0' *)
       Cursor.advance cursor;
       (* consume 'x' *)
-      let hex_digits_raw =
-        Cursor.take_while cursor is_hex_digit_or_underscore
-      in
+      let hex_digits_raw = Cursor.take_while cursor is_hex_digit_or_underscore in
       let hex_digits = remove_underscores hex_digits_raw in
       let _ = consume_numeric_suffix () in
       let hex_str = "0x" ^ hex_digits in
@@ -443,9 +438,7 @@ let lex_number = fun cursor token_start ->
       (* consume '0' *)
       Cursor.advance cursor;
       (* consume 'o' *)
-      let octal_digits_raw =
-        Cursor.take_while cursor is_octal_digit_or_underscore
-      in
+      let octal_digits_raw = Cursor.take_while cursor is_octal_digit_or_underscore in
       let octal_digits = remove_underscores octal_digits_raw in
       let _ = consume_numeric_suffix () in
       let octal_str = "0o" ^ octal_digits in
@@ -460,9 +453,7 @@ let lex_number = fun cursor token_start ->
       (* consume '0' *)
       Cursor.advance cursor;
       (* consume 'b' *)
-      let binary_digits_raw =
-        Cursor.take_while cursor is_binary_digit_or_underscore
-      in
+      let binary_digits_raw = Cursor.take_while cursor is_binary_digit_or_underscore in
       let binary_digits = remove_underscores binary_digits_raw in
       let _ = consume_numeric_suffix () in
       let binary_str = "0b" ^ binary_digits in
@@ -473,9 +464,7 @@ let lex_number = fun cursor token_start ->
       in
       make_token ~kind ~span:(Ceibo.Span.make ~start:token_start ~end_:(Cursor.position cursor))
   | _ ->
-      let num_str_raw =
-        Cursor.take_while cursor is_digit_or_underscore
-      in
+      let num_str_raw = Cursor.take_while cursor is_digit_or_underscore in
       (* Remove underscores for parsing *)
       let num_str = remove_underscores num_str_raw in
       let end_ = Cursor.position cursor in
@@ -488,9 +477,7 @@ let lex_number = fun cursor token_start ->
             match Cursor.peek_n cursor 1 with
             | Some c when is_digit c -> (
                 Cursor.advance cursor;
-                let frac_raw =
-                  Cursor.take_while cursor is_digit_or_underscore
-                in
+                let frac_raw = Cursor.take_while cursor is_digit_or_underscore in
                 let frac = remove_underscores frac_raw in
                 let _ = consume_numeric_suffix () in
                 let float_str = num_str ^ "." ^ frac in
@@ -546,19 +533,14 @@ let lex_string = fun cursor token_start ->
   in
   let value, terminated = loop () in
   let end_ = Cursor.position cursor in
-  make_token
-    ~kind:(Token.Literal (String {value; terminated}))
-    ~span:{start = token_start; end_}
+  make_token ~kind:(Token.Literal (String {value; terminated})) ~span:{start = token_start; end_}
 
 let lex_quoted_string = fun cursor token_start ->
   let rec find_pipe_offset = fun offset ->
     match Cursor.peek_n cursor offset with
-    | Some '|' ->
-        Some offset
-    | Some c when is_ident_continue c ->
-        find_pipe_offset (offset + 1)
-    | _ ->
-        None
+    | Some '|' -> Some offset
+    | Some c when is_ident_continue c -> find_pipe_offset (offset + 1)
+    | _ -> None
   in
   match find_pipe_offset 1 with
   | Some pipe_offset ->
@@ -590,9 +572,7 @@ let lex_quoted_string = fun cursor token_start ->
       in
       let value, terminated = loop () in
       let end_ = Cursor.position cursor in
-      make_token
-        ~kind:(Token.Literal (String {value; terminated}))
-        ~span:{start = token_start; end_}
+      make_token ~kind:(Token.Literal (String {value; terminated})) ~span:{start = token_start; end_}
   | None ->
       Cursor.advance cursor;
       let end_ = Cursor.position cursor in
@@ -1012,17 +992,13 @@ let next = fun cursor delim_stack ->
         match Cursor.peek_n cursor 1 with
         | Some c when is_ident_start c || c = '_' -> (
             match Cursor.peek_n cursor 2 with
-            | Some '\'' ->
-                lex_char cursor start
-            | _ ->
-                lex_type_var cursor start
+            | Some '\'' -> lex_char cursor start
+            | _ -> lex_type_var cursor start
           )
         | Some '\\' -> (
             match (Cursor.peek_n cursor 2, Cursor.peek_n cursor 3) with
-            | Some '#', Some c when is_ident_start c ->
-                lex_type_var cursor start
-            | _ ->
-                lex_char cursor start
+            | Some '#', Some c when is_ident_start c -> lex_type_var cursor start
+            | _ -> lex_char cursor start
           )
         | _ ->
             lex_char cursor start
@@ -1057,15 +1033,12 @@ let tokenize = fun source ->
           delim_stack
     in
     match Token.trivia_of_token token with
-    | Some trivia ->
-        lex_all new_stack (trivia :: pending_trivia_rev) acc
+    | Some trivia -> lex_all new_stack (trivia :: pending_trivia_rev) acc
     | None -> (
         let token = attach_pending_trivia token pending_trivia_rev in
         match token.Token.kind with
-        | Token.EOF ->
-            List.rev (token :: acc)
-        | _ ->
-            lex_all new_stack [] (token :: acc)
+        | Token.EOF -> List.rev (token :: acc)
+        | _ -> lex_all new_stack [] (token :: acc)
       )
   in
   lex_all [] [] []

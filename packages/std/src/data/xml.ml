@@ -1,17 +1,13 @@
 open Global
-  open IO
-  open Collections
+open IO
+open Collections
 
 type t =
-  | Element of {
-      name : string;
-      attrs : (string * string) list;
-      children : t list;
-    }
+  | Element of { name : string; attrs : (string * string) list; children : t list; }
   | Text of string
   | CData of string
 
-let escape_xml str =
+let escape_xml = fun str ->
   let buf = Buffer.create (String.length str) in
   String.iter
     (fun c ->
@@ -24,32 +20,30 @@ let escape_xml str =
     str;
   Buffer.contents buf
 
-let element name ?(attrs = []) children = Element { name; attrs; children }
-let text str = Text (escape_xml str)
-let cdata str = CData str
+let element = fun name ?(attrs = []) children -> Element {name; attrs; children}
 
-let rec to_string ?(indent = 0) = function
-  | Text str -> str
-  | CData str -> "<![CDATA[" ^ str ^ "]]>"
+let text = fun str -> Text (escape_xml str)
+
+let cdata = fun str -> CData str
+
+let rec to_string = fun ?(indent = 0) ->
+  function
+  | Text str ->
+      str
+  | CData str ->
+      "<![CDATA[" ^ str ^ "]]>"
   | Element { name; attrs; children } ->
       let spaces = String.make (indent * 2) ' ' in
       let attrs_str =
-        if attrs = [] then ""
+        if attrs = [] then
+          ""
         else
-          " "
-          ^ String.concat " "
-              (List.map
-                 (fun (k, v) -> k ^ "=\"" ^ escape_xml v ^ "\"")
-                 attrs)
+          " " ^ String.concat " " (List.map (fun ((k, v)) -> k ^ "=\"" ^ escape_xml v ^ "\"") attrs)
       in
       if children = [] then
-        (* Use explicit closing tags for HTML compatibility *)
         spaces ^ "<" ^ name ^ attrs_str ^ "></" ^ name ^ ">"
       else
-        let children_str =
-          String.concat "\n"
-            (List.map (to_string ~indent:(indent + 1)) children)
-        in
+        let children_str = String.concat "\n" (List.map (to_string ~indent:((indent + 1))) children) in
         spaces ^ "<" ^ name ^ attrs_str ^ ">\n" ^ children_str ^ "\n" ^ spaces ^ "</" ^ name ^ ">"
 
 let declaration = {|<?xml version="1.0" encoding="UTF-8"?>|}

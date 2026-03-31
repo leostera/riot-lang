@@ -3,7 +3,6 @@
     A dependency summary is planner-owned state: it records immutable identity
     and where that dependency's artifacts are expected to be materialized in
     the store, without requiring that they are already built. *)
-
 open Std
 open Std.Collections
 open Tusk_model

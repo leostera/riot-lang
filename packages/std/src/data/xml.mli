@@ -1,9 +1,5 @@
 type t =
-  | Element of {
-      name : string;
-      attrs : (string * string) list;
-      children : t list;
-    }
+  | Element of { name : string; attrs : (string * string) list; children : t list; }
   | Text of string
   | CData of string
 val element : string -> ?attrs:(string * string) list -> t list -> t

@@ -4,4 +4,4 @@ type 'model t = {
   view : 'model -> Gooey.Element.t;
 }
 
-let make ~init ~update ~view () = { init; update; view }
+let make = fun ~init ~update ~view () -> {init; update; view}

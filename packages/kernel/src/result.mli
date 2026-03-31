@@ -49,7 +49,7 @@ open Types
 type ('a, 'e) t = ('a, 'e) result =
   | Ok of 'a
   | Error of 'e
-  (** The Result type - either [`Ok`] with a success value or [`Error`] with
+(** The Result type - either [`Ok`] with a success value or [`Error`] with
           an error value *)
 (** # Constructors *)
 
@@ -69,7 +69,6 @@ val ok : 'a -> ('a, 'e) t
 val err : 'e -> ('a, 'e) t
 
 (** # Querying *)
-
 (** Returns `true` if the result is [`Ok`].
 
     ## Examples
@@ -120,7 +119,6 @@ val is_ok_and : ('a -> bool) -> ('a, 'e) t -> bool
 val is_err_and : ('e -> bool) -> ('a, 'e) t -> bool
 
 (** # Transforming *)
-
 (** Maps a `Result<'a, 'e>` to `Result<'b, 'e>` by applying a function to the
     [`Ok`] value.
 
@@ -176,6 +174,7 @@ val map_err : ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 
     let y = Error "bar" in assert (Result.map_or ~default:42 String.length y =
     42) ``` *)
+
 (** Maps a `Result<'a, 'e>` to `'b` by applying fallback function to [`Error`],
     or function to [`Ok`] value.
 
@@ -196,7 +195,6 @@ val map_or : default:'b -> ('a -> 'b) -> ('a, 'e) t -> 'b
 val map_or_else : default:('e -> 'b) -> ('a -> 'b) -> ('a, 'e) t -> 'b
 
 (** # Chaining *)
-
 (** Calls function on [`Ok`] value if present, short-circuits on [`Error`].
 
     Often used to chain fallible operations. This is sometimes called "flatmap"
@@ -244,7 +242,6 @@ val or_ : ('a, 'e) t -> ('a, 'e) t -> ('a, 'e) t
 val or_else : ('a, 'e) t -> ('e -> ('a, 'f) t) -> ('a, 'f) t
 
 (** # Extracting values *)
-
 (** Returns the contained [`Ok`] value, consuming the result.
 
     ## Panics
@@ -364,7 +361,6 @@ val ok_value : ('a, 'e) t -> 'a option
 val err_value : ('a, 'e) t -> 'e option
 
 (** # Inspecting *)
-
 (** Calls the provided closure on the contained [`Ok`] value (if any).
 
     Returns the original result unchanged. Useful for debugging or side effects.
@@ -392,7 +388,6 @@ val inspect : ('a -> unit) -> ('a, 'e) t -> ('a, 'e) t
 val inspect_err : ('e -> unit) -> ('a, 'e) t -> ('a, 'e) t
 
 (** # Iterating *)
-
 (** Calls function on [`Ok`] value if present, otherwise does nothing.
 
     ## Examples
@@ -416,7 +411,6 @@ val iter : ('a -> unit) -> ('a, 'e) t -> unit
 val iter_error : ('e -> unit) -> ('a, 'e) t -> unit
 
 (** # Converting *)
-
 (** Converts from `Result<'a, 'e>` to [`Option<'a>`].
 
     Alias for [`ok_value`].
@@ -461,7 +455,6 @@ val of_option : error:'e -> 'a option -> ('a, 'e) t
 val transpose : ('a option, 'e) t -> ('a, 'e) t option
 
 (** # Flattening *)
-
 (** Converts from `Result<Result<'a, 'e>, 'e>` to `Result<'a, 'e>`.
 
     ## Examples
@@ -479,7 +472,6 @@ val transpose : ('a option, 'e) t -> ('a, 'e) t option
 val flatten : (('a, 'e) t, 'e) t -> ('a, 'e) t
 
 (** # Collecting *)
-
 (** Converts a list of `Result`s into a single `Result` containing a list.
 
     If all results are [`Ok`], returns [`Ok`] with list of values. If any result
@@ -525,7 +517,6 @@ val all : ('a, 'e) t list -> ('a list, 'e) t
 val both : ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
 
 (** # Misc *)
-
 (** Applies one of two functions depending on the result variant.
 
     This is equivalent to pattern matching but can be more convenient in

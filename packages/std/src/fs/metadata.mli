@@ -37,7 +37,6 @@
 (** File metadata from filesystem stat operations. *)
 type t = Kernel.Fs.File.Metadata.t
 (** ## File Properties *)
-
 (** Returns the file type.
 
     ## Examples
@@ -100,7 +99,6 @@ val len : t -> int
 val permissions : t -> Permissions.t
 
 (** ## Timestamps *)
-
 (** Returns last access time (atime) as seconds since Unix epoch.
 
     ## Examples
@@ -136,7 +134,6 @@ val modified : t -> float
 val created : t -> float option
 
 (** ## Unix-specific *)
-
 (** Returns Unix mode bits (permissions + file type).
 
     ## Examples

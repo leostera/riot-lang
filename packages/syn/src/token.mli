@@ -17,47 +17,46 @@ open Std
 
     The text of the token is not stored directly - use the span to extract it
     from the original source when needed. *)
-
 (** # Types *)
 
 (** Keyword type from the `Keyword` module. *)
 type keyword = Keyword.t
 type literal =
-  | String of {
-      value : string;
-      terminated : bool;
-    }
+  | String of { value : string; terminated : bool; }
   (** String literal. `terminated` is false if the closing quote is missing.
       *)
-  | Int of int (** Integer literal. *)
-  | Float of float (** Floating-point literal. *)
-  | Char of char (** Character literal. *)
+  | Int of int
+  (** Integer literal. *)
+  | Float of float
+  (** Floating-point literal. *)
+  | Char of char
+(** Character literal. *)
 type delimiter =
-  | Paren (** `(` or `)` *)
-  | Brace (** `{` or `}` *)
-  | Bracket (** `[` or `]` *)
-  | Array (** `[|` or `|]` *)
-  | BeginEnd (** `begin` / `end` pair *)
-  | StructEnd (** `struct` / `end` pair *)
-  | SigEnd (** `sig` / `end` pair *)
-  | ObjectEnd (** `object` / `end` pair *)
+  | Paren
+  (** `(` or `)` *)
+  | Brace
+  (** `{` or `}` *)
+  | Bracket
+  (** `[` or `]` *)
+  | Array
+  (** `[|` or `|]` *)
+  | BeginEnd
+  (** `begin` / `end` pair *)
+  | StructEnd
+  (** `struct` / `end` pair *)
+  | SigEnd
+  (** `sig` / `end` pair *)
+  | ObjectEnd
+(** `object` / `end` pair *)
 (** A token with its kind and source location. *)
 type trivia_kind =
-  | CommentTrivia of {
-      value : string;
-      terminated : bool;
-    }
-  | DocstringTrivia of {
-      value : string;
-      terminated : bool;
-    }
+  | CommentTrivia of { value : string; terminated : bool; }
+  | DocstringTrivia of { value : string; terminated : bool; }
   | WhitespaceTrivia
-
 type trivia = {
   kind : trivia_kind;
   span : Ceibo.Span.t;
 }
-
 type token_kind =
   (* Keywords *)
   | Keyword of keyword
@@ -66,82 +65,126 @@ type token_kind =
   | Ident of string
   (** Identifier: variable name, function name, module name, etc. *)
   (* Literals *)
-  | Literal of literal (** Literal value: int, float, string, or char. *)
+  | Literal of literal
+  (** Literal value: int, float, string, or char. *)
   (* Delimiters *)
   | OpenDelim of delimiter
   (** Opening delimiter: `(`, `{`, `[`, `begin`, `struct`, `sig`, `object` *)
-  | CloseDelim of delimiter (** Closing delimiter: `)`, `}`, `]`, `end` *)
+  | CloseDelim of delimiter
+  (** Closing delimiter: `)`, `}`, `]`, `end` *)
   (* Trivia *)
-  | Comment of {
-      value : string;
-      terminated : bool;
-    }
+  | Comment of { value : string; terminated : bool; }
   (** Block comment `(* ... *)`. `terminated` is false if unclosed. *)
-  | Docstring of {
-      value : string;
-      terminated : bool;
-    }
+  | Docstring of { value : string; terminated : bool; }
   (** Documentation comment `(** ... *)`. `terminated` is false if unclosed.
       *)
-  | Whitespace (** Whitespace: spaces, tabs, newlines. *)
+  | Whitespace
+  (** Whitespace: spaces, tabs, newlines. *)
   (* Operators *)
-  | Plus (** `+` *)
-  | Minus (** `-` *)
-  | Star (** `*` *)
-  | Slash (** `/` *)
-  | Percent (** `%` *)
-  | Caret (** `^` *)
-  | Eq (** `=` *)
-  | Lt (** `<` *)
-  | Gt (** `>` *)
-  | LtEq (** `<=` *)
-  | GtEq (** `>=` *)
-  | Ne (** `<>` *)
-  | Bang (** `!` *)
-  | And (** `&&` *)
-  | Or (** `||` *)
+  | Plus
+  (** `+` *)
+  | Minus
+  (** `-` *)
+  | Star
+  (** `*` *)
+  | Slash
+  (** `/` *)
+  | Percent
+  (** `%` *)
+  | Caret
+  (** `^` *)
+  | Eq
+  (** `=` *)
+  | Lt
+  (** `<` *)
+  | Gt
+  (** `>` *)
+  | LtEq
+  (** `<=` *)
+  | GtEq
+  (** `>=` *)
+  | Ne
+  (** `<>` *)
+  | Bang
+  (** `!` *)
+  | And
+  (** `&&` *)
+  | Or
+  (** `||` *)
   (* Punctuation *)
-  | Colon (** `:` *)
-  | Semi (** `;` *)
-  | Comma (** `,` *)
-  | Dot (** `.` *)
-  | DotDot (** `..` for range patterns *)
-  | Arrow (** `->` *)
-  | LeftArrow (** `<-` *)
-  | FatArrow (** `=>` *)
-  | ColonColon (** `::` *)
-  | ColonEq (** `:=` *)
-  | Question (** `?` *)
-  | At (** `@` *)
-  | Hash (** `#` *)
-  | Tilde (** `~` *)
-  | Dollar (** `$` *)
-  | Pipe (** `|` *)
-  | Ampersand (** `&` *)
-  | Underscore (** `_` *)
-  | Backtick (** `` ` `` - polymorphic variant tag *)
-  | Quote (** `'` - type variable prefix *)
-  | StarStar (** `**` - float power *)
-  | EqEq (** `==` - physical equality *)
-  | BangEq (** `!=` - physical inequality *)
-  | AtAt (** `@@` - application operator *)
-  | PipeGt (** `|>` - reverse application *)
-  | PercentGt (** `%>` - compose right *)
-  | LtPercent (** `<%` - compose left *)
-  | PlusDot (** `+.` - float addition *)
-  | MinusDot (** `-.` - float subtraction *)
-  | StarDot (** `*.` - float multiplication *)
-  | SlashDot (** `/.` - float division *)
+  | Colon
+  (** `:` *)
+  | Semi
+  (** `;` *)
+  | Comma
+  (** `,` *)
+  | Dot
+  (** `.` *)
+  | DotDot
+  (** `..` for range patterns *)
+  | Arrow
+  (** `->` *)
+  | LeftArrow
+  (** `<-` *)
+  | FatArrow
+  (** `=>` *)
+  | ColonColon
+  (** `::` *)
+  | ColonEq
+  (** `:=` *)
+  | Question
+  (** `?` *)
+  | At
+  (** `@` *)
+  | Hash
+  (** `#` *)
+  | Tilde
+  (** `~` *)
+  | Dollar
+  (** `$` *)
+  | Pipe
+  (** `|` *)
+  | Ampersand
+  (** `&` *)
+  | Underscore
+  (** `_` *)
+  | Backtick
+  (** `` ` `` - polymorphic variant tag *)
+  | Quote
+  (** `'` - type variable prefix *)
+  | StarStar
+  (** `**` - float power *)
+  | EqEq
+  (** `==` - physical equality *)
+  | BangEq
+  (** `!=` - physical inequality *)
+  | AtAt
+  (** `@@` - application operator *)
+  | PipeGt
+  (** `|>` - reverse application *)
+  | PercentGt
+  (** `%>` - compose right *)
+  | LtPercent
+  (** `<%` - compose left *)
+  | PlusDot
+  (** `+.` - float addition *)
+  | MinusDot
+  (** `-.` - float subtraction *)
+  | StarDot
+  (** `*.` - float multiplication *)
+  | SlashDot
+  (** `/.` - float division *)
   (* Special *)
-  | EOF (** End of file marker. *)
-  | Unknown of char (** Unknown/invalid character. Used for error recovery. *)
+  | EOF
+  (** End of file marker. *)
+  | Unknown of char
+(** Unknown/invalid character. Used for error recovery. *)
 type t = {
   kind : token_kind;
   span : Ceibo.Span.t;
   leading_trivia : trivia list;
 }
 (** # Utilities *)
-
 (** `delimiter_of_keyword kw` returns the delimiter type for keywords that act
     as opening delimiters.
 

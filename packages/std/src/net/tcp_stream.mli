@@ -1,5 +1,4 @@
 (** TCP stream for connected sockets *)
-
 open Global
 
 type t = Kernel.Net.Tcp_stream.t

@@ -27,6 +27,7 @@
 (** # Command Line *)
 
 val args : string list
+
 (** Command-line arguments passed to the program.
 
     The first element is typically the program name, followed by user-provided
@@ -42,10 +43,10 @@ val args : string list
     (* Simple argument parsing *) let verbose = List.mem "--verbose" Env.args in
     let files = List.filter (fun s -> not (String.starts_with ~prefix:"-" s) )
     (List.tl Env.args) ``` *)
-
 (** # Working Directory *)
 
 val current_dir : unit -> (Path.t, Path.error) Result.t
+
 (** Returns the current working directory.
 
     ## Examples
@@ -57,8 +58,8 @@ val current_dir : unit -> (Path.t, Path.error) Result.t
     (* Build relative paths *) let config_path = Env.current_dir () |>
     Result.map (fun cwd -> cwd / Path.v "config.toml") |> Result.expect
     ~msg:"Cannot determine config path" ``` *)
-
 val set_current_dir : Path.t -> (unit, Path.error) Result.t
+
 (** Changes the current working directory.
 
     ## Examples
@@ -77,8 +78,8 @@ val set_current_dir : Path.t -> (unit, Path.error) Result.t
     - Directory doesn't exist
     - Permission denied
     - Path is not a directory *)
-
 val home_dir : unit -> Path.t option
+
 (** Returns the user's home directory.
 
     ## Examples
@@ -96,18 +97,22 @@ val home_dir : unit -> Path.t option
     - Windows: Returns `%USERPROFILE%` or `%HOMEDRIVE%%HOMEPATH%`
 
     Returns [`None`] if the home directory cannot be determined. *)
-
 (** # Environment Variables *)
 
 (** Type specifications for environment variable parsing *)
 type 't var_type =
-  | String : string var_type  (** String values (no parsing) *)
-  | Int : int var_type  (** Integer values *)
-  | Float : float var_type  (** Floating point values *)
-  | Bool : bool var_type  (** Boolean values (true/false, 1/0, yes/no) *)
-  | Char : char var_type  (** Single character values *)
-
+  | String : string var_type
+  (** String values (no parsing) *)
+  | Int : int var_type
+  (** Integer values *)
+  | Float : float var_type
+  (** Floating point values *)
+  | Bool : bool var_type
+  (** Boolean values (true/false, 1/0, yes/no) *)
+  | Char : char var_type
+(** Single character values *)
 val var : 't var_type -> name:string -> 't option
+
 (** Reads and parses a typed environment variable.
     
     Returns [`None`] if the variable is not set or parsing fails.
@@ -153,8 +158,8 @@ val var : 't var_type -> name:string -> 't option
     - `Char`: Takes first character of the string
     - `String`: Returns value as-is
 *)
-
 val set_var : name:string -> value:string -> 't option
+
 (** Sets an environment variable.
 
     Returns the previous value if it existed.
@@ -167,8 +172,8 @@ val set_var : name:string -> value:string -> 't option
     (* Save and restore *) let old_path = Env.set_var ~name:"PATH"
     ~value:new_path in (* ... do work ... *) Option.iter (fun p -> Env.set_var
     ~name:"PATH" ~value:p |> ignore ) old_path ``` *)
-
 val vars : unit -> (string * string) list
+
 (** Returns all environment variables as key-value pairs.
 
     ## Examples

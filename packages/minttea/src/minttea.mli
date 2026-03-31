@@ -4,35 +4,30 @@
     Build interactive terminal applications using the Model-View-Update pattern.
 
 *)
-
 open Std
 
 (** Configuration *)
 module Config : sig
-  type render_mode = Clear | Persist
-  
-  type output_target = Stdout | Stderr
-
+  type render_mode =
+    Clear
+    | Persist
+  type output_target =
+    Stdout
+    | Stderr
   type t = {
     render_mode : render_mode;
     fps : int;
     output : output_target;
   }
-
-  val make :
-    ?render_mode:render_mode ->
-    ?fps:int ->
-    ?output:output_target ->
-    unit ->
-    t
+  val make : ?render_mode:render_mode -> ?fps:int -> ?output:output_target -> unit -> t
 end
 
-val config :
-  ?render_mode:Config.render_mode ->
-  ?fps:int ->
-  ?output:Config.output_target ->
-  unit ->
-  Config.t
+val config : ?render_mode:Config.render_mode ->
+?fps:int ->
+?output:Config.output_target ->
+unit ->
+Config.t
+
 (** Create a configuration with optional parameters *)
 
 (** Terminal events *)
@@ -46,7 +41,6 @@ module Event : sig
     | CtrlShift
     | AltShift
     | CtrlAltShift
-
   type key =
     | Up
     | Down
@@ -65,10 +59,16 @@ module Event : sig
     | PageDown
     | F of int
     | Key of string
-
-  type mouse_button = Left | Middle | Right | WheelUp | WheelDown
-  type mouse_event_type = Click | Release | Motion
-
+  type mouse_button =
+    Left
+    | Middle
+    | Right
+    | WheelUp
+    | WheelDown
+  type mouse_event_type =
+    Click
+    | Release
+    | Motion
   type mouse_event = {
     button : mouse_button;
     event_type : mouse_event_type;
@@ -78,9 +78,10 @@ module Event : sig
     alt : bool;
     shift : bool;
   }
-
-  type window_size = { width : int; height : int }
-
+  type window_size = {
+    width : int;
+    height : int;
+  }
   type t =
     | KeyDown of key * modifier
     | Mouse of mouse_event
@@ -91,15 +92,16 @@ module Event : sig
     | FocusGained
     | FocusLost
     | Custom of Message.t
-
   val key_to_string : key -> string
+
   val modifier_to_string : modifier -> string
 end
 
 (** Terminal commands *)
 module Command : sig
-  type mouse_mode = Cell_motion | All_motion
-
+  type mouse_mode =
+    Cell_motion
+    | All_motion
   type t =
     | Noop
     | Quit
@@ -115,8 +117,7 @@ module Command : sig
     | DisableFocusTracking
     | SetWindowTitle of string
     | Seq of t list
-    | SetTimer of { ref : Timer.id Ref.t; duration : Time.Duration.t }
-
+    | SetTimer of { ref : Timer.id Ref.t; duration : Time.Duration.t; }
   val timer : after:Time.Duration.t -> Timer.id Ref.t * t
 end
 
@@ -129,27 +130,25 @@ module Style = Gooey.Style
 (** Application definition *)
 module App : sig
   type 'model t
-
-  val make :
-    init:('model -> 'model * Command.t) ->
-    update:(Event.t -> 'model -> 'model * Command.t) ->
-    view:('model -> Gooey.Element.t) ->
-    unit ->
-    'model t
+  val make : init:('model -> 'model * Command.t) ->
+  update:(Event.t -> 'model -> 'model * Command.t) ->
+  view:('model -> Gooey.Element.t) ->
+  unit ->
+  'model t
 end
 
 module Component = Component
 
-val app :
-  init:('model -> 'model * Command.t) ->
-  update:(Event.t -> 'model -> 'model * Command.t) ->
-  view:('model -> Gooey.Element.t) ->
-  unit ->
-  'model App.t
+val app : init:('model -> 'model * Command.t) ->
+update:(Event.t -> 'model -> 'model * Command.t) ->
+view:('model -> Gooey.Element.t) ->
+unit ->
+'model App.t
+
 (** Create a new application *)
-
 val run : ?config:Config.t -> 'model -> 'model App.t -> (unit, Process.exit_reason) result
-(** Run the application *)
 
+(** Run the application *)
 val start : ?config:Config.t -> 'model App.t -> 'model -> unit
+
 (** Start the application with Miniriot runtime *)

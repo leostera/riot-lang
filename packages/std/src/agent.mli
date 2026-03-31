@@ -27,7 +27,6 @@
 
 (** Agent handle parametrized by state type *)
 type 'state t
-
 (** Start an agent with the given initial state *)
 val start : (unit -> 'state) -> 'state t
 

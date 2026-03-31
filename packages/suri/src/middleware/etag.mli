@@ -56,9 +56,7 @@ open Std
       (* Weak ETags (faster, less strict) *)
       etag ~weak:true;
     ]} *)
-
 (** {1 Middleware} *)
-
 (** ETag generation middleware.
 
     Generates ETags from response body hash.

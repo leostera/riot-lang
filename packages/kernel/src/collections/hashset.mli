@@ -73,7 +73,6 @@
     in an unordered fashion with uniqueness guaranteed by hashing. *)
 type 'a t
 (** {1 Creation} *)
-
 (** Creates a new empty hash set.
 
     ## Examples
@@ -103,7 +102,6 @@ val with_capacity : int -> 'a t
 val of_list : 'a list -> 'a t
 
 (** {1 Basic Operations} *)
-
 (** Adds a value to the set. Returns [true] if the value was newly inserted,
     [false] if it already existed.
 
@@ -180,7 +178,6 @@ val is_empty : 'a t -> bool
 val clear : 'a t -> unit
 
 (** {1 Iteration} *)
-
 (** Applies function [fn] to each element in the set. The iteration order is
     unspecified and may change between runs.
 
@@ -226,6 +223,7 @@ val to_mut_iter : 'a t -> 'a Iter.MutIterator.t
     ## Complexity
 
     - Time: O(n) *)
+
 (** Converts the set to a list. The order of elements is unspecified.
 
     ## Examples
@@ -242,7 +240,6 @@ val fold : 'a t -> init:'acc -> fn:('acc -> 'a -> 'acc) -> 'acc
 val to_list : 'a t -> 'a list
 
 (** {1 Set Operations} *)
-
 (** Returns a new set containing all elements from both sets.
 
     ## Examples

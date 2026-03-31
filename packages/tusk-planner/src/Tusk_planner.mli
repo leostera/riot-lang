@@ -28,14 +28,17 @@ build_ctx:Build_ctx.t ->
 (package_plan_result, Planning_error.t) result
 
 (* Legacy/testing function - commented out, use plan_package_with_graph instead *)
+
 (* val plan_package :
   workspace:Workspace.t ->
   toolchain:Tusk_toolchain.t ->
   package:Package.t ->
   (module_plan_result, Planning_error.t) result *)
+
 (** Plan a single package on-demand - builds module graph and action graph.
     Called by executor when actually building a package (after cache miss). This
     is the old interface without dependency hash tracking. *)
+
 (** Sub-modules *)
 module Action = Action
 

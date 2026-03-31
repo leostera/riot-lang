@@ -1,6 +1,7 @@
 open Std
 
 (* OCaml syntax node kinds for Ceibo green trees *)
+
 type t =
   (* ========================================================================= *)
   (* TRIVIA - Whitespace and comments *)
@@ -21,147 +22,272 @@ type t =
   (* EXPRESSIONS *)
   (* ========================================================================= *)
   | IDENT_EXPR
-  | PATH_EXPR (* Module.path.to.value *)
-  | APPLY_EXPR (* f x y *)
-  | LABELED_ARG (* ~label or ~label:value in function call *)
-  | OPTIONAL_ARG (* ?label or ?label:value in function call *)
-  | INFIX_EXPR (* x + y *)
-  | PREFIX_EXPR (* -x, !ref *)
-  | IF_EXPR (* if c then e1 else e2 *)
-  | MATCH_EXPR (* match e with ... *)
-  | FUN_EXPR (* fun x -> e *)
-  | LABELED_PARAM (* ~label or ~label:pattern *)
-  | OPTIONAL_PARAM (* ?label or ?label:pattern *)
-  | OPTIONAL_PARAM_DEFAULT (* ?(label = expr) *)
-  | FUNCTION_EXPR (* function | p1 -> e1 | ... *)
-  | LET_EXPR (* let x = e1 in e2 *)
-  | LET_REC_EXPR (* let rec f x = e1 in e2 *)
-  | SEQUENCE_EXPR (* e1; e2; e3 *)
-  | PAREN_EXPR (* (e) *)
-  | TUPLE_EXPR (* (e1, e2, e3) *)
-  | LIST_EXPR (* [e1; e2; e3] *)
-  | ARRAY_EXPR (* [|e1; e2; e3|] *)
-  | RECORD_EXPR (* { field1 = e1; field2 = e2 } *)
-  | RECORD_UPDATE_EXPR (* { record with field = e } *)
-  | UNREACHABLE_EXPR (* . *)
-  | FIELD_ACCESS_EXPR (* record.field *)
-  | ARRAY_INDEX_EXPR (* arr.(i) *)
-  | STRING_INDEX_EXPR (* s.[i] *)
-  | ASSIGN_EXPR (* field <- value, arr.(i) <- value *)
-  | CONSTRUCTOR_EXPR (* Some e, Ok value *)
-  | POLY_VARIANT_EXPR (* `Tag or `Tag value *)
-  | ASSERT_EXPR (* assert e *)
-  | LAZY_EXPR (* lazy e *)
-  | WHILE_EXPR (* while c do e done *)
-  | FOR_EXPR (* for x = e1 to e2 do e3 done *)
-  | TRY_EXPR (* try e with | p1 -> e1 | ... *)
-  | TYPED_EXPR (* (e : t) *)
-  | COERCE_EXPR (* (e :> t) or (e : t1 :> t2) *)
-  | ATTRIBUTE_EXPR (* e [@attr] or e [@@attr] *)
-  | EXTENSION_EXPR (* [%ext ...] *)
-  | OBJECT_EXPR (* object ... end *)
-  | OBJECT_SELF (* object (self) ... end *)
-  | OBJECT_METHOD (* method name = expr *)
-  | OBJECT_VAL (* val x = expr *)
-  | OBJECT_INHERIT (* inherit expr *)
-  | OBJECT_UPDATE_EXPR (* {< field = value >} *)
-  | METHOD_CALL_EXPR (* obj#method *)
-  | NEW_EXPR (* new class_name *)
-  | LOCAL_OPEN_EXPR (* let open Module in expr *)
-  | LET_MODULE_EXPR (* let module M = ... in expr *)
-  | FIRST_CLASS_MODULE_EXPR (* (module M) or (module M : S) *)
-  | STRUCT_EXPR (* struct ... end *)
-  | SIG_EXPR (* sig ... end *)
-  | MODULE_PATH (* A.B.C module path *)
+  | PATH_EXPR
+  (* Module.path.to.value *)
+  | APPLY_EXPR
+  (* f x y *)
+  | LABELED_ARG
+  (* ~label or ~label:value in function call *)
+  | OPTIONAL_ARG
+  (* ?label or ?label:value in function call *)
+  | INFIX_EXPR
+  (* x + y *)
+  | PREFIX_EXPR
+  (* -x, !ref *)
+  | IF_EXPR
+  (* if c then e1 else e2 *)
+  | MATCH_EXPR
+  (* match e with ... *)
+  | FUN_EXPR
+  (* fun x -> e *)
+  | LABELED_PARAM
+  (* ~label or ~label:pattern *)
+  | OPTIONAL_PARAM
+  (* ?label or ?label:pattern *)
+  | OPTIONAL_PARAM_DEFAULT
+  (* ?(label = expr) *)
+  | FUNCTION_EXPR
+  (* function | p1 -> e1 | ... *)
+  | LET_EXPR
+  (* let x = e1 in e2 *)
+  | LET_REC_EXPR
+  (* let rec f x = e1 in e2 *)
+  | SEQUENCE_EXPR
+  (* e1; e2; e3 *)
+  | PAREN_EXPR
+  (* (e) *)
+  | TUPLE_EXPR
+  (* (e1, e2, e3) *)
+  | LIST_EXPR
+  (* [e1; e2; e3] *)
+  | ARRAY_EXPR
+  (* [|e1; e2; e3|] *)
+  | RECORD_EXPR
+  (* { field1 = e1; field2 = e2 } *)
+  | RECORD_UPDATE_EXPR
+  (* { record with field = e } *)
+  | UNREACHABLE_EXPR
+  (* . *)
+  | FIELD_ACCESS_EXPR
+  (* record.field *)
+  | ARRAY_INDEX_EXPR
+  (* arr.(i) *)
+  | STRING_INDEX_EXPR
+  (* s.[i] *)
+  | ASSIGN_EXPR
+  (* field <- value, arr.(i) <- value *)
+  | CONSTRUCTOR_EXPR
+  (* Some e, Ok value *)
+  | POLY_VARIANT_EXPR
+  (* `Tag or `Tag value *)
+  | ASSERT_EXPR
+  (* assert e *)
+  | LAZY_EXPR
+  (* lazy e *)
+  | WHILE_EXPR
+  (* while c do e done *)
+  | FOR_EXPR
+  (* for x = e1 to e2 do e3 done *)
+  | TRY_EXPR
+  (* try e with | p1 -> e1 | ... *)
+  | TYPED_EXPR
+  (* (e : t) *)
+  | COERCE_EXPR
+  (* (e :> t) or (e : t1 :> t2) *)
+  | ATTRIBUTE_EXPR
+  (* e [@attr] or e [@@attr] *)
+  | EXTENSION_EXPR
+  (* [%ext ...] *)
+  | OBJECT_EXPR
+  (* object ... end *)
+  | OBJECT_SELF
+  (* object (self) ... end *)
+  | OBJECT_METHOD
+  (* method name = expr *)
+  | OBJECT_VAL
+  (* val x = expr *)
+  | OBJECT_INHERIT
+  (* inherit expr *)
+  | OBJECT_UPDATE_EXPR
+  (* {< field = value >} *)
+  | METHOD_CALL_EXPR
+  (* obj#method *)
+  | NEW_EXPR
+  (* new class_name *)
+  | LOCAL_OPEN_EXPR
+  (* let open Module in expr *)
+  | LET_MODULE_EXPR
+  (* let module M = ... in expr *)
+  | FIRST_CLASS_MODULE_EXPR
+  (* (module M) or (module M : S) *)
+  | STRUCT_EXPR
+  (* struct ... end *)
+  | SIG_EXPR
+  (* sig ... end *)
+  | MODULE_PATH
+  (* A.B.C module path *)
   (* ========================================================================= *)
   (* PATTERNS *)
   (* ========================================================================= *)
   | IDENT_PATTERN
-  | WILDCARD_PATTERN (* _ *)
+  | WILDCARD_PATTERN
+  (* _ *)
   | LITERAL_PATTERN
-  | CONSTRUCTOR_PATTERN (* Some x *)
-  | TUPLE_PATTERN (* (x, y, z) *)
-  | LIST_PATTERN (* [x; y; z] *)
-  | ARRAY_PATTERN (* [|x; y; z|] *)
-  | CONS_PATTERN (* x :: xs *)
-  | RECORD_PATTERN (* { field1; field2 = p } *)
-  | OR_PATTERN (* p1 | p2 *)
-  | AS_PATTERN (* p as x *)
-  | RANGE_PATTERN (* 'a' .. 'z' *)
-  | TYPED_PATTERN (* (p : t) *)
-  | LAZY_PATTERN (* lazy p *)
-  | EXCEPTION_PATTERN (* exception p *)
-  | PAREN_PATTERN (* (p) *)
-  | POLY_VARIANT_PATTERN (* `Tag or `Tag p *)
-  | POLY_VARIANT_TYPE_PATTERN (* #type *)
-  | EFFECT_PATTERN (* effect p, k *)
-  | LOCAL_OPEN_PATTERN (* Module.(pattern) *)
-  | OPERATOR_PATTERN (* ( + ), ( let* ), ( mod ) *)
-  | FIRST_CLASS_MODULE_PATTERN (* (module M), (module _), (module M : S), or (module _ : S) *)
+  | CONSTRUCTOR_PATTERN
+  (* Some x *)
+  | TUPLE_PATTERN
+  (* (x, y, z) *)
+  | LIST_PATTERN
+  (* [x; y; z] *)
+  | ARRAY_PATTERN
+  (* [|x; y; z|] *)
+  | CONS_PATTERN
+  (* x :: xs *)
+  | RECORD_PATTERN
+  (* { field1; field2 = p } *)
+  | OR_PATTERN
+  (* p1 | p2 *)
+  | AS_PATTERN
+  (* p as x *)
+  | RANGE_PATTERN
+  (* 'a' .. 'z' *)
+  | TYPED_PATTERN
+  (* (p : t) *)
+  | LAZY_PATTERN
+  (* lazy p *)
+  | EXCEPTION_PATTERN
+  (* exception p *)
+  | PAREN_PATTERN
+  (* (p) *)
+  | POLY_VARIANT_PATTERN
+  (* `Tag or `Tag p *)
+  | POLY_VARIANT_TYPE_PATTERN
+  (* #type *)
+  | EFFECT_PATTERN
+  (* effect p, k *)
+  | LOCAL_OPEN_PATTERN
+  (* Module.(pattern) *)
+  | OPERATOR_PATTERN
+  (* ( + ), ( let* ), ( mod ) *)
+  | FIRST_CLASS_MODULE_PATTERN
+  (* (module M), (module _), (module M : S), or (module _ : S) *)
   (* ========================================================================= *)
   (* TYPE EXPRESSIONS *)
   (* ========================================================================= *)
-  | TYPE_VAR (* 'a, 'b *)
-  | TYPE_CONSTR (* int, string, list *)
-  | TYPE_ALIAS (* 'a list as 'b *)
-  | TYPE_ARROW (* int -> string *)
-  | TYPE_TUPLE (* int * string *)
-  | TYPE_PAREN (* (int -> string) *)
-  | TYPE_POLY_VARIANT (* [`A | `B] *)
-  | POLY_VARIANT_TAG (* `A or `A of int *)
-  | TYPE_PARAM (* 'a in type params *)
-  | TYPE_PARAMS (* ('a, 'b) *)
-  | TYPE_VARIANT_CONSTR (* A | B of int *)
-  | TYPE_EXTENSIBLE (* .. for extensible variants *)
-  | TYPE_RECORD (* { field1: int; field2: string } *)
-  | TYPE_RECORD_FIELD (* field: int *)
-  | OBJECT_TYPE (* < m : int; n : string > *)
-  | OBJECT_TYPE_FIELD (* m : int *)
-  | TYPE_CONSTRAINT (* constraint 'a = int *)
-  | POLY_TYPE (* 'a 'b. type - polymorphic type with explicit quantifiers *)
-  | MODULE_TYPE_EXPR (* S | S with type t = int *)
-  | FIRST_CLASS_MODULE_TYPE (* (module S) or (module S with type t = int) *)
-  | MODULE_TYPE_PATH (* Module.Type for type annotations *)
-  | FUNCTOR_PARAM (* (X : S) in functor declaration *)
-  | FUNCTOR_TYPE (* functor (X : S) -> T *)
-  | MODULE_APPLICATION (* M(X) functor application *)
-  | MODULE_UNIT_APPLICATION (* M() unit functor application *)
+  | TYPE_VAR
+  (* 'a, 'b *)
+  | TYPE_CONSTR
+  (* int, string, list *)
+  | TYPE_ALIAS
+  (* 'a list as 'b *)
+  | TYPE_ARROW
+  (* int -> string *)
+  | TYPE_TUPLE
+  (* int * string *)
+  | TYPE_PAREN
+  (* (int -> string) *)
+  | TYPE_POLY_VARIANT
+  (* [`A | `B] *)
+  | POLY_VARIANT_TAG
+  (* `A or `A of int *)
+  | TYPE_PARAM
+  (* 'a in type params *)
+  | TYPE_PARAMS
+  (* ('a, 'b) *)
+  | TYPE_VARIANT_CONSTR
+  (* A | B of int *)
+  | TYPE_EXTENSIBLE
+  (* .. for extensible variants *)
+  | TYPE_RECORD
+  (* { field1: int; field2: string } *)
+  | TYPE_RECORD_FIELD
+  (* field: int *)
+  | OBJECT_TYPE
+  (* < m : int; n : string > *)
+  | OBJECT_TYPE_FIELD
+  (* m : int *)
+  | TYPE_CONSTRAINT
+  (* constraint 'a = int *)
+  | POLY_TYPE
+  (* 'a 'b. type - polymorphic type with explicit quantifiers *)
+  | MODULE_TYPE_EXPR
+  (* S | S with type t = int *)
+  | FIRST_CLASS_MODULE_TYPE
+  (* (module S) or (module S with type t = int) *)
+  | MODULE_TYPE_PATH
+  (* Module.Type for type annotations *)
+  | FUNCTOR_PARAM
+  (* (X : S) in functor declaration *)
+  | FUNCTOR_TYPE
+  (* functor (X : S) -> T *)
+  | MODULE_APPLICATION
+  (* M(X) functor application *)
+  | MODULE_UNIT_APPLICATION
+  (* M() unit functor application *)
   (* ========================================================================= *)
   (* TOP-LEVEL DECLARATIONS *)
   (* ========================================================================= *)
-  | LET_BINDING (* let x = e *)
-  | LET_REC_BINDING (* let rec f x = e *)
-  | LET_MUTUAL_DECL (* let f x = ... and g y = ... *)
-  | TYPE_DECL (* type t = ... *)
-  | TYPE_MUTUAL_DECL (* type a = ... and b = ... *)
-  | EXCEPTION_DECL (* exception E of t *)
-  | MODULE_DECL (* module M = struct ... end *)
-  | CLASS_DECL (* class c = expr or class c : typ *)
-  | CLASS_TYPE_DECL (* class type c = expr *)
-  | MODULE_TYPE_DECL (* module type S = sig ... end *)
-  | MODULE_TYPE_OF (* module type of M - get signature of module *)
-  | OPEN_STMT (* open Module *)
-  | INCLUDE_STMT (* include Module *)
-  | VAL_DECL (* val name : type *)
-  | EXTERNAL_DECL (* external name : type = "c_name" *)
+  | LET_BINDING
+  (* let x = e *)
+  | LET_REC_BINDING
+  (* let rec f x = e *)
+  | LET_MUTUAL_DECL
+  (* let f x = ... and g y = ... *)
+  | TYPE_DECL
+  (* type t = ... *)
+  | TYPE_MUTUAL_DECL
+  (* type a = ... and b = ... *)
+  | EXCEPTION_DECL
+  (* exception E of t *)
+  | MODULE_DECL
+  (* module M = struct ... end *)
+  | CLASS_DECL
+  (* class c = expr or class c : typ *)
+  | CLASS_TYPE_DECL
+  (* class type c = expr *)
+  | MODULE_TYPE_DECL
+  (* module type S = sig ... end *)
+  | MODULE_TYPE_OF
+  (* module type of M - get signature of module *)
+  | OPEN_STMT
+  (* open Module *)
+  | INCLUDE_STMT
+  (* include Module *)
+  | VAL_DECL
+  (* val name : type *)
+  | EXTERNAL_DECL
+  (* external name : type = "c_name" *)
   (* ========================================================================= *)
   (* STRUCTURAL ELEMENTS *)
   (* ========================================================================= *)
-  | SOURCE_FILE (* Top-level file *)
-  | STRUCTURE (* struct ... end *)
-  | SIGNATURE (* sig ... end *)
-  | MATCH_CASE (* | pattern -> expr *)
-  | PATTERN_GUARD (* when expr *)
-  | RECORD_FIELD (* field = expr *)
-  | RECORD_FIELD_PATTERN (* field = pattern *)
-  | PARAMETER (* Function parameter *)
-  | LOCALLY_ABSTRACT_TYPE_PARAM (* (type a b c) in function params *)
-  | ARGUMENT (* Function argument *)
+  | SOURCE_FILE
+  (* Top-level file *)
+  | STRUCTURE
+  (* struct ... end *)
+  | SIGNATURE
+  (* sig ... end *)
+  | MATCH_CASE
+  (* | pattern -> expr *)
+  | PATTERN_GUARD
+  (* when expr *)
+  | RECORD_FIELD
+  (* field = expr *)
+  | RECORD_FIELD_PATTERN
+  (* field = pattern *)
+  | PARAMETER
+  (* Function parameter *)
+  | LOCALLY_ABSTRACT_TYPE_PARAM
+  (* (type a b c) in function params *)
+  | ARGUMENT
+  (* Function argument *)
   (* ========================================================================= *)
   (* ERROR RECOVERY *)
   (* ========================================================================= *)
-  | ERROR (* Unparseable content *)
-  | MISSING (* Expected but missing token/node *)
+  | ERROR
+  (* Unparseable content *)
+  | MISSING
+
+(* Expected but missing token/node *)
 
 let to_string =
   function

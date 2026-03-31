@@ -222,8 +222,7 @@ let name =
 
 let explain =
   function
-  | E0001_MalformedTypeVariable ->
-      {|Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name.|}
+  | E0001_MalformedTypeVariable -> {|Type variables must be written as 'a, 'b, etc. with no space or comments between the quote and name.|}
   | E0002_MissingLetBindingPattern ->
       {|
 The left side of a let-expression allows you to pattern match on values to assign them to variables, but also to deconstruct them and access their inner values.
@@ -237,14 +236,10 @@ The left side of a let-expression allows you to pattern match on values to assig
 
 Beware that pattern matching on only one of many possible values will lead to runtime errors!
 |}
-  | E0003_MissingLetBindingEquals ->
-      {|Every let binding needs an = between the pattern and the expression.|}
-  | E0004_MissingLetBindingExpr ->
-      {|Every let binding needs a value on the right side of the =.|}
-  | E0005_UnexpectedStructureItem ->
-      {|Structure items are top-level declarations like let, type, or module.|}
-  | E0006_UnexpectedSignatureItem ->
-      {|Signature items are declarations in .mli files like val, type, or module.|}
+  | E0003_MissingLetBindingEquals -> {|Every let binding needs an = between the pattern and the expression.|}
+  | E0004_MissingLetBindingExpr -> {|Every let binding needs a value on the right side of the =.|}
+  | E0005_UnexpectedStructureItem -> {|Structure items are top-level declarations like let, type, or module.|}
+  | E0006_UnexpectedSignatureItem -> {|Signature items are declarations in .mli files like val, type, or module.|}
   | E0007_InvalidPattern ->
       {|
 The left side of a let-expression allows you to pattern match on values to assign them to variables, but also to deconstruct them and access their inner values.
@@ -258,32 +253,21 @@ The left side of a let-expression allows you to pattern match on values to assig
 
 Beware that pattern matching on only one of many possible values will lead to runtime errors!
 |}
-  | E0008_InvalidExpression ->
-      {|Expected a value, function call, or operator expression.|}
-  | E0009_InvalidConstant ->
-      {|Constants must be integers, floats, strings, or characters.|}
+  | E0008_InvalidExpression -> {|Expected a value, function call, or operator expression.|}
+  | E0009_InvalidConstant -> {|Constants must be integers, floats, strings, or characters.|}
   | E0010_InvalidTypeExpression ->
       {|Expected a type like int, string, 'a, or a type constructor.
 
 If this appears after `type foo =` and you meant `foo` to be abstract, write `type foo` without the `=`.|}
-  | E0011_MissingLetKeyword ->
-      {|Internal parser error - this is likely a bug in the parser.|}
-  | E0012_MissingTypeKeyword ->
-      {|Internal parser error - this is likely a bug in the parser.|}
-  | E0013_MissingTypeDeclEquals ->
-      {|Type declarations require an = between the type name and its definition.|}
-  | E0014_UnclosedDelimiter ->
-      {|Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively.|}
-  | E0015_MissingTypeName ->
-      {|Type declarations require a name after the type keyword.|}
-  | E0016_EmptyCharLiteral ->
-      {|Character literals cannot be empty. Use a space character ' ' if you need a space, or '\000' for the null character.|}
-  | E0017_MultiCharLiteral ->
-      {|Character literals can only contain a single character. Use a string "..." for multiple characters.|}
-  | E0018_UnclosedCharLiteral ->
-      {|Character literals must be closed with a single quote '.|}
-  | E0019_UnclosedTypeParams ->
-      {|Type parameter lists must be closed with a closing parenthesis ). For example: type ('a, 'b) t = ...|}
+  | E0011_MissingLetKeyword -> {|Internal parser error - this is likely a bug in the parser.|}
+  | E0012_MissingTypeKeyword -> {|Internal parser error - this is likely a bug in the parser.|}
+  | E0013_MissingTypeDeclEquals -> {|Type declarations require an = between the type name and its definition.|}
+  | E0014_UnclosedDelimiter -> {|Delimiters like (, [, {, begin must be properly closed with ), ], }, end respectively.|}
+  | E0015_MissingTypeName -> {|Type declarations require a name after the type keyword.|}
+  | E0016_EmptyCharLiteral -> {|Character literals cannot be empty. Use a space character ' ' if you need a space, or '\000' for the null character.|}
+  | E0017_MultiCharLiteral -> {|Character literals can only contain a single character. Use a string "..." for multiple characters.|}
+  | E0018_UnclosedCharLiteral -> {|Character literals must be closed with a single quote '.|}
+  | E0019_UnclosedTypeParams -> {|Type parameter lists must be closed with a closing parenthesis ). For example: type ('a, 'b) t = ...|}
   | E0020_MissingBinaryOperand ->
       {|Binary operators like +, -, *, =, etc. require both a left and right operand.
 

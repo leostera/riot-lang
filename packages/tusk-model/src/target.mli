@@ -1,30 +1,27 @@
 open Std
 
 (** Build target - either native (Host) or cross-compilation (Cross) *)
-
 type t =
   | Host
-      (** Native compilation - build for the current machine *)
+  (** Native compilation - build for the current machine *)
   | Cross of cross_config
-      (** Cross-compilation - build for a different architecture *)
 
+(** Cross-compilation - build for a different architecture *)
 and cross_config = {
   target_triplet : System.Host.t;
-  sysroot : Path.t option;    (** Detected sysroot for cross-compiler *)
-  bin_dir : Path.t option;    (** Directory containing cross-compiler binaries *)
-  bin_prefix : string;        (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
+  sysroot : Path.t option;  (** Detected sysroot for cross-compiler *)
+  bin_dir : Path.t option;  (** Directory containing cross-compiler binaries *)
+  bin_prefix : string;  (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
 }
-
 (** Create a Cross target (sysroot will be None, should be populated by caller) *)
 val make_cross : target_triplet:System.Host.t -> t
 
 (** Create Cross target with explicit configuration *)
-val make_cross_with_config :
-  target_triplet:System.Host.t ->
-  sysroot:Path.t option ->
-  bin_dir:Path.t option ->
-  bin_prefix:string ->
-  t
+val make_cross_with_config : target_triplet:System.Host.t ->
+sysroot:Path.t option ->
+bin_dir:Path.t option ->
+bin_prefix:string ->
+t
 
 (** Get target triplet (works for both Host and Cross) *)
 val triplet : t -> System.Host.t

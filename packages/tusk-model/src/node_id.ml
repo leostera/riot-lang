@@ -1,9 +1,12 @@
 (** Node identifier - ensures single source of truth for build nodes *)
-  open Std
+open Std
 
 type t = string
 
-let of_package (package : Package.t) = package.name
-let to_string t = t
+let of_package = fun (package:Package.t) -> package.name
+
+let to_string = fun t -> t
+
 let compare = String.compare
-let equal a b = a = b
+
+let equal = fun a b -> a = b

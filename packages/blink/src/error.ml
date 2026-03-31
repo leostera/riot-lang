@@ -10,5 +10,6 @@ type t =
   | Eof
   | Closed
 
-let of_net_error e = Net_error e
-let of_tls_error e = Tls_error e
+let of_net_error = fun e -> Net_error e
+
+let of_tls_error = fun e -> Tls_error e
