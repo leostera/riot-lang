@@ -11,6 +11,8 @@ type record_field_item =
   | RecordField of Cst.RecordField.t
   | Comment of Cst.comment
   | Docstring of Cst.docstring
+  | TrailingComment of Cst.comment
+  | TrailingDocstring of Cst.docstring
 
 type object_member_item =
   | ObjectMember of Cst.ObjectMember.t

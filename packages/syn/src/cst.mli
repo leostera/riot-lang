@@ -4416,6 +4416,7 @@ val syntax_kind : syntax_node -> Syntax_kind.t
 *)
 type value_declaration = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   name_tokens : Token.t list;
   colon_token : Token.t;
   type_ : core_type;
@@ -4434,11 +4435,14 @@ type value_declaration = {
 module ValueDeclaration : sig
   type t = value_declaration = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     name_tokens : Token.t list;
     colon_token : Token.t;
     type_ : core_type;
   }
   val syntax_node : t -> syntax_node
+
+  val keyword_token : t -> Token.t
 
   val name_tokens : t -> Token.t list
 

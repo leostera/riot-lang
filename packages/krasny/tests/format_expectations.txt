@@ -137,6 +137,8 @@
 0954_record_type_terminal_semicolon.mli
 0955_signature_type_doc_preserved.mli
 0956_record_type_field_docs_preserved.mli
+0957_signature_value_doc_preserved.mli
+0958_inline_record_type_field_docs_preserved.mli
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

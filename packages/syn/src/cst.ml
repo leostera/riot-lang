@@ -3281,6 +3281,7 @@ let syntax_kind = fun syntax_node -> Ceibo.Red.SyntaxNode.kind syntax_node
 
 type value_declaration = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   name_tokens : Token.t list;
   colon_token : Token.t;
   type_ : core_type;
@@ -3289,12 +3290,15 @@ type value_declaration = {
 module ValueDeclaration = struct
   type t = value_declaration = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     name_tokens : Token.t list;
     colon_token : Token.t;
     type_ : core_type;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
+
+  let keyword_token = fun decl -> decl.keyword_token
 
   let name_tokens = fun decl -> decl.name_tokens
 

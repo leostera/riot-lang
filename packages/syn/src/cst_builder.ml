@@ -13,6 +13,8 @@ type record_field_item =
   | RecordField of Cst.RecordField.t
   | Comment of Cst.comment
   | Docstring of Cst.docstring
+  | TrailingComment of Cst.comment
+  | TrailingDocstring of Cst.docstring
 
 type object_member_item =
   | ObjectMember of Cst.ObjectMember.t
@@ -299,6 +301,47 @@ let leading_trivia_syntax_tokens_for_item = fun syntax_node ->
   | first_token :: _ ->
       Ceibo.Red.SyntaxToken.leading_trivia first_token
       |> List.map syntax_token_from_trivia
+  | [] ->
+      []
+
+let record_field_items_from_leading_trivia = fun leading_trivia ->
+  let rec loop saw_newline acc =
+    function
+    | [] ->
+        List.rev acc
+    | syntax_trivia :: rest ->
+        let syntax_token = syntax_token_from_trivia syntax_trivia in
+        let kind = Ceibo.Red.SyntaxToken.kind syntax_token in
+        if kind = Syntax_kind.WHITESPACE then
+          let saw_newline =
+            saw_newline || String.contains (Ceibo.Red.SyntaxToken.text syntax_token) "\n"
+          in
+          loop saw_newline acc rest
+        else
+          let item : record_field_item option =
+            if saw_newline then
+              standalone_trivia_item_from_token
+                ~comment_item_of_comment:(fun comment -> (Comment comment : record_field_item))
+                ~docstring_item_of_docstring:(fun docstring -> (Docstring docstring : record_field_item))
+                syntax_token
+            else
+              standalone_trivia_item_from_token
+                ~comment_item_of_comment:(fun comment -> (TrailingComment comment : record_field_item))
+                ~docstring_item_of_docstring:(fun docstring -> (TrailingDocstring docstring : record_field_item))
+                syntax_token
+          in
+          loop false
+            (match item with
+             | Some item -> item :: acc
+             | None -> acc)
+            rest
+  in
+  loop false [] leading_trivia
+
+let leading_record_field_items_for_field = fun field ->
+  match Ceibo.Red.SyntaxNode.tokens (Cst.RecordField.syntax_node field) with
+  | first_token :: _ ->
+      record_field_items_from_leading_trivia (Ceibo.Red.SyntaxToken.leading_trivia first_token)
   | [] ->
       []
 
@@ -672,17 +715,29 @@ let syntax_node_of_record_field_item =
       Cst.Comment.syntax_node comment
   | Docstring docstring ->
       Cst.Docstring.syntax_node docstring
+  | TrailingComment comment ->
+      Cst.Comment.syntax_node comment
+  | TrailingDocstring docstring ->
+      Cst.Docstring.syntax_node docstring
 
 let record_field_item_owned_trivia_spans =
   function
   | RecordField field ->
       record_field_owned_trivia_spans field
   | Comment _
-  | Docstring _ ->
+  | Docstring _
+  | TrailingComment _
+  | TrailingDocstring _ ->
       []
 
 let record_field_item_of_comment : Cst.Comment.t -> record_field_item = fun comment ->
   Comment comment
+
+let trailing_record_field_item_of_comment : Cst.Comment.t -> record_field_item = fun comment ->
+  TrailingComment comment
+
+let trailing_record_field_item_of_docstring : Cst.Docstring.t -> record_field_item = fun docstring ->
+  TrailingDocstring docstring
 
 let syntax_node_of_object_member_item =
   function
@@ -8473,6 +8528,7 @@ let open_statement_from_node = fun node ->
 
 let value_declaration_from_node = fun node ->
   let direct_children = direct_non_trivia_nodes node in
+  let lifted_keyword_token = direct_token_with_text node "val" in
   let lifted_name_tokens =
     declaration_name_tokens_from_node ~skip_keywords:[ "val" ] node
   in
@@ -8480,18 +8536,20 @@ let value_declaration_from_node = fun node ->
   let lifted_type_node =
     List.rev direct_children |> List.find_opt can_lift_core_type_node
   in
-  match lifted_name_tokens, lifted_colon_token, lifted_type_node with
-  | Some lifted_name_tokens, Some lifted_colon_token, Some lifted_type_node ->
+  match lifted_keyword_token, lifted_name_tokens, lifted_colon_token, lifted_type_node with
+  | Some lifted_keyword_token, Some lifted_name_tokens, Some lifted_colon_token, Some lifted_type_node ->
       Some ({
         syntax_node = node;
+        keyword_token = lifted_keyword_token;
         name_tokens = lifted_name_tokens;
         colon_token = lifted_colon_token;
         type_ = core_type_from_node lifted_type_node;
       }: Cst.value_declaration)
-  | None, _, _ ->
+  | None, _, _, _
+  | _, None, _, _ ->
       None
-  | _, None, _
-  | _, _, None ->
+  | _, _, None, _
+  | _, _, _, None ->
       None
 
 let external_declaration_from_node = fun node ->
@@ -9186,15 +9244,14 @@ let record_field_items_of_fields = fun fields ->
     |> List.concat_map (fun (_, _, item) ->
            record_field_item_owned_trivia_spans item)
   in
-  let terminal_tokens =
+  let terminal_items =
     match fields with
     | field :: _ -> (
         match Ceibo.Red.SyntaxNode.parent (Cst.RecordField.syntax_node field) with
         | Some source_node -> (
             match List.rev (direct_non_trivia_tokens source_node) with
             | closing_token :: _ ->
-                Ceibo.Red.SyntaxToken.leading_trivia closing_token
-                |> List.map syntax_token_from_trivia
+                record_field_items_from_leading_trivia (Ceibo.Red.SyntaxToken.leading_trivia closing_token)
             | [] ->
                 [])
         | None ->
@@ -9205,27 +9262,24 @@ let record_field_items_of_fields = fun fields ->
   let trivia_entries : (int * Ceibo.Span.t * record_field_item) list =
     ((item_entries
       |> List.concat_map (fun (_, _, item) ->
-             leading_trivia_syntax_tokens_for_item
-               (syntax_node_of_record_field_item item)))
-    @ terminal_tokens)
-    |> List.filter (fun syntax_token ->
-           let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+             match item with
+             | RecordField field ->
+                 leading_record_field_items_for_field field
+             | Comment _
+             | Docstring _
+             | TrailingComment _
+             | TrailingDocstring _ ->
+                 []))
+    @ terminal_items)
+    |> List.filter (fun item ->
+           let token_span = Ceibo.Red.SyntaxNode.span (syntax_node_of_record_field_item item) in
            not
              (List.exists
                 (fun owned_span -> span_contains owned_span token_span)
                 owned_trivia_spans))
-    |> List.filter_map (fun syntax_token ->
-           match
-             standalone_trivia_item_from_token
-               ~comment_item_of_comment:record_field_item_of_comment
-               ~docstring_item_of_docstring:record_field_item_of_docstring
-               syntax_token
-           with
-           | None ->
-               None
-           | Some (item : record_field_item) ->
-               let syntax_node = syntax_node_of_record_field_item item in
-               Some (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item))
+    |> List.map (fun (item : record_field_item) ->
+           let syntax_node = syntax_node_of_record_field_item item in
+           (next_index (), Ceibo.Red.SyntaxNode.span syntax_node, item))
   in
   List.sort
     (fun

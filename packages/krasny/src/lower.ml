@@ -1041,17 +1041,49 @@ and render_record_definition_body_item ~remaining = function
       Doc.text (Syn.Cst.Comment.text comment)
   | Syn.CstBuilder.Docstring docstring ->
       Doc.text (Syn.Cst.Docstring.text docstring)
+  | Syn.CstBuilder.TrailingComment comment ->
+      Doc.text (Syn.Cst.Comment.text comment)
+  | Syn.CstBuilder.TrailingDocstring docstring ->
+      Doc.text (Syn.Cst.Docstring.text docstring)
 and render_record_definition_body = fun fields ->
   let items = Syn.CstBuilder.record_field_items_of_fields fields in
-  let rec render_items =
+  let rec attach_to_last last extra =
+    match List.rev last with
+    | [] ->
+        [ extra ]
+    | previous :: rest ->
+        List.rev (Doc.concat [ previous; Doc.space; extra ] :: rest)
+  in
+  let rec render_items rendered =
     function
     | [] ->
-        []
-    | item :: rest ->
-        render_record_definition_body_item ~remaining:rest item :: render_items rest
+        rendered
+    | Syn.CstBuilder.RecordField field :: rest ->
+        let field_doc = render_record_definition_body_item ~remaining:rest (Syn.CstBuilder.RecordField field) in
+        render_items (rendered @ [ field_doc ]) rest
+    | Syn.CstBuilder.TrailingComment comment :: rest ->
+        let comment_doc =
+          render_record_definition_body_item ~remaining:rest (Syn.CstBuilder.TrailingComment comment)
+        in
+        render_items (attach_to_last rendered (Doc.concat [ Doc.space; comment_doc ])) rest
+    | Syn.CstBuilder.TrailingDocstring docstring :: rest ->
+        let docstring_doc =
+          render_record_definition_body_item ~remaining:rest (Syn.CstBuilder.TrailingDocstring docstring)
+        in
+        render_items (attach_to_last rendered (Doc.concat [ Doc.space; docstring_doc ])) rest
+    | Syn.CstBuilder.Comment comment :: rest ->
+        let comment_doc =
+          render_record_definition_body_item ~remaining:rest (Syn.CstBuilder.Comment comment)
+        in
+        render_items (rendered @ [ comment_doc ]) rest
+    | Syn.CstBuilder.Docstring docstring :: rest ->
+        let docstring_doc =
+          render_record_definition_body_item ~remaining:rest (Syn.CstBuilder.Docstring docstring)
+        in
+        render_items (rendered @ [ docstring_doc ]) rest
   in
   items
-  |> render_items
+  |> render_items []
   |> Doc.join Doc.line
 and render_record_definition = fun fields ->
   let body = render_record_definition_body fields in
@@ -6132,7 +6164,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.ValueDeclaration decl ->
       Doc.concat
         [
-          kw_val;
+          doc_of_token_with_leading_trivia (Syn.Cst.ValueDeclaration.keyword_token decl);
           Doc.space;
           render_value_declaration_name decl;
           Doc.space;
