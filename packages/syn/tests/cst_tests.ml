@@ -9929,6 +9929,83 @@ and second x = x
             Ok ()
         | _ ->
             Error "expected class-type declaration shell extension and attribute");
+    Test.case "cst keeps top-level let comments standalone instead of duplicating them"
+      (fun () ->
+        let source =
+          {|
+(* First non-trivia token *)
+let first_non_trivia_token node =
+  match first_non_trivia_child node with
+  | Some t -> Some t
+  | _ -> None
+|}
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.Comment _
+          :: Syn.Cst.StructureItem.LetBinding binding
+          :: _ -> (
+            match Syn.Cst.LetBinding.leading_trivia binding with
+            | [] -> Ok ()
+            | _ ->
+                Error "expected top-level let binding not to duplicate preceding standalone comment")
+        | _ ->
+            Error "expected leading comment followed by top-level let binding");
+    Test.case "cst parenthesized expressions preserve trivia after the opening delimiter"
+      (fun () ->
+        let source =
+          {|
+let classify remaining available =
+  if remaining <= 0 then (
+    (* Body complete but buffer empty *)
+    0
+  ) else if available > 0 then (
+    (* Partial data available, consume it and continue *)
+    1
+  ) else 2
+|}
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match top_level_let_bindings cst with
+        | {
+            value =
+              Syn.Cst.Expression.If
+                {
+                  then_branch =
+                    Syn.Cst.Expression.Parenthesized { inner_leading_trivia = [ Syn.Cst.Trivia.Comment comment ]; _ };
+                  else_branch =
+                    Some
+                      (Syn.Cst.Expression.If
+                         {
+                           then_branch =
+                             Syn.Cst.Expression.Parenthesized
+                               { inner_leading_trivia = [ Syn.Cst.Trivia.Comment nested_comment ]; _ };
+                           _;
+                         });
+                  _;
+                };
+            _;
+          }
+          :: _ ->
+            Test.assert_equal
+              ~expected:"(* Body complete but buffer empty *)"
+              ~actual:(Syn.Cst.Comment.text comment);
+            Test.assert_equal
+              ~expected:"(* Partial data available, consume it and continue *)"
+              ~actual:(Syn.Cst.Comment.text nested_comment);
+            Ok ()
+        | _ ->
+            Error "expected parenthesized if branches to preserve opening-delimiter trivia");
   ]
 
 let () = Miniriot.run

@@ -1669,6 +1669,7 @@ and parenthesized_expression = {
   opening_token : Token.t;
   closing_token : Token.t;
   grouping : expression_grouping;
+  inner_leading_trivia : trivia list;
   inner : expression;
   attributes : attribute list;
 }

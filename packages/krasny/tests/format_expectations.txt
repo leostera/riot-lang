@@ -120,6 +120,8 @@
 0923_nested_signature_prefix_docs.mli
 0924_type_declaration_attribute.ml
 0925_comment_before_and_binding.ml
+0926_if_branch_comments.ml
+0927_leading_comment_dedup.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

@@ -1361,6 +1361,7 @@ and expression_to_json = fun expression ->
     opening_token;
     closing_token;
     grouping;
+    inner_leading_trivia;
     inner;
     _
   } ->
@@ -1370,6 +1371,8 @@ and expression_to_json = fun expression ->
         ("opening_token", token_to_json opening_token);
         ("closing_token", token_to_json closing_token);
         ("grouping", expression_grouping_to_json grouping);
+        ("inner_leading_trivia",
+         Json.Array (List.map trivia_to_json inner_leading_trivia));
         ("inner", expression_to_json inner)
       ]
       @ expression_attribute_fields expression)

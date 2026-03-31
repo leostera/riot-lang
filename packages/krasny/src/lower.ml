@@ -3101,13 +3101,19 @@ and render_tuple_expression_bare elements =
     (join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements)
 
 and render_parenthesized_apply_payload
-    ({ opening_token; closing_token; inner; _ } : Syn.Cst.parenthesized_expression) =
+    ({ opening_token; closing_token; inner_leading_trivia; inner; _ } :
+      Syn.Cst.parenthesized_expression) =
   let rendered_inner =
     match inner with
     | Syn.Cst.Expression.Tuple { elements; _ } ->
         render_tuple_expression_bare elements
     | _ ->
         render_expression inner
+  in
+  let rendered_inner =
+    rendered_inner
+    |> doc_with_leading_trivia
+         (doc_of_owned_trivia inner_leading_trivia)
   in
   Doc.concat
     [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token ]
@@ -3765,8 +3771,19 @@ and render_if_expression_block
 
 and render_parenthesized_expression = function
   | Syn.Cst.Expression.Parenthesized
-      { opening_token; closing_token; grouping; inner; _ } ->
-      let rendered_inner = render_expression inner in
+      { opening_token; closing_token; grouping; inner_leading_trivia; inner; _ } ->
+      let rendered_inner =
+        render_expression inner
+        |> doc_with_leading_trivia
+             (doc_of_owned_trivia inner_leading_trivia)
+      in
+      let has_inner_leading_trivia =
+        match inner_leading_trivia with
+        | [] ->
+            false
+        | _ ->
+            true
+      in
       (match grouping with
       | Syn.Cst.BeginEnd ->
           Doc.concat
@@ -3783,7 +3800,17 @@ and render_parenthesized_expression = function
           | Syn.Cst.Expression.List _
           | Syn.Cst.Expression.Array _
           | Syn.Cst.Expression.Record _ ->
-              render_expression inner
+              if has_inner_leading_trivia then
+                Doc.concat
+                  [
+                    doc_of_token opening_token;
+                    Doc.line;
+                    Doc.indent 2 rendered_inner;
+                    Doc.line;
+                    doc_of_token closing_token;
+                  ]
+              else
+                render_expression inner
           | _ when expression_is_function_like inner ->
               Doc.concat
                 [
@@ -3796,15 +3823,35 @@ and render_parenthesized_expression = function
           | _ -> (
               match collapse_redundant_parenthesized_expression inner with
               | Some (`NegativeLiteral literal) ->
-                  Doc.concat
-                    [
-                      doc_of_token opening_token;
-                      Doc.text "-";
-                      render_literal literal;
-                      doc_of_token closing_token;
-                    ]
+                  if has_inner_leading_trivia then
+                    Doc.concat
+                      [
+                        doc_of_token opening_token;
+                        Doc.line;
+                        Doc.indent 2 rendered_inner;
+                        Doc.line;
+                        doc_of_token closing_token;
+                      ]
+                  else
+                    Doc.concat
+                      [
+                        doc_of_token opening_token;
+                        Doc.text "-";
+                        render_literal literal;
+                        doc_of_token closing_token;
+                      ]
               | Some (`Expression expression) ->
-                  render_expression expression
+                  if has_inner_leading_trivia then
+                    Doc.concat
+                      [
+                        doc_of_token opening_token;
+                        Doc.line;
+                        Doc.indent 2 rendered_inner;
+                        Doc.line;
+                        doc_of_token closing_token;
+                      ]
+                  else
+                    render_expression expression
               | None ->
                   if expression_prefers_multiline_layout inner || Doc.is_multiline rendered_inner then
                     (match inner with

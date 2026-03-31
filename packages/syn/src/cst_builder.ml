@@ -5376,6 +5376,10 @@ and expression_from_node = fun node ->
               opening_token;
               closing_token;
               grouping = expression_grouping_from_node node;
+              inner_leading_trivia =
+                Cst.leading_trivia_before_node
+                  ~after:(Cst.Token.span opening_token).end_
+                  inner_node;
               inner = expression_from_node inner_node;
               attributes = []
             }
@@ -7332,7 +7336,7 @@ let type_extension_from_node = fun node ->
     )
   | _ -> None
 
-let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_binding node ->
+let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_binding ~capture_leading_trivia node ->
   let binding_keyword_token = keyword_token in
   let binding_rec_token = direct_token_with_text node "rec" in
   let binding_equals_token =
@@ -7359,8 +7363,11 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
             rec_token = binding_rec_token;
             equals_token = binding_equals_token;
             leading_trivia =
-              leading_trivia_from_syntax_token
-                (Cst.Token.syntax_token binding_keyword_token);
+              if capture_leading_trivia then
+                leading_trivia_from_syntax_token
+                  (Cst.Token.syntax_token binding_keyword_token)
+              else
+                [];
             attributes = binding_attributes;
             binding_pattern = pattern_from_node binding_pattern_node;
             parameters = binding_parameters_from_prefix prefix_nodes;
@@ -7376,7 +7383,7 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
     )
   | [] -> None
 
-let let_binding_from_node = fun ~is_recursive_binding node ->
+let let_binding_from_node = fun ~is_recursive_binding ~capture_leading_trivia node ->
   let binding_keyword_token =
     match direct_token_with_text node "let" with
     | Some keyword_token ->
@@ -7391,7 +7398,7 @@ let let_binding_from_node = fun ~is_recursive_binding node ->
             ]
       )
   in
-  let_binding_from_node_with_keyword ~keyword_token:binding_keyword_token ~is_recursive_binding node
+  let_binding_from_node_with_keyword ~keyword_token:binding_keyword_token ~is_recursive_binding ~capture_leading_trivia node
 
 let let_expression_binding_from_node = fun ~is_recursive_binding node ->
   if (not is_recursive_binding) && is_binding_operator_expression_node node then
@@ -7917,12 +7924,12 @@ let rec structure_items_from_node = fun node ->
       else
         child_nodes |> List.concat_map structure_items_from_node
   | Syntax_kind.LET_BINDING -> (
-      match let_binding_from_node ~is_recursive_binding:false node with
+      match let_binding_from_node ~is_recursive_binding:false ~capture_leading_trivia:false node with
       | Some binding -> [ Cst.StructureItem.LetBinding binding ]
       | None -> unsupported_item node
     )
   | Syntax_kind.LET_REC_BINDING -> (
-      match let_binding_from_node ~is_recursive_binding:true node with
+      match let_binding_from_node ~is_recursive_binding:true ~capture_leading_trivia:false node with
       | Some binding -> [ Cst.StructureItem.LetBinding binding ]
       | None -> unsupported_item node
     )
@@ -7967,7 +7974,7 @@ let rec structure_items_from_node = fun node ->
                   String.equal (Ceibo.Red.SyntaxToken.text token) "and")
             in
             (
-              match let_binding_from_node_with_keyword ~keyword_token:(token let_keyword_token) ~is_recursive_binding:is_recursive_group first_node with
+              match let_binding_from_node_with_keyword ~keyword_token:(token let_keyword_token) ~is_recursive_binding:is_recursive_group ~capture_leading_trivia:false first_node with
               | Some first_binding ->
                   let and_bindings =
                     rest_nodes
@@ -7975,7 +7982,7 @@ let rec structure_items_from_node = fun node ->
                       (fun index binding_node ->
                         match List.nth_opt and_keyword_tokens index with
                         | Some and_keyword_token ->
-                            let_binding_from_node_with_keyword ~keyword_token:(token and_keyword_token) ~is_recursive_binding:is_recursive_group binding_node
+                            let_binding_from_node_with_keyword ~keyword_token:(token and_keyword_token) ~is_recursive_binding:is_recursive_group ~capture_leading_trivia:true binding_node
                         | None ->
                             bail ~message:"expected matching and keyword for let-mutual declaration during Ceibo -> CST lifting" ~syntax_node:binding_node ~context:[
                               "item";
