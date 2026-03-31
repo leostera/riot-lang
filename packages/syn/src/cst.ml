@@ -3258,6 +3258,7 @@ type class_type_declaration = {
   declaration_extension : extension option;
   declaration_attributes : attribute list;
   class_type_name : Token.t;
+  equals_token : Token.t;
   class_type_body : class_type;
 }
 

@@ -5792,6 +5792,7 @@ and render_class_type_declaration
        declaration_extension;
        declaration_attributes;
        class_type_name;
+       equals_token;
        type_params;
        class_type_body;
        _;
@@ -5834,7 +5835,7 @@ and render_class_type_declaration
           doc_of_token class_type_name;
         ]
   in
-  Doc.concat [ head; equals; render_class_type_doc class_type_body ]
+  Doc.concat [ head; Doc.space; doc_of_token equals_token; Doc.space; render_class_type_doc class_type_body ]
 
 and render_structure_top_level_items ~trailing_phrase_separator_tokens ~items =
   let rec join_entries = function

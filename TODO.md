@@ -52,6 +52,7 @@ Token-backed so far:
 - object member type annotation `:`
 - class type value/method `:`
 - class member type annotation `:`
+- class type declaration `=`
 
 ## Next Targets
 

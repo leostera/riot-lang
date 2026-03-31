@@ -7890,6 +7890,15 @@ let class_type_declaration_from_node = fun node ->
               declaration_extension;
               declaration_attributes;
               class_type_name;
+              equals_token =
+                (match direct_token_with_text node "=" with
+                | Some equals_token ->
+                    equals_token
+                | None ->
+                    bail ~message:"expected class type declaration equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                      "class_type_declaration";
+                      "equals_token"
+                    ]);
               class_type_body = class_type_from_node body_node;
             }
           else
