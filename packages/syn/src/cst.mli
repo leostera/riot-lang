@@ -3711,7 +3711,11 @@ module ConstructorArguments : sig
             type t = Wrapped of (int * string)
             ```
         *)
-    | Record of RecordField.t list
+    | Record of {
+        opening_token : Token.t;
+        fields : RecordField.t list;
+        closing_token : Token.t;
+      }
     (** Inline record constructor arguments.
 
             Example:

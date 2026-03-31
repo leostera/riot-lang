@@ -1047,6 +1047,19 @@ and render_inline_record_definition = fun fields ->
       Doc.break ~flat:" " ();
       Doc.rbrace
     ])
+and render_tokenized_inline_record_definition = fun ~opening_token ~closing_token fields ->
+  if List.is_empty fields then
+    Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
+  else
+    Doc.group (Doc.concat [
+      doc_of_token opening_token;
+      Doc.indent 2 (Doc.concat [
+        Doc.break ~flat:" " ();
+        join_map (Doc.concat [ Doc.semi; Doc.break ~flat:" " () ]) render_record_definition_field fields
+      ]);
+      Doc.break ~flat:" " ();
+      doc_of_token closing_token
+    ])
 and render_object_type_field = fun (field : Syn.Cst.object_type_field) ->
   Doc.group (Doc.concat [
     doc_of_token field.field_name;
@@ -1208,7 +1221,7 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
   function
   | Syn.Cst.ConstructorArguments.Tuple types ->
       Doc.group (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type types)
-  | Syn.Cst.ConstructorArguments.Record fields ->
+  | Syn.Cst.ConstructorArguments.Record { opening_token; fields; closing_token } ->
       let field_items = Syn.CstBuilder.record_field_items_of_fields fields in
       let has_standalone_record_trivia =
         field_items
@@ -1221,13 +1234,13 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
                    true)
       in
       if List.is_empty fields then
-        Doc.indent 2 (render_record_definition fields)
+        Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
       else if has_standalone_record_trivia then
-        Doc.indent 2 (render_record_definition fields)
+        Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
       else if prefer_multiline_inline_record then
-        Doc.indent 2 (render_record_definition fields)
+        Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
       else
-        Doc.indent 2 (render_inline_record_definition fields)
+        Doc.indent 2 (render_tokenized_inline_record_definition ~opening_token ~closing_token fields)
 
 let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) constructor ->
   let bar_leading_trivia =

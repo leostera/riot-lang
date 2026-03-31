@@ -410,7 +410,7 @@ and descend_variant_constructor = fun walk ctx (constructor : Cst.VariantConstru
     match Cst.VariantConstructor.arguments constructor with
     | Some (Cst.ConstructorArguments.Tuple elements) ->
         List.fold_left walk.core_type ctx elements
-    | Some (Cst.ConstructorArguments.Record fields) ->
+    | Some (Cst.ConstructorArguments.Record { fields; _ }) ->
         List.fold_left
           (fun ctx field ->
             let ctx = List.fold_left walk.attribute ctx (Cst.RecordField.attributes field) in

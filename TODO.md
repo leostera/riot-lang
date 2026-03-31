@@ -86,6 +86,7 @@ Token-backed so far:
 - object type delimiters `< >`
 - core record type delimiters and separators
 - type definition record delimiters `{ }`
+- constructor record argument delimiters `{ }`
 
 ## Next Targets
 

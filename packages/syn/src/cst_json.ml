@@ -1537,10 +1537,12 @@ let constructor_arguments_to_json =
         ("tag", Json.String "tuple");
         ("elements", Json.Array (List.map core_type_to_json elements))
       ]
-  | Cst.ConstructorArguments.Record fields ->
+  | Cst.ConstructorArguments.Record { opening_token; fields; closing_token } ->
       Json.Object [
         ("tag", Json.String "record");
+        ("opening_token", token_to_json opening_token);
         ("fields", Json.Array (List.map record_field_to_json fields))
+      ; ("closing_token", token_to_json closing_token)
       ]
 
 let variant_constructor_to_json = fun constr ->

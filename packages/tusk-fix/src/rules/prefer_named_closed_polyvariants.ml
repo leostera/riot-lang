@@ -83,7 +83,7 @@ let diagnostics_for_variant_constructor
     match Syn.Cst.VariantConstructor.arguments constructor with
     | Some (Syn.Cst.ConstructorArguments.Tuple types) ->
         types |> List.concat_map diagnostics_for_core_type
-    | Some (Syn.Cst.ConstructorArguments.Record fields) ->
+    | Some (Syn.Cst.ConstructorArguments.Record { fields; _ }) ->
         fields
         |> List.concat_map (fun (field : Syn.Cst.RecordField.t) ->
                diagnostics_for_core_type field.field_type)

@@ -2603,7 +2603,11 @@ end
 module ConstructorArguments = struct
   type t =
     | Tuple of core_type list
-    | Record of RecordField.t list
+    | Record of {
+        opening_token : Token.t;
+        fields : RecordField.t list;
+        closing_token : Token.t;
+      }
 end
 
 module VariantConstructor = struct

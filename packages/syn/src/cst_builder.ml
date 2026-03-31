@@ -795,7 +795,7 @@ let class_type_field_item_of_docstring : Cst.Docstring.t -> class_type_field_ite
 let rec variant_constructor_owned_trivia_spans = fun constructor ->
   let argument_spans =
     match Cst.VariantConstructor.arguments constructor with
-    | Some (Cst.ConstructorArguments.Record fields) ->
+    | Some (Cst.ConstructorArguments.Record { fields; _ }) ->
         fields |> List.concat_map record_field_owned_trivia_spans
     | Some (Cst.ConstructorArguments.Tuple _)
     | None ->
@@ -1027,9 +1027,12 @@ let normalize_record_fields_owned_trivia = fun ~source fields ->
 
 let normalize_constructor_arguments_owned_trivia = fun ~source ->
   function
-  | Cst.ConstructorArguments.Record fields ->
-      Cst.ConstructorArguments.Record
-        (normalize_record_fields_owned_trivia ~source fields)
+  | Cst.ConstructorArguments.Record { opening_token; fields; closing_token } ->
+      Cst.ConstructorArguments.Record {
+        opening_token;
+        fields = normalize_record_fields_owned_trivia ~source fields;
+        closing_token
+      }
   | Cst.ConstructorArguments.Tuple _ as arguments ->
       arguments
 
@@ -7261,10 +7264,25 @@ let variant_constructor_from_node = fun node ->
               | [] ->
                   None
               | [ record_node ] when Ceibo.Red.SyntaxNode.kind record_node = Syntax_kind.TYPE_RECORD ->
-                  Some (Cst.ConstructorArguments.Record (direct_non_trivia_nodes record_node
-                  |> List.filter
-                  (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
-                  |> List.filter_map record_field_from_node))
+                  let direct_tokens = direct_non_trivia_tokens record_node in
+                  let opening_token, closing_token =
+                    match direct_tokens with
+                    | opening_token :: _ ->
+                        let closing_token = List.hd (List.rev direct_tokens) in
+                        (token opening_token, token closing_token)
+                    | [] ->
+                        bail ~message:"expected constructor record argument delimiters during Ceibo -> CST lifting"
+                          ~syntax_node:record_node ~context:[ "variant_constructor"; "record_arguments" ]
+                  in
+                  Some
+                    (Cst.ConstructorArguments.Record {
+                      opening_token;
+                      fields = direct_non_trivia_nodes record_node
+                      |> List.filter
+                      (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
+                      |> List.filter_map record_field_from_node;
+                      closing_token
+                    })
               | [ tuple_node ] when Ceibo.Red.SyntaxNode.kind tuple_node = Syntax_kind.TYPE_TUPLE ->
                   Some (Cst.ConstructorArguments.Tuple (direct_non_trivia_nodes tuple_node
                   |> List.filter can_lift_core_type_node
@@ -9939,7 +9957,7 @@ let validate_constructor_arguments = fun ~context ->
       ^ Int.to_string index
       ^ "]")
       :: context))) element) elements
-  | Cst.ConstructorArguments.Record fields ->
+  | Cst.ConstructorArguments.Record { fields; _ } ->
       List.iteri (fun index field -> validate_core_type ~context:(((("constructor_arguments.record["
       ^ Int.to_string index
       ^ "].type")
