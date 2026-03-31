@@ -132,6 +132,7 @@
 0937_match_case_body_comment.ml
 0950_extensible_type_spacing.mli
 0951_record_expression_field_spacing.ml
+0952_multiline_list_expression_no_trailing_separator.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

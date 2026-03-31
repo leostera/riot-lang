@@ -3814,7 +3814,7 @@ and render_multiline_list_expression ~opening_token ~separator_tokens
     [
       doc_of_token opening_token;
       Doc.line;
-      Doc.indent 2 (Doc.concat [ body; Doc.semi ]);
+      Doc.indent 2 body;
       Doc.line;
       doc_of_token closing_token;
     ]
