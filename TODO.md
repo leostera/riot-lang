@@ -41,6 +41,7 @@ Token-backed so far:
 - expression coercion `:>`
 - variant constructor payload/result separator
 - arrow label `:`
+- class/class-type constraint `=`
 
 ## Next Targets
 

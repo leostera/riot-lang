@@ -3204,6 +3204,15 @@ and class_type_field_from_node = fun node ->
           let field = Cst.ClassTypeField.Constraint {
             syntax_node = node;
             left = core_type_from_node left_node;
+            equals_token =
+              (match direct_token_with_text node "=" with
+              | Some equals_token ->
+                  equals_token
+              | None ->
+                  bail ~message:"expected class type constraint equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "class_type_field.constraint";
+                    "equals_token"
+                  ]);
             right = core_type_from_node payload_right_node
           } in
           (
@@ -6178,6 +6187,15 @@ and class_constraint_from_node = fun node ->
         ({
           syntax_node = node;
           left = core_type_from_node left_node;
+          equals_token =
+            (match direct_token_with_text node "=" with
+            | Some equals_token ->
+                equals_token
+            | None ->
+                bail ~message:"expected class constraint equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                  "class_constraint";
+                  "equals_token"
+                ]);
           right = core_type_from_node payload_right_node
         }: Cst.class_constraint),
         []

@@ -452,6 +452,7 @@ and class_type_field =
   | Constraint of {
       syntax_node : syntax_node;
       left : core_type;
+      equals_token : Token.t;
       right : core_type;
     }
   | Attribute of {
@@ -717,6 +718,7 @@ module ClassTypeField = struct
     | Constraint of {
         syntax_node : syntax_node;
         left : core_type;
+        equals_token : Token.t;
         right : core_type;
       }
     | Attribute of {
@@ -1744,6 +1746,7 @@ and class_inherit = {
 and class_constraint = {
   syntax_node : syntax_node;
   left : core_type;
+  equals_token : Token.t;
   right : core_type;
 }
 

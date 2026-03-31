@@ -2812,9 +2812,16 @@ and render_class_type_field = function
           @ [ doc_of_token_with_leading_trivia name_token ])
       in
       Doc.concat [ head; annotation_colon; render_core_type type_ ]
-  | Syn.Cst.ClassTypeField.Constraint { left; right; _ } ->
+  | Syn.Cst.ClassTypeField.Constraint { left; equals_token; right; _ } ->
       Doc.concat
-        [ kw_constraint; Doc.space; render_core_type left; Doc.space; equals; render_core_type right ]
+        [
+          kw_constraint;
+          Doc.space;
+          render_core_type left;
+          Doc.space;
+          doc_of_token equals_token;
+          render_core_type right;
+        ]
   | Syn.Cst.ClassTypeField.Attribute { field; attribute; _ } ->
       Doc.concat [ render_class_type_field field; Doc.space; render_attribute attribute ]
   | Syn.Cst.ClassTypeField.Extension extension ->
@@ -2944,9 +2951,16 @@ and render_class_value
 and render_class_inherit ({ class_expression; _ } : Syn.Cst.class_inherit) =
   Doc.concat [ kw_inherit; Doc.space; render_class_expression class_expression ]
 
-and render_class_constraint ({ left; right; _ } : Syn.Cst.class_constraint) =
+and render_class_constraint ({ left; equals_token; right; _ } : Syn.Cst.class_constraint) =
   Doc.concat
-    [ kw_constraint; Doc.space; render_core_type left; Doc.space; equals; render_core_type right ]
+    [
+      kw_constraint;
+      Doc.space;
+      render_core_type left;
+      Doc.space;
+      doc_of_token equals_token;
+      render_core_type right;
+    ]
 
 and render_class_initializer ({ body; _ } : Syn.Cst.class_initializer) =
   render_class_member_body ~head:kw_initializer body
