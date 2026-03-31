@@ -90,6 +90,8 @@ module Token : sig
 
   val text : t -> string
 
+  val full_text : t -> string
+
   val span : t -> Ceibo.Span.t
 
   val same_text : t -> t -> bool
@@ -2857,6 +2859,7 @@ and match_case = {
   arrow_token : Token.t;
   pattern : pattern;
   guard : expression option;
+  body_leading_trivia : trivia list;
   body : expression;
 }
 
@@ -4310,7 +4313,7 @@ end
 *)
 type value_declaration = {
   syntax_node : syntax_node;
-  name_token : Token.t;
+  name_tokens : Token.t list;
   type_ : core_type;
   owned_trivia : owned_trivia;
 }
@@ -4328,13 +4331,13 @@ type value_declaration = {
 module ValueDeclaration : sig
   type t = value_declaration = {
     syntax_node : syntax_node;
-    name_token : Token.t;
+    name_tokens : Token.t list;
     type_ : core_type;
     owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
-  val name_token : t -> Token.t
+  val name_tokens : t -> Token.t list
 
   val type_ : t -> core_type
 
@@ -4343,7 +4346,7 @@ end
 
 type external_declaration = {
   syntax_node : syntax_node;
-  name_token : Token.t;
+  name_tokens : Token.t list;
   type_ : core_type;
   primitive_name_tokens : Token.t list;
   attributes : attribute list;

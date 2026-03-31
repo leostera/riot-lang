@@ -1,0 +1,3 @@
+module S : sig
+  val x : int
+end

@@ -14,7 +14,7 @@ let handle_format file =
       let result = parse_file ~file ~source in
       match Krasny.format result with
       | Ok formatted -> print formatted
-      | Error _ ->
+      | Error _err ->
           Log.error ("Error formatting file without a CST: " ^ file);
           exit 1
 

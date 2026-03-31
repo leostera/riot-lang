@@ -1,0 +1,7 @@
+val ( ~- ) : int -> int
+
+val ( ~+ ) : int -> int
+
+val ( ~-. ) : float -> float
+
+val ( ~+. ) : float -> float

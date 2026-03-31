@@ -80,6 +80,8 @@
 74. When `syn` tightens a declaration node into explicit valid-shape variants, follow that split directly in `krasny`. Do not reconstruct old optional-field products in the formatter just to preserve previous call sites.
 75. Follow class/object member validity splits directly too. Render concrete member definitions from mandatory bodies/values, virtual member definitions from mandatory types, and initializers from mandatory bodies; do not preserve formatter branches for old `option`-shaped member states once `syn` removes them.
 76. Render expression `: t`, `:> t`, and `: t :> u` forms from `Syn.Cst.Expression.TypeAscription` and its explicit inner variants. Do not reconstruct the old split between typed expressions and coercions in `krasny`.
+77. Render nested `sig ... end` and `struct ... end` bodies from the normalized nested item streams exactly as lifted by `syn`; do not let nested relift paths skip inter-item comments/docstrings that file-level rendering would preserve.
+78. Render comments/docstrings between `->` and a match-case body from `Syn.Cst.match_case.body_leading_trivia`. Do not recover that boundary from raw token walks or let it disappear when the body starts with `let`, `match`, or another nested expression.
 
 ## Validate
 

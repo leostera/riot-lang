@@ -86,7 +86,9 @@ let diagnostic_for_type_declaration value_declarations decl =
             value_declarations
             |> List.filter is_accessor_of_t
             |> List.map (fun (value_decl : Syn.Cst.value_declaration) ->
-                   Syn.Cst.Token.text value_decl.name_token)
+                   value_decl.name_tokens
+                   |> List.map Syn.Cst.Token.text
+                   |> String.concat "")
             |> List.filter (fun name -> List.mem name field_names)
           in
           if List.length accessor_names > 0 then

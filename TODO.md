@@ -13,19 +13,14 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Delete the dead whole-tree `validate_source_file` scaffold from `packages/syn/src/cst_builder.ml` now that normal CST construction no longer calls it.
 - [ ] Keep migrating any real CST invariants into the specific builder helpers that own those facts, instead of reviving post-construction validation.
-- [ ] Run full `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast` once the current unrelated workspace breakage is out of the way.
-- [ ] Reproduce and fix the remaining `tusk fmt` invalid-OCaml regressions in:
-  - `packages/kernel/src/global0.mli`
-  - `packages/kernel/src/ops.mli`
-  - `packages/swisstable/src/swisstable.ml`
-  - `packages/tusk-model/src/package.ml`
-  - `packages/colors/src/colors.ml`
-  - `packages/tusk-model/src/workspace.ml`
-  - `packages/gooey/src/style.ml`
-  - `packages/syn/src/cst_builder.ml`
-  - `packages/minttea/src/style/gradient.ml`
-  - `packages/suri/src/middleware/accepts.ml`
-  - `packages/suri/src/middleware/basic_auth.ml`
+- [ ] Keep auditing real `tusk fmt` output for destructive regressions only:
+  - dropped comments or docstrings
+  - duplicated trivia
+  - attribute ownership changes
+  - invalid OCaml
+- [ ] Treat postfix docstrings as source cleanup, not formatter ownership:
+  - keep prefix docs preserved structurally
+  - normalize postfix docs in source files instead of teaching `krasny` postfix ownership
 
 ### Krasny 
 
@@ -45,6 +40,10 @@ This file is _yours_. Keep it up to date after every big change.
   - duplicates trivia
   - changes attribute ownership
   - emits invalid OCaml
+- [ ] Keep nested `sig ... end` / `struct ... end` relift trivia loss covered:
+  - nested helper lifts must preserve inter-item comments/docstrings, not just declaration nodes
+- [ ] Keep branch-body trivia explicit and covered:
+  - comments/docstrings between `->` and a match-case body belong on the case body boundary, not in formatter archaeology
 
 #### Validate
 

@@ -1,0 +1,4 @@
+type color
+
+let make ~start ~finish ~steps : color array =
+  steps

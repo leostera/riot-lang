@@ -82,11 +82,21 @@ let doc_of_ident = fun ident ->
 let token_requires_parenthesized_value_name = fun (token : Syn.Cst.Token.t) ->
   Syn.Cst.Token.is_operator_like_name token
 
+let render_declaration_name = fun name_tokens ->
+  match name_tokens with
+  | [] ->
+      Doc.empty
+  | [ name_token ] ->
+      if token_requires_parenthesized_value_name name_token then
+        Doc.concat [ Doc.lparen; Doc.space; doc_of_token name_token; Doc.space; Doc.rparen ]
+      else
+        doc_of_token name_token
+  | operator_tokens ->
+      let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
+      Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
+
 let render_value_declaration_name = fun (decl : Syn.Cst.value_declaration) ->
-  if token_requires_parenthesized_value_name decl.name_token then
-    Doc.concat [ Doc.lparen; Doc.space; doc_of_token decl.name_token; Doc.space; Doc.rparen ]
-  else
-    doc_of_token decl.name_token
+  render_declaration_name decl.name_tokens
 
 let binding_has_explicit_fun_rhs = fun (binding : Syn.Cst.let_binding) ->
   List.is_empty binding.parameters
@@ -699,19 +709,13 @@ and render_shared_attribute_payload_doc (attribute : Syn.Cst.attribute) =
   | None ->
       Doc.empty
   | Some (Syn.Cst.Payload.Opaque { tokens }) ->
-      Doc.concat (List.map doc_of_token tokens)
+      Doc.concat (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
 
 and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
-  let sigil_doc =
-    if floating then
-      Doc.concat [ at; doc_of_token attribute.sigil_token ]
-    else
-      doc_of_token attribute.sigil_token
-  in
   Doc.concat
     [
       Doc.lbracket;
-      sigil_doc;
+      doc_of_token attribute.sigil_token;
       doc_of_ident attribute.name;
       render_shared_attribute_payload_doc attribute;
       Doc.rbracket;
@@ -1385,7 +1389,7 @@ let render_external_declaration = fun (decl : Syn.Cst.external_declaration) ->
     [
       kw_external;
       Doc.space;
-      doc_of_token decl.name_token;
+      render_declaration_name decl.name_tokens;
       Doc.space;
       Doc.colon;
       Doc.space;
@@ -2337,7 +2341,7 @@ let make_lowerer =
     | None ->
         Doc.empty
     | Some (Syn.Cst.Payload.Opaque { tokens }) ->
-        Doc.concat (List.map doc_of_token tokens)
+        Doc.concat (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
 
   and render_extension_doc (extension : Syn.Cst.extension) =
     Doc.concat
@@ -2355,19 +2359,13 @@ let make_lowerer =
     | None ->
         Doc.empty
     | Some (Syn.Cst.Payload.Opaque { tokens }) ->
-        Doc.concat (List.map doc_of_token tokens)
+        Doc.concat (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
 
   and render_attribute_doc ~floating (attribute : Syn.Cst.attribute) =
-    let sigil_doc =
-      if floating then
-        Doc.concat [ at; doc_of_token attribute.sigil_token ]
-      else
-        doc_of_token attribute.sigil_token
-    in
     Doc.concat
       [
         Doc.lbracket;
-        sigil_doc;
+        doc_of_token attribute.sigil_token;
         doc_of_ident attribute.name;
         render_attribute_payload_doc attribute;
         Doc.rbracket;
@@ -3375,7 +3373,10 @@ and render_if_expression
 
 and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
     (case : Syn.Cst.match_case) =
-  let body = render_expression case.body in
+  let body_trivia =
+    doc_of_owned_trivia case.body_leading_trivia
+  in
+  let body = render_expression case.body |> doc_with_leading_trivia body_trivia in
   let prefix =
     match case.bar_token with
     | Some token ->
@@ -4098,12 +4099,21 @@ and render_named_parameter_binding_pattern_internal ~include_type pattern =
 and render_named_parameter_binding_pattern pattern =
   render_named_parameter_binding_pattern_internal ~include_type:true pattern
 
+and named_parameter_binding_pattern_can_be_elided pattern =
+  let pattern, _ = split_typed_binding_pattern pattern in
+  match pattern with
+  | Syn.Cst.Pattern.Identifier _ ->
+      true
+  | _ ->
+      false
+
 and render_named_parameter_internal ~include_type ~sigil_token ~label_token
     ~binding_name_matches_label ~binding_pattern =
   match binding_pattern with
   | None ->
       Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
-  | Some pattern when binding_name_matches_label ->
+  | Some pattern
+    when binding_name_matches_label && named_parameter_binding_pattern_can_be_elided pattern ->
       let _, type_ = split_typed_binding_pattern pattern in
       (match include_type, type_ with
       | true, Some _ ->

@@ -209,21 +209,35 @@ let diagnostics_for_binding binding =
   @ (typed_arrow_diagnostic |> Option.to_list)
 
 let diagnostics_for_value_declaration
-    ({ name_token; type_; _ } : Syn.Cst.value_declaration) =
+    ({ name_tokens; type_; _ } : Syn.Cst.value_declaration) =
+  let name_span =
+    match name_tokens with
+    | [] ->
+        panic "value declaration missing name tokens"
+    | name_token :: _ ->
+        Syn.Cst.Token.span name_token
+  in
   arrow_parameters type_
   |> List.find_map (function
        | None, parameter_type when is_bool_core_type parameter_type ->
-           Some (make_diagnostic ~span:(Syn.Cst.Token.span name_token))
+           Some (make_diagnostic ~span:name_span)
        | _ ->
            None)
   |> Option.to_list
 
 let diagnostics_for_external_declaration
-    ({ name_token; type_; _ } : Syn.Cst.external_declaration) =
+    ({ name_tokens; type_; _ } : Syn.Cst.external_declaration) =
+  let name_span =
+    match name_tokens with
+    | [] ->
+        panic "external declaration missing name tokens"
+    | name_token :: _ ->
+        Syn.Cst.Token.span name_token
+  in
   arrow_parameters type_
   |> List.find_map (function
        | None, parameter_type when is_bool_core_type parameter_type ->
-           Some (make_diagnostic ~span:(Syn.Cst.Token.span name_token))
+           Some (make_diagnostic ~span:name_span)
        | _ ->
            None)
   |> Option.to_list

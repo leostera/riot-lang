@@ -7,6 +7,9 @@ let expect_some = fun value ~msg ->
   | Some value -> Ok value
   | None -> Error msg
 
+let declaration_name_text = fun tokens ->
+  tokens |> List.map Syn.Cst.Token.text |> String.concat ""
+
 let sample_ml = Path.v "sample.ml"
 
 let sample_mli = Path.v "sample.mli"
@@ -1946,7 +1949,7 @@ let tests =
             (match Syn.CstBuilder.signature_items_of_module_type module_type with
             | Ok [ Syn.Cst.SignatureItem.ValueDeclaration decl ] ->
                 Test.assert_equal ~expected:"x"
-                  ~actual:(Syn.Cst.Token.text decl.name_token);
+                  ~actual:(declaration_name_text decl.name_tokens);
                 Ok ()
             | Ok _ ->
                 Error "expected nested signature items to lift a val declaration"
@@ -1985,7 +1988,7 @@ let tests =
                   Syn.Cst.SignatureItem.Docstring docstring;
                 ] ->
                 Test.assert_equal ~expected:"x"
-                  ~actual:(Syn.Cst.Token.text decl.name_token);
+                  ~actual:(declaration_name_text decl.name_tokens);
                 Test.assert_equal ~expected:true
                   ~actual:
                     (Syn.Cst.ValueDeclaration.owned_trivia decl
@@ -2127,7 +2130,7 @@ end
                   ~expected:"(** `make` creates a span. *)"
                   ~actual:(Syn.Cst.Docstring.text value_doc);
                 Test.assert_equal ~expected:"make"
-                  ~actual:(Syn.Cst.Token.text value_decl.name_token);
+                  ~actual:(declaration_name_text value_decl.name_tokens);
                 Ok ()
             | Ok _ ->
                 Error
@@ -2260,7 +2263,7 @@ end
                 (match first_value_decl with
                 | Some decl ->
                     Test.assert_equal ~expected:"make_trivia"
-                      ~actual:(Syn.Cst.Token.text decl.name_token);
+                      ~actual:(declaration_name_text decl.name_tokens);
                     (match
                        Syn.Cst.OwnedTrivia.leading
                          (Syn.Cst.ValueDeclaration.owned_trivia decl)
@@ -2321,7 +2324,7 @@ end
                 Test.assert_equal ~expected:"(* plain note *)"
                   ~actual:(Syn.Cst.Comment.text comment);
                 Test.assert_equal ~expected:"x"
-                  ~actual:(Syn.Cst.Token.text decl.name_token);
+                  ~actual:(declaration_name_text decl.name_tokens);
                 Ok ()
             | Ok _ ->
                 Error "expected nested signature open/doc/comment/value ordering"
@@ -3649,7 +3652,7 @@ end
         match signature_items cst with
         | Syn.Cst.SignatureItem.ValueDeclaration
             {
-              name_token;
+              name_tokens = [ name_token ];
               type_ =
                 Syn.Cst.CoreType.Arrow
                   {
@@ -3846,9 +3849,9 @@ end
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         match signature_items cst with
-        | Syn.Cst.SignatureItem.ValueDeclaration { name_token = mod_name_token; _ }
-          :: Syn.Cst.SignatureItem.ValueDeclaration { name_token = second_mod_name_token; _ }
-          :: Syn.Cst.SignatureItem.ValueDeclaration { name_token = pipe_name_token; _ }
+        | Syn.Cst.SignatureItem.ValueDeclaration { name_tokens = [ mod_name_token ]; _ }
+          :: Syn.Cst.SignatureItem.ValueDeclaration { name_tokens = [ second_mod_name_token ]; _ }
+          :: Syn.Cst.SignatureItem.ValueDeclaration { name_tokens = [ pipe_name_token ]; _ }
           :: _ ->
             Test.assert_equal ~expected:true
               ~actual:(Syn.Cst.Token.is_operator_like_name mod_name_token);
@@ -4097,7 +4100,8 @@ end
           |> Result.expect ~msg:"expected CST for diagnostics-free parse"
         in
         match structure_items cst with
-        | Syn.Cst.StructureItem.ExternalDeclaration { name_token; primitive_name_tokens; _ } :: _ ->
+        | Syn.Cst.StructureItem.ExternalDeclaration
+            { name_tokens = [ name_token ]; primitive_name_tokens; _ } :: _ ->
             Test.assert_equal ~expected:"sqrt"
               ~actual:(Syn.Cst.Token.text name_token);
             Test.assert_equal ~expected:[ "\"caml_sqrt_float\"" ]
@@ -4157,7 +4161,7 @@ end
             Test.assert_equal ~expected:"S"
               ~actual:(Syn.Cst.ModuleTypeDeclaration.name module_type_decl);
             Test.assert_equal ~expected:"x"
-              ~actual:(Syn.Cst.Token.text external_decl.name_token);
+              ~actual:(declaration_name_text external_decl.name_tokens);
             Test.assert_equal ~expected:"X"
               ~actual:(Syn.Cst.Token.text exception_decl.name_token);
             Ok ()
@@ -10006,6 +10010,83 @@ let classify remaining available =
             Ok ()
         | _ ->
             Error "expected parenthesized if branches to preserve opening-delimiter trivia");
+    Test.case "cst keeps polymorphic variant payload local opens distinct from raw local opens"
+      (fun () ->
+        let source =
+          {|
+let lifted =
+  match suffix_class_body, declaration_class_type with
+  | Some declaration_class_body, declaration_class_type ->
+      Some
+        (`Definition
+          Cst.ClassDefinition.
+            {
+              syntax_node = node;
+              class_body = declaration_class_body;
+            })
+  | None, None ->
+      None
+|}
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match top_level_let_bindings cst with
+        | {
+            value =
+              Syn.Cst.Expression.Match
+                {
+                  cases =
+                    {
+                      body =
+                        Syn.Cst.Expression.Constructor
+                          {
+                            payload =
+                              Some
+                                (Syn.Cst.Expression.Parenthesized
+                                   {
+                                     inner =
+                                       Syn.Cst.Expression.PolyVariant
+                                         {
+                                           tag_token;
+                                           payload =
+                                             Some
+                                               (Syn.Cst.Expression.LocalOpen
+                                                  {
+                                                    module_path =
+                                                      Syn.Cst.Ident.Qualified
+                                                        { prefix; name_token; _ };
+                                                    _;
+                                                  });
+                                           _;
+                                         };
+                                     _;
+                                   });
+                            _;
+                          };
+                      _;
+                    }
+                    :: _;
+                  _;
+                };
+            _;
+          }
+          :: _ ->
+            Test.assert_equal
+              ~expected:"Definition"
+              ~actual:(Syn.Cst.Token.text tag_token);
+            Test.assert_equal
+              ~expected:"Cst"
+              ~actual:(ident_text prefix);
+            Test.assert_equal
+              ~expected:"ClassDefinition"
+              ~actual:(Syn.Cst.Token.text name_token);
+            Ok ()
+        | _ ->
+            Error "expected polymorphic variant payload to lift as local-open expression");
   ]
 
 let () = Miniriot.run

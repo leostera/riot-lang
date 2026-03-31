@@ -122,6 +122,14 @@
 0925_comment_before_and_binding.ml
 0926_if_branch_comments.ml
 0927_leading_comment_dedup.ml
+0928_polyvariant_record_payload.ml
+0929_labeled_alias_parameter.ml
+0930_structure_attribute_before_let.ml
+0933_comment_attribute_between_lets.ml
+0934_typed_labeled_binding_header.ml
+0935_unary_value_declaration.mli
+0936_nested_signature_value.mli
+0937_match_case_body_comment.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

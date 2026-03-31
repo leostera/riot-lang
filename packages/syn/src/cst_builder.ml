@@ -933,7 +933,20 @@ let owned_trivia_with_leading = fun owned leading_trivia -> Cst.OwnedTrivia.{
 
 let owned_trivia_append_leading = fun owned leading_trivia -> owned_trivia_with_leading
 owned
-(Cst.OwnedTrivia.leading owned @ leading_trivia)
+((Cst.OwnedTrivia.leading owned @ leading_trivia)
+|> List.sort (fun left right ->
+       Int.compare (trivia_span left).start (trivia_span right).start)
+|> fun trivia ->
+     let rec loop = fun seen acc ->
+       function
+       | [] ->
+           List.rev acc
+       | candidate :: rest when List.exists (fun prior -> trivia_same_span prior candidate) seen ->
+           loop seen acc rest
+       | candidate :: rest ->
+           loop (candidate :: seen) (candidate :: acc) rest
+     in
+     loop [] [] trivia)
 
 let owned_trivia_append_trailing = fun owned trailing_trivia -> owned_trivia_with_trailing
 owned
@@ -2041,6 +2054,85 @@ let find_declaration_name_token = fun ~skip_keywords tokens ->
           Some syntax_token
   in
   loop tokens
+
+let find_declaration_name_tokens = fun ~skip_keywords tokens ->
+  let token_text = Ceibo.Red.SyntaxToken.text in
+  let rec collect_operator acc =
+    function
+    | [] ->
+        None
+    | syntax_token :: rest ->
+        let text = token_text syntax_token in
+        if String.equal text ")" then
+          (match List.rev acc with
+          | [] ->
+              None
+          | lifted ->
+              Some lifted)
+        else
+          collect_operator (token syntax_token :: acc) rest
+  in
+  let rec loop =
+    function
+    | [] ->
+        None
+    | syntax_token :: rest ->
+        let text = token_text syntax_token in
+        if List.exists (String.equal text) skip_keywords then
+          loop rest
+        else if String.equal text "%" then
+          (
+            match rest with
+            | _extension_name :: after_extension ->
+                loop after_extension
+            | [] ->
+                None
+          )
+        else if String.equal text "[" then
+          loop (drop_attribute_shell_tokens rest)
+        else if String.equal text "(" then
+          collect_operator [] rest
+        else if String.equal text ":" || String.equal text "=" || String.equal text ":=" then
+          None
+        else
+          Some [ token syntax_token ]
+  in
+  loop tokens
+
+let declaration_name_tokens_from_node = fun ~skip_keywords node ->
+  let operator_tokens_from_node =
+    fun node ->
+      direct_non_trivia_tokens node
+      |> List.filter
+           (fun syntax_token ->
+             let text = Ceibo.Red.SyntaxToken.text syntax_token in
+             not (String.equal text "(" || String.equal text ")"))
+      |> List.map token
+      |> function
+      | [] ->
+          None
+      | lifted ->
+          Some lifted
+  in
+  match
+    direct_non_trivia_nodes node |> List.find_map
+      (fun child ->
+        match Ceibo.Red.SyntaxNode.kind child with
+        | Syntax_kind.IDENT_EXPR ->
+            (match direct_non_trivia_tokens child |> List.map token with
+            | [] ->
+                None
+            | lifted ->
+                Some lifted)
+        | Syntax_kind.OPERATOR_PATTERN ->
+            operator_tokens_from_node child
+        | _ ->
+            None)
+  with
+  | Some lifted ->
+      Some lifted
+  | None ->
+      find_declaration_name_tokens ~skip_keywords (direct_non_trivia_tokens node)
 
 let direct_tokens = fun node -> Ceibo.Red.SyntaxNode.direct_tokens node
 
@@ -5105,9 +5197,34 @@ and expression_from_node = fun node ->
         match direct_non_trivia_nodes node with
         | callee_node :: [ attribute_node ] when Ceibo.Red.SyntaxNode.kind attribute_node
         = Syntax_kind.ATTRIBUTE_EXPR ->
-            expression_with_attributes (expression_from_node callee_node) [
-              attribute_from_node attribute_node
-            ]
+            let attribute_payload_node =
+              direct_non_trivia_nodes attribute_node
+              |> List.find_opt can_lift_expression_node
+            in
+            (match attribute_payload_node with
+            | Some payload_node
+              when Ceibo.Red.SyntaxNode.kind payload_node
+                   = Ceibo.Red.SyntaxNode.kind callee_node
+                   && Ceibo.Red.SyntaxNode.span payload_node
+                      = Ceibo.Red.SyntaxNode.span callee_node ->
+                expression_with_attributes (expression_from_node callee_node) [
+                  attribute_from_node attribute_node
+                ]
+            | _ -> (
+                match constructor_path_from_expression_node callee_node, apply_argument_from_node attribute_node with
+                | Some constructor_path, Cst.Positional payload ->
+                    Cst.Expression.Constructor {
+                      syntax_node = node;
+                      constructor_path;
+                      payload = Some payload;
+                      attributes = []
+                    }
+                | _ ->
+                    normalize_greedy_labeled_argument
+                      ~syntax_node:node
+                      ~callee:(expression_from_node callee_node)
+                      (apply_argument_from_node attribute_node)
+              ))
         | callee_node :: argument_node :: _ -> (
             match constructor_path_from_expression_node callee_node, apply_argument_from_node argument_node with
             | Some constructor_path, Cst.Positional payload ->
@@ -5290,9 +5407,13 @@ and expression_from_node = fun node ->
         | None -> unsupported_expression node
       )
     | Syntax_kind.LOCAL_OPEN_EXPR -> (
-        match local_open_expression_from_node node with
-        | Some expr -> Cst.Expression.LocalOpen expr
-        | None -> unsupported_expression node
+        match poly_variant_expression_from_local_open_node node with
+        | Some expr -> expr
+        | None -> (
+            match local_open_expression_from_node node with
+            | Some expr -> Cst.Expression.LocalOpen expr
+            | None -> unsupported_expression node
+          )
       )
     | Syntax_kind.FUN_EXPR -> (
         match fun_expression_from_node node with
@@ -5807,6 +5928,61 @@ and record_update_expression_from_node = fun node ->
       | None -> None
     )
   | [] -> None
+and poly_variant_expression_from_local_open_node = fun node ->
+  let poly_variant_tag_token = fun poly_variant_node ->
+    match direct_non_trivia_tokens poly_variant_node with
+    | _backtick :: tag_syntax_token :: _ ->
+        Some (token tag_syntax_token)
+    | tag_syntax_token :: _ ->
+        Some (token tag_syntax_token)
+    | [] ->
+        None
+  in
+  let non_trivia_children = direct_non_trivia_nodes node in
+  match non_trivia_children with
+  | module_path_node :: body_node :: _ when can_lift_expression_node body_node -> (
+      match Ceibo.Red.SyntaxNode.kind module_path_node, direct_non_trivia_nodes module_path_node with
+      | Syntax_kind.FIELD_ACCESS_EXPR, receiver_node :: _ -> (
+          let receiver_payload_node =
+            direct_non_trivia_nodes receiver_node
+            |> List.find_opt can_lift_expression_node
+          in
+          match Ceibo.Red.SyntaxNode.kind receiver_node, poly_variant_tag_token receiver_node, receiver_payload_node with
+          | Syntax_kind.POLY_VARIANT_EXPR, Some tag_token, Some prefix_node -> (
+              match List.rev (direct_non_trivia_tokens module_path_node) with
+              | name_syntax_token :: dot_syntax_token :: _ ->
+                  Some
+                    (Cst.Expression.PolyVariant {
+                       syntax_node = node;
+                       tag_token;
+                       payload =
+                         Some
+                           (Cst.Expression.LocalOpen {
+                              syntax_node = node;
+                              module_path =
+                                Cst.Ident.Qualified {
+                                  syntax_node = module_path_node;
+                                  prefix = module_path_like_from_node prefix_node;
+                                  dot_token = token dot_syntax_token;
+                                  name_token = token name_syntax_token;
+                                };
+                              body = expression_from_node body_node;
+                              via_let_open = false;
+                              attributes = [];
+                            });
+                       attributes = [];
+                     })
+              | _ ->
+                  None
+            )
+          | _ ->
+              None
+        )
+      | _ ->
+          None
+    )
+  | _ ->
+      None
 and local_open_expression_from_node = fun node ->
   let non_trivia_children = direct_non_trivia_nodes node in
   let non_trivia_tokens = direct_non_trivia_tokens node in
@@ -6719,35 +6895,56 @@ and match_case_from_node = fun node ->
       | body_exprs, false -> (
           match List.rev body_exprs with
           | body_expr :: _ ->
+              let arrow_token =
+                direct_required_token_with_text ~context:[ "match_case" ] node "->"
+              in
               Some {
                 syntax_node = node;
                 bar_token = direct_token_with_text node "|";
                 when_token = None;
-                arrow_token = direct_required_token_with_text ~context:[ "match_case" ] node "->";
+                arrow_token;
                 pattern = pattern_from_node pattern_node;
                 guard = None;
+                body_leading_trivia =
+                  Cst.leading_trivia_before_node
+                    ~after:(Cst.Token.span arrow_token).end_
+                    (Cst.Expression.syntax_node body_expr);
                 body = body_expr
               }
           | [] -> None
         )
       | guard_expr :: body_expr :: _, true ->
+          let arrow_token =
+            direct_required_token_with_text ~context:[ "match_case" ] node "->"
+          in
           Some {
             syntax_node = node;
             bar_token = direct_token_with_text node "|";
             when_token = direct_token_with_text node "when";
-            arrow_token = direct_required_token_with_text ~context:[ "match_case" ] node "->";
+            arrow_token;
             pattern = pattern_from_node pattern_node;
             guard = Some guard_expr;
+            body_leading_trivia =
+              Cst.leading_trivia_before_node
+                ~after:(Cst.Token.span arrow_token).end_
+                (Cst.Expression.syntax_node body_expr);
             body = body_expr
           }
       | body_expr :: _, true ->
+          let arrow_token =
+            direct_required_token_with_text ~context:[ "match_case" ] node "->"
+          in
           Some {
             syntax_node = node;
             bar_token = direct_token_with_text node "|";
             when_token = direct_token_with_text node "when";
-            arrow_token = direct_required_token_with_text ~context:[ "match_case" ] node "->";
+            arrow_token;
             pattern = pattern_from_node pattern_node;
             guard = None;
+            body_leading_trivia =
+              Cst.leading_trivia_before_node
+                ~after:(Cst.Token.span arrow_token).end_
+                (Cst.Expression.syntax_node body_expr);
             body = body_expr
           }
     )
@@ -7794,52 +7991,42 @@ let open_statement_from_node = fun node ->
             }
       )
 
-let declaration_name_token_from_node = fun node ->
-  let operator_token_from_node =
-    fun node ->
-      direct_non_trivia_tokens node |> List.find_opt
-        (fun syntax_token ->
-          let text = Ceibo.Red.SyntaxToken.text syntax_token in
-          not (String.equal text "(" || String.equal text ")")) |> Option.map token
-  in
-  direct_non_trivia_nodes node |> List.find_map
-    (fun child ->
-      match Ceibo.Red.SyntaxNode.kind child with
-      | Syntax_kind.IDENT_EXPR ->
-          direct_non_trivia_tokens child |> List.find_opt (fun _ -> true) |> Option.map token
-      | Syntax_kind.OPERATOR_PATTERN -> operator_token_from_node child
-      | _ -> None)
-
 let value_declaration_from_node = fun node ->
   let direct_children = direct_non_trivia_nodes node in
-  match declaration_name_token_from_node node with
-  | Some lifted_name_token -> (
-      match List.rev direct_children |> List.find_opt can_lift_core_type_node with
-      | Some lifted_type_node ->
-          Some ({
-            syntax_node = node;
-            name_token = lifted_name_token;
-            type_ = core_type_from_node lifted_type_node;
-            owned_trivia = owned_trivia_from_node node
-          }: Cst.value_declaration)
-      | None -> None
-    )
-  | None -> None
+  let lifted_name_tokens =
+    declaration_name_tokens_from_node ~skip_keywords:[ "val" ] node
+  in
+  let lifted_type_node =
+    List.rev direct_children |> List.find_opt can_lift_core_type_node
+  in
+  match lifted_name_tokens, lifted_type_node with
+  | Some lifted_name_tokens, Some lifted_type_node ->
+      Some ({
+        syntax_node = node;
+        name_tokens = lifted_name_tokens;
+        type_ = core_type_from_node lifted_type_node;
+        owned_trivia = owned_trivia_from_node node
+      }: Cst.value_declaration)
+  | None, _ ->
+      None
+  | _, None ->
+      None
 
 let external_declaration_from_node = fun node ->
   let direct_children = direct_non_trivia_nodes node in
   let lifted_primitive_name_tokens = direct_non_trivia_tokens node
   |> List.filter (fun syntax_token -> Ceibo.Red.SyntaxToken.kind syntax_token = Syntax_kind.STRING_LITERAL)
   |> List.map token in
-  let external_name_token = find_declaration_name_token ~skip_keywords:[ "external" ] (direct_non_trivia_tokens node)
-  |> Option.map token in
-  match external_name_token with
-  | Some lifted_name_token -> (
+  let external_name_tokens =
+    declaration_name_tokens_from_node ~skip_keywords:[ "external" ] node
+  in
+  match external_name_tokens with
+  | Some lifted_name_tokens -> (
       match direct_children |> List.find_opt can_lift_core_type_node with
       | Some lifted_type_node ->
           Some ({
             syntax_node = node;
-            name_token = lifted_name_token;
+            name_tokens = lifted_name_tokens;
             type_ = core_type_from_node lifted_type_node;
             primitive_name_tokens = lifted_primitive_name_tokens;
             attributes = attributes_from_node node;
@@ -8404,17 +8591,15 @@ let build_items_from_payload_nodes =
   in
   let item_entries =
     payload_nodes
-    |> List.concat_map (fun payload_node ->
-           Ceibo.Red.SyntaxNode.direct_nodes payload_node
-           |> List.filter (fun node ->
-                  not (is_trivia (Ceibo.Red.SyntaxNode.kind node)))
-           |> List.concat_map (fun node ->
-                  items_from_node node
-                  |> List.map (fun item ->
-                         let span =
-                           span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item)
-                         in
-                         (next_index (), span, item))))
+    |> List.filter (fun node ->
+           not (is_trivia (Ceibo.Red.SyntaxNode.kind node)))
+    |> List.concat_map (fun node ->
+           items_from_node node
+           |> List.map (fun item ->
+                  let span =
+                    span_of_syntax_node_nontrivia_bounds (syntax_node_of_item item)
+                  in
+                  (next_index (), span, item)))
   in
   let owned_trivia_spans =
     item_entries
@@ -9380,7 +9565,7 @@ and validate_expression = fun ~context ->
       Option.iter (validate_expression ~context:((("expression.if.else_branch" :: context)))) else_branch
   | Cst.Expression.Parenthesized { inner; _ } ->
       validate_expression ~context:((("expression.parenthesized" :: context))) inner
-and validate_match_case = fun ~context ({ pattern; guard; body; _ } : Cst.match_case) ->
+and validate_match_case = fun ~context ({ pattern; guard; body; body_leading_trivia = _; _ } : Cst.match_case) ->
   validate_pattern ~context:((("match_case.pattern" :: context))) pattern;
   Option.iter (validate_expression ~context:((("match_case.guard" :: context)))) guard;
   validate_expression ~context:((("match_case.body" :: context))) body
@@ -9718,9 +9903,9 @@ let raw_structure_items_from_syntax_node = fun node ->
   let items =
     match Ceibo.Red.SyntaxNode.kind node with
     | Syntax_kind.STRUCT_EXPR ->
-        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans [
-          node
-        ] structure_items_from_node
+        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans
+          (structure_item_payload_nodes_from_node node)
+          structure_items_from_node
     | _ ->
         structure_items_from_node node
   in
@@ -9737,7 +9922,13 @@ node
 |> Result.map (normalize_structure_items ~source)
 
 let structure_items_from_syntax_nodes = fun nodes ->
-  match nodes |> List.concat_map structure_items_from_node with
+  match build_items_from_payload_nodes
+    ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment)
+    ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc)
+    ~syntax_node_of_item:Cst.StructureItem.syntax_node
+    ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans
+    nodes
+    structure_items_from_node with
   | items -> (
       match nodes with
       | first :: _ ->
@@ -9748,10 +9939,8 @@ let structure_items_from_syntax_nodes = fun nodes ->
   | exception Bail error -> Error error
 
 let structure_items_of_module_expression = function
-  | Cst.ModuleExpression.Structure {syntax_node; _} ->
-      structure_items_from_syntax_node_with_source
-        ~source:(source_text_of_syntax_node_tree syntax_node)
-        syntax_node
+  | Cst.ModuleExpression.Structure {item_syntax_nodes; _} ->
+      structure_items_from_syntax_nodes item_syntax_nodes
   | module_expression ->
       Error
         {
@@ -9765,13 +9954,13 @@ let raw_signature_items_from_syntax_node = fun node ->
   let items =
     match Ceibo.Red.SyntaxNode.kind node with
     | Syntax_kind.SIGNATURE ->
-        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
-          node
-        ] signature_items_from_node
+        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans
+          (signature_item_payload_nodes_from_node node)
+          signature_items_from_node
     | Syntax_kind.SIG_EXPR ->
-        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans [
-          node
-        ] signature_items_from_node
+        build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans
+          (signature_item_payload_nodes_from_node node)
+          signature_items_from_node
     | _ ->
         signature_items_from_node node
   in
@@ -9788,7 +9977,13 @@ node
 |> Result.map (normalize_signature_items ~source)
 
 let signature_items_from_syntax_nodes = fun nodes ->
-  match nodes |> List.concat_map signature_items_from_node with
+  match build_items_from_payload_nodes
+    ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment)
+    ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc)
+    ~syntax_node_of_item:Cst.SignatureItem.syntax_node
+    ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans
+    nodes
+    signature_items_from_node with
   | items -> (
       match nodes with
       | first :: _ ->
@@ -9800,9 +9995,8 @@ let signature_items_from_syntax_nodes = fun nodes ->
 
 let signature_items_of_module_type = function
   | Cst.ModuleType.Signature {signature_syntax_node; _} ->
-      signature_items_from_syntax_node_with_source
-        ~source:(source_text_of_syntax_node_tree signature_syntax_node)
-        signature_syntax_node
+      signature_items_from_syntax_nodes
+        (signature_item_payload_nodes_from_node signature_syntax_node)
   | module_type ->
       Error
         {

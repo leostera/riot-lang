@@ -75,6 +75,8 @@
 68. Keep expression type annotations and coercions on one explicit `Expression.TypeAscription` node with valid inner variants. Do not split ordinary `: t` away from `:> t` / `: t :> u` into parallel nullable record shapes again.
 69. Keep `class` items split by file context. Structure-side `class ... = ...` forms belong on `ClassDefinition`; interface-side `class ... : ...` forms belong on `ClassDeclaration`; do not reintroduce a shared cross-context class node.
 70. Keep CST invariants local to construction. Do not reintroduce a whole-tree post-construction validation walk on the hot `build_cst` path; builder helpers should construct valid nodes directly and enforce any remaining invariants at the point where the facts are available.
+71. Keep nested `sig ... end` and `struct ... end` relift paths going through the same payload-node ordered-item builders as file-level lifts. Nested helper item streams must preserve inter-item comments/docstrings, not just declaration nodes.
+72. Keep trivia that lives between a case arrow and its body explicit on `Cst.match_case`. Comments/docstrings after `->` belong to the case-body boundary, not to formatter-side boundary recovery.
 
 ## Validate
 

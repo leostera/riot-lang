@@ -25,6 +25,14 @@ module Token = struct
 
   let text = fun token -> Ceibo.Red.SyntaxToken.text token.syntax_token
 
+  let full_text = fun token ->
+    let leading =
+      Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
+      |> List.map Ceibo.Red.SyntaxTrivia.text
+      |> String.concat ""
+    in
+    leading ^ text token
+
   let span = fun token -> Ceibo.Red.SyntaxToken.span token.syntax_token
 
   let same_text = fun left right -> String.equal (text left) (text right)
@@ -1644,6 +1652,7 @@ and match_case = {
   arrow_token : Token.t;
   pattern : pattern;
   guard : expression option;
+  body_leading_trivia : trivia list;
   body : expression;
 }
 
@@ -3107,7 +3116,7 @@ end
 
 type value_declaration = {
   syntax_node : syntax_node;
-  name_token : Token.t;
+  name_tokens : Token.t list;
   type_ : core_type;
   owned_trivia : owned_trivia;
 }
@@ -3115,14 +3124,14 @@ type value_declaration = {
 module ValueDeclaration = struct
   type t = value_declaration = {
     syntax_node : syntax_node;
-    name_token : Token.t;
+    name_tokens : Token.t list;
     type_ : core_type;
     owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
 
-  let name_token = fun decl -> decl.name_token
+  let name_tokens = fun decl -> decl.name_tokens
 
   let type_ = fun decl -> decl.type_
 
@@ -3131,7 +3140,7 @@ end
 
 type external_declaration = {
   syntax_node : syntax_node;
-  name_token : Token.t;
+  name_tokens : Token.t list;
   type_ : core_type;
   primitive_name_tokens : Token.t list;
   attributes : attribute list;
