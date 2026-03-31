@@ -91,6 +91,7 @@ Token-backed so far:
 - constructor record argument delimiters `{ }`
 - polyvariant delimiters `[ ]`
 - inline record definition separators `;`
+- phrase separators `;;`
 
 ## Next Targets
 

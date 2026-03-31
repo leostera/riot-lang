@@ -107,11 +107,11 @@ let binding_has_explicit_fun_rhs = fun (binding : Syn.Cst.let_binding) ->
       false
 
 let phrase_separator_doc_of_tokens = fun tokens ->
-  match List.length tokens with
-  | count when count > 0 ->
-      Some (List.init count (fun _ -> Doc.semi) |> Doc.concat)
-  | _ ->
+  match tokens with
+  | [] ->
       None
+  | tokens ->
+      Some (tokens |> List.map doc_of_token |> Doc.concat)
 
 let is_section_docstring_text = fun comment_text ->
   let len = String.length comment_text in
