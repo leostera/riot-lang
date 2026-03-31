@@ -1043,14 +1043,11 @@ and render_poly_variant_field =
   function
   | Syn.Cst.RowField.Tag tag ->
       let head =
-        let bar_doc =
-          match tag.bar_token with
-          | Some bar_token ->
-              doc_of_token bar_token
-          | None ->
-              Doc.bar
-        in
-        Doc.concat [ bar_doc; Doc.space; Doc.text "`"; doc_of_token tag.tag_name ]
+        match tag.bar_token with
+        | Some bar_token ->
+            Doc.concat [ doc_of_token bar_token; Doc.space; Doc.text "`"; doc_of_token tag.tag_name ]
+        | None ->
+            Doc.concat [ Doc.text "`"; doc_of_token tag.tag_name ]
       in
       (
         match tag.payload_type with

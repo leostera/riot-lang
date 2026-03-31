@@ -68,6 +68,7 @@ Token-backed so far:
 - module declaration `:`
 - functor parameter `:`
 - module expression constraint `:`
+- polyvariant leading `|`
 
 ## Next Targets
 
