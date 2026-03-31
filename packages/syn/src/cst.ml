@@ -1541,7 +1541,10 @@ and list_expression = {
 
 and array_expression = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   elements : expression list;
+  separator_tokens : Token.t list;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 

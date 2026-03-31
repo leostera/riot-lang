@@ -2497,20 +2497,37 @@ let make_lowerer =
                Doc.break ~flat:" " ();
                doc_of_token closing_token;
              ])
-  | Syn.Cst.Expression.Array { elements; _ } ->
+  | Syn.Cst.Expression.Array
+      { opening_token; elements; separator_tokens; closing_token; _ } ->
+      let rec render_elements elements separator_tokens =
+        match elements, separator_tokens with
+        | [], [] ->
+            Doc.empty
+        | [ element ], [] ->
+            render_expression element
+        | element :: rest, separator_token :: rest_separators ->
+            Doc.concat
+              [
+                render_expression element;
+                doc_of_token separator_token;
+                Doc.break ();
+                render_elements rest rest_separators;
+              ]
+        | _ ->
+            unsupported "array expression elements missing separator tokens"
+      in
       Doc.group
         (Doc.concat
            [
-             Doc.text "[|";
+             doc_of_token opening_token;
              Doc.indent 2
                (Doc.concat
                   [
                     Doc.break ~flat:"" ();
-                    join_map (Doc.concat [ Doc.semi; Doc.break () ]) render_expression
-                      elements;
+                    render_elements elements separator_tokens;
                   ]);
              Doc.break ~flat:"" ();
-             Doc.text "|]";
+             doc_of_token closing_token;
            ])
   | Syn.Cst.Expression.Parenthesized { inner; _ } ->
       render_parenthesized_expression expression

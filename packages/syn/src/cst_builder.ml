@@ -5288,9 +5288,26 @@ and expression_from_node = fun node ->
           attributes = []
         }
     | Syntax_kind.ARRAY_EXPR ->
+        let direct_tokens = direct_non_trivia_tokens node in
+        let opening_token, closing_token =
+          match direct_tokens with
+          | opening_token :: _ ->
+              let closing_token = List.hd (List.rev direct_tokens) in
+              (token opening_token, token closing_token)
+          | [] ->
+              bail ~message:"expected array expression delimiters during Ceibo -> CST lifting" ~syntax_node:node
+                ~context:[ "expression.array" ]
+        in
         Cst.Expression.Array {
           syntax_node = node;
+          opening_token;
           elements = known_expression_children node;
+          separator_tokens =
+            direct_tokens
+            |> List.filter (fun syntax_token ->
+                 String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text)
+            |> List.map token;
+          closing_token;
           attributes = []
         }
     | Syntax_kind.RECORD_EXPR -> (

@@ -77,6 +77,7 @@ Token-backed so far:
 - module unpack delimiters `( )`
 - pattern local-open shell tokens
 - list expression delimiters and separators
+- array expression delimiters and separators
 
 ## Next Targets
 
