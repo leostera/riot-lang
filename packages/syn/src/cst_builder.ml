@@ -2867,18 +2867,25 @@ let arrow_label_from_node = fun node ->
   let text = fun syntax_token -> Ceibo.Red.SyntaxToken.text syntax_token in
   match direct_non_trivia_tokens node with
   | label_syntax_token :: colon_syntax_token :: _ when String.equal (text colon_syntax_token) ":" ->
-      Some (Cst.ArrowLabel.Named {sigil_token = None; label_token = token label_syntax_token})
+      Some
+        (Cst.ArrowLabel.Named {
+          sigil_token = None;
+          label_token = token label_syntax_token;
+          colon_token = token colon_syntax_token;
+        })
   | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _ when String.equal (text sigil_syntax_token) "~"
   && String.equal (text colon_syntax_token) ":" ->
       Some (Cst.ArrowLabel.Named {
         sigil_token = Some (token sigil_syntax_token);
-        label_token = token label_syntax_token
+        label_token = token label_syntax_token;
+        colon_token = token colon_syntax_token
       })
   | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _ when String.equal (text sigil_syntax_token) "?"
   && String.equal (text colon_syntax_token) ":" ->
       Some (Cst.ArrowLabel.OptionalNamed {
         sigil_token = token sigil_syntax_token;
-        label_token = token label_syntax_token
+        label_token = token label_syntax_token;
+        colon_token = token colon_syntax_token
       })
   | _ ->
       None

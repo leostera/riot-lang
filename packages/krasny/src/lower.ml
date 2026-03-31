@@ -497,14 +497,14 @@ let render_arrow_label =
   function
   | None ->
       Doc.empty
-  | Some (Syn.Cst.ArrowLabel.Named { sigil_token; label_token }) ->
+  | Some (Syn.Cst.ArrowLabel.Named { sigil_token; label_token; colon_token }) ->
       Doc.concat [
         Option.unwrap_or (Option.map doc_of_token sigil_token) ~default:Doc.empty;
         doc_of_token label_token;
-        Doc.colon
+        doc_of_token colon_token
       ]
-  | Some (Syn.Cst.ArrowLabel.OptionalNamed { sigil_token; label_token }) ->
-      Doc.concat [ doc_of_token sigil_token; doc_of_token label_token; Doc.colon ]
+  | Some (Syn.Cst.ArrowLabel.OptionalNamed { sigil_token; label_token; colon_token }) ->
+      Doc.concat [ doc_of_token sigil_token; doc_of_token label_token; doc_of_token colon_token ]
 
 let rec core_type_needs_parens_in_application =
   function

@@ -303,10 +303,12 @@ and arrow_label =
   | Named of {
       sigil_token : Token.t option;
       label_token : Token.t;
+      colon_token : Token.t;
     }
   | OptionalNamed of {
       sigil_token : Token.t;
       label_token : Token.t;
+      colon_token : Token.t;
     }
 
 and core_type =
@@ -571,10 +573,12 @@ module ArrowLabel = struct
     | Named of {
         sigil_token : Token.t option;
         label_token : Token.t;
+        colon_token : Token.t;
       }
     | OptionalNamed of {
         sigil_token : Token.t;
         label_token : Token.t;
+        colon_token : Token.t;
       }
 
   let sigil_token =
@@ -587,6 +591,12 @@ module ArrowLabel = struct
     | Named { label_token; _ }
     | OptionalNamed { label_token; _ } ->
         label_token
+
+  let colon_token =
+    function
+    | Named { colon_token; _ }
+    | OptionalNamed { colon_token; _ } ->
+        colon_token
 
   let name = fun label -> Token.text (label_token label)
 

@@ -485,6 +485,7 @@ and arrow_label =
   | Named of {
       sigil_token : Token.t option;
       label_token : Token.t;
+      colon_token : Token.t;
     }
       (** A regular labeled arrow parameter such as `x:int -> ...`.
 
@@ -494,6 +495,7 @@ and arrow_label =
   | OptionalNamed of {
       sigil_token : Token.t;
       label_token : Token.t;
+      colon_token : Token.t;
     }
       (** An optional arrow parameter such as `?state:string -> ...`. *)
 
@@ -1036,14 +1038,18 @@ module ArrowLabel : sig
     | Named of {
         sigil_token : Token.t option;
         label_token : Token.t;
+        colon_token : Token.t;
       }
     | OptionalNamed of {
         sigil_token : Token.t;
         label_token : Token.t;
+        colon_token : Token.t;
       }
   val sigil_token : t -> Token.t option
 
   val label_token : t -> Token.t
+
+  val colon_token : t -> Token.t
 
   val name : t -> string
 

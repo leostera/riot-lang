@@ -40,6 +40,7 @@ Token-backed so far:
 - expression type ascription `:`
 - expression coercion `:>`
 - variant constructor payload/result separator
+- arrow label `:`
 
 ## Next Targets
 
