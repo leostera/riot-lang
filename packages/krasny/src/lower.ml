@@ -3728,7 +3728,13 @@ let make_lowerer =
     else
       Doc.group
       (Doc.concat
-      (rendered_head :: List.map (fun argument -> Doc.concat [ Doc.break (); argument ]) rendered_arguments))
+      [
+        rendered_head;
+        Doc.indent
+        2
+        (Doc.concat
+        (List.map (fun argument -> Doc.concat [ Doc.break (); argument ]) rendered_arguments));
+      ])
   and render_if_expression = fun
     ({
         syntax_node;
