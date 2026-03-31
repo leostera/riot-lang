@@ -1,2 +1,1 @@
-let subscribe = fun _t ~to_stage:_ ?options:_ () ->
-  unimplemented ()
+let subscribe _t ~to_stage:_ ?options:_ () = unimplemented ()

@@ -1,6 +1,4 @@
-let parse_key = fun key ->
-  match (key : Event.key) with
-  | Event.Up ->
-      1
-  | _ ->
-      0
+let parse_key key =
+  match (key: Event.key) with
+  | Event.Up -> 1
+  | _ -> 0

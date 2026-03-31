@@ -1,5 +1,4 @@
 type t =
   | Tcp
 
-let handshake = fun Tcp ~accepted_at ~stream ~peer ~buffer_size ->
-  Ok ()
+let handshake Tcp ~accepted_at ~stream ~peer ~buffer_size = Ok ()

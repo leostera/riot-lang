@@ -1975,6 +1975,7 @@ let pattern_requires_parens_in_named_parameter =
 let rec pattern_is_simple_function_parameter =
   function
   | Syn.Cst.Pattern.Identifier _
+  | Syn.Cst.Pattern.Constructor { arguments=[]; _ }
   | Syn.Cst.Pattern.Literal { literal=Syn.Cst.Literal.Unit _; _ }
   | Syn.Cst.Pattern.Wildcard _ -> true
   | Syn.Cst.Pattern.Typed { pattern; _ }
@@ -2052,6 +2053,8 @@ let rec expression_needs_parens_in_labeled_argument =
 
 let rec expression_needs_parens_in_constructor =
   function
+  | Syn.Cst.Expression.TypeAscription _
+  | Syn.Cst.Expression.Polymorphic _ -> false
   | Syn.Cst.Expression.Parenthesized {
     inner=Syn.Cst.Expression.PolyVariant { payload=Some _; _ };
     _
@@ -3834,11 +3837,6 @@ let make_lowerer =
     | _ -> render_branch rendered_pattern
   and render_match_expression = fun ~keyword_token ~scrutinee ~with_token ~cases ->
     let force_multiline_cases = List.length cases > 2 && List.exists case_body_prefers_multiline cases in
-    let scrutinee_requires_parens =
-      match scrutinee with
-      | Syn.Cst.Expression.TypeAscription _ -> true
-      | _ -> false
-    in
     let scrutinee_doc =
       match scrutinee with
       | Syn.Cst.Expression.Tuple { elements; _ } -> join_map
@@ -3847,12 +3845,6 @@ let make_lowerer =
       elements
       | _ when expression_prefers_multiline_layout scrutinee -> render_block_expression scrutinee
       | _ -> render_expression scrutinee
-    in
-    let scrutinee_doc =
-      if scrutinee_requires_parens then
-        Doc.concat [ Doc.lparen; scrutinee_doc; Doc.rparen ]
-      else
-        scrutinee_doc
     in
     let head = Doc.concat [ doc_of_token keyword_token; Doc.space; scrutinee_doc;  ] in
     if expression_prefers_multiline_layout scrutinee || Doc.is_multiline scrutinee_doc then
@@ -4474,10 +4466,14 @@ let make_lowerer =
     let pattern_doc_is_already_parenthesized =
       match pattern with
       | Syn.Cst.Pattern.Typed _ -> true
+      | Syn.Cst.Pattern.Tuple _
+      | Syn.Cst.Pattern.List _
+      | Syn.Cst.Pattern.Array _
+      | Syn.Cst.Pattern.Record _ -> true
       | Syn.Cst.Pattern.Parenthesized {
         inner=(Syn.Cst.Pattern.Tuple _ | Syn.Cst.Pattern.List _ | Syn.Cst.Pattern.Array _ | Syn.Cst.Pattern.Record _);
         _
-      } -> false
+      } -> true
       | Syn.Cst.Pattern.Parenthesized _ -> true
       | _ -> false
     in
@@ -4907,7 +4903,7 @@ let make_lowerer =
     | _ when expression_is_pipeline value && Doc.is_multiline rendered_value -> false
     | _ -> stays_after_equals
   and local_binding_keeps_parameters_in_header = fun ~parameters ~rendered_type_annotation ~synthesized_type_annotation ->
-    not (parameters = []) && Option.is_some rendered_type_annotation && not synthesized_type_annotation
+    not (parameters = []) && not synthesized_type_annotation
   and local_binding_forces_multiline_body = fun ~local_context ~rec_token value ->
     local_context && Option.is_some rec_token && (
       expression_prefers_multiline_layout value || match value with

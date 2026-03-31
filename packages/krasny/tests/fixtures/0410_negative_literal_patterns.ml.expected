@@ -1,4 +1,4 @@
-let classify_status = fun code ->
+let classify_status code =
   match code with
   | -2 -> `Retry
   | -1 -> `Read
