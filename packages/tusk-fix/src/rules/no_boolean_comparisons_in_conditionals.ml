@@ -18,81 +18,75 @@ This rule exists to keep conditionals focused on the condition itself rather tha
 an unnecessary comparison wrapped around it.
 |}
 
-let rec unwrap_parens =
-  function
+let rec unwrap_parens = function
   | Syn.Cst.Expression.Parenthesized expr -> unwrap_parens expr.inner
   | expr -> expr
 
-let bool_literal_value =
-  function
+let bool_literal_value = function
   | Syn.Cst.Expression.Literal (Syn.Cst.Literal.Bool { literal_token; _ }) -> Some (String.equal
-  (Syn.Cst.Token.text literal_token)
-  "true")
+    (Syn.Cst.Token.text literal_token)
+    "true")
   | _ -> None
 
 let comparison_operands = fun expr ->
-  match unwrap_parens expr with
-  | Syn.Cst.Expression.Infix (cmp: Syn.Cst.infix_expression) ->
-      let op = Syn.Cst.InfixExpression.operator cmp in
-      if String.equal op "=" || String.equal op "!=" || String.equal op "<>" then
-        Some (op, Syn.Cst.InfixExpression.left cmp, Syn.Cst.InfixExpression.right cmp)
-      else
-        None
-  | _ -> None
+    match unwrap_parens expr with
+    | Syn.Cst.Expression.Infix (cmp: Syn.Cst.infix_expression) ->
+        let op = Syn.Cst.InfixExpression.operator cmp in
+        if String.equal op "=" || String.equal op "!=" || String.equal op "<>" then
+          Some (op, Syn.Cst.InfixExpression.left cmp, Syn.Cst.InfixExpression.right cmp)
+        else
+          None
+    | _ -> None
 
 let should_flag_condition = fun expr ->
-  match comparison_operands expr with
-  | Some (_, left, right) -> (
-      match bool_literal_value left, bool_literal_value right with
-      | (Some _, None)
-      | (None, Some _) -> true
-      | _ -> false
-    )
-  | None -> false
+    match comparison_operands expr with
+    | Some (_, left, right) -> (
+        match bool_literal_value left, bool_literal_value right with
+        | (Some _, None)
+        | (None, Some _) -> true
+        | _ -> false
+      )
+    | None -> false
 
 let suggestion_for_condition = fun expr ->
-  match comparison_operands expr with
-  | Some (op, left, right) -> (
-      match bool_literal_value left, bool_literal_value right with
-      | (Some true, None)
-      | (None, Some true) ->
-          if String.equal op "=" then
-            "Use the condition directly."
-          else
-            "Use not <condition> instead."
-      | (Some false, None)
-      | (None, Some false) ->
-          if String.equal op "=" then
-            "Use not <condition> instead."
-          else
-            "Use the condition directly."
-      | _ -> "Simplify this boolean comparison."
-    )
-  | None -> "Simplify this boolean comparison."
+    match comparison_operands expr with
+    | Some (op, left, right) -> (
+        match bool_literal_value left, bool_literal_value right with
+        | (Some true, None)
+        | (None, Some true) ->
+            if String.equal op "=" then
+              "Use the condition directly."
+            else
+              "Use not <condition> instead."
+        | (Some false, None)
+        | (None, Some false) ->
+            if String.equal op "=" then
+              "Use not <condition> instead."
+            else
+              "Use the condition directly."
+        | _ -> "Simplify this boolean comparison."
+      )
+    | None -> "Simplify this boolean comparison."
 
-let make_diagnostic = fun (if_expr: Syn.Cst.if_expression) -> Diagnostic.make
-~severity:Warning
-~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
-~suggestion:(suggestion_for_condition if_expr.condition)
-()
+let make_diagnostic = fun (if_expr: Syn.Cst.if_expression) ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
+      ~suggestion:(suggestion_for_condition if_expr.condition)
+      ()
 
-let diagnostic_for_expression =
-  function
+let diagnostic_for_expression = function
   | Syn.Cst.Expression.If if_expr when should_flag_condition if_expr.condition -> Some (make_diagnostic
-  if_expr)
+    if_expr)
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+    let source_file = ctx.cst in
+    Syn.Cst.SourceFile.structure_items source_file
+    |> Option.unwrap_or ~default:[]
+    |> List.concat_map Traversal.expressions_of_structure_item
+    |> List.filter_map diagnostic_for_expression
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

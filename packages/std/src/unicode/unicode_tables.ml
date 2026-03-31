@@ -27,63 +27,61 @@ type range_table = {
 }
 
 (** Check if code point is in 16-bit range *)
-let in_range16 : range16 -> int -> bool = fun r code -> code >= r.lo
-&& code <= r.hi
-&& (r.stride = 1 || (code - r.lo) mod r.stride = 0)
+let in_range16 : range16 -> int -> bool = fun r code ->
+    code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
 
 (** Check if code point is in 32-bit range *)
-let in_range32 : range32 -> int -> bool = fun r code -> code >= r.lo
-&& code <= r.hi
-&& (r.stride = 1 || (code - r.lo) mod r.stride = 0)
+let in_range32 : range32 -> int -> bool = fun r code ->
+    code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
 
 (** Check if code point is in range table using binary search *)
 let in_table : range_table -> int -> bool = fun tbl code ->
-  if code < 0 || code > 0x10_ffff then
-    false
-  else if code < 0x1_0000 then
-    begin
-      (* Binary search in R16 *)
-      let rec search = fun lo hi ->
-        if lo > hi then
+    if code < 0 || code > 0x10_ffff then
+      false
+    else if code < 0x1_0000 then
+      begin
+        (* Binary search in R16 *)
+        let rec search lo hi =
+          if lo > hi then
+            false
+          else
+            let mid = (lo + hi) / 2 in
+            let range = tbl.r16.(mid) in
+            if code < range.lo then
+              search lo (mid - 1)
+            else if code > range.hi then
+              search (mid + 1) hi
+            else
+              in_range16 range code
+        in
+        let len = Array.length tbl.r16 in
+        if len = 0 then
           false
         else
-          let mid = (lo + hi) / 2 in
-          let range = tbl.r16.(mid) in
-          if code < range.lo then
-            search lo (mid - 1)
-          else if code > range.hi then
-            search (mid + 1) hi
+          search 0 (len - 1)
+      end
+    else
+      begin
+        (* Binary search in R32 *)
+        let rec search lo hi =
+          if lo > hi then
+            false
           else
-            in_range16 range code
-      in
-      let len = Array.length tbl.r16 in
-      if len = 0 then
-        false
-      else
-        search 0 (len - 1)
-    end
-  else
-    begin
-      (* Binary search in R32 *)
-      let rec search = fun lo hi ->
-        if lo > hi then
+            let mid = (lo + hi) / 2 in
+            let range = tbl.r32.(mid) in
+            if code < range.lo then
+              search lo (mid - 1)
+            else if code > range.hi then
+              search (mid + 1) hi
+            else
+              in_range32 range code
+        in
+        let len = Array.length tbl.r32 in
+        if len = 0 then
           false
         else
-          let mid = (lo + hi) / 2 in
-          let range = tbl.r32.(mid) in
-          if code < range.lo then
-            search lo (mid - 1)
-          else if code > range.hi then
-            search (mid + 1) hi
-          else
-            in_range32 range code
-      in
-      let len = Array.length tbl.r32 in
-      if len = 0 then
-        false
-      else
-        search 0 (len - 1)
-    end
+          search 0 (len - 1)
+      end
 
 (* ============================================ *)
 

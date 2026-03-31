@@ -17,21 +17,18 @@ Keep the binding when the name genuinely helps. Drop it when the name is created
 to be handed straight back.
 |}
 
-let rec unwrap_parens =
-  function
+let rec unwrap_parens = function
   | Syn.Cst.Expression.Parenthesized expr -> unwrap_parens expr.inner
   | expr -> expr
 
-let binding_name =
-  function
+let binding_name = function
   | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some (Syn.Cst.Token.text name_token)
   | Syn.Cst.Pattern.Wildcard _
   | Syn.Cst.Pattern.Literal _
   | Syn.Cst.Pattern.Parenthesized _ -> None
   | _ -> None
 
-let body_name =
-  function
+let body_name = function
   | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.Ident.name path
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Apply _
@@ -45,15 +42,15 @@ let body_name =
   | Syn.Cst.Expression.Parenthesized _ -> None
   | _ -> None
 
-let make_diagnostic = fun (expr: Syn.Cst.let_expression) -> Diagnostic.make
-~severity:Warning
-~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
-~suggestion:"Replace this let-binding with its bound expression."
-()
+let make_diagnostic = fun (expr: Syn.Cst.let_expression) ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
+      ~suggestion:"Replace this let-binding with its bound expression."
+      ()
 
-let diagnostic_for_expression =
-  function
+let diagnostic_for_expression = function
   | Syn.Cst.Expression.Let expr -> (
       match binding_name expr.binding_pattern, body_name (unwrap_parens expr.body) with
       | Some let_name, Some body_name when String.equal let_name body_name -> Some (make_diagnostic expr)
@@ -62,15 +59,11 @@ let diagnostic_for_expression =
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+    let source_file = ctx.cst in
+    Syn.Cst.SourceFile.structure_items source_file
+    |> Option.unwrap_or ~default:[]
+    |> List.concat_map Traversal.expressions_of_structure_item
+    |> List.filter_map diagnostic_for_expression
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

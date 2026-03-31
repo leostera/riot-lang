@@ -27,64 +27,61 @@ type parameter_counts = {
 }
 
 let count_parameter = fun counts parameter ->
-  match parameter with
-  | Syn.Cst.Parameter.Positional _ -> {counts with positional_count = counts.positional_count + 1}
-  | Syn.Cst.Parameter.Labeled _
-  | Syn.Cst.Parameter.Optional _ -> {counts with named_count = counts.named_count + 1}
-  | Syn.Cst.Parameter.LocallyAbstract _ -> counts
+    match parameter with
+    | Syn.Cst.Parameter.Positional _ -> {counts with positional_count = counts.positional_count + 1}
+    | Syn.Cst.Parameter.Labeled _
+    | Syn.Cst.Parameter.Optional _ -> {counts with named_count = counts.named_count + 1}
+    | Syn.Cst.Parameter.LocallyAbstract _ -> counts
 
-let parameter_counts = fun binding -> Syn.Cst.LetBinding.parameters binding
-|> List.fold_left count_parameter {positional_count = 0; named_count = 0}
+let parameter_counts = fun binding ->
+    Syn.Cst.LetBinding.parameters binding
+    |> List.fold_left count_parameter {positional_count = 0; named_count = 0}
 
 let exceeds_limit = fun counts ->
-  let total = counts.positional_count + counts.named_count in
-  if counts.named_count = 0 then
-    counts.positional_count >= 5
-  else if counts.positional_count = 0 then
-    counts.named_count >= 8
-  else
-    total >= 10
+    let total = counts.positional_count + counts.named_count in
+    if counts.named_count = 0 then
+      counts.positional_count >= 5
+    else if counts.positional_count = 0 then
+      counts.named_count >= 8
+    else
+      total >= 10
 
 let threshold_description = fun counts ->
-  if counts.named_count = 0 then
-    "positional-only functions should stay below 5 parameters"
-  else if counts.positional_count = 0 then
-    "named-only functions should stay below 8 parameters"
-  else
-    "mixed named and positional functions should stay below 10 parameters"
+    if counts.named_count = 0 then
+      "positional-only functions should stay below 5 parameters"
+    else if counts.positional_count = 0 then
+      "named-only functions should stay below 8 parameters"
+    else
+      "mixed named and positional functions should stay below 10 parameters"
 
 let make_diagnostic = fun binding counts ->
-  let total = counts.positional_count + counts.named_count in
-  match Syn.Cst.LetBinding.binding_name_token binding with
-  | Some token -> Some (Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Cst.Token.span token)
-  ~suggestion:((((("This function has "
-  ^ Int.to_string total
-  ^ " parameters; consider introducing a named record parameter because "
-  ^ threshold_description counts)))))
-  ())
-  | None -> None
+    let total = counts.positional_count + counts.named_count in
+    match Syn.Cst.LetBinding.binding_name_token binding with
+    | Some token -> Some (Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Cst.Token.span token)
+      ~suggestion:(("This function has "
+      ^ Int.to_string total
+      ^ " parameters; consider introducing a named record parameter because "
+      ^ threshold_description counts))
+      ())
+    | None -> None
 
 let diagnostic_for_binding = fun binding ->
-  let counts = parameter_counts binding in
-  if exceeds_limit counts then
-    make_diagnostic binding counts
-  else
-    None
+    let counts = parameter_counts binding in
+    if exceeds_limit counts then
+      make_diagnostic binding counts
+    else
+      None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.filter Syn.Cst.LetBinding.is_function
-  |> List.filter_map diagnostic_for_binding
+    let source_file = ctx.cst in
+    Syn.Cst.SourceFile.structure_items source_file
+    |> Option.unwrap_or ~default:[]
+    |> List.concat_map Traversal.let_bindings_of_structure_item
+    |> List.filter Syn.Cst.LetBinding.is_function
+    |> List.filter_map diagnostic_for_binding
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

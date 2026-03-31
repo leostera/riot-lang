@@ -58,45 +58,46 @@ let is_emoji_modifier = fun c -> c >= 0x1_f3fb && c <= 0x1_f3ff
 let is_combining = fun c -> let open Width_tables in in_table combining c || is_emoji_modifier c
 
 (** Check if a code point is a control character *)
-let is_control = fun c -> (c >= 0x0000 && c <= 0x001f)
-|| (c >= 0x007f && c <= 0x009f)
-|| (c = 0x00ad)
-|| (c = 0x061c)
-|| (c >= 0x180e && c <= 0x180e)
-|| (c >= 0x200b && c <= 0x200f)
-|| (c >= 0x2028 && c <= 0x202e)
-|| (c >= 0x2060 && c <= 0x206f)
-|| (c = 0xfeff)
-|| (c >= 0xfff9 && c <= 0xfffb)
+let is_control = fun c ->
+    (c >= 0x0000 && c <= 0x001f)
+    || (c >= 0x007f && c <= 0x009f)
+    || (c = 0x00ad)
+    || (c = 0x061c)
+    || (c >= 0x180e && c <= 0x180e)
+    || (c >= 0x200b && c <= 0x200f)
+    || (c >= 0x2028 && c <= 0x202e)
+    || (c >= 0x2060 && c <= 0x206f)
+    || (c = 0xfeff)
+    || (c >= 0xfff9 && c <= 0xfffb)
 
 (* Interlinear annotation *)
 
 (** Check if a code point is a prepend character *)
 let is_prepend = fun c ->
-  (* Simplified - includes Arabic/Hebrew formatting marks *)
-  (c >= 0x0600 && c <= 0x0605)
-  || (c = 0x06dd)
-  || (c = 0x070f)
-  || (c = 0x0890 || c = 0x0891)
-  || (c = 0x08e2)
+    (* Simplified - includes Arabic/Hebrew formatting marks *)
+    (c >= 0x0600 && c <= 0x0605)
+    || (c = 0x06dd)
+    || (c = 0x070f)
+    || (c = 0x0890 || c = 0x0891)
+    || (c = 0x08e2)
 
 (* Arabic disputed end *)
 
 (** Check if a code point is a spacing mark *)
 let is_spacing_mark = fun c ->
-  (* Simplified - common spacing combining marks *)
-  (c >= 0x0903 && c <= 0x0903)
-  || (c >= 0x093b && c <= 0x093b)
-  || (c >= 0x093e && c <= 0x0940)
-  || (c >= 0x0949 && c <= 0x094c)
-  || (c >= 0x094e && c <= 0x094f)
-  || (c >= 0x0982 && c <= 0x0983)
-  || (c >= 0x09bf && c <= 0x09c0)
-  || (c >= 0x09c7 && c <= 0x09c8)
-  || (c >= 0x09cb && c <= 0x09cc)
-  || (c >= 0x0a03 && c <= 0x0a03)
-  || (c >= 0x0a3e && c <= 0x0a40)
-  || (c >= 0x0a83 && c <= 0x0a83)
+    (* Simplified - common spacing combining marks *)
+    (c >= 0x0903 && c <= 0x0903)
+    || (c >= 0x093b && c <= 0x093b)
+    || (c >= 0x093e && c <= 0x0940)
+    || (c >= 0x0949 && c <= 0x094c)
+    || (c >= 0x094e && c <= 0x094f)
+    || (c >= 0x0982 && c <= 0x0983)
+    || (c >= 0x09bf && c <= 0x09c0)
+    || (c >= 0x09c7 && c <= 0x09c8)
+    || (c >= 0x09cb && c <= 0x09cc)
+    || (c >= 0x0a03 && c <= 0x0a03)
+    || (c >= 0x0a3e && c <= 0x0a40)
+    || (c >= 0x0a83 && c <= 0x0a83)
 
 (* Gujarati visarga *)
 
@@ -111,19 +112,19 @@ let is_hangul_t = fun c -> c >= 0x11a8 && c <= 0x11ff
 
 (** Check if character is Hangul LV syllable *)
 let is_hangul_lv = fun c ->
-  if c < 0xac00 || c > 0xd7a3 then
-    false
-  else
-    let s_base = 0xac00 in
-    let t_count = 28 in
-    ((c - s_base) mod t_count) = 0
+    if c < 0xac00 || c > 0xd7a3 then
+      false
+    else
+      let s_base = 0xac00 in
+      let t_count = 28 in
+      ((c - s_base) mod t_count) = 0
 
 (** Check if character is Hangul LVT syllable *)
 let is_hangul_lvt = fun c ->
-  if c < 0xac00 || c > 0xd7a3 then
-    false
-  else
-    not (is_hangul_lv c)
+    if c < 0xac00 || c > 0xd7a3 then
+      false
+    else
+      not (is_hangul_lv c)
 
 (** Check if character is Regional Indicator (for flag emoji) *)
 let is_regional_indicator = fun c -> c >= 0x1_f1e6 && c <= 0x1_f1ff
@@ -133,36 +134,36 @@ let is_extended_pictographic = fun c -> let open Width_tables in in_table emoji 
 
 (** Get the grapheme break property for a code point *)
 let get_break_property = fun c ->
-  if c = 0x000d then
-    CR
-  else if c = 0x000a then
-    LF
-  else if c = 0x200d then
-    ZWJ
-  else if is_control c then
-    Control
-  else if is_combining c then
-    Extend
-  else if is_regional_indicator c then
-    Regional_Indicator
-  else if is_prepend c then
-    Prepend
-  else if is_spacing_mark c then
-    Spacing_Mark
-  else if is_hangul_l c then
-    L
-  else if is_hangul_v c then
-    V
-  else if is_hangul_t c then
-    T
-  else if is_hangul_lv c then
-    LV
-  else if is_hangul_lvt c then
-    LVT
-  else if is_extended_pictographic c then
-    Extended_Pictographic
-  else
-    Other
+    if c = 0x000d then
+      CR
+    else if c = 0x000a then
+      LF
+    else if c = 0x200d then
+      ZWJ
+    else if is_control c then
+      Control
+    else if is_combining c then
+      Extend
+    else if is_regional_indicator c then
+      Regional_Indicator
+    else if is_prepend c then
+      Prepend
+    else if is_spacing_mark c then
+      Spacing_Mark
+    else if is_hangul_l c then
+      L
+    else if is_hangul_v c then
+      V
+    else if is_hangul_t c then
+      T
+    else if is_hangul_lv c then
+      LV
+    else if is_hangul_lvt c then
+      LVT
+    else if is_extended_pictographic c then
+      Extended_Pictographic
+    else
+      Other
 
 (** Check if there should be a grapheme break between two code points
     
@@ -183,16 +184,16 @@ let get_break_property = fun c ->
     - GB12/13: Regional_Indicator × Regional_Indicator (flag pairs)
 *)
 let should_break = fun ~prev_prop ~curr_prop ~has_zwj ->
-  match prev_prop, curr_prop with
-  | CR, LF -> false
-  | (Control | CR | LF), _ -> true
-  | _, (Control | CR | LF) -> true
-  | L, (L | V | LV | LVT) -> false
-  | (LV | V), (V | T) -> false
-  | (LVT | T), T -> false
-  | _, (Extend | ZWJ) -> false
-  | _, Spacing_Mark -> false
-  | Prepend, _ -> false
-  | Extended_Pictographic, Extended_Pictographic when has_zwj -> false
-  | Regional_Indicator, Regional_Indicator -> false
-  | _, _ -> true
+    match prev_prop, curr_prop with
+    | CR, LF -> false
+    | (Control | CR | LF), _ -> true
+    | _, (Control | CR | LF) -> true
+    | L, (L | V | LV | LVT) -> false
+    | (LV | V), (V | T) -> false
+    | (LVT | T), T -> false
+    | _, (Extend | ZWJ) -> false
+    | _, Spacing_Mark -> false
+    | Prepend, _ -> false
+    | Extended_Pictographic, Extended_Pictographic when has_zwj -> false
+    | Regional_Indicator, Regional_Indicator -> false
+    | _, _ -> true

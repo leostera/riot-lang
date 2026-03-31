@@ -22,7 +22,7 @@ let users = [
 ]
 
 let find_user = fun id ->
-  List.find_opt (fun ((uid, _, _)) -> uid = id) users
+    List.find_opt (fun ((uid, _, _)) -> uid = id) users
 
 (** Routes demonstrating the middleware *)
 let routes = Middleware.Router.[get "/"
@@ -241,7 +241,7 @@ let () =
           Log.info "Visit http://localhost:4000 for interactive examples!";
           Log.info "===========================================";
           (* Keep alive *)
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

@@ -19,7 +19,7 @@ open Propane
 
 let insert_equivalence_prop =
   property "insert: swisstable matches hashmap" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 100);
       let swiss = Swisstable.create () in
@@ -91,8 +91,8 @@ let remove_equivalence_prop =
 
 let contains_equivalence_prop =
   property "contains_key: swisstable matches hashmap" Arbitrary.(pair
-  (list (pair int int))
-  (list int))
+    (list (pair int int))
+    (list int))
     (fun ((insert_pairs, check_keys)) ->
       assume (Collections.List.length insert_pairs <= 50);
       assume (Collections.List.length check_keys <= 50);
@@ -107,14 +107,14 @@ let contains_equivalence_prop =
         insert_pairs;
       (* Verify contains_key matches *)
       List.for_all
-      (fun k -> Swisstable.contains_key swiss k = Collections.HashMap.contains_key hash k)
-      check_keys)
+        (fun k -> Swisstable.contains_key swiss k = Collections.HashMap.contains_key hash k)
+        check_keys)
 
 (* Property 5: Clear produces identical results *)
 
 let clear_equivalence_prop =
   property "clear: swisstable matches hashmap" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
@@ -138,7 +138,7 @@ let clear_equivalence_prop =
 
 let to_list_equivalence_prop =
   property "to_list: swisstable matches hashmap (unordered)" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
@@ -164,7 +164,7 @@ let to_list_equivalence_prop =
 
 let keys_equivalence_prop =
   property "keys: swisstable matches hashmap (unordered)" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
@@ -190,7 +190,7 @@ let keys_equivalence_prop =
 
 let values_equivalence_prop =
   property "values: swisstable matches hashmap (unordered)" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
@@ -215,7 +215,7 @@ let values_equivalence_prop =
 
 let fold_equivalence_prop =
   property "fold: swisstable matches hashmap" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
@@ -272,7 +272,7 @@ let or_insert_equivalence_prop =
 
 let many_ops_equivalence_prop =
   property "many operations: swisstable matches hashmap" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs > 0);
       assume (Collections.List.length pairs <= 200);
@@ -316,8 +316,8 @@ let resize_equivalence_prop =
       done;
       (* Verify all entries match *)
       let all_match = List.init
-      101
-      (fun i -> Swisstable.get swiss i = Collections.HashMap.get hash i)
+        101
+        (fun i -> Swisstable.get swiss i = Collections.HashMap.get hash i)
       |> List.for_all (fun x -> x) in
       if not all_match then
         fail "Entries differ after resize";
@@ -343,6 +343,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-model-based-tests" ~tests ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-model-based-tests" ~tests ~args)
+    ~args:Env.args
+    ()

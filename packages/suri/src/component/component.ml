@@ -358,21 +358,21 @@ let empty = Fragment []
 
 (** Conditional Rendering *)
 let when_ = fun condition element ->
-  if condition then
-    element
-  else
-    empty
+    if condition then
+      element
+    else
+      empty
 
 let unless = fun condition element ->
-  if not condition then
-    element
-  else
-    empty
+    if not condition then
+      element
+    else
+      empty
 
 let maybe = fun opt f ->
-  match opt with
-  | Some x -> f x
-  | None -> empty
+    match opt with
+    | Some x -> f x
+    | None -> empty
 
 (** Rendering *)
 (* Web Components *)
@@ -402,82 +402,85 @@ let self_closing_tags = [
 ]
 
 let is_self_closing = fun tag ->
-  List.mem tag self_closing_tags
+    List.mem tag self_closing_tags
 
 let rec to_html = fun t ->
-  match t with
-  | Text str ->
-      str
-  | Fragment children ->
-      String.concat "" (List.map to_html children)
-  | El { tag; attrs; children } ->
-      let attrs_str = attrs_to_string attrs in
-      let attrs_part =
-        if attrs_str = "" then
-          ""
+    match t with
+    | Text str ->
+        str
+    | Fragment children ->
+        String.concat "" (List.map to_html children)
+    | El { tag; attrs; children } ->
+        let attrs_str = attrs_to_string attrs in
+        let attrs_part =
+          if attrs_str = "" then
+            ""
+          else
+            " " ^ attrs_str
+        in
+        if is_self_closing tag then
+          "<" ^ tag ^ attrs_part ^ " />"
         else
-          " " ^ attrs_str
-      in
-      if is_self_closing tag then
-        "<" ^ tag ^ attrs_part ^ " />"
-      else
-        let children_html = String.concat "" (List.map to_html children) in
-        "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
+          let children_html = String.concat "" (List.map to_html children) in
+          "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
+
 and attrs_to_string = fun attrs ->
-  attrs |> List.filter_map
-    (
-      function
-      | Attr (k, v) -> Some (k ^ "=\"" ^ escape_attr v ^ "\"")
-      | Event _ -> None
-    ) |> String.concat " "
+    attrs |> List.filter_map
+      (
+        function
+        | Attr (k, v) -> Some (k ^ "=\"" ^ escape_attr v ^ "\"")
+        | Event _ -> None
+      ) |> String.concat " "
+
 and escape_attr = fun str ->
-  (* HTML attribute escaping *)
-  let buf = IO.Buffer.create (String.length str) in
-  String.iter
-    (
-      function
-      | '"' -> IO.Buffer.add_string buf "&quot;"
-      | '&' -> IO.Buffer.add_string buf "&amp;"
-      | '<' -> IO.Buffer.add_string buf "&lt;"
-      | '>' -> IO.Buffer.add_string buf "&gt;"
-      | c -> IO.Buffer.add_char buf c
-    )
-    str;
-  IO.Buffer.contents buf
+    (* HTML attribute escaping *)
+    let buf = IO.Buffer.create (String.length str) in
+    String.iter
+      (
+        function
+        | '"' -> IO.Buffer.add_string buf "&quot;"
+        | '&' -> IO.Buffer.add_string buf "&amp;"
+        | '<' -> IO.Buffer.add_string buf "&lt;"
+        | '>' -> IO.Buffer.add_string buf "&gt;"
+        | c -> IO.Buffer.add_char buf c
+      )
+      str;
+    IO.Buffer.contents buf
 
 (** Advanced *)
 let rec map = fun f t ->
-  match t with
-  | Text str ->
-      Text str
-  | Fragment children ->
-      Fragment (List.map (map f) children)
-  | El { tag; attrs; children } ->
-      let attrs' = List.map (map_attr f) attrs in
-      let children' = List.map (map f) children in
-      El {tag; attrs = attrs'; children = children'}
+    match t with
+    | Text str ->
+        Text str
+    | Fragment children ->
+        Fragment (List.map (map f) children)
+    | El { tag; attrs; children } ->
+        let attrs' = List.map (map_attr f) attrs in
+        let children' = List.map (map f) children in
+        El {tag; attrs = attrs'; children = children'}
+
 and map_attr = fun f attr ->
-  match attr with
-  | Attr (k, v) -> Attr (k, v)
-  | Event (name, handler) -> Event (name, fun ev -> f (handler ev))
+    match attr with
+    | Attr (k, v) -> Attr (k, v)
+    | Event (name, handler) -> Event (name, fun ev -> f (handler ev))
 
 let extract_handlers = fun t ->
-  let rec go = fun acc ->
-    function
-    | Text _ ->
-        acc
-    | Fragment children ->
-        List.fold_left go acc children
-    | El { attrs; children; _ } ->
-        let attr_handlers =
-          List.filter_map
-            (
-              function
-              | Event (name, handler) -> Some (name, handler)
-              | Attr _ -> None
-            )
-            attrs
-        in
-        List.fold_left go (attr_handlers @ acc) children
-  in
-  go [] t
+    let rec go = fun acc ->
+        function
+        | Text _ ->
+            acc
+        | Fragment children ->
+            List.fold_left go acc children
+        | El { attrs; children; _ } ->
+            let attr_handlers =
+              List.filter_map
+                (
+                  function
+                  | Event (name, handler) -> Some (name, handler)
+                  | Attr _ -> None
+                )
+                attrs
+            in
+            List.fold_left go (attr_handlers @ acc) children
+    in
+    go [] t

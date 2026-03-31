@@ -12,22 +12,26 @@ let init = fun model -> (model, Command.Noop)
 (* Update: Handle keyboard events *)
 
 let update = fun event model ->
-  match event with
-  | Event.KeyDown (Event.Key "q", _)
-  | Event.KeyDown (Event.Key "Q", _)
-  | Event.KeyDown (Event.Escape, _) -> (model, Command.Quit)
-  | _ -> (model, Command.Noop)
+    match event with
+    | Event.KeyDown (Event.Key "q", _)
+    | Event.KeyDown (Event.Key "Q", _)
+    | Event.KeyDown (Event.Escape, _) -> (model, Command.Quit)
+    | _ -> (model, Command.Noop)
 
 (* View: Render the message using Gooey's API *)
 
-let view = fun model -> let open Element in column
-[
-  text
-  ~style:Style.(empty |> fg (`rgb (0, 255, 255)) |> bold |> padding (Padding.make ~top:1 ~left:2 ()))
-  model;
-  text "\n\nPress 'q' to quit";
+let view = fun model ->
+    let open Element in column
+      [
+        text
+          ~style:Style.(empty
+          |> fg (`rgb (0, 255, 255))
+          |> bold
+          |> padding (Padding.make ~top:1 ~left:2 ()))
+          model;
+        text "\n\nPress 'q' to quit";
 
-]
+      ]
 
 (* Create the app *)
 

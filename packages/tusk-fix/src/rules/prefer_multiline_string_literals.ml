@@ -18,8 +18,7 @@ Use concatenation when the pieces are genuinely dynamic. Use a multiline literal
 the content is really one static block of text.
 |explain}
 
-let rec string_literal_chain_size_in_function_body =
-  function
+let rec string_literal_chain_size_in_function_body = function
   | Syn.Cst.Expression expression -> string_literal_chain_size expression
   | Syn.Cst.Cases { cases; _ } ->
       cases |> List.find_map
@@ -31,8 +30,8 @@ let rec string_literal_chain_size_in_function_body =
               | None -> string_literal_chain_size case.body
             )
           | None -> string_literal_chain_size case.body)
-and string_literal_chain_size =
-  function
+
+and string_literal_chain_size = function
   | Syn.Cst.Expression.Path _ ->
       None
   | Syn.Cst.Expression.Literal (Syn.Cst.Literal.String _) ->
@@ -50,7 +49,7 @@ and string_literal_chain_size =
       string_literal_chain_size expr.inner
   | Syn.Cst.Expression.Infix expr when String.equal (Syn.Cst.InfixExpression.operator expr) "^" -> (
       match string_literal_chain_size (Syn.Cst.InfixExpression.left expr), string_literal_chain_size
-      (Syn.Cst.InfixExpression.right expr) with
+        (Syn.Cst.InfixExpression.right expr) with
       | Some left_count, Some right_count -> Some (left_count + right_count)
       | _ -> None
     )
@@ -101,29 +100,26 @@ and string_literal_chain_size =
   | _ ->
       None
 
-let make_diagnostic = fun expr -> Diagnostic.make
-~severity:Warning
-~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-~suggestion:"Use a multiline string literal like {| ... |} instead of concatenating string literals"
-()
+let make_diagnostic = fun expr ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+      ~suggestion:"Use a multiline string literal like {| ... |} instead of concatenating string literals"
+      ()
 
 let diagnostic_for_binding = fun binding ->
-  match string_literal_chain_size (Syn.Cst.LetBinding.value binding) with
-  | Some count when count >= 2 -> Some (make_diagnostic (Syn.Cst.LetBinding.value binding))
-  | Some _
-  | None -> None
+    match string_literal_chain_size (Syn.Cst.LetBinding.value binding) with
+    | Some count when count >= 2 -> Some (make_diagnostic (Syn.Cst.LetBinding.value binding))
+    | Some _
+    | None -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.filter_map diagnostic_for_binding
+    let source_file = ctx.cst in
+    Syn.Cst.SourceFile.structure_items source_file
+    |> Option.unwrap_or ~default:[]
+    |> List.concat_map Traversal.let_bindings_of_structure_item
+    |> List.filter_map diagnostic_for_binding
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

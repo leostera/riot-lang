@@ -32,7 +32,7 @@ let () =
       let alpha_int = Unicode.Rune.to_int alpha in
       let alpha_hex =
         let hex_chars = "0123456789ABCDEF" in
-        let rec to_hex = fun n acc ->
+        let rec to_hex n acc =
           if n = 0 then
             if acc = "" then
               "0000"
@@ -50,7 +50,7 @@ let () =
       let cyrillic_int = Unicode.Rune.to_int cyrillic_a in
       let cyrillic_hex =
         let hex_chars = "0123456789ABCDEF" in
-        let rec to_hex = fun n acc ->
+        let rec to_hex n acc =
           if n = 0 then
             if acc = "" then
               "0000"
@@ -63,14 +63,14 @@ let () =
       in
       println ("Cyrillic А (U+" ^ cyrillic_hex ^ "):");
       println
-      ("  is_letter: " ^ Bool.to_string (Unicode.Rune.is_letter cyrillic_a) ^ " (should be true)");
+        ("  is_letter: " ^ Bool.to_string (Unicode.Rune.is_letter cyrillic_a) ^ " (should be true)");
       println
-      ("  is_upper: " ^ Bool.to_string (Unicode.Rune.is_upper cyrillic_a) ^ " (should be true)");
+        ("  is_upper: " ^ Bool.to_string (Unicode.Rune.is_upper cyrillic_a) ^ " (should be true)");
       println "";
       let zhong_int = Unicode.Rune.to_int zhong in
       let zhong_hex =
         let hex_chars = "0123456789ABCDEF" in
-        let rec to_hex = fun n acc ->
+        let rec to_hex n acc =
           if n = 0 then
             if acc = "" then
               "0000"
@@ -87,7 +87,7 @@ let () =
       let arabic_int = Unicode.Rune.to_int arabic_5 in
       let arabic_hex =
         let hex_chars = "0123456789ABCDEF" in
-        let rec to_hex = fun n acc ->
+        let rec to_hex n acc =
           if n = 0 then
             if acc = "" then
               "0000"
@@ -100,7 +100,7 @@ let () =
       in
       println ("Arabic digit ٥ (U+" ^ arabic_hex ^ "):");
       println
-      ("  is_digit: " ^ Bool.to_string (Unicode.Rune.is_digit arabic_5) ^ " (should be true)");
+        ("  is_digit: " ^ Bool.to_string (Unicode.Rune.is_digit arabic_5) ^ " (should be true)");
       println "";
       (* Test ASCII for regression *)
       let a = Unicode.Rune.of_char 'A' in

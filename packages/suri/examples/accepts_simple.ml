@@ -45,12 +45,12 @@ post "/api/submit"
   (fun conn _req ->
     let body = Conn.body conn in
     let response = String.concat
-    ""
-    [
-      "{\"message\": \"Data received\", \"received_bytes\": ";
-      string_of_int (String.length body);
-      "}"
-    ] in
+      ""
+      [
+        "{\"message\": \"Data received\", \"received_bytes\": ";
+        string_of_int (String.length body);
+        "}"
+      ] in
     conn
     |> Conn.respond ~status:Net.Http.Status.Ok ~body:response
     |> Conn.with_header "content-type" "application/json"
@@ -64,14 +64,14 @@ let () =
           request_id;
           logger;
           accepts
-          ~config:Middleware.Accepts.{
-            types = [ "application/json" ];
-            check_accept = true;
-            check_content_type = true;
-            on_reject = None;
+            ~config:Middleware.Accepts.{
+              types = [ "application/json" ];
+              check_accept = true;
+              check_content_type = true;
+              on_reject = None;
 
-          }
-          [];
+            }
+            [];
           router routes;
 
         ] in
@@ -101,7 +101,7 @@ let () =
           Log.info "       -d 'text' http://localhost:3001/api/submit  # 415";
           Log.info "===========================================";
           (* Keep alive *)
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

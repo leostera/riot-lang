@@ -162,32 +162,32 @@ let hide_cursor_seq = escape "?25l"
 (* Strip ANSI escape sequences from a string *)
 
 let strip = fun str ->
-  let buf = Buffer.create (String.length str) in
-  let len = String.length str in
-  let rec scan = fun i ->
-    if i >= len then
-      Buffer.contents buf
-    else if i < len - 1 && str.[i] = '\x1b' && str.[i + 1] = '[' then
-      let rec skip = fun j ->
-        if j >= len then
-          scan len
-        else
-          let c = str.[j] in
-          if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') then
-            scan (j + 1)
+    let buf = Buffer.create (String.length str) in
+    let len = String.length str in
+    let rec scan i =
+      if i >= len then
+        Buffer.contents buf
+      else if i < len - 1 && str.[i] = '\x1b' && str.[i + 1] = '[' then
+        let rec skip j =
+          if j >= len then
+            scan len
           else
-            skip (j + 1)
-      in
-      skip (i + 2)
-    else begin
-      Buffer.add_char buf str.[i];
-      scan (i + 1)
-    end
-  in
-  scan 0
+            let c = str.[j] in
+            if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') then
+              scan (j + 1)
+            else
+              skip (j + 1)
+        in
+        skip (i + 2)
+      else begin
+        Buffer.add_char buf str.[i];
+        scan (i + 1)
+      end
+    in
+    scan 0
 
 (* Calculate display width ignoring ANSI codes *)
 
 let width = fun str ->
-  let stripped = strip str in
-  String.length stripped
+    let stripped = strip str in
+    String.length stripped

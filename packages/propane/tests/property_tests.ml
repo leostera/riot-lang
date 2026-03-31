@@ -26,24 +26,24 @@ let int_range_property =
 
 let list_reverse_property =
   property
-  "list reverse is involutive"
-  Arbitrary.(list int)
-  (fun lst -> List.rev (List.rev lst) = lst)
+    "list reverse is involutive"
+    Arbitrary.(list int)
+    (fun lst -> List.rev (List.rev lst) = lst)
 
 (* Property: list length is preserved by reverse *)
 
 let list_length_property =
   property
-  "list length preserved by reverse"
-  Arbitrary.(list int)
-  (fun lst -> List.length (List.rev lst) = List.length lst)
+    "list length preserved by reverse"
+    Arbitrary.(list int)
+    (fun lst -> List.length (List.rev lst) = List.length lst)
 
 (* Property: map distributes over list append *)
 
 let map_append_property =
   property "map distributes over append" Arbitrary.(triple (list int) (list int) int)
     (fun ((xs, ys, n)) ->
-      let f = fun x -> x + n in
+      let f x = x + n in
       let mapped_concat = List.map f (xs @ ys) in
       let concat_mapped = List.map f xs @ List.map f ys in
       mapped_concat = concat_mapped)
@@ -52,17 +52,17 @@ let map_append_property =
 
 let string_concat_property =
   property
-  "string concatenation is associative"
-  Arbitrary.(triple string string string)
-  (fun ((a, b, c)) -> (a ^ b) ^ c = a ^ (b ^ c))
+    "string concatenation is associative"
+    Arbitrary.(triple string string string)
+    (fun ((a, b, c)) -> (a ^ b) ^ c = a ^ (b ^ c))
 
 (* Property: string length is additive *)
 
 let string_length_property =
   property
-  "string length is additive"
-  Arbitrary.(pair string string)
-  (fun ((s1, s2)) -> String.length (s1 ^ s2) = String.length s1 + String.length s2)
+    "string length is additive"
+    Arbitrary.(pair string string)
+    (fun ((s1, s2)) -> String.length (s1 ^ s2) = String.length s1 + String.length s2)
 
 (* Property: bool negation is involutive *)
 
@@ -82,7 +82,7 @@ let pair_property =
 let option_none_property =
   property "option map preserves None" Arbitrary.(option int)
     (fun opt ->
-      let f = fun x -> x * 2 in
+      let f x = x * 2 in
       match opt with
       | None -> Option.map f opt = None
       | Some _ -> true)
@@ -134,6 +134,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Test.Cli.main ~name:"propane/property_tests" ~tests ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Test.Cli.main ~name:"propane/property_tests" ~tests ~args)
+    ~args:Env.args
+    ()

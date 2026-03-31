@@ -125,9 +125,9 @@ let test_diff_array_completely_different = Test.case "diff completely different 
 
 let test_diff_nested_arrays = Test.case "diff nested arrays" @@ fun () ->
   let a1 = Json.array
-  [ Json.array [ Json.int 1; Json.int 2 ]; Json.array [ Json.int 3; Json.int 4 ];  ] in
+    [ Json.array [ Json.int 1; Json.int 2 ]; Json.array [ Json.int 3; Json.int 4 ];  ] in
   let a2 = Json.array
-  [ Json.array [ Json.int 1; Json.int 2 ]; Json.array [ Json.int 3; Json.int 99 ];  ] in
+    [ Json.array [ Json.int 1; Json.int 2 ]; Json.array [ Json.int 3; Json.int 99 ];  ] in
   let diff = Json.diff a1 a2 in
   match diff with
   | [ { path=[Index 1;Index 1]; kind=Changed (Json.Int 4, Json.Int 99) };  ] -> Ok ()
@@ -186,31 +186,31 @@ let test_diff_object_multiple_changes = Test.case "diff object with multiple cha
 
 let test_diff_nested_objects = Test.case "diff deeply nested objects" @@ fun () ->
   let o1 = Json.obj
-  [
-    (
-      "user",
-      Json.obj
-      [
-        ("name", Json.string "Alice");
-        ("address", Json.obj [ ("city", Json.string "NYC"); ("zip", Json.string "10001") ]);
+    [
+      (
+        "user",
+        Json.obj
+          [
+            ("name", Json.string "Alice");
+            ("address", Json.obj [ ("city", Json.string "NYC"); ("zip", Json.string "10001") ]);
 
-      ]
-    );
+          ]
+      );
 
-  ] in
+    ] in
   let o2 = Json.obj
-  [
-    (
-      "user",
-      Json.obj
-      [
-        ("name", Json.string "Alice");
-        ("address", Json.obj [ ("city", Json.string "SF"); ("zip", Json.string "10001") ]);
+    [
+      (
+        "user",
+        Json.obj
+          [
+            ("name", Json.string "Alice");
+            ("address", Json.obj [ ("city", Json.string "SF"); ("zip", Json.string "10001") ]);
 
-      ]
-    );
+          ]
+      );
 
-  ] in
+    ] in
   let diff = Json.diff o1 o2 in
   match diff with
   | [
@@ -238,31 +238,31 @@ let test_diff_object_with_array = Test.case "diff object containing arrays" @@ f
 let test_diff_complex_nested_structure = Test.case "diff complex deeply nested structure"
 @@ fun () ->
   let o1 = Json.obj
-  [
-    (
-      "users",
-      Json.array
-      [ Json.obj [ ("id", Json.int 1); ("roles", Json.array [ Json.string "admin" ]);  ];  ]
-    );
+    [
+      (
+        "users",
+        Json.array
+          [ Json.obj [ ("id", Json.int 1); ("roles", Json.array [ Json.string "admin" ]);  ];  ]
+      );
 
-  ] in
+    ] in
   let o2 = Json.obj
-  [
-    (
-      "users",
-      Json.array
-      [
-        Json.obj
-        [
-          ("id", Json.int 1);
-          ("roles", Json.array [ Json.string "admin"; Json.string "moderator" ]);
+    [
+      (
+        "users",
+        Json.array
+          [
+            Json.obj
+              [
+                ("id", Json.int 1);
+                ("roles", Json.array [ Json.string "admin"; Json.string "moderator" ]);
 
-        ];
+              ];
 
-      ]
-    );
+          ]
+      );
 
-  ] in
+    ] in
   let diff = Json.diff o1 o2 in
   let added = additions diff in
   if List.length added >= 1 then
@@ -317,17 +317,17 @@ let test_json_diff_with_helpers = Test.case "use helpers on JSON diff results" @
 
 let test_json_at_path = Test.case "filter JSON diffs by path" @@ fun () ->
   let o1 = Json.obj
-  [
-    ("user", Json.obj [ ("name", Json.string "Alice"); ("age", Json.int 30) ]);
-    ("config", Json.obj [ ("port", Json.int 8_080) ]);
+    [
+      ("user", Json.obj [ ("name", Json.string "Alice"); ("age", Json.int 30) ]);
+      ("config", Json.obj [ ("port", Json.int 8_080) ]);
 
-  ] in
+    ] in
   let o2 = Json.obj
-  [
-    ("user", Json.obj [ ("name", Json.string "Bob"); ("age", Json.int 31) ]);
-    ("config", Json.obj [ ("port", Json.int 8_080) ]);
+    [
+      ("user", Json.obj [ ("name", Json.string "Bob"); ("age", Json.int 31) ]);
+      ("config", Json.obj [ ("port", Json.int 8_080) ]);
 
-  ] in
+    ] in
   let diff = Json.diff o1 o2 in
   let user_name_changes = at_path [ Key "user"; Key "name" ] diff in
   let user_age_changes = at_path [ Key "user"; Key "age" ] diff in

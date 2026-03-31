@@ -3,118 +3,118 @@ open Global
 (* Convert a value to string for error messages *)
 
 let rec value_to_string = fun (v: Spec.value) ->
-  match v with
-  | Spec.String s ->
-      "\"" ^ s ^ "\""
-  | Spec.Char c ->
-      "'" ^ String.make 1 c ^ "'"
-  | Spec.Int i ->
-      string_of_int i
-  | Spec.Int32 i ->
-      Int32.to_string i
-  | Spec.Int64 i ->
-      Int64.to_string i
-  | Spec.Bool b ->
-      if b then
-        "true"
-      else
-        "false"
-  | Spec.Float f ->
-      string_of_float f
-  | Spec.Uri uri ->
-      Net.Uri.to_string uri
-  | Spec.Datetime dt ->
-      Datetime.to_iso8601 dt
-  | Spec.Path p ->
-      Path.to_string p
-  | Spec.Uuid uuid ->
-      Uuid.to_string uuid
-  | Spec.List items ->
-      let items_str = String.concat ", " (Collections.List.map value_to_string items) in
-      "[" ^ items_str ^ "]"
-  | Spec.DiscriminatedUnion { discriminant; variant; fields=_ } ->
-      "<" ^ discriminant ^ "=" ^ variant ^ ">"
-  | Spec.Map _ ->
-      "<map>"
+    match v with
+    | Spec.String s ->
+        "\"" ^ s ^ "\""
+    | Spec.Char c ->
+        "'" ^ String.make 1 c ^ "'"
+    | Spec.Int i ->
+        string_of_int i
+    | Spec.Int32 i ->
+        Int32.to_string i
+    | Spec.Int64 i ->
+        Int64.to_string i
+    | Spec.Bool b ->
+        if b then
+          "true"
+        else
+          "false"
+    | Spec.Float f ->
+        string_of_float f
+    | Spec.Uri uri ->
+        Net.Uri.to_string uri
+    | Spec.Datetime dt ->
+        Datetime.to_iso8601 dt
+    | Spec.Path p ->
+        Path.to_string p
+    | Spec.Uuid uuid ->
+        Uuid.to_string uuid
+    | Spec.List items ->
+        let items_str = String.concat ", " (Collections.List.map value_to_string items) in
+        "[" ^ items_str ^ "]"
+    | Spec.DiscriminatedUnion { discriminant; variant; fields=_ } ->
+        "<" ^ discriminant ^ "=" ^ variant ^ ">"
+    | Spec.Map _ ->
+        "<map>"
 
 (* Custom equality for Spec.value *)
 
 let rec value_equal = fun (v1: Spec.value) (v2: Spec.value) ->
-  match (v1, v2) with
-  | Spec.String s1, Spec.String s2 ->
-      String.equal s1 s2
-  | Spec.Char c1, Spec.Char c2 ->
-      c1 = c2
-  | Spec.Int i1, Spec.Int i2 ->
-      i1 = i2
-  | Spec.Int32 i1, Spec.Int32 i2 ->
-      i1 = i2
-  | Spec.Int64 i1, Spec.Int64 i2 ->
-      i1 = i2
-  | Spec.Bool b1, Spec.Bool b2 ->
-      b1 = b2
-  | Spec.Float f1, Spec.Float f2 ->
-      f1 = f2
-  | Spec.Uri u1, Spec.Uri u2 ->
-      Net.Uri.equal u1 u2
-  | Spec.Datetime d1, Spec.Datetime d2 ->
-      Datetime.equal d1 d2
-  | Spec.Path p1, Spec.Path p2 ->
-      Path.equal p1 p2
-  | Spec.Uuid u1, Spec.Uuid u2 ->
-      Uuid.equal u1 u2
-  | Spec.List l1, Spec.List l2 ->
-      let rec list_equal = fun l1 l2 ->
-        match (l1, l2) with
-        | [], [] -> true
-        | v1 :: rest1, v2 :: rest2 -> value_equal v1 v2 && list_equal rest1 rest2
-        | _ -> false
-      in
-      list_equal l1 l2
-  | Spec.DiscriminatedUnion { discriminant=d1; variant=v1; fields=f1 }, Spec.DiscriminatedUnion {
-    discriminant=d2;
-    variant=v2;
-    fields=f2
-  } ->
-      String.equal d1 d2 && String.equal v1 v2 && let rec map_equal = fun l1 l2 ->
-        match (l1, l2) with
-        | [], [] -> true
-        | (k1, v1) :: rest1, (k2, v2) :: rest2 -> String.equal k1 k2
-        && value_equal v1 v2
-        && map_equal rest1 rest2
-        | _ -> false
-      in
-      map_equal f1 f2
-  | Spec.Map m1, Spec.Map m2 ->
-      let rec map_equal = fun l1 l2 ->
-        match (l1, l2) with
-        | [], [] -> true
-        | (k1, v1) :: rest1, (k2, v2) :: rest2 -> String.equal k1 k2
-        && value_equal v1 v2
-        && map_equal rest1 rest2
-        | _ -> false
-      in
-      map_equal m1 m2
-  | _ ->
-      false
+    match (v1, v2) with
+    | Spec.String s1, Spec.String s2 ->
+        String.equal s1 s2
+    | Spec.Char c1, Spec.Char c2 ->
+        c1 = c2
+    | Spec.Int i1, Spec.Int i2 ->
+        i1 = i2
+    | Spec.Int32 i1, Spec.Int32 i2 ->
+        i1 = i2
+    | Spec.Int64 i1, Spec.Int64 i2 ->
+        i1 = i2
+    | Spec.Bool b1, Spec.Bool b2 ->
+        b1 = b2
+    | Spec.Float f1, Spec.Float f2 ->
+        f1 = f2
+    | Spec.Uri u1, Spec.Uri u2 ->
+        Net.Uri.equal u1 u2
+    | Spec.Datetime d1, Spec.Datetime d2 ->
+        Datetime.equal d1 d2
+    | Spec.Path p1, Spec.Path p2 ->
+        Path.equal p1 p2
+    | Spec.Uuid u1, Spec.Uuid u2 ->
+        Uuid.equal u1 u2
+    | Spec.List l1, Spec.List l2 ->
+        let rec list_equal l1 l2 =
+          match (l1, l2) with
+          | [], [] -> true
+          | v1 :: rest1, v2 :: rest2 -> value_equal v1 v2 && list_equal rest1 rest2
+          | _ -> false
+        in
+        list_equal l1 l2
+    | Spec.DiscriminatedUnion { discriminant=d1; variant=v1; fields=f1 }, Spec.DiscriminatedUnion {
+      discriminant=d2;
+      variant=v2;
+      fields=f2
+    } ->
+        String.equal d1 d2 && String.equal v1 v2 && let rec map_equal l1 l2 =
+          match (l1, l2) with
+          | [], [] -> true
+          | (k1, v1) :: rest1, (k2, v2) :: rest2 -> String.equal k1 k2
+          && value_equal v1 v2
+          && map_equal rest1 rest2
+          | _ -> false
+        in
+        map_equal f1 f2
+    | Spec.Map m1, Spec.Map m2 ->
+        let rec map_equal l1 l2 =
+          match (l1, l2) with
+          | [], [] -> true
+          | (k1, v1) :: rest1, (k2, v2) :: rest2 -> String.equal k1 k2
+          && value_equal v1 v2
+          && map_equal rest1 rest2
+          | _ -> false
+        in
+        map_equal m1 m2
+    | _ ->
+        false
 
 (* Check if a value is in a list using custom equality *)
 
 let mem_value = fun value choices ->
-  Collections.List.exists (value_equal value) choices
+    Collections.List.exists (value_equal value) choices
 
 (* Check if a value is in the allowed values list *)
 
 let check_allowed_values = fun field_name (value: Spec.value) allowed_values ->
-  match allowed_values with
-  | None -> Ok value
-  | Some choices ->
-      if mem_value value choices then
-        Ok value
-      else
-        let value_str = value_to_string value in
-        let choices_str = String.concat ", " (Collections.List.map value_to_string choices) in
-        Error (field_name ^ ": invalid value " ^ value_str ^ ", must be one of: " ^ choices_str)
+    match allowed_values with
+    | None -> Ok value
+    | Some choices ->
+        if mem_value value choices then
+          Ok value
+        else
+          let value_str = value_to_string value in
+          let choices_str = String.concat ", " (Collections.List.map value_to_string choices) in
+          Error (field_name ^ ": invalid value " ^ value_str ^ ", must be one of: " ^ choices_str)
 
 (* Validate a TOML value against a field spec and apply defaults, converting to Spec.value *)
 
@@ -323,18 +323,18 @@ let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) resul
         | Some (Data.Toml.Array items) ->
             (* Validate each item in the array *)
             let rec validate_items = fun acc index ->
-              function
-              | [] -> Ok (Collections.List.rev acc)
-              | item :: rest ->
-                  let item_field = {
-                    item_spec
-                    with Spec.name = field_name ^ "[" ^ string_of_int index ^ "]"
-                  } in
-                  (
-                    match validate_field item_field (Some item) with
-                    | Ok validated_item -> validate_items (validated_item :: acc) (index + 1) rest
-                    | Error err -> Error err
-                  )
+                function
+                | [] -> Ok (Collections.List.rev acc)
+                | item :: rest ->
+                    let item_field = {
+                      item_spec
+                      with Spec.name = field_name ^ "[" ^ string_of_int index ^ "]"
+                    } in
+                    (
+                      match validate_field item_field (Some item) with
+                      | Ok validated_item -> validate_items (validated_item :: acc) (index + 1) rest
+                      | Error err -> Error err
+                    )
             in
             (
               match validate_items [] 0 items with
@@ -405,6 +405,7 @@ let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) resul
   match type_result with
   | Error err -> Error err
   | Ok validated_value -> check_allowed_values field_name validated_value allowed_values
+
 and validate_fields (fields: Spec.field list) toml_opt : (Spec.value, string) result =
   let table =
     match toml_opt with
@@ -412,19 +413,19 @@ and validate_fields (fields: Spec.field list) toml_opt : (Spec.value, string) re
     | _ -> []
   in
   let rec process_fields = fun acc ->
-    function
-    | [] -> Ok (Collections.List.rev acc)
-    | field :: rest ->
-        let name = field.Spec.name in
-        let field_value = Collections.List.assoc_opt name table in
-        match validate_field field field_value with
-        | Ok validated -> process_fields ((name, validated) :: acc) rest
-        | Error err -> Error err
+      function
+      | [] -> Ok (Collections.List.rev acc)
+      | field :: rest ->
+          let name = field.Spec.name in
+          let field_value = Collections.List.assoc_opt name table in
+          match validate_field field field_value with
+          | Ok validated -> process_fields ((name, validated) :: acc) rest
+          | Error err -> Error err
   in
   match process_fields [] fields with
   | Ok validated_fields -> Ok (Spec.Map validated_fields)
   | Error err -> Error err
 
 let validate spec toml : (Spec.value, string) result = validate_fields
-(Spec.get_fields spec)
-(Some toml)
+  (Spec.get_fields spec)
+  (Some toml)

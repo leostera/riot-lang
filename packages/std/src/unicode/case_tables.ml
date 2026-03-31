@@ -445,64 +445,64 @@ let case_ranges = [|
 
 (** Apply case delta to a code point *)
 let apply_delta : int -> case_delta -> int -> int = fun r delta case_type ->
-  match delta with
-  | Delta d -> r + d
-  | UpperLower ->
-      (* In an Upper-Lower sequence, the characters at even offsets
+    match delta with
+    | Delta d -> r + d
+    | UpperLower ->
+        (* In an Upper-Lower sequence, the characters at even offsets
          are upper case; the ones at odd offsets are lower.
          UpperCase=0, LowerCase=1, TitleCase=2 *)
-      let offset = r land 1 in
-      (* Get low bit *)
-      if case_type = 1 then
-        r lor 1
-        (* Set low bit *)
-      else
-        r land (lnot 1)
+        let offset = r land 1 in
+        (* Get low bit *)
+        if case_type = 1 then
+          r lor 1
+          (* Set low bit *)
+        else
+          r land (lnot 1)
 
 (* Clear low bit *)
 
 (** Binary search for case range containing code point *)
 let find_case_range : case_range array -> int -> case_range option = fun ranges r ->
-  let rec search = fun lo hi ->
-    if lo > hi then
-      None
-    else
-      let mid = (lo + hi) / 2 in
-      let range = ranges.(mid) in
-      if r < range.lo then
-        search lo (mid - 1)
-      else if r > range.hi then
-        search (mid + 1) hi
+    let rec search lo hi =
+      if lo > hi then
+        None
       else
-        Some range
-  in
-  search 0 (Array.length ranges - 1)
+        let mid = (lo + hi) / 2 in
+        let range = ranges.(mid) in
+        if r < range.lo then
+          search lo (mid - 1)
+        else if r > range.hi then
+          search (mid + 1) hi
+        else
+          Some range
+    in
+    search 0 (Array.length ranges - 1)
 
 (** Convert code point to uppercase *)
 let to_upper : int -> int = fun r ->
-  if r >= 0x61 && r <= 0x7a then
-    r - 32
-    (* a-z -> A-Z *)
-  else
-    match find_case_range case_ranges r with
-    | Some range -> apply_delta r range.to_upper 0
-    | None -> r
+    if r >= 0x61 && r <= 0x7a then
+      r - 32
+      (* a-z -> A-Z *)
+    else
+      match find_case_range case_ranges r with
+      | Some range -> apply_delta r range.to_upper 0
+      | None -> r
 
 (** Convert code point to lowercase *)
 let to_lower : int -> int = fun r ->
-  if r >= 0x41 && r <= 0x5a then
-    r + 32
-    (* A-Z -> a-z *)
-  else
-    match find_case_range case_ranges r with
-    | Some range -> apply_delta r range.to_lower 1
-    | None -> r
+    if r >= 0x41 && r <= 0x5a then
+      r + 32
+      (* A-Z -> a-z *)
+    else
+      match find_case_range case_ranges r with
+      | Some range -> apply_delta r range.to_lower 1
+      | None -> r
 
 (** Convert code point to titlecase *)
 let to_title : int -> int = fun r ->
-  if r >= 0x61 && r <= 0x7a then
-    r - 32
-  else
-    match find_case_range case_ranges r with
-    | Some range -> apply_delta r range.to_title 2
-    | None -> r
+    if r >= 0x61 && r <= 0x7a then
+      r - 32
+    else
+      match find_case_range case_ranges r with
+      | Some range -> apply_delta r range.to_title 2
+      | None -> r

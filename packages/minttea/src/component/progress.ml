@@ -27,113 +27,112 @@ let default_color = `Plain (Style.color "#00FFA3")
 let default_show_percentage = true
 
 let make = fun ?(percent = 0.) ?(full_char = default_full_char) ?(trail_char = default_trail_char) ?(empty_char = default_empty_char) ?(color = default_color) ?(show_percentage = default_show_percentage) ~width () ->
-  {width; percent; full_char; empty_char; trail_char; show_percentage; finished = false; color = (
-      match color with
-      | `Plain c -> `Plain c
-      | `Gradient Style.((No_color, No_color)) -> `Plain (Tty.Color.of_rgb (127, 127, 127))
-      | `Gradient Style.((No_color, c)) -> `Plain c
-      | `Gradient Style.((c, No_color)) -> `Plain c
-      | `Gradient (start, finish) -> `Gradient (Style.gradient ~start ~finish ~steps:width)
-    ); }
+    {width; percent; full_char; empty_char; trail_char; show_percentage; finished = false; color = (
+        match color with
+        | `Plain c -> `Plain c
+        | `Gradient Style.((No_color, No_color)) -> `Plain (Tty.Color.of_rgb (127, 127, 127))
+        | `Gradient Style.((No_color, c)) -> `Plain c
+        | `Gradient Style.((c, No_color)) -> `Plain c
+        | `Gradient (start, finish) -> `Gradient (Style.gradient ~start ~finish ~steps:width)
+      ); }
 
 let is_finished = fun t -> t.finished
 
 let reset = fun t ->
-  t.percent <- 0.;
-  t.finished <- false;
-  t
-
-let set_progress = fun t ~progress ->
-  t.percent <- Float.min 1.0 progress;
-  if t.percent = 1.0 then
-    t.finished <- true;
-  t
-
-let increment = fun t ~delta:amount ->
-  if t.percent +. amount < 1.0 then
-    t.percent <- t.percent +. amount
-  else
-    (
-      t.percent <- 1.0;
-      t.finished <- true
-    );
+    t.percent <- 0.;
+    t.finished <- false;
     t
 
-let view = fun t ->
-  let percent = Float.max 0. (Float.min 1. t.percent) in
-  let full_size = Int.of_float (Float.floor (Float.of_int t.width *. t.percent)) in
-  (* Build progress bar as a pre-rendered string with ANSI codes using old Style module *)
-  let color = fun char ->
-    match t.color with
-    | `Plain c ->
-        fun _ ->
-          Style.(
-            render
-              (default |> fg c)
-              char
-          )
-    | `Gradient color_ramp ->
-        fun i ->
-          Style.(
-            render
-              (default |> fg color_ramp.(i))
-              char
-          )
-  in
-  let full_part =
-    if String.length t.full_char = 0 then
-      ""
+let set_progress = fun t ~progress ->
+    t.percent <- Float.min 1.0 progress;
+    if t.percent = 1.0 then
+      t.finished <- true;
+    t
+
+let increment = fun t ~delta:amount ->
+    if t.percent +. amount < 1.0 then
+      t.percent <- t.percent +. amount
     else
-      List.make ~len:full_size ~fn:(color t.full_char) |> String.concat ""
-  in
-  (* Only show trail if we're not at 100% and have space remaining *)
-  let has_trail = full_size < t.width && String.length t.trail_char > 0 in
-  let trail_part =
-    if has_trail then
-      color t.trail_char full_size
-    else
-      ""
-  in
-  (* Calculate empty size based on whether we have a trail *)
-  let empty_size =
-    let used = full_size + (
-      if has_trail then
-        1
-      else
-        0
-    )
-    in
-    Int.max 0 (t.width - used)
-  in
-  let empty_part =
-    if String.length t.empty_char = 0 then
-      ""
-    else
-      String.make empty_size t.empty_char.[0]
-  in
-  let percentage_part =
-    if t.show_percentage then
-      " " ^ Float.to_string (percent *. 100.) ^ "%"
-    else
-      ""
-  in
-  let progress_string = full_part ^ trail_part ^ empty_part ^ percentage_part in
-  (* Use Element.custom with Custom render command to output raw ANSI *)
-  let measure = fun () ->
-    let visible_width = float_of_int
       (
-        t.width + (
-          if t.show_percentage then
-            7
-          else
-            0
-        )
-      )
+        t.percent <- 1.0;
+        t.finished <- true
+      );
+      t
+
+let view = fun t ->
+    let percent = Float.max 0. (Float.min 1. t.percent) in
+    let full_size = Int.of_float (Float.floor (Float.of_int t.width *. t.percent)) in
+    (* Build progress bar as a pre-rendered string with ANSI codes using old Style module *)
+    let color char =
+      match t.color with
+      | `Plain c ->
+          fun _ ->
+            Style.(
+              render
+                (default |> fg c)
+                char
+            )
+      | `Gradient color_ramp ->
+          fun i ->
+            Style.(
+              render
+                (default |> fg color_ramp.(i))
+                char
+            )
     in
-    Gooey.Viewport.make ~width:visible_width ~height:1.0
-  in
-  let render = fun box ->
-    [
+    let full_part =
+      if String.length t.full_char = 0 then
+        ""
+      else
+        List.make ~len:full_size ~fn:(color t.full_char) |> String.concat ""
+    in
+    (* Only show trail if we're not at 100% and have space remaining *)
+    let has_trail = full_size < t.width && String.length t.trail_char > 0 in
+    let trail_part =
+      if has_trail then
+        color t.trail_char full_size
+      else
+        ""
+    in
+    (* Calculate empty size based on whether we have a trail *)
+    let empty_size =
+      let used = full_size + (
+        if has_trail then
+          1
+        else
+          0
+      )
+      in
+      Int.max 0 (t.width - used)
+    in
+    let empty_part =
+      if String.length t.empty_char = 0 then
+        ""
+      else
+        String.make empty_size t.empty_char.[0]
+    in
+    let percentage_part =
+      if t.show_percentage then
+        " " ^ Float.to_string (percent *. 100.) ^ "%"
+      else
+        ""
+    in
+    let progress_string = full_part ^ trail_part ^ empty_part ^ percentage_part in
+    (* Use Element.custom with Custom render command to output raw ANSI *)
+    let measure () =
+      let visible_width = float_of_int
+        (
+          t.width + (
+            if t.show_percentage then
+              7
+            else
+              0
+          )
+        )
+      in
+      Gooey.Viewport.make ~width:visible_width ~height:1.0
+    in
+    let render box = [
       {
         Gooey.Render.bounding_box = box;
         command_type = Gooey.Render.Custom {data = progress_string};
@@ -141,4 +140,4 @@ let view = fun t ->
 
       }
     ] in
-  Gooey.Element.custom ~measure ~render ()
+    Gooey.Element.custom ~measure ~render ()

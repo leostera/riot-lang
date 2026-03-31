@@ -5,39 +5,39 @@ module Test = Std.Test
 module Result = Std.Result
 
 let assert_ok = fun name check ->
-  match Property.check check with
-  | Property.Success -> Result.Ok ()
-  | Property.Failure { counter_example; shrink_steps } -> Result.Error (Kernel.String.concat
-  ""
-  [
-    name;
-    " failed\nCounter-example: ";
-    counter_example;
-    "\nShrink steps: ";
-    Kernel.Int.to_string shrink_steps;
+    match Property.check check with
+    | Property.Success -> Result.Ok ()
+    | Property.Failure { counter_example; shrink_steps } -> Result.Error (Kernel.String.concat
+      ""
+      [
+        name;
+        " failed\nCounter-example: ";
+        counter_example;
+        "\nShrink steps: ";
+        Kernel.Int.to_string shrink_steps;
 
-  ])
-  | Property.Error { exception_; backtrace } -> Result.Error (Kernel.String.concat
-  ""
-  [ name; " raised exception:\n"; Kernel.Exception.to_string exception_; "\n"; backtrace ])
-  | Property.Assumption_violated -> Result.Error (Kernel.String.concat
-  ""
-  [ name; " had no applicable test cases" ])
+      ])
+    | Property.Error { exception_; backtrace } -> Result.Error (Kernel.String.concat
+      ""
+      [ name; " raised exception:\n"; Kernel.Exception.to_string exception_; "\n"; backtrace ])
+    | Property.Assumption_violated -> Result.Error (Kernel.String.concat
+      ""
+      [ name; " had no applicable test cases" ])
 
 let strictly_increasing_pids = fun pids ->
-  let rec loop = fun prev current ->
-    match current with
-    | [] -> true
-    | head :: tail -> (
-        match Pid.compare prev head with
-        | -1 -> loop head tail
-        | _ -> false
-      )
-  in
-  match pids with
-  | []
-  | [ _ ] -> true
-  | head :: tail -> loop head tail
+    let rec loop prev current =
+      match current with
+      | [] -> true
+      | head :: tail -> (
+          match Pid.compare prev head with
+          | -1 -> loop head tail
+          | _ -> false
+        )
+    in
+    match pids with
+    | []
+    | [ _ ] -> true
+    | head :: tail -> loop head tail
 
 let pid_uids_increase =
   Property.for_all Arbitrary.int
@@ -99,13 +99,12 @@ let tests = [
 
 let () =
   let name = "RFD0010 property tests" in
-  let normalize_args =
-    function
+  let normalize_args = function
     | [] -> [ name; "run-tests" ]
     | [ exe ] -> [ exe; "run-tests" ]
     | args -> args
   in
-  let main = fun ~args ->
+  let main ~args =
     match Test.Cli.main ~name ~tests ~args:(normalize_args args) with
     | Result.Ok () -> Result.Ok ()
     | Result.Error msg -> Result.Error msg

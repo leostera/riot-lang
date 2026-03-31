@@ -18,44 +18,41 @@ The point is not to forbid mutation. It is to keep ownership of mutation inside 
 module that understands the invariants.
 |}
 
-let make_diagnostic = fun (field: Syn.Cst.RecordField.t) -> Diagnostic.make
-~severity:Warning
-~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:(Syn.Ceibo.Red.SyntaxNode.span field.syntax_node)
-~suggestion:"Keep this mutable field private to the implementation and expose operations instead."
-()
+let make_diagnostic = fun (field: Syn.Cst.RecordField.t) ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Ceibo.Red.SyntaxNode.span field.syntax_node)
+      ~suggestion:"Keep this mutable field private to the implementation and expose operations instead."
+      ()
 
 let diagnostics_for_decl = fun ({ type_definition; _ }: Syn.Cst.TypeDeclaration.t) ->
-  match type_definition with
-  | Syn.Cst.TypeDefinition.Record { fields; _ } ->
-      fields |> List.filter_map
-        (fun (field: Syn.Cst.RecordField.t) ->
-          if Option.is_some field.mutable_token then
-            Some (make_diagnostic field)
-          else
-            None)
-  | _ -> []
+    match type_definition with
+    | Syn.Cst.TypeDefinition.Record { fields; _ } ->
+        fields |> List.filter_map
+          (fun (field: Syn.Cst.RecordField.t) ->
+            if Option.is_some field.mutable_token then
+              Some (make_diagnostic field)
+            else
+              None)
+    | _ -> []
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  if not (String.ends_with ~suffix:".mli" ctx.file_path) then
-    []
-  else
-    let source_file = ctx.cst in
-    (
-      match Syn.Cst.SourceFile.signature_items source_file with
-      | Some items ->
-          items |> List.concat_map
-            (
-              function
-              | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostics_for_decl decl
-              | _ -> []
-            )
-      | None -> []
-    )
+    if not (String.ends_with ~suffix:".mli" ctx.file_path) then
+      []
+    else
+      let source_file = ctx.cst in
+      (
+        match Syn.Cst.SourceFile.signature_items source_file with
+        | Some items ->
+            items |> List.concat_map
+              (
+                function
+                | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostics_for_decl decl
+                | _ -> []
+              )
+        | None -> []
+      )
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

@@ -3,23 +3,23 @@ open Std
 let v = fun major minor patch -> Pubgrub.make_version ~major ~minor ~patch
 
 let assert_solution = fun expected_count result ->
-  match result with
-  | Ok (Pubgrub.Solver.Success solution) ->
-      if List.length solution = expected_count then
-        Ok ()
-      else
-        Error ("Wrong number of packages: got "
-        ^ (Int.to_string (List.length solution))
-        ^ ", expected "
-        ^ (Int.to_string expected_count))
-  | Ok (Pubgrub.Solver.Failure _) -> Error "Unexpected conflict"
-  | Error err -> Error ("Error: " ^ err)
+    match result with
+    | Ok (Pubgrub.Solver.Success solution) ->
+        if List.length solution = expected_count then
+          Ok ()
+        else
+          Error ("Wrong number of packages: got "
+          ^ (Int.to_string (List.length solution))
+          ^ ", expected "
+          ^ (Int.to_string expected_count))
+    | Ok (Pubgrub.Solver.Failure _) -> Error "Unexpected conflict"
+    | Error err -> Error ("Error: " ^ err)
 
 let assert_conflict = fun result ->
-  match result with
-  | Ok (Pubgrub.Solver.Failure _) -> Ok ()
-  | Ok (Pubgrub.Solver.Success _) -> Error "Expected conflict but found solution"
-  | Error err -> Error ("Error: " ^ err)
+    match result with
+    | Ok (Pubgrub.Solver.Failure _) -> Ok ()
+    | Ok (Pubgrub.Solver.Success _) -> Error "Expected conflict but found solution"
+    | Error err -> Error ("Error: " ^ err)
 
 let test_debug_derivations =
   Test.case "DEBUG: Test derivations are created"
@@ -111,10 +111,10 @@ let test_version_constraint_upper =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [ ("foo", Pubgrub.strictly_lower_than (v 2 0 0)) ];
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("foo", Pubgrub.strictly_lower_than (v 2 0 0)) ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
       Pubgrub.add_package provider "foo" (v 1 5 0) [];
       Pubgrub.add_package provider "foo" (v 2 0 0) [];
@@ -136,17 +136,17 @@ let test_wide_tree =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [
-        ("a", Pubgrub.full);
-        ("b", Pubgrub.full);
-        ("c", Pubgrub.full);
-        ("d", Pubgrub.full);
-        ("e", Pubgrub.full);
+        provider
+        "root"
+        (v 1 0 0)
+        [
+          ("a", Pubgrub.full);
+          ("b", Pubgrub.full);
+          ("c", Pubgrub.full);
+          ("d", Pubgrub.full);
+          ("e", Pubgrub.full);
 
-      ];
+        ];
       Pubgrub.add_package provider "a" (v 1 0 0) [];
       Pubgrub.add_package provider "b" (v 1 0 0) [];
       Pubgrub.add_package provider "c" (v 1 0 0) [];
@@ -219,10 +219,10 @@ let test_larger_graph =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [ ("a", Pubgrub.full); ("b", Pubgrub.full); ("c", Pubgrub.full) ];
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("a", Pubgrub.full); ("b", Pubgrub.full); ("c", Pubgrub.full) ];
       Pubgrub.add_package provider "a" (v 1 0 0) [ ("d", Pubgrub.full); ("e", Pubgrub.full) ];
       Pubgrub.add_package provider "b" (v 1 0 0) [ ("f", Pubgrub.full); ("g", Pubgrub.full) ];
       Pubgrub.add_package provider "c" (v 1 0 0) [ ("h", Pubgrub.full); ("i", Pubgrub.full) ];
@@ -359,10 +359,10 @@ let test_branching_graph =
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package provider "root" (v 1 0 0) [ ("a", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "a"
-      (v 1 0 0)
-      [ ("b", Pubgrub.full); ("c", Pubgrub.full); ("d", Pubgrub.full) ];
+        provider
+        "a"
+        (v 1 0 0)
+        [ ("b", Pubgrub.full); ("c", Pubgrub.full); ("d", Pubgrub.full) ];
       Pubgrub.add_package provider "b" (v 1 0 0) [ ("e", Pubgrub.full) ];
       Pubgrub.add_package provider "c" (v 1 0 0) [ ("f", Pubgrub.full) ];
       Pubgrub.add_package provider "d" (v 1 0 0) [ ("g", Pubgrub.full) ];
@@ -376,10 +376,10 @@ let test_deep_and_wide =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [ ("a", Pubgrub.full); ("b", Pubgrub.full); ("c", Pubgrub.full); ("d", Pubgrub.full);  ];
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("a", Pubgrub.full); ("b", Pubgrub.full); ("c", Pubgrub.full); ("d", Pubgrub.full);  ];
       Pubgrub.add_package provider "a" (v 1 0 0) [ ("e", Pubgrub.full); ("f", Pubgrub.full) ];
       Pubgrub.add_package provider "b" (v 1 0 0) [ ("g", Pubgrub.full); ("h", Pubgrub.full) ];
       Pubgrub.add_package provider "c" (v 1 0 0) [ ("i", Pubgrub.full); ("j", Pubgrub.full) ];
@@ -403,135 +403,135 @@ let test_deep_and_wide =
       assert_solution 21 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
 
 let generate_web_framework_tests = fun () ->
-  let tests = [] in
-  let tests = ref tests in
-  for i = 1 to 25 do
-    let test =
-      Test.case ("Web framework scenario " ^ (Int.to_string i))
-        (fun () ->
-          let provider = Pubgrub.create_offline () in
-          Pubgrub.add_package
-          provider
-          "root"
-          (v 1 0 0)
-          [ ("http", Pubgrub.full); ("router", Pubgrub.full); ("middleware", Pubgrub.full);  ];
-          Pubgrub.add_package provider "http" (v (1 + (i mod 3)) 0 0) [ ("sockets", Pubgrub.full) ];
-          Pubgrub.add_package provider "router" (v 1 (i mod 5) 0) [ ("path-parser", Pubgrub.full) ];
-          Pubgrub.add_package provider "middleware" (v 2 0 0) [ ("logger", Pubgrub.full) ];
-          Pubgrub.add_package provider "sockets" (v 1 0 0) [];
-          Pubgrub.add_package provider "path-parser" (v 1 0 0) [];
-          Pubgrub.add_package provider "logger" (v 1 0 0) [];
-          assert_solution 7 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
-    in
-    tests := test :: !tests
-  done;
-  List.rev !tests
+    let tests = [] in
+    let tests = ref tests in
+    for i = 1 to 25 do
+      let test =
+        Test.case ("Web framework scenario " ^ (Int.to_string i))
+          (fun () ->
+            let provider = Pubgrub.create_offline () in
+            Pubgrub.add_package
+              provider
+              "root"
+              (v 1 0 0)
+              [ ("http", Pubgrub.full); ("router", Pubgrub.full); ("middleware", Pubgrub.full);  ];
+            Pubgrub.add_package provider "http" (v (1 + (i mod 3)) 0 0) [ ("sockets", Pubgrub.full) ];
+            Pubgrub.add_package provider "router" (v 1 (i mod 5) 0) [ ("path-parser", Pubgrub.full) ];
+            Pubgrub.add_package provider "middleware" (v 2 0 0) [ ("logger", Pubgrub.full) ];
+            Pubgrub.add_package provider "sockets" (v 1 0 0) [];
+            Pubgrub.add_package provider "path-parser" (v 1 0 0) [];
+            Pubgrub.add_package provider "logger" (v 1 0 0) [];
+            assert_solution 7 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+      in
+      tests := test :: !tests
+    done;
+    List.rev !tests
 
 let generate_database_tests = fun () ->
-  let tests = [] in
-  let tests = ref tests in
-  for i = 1 to 25 do
-    let test =
-      Test.case ("Database scenario " ^ (Int.to_string i))
-        (fun () ->
-          let provider = Pubgrub.create_offline () in
-          Pubgrub.add_package
-          provider
-          "root"
-          (v 1 0 0)
-          [ ("db-driver", Pubgrub.full); ("migrations", Pubgrub.full); ("orm", Pubgrub.full);  ];
-          Pubgrub.add_package
-          provider
-          "db-driver"
-          (v (1 + (i mod 4)) 0 0)
-          [ ("connection-pool", Pubgrub.full) ];
-          Pubgrub.add_package
-          provider
-          "migrations"
-          (v 1 (i mod 6) 0)
-          [ ("sql-parser", Pubgrub.full) ];
-          Pubgrub.add_package provider "orm" (v 2 0 0) [ ("query-builder", Pubgrub.full) ];
-          Pubgrub.add_package provider "connection-pool" (v 1 0 0) [];
-          Pubgrub.add_package provider "sql-parser" (v 1 0 0) [];
-          Pubgrub.add_package provider "query-builder" (v 1 0 0) [];
-          assert_solution 7 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
-    in
-    tests := test :: !tests
-  done;
-  List.rev !tests
+    let tests = [] in
+    let tests = ref tests in
+    for i = 1 to 25 do
+      let test =
+        Test.case ("Database scenario " ^ (Int.to_string i))
+          (fun () ->
+            let provider = Pubgrub.create_offline () in
+            Pubgrub.add_package
+              provider
+              "root"
+              (v 1 0 0)
+              [ ("db-driver", Pubgrub.full); ("migrations", Pubgrub.full); ("orm", Pubgrub.full);  ];
+            Pubgrub.add_package
+              provider
+              "db-driver"
+              (v (1 + (i mod 4)) 0 0)
+              [ ("connection-pool", Pubgrub.full) ];
+            Pubgrub.add_package
+              provider
+              "migrations"
+              (v 1 (i mod 6) 0)
+              [ ("sql-parser", Pubgrub.full) ];
+            Pubgrub.add_package provider "orm" (v 2 0 0) [ ("query-builder", Pubgrub.full) ];
+            Pubgrub.add_package provider "connection-pool" (v 1 0 0) [];
+            Pubgrub.add_package provider "sql-parser" (v 1 0 0) [];
+            Pubgrub.add_package provider "query-builder" (v 1 0 0) [];
+            assert_solution 7 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+      in
+      tests := test :: !tests
+    done;
+    List.rev !tests
 
 let generate_compiler_tests = fun () ->
-  let tests = [] in
-  let tests = ref tests in
-  for i = 1 to 22 do
-    let test =
-      Test.case ("Compiler toolchain scenario " ^ (Int.to_string i))
-        (fun () ->
-          let provider = Pubgrub.create_offline () in
-          Pubgrub.add_package
-          provider
-          "root"
-          (v 1 0 0)
-          [
-            ("lexer", Pubgrub.full);
-            ("parser", Pubgrub.full);
-            ("codegen", Pubgrub.full);
-            ("optimizer", Pubgrub.full);
+    let tests = [] in
+    let tests = ref tests in
+    for i = 1 to 22 do
+      let test =
+        Test.case ("Compiler toolchain scenario " ^ (Int.to_string i))
+          (fun () ->
+            let provider = Pubgrub.create_offline () in
+            Pubgrub.add_package
+              provider
+              "root"
+              (v 1 0 0)
+              [
+                ("lexer", Pubgrub.full);
+                ("parser", Pubgrub.full);
+                ("codegen", Pubgrub.full);
+                ("optimizer", Pubgrub.full);
 
-          ];
-          Pubgrub.add_package provider "lexer" (v (1 + (i mod 3)) 0 0) [ ("regex", Pubgrub.full) ];
-          Pubgrub.add_package provider "parser" (v 1 (i mod 4) 0) [ ("ast", Pubgrub.full) ];
-          Pubgrub.add_package provider "codegen" (v 2 0 0) [ ("llvm-bindings", Pubgrub.full) ];
-          Pubgrub.add_package provider "optimizer" (v 1 0 0) [ ("analysis", Pubgrub.full) ];
-          Pubgrub.add_package provider "regex" (v 1 0 0) [];
-          Pubgrub.add_package provider "ast" (v 1 0 0) [];
-          Pubgrub.add_package provider "llvm-bindings" (v 1 0 0) [];
-          Pubgrub.add_package provider "analysis" (v 1 0 0) [];
-          assert_solution 9 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
-    in
-    tests := test :: !tests
-  done;
-  List.rev !tests
+              ];
+            Pubgrub.add_package provider "lexer" (v (1 + (i mod 3)) 0 0) [ ("regex", Pubgrub.full) ];
+            Pubgrub.add_package provider "parser" (v 1 (i mod 4) 0) [ ("ast", Pubgrub.full) ];
+            Pubgrub.add_package provider "codegen" (v 2 0 0) [ ("llvm-bindings", Pubgrub.full) ];
+            Pubgrub.add_package provider "optimizer" (v 1 0 0) [ ("analysis", Pubgrub.full) ];
+            Pubgrub.add_package provider "regex" (v 1 0 0) [];
+            Pubgrub.add_package provider "ast" (v 1 0 0) [];
+            Pubgrub.add_package provider "llvm-bindings" (v 1 0 0) [];
+            Pubgrub.add_package provider "analysis" (v 1 0 0) [];
+            assert_solution 9 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+      in
+      tests := test :: !tests
+    done;
+    List.rev !tests
 
 let test_large_graph_30_packages =
   Test.case "Large graph: 30 packages with mixed dependencies"
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [ ("a", Pubgrub.full); ("b", Pubgrub.full); ("c", Pubgrub.full) ];
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("a", Pubgrub.full); ("b", Pubgrub.full); ("c", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "a"
-      (v 1 0 0)
-      [ ("d", Pubgrub.full); ("e", Pubgrub.full); ("f", Pubgrub.full) ];
+        provider
+        "a"
+        (v 1 0 0)
+        [ ("d", Pubgrub.full); ("e", Pubgrub.full); ("f", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "b"
-      (v 1 0 0)
-      [ ("g", Pubgrub.full); ("h", Pubgrub.full); ("i", Pubgrub.full) ];
+        provider
+        "b"
+        (v 1 0 0)
+        [ ("g", Pubgrub.full); ("h", Pubgrub.full); ("i", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "c"
-      (v 1 0 0)
-      [ ("j", Pubgrub.full); ("k", Pubgrub.full); ("l", Pubgrub.full) ];
+        provider
+        "c"
+        (v 1 0 0)
+        [ ("j", Pubgrub.full); ("k", Pubgrub.full); ("l", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "d"
-      (v 1 0 0)
-      [ ("m0", Pubgrub.full); ("n0", Pubgrub.full); ("o0", Pubgrub.full) ];
+        provider
+        "d"
+        (v 1 0 0)
+        [ ("m0", Pubgrub.full); ("n0", Pubgrub.full); ("o0", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "e"
-      (v 1 0 0)
-      [ ("m1", Pubgrub.full); ("n1", Pubgrub.full); ("o1", Pubgrub.full) ];
+        provider
+        "e"
+        (v 1 0 0)
+        [ ("m1", Pubgrub.full); ("n1", Pubgrub.full); ("o1", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "f"
-      (v 1 0 0)
-      [ ("m2", Pubgrub.full); ("n2", Pubgrub.full); ("o2", Pubgrub.full) ];
+        provider
+        "f"
+        (v 1 0 0)
+        [ ("m2", Pubgrub.full); ("n2", Pubgrub.full); ("o2", Pubgrub.full) ];
       List.iter
         (fun pkg ->
           Pubgrub.add_package provider pkg (v 1 0 0) [])
@@ -567,40 +567,40 @@ let test_balanced_tree =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [ ("l1-a", Pubgrub.full); ("l1-b", Pubgrub.full) ];
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("l1-a", Pubgrub.full); ("l1-b", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "l1-a"
-      (v 1 0 0)
-      [ ("l2-a", Pubgrub.full); ("l2-b", Pubgrub.full) ];
+        provider
+        "l1-a"
+        (v 1 0 0)
+        [ ("l2-a", Pubgrub.full); ("l2-b", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "l1-b"
-      (v 1 0 0)
-      [ ("l2-c", Pubgrub.full); ("l2-d", Pubgrub.full) ];
+        provider
+        "l1-b"
+        (v 1 0 0)
+        [ ("l2-c", Pubgrub.full); ("l2-d", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "l2-a"
-      (v 1 0 0)
-      [ ("l3-a", Pubgrub.full); ("l3-b", Pubgrub.full) ];
+        provider
+        "l2-a"
+        (v 1 0 0)
+        [ ("l3-a", Pubgrub.full); ("l3-b", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "l2-b"
-      (v 1 0 0)
-      [ ("l3-c", Pubgrub.full); ("l3-d", Pubgrub.full) ];
+        provider
+        "l2-b"
+        (v 1 0 0)
+        [ ("l3-c", Pubgrub.full); ("l3-d", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "l2-c"
-      (v 1 0 0)
-      [ ("l3-e", Pubgrub.full); ("l3-f", Pubgrub.full) ];
+        provider
+        "l2-c"
+        (v 1 0 0)
+        [ ("l3-e", Pubgrub.full); ("l3-f", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "l2-d"
-      (v 1 0 0)
-      [ ("l3-g", Pubgrub.full); ("l3-h", Pubgrub.full) ];
+        provider
+        "l2-d"
+        (v 1 0 0)
+        [ ("l3-g", Pubgrub.full); ("l3-h", Pubgrub.full) ];
       List.iter
         (fun pkg ->
           Pubgrub.add_package provider pkg (v 1 0 0) [])
@@ -612,25 +612,25 @@ let test_monorepo_structure =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [ ("pkg-a", Pubgrub.full); ("pkg-b", Pubgrub.full); ("pkg-c", Pubgrub.full);  ];
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("pkg-a", Pubgrub.full); ("pkg-b", Pubgrub.full); ("pkg-c", Pubgrub.full);  ];
       Pubgrub.add_package
-      provider
-      "pkg-a"
-      (v 1 0 0)
-      [ ("shared-utils", Pubgrub.full); ("dep-a", Pubgrub.full) ];
+        provider
+        "pkg-a"
+        (v 1 0 0)
+        [ ("shared-utils", Pubgrub.full); ("dep-a", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "pkg-b"
-      (v 1 0 0)
-      [ ("shared-utils", Pubgrub.full); ("dep-b", Pubgrub.full) ];
+        provider
+        "pkg-b"
+        (v 1 0 0)
+        [ ("shared-utils", Pubgrub.full); ("dep-b", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "pkg-c"
-      (v 1 0 0)
-      [ ("shared-utils", Pubgrub.full); ("dep-c", Pubgrub.full) ];
+        provider
+        "pkg-c"
+        (v 1 0 0)
+        [ ("shared-utils", Pubgrub.full); ("dep-c", Pubgrub.full) ];
       Pubgrub.add_package provider "shared-utils" (v 1 0 0) [ ("common", Pubgrub.full) ];
       Pubgrub.add_package provider "dep-a" (v 1 0 0) [];
       Pubgrub.add_package provider "dep-b" (v 1 0 0) [];
@@ -655,10 +655,10 @@ let test_massive_graph_100_packages =
         Pubgrub.add_package provider ("dep-" ^ (Int.to_string i)) (v 1 0 0) !sub_deps;
         for j = 0 to 9 do
           Pubgrub.add_package
-          provider
-          ("sub-" ^ (Int.to_string i) ^ "-" ^ (Int.to_string j))
-          (v 1 0 0)
-          []
+            provider
+            ("sub-" ^ (Int.to_string i) ^ "-" ^ (Int.to_string j))
+            (v 1 0 0)
+            []
         done
       done;
       assert_solution 111 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
@@ -678,21 +678,21 @@ let test_complex_constraint_web =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [
-        ("http-server", Pubgrub.between (v 2 0 0) (v 3 0 0));
-        ("database", Pubgrub.higher_than (v 1 5 0));
-        ("cache", Pubgrub.full);
+        provider
+        "root"
+        (v 1 0 0)
+        [
+          ("http-server", Pubgrub.between (v 2 0 0) (v 3 0 0));
+          ("database", Pubgrub.higher_than (v 1 5 0));
+          ("cache", Pubgrub.full);
 
-      ];
+        ];
       for i = 0 to 5 do
         Pubgrub.add_package
-        provider
-        "http-server"
-        (v 2 i 0)
-        [ ("router", Pubgrub.between (v 1 0 0) (v 2 0 0)); ("middleware", Pubgrub.full);  ]
+          provider
+          "http-server"
+          (v 2 i 0)
+          [ ("router", Pubgrub.between (v 1 0 0) (v 2 0 0)); ("middleware", Pubgrub.full);  ]
       done;
       for i = 0 to 10 do
         Pubgrub.add_package provider "database" (v 1 i 0) [ ("connection-pool", Pubgrub.full) ]
@@ -713,33 +713,33 @@ let test_deep_shared_dependency =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [ ("frontend", Pubgrub.full); ("backend", Pubgrub.full); ("shared", Pubgrub.full);  ];
+        provider
+        "root"
+        (v 1 0 0)
+        [ ("frontend", Pubgrub.full); ("backend", Pubgrub.full); ("shared", Pubgrub.full);  ];
       Pubgrub.add_package
-      provider
-      "frontend"
-      (v 1 0 0)
-      [ ("ui-lib", Pubgrub.full); ("state", Pubgrub.full); ("shared-utils", Pubgrub.full);  ];
+        provider
+        "frontend"
+        (v 1 0 0)
+        [ ("ui-lib", Pubgrub.full); ("state", Pubgrub.full); ("shared-utils", Pubgrub.full);  ];
       Pubgrub.add_package
-      provider
-      "backend"
-      (v 1 0 0)
-      [ ("api", Pubgrub.full); ("auth", Pubgrub.full); ("shared-utils", Pubgrub.full);  ];
+        provider
+        "backend"
+        (v 1 0 0)
+        [ ("api", Pubgrub.full); ("auth", Pubgrub.full); ("shared-utils", Pubgrub.full);  ];
       Pubgrub.add_package
-      provider
-      "shared"
-      (v 1 0 0)
-      [ ("shared-utils", Pubgrub.full); ("types", Pubgrub.full) ];
+        provider
+        "shared"
+        (v 1 0 0)
+        [ ("shared-utils", Pubgrub.full); ("types", Pubgrub.full) ];
       Pubgrub.add_package provider "ui-lib" (v 1 0 0) [ ("renderer", Pubgrub.full) ];
       Pubgrub.add_package provider "state" (v 1 0 0) [ ("store", Pubgrub.full) ];
       Pubgrub.add_package provider "api" (v 1 0 0) [ ("router", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "auth"
-      (v 1 0 0)
-      [ ("jwt", Pubgrub.full); ("crypto", Pubgrub.full) ];
+        provider
+        "auth"
+        (v 1 0 0)
+        [ ("jwt", Pubgrub.full); ("crypto", Pubgrub.full) ];
       Pubgrub.add_package provider "shared-utils" (v 1 0 0) [ ("validation", Pubgrub.full) ];
       Pubgrub.add_package provider "types" (v 1 0 0) [];
       Pubgrub.add_package provider "renderer" (v 1 0 0) [];
@@ -755,36 +755,36 @@ let test_plugin_system =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [
-        ("core", Pubgrub.full);
-        ("plugin-a", Pubgrub.full);
-        ("plugin-b", Pubgrub.full);
-        ("plugin-c", Pubgrub.full);
+        provider
+        "root"
+        (v 1 0 0)
+        [
+          ("core", Pubgrub.full);
+          ("plugin-a", Pubgrub.full);
+          ("plugin-b", Pubgrub.full);
+          ("plugin-c", Pubgrub.full);
 
-      ];
+        ];
       Pubgrub.add_package
-      provider
-      "core"
-      (v 1 0 0)
-      [ ("api", Pubgrub.full); ("runtime", Pubgrub.full) ];
+        provider
+        "core"
+        (v 1 0 0)
+        [ ("api", Pubgrub.full); ("runtime", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "plugin-a"
-      (v 1 0 0)
-      [ ("core", Pubgrub.full); ("helper-a", Pubgrub.full) ];
+        provider
+        "plugin-a"
+        (v 1 0 0)
+        [ ("core", Pubgrub.full); ("helper-a", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "plugin-b"
-      (v 1 0 0)
-      [ ("core", Pubgrub.full); ("helper-b", Pubgrub.full) ];
+        provider
+        "plugin-b"
+        (v 1 0 0)
+        [ ("core", Pubgrub.full); ("helper-b", Pubgrub.full) ];
       Pubgrub.add_package
-      provider
-      "plugin-c"
-      (v 1 0 0)
-      [ ("core", Pubgrub.full); ("helper-c", Pubgrub.full) ];
+        provider
+        "plugin-c"
+        (v 1 0 0)
+        [ ("core", Pubgrub.full); ("helper-c", Pubgrub.full) ];
       Pubgrub.add_package provider "api" (v 1 0 0) [];
       Pubgrub.add_package provider "runtime" (v 1 0 0) [];
       Pubgrub.add_package provider "helper-a" (v 1 0 0) [];
@@ -895,14 +895,14 @@ let test_ref_avoiding_conflict =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [
-        ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
-        ("bar", Pubgrub.between (v 1 0 0) (v 2 0 0));
+        provider
+        "root"
+        (v 1 0 0)
+        [
+          ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
+          ("bar", Pubgrub.between (v 1 0 0) (v 2 0 0));
 
-      ];
+        ];
       Pubgrub.add_package provider "foo" (v 1 1 0) [ ("bar", Pubgrub.between (v 2 0 0) (v 3 0 0)) ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
       Pubgrub.add_package provider "bar" (v 1 0 0) [];
@@ -938,35 +938,35 @@ let test_debug_conflict_partial_satisfier =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [
-        ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
-        ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
+        provider
+        "root"
+        (v 1 0 0)
+        [
+          ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
+          ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
 
-      ];
+        ];
       Pubgrub.add_package
-      provider
-      "foo"
-      (v 1 1 0)
-      [
-        ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
-        ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
+        provider
+        "foo"
+        (v 1 1 0)
+        [
+          ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
+          ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
 
-      ];
+        ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
       Pubgrub.add_package provider "left" (v 1 0 0) [ ("shared", Pubgrub.higher_than (v 1 0 0)) ];
       Pubgrub.add_package
-      provider
-      "right"
-      (v 1 0 0)
-      [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
+        provider
+        "right"
+        (v 1 0 0)
+        [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
       Pubgrub.add_package
-      provider
-      "shared"
-      (v 1 0 0)
-      [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
+        provider
+        "shared"
+        (v 1 0 0)
+        [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
       Pubgrub.add_package provider "shared" (v 2 0 0) [];
       Pubgrub.add_package provider "target" (v 2 0 0) [];
       Pubgrub.add_package provider "target" (v 1 0 0) [];
@@ -992,35 +992,35 @@ let test_ref_conflict_partial_satisfier =
     (fun () ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package
-      provider
-      "root"
-      (v 1 0 0)
-      [
-        ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
-        ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
+        provider
+        "root"
+        (v 1 0 0)
+        [
+          ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
+          ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
 
-      ];
+        ];
       Pubgrub.add_package
-      provider
-      "foo"
-      (v 1 1 0)
-      [
-        ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
-        ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
+        provider
+        "foo"
+        (v 1 1 0)
+        [
+          ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
+          ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
 
-      ];
+        ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
       Pubgrub.add_package provider "left" (v 1 0 0) [ ("shared", Pubgrub.higher_than (v 1 0 0)) ];
       Pubgrub.add_package
-      provider
-      "right"
-      (v 1 0 0)
-      [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
+        provider
+        "right"
+        (v 1 0 0)
+        [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
       Pubgrub.add_package
-      provider
-      "shared"
-      (v 1 0 0)
-      [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
+        provider
+        "shared"
+        (v 1 0 0)
+        [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
       Pubgrub.add_package provider "shared" (v 2 0 0) [];
       Pubgrub.add_package provider "target" (v 2 0 0) [];
       Pubgrub.add_package provider "target" (v 1 0 0) [];
@@ -1389,6 +1389,6 @@ let run_all_tests_with_new_solver () =
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args)
+    ~args:Env.args
+    ()

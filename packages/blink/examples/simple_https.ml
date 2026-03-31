@@ -7,18 +7,18 @@ let () =
       let cmd = ArgParser.command "simple_https"
       |> ArgParser.about "Simple HTTPS client example"
       |> ArgParser.args
-      [
-        ArgParser.Arg.option "method"
-        |> ArgParser.Arg.long "method"
-        |> ArgParser.Arg.value_name "METHOD"
-        |> ArgParser.Arg.default "GET"
-        |> ArgParser.Arg.help "HTTP method (GET, POST, etc.)";
-        ArgParser.Arg.option "url"
-        |> ArgParser.Arg.long "url"
-        |> ArgParser.Arg.value_name "URL"
-        |> ArgParser.Arg.default "https://leostera.com"
-        |> ArgParser.Arg.help "URL to request"
-      ] in
+        [
+          ArgParser.Arg.option "method"
+          |> ArgParser.Arg.long "method"
+          |> ArgParser.Arg.value_name "METHOD"
+          |> ArgParser.Arg.default "GET"
+          |> ArgParser.Arg.help "HTTP method (GET, POST, etc.)";
+          ArgParser.Arg.option "url"
+          |> ArgParser.Arg.long "url"
+          |> ArgParser.Arg.value_name "URL"
+          |> ArgParser.Arg.default "https://leostera.com"
+          |> ArgParser.Arg.help "URL to request"
+        ] in
       let matches =
         match ArgParser.get_matches cmd args with
         | Ok m -> m
@@ -96,10 +96,10 @@ let () =
       let response, body = Blink.await conn |> Result.expect ~msg:"Failed to receive response" in
       let status = Net.Http.Response.status response in
       println
-      ("HTTP Status: "
-      ^ (Int.to_string (Net.Http.Status.to_int status))
-      ^ " "
-      ^ (Net.Http.Status.reason_phrase status));
+        ("HTTP Status: "
+        ^ (Int.to_string (Net.Http.Status.to_int status))
+        ^ " "
+        ^ (Net.Http.Status.reason_phrase status));
       println ("Body length: " ^ (Int.to_string (String.length body)) ^ " bytes");
       let preview =
         if String.length body > 200 then

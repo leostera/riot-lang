@@ -28,27 +28,25 @@ type entry =
     This ensures proper OCaml compilation order and allows processing all files
     in a directory before descending into subdirectories. *)
 let compare_entries = fun e1 e2 ->
-  let get_name =
-    function
-    | ML (n, _)
-    | MLI (n, _)
-    | C (n, _)
-    | H (n, _)
-    | Other (n, _, _)
-    | Dir (n, _, _) -> n
-  in
-  let get_priority =
-    function
-    | MLI _ -> 0
-    | ML _ -> 1
-    | C _ -> 2
-    | H _ -> 3
-    | Other _ -> 4
-    | Dir _ -> 5
-  in
-  match (get_priority e1, get_priority e2) with
-  | p1, p2 when p1 != p2 -> Int.compare p1 p2
-  | _ -> String.compare (get_name e1) (get_name e2)
+    let get_name = function
+      | ML (n, _)
+      | MLI (n, _)
+      | C (n, _)
+      | H (n, _)
+      | Other (n, _, _)
+      | Dir (n, _, _) -> n
+    in
+    let get_priority = function
+      | MLI _ -> 0
+      | ML _ -> 1
+      | C _ -> 2
+      | H _ -> 3
+      | Other _ -> 4
+      | Dir _ -> 5
+    in
+    match (get_priority e1, get_priority e2) with
+    | p1, p2 when p1 != p2 -> Int.compare p1 p2
+    | _ -> String.compare (get_name e1) (get_name e2)
 
 (** Recursively scan a directory and build a hierarchical entry list.
 
@@ -65,32 +63,32 @@ let compare_entries = fun e1 e2 ->
 
     Returns entries sorted by type (MLI, ML, C, H, Other, Dir). *)
 let rec scan_directory = fun ~from_dir ~rel_path ->
-  match Fs.read_dir from_dir with
-  | Error _ -> []
-  | Ok iter ->
-      let entries = Std.Iter.MutIterator.to_list iter in
-      let scanned =
-        List.concat_map
-          (fun entry ->
-            let source_path = Path.(from_dir / entry) in
-            let entry_rel_path = Path.(rel_path / entry) in
-            let name = Path.basename entry in
-            match Fs.is_dir source_path with
-            | Ok true ->
-                let children = scan_directory ~from_dir:source_path ~rel_path:entry_rel_path in
-                [ Dir (name, entry_rel_path, children) ]
-            | Ok false -> (
-                match Path.extension source_path with
-                | Some ".ml" -> [ ML (name, entry_rel_path) ]
-                | Some ".mli" -> [ MLI (name, entry_rel_path) ]
-                | Some ext -> [ Other (name, entry_rel_path, ext) ]
-                | None -> [ Other (name, entry_rel_path, "") ]
-              )
-            | Error _ ->
-                [])
-          entries
-      in
-      List.sort compare_entries scanned
+    match Fs.read_dir from_dir with
+    | Error _ -> []
+    | Ok iter ->
+        let entries = Std.Iter.MutIterator.to_list iter in
+        let scanned =
+          List.concat_map
+            (fun entry ->
+              let source_path = Path.(from_dir / entry) in
+              let entry_rel_path = Path.(rel_path / entry) in
+              let name = Path.basename entry in
+              match Fs.is_dir source_path with
+              | Ok true ->
+                  let children = scan_directory ~from_dir:source_path ~rel_path:entry_rel_path in
+                  [ Dir (name, entry_rel_path, children) ]
+              | Ok false -> (
+                  match Path.extension source_path with
+                  | Some ".ml" -> [ ML (name, entry_rel_path) ]
+                  | Some ".mli" -> [ MLI (name, entry_rel_path) ]
+                  | Some ext -> [ Other (name, entry_rel_path, ext) ]
+                  | None -> [ Other (name, entry_rel_path, "") ]
+                )
+              | Error _ ->
+                  [])
+            entries
+        in
+        List.sort compare_entries scanned
 
 (** Scan a source directory relative to project root.
 
@@ -99,5 +97,5 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
     This scans /home/user/project/src and returns entries with paths like
     "src/main.ml", "src/utils/helper.ml" (relative to project root). *)
 let scan = fun ~root ~source_dir ->
-  let dir = Path.(root / source_dir) in
-  scan_directory ~from_dir:dir ~rel_path:source_dir
+    let dir = Path.(root / source_dir) in
+    scan_directory ~from_dir:dir ~rel_path:source_dir

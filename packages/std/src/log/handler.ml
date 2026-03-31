@@ -13,12 +13,12 @@ let handlers : (id, t) HashMap.t = HashMap.create ()
 
 (** Emit event to all handlers - called directly in caller process *)
 let emit = fun event ->
-  (* Call each handler, catching and ignoring exceptions *)
-  HashMap.iter
-    (fun _id handler ->
-      try handler.fn event with
-      | _ -> ())
-    handlers
+    (* Call each handler, catching and ignoring exceptions *)
+    HashMap.iter
+      (fun _id handler ->
+        try handler.fn event with
+        | _ -> ())
+      handlers
 
 (** Attach a handler *)
 let attach = fun id fn -> HashMap.insert handlers id {id; fn} |> ignore

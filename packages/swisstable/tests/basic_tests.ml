@@ -183,7 +183,7 @@ let tests = [
       done;
       Test.assert_equal ~expected:100 ~actual:(Swisstable.len map);
       (* Verify all values are present *)
-      let rec verify = fun i ->
+      let rec verify i =
         if i > 99 then
           Ok ()
         else
@@ -229,6 +229,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args:_ -> Test.Cli.main ~name:"swisstable:basic" ~tests ~args:Env.args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args:_ -> Test.Cli.main ~name:"swisstable:basic" ~tests ~args:Env.args)
+    ~args:Env.args
+    ()

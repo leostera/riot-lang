@@ -1,7 +1,7 @@
 open Std
 
 let make_keys = fun n ->
-  Collections.Array.init n (fun i -> "key" ^ string_of_int i)
+    Collections.Array.init n (fun i -> "key" ^ string_of_int i)
 
 let tests = [
   Test.case "hash collisions"
@@ -279,6 +279,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args:_ -> Test.Cli.main ~name:"swisstable:edge_case" ~tests ~args:Env.args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args:_ -> Test.Cli.main ~name:"swisstable:edge_case" ~tests ~args:Env.args)
+    ~args:Env.args
+    ()

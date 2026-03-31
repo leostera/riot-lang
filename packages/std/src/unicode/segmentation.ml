@@ -8,23 +8,23 @@ let find_word_boundaries = fun s -> Word_break.find_word_boundaries s
 
 (** Find the next word boundary after position pos *)
 let find_next_word_start = fun s pos ->
-  Word_break.find_next_word_start s pos
+    Word_break.find_next_word_start s pos
 
 (** Find the previous word boundary before position pos *)
 let find_prev_word_start = fun s pos ->
-  Word_break.find_prev_word_start s pos
+    Word_break.find_prev_word_start s pos
 
 let find_sentence_boundaries = fun s ->
-  (* Simplified: break on . ! ? *)
-  let rec find = fun pos acc ->
-    if pos >= String.length s then
-      List.rev acc
-    else if List.mem (String.get s pos) [ '.'; '!'; '?' ] then
-      find (pos + 1) ((pos + 1) :: acc)
-    else
-      find (pos + 1) acc
-  in
-  find 0 []
+    (* Simplified: break on . ! ? *)
+    let rec find pos acc =
+      if pos >= String.length s then
+        List.rev acc
+      else if List.mem (String.get s pos) [ '.'; '!'; '?' ] then
+        find (pos + 1) ((pos + 1) :: acc)
+      else
+        find (pos + 1) acc
+    in
+    find 0 []
 
 type line_break = Line_break.break_opportunity =
   | Must_break

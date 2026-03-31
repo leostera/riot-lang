@@ -16,9 +16,9 @@ let failing_list_prop =
 
 let failing_string_length_prop =
   property
-  "DEMO: string length never exceeds 5 (FALSE - demonstrates shrinking)"
-  Arbitrary.string
-  (fun s -> String.length s <= 5)
+    "DEMO: string length never exceeds 5 (FALSE - demonstrates shrinking)"
+    Arbitrary.string
+    (fun s -> String.length s <= 5)
 
 (* This demonstrates shrinking finding the boundary *)
 
@@ -45,9 +45,9 @@ let failing_nested_prop =
 
 let minimal_failure_prop =
   property
-  "DEMO: pairs where both are positive (FALSE)"
-  Arbitrary.(pair int int)
-  (fun ((a, b)) -> a > 0 && b > 0)
+    "DEMO: pairs where both are positive (FALSE)"
+    Arbitrary.(pair int int)
+    (fun ((a, b)) -> a > 0 && b > 0)
 
 (* Will shrink to find minimal negative case *)
 
@@ -94,6 +94,6 @@ let tests = [ passing_with_assume_prop; sqrt_with_assume_prop;  ]
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Test.Cli.main ~name:"propane-shrinking-examples" ~tests ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Test.Cli.main ~name:"propane-shrinking-examples" ~tests ~args)
+    ~args:Env.args
+    ()

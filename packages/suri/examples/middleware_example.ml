@@ -4,25 +4,25 @@ open Suri
 (* Custom middleware: Add CORS headers *)
 
 let cors_middleware = fun ~conn ~next ->
-  let conn' = next conn in
-  conn'
-  |> Conn.with_header "Access-Control-Allow-Origin" "*"
-  |> Conn.with_header "Access-Control-Allow-Methods" "GET, POST, PUT, DELETE"
-  |> Conn.with_header "Access-Control-Allow-Headers" "Content-Type"
+    let conn' = next conn in
+    conn'
+    |> Conn.with_header "Access-Control-Allow-Origin" "*"
+    |> Conn.with_header "Access-Control-Allow-Methods" "GET, POST, PUT, DELETE"
+    |> Conn.with_header "Access-Control-Allow-Headers" "Content-Type"
 
 (* Custom middleware: Timing *)
 
 let timer_middleware = fun ~conn ~next ->
-  let start = Time.Instant.now () in
-  let conn' = next conn in
-  let duration = Time.Instant.elapsed start |> Time.Duration.to_millis in
-  Log.debug (String.concat "" [ "Request took "; Int.to_string duration; "ms" ]);
-  conn'
+    let start = Time.Instant.now () in
+    let conn' = next conn in
+    let duration = Time.Instant.elapsed start |> Time.Duration.to_millis in
+    Log.debug (String.concat "" [ "Request took "; Int.to_string duration; "ms" ]);
+    conn'
 
 (* Route handlers *)
 
 let home_handler = fun conn _req ->
-  let html = {|
+    let html = {|
 <!DOCTYPE html>
 <html>
   <head><title>Middleware Example</title></head>
@@ -43,48 +43,48 @@ let home_handler = fun conn _req ->
   </body>
 </html>
   |}
-  in
-  conn
-  |> Conn.with_status Ok
-  |> Conn.with_header "Content-Type" "text/html"
-  |> Conn.with_body html
-  |> Conn.send
+    in
+    conn
+    |> Conn.with_status Ok
+    |> Conn.with_header "Content-Type" "text/html"
+    |> Conn.with_body html
+    |> Conn.send
 
-let about_handler = fun conn _req -> conn
-|> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework with OTP-style supervision"
-|> Conn.send
+let about_handler = fun conn _req ->
+    conn
+    |> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework with OTP-style supervision"
+    |> Conn.send
 
 let api_data_handler = fun conn _req ->
-  (* Get the request ID from the response headers (set by request_id middleware) *)
-  let resp_headers = Conn.resp_headers conn in
-  let request_id = List.assoc_opt "x-request-id" resp_headers |> Option.unwrap_or ~default:"unknown" in
-  let data = Data.Json.obj
-  [
-    ("message", Data.Json.string "Hello from API");
-    ("request_id", Data.Json.string request_id);
-    ("middleware_count", Data.Json.int 5);
-    (
-      "features",
-      Data.Json.array
+    (* Get the request ID from the response headers (set by request_id middleware) *)
+    let resp_headers = Conn.resp_headers conn in
+    let request_id = List.assoc_opt "x-request-id" resp_headers |> Option.unwrap_or ~default:"unknown" in
+    let data = Data.Json.obj
       [
-        Data.Json.string "Request IDs";
-        Data.Json.string "CORS";
-        Data.Json.string "Logging";
-        Data.Json.string "Timing";
-        Data.Json.string "Routing";
+        ("message", Data.Json.string "Hello from API");
+        ("request_id", Data.Json.string request_id);
+        ("middleware_count", Data.Json.int 5);
+        (
+          "features",
+          Data.Json.array
+            [
+              Data.Json.string "Request IDs";
+              Data.Json.string "CORS";
+              Data.Json.string "Logging";
+              Data.Json.string "Timing";
+              Data.Json.string "Routing";
 
-      ]
-    )
-  ] in
-  conn
-  |> Conn.with_status Ok
-  |> Conn.with_header "Content-Type" "application/json"
-  |> Conn.with_body (Data.Json.to_string data)
-  |> Conn.send
+            ]
+        )
+      ] in
+    conn
+    |> Conn.with_status Ok
+    |> Conn.with_header "Content-Type" "application/json"
+    |> Conn.with_body (Data.Json.to_string data)
+    |> Conn.send
 
-let not_found_handler = fun conn _req -> conn
-|> Conn.respond ~status:NotFound ~body:"404 - Not Found"
-|> Conn.send
+let not_found_handler = fun conn _req ->
+    conn |> Conn.respond ~status:NotFound ~body:"404 - Not Found" |> Conn.send
 
 (* Define routes *)
 
@@ -117,7 +117,7 @@ let () =
           Log.info "     curl -H \"x-request-id: my-custom-id\" http://localhost:4000/";
           let count = Supervisor.Dynamic.count_children supervisor in
           Log.info ("   " ^ Int.to_string count.active ^ " acceptors ready");
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

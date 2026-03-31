@@ -52,127 +52,63 @@ type t = {
 let registered_specs : t list Sync.Cell.t = cell []
 
 let for_app = fun ~app fields ->
-  let spec = {app; fields} in
-  (* Register the spec globally *)
-  let current = !registered_specs in
-  registered_specs := spec :: current;
-  spec
+    let spec = {app; fields} in
+    (* Register the spec globally *)
+    let current = !registered_specs in
+    registered_specs := spec :: current;
+    spec
 
 let all_specs = fun () -> !registered_specs
 
-let string = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = String {default};
-  required;
-  help;
-  allowed_values = None
-}
+let string = fun ?default ?(required = false) ?help name ->
+    {name; field_type = String {default}; required; help; allowed_values = None}
 
-let char = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Char {default};
-  required;
-  help;
-  allowed_values = None
-}
+let char = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Char {default}; required; help; allowed_values = None}
 
-let int = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Int {default};
-  required;
-  help;
-  allowed_values = None
-}
+let int = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Int {default}; required; help; allowed_values = None}
 
-let int32 = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Int32 {default};
-  required;
-  help;
-  allowed_values = None
-}
+let int32 = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Int32 {default}; required; help; allowed_values = None}
 
-let int64 = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Int64 {default};
-  required;
-  help;
-  allowed_values = None
-}
+let int64 = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Int64 {default}; required; help; allowed_values = None}
 
-let bool = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Bool {default};
-  required;
-  help;
-  allowed_values = None
-}
+let bool = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Bool {default}; required; help; allowed_values = None}
 
-let float = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Float {default};
-  required;
-  help;
-  allowed_values = None
-}
+let float = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Float {default}; required; help; allowed_values = None}
 
-let uri = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Uri {default};
-  required;
-  help;
-  allowed_values = None
-}
+let uri = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Uri {default}; required; help; allowed_values = None}
 
-let datetime = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Datetime {default};
-  required;
-  help;
-  allowed_values = None
-}
+let datetime = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Datetime {default}; required; help; allowed_values = None}
 
-let path = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Path {default};
-  required;
-  help;
-  allowed_values = None
-}
+let path = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Path {default}; required; help; allowed_values = None}
 
-let uuid = fun ?default ?(required = false) ?help name -> {
-  name;
-  field_type = Uuid {default};
-  required;
-  help;
-  allowed_values = None
-}
+let uuid = fun ?default ?(required = false) ?help name ->
+    {name; field_type = Uuid {default}; required; help; allowed_values = None}
 
 let enum = fun field_spec choices -> {field_spec with allowed_values = Some choices}
 
-let list = fun item_spec ?default ?(required = false) ?help name -> {
-  name;
-  field_type = List {item_spec; default};
-  required;
-  help;
-  allowed_values = None
-}
+let list = fun item_spec ?default ?(required = false) ?help name ->
+    {name; field_type = List {item_spec; default}; required; help; allowed_values = None}
 
-let discriminated_union = fun ~discriminant ~cases -> {
-  name = "";
-  field_type = DiscriminatedUnion {discriminant; cases};
-  required = false;
-  help = None;
-  allowed_values = None
-}
+let discriminated_union = fun ~discriminant ~cases ->
+    {
+      name = "";
+      field_type = DiscriminatedUnion {discriminant; cases};
+      required = false;
+      help = None;
+      allowed_values = None
+    }
 
-let map = fun fields -> {
-  name = "";
-  field_type = Map fields;
-  required = false;
-  help = None;
-  allowed_values = None
-}
+let map = fun fields ->
+    {name = ""; field_type = Map fields; required = false; help = None; allowed_values = None}
 
 let key = fun name field_spec -> {field_spec with name}
 

@@ -21,10 +21,10 @@ let version_of_string = Version.parse
 let version_to_string = Version.to_string
 
 let version_compare = fun a b ->
-  match Version.compare a b with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
+    match Version.compare a b with
+    | Lt -> (-1)
+    | Eq -> 0
+    | Gt -> 1
 
 let make_version = fun ~major ~minor ~patch -> Version.make ~major ~minor ~patch ()
 

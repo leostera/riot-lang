@@ -16,9 +16,9 @@ module Registry = struct
   let registry = {commands = []}
 
   let register = fun (cmd: (module Command)) ->
-    let module Cmd = (val cmd) in
-    Log.debug ("Registering command: " ^ Cmd.name);
-    registry.commands <- (Cmd.name, cmd) :: registry.commands
+      let module Cmd = (val cmd) in
+      Log.debug ("Registering command: " ^ Cmd.name);
+      registry.commands <- (Cmd.name, cmd) :: registry.commands
 
   let get = fun name -> List.find_opt (fun ((n, _)) -> n = name) registry.commands |> Option.map snd
 

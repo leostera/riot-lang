@@ -4,58 +4,58 @@ open Std.Collections
 open Std.IO
 
 let test_encode_simple = fun () ->
-  let encoded = Base32.encode "Hello" in
-  if encoded = "JBSWY3DP" then
-    Ok ()
-  else
-    Error ("Expected 'JBSWY3DP', got '" ^ encoded ^ "'")
+    let encoded = Base32.encode "Hello" in
+    if encoded = "JBSWY3DP" then
+      Ok ()
+    else
+      Error ("Expected 'JBSWY3DP', got '" ^ encoded ^ "'")
 
 let test_encode_empty = fun () ->
-  let encoded = Base32.encode "" in
-  if encoded = "" then
-    Ok ()
-  else
-    Error "Empty string should encode to empty string"
+    let encoded = Base32.encode "" in
+    if encoded = "" then
+      Ok ()
+    else
+      Error "Empty string should encode to empty string"
 
 let test_encode_bytes = fun () ->
-  let bytes = Bytes.of_string "test" in
-  let encoded = Base32.encode_bytes bytes in
-  if String.length encoded > 0 then
-    Ok ()
-  else
-    Error "Bytes encoding failed"
+    let bytes = Bytes.of_string "test" in
+    let encoded = Base32.encode_bytes bytes in
+    if String.length encoded > 0 then
+      Ok ()
+    else
+      Error "Bytes encoding failed"
 
 let test_decode_simple = fun () ->
-  match Base32.decode "JBSWY3DP" with
-  | Ok "Hello" -> Ok ()
-  | Ok s -> Error ("Expected 'Hello', got '" ^ s ^ "'")
-  | Error _ -> Error "Decode failed"
+    match Base32.decode "JBSWY3DP" with
+    | Ok "Hello" -> Ok ()
+    | Ok s -> Error ("Expected 'Hello', got '" ^ s ^ "'")
+    | Error _ -> Error "Decode failed"
 
 let test_decode_invalid_char = fun () ->
-  match Base32.decode "INVALID!" with
-  | Error `Invalid_base32 -> Ok ()
-  | Ok _ -> Error "Should reject invalid Base32 character"
+    match Base32.decode "INVALID!" with
+    | Error `Invalid_base32 -> Ok ()
+    | Ok _ -> Error "Should reject invalid Base32 character"
 
 let test_roundtrip = fun () ->
-  let original = "Hello, World!" in
-  let encoded = Base32.encode original in
-  match Base32.decode encoded with
-  | Ok decoded when decoded = original -> Ok ()
-  | _ -> Error "Roundtrip failed"
+    let original = "Hello, World!" in
+    let encoded = Base32.encode original in
+    match Base32.decode encoded with
+    | Ok decoded when decoded = original -> Ok ()
+    | _ -> Error "Roundtrip failed"
 
 let test_roundtrip_binary = fun () ->
-  let original = "\x00\x01\x02\xFF" in
-  let encoded = Base32.encode original in
-  match Base32.decode encoded with
-  | Ok decoded when decoded = original -> Ok ()
-  | _ -> Error "Binary roundtrip failed"
+    let original = "\x00\x01\x02\xFF" in
+    let encoded = Base32.encode original in
+    match Base32.decode encoded with
+    | Ok decoded when decoded = original -> Ok ()
+    | _ -> Error "Binary roundtrip failed"
 
 let test_padding = fun () ->
-  let encoded = Base32.encode "f" in
-  if String.contains encoded "=" then
-    Ok ()
-  else
-    Error "Short strings should have padding"
+    let encoded = Base32.encode "f" in
+    if String.contains encoded "=" then
+      Ok ()
+    else
+      Error "Short strings should have padding"
 
 let tests =
   Test.[

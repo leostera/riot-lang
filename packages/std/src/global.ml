@@ -16,17 +16,17 @@ let spawn_link = Miniriot.spawn_link
 let send = Miniriot.send
 
 let receive = fun ~selector ?timeout () ->
-  let timeout = Option.map Time.Duration.to_secs_float timeout in
-  Miniriot.receive ~selector ?timeout ()
+    let timeout = Option.map Time.Duration.to_secs_float timeout in
+    Miniriot.receive ~selector ?timeout ()
 
 let receive_any = fun ?timeout () ->
-  let timeout = Option.map Time.Duration.to_secs_float timeout in
-  Miniriot.receive_any ?timeout ()
+    let timeout = Option.map Time.Duration.to_secs_float timeout in
+    Miniriot.receive_any ?timeout ()
 
 let sleep = fun timeout ->
-  let selector = fun _msg -> `skip in
-  try receive ~selector ~timeout () with
-  | Receive_timeout -> ()
+    let selector _msg = `skip in
+    try receive ~selector ~timeout () with
+    | Receive_timeout -> ()
 
 let yield = Miniriot.yield
 
@@ -62,8 +62,8 @@ let map = Kernel.map
 
 (** Panic with a message and backtrace *)
 let panic = fun msg ->
-  let exception Panic of string in
-  Kernel.raise (Panic msg)
+    let exception Panic of string in
+    Kernel.raise (Panic msg)
 
 (** Create a mutable cell *)
 let cell = fun x -> Kernel.Sync.Cell.create x

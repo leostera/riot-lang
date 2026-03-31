@@ -3,7 +3,7 @@ open Std
 (* Helper to create pre-allocated keys to avoid hash instability *)
 
 let make_keys = fun n ->
-  Collections.Array.init n (fun i -> "key" ^ string_of_int i)
+    Collections.Array.init n (fun i -> "key" ^ string_of_int i)
 
 let tests = [
   Test.case "zero capacity"
@@ -66,7 +66,7 @@ let tests = [
       done;
       Test.assert_equal ~expected:250 ~actual:(Swisstable.len map);
       (* Verify all present *)
-      let rec verify = fun i ->
+      let rec verify i =
         if i > 249 then
           Ok ()
         else
@@ -382,6 +382,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args:_ -> Test.Cli.main ~name:"swisstable:comprehensive" ~tests ~args:Env.args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args:_ -> Test.Cli.main ~name:"swisstable:comprehensive" ~tests ~args:Env.args)
+    ~args:Env.args
+    ()

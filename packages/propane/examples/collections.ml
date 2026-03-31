@@ -19,9 +19,9 @@ let vector_push_pop_prop =
 
 let hashmap_insert_get_prop =
   property "hashmap insert then get returns the value" Arbitrary.(triple
-  string
-  int
-  (hashmap string int))
+    string
+    int
+    (hashmap string int))
     (fun ((key, value, map)) ->
       Collections.HashMap.insert map key value |> ignore;
       match Collections.HashMap.get map key with
@@ -44,7 +44,7 @@ let queue_fifo_prop =
       let q = Collections.Queue.create () in
       List.iter (Collections.Queue.push q) items;
       (* Pop all and check order *)
-      let rec pop_all = fun acc ->
+      let rec pop_all acc =
         match Collections.Queue.pop q with
         | Some x -> pop_all (x :: acc)
         | None -> List.rev acc
@@ -59,7 +59,7 @@ let deque_lifo_prop =
     (fun items ->
       let d = Collections.Deque.create () in
       List.iter (Collections.Deque.push_back d) items;
-      let rec pop_all = fun acc ->
+      let rec pop_all acc =
         match Collections.Deque.pop_back d with
         | Some x -> pop_all (x :: acc)
         | None -> acc
@@ -82,8 +82,7 @@ let vector_sort_prop =
     (fun vec ->
       Collections.Vector.sort vec;
       let lst = Collections.Vector.into_iter vec |> Iter.Iterator.to_list in
-      let rec is_sorted =
-        function
+      let rec is_sorted = function
         | []
         | [ _ ] -> true
         | x :: y :: rest -> x <= y && is_sorted (y :: rest)
@@ -103,6 +102,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Test.Cli.main ~name:"propane-collections-examples" ~tests ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Test.Cli.main ~name:"propane-collections-examples" ~tests ~args)
+    ~args:Env.args
+    ()

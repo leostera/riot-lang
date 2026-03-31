@@ -13,46 +13,47 @@ open Suri
 
 (** API routes (dynamic content) *)
 let api_status = fun conn _req ->
-  let json = Data.Json.(Object [
-    ("status", String "ok");
-    ("message", String "API is running");
-    ("static_middleware", String "enabled");
+    let json = Data.Json.(Object [
+      ("status", String "ok");
+      ("message", String "API is running");
+      ("static_middleware", String "enabled");
 
-  ]) in
-  conn
-  |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json)
-  |> Conn.with_header "content-type" "application/json"
-  |> Conn.send
+    ]) in
+    conn
+    |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json)
+    |> Conn.with_header "content-type" "application/json"
+    |> Conn.send
 
 let api_info = fun conn _req ->
-  let json = Data.Json.(Object [
-    ("name", String "Static Files Example");
-    (
-      "features",
-      Array [
-        String "Security (path traversal, dotfiles)";
-        String "Caching (ETag, Last-Modified, 304)";
-        String "MIME type detection";
-        String "Directory browsing";
+    let json = Data.Json.(Object [
+      ("name", String "Static Files Example");
+      (
+        "features",
+        Array [
+          String "Security (path traversal, dotfiles)";
+          String "Caching (ETag, Last-Modified, 304)";
+          String "MIME type detection";
+          String "Directory browsing";
 
-      ]
-    );
-    (
-      "endpoints",
-      Array [ String "GET /api/status"; String "GET /api/info"; String "GET /public/*";  ]
-    );
+        ]
+      );
+      (
+        "endpoints",
+        Array [ String "GET /api/status"; String "GET /api/info"; String "GET /public/*";  ]
+      );
 
-  ]) in
-  conn
-  |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json)
-  |> Conn.with_header "content-type" "application/json"
-  |> Conn.send
+    ]) in
+    conn
+    |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json)
+    |> Conn.with_header "content-type" "application/json"
+    |> Conn.send
 
 (** Root redirect *)
-let root = fun conn _req -> conn
-|> Conn.respond ~status:Net.Http.Status.MovedPermanently ~body:""
-|> Conn.with_header "location" "/public/"
-|> Conn.send
+let root = fun conn _req ->
+    conn
+    |> Conn.respond ~status:Net.Http.Status.MovedPermanently ~body:""
+    |> Conn.with_header "location" "/public/"
+    |> Conn.send
 
 (** API routes *)
 let routes = Middleware.Router.[get "/" root;
@@ -105,7 +106,7 @@ let () =
       Log.info "===========================================";
       match Suri.start_link ~config app with
       | Ok _supervisor ->
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

@@ -5,137 +5,136 @@ type shell =
   | Bash
   | Fish
 
-let shell_to_string =
-  function
+let shell_to_string = function
   | Zsh -> "zsh"
   | Bash -> "bash"
   | Fish -> "fish"
 
-let shell_from_string =
-  function
+let shell_from_string = function
   | "zsh" -> Some Zsh
   | "bash" -> Some Bash
   | "fish" -> Some Fish
   | _ -> None
 
-let list_packages = fun (workspace: Tusk_model.Workspace.t) -> workspace.packages
-|> List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name)
-|> List.sort String.compare
+let list_packages = fun (workspace: Tusk_model.Workspace.t) ->
+    workspace.packages
+    |> List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name)
+    |> List.sort String.compare
 
 (** List binaries as "package:binary" for display in completions, excluding tests *)
 let list_binaries = fun (workspace: Tusk_model.Workspace.t) ->
-  workspace.packages |> List.filter Tusk_model.Package.is_workspace_member |> List.concat_map
-    (fun (pkg: Tusk_model.Package.t) ->
-      List.filter_map
-        (fun (bin: Tusk_model.Package.binary) ->
-          (* Filter out test binaries *)
-          if
-            String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
-          then
-            None
-          else
-            Some (pkg.name ^ ":" ^ bin.name))
-        pkg.binaries) |> List.sort_uniq String.compare
-
-(** List package names, package wildcards, and test binaries for completions *)
-let list_tests = fun (workspace: Tusk_model.Workspace.t) ->
-  let test_packages =
-    workspace.packages
-    |> List.filter Tusk_model.Package.is_workspace_member
-    |> List.filter_map
-      (fun (pkg: Tusk_model.Package.t) ->
-        let has_tests =
-          List.exists
-          (fun (bin: Tusk_model.Package.binary) -> String.ends_with ~suffix:"_tests" bin.name
-          || String.ends_with ~suffix:"-tests" bin.name)
-          pkg.binaries
-        in
-        if has_tests then
-          Some pkg.name
-        else
-          None)
-  in
-  let individual_tests =
-    workspace.packages
-    |> List.filter Tusk_model.Package.is_workspace_member
-    |> List.concat_map
+    workspace.packages |> List.filter Tusk_model.Package.is_workspace_member |> List.concat_map
       (fun (pkg: Tusk_model.Package.t) ->
         List.filter_map
           (fun (bin: Tusk_model.Package.binary) ->
+            (* Filter out test binaries *)
             if
               String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
             then
-              Some (pkg.name ^ ":" ^ bin.name)
+              None
             else
-              None)
-          pkg.binaries)
-  in
-  (* Add pkg:... entries for packages with tests *)
-  let package_wildcards =
-    List.map (fun pkg_name -> pkg_name ^ ":...") test_packages
-  in
-  (test_packages @ package_wildcards @ individual_tests) |> List.sort_uniq String.compare
+              Some (pkg.name ^ ":" ^ bin.name))
+          pkg.binaries) |> List.sort_uniq String.compare
+
+(** List package names, package wildcards, and test binaries for completions *)
+let list_tests = fun (workspace: Tusk_model.Workspace.t) ->
+    let test_packages =
+      workspace.packages
+      |> List.filter Tusk_model.Package.is_workspace_member
+      |> List.filter_map
+        (fun (pkg: Tusk_model.Package.t) ->
+          let has_tests =
+            List.exists
+              (fun (bin: Tusk_model.Package.binary) ->
+                String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name)
+              pkg.binaries
+          in
+          if has_tests then
+            Some pkg.name
+          else
+            None)
+    in
+    let individual_tests =
+      workspace.packages
+      |> List.filter Tusk_model.Package.is_workspace_member
+      |> List.concat_map
+        (fun (pkg: Tusk_model.Package.t) ->
+          List.filter_map
+            (fun (bin: Tusk_model.Package.binary) ->
+              if
+                String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
+              then
+                Some (pkg.name ^ ":" ^ bin.name)
+              else
+                None)
+            pkg.binaries)
+    in
+    (* Add pkg:... entries for packages with tests *)
+    let package_wildcards =
+      List.map (fun pkg_name -> pkg_name ^ ":...") test_packages
+    in
+    (test_packages @ package_wildcards @ individual_tests) |> List.sort_uniq String.compare
 
 (** List benchmark binaries as "package:bench" for display in completions *)
 let list_benchmarks = fun (workspace: Tusk_model.Workspace.t) ->
-  let individual_benches =
-    workspace.packages
-    |> List.filter Tusk_model.Package.is_workspace_member
-    |> List.concat_map
-      (fun (pkg: Tusk_model.Package.t) ->
-        List.filter_map
-          (fun (bin: Tusk_model.Package.binary) ->
-            if String.ends_with ~suffix:"_bench" bin.name then
-              Some (pkg.name ^ ":" ^ bin.name)
-            else
-              None)
-          pkg.binaries)
-  in
-  (* Add pkg:... entries for packages with benchmarks *)
-  let package_wildcards =
-    workspace.packages
-    |> List.filter Tusk_model.Package.is_workspace_member
-    |> List.filter_map
-      (fun (pkg: Tusk_model.Package.t) ->
-        let has_benches =
-          List.exists
-          (fun (bin: Tusk_model.Package.binary) -> String.ends_with ~suffix:"_bench" bin.name)
-          pkg.binaries
-        in
-        if has_benches then
-          Some (pkg.name ^ ":...")
-        else
-          None)
-  in
-  (package_wildcards @ individual_benches) |> List.sort_uniq String.compare
+    let individual_benches =
+      workspace.packages
+      |> List.filter Tusk_model.Package.is_workspace_member
+      |> List.concat_map
+        (fun (pkg: Tusk_model.Package.t) ->
+          List.filter_map
+            (fun (bin: Tusk_model.Package.binary) ->
+              if String.ends_with ~suffix:"_bench" bin.name then
+                Some (pkg.name ^ ":" ^ bin.name)
+              else
+                None)
+            pkg.binaries)
+    in
+    (* Add pkg:... entries for packages with benchmarks *)
+    let package_wildcards =
+      workspace.packages
+      |> List.filter Tusk_model.Package.is_workspace_member
+      |> List.filter_map
+        (fun (pkg: Tusk_model.Package.t) ->
+          let has_benches =
+            List.exists
+              (fun (bin: Tusk_model.Package.binary) -> String.ends_with ~suffix:"_bench" bin.name)
+              pkg.binaries
+          in
+          if has_benches then
+            Some (pkg.name ^ ":...")
+          else
+            None)
+    in
+    (package_wildcards @ individual_benches) |> List.sort_uniq String.compare
 
 (** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
 let list_commands = fun (workspace: Tusk_model.Workspace.t) ->
-  Tusk_model.Workspace.discover_commands workspace |> List.map
-    (fun (cmd: Tusk_model.Package_command.t) ->
-      let name = cmd.package_name ^ ":" ^ cmd.name in
-      (* Use help text from TOML, or provide fallback *)
-      let desc =
-        if String.length cmd.description = 0 then
-          "Package command"
-        else
-          cmd.description
-      in
-      let tab = Char.chr 9 in
-      (* Explicit tab character *)
-      name ^ String.make 1 tab ^ desc) |> List.sort_uniq String.compare
+    Tusk_model.Workspace.discover_commands workspace |> List.map
+      (fun (cmd: Tusk_model.Package_command.t) ->
+        let name = cmd.package_name ^ ":" ^ cmd.name in
+        (* Use help text from TOML, or provide fallback *)
+        let desc =
+          if String.length cmd.description = 0 then
+            "Package command"
+          else
+            cmd.description
+        in
+        let tab = Char.chr 9 in
+        (* Explicit tab character *)
+        name ^ String.make 1 tab ^ desc) |> List.sort_uniq String.compare
 
 (** List package command descriptions matching the order of list_commands *)
 let list_command_descriptions = fun (workspace: Tusk_model.Workspace.t) ->
-  list_commands workspace |> List.map
-    (fun line ->
-      (* Extract description after tab *)
-      match String.index_opt line '\t' with
-      | Some idx -> String.sub line (idx + 1) (String.length line - idx - 1)
-      | None -> "Package command")
+    list_commands workspace |> List.map
+      (fun line ->
+        (* Extract description after tab *)
+        match String.index_opt line '\t' with
+        | Some idx -> String.sub line (idx + 1) (String.length line - idx - 1)
+        | None -> "Package command")
 
 let generate_zsh_script = fun () ->
-  {|#compdef tusk
+    {|#compdef tusk
 
 _tusk() {
     local -a builtin_commands package_commands all_commands
@@ -322,15 +321,14 @@ _tusk "$@"
 |}
 
 let generate_bash_script = fun () ->
-  (* Placeholder for future bash support *)
-  "# Bash completions not yet implemented\n"
+    (* Placeholder for future bash support *)
+    "# Bash completions not yet implemented\n"
 
 let generate_fish_script = fun () ->
-  (* Placeholder for future fish support *)
-  "# Fish completions not yet implemented\n"
+    (* Placeholder for future fish support *)
+    "# Fish completions not yet implemented\n"
 
-let generate_script =
-  function
+let generate_script = function
   | Zsh -> generate_zsh_script ()
   | Bash -> generate_bash_script ()
   | Fish -> generate_fish_script ()

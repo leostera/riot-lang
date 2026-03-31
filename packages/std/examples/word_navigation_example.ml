@@ -10,9 +10,9 @@ let () =
   println ("   Text: " ^ s1);
   let boundaries = String.word_boundaries s1 in
   println
-  ("   Word boundaries at byte positions: ["
-  ^ String.concat "; " (List.map Int.to_string boundaries)
-  ^ "]");
+    ("   Word boundaries at byte positions: ["
+    ^ String.concat "; " (List.map Int.to_string boundaries)
+    ^ "]");
   let words = String.split_words s1 in
   println ("   Words: [" ^ String.concat "; " (List.map (fun w -> "\"" ^ w ^ "\"") words) ^ "]\n");
   (* Example 2: Contractions *)
@@ -51,7 +51,7 @@ let () =
   let text = "The quick brown fox" in
   println ("   Text: \"" ^ text ^ "\"");
   println "   Cursor positions for Ctrl+Right from start:";
-  let rec show_navigation = fun pos ->
+  let rec show_navigation pos =
     if pos >= String.length text then
       ()
     else
@@ -78,7 +78,7 @@ let () =
   println "8. Simulating Ctrl+Left arrow navigation:";
   println ("   Text: \"" ^ text ^ "\"");
   println "   Cursor positions for Ctrl+Left from end:";
-  let rec show_back_navigation = fun pos ->
+  let rec show_back_navigation pos =
     if pos <= 0 then
       ()
     else

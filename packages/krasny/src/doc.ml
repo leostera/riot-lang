@@ -15,20 +15,20 @@ type t =
 let empty = Empty
 
 let text = fun value ->
-  if value = "" then
-    Empty
-  else
-    Text value
+    if value = "" then
+      Empty
+    else
+      Text value
 
 let space = Space
 
 let spaces = fun count ->
-  if count <= 0 then
-    Empty
-  else if count = 1 then
-    Space
-  else
-    Spaces count
+    if count <= 0 then
+      Empty
+    else if count = 1 then
+      Space
+    else
+      Spaces count
 
 let line = Line
 
@@ -37,10 +37,10 @@ let break = fun ?(flat = " ") () -> Break flat
 let softline = Break ""
 
 let indent = fun spaces doc ->
-  if spaces <= 0 then
-    doc
-  else
-    Indent (spaces, doc)
+    if spaces <= 0 then
+      doc
+    else
+      Indent (spaces, doc)
 
 let group = fun doc -> Group doc
 
@@ -69,48 +69,48 @@ let lbracket = text "["
 let rbracket = text "]"
 
 let concat = fun docs ->
-  let add_spaces = fun count acc ->
-    if count <= 0 then
-      acc
-    else
-      match acc with
-      | Spaces current :: rest -> Spaces (current + count) :: rest
-      | Space :: rest -> Spaces (count + 1) :: rest
-      | _ when count = 1 -> Space :: acc
-      | _ -> Spaces count :: acc
-  in
-  let rec flatten = fun acc ->
-    function
-    | [] ->
-        List.rev acc
-    | Empty :: rest ->
-        flatten acc rest
-    | Space :: rest ->
-        (flatten (add_spaces 1 acc) rest)
-    | Spaces count :: rest ->
-        flatten (add_spaces count acc) rest
-    | Break flat :: rest -> (
+    let add_spaces count acc =
+      if count <= 0 then
+        acc
+      else
         match acc with
-        | Break current :: _ when current = flat -> flatten acc rest
-        | _ -> flatten (Break flat :: acc) rest
-      )
-    | Group doc :: rest ->
-        flatten (Group doc :: acc) rest
-    | Concat nested :: rest ->
-        flatten acc (nested @ rest)
-    | doc :: rest ->
-        flatten (doc :: acc) rest
-  in
-  match flatten [] docs with
-  | [] -> Empty
-  | [ doc ] -> doc
-  | docs -> Concat docs
+        | Spaces current :: rest -> Spaces (current + count) :: rest
+        | Space :: rest -> Spaces (count + 1) :: rest
+        | _ when count = 1 -> Space :: acc
+        | _ -> Spaces count :: acc
+    in
+    let rec flatten = fun acc ->
+        function
+        | [] ->
+            List.rev acc
+        | Empty :: rest ->
+            flatten acc rest
+        | Space :: rest ->
+            (flatten (add_spaces 1 acc) rest)
+        | Spaces count :: rest ->
+            flatten (add_spaces count acc) rest
+        | Break flat :: rest -> (
+            match acc with
+            | Break current :: _ when current = flat -> flatten acc rest
+            | _ -> flatten (Break flat :: acc) rest
+          )
+        | Group doc :: rest ->
+            flatten (Group doc :: acc) rest
+        | Concat nested :: rest ->
+            flatten acc (nested @ rest)
+        | doc :: rest ->
+            flatten (doc :: acc) rest
+    in
+    match flatten [] docs with
+    | [] -> Empty
+    | [ doc ] -> doc
+    | docs -> Concat docs
 
 let join = fun separator docs ->
-  match docs with
-  | [] -> Empty
-  | first :: rest -> concat
-  (first :: (rest |> List.map (fun doc -> [ separator; doc ]) |> List.flatten))
+    match docs with
+    | [] -> Empty
+    | first :: rest -> concat
+      (first :: (rest |> List.map (fun doc -> [ separator; doc ]) |> List.flatten))
 
 let words = fun docs -> join space docs
 
@@ -124,8 +124,7 @@ let suffixed = fun doc suffix -> concat [ doc; suffix ]
 
 let wrapped = fun left doc right -> concat [ left; doc; right ]
 
-let rec is_multiline =
-  function
+let rec is_multiline = function
   | Empty -> false
   | Text value -> String.contains value "\n"
   | Space -> false

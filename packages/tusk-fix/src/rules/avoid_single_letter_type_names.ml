@@ -19,46 +19,42 @@ Outside that convention, prefer names that carry domain meaning, such as
 let should_flag_type_name = fun name -> String.length name = 1 && not (String.equal name "t")
 
 let make_diagnostic = fun token ->
-  let original = Syn.Ceibo.Red.SyntaxToken.text token in
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-  ~suggestion:((((("Rename " ^ original ^ " to a descriptive type name")))))
-  ()
+    let original = Syn.Ceibo.Red.SyntaxToken.text token in
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
+      ~suggestion:(("Rename " ^ original ^ " to a descriptive type name"))
+      ()
 
 let diagnostic_for_decl = fun decl ->
-  match Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name decl) with
-  | Some name when should_flag_type_name name ->
-      let token = Syn.Cst.TypeDeclaration.name_token decl |> Syn.Cst.Token.syntax_token in
-      Some (make_diagnostic token)
-  | Some _
-  | None -> None
+    match Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name decl) with
+    | Some name when should_flag_type_name name ->
+        let token = Syn.Cst.TypeDeclaration.name_token decl |> Syn.Cst.Token.syntax_token in
+        Some (make_diagnostic token)
+    | Some _
+    | None -> None
 
 let diagnostics_for_items = fun source_file ->
-  match source_file with
-  | Syn.Cst.Implementation { items; _ } ->
-      items |> List.filter_map
-        (
-          function
-          | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
-          | _ -> None
-        )
-  | Syn.Cst.Interface { items; _ } ->
-      items |> List.filter_map
-        (
-          function
-          | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
-          | _ -> None
-        )
+    match source_file with
+    | Syn.Cst.Implementation { items; _ } ->
+        items |> List.filter_map
+          (
+            function
+            | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
+            | _ -> None
+          )
+    | Syn.Cst.Interface { items; _ } ->
+        items |> List.filter_map
+          (
+            function
+            | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
+            | _ -> None
+          )
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  diagnostics_for_items source_file
+    let source_file = ctx.cst in
+    diagnostics_for_items source_file
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

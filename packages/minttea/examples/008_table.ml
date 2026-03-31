@@ -128,14 +128,8 @@ let users = [
 
 (* Convert user to table row *)
 
-let user_to_row = fun user -> [
-  Int.to_string user.id;
-  user.name;
-  user.email;
-  user.status;
-  user.joined;
-
-]
+let user_to_row = fun user ->
+    [ Int.to_string user.id; user.name; user.email; user.status; user.joined;  ]
 
 (* Initialize *)
 
@@ -144,71 +138,71 @@ let init = fun model -> (model, Command.Noop)
 (* Update *)
 
 let update = fun event model ->
-  match event with
-  | Event.KeyDown (Event.Key "q", _)
-  | Event.KeyDown (Event.Escape, _) ->
-      (model, Command.Quit)
-  | Event.KeyDown (Event.Up, _) ->
-      let table =
-        match Table.selected_index model.table with
-        | Some idx when idx > 0 -> Table.select model.table (idx - 1)
-        | _ -> model.table
-      in
-      ({model with table}, Command.Noop)
-  | Event.KeyDown (Event.Down, _) ->
-      let table =
-        match Table.selected_index model.table with
-        | Some idx -> Table.select model.table (idx + 1)
-        | None -> Table.select model.table 0
-      in
-      ({model with table}, Command.Noop)
-  | Event.KeyDown (Event.Enter, _) ->
-      (* Get selected row index and find corresponding user *)
-      let selected_user =
-        match Table.selected_index model.table with
-        | Some idx when idx < List.length model.users -> Some (List.nth model.users idx)
-        | _ -> None
-      in
-      ({model with selected_user}, Command.Noop)
-  | Event.KeyDown (Event.Key "c", _) -> (* Clear selection *)
-    ({model with selected_user = None}, Command.Noop)
-  | _ ->
-      (model, Command.Noop)
+    match event with
+    | Event.KeyDown (Event.Key "q", _)
+    | Event.KeyDown (Event.Escape, _) ->
+        (model, Command.Quit)
+    | Event.KeyDown (Event.Up, _) ->
+        let table =
+          match Table.selected_index model.table with
+          | Some idx when idx > 0 -> Table.select model.table (idx - 1)
+          | _ -> model.table
+        in
+        ({model with table}, Command.Noop)
+    | Event.KeyDown (Event.Down, _) ->
+        let table =
+          match Table.selected_index model.table with
+          | Some idx -> Table.select model.table (idx + 1)
+          | None -> Table.select model.table 0
+        in
+        ({model with table}, Command.Noop)
+    | Event.KeyDown (Event.Enter, _) ->
+        (* Get selected row index and find corresponding user *)
+        let selected_user =
+          match Table.selected_index model.table with
+          | Some idx when idx < List.length model.users -> Some (List.nth model.users idx)
+          | _ -> None
+        in
+        ({model with selected_user}, Command.Noop)
+    | Event.KeyDown (Event.Key "c", _) -> (* Clear selection *)
+      ({model with selected_user = None}, Command.Noop)
+    | _ ->
+        (model, Command.Noop)
 
 (* View *)
 
 let view = fun model ->
-  let open Element in
-    column ~style:Style.(empty |> padding (Padding.all 1))
-      [
-        text ~style:Style.(empty |> bold |> fg (`rgb (100, 200, 255))) "User Management System";
-        text "";
-        text (Table.view model.table);
-        text "";
-        (
-          match model.selected_user with
-          | Some user -> column
-          ~style:Style.(empty
-          |> border ~width:1 ~color:(`rgb (0, 255, 0)) ()
-          |> padding (Padding.all 1))
-          [
-            text ~style:Style.(empty |> bold) "Selected User Details:";
-            text "";
-            text ("ID:     " ^ Int.to_string user.id);
-            text ("Name:   " ^ user.name);
-            text ("Email:  " ^ user.email);
-            text ("Status: " ^ user.status);
-            text ("Joined: " ^ user.joined);
-            text "";
-            text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "Press 'c' to clear selection";
+    let open Element in
+      column ~style:Style.(empty |> padding (Padding.all 1))
+        [
+          text ~style:Style.(empty |> bold |> fg (`rgb (100, 200, 255))) "User Management System";
+          text "";
+          text (Table.view model.table);
+          text "";
+          (
+            match model.selected_user with
+            | Some user -> column
+              ~style:Style.(empty
+              |> border ~width:1 ~color:(`rgb (0, 255, 0)) ()
+              |> padding (Padding.all 1))
+              [
+                text ~style:Style.(empty |> bold) "Selected User Details:";
+                text "";
+                text ("ID:     " ^ Int.to_string user.id);
+                text ("Name:   " ^ user.name);
+                text ("Email:  " ^ user.email);
+                text ("Status: " ^ user.status);
+                text ("Joined: " ^ user.joined);
+                text "";
+                text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "Press 'c' to clear selection";
 
-          ]
-          | None -> text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "Press Enter to view user details"
-        );
-        text "";
-        text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "↑↓ Navigate • Enter: Select • q: Quit";
+              ]
+            | None -> text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "Press Enter to view user details"
+          );
+          text "";
+          text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "↑↓ Navigate • Enter: Select • q: Quit";
 
-      ]
+        ]
 
 (* Create and run the app *)
 

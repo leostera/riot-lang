@@ -14,8 +14,7 @@ general attack on parentheses. Keep them when they disambiguate an expression, b
 not leave them around as punctuation residue once they stop doing real work.
 |}
 
-let rec child_expressions_of_function_body =
-  function
+let rec child_expressions_of_function_body = function
   | Syn.Cst.Expression expression -> [ expression ]
   | Syn.Cst.Cases { cases; _ } ->
       cases |> List.concat_map
@@ -25,8 +24,8 @@ let rec child_expressions_of_function_body =
             | Some guard -> [ guard ]
             | None -> []
           ) @ [ case.body ])
-and child_expressions =
-  function
+
+and child_expressions = function
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _ ->
       []
@@ -80,20 +79,19 @@ and child_expressions =
       []
 
 let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
-  Syn.Ceibo.Red.SyntaxNode.children syntax_node |> Std.Collections.Array.to_list |> List.find_map
-    (
-      function
-      | Syn.Ceibo.Red.Token token ->
-          let text = Syn.Ceibo.Red.SyntaxToken.text token in
-          if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
-            None
-          else
-            Some (String.equal text "begin")
-      | _ -> None
-    ) |> Option.unwrap_or ~default:false
+    Syn.Ceibo.Red.SyntaxNode.children syntax_node |> Std.Collections.Array.to_list |> List.find_map
+      (
+        function
+        | Syn.Ceibo.Red.Token token ->
+            let text = Syn.Ceibo.Red.SyntaxToken.text token in
+            if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
+              None
+            else
+              Some (String.equal text "begin")
+        | _ -> None
+      ) |> Option.unwrap_or ~default:false
 
-let is_obviously_redundant =
-  function
+let is_obviously_redundant = function
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _
   | Syn.Cst.Expression.Parenthesized _ -> true
@@ -108,42 +106,38 @@ let is_obviously_redundant =
   | Syn.Cst.Expression.If _ -> false
   | _ -> false
 
-let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) -> Diagnostic.make
-~severity:Warning
-~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:(((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)))))
-~suggestion:"Remove these redundant parentheses."
-()
+let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
+      ~suggestion:"Remove these redundant parentheses."
+      ()
 
 let rec diagnostics_for_expression = fun ~inside_redundant_chain ->
-  function
-  | Syn.Cst.Expression.Parenthesized expr ->
-      let inner = expr.inner in
-      let nested = diagnostics_for_expression
-      ~inside_redundant_chain:(((((inside_redundant_chain || is_obviously_redundant inner)))))
-      inner in
-      if opens_with_begin expr then
-        nested
-      else if is_obviously_redundant inner && not inside_redundant_chain then
-        make_diagnostic expr :: nested
-      else
-        nested
-  | expr -> child_expressions expr
-  |> List.concat_map (diagnostics_for_expression ~inside_redundant_chain:false)
+    function
+    | Syn.Cst.Expression.Parenthesized expr ->
+        let inner = expr.inner in
+        let nested = diagnostics_for_expression
+          ~inside_redundant_chain:((inside_redundant_chain || is_obviously_redundant inner))
+          inner in
+        if opens_with_begin expr then
+          nested
+        else if is_obviously_redundant inner && not inside_redundant_chain then
+          make_diagnostic expr :: nested
+        else
+          nested
+    | expr -> child_expressions expr
+    |> List.concat_map (diagnostics_for_expression ~inside_redundant_chain:false)
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.concat_map
-  (fun binding -> diagnostics_for_expression
-  ~inside_redundant_chain:false
-  (Syn.Cst.LetBinding.value binding))
+    let source_file = ctx.cst in
+    Syn.Cst.SourceFile.structure_items source_file
+    |> Option.unwrap_or ~default:[]
+    |> List.concat_map Traversal.let_bindings_of_structure_item
+    |> List.concat_map
+      (fun binding ->
+        diagnostics_for_expression ~inside_redundant_chain:false (Syn.Cst.LetBinding.value binding))
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

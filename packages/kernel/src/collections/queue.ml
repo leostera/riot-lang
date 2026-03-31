@@ -20,136 +20,135 @@ let len = fun queue -> queue.length
 let is_empty = fun queue -> queue.length = 0
 
 let push = fun queue value ->
-  let new_node = {value; next = None} in
-  match queue.back with
-  | None ->
-      queue.front <- Some new_node;
-      queue.back <- Some new_node;
-      queue.length <- queue.length + 1
-  | Some back_node ->
-      back_node.next <- Some new_node;
-      queue.back <- Some new_node;
-      queue.length <- queue.length + 1
+    let new_node = {value; next = None} in
+    match queue.back with
+    | None ->
+        queue.front <- Some new_node;
+        queue.back <- Some new_node;
+        queue.length <- queue.length + 1
+    | Some back_node ->
+        back_node.next <- Some new_node;
+        queue.back <- Some new_node;
+        queue.length <- queue.length + 1
 
 let pop = fun queue ->
-  match queue.front with
-  | None -> None
-  | Some front_node ->
-      queue.front <- front_node.next;
-      if queue.front = None then
-        queue.back <- None;
-      queue.length <- queue.length - 1;
-      Some front_node.value
+    match queue.front with
+    | None -> None
+    | Some front_node ->
+        queue.front <- front_node.next;
+        if queue.front = None then
+          queue.back <- None;
+        queue.length <- queue.length - 1;
+        Some front_node.value
 
 let front = fun queue ->
-  match queue.front with
-  | None -> None
-  | Some front_node -> Some front_node.value
+    match queue.front with
+    | None -> None
+    | Some front_node -> Some front_node.value
 
 let clear = fun queue ->
-  queue.front <- None;
-  queue.back <- None;
-  queue.length <- 0
+    queue.front <- None;
+    queue.back <- None;
+    queue.length <- 0
 
 let iter = fun f queue ->
-  let rec loop = fun node ->
-    match node with
-    | None -> ()
-    | Some n ->
-        f n.value;
-        loop n.next
-  in
-  loop queue.front
+    let rec loop node =
+      match node with
+      | None -> ()
+      | Some n ->
+          f n.value;
+          loop n.next
+    in
+    loop queue.front
 
 let fold = fun f queue acc ->
-  let rec loop = fun node acc ->
-    match node with
-    | None -> acc
-    | Some n -> loop n.next (f n.value acc)
-  in
-  loop queue.front acc
+    let rec loop node acc =
+      match node with
+      | None -> acc
+      | Some n -> loop n.next (f n.value acc)
+    in
+    loop queue.front acc
 
 let to_list = fun queue ->
-  let rec loop = fun node acc ->
-    match node with
-    | None -> acc
-    | Some n -> loop n.next (n.value :: acc)
-  in
-  loop queue.front []
+    let rec loop node acc =
+      match node with
+      | None -> acc
+      | Some n -> loop n.next (n.value :: acc)
+    in
+    loop queue.front []
 
 let contains = fun queue value ->
-  let rec loop = fun node acc ->
-    match node with
-    | None -> acc
-    | Some n -> loop n.next (n.value = value)
-  in
-  loop queue.front false
+    let rec loop node acc =
+      match node with
+      | None -> acc
+      | Some n -> loop n.next (n.value = value)
+    in
+    loop queue.front false
 
 let append = fun queue1 queue2 ->
-  iter (push queue1) queue2;
-  clear queue2
+    iter (push queue1) queue2;
+    clear queue2
 
 let transfer = fun ~src ~dst ->
-  match src.front with
-  | None -> ()
-  | Some _ ->
-      (
-        match dst.back with
-        | None ->
-            (* dst is empty, just move everything *)
-            dst.front <- src.front;
-            dst.back <- src.back;
-            dst.length <- src.length
-        | Some back_node ->
-            (* dst has items, append src to the end *)
-            back_node.next <- src.front;
-            dst.back <- src.back;
-            dst.length <- dst.length + src.length
-      );
-      (* Clear src queue *)
-      src.front <- None;
-      src.back <- None;
-      src.length <- 0
+    match src.front with
+    | None -> ()
+    | Some _ ->
+        (
+          match dst.back with
+          | None ->
+              (* dst is empty, just move everything *)
+              dst.front <- src.front;
+              dst.back <- src.back;
+              dst.length <- src.length
+          | Some back_node ->
+              (* dst has items, append src to the end *)
+              back_node.next <- src.front;
+              dst.back <- src.back;
+              dst.length <- dst.length + src.length
+        );
+        (* Clear src queue *)
+        src.front <- None;
+        src.back <- None;
+        src.length <- 0
 
 let of_list = fun elements ->
-  let queue = create () in
-  List.iter (push queue) elements;
-  queue
+    let queue = create () in
+    List.iter (push queue) elements;
+    queue
 
 let into_iter : type item. item t -> item Iter.Iterator.t = fun queue ->
-  let module QueueIter = struct
-    type state = item node option
+    let module QueueIter = struct
+      type state = item node option
 
-    type nonrec item = item
+      type nonrec item = item
 
-    let next = fun state ->
-      match state with
-      | None -> (None, None)
-      | Some node -> (Some node.value, node.next)
+      let next = fun state ->
+          match state with
+          | None -> (None, None)
+          | Some node -> (Some node.value, node.next)
 
-    let size = fun state ->
-      let rec count =
-        function
-        | None -> 0
-        | Some n -> 1 + count n.next
-      in
-      count state
-  end in
-  Iter.Iterator.make (module QueueIter) queue.front
+      let size = fun state ->
+          let rec count = function
+            | None -> 0
+            | Some n -> 1 + count n.next
+          in
+          count state
+    end in
+    Iter.Iterator.make (module QueueIter) queue.front
 
 let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun queue ->
-  let module QueueIter = struct
-    type state = item t
+    let module QueueIter = struct
+      type state = item t
 
-    type nonrec item = item
+      type nonrec item = item
 
-    let next = fun queue -> pop queue
+      let next = fun queue -> pop queue
 
-    let size = fun queue -> len queue
+      let size = fun queue -> len queue
 
-    let clone = fun queue ->
-      let queue2 = with_capacity (len queue) in
-      iter (push queue2) queue;
-      queue2
-  end in
-  Iter.MutIterator.make (module QueueIter) queue
+      let clone = fun queue ->
+          let queue2 = with_capacity (len queue) in
+          iter (push queue2) queue;
+          queue2
+    end in
+    Iter.MutIterator.make (module QueueIter) queue

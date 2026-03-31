@@ -54,10 +54,10 @@ type t = {
 (* Helper to write to file descriptor using async-friendly Fs.File.write_all *)
 
 let write_to_fd = fun fd str ->
-  let file = Fs.File.from_fd fd in
-  match Fs.File.write_all file str with
-  | Ok () -> ()
-  | Error _ -> ()
+    let file = Fs.File.from_fd fd in
+    match Fs.File.write_all file str with
+    | Ok () -> ()
+    | Error _ -> ()
 
 (* Silently ignore write errors for now *)
 

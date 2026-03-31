@@ -3,10 +3,9 @@ open Suri
 
 (** Simple API with CORS enabled for cross-origin requests *)
 let routes = Middleware.Router.[get
-"/api/hello"
-(fun conn _req -> conn
-|> Conn.respond ~status:Net.Http.Status.Ok ~body:"Hello from CORS-enabled API!"
-|> Conn.send);
+  "/api/hello"
+  (fun conn _req ->
+    conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:"Hello from CORS-enabled API!" |> Conn.send);
 get "/api/data"
   (fun conn _req ->
     let json = {|{"message": "This is accessible from browsers", "status": "ok"}|} in
@@ -47,7 +46,7 @@ let () =
           Log.info "       http://localhost:4000/api/submit";
           Log.info "===========================================";
           (* Keep alive *)
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

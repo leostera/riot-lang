@@ -69,40 +69,39 @@ module Driver = Sqlx_driver.Driver
 module Pool = Pool
 
 let connect = fun ?(config = Config.default) ~driver driver_config ->
-  let pool_config = Pool.Config {
-    driver;
-    driver_config;
-    min_connections = max 1 (config.pool_size / 4);
-    max_connections = config.pool_size;
-    acquire_timeout = config.acquire_timeout;
-    idle_timeout = config.max_idle_time;
-    max_lifetime = config.max_lifetime;
+    let pool_config = Pool.Config {
+      driver;
+      driver_config;
+      min_connections = max 1 (config.pool_size / 4);
+      max_connections = config.pool_size;
+      acquire_timeout = config.acquire_timeout;
+      idle_timeout = config.max_idle_time;
+      max_lifetime = config.max_lifetime;
 
-  } in
-  match Pool.create pool_config with
-  | Ok pool -> Ok pool
-  | Error conn_err -> Error (PoolError (Pool.ConnectionError conn_err))
+    } in
+    match Pool.create pool_config with
+    | Ok pool -> Ok pool
+    | Error conn_err -> Error (PoolError (Pool.ConnectionError conn_err))
 
 let query = fun pool sql params ->
-  match
-    Pool.with_connection pool
-      (fun conn ->
-        Connection.query conn sql params)
-  with
-  | Ok cursor -> Ok cursor
-  | Error pool_err -> Error (PoolError pool_err)
+    match
+      Pool.with_connection pool
+        (fun conn ->
+          Connection.query conn sql params)
+    with
+    | Ok cursor -> Ok cursor
+    | Error pool_err -> Error (PoolError pool_err)
 
 let exec = fun pool sql params ->
-  match
-    Pool.with_connection pool
-      (fun conn ->
-        Connection.execute conn sql params)
-  with
-  | Ok rows -> Ok rows
-  | Error pool_err -> Error (PoolError pool_err)
+    match
+      Pool.with_connection pool
+        (fun conn ->
+          Connection.execute conn sql params)
+    with
+    | Ok rows -> Ok rows
+    | Error pool_err -> Error (PoolError pool_err)
 
-let show_pool_error =
-  function
+let show_pool_error = function
   | Pool.Exhausted { waiting; max_connections; timeout } -> "Pool exhausted: "
   ^ string_of_int waiting
   ^ " waiting, max "
@@ -114,18 +113,17 @@ let show_pool_error =
   | Pool.Timeout duration -> "Pool timeout after " ^ Time.Duration.to_secs_string duration
 
 let with_transaction = fun pool f ->
-  match
-    Pool.with_connection pool
-      (fun conn ->
-        Transaction.with_transaction conn f)
-  with
-  | Ok v -> Ok v
-  | Error pool_err -> Error (PoolError pool_err)
+    match
+      Pool.with_connection pool
+        (fun conn ->
+          Transaction.with_transaction conn f)
+    with
+    | Ok v -> Ok v
+    | Error pool_err -> Error (PoolError pool_err)
 
 let shutdown = fun pool -> Pool.shutdown pool
 
-let show_error =
-  function
+let show_error = function
   | PoolError pool_err ->
       show_pool_error pool_err
   | InvalidValue { field; value; expected_type; reason } ->

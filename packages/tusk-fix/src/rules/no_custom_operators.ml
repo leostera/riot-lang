@@ -53,16 +53,15 @@ let allowed_infix_operators = [
 let should_flag_operator = fun operator -> not (List.mem operator allowed_infix_operators)
 
 let make_diagnostic = fun expr ->
-  let operator = Syn.Cst.InfixExpression.operator expr in
-  Diagnostic.make
-  ~severity:Warning
-  ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:(((((Syn.Cst.InfixExpression.operator_token expr |> Syn.Cst.Token.span)))))
-  ~suggestion:((((("Replace " ^ operator ^ " with a named function")))))
-  ()
+    let operator = Syn.Cst.InfixExpression.operator expr in
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:((Syn.Cst.InfixExpression.operator_token expr |> Syn.Cst.Token.span))
+      ~suggestion:(("Replace " ^ operator ^ " with a named function"))
+      ()
 
-let rec diagnostics_for_expression =
-  function
+let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.Path _
   | Syn.Cst.Expression.Literal _ ->
       []
@@ -122,27 +121,24 @@ let rec diagnostics_for_expression =
         nested
   | _ ->
       []
-and diagnostics_for_function_body =
-  function
+
+and diagnostics_for_function_body = function
   | Syn.Cst.Expression expression -> diagnostics_for_expression expression
   | Syn.Cst.Cases { cases; _ } -> cases |> List.concat_map diagnostics_for_match_case
+
 and diagnostics_for_match_case = fun (case: Syn.Cst.match_case) ->
-  (
-    match case.guard with
-    | Some guard -> diagnostics_for_expression guard
-    | None -> []
-  ) @ diagnostics_for_expression case.body
+    (
+      match case.guard with
+      | Some guard -> diagnostics_for_expression guard
+      | None -> []
+    ) @ diagnostics_for_expression case.body
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.concat_map (fun binding -> diagnostics_for_expression (Syn.Cst.LetBinding.value binding))
+    let source_file = ctx.cst in
+    Syn.Cst.SourceFile.structure_items source_file
+    |> Option.unwrap_or ~default:[]
+    |> List.concat_map Traversal.let_bindings_of_structure_item
+    |> List.concat_map (fun binding -> diagnostics_for_expression (Syn.Cst.LetBinding.value binding))
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

@@ -17,50 +17,45 @@ This rule exists for the cases where nested calls have become dense enough that 
 pipeline would make the same logic easier to follow.
 |}
 
-let rec unwrap_parens =
-  function
+let rec unwrap_parens = function
   | Syn.Cst.Expression.Parenthesized expr -> unwrap_parens expr.inner
   | expr -> expr
 
-let expression_of_apply_argument =
-  function
+let expression_of_apply_argument = function
   | Syn.Cst.Positional expr -> Some expr
   | Syn.Cst.Labeled { value; _ }
   | Syn.Cst.Optional { value; _ } -> value
 
 let rec nested_call_count = fun expr ->
-  match unwrap_parens expr with
-  | Syn.Cst.Expression.Apply apply -> (
-      match expression_of_apply_argument apply.argument with
-      | Some argument -> 1 + nested_call_count argument
-      | None -> 1
-    )
-  | _ -> 0
+    match unwrap_parens expr with
+    | Syn.Cst.Expression.Apply apply -> (
+        match expression_of_apply_argument apply.argument with
+        | Some argument -> 1 + nested_call_count argument
+        | None -> 1
+      )
+    | _ -> 0
 
 let threshold = 4
 
-let make_diagnostic = fun expr -> Diagnostic.make
-~severity:Warning
-~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-~suggestion:"Rewrite this call chain as a pipeline."
-()
+let make_diagnostic = fun expr ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
+      ~suggestion:"Rewrite this call chain as a pipeline."
+      ()
 
 let diagnostic_for_expression = fun expr ->
-  match unwrap_parens expr with
-  | Syn.Cst.Expression.Apply _ when nested_call_count expr >= threshold -> Some (make_diagnostic expr)
-  | _ -> None
+    match unwrap_parens expr with
+    | Syn.Cst.Expression.Apply _ when nested_call_count expr >= threshold -> Some (make_diagnostic expr)
+    | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let source_file = ctx.cst in
-  Syn.Cst.SourceFile.structure_items source_file
-  |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+    let source_file = ctx.cst in
+    Syn.Cst.SourceFile.structure_items source_file
+    |> Option.unwrap_or ~default:[]
+    |> List.concat_map Traversal.expressions_of_structure_item
+    |> List.filter_map diagnostic_for_expression
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

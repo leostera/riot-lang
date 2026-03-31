@@ -104,87 +104,86 @@ let space = [|"  "; "  "; "  "; "  "; "  "; |]
 (* Initialize: Set up initial time and start timer *)
 
 let init = fun model ->
-  let timer_ref, timer_cmd = Command.timer ~after:(Time.Duration.from_secs 1) in
-  ({model with timer_ref}, timer_cmd)
+    let timer_ref, timer_cmd = Command.timer ~after:(Time.Duration.from_secs 1) in
+    ({model with timer_ref}, timer_cmd)
 
 (* Update: Handle events *)
 
 let update = fun event model ->
-  match event with
-  | Event.KeyDown (Event.Key "q", _)
-  | Event.KeyDown (Event.Key "Q", _)
-  | Event.KeyDown (Event.Escape, _) ->
-      (model, Command.Quit)
-  | Event.Timer ref when Ref.equal ref model.timer_ref ->
-      (* Update time and reset timer *)
-      let timer_ref, timer_cmd = Command.timer ~after:(Time.Duration.from_secs 1) in
-      let new_model = {time = Datetime.now (); timer_ref} in
-      (new_model, timer_cmd)
-  | _ ->
-      (model, Command.Noop)
+    match event with
+    | Event.KeyDown (Event.Key "q", _)
+    | Event.KeyDown (Event.Key "Q", _)
+    | Event.KeyDown (Event.Escape, _) ->
+        (model, Command.Quit)
+    | Event.Timer ref when Ref.equal ref model.timer_ref ->
+        (* Update time and reset timer *)
+        let timer_ref, timer_cmd = Command.timer ~after:(Time.Duration.from_secs 1) in
+        let new_model = {time = Datetime.now (); timer_ref} in
+        (new_model, timer_cmd)
+    | _ ->
+        (model, Command.Noop)
 
 (* Render a single digit as ASCII art *)
 
 let render_digit = fun d ->
-  if d >= 0 && d <= 9 then
-    digits.(d)
-  else
-    space
+    if d >= 0 && d <= 9 then
+      digits.(d)
+    else
+      space
 
 (* Render time as large ASCII art *)
 
 let render_time_ascii = fun time_str ->
-  let chars = String.to_seq time_str |> List.of_seq in
-  (* Convert each character to its ASCII art representation *)
-  let char_to_art =
-    function
-    | '0' .. '9' as c -> render_digit (Char.code c - Char.code '0')
-    | ':' -> colon
-    | _ -> space
-  in
-  let art_chars = List.map char_to_art chars in
-  (* Combine ASCII art horizontally, line by line *)
-  let lines = ref [] in
-  for row = 0 to 4 do
-    let line_parts =
-      List.map (fun art -> art.(row)) art_chars
+    let chars = String.to_seq time_str |> List.of_seq in
+    (* Convert each character to its ASCII art representation *)
+    let char_to_art = function
+      | '0' .. '9' as c -> render_digit (Char.code c - Char.code '0')
+      | ':' -> colon
+      | _ -> space
     in
-    let line = String.concat "" line_parts in
-    lines := line :: !lines
-  done;
-  List.rev !lines
+    let art_chars = List.map char_to_art chars in
+    (* Combine ASCII art horizontally, line by line *)
+    let lines = ref [] in
+    for row = 0 to 4 do
+      let line_parts =
+        List.map (fun art -> art.(row)) art_chars
+      in
+      let line = String.concat "" line_parts in
+      lines := line :: !lines
+    done;
+    List.rev !lines
 
 (* View: Render the clock *)
 
 let view = fun model ->
-  let open Element in
-    let pad_two = fun n ->
-      let s = Int.to_string n in
-      if String.length s < 2 then
-        "0" ^ s
-      else
-        s
-    in
-    let time_str = pad_two model.time.hour
-    ^ ":"
-    ^ pad_two model.time.minute
-    ^ ":"
-    ^ pad_two model.time.second in
-    (* Render ASCII art *)
-    let ascii_lines = render_time_ascii time_str in
-    (* Create elements for each line of ASCII art *)
-    let ascii_elements =
-      List.map (fun line -> text ~style:Style.(empty |> fg (`rgb (0, 255, 127)) |> bold) line) ascii_lines
-    in
-    (* Center everything *)
-    column
-    ~style:Style.(empty |> align ~x:Center ~y:Middle |> padding (Padding.all 2))
-    [
-      column ascii_elements;
-      text "";
-      text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "Press 'q' to quit";
+    let open Element in
+      let pad_two n =
+        let s = Int.to_string n in
+        if String.length s < 2 then
+          "0" ^ s
+        else
+          s
+      in
+      let time_str = pad_two model.time.hour
+      ^ ":"
+      ^ pad_two model.time.minute
+      ^ ":"
+      ^ pad_two model.time.second in
+      (* Render ASCII art *)
+      let ascii_lines = render_time_ascii time_str in
+      (* Create elements for each line of ASCII art *)
+      let ascii_elements =
+        List.map (fun line -> text ~style:Style.(empty |> fg (`rgb (0, 255, 127)) |> bold) line) ascii_lines
+      in
+      (* Center everything *)
+      column
+        ~style:Style.(empty |> align ~x:Center ~y:Middle |> padding (Padding.all 2))
+        [
+          column ascii_elements;
+          text "";
+          text ~style:Style.(empty |> fg (`rgb (100, 100, 100))) "Press 'q' to quit";
 
-    ]
+        ]
 
 (* Create and run the app *)
 

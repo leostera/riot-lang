@@ -4,28 +4,23 @@ open Std.Collections
 
 (* Helper to extract values *)
 
-let get_string =
-  function
+let get_string = function
   | Toml.String s -> Some s
   | _ -> None
 
-let get_int =
-  function
+let get_int = function
   | Toml.Int i -> Some i
   | _ -> None
 
-let get_table =
-  function
+let get_table = function
   | Toml.Table t -> Some t
   | _ -> None
 
-let get_array =
-  function
+let get_array = function
   | Toml.Array a -> Some a
   | _ -> None
 
-let get_bool =
-  function
+let get_bool = function
   | Toml.Bool b -> Some b
   | _ -> None
 

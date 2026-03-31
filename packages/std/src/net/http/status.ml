@@ -71,8 +71,7 @@ type t =
   (* Extension *)
   | Extension of int
 
-let to_int =
-  function
+let to_int = function
   | Continue -> 100
   | SwitchingProtocols -> 101
   | Processing -> 102
@@ -137,8 +136,7 @@ let to_int =
   | NetworkAuthenticationRequired -> 511
   | Extension code -> code
 
-let of_int =
-  function
+let of_int = function
   | 100 -> Continue
   | 101 -> SwitchingProtocols
   | 102 -> Processing
@@ -204,13 +202,12 @@ let of_int =
   | code -> Extension code
 
 let of_string = fun s ->
-  try Result.Ok (of_int (int_of_string s)) with
-  | Failure _ -> Result.Error `InvalidStatus
+    try Result.Ok (of_int (int_of_string s)) with
+    | Failure _ -> Result.Error `InvalidStatus
 
 let to_string = fun status -> string_of_int (to_int status)
 
-let reason_phrase =
-  function
+let reason_phrase = function
   | Continue -> "Continue"
   | SwitchingProtocols -> "Switching Protocols"
   | Processing -> "Processing"
@@ -276,26 +273,26 @@ let reason_phrase =
   | Extension code -> string_of_int code
 
 let is_informational = fun status ->
-  let code = to_int status in
-  code >= 100 && code < 200
+    let code = to_int status in
+    code >= 100 && code < 200
 
 let is_success = fun status ->
-  let code = to_int status in
-  code >= 200 && code < 300
+    let code = to_int status in
+    code >= 200 && code < 300
 
 let is_redirection = fun status ->
-  let code = to_int status in
-  code >= 300 && code < 400
+    let code = to_int status in
+    code >= 300 && code < 400
 
 let is_client_error = fun status ->
-  let code = to_int status in
-  code >= 400 && code < 500
+    let code = to_int status in
+    code >= 400 && code < 500
 
 let is_server_error = fun status ->
-  let code = to_int status in
-  code >= 500 && code < 600
+    let code = to_int status in
+    code >= 500 && code < 600
 
 let compare = fun s1 s2 ->
-  Int.compare (to_int s1) (to_int s2)
+    Int.compare (to_int s1) (to_int s2)
 
 let equal = fun s1 s2 -> compare s1 s2 = 0

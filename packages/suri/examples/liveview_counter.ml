@@ -34,60 +34,65 @@ module Counter = struct
   let deserialize_args = fun _ -> Ok ()
 
   let init = fun _conn () ->
-    Log.info "Counter initialized";
-    {count = 0}
+      Log.info "Counter initialized";
+      {count = 0}
 
   let update = fun event state ->
-    let new_state =
-      match event with
-      | App Increment -> {count = state.count + 1}
-      | App Decrement -> {count = state.count - 1}
-      | App Reset -> {count = 0}
-      | _ -> state
-    in
-    Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
-    new_state
+      let new_state =
+        match event with
+        | App Increment -> {count = state.count + 1}
+        | App Decrement -> {count = state.count - 1}
+        | App Reset -> {count = 0}
+        | _ -> state
+      in
+      Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
+      new_state
 
-  let render = fun ~state () -> div
-  ~attrs:[ class_ "counter-app" ]
-  [
-    header
-    ~attrs:[ class_ "header" ]
-    [
-      h1 [ text "LiveView Counter" ];
-      p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
+  let render = fun ~state () ->
+      div
+        ~attrs:[ class_ "counter-app" ]
+        [
+          header
+            ~attrs:[ class_ "header" ]
+            [
+              h1 [ text "LiveView Counter" ];
+              p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
 
-    ];
-    div
-    ~attrs:[ class_ "counter-display" ]
-    [
-      div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
-      div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
+            ];
+          div
+            ~attrs:[ class_ "counter-display" ]
+            [
+              div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
+              div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
 
-    ];
-    div
-    ~attrs:[ class_ "controls" ]
-    [
-      button ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement);  ] [ text "−" ];
-      button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset);  ] [ text "Reset" ];
-      button ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment);  ] [ text "+" ];
+            ];
+          div
+            ~attrs:[ class_ "controls" ]
+            [
+              button
+                ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement);  ]
+                [ text "−" ];
+              button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset);  ] [ text "Reset" ];
+              button
+                ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment);  ]
+                [ text "+" ];
 
-    ];
-    footer
-    ~attrs:[ class_ "info" ]
-    [
-      p
-      [
-        strong [ text "How it works: " ];
-        text "Clicks are sent to the server over WebSocket. ";
-        text "The server updates state and sends back only the HTML changes. ";
-        text "No client-side framework needed!";
+            ];
+          footer
+            ~attrs:[ class_ "info" ]
+            [
+              p
+                [
+                  strong [ text "How it works: " ];
+                  text "Clicks are sent to the server over WebSocket. ";
+                  text "The server updates state and sends back only the HTML changes. ";
+                  text "No client-side framework needed!";
 
-      ];
+                ];
 
-    ];
+            ];
 
-  ]
+        ]
 end
 
 (** Page styles *)
@@ -235,22 +240,22 @@ let page_styles = {|
 
 (** Home page handler with embedded LiveView *)
 let home_page = fun conn _req ->
-  let open Component in
-    let page = html
-    [
-      head
-      [
-        meta ~attrs:[ attr "charset" "UTF-8" ] ();
-        meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
-        title [ text "LiveView Counter" ];
-        LiveView.client_script;
-        style page_styles;
+    let open Component in
+      let page = html
+        [
+          head
+            [
+              meta ~attrs:[ attr "charset" "UTF-8" ] ();
+              meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
+              title [ text "LiveView Counter" ];
+              LiveView.client_script;
+              style page_styles;
 
-      ];
-      body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) ();  ];  ];
+            ];
+          body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) ();  ];  ];
 
-    ] in
-    conn |> Conn.render_component Net.Http.Status.Ok page
+        ] in
+      conn |> Conn.render_component Net.Http.Status.Ok page
 
 (* Define routes *)
 
@@ -278,7 +283,7 @@ let () =
           Log.info "╚═══════════════════════════════════════════════════╝";
           let count = Supervisor.Dynamic.count_children supervisor in
           Log.info ("Started with " ^ Int.to_string count.active ^ " acceptors");
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

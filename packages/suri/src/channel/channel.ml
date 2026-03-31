@@ -42,22 +42,22 @@ module Handler = struct
   let init = fun (H ((module I), state)) _conn -> `continue (_conn, H ((module I), state))
 
   let handle_frame = fun (H ((module I), state)) frame conn ->
-    match I.handle_frame frame conn state with
-    | `ok state -> `continue (conn, H ((module I), state))
-    | `push (frames, state) -> `push (frames, H ((module I), state))
-    | `error (state, err) -> `error (conn, err)
+      match I.handle_frame frame conn state with
+      | `ok state -> `continue (conn, H ((module I), state))
+      | `push (frames, state) -> `push (frames, H ((module I), state))
+      | `error (state, err) -> `error (conn, err)
 
   let handle_message = fun (H ((module I), state)) msg conn ->
-    match I.handle_message msg state with
-    | `ok state -> `continue (conn, H ((module I), state))
-    | `push (frames, state) -> `push (frames, H ((module I), state))
-    | `error (state, err) -> `error (conn, err)
+      match I.handle_message msg state with
+      | `ok state -> `continue (conn, H ((module I), state))
+      | `push (frames, state) -> `push (frames, H ((module I), state))
+      | `error (state, err) -> `error (conn, err)
 
   module Default = struct
     let handle_frame = fun (frame: Http.Ws.Frame.t) _conn state ->
-      match frame.opcode with
-      | Ping -> `push ([ Http.Ws.Frame.pong () ], state)
-      | _ -> `ok state
+        match frame.opcode with
+        | Ping -> `push ([ Http.Ws.Frame.pong () ], state)
+        | _ -> `ok state
 
     let handle_message = fun _msg state -> `ok state
   end

@@ -22,9 +22,5 @@ let property = fun name ~examples fn -> {name; test_type = Property {examples}; 
 
 let skip = fun name fn -> {name; test_type = UnitTest; fn; skip = true}
 
-let todo = fun name -> {
-  name;
-  test_type = UnitTest;
-  fn = (fun () -> Result.Error "todo");
-  skip = false
-}
+let todo = fun name ->
+    {name; test_type = UnitTest; fn = (fun () -> Result.Error "todo"); skip = false}

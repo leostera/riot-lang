@@ -30,15 +30,13 @@ let kind = fun diag -> diag.kind
 
 let severity = fun diag -> diag.severity
 
-let message =
-  function
+let message = function
   | { kind=Known { message; _ }; _ } -> message
   | { kind=Generic { message; _ }; _ } -> message
 
 let span = fun diag -> diag.span
 
-let rule_id =
-  function
+let rule_id = function
   | { kind=Known { rule_id; _ }; _ } -> rule_id
   | { kind=Generic { rule_id; _ }; _ } -> rule_id
 

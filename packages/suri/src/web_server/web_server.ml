@@ -19,21 +19,21 @@ module ProtocolDetector = Protocol_detector
     @return Ok supervisor_pid or Error if binding fails
 *)
 let start_link = fun ?(host = "0.0.0.0") ~port ?(acceptors = Std.System.available_parallelism) ~config ~handler () ->
-  let handler_state = Http1.make_handler ~config ~handler () in
-  let socket_handler : (Http1.state, Http1.error) Socket_pool.Handler.handler = {
-    handle_connection = Http1.handle_connection;
-    handle_data = Http1.handle_data;
-    handle_close = Http1.handle_close;
-    handle_error = Http1.handle_error;
-    handle_shutdown = Http1.handle_shutdown;
-    handle_message = Http1.handle_message;
-    to_string_error = Http1.to_string_error;
+    let handler_state = Http1.make_handler ~config ~handler () in
+    let socket_handler : (Http1.state, Http1.error) Socket_pool.Handler.handler = {
+      handle_connection = Http1.handle_connection;
+      handle_data = Http1.handle_data;
+      handle_close = Http1.handle_close;
+      handle_error = Http1.handle_error;
+      handle_shutdown = Http1.handle_shutdown;
+      handle_message = Http1.handle_message;
+      to_string_error = Http1.to_string_error;
 
-  } in
-  Socket_pool.start_link
-  ~host
-  ~port
-  ~acceptors
-  ~buffer_size:config.Config.buffer_size
-  socket_handler
-  handler_state
+    } in
+    Socket_pool.start_link
+      ~host
+      ~port
+      ~acceptors
+      ~buffer_size:config.Config.buffer_size
+      socket_handler
+      handler_state

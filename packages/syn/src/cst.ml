@@ -28,29 +28,28 @@ module Token = struct
   let text = fun token -> Ceibo.Red.SyntaxToken.text token.syntax_token
 
   let full_text = fun token ->
-    let leading = Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
-    |> List.map Ceibo.Red.SyntaxTrivia.text
-    |> String.concat "" in
-    leading ^ text token
+      let leading = Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
+      |> List.map Ceibo.Red.SyntaxTrivia.text
+      |> String.concat "" in
+      leading ^ text token
 
   let leading_trivia = fun token -> Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
 
   let span = fun token -> Ceibo.Red.SyntaxToken.span token.syntax_token
 
   let same_text = fun left right ->
-    String.equal (text left) (text right)
+      String.equal (text left) (text right)
 
   let fixed_operator = fun token ->
-    match text token with
-    | "&&" -> Some BooleanAnd
-    | "||" -> Some BooleanOr
-    | "|>" -> Some PipeForward
-    | "-" -> Some PrefixMinus
-    | "~-" -> Some PrefixNegate
-    | _ -> None
+      match text token with
+      | "&&" -> Some BooleanAnd
+      | "||" -> Some BooleanOr
+      | "|>" -> Some PipeForward
+      | "-" -> Some PrefixMinus
+      | "~-" -> Some PrefixNegate
+      | _ -> None
 
-  let is_keyword_operator_name =
-    function
+  let is_keyword_operator_name = function
     | "mod"
     | "land"
     | "lor"
@@ -61,8 +60,7 @@ module Token = struct
     | "or" -> true
     | _ -> false
 
-  let is_identifier_char =
-    function
+  let is_identifier_char = function
     | 'a' .. 'z'
     | 'A' .. 'Z'
     | '0' .. '9'
@@ -71,17 +69,17 @@ module Token = struct
     | _ -> false
 
   let is_operator_like_name = fun token ->
-    let token_text = text token in
-    let rec contains_non_identifier_char = fun index ->
-      if index >= String.length token_text then
-        false
-      else if is_identifier_char token_text.[index] then
-        contains_non_identifier_char (index + 1)
-      else
-        true
-    in
-    String.length token_text > 0
-    && (is_keyword_operator_name token_text || contains_non_identifier_char 0)
+      let token_text = text token in
+      let rec contains_non_identifier_char index =
+        if index >= String.length token_text then
+          false
+        else if is_identifier_char token_text.[index] then
+          contains_non_identifier_char (index + 1)
+        else
+          true
+      in
+      String.length token_text > 0
+      && (is_keyword_operator_name token_text || contains_non_identifier_char 0)
 
   let is_identifier_like_name = fun token -> not (is_operator_like_name token)
 end
@@ -118,64 +116,61 @@ module Ident = struct
         name_token: Token.t;
       }
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Ident { syntax_node; _ } -> syntax_node
     | Qualified { syntax_node; _ } -> syntax_node
 
-  let rec segments =
-    function
+  let rec segments = function
     | Ident { name_token; _ } -> [ name_token ]
     | Qualified { prefix; name_token; _ } -> segments prefix @ [ name_token ]
 
-  let last_segment =
-    function
+  let last_segment = function
     | Ident { name_token; _ } -> Some name_token
     | Qualified { name_token; _ } -> Some name_token
 
   let name = fun path ->
-    match last_segment path with
-    | Some segment -> Some (Token.text segment)
-    | None -> None
+      match last_segment path with
+      | Some segment -> Some (Token.text segment)
+      | None -> None
 
   let from_string = fun text ->
-    let open Ceibo in
-      let make_ident_segment = fun segment ->
-        let green_token = Green.make_token
-        ~leading_trivia:[]
-        ~kind:Syntax_kind.IDENT_EXPR
-        ~text:segment
-        ~width:(String.length segment) in
-        let syntax_token = Red.new_token
-        green_token
-        (Span.make ~start:0 ~end_:(String.length segment)) in
-        {Token.syntax_token = syntax_token}
-      in
-      let make_node = fun () -> Green.make_node_list ~kind:Syntax_kind.PATH_EXPR [] |> Red.new_root in
-      let segments = String.split_on_char '.' text in
-      match segments with
-      | []
-      | [ "" ] -> raise (Failure "Syn.Cst.Ident.from_string requires a non-empty path")
-      | first :: rest ->
-          let first_token = make_ident_segment first in
-          let first_width = String.length first in
-          let first_node = make_node () in
-          let initial = Ident {syntax_node = first_node; name_token = first_token} in
-          List.fold_left
-            (fun ((prefix, width)) segment ->
-              if String.length segment = 0 then
-                raise (Failure "Syn.Cst.Ident.from_string does not allow empty path segments");
-              let name_token = make_ident_segment segment in
-              let dot_token = make_ident_segment "." in
-              let width = width + 1 + String.length segment in
-              (Qualified {syntax_node = make_node (); prefix; dot_token; name_token}, width))
-            (initial, first_width)
-            rest |> fst
+      let open Ceibo in
+        let make_ident_segment segment =
+          let green_token = Green.make_token
+            ~leading_trivia:[]
+            ~kind:Syntax_kind.IDENT_EXPR
+            ~text:segment
+            ~width:(String.length segment) in
+          let syntax_token = Red.new_token
+            green_token
+            (Span.make ~start:0 ~end_:(String.length segment)) in
+          {Token.syntax_token = syntax_token}
+        in
+        let make_node () = Green.make_node_list ~kind:Syntax_kind.PATH_EXPR [] |> Red.new_root in
+        let segments = String.split_on_char '.' text in
+        match segments with
+        | []
+        | [ "" ] -> raise (Failure "Syn.Cst.Ident.from_string requires a non-empty path")
+        | first :: rest ->
+            let first_token = make_ident_segment first in
+            let first_width = String.length first in
+            let first_node = make_node () in
+            let initial = Ident {syntax_node = first_node; name_token = first_token} in
+            List.fold_left
+              (fun ((prefix, width)) segment ->
+                if String.length segment = 0 then
+                  raise (Failure "Syn.Cst.Ident.from_string does not allow empty path segments");
+                let name_token = make_ident_segment segment in
+                let dot_token = make_ident_segment "." in
+                let width = width + 1 + String.length segment in
+                (Qualified {syntax_node = make_node (); prefix; dot_token; name_token}, width))
+              (initial, first_width)
+              rest |> fst
 
   let equal = fun left right ->
-    let left_segments = segments left |> List.map Token.text in
-    let right_segments = segments right |> List.map Token.text in
-    List.equal String.equal left_segments right_segments
+      let left_segments = segments left |> List.map Token.text in
+      let right_segments = segments right |> List.map Token.text in
+      List.equal String.equal left_segments right_segments
 end
 
 type attribute = {
@@ -466,8 +461,7 @@ module CoreType = struct
         closing_token: Token.t;
       }
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Wildcard { syntax_node; _ }
     | Var { syntax_node; _ }
     | Constr { syntax_node; _ }
@@ -516,25 +510,21 @@ module ArrowLabel = struct
         colon_token: Token.t;
       }
 
-  let sigil_token =
-    function
+  let sigil_token = function
     | Named { sigil_token; _ } -> sigil_token
     | OptionalNamed { sigil_token; _ } -> Some sigil_token
 
-  let label_token =
-    function
+  let label_token = function
     | Named { label_token; _ }
     | OptionalNamed { label_token; _ } -> label_token
 
-  let colon_token =
-    function
+  let colon_token = function
     | Named { colon_token; _ }
     | OptionalNamed { colon_token; _ } -> colon_token
 
   let name = fun label -> Token.text (label_token label)
 
-  let is_optional =
-    function
+  let is_optional = function
     | Named _ -> false
     | OptionalNamed _ -> true
 end
@@ -572,8 +562,7 @@ module ModuleType = struct
     | Attribute of { syntax_node: syntax_node; module_type: module_type; attribute: attribute; }
     | Extension of extension
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Path path -> Ident.syntax_node path
     | TypeOf { syntax_node; _ }
     | Signature { syntax_node; _ }
@@ -603,8 +592,7 @@ module ClassType = struct
     | Attribute of { syntax_node: syntax_node; class_type: class_type; attribute: attribute; }
     | Extension of extension
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Path path -> Ident.syntax_node path
     | Signature { syntax_node; _ }
     | Arrow { syntax_node; _ }
@@ -639,8 +627,7 @@ module ClassTypeField = struct
     | Attribute of { syntax_node: syntax_node; field: class_type_field; attribute: attribute; }
     | Extension of extension
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Inherit { syntax_node; _ }
     | Value { syntax_node; _ }
     | Method { syntax_node; _ }
@@ -731,8 +718,7 @@ module Constant = struct
     | Bool of bool_constant
     | Unit of { syntax_node: syntax_node; attributes: attribute list; }
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | String { syntax_node; _ }
     | Int { syntax_node; _ }
     | Float { syntax_node; _ }
@@ -740,8 +726,7 @@ module Constant = struct
     | Bool { syntax_node; _ }
     | Unit { syntax_node; _ } -> syntax_node
 
-  let attributes =
-    function
+  let attributes = function
     | String { attributes; _ }
     | Int { attributes; _ }
     | Float { attributes; _ }
@@ -762,20 +747,17 @@ module TypeBinder = struct
         name_token: Token.t;
       }
 
-  let name_token =
-    function
+  let name_token = function
     | Quoted { name_token; _ }
     | Bare { name_token } -> name_token
 
   let name = fun binder -> Token.text (name_token binder)
 
-  let text =
-    function
+  let text = function
     | Quoted { name_token; _ } -> "'" ^ Token.text name_token
     | Bare { name_token } -> Token.text name_token
 
-  let is_quoted =
-    function
+  let is_quoted = function
     | Quoted _ -> true
     | Bare _ -> false
 end
@@ -1835,8 +1817,7 @@ module Expression = struct
     | If of if_expression
     | Parenthesized of parenthesized_expression
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Path expr ->
         expr.syntax_node
     | Constructor expr ->
@@ -1928,8 +1909,7 @@ module Expression = struct
     | Parenthesized expr ->
         expr.syntax_node
 
-  let attributes =
-    function
+  let attributes = function
     | Path expr ->
         expr.attributes
     | Constructor expr ->
@@ -2029,55 +2009,48 @@ module Parameter = struct
     | Optional of optional_parameter
     | LocallyAbstract of locally_abstract_type_parameter
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Positional param -> param.syntax_node
     | Labeled param -> param.syntax_node
     | Optional param -> param.syntax_node
     | LocallyAbstract param -> param.syntax_node
 
-  let sigil_token =
-    function
+  let sigil_token = function
     | Positional _
     | LocallyAbstract _ -> None
     | Labeled param -> Some param.sigil_token
     | Optional param -> Some param.sigil_token
 
-  let name_token =
-    function
+  let name_token = function
     | Positional param -> param.name_token
     | Labeled param -> Some param.label_token
     | Optional param -> Some param.label_token
     | LocallyAbstract _ -> None
 
   let name = fun param ->
-    match name_token param with
-    | Some token -> Some (Token.text token)
-    | None -> None
+      match name_token param with
+      | Some token -> Some (Token.text token)
+      | None -> None
 
-  let is_named =
-    function
+  let is_named = function
     | Labeled _
     | Optional _ -> true
     | Positional _
     | LocallyAbstract _ -> false
 
-  let binding_name_matches_label =
-    function
+  let binding_name_matches_label = function
     | Labeled param -> param.binding_name_matches_label
     | Optional param -> param.binding_name_matches_label
     | Positional _
     | LocallyAbstract _ -> false
 
-  let default_value =
-    function
+  let default_value = function
     | Optional param -> param.default_value
     | Positional _
     | Labeled _
     | LocallyAbstract _ -> None
 
-  let binding_pattern =
-    function
+  let binding_pattern = function
     | Positional param -> Some param.pattern
     | Labeled param -> param.binding_pattern
     | Optional param -> param.binding_pattern
@@ -2092,8 +2065,7 @@ module ObjectMember = struct
     | Extension of extension
     | Initializer of object_initializer
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Method member -> member.syntax_node
     | Value member -> member.syntax_node
     | Inherit member -> member.syntax_node
@@ -2118,8 +2090,7 @@ module ClassExpression = struct
       }
     | Extension of extension
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Path path ->
         Ident.syntax_node path
     | Structure structure ->
@@ -2155,8 +2126,7 @@ module ClassField = struct
     | Attribute of { syntax_node: syntax_node; field: class_field; attribute: attribute; }
     | Extension of extension
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Method field -> field.syntax_node
     | Value field -> field.syntax_node
     | Inherit field -> field.syntax_node
@@ -2204,8 +2174,7 @@ module ModuleExpression = struct
       }
     | Extension of extension
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Path path -> Ident.syntax_node path
     | Structure { syntax_node; _ }
     | Functor { syntax_node; _ }
@@ -2244,8 +2213,7 @@ module Pattern = struct
     | LocalOpen of local_open_pattern
     | Parenthesized of parenthesized_pattern
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Identifier pattern -> pattern.syntax_node
     | Wildcard pattern -> pattern.syntax_node
     | Extension pattern -> pattern.syntax_node
@@ -2270,8 +2238,7 @@ module Pattern = struct
     | LocalOpen pattern -> pattern.syntax_node
     | Parenthesized pattern -> pattern.syntax_node
 
-  let attributes =
-    function
+  let attributes = function
     | Identifier pattern -> pattern.attributes
     | Wildcard pattern -> pattern.attributes
     | Extension pattern -> pattern.attributes
@@ -2324,8 +2291,7 @@ module RecordExpression = struct
     | Literal of record_literal_expression
     | Update of record_update_expression
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Literal expr -> expr.syntax_node
     | Update expr -> expr.syntax_node
 end
@@ -2336,8 +2302,7 @@ module Payload = struct
         tokens: Token.t list;
       }
 
-  let tokens =
-    function
+  let tokens = function
     | Opaque { tokens } -> tokens
 end
 
@@ -2352,13 +2317,13 @@ module TypeVariable = struct
   let name_token = fun type_variable -> type_variable.name_token
 
   let text = fun type_variable ->
-    Ceibo.Red.SyntaxNode.children type_variable.syntax_node |> Array.to_list |> List.filter_map
-      (
-        function
-        | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) -> Some (Ceibo.Red.SyntaxToken.text
-        tok)
-        | _ -> None
-      ) |> String.concat ""
+      Ceibo.Red.SyntaxNode.children type_variable.syntax_node |> Array.to_list |> List.filter_map
+        (
+          function
+          | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) -> Some (Ceibo.Red.SyntaxToken.text
+            tok)
+          | _ -> None
+        ) |> String.concat ""
 
   let name = fun type_variable -> Token.text type_variable.name_token
 end
@@ -2372,8 +2337,7 @@ module TypeParameterVariance = struct
         marker_token: Token.t;
       }
 
-  let marker_token =
-    function
+  let marker_token = function
     | Covariant { marker_token }
     | Contravariant { marker_token } -> marker_token
 end
@@ -2400,13 +2364,11 @@ module PrivateFlag = struct
     | Public
     | Private of { private_token: Token.t; }
 
-  let private_token =
-    function
+  let private_token = function
     | Public -> None
     | Private { private_token } -> Some private_token
 
-  let is_private =
-    function
+  let is_private = function
     | Public -> false
     | Private _ -> true
 end
@@ -2510,8 +2472,7 @@ module PolyVariantBound = struct
     | UpperBound of { marker_token: Token.t; }
     | LowerBound of { marker_token: Token.t; }
 
-  let marker_token =
-    function
+  let marker_token = function
     | Exact -> None
     | UpperBound { marker_token }
     | LowerBound { marker_token } -> Some marker_token
@@ -2522,23 +2483,19 @@ module RowField = struct
     | Tag of poly_variant_tag
     | Inherit of { bar_token: Token.t option; syntax_node: syntax_node; type_: core_type; }
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Tag tag -> tag.syntax_node
     | Inherit { syntax_node; _ } -> syntax_node
 
-  let tag =
-    function
+  let tag = function
     | Tag tag -> Some tag
     | Inherit _ -> None
 
-  let bar_token =
-    function
+  let bar_token = function
     | Tag tag -> tag.bar_token
     | Inherit { bar_token; _ } -> bar_token
 
-  let inherited_type =
-    function
+  let inherited_type = function
     | Tag _ -> None
     | Inherit { type_; _ } -> Some type_
 end
@@ -2559,12 +2516,12 @@ module PolyVariant = struct
   let fields = fun poly_variant -> poly_variant.fields
 
   let tags = fun poly_variant ->
-    poly_variant.fields |> List.filter_map
-      (
-        function
-        | RowField.Tag tag -> Some tag
-        | RowField.Inherit _ -> None
-      )
+      poly_variant.fields |> List.filter_map
+        (
+          function
+          | RowField.Tag tag -> Some tag
+          | RowField.Inherit _ -> None
+        )
 end
 
 module TypeDefinition = struct
@@ -2639,18 +2596,18 @@ module TypeDeclaration = struct
   let attributes = fun decl -> decl.attributes
 
   let rec and_declarations = fun decl ->
-    match decl.next_and_declaration with
-    | None -> []
-    | Some next -> next :: and_declarations next
+      match decl.next_and_declaration with
+      | None -> []
+      | Some next -> next :: and_declarations next
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
   let is_private = fun decl -> PrivateFlag.is_private decl.private_flag
 
   let name_token = fun decl ->
-    match Ident.last_segment decl.type_name with
-    | Some token -> token
-    | None -> panic "TypeDeclaration.name_token: missing type name token"
+      match Ident.last_segment decl.type_name with
+      | Some token -> token
+      | None -> panic "TypeDeclaration.name_token: missing type name token"
 end
 
 module TypeExtension = struct
@@ -2673,9 +2630,9 @@ module TypeExtension = struct
   let constructors = fun decl -> decl.constructors
 
   let name_token = fun decl ->
-    match Ident.last_segment decl.type_name with
-    | Some token -> token
-    | None -> panic "TypeExtension.name_token: missing type name token"
+      match Ident.last_segment decl.type_name with
+      | Some token -> token
+      | None -> panic "TypeExtension.name_token: missing type name token"
 end
 
 module LetBinding = struct
@@ -2703,8 +2660,7 @@ module LetBinding = struct
 
   let binding_pattern = fun binding -> binding.binding_pattern
 
-  let rec binding_name_token_from_pattern =
-    function
+  let rec binding_name_token_from_pattern = function
     | Pattern.Identifier { name_token; _ } -> Some name_token
     | Pattern.Typed { pattern; _ }
     | Pattern.Lazy { pattern; _ }
@@ -2716,39 +2672,39 @@ module LetBinding = struct
   let binding_name_token = fun binding -> binding_name_token_from_pattern binding.binding_pattern
 
   let name = fun binding ->
-    match binding_name_token binding with
-    | Some token -> Token.text token
-    | None -> panic "LetBinding.name: missing binding name token"
+      match binding_name_token binding with
+      | Some token -> Token.text token
+      | None -> panic "LetBinding.name: missing binding name token"
 
   let parameters = fun binding -> binding.parameters
 
   let value = fun binding -> binding.value
 
   let rec and_bindings = fun binding ->
-    match binding.and_binding with
-    | None -> []
-    | Some next -> next :: and_bindings next
+      match binding.and_binding with
+      | None -> []
+      | Some next -> next :: and_bindings next
 
   let and_binding = fun binding -> binding.and_binding
 
   let value_syntax_node = fun binding -> Expression.syntax_node binding.value
 
   let has_direct_token_text = fun node expected ->
-    Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
-      (fun token ->
-        String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+      Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
+        (fun token ->
+          String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun binding ->
-    Option.is_some binding.rec_token || match Ceibo.Red.SyntaxNode.parent binding.syntax_node with
-    | Some parent -> has_direct_token_text parent "rec"
-    | None -> false
+      Option.is_some binding.rec_token || match Ceibo.Red.SyntaxNode.parent binding.syntax_node with
+      | Some parent -> has_direct_token_text parent "rec"
+      | None -> false
 
   let is_function = fun binding ->
-    List.length binding.parameters > 0
-    || match Ceibo.Red.SyntaxNode.kind (value_syntax_node binding) with
-    | Syntax_kind.FUN_EXPR
-    | Syntax_kind.FUNCTION_EXPR -> true
-    | _ -> false
+      List.length binding.parameters > 0
+      || match Ceibo.Red.SyntaxNode.kind (value_syntax_node binding) with
+      | Syntax_kind.FUN_EXPR
+      | Syntax_kind.FUNCTION_EXPR -> true
+      | _ -> false
 end
 
 module ModuleSignature = struct
@@ -2784,32 +2740,30 @@ module ModuleSignature = struct
 
   let definition = fun decl -> decl.definition
 
-  let module_type =
-    function
+  let module_type = function
     | { definition=Signature module_type; _ } -> Some module_type
     | { definition=Alias _; _ } -> None
 
-  let module_expression =
-    function
+  let module_expression = function
     | { definition=Signature _; _ } -> None
     | { definition=Alias module_expression; _ } -> Some module_expression
 
   let rec and_declarations = fun decl ->
-    match decl.next_and_declaration with
-    | None -> []
-    | Some next -> next :: and_declarations next
+      match decl.next_and_declaration with
+      | None -> []
+      | Some next -> next :: and_declarations next
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
   let has_direct_token_text = fun node expected ->
-    Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
-      (fun token ->
-        String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+      Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
+        (fun token ->
+          String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun decl ->
-    Option.is_some decl.rec_token || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
-    | Some parent -> has_direct_token_text parent "rec"
-    | None -> false
+      Option.is_some decl.rec_token || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
+      | Some parent -> has_direct_token_text parent "rec"
+      | None -> false
 
   let name = fun decl -> Token.text decl.module_name
 end
@@ -2847,21 +2801,21 @@ module ModuleStructure = struct
   let module_expression = fun decl -> decl.module_expression
 
   let rec and_declarations = fun decl ->
-    match decl.next_and_declaration with
-    | None -> []
-    | Some next -> next :: and_declarations next
+      match decl.next_and_declaration with
+      | None -> []
+      | Some next -> next :: and_declarations next
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
   let has_direct_token_text = fun node expected ->
-    Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
-      (fun token ->
-        String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+      Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
+        (fun token ->
+          String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun decl ->
-    Option.is_some decl.rec_token || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
-    | Some parent -> has_direct_token_text parent "rec"
-    | None -> false
+      Option.is_some decl.rec_token || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
+      | Some parent -> has_direct_token_text parent "rec"
+      | None -> false
 
   let name = fun decl -> Token.text decl.module_name
 end
@@ -2910,15 +2864,15 @@ module OpenStatement = struct
   let target = fun stmt -> stmt.target
 
   let module_expression = fun stmt ->
-    match stmt.target with
-    | ModuleExpression expr -> Some expr
-    | Path _ -> None
+      match stmt.target with
+      | ModuleExpression expr -> Some expr
+      | Path _ -> None
 
   let module_path = fun stmt ->
-    match stmt.target with
-    | Path path
-    | ModuleExpression (ModuleExpression.Path path) -> Some path
-    | ModuleExpression _ -> None
+      match stmt.target with
+      | Path path
+      | ModuleExpression (ModuleExpression.Path path) -> Some path
+      | ModuleExpression _ -> None
 
   let bang_token = fun stmt -> stmt.bang_token
 
@@ -2942,8 +2896,7 @@ module Docstring = struct
 
   let kind = fun doc -> doc.kind
 
-  let is_section =
-    function
+  let is_section = function
     | { kind=Section; _ } -> true
     | { kind=Ordinary; _ } -> false
 
@@ -2968,112 +2921,108 @@ module Trivia = struct
     | Docstring of docstring
     | Comment of comment
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Docstring docstring -> docstring.syntax_node
     | Comment comment -> comment.syntax_node
 
-  let token =
-    function
+  let token = function
     | Docstring docstring -> docstring.docstring_token
     | Comment comment -> comment.comment_token
 
   let text = fun trivia -> Token.text (token trivia)
 
-  let is_docstring =
-    function
+  let is_docstring = function
     | Docstring _ -> true
     | Comment _ -> false
 
-  let is_comment =
-    function
+  let is_comment = function
     | Docstring _ -> false
     | Comment _ -> true
 end
 
 let synthetic_syntax_node_wrapping_token = fun syntax_token ->
-  let green_token = Ceibo.Red.SyntaxToken.green syntax_token in
-  let wrapped_node = Ceibo.Green.make_node_list
-  ~kind:(Ceibo.Red.SyntaxToken.kind syntax_token)
-  [ Ceibo.Green.Token green_token ] in
-  let root = Ceibo.Green.make_node_list
-  ~kind:Syntax_kind.SOURCE_FILE [ Ceibo.Green.Node wrapped_node ] in
-  match Ceibo.Red.SyntaxNode.child (Ceibo.Red.new_root root) 0 with
-  | Some (Ceibo.Red.Node node) -> node
-  | _ -> panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
+    let green_token = Ceibo.Red.SyntaxToken.green syntax_token in
+    let wrapped_node = Ceibo.Green.make_node_list
+      ~kind:(Ceibo.Red.SyntaxToken.kind syntax_token)
+      [ Ceibo.Green.Token green_token ] in
+    let root = Ceibo.Green.make_node_list
+      ~kind:Syntax_kind.SOURCE_FILE [ Ceibo.Green.Node wrapped_node ] in
+    match Ceibo.Red.SyntaxNode.child (Ceibo.Red.new_root root) 0 with
+    | Some (Ceibo.Red.Node node) -> node
+    | _ -> panic "synthetic_syntax_node_wrapping_token: missing wrapped child node"
 
 let docstring_kind_from_text = fun comment_text ->
-  let len = String.length comment_text in
-  if len < 5 then
-    Ordinary
-  else
-    let body = String.sub comment_text 3 (len - 5) |> String.trim in
-    if String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#') then
-      Section
-    else
+    let len = String.length comment_text in
+    if len < 5 then
       Ordinary
+    else
+      let body = String.sub comment_text 3 (len - 5) |> String.trim in
+      if String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#') then
+        Section
+      else
+        Ordinary
 
 let syntax_token_from_trivia = fun trivia ->
-  let span = Ceibo.Red.SyntaxTrivia.span trivia in
-  let green_token = Ceibo.Green.make_token
-  ~leading_trivia:[]
-  ~kind:(Ceibo.Red.SyntaxTrivia.kind trivia)
-  ~text:(Ceibo.Red.SyntaxTrivia.text trivia)
-  ~width:(((((span.end_ - span.start))))) in
-  Ceibo.Red.new_token green_token span
+    let span = Ceibo.Red.SyntaxTrivia.span trivia in
+    let green_token = Ceibo.Green.make_token
+      ~leading_trivia:[]
+      ~kind:(Ceibo.Red.SyntaxTrivia.kind trivia)
+      ~text:(Ceibo.Red.SyntaxTrivia.text trivia)
+      ~width:((span.end_ - span.start)) in
+    Ceibo.Red.new_token green_token span
 
 let trivia_of_syntax_trivia = fun trivia ->
-  let syntax_token = syntax_token_from_trivia trivia in
-  match Ceibo.Red.SyntaxTrivia.kind trivia with
-  | Syntax_kind.COMMENT -> Some (Comment {
-    syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
-    comment_token = {Token.syntax_token = syntax_token};
+    let syntax_token = syntax_token_from_trivia trivia in
+    match Ceibo.Red.SyntaxTrivia.kind trivia with
+    | Syntax_kind.COMMENT -> Some (Comment {
+      syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
+      comment_token = {Token.syntax_token = syntax_token};
 
-  })
-  | Syntax_kind.DOCSTRING -> Some (Docstring {
-    syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
-    docstring_token = {Token.syntax_token = syntax_token};
-    kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text syntax_token);
+    })
+    | Syntax_kind.DOCSTRING -> Some (Docstring {
+      syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
+      docstring_token = {Token.syntax_token = syntax_token};
+      kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text syntax_token);
 
-  })
-  | _ -> None
+    })
+    | _ -> None
 
 let leading_trivia_after = fun ~after token ->
-  Ceibo.Red.SyntaxToken.leading_trivia token.Token.syntax_token |> List.filter_map
-    (fun trivia ->
-      let span = Ceibo.Red.SyntaxTrivia.span trivia in
-      if span.start >= after then
-        trivia_of_syntax_trivia trivia
-      else
-        None)
+    Ceibo.Red.SyntaxToken.leading_trivia token.Token.syntax_token |> List.filter_map
+      (fun trivia ->
+        let span = Ceibo.Red.SyntaxTrivia.span trivia in
+        if span.start >= after then
+          trivia_of_syntax_trivia trivia
+        else
+          None)
 
 let leading_trivia_before_node = fun ~after syntax_node ->
-  match Ceibo.Red.SyntaxNode.first_token syntax_node with
-  | None -> []
-  | Some first_token -> leading_trivia_after ~after {Token.syntax_token = first_token}
+    match Ceibo.Red.SyntaxNode.first_token syntax_node with
+    | None -> []
+    | Some first_token -> leading_trivia_after ~after {Token.syntax_token = first_token}
 
 let leading_trivia_after_token_before_node = fun ~after token syntax_node ->
-  let pending = leading_trivia_after ~after token in
-  match Ceibo.Red.SyntaxNode.first_token syntax_node with
-  | None -> pending
-  | Some first_token -> pending
-  @ leading_trivia_after
-  ~after:(Ceibo.Red.SyntaxToken.span token.Token.syntax_token).end_
-  {Token.syntax_token = first_token}
+    let pending = leading_trivia_after ~after token in
+    match Ceibo.Red.SyntaxNode.first_token syntax_node with
+    | None -> pending
+    | Some first_token -> pending
+    @ leading_trivia_after
+      ~after:(Ceibo.Red.SyntaxToken.span token.Token.syntax_token).end_
+      {Token.syntax_token = first_token}
 
 let token_body_span = fun syntax_node ->
-  let full_span = Ceibo.Red.SyntaxNode.span syntax_node in
-  match Ceibo.Red.SyntaxNode.tokens syntax_node with
-  | [] -> full_span
-  | first :: rest ->
-      let last =
-        List.fold_left (fun _ token -> token) first rest
-      in
-      {
-        Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
-        end_ = (Ceibo.Red.SyntaxToken.span last).end_;
+    let full_span = Ceibo.Red.SyntaxNode.span syntax_node in
+    match Ceibo.Red.SyntaxNode.tokens syntax_node with
+    | [] -> full_span
+    | first :: rest ->
+        let last =
+          List.fold_left (fun _ token -> token) first rest
+        in
+        {
+          Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
+          end_ = (Ceibo.Red.SyntaxToken.span last).end_;
 
-      }
+        }
 
 let syntax_kind = fun syntax_node -> Ceibo.Red.SyntaxNode.kind syntax_node
 
@@ -3229,8 +3178,7 @@ module StructureItem = struct
     | IncludeStatement of include_statement
     | ExceptionDeclaration of exception_declaration
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
     | TypeExtension decl -> TypeExtension.syntax_node decl
     | LetBinding binding -> LetBinding.syntax_node binding
@@ -3267,8 +3215,7 @@ module SignatureItem = struct
     | IncludeStatement of include_statement
     | ExceptionDeclaration of exception_declaration
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | TypeDeclaration decl -> TypeDeclaration.syntax_node decl
     | TypeExtension decl -> TypeExtension.syntax_node decl
     | Attribute attribute -> attribute.syntax_node
@@ -3309,33 +3256,27 @@ type source_file = t
 module SourceFile = struct
   type t = source_file
 
-  let syntax_node =
-    function
+  let syntax_node = function
     | Implementation source_file -> source_file.syntax_node
     | Interface source_file -> source_file.syntax_node
 
-  let structure_items =
-    function
+  let structure_items = function
     | Implementation source_file -> Some source_file.items
     | Interface _ -> None
 
-  let signature_items =
-    function
+  let signature_items = function
     | Implementation _ -> None
     | Interface source_file -> Some source_file.items
 
-  let phrase_separator_tokens =
-    function
+  let phrase_separator_tokens = function
     | Implementation source_file -> source_file.phrase_separator_tokens
     | Interface source_file -> source_file.phrase_separator_tokens
 
-  let trailing_phrase_separator_tokens =
-    function
+  let trailing_phrase_separator_tokens = function
     | Implementation source_file -> source_file.trailing_phrase_separator_tokens
     | Interface source_file -> source_file.trailing_phrase_separator_tokens
 
-  let kind =
-    function
+  let kind = function
     | Implementation _ -> `Implementation
     | Interface _ -> `Interface
 end

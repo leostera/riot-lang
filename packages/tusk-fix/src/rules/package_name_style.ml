@@ -26,134 +26,130 @@ near-misses.
 let split_path = fun path -> Path.to_string path |> String.split_on_char '/'
 
 let rec find_package_root_components = fun prefix ->
-  function
-  | []
-  | [ _ ] -> None
-  | "packages" :: package_dir :: _ -> Some (List.rev_append prefix [ "packages"; package_dir ])
-  | segment :: rest -> find_package_root_components (segment :: prefix) rest
+    function
+    | []
+    | [ _ ] -> None
+    | "packages" :: package_dir :: _ -> Some (List.rev_append prefix [ "packages"; package_dir ])
+    | segment :: rest -> find_package_root_components (segment :: prefix) rest
 
-let package_root_for_file = fun path -> split_path path
-|> find_package_root_components []
-|> Option.map (fun components -> Path.v (String.concat "/" components))
+let package_root_for_file = fun path ->
+    split_path path
+    |> find_package_root_components []
+    |> Option.map (fun components -> Path.v (String.concat "/" components))
 
-let package_toml_for_file = fun path -> package_root_for_file path
-|> Option.map (fun package_root -> Path.(package_root / Path.v "tusk.toml"))
+let package_toml_for_file = fun path ->
+    package_root_for_file path
+    |> Option.map (fun package_root -> Path.(package_root / Path.v "tusk.toml"))
 
-let get_table =
-  function
+let get_table = function
   | Toml.Table table -> Some table
   | _ -> None
 
-let get_string =
-  function
+let get_string = function
   | Toml.String value -> Some value
   | _ -> None
 
 let package_name = fun path ->
-  match package_toml_for_file path with
-  | None -> None
-  | Some package_toml -> (
-      match Fs.read package_toml with
-      | Error _ -> None
-      | Ok content -> (
-          match Toml.parse content with
-          | Error _ ->
-              None
-          | Ok (Toml.Table fields) -> (
-              match List.assoc_opt "package" fields with
-              | Some package_value -> (
-                  match get_table package_value with
-                  | Some package_fields -> (
-                      match List.assoc_opt "name" package_fields with
-                      | Some name_value -> get_string name_value
-                      | None -> None
-                    )
-                  | None -> None
-                )
-              | None -> None
-            )
-          | Ok _ ->
-              None
-        )
-    )
+    match package_toml_for_file path with
+    | None -> None
+    | Some package_toml -> (
+        match Fs.read package_toml with
+        | Error _ -> None
+        | Ok content -> (
+            match Toml.parse content with
+            | Error _ ->
+                None
+            | Ok (Toml.Table fields) -> (
+                match List.assoc_opt "package" fields with
+                | Some package_value -> (
+                    match get_table package_value with
+                    | Some package_fields -> (
+                        match List.assoc_opt "name" package_fields with
+                        | Some name_value -> get_string name_value
+                        | None -> None
+                      )
+                    | None -> None
+                  )
+                | None -> None
+              )
+            | Ok _ ->
+                None
+          )
+      )
 
 let starts_with_letter = fun name ->
-  String.length name > 0 && match String.get name 0 with
-  | 'a' .. 'z'
-  | 'A' .. 'Z' -> true
-  | _ -> false
+    String.length name > 0 && match String.get name 0 with
+    | 'a' .. 'z'
+    | 'A' .. 'Z' -> true
+    | _ -> false
 
-let is_kebab_case_char =
-  function
+let is_kebab_case_char = function
   | 'a' .. 'z'
   | '0' .. '9'
   | '-' -> true
   | _ -> false
 
 let is_kebab_case = fun name ->
-  String.length name > 0 && String.for_all is_kebab_case_char name && String.exists
-    (
-      function
-      | 'A' .. 'Z' -> true
-      | _ -> false
-    )
-    name |> not
+    String.length name > 0 && String.for_all is_kebab_case_char name && String.exists
+      (
+        function
+        | 'A' .. 'Z' -> true
+        | _ -> false
+      )
+      name |> not
 
-let has_trailing_separator = fun name -> String.ends_with ~suffix:"-" name
-|| String.ends_with ~suffix:"_" name
+let has_trailing_separator = fun name ->
+    String.ends_with ~suffix:"-" name || String.ends_with ~suffix:"_" name
 
-let make_diagnostic = fun ~suggestion path -> Diagnostic.make
-~severity:Warning
-~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-~suggestion:(((((suggestion ^ " In `" ^ Path.to_string path ^ "`.")))))
-()
+let make_diagnostic = fun ~suggestion path ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
+      ~suggestion:((suggestion ^ " In `" ^ Path.to_string path ^ "`."))
+      ()
 
 let diagnostics_for_name = fun path name ->
-  let starts_with_letter_diagnostic =
-    if starts_with_letter name then
-      []
-    else
-      [
-        make_diagnostic
-        ~suggestion:((((("Rename package `" ^ name ^ "` so it starts with a letter")))))
-        path;
+    let starts_with_letter_diagnostic =
+      if starts_with_letter name then
+        []
+      else
+        [
+          make_diagnostic
+            ~suggestion:(("Rename package `" ^ name ^ "` so it starts with a letter"))
+            path;
 
-      ]
-  in
-  let kebab_case_diagnostic =
-    if is_kebab_case name then
-      []
-    else
-      [
-        make_diagnostic
-        ~suggestion:((((("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only")))))
-        path;
+        ]
+    in
+    let kebab_case_diagnostic =
+      if is_kebab_case name then
+        []
+      else
+        [
+          make_diagnostic
+            ~suggestion:(("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only"))
+            path;
 
-      ]
-  in
-  let trailing_separator_diagnostic =
-    if has_trailing_separator name then
-      [
-        make_diagnostic
-        ~suggestion:((((("Rename package `" ^ name ^ "` so it does not end with `-` or `_`")))))
-        path;
+        ]
+    in
+    let trailing_separator_diagnostic =
+      if has_trailing_separator name then
+        [
+          make_diagnostic
+            ~suggestion:(("Rename package `" ^ name ^ "` so it does not end with `-` or `_`"))
+            path;
 
-      ]
-    else
-      []
-  in
-  starts_with_letter_diagnostic @ kebab_case_diagnostic @ trailing_separator_diagnostic
+        ]
+      else
+        []
+    in
+    starts_with_letter_diagnostic @ kebab_case_diagnostic @ trailing_separator_diagnostic
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-  let path = Path.v ctx.file_path in
-  match package_name path with
-  | Some name -> diagnostics_for_name path name
-  | None -> []
+    let path = Path.v ctx.file_path in
+    match package_name path with
+    | Some name -> diagnostics_for_name path name
+    | None -> []
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

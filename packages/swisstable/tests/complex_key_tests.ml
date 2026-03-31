@@ -59,8 +59,8 @@ type customer = {
 
 let user_gen =
   Generator.map
-  (fun ((id, name)) -> {id; name})
-  (Generator.pair (Generator.int_range 0 1_000) Generator.string)
+    (fun ((id, name)) -> {id; name})
+    (Generator.pair (Generator.int_range 0 1_000) Generator.string)
 
 let user_arb =
   Arbitrary.make ~print:(fun u -> "{id=" ^ Int.to_string u.id ^ "; name=" ^ u.name ^ "}") user_gen
@@ -69,8 +69,8 @@ let user_arb =
 
 let point_gen =
   Generator.map
-  (fun ((x, y)) -> {x; y})
-  (Generator.pair (Generator.int_range (-100) 100) (Generator.int_range (-100) 100))
+    (fun ((x, y)) -> {x; y})
+    (Generator.pair (Generator.int_range (-100) 100) (Generator.int_range (-100) 100))
 
 let point_arb =
   Arbitrary.make ~print:(fun p -> "(" ^ Int.to_string p.x ^ "," ^ Int.to_string p.y ^ ")") point_gen
@@ -79,34 +79,35 @@ let point_arb =
 
 let person_gen =
   Generator.map
-  (fun ((age, email, active)) -> {age; email; active})
-  (Generator.triple (Generator.int_range 0 120) Generator.string Generator.bool)
+    (fun ((age, email, active)) -> {age; email; active})
+    (Generator.triple (Generator.int_range 0 120) Generator.string Generator.bool)
 
 let person_arb =
   Arbitrary.make
-  ~print:(fun p -> "{age="
-  ^ Int.to_string p.age
-  ^ "; email="
-  ^ p.email
-  ^ "; active="
-  ^ Bool.to_string p.active
-  ^ "}")
-  person_gen
+    ~print:(fun p ->
+      "{age="
+      ^ Int.to_string p.age
+      ^ "; email="
+      ^ p.email
+      ^ "; active="
+      ^ Bool.to_string p.active
+      ^ "}")
+    person_gen
 
 (* Event generator *)
 
 let event_gen = Generator.one_of
-[
-  Generator.map
-  (fun ((x, y)) -> Click (x, y))
-  (Generator.pair (Generator.int_range 0 1_000) (Generator.int_range 0 1_000));
-  Generator.map (fun c -> KeyPress c) Generator.char;
-  Generator.map (fun n -> Scroll n) (Generator.int_range (-100) 100);
-  Generator.map
-  (fun ((w, h)) -> Resize (w, h))
-  (Generator.pair (Generator.int_range 0 2_000) (Generator.int_range 0 2_000));
+  [
+    Generator.map
+      (fun ((x, y)) -> Click (x, y))
+      (Generator.pair (Generator.int_range 0 1_000) (Generator.int_range 0 1_000));
+    Generator.map (fun c -> KeyPress c) Generator.char;
+    Generator.map (fun n -> Scroll n) (Generator.int_range (-100) 100);
+    Generator.map
+      (fun ((w, h)) -> Resize (w, h))
+      (Generator.pair (Generator.int_range 0 2_000) (Generator.int_range 0 2_000));
 
-]
+  ]
 
 let event_arb =
   Arbitrary.make
@@ -122,13 +123,13 @@ let event_arb =
 (* Status generator *)
 
 let status_gen = Generator.frequency
-[
-  (1, Generator.return Pending);
-  (2, Generator.map (fun n -> Running n) (Generator.int_range 0 100));
-  (1, Generator.map (fun s -> Complete s) Generator.string);
-  (1, Generator.map (fun s -> Failed s) Generator.string);
+  [
+    (1, Generator.return Pending);
+    (2, Generator.map (fun n -> Running n) (Generator.int_range 0 100));
+    (1, Generator.map (fun s -> Complete s) Generator.string);
+    (1, Generator.map (fun s -> Failed s) Generator.string);
 
-]
+  ]
 
 let status_arb =
   Arbitrary.make
@@ -145,19 +146,20 @@ let status_arb =
 
 let customer_gen =
   Generator.map
-  (fun ((user, location, status)) -> {user; location; status})
-  (Generator.triple user_gen point_gen status_gen)
+    (fun ((user, location, status)) -> {user; location; status})
+    (Generator.triple user_gen point_gen status_gen)
 
 let customer_arb =
   Arbitrary.make
-  ~print:(fun c -> "{user="
-  ^ Int.to_string c.user.id
-  ^ "; location=("
-  ^ Int.to_string c.location.x
-  ^ ","
-  ^ Int.to_string c.location.y
-  ^ ")}")
-  customer_gen
+    ~print:(fun c ->
+      "{user="
+      ^ Int.to_string c.user.id
+      ^ "; location=("
+      ^ Int.to_string c.location.x
+      ^ ","
+      ^ Int.to_string c.location.y
+      ^ ")}")
+    customer_gen
 
 (** {1 Record Key Properties} *)
 
@@ -176,7 +178,7 @@ let user_key_insert_get_prop =
 
 let user_key_multiple_prop =
   property "record keys (user): multiple distinct users" (Arbitrary.list
-  (Arbitrary.pair user_arb Arbitrary.int))
+    (Arbitrary.pair user_arb Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       let map = Swisstable.create () in
@@ -244,7 +246,7 @@ let event_key_prop =
 
 let event_key_multiple_prop =
   property "variant keys (event): multiple distinct events" (Arbitrary.list
-  (Arbitrary.pair event_arb Arbitrary.int))
+    (Arbitrary.pair event_arb Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 30);
       let map = Swisstable.create () in
@@ -295,8 +297,8 @@ let tuple_int_int_prop =
 
 let tuple_triple_prop =
   property "tuple keys (int * string * bool): insert then get" Arbitrary.(pair
-  (triple int string bool)
-  int)
+    (triple int string bool)
+    int)
     (fun ((key, value)) ->
       let map = Swisstable.create () in
       let _ = Swisstable.insert map key value in
@@ -332,7 +334,7 @@ let customer_key_prop =
 
 let customer_key_multiple_prop =
   property "nested keys (customer): multiple distinct customers" (Arbitrary.list
-  (Arbitrary.pair customer_arb Arbitrary.int))
+    (Arbitrary.pair customer_arb Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 30);
       let map = Swisstable.create () in
@@ -361,7 +363,7 @@ let customer_key_multiple_prop =
 
 let collision_point_prop =
   property "hash collisions (small point range): correctness maintained" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       (* Use small point range (0-9) to force collisions *)
@@ -452,6 +454,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-complex-key-tests" ~tests ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-complex-key-tests" ~tests ~args)
+    ~args:Env.args
+    ()

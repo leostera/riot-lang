@@ -73,8 +73,7 @@ let apply_fixes = Fixme.Fix.apply_fixes
 
 let validate_fix = Fixme.Fix.validate_fix
 
-let target_to_json =
-  function
+let target_to_json = function
   | Node node ->
       let span = Syn.Ceibo.Red.SyntaxNode.span node in
       Data.Json.Object [
@@ -104,8 +103,7 @@ let target_to_json =
 
       ]
 
-let replacement_to_json =
-  function
+let replacement_to_json = function
   | Source_of_node node ->
       let span = Syn.Ceibo.Red.SyntaxNode.span node in
       Data.Json.Object [
@@ -137,8 +135,7 @@ let replacement_to_json =
   | Text value ->
       Data.Json.Object [ ("kind", Data.Json.String "text"); ("text", Data.Json.String value);  ]
 
-let operation_to_json =
-  function
+let operation_to_json = function
   | Delete { target } -> Data.Json.Object [
     ("kind", Data.Json.String "delete");
     ("target", target_to_json target);
@@ -169,8 +166,9 @@ let operation_to_json =
 
   ]
 
-let to_json = fun fix -> Data.Json.Object [
-  ("title", Data.Json.String fix.title);
-  ("operations", Data.Json.Array (List.map operation_to_json fix.operations));
+let to_json = fun fix ->
+    Data.Json.Object [
+      ("title", Data.Json.String fix.title);
+      ("operations", Data.Json.Array (List.map operation_to_json fix.operations));
 
-]
+    ]

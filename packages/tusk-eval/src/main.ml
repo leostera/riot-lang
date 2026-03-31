@@ -21,19 +21,21 @@ type eval_result =
 
 (** Parse and validate OCaml code *)
 let parse_code = fun code ->
-  let tokens = Syn.tokenize code in
-  let result = Syn.Parser.parse_implementation ~source:code tokens in
-  (* Check for diagnostics *)
-  if result.diagnostics != [] then
-    let msg = String.concat "\n" (List.map Syn.Diagnostic.to_string result.diagnostics) in
-    ParseError msg
-  else
-    (* Successfully parsed - for now just indicate success *)
-    Success {output = "(* Code parsed successfully - evaluation not yet implemented *)"; typ = None}
+    let tokens = Syn.tokenize code in
+    let result = Syn.Parser.parse_implementation ~source:code tokens in
+    (* Check for diagnostics *)
+    if result.diagnostics != [] then
+      let msg = String.concat "\n" (List.map Syn.Diagnostic.to_string result.diagnostics) in
+      ParseError msg
+    else
+      (* Successfully parsed - for now just indicate success *)
+      Success {
+        output = "(* Code parsed successfully - evaluation not yet implemented *)";
+        typ = None
+      }
 
 (** Format the result for display *)
-let format_result =
-  function
+let format_result = function
   | Success { output; typ=Some t } -> "- : " ^ t ^ " = " ^ output
   | Success { output; typ=None } -> output
   | Error { message; backtrace=Some bt } -> "Error: " ^ message ^ "\nBacktrace:\n" ^ bt
@@ -42,30 +44,30 @@ let format_result =
   | TypeError msg -> "Type error:\n" ^ msg ^ ""
 
 let main = fun ~args:_ ->
-  (* Get current working directory as workspace root *)
-  let workspace = Path.v "." in
-  Log.info ("Tusk Eval starting in workspace: " ^ Path.to_string workspace);
-  (* Read all input from stdin *)
-  let code = "" in
-  (* TODO: implement stdin reading properly *)
-  if String.length code = 0 then
-    (
-      Log.warn "No input provided";
-      print "Usage: echo 'code' | tusk-eval\n";
-      print "Example: echo 'let x = 1 + 1' | tusk-eval\n";
-      Ok ()
-    )
-  else
-    (
-      (* Parse and validate the code *)
-      let result = parse_code code in
-      let output = format_result result in
-      println output;
-      (* Return error status if evaluation failed *)
-      match result with
-      | Success _ -> Ok ()
-      | _ -> Error (Failure "Evaluation failed")
-    )
+    (* Get current working directory as workspace root *)
+    let workspace = Path.v "." in
+    Log.info ("Tusk Eval starting in workspace: " ^ Path.to_string workspace);
+    (* Read all input from stdin *)
+    let code = "" in
+    (* TODO: implement stdin reading properly *)
+    if String.length code = 0 then
+      (
+        Log.warn "No input provided";
+        print "Usage: echo 'code' | tusk-eval\n";
+        print "Example: echo 'let x = 1 + 1' | tusk-eval\n";
+        Ok ()
+      )
+    else
+      (
+        (* Parse and validate the code *)
+        let result = parse_code code in
+        let output = format_result result in
+        println output;
+        (* Return error status if evaluation failed *)
+        match result with
+        | Success _ -> Ok ()
+        | _ -> Error (Failure "Evaluation failed")
+      )
 
 let () =
   exit

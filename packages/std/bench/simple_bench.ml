@@ -3,16 +3,16 @@ open Std
 (* Simple benchmark functions *)
 
 let bench_addition = fun () ->
-  let _ = 1 + 1 in
-  ()
+    let _ = 1 + 1 in
+    ()
 
 let bench_string_concat = fun () ->
-  let _ = "hello" ^ " " ^ "world" in
-  ()
+    let _ = "hello" ^ " " ^ "world" in
+    ()
 
 let bench_list_creation = fun () ->
-  let _ = [ 1; 2; 3; 4; 5 ] in
-  ()
+    let _ = [ 1; 2; 3; 4; 5 ] in
+    ()
 
 (* Benchmark suite *)
 
@@ -28,6 +28,6 @@ let benchmarks =
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Bench.Cli.main ~name:"Simple Benchmarks" ~benchmarks ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Bench.Cli.main ~name:"Simple Benchmarks" ~benchmarks ~args)
+    ~args:Env.args
+    ()

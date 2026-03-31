@@ -28,8 +28,7 @@ type warning =
   | All
 
 (** All warnings *)
-let warning_to_number =
-  function
+let warning_to_number = function
   | PartialMatch -> 8
   | UnusedVariable -> 26
   | UnusedOpen -> 33
@@ -40,8 +39,7 @@ let warning_to_number =
 
 (* Special: use 'a' *)
 
-let warning_to_string =
-  function
+let warning_to_string = function
   | PartialMatch -> "partial-match"
   | UnusedVariable -> "unused-variable"
   | UnusedOpen -> "unused-open"
@@ -50,8 +48,7 @@ let warning_to_string =
   | NoCmiFile -> "no-cmi-file"
   | All -> "all"
 
-let warning_of_string =
-  function
+let warning_of_string = function
   | "partial-match" -> Some PartialMatch
   | "unused-variable" -> Some UnusedVariable
   | "unused-open" -> Some UnusedOpen
@@ -83,13 +80,11 @@ type compilation_kind =
   | Native
 
 (** ocamlopt - slower compilation, optimized runtime *)
-let compilation_kind_to_string =
-  function
+let compilation_kind_to_string = function
   | Bytecode -> "bytecode"
   | Native -> "native"
 
-let compilation_kind_of_string =
-  function
+let compilation_kind_of_string = function
   | "bytecode" -> Some Bytecode
   | "native" -> Some Native
   | _ -> None

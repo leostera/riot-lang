@@ -289,8 +289,7 @@ type t =
 
 (* Expected but missing token/node *)
 
-let to_string =
-  function
+let to_string = function
   | WHITESPACE -> "WHITESPACE"
   | COMMENT -> "COMMENT"
   | DOCSTRING -> "DOCSTRING"
@@ -428,8 +427,7 @@ let to_string =
   | ERROR -> "ERROR"
   | MISSING -> "MISSING"
 
-let from_string =
-  function
+let from_string = function
   | "WHITESPACE" -> Some WHITESPACE
   | "COMMENT" -> Some COMMENT
   | "DOCSTRING" -> Some DOCSTRING

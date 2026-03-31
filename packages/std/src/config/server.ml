@@ -23,15 +23,13 @@ type error =
       message: string;
     }
 
-let error_to_string =
-  function
+let error_to_string = function
   | App_not_found { app } -> "App not found: " ^ app
   | Load_failed { message } -> "Failed to load config: " ^ message
   | Validation_failed { app; message } -> "Validation failed for [" ^ app ^ "]: " ^ message
   | Patch_failed { message } -> "Patch failed: " ^ message
 
-let error_to_json =
-  function
+let error_to_json = function
   | App_not_found { app } -> Data.Json.Object [
     ("type", Data.Json.String "app_not_found");
     ("app", Data.Json.String app)
@@ -53,29 +51,29 @@ let error_to_json =
 (* Helper: Load and validate all registered specs *)
 
 let load_and_validate_all_specs = fun provider ->
-  let root_toml =
-    match Provider.load provider with
-    | Error msg -> panic ("Failed to load config: " ^ msg)
-    | Ok toml -> toml
-  in
-  let specs = Spec.all_specs () in
-  let configs = HashMap.create () in
-  List.iter
-    (fun spec ->
-      let app_name = Spec.app_name spec in
-      match Loader.extract_app_section app_name root_toml with
-      | Error _msg ->
-          (* Section not found - skip it (it's optional) *)
-          ()
-      | Ok app_toml ->
-          let validated =
-            match Validator.validate spec app_toml with
-            | Error err -> panic ("Validation error for [" ^ app_name ^ "]: " ^ err)
-            | Ok v -> v
-          in
-          HashMap.insert configs app_name validated |> ignore)
-    specs;
-  configs
+    let root_toml =
+      match Provider.load provider with
+      | Error msg -> panic ("Failed to load config: " ^ msg)
+      | Ok toml -> toml
+    in
+    let specs = Spec.all_specs () in
+    let configs = HashMap.create () in
+    List.iter
+      (fun spec ->
+        let app_name = Spec.app_name spec in
+        match Loader.extract_app_section app_name root_toml with
+        | Error _msg ->
+            (* Section not found - skip it (it's optional) *)
+            ()
+        | Ok app_toml ->
+            let validated =
+              match Validator.validate spec app_toml with
+              | Error err -> panic ("Validation error for [" ^ app_name ^ "]: " ^ err)
+              | Ok v -> v
+            in
+            HashMap.insert configs app_name validated |> ignore)
+      specs;
+    configs
 
 (* Apply patches to a Map value *)
 
@@ -95,26 +93,26 @@ let apply_patches (base_value: Spec.value) updates : Spec.value =
 
 (** Public API *)
 let init = fun ~provider ->
-  let configs = load_and_validate_all_specs provider in
-  {configs; provider}
+    let configs = load_and_validate_all_specs provider in
+    {configs; provider}
 
 let get = fun t ~app ->
-  HashMap.get t.configs app
+    HashMap.get t.configs app
 
 let reload = fun ?provider t ->
-  let new_provider =
-    match provider with
-    | Some p -> p
-    | None -> t.provider
-  in
-  let configs = load_and_validate_all_specs new_provider in
-  {configs; provider = new_provider}
+    let new_provider =
+      match provider with
+      | Some p -> p
+      | None -> t.provider
+    in
+    let configs = load_and_validate_all_specs new_provider in
+    {configs; provider = new_provider}
 
 let patch = fun t ~app ~updates ->
-  match HashMap.get t.configs app with
-  | None -> Error (App_not_found {app})
-  | Some value ->
-      (* Merge updates into value *)
-      let patched_value = apply_patches value updates in
-      HashMap.insert t.configs app patched_value |> ignore;
-      Ok t
+    match HashMap.get t.configs app with
+    | None -> Error (App_not_found {app})
+    | Some value ->
+        (* Merge updates into value *)
+        let patched_value = apply_patches value updates in
+        HashMap.insert t.configs app patched_value |> ignore;
+        Ok t

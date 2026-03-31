@@ -466,17 +466,17 @@ let emoji = [|
 
 (** Binary search in a sorted table of ranges *)
 let in_table : table -> int -> bool = fun tbl c ->
-  let rec search = fun low high ->
-    if low > high then
-      false
-    else
-      let mid = (low + high) / 2 in
-      let (range_start, range_end) = array__unsafe_get tbl mid in
-      if c < range_start then
-        search low (mid - 1)
-      else if c > range_end then
-        search (mid + 1) high
+    let rec search low high =
+      if low > high then
+        false
       else
-        true
-  in
-  search 0 (Array.length tbl - 1)
+        let mid = (low + high) / 2 in
+        let (range_start, range_end) = array__unsafe_get tbl mid in
+        if c < range_start then
+          search low (mid - 1)
+        else if c > range_end then
+          search (mid + 1) high
+        else
+          true
+    in
+    search 0 (Array.length tbl - 1)

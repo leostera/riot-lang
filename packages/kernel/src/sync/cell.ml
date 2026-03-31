@@ -34,33 +34,33 @@ let incr = fun cell -> cell.value <- cell.value + 1
 let decr = fun cell -> cell.value <- cell.value - 1
 
 let replace = fun cell new_value ->
-  let old_value = cell.value in
-  cell.value <- new_value;
-  old_value
+    let old_value = cell.value in
+    cell.value <- new_value;
+    old_value
 
 (* Taking - useful for option/result types *)
 
 let take = fun cell ~default ->
-  let old_value = cell.value in
-  cell.value <- default;
-  old_value
+    let old_value = cell.value in
+    cell.value <- default;
+    old_value
 
 (* Swapping *)
 
 let swap = fun cell1 cell2 ->
-  let temp = cell1.value in
-  cell1.value <- cell2.value;
-  cell2.value <- temp
+    let temp = cell1.value in
+    cell1.value <- cell2.value;
+    cell2.value <- temp
 
 (* Comparison *)
 
 let compare_and_swap = fun cell expected new_value ->
-  if cell.value = expected then
-    (
-      cell.value <- new_value;
-      true
-    )
-  else
-    false
+    if cell.value = expected then
+      (
+        cell.value <- new_value;
+        true
+      )
+    else
+      false
 
 let equal = fun cell1 cell2 -> cell1.value = cell2.value

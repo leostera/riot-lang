@@ -11,19 +11,18 @@ type t =
 let empty = Empty
 
 let env = fun ?env () ->
-  let e =
-    match env with
-    | Some e -> e
-    | None -> Loader.detect_env ()
-  in
-  Env {env = e}
+    let e =
+      match env with
+      | Some e -> e
+      | None -> Loader.detect_env ()
+    in
+    Env {env = e}
 
 let file = fun path -> Path {path}
 
 let static = fun toml_string -> Static {toml_string}
 
-let load =
-  function
+let load = function
   | Empty ->
       Error "Cannot load from empty provider"
   | Env { env } ->

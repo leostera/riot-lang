@@ -30,27 +30,26 @@ type key =
   | Key of string
 
 let key_to_string = fun key ->
-  match key with
-  | Up -> "up"
-  | Down -> "down"
-  | Left -> "left"
-  | Right -> "right"
-  | Space -> "space"
-  | Escape -> "esc"
-  | Backspace -> "backspace"
-  | Enter -> "enter"
-  | Tab -> "tab"
-  | Delete -> "delete"
-  | Insert -> "insert"
-  | Home -> "home"
-  | End -> "end"
-  | PageUp -> "pgup"
-  | PageDown -> "pgdn"
-  | F n -> "f" ^ Int.to_string n
-  | Key key -> key
+    match key with
+    | Up -> "up"
+    | Down -> "down"
+    | Left -> "left"
+    | Right -> "right"
+    | Space -> "space"
+    | Escape -> "esc"
+    | Backspace -> "backspace"
+    | Enter -> "enter"
+    | Tab -> "tab"
+    | Delete -> "delete"
+    | Insert -> "insert"
+    | Home -> "home"
+    | End -> "end"
+    | PageUp -> "pgup"
+    | PageDown -> "pgdn"
+    | F n -> "f" ^ Int.to_string n
+    | Key key -> key
 
-let modifier_to_string =
-  function
+let modifier_to_string = function
   | NoModifier -> ""
   | Ctrl -> "ctrl"
   | Alt -> "alt"
@@ -98,8 +97,7 @@ type t =
   | FocusLost
   | Custom of Message.t
 
-let to_string =
-  function
+let to_string = function
   | KeyDown (key, mod_) ->
       let mod_str = modifier_to_string mod_ in
       let key_str = key_to_string key in

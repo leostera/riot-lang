@@ -5,21 +5,21 @@ open Suri
 (* Helper function that will be in the stack trace *)
 
 let find_user = fun id ->
-  if id = "123" then
-    "Alice"
-  else
-    panic (String.concat "" [ "User not found: "; id ])
+    if id = "123" then
+      "Alice"
+    else
+      panic (String.concat "" [ "User not found: "; id ])
 
 (* Another level in the stack *)
 
 let process_user_request = fun id ->
-  let name = find_user id in
-  "Hello, " ^ name
+    let name = find_user id in
+    "Hello, " ^ name
 
 (* Route handlers *)
 
 let home_handler = fun conn _req ->
-  let html = {|
+    let html = {|
 <!DOCTYPE html>
 <html>
   <head><title>Debugger Test</title></head>
@@ -43,30 +43,30 @@ let home_handler = fun conn _req ->
   </body>
 </html>
   |}
-  in
-  conn
-  |> Conn.with_status Ok
-  |> Conn.with_header "Content-Type" "text/html"
-  |> Conn.with_body html
-  |> Conn.send
+    in
+    conn
+    |> Conn.with_status Ok
+    |> Conn.with_header "Content-Type" "text/html"
+    |> Conn.with_body html
+    |> Conn.send
 
 let user_handler = fun conn req ->
-  let params = Conn.params conn in
-  let id = List.assoc "id" params in
-  let result = process_user_request id in
-  conn |> Conn.respond ~status:Ok ~body:result |> Conn.send
+    let params = Conn.params conn in
+    let id = List.assoc "id" params in
+    let result = process_user_request id in
+    conn |> Conn.respond ~status:Ok ~body:result |> Conn.send
 
 let crash_handler = fun conn req ->
-  (* Set some response state before crashing *)
-  let _conn = Conn.with_header "X-Custom" "value" conn in
-  panic "Intentional crash for testing!"
+    (* Set some response state before crashing *)
+    let _conn = Conn.with_header "X-Custom" "value" conn in
+    panic "Intentional crash for testing!"
 
 let divide_handler = fun conn req ->
-  let x = 10 in
-  let y = 0 in
-  let result = x / y in
-  (* Division by zero! *)
-  conn |> Conn.respond ~status:Ok ~body:(Int.to_string result) |> Conn.send
+    let x = 10 in
+    let y = 0 in
+    let result = x / y in
+    (* Division by zero! *)
+    conn |> Conn.respond ~status:Ok ~body:(Int.to_string result) |> Conn.send
 
 (* Define routes *)
 
@@ -104,7 +104,7 @@ let () =
           Log.info "Watch the terminal - errors are logged by debugger!";
           let count = Supervisor.Dynamic.count_children supervisor in
           Log.info (String.concat "" [ Int.to_string count.active; " acceptors ready" ]);
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

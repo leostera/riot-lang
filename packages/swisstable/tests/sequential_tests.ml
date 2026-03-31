@@ -22,21 +22,21 @@ type operation =
 (* Generate a random operation *)
 
 let operation_gen = Generator.frequency
-[
-  (
-    40,
-    Generator.map
-    (fun ((k, v)) -> Insert (k, v))
-    (Generator.pair (Generator.int_range 0 50) Arbitrary.int.gen)
-  );
-  (30, Generator.map (fun k -> Get k) (Generator.int_range 0 50));
-  (20, Generator.map (fun k -> Remove k) (Generator.int_range 0 50));
-  (5, Generator.return Clear);
-  (3, Generator.map (fun k -> ContainsKey k) (Generator.int_range 0 50));
-  (1, Generator.return Len);
-  (1, Generator.return IsEmpty);
+  [
+    (
+      40,
+      Generator.map
+        (fun ((k, v)) -> Insert (k, v))
+        (Generator.pair (Generator.int_range 0 50) Arbitrary.int.gen)
+    );
+    (30, Generator.map (fun k -> Get k) (Generator.int_range 0 50));
+    (20, Generator.map (fun k -> Remove k) (Generator.int_range 0 50));
+    (5, Generator.return Clear);
+    (3, Generator.map (fun k -> ContainsKey k) (Generator.int_range 0 50));
+    (1, Generator.return Len);
+    (1, Generator.return IsEmpty);
 
-]
+  ]
 
 let operation_arb =
   Arbitrary.make
@@ -57,42 +57,43 @@ let operation_arb =
 (* Apply an operation to both Swisstable and HashMap, verify they match *)
 
 let apply_operation = fun op swiss hash ->
-  match op with
-  | Insert (k, v) ->
-      let r1 = Swisstable.insert swiss k v in
-      let r2 = Collections.HashMap.insert hash k v in
-      if not (r1 = r2) then
-        fail ("Insert(" ^ Int.to_string k ^ "," ^ Int.to_string v ^ "): results differ")
-  | Get k ->
-      let r1 = Swisstable.get swiss k in
-      let r2 = Collections.HashMap.get hash k in
-      if not (r1 = r2) then
-        fail ("Get(" ^ Int.to_string k ^ "): results differ")
-  | Remove k ->
-      let r1 = Swisstable.remove swiss k in
-      let r2 = Collections.HashMap.remove hash k in
-      if not (r1 = r2) then
-        fail ("Remove(" ^ Int.to_string k ^ "): results differ")
-  | Clear ->
-      Swisstable.clear swiss;
-      Collections.HashMap.clear hash;
-      if not (Swisstable.len swiss = 0) || not (Collections.HashMap.len hash = 0) then
-        fail "Clear: maps not empty after clear"
-  | ContainsKey k ->
-      let r1 = Swisstable.contains_key swiss k in
-      let r2 = Collections.HashMap.contains_key hash k in
-      if not (r1 = r2) then
-        fail ("ContainsKey(" ^ Int.to_string k ^ "): results differ")
-  | Len ->
-      let l1 = Swisstable.len swiss in
-      let l2 = Collections.HashMap.len hash in
-      if not (l1 = l2) then
-        fail ("Len: lengths differ (swiss=" ^ Int.to_string l1 ^ ", hash=" ^ Int.to_string l2 ^ ")")
-  | IsEmpty ->
-      let e1 = Swisstable.is_empty swiss in
-      let e2 = Collections.HashMap.is_empty hash in
-      if not (e1 = e2) then
-        fail "IsEmpty: results differ"
+    match op with
+    | Insert (k, v) ->
+        let r1 = Swisstable.insert swiss k v in
+        let r2 = Collections.HashMap.insert hash k v in
+        if not (r1 = r2) then
+          fail ("Insert(" ^ Int.to_string k ^ "," ^ Int.to_string v ^ "): results differ")
+    | Get k ->
+        let r1 = Swisstable.get swiss k in
+        let r2 = Collections.HashMap.get hash k in
+        if not (r1 = r2) then
+          fail ("Get(" ^ Int.to_string k ^ "): results differ")
+    | Remove k ->
+        let r1 = Swisstable.remove swiss k in
+        let r2 = Collections.HashMap.remove hash k in
+        if not (r1 = r2) then
+          fail ("Remove(" ^ Int.to_string k ^ "): results differ")
+    | Clear ->
+        Swisstable.clear swiss;
+        Collections.HashMap.clear hash;
+        if not (Swisstable.len swiss = 0) || not (Collections.HashMap.len hash = 0) then
+          fail "Clear: maps not empty after clear"
+    | ContainsKey k ->
+        let r1 = Swisstable.contains_key swiss k in
+        let r2 = Collections.HashMap.contains_key hash k in
+        if not (r1 = r2) then
+          fail ("ContainsKey(" ^ Int.to_string k ^ "): results differ")
+    | Len ->
+        let l1 = Swisstable.len swiss in
+        let l2 = Collections.HashMap.len hash in
+        if not (l1 = l2) then
+          fail
+            ("Len: lengths differ (swiss=" ^ Int.to_string l1 ^ ", hash=" ^ Int.to_string l2 ^ ")")
+    | IsEmpty ->
+        let e1 = Swisstable.is_empty swiss in
+        let e2 = Collections.HashMap.is_empty hash in
+        if not (e1 = e2) then
+          fail "IsEmpty: results differ"
 
 (** {1 Sequential Properties} *)
 
@@ -117,7 +118,7 @@ let random_sequence_prop =
 
 let insert_heavy_sequence_prop =
   property "insert-heavy sequence: correctness maintained" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs > 0);
       assume (Collections.List.length pairs <= 100);
@@ -133,7 +134,7 @@ let insert_heavy_sequence_prop =
 
 let remove_heavy_sequence_prop =
   property "remove-heavy sequence: correctness maintained" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs > 0);
       assume (Collections.List.length pairs <= 100);
@@ -164,16 +165,16 @@ let interleaved_ops_prop =
         keys;
       (* Verify final values *)
       List.for_all
-      (fun k -> Swisstable.get swiss k = Some (k * 3)
-      && Collections.HashMap.get hash k = Some (k * 3))
-      keys)
+        (fun k ->
+          Swisstable.get swiss k = Some (k * 3) && Collections.HashMap.get hash k = Some (k * 3))
+        keys)
 
 (* Property 5: Clear in the middle of operations *)
 
 let clear_interleaved_prop =
   property "clear in middle: correctness maintained" Arbitrary.(pair
-  (list (pair int int))
-  (list (pair int int)))
+    (list (pair int int))
+    (list (pair int int)))
     (fun ((before_clear, after_clear)) ->
       assume (Collections.List.length before_clear <= 50);
       assume (Collections.List.length after_clear <= 50);
@@ -197,7 +198,7 @@ let clear_interleaved_prop =
 
 let contains_checks_prop =
   property "contains_key checks: always match hashmap" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
@@ -243,7 +244,7 @@ let length_invariant_prop =
 
 let to_list_invariant_prop =
   property "to_list: entries always accessible" (Arbitrary.list
-  (Arbitrary.pair Arbitrary.int Arbitrary.int))
+    (Arbitrary.pair Arbitrary.int Arbitrary.int))
     (fun pairs ->
       assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
@@ -260,7 +261,7 @@ let to_list_invariant_prop =
           match Swisstable.get swiss k with
           | Some v' when v = v' -> true
           | _ -> fail
-          ("to_list entry (" ^ Int.to_string k ^ "," ^ Int.to_string v ^ ") not gettable"))
+            ("to_list entry (" ^ Int.to_string k ^ "," ^ Int.to_string v ^ ") not gettable"))
         entries)
 
 (* Property 9: Overwrite sequence *)
@@ -351,6 +352,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-sequential-tests" ~tests ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-sequential-tests" ~tests ~args)
+    ~args:Env.args
+    ()

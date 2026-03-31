@@ -18,7 +18,7 @@ let () =
           Log.info "   Try: curl http://localhost:4000";
           let count = Supervisor.Dynamic.count_children supervisor in
           Log.info ("   Started with " ^ Int.to_string count.active ^ " acceptors");
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

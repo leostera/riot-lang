@@ -16,63 +16,63 @@ let parse_ml = fun source -> Syn.parse ~filename:sample_ml source
 let parse_mli = fun source -> Syn.parse ~filename:(Path.v "sample.mli") source
 
 let parse_file = fun path ->
-  let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
-  Syn.parse ~filename:path source
+    let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
+    Syn.parse ~filename:path source
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix fn with
-  | Ok result -> result
-  | Error err -> Error (IO.error_message err)
+    match Fs.with_tempdir ~prefix fn with
+    | Ok result -> result
+    | Error err -> Error (IO.error_message err)
 
 let capture_json_event = fun ~root event ->
-  let buffer = IO.Buffer.create 128 in
-  let writer =
-    let module Write = struct
-      type t = IO.Buffer.t
+    let buffer = IO.Buffer.create 128 in
+    let writer =
+      let module Write = struct
+        type t = IO.Buffer.t
 
-      type err = unit
+        type err = unit
 
-      let write = fun buffer ~buf ->
-        IO.Buffer.add_string buffer buf;
-        Ok (String.length buf)
+        let write = fun buffer ~buf ->
+            IO.Buffer.add_string buffer buf;
+            Ok (String.length buf)
 
-      let write_owned_vectored = fun _buffer ~bufs:_ -> unimplemented ()
+        let write_owned_vectored = fun _buffer ~bufs:_ -> unimplemented ()
 
-      let flush = fun _buffer -> Ok ()
-    end in
-    IO.Writer.of_write_src (module Write) buffer
-  in
-  Krasny.Report.write_json_event ~writer ~root event |> Result.expect ~msg:"failed to serialize json event";
-  IO.Buffer.contents buffer |> String.trim
+        let flush = fun _buffer -> Ok ()
+      end in
+      IO.Writer.of_write_src (module Write) buffer
+    in
+    Krasny.Report.write_json_event ~writer ~root event |> Result.expect ~msg:"failed to serialize json event";
+    IO.Buffer.contents buffer |> String.trim
 
 let assert_json_timestamp_field = fun json ->
-  match Data.Json.get_field "timestamp" json with
-  | Some (Data.Json.String timestamp) ->
-      Test.assert_true (String.contains timestamp "T");
-      Test.assert_true (String.ends_with ~suffix:"Z" timestamp)
-  | Some _ ->
-      panic "timestamp field should be a JSON string"
-  | None ->
-      panic "timestamp field missing"
+    match Data.Json.get_field "timestamp" json with
+    | Some (Data.Json.String timestamp) ->
+        Test.assert_true (String.contains timestamp "T");
+        Test.assert_true (String.ends_with ~suffix:"Z" timestamp)
+    | Some _ ->
+        panic "timestamp field should be a JSON string"
+    | None ->
+        panic "timestamp field missing"
 
 let assert_json_duration_ms_field = fun json ->
-  match Data.Json.get_field "duration_ms" json with
-  | Some (Data.Json.Int duration_ms) -> Test.assert_true (duration_ms >= 0)
-  | Some _ -> panic "duration_ms field should be a JSON int"
-  | None -> panic "duration_ms field missing"
+    match Data.Json.get_field "duration_ms" json with
+    | Some (Data.Json.Int duration_ms) -> Test.assert_true (duration_ms >= 0)
+    | Some _ -> panic "duration_ms field should be a JSON int"
+    | None -> panic "duration_ms field missing"
 
 let assert_idempotent = fun ~source ~msg ->
-  let first = parse_ml source |> Krasny.format |> Result.expect ~msg in
-  let second = parse_ml first |> Krasny.format |> Result.expect ~msg:"formatted output should reformat" in
-  Test.assert_equal ~expected:first ~actual:second
+    let first = parse_ml source |> Krasny.format |> Result.expect ~msg in
+    let second = parse_ml first |> Krasny.format |> Result.expect ~msg:"formatted output should reformat" in
+    Test.assert_equal ~expected:first ~actual:second
 
 let assert_roundtrip_hash = fun path ->
-  let parsed = parse_file path in
-  let original_hash = Krasny.syntax_hash parsed in
-  let formatted = Krasny.format parsed |> Result.expect ~msg:"selected repo files should format" in
-  let reparsed = Syn.parse ~filename:path formatted in
-  let reparsed_hash = Krasny.syntax_hash reparsed in
-  Test.assert_equal ~expected:original_hash ~actual:reparsed_hash
+    let parsed = parse_file path in
+    let original_hash = Krasny.syntax_hash parsed in
+    let formatted = Krasny.format parsed |> Result.expect ~msg:"selected repo files should format" in
+    let reparsed = Syn.parse ~filename:path formatted in
+    let reparsed_hash = Krasny.syntax_hash reparsed in
+    Test.assert_equal ~expected:original_hash ~actual:reparsed_hash
 
 let tests = [
   Test.case "format returns the original source for a simple implementation"
@@ -438,8 +438,8 @@ let bind =
       let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"parameterized let bindings should lower through explicit fun syntax" in
       Test.assert_equal
-      ~expected:"(* intro *)\nlet x = 1 + 2\n\nlet f x = x + 1\n\nlet y = 3 + 4\n"
-      ~actual;
+        ~expected:"(* intro *)\nlet x = 1 + 2\n\nlet f x = x + 1\n\nlet y = 3 + 4\n"
+        ~actual;
       Ok ());
   Test.case "format keeps mixed trivia and unsupported items parseable"
     (fun () ->
@@ -1348,8 +1348,8 @@ end
             assert_json_duration_ms_field json;
             Test.assert_equal ~expected:(Some (String "needs.ml")) ~actual:(get_field "file" json);
             Test.assert_equal
-            ~expected:(Some (String "needs_formatting"))
-            ~actual:(get_field "status" json);
+              ~expected:(Some (String "needs_formatting"))
+              ~actual:(get_field "status" json);
             Ok ()));
   Test.case "verify reports files that would reformat safely"
     (fun () ->
@@ -1378,8 +1378,8 @@ end
           |> Result.expect ~msg:"parse event json" in
           let open Data.Json in
             Test.assert_equal
-            ~expected:(Some (String "would_reformat"))
-            ~actual:(get_field "status" json);
+              ~expected:(Some (String "would_reformat"))
+              ~actual:(get_field "status" json);
             Ok ()));
   Test.case "format rewrites files in place and reports formatted status"
     (fun () ->
@@ -1443,10 +1443,10 @@ end
           let seen = cell [] in
           let result =
             Krasny.Runner.run_checks_streaming
-            ~concurrency:1
-            ~roots:[ tmpdir ]
-            ~on_result:(fun file_result -> seen := Path.to_string file_result.file :: !seen)
-            ()
+              ~concurrency:1
+              ~roots:[ tmpdir ]
+              ~on_result:(fun file_result -> seen := Path.to_string file_result.file :: !seen)
+              ()
           in
           let actual = List.sort String.compare !seen in
           let expected = [ Path.to_string formatted; Path.to_string needs ] |> List.sort String.compare in
@@ -1458,8 +1458,8 @@ end
           Test.assert_equal ~expected:0 ~actual:result.summary.unsafe_to_format;
           Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
           let start_json = capture_json_event
-          ~root:tmpdir
-          (Krasny.Report.Start {mode = Krasny.Runner.Check; concurrency = 3})
+            ~root:tmpdir
+            (Krasny.Report.Start {mode = Krasny.Runner.Check; concurrency = 3})
           |> Data.Json.of_string
           |> Result.expect ~msg:"parse start json" in
           let open Data.Json in
@@ -1474,6 +1474,6 @@ end
 
 let () =
   Miniriot.run
-  ~main:(fun ~args:_ -> Test.Cli.main ~name:"krasny:format" ~tests ~args:Env.args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args:_ -> Test.Cli.main ~name:"krasny:format" ~tests ~args:Env.args)
+    ~args:Env.args
+    ()

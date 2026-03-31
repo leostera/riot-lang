@@ -5,7 +5,7 @@ open Suri
 
 (** Home page with form *)
 let home = fun conn _req ->
-  let html = {|<!DOCTYPE html>
+    let html = {|<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -57,17 +57,17 @@ let home = fun conn _req ->
   </ul>
 </body>
 </html>|}
-  in
-  conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
+    in
+    conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
 
 (** Handle form submission *)
 let submit_form = fun conn _req ->
-  let body_params = Conn.body_params conn in
-  (* Extract form fields *)
-  let name = List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown" in
-  let email = List.assoc_opt "email" body_params |> Option.unwrap_or ~default:"unknown@example.com" in
-  let message = List.assoc_opt "message" body_params |> Option.unwrap_or ~default:"" in
-  let html = {|<!DOCTYPE html>
+    let body_params = Conn.body_params conn in
+    (* Extract form fields *)
+    let name = List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown" in
+    let email = List.assoc_opt "email" body_params |> Option.unwrap_or ~default:"unknown@example.com" in
+    let message = List.assoc_opt "message" body_params |> Option.unwrap_or ~default:"" in
+    let html = {|<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -96,29 +96,29 @@ let submit_form = fun conn _req ->
   <p><a href="/">← Back to form</a></p>
 </body>
 </html>|}
-  in
-  conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
+    in
+    conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
 
 (** Handle JSON API request *)
 let api_handler = fun conn _req ->
-  let body_params = Conn.body_params conn in
-  (* Extract JSON fields *)
-  let name = List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown" in
-  let action = List.assoc_opt "action" body_params |> Option.unwrap_or ~default:"none" in
-  (* Create JSON response *)
-  let response_json = Data.Json.(Object [
-    ("success", Bool true);
-    ("message", String "Data received and parsed");
-    ("received", Object [ ("name", String name); ("action", String action) ]);
-    ("middleware", String "body_parser automatically parsed the JSON body");
+    let body_params = Conn.body_params conn in
+    (* Extract JSON fields *)
+    let name = List.assoc_opt "name" body_params |> Option.unwrap_or ~default:"Unknown" in
+    let action = List.assoc_opt "action" body_params |> Option.unwrap_or ~default:"none" in
+    (* Create JSON response *)
+    let response_json = Data.Json.(Object [
+      ("success", Bool true);
+      ("message", String "Data received and parsed");
+      ("received", Object [ ("name", String name); ("action", String action) ]);
+      ("middleware", String "body_parser automatically parsed the JSON body");
 
-  ]) in
-  let body = Data.Json.to_string response_json in
-  conn
-  |> Conn.with_status Net.Http.Status.Ok
-  |> Conn.with_header "content-type" "application/json"
-  |> Conn.with_body body
-  |> Conn.send
+    ]) in
+    let body = Data.Json.to_string response_json in
+    conn
+    |> Conn.with_status Net.Http.Status.Ok
+    |> Conn.with_header "content-type" "application/json"
+    |> Conn.with_body body
+    |> Conn.send
 
 (** Routes *)
 let routes = Middleware.Router.[get "/" home;
@@ -152,7 +152,7 @@ let () =
       Log.info "===========================================";
       match Suri.start_link ~config app with
       | Ok _supervisor ->
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

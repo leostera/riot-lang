@@ -12,8 +12,7 @@ type color =
   | Black
   | White
 
-let color_to_string =
-  function
+let color_to_string = function
   | Red -> "Red"
   | Green -> "Green"
   | Blue -> "Blue"
@@ -24,15 +23,15 @@ let color_to_string =
 (* Custom generator for colors *)
 
 let color_gen = Generator.one_of
-[
-  Generator.return Red;
-  Generator.return Green;
-  Generator.return Blue;
-  Generator.return Yellow;
-  Generator.return Black;
-  Generator.return White;
+  [
+    Generator.return Red;
+    Generator.return Green;
+    Generator.return Blue;
+    Generator.return Yellow;
+    Generator.return Black;
+    Generator.return White;
 
-]
+  ]
 
 (* Custom printer for colors *)
 
@@ -53,22 +52,22 @@ type point = {
 
 let point_gen =
   Generator.map
-  (fun ((x, y)) -> {x; y})
-  (Generator.pair (Generator.int_range (-100) 100) (Generator.int_range (-100) 100))
+    (fun ((x, y)) -> {x; y})
+    (Generator.pair (Generator.int_range (-100) 100) (Generator.int_range (-100) 100))
 
 (* Custom shrinker for points - shrink towards origin *)
 
 let point_shrinker = fun point ->
-  let x_shrunk = Shrinker.shrink (Shrinker.towards 0) point.x in
-  let y_shrunk = Shrinker.shrink (Shrinker.towards 0) point.y in
-  (* Combine shrinking on both axes *)
-  let x_only =
-    List.map (fun x -> {x; y = point.y}) x_shrunk
-  in
-  let y_only =
-    List.map (fun y -> {x = point.x; y}) y_shrunk
-  in
-  x_only @ y_only
+    let x_shrunk = Shrinker.shrink (Shrinker.towards 0) point.x in
+    let y_shrunk = Shrinker.shrink (Shrinker.towards 0) point.y in
+    (* Combine shrinking on both axes *)
+    let x_only =
+      List.map (fun x -> {x; y = point.y}) x_shrunk
+    in
+    let y_only =
+      List.map (fun y -> {x = point.x; y}) y_shrunk
+    in
+    x_only @ y_only
 
 let point_printer = fun p -> "(" ^ Int.to_string p.x ^ ", " ^ Int.to_string p.y ^ ")"
 
@@ -113,17 +112,17 @@ let point_translation_prop =
 
 let non_empty_list_prop =
   property
-  "non-empty list generator never produces empty list"
-  Arbitrary.(make (Generator.non_empty_list Generator.int))
-  (fun lst -> List.length lst > 0)
+    "non-empty list generator never produces empty list"
+    Arbitrary.(make (Generator.non_empty_list Generator.int))
+    (fun lst -> List.length lst > 0)
 
 (* Generate lists with specific sizes *)
 
 let fixed_size_list_prop =
   property
-  "list of size 5 always has 5 elements"
-  Arbitrary.(make (Generator.list_repeat 5 Generator.int))
-  (fun lst -> List.length lst = 5)
+    "list of size 5 always has 5 elements"
+    Arbitrary.(make (Generator.list_repeat 5 Generator.int))
+    (fun lst -> List.length lst = 5)
 
 (* Frequency-based generation *)
 
@@ -154,6 +153,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Test.Cli.main ~name:"propane-custom-examples" ~tests ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Test.Cli.main ~name:"propane-custom-examples" ~tests ~args)
+    ~args:Env.args
+    ()

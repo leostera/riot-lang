@@ -4,7 +4,7 @@ let () =
   Miniriot.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       Log.info "Testing receive timeout...";
-      let selector = fun _msg -> `skip in
+      let selector _msg = `skip in
       (
         try
           let _ = receive ~selector ~timeout:(Time.Duration.from_millis 500) () in

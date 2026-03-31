@@ -17,8 +17,7 @@ This rule exists because unit-binding syntax can make straightforward imperative
 look more abstract than they really are.
 |}
 
-let rec is_unit_pattern =
-  function
+let rec is_unit_pattern = function
   | Syn.Cst.Pattern.Literal { literal=Syn.Cst.PatternLiteral.Unit _; _ } -> true
   | Syn.Cst.Pattern.Parenthesized { inner; _ } -> is_unit_pattern inner
   | Syn.Cst.Pattern.Identifier _
@@ -26,23 +25,19 @@ let rec is_unit_pattern =
   | Syn.Cst.Pattern.Literal _ -> false
   | _ -> false
 
-let make_diagnostic = fun (expr: Syn.Cst.let_expression) -> Diagnostic.make
-~severity:Warning
-~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
-~suggestion:"Replace this let-unit binding with a `;` sequence."
-()
+let make_diagnostic = fun (expr: Syn.Cst.let_expression) ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
+      ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
+      ~suggestion:"Replace this let-unit binding with a `;` sequence."
+      ()
 
-let diagnostic_for_expression =
-  function
+let diagnostic_for_expression = function
   | Syn.Cst.Expression.Let expr when is_unit_pattern expr.binding_pattern -> Some (make_diagnostic expr)
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root -> Rule_query.expressions ctx |> List.filter_map diagnostic_for_expression
 
-let make = fun () -> Rule.make
-~id:rule_id
-~description:rule_description
-~explain:rule_explain
-~run:check_tree
-()
+let make = fun () ->
+    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

@@ -22,7 +22,5 @@ let row = fun ?(style = Style.empty) children -> Container {style = Style.row st
 
 let column = fun ?(style = Style.empty) children -> Container {style = Style.column style; children}
 
-let spacer = fun ?(flex = 1.0) () -> Container {
-  style = Style.(empty |> size ~width:(Fixed flex) ~height:Grow);
-  children = []
-}
+let spacer = fun ?(flex = 1.0) () ->
+    Container {style = Style.(empty |> size ~width:(Fixed flex) ~height:Grow); children = []}

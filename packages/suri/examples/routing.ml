@@ -9,7 +9,7 @@ open Suri
 (* Route handlers *)
 
 let home_handler = fun conn req ->
-  let html = {|
+    let html = {|
 <!DOCTYPE html>
 <html>
   <head><title>Suri Example</title></head>
@@ -22,37 +22,35 @@ let home_handler = fun conn req ->
   </body>
 </html>
   |}
-  in
-  conn
-  |> Conn.with_status Ok
-  |> Conn.with_header "Content-Type" "text/html"
-  |> Conn.with_body html
-  |> Conn.send
+    in
+    conn
+    |> Conn.with_status Ok
+    |> Conn.with_header "Content-Type" "text/html"
+    |> Conn.with_body html
+    |> Conn.send
 
-let about_handler = fun conn req -> conn
-|> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework"
-|> Conn.send
+let about_handler = fun conn req ->
+    conn |> Conn.respond ~status:Ok ~body:"Suri - High-performance web framework" |> Conn.send
 
 let health_handler = fun conn req ->
-  (* Get the request ID that was added by request_id middleware *)
-  let resp_headers = Conn.resp_headers conn in
-  let request_id = List.assoc_opt "x-request-id" resp_headers |> Option.unwrap_or ~default:"unknown" in
-  let json = Data.Json.obj
-  [
-    ("status", Data.Json.string "ok");
-    ("service", Data.Json.string "suri");
-    ("request_id", Data.Json.string request_id);
+    (* Get the request ID that was added by request_id middleware *)
+    let resp_headers = Conn.resp_headers conn in
+    let request_id = List.assoc_opt "x-request-id" resp_headers |> Option.unwrap_or ~default:"unknown" in
+    let json = Data.Json.obj
+      [
+        ("status", Data.Json.string "ok");
+        ("service", Data.Json.string "suri");
+        ("request_id", Data.Json.string request_id);
 
-  ] in
-  conn
-  |> Conn.with_status Ok
-  |> Conn.with_header "Content-Type" "application/json"
-  |> Conn.with_body (Data.Json.to_string json)
-  |> Conn.send
+      ] in
+    conn
+    |> Conn.with_status Ok
+    |> Conn.with_header "Content-Type" "application/json"
+    |> Conn.with_body (Data.Json.to_string json)
+    |> Conn.send
 
-let not_found_handler = fun conn req -> conn
-|> Conn.respond ~status:NotFound ~body:"404 - Page not found"
-|> Conn.send
+let not_found_handler = fun conn req ->
+    conn |> Conn.respond ~status:NotFound ~body:"404 - Page not found" |> Conn.send
 
 (* Define routes *)
 
@@ -76,7 +74,7 @@ let () =
           Log.info "     GET  /api/health - Health check";
           let count = Supervisor.Dynamic.count_children supervisor in
           Log.info ("   Running with " ^ Int.to_string count.active ^ " acceptors");
-          let rec loop = fun () ->
+          let rec loop () =
             sleep (Time.Duration.from_secs 100);
             loop ()
           in

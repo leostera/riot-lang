@@ -4,135 +4,135 @@ open Std.Collections
 (* Benchmark: Push operations - build entire vector from scratch *)
 
 let bench_push_100 = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 100 do
-    Vector.push v i
-  done
+    let v = Vector.create () in
+    for i = 1 to 100 do
+      Vector.push v i
+    done
 
 let bench_push_10k = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 10_000 do
-    Vector.push v i
-  done
+    let v = Vector.create () in
+    for i = 1 to 10_000 do
+      Vector.push v i
+    done
 
 let bench_push_100k = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 100_000 do
-    Vector.push v i
-  done
+    let v = Vector.create () in
+    for i = 1 to 100_000 do
+      Vector.push v i
+    done
 
 let bench_push_1m = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 1_000_000 do
-    Vector.push v i
-  done
+    let v = Vector.create () in
+    for i = 1 to 1_000_000 do
+      Vector.push v i
+    done
 
 (* Benchmark: Access operations - single get from different sized vectors *)
 
 let bench_get_from_100 = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 100 do
-    Vector.push v i
-  done;
-  let _ = Vector.get v 50 in
-  ()
+    let v = Vector.create () in
+    for i = 1 to 100 do
+      Vector.push v i
+    done;
+    let _ = Vector.get v 50 in
+    ()
 
 let bench_get_from_10k = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 10_000 do
-    Vector.push v i
-  done;
-  let _ = Vector.get v 5_000 in
-  ()
+    let v = Vector.create () in
+    for i = 1 to 10_000 do
+      Vector.push v i
+    done;
+    let _ = Vector.get v 5_000 in
+    ()
 
 let bench_get_from_100k = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 100_000 do
-    Vector.push v i
-  done;
-  let _ = Vector.get v 50_000 in
-  ()
+    let v = Vector.create () in
+    for i = 1 to 100_000 do
+      Vector.push v i
+    done;
+    let _ = Vector.get v 50_000 in
+    ()
 
 let bench_get_from_1m = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 1_000_000 do
-    Vector.push v i
-  done;
-  let _ = Vector.get v 500_000 in
-  ()
+    let v = Vector.create () in
+    for i = 1 to 1_000_000 do
+      Vector.push v i
+    done;
+    let _ = Vector.get v 500_000 in
+    ()
 
 (* Benchmark: Pop operations - pop from end *)
 
 let bench_pop_from_100 = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 100 do
-    Vector.push v i
-  done;
-  let _ = Vector.pop v in
-  ()
+    let v = Vector.create () in
+    for i = 1 to 100 do
+      Vector.push v i
+    done;
+    let _ = Vector.pop v in
+    ()
 
 let bench_pop_from_10k = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 10_000 do
-    Vector.push v i
-  done;
-  let _ = Vector.pop v in
-  ()
+    let v = Vector.create () in
+    for i = 1 to 10_000 do
+      Vector.push v i
+    done;
+    let _ = Vector.pop v in
+    ()
 
 let bench_pop_from_100k = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 100_000 do
-    Vector.push v i
-  done;
-  let _ = Vector.pop v in
-  ()
+    let v = Vector.create () in
+    for i = 1 to 100_000 do
+      Vector.push v i
+    done;
+    let _ = Vector.pop v in
+    ()
 
 (* Benchmark: Iteration - iterate over entire vector *)
 
 let bench_iter_100 = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 100 do
-    Vector.push v i
-  done;
-  Vector.iter (fun _x -> ()) v
+    let v = Vector.create () in
+    for i = 1 to 100 do
+      Vector.push v i
+    done;
+    Vector.iter (fun _x -> ()) v
 
 let bench_iter_10k = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 10_000 do
-    Vector.push v i
-  done;
-  Vector.iter (fun _x -> ()) v
+    let v = Vector.create () in
+    for i = 1 to 10_000 do
+      Vector.push v i
+    done;
+    Vector.iter (fun _x -> ()) v
 
 let bench_iter_100k = fun () ->
-  let v = Vector.create () in
-  for i = 1 to 100_000 do
-    Vector.push v i
-  done;
-  Vector.iter (fun _x -> ()) v
+    let v = Vector.create () in
+    for i = 1 to 100_000 do
+      Vector.push v i
+    done;
+    Vector.iter (fun _x -> ()) v
 
 (* Benchmark: Sort operations *)
 
 let bench_sort_100 = fun () ->
-  let v = Vector.create () in
-  (* Fill with reverse order *)
-  for i = 100 downto 1 do
-    Vector.push v i
-  done;
-  Vector.sort v
+    let v = Vector.create () in
+    (* Fill with reverse order *)
+    for i = 100 downto 1 do
+      Vector.push v i
+    done;
+    Vector.sort v
 
 let bench_sort_10k = fun () ->
-  let v = Vector.create () in
-  for i = 10_000 downto 1 do
-    Vector.push v i
-  done;
-  Vector.sort v
+    let v = Vector.create () in
+    for i = 10_000 downto 1 do
+      Vector.push v i
+    done;
+    Vector.sort v
 
 let bench_sort_100k = fun () ->
-  let v = Vector.create () in
-  for i = 100_000 downto 1 do
-    Vector.push v i
-  done;
-  Vector.sort v
+    let v = Vector.create () in
+    for i = 100_000 downto 1 do
+      Vector.push v i
+    done;
+    Vector.sort v
 
 let benchmarks =
   Bench.
@@ -159,6 +159,6 @@ let benchmarks =
 
 let () =
   Miniriot.run
-  ~main:(fun ~args -> Bench.Cli.main ~name:"Vector Benchmarks" ~benchmarks ~args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args -> Bench.Cli.main ~name:"Vector Benchmarks" ~benchmarks ~args)
+    ~args:Env.args
+    ()

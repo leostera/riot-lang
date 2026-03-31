@@ -24,8 +24,7 @@ type error =
   | Extra_input_after_value of { position: int; }
   | Unknown_error of string
 
-let error_to_string =
-  function
+let error_to_string = function
   | Unterminated_string { position } ->
       "Unterminated string at position " ^ string_of_int position
   | Invalid_literal { expected; position; found } ->
@@ -81,43 +80,42 @@ let error_to_string =
 
 (** Escape a string for JSON *)
 let escape_string = fun s ->
-  let buffer = Buffer.create (String.length s * 2) in
-  String.iter
-    (
-      function
-      | '"' -> Buffer.add_string buffer "\\\""
-      | '\\' -> Buffer.add_string buffer "\\\\"
-      | '\n' -> Buffer.add_string buffer "\\n"
-      | '\r' -> Buffer.add_string buffer "\\r"
-      | '\t' -> Buffer.add_string buffer "\\t"
-      | c -> Buffer.add_char buffer c
-    )
-    s;
-  Buffer.contents buffer
+    let buffer = Buffer.create (String.length s * 2) in
+    String.iter
+      (
+        function
+        | '"' -> Buffer.add_string buffer "\\\""
+        | '\\' -> Buffer.add_string buffer "\\\\"
+        | '\n' -> Buffer.add_string buffer "\\n"
+        | '\r' -> Buffer.add_string buffer "\\r"
+        | '\t' -> Buffer.add_string buffer "\\t"
+        | c -> Buffer.add_char buffer c
+      )
+      s;
+    Buffer.contents buffer
 
 (** Format float for JSON - ensures valid JSON number format *)
 let format_float = fun f ->
-  (* Handle special float values *)
-  if Float.is_nan f then
-    "null"
-  else if Float.is_infinite f then
-    if f > 0.0 then
+    (* Handle special float values *)
+    if Float.is_nan f then
       "null"
-      (* or could use a large number *)
+    else if Float.is_infinite f then
+      if f > 0.0 then
+        "null"
+        (* or could use a large number *)
+      else
+        "null"
     else
-      "null"
-  else
-    let s = string_of_float f in
-    (* OCaml's string_of_float can produce "2000." which is invalid JSON *)
-    (* If it ends with "." add a "0" to make it valid JSON *)
-    if String.ends_with ~suffix:"." s then
-      s ^ "0"
-    else
-      s
+      let s = string_of_float f in
+      (* OCaml's string_of_float can produce "2000." which is invalid JSON *)
+      (* If it ends with "." add a "0" to make it valid JSON *)
+      if String.ends_with ~suffix:"." s then
+        s ^ "0"
+      else
+        s
 
 (** Serialize JSON to string *)
-let rec to_string =
-  function
+let rec to_string = function
   | Null -> "null"
   | Bool b ->
       if b then
@@ -130,238 +128,240 @@ let rec to_string =
   | Array items -> "[" ^ String.concat "," (List.map to_string items) ^ "]"
   | Object fields -> "{"
   ^ String.concat
-  ","
-  (List.map (fun ((k, v)) -> "\"" ^ escape_string k ^ "\":" ^ to_string v) fields)
+    ","
+    (List.map (fun ((k, v)) -> "\"" ^ escape_string k ^ "\":" ^ to_string v) fields)
   ^ "}"
 
 (** Parse JSON from string *)
 let of_string = fun str ->
-  let len = String.length str in
-  let pos = cell 0 in
-  let peek = fun () ->
-    if !pos < len then
-      Some str.[!pos]
-    else
-      None
-  in
-  let advance = fun () -> pos := !pos + 1 in
-  let rec skip_whitespace = fun () ->
-    if !pos >= len then
-      ()
-    else
-      match str.[!pos] with
-      | ' '
-      | '\t'
-      | '\n'
-      | '\r' ->
-          advance ();
-          skip_whitespace ()
-      | _ -> ()
-  in
-  let exception Json_parse_error of error in
-  let raise_error = fun err -> raise (Json_parse_error err) in
-  let parse_string = fun () ->
-    advance ();
-    (* skip opening quote *)
-    let buffer = Buffer.create 16 in
-    let rec loop = fun () ->
+    let len = String.length str in
+    let pos = cell 0 in
+    let peek () =
+      if !pos < len then
+        Some str.[!pos]
+      else
+        None
+    in
+    let advance () =
+      pos := !pos + 1
+    in
+    let rec skip_whitespace () =
       if !pos >= len then
-        raise_error (Unterminated_string {position = !pos})
+        ()
       else
         match str.[!pos] with
-        | '"' ->
+        | ' '
+        | '\t'
+        | '\n'
+        | '\r' ->
             advance ();
-            Buffer.contents buffer
-        | '\\' ->
-            advance ();
-            if !pos >= len then
-              raise_error (Unterminated_string {position = !pos});
-            (
-              match str.[!pos] with
-              | '"' -> Buffer.add_char buffer '"'
-              | '\\' -> Buffer.add_char buffer '\\'
-              | 'n' -> Buffer.add_char buffer '\n'
-              | 'r' -> Buffer.add_char buffer '\r'
-              | 't' -> Buffer.add_char buffer '\t'
-              | c -> Buffer.add_char buffer c
-            );
-            advance ();
-            loop ()
-        | c ->
-            Buffer.add_char buffer c;
-            advance ();
-            loop ()
+            skip_whitespace ()
+        | _ -> ()
     in
-    loop ()
-  in
-  let parse_number = fun () ->
-    let start = !pos in
-    let is_float = cell false in
-    let rec consume = fun () ->
+    let exception Json_parse_error of error in
+    let raise_error err = raise (Json_parse_error err) in
+    let parse_string () =
+      advance ();
+      (* skip opening quote *)
+      let buffer = Buffer.create 16 in
+      let rec loop () =
+        if !pos >= len then
+          raise_error (Unterminated_string {position = !pos})
+        else
+          match str.[!pos] with
+          | '"' ->
+              advance ();
+              Buffer.contents buffer
+          | '\\' ->
+              advance ();
+              if !pos >= len then
+                raise_error (Unterminated_string {position = !pos});
+              (
+                match str.[!pos] with
+                | '"' -> Buffer.add_char buffer '"'
+                | '\\' -> Buffer.add_char buffer '\\'
+                | 'n' -> Buffer.add_char buffer '\n'
+                | 'r' -> Buffer.add_char buffer '\r'
+                | 't' -> Buffer.add_char buffer '\t'
+                | c -> Buffer.add_char buffer c
+              );
+              advance ();
+              loop ()
+          | c ->
+              Buffer.add_char buffer c;
+              advance ();
+              loop ()
+      in
+      loop ()
+    in
+    let parse_number () =
+      let start = !pos in
+      let is_float = cell false in
+      let rec consume () =
+        match peek () with
+        | Some ('0' .. '9' | '-' | '+') ->
+            advance ();
+            consume ()
+        | Some ('.' | 'e' | 'E') ->
+            is_float := true;
+            advance ();
+            consume ()
+        | _ ->
+            ()
+      in
+      consume ();
+      let num_str = String.sub str start (!pos - start) in
+      if !is_float then
+        Float (float_of_string num_str)
+      else
+        Int (int_of_string num_str)
+    in
+    let rec parse_value () =
+      skip_whitespace ();
       match peek () with
-      | Some ('0' .. '9' | '-' | '+') ->
-          advance ();
-          consume ()
-      | Some ('.' | 'e' | 'E') ->
-          is_float := true;
-          advance ();
-          consume ()
-      | _ ->
-          ()
-    in
-    consume ();
-    let num_str = String.sub str start (!pos - start) in
-    if !is_float then
-      Float (float_of_string num_str)
-    else
-      Int (int_of_string num_str)
-  in
-  let rec parse_value = fun () ->
-    skip_whitespace ();
-    match peek () with
-    | None ->
-        raise_error (Unexpected_end_of_input {expected = "value"})
-    | Some 'n' ->
-        let start_pos = !pos in
-        if !pos + 4 <= len then
-          let substring = String.sub str !pos 4 in
-          if substring = "null" then
+      | None ->
+          raise_error (Unexpected_end_of_input {expected = "value"})
+      | Some 'n' ->
+          let start_pos = !pos in
+          if !pos + 4 <= len then
+            let substring = String.sub str !pos 4 in
+            if substring = "null" then
+              (
+                pos := !pos + 4;
+                Null
+              )
+            else
+              raise_error
+                (Invalid_literal {expected = "null"; position = start_pos; found = substring})
+          else
+            let found =
+              if !pos < len then
+                String.sub str !pos (len - !pos)
+              else
+                ""
+            in
+            raise_error (Invalid_literal {expected = "null"; position = start_pos; found})
+      | Some 't' ->
+          let start_pos = !pos in
+          if !pos + 4 <= len && String.sub str !pos 4 = "true" then
             (
               pos := !pos + 4;
-              Null
+              Bool true
             )
           else
-            raise_error
-            (Invalid_literal {expected = "null"; position = start_pos; found = substring})
-        else
-          let found =
-            if !pos < len then
-              String.sub str !pos (len - !pos)
-            else
-              ""
-          in
-          raise_error (Invalid_literal {expected = "null"; position = start_pos; found})
-    | Some 't' ->
-        let start_pos = !pos in
-        if !pos + 4 <= len && String.sub str !pos 4 = "true" then
-          (
-            pos := !pos + 4;
-            Bool true
-          )
-        else
-          let found =
-            if !pos + 4 <= len then
-              String.sub str !pos 4
-            else if !pos < len then
-              String.sub str !pos (len - !pos)
-            else
-              ""
-          in
-          raise_error (Invalid_literal {expected = "true"; position = start_pos; found})
-    | Some 'f' ->
-        let start_pos = !pos in
-        if !pos + 5 <= len && String.sub str !pos 5 = "false" then
-          (
-            pos := !pos + 5;
-            Bool false
-          )
-        else
-          let found =
-            if !pos + 5 <= len then
-              String.sub str !pos 5
-            else if !pos < len then
-              String.sub str !pos (len - !pos)
-            else
-              ""
-          in
-          raise_error (Invalid_literal {expected = "false"; position = start_pos; found})
-    | Some '"' ->
-        String (parse_string ())
-    | Some '[' ->
-        advance ();
-        skip_whitespace ();
-        if peek () = Some ']' then
-          (
-            advance ();
-            Array []
-          )
-        else
-          let rec parse_items = fun acc ->
-            let item = parse_value () in
-            skip_whitespace ();
-            match peek () with
-            | Some ',' ->
-                advance ();
-                parse_items (item :: acc)
-            | Some ']' ->
-                advance ();
-                Array (List.rev (item :: acc))
-            | Some c ->
-                raise_error
-                (Expected_comma_or_bracket {kind = "array"; position = !pos; found = Some c})
-            | None ->
-                raise_error
-                (Expected_comma_or_bracket {kind = "array"; position = !pos; found = None})
-          in
-          parse_items []
-    | Some '{' ->
-        advance ();
-        skip_whitespace ();
-        if peek () = Some '}' then
-          (
-            advance ();
-            Object []
-          )
-        else
-          let rec parse_fields = fun acc ->
-            skip_whitespace ();
+            let found =
+              if !pos + 4 <= len then
+                String.sub str !pos 4
+              else if !pos < len then
+                String.sub str !pos (len - !pos)
+              else
+                ""
+            in
+            raise_error (Invalid_literal {expected = "true"; position = start_pos; found})
+      | Some 'f' ->
+          let start_pos = !pos in
+          if !pos + 5 <= len && String.sub str !pos 5 = "false" then
             (
-              match peek () with
-              | Some '"' -> ()
-              | Some c -> raise_error (Expected_string_key {position = !pos; found = Some c})
-              | None -> raise_error (Expected_string_key {position = !pos; found = None})
-            );
-            let key = parse_string () in
-            skip_whitespace ();
+              pos := !pos + 5;
+              Bool false
+            )
+          else
+            let found =
+              if !pos + 5 <= len then
+                String.sub str !pos 5
+              else if !pos < len then
+                String.sub str !pos (len - !pos)
+              else
+                ""
+            in
+            raise_error (Invalid_literal {expected = "false"; position = start_pos; found})
+      | Some '"' ->
+          String (parse_string ())
+      | Some '[' ->
+          advance ();
+          skip_whitespace ();
+          if peek () = Some ']' then
             (
+              advance ();
+              Array []
+            )
+          else
+            let rec parse_items acc =
+              let item = parse_value () in
+              skip_whitespace ();
               match peek () with
-              | Some ':' -> advance ()
-              | Some c -> raise_error (Expected_colon {position = !pos; found = Some c})
-              | None -> raise_error (Expected_colon {position = !pos; found = None})
-            );
-            let value = parse_value () in
-            skip_whitespace ();
-            match peek () with
-            | Some ',' ->
-                advance ();
-                parse_fields ((key, value) :: acc)
-            | Some '}' ->
-                advance ();
-                Object (List.rev ((key, value) :: acc))
-            | Some c ->
-                raise_error
-                (Expected_comma_or_bracket {kind = "object"; position = !pos; found = Some c})
-            | None ->
-                raise_error
-                (Expected_comma_or_bracket {kind = "object"; position = !pos; found = None})
-          in
-          parse_fields []
-    | Some ('-' | '0' .. '9') ->
-        parse_number ()
-    | Some c ->
-        raise_error (Unexpected_character {position = !pos; character = c; expected = "value"})
-  in
-  try
-    skip_whitespace ();
-    let result = parse_value () in
-    skip_whitespace ();
-    if !pos < len then
-      Error (Extra_input_after_value {position = !pos})
-    else
-      Ok result
-  with
-  | Json_parse_error err -> Error err
-  | exn -> Error (Unknown_error (Exception.to_string exn))
+              | Some ',' ->
+                  advance ();
+                  parse_items (item :: acc)
+              | Some ']' ->
+                  advance ();
+                  Array (List.rev (item :: acc))
+              | Some c ->
+                  raise_error
+                    (Expected_comma_or_bracket {kind = "array"; position = !pos; found = Some c})
+              | None ->
+                  raise_error
+                    (Expected_comma_or_bracket {kind = "array"; position = !pos; found = None})
+            in
+            parse_items []
+      | Some '{' ->
+          advance ();
+          skip_whitespace ();
+          if peek () = Some '}' then
+            (
+              advance ();
+              Object []
+            )
+          else
+            let rec parse_fields acc =
+              skip_whitespace ();
+              (
+                match peek () with
+                | Some '"' -> ()
+                | Some c -> raise_error (Expected_string_key {position = !pos; found = Some c})
+                | None -> raise_error (Expected_string_key {position = !pos; found = None})
+              );
+              let key = parse_string () in
+              skip_whitespace ();
+              (
+                match peek () with
+                | Some ':' -> advance ()
+                | Some c -> raise_error (Expected_colon {position = !pos; found = Some c})
+                | None -> raise_error (Expected_colon {position = !pos; found = None})
+              );
+              let value = parse_value () in
+              skip_whitespace ();
+              match peek () with
+              | Some ',' ->
+                  advance ();
+                  parse_fields ((key, value) :: acc)
+              | Some '}' ->
+                  advance ();
+                  Object (List.rev ((key, value) :: acc))
+              | Some c ->
+                  raise_error
+                    (Expected_comma_or_bracket {kind = "object"; position = !pos; found = Some c})
+              | None ->
+                  raise_error
+                    (Expected_comma_or_bracket {kind = "object"; position = !pos; found = None})
+            in
+            parse_fields []
+      | Some ('-' | '0' .. '9') ->
+          parse_number ()
+      | Some c ->
+          raise_error (Unexpected_character {position = !pos; character = c; expected = "value"})
+    in
+    try
+      skip_whitespace ();
+      let result = parse_value () in
+      skip_whitespace ();
+      if !pos < len then
+        Error (Extra_input_after_value {position = !pos})
+      else
+        Ok result
+    with
+    | Json_parse_error err -> Error err
+    | exn -> Error (Unknown_error (Exception.to_string exn))
 
 (** Helper functions *)
 let null = Null
@@ -379,100 +379,95 @@ let array = fun items -> Array items
 let obj = fun fields -> Object fields
 
 let get_field = fun name ->
-  function
-  | Object fields -> (
-      try Some (List.assoc name fields) with
-      | Not_found -> None
-    )
-  | _ -> None
+    function
+    | Object fields -> (
+        try Some (List.assoc name fields) with
+        | Not_found -> None
+      )
+    | _ -> None
 
-let get_string =
-  function
+let get_string = function
   | String s -> Some s
   | _ -> None
 
-let get_int =
-  function
+let get_int = function
   | Int i -> Some i
   | _ -> None
 
-let get_bool =
-  function
+let get_bool = function
   | Bool b -> Some b
   | _ -> None
 
-let get_array =
-  function
+let get_array = function
   | Array a -> Some a
   | _ -> None
 
-let get_object =
-  function
+let get_object = function
   | Object o -> Some o
   | _ -> None
 
 let rec diff = fun a b ->
-  let rec diff_at_path = fun path a b ->
-    match (a, b) with
-    | Null, Null -> []
-    | Bool x, Bool y when x = y -> []
-    | Int x, Int y when x = y -> []
-    | Float x, Float y when x = y -> []
-    | String x, String y when x = y -> []
-    | Array xs, Array ys -> diff_arrays path xs ys
-    | Object xs, Object ys -> diff_objects path xs ys
-    | _ -> [ {Diff.path; kind = Diff.Changed (a, b)} ]
-  and diff_arrays = fun path xs ys ->
-    let max_len = max (List.length xs) (List.length ys) in
-    let rec loop = fun acc idx ->
-      if idx >= max_len then
-        List.rev acc
-      else
-        let x_opt =
-          try Some (List.nth xs idx) with
-          | _ -> None
-        in
-        let y_opt =
-          try Some (List.nth ys idx) with
-          | _ -> None
-        in
-        let idx_path = path @ [ Diff.Index idx ] in
-        match (x_opt, y_opt) with
-        | Some x, Some y ->
-            let diffs = diff_at_path idx_path x y in
-            loop (List.rev_append diffs acc) (idx + 1)
-        | Some x, None ->
-            let diff = {Diff.path = idx_path; kind = Diff.Removed x} in
-            loop (diff :: acc) (idx + 1)
-        | None, Some y ->
-            let diff = {Diff.path = idx_path; kind = Diff.Added y} in
-            loop (diff :: acc) (idx + 1)
-        | None, None ->
-            loop acc (idx + 1)
-    in
-    loop [] 0
-  and diff_objects = fun path xs ys ->
-    let all_keys =
-      let xs_keys = List.map fst xs in
-      let ys_keys = List.map fst ys in
-      List.sort_uniq String.compare (xs_keys @ ys_keys)
-    in
-    let rec loop = fun acc keys ->
-      match keys with
-      | [] -> List.rev acc
-      | key :: rest ->
-          let x_opt = List.assoc_opt key xs in
-          let y_opt = List.assoc_opt key ys in
-          let key_path = path @ [ Diff.Key key ] in
-          let new_diffs =
-            match (x_opt, y_opt) with
-            | Some x, Some y -> diff_at_path key_path x y
-            | Some x, None -> [ {Diff.path = key_path; kind = Diff.Removed x} ]
-            | None, Some y -> [ {Diff.path = key_path; kind = Diff.Added y} ]
-            | None, None -> []
+    let rec diff_at_path path a b =
+      match (a, b) with
+      | Null, Null -> []
+      | Bool x, Bool y when x = y -> []
+      | Int x, Int y when x = y -> []
+      | Float x, Float y when x = y -> []
+      | String x, String y when x = y -> []
+      | Array xs, Array ys -> diff_arrays path xs ys
+      | Object xs, Object ys -> diff_objects path xs ys
+      | _ -> [ {Diff.path; kind = Diff.Changed (a, b)} ]
+    and diff_arrays path xs ys =
+      let max_len = max (List.length xs) (List.length ys) in
+      let rec loop acc idx =
+        if idx >= max_len then
+          List.rev acc
+        else
+          let x_opt =
+            try Some (List.nth xs idx) with
+            | _ -> None
           in
-          loop (List.rev_append new_diffs acc) rest
+          let y_opt =
+            try Some (List.nth ys idx) with
+            | _ -> None
+          in
+          let idx_path = path @ [ Diff.Index idx ] in
+          match (x_opt, y_opt) with
+          | Some x, Some y ->
+              let diffs = diff_at_path idx_path x y in
+              loop (List.rev_append diffs acc) (idx + 1)
+          | Some x, None ->
+              let diff = {Diff.path = idx_path; kind = Diff.Removed x} in
+              loop (diff :: acc) (idx + 1)
+          | None, Some y ->
+              let diff = {Diff.path = idx_path; kind = Diff.Added y} in
+              loop (diff :: acc) (idx + 1)
+          | None, None ->
+              loop acc (idx + 1)
+      in
+      loop [] 0
+    and diff_objects path xs ys =
+      let all_keys =
+        let xs_keys = List.map fst xs in
+        let ys_keys = List.map fst ys in
+        List.sort_uniq String.compare (xs_keys @ ys_keys)
+      in
+      let rec loop acc keys =
+        match keys with
+        | [] -> List.rev acc
+        | key :: rest ->
+            let x_opt = List.assoc_opt key xs in
+            let y_opt = List.assoc_opt key ys in
+            let key_path = path @ [ Diff.Key key ] in
+            let new_diffs =
+              match (x_opt, y_opt) with
+              | Some x, Some y -> diff_at_path key_path x y
+              | Some x, None -> [ {Diff.path = key_path; kind = Diff.Removed x} ]
+              | None, Some y -> [ {Diff.path = key_path; kind = Diff.Added y} ]
+              | None, None -> []
+            in
+            loop (List.rev_append new_diffs acc) rest
+      in
+      loop [] all_keys
     in
-    loop [] all_keys
-  in
-  diff_at_path [] a b
+    diff_at_path [] a b

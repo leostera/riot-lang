@@ -38,7 +38,7 @@ let () =
   println "";
   (* Example 5: Individual rune width *)
   println "5. Individual character widths:";
-  let test_char = fun c_code name ->
+  let test_char c_code name =
     let r = Unicode.Rune.unsafe_of_int c_code in
     let w = Unicode.Rune.width r in
     let hex_str =
@@ -77,7 +77,7 @@ let () =
           Bytes.to_string s
         in
         println
-        ("   First rune of '" ^ s ^ "': U+" ^ hex_str ^ " at byte position " ^ string_of_int next_pos)
+          ("   First rune of '" ^ s ^ "': U+" ^ hex_str ^ " at byte position " ^ string_of_int next_pos)
     | None -> println "   Failed to decode"
   );
   println ("   Is valid UTF-8: " ^ string_of_bool (Unicode.Utf8.is_valid s));
@@ -88,11 +88,11 @@ let () =
   println ("   Original: '" ^ s7 ^ "' (width: " ^ string_of_int (String.width s7) ^ ")");
   let truncated = String.truncate_width ~width:10 s7 in
   println
-  ("   Truncated to width 10: '"
-  ^ truncated
-  ^ "' (width: "
-  ^ string_of_int (String.width truncated)
-  ^ ")");
+    ("   Truncated to width 10: '"
+    ^ truncated
+    ^ "' (width: "
+    ^ string_of_int (String.width truncated)
+    ^ ")");
   println "";
   (* Example 8: Padding with width awareness *)
   println "8. Padding strings (width-aware):";

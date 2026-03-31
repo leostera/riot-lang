@@ -26,8 +26,8 @@ let header_value_gen = Generator.(string_of char_printable)
 
 let header_gen =
   Generator.map
-  (fun ((name, value)) -> Http2.Hpack.{name; value})
-  (Generator.pair header_name_gen header_value_gen)
+    (fun ((name, value)) -> Http2.Hpack.{name; value})
+    (Generator.pair header_name_gen header_value_gen)
 
 (* Arbitrary for headers *)
 
@@ -41,9 +41,9 @@ let hpack_encode_prop =
     (fun headers ->
       assume (List.length headers > 0);
       assume
-      (List.for_all
-      (fun h -> String.length h.Http2.Hpack.name > 0 && String.length h.Http2.Hpack.value > 0)
-      headers);
+        (List.for_all
+          (fun h -> String.length h.Http2.Hpack.name > 0 && String.length h.Http2.Hpack.value > 0)
+          headers);
       let encoder = Http2.Hpack.create_encoder () in
       let encoded = Http2.Hpack.encode encoder ~headers ~sensitive_headers:[] in
       IO.Bytes.length encoded > 0)
@@ -82,15 +82,10 @@ let frame_type_gen = Generator.one_of
 
 let frame_flags_gen =
   let open Generator in map2
-  (fun ((end_stream, end_headers, padded)) ((priority_flag, ack)) -> Http2.Frame.{
-    end_stream;
-    end_headers;
-    padded;
-    priority = priority_flag;
-    ack
-  })
-  (map3 (fun a b c -> (a, b, c)) bool bool bool)
-  (map2 (fun a b -> (a, b)) bool bool)
+    (fun ((end_stream, end_headers, padded)) ((priority_flag, ack)) ->
+      Http2.Frame.{end_stream; end_headers; padded; priority = priority_flag; ack})
+    (map3 (fun a b c -> (a, b, c)) bool bool bool)
+    (map2 (fun a b -> (a, b)) bool bool)
 
 (* Generator for simple DATA frames *)
 
@@ -112,15 +107,16 @@ let data_frame_gen =
 
 let settings_frame_gen =
   Generator.map
-  (fun flags -> Http2.Frame.{
-    length = 0;
-    frame_type = Settings;
-    flags;
-    stream_id = 0;
-    payload = SettingsPayload [];
+    (fun flags ->
+      Http2.Frame.{
+        length = 0;
+        frame_type = Settings;
+        flags;
+        stream_id = 0;
+        payload = SettingsPayload [];
 
-  })
-  frame_flags_gen
+      })
+    frame_flags_gen
 
 (* Property: Frame serialization produces valid length *)
 
@@ -140,8 +136,8 @@ let chunk_size_gen = Generator.int_range 0 100
 
 let chunk_roundtrip_prop =
   property "HTTP/1 chunk encode/decode preserves data" Arbitrary.(pair
-  (make (Generator.int_range 1 50))
-  string)
+    (make (Generator.int_range 1 50))
+    string)
     (fun ((size, full_data)) ->
       assume (String.length full_data > 0);
       (* Take a substring of the specified size *)
@@ -170,16 +166,16 @@ let chunk_roundtrip_prop =
 (* Generator for HTTP methods *)
 
 let method_gen = Generator.one_of
-[
-  Generator.return "GET";
-  Generator.return "POST";
-  Generator.return "PUT";
-  Generator.return "DELETE";
-  Generator.return "HEAD";
-  Generator.return "OPTIONS";
-  Generator.return "PATCH";
+  [
+    Generator.return "GET";
+    Generator.return "POST";
+    Generator.return "PUT";
+    Generator.return "DELETE";
+    Generator.return "HEAD";
+    Generator.return "OPTIONS";
+    Generator.return "PATCH";
 
-]
+  ]
 
 (* Generator for valid URI paths *)
 
@@ -217,6 +213,6 @@ let tests = [
 
 let () =
   Miniriot.run
-  ~main:(fun ~args:_ -> Test.Cli.main ~name:"http:properties" ~tests ~args:Env.args)
-  ~args:Env.args
-  ()
+    ~main:(fun ~args:_ -> Test.Cli.main ~name:"http:properties" ~tests ~args:Env.args)
+    ~args:Env.args
+    ()

@@ -8,16 +8,14 @@ type t =
   | Warn
   | Error
 
-let to_int =
-  function
+let to_int = function
   | Trace -> 0
   | Debug -> 1
   | Info -> 2
   | Warn -> 3
   | Error -> 4
 
-let to_string =
-  function
+let to_string = function
   | Trace -> "TRACE"
   | Debug -> "DEBUG"
   | Info -> "INFO"
@@ -25,4 +23,4 @@ let to_string =
   | Error -> "ERROR"
 
 let compare = fun l1 l2 ->
-  Int.compare (to_int l1) (to_int l2)
+    Int.compare (to_int l1) (to_int l2)
