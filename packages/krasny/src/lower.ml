@@ -5939,53 +5939,6 @@ and is_open_signature_item = function
   | _ ->
       false
 
-and class_declaration_owned_trivia _decl = None
-
-and class_definition_owned_trivia _decl = None
-
-and render_structure_item_owned_trivia =
-  function
-  | Syn.Cst.StructureItem.TypeDeclaration _
-  | Syn.Cst.StructureItem.TypeExtension _ ->
-      None
-  | Syn.Cst.StructureItem.ClassDeclaration decl ->
-      class_definition_owned_trivia decl
-  | Syn.Cst.StructureItem.ClassTypeDeclaration _
-  | Syn.Cst.StructureItem.ModuleDeclaration _
-  | Syn.Cst.StructureItem.ModuleTypeDeclaration _
-  | Syn.Cst.StructureItem.OpenStatement _
-  | Syn.Cst.StructureItem.ExternalDeclaration _
-  | Syn.Cst.StructureItem.IncludeStatement _
-  | Syn.Cst.StructureItem.ExceptionDeclaration _
-  | Syn.Cst.StructureItem.LetBinding _
-  | Syn.Cst.StructureItem.Expression _
-  | Syn.Cst.StructureItem.Attribute _
-  | Syn.Cst.StructureItem.Extension _
-  | Syn.Cst.StructureItem.Docstring _
-  | Syn.Cst.StructureItem.Comment _ ->
-      None
-
-and render_signature_item_owned_trivia =
-  function
-  | Syn.Cst.SignatureItem.TypeDeclaration _
-  | Syn.Cst.SignatureItem.TypeExtension _ ->
-      None
-  | Syn.Cst.SignatureItem.ClassDeclaration decl ->
-      class_declaration_owned_trivia decl
-  | Syn.Cst.SignatureItem.ClassTypeDeclaration _
-  | Syn.Cst.SignatureItem.ModuleDeclaration _
-  | Syn.Cst.SignatureItem.ModuleTypeDeclaration _
-  | Syn.Cst.SignatureItem.OpenStatement _
-  | Syn.Cst.SignatureItem.ValueDeclaration _
-  | Syn.Cst.SignatureItem.ExternalDeclaration _
-  | Syn.Cst.SignatureItem.IncludeStatement _
-  | Syn.Cst.SignatureItem.ExceptionDeclaration _
-  | Syn.Cst.SignatureItem.Attribute _
-  | Syn.Cst.SignatureItem.Extension _
-  | Syn.Cst.SignatureItem.Docstring _
-  | Syn.Cst.SignatureItem.Comment _ ->
-      None
-
 and render_structure_entry ~trailing_suffix ~leading_after item =
   let doc =
     let base_doc =
@@ -6000,13 +5953,6 @@ and render_structure_entry ~trailing_suffix ~leading_after item =
           render_class_type_declaration ~leading_after decl
       | _ ->
           render_structure_item item
-    in
-    let base_doc =
-      match item with
-      | Syn.Cst.StructureItem.TypeDeclaration _ ->
-          base_doc
-      | _ ->
-          base_doc
     in
     match trailing_suffix with
     | None ->
@@ -6072,13 +6018,6 @@ and render_signature_entry ~trailing_suffix ~leading_after item =
           render_class_type_declaration ~leading_after decl
       | _ ->
           render_signature_item item
-    in
-    let base_doc =
-      match item with
-      | Syn.Cst.SignatureItem.TypeDeclaration _ ->
-          base_doc
-      | _ ->
-          base_doc
     in
     match trailing_suffix with
     | None ->
