@@ -55,10 +55,11 @@ let signature_items =
   | Syn.Cst.Interface { items; _ } -> items
   | Syn.Cst.Implementation _ -> []
 
-let owned_trivia_texts = fun owned ->
-  Syn.Cst.OwnedTrivia.leading owned
-  @ Syn.Cst.OwnedTrivia.inner owned
-  @ Syn.Cst.OwnedTrivia.trailing owned
+let node_leading_trivia = fun syntax_node ->
+  Syn.Cst.leading_trivia_before_node ~after:0 syntax_node
+
+let node_leading_trivia_texts = fun syntax_node ->
+  node_leading_trivia syntax_node
   |> List.map Syn.Cst.Trivia.text
 
 let top_level_let_bindings = fun cst ->
@@ -746,13 +747,13 @@ let tests =
             Syn.Cst.SignatureItem.TypeDeclaration next_decl ] -> (
             match Syn.Cst.TypeDeclaration.and_declarations node_decl with
             | [ element_decl ] ->
-                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia node_decl) with
+                (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node node_decl) with
                 | [ Syn.Cst.Trivia.Docstring doc ] ->
                     Test.assert_equal ~expected:"(** Node type doc *)"
                       ~actual:(Syn.Cst.Docstring.text doc)
                 | _ ->
                     raise (Failure "expected node leading docstring"));
-                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia element_decl) with
+                (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl) with
                 | [ Syn.Cst.Trivia.Docstring doc ] ->
                     Test.assert_equal ~expected:"(** Element type doc *)"
                       ~actual:(Syn.Cst.Docstring.text doc)
@@ -761,7 +762,7 @@ let tests =
                 Test.assert_equal ~expected:"(** {2 Next} *)"
                   ~actual:(Syn.Cst.Docstring.text heading);
                 Test.assert_equal ~expected:0
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia next_decl)));
+                  ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node next_decl)));
                 Ok ()
             | _ ->
                 Error "expected grouped node/element declarations")
@@ -785,7 +786,7 @@ let tests =
         | [ Syn.Cst.SignatureItem.TypeDeclaration decl ] -> (
             match Syn.Cst.TypeDeclaration.and_declarations decl with
             | [ b_decl ] ->
-                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia b_decl) with
+                (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node b_decl) with
                 | [ Syn.Cst.Trivia.Docstring doc ] ->
                     Test.assert_equal ~expected:"(** doc for b *)"
                       ~actual:(Syn.Cst.Docstring.text doc);
@@ -814,7 +815,7 @@ let tests =
         | [ Syn.Cst.SignatureItem.TypeDeclaration decl ] -> (
             match Syn.Cst.TypeDeclaration.and_declarations decl with
             | [ b_decl ] ->
-                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia b_decl) with
+                (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node b_decl) with
                 | [ Syn.Cst.Trivia.Comment comment ] ->
                     Test.assert_equal ~expected:"(* comment for b *)"
                       ~actual:(Syn.Cst.Comment.text comment);
@@ -1094,9 +1095,15 @@ let tests =
             | Syn.Cst.TypeDefinition.Variant
                 { constructors = [ person; anonymous ]; _ } ->
                 (match Syn.Cst.VariantConstructor.arguments person with
-                | Some (Syn.Cst.ConstructorArguments.Record fields) ->
-                    Test.assert_equal ~expected:[ "name"; "age" ]
-                      ~actual:(List.map Syn.Cst.RecordField.name fields)
+                | Some (Syn.Cst.ConstructorArguments.Record { fields = [ name_field; age_field ]; _ }) ->
+                    Test.assert_equal ~expected:"name"
+                      ~actual:(Syn.Cst.RecordField.name name_field);
+                    Test.assert_equal ~expected:"age"
+                      ~actual:(Syn.Cst.RecordField.name age_field)
+                | Some (Syn.Cst.ConstructorArguments.Record _) ->
+                    raise
+                      (Failure
+                         "expected Person constructor inline record to have two fields")
                 | _ ->
                     raise
                       (Failure
@@ -1438,11 +1445,8 @@ let tests =
                 | [ element_decl ] ->
                     Test.assert_equal ~expected:"element"
                       ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
-                    let element_owned = Syn.Cst.TypeDeclaration.owned_trivia element_decl in
                     Test.assert_equal ~expected:1
-                      ~actual:(List.length (Syn.Cst.OwnedTrivia.leading element_owned));
-                    Test.assert_equal ~expected:0
-                      ~actual:(List.length (Syn.Cst.OwnedTrivia.trailing element_owned));
+                      ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl)));
                     Ok ()
                 | _ ->
                     Error "expected grouped node/element type declarations")
@@ -1989,11 +1993,6 @@ let tests =
                 ] ->
                 Test.assert_equal ~expected:"x"
                   ~actual:(declaration_name_text decl.name_tokens);
-                Test.assert_equal ~expected:true
-                  ~actual:
-                    (Syn.Cst.ValueDeclaration.owned_trivia decl
-                     |> Syn.Cst.OwnedTrivia.trailing
-                     |> List.is_empty);
                 Test.assert_equal ~expected:"(** keep me *)"
                   ~actual:(Syn.Cst.Docstring.text docstring);
                 Ok ()
@@ -2055,14 +2054,14 @@ let tests =
                   ~actual:(Syn.Cst.Docstring.text types_doc);
                 Test.assert_equal ~expected:"(** ## Construction *)"
                   ~actual:(Syn.Cst.Docstring.text construction_doc);
-                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia token_decl) with
+                (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node token_decl) with
                 | [ Syn.Cst.Trivia.Docstring doc ] ->
                     Test.assert_equal
                       ~expected:"(** Green token - leaf node containing source text. *)"
                       ~actual:(Syn.Cst.Docstring.text doc)
                 | _ ->
                     raise (Failure "expected token type leading docstring"));
-                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia node_decl) with
+                (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node node_decl) with
                 | [ Syn.Cst.Trivia.Docstring doc ] ->
                     Test.assert_equal
                       ~expected:"(** Green node - interior node with children. *)"
@@ -2071,7 +2070,7 @@ let tests =
                     raise (Failure "expected node type leading docstring"));
                 (match Syn.Cst.TypeDeclaration.and_declarations node_decl with
                 | [ element_decl ] ->
-                    (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia element_decl) with
+                    (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl) with
                     | [ Syn.Cst.Trivia.Docstring doc ] ->
                         Test.assert_equal
                           ~expected:"(** Element can be either a token or a node. *)"
@@ -2178,13 +2177,13 @@ end
                 Test.assert_equal ~expected:"(** {2 Capabilities} *)"
                   ~actual:(Syn.Cst.Docstring.text heading);
                 Test.assert_equal ~expected:1
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia tool_decl)));
+                  ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node tool_decl)));
                 Test.assert_equal ~expected:0
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia resource_decl)));
+                  ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node resource_decl)));
                 Test.assert_equal ~expected:1
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia prompt_decl)));
+                  ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node prompt_decl)));
                 Test.assert_equal ~expected:1
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia sampling_decl)));
+                  ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node sampling_decl)));
                 Ok ()
             | Ok _ ->
                 Error "expected normalized repeated nested type docs"
@@ -2264,10 +2263,7 @@ end
                 | Some decl ->
                     Test.assert_equal ~expected:"make_trivia"
                       ~actual:(declaration_name_text decl.name_tokens);
-                    (match
-                       Syn.Cst.OwnedTrivia.leading
-                         (Syn.Cst.ValueDeclaration.owned_trivia decl)
-                     with
+                    (match node_leading_trivia (Syn.Cst.ValueDeclaration.syntax_node decl) with
                     | [ Syn.Cst.Trivia.Docstring doc ] ->
                         let text = Syn.Cst.Docstring.text doc in
                         Test.assert_equal ~expected:false
@@ -4565,8 +4561,7 @@ val decode : Outer.Inner (* c *).(request -> response)
           :: Syn.Cst.SignatureItem.ValueDeclaration decl :: _ ->
             Test.assert_equal ~expected:[ "(** Module overview. *)" ]
               ~actual:
-                (Syn.Cst.ValueDeclaration.owned_trivia decl
-                 |> Syn.Cst.OwnedTrivia.leading
+                (node_leading_trivia (Syn.Cst.ValueDeclaration.syntax_node decl)
                  |> List.map Syn.Cst.Trivia.text);
             Ok ()
         | _ ->
@@ -4605,8 +4600,7 @@ val decode : Outer.Inner (* c *).(request -> response)
                   "(** Request identifiers. *)";
                 ]
               ~actual:
-                (Syn.Cst.TypeDeclaration.owned_trivia id_decl
-                 |> Syn.Cst.OwnedTrivia.leading
+                (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node id_decl)
                  |> List.map Syn.Cst.Trivia.text);
             Ok ()
         | _ ->
@@ -4727,7 +4721,7 @@ val decode : Outer.Inner (* c *).(request -> response)
         | [ Syn.Cst.StructureItem.OpenStatement stmt ] ->
             Test.assert_equal ~expected:[ "(* keep me *)" ]
               ~actual:
-                (owned_trivia_texts (Syn.Cst.OpenStatement.owned_trivia stmt));
+                (node_leading_trivia_texts (Syn.Cst.OpenStatement.syntax_node stmt));
             Ok ()
         | _ ->
             Error "expected single open statement item");
@@ -4743,7 +4737,7 @@ val decode : Outer.Inner (* c *).(request -> response)
         | [ Syn.Cst.StructureItem.ModuleDeclaration decl ] ->
             Test.assert_equal ~expected:[ "(* keep me *)" ]
               ~actual:
-                (owned_trivia_texts (Syn.Cst.ModuleStructure.owned_trivia decl));
+                (node_leading_trivia_texts (Syn.Cst.ModuleStructure.syntax_node decl));
             Ok ()
         | _ ->
             Error "expected single module declaration item");
@@ -4759,8 +4753,8 @@ val decode : Outer.Inner (* c *).(request -> response)
         | [ Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ] ->
             Test.assert_equal ~expected:[ "(* keep me *)" ]
               ~actual:
-                (owned_trivia_texts
-                   (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl));
+                (node_leading_trivia_texts
+                   (Syn.Cst.ModuleTypeDeclaration.syntax_node decl));
             Ok ()
         | _ ->
             Error "expected single module type declaration item");
@@ -4779,11 +4773,8 @@ val decode : Outer.Inner (* c *).(request -> response)
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.ValueDeclaration decl;
             Syn.Cst.SignatureItem.Docstring docstring ] ->
-            let owned = Syn.Cst.ValueDeclaration.owned_trivia decl in
-            let leading = Syn.Cst.OwnedTrivia.leading owned in
-            let trailing = Syn.Cst.OwnedTrivia.trailing owned in
+            let leading = node_leading_trivia (Syn.Cst.ValueDeclaration.syntax_node decl) in
             Test.assert_equal ~expected:true ~actual:(List.is_empty leading);
-            Test.assert_equal ~expected:true ~actual:(List.is_empty trailing);
             Test.assert_equal ~expected:"(** Create a new builder *)"
               ~actual:(Syn.Cst.Docstring.text docstring);
             Ok ()
@@ -4808,21 +4799,17 @@ val decode : Outer.Inner (* c *).(request -> response)
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.TypeDeclaration protocol_version;
             Syn.Cst.SignatureItem.TypeDeclaration json ] ->
-            let protocol_owned =
-              Syn.Cst.TypeDeclaration.owned_trivia protocol_version
-            in
-            let json_owned = Syn.Cst.TypeDeclaration.owned_trivia json in
             Test.assert_equal ~expected:1
-              ~actual:(List.length (Syn.Cst.OwnedTrivia.leading protocol_owned));
+              ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node protocol_version)));
             Test.assert_equal ~expected:1
-              ~actual:(List.length (Syn.Cst.OwnedTrivia.leading json_owned));
-            (match Syn.Cst.OwnedTrivia.leading protocol_owned with
+              ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node json)));
+            (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node protocol_version) with
             | [ Syn.Cst.Trivia.Docstring doc ] ->
                 Test.assert_equal ~expected:"(** Protocol version string *)"
                   ~actual:(Syn.Cst.Docstring.text doc)
             | _ ->
                 raise (Failure "expected protocol_version leading docstring"));
-            (match Syn.Cst.OwnedTrivia.leading json_owned with
+            (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node json) with
             | [ Syn.Cst.Trivia.Docstring doc ] ->
                 Test.assert_equal ~expected:"(** JSON type alias *)"
                   ~actual:(Syn.Cst.Docstring.text doc)
@@ -4851,15 +4838,13 @@ val decode : Outer.Inner (* c *).(request -> response)
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.TypeDeclaration request_id;
             Syn.Cst.SignatureItem.TypeDeclaration error_code ] ->
-            let request_owned = Syn.Cst.TypeDeclaration.owned_trivia request_id in
-            let error_owned = Syn.Cst.TypeDeclaration.owned_trivia error_code in
-            (match Syn.Cst.OwnedTrivia.leading request_owned with
+            (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node request_id) with
             | [ Syn.Cst.Trivia.Docstring doc ] ->
                 Test.assert_equal ~expected:"(** JSON-RPC request ID *)"
                   ~actual:(Syn.Cst.Docstring.text doc)
             | _ ->
                 raise (Failure "expected request_id leading docstring"));
-            (match Syn.Cst.OwnedTrivia.leading error_owned with
+            (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node error_code) with
             | [ Syn.Cst.Trivia.Docstring doc ] ->
                 Test.assert_equal ~expected:"(** JSON-RPC error code *)"
                   ~actual:(Syn.Cst.Docstring.text doc)
@@ -4891,19 +4876,17 @@ val decode : Outer.Inner (* c *).(request -> response)
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.TypeDeclaration params;
             Syn.Cst.SignatureItem.TypeDeclaration prerequest ] ->
-            let params_owned = Syn.Cst.TypeDeclaration.owned_trivia params in
-            let prerequest_owned = Syn.Cst.TypeDeclaration.owned_trivia prerequest in
             Test.assert_equal ~expected:1
-              ~actual:(List.length (Syn.Cst.OwnedTrivia.leading params_owned));
+              ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node params)));
             Test.assert_equal ~expected:1
-              ~actual:(List.length (Syn.Cst.OwnedTrivia.leading prerequest_owned));
-            (match Syn.Cst.OwnedTrivia.leading params_owned with
+              ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node prerequest)));
+            (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node params) with
             | [ Syn.Cst.Trivia.Docstring doc ] ->
                 Test.assert_equal ~expected:"(** Method parameters *)"
                   ~actual:(Syn.Cst.Docstring.text doc)
             | _ ->
                 raise (Failure "expected params leading docstring"));
-            (match Syn.Cst.OwnedTrivia.leading prerequest_owned with
+            (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node prerequest) with
             | [ Syn.Cst.Trivia.Docstring doc ] ->
                 Test.assert_equal
                   ~expected:"(** Pre-request type used by ApplicationProtocol *)"
@@ -4935,12 +4918,7 @@ val decode : Outer.Inner (* c *).(request -> response)
             Syn.Cst.SignatureItem.TypeDeclaration error_code ] -> (
             match Syn.Cst.TypeDeclaration.type_definition request_id with
             | Syn.Cst.TypeDefinition.Variant { constructors = [ _; number ]; _ } ->
-                Test.assert_equal ~expected:0
-                  ~actual:
-                    (List.length
-                       (Syn.Cst.OwnedTrivia.trailing
-                          (Syn.Cst.VariantConstructor.owned_trivia number)));
-                (match Syn.Cst.OwnedTrivia.leading (Syn.Cst.TypeDeclaration.owned_trivia error_code) with
+                (match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node error_code) with
                 | [ Syn.Cst.Trivia.Docstring numeric_request_ids;
                     Syn.Cst.Trivia.Docstring error_code_doc ] ->
                     Test.assert_equal ~expected:"(** Numeric request IDs *)"
@@ -4971,10 +4949,7 @@ val decode : Outer.Inner (* c *).(request -> response)
         | [ Syn.Cst.SignatureItem.TypeDeclaration type_decl;
             Syn.Cst.SignatureItem.Docstring docstring ] ->
             Test.assert_equal ~expected:0
-              ~actual:
-                (List.length
-                   (Syn.Cst.OwnedTrivia.leading
-                      (Syn.Cst.TypeDeclaration.owned_trivia type_decl)));
+              ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node type_decl)));
             Test.assert_equal ~expected:"(** doc string *)"
               ~actual:(Syn.Cst.Docstring.text docstring);
             Ok ()
@@ -4997,16 +4972,8 @@ val decode : Outer.Inner (* c *).(request -> response)
         match signature_items cst with
         | [ Syn.Cst.SignatureItem.ExceptionDeclaration exception_decl;
             Syn.Cst.SignatureItem.TypeDeclaration response_decl ] ->
-            Test.assert_equal ~expected:0
-              ~actual:
-                (List.length
-                   (Syn.Cst.OwnedTrivia.leading exception_decl.owned_trivia));
-            Test.assert_equal ~expected:0
-              ~actual:
-                (List.length
-                   (Syn.Cst.OwnedTrivia.trailing exception_decl.owned_trivia));
-            (match Syn.Cst.OwnedTrivia.leading
-                     (Syn.Cst.TypeDeclaration.owned_trivia response_decl) with
+            (match node_leading_trivia
+                     (Syn.Cst.TypeDeclaration.syntax_node response_decl) with
             | [ Syn.Cst.Trivia.Docstring doc ] ->
                 Test.assert_equal ~expected:"(** Response payload *)"
                   ~actual:(Syn.Cst.Docstring.text doc);
@@ -5035,13 +5002,8 @@ val decode : Outer.Inner (* c *).(request -> response)
             match Syn.Cst.TypeDeclaration.type_definition error_decl with
             | Syn.Cst.TypeDefinition.Variant
                 { constructors = [ parse_error; unknown_server_error ]; _ } ->
-                Test.assert_equal ~expected:0
-                  ~actual:
-                    (List.length
-                       (Syn.Cst.OwnedTrivia.trailing
-                          (Syn.Cst.VariantConstructor.owned_trivia parse_error)));
-                (match Syn.Cst.OwnedTrivia.leading
-                         (Syn.Cst.VariantConstructor.owned_trivia unknown_server_error)
+                (match node_leading_trivia
+                         (Syn.Cst.VariantConstructor.syntax_node unknown_server_error)
                  with
                 | [ Syn.Cst.Trivia.Docstring doc ] ->
                     Test.assert_equal
@@ -5079,11 +5041,6 @@ val decode : Outer.Inner (* c *).(request -> response)
             match Syn.Cst.TypeDeclaration.type_definition error_decl with
             | Syn.Cst.TypeDefinition.Variant
                 { constructors = [ unknown_server_error ]; _ } ->
-                Test.assert_equal ~expected:0
-                  ~actual:
-                    (List.length
-                       (Syn.Cst.OwnedTrivia.trailing
-                          (Syn.Cst.VariantConstructor.owned_trivia unknown_server_error)));
                 Test.assert_equal
                   ~expected:"(** Server returned a JSON-RPC error object that couldn't be parsed into a\n\
                              \          typed response variant *)"
@@ -5119,13 +5076,8 @@ val decode : Outer.Inner (* c *).(request -> response)
         | [ Syn.Cst.SignatureItem.TypeDeclaration event_decl ] -> (
             match Syn.Cst.TypeDeclaration.type_definition event_decl with
             | Syn.Cst.TypeDefinition.Record { fields = [ data_field; event_type_field ]; _ } ->
-                Test.assert_equal ~expected:0
-                  ~actual:
-                    (List.length
-                       (Syn.Cst.OwnedTrivia.trailing
-                          (Syn.Cst.RecordField.owned_trivia data_field)));
-                (match Syn.Cst.OwnedTrivia.leading
-                         (Syn.Cst.RecordField.owned_trivia event_type_field) with
+                (match node_leading_trivia
+                         (Syn.Cst.RecordField.syntax_node event_type_field) with
                 | [ Syn.Cst.Trivia.Docstring doc ] ->
                     Test.assert_equal ~expected:"(** Event payload *)"
                       ~actual:(Syn.Cst.Docstring.text doc);
@@ -5159,13 +5111,8 @@ val decode : Outer.Inner (* c *).(request -> response)
             Syn.Cst.SignatureItem.TypeDeclaration response_decl ] -> (
             match Syn.Cst.TypeDeclaration.type_definition event_decl with
             | Syn.Cst.TypeDefinition.Record { fields = [ _; id_field ]; _ } ->
-                Test.assert_equal ~expected:0
-                  ~actual:
-                    (List.length
-                       (Syn.Cst.OwnedTrivia.trailing
-                          (Syn.Cst.RecordField.owned_trivia id_field)));
-                (match Syn.Cst.OwnedTrivia.leading
-                         (Syn.Cst.TypeDeclaration.owned_trivia response_decl) with
+                (match node_leading_trivia
+                         (Syn.Cst.TypeDeclaration.syntax_node response_decl) with
                 | [ Syn.Cst.Trivia.Docstring doc ] ->
                     Test.assert_equal ~expected:"(** Response payload *)"
                       ~actual:(Syn.Cst.Docstring.text doc);
@@ -5275,8 +5222,8 @@ val decode : Outer.Inner (* c *).(request -> response)
             Syn.Cst.SignatureItem.TypeDeclaration _ ] ->
             Test.assert_equal ~expected:Syn.Cst.Docstring.Section
               ~actual:(Syn.Cst.Docstring.kind section_doc);
-            (match Syn.Cst.OwnedTrivia.leading
-                     (Syn.Cst.TypeDeclaration.owned_trivia type_b) with
+            (match node_leading_trivia
+                     (Syn.Cst.TypeDeclaration.syntax_node type_b) with
             | [ Syn.Cst.Trivia.Docstring ordinary_doc ] ->
                 Test.assert_equal ~expected:Syn.Cst.Docstring.Ordinary
                   ~actual:(Syn.Cst.Docstring.kind ordinary_doc);
@@ -5335,11 +5282,8 @@ val decode : Outer.Inner (* c *).(request -> response)
             | [ element_decl ] ->
                 Test.assert_equal ~expected:"element"
                   ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
-                let element_owned = Syn.Cst.TypeDeclaration.owned_trivia element_decl in
                 Test.assert_equal ~expected:1
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading element_owned));
-                Test.assert_equal ~expected:0
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.trailing element_owned));
+                  ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl)));
                 Ok ()
             | _ ->
                 Error "expected grouped node/element type declarations")
@@ -5396,11 +5340,8 @@ val decode : Outer.Inner (* c *).(request -> response)
             | [ element_decl ] ->
                 Test.assert_equal ~expected:"element"
                   ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
-                let element_owned = Syn.Cst.TypeDeclaration.owned_trivia element_decl in
                 Test.assert_equal ~expected:1
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.leading element_owned));
-                Test.assert_equal ~expected:0
-                  ~actual:(List.length (Syn.Cst.OwnedTrivia.trailing element_owned));
+                  ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl)));
                 Ok ()
             | _ ->
                 Error "expected grouped node/element type declarations")
@@ -5610,7 +5551,7 @@ val decode : Outer.Inner (* c *).(request -> response)
                 Syn.Cst.Expression.TypeAscription
                   {
                     expression = Syn.Cst.Expression.Fun _;
-                    kind = Syn.Cst.Type (Syn.Cst.CoreType.Arrow _);
+                    kind = Syn.Cst.Type { type_ = Syn.Cst.CoreType.Arrow _; _ };
                     _;
                   };
               _;
@@ -5680,30 +5621,34 @@ val decode : Outer.Inner (* c *).(request -> response)
                     expression = Syn.Cst.Expression.Fun _;
                     kind =
                       Syn.Cst.Type
-                        (Syn.Cst.CoreType.Poly
-                          {
-                            type_keyword_token = Some type_keyword_token;
-                            binders;
-                            body =
-                              Syn.Cst.CoreType.Arrow
-                                {
-                                  parameter_type =
-                                    Syn.Cst.CoreType.Var
-                                      {
-                                        sigil_token = None;
-                                        name_token = parameter_name_token;
-                                        _;
-                                      };
-                                  result_type =
-                                    Syn.Cst.CoreType.Var
-                                      {
-                                        sigil_token = None;
-                                        name_token = result_name_token;
-                                        _;
-                                      };
-                                  _;
-                                };
-                          });
+                        {
+                          type_ =
+                            Syn.Cst.CoreType.Poly
+                              {
+                                type_keyword_token = Some type_keyword_token;
+                                binders;
+                                body =
+                                  Syn.Cst.CoreType.Arrow
+                                    {
+                                      parameter_type =
+                                        Syn.Cst.CoreType.Var
+                                          {
+                                            sigil_token = None;
+                                            name_token = parameter_name_token;
+                                            _;
+                                          };
+                                      result_type =
+                                        Syn.Cst.CoreType.Var
+                                          {
+                                            sigil_token = None;
+                                            name_token = result_name_token;
+                                            _;
+                                          };
+                                      _;
+                                    };
+                              };
+                          _;
+                        };
                     _;
                   };
               _;
@@ -5843,7 +5788,7 @@ val decode : Outer.Inner (* c *).(request -> response)
                 Syn.Cst.Expression.TypeAscription
                   {
                     expression = Syn.Cst.Expression.Path { path; _ };
-                    kind = Syn.Cst.Type (Syn.Cst.CoreType.Constr _);
+                    kind = Syn.Cst.Type { type_ = Syn.Cst.CoreType.Constr _; _ };
                     _;
                   };
               _;
