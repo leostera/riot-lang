@@ -56,12 +56,4 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 4. Run required builds.
 5. Update affected AGENTS files if behavior or contracts changed.
 
-## Repository Invariants
-
-1. `open Std` in OCaml files outside `kernel` and `miniriot`.
-2. Do not introduce direct `Stdlib`, `Unix`, `Sys`, or `Obj` usage outside the packages that already own those boundaries.
-3. Use `Cell.t` for standalone mutable values and record `mutable` fields for mutable record state.
-4. Run `tusk` from the workspace root and prefer `tusk completions --packages`, `--binaries`, or `--tests` for discovery.
-5. Wrap long-running commands with `timeout`.
-6. Use `apply_patch` for hand edits.
-7. Prefer abstract `.mli` surfaces when exposing package APIs.
+When comitting, always use conventional commits.
