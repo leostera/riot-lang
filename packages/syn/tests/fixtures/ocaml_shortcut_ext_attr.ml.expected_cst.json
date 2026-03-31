@@ -5354,6 +5354,14 @@
               "end": 1848
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "exception",
+            "span": {
+              "start": 1826,
+              "end": 1835
+            }
+          },
           "name_token": {
             "kind": "IDENT_EXPR",
             "text": "X",
@@ -5361,7 +5369,8 @@
               "start": 1847,
               "end": 1848
             }
-          }
+          },
+          "rhs": null
         }
       },
       {

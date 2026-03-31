@@ -492,10 +492,30 @@ and module_expression_to_json =
       ]
   | Cst.ModuleExpression.Extension extension ->
       Json.Object [ ("tag", Json.String "extension"); ("extension", extension_to_json extension) ]
-and exception_declaration_to_json = fun (decl : Cst.exception_declaration) -> Json.Object [
-  ("syntax_node", syntax_node_to_json decl.syntax_node);
-  ("name_token", token_to_json decl.name_token)
-]
+and exception_declaration_to_json = fun (decl : Cst.exception_declaration) ->
+  let rhs =
+    match decl.rhs with
+    | None ->
+        Json.Null
+    | Some (Cst.Alias { equals_token; alias }) ->
+        Json.Object [
+          ("tag", Json.String "alias");
+          ("equals_token", token_to_json equals_token);
+          ("alias", ident_to_json alias)
+        ]
+    | Some (Cst.Payload { of_token; payload_type }) ->
+        Json.Object [
+          ("tag", Json.String "payload");
+          ("of_token", token_to_json of_token);
+          ("payload_type", core_type_to_json payload_type)
+        ]
+  in
+  Json.Object [
+    ("syntax_node", syntax_node_to_json decl.syntax_node);
+    ("keyword_token", token_to_json decl.keyword_token);
+    ("name_token", token_to_json decl.name_token);
+    ("rhs", rhs)
+  ]
 and pattern_literal_to_json = fun literal -> constant_to_json literal
 and pattern_attribute_fields = fun attributes ->
   match attributes with

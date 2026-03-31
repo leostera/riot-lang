@@ -5354,12 +5354,13 @@ and expression_from_node = fun node ->
         else
           match let_expression_parts ~is_recursive_binding:false node with
           | Some (`Exception (exception_decl_node, body_node)) -> (
-              match direct_non_trivia_tokens exception_decl_node with
-              | _exception_kw :: name_syntax_token :: _ ->
+              match direct_token_with_text exception_decl_node "exception", find_declaration_name_token ~skip_keywords:[ "exception" ] (direct_non_trivia_tokens exception_decl_node) with
+              | Some keyword_token, Some name_syntax_token ->
                   Cst.Expression.LetException {
                     syntax_node = node;
                     exception_declaration = {
                       syntax_node = exception_decl_node;
+                      keyword_token;
                       name_token = token name_syntax_token;
                       rhs =
                         (match direct_non_trivia_nodes exception_decl_node
@@ -5374,9 +5375,17 @@ and expression_from_node = fun node ->
                                   | _ ->
                                       false) with
                         | Some child when can_lift_core_type_node child ->
-                            Some (Cst.Payload (core_type_from_node child))
+                            (match direct_token_with_text exception_decl_node "of" with
+                            | Some of_token ->
+                                Some Cst.(Payload { of_token; payload_type = core_type_from_node child })
+                            | None ->
+                                None)
                         | Some child ->
-                            Some (Cst.Alias (module_path_like_from_node child))
+                            (match direct_token_with_text exception_decl_node "=" with
+                            | Some equals_token ->
+                                Some Cst.(Alias { equals_token; alias = module_path_like_from_node child })
+                            | None ->
+                                None)
                         | _ ->
                             None);
                       owned_trivia = owned_trivia_from_node exception_decl_node
@@ -8185,6 +8194,9 @@ let include_statement_from_node = fun node ->
   | None -> None
 
 let exception_declaration_from_node = fun node ->
+  let keyword_token_opt =
+    direct_token_with_text node "exception"
+  in
   let rhs =
     match direct_non_trivia_nodes node
     |> List.find_opt (fun child ->
@@ -8197,22 +8209,31 @@ let exception_declaration_from_node = fun node ->
                   true
               | _ ->
                   false) with
-    | Some child when can_lift_core_type_node child ->
-        Some (Cst.Payload (core_type_from_node child))
-    | Some child ->
-        Some (Cst.Alias (module_path_like_from_node child))
+    | Some child when can_lift_core_type_node child -> (
+        match direct_token_with_text node "of" with
+        | Some of_token ->
+            Some Cst.(Payload { of_token; payload_type = core_type_from_node child })
+        | None ->
+            None)
+    | Some child -> (
+        match direct_token_with_text node "=" with
+        | Some equals_token ->
+            Some Cst.(Alias { equals_token; alias = module_path_like_from_node child })
+        | None ->
+            None)
     | _ ->
         None
   in
-  match find_declaration_name_token ~skip_keywords:[ "exception" ] (direct_non_trivia_tokens node) with
-  | Some name_syntax_token ->
+  match keyword_token_opt, find_declaration_name_token ~skip_keywords:[ "exception" ] (direct_non_trivia_tokens node) with
+  | Some keyword_token, Some name_syntax_token ->
       Some ({
         syntax_node = node;
+        keyword_token;
         name_token = token name_syntax_token;
         rhs;
         owned_trivia = owned_trivia_from_node node
       }: Cst.exception_declaration)
-  | None -> None
+  | _ -> None
 
 let rec structure_items_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with

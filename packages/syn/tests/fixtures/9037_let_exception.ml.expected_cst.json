@@ -111,12 +111,60 @@
                   "end": 47
                 }
               },
+              "keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "exception",
+                "span": {
+                  "start": 22,
+                  "end": 31
+                }
+              },
               "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "Panic",
                 "span": {
                   "start": 32,
                   "end": 37
+                }
+              },
+              "rhs": {
+                "tag": "payload",
+                "of_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "of",
+                  "span": {
+                    "start": 38,
+                    "end": 40
+                  }
+                },
+                "payload_type": {
+                  "tag": "constr",
+                  "syntax_node": {
+                    "kind": "TYPE_CONSTR",
+                    "span": {
+                      "start": 40,
+                      "end": 47
+                    }
+                  },
+                  "constructor_path": {
+                    "tag": "ident",
+                    "syntax_node": {
+                      "kind": "TYPE_CONSTR",
+                      "span": {
+                        "start": 40,
+                        "end": 47
+                      }
+                    },
+                    "name_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "string",
+                      "span": {
+                        "start": 41,
+                        "end": 47
+                      }
+                    }
+                  },
+                  "arguments": []
                 }
               }
             },
@@ -350,6 +398,14 @@
                   "end": 108
                 }
               },
+              "keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "exception",
+                "span": {
+                  "start": 91,
+                  "end": 100
+                }
+              },
               "name_token": {
                 "kind": "IDENT_EXPR",
                 "text": "MyError",
@@ -357,7 +413,8 @@
                   "start": 101,
                   "end": 108
                 }
-              }
+              },
+              "rhs": null
             },
             "body": {
               "tag": "if",

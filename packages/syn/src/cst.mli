@@ -1868,11 +1868,18 @@ and parameter =
     ```
 *)
 and exception_rhs =
-  | Alias of Ident.t
-  | Payload of core_type
+  | Alias of {
+      equals_token : Token.t;
+      alias : Ident.t;
+    }
+  | Payload of {
+      of_token : Token.t;
+      payload_type : core_type;
+    }
 
 and exception_declaration = {
   syntax_node : syntax_node;
+  keyword_token : Token.t;
   name_token : Token.t;
   rhs : exception_rhs option;
   owned_trivia : owned_trivia;

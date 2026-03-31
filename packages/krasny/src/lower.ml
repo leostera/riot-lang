@@ -3912,12 +3912,62 @@ and render_exception_declaration (decl : Syn.Cst.exception_declaration) =
     match decl.rhs with
     | None ->
         Doc.empty
-    | Some (Syn.Cst.Alias alias) ->
-        Doc.concat [ equals; doc_of_ident alias ]
-    | Some (Syn.Cst.Payload payload_type) ->
-        Doc.concat [ Doc.space; kw_of; Doc.space; render_core_type payload_type ]
+    | Some (Syn.Cst.Alias { equals_token; alias }) ->
+        let leading_equals_trivia =
+          pending_doc_of_token_leading_trivia equals_token
+        in
+        let leading_alias_trivia =
+          pending_doc_of_trivia_before_node
+            ~after:(Syn.Cst.Token.span equals_token).end_
+            (Syn.Cst.Ident.syntax_node alias)
+        in
+        if leading_equals_trivia = None && leading_alias_trivia = None then
+          Doc.concat [ Doc.space; doc_of_token equals_token; Doc.space; doc_of_ident alias ]
+        else
+          let equals_doc =
+            doc_of_token equals_token
+            |> doc_with_leading_trivia leading_equals_trivia
+          in
+          let alias_doc =
+            doc_of_ident alias
+            |> doc_with_leading_trivia leading_alias_trivia
+          in
+          Doc.concat
+            [
+              Doc.line;
+              Doc.indent 2 equals_doc;
+              Doc.line;
+              Doc.indent 2 alias_doc;
+            ]
+    | Some (Syn.Cst.Payload { of_token; payload_type }) ->
+        let leading_of_trivia =
+          pending_doc_of_token_leading_trivia of_token
+        in
+        let leading_payload_trivia =
+          pending_doc_of_trivia_before_node
+            ~after:(Syn.Cst.Token.span of_token).end_
+            (Syn.Cst.CoreType.syntax_node payload_type)
+        in
+        if leading_of_trivia = None && leading_payload_trivia = None then
+          Doc.concat [ Doc.space; doc_of_token of_token; Doc.space; render_core_type payload_type ]
+        else
+          let of_doc =
+            doc_of_token of_token
+            |> doc_with_leading_trivia leading_of_trivia
+          in
+          let payload_doc =
+            render_core_type payload_type
+            |> doc_with_leading_trivia leading_payload_trivia
+          in
+          Doc.concat
+            [
+              Doc.line;
+              Doc.indent 2 of_doc;
+              Doc.line;
+              Doc.indent 2 payload_doc;
+            ]
   in
-  Doc.concat [ Doc.text "exception"; Doc.space; doc_of_token decl.name_token; rhs_doc ]
+  Doc.concat [ doc_of_token decl.keyword_token; Doc.space; doc_of_token decl.name_token; rhs_doc ]
 
 and render_let_exception_expression
     ({ exception_declaration; body; _ } : Syn.Cst.let_exception_expression) =
