@@ -225,7 +225,9 @@ and payload =
 and object_type_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
+  colon_token : Token.t;
   field_type : core_type;
+  semicolon_token : Token.t option;
 }
 
 (** Binder names introduced by explicitly polymorphic type syntax.
@@ -269,6 +271,7 @@ and type_binder =
 and record_type_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
+  colon_token : Token.t;
   field_type : core_type;
   is_mutable : bool;
   attributes : attribute list;
@@ -372,6 +375,7 @@ and poly_variant = {
 and type_constraint = {
   syntax_node : syntax_node;
   left : core_type;
+  equals_token : Token.t;
   right : core_type;
 }
 
@@ -1007,6 +1011,7 @@ module TypeConstraint : sig
   type t = type_constraint = {
     syntax_node : syntax_node;
     left : core_type;
+    equals_token : Token.t;
     right : core_type;
   }
 end
@@ -1679,6 +1684,7 @@ and record_pattern_closedness =
 and record_pattern_field = {
   syntax_node : syntax_node;
   field_path : Ident.t;
+  equals_token : Token.t option;
   pattern : pattern option;
 }
 
@@ -2580,6 +2586,7 @@ and record_expression_field = {
   syntax_node : syntax_node;
   field_path : Ident.t;
   field_name : Token.t;
+  equals_token : Token.t option;
   value : expression;
   source : record_expression_field_source;
 }
@@ -2595,6 +2602,7 @@ and record_expression_field = {
 and object_override_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
+  equals_token : Token.t option;
   value : expression option;
 }
 
@@ -3556,7 +3564,9 @@ module RecordField : sig
   type t = {
     syntax_node : syntax_node;
     field_name : Token.t;
+    colon_token : Token.t;
     field_type : core_type;
+    semicolon_token : Token.t option;
     is_mutable : bool;
     attributes : attribute list;
   }
@@ -3564,7 +3574,11 @@ module RecordField : sig
 
   val field_name_token : t -> Token.t
 
+  val colon_token : t -> Token.t
+
   val field_type : t -> core_type
+
+  val semicolon_token : t -> Token.t option
 
   val name : t -> string
 
@@ -3853,7 +3867,9 @@ module TypeDeclaration : sig
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    manifest_equals_token : Token.t option;
     manifest_alias : core_type option;
+    definition_equals_token : Token.t option;
     private_flag : private_flag;
     constraints : type_constraint list;
     attributes : attribute list;
@@ -3872,7 +3888,11 @@ module TypeDeclaration : sig
   (** Preserves the leading manifest alias in declarations such as
       `type t = Base.t = A | B`.
   *)
+  val manifest_equals_token : t -> Token.t option
+
   val manifest_alias : t -> core_type option
+
+  val definition_equals_token : t -> Token.t option
 
   val private_flag : t -> private_flag
 
@@ -3920,6 +3940,7 @@ module TypeExtension : sig
     syntax_node : syntax_node;
     type_name : Ident.t;
     type_params : TypeParameter.t list;
+    extension_operator_token : Token.t;
     constructors : VariantConstructor.t list;
   }
   val syntax_node : t -> syntax_node
@@ -3927,6 +3948,8 @@ module TypeExtension : sig
   val type_name : t -> Ident.t
 
   val type_params : t -> TypeParameter.t list
+
+  val extension_operator_token : t -> Token.t
 
   val constructors : t -> VariantConstructor.t list
 

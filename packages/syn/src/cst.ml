@@ -117,12 +117,6 @@ type trivia =
   | Docstring of docstring
   | Comment of comment
 
-type owned_trivia = {
-  leading : trivia list;
-  inner : trivia list;
-  trailing : trivia list;
-}
-
 module Ident = struct
   type t =
     | Ident of {
@@ -217,7 +211,9 @@ and payload =
 and object_type_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
+  colon_token : Token.t;
   field_type : core_type;
+  semicolon_token : Token.t option;
 }
 
 and type_binder =
@@ -232,6 +228,7 @@ and type_binder =
 and record_type_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
+  colon_token : Token.t;
   field_type : core_type;
   is_mutable : bool;
   attributes : attribute list;
@@ -272,6 +269,7 @@ and poly_variant = {
 and type_constraint = {
   syntax_node : syntax_node;
   left : core_type;
+  equals_token : Token.t;
   right : core_type;
 }
 
@@ -563,6 +561,7 @@ module TypeConstraint = struct
   type t = type_constraint = {
     syntax_node : syntax_node;
     left : core_type;
+    equals_token : Token.t;
     right : core_type;
   }
 end
@@ -1036,6 +1035,7 @@ and record_pattern_closedness =
 and record_pattern_field = {
   syntax_node : syntax_node;
   field_path : Ident.t;
+  equals_token : Token.t option;
   pattern : pattern option;
 }
 
@@ -1514,6 +1514,7 @@ and record_expression_field = {
   syntax_node : syntax_node;
   field_path : Ident.t;
   field_name : Token.t;
+  equals_token : Token.t option;
   value : expression;
   source : record_expression_field_source;
 }
@@ -1521,6 +1522,7 @@ and record_expression_field = {
 and object_override_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
+  equals_token : Token.t option;
   value : expression option;
 }
 
@@ -2471,7 +2473,9 @@ module RecordField = struct
   type t = {
     syntax_node : syntax_node;
     field_name : Token.t;
+    colon_token : Token.t;
     field_type : core_type;
+    semicolon_token : Token.t option;
     is_mutable : bool;
     attributes : attribute list;
   }
@@ -2480,7 +2484,11 @@ module RecordField = struct
 
   let field_name_token = fun field -> field.field_name
 
+  let colon_token = fun field -> field.colon_token
+
   let field_type = fun field -> field.field_type
+
+  let semicolon_token = fun field -> field.semicolon_token
 
   let name = fun field -> Token.text field.field_name
 
@@ -2661,7 +2669,9 @@ module TypeDeclaration = struct
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
+    manifest_equals_token : Token.t option;
     manifest_alias : core_type option;
+    definition_equals_token : Token.t option;
     private_flag : private_flag;
     constraints : type_constraint list;
     attributes : attribute list;
@@ -2678,7 +2688,11 @@ module TypeDeclaration = struct
 
   let type_definition = fun decl -> decl.type_definition
 
+  let manifest_equals_token = fun decl -> decl.manifest_equals_token
+
   let manifest_alias = fun decl -> decl.manifest_alias
+
+  let definition_equals_token = fun decl -> decl.definition_equals_token
 
   let private_flag = fun decl -> decl.private_flag
 
@@ -2711,6 +2725,7 @@ module TypeExtension = struct
     syntax_node : syntax_node;
     type_name : Ident.t;
     type_params : TypeParameter.t list;
+    extension_operator_token : Token.t;
     constructors : VariantConstructor.t list;
   }
 
@@ -2719,6 +2734,8 @@ module TypeExtension = struct
   let type_name = fun decl -> decl.type_name
 
   let type_params = fun decl -> decl.type_params
+
+  let extension_operator_token = fun decl -> decl.extension_operator_token
 
   let constructors = fun decl -> decl.constructors
 
@@ -3112,24 +3129,6 @@ let token_body_span = fun syntax_node ->
       }
 
 let syntax_kind = fun syntax_node -> Ceibo.Red.SyntaxNode.kind syntax_node
-
-module OwnedTrivia = struct
-  type t = owned_trivia = {
-    leading : trivia list;
-    inner : trivia list;
-    trailing : trivia list;
-  }
-
-  let empty = {leading = []; inner = []; trailing = []}
-
-  let leading = fun owned -> owned.leading
-
-  let inner = fun owned -> owned.inner
-
-  let trailing = fun owned -> owned.trailing
-
-  let is_empty = fun owned -> owned.leading = [] && owned.inner = [] && owned.trailing = []
-end
 
 type value_declaration = {
   syntax_node : syntax_node;

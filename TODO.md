@@ -1,76 +1,168 @@
 # TODO
 
-This file is _yours_. Keep it up to date after every big change.
+## Loop
 
-## Mission
+Token-first cleanup loop:
 
-- [x] Make trivia, comments, and docstrings first-class at the token layer so the CST can derive reliable ownership and `krasny` can become a renderer again
-- [ ] Make `krasny` Structural Formatting Only: format from CST structure plus token-attached trivia, never by reparsing or sniffing source text
-- [ ] Implement RFD0025 - Snapshot Testing for Riot (./docs/rfds/RFD0025-snapshot-testing-for-riot.md)
+1. Start in `packages/krasny/src/lower.ml`.
+2. In the formatter branch, ask for the exact original token you want to render.
+3. Let the compiler fail on the missing CST field or accessor.
+4. Add that token to the `Syn.Cst` type in `packages/syn/src/cst.mli` and `packages/syn/src/cst.ml`.
+5. Let the compiler fail in `packages/syn/src/cst_builder.ml`.
+6. Populate the token from the original syntax node.
+7. Rebuild with `timeout 120 tusk build syn krasny fixme tusk-fix`.
+8. Repeat until `krasny` no longer synthesizes punctuation it could render from CST-owned tokens.
 
-## Up Next
+Rules:
 
-- [ ] Delete the dead whole-tree `validate_source_file` scaffold from `packages/syn/src/cst_builder.ml` now that normal CST construction no longer calls it.
-- [ ] Keep migrating any real CST invariants into the specific builder helpers that own those facts, instead of reviving post-construction validation.
-- [ ] Tighten `syn` to follow the token-first CST contract:
-  - tokens own trivia
-  - CST preserves original syntax tokens and structure
-  - do not duplicate token-owned trivia into convenience fields when the same fact is already structurally reachable
-- [ ] Remove redundant expression boundary-trivia fields that duplicate token-owned facts:
-  - [ ] `fun_expression.body_leading_trivia`
-  - [ ] `sequence_expression.expression_leading_trivia`
-  - [ ] `let_binding.leading_trivia`
-  - [ ] `let_binding.value_leading_trivia`
-  - [ ] `binding_operator_binding.bound_value_leading_trivia`
-  - [ ] `let_operator_expression.body_leading_trivia`
-  - [ ] `let_expression.bound_value_leading_trivia`
-  - [ ] `let_expression.body_leading_trivia`
-  - [ ] `match_case.body_leading_trivia`
-  - [ ] `if_expression.then_branch_trailing_trivia`
-  - [ ] `if_expression.else_branch_leading_trivia`
-  - [ ] `parenthesized_expression.inner_leading_trivia`
-- [ ] Replace CST booleans that collapse real syntax choices with token-backed structure where the original tokens matter:
-  - keep auditing for any remaining bool-only syntax shells that still drop modifier trivia
-- [ ] Keep local opens token-backed and grammar-true:
-  - do not reintroduce type-side local opens into the parser or CST
-- [ ] Keep auditing real `tusk fmt` output for destructive regressions only:
-  - dropped comments or docstrings
-  - duplicated trivia
-  - attribute ownership changes
-  - invalid OCaml
-- [ ] Treat postfix docstrings as source cleanup, not formatter ownership:
-  - keep prefix docs preserved structurally
-  - normalize postfix docs in source files instead of teaching `krasny` postfix ownership
+- Do not reintroduce `owned_trivia`.
+- Prefer original tokens over duplicated trivia fields.
+- If a formatter branch needs a token, make `krasny` ask for it first.
+- Commit every slice with conventional commits
 
-### Krasny 
+## Landed
 
-#### `krasny` Audit
+Token-backed so far:
 
-- [ ] Delete dead or redundant formatter branches that were only supporting older broader CST shapes.
-  - Focus on `lower.ml`.
-  - Prefer removing impossible-state handling that the new CST already forbids.
-  - grouped module renderers no longer match impossible empty declaration lists now that the CST head declaration is always explicit
-  - `render_let_operator_expression` no longer carries an impossible empty rendered-binding branch now that the leading binding is always explicit
+- record field `:`
+- record field `;`
+- object type field `:`
+- object type field `;`
+- type constraint `=`
+- type declaration manifest `=`
+- type declaration definition `=`
+- type extension `+=`
+- record pattern field `=`
+- record expression field `=`
+- object override field `=`
 
-- [ ] Re-audit `lower.ml` exhaustiveness and unsupported-shape branches after each cleanup slice.
-  - If a branch is impossible with the current CST, delete it.
-  - If a branch is valid syntax, either support it structurally or move the missing fact into `syn`.
-- [ ] Keep adding focused destructive regressions for formatter output that:
-  - drops comments or docstrings
-  - duplicates trivia
-  - changes attribute ownership
-  - emits invalid OCaml
-- [ ] Keep nested `sig ... end` / `struct ... end` relift trivia loss covered:
-  - nested helper lifts must preserve inter-item comments/docstrings, not just declaration nodes
-- [ ] Keep branch-body trivia explicit and covered:
-  - comments/docstrings between `->` and a match-case body belong on the case body boundary, not in formatter archaeology
+## Next Targets
 
-#### Validate
+Remaining synthetic tokens / fallback punctuation to drive out of `krasny`:
 
-- `timeout 120 tusk build syn krasny fixme tusk-fix`
-- `timeout 180 tusk test syn:cst_tests`
-- `timeout 180 tusk test krasny:format_tests`
-- `timeout 300 python3 packages/syn/tests/test_runner.py cst`
-- `timeout 300 python3 packages/syn/tests/test_runner.py cst --refresh-clean`
-- `timeout 300 python3 packages/krasny/tests/test_runner.py --filter 051`
-- `./packages/krasny/tests/test_runner.py --verify-workspace --fail-fast`
+- declaration `=` sites still rendered from synthetic `equals`
+  - local bindings / let-style renderers
+  - type alias / type definition renderers
+  - module declarations
+  - class declarations / definitions
+  - record/object field assignment renderers
+
+- declaration `:` sites still rendered from synthetic `Doc.colon` / `annotation_colon`
+  - type ascriptions
+  - constructor result types
+  - label / parameter shells
+  - class/object constraint renderers
+
+- variant / polyvariant shell punctuation
+  - variant constructor fallback `kw_of`
+  - variant constructor fallback `Doc.colon`
+  - synthesized leading `|`
+  - polyvariant fallback `kw_of`
+
+- type extension `+=`
+
+- remaining synthetic `;` joins in structural shells
+  - record / object / class field lists
+  - list / array / pattern list shells where source tokens should be available
+
+- remaining synthetic delimiters that should come from CST tokens if available
+  - `{ ... }`
+  - `[ ... ]`
+  - `(module ...)`
+  - pattern local-open `.(...)`
+
+## Audit: lower.ml
+
+High-confidence synthetic punctuation sites in `packages/krasny/src/lower.ml`:
+
+- `=`:
+  - `638`
+  - `1479`
+  - `1498`
+  - `2287`
+  - `2600`
+  - `2815`
+  - `4054`
+  - `4956`
+  - `5156`
+  - `5207`
+  - `5209`
+  - `5617`
+  - `5622`
+  - `5671`
+
+- `:`:
+  - `504`
+  - `507`
+  - `973`
+  - `1290`
+  - `1370`
+  - `1656`
+  - `1738`
+  - `2506`
+  - `4341`
+  - `4376`
+
+- `|`:
+  - `1054`
+  - `1230`
+  - `1734`
+  - `3517`
+
+- `of`:
+  - `752`
+  - `1089`
+  - `1099`
+  - `1356`
+  - `4983`
+
+- `+=`:
+  - `1544`
+  - `1555`
+
+- assignment `=` in field/update shells:
+  - `1704`
+  - `2581`
+  - `3107`
+
+- class/object `constraint ... = ...` still synthetic:
+  - `2732`
+  - `2864`
+
+Medium-confidence synthetic delimiter / separator sites:
+
+- structural `;` joins:
+  - `949`
+  - `1016`
+  - `1717`
+  - `1726`
+  - `3116`
+  - `3129`
+
+- structural `{}` wrappers:
+  - `947`
+  - `1007`
+  - `1013`
+  - `1715`
+  - `1723`
+  - `3165`
+  - `3182`
+
+- polyvariant brackets:
+  - `1125`
+  - `1127`
+  - `1129`
+  - `1168`
+
+- `(module ...)` delimiters:
+  - `918`
+  - `1421`
+
+- pattern local-open `.(...)` shell:
+  - `1749`
+
+## Known Warnings
+
+- `packages/krasny/src/lower.ml`
+  - `render_first_class_module_type_doc` is still non-exhaustive for `ModuleType.Signature _`
+  - redundant `BeginEnd` parenthesized-expression subpattern

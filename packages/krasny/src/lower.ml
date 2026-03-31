@@ -939,7 +939,7 @@ and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
   Doc.group (Doc.concat [
     prefix;
     Doc.space;
-    Doc.colon;
+    doc_of_token field.colon_token;
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
 and render_record_type = fun fields ->
@@ -977,7 +977,14 @@ and render_record_definition_field_entry =
   fun ?(include_trailing_semicolon = true) (field : Syn.Cst.RecordField.t) ->
   let body =
     if include_trailing_semicolon then
-      Doc.concat [ render_record_definition_field field; Doc.semi ]
+      Doc.concat [
+        render_record_definition_field field;
+        (match field.semicolon_token with
+        | Some semicolon_token ->
+            doc_of_token semicolon_token
+        | None ->
+            Doc.empty)
+      ]
     else
       render_record_definition_field field
   in
@@ -1015,14 +1022,23 @@ and render_object_type_field = fun (field : Syn.Cst.object_type_field) ->
   Doc.group (Doc.concat [
     doc_of_token field.field_name;
     Doc.space;
-    Doc.colon;
+    doc_of_token field.colon_token;
     Doc.indent 2 (Doc.concat [ Doc.break (); render_core_type field.field_type ])
   ])
+and render_object_type_field_entry = fun (field : Syn.Cst.object_type_field) ->
+  Doc.concat [
+    render_object_type_field field;
+    (match field.semicolon_token with
+    | Some semicolon_token ->
+        doc_of_token semicolon_token
+    | None ->
+        Doc.empty)
+  ]
 and render_object_type = fun fields ->
   Doc.concat [
     Doc.text "<";
     Doc.line;
-    Doc.indent 2 (join_map (Doc.concat [ Doc.semi; Doc.line ]) render_object_type_field fields);
+    Doc.indent 2 (join_map Doc.line render_object_type_field_entry fields);
     Doc.line;
     Doc.text ">"
   ]
@@ -1044,43 +1060,33 @@ and render_poly_variant_field =
         | None ->
             head
         | Some payload_type ->
-            let separator_token = tag.separator_token in
-            let separator_leading_trivia =
-              match separator_token with
+            let separator_token =
+              match tag.separator_token with
               | Some separator_token ->
-                  pending_doc_of_token_leading_trivia separator_token
+                  separator_token
               | None ->
-                  None
+                  unsupported "polyvariant tag payload missing separator token"
+            in
+            let separator_leading_trivia =
+              pending_doc_of_token_leading_trivia separator_token
             in
             let payload_leading_trivia =
-              match separator_token with
-              | Some separator_token ->
-                  pending_doc_of_trivia_before_node
-                    ~after:(Syn.Cst.Token.span separator_token).end_
-                    (Syn.Cst.CoreType.syntax_node payload_type)
-              | None ->
-                  None
+              pending_doc_of_trivia_before_node
+                ~after:(Syn.Cst.Token.span separator_token).end_
+                (Syn.Cst.CoreType.syntax_node payload_type)
             in
             if separator_leading_trivia = None && payload_leading_trivia = None then
               Doc.concat
                 [
                   head;
                   Doc.space;
-                  (match separator_token with
-                  | Some separator_token ->
-                      doc_of_token separator_token
-                  | None ->
-                      kw_of);
+                  doc_of_token separator_token;
                   Doc.space;
                   render_core_type payload_type;
                 ]
             else
               let separator_doc =
-                (match separator_token with
-                | Some separator_token ->
-                    doc_of_token separator_token
-                | None ->
-                    kw_of)
+                doc_of_token separator_token
                 |> doc_with_leading_trivia separator_leading_trivia
               in
               let payload_doc =
@@ -1168,7 +1174,7 @@ let render_type_constraint = fun (constraint_ : Syn.Cst.type_constraint) ->
     kw_constraint;
     Doc.space;
     render_core_type constraint_.left;
-    equals;
+    doc_of_token constraint_.equals_token;
     render_core_type constraint_.right
   ]
 
@@ -1335,10 +1341,17 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
           render_variant_constructor_arguments
             ~prefer_multiline_inline_record arguments
         in
+        let separator_token =
+          match Syn.Cst.VariantConstructor.separator_token constructor with
+          | Some separator_token ->
+              separator_token
+          | None ->
+              unsupported "variant constructor payload missing separator token"
+        in
         let payload_doc, _payload_multiline =
           inline_separator_or_multiline_block
-            ~fallback_separator_doc:kw_of
-            ~separator_token:(Syn.Cst.VariantConstructor.separator_token constructor)
+            ~fallback_separator_doc:Doc.empty
+            ~separator_token:(Some separator_token)
             ~next_syntax_node:(Syn.Cst.VariantConstructor.payload_type constructor
                                |> Option.map Syn.Cst.CoreType.syntax_node)
             ~render_next:payload
@@ -1349,10 +1362,17 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
             payload_doc;
           ]
     | None, Some result_type ->
+        let separator_token =
+          match Syn.Cst.VariantConstructor.separator_token constructor with
+          | Some separator_token ->
+              separator_token
+          | None ->
+              unsupported "variant constructor result type missing separator token"
+        in
         let result_doc, _result_multiline =
           inline_separator_or_multiline_block
-            ~fallback_separator_doc:Doc.colon
-            ~separator_token:(Syn.Cst.VariantConstructor.separator_token constructor)
+            ~fallback_separator_doc:Doc.empty
+            ~separator_token:(Some separator_token)
             ~next_syntax_node:(Some (Syn.Cst.CoreType.syntax_node result_type))
             ~render_next:(render_core_type result_type)
         in
@@ -1458,10 +1478,20 @@ let render_single_type_declaration_with_keyword = fun keyword decl ->
       Doc.concat [ keyword; Doc.space; params; Doc.space; doc_of_ident type_name ]
   in
   let header =
-    match Syn.Cst.TypeDeclaration.manifest_alias decl with
-    | Some manifest_alias ->
-        Doc.concat [ header; equals; render_core_type manifest_alias ]
-    | None ->
+    match
+      ( Syn.Cst.TypeDeclaration.manifest_alias decl,
+        Syn.Cst.TypeDeclaration.manifest_equals_token decl )
+    with
+    | Some manifest_alias, Some manifest_equals_token ->
+        Doc.concat
+          [
+            header;
+            doc_of_token manifest_equals_token;
+            render_core_type manifest_alias;
+          ]
+    | Some _, None ->
+        unsupported "type declaration manifest alias missing equals token"
+    | None, _ ->
         header
   in
   let definition =
@@ -1477,15 +1507,48 @@ let render_single_type_declaration_with_keyword = fun keyword decl ->
       | None ->
           header
       | Some definition -> (
+          let definition_equals_token =
+            match Syn.Cst.TypeDeclaration.definition_equals_token decl with
+            | Some definition_equals_token ->
+                definition_equals_token
+            | None ->
+                unsupported "type declaration definition missing equals token"
+          in
           match type_definition_layout decl with
           | Inline_definition ->
-              Doc.concat [ header; equals; definition ]
+              Doc.concat
+                [
+                  header;
+                  doc_of_token definition_equals_token;
+                  definition;
+                ]
           | Inline_opening_definition ->
-              Doc.concat [ header; Doc.space; Doc.equal; Doc.space; definition ]
+              Doc.concat
+                [
+                  header;
+                  Doc.space;
+                  doc_of_token definition_equals_token;
+                  Doc.space;
+                  definition;
+                ]
           | Broken_definition ->
-              Doc.concat [ header; Doc.space; Doc.equal; Doc.line; Doc.indent 2 definition ]
+              Doc.concat
+                [
+                  header;
+                  Doc.space;
+                  doc_of_token definition_equals_token;
+                  Doc.line;
+                  Doc.indent 2 definition;
+                ]
           | Broken_definition_no_outer_indent ->
-              Doc.concat [ header; Doc.space; Doc.equal; Doc.line; definition ]
+              Doc.concat
+                [
+                  header;
+                  Doc.space;
+                  doc_of_token definition_equals_token;
+                  Doc.line;
+                  definition;
+                ]
         )
     in
     let with_constraints = Syn.Cst.TypeDeclaration.constraints decl
@@ -1525,7 +1588,7 @@ let render_type_extension = fun (decl : Syn.Cst.TypeExtension.t) ->
           Doc.space;
           doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
           Doc.space;
-          Doc.text "+=";
+          doc_of_token (Syn.Cst.TypeExtension.extension_operator_token decl);
         ]
     else
       Doc.concat
@@ -1536,7 +1599,7 @@ let render_type_extension = fun (decl : Syn.Cst.TypeExtension.t) ->
           Doc.space;
           doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
           Doc.space;
-          Doc.text "+=";
+          doc_of_token (Syn.Cst.TypeExtension.extension_operator_token decl);
         ]
   in
   let constructors =
@@ -1685,7 +1748,19 @@ let rec render_pattern =
             | None ->
                 doc_of_ident field.field_path
             | Some pattern ->
-                Doc.concat [ doc_of_ident field.field_path; equals; render_pattern pattern ])
+                let equals_token =
+                  match field.equals_token with
+                  | Some equals_token ->
+                      equals_token
+                  | None ->
+                      unsupported "record pattern field missing equals token"
+                in
+                Doc.concat
+                  [
+                    doc_of_ident field.field_path;
+                    doc_of_token equals_token;
+                    render_pattern pattern;
+                  ])
       in
       let fields =
         match closedness with
@@ -2562,7 +2637,19 @@ and render_record_field (field : Syn.Cst.record_expression_field) =
   | Syn.Cst.Punned ->
       doc_of_ident field.field_path
   | Syn.Cst.Explicit ->
-      Doc.concat [ doc_of_ident field.field_path; equals; render_expression field.value ]
+      let equals_token =
+        match field.equals_token with
+        | Some equals_token ->
+            equals_token
+        | None ->
+            unsupported "record expression field missing equals token"
+      in
+      Doc.concat
+        [
+          doc_of_ident field.field_path;
+          doc_of_token equals_token;
+          render_expression field.value;
+        ]
 
 and doc_with_object_member_attributes attributes doc =
   match attributes with
@@ -3083,12 +3170,19 @@ and render_object_override_expression ({ fields; _ } : Syn.Cst.object_override_e
   let fields =
     fields
     |> List.map
-      (fun ({ field_name; value; _ } : Syn.Cst.object_override_field) ->
+      (fun ({ field_name; equals_token; value; _ } : Syn.Cst.object_override_field) ->
         match value with
         | None ->
             doc_of_token field_name
         | Some value ->
-            Doc.concat [ doc_of_token field_name; equals; render_expression value ])
+            let equals_token =
+              match equals_token with
+              | Some equals_token ->
+                  equals_token
+              | None ->
+                  unsupported "object override field missing equals token"
+            in
+            Doc.concat [ doc_of_token field_name; doc_of_token equals_token; render_expression value ])
   in
   if fields = [] then
     Doc.concat [ object_override_open; object_override_close ]

@@ -3342,7 +3342,21 @@ and core_type_from_node = fun node ->
   and object_type_field_from_node = fun node ->
     match first_ident_token_in_subtree node, direct_non_trivia_nodes node |> List.find_opt can_lift_core_type_node with
     | Some field_name, Some field_type_node ->
-        {Cst.syntax_node = node; field_name; field_type = core_type_from_node field_type_node}
+        ({
+          Cst.syntax_node = node;
+          field_name;
+          colon_token =
+            (match direct_token_with_text node ":" with
+            | Some colon_token ->
+                colon_token
+            | None ->
+                bail ~message:"expected object type field colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                  "core_type.object_field";
+                  "colon_token"
+                ]);
+          field_type = core_type_from_node field_type_node;
+          semicolon_token = direct_token_with_text node semicolon_text
+        }: Cst.object_type_field)
     | _ ->
         bail ~message:"expected object type field name and type during Ceibo -> CST lifting" ~syntax_node:node ~context:[
           "core_type.object_field"
@@ -3367,6 +3381,15 @@ and core_type_from_node = fun node ->
         {
           Cst.syntax_node = node;
           field_name;
+          colon_token =
+            (match direct_token_with_text node ":" with
+            | Some colon_token ->
+                colon_token
+            | None ->
+                bail ~message:"expected record type field colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                  "core_type.record_field";
+                  "colon_token"
+                ]);
           field_type = core_type_from_node field_type_node;
           is_mutable = mutable_field;
           attributes
@@ -3993,6 +4016,7 @@ and record_pattern_field_from_node = fun node ->
       Some {
         syntax_node = node;
         field_path = lifted_field_path;
+        equals_token = direct_token_with_text node "=";
         pattern = (direct_non_trivia_nodes node
         |> List.find_opt (fun child -> is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
         |> Option.map pattern_from_node)
@@ -5320,7 +5344,13 @@ and object_override_field_from_node = fun node ->
   let lifted_field_path = record_field_path_from_node node in
   match Cst.Ident.segments lifted_field_path with
   | [ field_name ] ->
-      Some (({Cst.syntax_node = node; field_name; value = record_field_value_from_node node}: Cst.object_override_field))
+      Some
+        (({
+            Cst.syntax_node = node;
+            field_name;
+            equals_token = direct_token_with_text node "=";
+            value = record_field_value_from_node node;
+          }: Cst.object_override_field))
   | _ -> None
 and object_override_expression_from_node = fun node ->
   let children = direct_non_trivia_nodes node in
@@ -5472,7 +5502,15 @@ and record_expression_field_from_node = fun node ->
               Cst.Punned
             )
       in
-      Some (({Cst.syntax_node = node; field_path = lifted_field_path; field_name; value; source}: Cst.record_expression_field))
+      Some
+        (({
+            Cst.syntax_node = node;
+            field_path = lifted_field_path;
+            field_name;
+            equals_token = direct_token_with_text node "=";
+            value;
+            source;
+          }: Cst.record_expression_field))
 and record_literal_expression_from_node = fun node ->
   let fields = direct_non_trivia_nodes node
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
@@ -6630,6 +6668,15 @@ let type_constraint_from_node = fun node ->
       Some Cst.TypeConstraint.{
         syntax_node = node;
         left = core_type_from_node left_node;
+        equals_token =
+          (match direct_token_with_text node "=" with
+          | Some equals_token ->
+              equals_token
+          | None ->
+              bail ~message:"expected type constraint equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                "type_constraint";
+                "equals_token"
+              ]);
         right = core_type_from_node right_node
       }
   | _ ->
@@ -6667,7 +6714,17 @@ let record_field_from_node = fun node ->
       Cst.RecordField.{
         syntax_node = node;
         field_name;
+        colon_token =
+          (match direct_token_with_text node ":" with
+          | Some colon_token ->
+              colon_token
+          | None ->
+              bail ~message:"expected record field colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                "type_definition.record_field";
+                "colon_token"
+              ]);
         field_type = lifted_field_type;
+        semicolon_token = direct_token_with_text node semicolon_text;
         is_mutable = mutable_field;
         attributes = lifted_attributes
       })
@@ -6984,11 +7041,21 @@ let type_definition_from_node = fun node ->
                           match first_ident_token_in_subtree field_node, direct_non_trivia_nodes field_node
                           |> List.find_opt can_lift_core_type_node with
                           | Some field_name, Some field_type_node ->
-                              {
+                              ({
                                 Cst.syntax_node = field_node;
                                 field_name;
-                                field_type = core_type_from_node field_type_node
-                              }
+                                colon_token =
+                                  (match direct_token_with_text field_node ":" with
+                                  | Some colon_token ->
+                                      colon_token
+                                  | None ->
+                                      bail ~message:"expected object type field colon token during Ceibo -> CST lifting" ~syntax_node:field_node ~context:[
+                                        "type_definition.object_field";
+                                        "colon_token"
+                                      ]);
+                                field_type = core_type_from_node field_type_node;
+                                semicolon_token = direct_token_with_text field_node semicolon_text
+                              }: Cst.object_type_field)
                           | _ ->
                               bail ~message:"expected object type field name and type during Ceibo -> CST lifting" ~syntax_node:field_node ~context:[
                                 "type_definition.object_field"
@@ -7046,6 +7113,29 @@ let type_declaration_from_node = fun node ->
       (fun syntax_token ->
         String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
   in
+  let manifest_alias_opt = type_manifest_alias_from_node node in
+  let definition = type_definition_from_node node in
+  let equals_tokens =
+    direct_non_trivia_tokens node
+    |> List.filter
+      (fun syntax_token -> String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "=")
+    |> List.map token
+  in
+  let manifest_equals_token_opt, definition_equals_token_opt =
+    match manifest_alias_opt, definition, equals_tokens with
+    | Some _, _, manifest_equals_token :: definition_equals_token :: _ ->
+        Some manifest_equals_token, Some definition_equals_token
+    | Some _, _, [ manifest_equals_token ] ->
+        Some manifest_equals_token, None
+    | None, Cst.TypeDefinition.Abstract, _ ->
+        None, None
+    | None, _, definition_equals_token :: _ ->
+        None, Some definition_equals_token
+    | None, _, [] ->
+        None, None
+    | Some _, _, [] ->
+        None, None
+  in
   match type_declaration_name_path node with
   | Some lifted_type_name -> (
       match Cst.Ident.last_segment lifted_type_name with
@@ -7054,8 +7144,10 @@ let type_declaration_from_node = fun node ->
             syntax_node = node;
             type_name = lifted_type_name;
             type_params = lifted_type_params;
-            type_definition = type_definition_from_node node;
-            manifest_alias = type_manifest_alias_from_node node;
+            type_definition = definition;
+            manifest_equals_token = manifest_equals_token_opt;
+            manifest_alias = manifest_alias_opt;
+            definition_equals_token = definition_equals_token_opt;
             private_flag = private_flag_from_type_declaration_node node;
             constraints = lifted_constraints;
             attributes = [];
@@ -7141,6 +7233,15 @@ let type_extension_from_node = fun node ->
             syntax_node = node;
             type_name = extension_type_name;
             type_params = extension_type_params;
+            extension_operator_token =
+              (match direct_token_with_text node "+=" with
+              | Some extension_operator_token ->
+                  extension_operator_token
+              | None ->
+                  bail ~message:"expected type extension operator token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "type_extension";
+                    "extension_operator_token"
+                  ]);
             constructors = extension_constructors
           }
       | None -> None
