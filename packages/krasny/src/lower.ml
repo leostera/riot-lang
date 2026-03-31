@@ -5864,10 +5864,18 @@ and render_module_structure_header ~include_keyword_leading_trivia
         [ header; Doc.space; doc_of_token_with_leading_trivia equals_token; Doc.space;
           render_module_expression_doc module_expression ]
 
-and render_module_type_declaration ({ module_type_name; equals_token; module_type; _ } :
+and render_module_type_declaration ~leading_after
+    ({ module_keyword_token; type_keyword_token; module_type_name; equals_token; module_type; _ } :
       Syn.Cst.ModuleTypeDeclaration.t) =
   let header =
-    Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; doc_of_token module_type_name ]
+    Doc.concat
+      [
+        doc_of_token_with_filtered_leading_trivia ~after:leading_after module_keyword_token;
+        Doc.space;
+        doc_of_token type_keyword_token;
+        Doc.space;
+        doc_of_token module_type_name;
+      ]
   in
   match module_type with
   | None ->
@@ -5984,6 +5992,12 @@ and render_structure_entry ~trailing_suffix ~leading_after item =
       match item with
       | Syn.Cst.StructureItem.TypeDeclaration decl ->
           render_type_declaration_with_keyword ~leading_after kw_type decl
+      | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
+          render_module_type_declaration ~leading_after decl
+      | Syn.Cst.StructureItem.ClassDeclaration decl ->
+          render_class_definition ~leading_after decl
+      | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
+          render_class_type_declaration ~leading_after decl
       | _ ->
           render_structure_item item
     in
@@ -6050,6 +6064,12 @@ and render_signature_entry ~trailing_suffix ~leading_after item =
           render_type_declaration_with_keyword ~leading_after kw_type decl
       | Syn.Cst.SignatureItem.ValueDeclaration decl ->
           render_signature_value_declaration ~leading_after decl
+      | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
+          render_module_type_declaration ~leading_after decl
+      | Syn.Cst.SignatureItem.ClassDeclaration decl ->
+          render_class_declaration ~leading_after decl
+      | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
+          render_class_type_declaration ~leading_after decl
       | _ ->
           render_signature_item item
     in
@@ -6106,7 +6126,7 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
       render_module_structure_with_keyword kw_module decl
   | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
-      render_module_type_declaration decl
+      render_module_type_declaration ~leading_after:0 decl
   | Syn.Cst.StructureItem.IncludeStatement stmt ->
       render_include_statement stmt
   | Syn.Cst.StructureItem.OpenStatement open_ ->
@@ -6134,9 +6154,9 @@ and render_structure_item = function
   | Syn.Cst.StructureItem.Extension extension ->
       render_extension_doc extension
   | Syn.Cst.StructureItem.ClassDeclaration decl ->
-      render_class_definition decl
+      render_class_definition ~leading_after:0 decl
   | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
-      render_class_type_declaration decl
+      render_class_type_declaration ~leading_after:0 decl
 
 and render_signature_value_declaration ~leading_after decl =
   let base =
@@ -6168,7 +6188,7 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
       render_module_signature_with_keyword kw_module decl
   | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
-      render_module_type_declaration decl
+      render_module_type_declaration ~leading_after:0 decl
   | Syn.Cst.SignatureItem.IncludeStatement stmt ->
       render_include_statement stmt
   | Syn.Cst.SignatureItem.OpenStatement open_ ->
@@ -6198,23 +6218,24 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.Extension extension ->
       render_extension_doc extension
   | Syn.Cst.SignatureItem.ClassDeclaration decl ->
-      render_class_declaration decl
+      render_class_declaration ~leading_after:0 decl
   | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
-      render_class_type_declaration decl
+      render_class_type_declaration ~leading_after:0 decl
 
-and render_class_declaration (declaration : Syn.Cst.ClassDeclaration.t) =
+and render_class_declaration ~leading_after (declaration : Syn.Cst.ClassDeclaration.t) =
   let type_params = Syn.Cst.ClassDeclaration.type_params declaration in
   let declaration_extension = Syn.Cst.ClassDeclaration.declaration_extension declaration in
   let declaration_attributes = Syn.Cst.ClassDeclaration.declaration_attributes declaration in
   let class_name = Syn.Cst.ClassDeclaration.class_name_token declaration in
+  let keyword_token = Syn.Cst.ClassDeclaration.keyword_token declaration in
   let keyword =
     match declaration_extension with
     | None ->
-        kw_class
+        doc_of_token_with_filtered_leading_trivia ~after:leading_after keyword_token
     | Some extension ->
         Doc.concat
           [
-            kw_class;
+            doc_of_token_with_filtered_leading_trivia ~after:leading_after keyword_token;
             doc_of_token extension.sigil_token;
             doc_of_ident extension.name;
             render_extension_payload_doc_with_context ~context:extension_payload_context extension;
@@ -6243,19 +6264,20 @@ and render_class_declaration (declaration : Syn.Cst.ClassDeclaration.t) =
       render_class_type_doc (Syn.Cst.ClassDeclaration.class_type declaration);
     ]
 
-and render_class_definition (declaration : Syn.Cst.ClassDefinition.t) =
+and render_class_definition ~leading_after (declaration : Syn.Cst.ClassDefinition.t) =
   let type_params = Syn.Cst.ClassDefinition.type_params declaration in
   let declaration_extension = Syn.Cst.ClassDefinition.declaration_extension declaration in
   let declaration_attributes = Syn.Cst.ClassDefinition.declaration_attributes declaration in
   let class_name = Syn.Cst.ClassDefinition.class_name_token declaration in
+  let keyword_token = Syn.Cst.ClassDefinition.keyword_token declaration in
   let keyword =
     match declaration_extension with
     | None ->
-        kw_class
+        doc_of_token_with_filtered_leading_trivia ~after:leading_after keyword_token
     | Some extension ->
         Doc.concat
           [
-            kw_class;
+            doc_of_token_with_filtered_leading_trivia ~after:leading_after keyword_token;
             doc_of_token extension.sigil_token;
             doc_of_ident extension.name;
             render_extension_payload_doc_with_context ~context:extension_payload_context extension;
@@ -6307,7 +6329,10 @@ and render_class_definition (declaration : Syn.Cst.ClassDefinition.t) =
         ]
 
 and render_class_type_declaration
+    ~leading_after
     ({
+       class_keyword_token;
+       type_keyword_token;
        declaration_extension;
        declaration_attributes;
        class_type_name;
@@ -6319,13 +6344,18 @@ and render_class_type_declaration
   let keyword =
     match declaration_extension with
     | None ->
-        Doc.concat [ kw_class; Doc.space; kw_type ]
+        Doc.concat
+          [
+            doc_of_token_with_filtered_leading_trivia ~after:leading_after class_keyword_token;
+            Doc.space;
+            doc_of_token type_keyword_token;
+          ]
     | Some extension ->
         Doc.concat
           [
-            kw_class;
+            doc_of_token_with_filtered_leading_trivia ~after:leading_after class_keyword_token;
             Doc.space;
-            kw_type;
+            doc_of_token type_keyword_token;
             doc_of_token extension.sigil_token;
             doc_of_ident extension.name;
             render_extension_payload_doc_with_context ~context:extension_payload_context extension;
