@@ -369,7 +369,10 @@ and core_type =
   | PolyVariant of poly_variant
   | Record of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       fields : record_type_field list;
+      separator_tokens : Token.t list;
+      closing_token : Token.t;
     }
   | FirstClassModule of {
       syntax_node : syntax_node;
@@ -528,7 +531,10 @@ module CoreType = struct
     | PolyVariant of poly_variant
     | Record of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         fields : record_type_field list;
+        separator_tokens : Token.t list;
+        closing_token : Token.t;
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
@@ -2754,7 +2760,9 @@ module TypeDefinition = struct
       }
     | Record of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         fields : RecordField.t list;
+        closing_token : Token.t;
       }
     | Variant of {
         syntax_node : syntax_node;

@@ -84,6 +84,8 @@ Token-backed so far:
 - record expression delimiters and separators
 - object override delimiters and separators
 - object type delimiters `< >`
+- core record type delimiters and separators
+- type definition record delimiters `{ }`
 
 ## Next Targets
 

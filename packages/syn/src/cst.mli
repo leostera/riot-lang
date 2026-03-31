@@ -647,7 +647,10 @@ and core_type =
       *)
   | Record of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       fields : record_type_field list;
+      separator_tokens : Token.t list;
+      closing_token : Token.t;
     }
       (** A record type definition written between `{` and `}`.
 
@@ -983,7 +986,10 @@ module CoreType : sig
     | PolyVariant of poly_variant
     | Record of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         fields : record_type_field list;
+        separator_tokens : Token.t list;
+        closing_token : Token.t;
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
@@ -3924,7 +3930,9 @@ module TypeDefinition : sig
     (** An object type definition such as `type t = < run : unit -> unit >`. *)
     | Record of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         fields : RecordField.t list;
+        closing_token : Token.t;
       }
     (** A record type definition such as
             `type t = { name : string; mutable count : int }`. *)

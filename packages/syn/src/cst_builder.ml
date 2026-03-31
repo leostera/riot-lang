@@ -1048,9 +1048,9 @@ let update_last_variant_constructor_owned_trivia = fun ~source:_ ~following_triv
 
 let normalize_type_definition_owned_trivia = fun ~source ->
   function
-  | Cst.TypeDefinition.Record { syntax_node; fields } ->
+  | Cst.TypeDefinition.Record { syntax_node; opening_token; fields; closing_token } ->
       let normalized_fields = normalize_record_fields_owned_trivia ~source fields in
-      Cst.TypeDefinition.Record {syntax_node; fields = normalized_fields}
+      Cst.TypeDefinition.Record {syntax_node; opening_token; fields = normalized_fields; closing_token}
   | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
       let normalized_constructors = constructors
       |> normalize_variant_constructor_sequence_owned_trivia ~source ~source_node:syntax_node in
@@ -3708,11 +3708,28 @@ and core_type_from_node = fun node ->
   | Syntax_kind.TYPE_POLY_VARIANT ->
       Cst.CoreType.PolyVariant (poly_variant_from_node node)
   | Syntax_kind.TYPE_RECORD ->
+      let direct_tokens = direct_non_trivia_tokens node in
+      let opening_token, closing_token =
+        match direct_tokens with
+        | opening_token :: _ ->
+            let closing_token = List.hd (List.rev direct_tokens) in
+            (token opening_token, token closing_token)
+        | [] ->
+            bail ~message:"expected record type delimiters during Ceibo -> CST lifting"
+              ~syntax_node:node ~context:[ "core_type.record" ]
+      in
       Cst.CoreType.Record {
         syntax_node = node;
+        opening_token;
         fields = direct_non_trivia_nodes node
         |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
-        |> List.map record_type_field_from_node
+        |> List.map record_type_field_from_node;
+        separator_tokens =
+          direct_tokens
+          |> List.filter (fun syntax_token ->
+               String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text)
+          |> List.map token;
+        closing_token
       }
   | Syntax_kind.FIRST_CLASS_MODULE_TYPE ->
       let direct_tokens = direct_non_trivia_tokens node in
@@ -7471,11 +7488,26 @@ let type_definition_from_node = fun node ->
       match direct_children
       |> List.find_opt (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD) with
       | Some record_node ->
+          let direct_tokens = direct_non_trivia_tokens record_node in
+          let opening_token, closing_token =
+            match direct_tokens with
+            | opening_token :: _ ->
+                let closing_token = List.hd (List.rev direct_tokens) in
+                (token opening_token, token closing_token)
+            | [] ->
+                bail ~message:"expected type definition record delimiters during Ceibo -> CST lifting"
+                  ~syntax_node:record_node ~context:[ "type_definition.record" ]
+          in
           let fields = direct_non_trivia_nodes record_node
           |> List.filter
           (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
           |> List.filter_map record_field_from_node in
-          Cst.TypeDefinition.Record {syntax_node = record_node; fields}
+          Cst.TypeDefinition.Record {
+            syntax_node = record_node;
+            opening_token;
+            fields;
+            closing_token
+          }
       | None -> (
           match direct_children
           |> List.find_opt

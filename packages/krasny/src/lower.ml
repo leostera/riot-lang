@@ -909,8 +909,8 @@ and render_core_type =
       Doc.concat [ Doc.lparen; render_core_type inner; Doc.rparen ]
   | Syn.Cst.CoreType.PolyVariant poly_variant ->
       render_poly_variant_type poly_variant
-  | Syn.Cst.CoreType.Record { fields; _ } ->
-      render_record_type fields
+  | Syn.Cst.CoreType.Record { opening_token; fields; separator_tokens; closing_token; _ } ->
+      render_record_type ~opening_token ~separator_tokens ~closing_token fields
   | Syn.Cst.CoreType.FirstClassModule
       { opening_token; package_type; closing_token; _ } ->
       Doc.concat
@@ -947,13 +947,30 @@ and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
     doc_of_token field.colon_token;
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
-and render_record_type = fun fields ->
+and render_record_type = fun ~opening_token ~separator_tokens ~closing_token fields ->
+  let rec render_fields fields separator_tokens =
+    match fields, separator_tokens with
+    | [], [] ->
+        Doc.empty
+    | [ field ], [] ->
+        render_record_core_type_field field
+    | field :: rest, separator_token :: rest_separators ->
+        Doc.concat
+          [
+            render_record_core_type_field field;
+            doc_of_token separator_token;
+            Doc.line;
+            render_fields rest rest_separators;
+          ]
+    | _ ->
+        unsupported "record type fields missing separator tokens"
+  in
   Doc.concat [
-    Doc.lbrace;
+    doc_of_token opening_token;
     Doc.line;
-    Doc.indent 2 (join_map (Doc.concat [ Doc.semi; Doc.line ]) render_record_core_type_field fields);
+    Doc.indent 2 (render_fields fields separator_tokens);
     Doc.line;
-    Doc.rbrace
+    doc_of_token closing_token
   ]
 and render_record_definition_field = fun (field : Syn.Cst.RecordField.t) ->
   let field_type = Syn.Cst.RecordField.field_type field in
@@ -1001,15 +1018,22 @@ and render_record_definition_body_item = function
       Doc.text (Syn.Cst.Comment.text comment)
   | Syn.CstBuilder.Docstring docstring ->
       Doc.text (Syn.Cst.Docstring.text docstring)
+and render_record_definition_body = fun fields ->
+  fields
+  |> Syn.CstBuilder.record_field_items_of_fields
+  |> List.map render_record_definition_body_item
+  |> Doc.join Doc.line
 and render_record_definition = fun fields ->
-  let body =
-    fields
-    |> Syn.CstBuilder.record_field_items_of_fields
-    |> List.map render_record_definition_body_item
-    |> Doc.join Doc.line
-  in
+  let body = render_record_definition_body fields in
   Doc.concat
     [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
+and render_tokenized_record_definition = fun ~opening_token ~closing_token fields ->
+  let body =
+    fields
+    |> render_record_definition_body
+  in
+  Doc.concat
+    [ doc_of_token opening_token; Doc.line; Doc.indent 2 body; Doc.line; doc_of_token closing_token ]
 and render_inline_record_definition = fun fields ->
   if List.is_empty fields then
     Doc.concat [ Doc.lbrace; Doc.rbrace ]
@@ -1417,8 +1441,8 @@ let render_type_definition = function
       None
   | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
       Some (render_core_type manifest)
-  | Syn.Cst.TypeDefinition.Record { fields; _ } ->
-      Some (render_record_definition fields)
+  | Syn.Cst.TypeDefinition.Record { opening_token; fields; closing_token; _ } ->
+      Some (render_tokenized_record_definition ~opening_token ~closing_token fields)
   | Syn.Cst.TypeDefinition.Variant { syntax_node = _; constructors } ->
       Some
         (render_variant_definition constructors)
