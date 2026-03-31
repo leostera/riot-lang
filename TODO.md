@@ -63,6 +63,7 @@ Token-backed so far:
 - polymorphic expression `:`
 - local binding annotation `:`
 - first-class module pattern `:`
+- first-class module pattern delimiters `( )`
 - module pack expression `:`
 - module unpack expression `:`
 - module declaration `:`

@@ -1000,9 +1000,11 @@ and first_class_module_pattern_binding =
 
 and first_class_module_pattern = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   binding : first_class_module_pattern_binding;
   colon_token : Token.t option;
   package_type : package_type option;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 

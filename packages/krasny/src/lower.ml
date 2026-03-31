@@ -1788,7 +1788,7 @@ let rec render_pattern =
   | Syn.Cst.Pattern.Operator { operator_tokens; _ } ->
       let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
       Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
-  | Syn.Cst.Pattern.FirstClassModule { binding; colon_token; package_type; _ } ->
+  | Syn.Cst.Pattern.FirstClassModule { opening_token; binding; colon_token; package_type; closing_token; _ } ->
       let binding_doc =
         match binding with
         | Syn.Cst.Named { name_token } ->
@@ -1817,7 +1817,7 @@ let rec render_pattern =
               ]
       in
       Doc.concat
-        [ Doc.lparen; kw_module; Doc.space; binding_doc; constraint_doc; Doc.rparen ]
+        [ doc_of_token opening_token; kw_module; Doc.space; binding_doc; constraint_doc; doc_of_token closing_token ]
   | Syn.Cst.Pattern.PolyVariantInherit { type_path; _ } ->
       Doc.concat [ hash; doc_of_ident type_path ]
   | Syn.Cst.Pattern.Tuple { elements; _ } ->

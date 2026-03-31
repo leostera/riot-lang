@@ -3992,9 +3992,18 @@ let rec pattern_from_node = fun node ->
         }
     | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
         match direct_non_trivia_tokens node with
-        | _lparen :: _module_kw :: binding_syntax_token :: _ ->
+        | lparen :: _module_kw :: binding_syntax_token :: _ ->
+            let closing_token =
+              match List.rev (direct_non_trivia_tokens node) with
+              | closing_syntax_token :: _ ->
+                  token closing_syntax_token
+              | [] ->
+                  bail ~message:"expected first-class module pattern closing delimiter during Ceibo -> CST lifting"
+                    ~syntax_node:node ~context:[ "pattern.first_class_module"; "closing_token" ]
+            in
             Cst.Pattern.FirstClassModule {
               syntax_node = node;
+              opening_token = token lparen;
               binding = if String.equal (Ceibo.Red.SyntaxToken.text binding_syntax_token) "_" then
                 Cst.Anonymous {wildcard_token = token binding_syntax_token}
               else
@@ -4004,6 +4013,7 @@ let rec pattern_from_node = fun node ->
                 = (direct_non_trivia_nodes node
                 |> List.find_opt can_lift_module_type_node
                 |> Option.map package_type_from_module_type_node);
+                closing_token;
                 attributes = []
             }
         | _ -> unsupported_pattern node
