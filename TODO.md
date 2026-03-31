@@ -49,6 +49,9 @@ Token-backed so far:
 - class expression constraint `:`
 - module type of `of`
 - module type constraint `=` / `:=`
+- object member type annotation `:`
+- class type value/method `:`
+- class member type annotation `:`
 
 ## Next Targets
 

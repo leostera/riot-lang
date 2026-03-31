@@ -830,6 +830,7 @@ and class_type_field =
   | Value of {
       syntax_node : syntax_node;
       name_token : Token.t;
+      colon_token : Token.t;
       type_ : core_type;
       modifier_tokens : Token.t list;
     }
@@ -845,6 +846,7 @@ and class_type_field =
   | Method of {
       syntax_node : syntax_node;
       name_token : Token.t;
+      colon_token : Token.t;
       type_ : core_type;
       modifier_tokens : Token.t list;
     }
@@ -1165,12 +1167,14 @@ module ClassTypeField : sig
     | Value of {
         syntax_node : syntax_node;
         name_token : Token.t;
+        colon_token : Token.t;
         type_ : core_type;
         modifier_tokens : Token.t list;
       }
     | Method of {
         syntax_node : syntax_node;
         name_token : Token.t;
+        colon_token : Token.t;
         type_ : core_type;
         modifier_tokens : Token.t list;
       }
@@ -2114,7 +2118,7 @@ and object_member =
 and method_definition =
   | ConcreteMethod of {
       body : expression;
-      type_ : core_type option;
+      type_ : (Token.t * core_type) option;
     }
   | VirtualMethod of {
       virtual_token : Token.t;
@@ -2130,7 +2134,7 @@ and method_definition =
 and value_definition =
   | ConcreteValue of {
       value : expression;
-      type_ : core_type option;
+      type_ : (Token.t * core_type) option;
     }
   | VirtualValue of {
       virtual_token : Token.t;
@@ -2148,6 +2152,7 @@ and object_method = {
   name_token : Token.t;
   body : expression;
   type_ : core_type option;
+  colon_token : Token.t option;
   modifier_tokens : Token.t list;
 }
 
@@ -2162,6 +2167,7 @@ and object_value = {
   name_token : Token.t;
   value : expression;
   type_ : core_type option;
+  colon_token : Token.t option;
   modifier_tokens : Token.t list;
 }
 
@@ -2992,6 +2998,7 @@ and class_field =
 and class_method = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  virtual_colon_token : Token.t option;
   definition : method_definition;
   modifier_tokens : Token.t list;
 }
@@ -3004,6 +3011,7 @@ and class_method = {
 and class_value = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  virtual_colon_token : Token.t option;
   definition : value_definition;
   modifier_tokens : Token.t list;
 }

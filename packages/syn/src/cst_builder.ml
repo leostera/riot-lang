@@ -3164,6 +3164,15 @@ and class_type_field_from_node = fun node ->
               let field = Cst.ClassTypeField.Value {
                 syntax_node = node;
                 name_token;
+                colon_token =
+                  (match direct_token_with_text node ":" with
+                  | Some colon_token ->
+                      colon_token
+                  | None ->
+                      bail ~message:"expected class type value colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                        "class_type_field.value";
+                        "colon_token"
+                      ]);
                 type_ = core_type_from_node payload_type_node;
                 modifier_tokens
               }
@@ -3196,6 +3205,15 @@ and class_type_field_from_node = fun node ->
               let field = Cst.ClassTypeField.Method {
                 syntax_node = node;
                 name_token;
+                colon_token =
+                  (match direct_token_with_text node ":" with
+                  | Some colon_token ->
+                      colon_token
+                  | None ->
+                      bail ~message:"expected class type method colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                        "class_type_field.method";
+                        "colon_token"
+                      ]);
                 type_ = core_type_from_node payload_type_node;
                 modifier_tokens
               }
@@ -5273,6 +5291,7 @@ and object_method_from_node = fun node ->
                    "method"
                  ]);
             type_;
+            colon_token = direct_token_with_text node ":";
             modifier_tokens
           }
       | None -> None
@@ -5311,6 +5330,7 @@ and object_value_from_node = fun node ->
                    "value"
                  ]);
             type_;
+            colon_token = direct_token_with_text node ":";
             modifier_tokens
           }
       | None -> None
@@ -6045,6 +6065,7 @@ and class_method_from_node = fun node ->
               (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
               (direct_non_trivia_tokens node)
           in
+          let colon_token = direct_token_with_text node ":" in
           let definition : Cst.method_definition =
             if is_virtual then
               match type_ with
@@ -6071,7 +6092,15 @@ and class_method_from_node = fun node ->
                   ]
             else
               match body with
-              | Some body -> Cst.ConcreteMethod { body; type_ }
+              | Some body -> Cst.ConcreteMethod { body; type_ = Option.map (fun type_ -> ((match colon_token with
+                  | Some colon_token ->
+                      colon_token
+                  | None ->
+                      bail ~message:"expected class method colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                        "class_field";
+                        "method";
+                        "colon_token"
+                      ]), type_)) type_ }
               | None ->
                   bail ~message:"expected body expression for concrete class method during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                     "class_field";
@@ -6082,6 +6111,7 @@ and class_method_from_node = fun node ->
           let field : Cst.class_method = {
             Cst.syntax_node = node;
             name_token;
+            virtual_colon_token = colon_token;
             definition;
             modifier_tokens
           }
@@ -6128,6 +6158,7 @@ and class_value_from_node = fun node ->
               (fun tok -> String.equal (Ceibo.Red.SyntaxToken.text tok) "virtual")
               (direct_non_trivia_tokens node)
           in
+          let colon_token = direct_token_with_text node ":" in
           let definition : Cst.value_definition =
             if is_virtual then
               match type_ with
@@ -6154,7 +6185,15 @@ and class_value_from_node = fun node ->
                   ]
             else
               match value with
-              | Some value -> Cst.ConcreteValue { value; type_ }
+              | Some value -> Cst.ConcreteValue { value; type_ = Option.map (fun type_ -> ((match colon_token with
+                  | Some colon_token ->
+                      colon_token
+                  | None ->
+                      bail ~message:"expected class value colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                        "class_field";
+                        "value";
+                        "colon_token"
+                      ]), type_)) type_ }
               | None ->
                   bail ~message:"expected bound expression for concrete class value during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                     "class_field";
@@ -6165,6 +6204,7 @@ and class_value_from_node = fun node ->
           let field : Cst.class_value = {
             Cst.syntax_node = node;
             name_token;
+            virtual_colon_token = colon_token;
             definition;
             modifier_tokens
           }
@@ -9186,14 +9226,14 @@ and validate_class_field = fun ~context ->
       (match definition with
       | Cst.ConcreteMethod { body; type_ } ->
           validate_expression ~context:((("class_field.method.body" :: context))) body;
-          Option.iter (validate_core_type ~context:((("class_field.method.type" :: context)))) type_
+          Option.iter (fun (_, type_) -> validate_core_type ~context:((("class_field.method.type" :: context))) type_) type_
       | Cst.VirtualMethod { type_; _ } ->
           validate_core_type ~context:((("class_field.method.type" :: context))) type_)
   | Cst.ClassField.Value { definition; _ } ->
       (match definition with
       | Cst.ConcreteValue { value; type_ } ->
           validate_expression ~context:((("class_field.value.value" :: context))) value;
-          Option.iter (validate_core_type ~context:((("class_field.value.type" :: context)))) type_
+          Option.iter (fun (_, type_) -> validate_core_type ~context:((("class_field.value.type" :: context))) type_) type_
       | Cst.VirtualValue { type_; _ } ->
           validate_core_type ~context:((("class_field.value.type" :: context))) type_)
   | Cst.ClassField.Inherit { class_expression; _ } ->

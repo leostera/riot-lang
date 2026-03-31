@@ -817,9 +817,17 @@ and modifier_tokens_to_json = fun tokens ->
 and method_definition_to_json =
   function
   | Cst.ConcreteMethod { body; type_ } ->
+      let colon_token, type_ =
+        match type_ with
+        | Some (colon_token, type_) ->
+            (Some colon_token, Some type_)
+        | None ->
+            (None, None)
+      in
       Json.Object [
         ("tag", Json.String "concrete");
         ("body", expression_to_json body);
+        ("colon_token", option_to_json token_to_json colon_token);
         ("type", option_to_json core_type_to_json type_)
       ]
   | Cst.VirtualMethod { virtual_token; type_ } ->
@@ -831,9 +839,17 @@ and method_definition_to_json =
 and value_definition_to_json =
   function
   | Cst.ConcreteValue { value; type_ } ->
+      let colon_token, type_ =
+        match type_ with
+        | Some (colon_token, type_) ->
+            (Some colon_token, Some type_)
+        | None ->
+            (None, None)
+      in
       Json.Object [
         ("tag", Json.String "concrete");
         ("value", expression_to_json value);
+        ("colon_token", option_to_json token_to_json colon_token);
         ("type", option_to_json core_type_to_json type_)
       ]
   | Cst.VirtualValue { virtual_token; type_ } ->
@@ -850,6 +866,7 @@ and object_member_to_json =
     name_token;
     body;
     type_;
+    colon_token;
     modifier_tokens
   } ->
       Json.Object [
@@ -858,6 +875,7 @@ and object_member_to_json =
         ("attributes", Json.Array (List.map attribute_to_json attributes));
         ("name_token", token_to_json name_token);
         ("body", expression_to_json body);
+        ("colon_token", option_to_json token_to_json colon_token);
         ("type", option_to_json core_type_to_json type_);
         ("modifier_tokens", modifier_tokens_to_json modifier_tokens)
       ]
@@ -867,6 +885,7 @@ and object_member_to_json =
     name_token;
     value;
     type_;
+    colon_token;
     modifier_tokens
   } ->
       Json.Object [
@@ -875,6 +894,7 @@ and object_member_to_json =
         ("attributes", Json.Array (List.map attribute_to_json attributes));
         ("name_token", token_to_json name_token);
         ("value", expression_to_json value);
+        ("colon_token", option_to_json token_to_json colon_token);
         ("type", option_to_json core_type_to_json type_);
         ("modifier_tokens", modifier_tokens_to_json modifier_tokens)
       ]
@@ -1788,6 +1808,7 @@ let rec class_field_to_json =
   | Cst.ClassField.Method {
     syntax_node;
     name_token;
+    virtual_colon_token;
     definition;
     modifier_tokens
   } ->
@@ -1795,12 +1816,14 @@ let rec class_field_to_json =
         ("tag", Json.String "method");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("name_token", token_to_json name_token);
+        ("virtual_colon_token", option_to_json token_to_json virtual_colon_token);
         ("definition", method_definition_to_json definition);
         ("modifier_tokens", modifier_tokens_to_json modifier_tokens)
       ]
   | Cst.ClassField.Value {
     syntax_node;
     name_token;
+    virtual_colon_token;
     definition;
     modifier_tokens
   } ->
@@ -1808,6 +1831,7 @@ let rec class_field_to_json =
         ("tag", Json.String "value");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("name_token", token_to_json name_token);
+        ("virtual_colon_token", option_to_json token_to_json virtual_colon_token);
         ("definition", value_definition_to_json definition);
         ("modifier_tokens", modifier_tokens_to_json modifier_tokens)
       ]
@@ -1943,19 +1967,21 @@ and class_type_field_to_json =
         ("syntax_node", syntax_node_to_json syntax_node);
         ("class_type", class_type_to_json class_type)
       ]
-  | Cst.ClassTypeField.Value { syntax_node; name_token; type_; modifier_tokens } ->
+  | Cst.ClassTypeField.Value { syntax_node; name_token; colon_token; type_; modifier_tokens } ->
       Json.Object [
         ("tag", Json.String "value");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("name_token", token_to_json name_token);
+        ("colon_token", token_to_json colon_token);
         ("type", core_type_to_json type_);
         ("modifier_tokens", modifier_tokens_to_json modifier_tokens)
       ]
-  | Cst.ClassTypeField.Method { syntax_node; name_token; type_; modifier_tokens } ->
+  | Cst.ClassTypeField.Method { syntax_node; name_token; colon_token; type_; modifier_tokens } ->
       Json.Object [
         ("tag", Json.String "method");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("name_token", token_to_json name_token);
+        ("colon_token", token_to_json colon_token);
         ("type", core_type_to_json type_);
         ("modifier_tokens", modifier_tokens_to_json modifier_tokens)
       ]

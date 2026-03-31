@@ -770,7 +770,7 @@ and descend_class_field = fun walk ctx (field : Cst.class_field) ->
             let ctx = walk.expression ctx body in
             (
               match type_ with
-              | Some type_ -> walk.core_type ctx type_
+              | Some (_, type_) -> walk.core_type ctx type_
               | None -> ctx
             )
         | Cst.VirtualMethod { type_; _ } ->
@@ -783,7 +783,7 @@ and descend_class_field = fun walk ctx (field : Cst.class_field) ->
             let ctx = walk.expression ctx value in
             (
               match type_ with
-              | Some type_ -> walk.core_type ctx type_
+              | Some (_, type_) -> walk.core_type ctx type_
               | None -> ctx
             )
         | Cst.VirtualValue { type_; _ } ->

@@ -2684,6 +2684,7 @@ and render_object_method
        name_token;
        body;
        type_;
+       colon_token;
        attributes;
        modifier_tokens;
        _;
@@ -2699,7 +2700,14 @@ and render_object_method
     | None ->
         render_object_member_body ~head body
     | Some type_ ->
-        render_object_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) body
+        let colon_token =
+          match colon_token with
+          | Some colon_token ->
+              colon_token
+          | None ->
+              unsupported "object method type annotation missing colon token"
+        in
+        render_object_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) body
   in
   doc_with_object_member_attributes attributes doc
 
@@ -2708,6 +2716,7 @@ and render_object_value
        name_token;
        value;
        type_;
+       colon_token;
        attributes;
        modifier_tokens;
        _;
@@ -2723,7 +2732,14 @@ and render_object_value
     | None ->
         render_object_member_body ~head value
     | Some type_ ->
-        render_object_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) value
+        let colon_token =
+          match colon_token with
+          | Some colon_token ->
+              colon_token
+          | None ->
+              unsupported "object value type annotation missing colon token"
+        in
+        render_object_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) value
   in
   doc_with_object_member_attributes attributes doc
 
@@ -2791,22 +2807,22 @@ and render_object_expression
 and render_class_type_field = function
   | Syn.Cst.ClassTypeField.Inherit { class_type; _ } ->
       Doc.concat [ kw_inherit; Doc.space; render_class_type_doc class_type ]
-  | Syn.Cst.ClassTypeField.Value { name_token; type_; modifier_tokens; _ } ->
+  | Syn.Cst.ClassTypeField.Value { name_token; type_; colon_token; modifier_tokens; _ } ->
       let head =
         Doc.concat
           ([ kw_val ]
           @ List.map doc_of_token_with_leading_trivia modifier_tokens
           @ [ doc_of_token_with_leading_trivia name_token ])
       in
-      Doc.concat [ head; annotation_colon; render_core_type type_ ]
-  | Syn.Cst.ClassTypeField.Method { name_token; type_; modifier_tokens; _ } ->
+      Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]
+  | Syn.Cst.ClassTypeField.Method { name_token; type_; colon_token; modifier_tokens; _ } ->
       let head =
         Doc.concat
           ([ kw_method ]
           @ List.map doc_of_token_with_leading_trivia modifier_tokens
           @ [ doc_of_token_with_leading_trivia name_token ])
       in
-      Doc.concat [ head; annotation_colon; render_core_type type_ ]
+      Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]
   | Syn.Cst.ClassTypeField.Constraint { left; equals_token; right; _ } ->
       Doc.concat
         [
@@ -2905,6 +2921,7 @@ and render_class_method
     ({
        name_token;
        definition;
+       virtual_colon_token;
        modifier_tokens;
        _;
      } : Syn.Cst.class_method) =
@@ -2916,16 +2933,24 @@ and render_class_method
   in
   match definition with
   | Syn.Cst.VirtualMethod { type_; _ } ->
-      Doc.concat [ head; annotation_colon; render_core_type type_ ]
+      let virtual_colon_token =
+        match virtual_colon_token with
+        | Some virtual_colon_token ->
+            virtual_colon_token
+        | None ->
+            unsupported "virtual class method missing colon token"
+      in
+      Doc.concat [ head; doc_of_token virtual_colon_token; Doc.space; render_core_type type_ ]
   | Syn.Cst.ConcreteMethod { body; type_ = None } ->
       render_class_member_body ~head body
-  | Syn.Cst.ConcreteMethod { body; type_ = Some type_ } ->
-      render_class_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) body
+  | Syn.Cst.ConcreteMethod { body; type_ = Some (colon_token, type_) } ->
+      render_class_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) body
 
 and render_class_value
     ({
        name_token;
        definition;
+       virtual_colon_token;
        modifier_tokens;
        _;
      } : Syn.Cst.class_value) =
@@ -2937,11 +2962,18 @@ and render_class_value
   in
   match definition with
   | Syn.Cst.VirtualValue { type_; _ } ->
-      Doc.concat [ head; annotation_colon; render_core_type type_ ]
+      let virtual_colon_token =
+        match virtual_colon_token with
+        | Some virtual_colon_token ->
+            virtual_colon_token
+        | None ->
+            unsupported "virtual class value missing colon token"
+      in
+      Doc.concat [ head; doc_of_token virtual_colon_token; Doc.space; render_core_type type_ ]
   | Syn.Cst.ConcreteValue { value; type_ = None } ->
       render_class_member_body ~head value
-  | Syn.Cst.ConcreteValue { value; type_ = Some type_ } ->
-      render_class_member_body ~head:(Doc.concat [ head; annotation_colon; render_core_type type_ ]) value
+  | Syn.Cst.ConcreteValue { value; type_ = Some (colon_token, type_) } ->
+      render_class_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) value
 
 and render_class_inherit ({ class_expression; _ } : Syn.Cst.class_inherit) =
   Doc.concat [ kw_inherit; Doc.space; render_class_expression class_expression ]
