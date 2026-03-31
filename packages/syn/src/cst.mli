@@ -4068,7 +4068,7 @@ module TypeExtension : sig
     syntax_node : syntax_node;
     type_name : Ident.t;
     type_params : TypeParameter.t list;
-    extension_operator_token : Token.t;
+    extension_operator_tokens : Token.t list;
     constructors : VariantConstructor.t list;
   }
   val syntax_node : t -> syntax_node
@@ -4077,7 +4077,7 @@ module TypeExtension : sig
 
   val type_params : t -> TypeParameter.t list
 
-  val extension_operator_token : t -> Token.t
+  val extension_operator_tokens : t -> Token.t list
 
   val constructors : t -> VariantConstructor.t list
 

@@ -2857,7 +2857,7 @@ module TypeExtension = struct
     syntax_node : syntax_node;
     type_name : Ident.t;
     type_params : TypeParameter.t list;
-    extension_operator_token : Token.t;
+    extension_operator_tokens : Token.t list;
     constructors : VariantConstructor.t list;
   }
 
@@ -2867,7 +2867,7 @@ module TypeExtension = struct
 
   let type_params = fun decl -> decl.type_params
 
-  let extension_operator_token = fun decl -> decl.extension_operator_token
+  let extension_operator_tokens = fun decl -> decl.extension_operator_tokens
 
   let constructors = fun decl -> decl.constructors
 

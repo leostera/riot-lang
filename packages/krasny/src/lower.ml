@@ -1052,17 +1052,17 @@ and render_inline_record_definition = fun fields ->
     | [ field ] ->
         render_record_definition_field field
     | field :: rest ->
-        let semicolon_token =
+        let separator_doc =
           match Syn.Cst.RecordField.semicolon_token field with
           | Some semicolon_token ->
-              semicolon_token
+              doc_of_token semicolon_token
           | None ->
-              unsupported "inline record definition field missing semicolon token"
+              Doc.semi
         in
         Doc.concat
           [
             render_record_definition_field field;
-            doc_of_token semicolon_token;
+            separator_doc;
             Doc.break ~flat:" " ();
             render_fields rest;
           ]
@@ -1086,17 +1086,17 @@ and render_tokenized_inline_record_definition = fun ~opening_token ~closing_toke
     | [ field ] ->
         render_record_definition_field field
     | field :: rest ->
-        let semicolon_token =
+        let separator_doc =
           match Syn.Cst.RecordField.semicolon_token field with
           | Some semicolon_token ->
-              semicolon_token
+              doc_of_token semicolon_token
           | None ->
-              unsupported "inline tokenized record definition field missing semicolon token"
+              Doc.semi
         in
         Doc.concat
           [
             render_record_definition_field field;
-            doc_of_token semicolon_token;
+            separator_doc;
             Doc.break ~flat:" " ();
             render_fields rest;
           ]
@@ -1684,6 +1684,11 @@ let render_type_declaration_with_keyword = fun keyword decl ->
 
 let render_type_extension = fun (decl : Syn.Cst.TypeExtension.t) ->
   let params = render_type_parameters (Syn.Cst.TypeExtension.type_params decl) in
+  let extension_operator =
+    Syn.Cst.TypeExtension.extension_operator_tokens decl
+    |> List.map doc_of_token
+    |> Doc.concat
+  in
   let header =
     if params = Doc.empty then
       Doc.concat
@@ -1692,7 +1697,7 @@ let render_type_extension = fun (decl : Syn.Cst.TypeExtension.t) ->
           Doc.space;
           doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
           Doc.space;
-          doc_of_token (Syn.Cst.TypeExtension.extension_operator_token decl);
+          extension_operator;
         ]
     else
       Doc.concat
@@ -1703,7 +1708,7 @@ let render_type_extension = fun (decl : Syn.Cst.TypeExtension.t) ->
           Doc.space;
           doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
           Doc.space;
-          doc_of_token (Syn.Cst.TypeExtension.extension_operator_token decl);
+          extension_operator;
         ]
   in
   let constructors =

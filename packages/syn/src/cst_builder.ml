@@ -7827,6 +7827,26 @@ let rec coalesce_signature_type_declaration_groups =
       []
 
 let type_extension_from_node = fun node ->
+  let lifted_extension_operator_tokens =
+    let rec find_plus_equals = function
+      | plus_token :: equals_token :: _
+        when String.equal (Ceibo.Red.SyntaxToken.text plus_token) "+"
+          && String.equal (Ceibo.Red.SyntaxToken.text equals_token) "=" ->
+          Some [ token plus_token; token equals_token ]
+      | _ :: rest ->
+          find_plus_equals rest
+      | [] ->
+          None
+    in
+    match find_plus_equals (direct_non_trivia_tokens node) with
+    | Some extension_operator_tokens ->
+        extension_operator_tokens
+    | None ->
+        bail ~message:"expected type extension operator tokens during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+          "type_extension";
+          "extension_operator_tokens"
+        ]
+  in
   let extension_type_params = direct_non_trivia_nodes node
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
   |> List.map type_parameter_from_node in
@@ -7841,15 +7861,7 @@ let type_extension_from_node = fun node ->
             syntax_node = node;
             type_name = extension_type_name;
             type_params = extension_type_params;
-            extension_operator_token =
-              (match direct_token_with_text node "+=" with
-              | Some extension_operator_token ->
-                  extension_operator_token
-              | None ->
-                  bail ~message:"expected type extension operator token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-                    "type_extension";
-                    "extension_operator_token"
-                  ]);
+            extension_operator_tokens = lifted_extension_operator_tokens;
             constructors = extension_constructors
           }
       | None -> None
