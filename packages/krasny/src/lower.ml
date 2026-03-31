@@ -4766,15 +4766,23 @@ and render_let_expression
         body_doc;
       ]
 
-and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
+and render_let_binding_group_item
+    ?leading_binding_trivia_override
+    (binding : Syn.Cst.let_binding) =
   let source_has_explicit_fun =
     binding_has_explicit_fun_rhs binding
+  in
+  let leading_binding_trivia =
+    match leading_binding_trivia_override with
+    | Some leading_binding_trivia ->
+        leading_binding_trivia
+    | None ->
+        pending_doc_of_token_leading_trivia binding.keyword_token
   in
   render_local_binding ~local_context:false ~keyword_token:binding.keyword_token
     ~source_has_explicit_fun ~rec_token:binding.rec_token
     ~equals_token:binding.equals_token
-    ~leading_binding_trivia:
-      (pending_doc_of_token_leading_trivia binding.keyword_token)
+    ~leading_binding_trivia
     ~leading_value_trivia:
       (pending_doc_of_trivia_before_node
          ~after:(Syn.Cst.Token.span binding.equals_token).end_
@@ -4783,11 +4791,17 @@ and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
     ~parameters:binding.parameters ~value:binding.value
 
 and render_let_binding (binding : Syn.Cst.let_binding) =
-  let first = render_let_binding_group_item binding in
+  let first =
+    render_let_binding_group_item ~leading_binding_trivia_override:None binding
+  in
   let trailing =
     Syn.Cst.LetBinding.and_bindings binding
     |> List.map (fun and_binding ->
-           Doc.concat [ Doc.line; render_let_binding_group_item and_binding ])
+           Doc.concat
+             [
+               Doc.line;
+               render_let_binding_group_item and_binding;
+             ])
   in
   Doc.concat (first :: trailing)
 
