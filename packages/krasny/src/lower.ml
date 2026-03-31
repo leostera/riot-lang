@@ -4,13 +4,7 @@ module Doc = Doc
 
 let blank_line = Doc.concat [ Doc.line; Doc.line ]
 
-let equals = Doc.concat [ Doc.space; Doc.equal; Doc.space ]
-
 let arrow = Doc.concat [ Doc.space; Doc.arrow; Doc.space ]
-
-let colon = Doc.concat [ Doc.space; Doc.colon; Doc.space ]
-
-let annotation_colon = Doc.concat [ Doc.colon; Doc.space ]
 
 let multiline_list_threshold = 10
 
@@ -324,8 +318,6 @@ let kw_class = Doc.text "class"
 let kw_external = Doc.text "external"
 
 let kw_constraint = Doc.text "constraint"
-
-let kw_of = Doc.text "of"
 
 let kw_mutable = Doc.text "mutable"
 
@@ -5368,7 +5360,7 @@ and render_local_binding
           | Some colon_token ->
               Doc.concat [ Doc.space; doc_of_token colon_token; Doc.space ]
           | None ->
-              colon
+              Doc.concat [ Doc.space; Doc.colon; Doc.space ]
         in
         Doc.concat [ header; colon_doc; type_doc ]
   in
