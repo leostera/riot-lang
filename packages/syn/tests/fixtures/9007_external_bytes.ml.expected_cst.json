@@ -30,6 +30,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 22,
+              "end": 23
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -97,6 +105,14 @@
                 }
               },
               "arguments": []
+            }
+          },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 39,
+              "end": 40
             }
           },
           "primitive_name_tokens": [

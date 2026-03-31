@@ -835,6 +835,14 @@
               "end": 422
             }
           },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 423,
+              "end": 424
+            }
+          },
           "module_type": {
             "tag": "attribute",
             "syntax_node": {
@@ -916,6 +924,14 @@
             "span": {
               "start": 609,
               "end": 610
+            }
+          },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 611,
+              "end": 612
             }
           },
           "module_type": {

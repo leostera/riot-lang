@@ -17,18 +17,18 @@ This file is _yours_. Keep it up to date after every big change.
   - CST preserves original syntax tokens and structure
   - do not duplicate token-owned trivia into convenience fields when the same fact is already structurally reachable
 - [ ] Remove redundant expression boundary-trivia fields that duplicate token-owned facts:
-  - [x] `fun_expression.body_leading_trivia`
-  - [x] `sequence_expression.expression_leading_trivia`
-  - [x] `let_binding.leading_trivia`
-  - [x] `let_binding.value_leading_trivia`
-  - [x] `binding_operator_binding.bound_value_leading_trivia`
-  - [x] `let_operator_expression.body_leading_trivia`
-  - [x] `let_expression.bound_value_leading_trivia`
-  - [x] `let_expression.body_leading_trivia`
-  - [x] `match_case.body_leading_trivia`
-  - [x] `if_expression.then_branch_trailing_trivia`
-  - [x] `if_expression.else_branch_leading_trivia`
-  - [x] `parenthesized_expression.inner_leading_trivia`
+  - [ ] `fun_expression.body_leading_trivia`
+  - [ ] `sequence_expression.expression_leading_trivia`
+  - [ ] `let_binding.leading_trivia`
+  - [ ] `let_binding.value_leading_trivia`
+  - [ ] `binding_operator_binding.bound_value_leading_trivia`
+  - [ ] `let_operator_expression.body_leading_trivia`
+  - [ ] `let_expression.bound_value_leading_trivia`
+  - [ ] `let_expression.body_leading_trivia`
+  - [ ] `match_case.body_leading_trivia`
+  - [ ] `if_expression.then_branch_trailing_trivia`
+  - [ ] `if_expression.else_branch_leading_trivia`
+  - [ ] `parenthesized_expression.inner_leading_trivia`
 - [ ] Replace CST booleans that collapse real syntax choices with token-backed structure where the original tokens matter:
   - object/class member modifier booleans when they should preserve `private` / `mutable` / `virtual` / `!`
   - module declaration recursion when `rec` should stay token-backed instead of bool-only
@@ -37,9 +37,9 @@ This file is _yours_. Keep it up to date after every big change.
   - pattern local opens stay pattern-only
   - do not reintroduce type-side local opens into the parser or CST
 - [ ] Preserve declaration separator/head tokens where trivia can attach and the CST currently drops them:
-  - `ModuleTypeDeclaration` should preserve `=`
-  - `ValueDeclaration` should preserve `:`
-  - `ExternalDeclaration` should preserve `:` and `=`
+  - [x] `ModuleTypeDeclaration` preserves `=`
+  - [x] `ValueDeclaration` preserves `:`
+  - [x] `ExternalDeclaration` preserves `:` and `=`
   - module declaration heads should preserve the relevant `module` / `and` / `rec` shell tokens if we need them structurally
 - [ ] Keep auditing real `tusk fmt` output for destructive regressions only:
   - dropped comments or docstrings

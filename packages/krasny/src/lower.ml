@@ -216,19 +216,22 @@ let pending_doc_of_token_leading_trivia = fun token ->
 let pending_doc_of_trivia_before_node = fun ~after syntax_node ->
   Syn.Cst.leading_trivia_before_node ~after syntax_node |> pending_doc_of_trivia
 
-let doc_with_trailing_trivia = fun doc trivia ->
-  match trivia with
-  | None ->
-      doc
-  | Some trivia ->
-      Doc.concat [ doc; Doc.line; trivia ]
-
 let doc_with_leading_trivia = fun trivia doc ->
   match trivia with
   | None ->
       doc
   | Some trivia ->
       Doc.concat [ trivia; Doc.line; doc ]
+
+let doc_of_token_with_leading_trivia = fun token ->
+  doc_of_token token |> doc_with_leading_trivia (pending_doc_of_token_leading_trivia token)
+
+let doc_with_trailing_trivia = fun doc trivia ->
+  match trivia with
+  | None ->
+      doc
+  | Some trivia ->
+      Doc.concat [ doc; Doc.line; trivia ]
 
 let separator_before_first_owned_trivia = fun ?(after_rendered_body = false) trivia ->
   match after_rendered_body with
@@ -1400,11 +1403,11 @@ let render_external_declaration = fun (decl : Syn.Cst.external_declaration) ->
       Doc.space;
       render_declaration_name decl.name_tokens;
       Doc.space;
-      Doc.colon;
+      doc_of_token_with_leading_trivia decl.colon_token;
       Doc.space;
       render_core_type decl.type_;
       Doc.space;
-      Doc.equal;
+      doc_of_token_with_leading_trivia decl.equals_token;
       Doc.space;
       primitive_names;
       attributes;
@@ -5067,7 +5070,7 @@ and render_module_structure_header keyword_doc
   | module_expression ->
       Doc.concat [ header; equals; render_module_expression_doc module_expression ]
 
-and render_module_type_declaration ({ module_type_name; module_type; _ } :
+and render_module_type_declaration ({ module_type_name; equals_token; module_type; _ } :
       Syn.Cst.ModuleTypeDeclaration.t) =
   let header =
     Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; doc_of_token module_type_name ]
@@ -5076,7 +5079,21 @@ and render_module_type_declaration ({ module_type_name; module_type; _ } :
   | None ->
       header
   | Some module_type ->
-      Doc.concat [ header; equals; render_module_type_doc module_type ]
+      let equals_token =
+        match equals_token with
+        | Some equals_token ->
+            equals_token
+        | None ->
+            unsupported "module type declaration missing equals token"
+      in
+      Doc.concat
+        [
+          header;
+          Doc.space;
+          doc_of_token_with_leading_trivia equals_token;
+          Doc.space;
+          render_module_type_doc module_type;
+        ]
 
 and render_open_target = function
   | Syn.Cst.OpenStatement.Path path ->
@@ -5404,7 +5421,9 @@ and render_signature_item item =
           kw_val;
           Doc.space;
           render_value_declaration_name decl;
-          colon;
+          Doc.space;
+          doc_of_token_with_leading_trivia (Syn.Cst.ValueDeclaration.colon_token decl);
+          Doc.space;
           render_core_type decl.type_;
         ]
   | Syn.Cst.SignatureItem.ExternalDeclaration decl ->

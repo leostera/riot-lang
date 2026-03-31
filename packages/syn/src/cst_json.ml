@@ -1715,6 +1715,7 @@ let module_type_declaration_to_json = fun decl ->
   Json.Object [
     ("syntax_node", syntax_node_to_json (Cst.ModuleTypeDeclaration.syntax_node decl));
     ("module_type_name", token_to_json (Cst.ModuleTypeDeclaration.module_type_name_token decl));
+    ("equals_token", option_to_json token_to_json (Cst.ModuleTypeDeclaration.equals_token decl));
     ("module_type", option_to_json module_type_to_json (Cst.ModuleTypeDeclaration.module_type decl))
   ]
 
@@ -1741,6 +1742,7 @@ let value_declaration_to_json = fun (decl : Cst.value_declaration) ->
   Json.Object ([
     ("syntax_node", syntax_node_to_json (Cst.ValueDeclaration.syntax_node decl));
     ("name_tokens", Json.Array (List.map token_to_json (Cst.ValueDeclaration.name_tokens decl)));
+    ("colon_token", token_to_json (Cst.ValueDeclaration.colon_token decl));
     ("type", core_type_to_json (Cst.ValueDeclaration.type_ decl))
   ]
   @ owned_trivia)
@@ -1748,7 +1750,9 @@ let value_declaration_to_json = fun (decl : Cst.value_declaration) ->
 let external_declaration_to_json = fun (decl : Cst.external_declaration) -> Json.Object [
   ("syntax_node", syntax_node_to_json decl.syntax_node);
   ("name_tokens", Json.Array (List.map token_to_json decl.name_tokens));
+  ("colon_token", token_to_json decl.colon_token);
   ("type", core_type_to_json decl.type_);
+  ("equals_token", token_to_json decl.equals_token);
   ("primitive_name_tokens", Json.Array (List.map token_to_json decl.primitive_name_tokens));
   ("attributes", Json.Array (List.map attribute_to_json decl.attributes))
 ]

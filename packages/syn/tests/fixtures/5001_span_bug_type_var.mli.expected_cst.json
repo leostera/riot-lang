@@ -30,6 +30,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 9,
+              "end": 10
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -115,6 +123,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 37,
+              "end": 38
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {

@@ -48,6 +48,14 @@
               "end": 55
             }
           },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 56,
+              "end": 57
+            }
+          },
           "module_type": {
             "tag": "signature",
             "syntax_node": {

@@ -7759,6 +7759,7 @@ let module_type_declaration_from_node = fun node ->
       Some Cst.ModuleTypeDeclaration.{
         syntax_node = node;
         module_type_name = token module_type_name;
+        equals_token = direct_token_with_text node "=";
         module_type = (direct_non_trivia_nodes node
         |> List.rev
         |> List.find_opt can_lift_module_type_node
@@ -7950,20 +7951,23 @@ let value_declaration_from_node = fun node ->
   let lifted_name_tokens =
     declaration_name_tokens_from_node ~skip_keywords:[ "val" ] node
   in
+  let lifted_colon_token = direct_token_with_text node ":" in
   let lifted_type_node =
     List.rev direct_children |> List.find_opt can_lift_core_type_node
   in
-  match lifted_name_tokens, lifted_type_node with
-  | Some lifted_name_tokens, Some lifted_type_node ->
+  match lifted_name_tokens, lifted_colon_token, lifted_type_node with
+  | Some lifted_name_tokens, Some lifted_colon_token, Some lifted_type_node ->
       Some ({
         syntax_node = node;
         name_tokens = lifted_name_tokens;
+        colon_token = lifted_colon_token;
         type_ = core_type_from_node lifted_type_node;
         owned_trivia = owned_trivia_from_node node
       }: Cst.value_declaration)
-  | None, _ ->
+  | None, _, _ ->
       None
-  | _, None ->
+  | _, None, _
+  | _, _, None ->
       None
 
 let external_declaration_from_node = fun node ->
@@ -7974,21 +7978,25 @@ let external_declaration_from_node = fun node ->
   let external_name_tokens =
     declaration_name_tokens_from_node ~skip_keywords:[ "external" ] node
   in
-  match external_name_tokens with
-  | Some lifted_name_tokens -> (
+  let lifted_colon_token = direct_token_with_text node ":" in
+  let lifted_equals_token = direct_token_with_text node "=" in
+  match external_name_tokens, lifted_colon_token, lifted_equals_token with
+  | Some lifted_name_tokens, Some lifted_colon_token, Some lifted_equals_token -> (
       match direct_children |> List.find_opt can_lift_core_type_node with
       | Some lifted_type_node ->
           Some ({
             syntax_node = node;
             name_tokens = lifted_name_tokens;
+            colon_token = lifted_colon_token;
             type_ = core_type_from_node lifted_type_node;
+            equals_token = lifted_equals_token;
             primitive_name_tokens = lifted_primitive_name_tokens;
             attributes = attributes_from_node node;
             owned_trivia = owned_trivia_from_node node
           }: Cst.external_declaration)
       | None -> None
     )
-  | None -> None
+  | _ -> None
 
 let include_statement_from_node = fun node ->
   match direct_non_trivia_nodes node

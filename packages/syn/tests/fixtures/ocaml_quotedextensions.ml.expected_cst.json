@@ -312,6 +312,14 @@
               "end": 282
             }
           },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 283,
+              "end": 284
+            }
+          },
           "module_type": {
             "tag": "signature",
             "syntax_node": {

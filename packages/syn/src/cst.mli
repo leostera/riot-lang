@@ -4107,12 +4107,15 @@ module ModuleTypeDeclaration : sig
   type t = {
     syntax_node : syntax_node;
     module_type_name : Token.t;
+    equals_token : Token.t option;
     module_type : module_type option;
     owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
   val module_type_name_token : t -> Token.t
+
+  val equals_token : t -> Token.t option
 
   val module_type : t -> module_type option
 
@@ -4272,6 +4275,7 @@ end
 type value_declaration = {
   syntax_node : syntax_node;
   name_tokens : Token.t list;
+  colon_token : Token.t;
   type_ : core_type;
   owned_trivia : owned_trivia;
 }
@@ -4290,12 +4294,15 @@ module ValueDeclaration : sig
   type t = value_declaration = {
     syntax_node : syntax_node;
     name_tokens : Token.t list;
+    colon_token : Token.t;
     type_ : core_type;
     owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
   val name_tokens : t -> Token.t list
+
+  val colon_token : t -> Token.t
 
   val type_ : t -> core_type
 
@@ -4305,7 +4312,9 @@ end
 type external_declaration = {
   syntax_node : syntax_node;
   name_tokens : Token.t list;
+  colon_token : Token.t;
   type_ : core_type;
+  equals_token : Token.t;
   primitive_name_tokens : Token.t list;
   attributes : attribute list;
   owned_trivia : owned_trivia;

@@ -2904,6 +2904,14 @@
               "end": 17273
             }
           },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 17274,
+              "end": 17275
+            }
+          },
           "module_type": {
             "tag": "signature",
             "syntax_node": {

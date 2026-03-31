@@ -4316,6 +4316,14 @@
               "end": 1530
             }
           },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 1531,
+              "end": 1532
+            }
+          },
           "module_type": {
             "tag": "functor",
             "syntax_node": {
@@ -5163,6 +5171,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 1816,
+              "end": 1817
+            }
+          },
           "type": {
             "tag": "wildcard",
             "syntax_node": {
@@ -5179,6 +5195,14 @@
                 "start": 1818,
                 "end": 1819
               }
+            }
+          },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 1820,
+              "end": 1821
             }
           },
           "primitive_name_tokens": [
@@ -5502,6 +5526,14 @@
               "end": 1953
             }
           },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 1954,
+              "end": 1955
+            }
+          },
           "module_type": {
             "tag": "path",
             "path": {
@@ -5652,6 +5684,14 @@
             "span": {
               "start": 2033,
               "end": 2034
+            }
+          },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 2035,
+              "end": 2036
             }
           },
           "module_type": {

@@ -30,6 +30,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 11,
+              "end": 12
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -121,6 +129,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 35,
+              "end": 36
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -212,6 +228,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 60,
+              "end": 61
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -303,6 +327,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 81,
+              "end": 82
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -394,6 +426,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 108,
+              "end": 109
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {

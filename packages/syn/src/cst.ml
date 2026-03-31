@@ -2885,6 +2885,7 @@ module ModuleTypeDeclaration = struct
   type t = {
     syntax_node : syntax_node;
     module_type_name : Token.t;
+    equals_token : Token.t option;
     module_type : module_type option;
     owned_trivia : owned_trivia;
   }
@@ -2892,6 +2893,8 @@ module ModuleTypeDeclaration = struct
   let syntax_node = fun decl -> decl.syntax_node
 
   let module_type_name_token = fun decl -> decl.module_type_name
+
+  let equals_token = fun decl -> decl.equals_token
 
   let module_type = fun decl -> decl.module_type
 
@@ -3122,6 +3125,7 @@ end
 type value_declaration = {
   syntax_node : syntax_node;
   name_tokens : Token.t list;
+  colon_token : Token.t;
   type_ : core_type;
   owned_trivia : owned_trivia;
 }
@@ -3130,6 +3134,7 @@ module ValueDeclaration = struct
   type t = value_declaration = {
     syntax_node : syntax_node;
     name_tokens : Token.t list;
+    colon_token : Token.t;
     type_ : core_type;
     owned_trivia : owned_trivia;
   }
@@ -3137,6 +3142,8 @@ module ValueDeclaration = struct
   let syntax_node = fun decl -> decl.syntax_node
 
   let name_tokens = fun decl -> decl.name_tokens
+
+  let colon_token = fun decl -> decl.colon_token
 
   let type_ = fun decl -> decl.type_
 
@@ -3146,7 +3153,9 @@ end
 type external_declaration = {
   syntax_node : syntax_node;
   name_tokens : Token.t list;
+  colon_token : Token.t;
   type_ : core_type;
+  equals_token : Token.t;
   primitive_name_tokens : Token.t list;
   attributes : attribute list;
   owned_trivia : owned_trivia;

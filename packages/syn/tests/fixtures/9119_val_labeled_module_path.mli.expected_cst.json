@@ -50,6 +50,14 @@
               }
             }
           ],
+          "colon_token": {
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "span": {
+              "start": 69,
+              "end": 70
+            }
+          },
           "type": {
             "tag": "arrow",
             "syntax_node": {

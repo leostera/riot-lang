@@ -28,6 +28,14 @@
               "end": 13
             }
           },
+          "equals_token": {
+            "kind": "IDENT_EXPR",
+            "text": "=",
+            "span": {
+              "start": 14,
+              "end": 15
+            }
+          },
           "module_type": {
             "tag": "functor",
             "syntax_node": {
