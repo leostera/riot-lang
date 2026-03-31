@@ -1095,7 +1095,14 @@ and render_inline_record_definition = fun fields ->
     | [] ->
         Doc.empty
     | [ field ] ->
-        render_record_definition_field field
+        let separator_doc =
+          match Syn.Cst.RecordField.semicolon_token field with
+          | Some semicolon_token ->
+              doc_of_token semicolon_token
+          | None ->
+              Doc.semi
+        in
+        Doc.concat [ render_record_definition_field field; separator_doc ]
     | field :: rest ->
         let separator_doc =
           match Syn.Cst.RecordField.semicolon_token field with
@@ -1129,7 +1136,14 @@ and render_tokenized_inline_record_definition = fun ~opening_token ~closing_toke
     | [] ->
         Doc.empty
     | [ field ] ->
-        render_record_definition_field field
+        let separator_doc =
+          match Syn.Cst.RecordField.semicolon_token field with
+          | Some semicolon_token ->
+              doc_of_token semicolon_token
+          | None ->
+              Doc.semi
+        in
+        Doc.concat [ render_record_definition_field field; separator_doc ]
     | field :: rest ->
         let separator_doc =
           match Syn.Cst.RecordField.semicolon_token field with

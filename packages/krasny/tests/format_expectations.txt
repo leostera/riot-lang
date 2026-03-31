@@ -146,6 +146,7 @@
 0963_signature_module_type_doc_between_items.mli
 0964_nested_signature_value_docs_not_duplicated.mli
 0965_nested_signature_value_trailing_comment_not_duplicated.mli
+0966_inline_record_constructor_terminal_semicolon.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml
