@@ -80,6 +80,7 @@ Token-backed so far:
 - array expression delimiters and separators
 - list pattern delimiters and separators
 - array pattern delimiters and separators
+- record pattern delimiters and separators
 
 ## Next Targets
 

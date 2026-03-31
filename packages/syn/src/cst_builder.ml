@@ -4041,9 +4041,19 @@ let rec pattern_from_node = fun node ->
           attributes = []
         }
     | Syntax_kind.RECORD_PATTERN ->
+        let direct_tokens = direct_non_trivia_tokens node in
+        let opening_token, closing_token =
+          match direct_tokens with
+          | opening_token :: _ ->
+              let closing_token = List.hd (List.rev direct_tokens) in
+              (token opening_token, token closing_token)
+          | [] ->
+              bail ~message:"expected record pattern delimiters during Ceibo -> CST lifting" ~syntax_node:node
+                ~context:[ "pattern.record" ]
+        in
         let closedness =
           match
-            direct_non_trivia_tokens node |> List.find_opt
+            direct_tokens |> List.find_opt
               (fun syntax_token ->
                 String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "_")
           with
@@ -4054,11 +4064,18 @@ let rec pattern_from_node = fun node ->
         in
         Cst.Pattern.Record {
           syntax_node = node;
+          opening_token;
           fields = direct_non_trivia_nodes node
           |> List.filter
           (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD_PATTERN)
           |> List.filter_map record_pattern_field_from_node;
+          separator_tokens =
+            direct_tokens
+            |> List.filter (fun syntax_token ->
+                 String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text)
+            |> List.map token;
           closedness;
+          closing_token;
           attributes = []
         }
     | Syntax_kind.CONS_PATTERN -> (

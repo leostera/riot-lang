@@ -1796,7 +1796,8 @@ let rec render_pattern =
         render_elements elements separator_tokens;
         doc_of_token closing_token
       ]
-  | Syn.Cst.Pattern.Record { fields; closedness; _ } ->
+  | Syn.Cst.Pattern.Record
+      { opening_token; fields; separator_tokens; closedness; closing_token; _ } ->
       let fields =
         fields
         |> List.map
@@ -1823,26 +1824,43 @@ let rec render_pattern =
         match closedness with
         | Syn.Cst.Closed ->
             fields
-        | Syn.Cst.Open _ ->
-            fields @ [ Doc.text "_" ]
+        | Syn.Cst.Open { wildcard_token } ->
+            fields @ [ doc_of_token wildcard_token ]
+      in
+      let rec render_fields fields separator_tokens separator_doc =
+        match fields, separator_tokens with
+        | [], [] ->
+            Doc.empty
+        | [ field ], [] ->
+            field
+        | field :: rest, separator_token :: rest_separators ->
+            Doc.concat
+              [
+                field;
+                doc_of_token separator_token;
+                separator_doc;
+                render_fields rest rest_separators separator_doc;
+              ]
+        | _ ->
+            unsupported "record pattern fields missing separator tokens"
       in
       if List.length fields > 4 then
         Doc.concat [
-          Doc.lbrace;
+          doc_of_token opening_token;
           Doc.line;
-          Doc.indent 2 (join_map (Doc.concat [ Doc.semi; Doc.line ]) (fun doc -> doc) fields);
+          Doc.indent 2 (render_fields fields separator_tokens Doc.line);
           Doc.line;
-          Doc.rbrace
+          doc_of_token closing_token
         ]
       else
         Doc.group (Doc.concat [
-          Doc.lbrace;
+          doc_of_token opening_token;
           Doc.indent 2 (Doc.concat [
             Doc.break ~flat:" " ();
-            join_map (Doc.concat [ Doc.semi; Doc.break ~flat:" " () ]) (fun doc -> doc) fields
+            render_fields fields separator_tokens (Doc.break ~flat:" " ())
           ]);
           Doc.break ~flat:" " ();
-          Doc.rbrace
+          doc_of_token closing_token
         ])
   | Syn.Cst.Pattern.Cons { head; tail; _ } ->
       Doc.concat [ render_pattern head; Doc.space; Doc.text "::"; Doc.space; render_pattern tail ]

@@ -1054,8 +1054,11 @@ and array_pattern = {
 
 and record_pattern = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   fields : record_pattern_field list;
+  separator_tokens : Token.t list;
   closedness : record_pattern_closedness;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 
