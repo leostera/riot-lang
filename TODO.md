@@ -1,231 +1,126 @@
 # TODO
 
-## Loop
+## Krasny
 
-Token-first compiler-lead cleanup loop:
+### Loop
 
-1. Start in `packages/krasny/src/lower.ml`.
-2. In the formatter branch, ask for the exact original token you want to render.
-3. Let the compiler fail on the missing CST field or accessor.
-4. Add that token to the `Syn.Cst` type in `packages/syn/src/cst.mli` and `packages/syn/src/cst.ml`.
-5. Let the compiler fail in `packages/syn/src/cst_builder.ml`.
-6. Populate the token from the original syntax node.
-7. Rebuild with `timeout 120 tusk build syn krasny fixme tusk-fix`.
-8. Repeat until `krasny` no longer synthesizes punctuation it could render from CST-owned tokens.
+1. Pick one real formatter regression first, not expectation drift.
+2. Reproduce it with a focused fixture run:
+   - `timeout 900 python3 packages/krasny/tests/test_runner.py --filter <fixture_id>`
+3. If the fix changes `krasny` code, rebuild before trusting fixture output:
+   - `timeout 120 tusk build krasny`
+   - or, when `syn`/shared fallout is possible:
+     `timeout 120 tusk build syn krasny fixme tusk-fix`
+4. Re-run the focused fixture after the build completes.
+5. If the new output matches the agreed policy and the fixture was stale, refresh it:
+   - `timeout 900 python3 packages/krasny/tests/test_runner.py --filter <fixture_id> --refresh`
+6. After a small batch, run broader verification:
+   - `timeout 30 tusk test krasny:format_tests`
+7. Periodically re-run the whole fixture suite:
+   - `timeout 900 python3 packages/krasny/tests/test_runner.py`
+8. Commit each coherent slice with a conventional commit.
 
-Rules:
+### Current State
 
-- Do not reintroduce `owned_trivia`.
-- Prefer original tokens over duplicated trivia fields.
-- If a formatter branch needs a token, make `krasny` ask for it first.
-- Update this file and commit every slice with conventional commits
+- Structural token cleanup in `syn` is in much better shape now:
+  - declaration boundary tokens preserved
+  - quantified and mutable tokens preserved
+  - recursion booleans moved toward helpers over tokens
+- `krasny` has already landed:
+  - tighter `:` layout for signatures / annotations / module heads / record type fields
+  - typed pattern and expression-ascription layout cleanup
+  - improved `fun` / `let` body layout
+  - broken apply arguments indented one level deeper than the callee
+  - top-level `let rec ... and ...` separated by a blank line
+  - better preservation of binding headers
 
-## Landed
+### Layout Policy We Agreed On
 
-Token-backed so far:
+- `:` is tight:
+  - `val create: ...`
+  - `module A: sig ... end`
+  - `field: type`
+  - `method render: env -> node`
+- `=` is spaced:
+  - `type t = ...`
+  - `field = value`
+- If the rhs fits, keep it inline.
+- If it does not fit, break immediately after the separator.
+- Expression ascriptions/coercions stay parenthesized:
+  - `let x = (expr: t)`
+  - multiline:
+    ```ocaml
+    let x = (
+      expr:
+        very_long_type
+    )
+    ```
+- Prefix docs align with the declaration/member/constructor/field they describe.
+- Postfix constructor docs are unsupported and normalize as leading trivia for the next item.
 
-- record field `:`
-- record field `;`
-- object type field `:`
-- object type field `;`
-- type constraint `=`
-- type declaration manifest `=`
-- type declaration definition `=`
-- type declaration keyword `type` / `and`
-- type extension `+=`
-- record pattern field `=`
-- record expression field `=`
-- object override field `=`
-- record definition field `:`
-- typed pattern `:`
-- expression type ascription `:`
-- expression coercion `:>`
-- variant constructor payload/result separator
-- arrow label `:`
-- class/class-type constraint `=`
-- module declaration `=`
-- class declaration `:`
-- class definition `:`
-- class definition `=`
-- class expression constraint `:`
-- module type of `of`
-- module type constraint `=` / `:=`
-- object member type annotation `:`
-- class type value/method `:`
-- class member type annotation `:`
-- class type declaration `=`
-- object member body `=`
-- class member body `=`
-- for loop `=`
-- let module expression `=`
-- named parameter alias `:`
-- optional parameter alias `:`
-- optional parameter default `=`
-- polymorphic expression `:`
-- local binding annotation `:`
-- first-class module pattern `:`
-- first-class module pattern delimiters `( )`
-- module type parenthesized delimiters `( )`
-- class type parenthesized delimiters `( )`
-- module pack expression `:`
-- module unpack expression `:`
-- module declaration `:`
-- functor parameter `:`
-- module expression constraint `:`
-- class expression parenthesized delimiters `( )`
-- polyvariant leading `|`
-- variant constructor leading `|`
-- or-pattern separator `|`
-- module pack delimiters `( )`
-- module expression parenthesized delimiters `( )`
-- core type first-class module delimiters `( )`
-- type definition first-class module delimiters `( )`
-- module unpack delimiters `( )`
-- pattern local-open shell tokens
-- list expression delimiters and separators
-- array expression delimiters and separators
-- list pattern delimiters and separators
-- array pattern delimiters and separators
-- record pattern delimiters and separators
-- record expression delimiters and separators
-- object override delimiters and separators
-- object type delimiters `< >`
-- core record type delimiters and separators
-- record type field `;`
-- record type field `mutable`
-- type definition record delimiters `{ }`
-- constructor record argument delimiters `{ }`
-- polyvariant delimiters `[ ]`
-- inline record definition separators `;`
-- phrase separators `;;`
+### Important Follow-Up
 
-## Next Targets
+- We 100% want to deliberately desugar `let` functions later.
+  - Keep that as an explicit formatter project after the current layout/fixture stabilization work.
 
-Remaining synthetic tokens / fallback punctuation to drive out of `krasny`:
+### After Syntax/Layout Stabilization
 
-- declaration `=` sites still rendered from synthetic `equals`
-  - local bindings / let-style renderers
-  - type alias / type definition renderers
-  - module declarations
-  - class declarations / definitions
-  - record/object field assignment renderers
+1. Fix `tusk fix` for the new CST.
+   - Lints still need to be updated to the current CST shape.
+   - Once `tusk fix` is healthy again, re-enable the `scripts/git-hooks/pre-commit` check so every commit runs:
+     - `tusk fix --check`
 
-- declaration `:` sites still rendered from synthetic `Doc.colon` / `annotation_colon`
-  - type ascriptions
-  - constructor result types
-  - label / parameter shells
-  - class/object constraint renderers
+2. Investigate `tusk fmt` startup latency.
+   - It sometimes takes about a second before printing results.
+   - Run:
+     - `tusk fmt --json`
+   - Inspect where the startup time is going and reduce time-to-first-result.
 
-- variant / polyvariant shell punctuation
-  - variant constructor fallback `kw_of`
-  - variant constructor fallback `Doc.colon`
-  - synthesized leading `|`
-  - polyvariant fallback `kw_of`
+3. Start a new repo-health loop for failing tests.
+   - Run `tusk test`
+   - Pick one failing test or suite
+   - Fix it
+   - Re-run
+   - Repeat until `tusk test` is green
 
-- type extension `+=`
+4. After all of the above is done and committed:
+   - start exploring an implementation of `RFD0026`
 
-- remaining synthetic `;` joins in structural shells
-  - record / object / class field lists
-  - list / array / pattern list shells where source tokens should be available
+### Remaining Real Formatter Bugs
 
-- remaining synthetic delimiters that should come from CST tokens if available
-  - `{ ... }`
-  - `[ ... ]`
-  - `(module ...)`
-  - pattern local-open `.(...)`
+- `0343_let_parameter_with_comment_pipeline`
+  - inline comment disappears
+- `0422_top_level_expression_double_semicolon_before_floating_attribute`
+  - `[@@@attr]` downgraded to `[@@attr]`
+- `0423_extended_index_operators`
+  - index operator declarations/usages mangled
+- `0429_qualified_local_open_record_literal`
+  - bad terminal `;` / blank line in qualified local-open record literal
+- `0430_signature_last_docstring`
+  - formatting exits nonzero
+- `0431_type_mutual_docstring_between_members`
+  - doc ownership still wrong for `type ... and ...`
+- `0434_poly_variant_local_open_pattern_payload`
+  - extra parens around local-open tuple payload
+- `0101_apply_list_trailing_separator`
+  - extra space before `]`
 
-## Audit: lower.ml
+### Fixture / Expectation Work
 
-High-confidence synthetic punctuation sites in `packages/krasny/src/lower.ml`:
+- Full suite status during last pass:
+  - `65` passed
+  - `98` failed
+- After the real bugs above are fixed:
+  - refresh stale expectations for the new binding-header / tight-colon / layout policy
+  - re-run:
+    - `timeout 900 python3 packages/krasny/tests/test_runner.py`
+    - `timeout 120 tusk build syn krasny fixme tusk-fix`
 
-- `=`:
-  - `638`
-  - `1479`
-  - `1498`
-  - `2287`
-  - `2600`
-  - `2815`
-  - `4054`
-  - `4956`
-  - `5156`
-  - `5207`
-  - `5209`
-  - `5617`
-  - `5622`
-  - `5671`
+### Next Suggested Order
 
-- `:`:
-  - `504`
-  - `507`
-  - `973`
-  - `1290`
-  - `1370`
-  - `1656`
-  - `1738`
-  - `2506`
-  - `4341`
-  - `4376`
-
-- `|`:
-  - `1054`
-  - `1230`
-  - `1734`
-  - `3517`
-
-- `of`:
-  - `752`
-  - `1089`
-  - `1099`
-  - `1356`
-  - `4983`
-
-- `+=`:
-  - `1544`
-  - `1555`
-
-- assignment `=` in field/update shells:
-  - `1704`
-  - `2581`
-  - `3107`
-
-- class/object `constraint ... = ...` still synthetic:
-  - `2732`
-  - `2864`
-
-Medium-confidence synthetic delimiter / separator sites:
-
-- structural `;` joins:
-  - `949`
-  - `1016`
-  - `1717`
-  - `1726`
-  - `3116`
-  - `3129`
-
-- structural `{}` wrappers:
-  - `947`
-  - `1007`
-  - `1013`
-  - `1715`
-  - `1723`
-  - `3165`
-  - `3182`
-
-- polyvariant brackets:
-  - `1125`
-  - `1127`
-  - `1129`
-  - `1168`
-
-- `(module ...)` delimiters:
-  - `918`
-  - `1421`
-
-- pattern local-open `.(...)` shell:
-  - `1749`
-
-## Known Warnings
-
-- `packages/krasny/src/lower.ml`
-  - `render_first_class_module_type_doc` is still non-exhaustive for `ModuleType.Signature _`
-  - redundant `BeginEnd` parenthesized-expression subpattern
+1. Fix `0422` and `0423`
+2. Fix `0430` and `0431`
+3. Fix `0429` and `0101`
+4. Fix `0434`
+5. Fix `0343`
+6. Refresh stale fixture expectations in controlled batches
