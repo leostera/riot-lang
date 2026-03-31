@@ -904,10 +904,21 @@ and render_record_core_type_field = fun (field:Syn.Cst.record_type_field) ->
   Doc.group
   (Doc.concat
   [ prefix; doc_of_token field.colon_token; Doc.indent 2 (Doc.concat [ separator; type_doc ]) ])
-and render_tight_colon_rhs = fun head colon_token rhs -> Doc.group
-(Doc.concat [ head; doc_of_token colon_token; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
+and render_tight_token_rhs = fun head token rhs -> Doc.group
+(Doc.concat [ head; doc_of_token token; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
+and render_tight_colon_rhs = fun head colon_token rhs -> render_tight_token_rhs head colon_token rhs
 and render_tight_colon_block_rhs = fun head colon_token rhs -> Doc.concat
 [ head; doc_of_token colon_token; Doc.space; rhs ]
+and render_parenthesized_tight_token_rhs = fun head token rhs -> Doc.group
+(Doc.concat
+[
+  Doc.lparen;
+  Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); render_tight_token_rhs head token rhs ]);
+  Doc.break ~flat:"" ();
+  Doc.rparen;
+])
+and render_member_head = fun keyword modifier_tokens name_token ->
+  Doc.join Doc.space ([ keyword ] @ List.map doc_of_token modifier_tokens @ [ doc_of_token name_token ])
 and render_record_type_field_separator = fun (field:Syn.Cst.record_type_field) ->
   match field.semicolon_token with
   | Some semicolon_token -> doc_of_token semicolon_token
@@ -1304,7 +1315,21 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
           (Syn.Cst.CoreType.syntax_node result_type)
           | None -> None
         in
-        if not payload_multiline && arrow_leading_trivia = None && result_leading_trivia = None then
+        let result_rhs = Doc.concat
+        [
+          payload;
+          Doc.space;
+          (
+            match arrow_token with
+            | Some arrow_token -> doc_of_token arrow_token
+            | None -> arrow
+          );
+          Doc.space;
+          render_core_type result_type;
+        ] in
+        if Syn.Cst.Token.text separator_token = ":" && arrow_leading_trivia = None && result_leading_trivia = None then
+          render_tight_token_rhs head separator_token result_rhs
+        else if not payload_multiline && arrow_leading_trivia = None && result_leading_trivia = None then
           Doc.concat
             [ head; payload_doc; Doc.space; (
                 match arrow_token with
@@ -1351,12 +1376,15 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
           | Some separator_token -> separator_token
           | None -> unsupported "variant constructor result type missing separator token"
         in
-        let result_doc, _result_multiline = inline_separator_or_multiline_block
-        ~fallback_separator_doc:Doc.empty
-        ~separator_token:(Some separator_token)
-        ~next_syntax_node:(Some (Syn.Cst.CoreType.syntax_node result_type))
-        ~render_next:(render_core_type result_type) in
-        Doc.concat [ head; result_doc;  ]
+        if Syn.Cst.Token.text separator_token = ":" then
+          render_tight_token_rhs head separator_token (render_core_type result_type)
+        else
+          let result_doc, _result_multiline = inline_separator_or_multiline_block
+          ~fallback_separator_doc:Doc.empty
+          ~separator_token:(Some separator_token)
+          ~next_syntax_node:(Some (Syn.Cst.CoreType.syntax_node result_type))
+          ~render_next:(render_core_type result_type) in
+          Doc.concat [ head; result_doc;  ]
     | None, None ->
         head
   in
@@ -1867,15 +1895,10 @@ let rec render_pattern = fun pattern ->
         Doc.concat
         [ render_pattern pattern; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
     | Syn.Cst.Pattern.Typed { pattern; colon_token; type_; _ } ->
-        Doc.concat
-        [
-          Doc.lparen;
-          render_pattern pattern;
-          doc_of_token colon_token;
-          render_core_type type_;
-          Doc.rparen;
-
-        ]
+        render_parenthesized_tight_token_rhs
+        (render_pattern pattern)
+        colon_token
+        (render_core_type type_)
     | Syn.Cst.Pattern.Effect { effect_pattern; continuation; _ } ->
         Doc.concat
         [
@@ -2598,34 +2621,35 @@ let make_lowerer =
       | Syn.Cst.Expression.Index index ->
           render_index_expression index
       | Syn.Cst.Expression.TypeAscription { expression; kind; _ } ->
-          let tail =
+          (
             match kind with
-            | Syn.Cst.Type { colon_token; type_ } -> Doc.concat
-            [ doc_of_token colon_token; render_core_type type_ ]
-            | Syn.Cst.Coerce { coercion_token; type_ } -> Doc.concat
-            [ Doc.space; doc_of_token coercion_token; Doc.space; render_core_type type_ ]
-            | Syn.Cst.ConstraintCoerce { colon_token; from_type; coercion_token; to_type } -> Doc.concat
-            [
-              doc_of_token colon_token;
-              render_core_type from_type;
-              Doc.space;
-              doc_of_token coercion_token;
-              Doc.space;
-              render_core_type to_type;
+            | Syn.Cst.Type { colon_token; type_ } -> render_parenthesized_tight_token_rhs
+            (render_expression expression)
+            colon_token
+            (render_core_type type_)
+            | Syn.Cst.Coerce { coercion_token; type_ } -> render_parenthesized_tight_token_rhs
+            (render_expression expression)
+            coercion_token
+            (render_core_type type_)
+            | Syn.Cst.ConstraintCoerce { colon_token; from_type; coercion_token; to_type } ->
+                render_parenthesized_tight_token_rhs
+                (render_expression expression)
+                colon_token
+                (Doc.concat
+                [
+                  render_core_type from_type;
+                  Doc.space;
+                  doc_of_token coercion_token;
+                  Doc.space;
+                  render_core_type to_type;
 
-            ]
-          in
-          Doc.concat [ Doc.lparen; render_expression expression; tail; Doc.rparen ]
+                ])
+          )
       | Syn.Cst.Expression.Polymorphic { expression; colon_token; type_; _ } ->
-          Doc.concat
-          [
-            Doc.lparen;
-            render_expression expression;
-            doc_of_token colon_token;
-            Doc.space;
-            render_core_type type_;
-            Doc.rparen
-          ]
+          render_parenthesized_tight_token_rhs
+          (render_expression expression)
+          colon_token
+          (render_core_type type_)
       | Syn.Cst.Expression.PolyVariant { tag_token; payload; _ } ->
           let head = Doc.concat [ Doc.text "`"; doc_of_token tag_token ] in
           (
@@ -2730,10 +2754,7 @@ let make_lowerer =
       _;
 
     }:Syn.Cst.object_method) ->
-    let head = Doc.concat
-    ([ kw_method ]
-    @ List.map doc_of_token_with_leading_trivia modifier_tokens
-    @ [ doc_of_token_with_leading_trivia name_token ]) in
+    let head = render_member_head kw_method modifier_tokens name_token in
     let doc =
       match type_ with
       | None -> render_object_member_body ~head ~equals_token body
@@ -2744,7 +2765,7 @@ let make_lowerer =
             | None -> unsupported "object method type annotation missing colon token"
           in
           render_object_member_body
-          ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ])
+          ~head:(render_tight_colon_rhs head colon_token (render_core_type type_))
           ~equals_token
           body
     in
@@ -2761,10 +2782,7 @@ let make_lowerer =
       _;
 
     }:Syn.Cst.object_value) ->
-    let head = Doc.concat
-    ([ kw_val ]
-    @ List.map doc_of_token_with_leading_trivia modifier_tokens
-    @ [ doc_of_token_with_leading_trivia name_token ]) in
+    let head = render_member_head kw_val modifier_tokens name_token in
     let doc =
       match type_ with
       | None -> render_object_member_body ~head ~equals_token value
@@ -2775,7 +2793,7 @@ let make_lowerer =
             | None -> unsupported "object value type annotation missing colon token"
           in
           render_object_member_body
-          ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ])
+          ~head:(render_tight_colon_rhs head colon_token (render_core_type type_))
           ~equals_token
           value
     in
@@ -2844,11 +2862,8 @@ let make_lowerer =
       modifier_tokens;
       _
     } ->
-        let head = Doc.concat
-        ([ kw_val ]
-        @ List.map doc_of_token_with_leading_trivia modifier_tokens
-        @ [ doc_of_token_with_leading_trivia name_token ]) in
-        Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]
+        let head = render_member_head kw_val modifier_tokens name_token in
+        render_tight_colon_rhs head colon_token (render_core_type type_)
     | Syn.Cst.ClassTypeField.Method {
       name_token;
       type_;
@@ -2856,11 +2871,8 @@ let make_lowerer =
       modifier_tokens;
       _
     } ->
-        let head = Doc.concat
-        ([ kw_method ]
-        @ List.map doc_of_token_with_leading_trivia modifier_tokens
-        @ [ doc_of_token_with_leading_trivia name_token ]) in
-        Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]
+        let head = render_member_head kw_method modifier_tokens name_token in
+        render_tight_colon_rhs head colon_token (render_core_type type_)
     | Syn.Cst.ClassTypeField.Constraint { left; equals_token; right; _ } ->
         Doc.concat
         [
@@ -2959,10 +2971,7 @@ let make_lowerer =
       _;
 
     }:Syn.Cst.class_method) ->
-    let head = Doc.concat
-    ([ kw_method ]
-    @ List.map doc_of_token_with_leading_trivia modifier_tokens
-    @ [ doc_of_token_with_leading_trivia name_token ]) in
+    let head = render_member_head kw_method modifier_tokens name_token in
     match definition with
     | Syn.Cst.VirtualMethod { type_; _ } ->
         let virtual_colon_token =
@@ -2970,7 +2979,7 @@ let make_lowerer =
           | Some virtual_colon_token -> virtual_colon_token
           | None -> unsupported "virtual class method missing colon token"
         in
-        Doc.concat [ head; doc_of_token virtual_colon_token; Doc.space; render_core_type type_ ]
+        render_tight_colon_rhs head virtual_colon_token (render_core_type type_)
     | Syn.Cst.ConcreteMethod { body; type_=None } ->
         let equals_token =
           match concrete_equals_token with
@@ -2985,7 +2994,7 @@ let make_lowerer =
           | None -> unsupported "concrete class method missing equals token"
         in
         render_class_member_body
-        ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ])
+        ~head:(render_tight_colon_rhs head colon_token (render_core_type type_))
         ~equals_token
         body
   and render_class_value = fun
@@ -2998,10 +3007,7 @@ let make_lowerer =
       _;
 
     }:Syn.Cst.class_value) ->
-    let head = Doc.concat
-    ([ kw_val ]
-    @ List.map doc_of_token_with_leading_trivia modifier_tokens
-    @ [ doc_of_token_with_leading_trivia name_token ]) in
+    let head = render_member_head kw_val modifier_tokens name_token in
     match definition with
     | Syn.Cst.VirtualValue { type_; _ } ->
         let virtual_colon_token =
@@ -3009,7 +3015,7 @@ let make_lowerer =
           | Some virtual_colon_token -> virtual_colon_token
           | None -> unsupported "virtual class value missing colon token"
         in
-        Doc.concat [ head; doc_of_token virtual_colon_token; Doc.space; render_core_type type_ ]
+        render_tight_colon_rhs head virtual_colon_token (render_core_type type_)
     | Syn.Cst.ConcreteValue { value; type_=None } ->
         let equals_token =
           match concrete_equals_token with
@@ -3024,7 +3030,7 @@ let make_lowerer =
           | None -> unsupported "concrete class value missing equals token"
         in
         render_class_member_body
-        ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ])
+        ~head:(render_tight_colon_rhs head colon_token (render_core_type type_))
         ~equals_token
         value
   and render_class_inherit = fun ({ class_expression; _ }:Syn.Cst.class_inherit) ->
