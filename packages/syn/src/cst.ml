@@ -1062,6 +1062,7 @@ and alias_pattern = {
 and typed_pattern = {
   syntax_node : syntax_node;
   pattern : pattern;
+  colon_token : Token.t;
   type_ : core_type;
   attributes : attribute list;
 }

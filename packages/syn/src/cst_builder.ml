@@ -3976,6 +3976,15 @@ let rec pattern_from_node = fun node ->
             Cst.Pattern.Typed {
               syntax_node = node;
               pattern = pattern_from_node pattern_node;
+              colon_token =
+                (match direct_token_with_text node ":" with
+                | Some colon_token ->
+                    colon_token
+                | None ->
+                    bail ~message:"expected typed pattern colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                      "pattern.typed";
+                      "colon_token"
+                    ]);
               type_ = core_type_from_node type_node;
               attributes = []
             }
@@ -4073,6 +4082,15 @@ let rec parameter_from_node = fun node ->
         Some (Cst.Pattern.Typed {
           syntax_node = node;
           pattern = pattern_from_node binding_pattern_node;
+          colon_token =
+            (match direct_token_with_text node ":" with
+            | Some colon_token ->
+                colon_token
+            | None ->
+                bail ~message:"expected typed parameter colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                  "parameter.typed_pattern";
+                  "colon_token"
+                ]);
           type_ = core_type_from_node type_node;
           attributes = []
         })
@@ -4087,6 +4105,15 @@ let rec parameter_from_node = fun node ->
         Some (Cst.Pattern.Typed {
           syntax_node = node;
           pattern = identifier_pattern;
+          colon_token =
+            (match direct_token_with_text node ":" with
+            | Some colon_token ->
+                colon_token
+            | None ->
+                bail ~message:"expected typed parameter colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                  "parameter.typed_pattern";
+                  "colon_token"
+                ]);
           type_ = core_type_from_node type_node;
           attributes = []
         })

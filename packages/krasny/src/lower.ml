@@ -970,7 +970,7 @@ and render_record_definition_field = fun (field : Syn.Cst.RecordField.t) ->
   Doc.group (Doc.concat [
     prefix;
     Doc.space;
-    Doc.colon;
+    doc_of_token (Syn.Cst.RecordField.colon_token field);
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
 and render_record_definition_field_entry =
@@ -1793,8 +1793,15 @@ let rec render_pattern =
       join_map (Doc.concat [ Doc.space; Doc.bar; Doc.space ]) render_pattern alternatives
   | Syn.Cst.Pattern.Alias { pattern; name_token; _ } ->
       Doc.concat [ render_pattern pattern; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
-  | Syn.Cst.Pattern.Typed { pattern; type_; _ } ->
-      Doc.concat [ Doc.lparen; render_pattern pattern; annotation_colon; render_core_type type_; Doc.rparen ]
+  | Syn.Cst.Pattern.Typed { pattern; colon_token; type_; _ } ->
+      Doc.concat
+        [
+          Doc.lparen;
+          render_pattern pattern;
+          doc_of_token colon_token;
+          render_core_type type_;
+          Doc.rparen;
+        ]
   | Syn.Cst.Pattern.Effect { effect_pattern; continuation; _ } ->
       Doc.concat
         [
@@ -4345,8 +4352,8 @@ and split_typed_binding_value = function
       (expression, None)
 
 and split_typed_binding_pattern = function
-  | Syn.Cst.Pattern.Typed { pattern; type_; _ } ->
-      (pattern, Some type_)
+  | Syn.Cst.Pattern.Typed { pattern; colon_token; type_; _ } ->
+      (pattern, Some (colon_token, type_))
   | pattern ->
       (pattern, None)
 
@@ -4377,8 +4384,8 @@ and render_named_parameter_binding_pattern_internal ~include_type pattern =
       render_pattern pattern
   in
   match type_ with
-  | Some type_ when include_type ->
-      Doc.concat [ pattern_doc; annotation_colon; render_core_type type_ ]
+  | Some (colon_token, type_) when include_type ->
+      Doc.concat [ pattern_doc; doc_of_token colon_token; render_core_type type_ ]
   | Some _
   | None ->
       pattern_doc
@@ -4479,7 +4486,7 @@ and render_arrow_parameter_type_doc parameter_type =
 and render_binding_annotation_parameter = function
   | Syn.Cst.Parameter.Positional { pattern; _ } -> (
       match split_typed_binding_pattern pattern with
-      | _, Some type_ ->
+      | _, Some (_, type_) ->
           Some (render_arrow_parameter_type_doc type_)
       | _, None ->
           None)
@@ -4487,12 +4494,12 @@ and render_binding_annotation_parameter = function
       match binding_pattern with
       | Some pattern -> (
           match split_typed_binding_pattern pattern with
-          | _, Some type_ ->
+          | _, Some (colon_token, type_) ->
               Some
                 (Doc.concat
                    [
                      doc_of_token label_token;
-                     Doc.colon;
+                     doc_of_token colon_token;
                      render_arrow_parameter_type_doc type_;
                    ])
           | _, None ->
@@ -4503,13 +4510,13 @@ and render_binding_annotation_parameter = function
       match binding_pattern with
       | Some pattern -> (
           match split_typed_binding_pattern pattern with
-          | _, Some type_ ->
+          | _, Some (colon_token, type_) ->
               Some
                 (Doc.concat
                    [
                      doc_of_token sigil_token;
                      doc_of_token label_token;
-                     Doc.colon;
+                     doc_of_token colon_token;
                      render_arrow_parameter_type_doc type_;
                    ])
           | _, None ->
@@ -4761,6 +4768,9 @@ and render_local_binding
     ~leading_value_trivia:(leading_value_trivia : Doc.t option)
     ~pattern ~parameters ~value =
   let pattern, type_annotation_from_pattern = split_typed_binding_pattern pattern in
+  let type_annotation_from_pattern =
+    type_annotation_from_pattern |> Option.map snd
+  in
   let value, type_annotation = split_typed_binding_value value in
   let type_annotation =
     match type_annotation with
