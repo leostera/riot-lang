@@ -1458,7 +1458,10 @@ and index_expression = {
 
 and object_override_expression = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   fields : object_override_field list;
+  separator_tokens : Token.t list;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 

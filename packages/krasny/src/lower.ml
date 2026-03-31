@@ -3423,7 +3423,9 @@ and render_class_expression = function
   | Syn.Cst.ClassExpression.Extension extension ->
       render_extension_doc extension
 
-and render_object_override_expression ({ fields; _ } : Syn.Cst.object_override_expression) =
+and render_object_override_expression
+    ({ opening_token; fields; separator_tokens; closing_token; _ } :
+      Syn.Cst.object_override_expression) =
   let fields =
     fields
     |> List.map
@@ -3441,31 +3443,47 @@ and render_object_override_expression ({ fields; _ } : Syn.Cst.object_override_e
             in
             Doc.concat [ doc_of_token field_name; doc_of_token equals_token; render_expression value ])
   in
+  let rec render_fields fields separator_tokens break_doc =
+    match fields, separator_tokens with
+    | [], [] ->
+        Doc.empty
+    | [ field ], [] ->
+        field
+    | field :: rest, separator_token :: rest_separators ->
+        Doc.concat
+          [
+            field;
+            doc_of_token separator_token;
+            break_doc;
+            render_fields rest rest_separators break_doc;
+          ]
+    | _ ->
+        unsupported "object override fields missing separator tokens"
+  in
   if fields = [] then
-    Doc.concat [ object_override_open; object_override_close ]
+    Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
   else if List.length fields > 4 then
     Doc.concat
       [
-        object_override_open;
+        doc_of_token opening_token;
         Doc.line;
-        Doc.indent 2 (join_map (Doc.concat [ Doc.semi; Doc.line ]) (fun doc -> doc) fields);
+        Doc.indent 2 (render_fields fields separator_tokens Doc.line);
         Doc.line;
-        object_override_close;
+        doc_of_token closing_token;
       ]
   else
     Doc.group
       (Doc.concat
          [
-           object_override_open;
+           doc_of_token opening_token;
            Doc.indent 2
              (Doc.concat
                 [
                   Doc.break ~flat:" " ();
-                  join_map (Doc.concat [ Doc.semi; Doc.break ~flat:" " () ]) (fun doc -> doc)
-                    fields;
+                  render_fields fields separator_tokens (Doc.break ~flat:" " ());
                 ]);
            Doc.break ~flat:" " ();
-           object_override_close;
+           doc_of_token closing_token;
          ])
 
 and render_index_expression

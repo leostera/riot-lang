@@ -82,6 +82,7 @@ Token-backed so far:
 - array pattern delimiters and separators
 - record pattern delimiters and separators
 - record expression delimiters and separators
+- object override delimiters and separators
 
 ## Next Targets
 

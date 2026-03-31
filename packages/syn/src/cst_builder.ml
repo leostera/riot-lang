@@ -5700,13 +5700,30 @@ and object_override_field_from_node = fun node ->
           }: Cst.object_override_field))
   | _ -> None
 and object_override_expression_from_node = fun node ->
+  let direct_tokens = direct_non_trivia_tokens node in
+  let opening_token, closing_token =
+    match direct_tokens with
+    | opening_token :: _ ->
+        let closing_token = List.hd (List.rev direct_tokens) in
+        (token opening_token, token closing_token)
+    | [] ->
+        bail ~message:"expected object override delimiters during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "expression.object_override" ]
+  in
   let children = direct_non_trivia_nodes node in
   if
     List.for_all (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD) children
   then
     Some {
       Cst.syntax_node = node;
+      opening_token;
       fields = List.filter_map object_override_field_from_node children;
+      separator_tokens =
+        direct_tokens
+        |> List.filter (fun syntax_token ->
+             String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text)
+        |> List.map token;
+      closing_token;
       attributes = []
     }
   else
