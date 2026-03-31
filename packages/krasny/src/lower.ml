@@ -4895,15 +4895,15 @@ let make_lowerer =
       true
     else
       match value with
-      | Syn.Cst.Expression.Fun _ -> not (function_body_prefers_multiline value)
+      | Syn.Cst.Expression.Fun _
+      | Syn.Cst.Expression.Function _ -> true
       | _ when expression_is_boolean_infix value -> false
       | _ when expression_requires_break_after_equals value -> false
       | _ -> expression_is_simple_after_equals value
   and adjust_local_binding_value_after_equals = fun ~rendered_value value stays_after_equals ->
     match value with
     | Syn.Cst.Expression.Fun _
-    | Syn.Cst.Expression.Function _ ->
-        stays_after_equals && not (Doc.is_multiline rendered_value)
+    | Syn.Cst.Expression.Function _ -> stays_after_equals
     | _ when expression_is_pipeline value && Doc.is_multiline rendered_value -> false
     | _ -> stays_after_equals
   and local_binding_keeps_parameters_in_header = fun ~parameters ~rendered_type_annotation ~synthesized_type_annotation ->
