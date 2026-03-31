@@ -2667,7 +2667,7 @@ and doc_with_object_member_attributes attributes doc =
   | attributes ->
       Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
 
-and render_object_member_body ~head expression =
+and render_object_member_body ~head ~equals_token expression =
   let body_doc =
     if expression_requires_break_after_equals expression then
       render_block_expression expression
@@ -2675,14 +2675,15 @@ and render_object_member_body ~head expression =
       render_expression expression
   in
   if Doc.is_multiline body_doc || expression_requires_break_after_equals expression then
-    Doc.concat [ head; Doc.space; Doc.equal; Doc.line; Doc.indent 2 body_doc ]
+    Doc.concat [ head; Doc.space; doc_of_token equals_token; Doc.line; Doc.indent 2 body_doc ]
   else
-    Doc.concat [ head; equals; body_doc ]
+    Doc.concat [ head; Doc.space; doc_of_token equals_token; Doc.space; body_doc ]
 
 and render_object_method
     ({
        name_token;
        body;
+       equals_token;
        type_;
        colon_token;
        attributes;
@@ -2698,7 +2699,7 @@ and render_object_method
   let doc =
     match type_ with
     | None ->
-        render_object_member_body ~head body
+        render_object_member_body ~head ~equals_token body
     | Some type_ ->
         let colon_token =
           match colon_token with
@@ -2707,7 +2708,7 @@ and render_object_method
           | None ->
               unsupported "object method type annotation missing colon token"
         in
-        render_object_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) body
+        render_object_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) ~equals_token body
   in
   doc_with_object_member_attributes attributes doc
 
@@ -2715,6 +2716,7 @@ and render_object_value
     ({
        name_token;
        value;
+       equals_token;
        type_;
        colon_token;
        attributes;
@@ -2730,7 +2732,7 @@ and render_object_value
   let doc =
     match type_ with
     | None ->
-        render_object_member_body ~head value
+        render_object_member_body ~head ~equals_token value
     | Some type_ ->
         let colon_token =
           match colon_token with
@@ -2739,7 +2741,7 @@ and render_object_value
           | None ->
               unsupported "object value type annotation missing colon token"
         in
-        render_object_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) value
+        render_object_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) ~equals_token value
   in
   doc_with_object_member_attributes attributes doc
 
@@ -2749,7 +2751,16 @@ and render_object_inherit
   doc_with_object_member_attributes attributes doc
 
 and render_object_initializer ({ body; _ } : Syn.Cst.object_initializer) =
-  render_object_member_body ~head:kw_initializer body
+  let body_doc =
+    if expression_prefers_multiline_layout body then
+      render_block_expression body
+    else
+      render_expression body
+  in
+  if Doc.is_multiline body_doc || expression_prefers_multiline_layout body then
+    Doc.concat [ kw_initializer; Doc.line; Doc.indent 2 body_doc ]
+  else
+    Doc.concat [ kw_initializer; Doc.space; body_doc ]
 
 and render_object_member = function
   | Syn.Cst.ObjectMember.Method method_ ->
@@ -2905,7 +2916,7 @@ and render_class_type_doc = function
   | Syn.Cst.ClassType.Extension extension ->
       render_extension_doc extension
 
-and render_class_member_body ~head expression =
+and render_class_member_body ~head ~equals_token expression =
   let body_doc =
     if expression_requires_break_after_equals expression then
       render_block_expression expression
@@ -2913,13 +2924,14 @@ and render_class_member_body ~head expression =
       render_expression expression
   in
   if Doc.is_multiline body_doc || expression_requires_break_after_equals expression then
-    Doc.concat [ head; Doc.space; Doc.equal; Doc.line; Doc.indent 2 body_doc ]
+    Doc.concat [ head; Doc.space; doc_of_token equals_token; Doc.line; Doc.indent 2 body_doc ]
   else
-    Doc.concat [ head; equals; body_doc ]
+    Doc.concat [ head; Doc.space; doc_of_token equals_token; Doc.space; body_doc ]
 
 and render_class_method
     ({
        name_token;
+       concrete_equals_token;
        definition;
        virtual_colon_token;
        modifier_tokens;
@@ -2942,13 +2954,28 @@ and render_class_method
       in
       Doc.concat [ head; doc_of_token virtual_colon_token; Doc.space; render_core_type type_ ]
   | Syn.Cst.ConcreteMethod { body; type_ = None } ->
-      render_class_member_body ~head body
+      let equals_token =
+        match concrete_equals_token with
+        | Some equals_token ->
+            equals_token
+        | None ->
+            unsupported "concrete class method missing equals token"
+      in
+      render_class_member_body ~head ~equals_token body
   | Syn.Cst.ConcreteMethod { body; type_ = Some (colon_token, type_) } ->
-      render_class_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) body
+      let equals_token =
+        match concrete_equals_token with
+        | Some equals_token ->
+            equals_token
+        | None ->
+            unsupported "concrete class method missing equals token"
+      in
+      render_class_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) ~equals_token body
 
 and render_class_value
     ({
        name_token;
+       concrete_equals_token;
        definition;
        virtual_colon_token;
        modifier_tokens;
@@ -2971,9 +2998,23 @@ and render_class_value
       in
       Doc.concat [ head; doc_of_token virtual_colon_token; Doc.space; render_core_type type_ ]
   | Syn.Cst.ConcreteValue { value; type_ = None } ->
-      render_class_member_body ~head value
+      let equals_token =
+        match concrete_equals_token with
+        | Some equals_token ->
+            equals_token
+        | None ->
+            unsupported "concrete class value missing equals token"
+      in
+      render_class_member_body ~head ~equals_token value
   | Syn.Cst.ConcreteValue { value; type_ = Some (colon_token, type_) } ->
-      render_class_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) value
+      let equals_token =
+        match concrete_equals_token with
+        | Some equals_token ->
+            equals_token
+        | None ->
+            unsupported "concrete class value missing equals token"
+      in
+      render_class_member_body ~head:(Doc.concat [ head; doc_of_token colon_token; Doc.space; render_core_type type_ ]) ~equals_token value
 
 and render_class_inherit ({ class_expression; _ } : Syn.Cst.class_inherit) =
   Doc.concat [ kw_inherit; Doc.space; render_class_expression class_expression ]
@@ -2990,7 +3031,16 @@ and render_class_constraint ({ left; equals_token; right; _ } : Syn.Cst.class_co
     ]
 
 and render_class_initializer ({ body; _ } : Syn.Cst.class_initializer) =
-  render_class_member_body ~head:kw_initializer body
+  let body_doc =
+    if expression_prefers_multiline_layout body then
+      render_block_expression body
+    else
+      render_expression body
+  in
+  if Doc.is_multiline body_doc || expression_prefers_multiline_layout body then
+    Doc.concat [ kw_initializer; Doc.line; Doc.indent 2 body_doc ]
+  else
+    Doc.concat [ kw_initializer; Doc.space; body_doc ]
 
 and render_class_field = function
   | Syn.Cst.ClassField.Method method_ ->

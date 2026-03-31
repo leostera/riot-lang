@@ -5290,6 +5290,16 @@ and object_method_from_node = fun node ->
                    "object_member";
                    "method"
                  ]);
+            equals_token =
+              (match direct_token_with_text node "=" with
+              | Some equals_token ->
+                  equals_token
+              | None ->
+                  bail ~message:"expected object method equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "object_member";
+                    "method";
+                    "equals_token"
+                  ]);
             type_;
             colon_token = direct_token_with_text node ":";
             modifier_tokens
@@ -5329,6 +5339,16 @@ and object_value_from_node = fun node ->
                    "object_member";
                    "value"
                  ]);
+            equals_token =
+              (match direct_token_with_text node "=" with
+              | Some equals_token ->
+                  equals_token
+              | None ->
+                  bail ~message:"expected object value equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "object_member";
+                    "value";
+                    "equals_token"
+                  ]);
             type_;
             colon_token = direct_token_with_text node ":";
             modifier_tokens
@@ -6111,6 +6131,7 @@ and class_method_from_node = fun node ->
           let field : Cst.class_method = {
             Cst.syntax_node = node;
             name_token;
+            concrete_equals_token = direct_token_with_text node "=";
             virtual_colon_token = colon_token;
             definition;
             modifier_tokens
@@ -6204,6 +6225,7 @@ and class_value_from_node = fun node ->
           let field : Cst.class_value = {
             Cst.syntax_node = node;
             name_token;
+            concrete_equals_token = direct_token_with_text node "=";
             virtual_colon_token = colon_token;
             definition;
             modifier_tokens

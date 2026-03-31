@@ -1272,6 +1272,7 @@ and object_method = {
   attributes : attribute list;
   name_token : Token.t;
   body : expression;
+  equals_token : Token.t;
   type_ : core_type option;
   colon_token : Token.t option;
   modifier_tokens : Token.t list;
@@ -1282,6 +1283,7 @@ and object_value = {
   attributes : attribute list;
   name_token : Token.t;
   value : expression;
+  equals_token : Token.t;
   type_ : core_type option;
   colon_token : Token.t option;
   modifier_tokens : Token.t list;
@@ -1737,6 +1739,7 @@ and class_field =
 and class_method = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  concrete_equals_token : Token.t option;
   virtual_colon_token : Token.t option;
   definition : method_definition;
   modifier_tokens : Token.t list;
@@ -1745,6 +1748,7 @@ and class_method = {
 and class_value = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  concrete_equals_token : Token.t option;
   virtual_colon_token : Token.t option;
   definition : value_definition;
   modifier_tokens : Token.t list;
