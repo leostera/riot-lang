@@ -65,6 +65,7 @@ Token-backed so far:
 - module pack expression `:`
 - module unpack expression `:`
 - module declaration `:`
+- functor parameter `:`
 
 ## Next Targets
 

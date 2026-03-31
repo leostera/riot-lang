@@ -466,6 +466,7 @@ and package_type = {
 and functor_parameter = {
   syntax_node : syntax_node;
   name_token : Token.t;
+  colon_token : Token.t;
   module_type : module_type;
 }
 
@@ -1076,6 +1077,7 @@ module FunctorParameter : sig
   type t = functor_parameter = {
     syntax_node : syntax_node;
     name_token : Token.t;
+    colon_token : Token.t;
     module_type : module_type;
   }
 end

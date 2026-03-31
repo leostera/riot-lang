@@ -2928,6 +2928,16 @@ and functor_parameter_from_node = fun node ->
           "module_type.functor.parameter"
         ]
   in
+  let colon_token =
+    match direct_token_with_text node ":" with
+    | Some colon_token ->
+        colon_token
+    | None ->
+        bail ~message:"expected functor parameter colon during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+          "module_type.functor.parameter";
+          "colon_token"
+        ]
+  in
   let module_type =
     match direct_non_trivia_nodes node |> List.find_opt can_lift_module_type_node with
     | Some module_type_node ->
@@ -2937,7 +2947,7 @@ and functor_parameter_from_node = fun node ->
           "module_type.functor.parameter"
         ]
   in
-  Cst.FunctorParameter.{syntax_node = node; name_token; module_type}
+  Cst.FunctorParameter.{syntax_node = node; name_token; colon_token; module_type}
 and module_type_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.MODULE_TYPE_PATH ->

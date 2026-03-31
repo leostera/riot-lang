@@ -643,13 +643,15 @@ let rec render_first_class_module_type_constraint ~keyword
       render_core_type constraint_.replacement_type;
     ]
 
-and render_first_class_functor_parameter ({ name_token; module_type; _ } :
+and render_first_class_functor_parameter ({ name_token; colon_token; module_type; _ } :
   Syn.Cst.functor_parameter) =
   Doc.concat
     [
       Doc.lparen;
       doc_of_token name_token;
-      colon;
+      Doc.space;
+      doc_of_token colon_token;
+      Doc.space;
       render_first_class_module_type_doc module_type;
       Doc.rparen;
     ]
@@ -5200,12 +5202,14 @@ and render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_co
       render_core_type constraint_.replacement_type;
     ]
 
-and render_functor_parameter ({ name_token; module_type; _ } : Syn.Cst.functor_parameter) =
+and render_functor_parameter ({ name_token; colon_token; module_type; _ } : Syn.Cst.functor_parameter) =
   Doc.concat
     [
       Doc.lparen;
       doc_of_token name_token;
-      colon;
+      Doc.space;
+      doc_of_token colon_token;
+      Doc.space;
       render_module_type_doc module_type;
       Doc.rparen;
     ]
