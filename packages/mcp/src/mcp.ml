@@ -301,7 +301,7 @@ let option_of_json = fun f ->
       | Error e -> Error e
     )
 
-let capabilities_to_json = fun (caps:server_capabilities) ->
+let capabilities_to_json = fun (caps: server_capabilities) ->
   Json.Object [ (
       "tools",
       if caps.tools = None then
@@ -326,7 +326,7 @@ let capabilities_to_json = fun (caps:server_capabilities) ->
             );  ]
     ); ("prompts", Json.Object []);  ]
 
-let client_capabilities_to_json = fun (caps:client_capabilities) ->
+let client_capabilities_to_json = fun (caps: client_capabilities) ->
   Json.Object [ (
       "tools",
       if caps.tools = None then
@@ -356,14 +356,14 @@ let client_capabilities_to_json = fun (caps:client_capabilities) ->
         Json.Object []
     );  ]
 
-let tool_to_json = fun (t:tool) -> Json.Object [
+let tool_to_json = fun (t: tool) -> Json.Object [
   ("name", Json.String t.name);
   ("description", option_to_json (fun s -> Json.String s) t.description);
   ("inputSchema", t.input_schema);
 
 ]
 
-let resource_to_json = fun (r:resource) -> Json.Object [
+let resource_to_json = fun (r: resource) -> Json.Object [
   ("uri", Json.String r.uri);
   ("name", option_to_json (fun s -> Json.String s) r.name);
   ("description", option_to_json (fun s -> Json.String s) r.description);
@@ -391,20 +391,20 @@ let message_content_to_json =
   | Text s -> Json.Object [ ("type", Json.String "text"); ("text", Json.String s) ]
   | Resource rc -> resource_contents_to_json rc
 
-let message_to_json = fun (m:message) -> Json.Object [
+let message_to_json = fun (m: message) -> Json.Object [
   ("role", Json.String m.role);
   ("content", message_content_to_json m.content);
 
 ]
 
-let prompt_argument_to_json = fun (arg:prompt_argument) -> Json.Object [
+let prompt_argument_to_json = fun (arg: prompt_argument) -> Json.Object [
   ("name", Json.String arg.name);
   ("description", option_to_json (fun s -> Json.String s) arg.description);
   ("required", option_to_json (fun b -> Json.Bool b) arg.required);
 
 ]
 
-let prompt_to_json = fun (p:prompt) -> Json.Object [
+let prompt_to_json = fun (p: prompt) -> Json.Object [
   ("name", Json.String p.name);
   ("description", option_to_json (fun s -> Json.String s) p.description);
   (
@@ -538,14 +538,14 @@ let response_result_to_json =
   | CustomResult j ->
       j
 
-let error_to_json = fun (e:error) -> Json.Object [
+let error_to_json = fun (e: error) -> Json.Object [
   ("code", Json.Int e.code);
   ("message", Json.String e.message);
   ("data", option_to_json (fun j -> j) e.data);
 
 ]
 
-let request_to_json = fun (req:request) ->
+let request_to_json = fun (req: request) ->
   let params_field =
     match req.params with
     | None -> []
@@ -594,7 +594,7 @@ let notification_params_to_json =
   ]
   | CustomNotificationParams j -> j
 
-let notification_to_json = fun (notif:notification) ->
+let notification_to_json = fun (notif: notification) ->
   let params_field =
     match notif.params with
     | None -> []
@@ -854,7 +854,7 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
             "tools",
             Json.Array (
               List.map
-                (fun (t:tool) ->
+                (fun (t: tool) ->
                   Json.Object [ ("name", Json.String t.name); (
                       "description",
                       match t.description with

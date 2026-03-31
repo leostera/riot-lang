@@ -99,7 +99,7 @@ let blur = fun t -> {t with focused = false}
 
 let is_focused = fun t -> t.focused
 
-let handle_key = fun t (key:Event.key) modifier ->
+let handle_key = fun t (key: Event.key) modifier ->
   if not t.focused then
     t
   else
@@ -111,7 +111,7 @@ let handle_key = fun t (key:Event.key) modifier ->
           10
       in
       let half_page = page_size / 2 in
-      match ((key:Event.key)) with
+      match ((key: Event.key)) with
       | Up
       | Key "k" when modifier = NoModifier -> move_up t 1
       | Down
@@ -154,22 +154,22 @@ let render_cell = fun content width ->
   let truncated = truncate_string content width in
   pad_string truncated width
 
-let render_separator = fun (columns:column list) ->
+let render_separator = fun (columns: column list) ->
   let parts =
     List.map
-      (fun (col:column) ->
+      (fun (col: column) ->
         String.make col.width '-')
       columns
   in
   String.concat "  " parts
 
-let render_header = fun (columns:column list) ->
+let render_header = fun (columns: column list) ->
   let headers =
-    List.map (fun (col:column) -> render_cell col.title col.width) columns
+    List.map (fun (col: column) -> render_cell col.title col.width) columns
   in
   String.concat "  " headers
 
-let render_row = fun (columns:column list) row_data is_selected cursor_char ->
+let render_row = fun (columns: column list) row_data is_selected cursor_char ->
   let prefix =
     if is_selected then
       cursor_char
@@ -177,7 +177,7 @@ let render_row = fun (columns:column list) row_data is_selected cursor_char ->
       String.make (String.length cursor_char) ' '
   in
   let cells =
-    List.map2 (fun (col:column) cell -> render_cell cell col.width) columns row_data
+    List.map2 (fun (col: column) cell -> render_cell cell col.width) columns row_data
   in
   prefix ^ String.concat "  " cells
 

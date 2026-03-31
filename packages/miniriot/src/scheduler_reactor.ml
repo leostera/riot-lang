@@ -5,7 +5,7 @@ open Scheduler_types
 
 let loop = fun ~(has_pending_commands:t -> bool) ~(drain_commands:t -> reactor_command list) ~(handle_command:t ->
 reactor_command ->
-unit) ~(process_timers:t -> unit) ~(poll_io:t -> unit) (runtime:t) ->
+unit) ~(process_timers:t -> unit) ~(poll_io:t -> unit) (runtime: t) ->
   Domain.DLS.set
   current_context
   (Some {scheduler = runtime; worker_id = None; current_process = None});

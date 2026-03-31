@@ -10,8 +10,8 @@ end
 
 type t = (module S)
 
-let name = fun ((module Provider):t) -> Provider.name
+let name = fun ((module Provider): t) -> Provider.name
 
-let rules = fun ((module Provider):t) -> Provider.rules ()
+let rules = fun ((module Provider): t) -> Provider.rules ()
 
-let explanations = fun ((module Provider):t) -> Provider.explanations ()
+let explanations = fun ((module Provider): t) -> Provider.explanations ()

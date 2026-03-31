@@ -15,7 +15,7 @@ module Registry = struct
 
   let registry = {commands = []}
 
-  let register = fun (cmd:(module Command)) ->
+  let register = fun (cmd: (module Command)) ->
     let module Cmd = (val cmd) in
     Log.debug ("Registering command: " ^ Cmd.name);
     registry.commands <- (Cmd.name, cmd) :: registry.commands

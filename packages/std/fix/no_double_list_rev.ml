@@ -105,7 +105,7 @@ let diagnostic_for_expression = fun expr ->
     )
   | None -> None
 
-let check_tree = fun (ctx:Api.Rule.context) _red_root ->
+let check_tree = fun (ctx: Api.Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

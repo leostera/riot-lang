@@ -38,7 +38,7 @@ let plan_workspace = fun workspace target scope -> Workspace_planner.plan_worksp
 ~load_errors:[]
 
 let package_names = fun plan -> Workspace_planner.packages_in_plan plan
-|> List.map (fun (pkg:Package.t) -> pkg.name)
+|> List.map (fun (pkg: Package.t) -> pkg.name)
 
 let plan_all_runtime_returns_workspace_like_order = fun () ->
   let workspace = make_workspace
@@ -58,7 +58,7 @@ let plan_all_runtime_returns_workspace_like_order = fun () ->
       let names = package_names plan in
       let position = fun name ->
         List.find_index (String.equal name) names
-        |> Option.expect ~msg:(((("missing package in plan: " ^ name)))) in
+        |> Option.expect ~msg:((((("missing package in plan: " ^ name))))) in
       Test.assert_true (position "std" < position "kernel");
       Test.assert_true (position "kernel" < position "miniriot");
       Test.assert_true (position "miniriot" < position "tusk-model");
@@ -135,7 +135,7 @@ let plan_reports_missing_dependencies_before_sorting = fun () ->
   | Error (MissingDependencies { missing }) ->
       let entries =
         List.map
-        (fun (item:Tusk_planner.Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency)
+        (fun (item: Tusk_planner.Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency)
         missing
       in
       Test.assert_equal ~expected:[ "app->missing-lib" ] ~actual:entries;

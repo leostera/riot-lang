@@ -11,7 +11,7 @@ end
 type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
 
 type 'item t =
-  Iter : (('item, 'state) iter * 'state) -> 'item t
+  Iter: (('item, 'state) iter * 'state) -> 'item t
 
 (*************************************************************************************************)
 

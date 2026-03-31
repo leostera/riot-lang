@@ -93,7 +93,7 @@ let make_box = fun value -> {data = Some value}
 external unsafe_coerce: 'a -> 'b = "%identity"
 
 type Conn.assign_value +=
-  Basic_auth_value : 'a value_box -> Conn.assign_value
+  Basic_auth_value: 'a value_box -> Conn.assign_value
 
 let assign = fun key value conn ->
   let box = make_box value in

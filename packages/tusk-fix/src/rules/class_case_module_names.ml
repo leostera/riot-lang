@@ -52,7 +52,7 @@ let make_diagnostic = fun token ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-  ~suggestion:(((("Rename " ^ original ^ " to " ^ replacement))))
+  ~suggestion:((((("Rename " ^ original ^ " to " ^ replacement)))))
   ()
 
 let diagnostic_for_module_structure = fun decl ->
@@ -108,7 +108,7 @@ let diagnostics_for_items = fun source_file ->
           | _ -> []
         )
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   diagnostics_for_items source_file
 

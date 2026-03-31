@@ -50,7 +50,7 @@ let identifier_name_of_pattern =
   | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some (Syn.Cst.Token.text name_token)
   | _ -> None
 
-let option_case_kind = fun (case:Syn.Cst.match_case) ->
+let option_case_kind = fun (case: Syn.Cst.match_case) ->
   if Option.is_some case.guard then
     `Other
   else
@@ -86,7 +86,7 @@ let is_some_expression = fun expr ->
     )
   | _ -> false
 
-let matches_option_map_shape = fun (expr:Syn.Cst.match_expression) ->
+let matches_option_map_shape = fun (expr: Syn.Cst.match_expression) ->
   match expr.cases with
   | [first_case;second_case] -> (
       match option_case_kind first_case, option_case_kind second_case with
@@ -98,7 +98,7 @@ let matches_option_map_shape = fun (expr:Syn.Cst.match_expression) ->
     )
   | _ -> false
 
-let make_diagnostic = fun (expr:Syn.Cst.match_expression) -> Api.Diagnostic.make
+let make_diagnostic = fun (expr: Syn.Cst.match_expression) -> Api.Diagnostic.make
 ~severity:Warning
 ~kind:(Api.Diagnostic.Known {
   rule_id = package_rule_id;
@@ -114,7 +114,7 @@ let diagnostic_for_expression =
   | Syn.Cst.Expression.Match expr when matches_option_map_shape expr -> Some (make_diagnostic expr)
   | _ -> None
 
-let check_tree = fun (ctx:Api.Rule.context) _red_root ->
+let check_tree = fun (ctx: Api.Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

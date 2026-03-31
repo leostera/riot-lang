@@ -97,7 +97,7 @@ let merge = fun base override ->
     @ override.ocamlc_flags; }
 
 (** Apply a profile override to a base profile *)
-let apply_override = fun base (override:profile_override) ->
+let apply_override = fun base (override: profile_override) ->
   {name = base.name; kind = (
       match override.kind with
       | Inherit -> base.kind

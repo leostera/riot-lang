@@ -16,15 +16,15 @@ type ('task, 'result) state = {
 }
 
 type Message.t +=
-  | TaskResult : {
-    idx: int;
-    result: 'result;
-    result_ref: 'result Ref.t;
-  } -> Message.t
-  | Completed : {
-    results: (int * 'result) list;
-    result_ref: 'result Ref.t;
-  } -> Message.t
+  | TaskResult: {
+      idx: int;
+      result: 'result;
+      result_ref: 'result Ref.t;
+    } -> Message.t
+  | Completed: {
+      results: (int * 'result) list;
+      result_ref: 'result Ref.t;
+    } -> Message.t
 
 let rec loop : type task res. (task, res) state -> (unit, Process.exit_reason) result = fun state ->
   let selector : ([

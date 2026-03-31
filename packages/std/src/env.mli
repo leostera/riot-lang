@@ -101,15 +101,15 @@ val home_dir: unit -> Path.t option
 
 (** Type specifications for environment variable parsing *)
 type 't var_type =
-  | String : string var_type
+  | String: string var_type
   (** String values (no parsing) *)
-  | Int : int var_type
+  | Int: int var_type
   (** Integer values *)
-  | Float : float var_type
+  | Float: float var_type
   (** Floating point values *)
-  | Bool : bool var_type
+  | Bool: bool var_type
   (** Boolean values (true/false, 1/0, yes/no) *)
-  | Char : char var_type
+  | Char: char var_type
 (** Single character values *)
 val var: 't var_type -> name:string -> 't option
 

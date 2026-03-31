@@ -29,13 +29,13 @@ let graph = fun t -> t.graph
 
 let to_action_list = fun t ->
   let sorted = topo_sort t in
-  List.concat_map (fun (node:Action_node.t) -> node.value.actions) sorted
+  List.concat_map (fun (node: Action_node.t) -> node.value.actions) sorted
 
-let hash_action_node = fun _t (node:Action_node.t) -> node.value.hash
+let hash_action_node = fun _t (node: Action_node.t) -> node.value.hash
 
 let opens = fun mods ->
   List.filter_map
-    (fun (node:Module_node.t G.node) ->
+    (fun (node: Module_node.t G.node) ->
       match node.value.kind with
       | ML mod_
       | MLI mod_ -> Some (Tusk_toolchain.Ocamlc.Open (Module.namespaced_name mod_))
@@ -43,11 +43,11 @@ let opens = fun mods ->
     mods
 
 (** Determine compiler flags for stdlib handling based on package dependencies *)
-let stdlib_flags = fun (package:Package.t) ->
+let stdlib_flags = fun (package: Package.t) ->
   (* Check if this package has stdlib as a dependency *)
   let has_stdlib_dep =
     List.exists
-    (fun (dep:Package.dependency) -> dep.name = "stdlib")
+    (fun (dep: Package.dependency) -> dep.name = "stdlib")
     (Package.build_graph_dependencies package)
   in
   (* Always add -nopervasives to prevent automatic opening of Stdlib *)
@@ -57,9 +57,9 @@ let stdlib_flags = fun (package:Package.t) ->
   else
     [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
 
-let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink (module_node:Module_node.t) (deps:G.Node_id.t list) : Action.t list *
-Path.t list *
-Path.t list =
+let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink (
+  module_node: Module_node.t
+) (deps: G.Node_id.t list) : Action.t list * Path.t list * Path.t list =
   match module_node with
   | { kind=MLI mod_; file=Concrete path; open_modules; _ } ->
       let cmi_output = Module.cmi mod_ in
@@ -206,7 +206,7 @@ Path.t list =
       (* Collect foreign library outputs for linking *)
       let cclibs =
         List.concat_map
-          (fun (fdep:Package.foreign_dependency) ->
+          (fun (fdep: Package.foreign_dependency) ->
             (* Make foreign outputs absolute by joining with foreign dep path and normalizing *)
             List.map (fun out -> Path.normalize (Path.join fdep.path out)) fdep.outputs)
           package.foreign_dependencies
@@ -224,7 +224,7 @@ Path.t list =
       let transitive_deps = Dependency.transitive_closure depset in
       let dep_ldflags =
         List.concat_map
-          (fun (dep:Dependency.t) ->
+          (fun (dep: Dependency.t) ->
             match List.assoc_opt target_platform dep.package.compiler.target_overrides with
             | Some target_override -> (
                 match target_override.profile_override with
@@ -292,12 +292,13 @@ Path.t list =
       } in
       ([ compile_action; link_action ], [ binary_output ], sources)
 
-let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (module_graph:Module_node.t G.t) : t *
-Path.t list =
+let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (
+  module_graph: Module_node.t G.t
+) : t * Path.t list =
   let transitive_deps = Dependency.transitive_closure depset in
   (* Extract dependency cache include paths - no file copying needed! *)
   let dep_cache_includes =
-    List.map (fun (dep:Dependency.t) -> dep.artifact_dir) transitive_deps
+    List.map (fun (dep: Dependency.t) -> dep.artifact_dir) transitive_deps
   in
   (* Add stdlib includes if needed *)
   let stdlib_includes = (
@@ -340,7 +341,7 @@ Path.t list =
     | None -> []
   in
   List.iter
-    (fun (module_node:Module_node.t G.node) ->
+    (fun (module_node: Module_node.t G.node) ->
       let actions, outputs, sources = module_to_actions
       ~package
       ~profile
@@ -385,7 +386,7 @@ let to_json = fun t ->
     let all_nodes = nodes t in
     let sorted_nodes =
       List.sort
-      (fun (a:Action_node.t) (b:Action_node.t) -> G.Node_id.to_int a.id - G.Node_id.to_int b.id)
+      (fun (a: Action_node.t) (b: Action_node.t) -> G.Node_id.to_int a.id - G.Node_id.to_int b.id)
       all_nodes
     in
     obj [ ("nodes", array (List.map Action_node.to_json sorted_nodes)) ]

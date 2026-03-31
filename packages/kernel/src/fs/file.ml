@@ -35,7 +35,7 @@ type t = Fd.t
 module Metadata = struct
   type t = Unix.stats
 
-  let of_stats = fun (stats:Unix.stats) -> stats
+  let of_stats = fun (stats: Unix.stats) -> stats
 
   let dev = fun t -> t.Unix.st_dev
 
@@ -65,11 +65,11 @@ end
 let close = fun fd -> Fd.close fd
 
 let read = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((((Bytes.length buf - 1)))) in
+  let len = Option.unwrap_or len ~default:(((((Bytes.length buf - 1))))) in
   IO.unix_syscall (fun () -> UnixLabels.read (Fd.to_unix fd) ~buf ~pos ~len)
 
 let write = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((((Bytes.length buf - 1)))) in
+  let len = Option.unwrap_or len ~default:(((((Bytes.length buf - 1))))) in
   IO.unix_syscall (fun () -> UnixLabels.write (Fd.to_unix fd) ~buf ~pos ~len)
 
 external std_sys_readv: Unix.file_descr -> IO.Iovec.t -> int = "kernel_unix_readv"

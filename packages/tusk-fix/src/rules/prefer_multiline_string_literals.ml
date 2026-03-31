@@ -23,7 +23,7 @@ let rec string_literal_chain_size_in_function_body =
   | Syn.Cst.Expression expression -> string_literal_chain_size expression
   | Syn.Cst.Cases { cases; _ } ->
       cases |> List.find_map
-        (fun (case:Syn.Cst.match_case) ->
+        (fun (case: Syn.Cst.match_case) ->
           match case.guard with
           | Some guard -> (
               match string_literal_chain_size guard with
@@ -64,7 +64,7 @@ and string_literal_chain_size =
       | Some _ as size -> size
       | None ->
           expr.cases |> List.find_map
-            (fun (case:Syn.Cst.match_case) ->
+            (fun (case: Syn.Cst.match_case) ->
               match case.guard with
               | Some guard -> (
                   match string_literal_chain_size guard with
@@ -78,7 +78,7 @@ and string_literal_chain_size =
       | Some _ as size -> size
       | None ->
           expr.cases |> List.find_map
-            (fun (case:Syn.Cst.match_case) ->
+            (fun (case: Syn.Cst.match_case) ->
               match case.guard with
               | Some guard -> (
                   match string_literal_chain_size guard with
@@ -114,7 +114,7 @@ let diagnostic_for_binding = fun binding ->
   | Some _
   | None -> None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

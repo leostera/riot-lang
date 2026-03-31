@@ -47,7 +47,7 @@ let diagnostics_for_items = fun source_file ->
           | _ -> None
         )
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   diagnostics_for_items source_file
 

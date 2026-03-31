@@ -42,7 +42,7 @@ let plan_workspace = fun ~workspace ~target ~(scope:Package_graph.build_scope) ~
     | Ok package_graph ->
         let target_graph =
           let available =
-            List.map (fun (p:Package.t) -> p.name) workspace.packages
+            List.map (fun (p: Package.t) -> p.name) workspace.packages
           in
           let filter_packages = fun pkg_names ->
             let missing = List.filter

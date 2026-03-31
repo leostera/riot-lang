@@ -47,14 +47,14 @@ let rec raises_name = fun name expr ->
     )
   | _ -> false
 
-let is_redundant_reraise_case = fun ({ pattern; guard; body; _ }:Syn.Cst.match_case) ->
+let is_redundant_reraise_case = fun ({ pattern; guard; body; _ }: Syn.Cst.match_case) ->
   match pattern, guard with
   | Syn.Cst.Pattern.Identifier { name_token; _ }, None -> raises_name
   (Syn.Cst.Token.text name_token)
   body
   | _ -> false
 
-let make_diagnostic = fun ({ syntax_node; _ }:Syn.Cst.try_expression) -> Diagnostic.make
+let make_diagnostic = fun ({ syntax_node; _ }: Syn.Cst.try_expression) -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
 ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
@@ -67,7 +67,7 @@ let diagnostic_for_expression =
   try_expr)
   | _ -> None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

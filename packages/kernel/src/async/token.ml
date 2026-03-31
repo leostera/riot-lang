@@ -1,6 +1,6 @@
 type t
 
-let unsafe_to_value = fun (x:t) -> Obj.magic x
+let unsafe_to_value = fun (x: t) -> Obj.magic x
 
 let unsafe_to_int : t -> int = fun t -> unsafe_to_value t
 

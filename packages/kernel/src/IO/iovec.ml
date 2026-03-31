@@ -48,7 +48,7 @@ let sub = fun ?(pos = 0) ~len t ->
 let length = fun t ->
   Array.fold_left (fun acc iov -> acc + (iov.len - iov.off)) 0 t
 
-let iter = fun (t:t) fn ->
+let iter = fun (t: t) fn ->
   Array.iter fn t
 
 let of_bytes = fun ba -> [|{ba; off = 0; len = Bytes.length ba}|]

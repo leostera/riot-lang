@@ -45,7 +45,7 @@ let should_prefer_record = fun elements ->
               rest
       )
 
-let make_diagnostic = fun (decl:Syn.Cst.TypeDeclaration.t) -> Diagnostic.make
+let make_diagnostic = fun (decl: Syn.Cst.TypeDeclaration.t) -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
 ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl))
@@ -95,21 +95,21 @@ let rec diagnostics_for_core_type = fun type_ ->
   | Syn.Cst.CoreType.Record { fields; _ } ->
       fields
       |> List.concat_map
-      (fun (field:Syn.Cst.record_type_field) -> diagnostics_for_core_type field.field_type)
+      (fun (field: Syn.Cst.record_type_field) -> diagnostics_for_core_type field.field_type)
   | Syn.Cst.CoreType.FirstClassModule _ ->
       []
   | Syn.Cst.CoreType.Object { fields; _ } ->
       fields
       |> List.concat_map
-      (fun (field:Syn.Cst.object_type_field) -> diagnostics_for_core_type field.field_type)
+      (fun (field: Syn.Cst.object_type_field) -> diagnostics_for_core_type field.field_type)
 
-let diagnostics_for_variant_constructor = fun (constructor:Syn.Cst.VariantConstructor.t) ->
+let diagnostics_for_variant_constructor = fun (constructor: Syn.Cst.VariantConstructor.t) ->
   let from_arguments =
     match Syn.Cst.VariantConstructor.arguments constructor with
     | Some (Syn.Cst.ConstructorArguments.Tuple types) -> types |> List.concat_map diagnostics_for_core_type
     | Some (Syn.Cst.ConstructorArguments.Record { fields; _ }) -> fields
     |> List.concat_map
-    (fun (field:Syn.Cst.RecordField.t) -> diagnostics_for_core_type field.field_type)
+    (fun (field: Syn.Cst.RecordField.t) -> diagnostics_for_core_type field.field_type)
     | None -> []
   in
   from_arguments
@@ -125,10 +125,10 @@ let diagnostics_for_type_definition =
   | Syn.Cst.TypeDefinition.FirstClassModule _ -> []
   | Syn.Cst.TypeDefinition.Object { fields; _ } -> fields
   |> List.concat_map
-  (fun (field:Syn.Cst.object_type_field) -> diagnostics_for_core_type field.field_type)
+  (fun (field: Syn.Cst.object_type_field) -> diagnostics_for_core_type field.field_type)
   | Syn.Cst.TypeDefinition.Record { fields; _ } -> fields
   |> List.concat_map
-  (fun (field:Syn.Cst.RecordField.t) -> diagnostics_for_core_type field.field_type)
+  (fun (field: Syn.Cst.RecordField.t) -> diagnostics_for_core_type field.field_type)
   | Syn.Cst.TypeDefinition.Variant { constructors; _ } -> constructors |> List.concat_map diagnostics_for_variant_constructor
 
 let diagnostics_for_type_declaration = fun decl ->
@@ -141,13 +141,13 @@ let diagnostics_for_type_declaration = fun decl ->
   from_definition
   @ (Syn.Cst.TypeDeclaration.constraints decl
   |> List.concat_map
-  (fun (constraint_:Syn.Cst.TypeConstraint.t) -> diagnostics_for_core_type constraint_.left
+  (fun (constraint_: Syn.Cst.TypeConstraint.t) -> diagnostics_for_core_type constraint_.left
   @ diagnostics_for_core_type constraint_.right))
 
-let diagnostics_for_value_declaration = fun ({ type_; _ }:Syn.Cst.value_declaration) -> diagnostics_for_core_type
+let diagnostics_for_value_declaration = fun ({ type_; _ }: Syn.Cst.value_declaration) -> diagnostics_for_core_type
 type_
 
-let diagnostics_for_external_declaration = fun ({ type_; _ }:Syn.Cst.external_declaration) -> diagnostics_for_core_type
+let diagnostics_for_external_declaration = fun ({ type_; _ }: Syn.Cst.external_declaration) -> diagnostics_for_core_type
 type_
 
 let diagnostics_for_source_file =
@@ -169,7 +169,7 @@ let diagnostics_for_source_file =
           | _ -> []
         )
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   diagnostics_for_source_file source_file
 

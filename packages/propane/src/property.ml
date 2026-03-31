@@ -26,7 +26,7 @@ type 'value property_internal = {
 }
 
 type test_property =
-  Prop : 'value property_internal -> test_property
+  Prop: 'value property_internal -> test_property
 
 (* === EXCEPTIONS FOR CONTROL FLOW === *)
 

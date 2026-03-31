@@ -22,11 +22,11 @@ let home_dir = fun () ->
   | Not_found -> None
 
 type 't var_type =
-  | String : string var_type
-  | Int : int var_type
-  | Float : float var_type
-  | Bool : bool var_type
-  | Char : char var_type
+  | String: string var_type
+  | Int: int var_type
+  | Float: float var_type
+  | Bool: bool var_type
+  | Char: char var_type
 
 let var : type t. t var_type -> name:string -> t option = fun var_type ~name ->
   try

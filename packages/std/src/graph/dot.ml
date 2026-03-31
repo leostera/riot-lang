@@ -59,7 +59,7 @@ let format_attrs = fun attrs ->
     in
     " [" ^ String.concat ", " attr_strs ^ "]"
 
-let format_node = fun (node:node) ->
+let format_node = fun (node: node) ->
   let label_attr =
     match node.label with
     | Some l -> [ ("label", l) ]

@@ -115,9 +115,9 @@ let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_
     let hash = Sha256.finish hasher in
     {actions; outs; srcs; package; toolchain; hash}
 
-let get_hash = fun (node:t) -> node.value.hash
+let get_hash = fun (node: t) -> node.value.hash
 
-let to_json = fun (node:t) ->
+let to_json = fun (node: t) ->
   let open Data.Json in
     let spec = node.value in
     obj
@@ -134,7 +134,7 @@ let to_json = fun (node:t) ->
 
     ]
 
-let equal = fun (n1:t) (n2:t) ->
+let equal = fun (n1: t) (n2: t) ->
   let s1 = n1.value in
   let s2 = n2.value in
   Crypto.Digest.hex s1.hash = Crypto.Digest.hex s2.hash

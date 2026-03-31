@@ -43,16 +43,16 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
   Tusk_model.Package.hash state package;
   let sorted_deps =
     List.sort
-      (fun (a:Tusk_model.Package.dependency) (b:Tusk_model.Package.dependency) ->
+      (fun (a: Tusk_model.Package.dependency) (b: Tusk_model.Package.dependency) ->
         String.compare a.name b.name)
       (Tusk_model.Package.build_graph_dependencies package)
   in
   List.iter
-    (fun (dep:Tusk_model.Package.dependency) ->
+    (fun (dep: Tusk_model.Package.dependency) ->
       match dep.source with
       | Tusk_model.Package.Workspace -> (
           match List.find_opt
-          (fun (p:Tusk_model.Package.t) -> p.name = dep.name)
+          (fun (p: Tusk_model.Package.t) -> p.name = dep.name)
           workspace.Tusk_model.Workspace.packages with
           | Some dep_pkg ->
               H.write_string state (Path.to_string dep_pkg.path);

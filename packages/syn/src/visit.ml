@@ -147,22 +147,24 @@ type 'ctx visitor = {
   visit_variant_constructor: 'ctx -> 'ctx walker -> Cst.VariantConstructor.t -> 'ctx;
 }
 
-let rec fold_binding_operator_chain = fun (walk:'ctx walker) ctx (binding:Cst.binding_operator_binding) ->
+let rec fold_binding_operator_chain = fun (walk: 'ctx walker) ctx (
+  binding: Cst.binding_operator_binding
+) ->
   let ctx = walk.binding_operator_binding ctx binding in
   match binding.and_binding with
   | Some next -> fold_binding_operator_chain walk ctx next
   | None -> ctx
 
-let rec descend_attribute = fun walk ctx (attribute:Cst.attribute) ->
+let rec descend_attribute = fun walk ctx (attribute: Cst.attribute) ->
   match attribute.payload with
   | Some payload -> walk.payload ctx payload
   | None -> ctx
-and descend_extension = fun walk ctx (extension:Cst.extension) ->
+and descend_extension = fun walk ctx (extension: Cst.extension) ->
   let ctx = List.fold_left walk.attribute ctx extension.attributes in
   match extension.payload with
   | Some payload -> walk.payload ctx payload
   | None -> ctx
-and descend_payload = fun _walk ctx (_payload:Cst.Payload.t) -> ctx
+and descend_payload = fun _walk ctx (_payload: Cst.Payload.t) -> ctx
 and descend_type_binder = fun _walk ctx _type_binder -> ctx
 and descend_type_parameter = fun _walk ctx _type_parameter -> ctx
 and descend_parameter = fun walk ctx parameter ->
@@ -171,7 +173,7 @@ and descend_parameter = fun walk ctx parameter ->
   | Cst.Parameter.Labeled _
   | Cst.Parameter.Optional _ -> ctx
   | Cst.Parameter.LocallyAbstract { binders; _ } -> List.fold_left walk.type_binder ctx binders
-and descend_pattern = fun walk ctx (pattern:Cst.Pattern.t) ->
+and descend_pattern = fun walk ctx (pattern: Cst.Pattern.t) ->
   match pattern with
   | Cst.Pattern.Identifier { attributes; _ }
   | Cst.Pattern.Wildcard { attributes; _ }
@@ -220,7 +222,7 @@ and descend_pattern = fun walk ctx (pattern:Cst.Pattern.t) ->
   | Cst.Pattern.Tuple { elements; attributes; _ } ->
       let ctx =
         List.fold_left
-          (fun ctx (element:Cst.tuple_pattern_element) ->
+          (fun ctx (element: Cst.tuple_pattern_element) ->
             walk.pattern ctx element.pattern)
           ctx
           elements
@@ -234,7 +236,7 @@ and descend_pattern = fun walk ctx (pattern:Cst.Pattern.t) ->
   | Cst.Pattern.Record { fields; attributes; _ } ->
       let ctx =
         List.fold_left
-          (fun ctx (field:Cst.record_pattern_field) ->
+          (fun ctx (field: Cst.record_pattern_field) ->
             match field.pattern with
             | Some pattern -> walk.pattern ctx pattern
             | None -> ctx)
@@ -257,7 +259,7 @@ and descend_pattern = fun walk ctx (pattern:Cst.Pattern.t) ->
       let ctx = walk.pattern ctx effect_pattern in
       let ctx = walk.pattern ctx continuation in
       List.fold_left walk.attribute ctx attributes
-and descend_core_type = fun walk ctx (core_type:Cst.CoreType.t) ->
+and descend_core_type = fun walk ctx (core_type: Cst.CoreType.t) ->
   match core_type with
   | Cst.CoreType.Wildcard _
   | Cst.CoreType.Var _ ->
@@ -295,9 +297,9 @@ and descend_core_type = fun walk ctx (core_type:Cst.CoreType.t) ->
   | Cst.CoreType.Object { fields; _ } ->
       List.fold_left walk.object_type_field ctx fields
 and descend_exception_declaration = fun _walk ctx _decl -> ctx
-and descend_object_type_field = fun walk ctx (field:Cst.object_type_field) ->
+and descend_object_type_field = fun walk ctx (field: Cst.object_type_field) ->
   walk.core_type ctx field.field_type
-and descend_record_type_field = fun walk ctx (field:Cst.record_type_field) ->
+and descend_record_type_field = fun walk ctx (field: Cst.record_type_field) ->
   let ctx = List.fold_left walk.attribute ctx field.attributes in
   walk.core_type ctx field.field_type
 and descend_row_field = fun walk ctx row_field ->
@@ -310,15 +312,15 @@ and descend_row_field = fun walk ctx row_field ->
         | None -> ctx
       )
   | Cst.RowField.Inherit { type_; _ } -> walk.core_type ctx type_
-and descend_type_constraint = fun walk ctx (constraint_:Cst.TypeConstraint.t) ->
+and descend_type_constraint = fun walk ctx (constraint_: Cst.TypeConstraint.t) ->
   let ctx = walk.core_type ctx constraint_.left in
   walk.core_type ctx constraint_.right
-and descend_module_type_constraint = fun walk ctx (constraint_:Cst.ModuleTypeConstraint.t) ->
+and descend_module_type_constraint = fun walk ctx (constraint_: Cst.ModuleTypeConstraint.t) ->
   let ctx = walk.core_type ctx constraint_.constrained_type in
   walk.core_type ctx constraint_.replacement_type
-and descend_functor_parameter = fun walk ctx (parameter:Cst.FunctorParameter.t) ->
+and descend_functor_parameter = fun walk ctx (parameter: Cst.FunctorParameter.t) ->
   walk.module_type ctx parameter.module_type
-and descend_module_type = fun walk ctx (module_type:Cst.ModuleType.t) ->
+and descend_module_type = fun walk ctx (module_type: Cst.ModuleType.t) ->
   match module_type with
   | Cst.ModuleType.Path _
   | Cst.ModuleType.TypeOf _
@@ -337,7 +339,7 @@ and descend_module_type = fun walk ctx (module_type:Cst.ModuleType.t) ->
       walk.attribute ctx attribute
   | Cst.ModuleType.Extension extension ->
       walk.extension ctx extension
-and descend_class_type = fun walk ctx (class_type:Cst.ClassType.t) ->
+and descend_class_type = fun walk ctx (class_type: Cst.ClassType.t) ->
   match class_type with
   | Cst.ClassType.Path _ ->
       ctx
@@ -353,7 +355,7 @@ and descend_class_type = fun walk ctx (class_type:Cst.ClassType.t) ->
       walk.attribute ctx attribute
   | Cst.ClassType.Extension extension ->
       walk.extension ctx extension
-and descend_class_type_field = fun walk ctx (field:Cst.ClassTypeField.t) ->
+and descend_class_type_field = fun walk ctx (field: Cst.ClassTypeField.t) ->
   match field with
   | Cst.ClassTypeField.Inherit { class_type; _ } ->
       walk.class_type ctx class_type
@@ -368,7 +370,7 @@ and descend_class_type_field = fun walk ctx (field:Cst.ClassTypeField.t) ->
       walk.attribute ctx attribute
   | Cst.ClassTypeField.Extension extension ->
       walk.extension ctx extension
-and descend_type_definition = fun walk ctx (type_definition:Cst.TypeDefinition.t) ->
+and descend_type_definition = fun walk ctx (type_definition: Cst.TypeDefinition.t) ->
   match type_definition with
   | Cst.TypeDefinition.Abstract
   | Cst.TypeDefinition.Extensible _ ->
@@ -395,7 +397,7 @@ and descend_type_definition = fun walk ctx (type_definition:Cst.TypeDefinition.t
       List.fold_left walk.variant_constructor ctx constructors
   | Cst.TypeDefinition.PolyVariant poly_variant ->
       List.fold_left walk.row_field ctx (Cst.PolyVariant.fields poly_variant)
-and descend_variant_constructor = fun walk ctx (constructor:Cst.VariantConstructor.t) ->
+and descend_variant_constructor = fun walk ctx (constructor: Cst.VariantConstructor.t) ->
   let ctx = List.fold_left walk.attribute ctx (Cst.VariantConstructor.attributes constructor) in
   let ctx =
     match Cst.VariantConstructor.arguments constructor with
@@ -417,7 +419,7 @@ and descend_variant_constructor = fun walk ctx (constructor:Cst.VariantConstruct
   match Cst.VariantConstructor.result_type constructor with
   | Some result_type -> walk.core_type ctx result_type
   | None -> ctx
-and descend_type_declaration = fun walk ctx (declaration:Cst.TypeDeclaration.t) ->
+and descend_type_declaration = fun walk ctx (declaration: Cst.TypeDeclaration.t) ->
   let ctx = List.fold_left walk.type_parameter ctx (Cst.TypeDeclaration.type_params declaration) in
   let ctx =
     match Cst.TypeDeclaration.manifest_alias declaration with
@@ -427,10 +429,10 @@ and descend_type_declaration = fun walk ctx (declaration:Cst.TypeDeclaration.t) 
   let ctx = walk.type_definition ctx (Cst.TypeDeclaration.type_definition declaration) in
   let ctx = List.fold_left walk.type_constraint ctx (Cst.TypeDeclaration.constraints declaration) in
   List.fold_left walk.type_declaration ctx (Cst.TypeDeclaration.and_declarations declaration)
-and descend_type_extension = fun walk ctx (declaration:Cst.TypeExtension.t) ->
+and descend_type_extension = fun walk ctx (declaration: Cst.TypeExtension.t) ->
   let ctx = List.fold_left walk.type_parameter ctx (Cst.TypeExtension.type_params declaration) in
   List.fold_left walk.variant_constructor ctx (Cst.TypeExtension.constructors declaration)
-and descend_module_expression = fun walk ctx (module_expression:Cst.ModuleExpression.t) ->
+and descend_module_expression = fun walk ctx (module_expression: Cst.ModuleExpression.t) ->
   match module_expression with
   | Cst.ModuleExpression.Path _
   | Cst.ModuleExpression.Structure _ ->
@@ -466,7 +468,7 @@ and descend_module_expression = fun walk ctx (module_expression:Cst.ModuleExpres
       walk.attribute ctx attribute
   | Cst.ModuleExpression.Extension extension ->
       walk.extension ctx extension
-and descend_object_member = fun walk ctx (member:Cst.ObjectMember.t) ->
+and descend_object_member = fun walk ctx (member: Cst.ObjectMember.t) ->
   match member with
   | Cst.ObjectMember.Method method_ ->
       let ctx = List.fold_left walk.attribute ctx method_.attributes in
@@ -500,12 +502,12 @@ and descend_apply_argument = fun walk ctx argument ->
       | Some value -> walk.expression ctx value
       | None -> ctx
     )
-and descend_record_expression = fun walk ctx (record_expression:Cst.RecordExpression.t) ->
+and descend_record_expression = fun walk ctx (record_expression: Cst.RecordExpression.t) ->
   match record_expression with
   | Cst.RecordExpression.Literal { fields; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       List.fold_left
-        (fun ctx (field:Cst.record_expression_field) ->
+        (fun ctx (field: Cst.record_expression_field) ->
           walk.expression ctx field.value)
         ctx
         fields
@@ -513,11 +515,11 @@ and descend_record_expression = fun walk ctx (record_expression:Cst.RecordExpres
       let ctx = List.fold_left walk.attribute ctx attributes in
       let ctx = walk.expression ctx base in
       List.fold_left
-        (fun ctx (field:Cst.record_expression_field) ->
+        (fun ctx (field: Cst.record_expression_field) ->
           walk.expression ctx field.value)
         ctx
         fields
-and descend_match_case = fun walk ctx (case:Cst.match_case) ->
+and descend_match_case = fun walk ctx (case: Cst.match_case) ->
   let ctx = walk.pattern ctx case.pattern in
   let ctx =
     match case.guard with
@@ -525,7 +527,7 @@ and descend_match_case = fun walk ctx (case:Cst.match_case) ->
     | None -> ctx
   in
   walk.expression ctx case.body
-and descend_expression = fun walk ctx (expression:Cst.Expression.t) ->
+and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
   match expression with
   | Cst.Expression.Path _
   | Cst.Expression.Operator _
@@ -620,7 +622,7 @@ and descend_expression = fun walk ctx (expression:Cst.Expression.t) ->
   | Cst.Expression.ObjectOverride { fields; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       List.fold_left
-        (fun ctx (field:Cst.object_override_field) ->
+        (fun ctx (field: Cst.object_override_field) ->
           match field.value with
           | Some value -> walk.expression ctx value
           | None -> ctx)
@@ -728,7 +730,7 @@ and descend_expression = fun walk ctx (expression:Cst.Expression.t) ->
   | Cst.Expression.Parenthesized { inner; attributes; _ } ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       walk.expression ctx inner
-and descend_binding_operator_binding = fun walk ctx (binding:Cst.binding_operator_binding) ->
+and descend_binding_operator_binding = fun walk ctx (binding: Cst.binding_operator_binding) ->
   let ctx = walk.pattern ctx binding.binding_pattern in
   walk.expression ctx binding.bound_value
 and descend_let_binding = fun walk ctx binding ->
@@ -737,7 +739,7 @@ and descend_let_binding = fun walk ctx binding ->
   let ctx = List.fold_left walk.parameter ctx (Cst.LetBinding.parameters binding) in
   let ctx = walk.expression ctx (Cst.LetBinding.value binding) in
   List.fold_left walk.let_binding ctx (Cst.LetBinding.and_bindings binding)
-and descend_class_field = fun walk ctx (field:Cst.class_field) ->
+and descend_class_field = fun walk ctx (field: Cst.class_field) ->
   match field with
   | Cst.ClassField.Method method_ -> (
       match method_.definition with
@@ -773,7 +775,7 @@ and descend_class_field = fun walk ctx (field:Cst.class_field) ->
       walk.attribute ctx attribute
   | Cst.ClassField.Extension extension ->
       walk.extension ctx extension
-and descend_class_expression = fun walk ctx (class_expression:Cst.ClassExpression.t) ->
+and descend_class_expression = fun walk ctx (class_expression: Cst.ClassExpression.t) ->
   match class_expression with
   | Cst.ClassExpression.Path _ ->
       ctx
@@ -818,16 +820,16 @@ and descend_class_expression = fun walk ctx (class_expression:Cst.ClassExpressio
       walk.attribute ctx attribute
   | Cst.ClassExpression.Extension extension ->
       walk.extension ctx extension
-and descend_value_declaration = fun walk ctx (declaration:Cst.value_declaration) ->
+and descend_value_declaration = fun walk ctx (declaration: Cst.value_declaration) ->
   let _ = declaration.trailing_comment in
   walk.core_type ctx declaration.type_
-and descend_external_declaration = fun walk ctx (declaration:Cst.external_declaration) ->
+and descend_external_declaration = fun walk ctx (declaration: Cst.external_declaration) ->
   let ctx = walk.core_type ctx declaration.type_ in
   List.fold_left walk.attribute ctx declaration.attributes
-and descend_class_declaration = fun walk ctx (declaration:Cst.ClassDeclaration.t) ->
+and descend_class_declaration = fun walk ctx (declaration: Cst.ClassDeclaration.t) ->
   let ctx = List.fold_left walk.type_parameter ctx (Cst.ClassDeclaration.type_params declaration) in
   walk.class_type ctx (Cst.ClassDeclaration.class_type declaration)
-and descend_class_definition = fun walk ctx (declaration:Cst.ClassDefinition.t) ->
+and descend_class_definition = fun walk ctx (declaration: Cst.ClassDefinition.t) ->
   let ctx = List.fold_left walk.type_parameter ctx (Cst.ClassDefinition.type_params declaration) in
   let ctx =
     match Cst.ClassDefinition.class_type declaration with
@@ -835,10 +837,10 @@ and descend_class_definition = fun walk ctx (declaration:Cst.ClassDefinition.t) 
     | None -> ctx
   in
   walk.class_expression ctx (Cst.ClassDefinition.class_body declaration)
-and descend_class_type_declaration = fun walk ctx (declaration:Cst.class_type_declaration) ->
+and descend_class_type_declaration = fun walk ctx (declaration: Cst.class_type_declaration) ->
   let ctx = List.fold_left walk.type_parameter ctx declaration.type_params in
   walk.class_type ctx declaration.class_type_body
-and descend_module_signature = fun walk ctx (declaration:Cst.ModuleSignature.t) ->
+and descend_module_signature = fun walk ctx (declaration: Cst.ModuleSignature.t) ->
   let ctx = List.fold_left
   walk.functor_parameter
   ctx
@@ -849,7 +851,7 @@ and descend_module_signature = fun walk ctx (declaration:Cst.ModuleSignature.t) 
     | Cst.ModuleSignature.Alias module_expression -> walk.module_expression ctx module_expression
   in
   List.fold_left walk.module_signature ctx (Cst.ModuleSignature.and_declarations declaration)
-and descend_module_structure = fun walk ctx (declaration:Cst.ModuleStructure.t) ->
+and descend_module_structure = fun walk ctx (declaration: Cst.ModuleStructure.t) ->
   let ctx = List.fold_left
   walk.functor_parameter
   ctx
@@ -861,19 +863,19 @@ and descend_module_structure = fun walk ctx (declaration:Cst.ModuleStructure.t) 
   in
   let ctx = walk.module_expression ctx (Cst.ModuleStructure.module_expression declaration) in
   List.fold_left walk.module_structure ctx (Cst.ModuleStructure.and_declarations declaration)
-and descend_module_type_declaration = fun walk ctx (declaration:Cst.ModuleTypeDeclaration.t) ->
+and descend_module_type_declaration = fun walk ctx (declaration: Cst.ModuleTypeDeclaration.t) ->
   match Cst.ModuleTypeDeclaration.module_type declaration with
   | Some module_type -> walk.module_type ctx module_type
   | None -> ctx
-and descend_open_statement = fun walk ctx (statement:Cst.OpenStatement.t) ->
+and descend_open_statement = fun walk ctx (statement: Cst.OpenStatement.t) ->
   match Cst.OpenStatement.target statement with
   | Cst.OpenStatement.Path _ -> ctx
   | Cst.OpenStatement.ModuleExpression module_expression -> walk.module_expression ctx module_expression
-and descend_include_statement = fun walk ctx (statement:Cst.include_statement) ->
+and descend_include_statement = fun walk ctx (statement: Cst.include_statement) ->
   match statement.target with
   | Cst.ModuleExpression module_expression -> walk.module_expression ctx module_expression
   | Cst.ModuleType module_type -> walk.module_type ctx module_type
-and descend_structure_item = fun walk ctx (item:Cst.StructureItem.t) ->
+and descend_structure_item = fun walk ctx (item: Cst.StructureItem.t) ->
   match item with
   | Cst.StructureItem.TypeDeclaration declaration -> walk.type_declaration ctx declaration
   | Cst.StructureItem.TypeExtension declaration -> walk.type_extension ctx declaration
@@ -891,7 +893,7 @@ and descend_structure_item = fun walk ctx (item:Cst.StructureItem.t) ->
   | Cst.StructureItem.ExternalDeclaration declaration -> walk.external_declaration ctx declaration
   | Cst.StructureItem.IncludeStatement statement -> walk.include_statement ctx statement
   | Cst.StructureItem.ExceptionDeclaration declaration -> walk.exception_declaration ctx declaration
-and descend_signature_item = fun walk ctx (item:Cst.SignatureItem.t) ->
+and descend_signature_item = fun walk ctx (item: Cst.SignatureItem.t) ->
   match item with
   | Cst.SignatureItem.TypeDeclaration declaration -> walk.type_declaration ctx declaration
   | Cst.SignatureItem.TypeExtension declaration -> walk.type_extension ctx declaration
@@ -908,11 +910,11 @@ and descend_signature_item = fun walk ctx (item:Cst.SignatureItem.t) ->
   | Cst.SignatureItem.ExternalDeclaration declaration -> walk.external_declaration ctx declaration
   | Cst.SignatureItem.IncludeStatement statement -> walk.include_statement ctx statement
   | Cst.SignatureItem.ExceptionDeclaration declaration -> walk.exception_declaration ctx declaration
-and descend_implementation = fun walk ctx (implementation:Cst.implementation) ->
+and descend_implementation = fun walk ctx (implementation: Cst.implementation) ->
   List.fold_left walk.structure_item ctx implementation.items
-and descend_interface = fun walk ctx (interface:Cst.interface) ->
+and descend_interface = fun walk ctx (interface: Cst.interface) ->
   List.fold_left walk.signature_item ctx interface.items
-and descend_source_file = fun walk ctx (source_file:Cst.SourceFile.t) ->
+and descend_source_file = fun walk ctx (source_file: Cst.SourceFile.t) ->
   match source_file with
   | Cst.Implementation implementation -> walk.implementation ctx implementation
   | Cst.Interface interface -> walk.interface ctx interface

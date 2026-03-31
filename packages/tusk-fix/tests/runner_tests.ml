@@ -1983,7 +1983,7 @@ let render x y z =
       let bindings = Tusk_fix.Rule_query.let_bindings Tusk_fix.Rule.{file_path = "sample.ml"; cst; } in
       Test.assert_equal
       ~expected:[ "render"; "other" ]
-      ~actual:((((bindings |> List.map Syn.Cst.LetBinding.name))));
+      ~actual:(((((bindings |> List.map Syn.Cst.LetBinding.name)))));
       Ok ());
   Test.case "rule query collects type declarations from implementations and interfaces"
     (fun () ->

@@ -102,7 +102,7 @@ let load_scope = fun ~cwd ->
         workspace.packages
         |> List.filter Package.is_workspace_member
         |> List.map
-          (fun (pkg:Package.t) ->
+          (fun (pkg: Package.t) ->
             let package_toml = Path.(pkg.path / Path.v "tusk.toml") in
             {package_root = pkg.path; config = load_fix_config package_toml; })
       in

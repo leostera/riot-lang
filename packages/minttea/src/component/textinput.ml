@@ -165,13 +165,13 @@ let handle_paste = fun t text ->
   else
     insert_at_cursor t text
 
-let handle_key = fun t (key:Event.key) modifier ->
+let handle_key = fun t (key: Event.key) modifier ->
   if not t.focused then
     t
   else
-    match ((key:Event.key)) with
-    | Event.Left -> set_cursor_position t ~pos:((((t.cursor_pos - 1))))
-    | Event.Right -> set_cursor_position t ~pos:((((t.cursor_pos + 1))))
+    match ((key: Event.key)) with
+    | Event.Left -> set_cursor_position t ~pos:(((((t.cursor_pos - 1)))))
+    | Event.Right -> set_cursor_position t ~pos:(((((t.cursor_pos + 1)))))
     | Event.Home -> set_cursor_position t ~pos:0
     | Event.End -> set_cursor_position t ~pos:(String.length t.value)
     | Event.Backspace when modifier = Event.NoModifier -> delete_char_backward t
@@ -184,8 +184,12 @@ let handle_key = fun t (key:Event.key) modifier ->
     | Event.Key "h" when modifier = Event.Ctrl -> delete_char_backward t
     | Event.Key "a" when modifier = Event.Ctrl -> set_cursor_position t ~pos:0
     | Event.Key "e" when modifier = Event.Ctrl -> set_cursor_position t ~pos:(String.length t.value)
-    | Event.Key "b" when modifier = Event.Ctrl -> set_cursor_position t ~pos:((((t.cursor_pos - 1))))
-    | Event.Key "f" when modifier = Event.Ctrl -> set_cursor_position t ~pos:((((t.cursor_pos + 1))))
+    | Event.Key "b" when modifier = Event.Ctrl -> set_cursor_position
+    t
+    ~pos:(((((t.cursor_pos - 1)))))
+    | Event.Key "f" when modifier = Event.Ctrl -> set_cursor_position
+    t
+    ~pos:(((((t.cursor_pos + 1)))))
     | Event.Key s when modifier = Event.NoModifier && String.length s = 1 -> insert_at_cursor t s
     | Event.Key s when modifier = Event.Shift && String.length s = 1 -> insert_at_cursor t s
     | Event.Space -> insert_at_cursor t " "

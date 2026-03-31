@@ -13,13 +13,13 @@ module type Transport = sig
 end
 
 type ('request, 'response) t =
-  | Client : {
-    transport_mod: (module Transport with type t = 'a);
-    transport: 'a;
-    protocol_mod:
-      (module Common.ApplicationProtocol with type request = 'req and type response = 'res);
-    mutable next_id: int;
-  } -> ('req, 'res) t
+  | Client: {
+      transport_mod: (module Transport with type t = 'a);
+      transport: 'a;
+      protocol_mod:
+        (module Common.ApplicationProtocol with type request = 'req and type response = 'res);
+      mutable next_id: int;
+    } -> ('req, 'res) t
 
 let create = fun ~transport:transport_mod ~protocol:protocol_mod transport -> Client {
   transport_mod;
@@ -126,7 +126,7 @@ let receive_response : type req res. (req, res) t -> (res Common.response, Commo
         )
     )
 
-let call (type req res) (client:(req, res) t) ~method_ ?params () : (res, Common.error) result =
+let call (type req res) (client: (req, res) t) ~method_ ?params () : (res, Common.error) result =
   let (Client c) = client in
   let module P = (val c.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
   let id = Common.Number c.next_id in
@@ -200,7 +200,7 @@ let call (type req res) (client:(req, res) t) ~method_ ?params () : (res, Common
         )
     )
 
-let notify (type req res) (client:(req, res) t) ~method_ ?params () : (unit, Common.error) result =
+let notify (type req res) (client: (req, res) t) ~method_ ?params () : (unit, Common.error) result =
   let jsonrpc_req = Common.notification ~method_ ?params () in
   let json = Common.request_to_json jsonrpc_req in
   let str = Json.to_string json in

@@ -1,6 +1,6 @@
 open Std
 
-let rec binding_operator_group_items = fun (binding:Syn.Cst.binding_operator_binding) ->
+let rec binding_operator_group_items = fun (binding: Syn.Cst.binding_operator_binding) ->
   binding :: (
     match binding.and_binding with
     | Some next -> binding_operator_group_items next
@@ -104,7 +104,7 @@ and usage_in_apply_argument = fun expected_name ->
   | Syn.Cst.Optional { value; _ } -> Option.to_list value
   |> List.map (usage_in_expression expected_name)
   |> merge_all
-and usage_in_match_case = fun expected_name ({ guard; body; _ }:Syn.Cst.match_case) -> merge_all
+and usage_in_match_case = fun expected_name ({ guard; body; _ }: Syn.Cst.match_case) -> merge_all
 ((Option.to_list guard |> List.map (usage_in_expression expected_name))
 @ [ usage_in_expression expected_name body ])
 and usage_in_object_member = fun expected_name ->
@@ -171,7 +171,7 @@ and usage_in_expression = fun expected_name expr ->
       (usage_in_expression expected_name index)
   | Syn.Cst.Expression.ObjectOverride { fields; _ } ->
       fields
-      |> List.filter_map (fun (field:Syn.Cst.object_override_field) -> field.value)
+      |> List.filter_map (fun (field: Syn.Cst.object_override_field) -> field.value)
       |> List.map (usage_in_expression expected_name)
       |> merge_all
   | Syn.Cst.Expression.InstanceVariableAssign { value; _ } ->
@@ -198,13 +198,13 @@ and usage_in_expression = fun expected_name expr ->
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) ->
       fields
       |> List.map
-      (fun (field:Syn.Cst.record_expression_field) -> usage_in_expression expected_name field.value)
+      (fun (field: Syn.Cst.record_expression_field) -> usage_in_expression expected_name field.value)
       |> merge_all
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) ->
       merge_all
       (usage_in_expression expected_name base
       :: List.map
-      (fun (field:Syn.Cst.record_expression_field) -> usage_in_expression expected_name field.value)
+      (fun (field: Syn.Cst.record_expression_field) -> usage_in_expression expected_name field.value)
       fields)
   | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
   | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) ->
@@ -216,7 +216,7 @@ and usage_in_expression = fun expected_name expr ->
   | Syn.Cst.Expression.LetOperator { binding; body; _ } ->
       merge_all
       (List.map
-      (fun ({ bound_value; _ }:Syn.Cst.binding_operator_binding) -> usage_in_expression
+      (fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) -> usage_in_expression
       expected_name
       bound_value)
       (binding_operator_group_items binding)
@@ -226,7 +226,7 @@ and usage_in_expression = fun expected_name expr ->
         (
           usage_in_expression expected_name bound_value
           :: usage_in_expression expected_name body
-          :: List.map (fun (binding:Syn.Cst.let_binding) -> usage_in_expression
+          :: List.map (fun (binding: Syn.Cst.let_binding) -> usage_in_expression
           expected_name
           binding.value)
             (Option.to_list and_binding
@@ -282,14 +282,14 @@ let diagnostic_for_binding = fun binding ->
         ~severity:Warning
         ~kind:(Diagnostic.Known {rule_id; message = rule_description})
         ~span:(Syn.Cst.Token.span parameter_token)
-        ~suggestion:(((("Destructure this record in the parameter list instead of binding "
+        ~suggestion:((((("Destructure this record in the parameter list instead of binding "
         ^ parameter_name
-        ^ " and immediately unpacking it in the function body"))))
+        ^ " and immediately unpacking it in the function body")))))
         ())
       else
         None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

@@ -124,14 +124,14 @@ let start_child = fun spec ->
   with
   | _exn -> None
 
-let should_restart = fun (spec:child_spec) reason ->
+let should_restart = fun (spec: child_spec) reason ->
   match (spec.restart, reason) with
   | Permanent, _ -> true
   | Temporary, _ -> false
   | Transient, Ok () -> false
   | Transient, Error _ -> true
 
-let terminate_child_process = fun (child_state:child_state) ->
+let terminate_child_process = fun (child_state: child_state) ->
   match child_state.pid with
   | None -> ()
   | Some pid -> (
@@ -172,7 +172,7 @@ let restart_one_for_one = fun state child_id reason ->
   let children : child_state list = Cell.get state.children in
   let updated =
     List.map
-      (fun (child:child_state) ->
+      (fun (child: child_state) ->
         let spec : child_spec = child.spec in
         if spec.id = child_id && should_restart spec reason then
           (
@@ -242,7 +242,7 @@ let restart_rest_for_one = fun state child_id reason ->
       (* Restart failed child and all after it *)
       let updated =
         List.mapi
-          (fun idx (child:child_state) ->
+          (fun idx (child: child_state) ->
             if idx >= failed_idx && should_restart child.spec reason then
               match start_child child.spec with
               | Some (pid, monitor) ->
@@ -304,7 +304,7 @@ let handle_count_children = fun state reply_to ->
   let specs = List.length children in
   let active =
     List.fold_left
-      (fun acc (child:child_state) ->
+      (fun acc (child: child_state) ->
         match child.pid with
         | Some _ -> acc + 1
         | None -> acc)
@@ -313,7 +313,7 @@ let handle_count_children = fun state reply_to ->
   in
   let supervisors =
     List.fold_left
-      (fun acc (child:child_state) ->
+      (fun acc (child: child_state) ->
         match child.spec.child_type with
         | Supervisor -> acc + 1
         | _ -> acc)
@@ -322,7 +322,7 @@ let handle_count_children = fun state reply_to ->
   in
   let workers =
     List.fold_left
-      (fun acc (child:child_state) ->
+      (fun acc (child: child_state) ->
         match child.spec.child_type with
         | Worker -> acc + 1
         | _ -> acc)
@@ -396,7 +396,7 @@ let handle_restart_child = fun state reply_to id ->
           | Some (pid, monitor) ->
               let updated =
                 List.map
-                  (fun (c:child_state) ->
+                  (fun (c: child_state) ->
                     if c.spec.id = id then
                       {c with pid = Some pid; monitor = Some monitor}
                     else
@@ -445,7 +445,7 @@ let handle_terminate_child = fun state reply_to id ->
           );
           let updated =
             List.map
-              (fun (c:child_state) ->
+              (fun (c: child_state) ->
                 if c.spec.id = id then
                   {c with pid = None; monitor = None}
                 else
@@ -483,7 +483,7 @@ let rec loop = fun state ->
       (* Find which child died *)
       let children : child_state list = Cell.get state.children in
       let child_opt =
-        List.find_opt (fun (c:child_state) -> c.pid = Some pid) children
+        List.find_opt (fun (c: child_state) -> c.pid = Some pid) children
       in
       (
         match child_opt with

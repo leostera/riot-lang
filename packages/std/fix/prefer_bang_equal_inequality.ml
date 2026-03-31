@@ -41,7 +41,7 @@ let make_diagnostic = fun token -> Api.Diagnostic.make
 ~fix:(make_fix token)
 ()
 
-let check_tree = fun (ctx:Api.Rule.context) _red_root ->
+let check_tree = fun (ctx: Api.Rule.context) _red_root ->
   match ctx.cst with
   | Syn.Cst.Implementation { items; _ } ->
       items |> List.concat_map Api.Traversal.expressions_of_structure_item |> List.filter_map

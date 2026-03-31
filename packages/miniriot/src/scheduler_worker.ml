@@ -5,7 +5,9 @@ open Scheduler_types
 let loop = fun ~(pop_local:worker -> process_slot option) ~(step_process:t ->
 domain_context ->
 process_slot ->
-unit) ~(attempt_steal:t -> worker -> bool) ~(wait_for_local_work:t -> worker -> process_slot option) (runtime:t) (worker:worker) ->
+unit) ~(attempt_steal:t -> worker -> bool) ~(wait_for_local_work:t -> worker -> process_slot option) (
+  runtime: t
+) (worker: worker) ->
   let ctx = {scheduler = runtime; worker_id = Some worker.id; current_process = None; } in
   Domain.DLS.set current_context (Some ctx);
   while not (Atomic.get runtime.stop) do

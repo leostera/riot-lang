@@ -32,7 +32,7 @@ let trivia_kind_to_json =
   ]
   | Token.WhitespaceTrivia -> Data.Json.Object [ ("kind", Data.Json.string "whitespace") ]
 
-let trivia_to_json = fun ~source (trivia:Token.trivia) ->
+let trivia_to_json = fun ~source (trivia: Token.trivia) ->
   match trivia_kind_to_json trivia.kind with
   | Data.Json.Object fields -> Data.Json.Object ([
     ("span", span_to_json trivia.span);
@@ -41,7 +41,7 @@ let trivia_to_json = fun ~source (trivia:Token.trivia) ->
   @ fields)
   | json -> json
 
-let token_to_json = fun ~source (token:Token.t) -> Data.Json.Object [
+let token_to_json = fun ~source (token: Token.t) -> Data.Json.Object [
   ("kind", Data.Json.string (Token.show_kind token.kind));
   ("span", span_to_json token.span);
   ("text", Data.Json.string (span_text source token.span));
@@ -135,10 +135,12 @@ let handle_print_cst = fun sub_matches ->
                 (
                   (
                     (
-                      if String.ends_with ~suffix:".mli" file then
-                        `Interface
-                      else
-                        `Implementation
+                      (
+                        if String.ends_with ~suffix:".mli" file then
+                          `Interface
+                        else
+                          `Implementation
+                      )
                     )
                   )
                 )

@@ -42,9 +42,9 @@ let rec build_layout_tree : Element.t -> layout_node = fun element ->
 
 (* Helper: Calculate padding dimensions *)
 
-let padding_horizontal = fun (p:Style.padding) -> Float.of_int (p.left + p.right)
+let padding_horizontal = fun (p: Style.padding) -> Float.of_int (p.left + p.right)
 
-let padding_vertical = fun (p:Style.padding) -> Float.of_int (p.top + p.bottom)
+let padding_vertical = fun (p: Style.padding) -> Float.of_int (p.top + p.bottom)
 
 (* Helper: Clamp value between min and max *)
 
@@ -244,8 +244,8 @@ let rec calculate_positions : layout_node -> Geometry.Point.t -> unit = fun node
   node.computed_position <- origin;
   (* Calculate content origin (inside padding) *)
   let content_origin = Geometry.Point.make
-  ~x:((((origin.x +. Float.of_int style.padding.left))))
-  ~y:((((origin.y +. Float.of_int style.padding.top)))) in
+  ~x:(((((origin.x +. Float.of_int style.padding.left)))))
+  ~y:(((((origin.y +. Float.of_int style.padding.top))))) in
   (* Set final bounding box *)
   node.final_box <- Geometry.Rect.make
   ~x:origin.x

@@ -32,7 +32,7 @@ let make_diagnostic = fun ~previous_name parameter ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(parameter_span parameter)
-  ~suggestion:(((("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized"))))
+  ~suggestion:((((("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized")))))
   ()
 
 let classify_parameter =
@@ -76,7 +76,7 @@ let diagnostic_for_binding = fun binding ->
       | None -> None
     )
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

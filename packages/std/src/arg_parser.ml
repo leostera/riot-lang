@@ -250,7 +250,7 @@ let rec get_matches_internal = fun cmd args ->
     in
     let unfilled_positionals : unit arg list =
       List.filter
-        (fun (positional_arg:unit arg) ->
+        (fun (positional_arg: unit arg) ->
           let current = HashMap.get matches.values positional_arg.name in
           match current with
           | None -> true
@@ -317,7 +317,7 @@ and print_help = fun cmd ->
       println "\nArguments:";
       let max_arg_width : int =
         List.fold_left
-          (fun (acc:int) (arg:unit arg) ->
+          (fun (acc: int) (arg: unit arg) ->
             let name =
               if arg.multiple then
                 arg.name ^ "..."
@@ -329,7 +329,7 @@ and print_help = fun cmd ->
           positionals
       in
       List.iter
-        (fun (arg:unit arg) ->
+        (fun (arg: unit arg) ->
           let name =
             if arg.multiple then
               arg.name ^ "..."

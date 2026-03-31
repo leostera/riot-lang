@@ -13,8 +13,8 @@ type error_info = {
 
 type 'a t =
   | Finished of ('a, error_info) result
-  | Suspended : ('a, 'b) continuation * 'a Effect.t -> 'b t
-  | Unhandled : ('a, 'b) continuation * 'a -> 'b t
+  | Suspended: ('a, 'b) continuation * 'a Effect.t -> 'b t
+  | Unhandled: ('a, 'b) continuation * 'a -> 'b t
 
 let is_finished = fun x ->
   match x with
@@ -24,11 +24,11 @@ let is_finished = fun x ->
 type 'a step =
   | Continue of 'a
   | Discontinue of exn
-  | Reperform : 'a Effect.t -> 'a step
-  | Delay : 'a step
-  | Suspend : 'a step
-  | Yield : unit step
-  | Terminate : 'a step
+  | Reperform: 'a Effect.t -> 'a step
+  | Delay: 'a step
+  | Suspend: 'a step
+  | Yield: unit step
+  | Terminate: 'a step
 
 type ('a, 'b) step_callback = ('a step -> 'b t) -> 'a Effect.t -> 'b t
 
@@ -109,7 +109,7 @@ let drop = fun k exn _id ->
   let handler = Effect.Shallow.{retc; exnc; effc} in
   Effect.Shallow.discontinue_with k exn handler
 
-let unwind = fun ~id (t:'a t) ->
+let unwind = fun ~id (t: 'a t) ->
   match t with
   | Finished result -> ignore result
   | Suspended (k, _) -> ignore (drop k Unwind id)

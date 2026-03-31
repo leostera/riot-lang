@@ -3019,7 +3019,7 @@ let syntax_token_from_trivia = fun trivia ->
   ~leading_trivia:[]
   ~kind:(Ceibo.Red.SyntaxTrivia.kind trivia)
   ~text:(Ceibo.Red.SyntaxTrivia.text trivia)
-  ~width:((((span.end_ - span.start)))) in
+  ~width:(((((span.end_ - span.start))))) in
   Ceibo.Red.new_token green_token span
 
 let trivia_of_syntax_trivia = fun trivia ->

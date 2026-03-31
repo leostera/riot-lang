@@ -19,11 +19,11 @@ telling you that the current shape is too dense.
 
 let max_parenthesis_depth = 5
 
-let make_diagnostic = fun (expr:Syn.Cst.parenthesized_expression) depth -> Diagnostic.make
+let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) depth -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))))
-~suggestion:(((("Reduce parenthesis depth from " ^ Int.to_string depth ^ " by removing redundant grouping or extracting a named value"))))
+~span:(((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)))))
+~suggestion:((((("Reduce parenthesis depth from " ^ Int.to_string depth ^ " by removing redundant grouping or extracting a named value")))))
 ()
 
 let rec parenthesis_chain_depth =
@@ -36,7 +36,7 @@ let rec diagnostics_for_function_body = fun ~inside_parenthesized_chain ->
   | Syn.Cst.Expression expression -> diagnostics_for_expression ~inside_parenthesized_chain expression
   | Syn.Cst.Cases { cases; _ } ->
       cases |> List.concat_map
-        (fun (case:Syn.Cst.match_case) ->
+        (fun (case: Syn.Cst.match_case) ->
           (
             match case.guard with
             | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
@@ -73,7 +73,7 @@ and diagnostics_for_expression = fun ~inside_parenthesized_chain ->
   | Syn.Cst.Expression.Match expr ->
       diagnostics_for_expression ~inside_parenthesized_chain expr.scrutinee @ (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
@@ -83,7 +83,7 @@ and diagnostics_for_expression = fun ~inside_parenthesized_chain ->
   | Syn.Cst.Expression.Try expr ->
       diagnostics_for_expression ~inside_parenthesized_chain expr.body @ (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
@@ -112,7 +112,7 @@ and diagnostics_for_expression = fun ~inside_parenthesized_chain ->
   | _ ->
       []
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

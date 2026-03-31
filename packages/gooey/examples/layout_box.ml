@@ -16,14 +16,14 @@ let () =
       let size = Tty.size tty in
       (* Create UI: Blue box filling terminal with white text *)
       let ui = Element.container
-      ~style:((((Style.empty
+      ~style:(((((Style.empty
       |> Style.width Style.Grow
       |> Style.height Style.Grow
       |> Style.bg (`rgb (0, 0, 255))
-      |> Style.padding (Style.Padding.all 2)))))
+      |> Style.padding (Style.Padding.all 2))))))
       [
         Element.text
-        ~style:((((Style.empty |> Style.fg (`rgb (255, 255, 255))))))
+        ~style:(((((Style.empty |> Style.fg (`rgb (255, 255, 255)))))))
         ("Terminal: " ^ Int.to_string size.cols ^ "x" ^ Int.to_string size.rows ^ " | Blue box demo")
       ] in
       (* Layout and render *)

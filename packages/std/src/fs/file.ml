@@ -214,7 +214,7 @@ let metadata = fun t ->
   | Error e -> Error e
   | Ok () -> (
       match Kernel.Fs.File.fstat t.fd |> convert_kernel_result with
-      | Ok m -> Ok ((m:Metadata.t))
+      | Ok m -> Ok ((m: Metadata.t))
       | Error e -> Error e
     )
 

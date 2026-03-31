@@ -68,7 +68,7 @@ let read_utf8 = fun () ->
       else
         (
           (* Read remaining bytes for multi-byte UTF-8 *)
-          match Fs.File.read file bytes ~offset:1 ~len:((((len - 1)))) with
+          match Fs.File.read file bytes ~offset:1 ~len:(((((len - 1))))) with
           | Ok n when n = len - 1 -> `Read (Bytes.sub_string bytes 0 len)
           | Ok _ -> `Malformed "Incomplete UTF-8 sequence"
           | Error _ -> `Malformed "Read error"

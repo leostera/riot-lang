@@ -19,7 +19,7 @@ This also makes later refactors easier, because the function already has a singl
 obvious place where its signature lives.
 |}
 
-let rec subtree_contains_kind = fun (node:Syn.Cst.syntax_node) target_kind ->
+let rec subtree_contains_kind = fun (node: Syn.Cst.syntax_node) target_kind ->
   if Syn.Ceibo.Red.SyntaxNode.kind node = target_kind then
     true
   else
@@ -46,7 +46,7 @@ let diagnostic_for_binding = fun binding -> Syn.Cst.LetBinding.parameters bindin
 |> List.find_opt parameter_has_inline_type
 |> Option.map make_diagnostic
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

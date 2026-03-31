@@ -35,12 +35,12 @@ let connect = fun addr ->
   | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let read = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((((Bytes.length buf - 1)))) in
+  let len = Option.unwrap_or len ~default:(((((Bytes.length buf - 1))))) in
   try Ok (retry_eintr (fun () -> UnixLabels.read (Fd.to_unix fd) ~buf ~pos ~len)) with
   | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let write = fun fd ?(pos = 0) ?len buf ->
-  let len = Option.unwrap_or len ~default:((((Bytes.length buf - 1)))) in
+  let len = Option.unwrap_or len ~default:(((((Bytes.length buf - 1))))) in
   try Ok (retry_eintr (fun () -> UnixLabels.write (Fd.to_unix fd) ~buf ~pos ~len)) with
   | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 

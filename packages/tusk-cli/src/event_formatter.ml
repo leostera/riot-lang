@@ -4,7 +4,7 @@ open Tusk_executor
 
 (** Format a telemetry event for cargo-style output. Uses displayed_packages
     HashSet to track what we've already shown. *)
-let format = fun ~displayed_packages (event:Telemetry.event) ->
+let format = fun ~displayed_packages (event: Telemetry.event) ->
   match event with
   | Telemetry_events.BuildStarted { package; _ } ->
       (* BuildStarted fires for all packages, but don't show anything yet *)

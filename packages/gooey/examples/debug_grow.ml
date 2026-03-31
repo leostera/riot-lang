@@ -13,11 +13,13 @@ let () =
   let ui = Element.row
   [
     Element.container
-    ~style:((((Style.empty |> Style.width (Style.Fixed 20.0)))))
+    ~style:(((((Style.empty |> Style.width (Style.Fixed 20.0))))))
     [ Element.text "Left" ];
-    Element.container ~style:((((Style.empty |> Style.width Style.Grow)))) [ Element.text "Middle" ];
     Element.container
-    ~style:((((Style.empty |> Style.width (Style.Fixed 15.0)))))
+    ~style:(((((Style.empty |> Style.width Style.Grow)))))
+    [ Element.text "Middle" ];
+    Element.container
+    ~style:(((((Style.empty |> Style.width (Style.Fixed 15.0))))))
     [ Element.text "Right" ];
 
   ] in

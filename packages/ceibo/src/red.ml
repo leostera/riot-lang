@@ -25,19 +25,19 @@ type ('kind, 'text) syntax_element =
 let new_token = fun green_token span -> {green_token; parent = None; offset = span.Span.start}
 
 module SyntaxNode = struct
-  let green = fun (node:('kind, 'text) syntax_node) -> node.green_node
+  let green = fun (node: ('kind, 'text) syntax_node) -> node.green_node
 
-  let offset = fun (node:('kind, 'text) syntax_node) -> node.offset
+  let offset = fun (node: ('kind, 'text) syntax_node) -> node.offset
 
-  let span = fun (node:('kind, 'text) syntax_node) ->
+  let span = fun (node: ('kind, 'text) syntax_node) ->
     let g = green node in
-    Span.make ~start:node.offset ~end_:((((((node.offset + g.width))))))
+    Span.make ~start:node.offset ~end_:(((((((node.offset + g.width)))))))
 
-  let parent = fun (node:('kind, 'text) syntax_node) -> node.parent
+  let parent = fun (node: ('kind, 'text) syntax_node) -> node.parent
 
-  let child_count = fun (node:('kind, 'text) syntax_node) -> Green.child_count (green node)
+  let child_count = fun (node: ('kind, 'text) syntax_node) -> Green.child_count (green node)
 
-  let fold_children = fun (node:('kind, 'text) syntax_node) init f ->
+  let fold_children = fun (node: ('kind, 'text) syntax_node) init f ->
     let acc = ref init in
     let running_offset = ref node.offset in
     Green.children (green node) |> Array.iter
@@ -63,7 +63,7 @@ module SyntaxNode = struct
         running_offset := !running_offset + Green.width elem);
     !acc
 
-  let child = fun (node:('kind, 'text) syntax_node) index ->
+  let child = fun (node: ('kind, 'text) syntax_node) index ->
     let rec loop = fun current_index running_offset ->
       match Green.child (green node) current_index with
       | None -> None
@@ -92,36 +92,36 @@ module SyntaxNode = struct
     else
       loop 0 node.offset
 
-  let children = fun (node:('kind, 'text) syntax_node) -> fold_children
+  let children = fun (node: ('kind, 'text) syntax_node) -> fold_children
   node
   []
   (fun acc child -> child :: acc)
   |> List.rev
   |> Array.of_list
 
-  let children_list = fun (node:('kind, 'text) syntax_node) -> fold_children
+  let children_list = fun (node: ('kind, 'text) syntax_node) -> fold_children
   node
   []
   (fun acc child -> child :: acc)
   |> List.rev
 
-  let kind = fun (node:('kind, 'text) syntax_node) -> (green node).kind
+  let kind = fun (node: ('kind, 'text) syntax_node) -> (green node).kind
 
-  let direct_tokens = fun (node:('kind, 'text) syntax_node) ->
+  let direct_tokens = fun (node: ('kind, 'text) syntax_node) ->
     fold_children node []
       (fun acc ->
         function
         | Token token -> token :: acc
         | Node _ -> acc) |> List.rev
 
-  let direct_nodes = fun (node:('kind, 'text) syntax_node) ->
+  let direct_nodes = fun (node: ('kind, 'text) syntax_node) ->
     fold_children node []
       (fun acc ->
         function
         | Node child -> child :: acc
         | Token _ -> acc) |> List.rev
 
-  let next_sibling = fun (node:('kind, 'text) syntax_node) ->
+  let next_sibling = fun (node: ('kind, 'text) syntax_node) ->
     match node.parent with
     | None -> None
     | Some parent -> (
@@ -144,7 +144,7 @@ module SyntaxNode = struct
               None
       )
 
-  let prev_sibling = fun (node:('kind, 'text) syntax_node) ->
+  let prev_sibling = fun (node: ('kind, 'text) syntax_node) ->
     match node.parent with
     | None -> None
     | Some parent -> (
@@ -167,7 +167,7 @@ module SyntaxNode = struct
               None
       )
 
-  let rec first_token = fun (node:('kind, 'text) syntax_node) ->
+  let rec first_token = fun (node: ('kind, 'text) syntax_node) ->
     if child_count node = 0 then
       None
     else
@@ -176,7 +176,7 @@ module SyntaxNode = struct
       | Some (Node n) -> first_token n
       | None -> None
 
-  let rec last_token = fun (node:('kind, 'text) syntax_node) ->
+  let rec last_token = fun (node: ('kind, 'text) syntax_node) ->
     let count = child_count node in
     if count = 0 then
       None
@@ -186,7 +186,7 @@ module SyntaxNode = struct
       | Some (Node n) -> last_token n
       | None -> None
 
-  let rec preorder = fun (node:('kind, 'text) syntax_node) f ->
+  let rec preorder = fun (node: ('kind, 'text) syntax_node) f ->
     f (Node node);
     Array.iter
       (
@@ -196,7 +196,7 @@ module SyntaxNode = struct
       )
       (children node)
 
-  let rec postorder = fun (node:('kind, 'text) syntax_node) f ->
+  let rec postorder = fun (node: ('kind, 'text) syntax_node) f ->
     Array.iter
       (
         function
@@ -206,7 +206,7 @@ module SyntaxNode = struct
       (children node);
     f (Node node)
 
-  let tokens = fun (node:('kind, 'text) syntax_node) ->
+  let tokens = fun (node: ('kind, 'text) syntax_node) ->
     let tokens = ref [] in
     preorder node
       (
@@ -218,33 +218,33 @@ module SyntaxNode = struct
 end
 
 module SyntaxTrivia = struct
-  let green = fun (trivia:('kind, 'text) syntax_trivia) -> trivia.green_trivia
+  let green = fun (trivia: ('kind, 'text) syntax_trivia) -> trivia.green_trivia
 
-  let offset = fun (trivia:('kind, 'text) syntax_trivia) -> trivia.offset
+  let offset = fun (trivia: ('kind, 'text) syntax_trivia) -> trivia.offset
 
-  let span = fun (trivia:('kind, 'text) syntax_trivia) ->
+  let span = fun (trivia: ('kind, 'text) syntax_trivia) ->
     let g = green trivia in
-    Span.make ~start:trivia.offset ~end_:((((trivia.offset + Green.trivia_width g))))
+    Span.make ~start:trivia.offset ~end_:(((((trivia.offset + Green.trivia_width g)))))
 
-  let kind = fun (trivia:('kind, 'text) syntax_trivia) -> (green trivia).kind
+  let kind = fun (trivia: ('kind, 'text) syntax_trivia) -> (green trivia).kind
 
-  let text = fun (trivia:('kind, 'text) syntax_trivia) -> (green trivia).text
+  let text = fun (trivia: ('kind, 'text) syntax_trivia) -> (green trivia).text
 end
 
 module SyntaxToken = struct
-  let green = fun (token:('kind, 'text) syntax_token) -> token.green_token
+  let green = fun (token: ('kind, 'text) syntax_token) -> token.green_token
 
-  let offset = fun (token:('kind, 'text) syntax_token) -> token.offset
+  let offset = fun (token: ('kind, 'text) syntax_token) -> token.offset
 
-  let span = fun (token:('kind, 'text) syntax_token) ->
+  let span = fun (token: ('kind, 'text) syntax_token) ->
     let g = green token in
-    Span.make ~start:token.offset ~end_:((((token.offset + Green.token_width g))))
+    Span.make ~start:token.offset ~end_:(((((token.offset + Green.token_width g)))))
 
-  let kind = fun (token:('kind, 'text) syntax_token) -> (green token).kind
+  let kind = fun (token: ('kind, 'text) syntax_token) -> (green token).kind
 
-  let text = fun (token:('kind, 'text) syntax_token) -> (green token).text
+  let text = fun (token: ('kind, 'text) syntax_token) -> (green token).text
 
-  let leading_trivia = fun (token:('kind, 'text) syntax_token) ->
+  let leading_trivia = fun (token: ('kind, 'text) syntax_token) ->
     let green_token = green token in
     let total_width =
       List.fold_left

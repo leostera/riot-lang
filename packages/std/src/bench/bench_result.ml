@@ -78,7 +78,7 @@ type summary = {
 
 let make_summary = fun results ->
   List.fold_left
-    (fun acc (result:t) ->
+    (fun acc (result: t) ->
       match result.result with
       | Completed _ -> {acc with completed = acc.completed + 1}
       | Skipped -> {acc with skipped = acc.skipped + 1}

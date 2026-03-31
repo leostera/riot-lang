@@ -3,7 +3,7 @@ open Collections
 open Arg_parser
 
 let list_tests = fun tests ->
-  List.iter (fun (test:Test_case.t) -> println test.name) tests;
+  List.iter (fun (test: Test_case.t) -> println test.name) tests;
   Ok ()
 
 let parse_format_to_reporter =

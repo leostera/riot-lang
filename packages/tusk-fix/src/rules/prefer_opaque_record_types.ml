@@ -42,12 +42,12 @@ let rec first_arrow_parameter_type = fun type_ ->
   | Syn.Cst.CoreType.Poly { body; _ } -> first_arrow_parameter_type body
   | _ -> None
 
-let is_accessor_of_t = fun ({ type_; _ }:Syn.Cst.value_declaration) ->
+let is_accessor_of_t = fun ({ type_; _ }: Syn.Cst.value_declaration) ->
   match first_arrow_parameter_type type_ with
   | Some parameter_type -> is_t_core_type parameter_type
   | None -> false
 
-let make_diagnostic = fun (decl:Syn.Cst.TypeDeclaration.t) accessor_names ->
+let make_diagnostic = fun (decl: Syn.Cst.TypeDeclaration.t) accessor_names ->
   let accessor_summary =
     match accessor_names with
     | [] -> "exposed accessors"
@@ -58,7 +58,7 @@ let make_diagnostic = fun (decl:Syn.Cst.TypeDeclaration.t) accessor_names ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl))
-  ~suggestion:(((("Make `t` opaque in the interface and keep " ^ accessor_summary ^ " as the public surface"))))
+  ~suggestion:((((("Make `t` opaque in the interface and keep " ^ accessor_summary ^ " as the public surface")))))
   ()
 
 let diagnostic_for_type_declaration = fun value_declarations decl ->
@@ -71,7 +71,7 @@ let diagnostic_for_type_declaration = fun value_declarations decl ->
             value_declarations
             |> List.filter is_accessor_of_t
             |> List.map
-            (fun (value_decl:Syn.Cst.value_declaration) -> value_decl.name_tokens
+            (fun (value_decl: Syn.Cst.value_declaration) -> value_decl.name_tokens
             |> List.map Syn.Cst.Token.text
             |> String.concat "")
             |> List.filter
@@ -86,7 +86,7 @@ let diagnostic_for_type_declaration = fun value_declarations decl ->
     )
   | _ -> None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   if not (String.ends_with ~suffix:".mli" ctx.file_path) then
     []
   else

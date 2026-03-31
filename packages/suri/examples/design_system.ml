@@ -122,22 +122,22 @@ module MyDesign = struct
   children
 
   let button_primary = fun ?(class_extra = "") children -> button_base
-  ~class_extra:(((("btn-primary " ^ class_extra))))
+  ~class_extra:((((("btn-primary " ^ class_extra)))))
   ~bg_color:primary_color
   children
 
   let button_secondary = fun ?(class_extra = "") children -> button_base
-  ~class_extra:(((("btn-secondary " ^ class_extra))))
+  ~class_extra:((((("btn-secondary " ^ class_extra)))))
   ~bg_color:secondary_color
   children
 
   let button_success = fun ?(class_extra = "") children -> button_base
-  ~class_extra:(((("btn-success " ^ class_extra))))
+  ~class_extra:((((("btn-success " ^ class_extra)))))
   ~bg_color:success_color
   children
 
   let button_danger = fun ?(class_extra = "") children -> button_base
-  ~class_extra:(((("btn-danger " ^ class_extra))))
+  ~class_extra:((((("btn-danger " ^ class_extra)))))
   ~bg_color:danger_color
   children
 
@@ -252,10 +252,12 @@ let product_card = fun ~name ~price ~in_stock ~discount ->
                     ~variant:((
                       (
                         (
-                          if in_stock then
-                            "success"
-                          else
-                            "danger"
+                          (
+                            if in_stock then
+                              "success"
+                            else
+                              "danger"
+                          )
                         )
                       )
                     ))

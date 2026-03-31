@@ -34,7 +34,7 @@ let parse_dependency : string -> Toml.value -> Package.dependency = fun name val
 let parse_dependencies : (string * Toml.value) list -> Package.dependency list = fun items ->
   List.map (fun ((name, value)) -> parse_dependency name value) items
 
-let parse_dependency_section section_name (toml:Toml.value) : Package.dependency list =
+let parse_dependency_section section_name (toml: Toml.value) : Package.dependency list =
   match toml with
   | Toml.Table items -> (
       match List.assoc_opt section_name items with
@@ -178,14 +178,14 @@ let server_port = fun workspace ->
 
 (** Command discovery functions - moved here to avoid circular dependency *)
 let discover_commands : t -> Package_command.t list = fun workspace ->
-  List.concat_map (fun (pkg:Package.t) -> pkg.commands) workspace.packages
+  List.concat_map (fun (pkg: Package.t) -> pkg.commands) workspace.packages
 
 let find_command : t -> string -> Package_command.t option = fun workspace name -> discover_commands
 workspace
-|> List.find_opt (fun (cmd:Package_command.t) -> cmd.name = name)
+|> List.find_opt (fun (cmd: Package_command.t) -> cmd.name = name)
 
 let discover_fix_providers : t -> Fix_provider.t list = fun workspace ->
-  List.concat_map (fun (pkg:Package.t) -> pkg.fix_providers) workspace.packages
+  List.concat_map (fun (pkg: Package.t) -> pkg.fix_providers) workspace.packages
 
 module Tests = struct
   let test_parse_workspace_toml () : (unit, string) result = Ok () [@test]
@@ -271,10 +271,10 @@ fixme = { path = "packages/fixme" }
     in
     let manifest = of_toml toml |> Result.expect ~msg:"expected workspace manifest" in
     if
-      List.map (fun (dep:Package.dependency) -> dep.Package.name) manifest.dependencies = [ "std" ]
-      && List.map (fun (dep:Package.dependency) -> dep.Package.name) manifest.dev_dependencies
+      List.map (fun (dep: Package.dependency) -> dep.Package.name) manifest.dependencies = [ "std" ]
+      && List.map (fun (dep: Package.dependency) -> dep.Package.name) manifest.dev_dependencies
       = [ "propane" ]
-      && List.map (fun (dep:Package.dependency) -> dep.Package.name) manifest.build_dependencies
+      && List.map (fun (dep: Package.dependency) -> dep.Package.name) manifest.build_dependencies
       = [ "fixme" ]
     then
       Ok ()

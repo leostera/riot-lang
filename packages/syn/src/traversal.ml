@@ -1,6 +1,6 @@
 open Std
 
-let rec binding_operator_bindings_of_chain = fun (binding:Cst.binding_operator_binding) ->
+let rec binding_operator_bindings_of_chain = fun (binding: Cst.binding_operator_binding) ->
   binding :: (
     match binding.and_binding with
     | Some next -> binding_operator_bindings_of_chain next
@@ -13,7 +13,7 @@ let expressions_of_apply_argument =
   | Cst.Labeled { value; _ }
   | Cst.Optional { value; _ } -> Option.to_list value
 
-let expressions_of_parameter = fun (_:Cst.Parameter.t) -> []
+let expressions_of_parameter = fun (_: Cst.Parameter.t) -> []
 
 let rec expressions_of_object_member =
   function
@@ -112,7 +112,8 @@ let children_of_expression =
   | Cst.Expression.Index { collection; index; _ } ->
       [ collection; index ]
   | Cst.Expression.ObjectOverride { fields; _ } ->
-      fields |> List.concat_map (fun (field:Cst.object_override_field) -> Option.to_list field.value)
+      fields
+      |> List.concat_map (fun (field: Cst.object_override_field) -> Option.to_list field.value)
   | Cst.Expression.InstanceVariableAssign { value; _ } ->
       [ value ]
   | Cst.Expression.FieldAssign { target; value; _ } ->
@@ -131,9 +132,9 @@ let children_of_expression =
   | Cst.Expression.Array { elements; _ } ->
       elements
   | Cst.Expression.Record (Cst.RecordExpression.Literal { fields; _ }) ->
-      fields |> List.map (fun (field:Cst.record_expression_field) -> field.value)
+      fields |> List.map (fun (field: Cst.record_expression_field) -> field.value)
   | Cst.Expression.Record (Cst.RecordExpression.Update { base; fields; _ }) ->
-      base :: List.map (fun (field:Cst.record_expression_field) -> field.value) fields
+      base :: List.map (fun (field: Cst.record_expression_field) -> field.value) fields
   | Cst.Expression.LocalOpen (Cst.LetOpen { body; _ })
   | Cst.Expression.LocalOpen (Cst.Delimited { body; _ }) ->
       [ body ]
@@ -141,14 +142,16 @@ let children_of_expression =
       match body with
       | Cst.Expression expression -> [ expression ]
       | Cst.Cases { cases; _ } -> cases
-      |> List.concat_map (fun ({ guard; body; _ }:Cst.match_case) -> Option.to_list guard @ [ body ])
+      |> List.concat_map
+      (fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
     )
   | Cst.Expression.Function { cases; _ } ->
       cases
-      |> List.concat_map (fun ({ guard; body; _ }:Cst.match_case) -> Option.to_list guard @ [ body ])
+      |> List.concat_map
+      (fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
   | Cst.Expression.LetOperator { binding; body; _ } ->
       (binding_operator_bindings_of_chain binding
-      |> List.map (fun ({ bound_value; _ }:Cst.binding_operator_binding) -> bound_value))
+      |> List.map (fun ({ bound_value; _ }: Cst.binding_operator_binding) -> bound_value))
       @ [ body ]
   | Cst.Expression.Let {
     parameters;
@@ -166,11 +169,13 @@ let children_of_expression =
   | Cst.Expression.Match { scrutinee; cases; _ } ->
       [ scrutinee ]
       @ (cases
-      |> List.concat_map (fun ({ guard; body; _ }:Cst.match_case) -> Option.to_list guard @ [ body ]))
+      |> List.concat_map
+      (fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ]))
   | Cst.Expression.Try { body; cases; _ } ->
       [ body ]
       @ (cases
-      |> List.concat_map (fun ({ guard; body; _ }:Cst.match_case) -> Option.to_list guard @ [ body ]))
+      |> List.concat_map
+      (fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ]))
   | Cst.Expression.If { condition; then_branch; else_branch; _ } ->
       [ condition; then_branch ] @ Option.to_list else_branch
   | Cst.Expression.Parenthesized { inner; _ } ->
@@ -223,7 +228,7 @@ let children_of_core_type =
           | Cst.RowField.Inherit { type_; _ } -> [ type_ ]
         )
   | Cst.CoreType.Record { fields; _ } -> fields
-  |> List.map (fun (field:Cst.record_type_field) -> field.field_type)
+  |> List.map (fun (field: Cst.record_type_field) -> field.field_type)
   | Cst.CoreType.FirstClassModule _
   | Cst.CoreType.Object _ -> []
 

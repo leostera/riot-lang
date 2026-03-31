@@ -55,7 +55,7 @@ let apply_overrides = fun ~iterations_override ~warmup_override benchmarks ->
               (* Apply to all cases in comparison *)
               let new_cases =
                 List.map
-                  (fun (case:Bench_case.t) ->
+                  (fun (case: Bench_case.t) ->
                     let config = case.config in
                     let new_config = {
                       Bench_case.iterations = Option.unwrap_or ~default:config.iterations iterations_override;

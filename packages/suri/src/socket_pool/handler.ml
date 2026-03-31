@@ -11,10 +11,10 @@ type ('state, 'error) handler = {
 }
 
 and t =
-  | H : {
-    handler: ('new_state, 'error) handler;
-    state: 'new_state;
-  } -> t
+  | H: {
+      handler: ('new_state, 'error) handler;
+      state: 'new_state;
+    } -> t
 
 and ('state, 'error) handler_result =
   | Ok

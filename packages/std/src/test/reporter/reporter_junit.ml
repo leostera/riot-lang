@@ -1,15 +1,15 @@
 open Global
 open Collections
 
-let init = fun (_suite:Intf.suite_info) _total -> ()
+let init = fun (_suite: Intf.suite_info) _total -> ()
 
 let on_result = fun _idx _result -> ()
 
-let finalize = fun (summary:Test_result.summary) ->
+let finalize = fun (summary: Test_result.summary) ->
   let open Data.Xml in
     let testcases =
       List.map
-        (fun (r:Test_result.t) ->
+        (fun (r: Test_result.t) ->
           let base_attrs = [ ("name", r.name) ] in
           let attrs =
             match r.test_type with

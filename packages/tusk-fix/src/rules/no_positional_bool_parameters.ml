@@ -23,7 +23,7 @@ This rule fires because the ambiguity shows up at every caller, not just in the
 definition where the author already knows what the boolean means.
 |}
 
-let rec direct_non_trivia_nodes = fun (node:Syn.Cst.syntax_node) ->
+let rec direct_non_trivia_nodes = fun (node: Syn.Cst.syntax_node) ->
   Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.filter_map
     (
       function
@@ -48,7 +48,7 @@ let is_type_syntax_kind =
   | Syn.SyntaxKind.EXTENSION_EXPR -> true
   | _ -> false
 
-let rec first_core_type_node = fun (node:Syn.Cst.syntax_node) ->
+let rec first_core_type_node = fun (node: Syn.Cst.syntax_node) ->
   match Syn.Ceibo.Red.SyntaxNode.kind node with
   | Syn.SyntaxKind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node |> List.find_map first_core_type_node with
@@ -61,7 +61,7 @@ let rec first_core_type_node = fun (node:Syn.Cst.syntax_node) ->
   | _ ->
       direct_non_trivia_nodes node |> List.find_map first_core_type_node
 
-let rec is_bool_type_node = fun (node:Syn.Cst.syntax_node) ->
+let rec is_bool_type_node = fun (node: Syn.Cst.syntax_node) ->
   match Syn.Ceibo.Red.SyntaxNode.kind node with
   | Syn.SyntaxKind.ATTRIBUTE_EXPR
   | Syn.SyntaxKind.TYPE_PAREN
@@ -183,7 +183,7 @@ let diagnostics_for_binding = fun binding ->
   in
   inline_parameter_diagnostics @ (typed_arrow_diagnostic |> Option.to_list)
 
-let diagnostics_for_value_declaration = fun ({ name_tokens; type_; _ }:Syn.Cst.value_declaration) ->
+let diagnostics_for_value_declaration = fun ({ name_tokens; type_; _ }: Syn.Cst.value_declaration) ->
   let name_span =
     match name_tokens with
     | [] -> panic "value declaration missing name tokens"
@@ -196,7 +196,9 @@ let diagnostics_for_value_declaration = fun ({ name_tokens; type_; _ }:Syn.Cst.v
       | _ -> None
     ) |> Option.to_list
 
-let diagnostics_for_external_declaration = fun ({ name_tokens; type_; _ }:Syn.Cst.external_declaration) ->
+let diagnostics_for_external_declaration = fun (
+  { name_tokens; type_; _ }: Syn.Cst.external_declaration
+) ->
   let name_span =
     match name_tokens with
     | [] -> panic "external declaration missing name tokens"
@@ -209,7 +211,7 @@ let diagnostics_for_external_declaration = fun ({ name_tokens; type_; _ }:Syn.Cs
       | _ -> None
     ) |> Option.to_list
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   let structure_diagnostics =
     Syn.Cst.SourceFile.structure_items source_file

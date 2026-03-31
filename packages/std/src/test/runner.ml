@@ -24,7 +24,7 @@ let filter_tests = fun target tests ->
   | All -> tests
   | FilterBySubstring query ->
       List.filter
-        (fun (test:Test_case.t) ->
+        (fun (test: Test_case.t) ->
           String.contains test.name query)
         tests
 
@@ -39,7 +39,7 @@ let shuffle_list = fun lst ->
   done;
   Array.to_list arr
 
-let run_single_test = fun reporter index (test:Test_case.t) ->
+let run_single_test = fun reporter index (test: Test_case.t) ->
   let name = test.name in
   let test_type = test.test_type in
   let result =

@@ -31,9 +31,9 @@ module Handler = struct
   end
 
   type t =
-    H : (module Intf with type args = 'a and type state = 'b) * 'b -> t
+    H: (module Intf with type args = 'a and type state = 'b) * 'b -> t
 
-  let make (type a b) ((module I : Intf with type args = a and type state = b)) (args:a) : t =
+  let make (type a b) ((module I : Intf with type args = a and type state = b)) (args: a) : t =
     match I.init args with
     | `ok state -> H ((module I), state)
     | `push (_, state) -> H ((module I), state)
@@ -54,7 +54,7 @@ module Handler = struct
     | `error (state, err) -> `error (conn, err)
 
   module Default = struct
-    let handle_frame = fun (frame:Http.Ws.Frame.t) _conn state ->
+    let handle_frame = fun (frame: Http.Ws.Frame.t) _conn state ->
       match frame.opcode with
       | Ping -> `push ([ Http.Ws.Frame.pong () ], state)
       | _ -> `ok state

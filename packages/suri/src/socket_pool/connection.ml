@@ -2,14 +2,14 @@ open Std
 open Std.IO
 
 type t =
-  | Conn : {
-    protocol: string option;
-    stream: Net.TcpStream.t;
-    peer: Net.Addr.stream_addr;
-    default_read_size: int;
-    accepted_at: Time.Instant.t;
-    connected_at: Time.Instant.t;
-  } -> t
+  | Conn: {
+      protocol: string option;
+      stream: Net.TcpStream.t;
+      peer: Net.Addr.stream_addr;
+      default_read_size: int;
+      accepted_at: Time.Instant.t;
+      connected_at: Time.Instant.t;
+    } -> t
 
 let make = fun ?(protocol = None) ~accepted_at ~stream ~buffer_size ~peer () -> Conn {
   stream;

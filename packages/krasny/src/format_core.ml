@@ -33,7 +33,7 @@ let finalize_rendered_output = fun rendered ->
   else
     rendered ^ "\n"
 
-let format = fun (result:Syn.Parser.parse_result) ->
+let format = fun (result: Syn.Parser.parse_result) ->
   yield ();
   match Syn.build_cst result with
   | Error err -> Error (Cannot_build_cst err)

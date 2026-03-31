@@ -7,8 +7,8 @@ type 'a t = {
 }
 
 type Message.t +=
-  | Reply : 'a Ref.t * 'a -> Message.t
-  | Crash : 'a Ref.t * exn -> Message.t
+  | Reply: 'a Ref.t * 'a -> Message.t
+  | Crash: 'a Ref.t * exn -> Message.t
 
 let async = fun fn ->
   let ref = Ref.make () in

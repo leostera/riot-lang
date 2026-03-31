@@ -120,7 +120,7 @@ let rec filter_entries = fun ~allowed entries ->
 let is_binary = fun config path ->
   let bin_rel = make_relative ~base:config.package.path ~path in
   List.exists
-    (fun (bin:Package.binary) ->
+    (fun (bin: Package.binary) ->
       let bin_abs_rel = make_relative ~base:config.package.path ~path:bin.path in
       Path.equal path bin_rel && Path.equal bin_rel bin_abs_rel)
     config.package.binaries
@@ -333,7 +333,7 @@ and handle_library = fun ~t ~ctx dir name children ->
         | Not_found -> ())
       deps_for_library_interface
 
-let scan_sources = fun t (sources:Module_scanner.entry list) ->
+let scan_sources = fun t (sources: Module_scanner.entry list) ->
   let root_node = Module_node.make_root () in
   let root = G.add_node t.graph root_node in
   let ctx = {ns = Namespace.empty; parent_impl = root; parent_intf = root; aliases = []; } in
@@ -382,7 +382,7 @@ let wire_dependencies = fun t sandbox_dir ->
   in
   let files_with_nodes =
     List.filter_map
-      (fun ((_node_id, (node:Module_node.t G.node))) ->
+      (fun ((_node_id, (node: Module_node.t G.node))) ->
         let module_node = node.value in
         match module_node.kind with
         | Module_node.ML _
@@ -470,7 +470,7 @@ let wire_dependencies = fun t sandbox_dir ->
       files_with_nodes
   in
   List.iter
-    (fun (((node:Module_node.t G.node), module_deps)) ->
+    (fun (((node: Module_node.t G.node), module_deps)) ->
       List.iter
         (fun dep_mod_name ->
           let dep_name = Module_name.to_string dep_mod_name in
@@ -517,7 +517,7 @@ let add_library_node = fun t ~name ~includes ->
   (* Add edges in REVERSE topological order because add_edge prepends to deps list.
      This ensures lib_node.deps ends up in correct topological order. *)
   List.iter
-    (fun (node:Module_node.t G.node) ->
+    (fun (node: Module_node.t G.node) ->
       match node.value.kind with
       | Module_node.ML _
       | Module_node.MLI _

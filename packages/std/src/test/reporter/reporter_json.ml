@@ -1,15 +1,15 @@
 open Global
 open Collections
 
-let init = fun (_suite:Intf.suite_info) _total -> ()
+let init = fun (_suite: Intf.suite_info) _total -> ()
 
 let on_result = fun _idx _result -> ()
 
-let finalize = fun (summary:Test_result.summary) ->
+let finalize = fun (summary: Test_result.summary) ->
   let open Data.Json in
     let test_results =
       List.map
-        (fun (r:Test_result.t) ->
+        (fun (r: Test_result.t) ->
           let type_fields =
             match r.test_type with
             | Test_case.UnitTest -> [ ("type", string "test") ]

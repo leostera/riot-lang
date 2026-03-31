@@ -233,7 +233,7 @@ module Driver = struct
         else
           Ok (msg_type, length, Bytes.create 0)
 
-  let perform_handshake = fun stream (cfg:Config.t) ->
+  let perform_handshake = fun stream (cfg: Config.t) ->
     let startup_msg = Protocol.Writer.startup_message
     ~user:cfg.user
     ~database:cfg.database
@@ -304,7 +304,7 @@ module Driver = struct
           )
       )
 
-  let connect = fun (cfg:Config.t) ->
+  let connect = fun (cfg: Config.t) ->
     let id = "pg_" ^ string_of_int (Random.int 1_000_000) in
     match Net.Addr.of_host_and_port ~host:cfg.host ~port:cfg.port with
     | Error (Net.Addr.System_error _err) ->
@@ -397,7 +397,7 @@ module Driver = struct
     in
     Datetime.parse iso_str
 
-  let decode_value = fun (field:Protocol.Row.field) (value:string) ->
+  let decode_value = fun (field: Protocol.Row.field) (value: string) ->
     match field.type_oid with
     | Protocol.TypeOid.Bool -> (
         match value with
@@ -478,7 +478,7 @@ module Driver = struct
     ^ "."
     ^ pad micros 6
 
-  let encode_param = fun (value:Sqlx_driver.Value.t) ->
+  let encode_param = fun (value: Sqlx_driver.Value.t) ->
     match value with
     | Null ->
         ""
@@ -583,7 +583,7 @@ module Driver = struct
                           let row =
                             if List.length !column_info = List.length cols then
                               List.map2
-                                (fun (field:Protocol.Row.field) row_val ->
+                                (fun (field: Protocol.Row.field) row_val ->
                                   let decoded_value =
                                     match row_val with
                                     | Protocol.Row.Null -> Sqlx_driver.Value.null
@@ -654,7 +654,7 @@ module Driver = struct
                           let row =
                             if List.length !column_info = List.length cols then
                               List.map2
-                                (fun (field:Protocol.Row.field) row_val ->
+                                (fun (field: Protocol.Row.field) row_val ->
                                   let decoded_value =
                                     match row_val with
                                     | Protocol.Row.Null -> Sqlx_driver.Value.null

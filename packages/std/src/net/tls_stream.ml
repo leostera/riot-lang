@@ -231,7 +231,7 @@ let to_reader : type src. src t -> (src t, error) IO.Reader.t = fun tls_stream -
 
     type err = error
 
-    let read = fun (tls:t) ?timeout:_ buf -> read_plaintext tls buf
+    let read = fun (tls: t) ?timeout:_ buf -> read_plaintext tls buf
 
     let read_vectored = fun _t _bufs -> Error Unsupported_vectored_operation
   end in

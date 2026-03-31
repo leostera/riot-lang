@@ -13,7 +13,7 @@ end
 type ('item, 'state) iter = (module Intf with type item = 'item and type state = 'state)
 
 type 'item t =
-  Iter : (('item, 'state) iter * 'state) -> 'item t
+  Iter: (('item, 'state) iter * 'state) -> 'item t
 
 (*************************************************************************************************)
 
@@ -36,7 +36,7 @@ let empty = fun (type a) () ->
   end in
   make (module Empty) ()
 
-let singleton = fun (type a) (value:a) ->
+let singleton = fun (type a) (value: a) ->
   let module Singleton = struct
     type item = a
 

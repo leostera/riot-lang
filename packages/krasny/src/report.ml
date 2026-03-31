@@ -10,7 +10,7 @@ let relative_to_root = fun ~root path ->
   | Ok rel -> Path.to_string rel
   | Error _ -> Path.to_string path
 
-let file_result_to_json = fun ~root (result:Runner.file_result) ->
+let file_result_to_json = fun ~root (result: Runner.file_result) ->
   let open Data.Json in
     let status =
       match result.status with
@@ -35,7 +35,7 @@ let file_result_to_json = fun ~root (result:Runner.file_result) ->
 
     ]
 
-let summary_to_json = fun (summary:Runner.summary) -> let open Data.Json in Object [
+let summary_to_json = fun (summary: Runner.summary) -> let open Data.Json in Object [
   ("total_files", Int summary.total_files);
   ("already_formatted", Int summary.already_formatted);
   ("needs_formatting", Int summary.needs_formatting);
@@ -79,9 +79,9 @@ let event_to_json = fun ~root ->
       | _ -> panic "expected JSON object"
     )
 
-let write_line = fun ~writer line -> IO.write_all writer ~buf:((((line ^ "\n"))))
+let write_line = fun ~writer line -> IO.write_all writer ~buf:(((((line ^ "\n")))))
 
-let write_text_file_result = fun ~writer ~root (result:Runner.file_result) ->
+let write_text_file_result = fun ~writer ~root (result: Runner.file_result) ->
   let status_char, suffix =
     match result.status, result.error with
     | Runner.Failed, Some error -> ("\027[1;31m✗\027[0m", ": " ^ error)
@@ -99,7 +99,7 @@ let write_text_file_result = fun ~writer ~root (result:Runner.file_result) ->
   let path = relative_to_root ~root result.file in
   write_line ~writer (status_char ^ " " ^ path ^ suffix)
 
-let write_text_summary = fun ~writer ~mode (summary:Runner.summary) ->
+let write_text_summary = fun ~writer ~mode (summary: Runner.summary) ->
   let status_char =
     if match mode with
       | Runner.Check -> summary.needs_formatting = 0 && summary.failed_files = 0

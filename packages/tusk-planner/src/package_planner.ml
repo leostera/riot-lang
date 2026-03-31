@@ -27,7 +27,7 @@ type check_deps_error =
   Missing of Package.t list
   | Failed of Package.t list
 
-let file_to_json = fun (file:Module_node.file) ->
+let file_to_json = fun (file: Module_node.file) ->
   let open Std.Data.Json in
     match file with
     | Module_node.Concrete path -> Object [
@@ -60,7 +60,7 @@ let file_of_json = fun json ->
       )
     | _ -> Error "module file must be an object"
 
-let module_kind_to_json = fun (kind:Module_node.kind) ->
+let module_kind_to_json = fun (kind: Module_node.kind) ->
   let open Std.Data.Json in
     match kind with
     | Module_node.ML mod_ ->
@@ -209,14 +209,14 @@ let module_kind_of_json = fun json ->
       )
     | _ -> Error "module kind must be an object"
 
-let module_graph_to_json = fun (module_graph:Module_node.t G.t) ->
+let module_graph_to_json = fun (module_graph: Module_node.t G.t) ->
   let open Std.Data.Json in
     let nodes =
       match G.topo_sort module_graph with
       | Ok nodes -> nodes
       | Error _ -> []
     in
-    let node_to_json = fun (node:Module_node.t G.node) ->
+    let node_to_json = fun (node: Module_node.t G.node) ->
       Object [
         ("id", Int (G.Node_id.to_int node.id));
         ("file", file_to_json node.value.file);
@@ -366,16 +366,16 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
   (* Add workspace-specific dependency info not captured in package metadata *)
   let sorted_deps =
     List.sort
-      (fun (a:Package.dependency) (b:Package.dependency) ->
+      (fun (a: Package.dependency) (b: Package.dependency) ->
         String.compare a.name b.name)
       (Package.build_graph_dependencies package)
   in
   List.iter
-    (fun (dep:Package.dependency) ->
+    (fun (dep: Package.dependency) ->
       (* Package.hash already includes dep name and source, we just add workspace-specific details *)
       match dep.source with
       | Package.Workspace -> (
-          match List.find_opt (fun (p:Package.t) -> p.name = dep.name) workspace.Workspace.packages with
+          match List.find_opt (fun (p: Package.t) -> p.name = dep.name) workspace.Workspace.packages with
           | Some dep_pkg -> (
               H.write_string state (Path.to_string dep_pkg.path);
               match dep_pkg.library with
@@ -388,7 +388,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
     sorted_deps;
   (* Dependency hashes *)
   let dep_hashes = depset
-  |> List.map (fun (dep:Dependency.t) -> dep.hash)
+  |> List.map (fun (dep: Dependency.t) -> dep.hash)
   |> List.sort Std.Crypto.Hash.compare in
   List.iter
     (fun hash ->
@@ -568,7 +568,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                     (* Add foreign dependency build actions and make all other nodes depend on them *)
                     let foreign_nodes =
                       List.map
-                        (fun (fdep:Package.foreign_dependency) ->
+                        (fun (fdep: Package.foreign_dependency) ->
                           Log.info
                           ("[PACKAGE_PLANNER] Adding foreign dependency: "
                           ^ fdep.name
@@ -600,7 +600,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                     if List.length foreign_nodes > 0 then
                       (
                         let foreign_node_ids =
-                          List.map (fun (node:Action_node.t) -> node.id) foreign_nodes
+                          List.map (fun (node: Action_node.t) -> node.id) foreign_nodes
                         in
                         Log.info
                         ("[PACKAGE_PLANNER] Making all action nodes depend on "
@@ -612,7 +612,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                         ^ Int.to_string (List.length all_nodes));
                         let dep_count = ref 0 in
                         List.iter
-                          (fun (node:Action_node.t) ->
+                          (fun (node: Action_node.t) ->
                             (* Skip foreign dependency nodes themselves *)
                             let is_foreign_node = List.mem node.id foreign_node_ids in
                             if not is_foreign_node then
@@ -665,7 +665,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                 (* Add foreign dependency build actions and make all other nodes depend on them *)
                 let foreign_nodes =
                   List.map
-                    (fun (fdep:Package.foreign_dependency) ->
+                    (fun (fdep: Package.foreign_dependency) ->
                       Log.info
                       ("[PACKAGE_PLANNER] Adding foreign dependency: "
                       ^ fdep.name
@@ -697,7 +697,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                 if List.length foreign_nodes > 0 then
                   (
                     let foreign_node_ids =
-                      List.map (fun (node:Action_node.t) -> node.id) foreign_nodes
+                      List.map (fun (node: Action_node.t) -> node.id) foreign_nodes
                     in
                     Log.info
                     ("[PACKAGE_PLANNER] Making all action nodes depend on "
@@ -709,7 +709,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                     ^ Int.to_string (List.length all_nodes));
                     let dep_count = ref 0 in
                     List.iter
-                      (fun (node:Action_node.t) ->
+                      (fun (node: Action_node.t) ->
                         (* Skip foreign dependency nodes themselves *)
                         let is_foreign_node = List.mem node.id foreign_node_ids in
                         if not is_foreign_node then

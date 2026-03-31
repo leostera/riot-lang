@@ -94,7 +94,7 @@ module Source: sig
   end
 
   type t =
-    | S : ((module Intf with type t = 'state) * 'state) -> t
+    | S: ((module Intf with type t = 'state) * 'state) -> t
   val deregister: t -> Adapter.Selector.t -> unit IO.io_result
 
   val make: (module Intf with type t = 'a) -> 'a -> t

@@ -40,7 +40,7 @@ let make_diagnostic = fun parameter ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(parameter_span parameter)
-  ~suggestion:(((("Move this " ^ current_kind ^ " argument earlier so parameters stay ordered as labeled, optional, then positional"))))
+  ~suggestion:((((("Move this " ^ current_kind ^ " argument earlier so parameters stay ordered as labeled, optional, then positional")))))
   ()
 
 let diagnostic_for_binding = fun binding ->
@@ -62,7 +62,7 @@ let diagnostic_for_binding = fun binding ->
   | diagnostic :: _ -> Some diagnostic
   | [] -> None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

@@ -19,7 +19,7 @@ let rec child_expressions_of_function_body =
   | Syn.Cst.Expression expression -> [ expression ]
   | Syn.Cst.Cases { cases; _ } ->
       cases |> List.concat_map
-        (fun (case:Syn.Cst.match_case) ->
+        (fun (case: Syn.Cst.match_case) ->
           (
             match case.guard with
             | Some guard -> [ guard ]
@@ -50,7 +50,7 @@ and child_expressions =
   | Syn.Cst.Expression.Match expr ->
       expr.scrutinee :: (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> [ guard ]
@@ -60,7 +60,7 @@ and child_expressions =
   | Syn.Cst.Expression.Try expr ->
       expr.body :: (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> [ guard ]
@@ -79,7 +79,7 @@ and child_expressions =
   | _ ->
       []
 
-let opens_with_begin = fun ({ syntax_node; _ }:Syn.Cst.parenthesized_expression) ->
+let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
   Syn.Ceibo.Red.SyntaxNode.children syntax_node |> Std.Collections.Array.to_list |> List.find_map
     (
       function
@@ -108,10 +108,10 @@ let is_obviously_redundant =
   | Syn.Cst.Expression.If _ -> false
   | _ -> false
 
-let make_diagnostic = fun (expr:Syn.Cst.parenthesized_expression) -> Diagnostic.make
+let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))))
+~span:(((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)))))
 ~suggestion:"Remove these redundant parentheses."
 ()
 
@@ -120,7 +120,7 @@ let rec diagnostics_for_expression = fun ~inside_redundant_chain ->
   | Syn.Cst.Expression.Parenthesized expr ->
       let inner = expr.inner in
       let nested = diagnostics_for_expression
-      ~inside_redundant_chain:((((inside_redundant_chain || is_obviously_redundant inner))))
+      ~inside_redundant_chain:(((((inside_redundant_chain || is_obviously_redundant inner)))))
       inner in
       if opens_with_begin expr then
         nested
@@ -131,7 +131,7 @@ let rec diagnostics_for_expression = fun ~inside_redundant_chain ->
   | expr -> child_expressions expr
   |> List.concat_map (diagnostics_for_expression ~inside_redundant_chain:false)
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

@@ -30,7 +30,7 @@ let build_cli = fun workspace_opt ->
         | Some workspace ->
             let commands = Tusk_model.Workspace.discover_commands workspace in
             List.map
-              (fun (cmd:Tusk_model.Package_command.t) ->
+              (fun (cmd: Tusk_model.Package_command.t) ->
                 (* Use package:command format to avoid conflicts *)
                 let namespaced_name = cmd.package_name ^ ":" ^ cmd.name in
                 command namespaced_name
@@ -86,7 +86,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
           (* Find the command in the specified package *)
           let commands = Tusk_model.Workspace.discover_commands workspace in
           match List.find_opt
-          (fun (cmd:Tusk_model.Package_command.t) -> cmd.package_name = package_name && cmd.name = command_name)
+          (fun (cmd: Tusk_model.Package_command.t) -> cmd.package_name = package_name && cmd.name = command_name)
           commands with
           | None -> None
           | Some cmd ->

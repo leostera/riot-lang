@@ -153,9 +153,11 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
           ~scope:((
             (
               (
-                match scope with
-                | Protocol.Runtime -> Tusk_planner.Package_graph.Runtime
-                | Protocol.Dev -> Tusk_planner.Package_graph.Dev
+                (
+                  match scope with
+                  | Protocol.Runtime -> Tusk_planner.Package_graph.Runtime
+                  | Protocol.Dev -> Tusk_planner.Package_graph.Dev
+                )
               )
             )
           ))
@@ -168,7 +170,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
       | Ok workspace_result ->
           Protocol.BuildStats.set_total_modules stats (List.length workspace_result.results);
           List.iter
-            (fun (result:Package_builder.build_result) ->
+            (fun (result: Package_builder.build_result) ->
               match result.status with
               | Package_builder.Built _ ->
                   Protocol.BuildStats.inc_packages_built stats;
@@ -183,7 +185,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
             (
               let errors =
                 List.filter
-                  (fun (result:Package_builder.build_result) ->
+                  (fun (result: Package_builder.build_result) ->
                     match result.status with
                     | Package_builder.Failed _ -> true
                     | _ -> false)
@@ -191,7 +193,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
               in
               let built =
                 List.filter
-                  (fun (result:Package_builder.build_result) ->
+                  (fun (result: Package_builder.build_result) ->
                     match result.status with
                     | Package_builder.Failed _ -> false
                     | _ -> true)

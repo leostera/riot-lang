@@ -57,8 +57,8 @@ let make_diagnostic = fun expr ->
   Diagnostic.make
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-  ~span:((((Syn.Cst.InfixExpression.operator_token expr |> Syn.Cst.Token.span))))
-  ~suggestion:(((("Replace " ^ operator ^ " with a named function"))))
+  ~span:(((((Syn.Cst.InfixExpression.operator_token expr |> Syn.Cst.Token.span)))))
+  ~suggestion:((((("Replace " ^ operator ^ " with a named function")))))
   ()
 
 let rec diagnostics_for_expression =
@@ -90,7 +90,7 @@ let rec diagnostics_for_expression =
   | Syn.Cst.Expression.Match expr ->
       diagnostics_for_expression expr.scrutinee @ (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> diagnostics_for_expression guard
@@ -100,7 +100,7 @@ let rec diagnostics_for_expression =
   | Syn.Cst.Expression.Try expr ->
       diagnostics_for_expression expr.body @ (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> diagnostics_for_expression guard
@@ -126,14 +126,14 @@ and diagnostics_for_function_body =
   function
   | Syn.Cst.Expression expression -> diagnostics_for_expression expression
   | Syn.Cst.Cases { cases; _ } -> cases |> List.concat_map diagnostics_for_match_case
-and diagnostics_for_match_case = fun (case:Syn.Cst.match_case) ->
+and diagnostics_for_match_case = fun (case: Syn.Cst.match_case) ->
   (
     match case.guard with
     | Some guard -> diagnostics_for_expression guard
     | None -> []
   ) @ diagnostics_for_expression case.body
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

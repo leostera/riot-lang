@@ -57,7 +57,7 @@ let rec print_tree = fun ?(indent = 0) tree ->
   | File { name; _ } -> Printf.printf "%s- %s\n" prefix name
   | Dir { name; children; _ } ->
       Printf.printf "%s+ %s/\n" prefix name;
-      List.iter (print_tree ~indent:((((indent + 1))))) children
+      List.iter (print_tree ~indent:(((((indent + 1)))))) children
 
 (** Flatten tree to a list of file paths *)
 let rec flatten_to_paths = fun tree ->

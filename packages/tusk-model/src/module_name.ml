@@ -25,7 +25,7 @@ let of_filename = fun ?(namespace = Namespace.empty) filename ->
 let of_string = fun ?(namespace = Namespace.empty) s ->
   let name = sanitize_name s |> String.capitalize_ascii in
   let filename = Path.of_string s
-  |> Result.expect ~msg:(((("Expected '" ^ s ^ "' to be a valid Path")))) in
+  |> Result.expect ~msg:((((("Expected '" ^ s ^ "' to be a valid Path"))))) in
   {filename; namespace; name}
 
 let of_path = fun path ->

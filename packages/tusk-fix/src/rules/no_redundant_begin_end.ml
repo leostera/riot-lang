@@ -16,7 +16,7 @@ This keeps the visual weight of the code proportional to the job the grouping is
 actually doing.
 |}
 
-let opens_with_begin = fun ({ syntax_node; _ }:Syn.Cst.parenthesized_expression) ->
+let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
   Syn.Ceibo.Red.SyntaxNode.children syntax_node |> Std.Collections.Array.to_list |> List.find_map
     (
       function
@@ -29,7 +29,7 @@ let opens_with_begin = fun ({ syntax_node; _ }:Syn.Cst.parenthesized_expression)
       | _ -> None
     ) |> Option.unwrap_or ~default:false
 
-let make_diagnostic = fun ({ syntax_node; _ }:Syn.Cst.parenthesized_expression) -> Diagnostic.make
+let make_diagnostic = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
 ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
@@ -41,7 +41,7 @@ let diagnostic_for_expression =
   | Syn.Cst.Expression.Parenthesized expr when opens_with_begin expr -> Some (make_diagnostic expr)
   | _ -> None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

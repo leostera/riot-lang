@@ -41,7 +41,7 @@ let config = fun ?(host = "0.0.0.0") ?(port = 4_000) ?(acceptors = Std.System.av
     Handler is just a Middleware.t (a list of Conn.t -> Conn.t functions).
     The middleware pipeline is automatically wrapped to work with the low-level
     WebServer API. *)
-let start_link = fun ?(config = Config.default) (app:Middleware.Pipeline.t) ->
+let start_link = fun ?(config = Config.default) (app: Middleware.Pipeline.t) ->
   (* Internal adapter: converts middleware pipeline to low-level handler *)
   let handler = fun socket_conn req ->
     let conn = Middleware.Conn.make socket_conn req in

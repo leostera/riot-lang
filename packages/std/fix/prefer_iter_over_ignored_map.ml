@@ -78,7 +78,7 @@ let make_diagnostic = fun ~iter_name expr -> Api.Diagnostic.make
 
 })
 ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
-~suggestion:(((("Use " ^ iter_name ^ " when the mapped result is ignored and the traversal exists only for side effects."))))
+~suggestion:((((("Use " ^ iter_name ^ " when the mapped result is ignored and the traversal exists only for side effects.")))))
 ()
 
 let diagnostic_for_expression = fun expr ->
@@ -100,7 +100,7 @@ let diagnostic_for_expression = fun expr ->
       )
     | _ -> None
 
-let check_tree = fun (ctx:Api.Rule.context) _red_root ->
+let check_tree = fun (ctx: Api.Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

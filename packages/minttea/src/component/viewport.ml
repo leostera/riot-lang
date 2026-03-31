@@ -96,21 +96,21 @@ let scroll_up = fun t ~lines ->
   if at_top t || lines <= 0 then
     t
   else
-    set_y_offset t ~offset:((((t.y_offset - lines))))
+    set_y_offset t ~offset:(((((t.y_offset - lines)))))
 
 let scroll_down = fun t ~lines ->
   if at_bottom t || lines <= 0 then
     t
   else
-    set_y_offset t ~offset:((((t.y_offset + lines))))
+    set_y_offset t ~offset:(((((t.y_offset + lines)))))
 
 let page_up = fun t -> scroll_up t ~lines:t.height
 
 let page_down = fun t -> scroll_down t ~lines:t.height
 
-let half_page_up = fun t -> scroll_up t ~lines:((((t.height / 2))))
+let half_page_up = fun t -> scroll_up t ~lines:(((((t.height / 2)))))
 
-let half_page_down = fun t -> scroll_down t ~lines:((((t.height / 2))))
+let half_page_down = fun t -> scroll_down t ~lines:(((((t.height / 2)))))
 
 let goto_top = fun t -> set_y_offset t ~offset:0
 

@@ -407,7 +407,7 @@ let get_package_sources = fun package_name ->
   match Tusk_model.Workspace_manager.scan cwd with
   | Error _ -> None
   | Ok (workspace, _load_errors) -> (
-      match List.find_opt (fun (pkg:Tusk_model.Package.t) -> pkg.name = package_name) workspace.packages with
+      match List.find_opt (fun (pkg: Tusk_model.Package.t) -> pkg.name = package_name) workspace.packages with
       | None -> None
       | Some pkg ->
           let sources = pkg.sources.src

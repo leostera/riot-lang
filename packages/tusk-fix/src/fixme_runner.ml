@@ -35,7 +35,7 @@ let sanitize_component = fun text ->
         '_')
     text
 
-let generated_module_name = fun (provider:Tusk_model.Fix_provider.t) -> "Provider_"
+let generated_module_name = fun (provider: Tusk_model.Fix_provider.t) -> "Provider_"
 ^ sanitize_component provider.package_name
 ^ "_"
 ^ sanitize_component provider.name
@@ -47,7 +47,7 @@ let ocaml_module_name_of_path = fun path ->
   else
     String.uppercase_ascii (String.sub base 0 1) ^ String.sub base 1 (String.length base - 1)
 
-let support_module_sources = fun (provider:Tusk_model.Fix_provider.t) ->
+let support_module_sources = fun (provider: Tusk_model.Fix_provider.t) ->
   let provider_dir = Path.dirname provider.source_path in
   let provider_basename = Path.basename provider.source_path in
   match Fs.read_dir provider_dir with
@@ -69,7 +69,7 @@ let support_module_sources = fun (provider:Tusk_model.Fix_provider.t) ->
           | 0 -> String.compare (Path.to_string left_path) (Path.to_string right_path)
           | cmp -> cmp)
 
-let provider_fingerprint = fun (provider:Tusk_model.Fix_provider.t) ->
+let provider_fingerprint = fun (provider: Tusk_model.Fix_provider.t) ->
   String.concat
   ":"
   [
@@ -82,7 +82,7 @@ let provider_fingerprint = fun (provider:Tusk_model.Fix_provider.t) ->
 
 let provider_hash = fun providers ->
   providers |> List.sort
-    (fun (left:Tusk_model.Fix_provider.t) right ->
+    (fun (left: Tusk_model.Fix_provider.t) right ->
       String.compare (provider_fingerprint left) (provider_fingerprint right)) |> List.map provider_fingerprint |> String.concat
   "\n" |> Crypto.hash_string |> Crypto.Digest.hex
 
@@ -132,7 +132,7 @@ let plan = fun ~workspace_root ~target_dir_root providers ->
   } in
   {plan with providers = List.map (generated_provider plan) providers; }
 
-let provider_module_line = fun (provider:generated_provider) -> "    (module "
+let provider_module_line = fun (provider: generated_provider) -> "    (module "
 ^ provider.module_name
 ^ " : Tusk_fix.Provider.S);"
 
@@ -152,10 +152,10 @@ let registry_source = fun providers ->
 
   ]
 
-let embedded_provider_module_source = fun (provider:generated_provider) ->
+let embedded_provider_module_source = fun (provider: generated_provider) ->
   let source = Fs.read provider.provider.source_path
   |> Result.expect
-  ~msg:(((("failed to read provider source " ^ Path.to_string provider.provider.source_path)))) in
+  ~msg:((((("failed to read provider source " ^ Path.to_string provider.provider.source_path))))) in
   String.concat "\n"
     [ "module " ^ provider.module_name ^ " = struct"; String.concat "\n"
         (
@@ -163,7 +163,7 @@ let embedded_provider_module_source = fun (provider:generated_provider) ->
             (fun ((module_name, source_path)) ->
               let source = Fs.read source_path
               |> Result.expect
-              ~msg:(((("failed to read provider support source " ^ Path.to_string source_path)))) in
+              ~msg:((((("failed to read provider support source " ^ Path.to_string source_path))))) in
               String.concat "\n" [ "module " ^ module_name ^ " = struct"; source; "end"; "" ])
             provider.support_module_sources
         ); source; "end"; "";  ]
@@ -190,18 +190,18 @@ let dependency_entries = fun workspace_root providers ->
   let workspace_package_path =
     fun name ->
       workspace_packages |> List.find_opt
-        (fun (pkg:Tusk_model.Package.t) ->
-          String.equal pkg.name name) |> Option.map (fun (pkg:Tusk_model.Package.t) -> pkg.path)
+        (fun (pkg: Tusk_model.Package.t) ->
+          String.equal pkg.name name) |> Option.map (fun (pkg: Tusk_model.Package.t) -> pkg.path)
   in
   let provider_build_deps =
     providers
     |> List.concat_map
-      (fun ({ provider; _ }:generated_provider) ->
+      (fun ({ provider; _ }: generated_provider) ->
         workspace_packages |> List.find_opt
-          (fun (pkg:Tusk_model.Package.t) ->
+          (fun (pkg: Tusk_model.Package.t) ->
             String.equal pkg.name provider.package_name) |> Option.map
         (fun pkg -> pkg.Tusk_model.Package.build_dependencies) |> Option.unwrap_or ~default:[] |> List.filter_map
-          (fun (dep:Tusk_model.Package.dependency) ->
+          (fun (dep: Tusk_model.Package.dependency) ->
             match dep.source with
             | Tusk_model.Package.Workspace -> workspace_package_path dep.name
             |> Option.map (fun path -> (dep.name, path))
@@ -216,7 +216,7 @@ let dependency_entries = fun workspace_root providers ->
   ]
   @ provider_build_deps
   @ List.map
-  (fun ({ provider; _ }:generated_provider) -> (provider.package_name, provider.package_path))
+  (fun ({ provider; _ }: generated_provider) -> (provider.package_name, provider.package_path))
   providers in
   List.sort_uniq
     (fun ((left_name, left_path)) ((right_name, right_path)) ->
@@ -286,12 +286,13 @@ let toolchain_toml_source = fun compiler_path ->
 let ensure_directories = fun plan ->
   List.iter
   (fun path -> Fs.create_dir_all path
-  |> Result.expect ~msg:(((("failed to create generated fixme runner dir " ^ Path.to_string path)))))
+  |> Result.expect
+  ~msg:((((("failed to create generated fixme runner dir " ^ Path.to_string path))))))
   [ plan.workspace_root; plan.package_dir; plan.src_dir; plan.providers_dir ]
 
 let remove_if_exists = fun path remove ->
   match Fs.exists path with
-  | Ok true -> remove path |> Result.expect ~msg:(((("failed to clean " ^ Path.to_string path))))
+  | Ok true -> remove path |> Result.expect ~msg:((((("failed to clean " ^ Path.to_string path)))))
   | _ -> ()
 
 let cleanup_stale_sources = fun plan ->
@@ -299,18 +300,19 @@ let cleanup_stale_sources = fun plan ->
   remove_if_exists plan.providers_dir Fs.remove_dir_all
 
 let write_file = fun path content -> Fs.write content path
-|> Result.expect ~msg:(((("failed to write " ^ Path.to_string path))))
+|> Result.expect ~msg:((((("failed to write " ^ Path.to_string path)))))
 
-let copy_provider_source = fun (provider:generated_provider) -> Fs.copy
+let copy_provider_source = fun (provider: generated_provider) -> Fs.copy
 ~src:provider.provider.source_path
 ~dst:provider.copied_source_path
 |> Result.expect
-~msg:(((("failed to copy provider source " ^ Path.to_string provider.provider.source_path))))
+~msg:((((("failed to copy provider source " ^ Path.to_string provider.provider.source_path)))))
 
 let materialize_toolchain = fun workspace_root plan ->
   match local_toolchain_source workspace_root with
   | Some (`Copy source_path) -> Fs.copy ~src:source_path ~dst:plan.toolchain_toml_path
-  |> Result.expect ~msg:(((("failed to copy " ^ Path.to_string source_path ^ " into fixme runner"))))
+  |> Result.expect
+  ~msg:((((("failed to copy " ^ Path.to_string source_path ^ " into fixme runner")))))
   | Some (`Generate compiler_path) -> write_file
   plan.toolchain_toml_path
   (toolchain_toml_source compiler_path)

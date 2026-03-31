@@ -41,43 +41,43 @@ let compare_suite_binary = fun left right ->
   (left.package_name ^ ":" ^ left.suite_name)
   (right.package_name ^ ":" ^ right.suite_name)
 
-let collect_suite_binaries = fun (workspace:Workspace.t) ?package_filter () ->
+let collect_suite_binaries = fun (workspace: Workspace.t) ?package_filter () ->
   workspace.packages |> List.filter Package.is_workspace_member |> List.filter
-    (fun (pkg:Package.t) ->
+    (fun (pkg: Package.t) ->
       match package_filter with
       | None -> true
       | Some package_name -> String.equal pkg.name package_name) |> List.concat_map
-    (fun (pkg:Package.t) ->
+    (fun (pkg: Package.t) ->
       List.filter_map
-        (fun (bin:Package.binary) ->
+        (fun (bin: Package.binary) ->
           if is_test_binary_name bin.name then
             Some {package_name = pkg.name; suite_name = bin.name}
           else
             None)
         pkg.binaries) |> List.sort compare_suite_binary
 
-let find_suite_binary_path = fun client (suite:suite_binary) -> Local_session.find_artifact
+let find_suite_binary_path = fun client (suite: suite_binary) -> Local_session.find_artifact
 client
 ~package:suite.package_name
 ~kind:"binary"
 ~name:suite.suite_name
 
 let run_suite_binary_capture = fun ~extra_args binary_path ->
-  let cmd = Command.make binary_path ~args:(((("run-tests" :: extra_args)))) in
+  let cmd = Command.make binary_path ~args:((((("run-tests" :: extra_args))))) in
   Command.output cmd
 
-let print_command_output = fun (output:Command.output) ->
+let print_command_output = fun (output: Command.output) ->
   if not (String.equal output.stdout "") then
     print output.stdout;
   if not (String.equal output.stderr "") then
     eprint output.stderr
 
-let print_run_label = fun (suite:suite_binary) ->
+let print_run_label = fun (suite: suite_binary) ->
   println "";
   println ("Running " ^ suite.package_name ^ "/" ^ suite.suite_name ^ "...");
   println ""
 
-let run_suite = fun client ~extra_args query (suite:suite_binary) ->
+let run_suite = fun client ~extra_args query (suite: suite_binary) ->
   match find_suite_binary_path client suite with
   | Error msg ->
       println ("error: " ^ msg);

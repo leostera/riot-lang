@@ -99,7 +99,7 @@ let syscall = fun ~name ~interest ~source ~timeout -> Effect.perform
 module Timer = struct
   type id = Timer_id.t
 
-  let send_after = fun target_pid (msg:Message.t) ~after ->
+  let send_after = fun target_pid (msg: Message.t) ~after ->
     let sch = Scheduler.get_scheduler () in
     let now = Kernel.Time.monotonic_time_nanos () in
     let duration_nanos = Int64.of_float (after *. 1_000_000_000.0) in
@@ -110,7 +110,7 @@ module Timer = struct
     ~mode:Timer.One_shot
     ~action:(Timer.Send_message (target_pid, msg))
 
-  let send_interval = fun target_pid (msg:Message.t) ~interval ->
+  let send_interval = fun target_pid (msg: Message.t) ~interval ->
     let sch = Scheduler.get_scheduler () in
     let now = Kernel.Time.monotonic_time_nanos () in
     let duration_nanos = Int64.of_float (interval *. 1_000_000_000.0) in

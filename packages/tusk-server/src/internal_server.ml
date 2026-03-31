@@ -153,7 +153,7 @@ and handle_get_package_info = fun state client_pid package_name ->
   Log.debug
   ("Server: Received GetPackageInfo for " ^ package_name ^ " from " ^ Pid.to_string client_pid);
   let package_opt =
-    List.find_opt (fun (pkg:Package.t) -> pkg.name = package_name) state.workspace.packages
+    List.find_opt (fun (pkg: Package.t) -> pkg.name = package_name) state.workspace.packages
   in
   (
     match package_opt with
@@ -205,7 +205,7 @@ and handle_find_executable = fun state client_pid name ->
   let workspace_packages = List.filter Package.is_workspace_member state.workspace.packages in
   let found =
     List.find_map
-    (fun (pkg:Package.t) -> List.find_opt (fun (bin:Package.binary) -> bin.name = name) pkg.binaries
+    (fun (pkg: Package.t) -> List.find_opt (fun (bin: Package.binary) -> bin.name = name) pkg.binaries
     |> Option.map (fun _ -> pkg))
     workspace_packages
   in
@@ -221,7 +221,7 @@ and handle_find_artifact = fun state client_pid package kind name ->
   Log.info ("Server: handle_find_artifact package=" ^ package ^ " kind=" ^ kind ^ " name=" ^ name);
   (* Find the package in the workspace *)
   let pkg_opt =
-    List.find_opt (fun (p:Package.t) -> p.name = package) state.workspace.packages
+    List.find_opt (fun (p: Package.t) -> p.name = package) state.workspace.packages
   in
   let response =
     match pkg_opt with

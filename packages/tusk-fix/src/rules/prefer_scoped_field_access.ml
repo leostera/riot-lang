@@ -1,6 +1,6 @@
 open Std
 
-let rec binding_operator_group_items = fun (binding:Syn.Cst.binding_operator_binding) ->
+let rec binding_operator_group_items = fun (binding: Syn.Cst.binding_operator_binding) ->
   binding :: (
     match binding.and_binding with
     | Some next -> binding_operator_group_items next
@@ -56,7 +56,7 @@ let receiver_looks_like_record =
   | _ ->
       false
 
-let make_diagnostic = fun ({ syntax_node; _ }:Syn.Cst.field_access_expression) -> Diagnostic.make
+let make_diagnostic = fun ({ syntax_node; _ }: Syn.Cst.field_access_expression) -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
 ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
@@ -113,7 +113,7 @@ let local_diagnostic_for_expression = fun ~inside_local_open ->
   }) as _record) when fields != []
   && let prefixes = fields
   |> List.filter_map
-  (fun (field:Syn.Cst.record_expression_field) -> ident_prefix_name field.field_path) in
+  (fun (field: Syn.Cst.record_expression_field) -> ident_prefix_name field.field_path) in
   List.length prefixes = List.length fields && match prefixes with
   | [] -> false
   | first :: rest -> List.for_all (String.equal first) rest -> Some (make_record_diagnostic syntax_node)
@@ -173,7 +173,7 @@ and diagnostics_for_expression = fun ~inside_local_open expr ->
     @ diagnostics_for_expression ~inside_local_open index
     | Syn.Cst.Expression.ObjectOverride { fields; _ } -> fields
     |> List.concat_map
-    (fun (field:Syn.Cst.object_override_field) -> Option.to_list field.value
+    (fun (field: Syn.Cst.object_override_field) -> Option.to_list field.value
     |> List.concat_map (diagnostics_for_expression ~inside_local_open))
     | Syn.Cst.Expression.InstanceVariableAssign { value; _ } -> diagnostics_for_expression
     ~inside_local_open
@@ -200,7 +200,7 @@ and diagnostics_for_expression = fun ~inside_local_open expr ->
     |> List.concat_map (diagnostics_for_expression ~inside_local_open)
     | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) -> fields
     |> List.concat_map
-    (fun (field:Syn.Cst.record_expression_field) -> diagnostics_for_expression
+    (fun (field: Syn.Cst.record_expression_field) -> diagnostics_for_expression
     ~inside_local_open
     field.value)
     | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) -> diagnostics_for_expression
@@ -208,7 +208,7 @@ and diagnostics_for_expression = fun ~inside_local_open expr ->
     base
     @ (fields
     |> List.concat_map
-    (fun (field:Syn.Cst.record_expression_field) -> diagnostics_for_expression
+    (fun (field: Syn.Cst.record_expression_field) -> diagnostics_for_expression
     ~inside_local_open
     field.value))
     | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
@@ -220,7 +220,7 @@ and diagnostics_for_expression = fun ~inside_local_open expr ->
     |> List.concat_map (diagnostics_for_match_case ~inside_local_open)
     | Syn.Cst.Expression.LetOperator { binding; body; _ } -> (binding_operator_group_items binding
     |> List.concat_map
-    (fun ({ bound_value; _ }:Syn.Cst.binding_operator_binding) -> diagnostics_for_expression
+    (fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) -> diagnostics_for_expression
     ~inside_local_open
     bound_value))
     @ diagnostics_for_expression ~inside_local_open body
@@ -254,7 +254,7 @@ and diagnostics_for_apply_argument = fun ~inside_local_open ->
 and diagnostics_for_let_binding = fun binding -> diagnostics_for_expression
 ~inside_local_open:false
 (Syn.Cst.LetBinding.value binding)
-and diagnostics_for_match_case = fun ~inside_local_open ({ guard; body; _ }:Syn.Cst.match_case) -> (Option.to_list
+and diagnostics_for_match_case = fun ~inside_local_open ({ guard; body; _ }: Syn.Cst.match_case) -> (Option.to_list
 guard
 |> List.concat_map (diagnostics_for_expression ~inside_local_open))
 @ diagnostics_for_expression ~inside_local_open body
@@ -272,7 +272,7 @@ let diagnostics_for_structure_item =
   | Syn.Cst.StructureItem.Expression expr -> diagnostics_for_expression ~inside_local_open:false expr
   | _ -> []
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file |> Option.unwrap_or ~default:[] |> List.concat_map diagnostics_for_structure_item
 

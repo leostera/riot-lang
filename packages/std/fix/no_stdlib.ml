@@ -81,7 +81,7 @@ let make_suggestion = fun text ->
   | None -> None
 
 let make_fix = fun token replacement -> Api.Fix.make
-~title:(((("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement))))
+~title:((((("Replace " ^ Syn.Ceibo.Red.SyntaxToken.text token ^ " with " ^ replacement)))))
 ~operations:[ Api.Fix.replace_token_with_text ~target:token ~text:replacement;  ]
 
 let make_diagnostic = fun token ->
@@ -114,7 +114,7 @@ let dedupe_diagnostics = fun diagnostics ->
           true)
     diagnostics
 
-let check_tree = fun (_ctx:Api.Rule.context) red_root ->
+let check_tree = fun (_ctx: Api.Rule.context) red_root ->
   let open Syn.Ceibo.Red in
     let open Syn.SyntaxKind in
       let open_stmts = Api.Traversal.find_by_kind OPEN_STMT red_root in

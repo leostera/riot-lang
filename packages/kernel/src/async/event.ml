@@ -16,7 +16,7 @@ module type Intf = sig
 end
 
 type t =
-  E : (module Intf with type t = 'state) * 'state -> t
+  E: (module Intf with type t = 'state) * 'state -> t
 
 let make = fun m e -> E (m, e)
 

@@ -106,7 +106,7 @@ let make_diagnostic = fun ~suggestion path -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
 ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-~suggestion:((((suggestion ^ " In `" ^ Path.to_string path ^ "`."))))
+~suggestion:(((((suggestion ^ " In `" ^ Path.to_string path ^ "`.")))))
 ()
 
 let diagnostics_for_name = fun path name ->
@@ -116,7 +116,7 @@ let diagnostics_for_name = fun path name ->
     else
       [
         make_diagnostic
-        ~suggestion:(((("Rename package `" ^ name ^ "` so it starts with a letter"))))
+        ~suggestion:((((("Rename package `" ^ name ^ "` so it starts with a letter")))))
         path;
 
       ]
@@ -127,7 +127,7 @@ let diagnostics_for_name = fun path name ->
     else
       [
         make_diagnostic
-        ~suggestion:(((("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only"))))
+        ~suggestion:((((("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only")))))
         path;
 
       ]
@@ -136,7 +136,7 @@ let diagnostics_for_name = fun path name ->
     if has_trailing_separator name then
       [
         make_diagnostic
-        ~suggestion:(((("Rename package `" ^ name ^ "` so it does not end with `-` or `_`"))))
+        ~suggestion:((((("Rename package `" ^ name ^ "` so it does not end with `-` or `_`")))))
         path;
 
       ]
@@ -145,7 +145,7 @@ let diagnostics_for_name = fun path name ->
   in
   starts_with_letter_diagnostic @ kebab_case_diagnostic @ trailing_separator_diagnostic
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let path = Path.v ctx.file_path in
   match package_name path with
   | Some name -> diagnostics_for_name path name

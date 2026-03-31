@@ -24,7 +24,7 @@ let rec child_expressions_of_function_body =
   | Syn.Cst.Expression expression -> [ expression ]
   | Syn.Cst.Cases { cases; _ } ->
       cases |> List.concat_map
-        (fun (case:Syn.Cst.match_case) ->
+        (fun (case: Syn.Cst.match_case) ->
           (
             match case.guard with
             | Some guard -> [ guard ]
@@ -55,7 +55,7 @@ and child_expressions =
   | Syn.Cst.Expression.Match expr ->
       expr.scrutinee :: (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> [ guard ]
@@ -65,7 +65,7 @@ and child_expressions =
   | Syn.Cst.Expression.Try expr ->
       expr.body :: (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> [ guard ]
@@ -95,11 +95,11 @@ let rec match_chain_depth =
   + (child_expressions (Syn.Cst.Expression.Match expr) |> List.map match_chain_depth |> max_list)
   | expr -> child_expressions expr |> List.map match_chain_depth |> max_list
 
-let make_diagnostic = fun (expr:Syn.Cst.match_expression) depth -> Diagnostic.make
+let make_diagnostic = fun (expr: Syn.Cst.match_expression) depth -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))))
-~suggestion:(((("Reduce nested match depth from " ^ Int.to_string depth ^ " by extracting a helper or flattening the control flow."))))
+~span:(((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)))))
+~suggestion:((((("Reduce nested match depth from " ^ Int.to_string depth ^ " by extracting a helper or flattening the control flow.")))))
 ()
 
 let rec diagnostics_for_expression = fun ~inside_match ->
@@ -117,7 +117,7 @@ let rec diagnostics_for_expression = fun ~inside_match ->
           nested
   | expr -> child_expressions expr |> List.concat_map (diagnostics_for_expression ~inside_match)
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

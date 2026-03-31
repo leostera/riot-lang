@@ -31,7 +31,7 @@ let output_writer =
   IO.Writer.of_write_src (module Write) ()
 
 let workspace_roots = fun workspace -> workspace.Workspace.packages
-|> List.map (fun (pkg:Package.t) -> Path.(workspace.root / pkg.path))
+|> List.map (fun (pkg: Package.t) -> Path.(workspace.root / pkg.path))
 
 type package_scope = {
   package_root: Path.t;
@@ -61,7 +61,7 @@ let load_fmt_scope =
       let packages =
         workspace.Workspace.packages
         |> List.map
-          (fun (pkg:Package.t) ->
+          (fun (pkg: Package.t) ->
             let package_toml = Path.(pkg.path / Path.v "tusk.toml") in
             {package_root = pkg.path; config = Fmt_config.load package_toml; })
       in
@@ -137,11 +137,11 @@ let write_json_file = fun ~root file_result -> write_json_event
 ~root
 (Krasny.Report.File file_result)
 
-let write_json_summary = fun ~root (summary:Krasny.Runner.summary) -> write_json_event
+let write_json_summary = fun ~root (summary: Krasny.Runner.summary) -> write_json_event
 ~root
 (Krasny.Report.Summary summary)
 
-let write_text_summary = fun ~mode (summary:Krasny.Runner.summary) -> Krasny.Report.write_text_summary
+let write_text_summary = fun ~mode (summary: Krasny.Runner.summary) -> Krasny.Report.write_text_summary
 ~writer:output_writer
 ~mode
 summary

@@ -131,7 +131,7 @@ let is_redundant_paren_inner_kind =
   | Syn.SyntaxKind.PAREN_EXPR -> true
   | _ -> false
 
-let syntax_hash = fun (result:Syn.Parser.parse_result) ->
+let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   let buffer = IO.Buffer.create 1_024 in
   let docstring_buffer = IO.Buffer.create 256 in
   let rec should_skip_token = fun ~parent_kind token ->

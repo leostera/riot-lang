@@ -1,12 +1,12 @@
 open Global
 open Collections
 
-let init = fun (info:Intf.suite_info) count ->
+let init = fun (info: Intf.suite_info) count ->
   println "";
   println ("Running " ^ string_of_int count ^ " benchmarks from " ^ info.name ^ "...");
   println ""
 
-let on_result = fun index (result:Bench_result.t) ->
+let on_result = fun index (result: Bench_result.t) ->
   match result.result with
   | Bench_result.Completed stats ->
       println ("[" ^ string_of_int index ^ "] " ^ result.name ^ ":");
@@ -25,7 +25,7 @@ let on_result = fun index (result:Bench_result.t) ->
       println ("  Error: " ^ msg);
       println ""
 
-let finalize = fun (summary:Bench_result.summary) -> println
+let finalize = fun (summary: Bench_result.summary) -> println
 ("Summary: "
 ^ string_of_int summary.total
 ^ " total, "
@@ -44,7 +44,7 @@ let on_comparison_start = fun index description count ->
   println ("  Running " ^ string_of_int count ^ " implementations...");
   println ""
 
-let on_comparison_case_result = fun index name (stats:Bench_result.statistics) ->
+let on_comparison_case_result = fun index name (stats: Bench_result.statistics) ->
   println ("  [" ^ string_of_int index ^ "] " ^ name ^ ":");
   println ("    iterations: " ^ string_of_int stats.iterations);
   println
@@ -56,7 +56,7 @@ let on_comparison_case_result = fun index name (stats:Bench_result.statistics) -
   println ("    max:        " ^ Time.Duration.to_secs_string ~precision:6 stats.max);
   println ""
 
-let on_comparison_summary = fun (result:Bench_result.comparison_result) ->
+let on_comparison_summary = fun (result: Bench_result.comparison_result) ->
   println "  Summary:";
   let fastest_name = result.fastest in
   (* Show each case relative to fastest *)

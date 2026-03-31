@@ -2,11 +2,11 @@ open Std
 
 module ProtocolError = struct
   type t =
-    P : {
-      error: 'err;
-      to_json: 'err -> Data.Json.t;
-      to_string: 'err -> string;
-    } -> t
+    P: {
+        error: 'err;
+        to_json: 'err -> Data.Json.t;
+        to_string: 'err -> string;
+      } -> t
 
   let to_json = fun (P { error; to_json; _ }) -> to_json error
 

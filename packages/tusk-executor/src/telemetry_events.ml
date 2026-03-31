@@ -157,7 +157,7 @@ let target_of_json =
   | _ ->
       Error (Data.Json.String "Invalid target")
 
-let action_to_json = fun (action:Action_node.t) ->
+let action_to_json = fun (action: Action_node.t) ->
   let action_hash = Crypto.Digest.hex (Action_node.get_hash action) in
   Data.Json.Object [
     ("action_hash", Data.Json.String action_hash);

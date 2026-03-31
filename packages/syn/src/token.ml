@@ -120,7 +120,7 @@ let trivia_kind_of_token_kind =
 let trivia_of_token = fun token ->
   Option.map (fun kind -> {kind; span = token.span}) (trivia_kind_of_token_kind token.kind)
 
-let trivia_to_token = fun (trivia:trivia) -> {
+let trivia_to_token = fun (trivia: trivia) -> {
   kind = token_kind_of_trivia_kind trivia.kind;
   span = trivia.span;
   leading_trivia = [];

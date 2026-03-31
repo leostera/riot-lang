@@ -14,12 +14,12 @@ type Message.t +=
 
 (** Internal Messages to Coordinator *)
 type coordinator_message =
-  WorkerReady : 'task worker -> coordinator_message
+  WorkerReady: 'task worker -> coordinator_message
 
 type Message.t +=
   ToCoordinator of coordinator_message
 
 module PublicMessages = struct
   type Message.t +=
-    WorkerReady : 'task worker -> Message.t
+    WorkerReady: 'task worker -> Message.t
 end

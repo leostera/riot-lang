@@ -156,7 +156,7 @@ let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry lis
   let entries =
     Action_graph.nodes action_graph
     |> List.concat_map
-      (fun (node:Action_node.t) ->
+      (fun (node: Action_node.t) ->
         let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
         List.map
         (fun out_path -> Tusk_store.Store.{
@@ -169,7 +169,7 @@ let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry lis
   in
   let seen = HashSet.create () in
   List.filter_map
-    (fun (entry:Tusk_store.Store.export_entry) ->
+    (fun (entry: Tusk_store.Store.export_entry) ->
       if HashSet.contains seen entry.name then
         None
       else
@@ -179,9 +179,9 @@ let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry lis
         ))
     entries
 
-let artifact_from_exports = fun ~package_hash (exports:Tusk_store.Store.export_entry list) ->
+let artifact_from_exports = fun ~package_hash (exports: Tusk_store.Store.export_entry list) ->
   let files =
-    List.map (fun (entry:Tusk_store.Store.export_entry) -> Path.v entry.name) exports
+    List.map (fun (entry: Tusk_store.Store.export_entry) -> Path.v entry.name) exports
   in
   Tusk_store.Artifact.{hash = package_hash; files}
 
@@ -309,7 +309,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       [ package.sources.src; package.sources.native; package.sources.tests;  ] in
       let outputs =
         List.concat_map
-        (fun (node:Action_node.t) -> node.value.outs)
+        (fun (node: Action_node.t) -> node.value.outs)
         (Action_graph.nodes action_graph)
       in
       let do_build = fun sandbox ->
@@ -379,12 +379,13 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           ~profile:profile_name
           ~target:target_triple_str
           ~exports:export_entries
-          |> Result.expect ~msg:(((("Failed to save package export manifest for " ^ package.name)))) in
+          |> Result.expect
+          ~msg:((((("Failed to save package export manifest for " ^ package.name))))) in
           Tusk_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
-          |> Result.expect ~msg:(((("Failed to materialize package exports for " ^ package.name))));
+          |> Result.expect ~msg:((((("Failed to materialize package exports for " ^ package.name)))));
           let package_outs =
             List.map
-            (fun (entry:Tusk_store.Store.export_entry) -> Path.(target_dir / Path.v entry.name))
+            (fun (entry: Tusk_store.Store.export_entry) -> Path.(target_dir / Path.v entry.name))
             export_entries
           in
           let _ = Tusk_store.Store.save
@@ -393,7 +394,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           ~hash:package_hash
           ~sandbox_dir:target_dir
           ~outs:package_outs
-          |> Result.expect ~msg:(((("Failed to save package hash artifact for " ^ package.name)))) in
+          |> Result.expect ~msg:((((("Failed to save package hash artifact for " ^ package.name))))) in
           (* Mark as Built with Fresh status *)
           (
             match Tusk_planner.Package_graph.get_node_by_key package_graph planned_key with

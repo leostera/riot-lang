@@ -1,7 +1,7 @@
 open Global
 open Collections
 
-let init = fun (suite:Intf.suite_info) total ->
+let init = fun (suite: Intf.suite_info) total ->
   (
     match (suite.source_file, suite.binary_path) with
     | Some source, Some binary ->
@@ -16,7 +16,7 @@ let init = fun (suite:Intf.suite_info) total ->
   println "";
   println ("running " ^ string_of_int total ^ " tests")
 
-let on_result = fun _idx (result:Test_result.t) ->
+let on_result = fun _idx (result: Test_result.t) ->
   let prefix =
     match result.test_type with
     | Test_case.UnitTest -> "test"
@@ -36,7 +36,7 @@ let on_result = fun _idx (result:Test_result.t) ->
   | Test_result.Skipped ->
       println (prefix ^ " " ^ result.name ^ " ... skipped")
 
-let finalize = fun (summary:Test_result.summary) ->
+let finalize = fun (summary: Test_result.summary) ->
   println "";
   let status =
     if summary.failed > 0 then

@@ -1,7 +1,7 @@
 open Std
 open Std.Data
 
-let span_to_json = fun (span:Ceibo.Span.t) -> Json.Object [
+let span_to_json = fun (span: Ceibo.Span.t) -> Json.Object [
   ("start", Json.Int span.start);
   ("end", Json.Int span.end_)
 ]
@@ -24,12 +24,12 @@ let option_to_json = fun to_json ->
 
 let token_to_json = fun token -> syntax_token_to_json (Cst.Token.syntax_token token)
 
-let docstring_to_json = fun (docstring:Cst.Docstring.t) -> Json.Object [
+let docstring_to_json = fun (docstring: Cst.Docstring.t) -> Json.Object [
   ("syntax_node", syntax_node_to_json (Cst.Docstring.syntax_node docstring));
   ("docstring_token", token_to_json (Cst.Docstring.token docstring))
 ]
 
-let comment_to_json = fun (comment:Cst.Comment.t) -> Json.Object [
+let comment_to_json = fun (comment: Cst.Comment.t) -> Json.Object [
   ("syntax_node", syntax_node_to_json (Cst.Comment.syntax_node comment));
   ("comment_token", token_to_json (Cst.Comment.token comment))
 ]
@@ -65,20 +65,22 @@ let rec ident_to_json =
     ("name_token", token_to_json name_token)
   ]
 
-let rec object_type_field_to_json = fun ({ syntax_node; field_name; field_type }:Cst.object_type_field) -> Json.Object [
+let rec object_type_field_to_json = fun (
+  { syntax_node; field_name; field_type }: Cst.object_type_field
+) -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("field_name", token_to_json field_name);
   ("field_type", core_type_to_json field_type)
 ]
 and record_type_field_to_json = fun
   ({
-    syntax_node;
-    field_name;
-    mutable_token;
-    field_type;
-    semicolon_token;
-    attributes
-  }:Cst.record_type_field) ->
+      syntax_node;
+      field_name;
+      mutable_token;
+      field_type;
+      semicolon_token;
+      attributes
+    }: Cst.record_type_field) ->
   let attributes = List.map attribute_to_json attributes in
   Json.Object (
     [
@@ -95,13 +97,13 @@ and record_type_field_to_json = fun
   )
 and poly_variant_tag_to_json = fun
   ({
-    syntax_node;
-    attributes;
-    bar_token;
-    tag_name;
-    separator_token;
-    payload_type
-  }:Cst.poly_variant_tag) ->
+      syntax_node;
+      attributes;
+      bar_token;
+      tag_name;
+      separator_token;
+      payload_type
+    }: Cst.poly_variant_tag) ->
   let attributes = List.map attribute_to_json attributes in
   Json.Object (
     [
@@ -167,7 +169,7 @@ and exponent_sign_to_json =
   function
   | Cst.Positive -> Json.String "positive"
   | Cst.Negative -> Json.String "negative"
-and float_exponent_to_json = fun ({ marker; sign; digits }:Cst.float_exponent) -> Json.Object [
+and float_exponent_to_json = fun ({ marker; sign; digits }: Cst.float_exponent) -> Json.Object [
   ("marker", Json.String marker);
   ("sign", option_to_json exponent_sign_to_json sign);
   ("digits", Json.String digits)
@@ -359,24 +361,23 @@ and core_type_to_json =
     ("syntax_node", syntax_node_to_json syntax_node);
     ("fields", Json.Array (List.map object_type_field_to_json fields))
   ]
-and module_type_constraint_to_json = fun ({
-  syntax_node;
-  constrained_type;
-  replacement_type;
-  separator_token
-}:Cst.module_type_constraint) -> Json.Object [
+and module_type_constraint_to_json = fun (
+  { syntax_node; constrained_type; replacement_type; separator_token }: Cst.module_type_constraint
+) -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("constrained_type", core_type_to_json constrained_type);
   ("replacement_type", core_type_to_json replacement_type);
   ("separator_token", token_to_json separator_token)
 ]
-and package_type_to_json = fun ({ syntax_node; module_type_path; constraints; attribute }:Cst.package_type) -> Json.Object [
+and package_type_to_json = fun (
+  { syntax_node; module_type_path; constraints; attribute }: Cst.package_type
+) -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("module_type_path", ident_to_json module_type_path);
   ("constraints", Json.Array (List.map module_type_constraint_to_json constraints));
   ("attribute", option_to_json attribute_to_json attribute)
 ]
-and functor_parameter_to_json = fun ({ syntax_node; name_token; module_type }:Cst.functor_parameter) -> Json.Object [
+and functor_parameter_to_json = fun ({ syntax_node; name_token; module_type }: Cst.functor_parameter) -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("name_token", token_to_json name_token);
   ("module_type", module_type_to_json module_type)
@@ -479,7 +480,7 @@ and module_expression_to_json =
     ("tag", Json.String "extension");
     ("extension", extension_to_json extension)
   ]
-and exception_declaration_to_json = fun (decl:Cst.exception_declaration) ->
+and exception_declaration_to_json = fun (decl: Cst.exception_declaration) ->
   let rhs =
     match decl.rhs with
     | None -> Json.Null
@@ -691,7 +692,9 @@ and pattern_to_json =
         ("inner", pattern_to_json inner)
       ]
       @ pattern_attribute_fields attributes)
-and constructor_pattern_existentials_to_json = fun ({ syntax_node; binders }:Cst.constructor_pattern_existentials) -> Json.Object [
+and constructor_pattern_existentials_to_json = fun (
+  { syntax_node; binders }: Cst.constructor_pattern_existentials
+) -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("binders", Json.Array (List.map type_binder_to_json binders))
 ]
@@ -700,11 +703,11 @@ and record_pattern_field_to_json = fun field -> Json.Object [
   ("field_path", ident_to_json field.field_path);
   ("pattern", option_to_json pattern_to_json field.pattern)
 ]
-and tuple_pattern_element_to_json = fun ({ label_token; pattern }:Cst.tuple_pattern_element) -> Json.Object [
+and tuple_pattern_element_to_json = fun ({ label_token; pattern }: Cst.tuple_pattern_element) -> Json.Object [
   ("label_token", option_to_json token_to_json label_token);
   ("pattern", pattern_to_json pattern)
 ]
-and tuple_pattern_open_tail_to_json = fun ({ dotdot_token }:Cst.tuple_pattern_open_tail) -> Json.Object [
+and tuple_pattern_open_tail_to_json = fun ({ dotdot_token }: Cst.tuple_pattern_open_tail) -> Json.Object [
   ("dotdot_token", token_to_json dotdot_token)
 ]
 and record_pattern_closedness_to_json =
@@ -766,7 +769,7 @@ and parameter_to_json =
     ("binders", Json.Array (List.map type_binder_to_json binders))
   ]
 and literal_to_json = fun literal -> constant_to_json literal
-and attribute_to_json = fun (attr:Cst.attribute) -> Json.Object [
+and attribute_to_json = fun (attr: Cst.attribute) -> Json.Object [
   ("syntax_node", syntax_node_to_json attr.syntax_node);
   ("sigil_token", token_to_json attr.sigil_token);
   ("name", ident_to_json attr.name);
@@ -779,7 +782,7 @@ and payload_to_json =
     ("tokens", Json.Array (List.map token_to_json tokens));
 
   ]
-and extension_to_json = fun (ext:Cst.extension) -> Json.Object [
+and extension_to_json = fun (ext: Cst.extension) -> Json.Object [
   ("syntax_node", syntax_node_to_json ext.syntax_node);
   ("sigil_token", token_to_json ext.sigil_token);
   ("name", ident_to_json ext.name);
@@ -787,13 +790,13 @@ and extension_to_json = fun (ext:Cst.extension) -> Json.Object [
 ]
 and binding_operator_binding_to_json = fun
   ({
-    keyword_token;
-    operator_token;
-    equals_token;
-    binding_pattern;
-    bound_value;
-    and_binding
-  }:Cst.binding_operator_binding) ->
+      keyword_token;
+      operator_token;
+      equals_token;
+      binding_pattern;
+      bound_value;
+      and_binding
+    }: Cst.binding_operator_binding) ->
   Json.Object [
     ("keyword_token", token_to_json keyword_token);
     ("operator_token", token_to_json operator_token);
@@ -1432,7 +1435,7 @@ and object_override_field_to_json = fun field -> Json.Object [
   ("field_name", token_to_json field.field_name);
   ("value", option_to_json expression_to_json field.value)
 ]
-and function_case_body_to_json = fun ({ syntax_node; cases }:Cst.function_case_body) -> Json.Object [
+and function_case_body_to_json = fun ({ syntax_node; cases }: Cst.function_case_body) -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("cases", Json.Array (List.map match_case_to_json cases))
 ]
@@ -1578,7 +1581,7 @@ let variant_constructor_to_json = fun constr ->
     @ [ ("arrow_token", option_to_json token_to_json (Cst.VariantConstructor.arrow_token constr)) ]
   )
 
-let type_constraint_to_json = fun ({ syntax_node; left; right }:Cst.type_constraint) -> Json.Object [
+let type_constraint_to_json = fun ({ syntax_node; left; right }: Cst.type_constraint) -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("left", core_type_to_json left);
   ("right", core_type_to_json right)
@@ -1771,7 +1774,7 @@ let open_statement_to_json = fun stmt ->
     ("bang_token", option_to_json token_to_json (Cst.OpenStatement.bang_token stmt))
   ]
 
-let value_declaration_to_json = fun (decl:Cst.value_declaration) -> Json.Object [
+let value_declaration_to_json = fun (decl: Cst.value_declaration) -> Json.Object [
   ("syntax_node", syntax_node_to_json (Cst.ValueDeclaration.syntax_node decl));
   ("keyword_token", token_to_json (Cst.ValueDeclaration.keyword_token decl));
   ("name_tokens", Json.Array (List.map token_to_json (Cst.ValueDeclaration.name_tokens decl)));
@@ -1780,7 +1783,7 @@ let value_declaration_to_json = fun (decl:Cst.value_declaration) -> Json.Object 
   ("trailing_comment", option_to_json comment_to_json (Cst.ValueDeclaration.trailing_comment decl))
 ]
 
-let external_declaration_to_json = fun (decl:Cst.external_declaration) -> Json.Object [
+let external_declaration_to_json = fun (decl: Cst.external_declaration) -> Json.Object [
   ("syntax_node", syntax_node_to_json decl.syntax_node);
   ("name_tokens", Json.Array (List.map token_to_json decl.name_tokens));
   ("colon_token", token_to_json decl.colon_token);
@@ -2045,7 +2048,7 @@ and class_type_to_json =
     ("extension", extension_to_json extension)
   ]
 
-let class_declaration_to_json = fun (decl:Cst.ClassDeclaration.t) -> Json.Object [
+let class_declaration_to_json = fun (decl: Cst.ClassDeclaration.t) -> Json.Object [
   ("tag", Json.String "declaration");
   ("syntax_node", syntax_node_to_json (Cst.ClassDeclaration.syntax_node decl));
   (
@@ -2064,7 +2067,7 @@ let class_declaration_to_json = fun (decl:Cst.ClassDeclaration.t) -> Json.Object
   ("class_type", class_type_to_json (Cst.ClassDeclaration.class_type decl))
 ]
 
-let class_definition_to_json = fun (decl:Cst.ClassDefinition.t) -> Json.Object [
+let class_definition_to_json = fun (decl: Cst.ClassDefinition.t) -> Json.Object [
   ("tag", Json.String "definition");
   ("syntax_node", syntax_node_to_json (Cst.ClassDefinition.syntax_node decl));
   (
@@ -2086,14 +2089,14 @@ let class_definition_to_json = fun (decl:Cst.ClassDefinition.t) -> Json.Object [
 
 let class_type_declaration_to_json = fun
   ({
-    syntax_node;
-    type_params;
-    declaration_extension;
-    declaration_attributes;
-    class_type_name;
-    class_type_body;
+      syntax_node;
+      type_params;
+      declaration_extension;
+      declaration_attributes;
+      class_type_name;
+      class_type_body;
 
-  }:Cst.class_type_declaration) ->
+    }: Cst.class_type_declaration) ->
   Json.Object [
     ("syntax_node", syntax_node_to_json syntax_node);
     ("type_params", Json.Array (List.map type_parameter_to_json type_params));
@@ -2103,7 +2106,7 @@ let class_type_declaration_to_json = fun
     ("class_type_body", class_type_to_json class_type_body)
   ]
 
-let include_statement_to_json = fun (stmt:Cst.include_statement) ->
+let include_statement_to_json = fun (stmt: Cst.include_statement) ->
   let target =
     match stmt.target with
     | Cst.ModuleExpression module_expression -> Json.Object [
@@ -2269,7 +2272,7 @@ let of_source_file = fun source_file ->
       Json.Array items
     ) ]
 
-let of_error = fun (error:Cst_builder.error) -> Json.Object [
+let of_error = fun (error: Cst_builder.error) -> Json.Object [
   ("message", Json.String error.message);
   ("syntax_kind", Json.String (Syntax_kind.to_string error.syntax_kind));
   ("span", span_to_json error.span);

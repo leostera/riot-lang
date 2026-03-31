@@ -9,7 +9,7 @@ type red_token = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_token
 
 type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
 
-let rec binding_operator_bindings_of_chain = fun (binding:Syn.Cst.binding_operator_binding) ->
+let rec binding_operator_bindings_of_chain = fun (binding: Syn.Cst.binding_operator_binding) ->
   binding :: (
     match binding.and_binding with
     | Some next -> binding_operator_bindings_of_chain next
@@ -171,7 +171,7 @@ and let_bindings_of_expression = fun expr ->
   @ let_bindings_of_expression index
   | Syn.Cst.Expression.ObjectOverride { fields; _ } -> fields
   |> List.concat_map
-  (fun (field:Syn.Cst.object_override_field) -> Option.to_list field.value |> List.concat_map let_bindings_of_expression)
+  (fun (field: Syn.Cst.object_override_field) -> Option.to_list field.value |> List.concat_map let_bindings_of_expression)
   | Syn.Cst.Expression.InstanceVariableAssign { value; _ } -> let_bindings_of_expression value
   | Syn.Cst.Expression.FieldAssign { target; value; _ } -> let_bindings_of_expression
   (Syn.Cst.Expression.FieldAccess target)
@@ -188,19 +188,19 @@ and let_bindings_of_expression = fun expr ->
   | Syn.Cst.Expression.Array { elements; _ } -> elements |> List.concat_map let_bindings_of_expression
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) -> fields
   |> List.concat_map
-  (fun (field:Syn.Cst.record_expression_field) -> let_bindings_of_expression field.value)
+  (fun (field: Syn.Cst.record_expression_field) -> let_bindings_of_expression field.value)
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) -> let_bindings_of_expression
   base
   @ (fields
   |> List.concat_map
-  (fun (field:Syn.Cst.record_expression_field) -> let_bindings_of_expression field.value))
+  (fun (field: Syn.Cst.record_expression_field) -> let_bindings_of_expression field.value))
   | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
   | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) -> let_bindings_of_expression body
   | Syn.Cst.Expression.Fun { body; _ } -> let_bindings_of_function_body body
   | Syn.Cst.Expression.Function { cases; _ } -> cases |> List.concat_map let_bindings_of_match_case
   | Syn.Cst.Expression.LetOperator { binding; body; _ } -> (binding_operator_bindings_of_chain binding
   |> List.concat_map
-  (fun ({ bound_value; _ }:Syn.Cst.binding_operator_binding) -> let_bindings_of_expression bound_value))
+  (fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) -> let_bindings_of_expression bound_value))
   @ let_bindings_of_expression body
   | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } -> let_bindings_of_expression bound_value
   @ (Option.to_list and_binding |> List.concat_map let_bindings_of_let_binding)
@@ -224,7 +224,7 @@ and let_bindings_of_apply_argument =
   | Syn.Cst.Optional { value; _ } -> Option.to_list value |> List.concat_map let_bindings_of_expression
 and let_bindings_of_let_binding = fun binding -> binding
 :: let_bindings_of_expression (Syn.Cst.LetBinding.value binding)
-and let_bindings_of_match_case = fun ({ guard; body; _ }:Syn.Cst.match_case) -> (Option.to_list guard
+and let_bindings_of_match_case = fun ({ guard; body; _ }: Syn.Cst.match_case) -> (Option.to_list guard
 |> List.concat_map let_bindings_of_expression)
 @ let_bindings_of_expression body
 and let_bindings_of_class_field =
@@ -333,7 +333,7 @@ let rec expressions_of_expression = fun expr ->
     @ expressions_of_expression index
     | Syn.Cst.Expression.ObjectOverride { fields; _ } -> fields
     |> List.concat_map
-    (fun (field:Syn.Cst.object_override_field) -> Option.to_list field.value |> List.concat_map expressions_of_expression)
+    (fun (field: Syn.Cst.object_override_field) -> Option.to_list field.value |> List.concat_map expressions_of_expression)
     | Syn.Cst.Expression.InstanceVariableAssign { value; _ } -> expressions_of_expression value
     | Syn.Cst.Expression.FieldAssign { target; value; _ } -> expressions_of_expression
     (Syn.Cst.Expression.FieldAccess target)
@@ -350,19 +350,19 @@ let rec expressions_of_expression = fun expr ->
     | Syn.Cst.Expression.Array { elements; _ } -> elements |> List.concat_map expressions_of_expression
     | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) -> fields
     |> List.concat_map
-    (fun (field:Syn.Cst.record_expression_field) -> expressions_of_expression field.value)
+    (fun (field: Syn.Cst.record_expression_field) -> expressions_of_expression field.value)
     | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) -> expressions_of_expression
     base
     @ (fields
     |> List.concat_map
-    (fun (field:Syn.Cst.record_expression_field) -> expressions_of_expression field.value))
+    (fun (field: Syn.Cst.record_expression_field) -> expressions_of_expression field.value))
     | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
     | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) -> expressions_of_expression body
     | Syn.Cst.Expression.Fun { body; _ } -> expressions_of_function_body body
     | Syn.Cst.Expression.Function { cases; _ } -> cases |> List.concat_map expressions_of_match_case
     | Syn.Cst.Expression.LetOperator { binding; body; _ } -> (binding_operator_bindings_of_chain binding
     |> List.concat_map
-    (fun ({ bound_value; _ }:Syn.Cst.binding_operator_binding) -> expressions_of_expression bound_value))
+    (fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) -> expressions_of_expression bound_value))
     @ expressions_of_expression body
     | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } -> expressions_of_expression bound_value
     @ (Option.to_list and_binding |> List.concat_map expressions_of_let_binding)
@@ -388,7 +388,7 @@ and expressions_of_apply_argument =
   | Syn.Cst.Optional { value; _ } -> Option.to_list value |> List.concat_map expressions_of_expression
 and expressions_of_let_binding = fun binding -> expressions_of_expression
 (Syn.Cst.LetBinding.value binding)
-and expressions_of_match_case = fun ({ guard; body; _ }:Syn.Cst.match_case) -> (Option.to_list guard
+and expressions_of_match_case = fun ({ guard; body; _ }: Syn.Cst.match_case) -> (Option.to_list guard
 |> List.concat_map expressions_of_expression)
 @ expressions_of_expression body
 and expressions_of_class_field =

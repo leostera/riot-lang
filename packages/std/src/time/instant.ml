@@ -21,7 +21,7 @@ let duration_since = fun ~earlier later ->
   let secs_diff = later.secs - earlier.secs in
   let nanos_diff = later.nanos - earlier.nanos in
   if nanos_diff < 0 then
-    Duration.make ~secs:((((secs_diff - 1)))) ~nanos:((((nanos_diff + 1_000_000_000))))
+    Duration.make ~secs:(((((secs_diff - 1))))) ~nanos:(((((nanos_diff + 1_000_000_000)))))
   else
     Duration.make ~secs:secs_diff ~nanos:nanos_diff
 
@@ -31,7 +31,7 @@ let saturating_duration_since = fun ~earlier later ->
   if secs_diff < 0 || (secs_diff = 0 && nanos_diff < 0) then
     Duration.zero
   else if nanos_diff < 0 then
-    Duration.make ~secs:((((secs_diff - 1)))) ~nanos:((((nanos_diff + 1_000_000_000))))
+    Duration.make ~secs:(((((secs_diff - 1))))) ~nanos:(((((nanos_diff + 1_000_000_000)))))
   else
     Duration.make ~secs:secs_diff ~nanos:nanos_diff
 

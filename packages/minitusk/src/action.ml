@@ -281,7 +281,7 @@ let execute_action = fun ~project_root ~package ~cc_flags ~ld_flags ~uses_stdlib
       ) @ wrapped_cc_flags @ wrapped_ld_flags
       in
       match Ocaml_platform.Ocamlc.run
-      ~includes:(((("." :: final_includes))))
+      ~includes:((((("." :: final_includes)))))
       ~output:(Some archive_name)
       ~mode:Ocaml_platform.Library
       ~flags
@@ -398,7 +398,7 @@ let execute_build_plan = fun ~build_results plan ->
   (* 6. Restore original directory *)
   Io.chdir original_cwd
 
-let promote_outputs = fun (plan:build_plan) ->
+let promote_outputs = fun (plan: build_plan) ->
   (* Extract package name from first output path *)
   let package_name =
     match plan.outputs with
@@ -451,7 +451,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
   (* Create sandbox directory *)
   let opens = fun mods ->
     List.filter_map
-      (fun (node:Dep_graph.dep Graph.node) ->
+      (fun (node: Dep_graph.dep Graph.node) ->
         let dep = node.value in
         match dep.kind with
         | ML mod_
@@ -591,7 +591,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
     let archive_name = Dep_graph.Module_name.cma dep_graph.package_name in
     let dependencies = Dep_graph.get_dependencies dep_graph in
     List.iter
-      (fun (binary:Package.binary) ->
+      (fun (binary: Package.binary) ->
         Printf.printf "  Building binary: %s from %s\n" binary.name binary.path;
         (* Copy the binary source *)
         actions := CopyFile {src = binary.path; dst = binary.path} :: !actions;

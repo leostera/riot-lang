@@ -60,7 +60,7 @@ let rec case_pattern_kind =
   | Syn.Cst.Pattern.Effect _
   | Syn.Cst.Pattern.LocalOpen _ -> OtherPattern
 
-let suggestion_for_match = fun (expr:Syn.Cst.match_expression) ->
+let suggestion_for_match = fun (expr: Syn.Cst.match_expression) ->
   match expr.cases with
   | [first_case;second_case] -> (
       match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
@@ -86,7 +86,7 @@ let suggestion_for_match = fun (expr:Syn.Cst.match_expression) ->
     )
   | _ -> "Rewrite this boolean match as an `if` expression."
 
-let should_flag_match = fun (expr:Syn.Cst.match_expression) ->
+let should_flag_match = fun (expr: Syn.Cst.match_expression) ->
   match expr.cases with
   | [first_case;second_case] ->
       first_case.guard = None
@@ -103,7 +103,7 @@ let should_flag_match = fun (expr:Syn.Cst.match_expression) ->
       | _ -> false
       | _ -> false
 
-let make_diagnostic = fun (expr:Syn.Cst.match_expression) -> Diagnostic.make
+let make_diagnostic = fun (expr: Syn.Cst.match_expression) -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
 ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
@@ -119,7 +119,7 @@ let diagnostic_for_expression =
   | Syn.Cst.Expression.Match expr when safe_should_flag_match expr -> Some (make_diagnostic expr)
   | _ -> None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

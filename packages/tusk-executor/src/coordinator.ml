@@ -72,7 +72,7 @@ let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry lis
   let entries =
     Action_graph.nodes action_graph
     |> List.concat_map
-      (fun (node:Action_node.t) ->
+      (fun (node: Action_node.t) ->
         let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
         List.map
         (fun out_path -> Tusk_store.Store.{
@@ -85,7 +85,7 @@ let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry lis
   in
   let seen = HashSet.create () in
   List.filter_map
-    (fun (entry:Tusk_store.Store.export_entry) ->
+    (fun (entry: Tusk_store.Store.export_entry) ->
       if HashSet.contains seen entry.name then
         None
       else
@@ -95,13 +95,13 @@ let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry lis
         ))
     entries
 
-let artifact_from_exports = fun ~package_hash (exports:Tusk_store.Store.export_entry list) ->
+let artifact_from_exports = fun ~package_hash (exports: Tusk_store.Store.export_entry list) ->
   let files =
-    List.map (fun (entry:Tusk_store.Store.export_entry) -> Path.v entry.name) exports
+    List.map (fun (entry: Tusk_store.Store.export_entry) -> Path.v entry.name) exports
   in
   Tusk_store.Artifact.{hash = package_hash; files}
 
-let summarize_results = fun ~package_graph (results:Package_builder.build_result list) ->
+let summarize_results = fun ~package_graph (results: Package_builder.build_result list) ->
   let cached_count, built_count, failed_count =
     List.fold_left
       (fun ((cached, built, failed)) result ->
@@ -122,13 +122,13 @@ let summarize_results = fun ~package_graph (results:Package_builder.build_result
 
   }
 
-let result_is_success = fun (result:Package_builder.build_result) ->
+let result_is_success = fun (result: Package_builder.build_result) ->
   match result.status with
   | Package_builder.Built _
   | Cached _ -> true
   | Failed _ -> false
 
-let result_is_failed = fun (result:Package_builder.build_result) ->
+let result_is_failed = fun (result: Package_builder.build_result) ->
   match result.status with
   | Package_builder.Failed _ -> true
   | Cached _
@@ -173,15 +173,16 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
   ~profile:runtime.profile_name
   ~target:runtime.target_name
   ~exports:runtime.export_entries
-  |> Result.expect ~msg:(((("Failed to save package export manifest for " ^ runtime.package.name)))) in
+  |> Result.expect
+  ~msg:((((("Failed to save package export manifest for " ^ runtime.package.name))))) in
   Tusk_store.Store.materialize_package_exports
   store
   ~exports:runtime.export_entries
   ~target_dir:runtime.target_dir
-  |> Result.expect ~msg:(((("Failed to materialize package exports for " ^ runtime.package.name))));
+  |> Result.expect ~msg:((((("Failed to materialize package exports for " ^ runtime.package.name)))));
   let package_outs =
     List.map
-    (fun (entry:Tusk_store.Store.export_entry) -> Path.(runtime.target_dir / Path.v entry.name))
+    (fun (entry: Tusk_store.Store.export_entry) -> Path.(runtime.target_dir / Path.v entry.name))
     runtime.export_entries
   in
   let _ = Tusk_store.Store.save
@@ -190,7 +191,7 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
   ~hash:runtime.hash
   ~sandbox_dir:runtime.target_dir
   ~outs:package_outs
-  |> Result.expect ~msg:(((("Failed to save package hash artifact for " ^ runtime.package.name)))) in
+  |> Result.expect ~msg:((((("Failed to save package hash artifact for " ^ runtime.package.name))))) in
   let artifact = artifact_from_exports ~package_hash:runtime.hash runtime.export_entries in
   let all_cached =
     HashMap.into_iter runtime.completed_actions
@@ -266,7 +267,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
     let target_dir = target_dir_for package.name in
     let all_exports_present =
       List.for_all
-        (fun (entry:Tusk_store.Store.export_entry) ->
+        (fun (entry: Tusk_store.Store.export_entry) ->
           let dst = Path.(target_dir / Path.v entry.name) in
           match Fs.exists dst with
           | Ok true -> true
@@ -808,14 +809,14 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
           HashMap.into_iter runtimes
           |> Iter.Iterator.to_list
           |> List.iter
-          (fun ((package_key, pkg_runtime):Package.key * package_runtime) -> finalize_if_complete
+          (fun ((package_key, pkg_runtime): Package.key * package_runtime) -> finalize_if_complete
           package_key
           pkg_runtime);
           let after = HashMap.len package_results in
           if after = before then
             (
               HashMap.into_iter runtimes |> Iter.Iterator.to_list |> List.iter
-                (fun ((package_key, pkg_runtime):Package.key * package_runtime) ->
+                (fun ((package_key, pkg_runtime): Package.key * package_runtime) ->
                   if Option.is_none (HashMap.get package_results package_key) then
                     (
                       let error = "No ready actions remaining for package" in

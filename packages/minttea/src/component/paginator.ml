@@ -69,7 +69,7 @@ page
 
 }
 
-let update = fun t (e:Event.t) ->
+let update = fun t (e: Event.t) ->
   match e with
   | KeyDown ((Key "h" | Left), _) -> prev_page t
   | KeyDown ((Key "l" | Right), _) -> next_page t

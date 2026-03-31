@@ -13,7 +13,7 @@ type output_mode =
   | Human
   | Json
 
-let write_json_event = fun (json:Data.Json.t) ->
+let write_json_event = fun (json: Data.Json.t) ->
   print (Data.Json.to_string json);
   print "\n"
 
@@ -22,7 +22,7 @@ let telemetry_event_to_json = fun event ->
   | Some json -> json
   | None -> Data.Json.Null
 
-let build_stats_to_json = fun (stats:Local_session.build_stats) -> Data.Json.Object [
+let build_stats_to_json = fun (stats: Local_session.build_stats) -> Data.Json.Object [
   ("duration_ms", Data.Json.Int stats.duration_ms);
   ("packages_built", Data.Json.Int stats.packages_built);
   ("packages_failed", Data.Json.Int stats.packages_failed);
@@ -32,7 +32,7 @@ let build_stats_to_json = fun (stats:Local_session.build_stats) -> Data.Json.Obj
 
 ]
 
-let package_results_to_json = fun (results:Tusk_executor.Package_builder.build_result list) -> Data.Json.Array (List.map
+let package_results_to_json = fun (results: Tusk_executor.Package_builder.build_result list) -> Data.Json.Array (List.map
 Tusk_executor.Package_builder.build_result_to_json
 results)
 
@@ -187,9 +187,11 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
       ~scope:((
         (
           (
-            match scope with
-            | Runtime -> Local_session.Runtime
-            | Dev -> Local_session.Dev
+            (
+              match scope with
+              | Runtime -> Local_session.Runtime
+              | Dev -> Local_session.Dev
+            )
           )
         )
       ))
@@ -247,7 +249,7 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                 failed_count := !failed_count + List.length errors;
                 (* Display error details from failed build *)
                 List.iter
-                  (fun (error:Tusk_executor.Package_builder.build_result) ->
+                  (fun (error: Tusk_executor.Package_builder.build_result) ->
                     match error.status with
                     | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ExecutionFailed {
                       message

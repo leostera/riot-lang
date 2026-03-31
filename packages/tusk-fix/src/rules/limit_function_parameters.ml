@@ -60,10 +60,10 @@ let make_diagnostic = fun binding counts ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(Syn.Cst.Token.span token)
-  ~suggestion:(((("This function has "
+  ~suggestion:((((("This function has "
   ^ Int.to_string total
   ^ " parameters; consider introducing a named record parameter because "
-  ^ threshold_description counts))))
+  ^ threshold_description counts)))))
   ())
   | None -> None
 
@@ -74,7 +74,7 @@ let diagnostic_for_binding = fun binding ->
   else
     None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

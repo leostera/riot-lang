@@ -2,27 +2,27 @@ open Std
 
 (** Error type that wraps driver errors with their conversion functions *)
 type error =
-  DriverError : {
-    error: 'err;
-    to_string: 'err -> string;
-    to_json: 'err -> Data.Json.t;
-  } -> error
+  DriverError: {
+      error: 'err;
+      to_string: 'err -> string;
+      to_json: 'err -> Data.Json.t;
+    } -> error
 
 (** Synchronous connection - executes SQL directly in caller's process *)
 type t =
-  | Connection : {
-    id: string;
-    driver_conn: 'connection;
-    driver: (module Sqlx_driver.Driver.Intf with type connection = 'connection);
-    created_at: Time.Instant.t;
-    mutable last_used: Time.Instant.t;
-  } -> t
+  | Connection: {
+      id: string;
+      driver_conn: 'connection;
+      driver: (module Sqlx_driver.Driver.Intf with type connection = 'connection);
+      created_at: Time.Instant.t;
+      mutable last_used: Time.Instant.t;
+    } -> t
 
 type config =
-  | Config : {
-    driver: (module Sqlx_driver.Driver.Intf with type config = 'config);
-    config: 'config;
-  } -> config
+  | Config: {
+      driver: (module Sqlx_driver.Driver.Intf with type config = 'config);
+      config: 'config;
+    } -> config
 
 let gen_id = fun () -> "conn_"
 ^ string_of_int (Random.int 1_000_000)

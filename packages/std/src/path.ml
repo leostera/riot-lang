@@ -67,7 +67,7 @@ let of_string = fun s ->
   else
     Result.err (InvalidUtf8 {path = s})
 
-let v = fun path -> of_string path |> Result.expect ~msg:(((("Invalid string path " ^ path))))
+let v = fun path -> of_string path |> Result.expect ~msg:((((("Invalid string path " ^ path)))))
 
 let to_string = fun t -> t
 

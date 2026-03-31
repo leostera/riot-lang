@@ -70,13 +70,13 @@ let test_dev_scope_keeps_only_dev_outputs = fun () ->
   let no_library = projected.library = None in
   let no_commands = projected.commands = [] in
   let no_runtime_sources = projected.sources.src = [] && projected.sources.native = [] in
-  let kept_dev_deps = List.map (fun (dep:Tusk_model.Package.dependency) -> dep.name) projected.dev_dependencies
+  let kept_dev_deps = List.map (fun (dep: Tusk_model.Package.dependency) -> dep.name) projected.dev_dependencies
   = [ "propane" ] in
-  let kept_runtime_deps = List.map (fun (dep:Tusk_model.Package.dependency) -> dep.name) projected.dependencies
+  let kept_runtime_deps = List.map (fun (dep: Tusk_model.Package.dependency) -> dep.name) projected.dependencies
   = [ "std" ] in
   let no_normal_binaries =
     List.for_all
-    (fun (bin:Tusk_model.Package.binary) -> String.starts_with
+    (fun (bin: Tusk_model.Package.binary) -> String.starts_with
     ~prefix:"tests/"
     (Path.to_string bin.path)
     || String.starts_with ~prefix:"examples/" (Path.to_string bin.path)
@@ -126,7 +126,7 @@ path = "examples/test_https_httpbin.ml"
       ~path:tmpdir
       ~relative_path:(Path.v "packages/demo")
       |> Result.expect ~msg:"Expected package manifest to parse" in
-      let binary_names = pkg.binaries |> List.map (fun (bin:Tusk_model.Package.binary) -> bin.name) in
+      let binary_names = pkg.binaries |> List.map (fun (bin: Tusk_model.Package.binary) -> bin.name) in
       match binary_names with
       | ["test_https_httpbin";"simple_https"] -> Ok ()
       | _ ->

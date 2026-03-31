@@ -96,13 +96,13 @@ let key_equal = fun left right ->
 let key_compare = fun left right ->
   String.compare (key_to_string left) (key_to_string right)
 
-let dependencies_for_scope = fun scope (pkg:t) ->
+let dependencies_for_scope = fun scope (pkg: t) ->
   match scope with
   | Normal -> pkg.dependencies
   | Dev -> pkg.dev_dependencies
   | Build -> pkg.build_dependencies
 
-let binary_scope = fun (bin:binary) ->
+let binary_scope = fun (bin: binary) ->
   let path_str = Path.to_string bin.path in
   if
     String.starts_with ~prefix:"tests/" path_str
@@ -113,25 +113,25 @@ let binary_scope = fun (bin:binary) ->
   else
     Normal
 
-let binaries_for_scope = fun scope (pkg:t) ->
+let binaries_for_scope = fun scope (pkg: t) ->
   match scope with
   | Normal -> List.filter (fun bin -> binary_scope bin = Normal) pkg.binaries
   | Dev -> List.filter (fun bin -> binary_scope bin = Dev) pkg.binaries
   | Build -> []
 
-let commands_for_scope = fun scope (pkg:t) ->
+let commands_for_scope = fun scope (pkg: t) ->
   match scope with
   | Normal -> pkg.commands
   | Dev
   | Build -> []
 
-let sources_for_scope = fun scope (pkg:t) ->
+let sources_for_scope = fun scope (pkg: t) ->
   match scope with
   | Normal -> {pkg.sources with tests = []; examples = []; bench = []}
   | Dev -> {pkg.sources with src = []; native = []; }
   | Build -> {pkg.sources with src = []; native = []; tests = []; examples = []; bench = []; }
 
-let for_scope = fun scope (pkg:t) ->
+let for_scope = fun scope (pkg: t) ->
   match scope with
   | Normal -> {
     pkg
@@ -162,9 +162,9 @@ let for_scope = fun scope (pkg:t) ->
 
   }
 
-let build_graph_dependencies = fun (pkg:t) -> pkg.dependencies @ pkg.dev_dependencies
+let build_graph_dependencies = fun (pkg: t) -> pkg.dependencies @ pkg.dev_dependencies
 
-let all_dependencies = fun (pkg:t) -> pkg.dependencies @ pkg.dev_dependencies @ pkg.build_dependencies
+let all_dependencies = fun (pkg: t) -> pkg.dependencies @ pkg.dev_dependencies @ pkg.build_dependencies
 
 (** Check if this package is a workspace member (not an external dependency).
     External dependencies have relative_path that escapes the workspace (starts with "../")
@@ -209,7 +209,7 @@ let parse_name : (string * Toml.value) list -> string -> string = fun items fall
   | _ -> fallback
 
 let resolve_workspace_dependency : string -> dependency list -> dependency = fun name workspace_deps ->
-  match List.find_opt (fun (d:dependency) -> d.name = name) workspace_deps with
+  match List.find_opt (fun (d: dependency) -> d.name = name) workspace_deps with
   | Some dep -> dep
   | None -> panic
   ("Dependency '" ^ name ^ "' with { workspace = true } not found in workspace dependencies")
@@ -585,7 +585,7 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
       [ rel_path ]
   in
   providers |> List.filter_map
-    (fun (provider:Fix_provider.t) ->
+    (fun (provider: Fix_provider.t) ->
       match Path.strip_prefix provider.source_path ~prefix:package_path with
       | Ok rel_path -> Some (collect_provider_tree rel_path)
       | Error _ -> None) |> List.concat |> List.sort_uniq
@@ -679,10 +679,10 @@ let autodiscover_bench_binaries : sources -> package_path:Path.t -> binary list 
     sources.bench
 
 let merge_binaries : declared:binary list -> autodiscovered:binary list -> binary list = fun ~declared ~autodiscovered ->
-  let seen_paths = declared |> List.map (fun (bin:binary) -> Path.to_string bin.path) in
+  let seen_paths = declared |> List.map (fun (bin: binary) -> Path.to_string bin.path) in
   let _, discovered =
     List.fold_left
-      (fun ((seen_paths, acc)) (bin:binary) ->
+      (fun ((seen_paths, acc)) (bin: binary) ->
         let path = Path.to_string bin.path in
         if List.mem path seen_paths then
           (seen_paths, acc)
@@ -761,7 +761,7 @@ relative_path:Path.t ->
       ^ " benchmark files");
       let all_binaries = merge_binaries
       ~declared:binaries
-      ~autodiscovered:((((test_binaries @ example_binaries @ bench_binaries)))) in
+      ~autodiscovered:(((((test_binaries @ example_binaries @ bench_binaries))))) in
       (* Parse commands using Package_command module *)
       let commands =
         match List.assoc_opt "command" items with
@@ -792,7 +792,7 @@ relative_path:Path.t ->
 let to_json : t -> Json.t = fun pkg ->
   let dependencies_json = Json.Array (
     List.map
-      (fun (dep:dependency) ->
+      (fun (dep: dependency) ->
         Json.Object [ ("name", Json.String dep.name); (
             "source",
             match dep.source with
@@ -804,7 +804,7 @@ let to_json : t -> Json.t = fun pkg ->
   in
   let dev_dependencies_json = Json.Array (
     List.map
-      (fun (dep:dependency) ->
+      (fun (dep: dependency) ->
         Json.Object [ ("name", Json.String dep.name); (
             "source",
             match dep.source with
@@ -816,7 +816,7 @@ let to_json : t -> Json.t = fun pkg ->
   in
   let build_dependencies_json = Json.Array (
     List.map
-      (fun (dep:dependency) ->
+      (fun (dep: dependency) ->
         Json.Object [ ("name", Json.String dep.name); (
             "source",
             match dep.source with
@@ -827,7 +827,7 @@ let to_json : t -> Json.t = fun pkg ->
   )
   in
   let binaries_json = Json.Array (List.map
-  (fun (bin:binary) -> Json.Object [
+  (fun (bin: binary) -> Json.Object [
     ("name", Json.String bin.name);
     ("path", Json.String (Path.to_string bin.path));
 
@@ -950,18 +950,18 @@ let from_json : Json.t -> (t, string) result = fun json ->
   | _ -> Error "Package must be a JSON object"
 
 (** Hash package metadata into a hasher state *)
-let hash = fun state (pkg:t) ->
+let hash = fun state (pkg: t) ->
   let module H = Crypto.Sha256 in
   H.write_string state pkg.name;
   (* Dependencies metadata *)
   let sorted_deps =
     List.sort
-      (fun (a:dependency) (b:dependency) ->
+      (fun (a: dependency) (b: dependency) ->
         String.compare a.name b.name)
       (build_graph_dependencies pkg)
   in
   List.iter
-    (fun (dep:dependency) ->
+    (fun (dep: dependency) ->
       H.write_string state dep.name;
       match dep.source with
       | Workspace -> H.write_string state "workspace"
@@ -970,23 +970,23 @@ let hash = fun state (pkg:t) ->
   (* Binaries metadata *)
   let sorted_bins =
     List.sort
-      (fun (a:binary) (b:binary) ->
+      (fun (a: binary) (b: binary) ->
         String.compare a.name b.name)
       pkg.binaries
   in
   List.iter
-    (fun (bin:binary) ->
+    (fun (bin: binary) ->
       H.write_string state bin.name;
       H.write_string state (Path.to_string bin.path))
     sorted_bins;
   let sorted_providers =
     List.sort
-      (fun (a:Fix_provider.t) (b:Fix_provider.t) ->
+      (fun (a: Fix_provider.t) (b: Fix_provider.t) ->
         String.compare a.name b.name)
       pkg.fix_providers
   in
   List.iter
-    (fun (provider:Fix_provider.t) ->
+    (fun (provider: Fix_provider.t) ->
       H.write_string state provider.name;
       H.write_string state (Path.to_string provider.source_path);
       List.iter (H.write_string state) provider.rules)
@@ -1000,7 +1000,7 @@ let hash = fun state (pkg:t) ->
     | None -> H.write_string state "false"
   );
   (* Compiler configuration - profile and target overrides *)
-  let hash_override = fun (override:profile_override) ->
+  let hash_override = fun (override: profile_override) ->
     (
       match override.kind with
       | Inherit -> H.write_string state "inherit"
@@ -1061,7 +1061,7 @@ let hash = fun state (pkg:t) ->
       pkg.compiler.profile_overrides
   in
   List.iter
-    (fun ((profile_name, override):string * profile_override) ->
+    (fun ((profile_name, override): string * profile_override) ->
       H.write_string state profile_name;
       hash_override override)
     sorted_profile_overrides;
@@ -1072,7 +1072,7 @@ let hash = fun state (pkg:t) ->
       pkg.compiler.target_overrides
   in
   List.iter
-    (fun ((platform_name, target):string * target_override) ->
+    (fun ((platform_name, target): string * target_override) ->
       H.write_string state platform_name;
       (
         match target.profile_override with
@@ -1083,7 +1083,7 @@ let hash = fun state (pkg:t) ->
   (* Source file contents - include explicit [[bin]] entries that may not be in source dirs *)
   let explicit_bin_files =
     List.filter_map
-      (fun (bin:binary) ->
+      (fun (bin: binary) ->
         let path_str = Path.to_string bin.path in
         (* Only include if it's a .ml file and not already in sources *)
         if String.ends_with ~suffix:".ml" path_str || String.ends_with ~suffix:".mli" path_str then
@@ -1124,12 +1124,12 @@ let hash = fun state (pkg:t) ->
   (* Foreign dependency sources *)
   let sorted_foreign_deps =
     List.sort
-      (fun (a:foreign_dependency) (b:foreign_dependency) ->
+      (fun (a: foreign_dependency) (b: foreign_dependency) ->
         String.compare a.name b.name)
       pkg.foreign_dependencies
   in
   List.iter
-    (fun (fdep:foreign_dependency) ->
+    (fun (fdep: foreign_dependency) ->
       H.write_string state fdep.name;
       H.write_string state (Path.to_string fdep.path);
       List.iter (H.write_string state) fdep.build_cmd;
@@ -1181,9 +1181,9 @@ fixme = { path = "../fixme" }
     ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     if
-      List.map (fun (dep:dependency) -> dep.name) pkg.dependencies = [ "std" ]
-      && List.map (fun (dep:dependency) -> dep.name) pkg.dev_dependencies = [ "propane" ]
-      && List.map (fun (dep:dependency) -> dep.name) pkg.build_dependencies = [ "fixme" ]
+      List.map (fun (dep: dependency) -> dep.name) pkg.dependencies = [ "std" ]
+      && List.map (fun (dep: dependency) -> dep.name) pkg.dev_dependencies = [ "propane" ]
+      && List.map (fun (dep: dependency) -> dep.name) pkg.build_dependencies = [ "fixme" ]
     then
       Ok ()
     else
@@ -1206,8 +1206,8 @@ fixme = { path = "../fixme" }
       fix_providers = [];
 
     } in
-    let build_graph = build_graph_dependencies pkg |> List.map (fun (dep:dependency) -> dep.name) in
-    let all = all_dependencies pkg |> List.map (fun (dep:dependency) -> dep.name) in
+    let build_graph = build_graph_dependencies pkg |> List.map (fun (dep: dependency) -> dep.name) in
+    let all = all_dependencies pkg |> List.map (fun (dep: dependency) -> dep.name) in
     if build_graph = [ "std"; "propane" ] && all = [ "std"; "propane"; "fixme" ] then
       Ok ()
     else

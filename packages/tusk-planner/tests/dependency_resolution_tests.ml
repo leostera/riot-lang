@@ -120,7 +120,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun () ->
         let _ = Tusk_planner.Module_graph.wire_dependencies graph_builder sandbox_dir in
         let graph = Tusk_planner.Module_graph.graph graph_builder in
         let find_node_id = fun expected_kind expected_name ->
-          let matches = fun ((_id, (node:Tusk_planner.Module_node.t G.node))) ->
+          let matches = fun ((_id, (node: Tusk_planner.Module_node.t G.node))) ->
             match node.value.kind with
             | Tusk_planner.Module_node.ML mod_ when expected_kind = `implementation ->
                 String.equal

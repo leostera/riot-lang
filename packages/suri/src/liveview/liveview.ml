@@ -43,7 +43,7 @@ type Message.t +=
   | ComponentEvent of { handler_id: string; event_data: string; }
 
 (** Attach handler IDs to component tree and register handlers *)
-let rec attach_handler_ids registry (component:'msg Component.t) : 'msg Component.t =
+let rec attach_handler_ids registry (component: 'msg Component.t) : 'msg Component.t =
   match component with
   | Component.Text _ ->
       component
@@ -94,7 +94,7 @@ module ComponentProcess = struct
     handler_pid: Pid.t;
   }
 
-  let rec loop = fun (t:('state, 'msg) t) ->
+  let rec loop = fun (t: ('state, 'msg) t) ->
     match receive_any () with
     | ComponentMount ->
         Log.info "Component mounted";
@@ -137,7 +137,9 @@ module ComponentProcess = struct
         send t.handler_pid (RenderPatch patch);
         loop t
 
-  let start_link = fun handler_pid (type s m a) ((module C : Component with type state = s and type msg = m and type args = a)) conn (args:a) ->
+  let start_link = fun handler_pid (type s m a) ((module C : Component with type state = s and type msg = m and type args = a)) conn (
+    args: a
+  ) ->
     spawn_link
       (fun () ->
         Log.info "Component process started";
@@ -216,7 +218,7 @@ module MountHandler (C : Component) = struct
     in
     `ok {component}
 
-  let handle_frame = fun (frame:Http.Ws.Frame.t) _conn state ->
+  let handle_frame = fun (frame: Http.Ws.Frame.t) _conn state ->
     match frame.opcode with
     | Http.Ws.Frame.Text -> (
         match Protocol.deserialize_client_msg frame.payload with
@@ -501,7 +503,9 @@ let serve_runtime ?(prefix = "/assets/liveview.js") () : Middleware.Pipeline.mid
 (* Pass to next middleware *)
 
 (** Create a LiveView mount handler *)
-let mount = fun (type s m) ((module C : Component with type state = s and type msg = m)) (conn:Middleware.Conn.t) ->
+let mount = fun (type s m) ((module C : Component with type state = s and type msg = m)) (
+  conn: Middleware.Conn.t
+) ->
   let module M = MountHandler (C) in
   let opts = Channel.Handler.{do_upgrade = true} in
   (opts, Channel.Handler.make (module M) conn)
@@ -513,7 +517,7 @@ let mount = fun (type s m) ((module C : Component with type state = s and type m
     
     @param module Component module to embed
     @param args Initialization arguments to pass to the component *)
-let embed = fun (type a) ((module C : Component with type args = a)) (args_value:a) ->
+let embed = fun (type a) ((module C : Component with type args = a)) (args_value: a) ->
   let open Component in
     let element_id = "liveview-" ^ C.id in
     let ws_path = "/suri/live/" ^ C.id in

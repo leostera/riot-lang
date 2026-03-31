@@ -1,11 +1,11 @@
 open Global
 open Collections
 
-let init = fun (_suite:Intf.suite_info) total ->
+let init = fun (_suite: Intf.suite_info) total ->
   println "TAP version 14";
   println ("1.." ^ string_of_int total)
 
-let on_result = fun idx (result:Test_result.t) ->
+let on_result = fun idx (result: Test_result.t) ->
   let idx_str = string_of_int idx in
   let name_with_type =
     match result.test_type with

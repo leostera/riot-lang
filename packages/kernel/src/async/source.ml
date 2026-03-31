@@ -10,7 +10,7 @@ module type Intf = sig
 end
 
 type t =
-  S : ((module Intf with type t = 'state) * 'state) -> t
+  S: ((module Intf with type t = 'state) * 'state) -> t
 
 let make = fun src state -> S (src, state)
 

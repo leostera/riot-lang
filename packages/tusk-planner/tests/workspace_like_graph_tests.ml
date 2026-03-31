@@ -33,7 +33,7 @@ let make_workspace = fun packages -> Workspace.{
 
 let node_for = fun graph package_name scope -> Package_graph.package_key ~package_name scope
 |> Package_graph.get_node_by_key graph
-|> Option.expect ~msg:(((("missing node: " ^ package_name))))
+|> Option.expect ~msg:((((("missing node: " ^ package_name)))))
 
 let dependency_keys_for_node = fun graph node -> Package_graph.get_dependencies_for_node graph node
 |> List.map Package_graph.get_key
@@ -104,7 +104,7 @@ let missing_workspace_dependencies_are_reported = fun () ->
   | Ok _ -> Error "expected missing dependency error"
   | Error (Package_graph.MissingPackages { missing }) ->
       let missing_pairs = List.map
-      (fun (item:Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency)
+      (fun (item: Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency)
       missing
       |> List.sort String.compare in
       Test.assert_equal ~expected:[ "left->missing_a"; "right->missing_b" ] ~actual:missing_pairs;
@@ -123,7 +123,7 @@ let filter_for_package_keeps_only_transitive_dependencies = fun () ->
   let graph = Package_graph.create ~scope:Runtime workspace |> Result.expect ~msg:"expected runtime graph" in
   let filtered = Package_graph.filter_for_package graph "app" in
   let package_names = Package_graph.packages filtered
-  |> List.map (fun (pkg:Package.t) -> pkg.name)
+  |> List.map (fun (pkg: Package.t) -> pkg.name)
   |> List.sort_uniq String.compare in
   Test.assert_equal ~expected:[ "a"; "app"; "kernel"; "std" ] ~actual:package_names;
   Ok ()
@@ -141,7 +141,7 @@ let topological_sort_places_dependencies_before_dependents = fun () ->
   let sorted = Package_graph.topological_sort graph |> List.map Package_graph.get_key in
   let position_of = fun key ->
     List.find_index (Package.key_equal key) sorted
-    |> Option.expect ~msg:(((("missing key in topo sort: " ^ Package.key_to_string key)))) in
+    |> Option.expect ~msg:((((("missing key in topo sort: " ^ Package.key_to_string key))))) in
   let std_runtime = Package_graph.package_key ~package_name:"std" Runtime in
   let kernel_runtime = Package_graph.package_key ~package_name:"kernel" Runtime in
   let miniriot_runtime = Package_graph.package_key ~package_name:"miniriot" Runtime in
@@ -206,7 +206,7 @@ let get_unplanned_dependencies_only_reports_unplanned_runtime_dependencies = fun
   let unplanned = Package_graph.get_unplanned_dependencies graph app in
   Test.assert_equal
   ~expected:[ "kernel" ]
-  ~actual:(List.map (fun (pkg:Package.t) -> pkg.name) unplanned);
+  ~actual:(List.map (fun (pkg: Package.t) -> pkg.name) unplanned);
   Ok ()
 
 let build_scope_wires_declared_build_dependencies = fun () ->

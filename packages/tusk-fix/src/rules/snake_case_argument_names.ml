@@ -52,7 +52,7 @@ let make_diagnostic = fun token ->
   ~severity:Warning
   ~kind:(Diagnostic.Known {rule_id; message = rule_description})
   ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-  ~suggestion:(((("Rename " ^ original ^ " to " ^ replacement))))
+  ~suggestion:((((("Rename " ^ original ^ " to " ^ replacement)))))
   ()
 
 let diagnostic_for_parameter = fun parameter ->
@@ -65,7 +65,7 @@ let diagnostic_for_parameter = fun parameter ->
         None
   | None -> None
 
-let check_tree = fun (ctx:Rule.context) _red_root -> Rule_query.let_bindings ctx
+let check_tree = fun (ctx: Rule.context) _red_root -> Rule_query.let_bindings ctx
 |> List.filter Syn.Cst.LetBinding.is_function
 |> List.concat_map
 (fun binding -> Syn.Cst.LetBinding.parameters binding |> List.filter_map diagnostic_for_parameter)

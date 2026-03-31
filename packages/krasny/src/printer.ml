@@ -34,7 +34,7 @@ let to_string = fun doc ->
     | Doc.Concat docs ->
         List.fold_left (fun line_start doc -> write ~line_start ~indent doc) line_start docs
     | Doc.Indent (extra, doc) ->
-        write ~line_start ~indent:((((indent + extra)))) doc
+        write ~line_start ~indent:(((((indent + extra))))) doc
   and write_text = fun ~line_start ~indent value ->
     let rec write_lines = fun line_start is_first ->
       function

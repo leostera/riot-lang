@@ -94,7 +94,7 @@ let params_of_json =
   | _ -> Error "Invalid params type"
 
 (** Convert request to JSON *)
-let request_to_json = fun (req:request) ->
+let request_to_json = fun (req: request) ->
   let fields = [ ("jsonrpc", Json.String req.jsonrpc); ("method", Json.String req.method_);  ] in
   let fields =
     match req.params with
@@ -170,7 +170,7 @@ let notification = fun ~method_ ?params () -> {
 }
 
 (** Check if a request is a notification *)
-let is_notification = fun (req:request) ->
+let is_notification = fun (req: request) ->
   match req.id with
   | None -> true
   | Some _ -> false

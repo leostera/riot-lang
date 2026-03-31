@@ -105,7 +105,7 @@ let spawn = fun ~program ~args ?(env = []) ?cwd ~stdio () ->
             (fun acc ((k, v)) ->
               let kv = k ^ "=" ^ v in
               let without_key =
-                List.filter (fun s -> not (String.starts_with ~prefix:((((k ^ "=")))) s)) acc
+                List.filter (fun s -> not (String.starts_with ~prefix:(((((k ^ "="))))) s)) acc
               in
               kv :: without_key)
             base_env

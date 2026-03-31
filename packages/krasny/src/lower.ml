@@ -12,10 +12,10 @@ let star = Doc.text "*"
 
 let at = Doc.text "@"
 
-let let_binding_group_items = fun (binding:Syn.Cst.let_binding) -> binding
+let let_binding_group_items = fun (binding: Syn.Cst.let_binding) -> binding
 :: Syn.Cst.LetBinding.and_bindings binding
 
-let rec binding_operator_group_items = fun (binding:Syn.Cst.binding_operator_binding) ->
+let rec binding_operator_group_items = fun (binding: Syn.Cst.binding_operator_binding) ->
   binding :: (
     match binding.and_binding with
     | Some next -> binding_operator_group_items next
@@ -57,7 +57,7 @@ message
 let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
   let kind = Syn.Cst.syntax_kind syntax_node in
   unsupported_with_context_entries
-  ~context:((((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ]))))
+  ~context:(((((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ])))))
   message
 
 let extension_payload_context = [ "extension"; "payload" ]
@@ -73,7 +73,7 @@ let doc_of_ident = fun ident -> Syn.Cst.Ident.segments ident
 |> List.map doc_of_token
 |> Doc.join (Doc.text ".")
 
-let token_requires_parenthesized_value_name = fun (token:Syn.Cst.Token.t) -> Syn.Cst.Token.is_operator_like_name
+let token_requires_parenthesized_value_name = fun (token: Syn.Cst.Token.t) -> Syn.Cst.Token.is_operator_like_name
 token
 
 let render_declaration_name = fun name_tokens ->
@@ -89,10 +89,10 @@ let render_declaration_name = fun name_tokens ->
       let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
       Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
 
-let render_value_declaration_name = fun (decl:Syn.Cst.value_declaration) -> render_declaration_name
+let render_value_declaration_name = fun (decl: Syn.Cst.value_declaration) -> render_declaration_name
 decl.name_tokens
 
-let binding_has_explicit_fun_rhs = fun (binding:Syn.Cst.let_binding) ->
+let binding_has_explicit_fun_rhs = fun (binding: Syn.Cst.let_binding) ->
   List.is_empty binding.parameters && match binding.value with
   | Syn.Cst.Expression.Fun _ -> true
   | _ -> false
@@ -412,7 +412,7 @@ let group_digits_from_right = fun ~group_size digits ->
     in
     loop first_group_size
 
-let render_integer_constant = fun (literal:Syn.Cst.integer_constant) ->
+let render_integer_constant = fun (literal: Syn.Cst.integer_constant) ->
   let prefix =
     match literal.base with
     | Syn.Cst.Decimal -> Option.unwrap_or literal.prefix ~default:""
@@ -432,7 +432,7 @@ let render_integer_constant = fun (literal:Syn.Cst.integer_constant) ->
   let suffix = Option.unwrap_or literal.suffix ~default:"" in
   prefix ^ digits ^ suffix
 
-let render_float_constant = fun (literal:Syn.Cst.float_constant) ->
+let render_float_constant = fun (literal: Syn.Cst.float_constant) ->
   let exponent =
     match literal.exponent with
     | None -> ""
@@ -592,7 +592,9 @@ let rec core_type_is_atomic =
   | Syn.Cst.CoreType.Attribute { type_; _ } -> core_type_is_atomic type_
   | _ -> false
 
-let rec render_first_class_module_type_constraint = fun ~keyword (constraint_:Syn.Cst.module_type_constraint) ->
+let rec render_first_class_module_type_constraint = fun ~keyword (
+  constraint_: Syn.Cst.module_type_constraint
+) ->
   let separator = Doc.concat [ Doc.space; doc_of_token constraint_.separator_token; Doc.space ] in
   Doc.concat
   [
@@ -605,7 +607,9 @@ let rec render_first_class_module_type_constraint = fun ~keyword (constraint_:Sy
     render_core_type constraint_.replacement_type;
 
   ]
-and render_first_class_functor_parameter = fun ({ name_token; colon_token; module_type; _ }:Syn.Cst.functor_parameter) -> Doc.concat
+and render_first_class_functor_parameter = fun (
+  { name_token; colon_token; module_type; _ }: Syn.Cst.functor_parameter
+) -> Doc.concat
 [
   Doc.lparen;
   doc_of_token name_token;
@@ -616,7 +620,9 @@ and render_first_class_functor_parameter = fun ({ name_token; colon_token; modul
   Doc.rparen;
 
 ]
-and render_package_type_doc = fun ({ module_type_path; constraints; attribute; _ }:Syn.Cst.package_type) ->
+and render_package_type_doc = fun (
+  { module_type_path; constraints; attribute; _ }: Syn.Cst.package_type
+) ->
   let first, rest =
     match constraints with
     | [] -> (Doc.empty, [])
@@ -638,7 +644,7 @@ and render_package_type_doc = fun ({ module_type_path; constraints; attribute; _
   match attribute with
   | Some attribute -> Doc.concat [ base; Doc.space; render_attribute attribute ]
   | None -> base
-and render_core_type_extension_doc = fun (extension:Syn.Cst.extension) ->
+and render_core_type_extension_doc = fun (extension: Syn.Cst.extension) ->
   let payload_doc =
     match extension.payload with
     | None -> Doc.empty
@@ -653,7 +659,7 @@ and render_core_type_extension_doc = fun (extension:Syn.Cst.extension) ->
     Doc.rbracket;
 
   ]
-and render_first_class_module_type_extension_doc = fun (extension:Syn.Cst.extension) ->
+and render_first_class_module_type_extension_doc = fun (extension: Syn.Cst.extension) ->
   let payload_doc =
     match extension.payload with
     | None -> Doc.empty
@@ -668,12 +674,12 @@ and render_first_class_module_type_extension_doc = fun (extension:Syn.Cst.extens
     Doc.rbracket;
 
   ]
-and render_shared_attribute_payload_doc = fun (attribute:Syn.Cst.attribute) ->
+and render_shared_attribute_payload_doc = fun (attribute: Syn.Cst.attribute) ->
   match attribute.payload with
   | None -> Doc.empty
   | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat
   (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
-and render_attribute_doc = fun ~floating (attribute:Syn.Cst.attribute) -> Doc.concat
+and render_attribute_doc = fun ~floating (attribute: Syn.Cst.attribute) -> Doc.concat
 [
   Doc.lbracket;
   doc_of_token attribute.sigil_token;
@@ -882,7 +888,7 @@ and render_core_type =
       render_object_type ~opening_token ~closing_token fields
   | Syn.Cst.CoreType.Extension extension ->
       render_core_type_extension_doc extension
-and render_record_core_type_field = fun (field:Syn.Cst.record_type_field) ->
+and render_record_core_type_field = fun (field: Syn.Cst.record_type_field) ->
   let type_doc = render_core_type field.field_type in
   let separator =
     if core_type_prefers_multiline field.field_type then
@@ -916,10 +922,13 @@ and render_parenthesized_tight_token_rhs = fun head token rhs -> Doc.group
   Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); render_tight_token_rhs head token rhs ]);
   Doc.break ~flat:"" ();
   Doc.rparen;
+
 ])
 and render_member_head = fun keyword modifier_tokens name_token ->
-  Doc.join Doc.space ([ keyword ] @ List.map doc_of_token modifier_tokens @ [ doc_of_token name_token ])
-and render_record_type_field_separator = fun (field:Syn.Cst.record_type_field) ->
+  Doc.join
+  Doc.space
+  ([ keyword ] @ List.map doc_of_token modifier_tokens @ [ doc_of_token name_token ])
+and render_record_type_field_separator = fun (field: Syn.Cst.record_type_field) ->
   match field.semicolon_token with
   | Some semicolon_token -> doc_of_token semicolon_token
   | None -> Doc.semi
@@ -927,9 +936,9 @@ and render_record_type = fun ~opening_token ~closing_token fields ->
   let rec render_fields =
     function
     | [] -> Doc.empty
-    | [ (field:Syn.Cst.record_type_field) ] -> Doc.concat
+    | [ (field: Syn.Cst.record_type_field) ] -> Doc.concat
     [ render_record_core_type_field field; render_record_type_field_separator field ]
-    | (field:Syn.Cst.record_type_field) :: rest -> Doc.concat
+    | (field: Syn.Cst.record_type_field) :: rest -> Doc.concat
     [
       render_record_core_type_field field;
       render_record_type_field_separator field;
@@ -946,7 +955,7 @@ and render_record_type = fun ~opening_token ~closing_token fields ->
     Doc.line;
     doc_of_token closing_token
   ]
-and render_record_definition_field = fun (field:Syn.Cst.RecordField.t) ->
+and render_record_definition_field = fun (field: Syn.Cst.RecordField.t) ->
   let field_type = Syn.Cst.RecordField.field_type field in
   let type_doc = render_core_type field_type in
   let separator =
@@ -972,11 +981,13 @@ and render_record_definition_field = fun (field:Syn.Cst.RecordField.t) ->
     doc_of_token (Syn.Cst.RecordField.colon_token field);
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
-and render_record_definition_field_separator = fun (field:Syn.Cst.RecordField.t) ->
+and render_record_definition_field_separator = fun (field: Syn.Cst.RecordField.t) ->
   match field.semicolon_token with
   | Some semicolon_token -> doc_of_token semicolon_token
   | None -> Doc.semi
-and render_record_definition_field_entry = fun ?(include_trailing_semicolon = true) (field:Syn.Cst.RecordField.t) ->
+and render_record_definition_field_entry = fun ?(include_trailing_semicolon = true) (
+  field: Syn.Cst.RecordField.t
+) ->
   let body =
     if include_trailing_semicolon then
       Doc.concat
@@ -1095,11 +1106,11 @@ and render_tokenized_inline_record_definition = fun ~opening_token ~closing_toke
       Doc.break ~flat:" " ();
       doc_of_token closing_token
     ])
-and render_object_type_field = fun (field:Syn.Cst.object_type_field) -> render_tight_colon_rhs
+and render_object_type_field = fun (field: Syn.Cst.object_type_field) -> render_tight_colon_rhs
 (doc_of_token field.field_name)
 field.colon_token
 (render_core_type field.field_type)
-and render_object_type_field_entry = fun (field:Syn.Cst.object_type_field) ->
+and render_object_type_field_entry = fun (field: Syn.Cst.object_type_field) ->
   Doc.concat
     [ render_object_type_field field; (
         match field.semicolon_token with
@@ -1209,7 +1220,7 @@ let poly_variant_has_inherit_field = fun poly_variant ->
       | Syn.Cst.RowField.Tag _ -> false
     )
 
-let render_type_constraint = fun (constraint_:Syn.Cst.type_constraint) -> Doc.concat
+let render_type_constraint = fun (constraint_: Syn.Cst.type_constraint) -> Doc.concat
 [
   kw_constraint;
   Doc.space;
@@ -1299,8 +1310,8 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         let payload_doc, payload_multiline = inline_separator_or_multiline_block
         ~fallback_separator_doc:Doc.empty
         ~separator_token:(Some separator_token)
-        ~next_syntax_node:((((Syn.Cst.VariantConstructor.payload_type constructor
-        |> Option.map Syn.Cst.CoreType.syntax_node))))
+        ~next_syntax_node:(((((Syn.Cst.VariantConstructor.payload_type constructor
+        |> Option.map Syn.Cst.CoreType.syntax_node)))))
         ~render_next:payload in
         let arrow_token = Syn.Cst.VariantConstructor.arrow_token constructor in
         let arrow_leading_trivia =
@@ -1316,20 +1327,21 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
           | None -> None
         in
         let result_rhs = Doc.concat
-        [
-          payload;
-          Doc.space;
-          (
-            match arrow_token with
-            | Some arrow_token -> doc_of_token arrow_token
-            | None -> arrow
-          );
-          Doc.space;
-          render_core_type result_type;
-        ] in
-        if Syn.Cst.Token.text separator_token = ":" && arrow_leading_trivia = None && result_leading_trivia = None then
+          [ payload; Doc.space; (
+              match arrow_token with
+              | Some arrow_token -> doc_of_token arrow_token
+              | None -> arrow
+            ); Doc.space; render_core_type result_type;  ]
+        in
+        if
+          Syn.Cst.Token.text separator_token = ":"
+          && arrow_leading_trivia = None
+          && result_leading_trivia = None
+        then
           render_tight_token_rhs head separator_token result_rhs
-        else if not payload_multiline && arrow_leading_trivia = None && result_leading_trivia = None then
+        else if
+          not payload_multiline && arrow_leading_trivia = None && result_leading_trivia = None
+        then
           Doc.concat
             [ head; payload_doc; Doc.space; (
                 match arrow_token with
@@ -1366,8 +1378,8 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         let payload_doc, _payload_multiline = inline_separator_or_multiline_block
         ~fallback_separator_doc:Doc.empty
         ~separator_token:(Some separator_token)
-        ~next_syntax_node:((((Syn.Cst.VariantConstructor.payload_type constructor
-        |> Option.map Syn.Cst.CoreType.syntax_node))))
+        ~next_syntax_node:(((((Syn.Cst.VariantConstructor.payload_type constructor
+        |> Option.map Syn.Cst.CoreType.syntax_node)))))
         ~render_next:payload in
         Doc.concat [ head; payload_doc;  ]
     | None, Some result_type ->
@@ -1576,7 +1588,7 @@ let render_type_declaration_with_keyword = fun ?(leading_after = 0) keyword decl
   | [] -> base
   | attributes -> Doc.concat [ base; Doc.space; join_map Doc.space render_attribute attributes ]
 
-let render_type_extension = fun (decl:Syn.Cst.TypeExtension.t) ->
+let render_type_extension = fun (decl: Syn.Cst.TypeExtension.t) ->
   let params = render_type_parameters (Syn.Cst.TypeExtension.type_params decl) in
   let extension_operator = Syn.Cst.TypeExtension.extension_operator_tokens decl
   |> List.map doc_of_token
@@ -1608,7 +1620,7 @@ let render_type_extension = fun (decl:Syn.Cst.TypeExtension.t) ->
   let constructors = render_variant_definition (Syn.Cst.TypeExtension.constructors decl) in
   Doc.concat [ header; Doc.line; Doc.indent 2 constructors ]
 
-let render_external_declaration = fun (decl:Syn.Cst.external_declaration) ->
+let render_external_declaration = fun (decl: Syn.Cst.external_declaration) ->
   let primitive_names = decl.primitive_name_tokens |> List.map doc_of_token |> Doc.join Doc.space in
   let attributes =
     match decl.attributes with
@@ -1728,7 +1740,7 @@ let rec render_pattern = fun pattern ->
     | Syn.Cst.Pattern.Tuple { elements; _ } ->
         Doc.concat
           [ Doc.lparen; join_map (Doc.concat [ Doc.comma; Doc.space ])
-              (fun (element:Syn.Cst.tuple_pattern_element) ->
+              (fun (element: Syn.Cst.tuple_pattern_element) ->
                 match element.label_token with
                 | None -> render_pattern element.pattern
                 | Some label_token -> Doc.concat
@@ -1812,7 +1824,7 @@ let rec render_pattern = fun pattern ->
         let fields =
           fields
           |> List.map
-            (fun (field:Syn.Cst.record_pattern_field) ->
+            (fun (field: Syn.Cst.record_pattern_field) ->
               match field.pattern with
               | None -> doc_of_ident field.field_path
               | Some pattern ->
@@ -2072,7 +2084,9 @@ let rec expression_prefers_multiline_layout =
   | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.BeginEnd; _ } -> true
   | Syn.Cst.Expression.Parenthesized { inner; _ } -> expression_prefers_multiline_layout inner
   | _ -> false
-and if_prefers_multiline_layout = fun ({ condition; then_branch; else_branch; _ }:Syn.Cst.if_expression) ->
+and if_prefers_multiline_layout = fun (
+  { condition; then_branch; else_branch; _ }: Syn.Cst.if_expression
+) ->
   let else_prefers_multiline =
     match else_branch with
     | Some (Syn.Cst.Expression.If _) -> false
@@ -2094,7 +2108,7 @@ and branch_prefers_multiline_layout =
   | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.BeginEnd; _ } -> true
   | _ -> false
 
-let case_body_prefers_multiline = fun ({ body; _ }:Syn.Cst.match_case) -> expression_prefers_multiline_layout
+let case_body_prefers_multiline = fun ({ body; _ }: Syn.Cst.match_case) -> expression_prefers_multiline_layout
 body
 
 let rec function_body_prefers_multiline =
@@ -2112,7 +2126,9 @@ let rec function_body_prefers_multiline =
   | Syn.Cst.Expression.Apply apply -> qualified_multi_argument_apply_prefers_multiline apply
   | Syn.Cst.Expression.Parenthesized { inner; _ } -> function_body_prefers_multiline inner
   | _ -> false
-and qualified_multi_argument_apply_prefers_multiline = fun ({ callee; argument; _ }:Syn.Cst.apply_expression) ->
+and qualified_multi_argument_apply_prefers_multiline = fun (
+  { callee; argument; _ }: Syn.Cst.apply_expression
+) ->
   let rec argument_count = fun count ->
     function
     | Syn.Cst.Expression.Apply { callee; _ } -> argument_count (count + 1) callee
@@ -2191,7 +2207,7 @@ let rec infix_chain_term_count =
 
 let max_inline_infix_terms_after_equals = 8
 
-let infix_expression_is_simple_after_equals = fun (infix:Syn.Cst.infix_expression) -> infix_chain_term_count
+let infix_expression_is_simple_after_equals = fun (infix: Syn.Cst.infix_expression) -> infix_chain_term_count
 (Syn.Cst.Expression.Infix infix)
 <= max_inline_infix_terms_after_equals
 
@@ -2226,7 +2242,7 @@ and apply_argument_is_simple_after_equals =
   | Syn.Cst.Optional { value=Some value; _ } -> expression_is_simple_after_equals value
   | Syn.Cst.Labeled { value=None; _ }
   | Syn.Cst.Optional { value=None; _ } -> true
-and apply_expression_is_simple_after_equals = fun ({ callee; argument; _ }:Syn.Cst.apply_expression) -> expression_is_simple_after_equals
+and apply_expression_is_simple_after_equals = fun ({ callee; argument; _ }: Syn.Cst.apply_expression) -> expression_is_simple_after_equals
 callee
 && apply_argument_is_simple_after_equals argument
 
@@ -2620,31 +2636,29 @@ let make_lowerer =
           Doc.concat [ receiver; Doc.text "."; doc_of_token field_name ]
       | Syn.Cst.Expression.Index index ->
           render_index_expression index
-      | Syn.Cst.Expression.TypeAscription { expression; kind; _ } ->
-          (
-            match kind with
-            | Syn.Cst.Type { colon_token; type_ } -> render_parenthesized_tight_token_rhs
-            (render_expression expression)
-            colon_token
-            (render_core_type type_)
-            | Syn.Cst.Coerce { coercion_token; type_ } -> render_parenthesized_tight_token_rhs
-            (render_expression expression)
-            coercion_token
-            (render_core_type type_)
-            | Syn.Cst.ConstraintCoerce { colon_token; from_type; coercion_token; to_type } ->
-                render_parenthesized_tight_token_rhs
-                (render_expression expression)
-                colon_token
-                (Doc.concat
-                [
-                  render_core_type from_type;
-                  Doc.space;
-                  doc_of_token coercion_token;
-                  Doc.space;
-                  render_core_type to_type;
+      | Syn.Cst.Expression.TypeAscription { expression; kind; _ } -> (
+          match kind with
+          | Syn.Cst.Type { colon_token; type_ } -> render_parenthesized_tight_token_rhs
+          (render_expression expression)
+          colon_token
+          (render_core_type type_)
+          | Syn.Cst.Coerce { coercion_token; type_ } -> render_parenthesized_tight_token_rhs
+          (render_expression expression)
+          coercion_token
+          (render_core_type type_)
+          | Syn.Cst.ConstraintCoerce { colon_token; from_type; coercion_token; to_type } -> render_parenthesized_tight_token_rhs
+          (render_expression expression)
+          colon_token
+          (Doc.concat
+          [
+            render_core_type from_type;
+            Doc.space;
+            doc_of_token coercion_token;
+            Doc.space;
+            render_core_type to_type;
 
-                ])
-          )
+          ])
+        )
       | Syn.Cst.Expression.Polymorphic { expression; colon_token; type_; _ } ->
           render_parenthesized_tight_token_rhs
           (render_expression expression)
@@ -2666,12 +2680,12 @@ let make_lowerer =
           )
     in
     doc_with_expression_attributes expression doc
-  and render_extension_payload_doc_with_context = fun ~context (extension:Syn.Cst.extension) ->
+  and render_extension_payload_doc_with_context = fun ~context (extension: Syn.Cst.extension) ->
     match extension.payload with
     | None -> Doc.empty
     | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat
     (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
-  and render_extension_doc = fun (extension:Syn.Cst.extension) ->
+  and render_extension_doc = fun (extension: Syn.Cst.extension) ->
     Doc.concat
     [
       Doc.lbracket;
@@ -2681,12 +2695,12 @@ let make_lowerer =
       Doc.rbracket;
 
     ]
-  and render_attribute_payload_doc = fun (attribute:Syn.Cst.attribute) ->
+  and render_attribute_payload_doc = fun (attribute: Syn.Cst.attribute) ->
     match attribute.payload with
     | None -> Doc.empty
     | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat
     (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
-  and render_attribute_doc = fun ~floating (attribute:Syn.Cst.attribute) ->
+  and render_attribute_doc = fun ~floating (attribute: Syn.Cst.attribute) ->
     Doc.concat
     [
       Doc.lbracket;
@@ -2709,7 +2723,7 @@ let make_lowerer =
             doc
         in
         Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
-  and render_record_field = fun (field:Syn.Cst.record_expression_field) ->
+  and render_record_field = fun (field: Syn.Cst.record_expression_field) ->
     match field.source with
     | Syn.Cst.Punned -> doc_of_ident field.field_path
     | Syn.Cst.Explicit ->
@@ -2744,16 +2758,16 @@ let make_lowerer =
       Doc.concat [ head; Doc.space; doc_of_token equals_token; Doc.space; body_doc ]
   and render_object_method = fun
     ({
-      name_token;
-      body;
-      equals_token;
-      type_;
-      colon_token;
-      attributes;
-      modifier_tokens;
-      _;
+        name_token;
+        body;
+        equals_token;
+        type_;
+        colon_token;
+        attributes;
+        modifier_tokens;
+        _;
 
-    }:Syn.Cst.object_method) ->
+      }: Syn.Cst.object_method) ->
     let head = render_member_head kw_method modifier_tokens name_token in
     let doc =
       match type_ with
@@ -2772,16 +2786,16 @@ let make_lowerer =
     doc_with_object_member_attributes attributes doc
   and render_object_value = fun
     ({
-      name_token;
-      value;
-      equals_token;
-      type_;
-      colon_token;
-      attributes;
-      modifier_tokens;
-      _;
+        name_token;
+        value;
+        equals_token;
+        type_;
+        colon_token;
+        attributes;
+        modifier_tokens;
+        _;
 
-    }:Syn.Cst.object_value) ->
+      }: Syn.Cst.object_value) ->
     let head = render_member_head kw_val modifier_tokens name_token in
     let doc =
       match type_ with
@@ -2798,10 +2812,10 @@ let make_lowerer =
           value
     in
     doc_with_object_member_attributes attributes doc
-  and render_object_inherit = fun ({ expression; attributes; _ }:Syn.Cst.object_inherit) ->
+  and render_object_inherit = fun ({ expression; attributes; _ }: Syn.Cst.object_inherit) ->
     let doc = Doc.concat [ kw_inherit; Doc.space; render_expression expression ] in
     doc_with_object_member_attributes attributes doc
-  and render_object_initializer = fun ({ body; _ }:Syn.Cst.object_initializer) ->
+  and render_object_initializer = fun ({ body; _ }: Syn.Cst.object_initializer) ->
     let body_doc =
       if expression_prefers_multiline_layout body then
         render_block_expression body
@@ -2831,7 +2845,9 @@ let make_lowerer =
     | Syn.CstBuilder.ObjectMember member -> render_object_member member
     | Syn.CstBuilder.Comment comment -> Doc.text (Syn.Cst.Comment.text comment)
     | Syn.CstBuilder.Docstring docstring -> Doc.text (Syn.Cst.Docstring.text docstring)
-  and render_object_expression = fun ({ syntax_node; self_pattern; members; _ }:Syn.Cst.object_expression) ->
+  and render_object_expression = fun (
+    { syntax_node; self_pattern; members; _ }: Syn.Cst.object_expression
+  ) ->
     let header =
       match self_pattern with
       | None -> kw_object
@@ -2963,14 +2979,14 @@ let make_lowerer =
       Doc.concat [ head; Doc.space; doc_of_token equals_token; Doc.space; body_doc ]
   and render_class_method = fun
     ({
-      name_token;
-      concrete_equals_token;
-      definition;
-      virtual_colon_token;
-      modifier_tokens;
-      _;
+        name_token;
+        concrete_equals_token;
+        definition;
+        virtual_colon_token;
+        modifier_tokens;
+        _;
 
-    }:Syn.Cst.class_method) ->
+      }: Syn.Cst.class_method) ->
     let head = render_member_head kw_method modifier_tokens name_token in
     match definition with
     | Syn.Cst.VirtualMethod { type_; _ } ->
@@ -2999,14 +3015,14 @@ let make_lowerer =
         body
   and render_class_value = fun
     ({
-      name_token;
-      concrete_equals_token;
-      definition;
-      virtual_colon_token;
-      modifier_tokens;
-      _;
+        name_token;
+        concrete_equals_token;
+        definition;
+        virtual_colon_token;
+        modifier_tokens;
+        _;
 
-    }:Syn.Cst.class_value) ->
+      }: Syn.Cst.class_value) ->
     let head = render_member_head kw_val modifier_tokens name_token in
     match definition with
     | Syn.Cst.VirtualValue { type_; _ } ->
@@ -3033,9 +3049,9 @@ let make_lowerer =
         ~head:(render_tight_colon_rhs head colon_token (render_core_type type_))
         ~equals_token
         value
-  and render_class_inherit = fun ({ class_expression; _ }:Syn.Cst.class_inherit) ->
+  and render_class_inherit = fun ({ class_expression; _ }: Syn.Cst.class_inherit) ->
     Doc.concat [ kw_inherit; Doc.space; render_class_expression class_expression ]
-  and render_class_constraint = fun ({ left; equals_token; right; _ }:Syn.Cst.class_constraint) ->
+  and render_class_constraint = fun ({ left; equals_token; right; _ }: Syn.Cst.class_constraint) ->
     Doc.concat
     [
       kw_constraint;
@@ -3046,7 +3062,7 @@ let make_lowerer =
       render_core_type right;
 
     ]
-  and render_class_initializer = fun ({ body; _ }:Syn.Cst.class_initializer) ->
+  and render_class_initializer = fun ({ body; _ }: Syn.Cst.class_initializer) ->
     let body_doc =
       if expression_prefers_multiline_layout body then
         render_block_expression body
@@ -3094,7 +3110,7 @@ let make_lowerer =
     | Syn.Cst.ClassExpression.Apply _
     | Syn.Cst.ClassExpression.Let _
     | Syn.Cst.ClassExpression.Constraint _ -> true
-  and render_class_apply_expression = fun ({ callee; argument; _ }:Syn.Cst.class_apply_expression) ->
+  and render_class_apply_expression = fun ({ callee; argument; _ }: Syn.Cst.class_apply_expression) ->
     let rec collect_arguments = fun acc ->
       function
       | Syn.Cst.ClassExpression.Apply { callee; argument; _ } -> collect_arguments
@@ -3113,7 +3129,7 @@ let make_lowerer =
     Doc.group
     (Doc.concat
     (rendered_head :: List.map (fun argument -> Doc.concat [ Doc.break (); argument ]) rendered_arguments))
-  and render_class_fun_expression = fun ({ parameters; body; _ }:Syn.Cst.class_fun_expression) ->
+  and render_class_fun_expression = fun ({ parameters; body; _ }: Syn.Cst.class_fun_expression) ->
     let parameters = parameters |> List.map render_parameter in
     let body = render_class_expression body in
     let body_prefers_multiline = Doc.is_multiline body in
@@ -3130,17 +3146,17 @@ let make_lowerer =
       [ kw_fun; Doc.space; Doc.join Doc.space parameters; Doc.space; Doc.arrow; Doc.space; body;  ]
   and render_class_let_expression = fun
     ({
-      keyword_token;
-      rec_token;
-      equals_token;
-      binding_pattern;
-      parameters;
-      bound_value;
-      and_binding;
-      in_token;
-      body;
-      _
-    }:Syn.Cst.class_let_expression) ->
+        keyword_token;
+        rec_token;
+        equals_token;
+        binding_pattern;
+        parameters;
+        bound_value;
+        and_binding;
+        in_token;
+        body;
+        _
+      }: Syn.Cst.class_let_expression) ->
     let leading_value_trivia = pending_doc_of_trivia_before_node
     ~after:(Syn.Cst.Token.span equals_token).end_
     (Syn.Cst.Expression.syntax_node bound_value) in
@@ -3158,7 +3174,7 @@ let make_lowerer =
     let and_bindings = Option.to_list and_binding
     |> List.concat_map let_binding_group_items
     |> List.map
-    (fun (binding:Syn.Cst.let_binding) -> render_local_binding
+    (fun (binding: Syn.Cst.let_binding) -> render_local_binding
     ~local_context:true
     ~source_has_explicit_fun:false
     ~keyword_token:binding.keyword_token
@@ -3271,16 +3287,16 @@ let make_lowerer =
         render_extension_doc extension
   and render_object_override_expression = fun
     ({
-      opening_token;
-      fields;
-      separator_tokens;
-      closing_token;
-      _
-    }:Syn.Cst.object_override_expression) ->
+        opening_token;
+        fields;
+        separator_tokens;
+        closing_token;
+        _
+      }: Syn.Cst.object_override_expression) ->
     let fields =
       fields
       |> List.map
-        (fun ({ field_name; equals_token; value; _ }:Syn.Cst.object_override_field) ->
+        (fun ({ field_name; equals_token; value; _ }: Syn.Cst.object_override_field) ->
           match value with
           | None -> doc_of_token field_name
           | Some value ->
@@ -3333,12 +3349,12 @@ let make_lowerer =
       ])
   and render_index_expression = fun
     ({
-      collection;
-      opening_tokens;
-      index;
-      closing_token;
-      _
-    }:Syn.Cst.index_expression) ->
+        collection;
+        opening_tokens;
+        index;
+        closing_token;
+        _
+      }: Syn.Cst.index_expression) ->
     let collection_doc =
       match collection with
       | Syn.Cst.Expression.If _
@@ -3439,7 +3455,9 @@ let make_lowerer =
         ])
   and render_tuple_expression_bare = fun elements ->
     Doc.group (join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements)
-  and render_parenthesized_apply_payload = fun ({ opening_token; closing_token; inner; _ }:Syn.Cst.parenthesized_expression) ->
+  and render_parenthesized_apply_payload = fun (
+    { opening_token; closing_token; inner; _ }: Syn.Cst.parenthesized_expression
+  ) ->
     let rendered_inner =
       match inner with
       | Syn.Cst.Expression.Tuple { elements; _ } -> render_tuple_expression_bare elements
@@ -3452,7 +3470,7 @@ let make_lowerer =
     ~after:(Syn.Cst.Token.span opening_token).end_
     (Syn.Cst.Expression.syntax_node inner))) in
     Doc.concat [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token ]
-  and render_local_open_expression = fun (local_open:Syn.Cst.local_open_expression) ->
+  and render_local_open_expression = fun (local_open: Syn.Cst.local_open_expression) ->
     match local_open with
     | Syn.Cst.LetOpen {
       let_token;
@@ -3634,12 +3652,12 @@ let make_lowerer =
     | _ -> false
   and render_infix_expression = fun
     ({
-      syntax_node;
-      left;
-      operator_token;
-      right;
-      _
-    }:Syn.Cst.infix_expression) ->
+        syntax_node;
+        left;
+        operator_token;
+        right;
+        _
+      }: Syn.Cst.infix_expression) ->
     let parts = infix_chain
     operator_token
     (Syn.Cst.Expression.Infix {syntax_node; left; operator_token; right; attributes = []}) in
@@ -3648,7 +3666,7 @@ let make_lowerer =
     (Doc.concat [ Doc.break (); doc_of_token operator_token; Doc.space ])
     render_expression
     parts)
-  and render_apply_expression = fun ({ syntax_node; callee; argument; _ }:Syn.Cst.apply_expression) ->
+  and render_apply_expression = fun ({ syntax_node; callee; argument; _ }: Syn.Cst.apply_expression) ->
     let rec collect_arguments = fun acc ->
       function
       | Syn.Cst.Expression.Apply { callee; argument; _ } -> collect_arguments (argument :: acc) callee
@@ -3690,15 +3708,15 @@ let make_lowerer =
       (rendered_head :: List.map (fun argument -> Doc.concat [ Doc.break (); argument ]) rendered_arguments))
   and render_if_expression = fun
     ({
-      syntax_node;
-      keyword_token;
-      then_token;
-      else_token;
-      condition;
-      then_branch;
-      else_branch;
-      _
-    }:Syn.Cst.if_expression) ->
+        syntax_node;
+        keyword_token;
+        then_token;
+        else_token;
+        condition;
+        then_branch;
+        else_branch;
+        _
+      }: Syn.Cst.if_expression) ->
     render_if_expression_block
     {
       syntax_node;
@@ -3711,7 +3729,9 @@ let make_lowerer =
       attributes = [];
 
     }
-  and render_case = fun ?(force_multiline_body = false) ?(force_leading_bar = false) (case:Syn.Cst.match_case) ->
+  and render_case = fun ?(force_multiline_body = false) ?(force_leading_bar = false) (
+    case: Syn.Cst.match_case
+  ) ->
     let body_trivia = pending_doc_of_trivia
     (Syn.Cst.leading_trivia_before_node
     ~after:(Syn.Cst.Token.span case.arrow_token).end_
@@ -3727,7 +3747,7 @@ let make_lowerer =
       match case.pattern with
       | Syn.Cst.Pattern.Tuple { elements; _ } ->
           join_map (Doc.concat [ Doc.comma; Doc.space ])
-            (fun (element:Syn.Cst.tuple_pattern_element) ->
+            (fun (element: Syn.Cst.tuple_pattern_element) ->
               match element.label_token with
               | None -> render_pattern element.pattern
               | Some label_token -> Doc.concat
@@ -3834,7 +3854,7 @@ let make_lowerer =
         cases;
 
       ]
-  and flatten_fun_expression = fun ({ parameters; body; _ }:Syn.Cst.fun_expression) ->
+  and flatten_fun_expression = fun ({ parameters; body; _ }: Syn.Cst.fun_expression) ->
     let rec loop = fun acc ->
       function
       | Syn.Cst.Cases _ as body -> (List.rev acc, body)
@@ -3846,12 +3866,12 @@ let make_lowerer =
     loop (List.rev parameters) body
   and render_fun_expression = fun
     ({
-      keyword_token;
-      arrow_token;
-      parameters=_;
-      body=_;
-      _
-    } as fun_:Syn.Cst.fun_expression) ->
+        keyword_token;
+        arrow_token;
+        parameters=_;
+        body=_;
+        _
+      } as fun_: Syn.Cst.fun_expression) ->
     let parameters = fun_.parameters in
     let body = fun_.body in
     let parameters = parameters |> List.map render_parameter in
@@ -3902,7 +3922,7 @@ let make_lowerer =
             else
               Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
           ); Doc.space; doc_of_token arrow_token; Doc.space; body;  ]
-  and render_function_expression = fun ({ keyword_token; cases; _ }:Syn.Cst.function_expression) ->
+  and render_function_expression = fun ({ keyword_token; cases; _ }: Syn.Cst.function_expression) ->
     let force_multiline_cases = List.length cases > 2 && List.exists case_body_prefers_multiline cases in
     Doc.concat
     [
@@ -3914,7 +3934,9 @@ let make_lowerer =
       cases;
 
     ]
-  and render_function_expression_unindented = fun ({ keyword_token; cases; _ }:Syn.Cst.function_expression) ->
+  and render_function_expression_unindented = fun (
+    { keyword_token; cases; _ }: Syn.Cst.function_expression
+  ) ->
     let force_multiline_cases = List.length cases > 2 && List.exists case_body_prefers_multiline cases in
     Doc.concat
     [
@@ -3970,14 +3992,14 @@ let make_lowerer =
     | expression -> render_expression expression
   and render_if_expression_block = fun
     ({
-      keyword_token;
-      then_token;
-      else_token;
-      condition;
-      then_branch;
-      else_branch;
-      _
-    }:Syn.Cst.if_expression) ->
+        keyword_token;
+        then_token;
+        else_token;
+        condition;
+        then_branch;
+        else_branch;
+        _
+      }: Syn.Cst.if_expression) ->
     let condition_doc = render_expression condition in
     let then_doc =
       if branch_prefers_multiline_layout then_branch then
@@ -4215,12 +4237,12 @@ let make_lowerer =
     | expression -> render_expression expression
   and render_let_module_expression = fun
     ({
-      module_name_token;
-      equals_token;
-      module_expression;
-      body;
-      _
-    }:Syn.Cst.let_module_expression) ->
+        module_name_token;
+        equals_token;
+        module_expression;
+        body;
+        _
+      }: Syn.Cst.let_module_expression) ->
     let header = Doc.concat
       [
         kw_let;
@@ -4238,7 +4260,7 @@ let make_lowerer =
       ]
     in
     Doc.concat [ header; Doc.line; render_expression body ]
-  and render_exception_declaration = fun (decl:Syn.Cst.exception_declaration) ->
+  and render_exception_declaration = fun (decl: Syn.Cst.exception_declaration) ->
     let rhs_doc =
       match decl.rhs with
       | None ->
@@ -4267,19 +4289,21 @@ let make_lowerer =
             Doc.concat [ Doc.line; Doc.indent 2 of_doc; Doc.line; Doc.indent 2 payload_doc;  ]
     in
     Doc.concat [ doc_of_token decl.keyword_token; Doc.space; doc_of_token decl.name_token; rhs_doc ]
-  and render_let_exception_expression = fun ({ exception_declaration; body; _ }:Syn.Cst.let_exception_expression) ->
+  and render_let_exception_expression = fun (
+    { exception_declaration; body; _ }: Syn.Cst.let_exception_expression
+  ) ->
     let exception_doc = render_exception_declaration exception_declaration in
     Doc.concat
     [ kw_let; Doc.space; exception_doc; Doc.space; kw_in; Doc.line; render_expression body;  ]
   and render_binding_operator_binding = fun
     ({
-      keyword_token;
-      operator_token;
-      equals_token;
-      binding_pattern;
-      bound_value;
-      _
-    }:Syn.Cst.binding_operator_binding) ->
+        keyword_token;
+        operator_token;
+        equals_token;
+        binding_pattern;
+        bound_value;
+        _
+      }: Syn.Cst.binding_operator_binding) ->
     let header = Doc.concat
     [
       doc_of_token keyword_token;
@@ -4304,7 +4328,9 @@ let make_lowerer =
     else
       Doc.concat
       [ header; Doc.space; doc_of_token equals_token; Doc.line; Doc.indent 2 rendered_value ]
-  and render_let_operator_expression = fun ({ binding; in_token; body; _ }:Syn.Cst.let_operator_expression) ->
+  and render_let_operator_expression = fun (
+    { binding; in_token; body; _ }: Syn.Cst.let_operator_expression
+  ) ->
     let and_bindings =
       match binding.and_binding with
       | Some next -> binding_operator_group_items next
@@ -4328,7 +4354,9 @@ let make_lowerer =
       Doc.concat [ bindings; Doc.line; doc_of_token in_token; Doc.line; body_doc ]
     else
       Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc ]
-  and render_sequence_expression = fun ({ separator_tokens; expressions; _ }:Syn.Cst.sequence_expression) ->
+  and render_sequence_expression = fun (
+    { separator_tokens; expressions; _ }: Syn.Cst.sequence_expression
+  ) ->
     let expression_count = List.length expressions in
     let separator_token_at = fun index ->
       List.nth_opt separator_tokens index
@@ -4370,7 +4398,7 @@ let make_lowerer =
       match pattern with
       | Syn.Cst.Pattern.Tuple { elements; _ } ->
           join_map (Doc.concat [ Doc.comma; Doc.space ])
-            (fun (element:Syn.Cst.tuple_pattern_element) ->
+            (fun (element: Syn.Cst.tuple_pattern_element) ->
               match element.label_token with
               | None -> render_pattern element.pattern
               | Some label_token -> Doc.concat
@@ -4988,17 +5016,17 @@ let make_lowerer =
     doc_with_leading_trivia leading_binding_trivia rendered_binding
   and render_let_expression = fun
     ({
-      keyword_token;
-      rec_token;
-      equals_token;
-      binding_pattern;
-      parameters;
-      bound_value;
-      and_binding;
-      body;
-      in_token;
-      _
-    }:Syn.Cst.let_expression) ->
+        keyword_token;
+        rec_token;
+        equals_token;
+        binding_pattern;
+        parameters;
+        bound_value;
+        and_binding;
+        body;
+        in_token;
+        _
+      }: Syn.Cst.let_expression) ->
     let leading_value_trivia = pending_doc_of_trivia_before_node
     ~after:(Syn.Cst.Token.span equals_token).end_
     (Syn.Cst.Expression.syntax_node bound_value) in
@@ -5016,7 +5044,7 @@ let make_lowerer =
     let and_bindings = Option.to_list and_binding
     |> List.concat_map let_binding_group_items
     |> List.map
-    (fun (binding:Syn.Cst.let_binding) -> render_local_binding
+    (fun (binding: Syn.Cst.let_binding) -> render_local_binding
     ~local_context:true
     ~source_has_explicit_fun:false
     ~keyword_token:binding.keyword_token
@@ -5039,7 +5067,9 @@ let make_lowerer =
       Doc.concat [ bindings; Doc.line; doc_of_token in_token; Doc.line; body_doc;  ]
     else
       Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc;  ]
-  and render_let_binding_group_item = fun ?leading_binding_trivia_override (binding:Syn.Cst.let_binding) ->
+  and render_let_binding_group_item = fun ?leading_binding_trivia_override (
+    binding: Syn.Cst.let_binding
+  ) ->
     let source_has_explicit_fun = binding_has_explicit_fun_rhs binding in
     let leading_binding_trivia =
       match leading_binding_trivia_override with
@@ -5059,7 +5089,7 @@ let make_lowerer =
     ~pattern:binding.binding_pattern
     ~parameters:binding.parameters
     ~value:binding.value
-  and render_let_binding = fun (binding:Syn.Cst.let_binding) ->
+  and render_let_binding = fun (binding: Syn.Cst.let_binding) ->
     let first = render_let_binding_group_item ~leading_binding_trivia_override:None binding in
     let trailing = Syn.Cst.LetBinding.and_bindings binding
     |> List.map
@@ -5069,11 +5099,11 @@ let make_lowerer =
     match Syn.CstBuilder.signature_items_of_module_type module_type with
     | Ok items -> items
     | Error error -> unsupported_with_context_entries
-    ~context:((((Context_label "module_type"
+    ~context:(((((Context_label "module_type"
     :: Context_syntax_kind error.syntax_kind
-    :: List.map (fun label -> Context_label label) error.context))))
+    :: List.map (fun label -> Context_label label) error.context)))))
     error.message
-  and render_module_type_constraint = fun ~keyword (constraint_:Syn.Cst.module_type_constraint) ->
+  and render_module_type_constraint = fun ~keyword (constraint_: Syn.Cst.module_type_constraint) ->
     let separator = Doc.concat [ Doc.space; doc_of_token constraint_.separator_token; Doc.space ] in
     Doc.concat
     [
@@ -5086,7 +5116,9 @@ let make_lowerer =
       render_core_type constraint_.replacement_type;
 
     ]
-  and render_functor_parameter = fun ({ name_token; colon_token; module_type; _ }:Syn.Cst.functor_parameter) ->
+  and render_functor_parameter = fun (
+    { name_token; colon_token; module_type; _ }: Syn.Cst.functor_parameter
+  ) ->
     Doc.concat
     [
       Doc.lparen;
@@ -5165,9 +5197,9 @@ let make_lowerer =
           match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
           | Ok items -> render_structure_items ~source_node:syntax_node items
           | Error error -> unsupported_with_context_entries
-          ~context:((((Context_label "module_expression"
+          ~context:(((((Context_label "module_expression"
           :: Context_syntax_kind error.syntax_kind
-          :: List.map (fun label -> Context_label label) error.context))))
+          :: List.map (fun label -> Context_label label) error.context)))))
           error.message
         in
         Doc.concat [ Doc.text "struct"; Doc.line; Doc.indent 2 body; Doc.line; Doc.text "end";  ]
@@ -5250,13 +5282,15 @@ let make_lowerer =
         [ render_module_expression_doc module_expression; Doc.space; render_attribute attribute ]
     | Syn.Cst.ModuleExpression.Extension extension ->
         render_extension_doc extension
-  and render_module_signature_with_keyword = fun _keyword_doc (decl:Syn.Cst.ModuleSignature.t) ->
+  and render_module_signature_with_keyword = fun _keyword_doc (decl: Syn.Cst.ModuleSignature.t) ->
     let rest = Syn.Cst.ModuleSignature.and_declarations decl in
     Doc.join
     blank_line
     (render_module_signature_header ~include_keyword_leading_trivia:false decl
     :: List.map (render_module_signature_header ~include_keyword_leading_trivia:true) rest)
-  and render_module_signature_header = fun ~include_keyword_leading_trivia (decl:Syn.Cst.ModuleSignature.t) ->
+  and render_module_signature_header = fun ~include_keyword_leading_trivia (
+    decl: Syn.Cst.ModuleSignature.t
+  ) ->
     let keyword_token = Syn.Cst.ModuleSignature.keyword_token decl in
     let rec_token = Syn.Cst.ModuleSignature.rec_token decl in
     let module_name = Syn.Cst.ModuleSignature.module_name_token decl in
@@ -5305,13 +5339,15 @@ let make_lowerer =
           Doc.space;
           render_module_expression_doc module_expression
         ]
-  and render_module_structure_with_keyword = fun _keyword_doc (decl:Syn.Cst.ModuleStructure.t) ->
+  and render_module_structure_with_keyword = fun _keyword_doc (decl: Syn.Cst.ModuleStructure.t) ->
     let rest = Syn.Cst.ModuleStructure.and_declarations decl in
     Doc.join
     blank_line
     (render_module_structure_header ~include_keyword_leading_trivia:false decl
     :: List.map (render_module_structure_header ~include_keyword_leading_trivia:true) rest)
-  and render_module_structure_header = fun ~include_keyword_leading_trivia (decl:Syn.Cst.ModuleStructure.t) ->
+  and render_module_structure_header = fun ~include_keyword_leading_trivia (
+    decl: Syn.Cst.ModuleStructure.t
+  ) ->
     let keyword_token = Syn.Cst.ModuleStructure.keyword_token decl in
     let rec_token = Syn.Cst.ModuleStructure.rec_token decl in
     let module_name = Syn.Cst.ModuleStructure.module_name_token decl in
@@ -5371,13 +5407,13 @@ let make_lowerer =
     ]
   and render_module_type_declaration = fun
     ~leading_after ({
-      module_keyword_token;
-      type_keyword_token;
-      module_type_name;
-      equals_token;
-      module_type;
-      _
-    }:Syn.Cst.ModuleTypeDeclaration.t) ->
+        module_keyword_token;
+        type_keyword_token;
+        module_type_name;
+        equals_token;
+        module_type;
+        _
+      }: Syn.Cst.ModuleTypeDeclaration.t) ->
     let header = Doc.concat
     [
       doc_of_token_with_filtered_leading_trivia ~after:leading_after module_keyword_token;
@@ -5408,7 +5444,7 @@ let make_lowerer =
     function
     | Syn.Cst.OpenStatement.Path path -> doc_of_ident path
     | Syn.Cst.OpenStatement.ModuleExpression expression -> render_module_expression_doc expression
-  and render_include_statement = fun ({ keyword_token; target; _ }:Syn.Cst.include_statement) ->
+  and render_include_statement = fun ({ keyword_token; target; _ }: Syn.Cst.include_statement) ->
     let target =
       match target with
       | Syn.Cst.ModuleExpression expression -> render_module_expression_doc expression
@@ -5607,7 +5643,7 @@ let make_lowerer =
     | Syn.Cst.SignatureItem.ClassTypeDeclaration decl -> render_class_type_declaration
     ~leading_after:0
     decl
-  and render_class_declaration = fun ~leading_after (declaration:Syn.Cst.ClassDeclaration.t) ->
+  and render_class_declaration = fun ~leading_after (declaration: Syn.Cst.ClassDeclaration.t) ->
     let type_params = Syn.Cst.ClassDeclaration.type_params declaration in
     let declaration_extension = Syn.Cst.ClassDeclaration.declaration_extension declaration in
     let declaration_attributes = Syn.Cst.ClassDeclaration.declaration_attributes declaration in
@@ -5651,7 +5687,7 @@ let make_lowerer =
       render_class_type_doc (Syn.Cst.ClassDeclaration.class_type declaration);
 
     ]
-  and render_class_definition = fun ~leading_after (declaration:Syn.Cst.ClassDefinition.t) ->
+  and render_class_definition = fun ~leading_after (declaration: Syn.Cst.ClassDefinition.t) ->
     let type_params = Syn.Cst.ClassDefinition.type_params declaration in
     let declaration_extension = Syn.Cst.ClassDefinition.declaration_extension declaration in
     let declaration_attributes = Syn.Cst.ClassDefinition.declaration_attributes declaration in
@@ -5717,17 +5753,17 @@ let make_lowerer =
     ]
   and render_class_type_declaration = fun
     ~leading_after ({
-      class_keyword_token;
-      type_keyword_token;
-      declaration_extension;
-      declaration_attributes;
-      class_type_name;
-      equals_token;
-      type_params;
-      class_type_body;
-      _;
+        class_keyword_token;
+        type_keyword_token;
+        declaration_extension;
+        declaration_attributes;
+        class_type_name;
+        equals_token;
+        type_params;
+        class_type_body;
+        _;
 
-    }:Syn.Cst.class_type_declaration) ->
+      }: Syn.Cst.class_type_declaration) ->
     let keyword =
       match declaration_extension with
       | None -> Doc.concat

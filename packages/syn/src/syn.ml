@@ -20,7 +20,7 @@ type build_cst_error =
 
 let tokenize = fun source -> Lexer.tokenize source
 
-let build_cst = fun (result:Parser.parse_result) ->
+let build_cst = fun (result: Parser.parse_result) ->
   if List.length result.Parser.diagnostics > 0 then
     Error (Parse_diagnostics result.Parser.diagnostics)
   else

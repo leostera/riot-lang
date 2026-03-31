@@ -48,13 +48,13 @@ let create = fun () -> {
 let is_in_queue = fun queue node_id ->
   let found = ref false in
   Queue.iter
-    (fun (node:action_node) ->
+    (fun (node: action_node) ->
       if Graph.SimpleGraph.Node_id.eq node.id node_id then
         found := true)
     queue;
   !found
 
-let dependencies_satisfied = fun t (node:action_node) ->
+let dependencies_satisfied = fun t (node: action_node) ->
   List.for_all
     (fun dep_id ->
       match HashMap.get t.completed dep_id with
@@ -63,7 +63,7 @@ let dependencies_satisfied = fun t (node:action_node) ->
       | None -> false)
     node.deps
 
-let has_failed_dependencies = fun t (node:action_node) ->
+let has_failed_dependencies = fun t (node: action_node) ->
   List.exists
     (fun dep_id ->
       match HashMap.get t.completed dep_id with
@@ -71,7 +71,7 @@ let has_failed_dependencies = fun t (node:action_node) ->
       | _ -> false)
     node.deps
 
-let queue = fun t (node:action_node) ->
+let queue = fun t (node: action_node) ->
   match HashMap.get t.completed node.id with
   | Some _ -> ()
   | None ->
@@ -84,7 +84,7 @@ let queue = fun t (node:action_node) ->
       else
         Queue.push t.ready_queue node
 
-let requeue_with_deps = fun t (node:action_node) ~(missing_deps:Graph.SimpleGraph.Node_id.t list) ~(all_nodes:action_node list) ->
+let requeue_with_deps = fun t (node: action_node) ~(missing_deps:Graph.SimpleGraph.Node_id.t list) ~(all_nodes:action_node list) ->
   let _ = HashMap.remove t.busy_tasks node.id in
   if not (is_in_queue t.later_queue node.id) then
     Queue.push t.later_queue node;
@@ -92,7 +92,7 @@ let requeue_with_deps = fun t (node:action_node) ~(missing_deps:Graph.SimpleGrap
     (fun dep_id ->
       match
         List.find_opt
-          (fun (n:action_node) ->
+          (fun (n: action_node) ->
             Graph.SimpleGraph.Node_id.eq n.id dep_id)
           all_nodes
       with

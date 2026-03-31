@@ -22,7 +22,7 @@ let rec child_expressions_of_function_body =
   | Syn.Cst.Expression expression -> [ expression ]
   | Syn.Cst.Cases { cases; _ } ->
       cases |> List.concat_map
-        (fun (case:Syn.Cst.match_case) ->
+        (fun (case: Syn.Cst.match_case) ->
           (
             match case.guard with
             | Some guard -> [ guard ]
@@ -53,7 +53,7 @@ and child_expressions =
   | Syn.Cst.Expression.Match expr ->
       expr.scrutinee :: (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> [ guard ]
@@ -63,7 +63,7 @@ and child_expressions =
   | Syn.Cst.Expression.Try expr ->
       expr.body :: (
         expr.cases |> List.concat_map
-          (fun (case:Syn.Cst.match_case) ->
+          (fun (case: Syn.Cst.match_case) ->
             (
               match case.guard with
               | Some guard -> [ guard ]
@@ -144,7 +144,7 @@ let rec parameter_arguments_match = fun parameter_names arguments ->
   | _, _ ->
       false
 
-let should_flag_fun = fun (expr:Syn.Cst.fun_expression) ->
+let should_flag_fun = fun (expr: Syn.Cst.fun_expression) ->
   match positional_parameter_names expr.parameters with
   | None
   | Some [] -> false
@@ -157,10 +157,10 @@ let should_flag_fun = fun (expr:Syn.Cst.fun_expression) ->
           && not (expression_mentions_any_name parameter_names callee)
     )
 
-let make_diagnostic = fun (expr:Syn.Cst.fun_expression) -> Diagnostic.make
+let make_diagnostic = fun (expr: Syn.Cst.fun_expression) -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-~span:((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))))
+~span:(((((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span)))))
 ~suggestion:"Replace this eta-expanded function with the callee directly."
 ()
 
@@ -169,7 +169,7 @@ let rec diagnostic_for_expression =
   | Syn.Cst.Expression.Fun expr when should_flag_fun expr -> [ make_diagnostic expr ]
   | expr -> child_expressions expr |> List.concat_map diagnostic_for_expression
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

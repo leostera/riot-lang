@@ -45,14 +45,14 @@ let handle_close = fun _conn _state -> ()
 
 let handle_connection = fun _conn state -> Socket_pool.Handler.Continue state
 
-let should_keep_alive = fun (req:Request.t) ->
+let should_keep_alive = fun (req: Request.t) ->
   match (Request.version req, Net.Http.Header.get (Request.headers req) "connection") with
   | _, Some "close" -> false
   | _, Some "keep-alive" -> true
   | Http11, _ -> true
   | _, _ -> false
 
-let send_response = fun conn (res:Response.t) ->
+let send_response = fun conn (res: Response.t) ->
   let headers = Net.Http.Header.add res.headers "vary" "accept-encoding" in
   let body_len = String.length res.body |> Int.to_string in
   let headers =
@@ -190,7 +190,7 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
           Log.error "Failed to send WebSocket upgrade response - connection closed";
           Socket_pool.Handler.Close state
 
-let handle_request = fun state socket_conn (req:Request.t) ->
+let handle_request = fun state socket_conn (req: Request.t) ->
   match state.handler socket_conn req with
   | Http_handler.Response res -> (* Normal HTTP response *)
     (

@@ -2,7 +2,7 @@ open Global
 
 (* Convert a value to string for error messages *)
 
-let rec value_to_string = fun (v:Spec.value) ->
+let rec value_to_string = fun (v: Spec.value) ->
   match v with
   | Spec.String s ->
       "\"" ^ s ^ "\""
@@ -39,7 +39,7 @@ let rec value_to_string = fun (v:Spec.value) ->
 
 (* Custom equality for Spec.value *)
 
-let rec value_equal = fun (v1:Spec.value) (v2:Spec.value) ->
+let rec value_equal = fun (v1: Spec.value) (v2: Spec.value) ->
   match (v1, v2) with
   | Spec.String s1, Spec.String s2 ->
       String.equal s1 s2
@@ -105,7 +105,7 @@ let mem_value = fun value choices ->
 
 (* Check if a value is in the allowed values list *)
 
-let check_allowed_values = fun field_name (value:Spec.value) allowed_values ->
+let check_allowed_values = fun field_name (value: Spec.value) allowed_values ->
   match allowed_values with
   | None -> Ok value
   | Some choices ->
@@ -118,7 +118,7 @@ let check_allowed_values = fun field_name (value:Spec.value) allowed_values ->
 
 (* Validate a TOML value against a field spec and apply defaults, converting to Spec.value *)
 
-let rec validate_field (field:Spec.field) toml_opt : (Spec.value, string) result =
+let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) result =
   let field_name = field.name in
   let field_type = field.field_type in
   let required = field.required in
@@ -405,7 +405,7 @@ let rec validate_field (field:Spec.field) toml_opt : (Spec.value, string) result
   match type_result with
   | Error err -> Error err
   | Ok validated_value -> check_allowed_values field_name validated_value allowed_values
-and validate_fields (fields:Spec.field list) toml_opt : (Spec.value, string) result =
+and validate_fields (fields: Spec.field list) toml_opt : (Spec.value, string) result =
   let table =
     match toml_opt with
     | Some (Data.Toml.Table t) -> t

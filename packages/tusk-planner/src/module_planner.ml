@@ -62,21 +62,21 @@ let plan_node = fun input ->
     let transitive_deps = Dependency.transitive_closure all_deps in
     (* Check if any package (including our own) needs unix *)
     let needs_unix =
-      let check_pkg = fun (pkg:Package.t) ->
+      let check_pkg = fun (pkg: Package.t) ->
         List.exists
-        (fun (d:Package.dependency) -> d.name = "unix")
+        (fun (d: Package.dependency) -> d.name = "unix")
         (Package.build_graph_dependencies pkg)
       in
-      check_pkg input.package || List.exists (fun (dep:Dependency.t) -> check_pkg dep.package) transitive_deps
+      check_pkg input.package || List.exists (fun (dep: Dependency.t) -> check_pkg dep.package) transitive_deps
     in
     (* Check if any package (including our own) needs dynlink *)
     let needs_dynlink =
-      let check_pkg = fun (pkg:Package.t) ->
+      let check_pkg = fun (pkg: Package.t) ->
         List.exists
-        (fun (d:Package.dependency) -> d.name = "dynlink")
+        (fun (d: Package.dependency) -> d.name = "dynlink")
         (Package.build_graph_dependencies pkg)
       in
-      check_pkg input.package || List.exists (fun (dep:Dependency.t) -> check_pkg dep.package) transitive_deps
+      check_pkg input.package || List.exists (fun (dep: Dependency.t) -> check_pkg dep.package) transitive_deps
     in
     let binary_libraries =
       (* Binaries and commands need the full transitive runtime library
@@ -106,7 +106,7 @@ let plan_node = fun input ->
     in
     (* Add cache directories from dependencies to includes *)
     let dep_cache_dirs =
-      List.map (fun (dep:Dependency.t) -> dep.artifact_dir) transitive_deps
+      List.map (fun (dep: Dependency.t) -> dep.artifact_dir) transitive_deps
     in
     let binary_includes =
       let unix_includes =
@@ -126,7 +126,7 @@ let plan_node = fun input ->
       unix_includes @ dynlink_includes @ own_package_dir @ dep_cache_dirs
     in
     List.iter
-    (fun (bin:Package.binary) -> Module_graph.add_binary_node
+    (fun (bin: Package.binary) -> Module_graph.add_binary_node
     graph_builder
     ~name:bin.name
     ~source:bin.path
@@ -138,7 +138,7 @@ let plan_node = fun input ->
     Log.debug ("[MODULE_PLANNER] Command includes for " ^ input.package.name ^ ":");
     List.iter (fun inc -> Log.debug ("  " ^ Path.to_string inc)) binary_includes;
     List.iter
-    (fun (cmd:Package_command.t) -> Module_graph.add_command_node
+    (fun (cmd: Package_command.t) -> Module_graph.add_command_node
     graph_builder
     ~name:cmd.name
     ~source:cmd.command_source
@@ -197,7 +197,7 @@ let plan_node = fun input ->
           let sources =
             sorted_modules
             |> List.concat_map
-              (fun (node:Module_node.t G.node) ->
+              (fun (node: Module_node.t G.node) ->
                 match node.value.kind with
                 | Native { files } ->
                     List.map

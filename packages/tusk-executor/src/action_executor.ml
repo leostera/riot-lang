@@ -357,7 +357,7 @@ let verify_outputs = fun outputs ->
   else
     Ok ()
 
-let has_failed_dependencies = fun completed (node:Action_node.t) ->
+let has_failed_dependencies = fun completed (node: Action_node.t) ->
   List.exists
     (fun dep_id ->
       match HashMap.get completed dep_id with
@@ -416,7 +416,7 @@ let resolve_source_for_copy = fun ~(package:Tusk_model.Package.t) ~src_path ->
   ^ String.concat ", " (List.map Path.to_string candidates)
   ^ ")")
 
-let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node:Action_node.t) ->
+let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node: Action_node.t) ->
   let start = Instant.now () in
   if has_failed_dependencies completed node then
     (
@@ -445,7 +445,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           });
           let _ = Tusk_store.Store.promote store artifact.Tusk_store.Artifact.hash ~target_dir:sandbox_dir
           |> Result.expect
-          ~msg:(((("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id)))) in
+          ~msg:((((("Failed to materialize cached action artifact: " ^ G.Node_id.to_string node.id))))) in
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
           Telemetry.emit
@@ -560,7 +560,8 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                     ~sandbox_dir
                     ~outs:(List.map (Path.join sandbox_dir) outputs)
                     |> Result.expect
-                    ~msg:(((("Failed to store action artifact for node " ^ G.Node_id.to_string node.id)))) in
+                    ~msg:((((("Failed to store action artifact for node "
+                    ^ G.Node_id.to_string node.id))))) in
                     Telemetry.emit
                     Telemetry_events.(ActionCompleted {
                       session_id;
@@ -598,8 +599,8 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                         ~sandbox_dir
                         ~outs:abs_outputs
                         |> Result.expect
-                        ~msg:(((("Failed to store action artifact for node "
-                        ^ G.Node_id.to_string node.id)))) in
+                        ~msg:((((("Failed to store action artifact for node "
+                        ^ G.Node_id.to_string node.id))))) in
                         Telemetry.emit
                         Telemetry_events.(ActionCompleted {
                           session_id;

@@ -137,7 +137,7 @@ let line_for_pos = fun layout pos ->
   in
   (line_idx, Int.max 0 (pos - start_offset))
 
-let extract_code_snippet_from_layout = fun layout (span:Syn.Ceibo.Span.t) ->
+let extract_code_snippet_from_layout = fun layout (span: Syn.Ceibo.Span.t) ->
   if Array.length layout.lines = 0 then
     None
   else
@@ -247,7 +247,7 @@ let group_diagnostics : t list -> grouped list = fun diags ->
   let module DiagMap = Collections.HashMap in
   let map = DiagMap.create () in
   List.iter
-    (fun (diag:t) ->
+    (fun (diag: t) ->
       let fix_title = diag.fix |> Option.map Fix.title in
       let key = (diag.severity, message diag, rule_id diag, diag.suggestion, fix_title) in
       match DiagMap.get map key with
@@ -264,7 +264,7 @@ let group_diagnostics : t list -> grouped list = fun diags ->
         | (fix, _) :: _ -> fix
       in
       let spans = List.map snd spans in
-      ({severity; message; spans; rule_id; suggestion; fix; }:grouped)) |> Iter.Iterator.to_list
+      ({severity; message; spans; rule_id; suggestion; fix; }: grouped)) |> Iter.Iterator.to_list
 
 let grouped_to_formatted_output = fun ~file ~source grouped ->
   let layout = make_source_layout source in
@@ -272,7 +272,7 @@ let grouped_to_formatted_output = fun ~file ~source grouped ->
   let basic_info = [ colored_header_label grouped.severity grouped.rule_id; ""; grouped.message;  ] in
   let spans =
     List.sort
-      (fun (left:Syn.Ceibo.Span.t) (right:Syn.Ceibo.Span.t) ->
+      (fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
         Int.compare left.start right.start)
       grouped.spans
   in
@@ -309,7 +309,7 @@ let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
   let basic_info = [ colored_header_label grouped.severity grouped.rule_id; ""; grouped.message;  ] in
   let spans =
     List.sort
-      (fun (left:Syn.Ceibo.Span.t) (right:Syn.Ceibo.Span.t) ->
+      (fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
         Int.compare left.start right.start)
       grouped.spans
   in

@@ -145,7 +145,7 @@ let is_well_known_package = fun name ->
   | "graphics" -> true
   | _ -> false
 
-let dependencies_for_scope = fun scope (pkg:Package.t) ->
+let dependencies_for_scope = fun scope (pkg: Package.t) ->
   match scope with
   | Build -> pkg.build_dependencies
   | Runtime -> pkg.dependencies
@@ -157,9 +157,9 @@ let projected_package = fun scope pkg ->
   | Runtime -> Package.for_scope Package.Normal pkg
   | Dev -> Package.for_scope Package.Dev pkg
 
-let needs_build_scope_node = fun (pkg:Package.t) -> List.length pkg.build_dependencies > 0
+let needs_build_scope_node = fun (pkg: Package.t) -> List.length pkg.build_dependencies > 0
 
-let create ~scope (workspace:Workspace.t) : (t, create_error) result =
+let create ~scope (workspace: Workspace.t) : (t, create_error) result =
   let graph = G.make () in
   let name_to_node = HashMap.create () in
   let missing = vec [] in
@@ -171,12 +171,12 @@ let create ~scope (workspace:Workspace.t) : (t, create_error) result =
   (
     match scope with
     | Build -> List.iter
-    (fun (pkg:Package.t) -> insert_node (projected_package Build pkg) Build)
+    (fun (pkg: Package.t) -> insert_node (projected_package Build pkg) Build)
     workspace.packages
     | Runtime
     | Dev ->
         List.iter
-          (fun (pkg:Package.t) ->
+          (fun (pkg: Package.t) ->
             if needs_build_scope_node pkg then
               insert_node (projected_package Build pkg) Build)
           workspace.packages
@@ -186,19 +186,19 @@ let create ~scope (workspace:Workspace.t) : (t, create_error) result =
     | Build -> ()
     | Runtime
     | Dev -> List.iter
-    (fun (pkg:Package.t) -> insert_node (projected_package Runtime pkg) Runtime)
+    (fun (pkg: Package.t) -> insert_node (projected_package Runtime pkg) Runtime)
     workspace.packages
   );
   (
     match scope with
     | Dev -> List.iter
-    (fun (pkg:Package.t) -> insert_node (projected_package Dev pkg) Dev)
+    (fun (pkg: Package.t) -> insert_node (projected_package Dev pkg) Dev)
     workspace.packages
     | Build
     | Runtime -> ()
   );
   List.iter
-    (fun (pkg:Package.t) ->
+    (fun (pkg: Package.t) ->
       let add_dep_edge = fun ~from_scope dep_name ->
         match HashMap.get name_to_node (package_key ~package_name:pkg.name from_scope) with
         | None -> ()
@@ -248,17 +248,17 @@ let create ~scope (workspace:Workspace.t) : (t, create_error) result =
       (
         match scope with
         | Build -> List.iter
-        (fun (dep:Package.dependency) -> add_dep_edge ~from_scope:Build dep.name)
+        (fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Build dep.name)
         pkg.build_dependencies
         | Runtime
         | Dev -> ()
       );
-      List.iter (fun (dep:Package.dependency) -> add_dep_edge ~from_scope:Runtime dep.name) pkg.dependencies;
+      List.iter (fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Runtime dep.name) pkg.dependencies;
       match scope with
       | Build
       | Runtime -> ()
       | Dev -> List.iter
-      (fun (dep:Package.dependency) -> add_dep_edge ~from_scope:Dev dep.name)
+      (fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Dev dep.name)
       pkg.dev_dependencies)
     workspace.packages;
   if Vector.len missing > 0 then
@@ -308,7 +308,7 @@ let filter_for_packages = fun pg pkg_names ->
       let reachable_ids = G.reachable_from pg.graph target_nodes in
       let reachable_set = HashSet.create () in
       List.iter
-        (fun (node:package_node G.node) ->
+        (fun (node: package_node G.node) ->
           let _ = HashSet.insert reachable_set node.id in
           ())
         target_nodes;
@@ -349,7 +349,7 @@ let filter_for_package = fun pg pkg_name -> filter_for_packages pg [ pkg_name ]
 let get_graph_node = fun pg node_id ->
   G.get_node pg.graph node_id
 
-let get_dependencies_for_node = fun pg (node:package_node G.node) ->
+let get_dependencies_for_node = fun pg (node: package_node G.node) ->
   List.filter_map
     (fun dep_id ->
       match G.get_node pg.graph dep_id with
@@ -357,13 +357,13 @@ let get_dependencies_for_node = fun pg (node:package_node G.node) ->
       | None -> None)
     node.deps
 
-let get_dependencies = fun graph (package:Package.t) ->
+let get_dependencies = fun graph (package: Package.t) ->
   let filtered_graph = filter_for_package graph package.name in
   match HashMap.get filtered_graph.name_to_node (package_key ~package_name:package.name Runtime) with
   | None -> []
   | Some runtime_node -> get_dependencies_for_node filtered_graph runtime_node
 
-let get_unplanned_dependencies = fun pg (pkg:Package.t) ->
+let get_unplanned_dependencies = fun pg (pkg: Package.t) ->
   let deps = get_dependencies pg pkg in
   List.filter_map
     (fun dep ->
@@ -377,7 +377,7 @@ let iter_nodes = fun pg ~fn -> G.iter pg.graph ~fn:(fun _id node -> fn node)
 
 let topological_sort = fun pg ->
   match G.topo_sort pg.graph with
-  | Ok sorted_nodes -> List.map (fun (node:package_node G.node) -> node.value) sorted_nodes
+  | Ok sorted_nodes -> List.map (fun (node: package_node G.node) -> node.value) sorted_nodes
   | Error node_ids ->
       let names =
         List.filter_map

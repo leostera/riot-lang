@@ -49,7 +49,7 @@ let trace = fun msg ->
   if Atomic.get trace_enabled then
     eprintln ("[Scheduler.Trace] " ^ msg)
 
-let snapshot_counters = fun (counters:runtime_counters) -> {
+let snapshot_counters = fun (counters: runtime_counters) -> {
   steals = Atomic.get counters.steals;
   failed_steals = Atomic.get counters.failed_steals;
   remote_wakeups = Atomic.get counters.remote_wakeups;
@@ -80,7 +80,7 @@ let ensure_can_run_once = fun () ->
 
 let make_response = fun () -> {lock = Mutex.create (); cond = Condition.create (); value = None; }
 
-let with_response = fun (response:'a response) f ->
+let with_response = fun (response: 'a response) f ->
   Mutex.lock response.lock;
   try
     let result = f () in
@@ -295,7 +295,7 @@ let request_shutdown = fun t ~status ->
           ]
       );
   Array.iter
-    (fun (worker:worker) ->
+    (fun (worker: worker) ->
       Mutex.lock worker.lock;
       Condition.broadcast worker.cond;
       Mutex.unlock worker.lock)
@@ -808,7 +808,7 @@ let step_process = fun t ctx slot ->
       else
         mark_slot_pending slot
 
-let pop_local = fun (worker:worker) ->
+let pop_local = fun (worker: worker) ->
   Mutex.lock worker.lock;
   let slot = Queue.pop worker.queue in
   Mutex.unlock worker.lock;
@@ -818,7 +818,7 @@ let pop_local = fun (worker:worker) ->
       mark_slot_dequeued slot;
       Some slot
 
-let wait_for_local_work = fun t (worker:worker) ->
+let wait_for_local_work = fun t (worker: worker) ->
   Mutex.lock worker.lock;
   while Queue.is_empty worker.queue && not (Atomic.get t.stop) do
     Condition.wait worker.cond worker.lock
@@ -836,7 +836,7 @@ let wait_for_local_work = fun t (worker:worker) ->
       mark_slot_dequeued slot;
       Some slot
 
-let steal_batch = fun (victim:worker) ->
+let steal_batch = fun (victim: worker) ->
   Mutex.lock victim.lock;
   let available = Queue.len victim.queue in
   let steal_count = min 32 (available / 2) in
@@ -852,7 +852,7 @@ let steal_batch = fun (victim:worker) ->
   Mutex.unlock victim.lock;
   batch
 
-let push_batch = fun (worker:worker) batch ->
+let push_batch = fun (worker: worker) batch ->
   if not (List.is_empty batch) then
     (
       Mutex.lock worker.lock;
@@ -861,7 +861,7 @@ let push_batch = fun (worker:worker) batch ->
       Mutex.unlock worker.lock
     )
 
-let attempt_steal = fun t (worker:worker) ->
+let attempt_steal = fun t (worker: worker) ->
   let total = worker_count t in
   let self_idx = Scheduler_id.to_int worker.id in
   let rec scan = fun start_offset seen ->
@@ -936,7 +936,7 @@ let process_timers = fun t ->
                       deregister_io_in_reactor
                       t
                       source
-                      ~context:(((("for timed out process " ^ Pid.to_string (Process.pid proc)))))
+                      ~context:((((("for timed out process " ^ Pid.to_string (Process.pid proc))))))
                   | _ -> ()
                 );
               if Process.is_alive proc then
@@ -995,7 +995,7 @@ let poll_io = fun t ->
               deregister_io_in_reactor
               t
               source
-              ~context:(((("for process " ^ Pid.to_string (Process.pid proc)))));
+              ~context:((((("for process " ^ Pid.to_string (Process.pid proc))))));
               if Process.is_alive proc then
                 (
                   Process.add_ready_token proc token source;

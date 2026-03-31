@@ -85,7 +85,7 @@ module DynamicWorkerPool: sig
               worker. The worker is parameterized by task type for type safety.
           *)
   type Message.t +=
-    | WorkerReady : 'task worker -> Message.t
+    | WorkerReady: 'task worker -> Message.t
 
   (** [start ~concurrency ~owner ~worker_fn ()] creates a worker pool with no
       pre-queued tasks. The owner will receive [WorkerReady worker] messages and

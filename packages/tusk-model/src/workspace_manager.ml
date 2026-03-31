@@ -130,7 +130,7 @@ dependant:string option ->
                     | Ok pkg ->
                         let transitive_deps =
                           List.map
-                            (fun (dep:Package.dependency) ->
+                            (fun (dep: Package.dependency) ->
                               match dep.source with
                               | Package.Workspace -> dep
                               | Package.Path rel_path ->
@@ -172,7 +172,7 @@ let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error 
     workspace_manifest.members
   in
   let seen =
-    Cell.create (List.map (fun (p:Package.t) -> p.name) member_packages)
+    Cell.create (List.map (fun (p: Package.t) -> p.name) member_packages)
   in
   (* Load workspace-level dependencies first *)
   let workspace_results = List.map
@@ -189,7 +189,7 @@ let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error 
   (* Then load any additional dependencies from member packages *)
   let external_results =
     List.concat_map
-      (fun (pkg:Package.t) ->
+      (fun (pkg: Package.t) ->
         List.map
         (load_external_package
         workspace_root

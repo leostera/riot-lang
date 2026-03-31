@@ -63,11 +63,11 @@ let script = fun ?src ?id ?type_ ?(children = []) () -> El {
 
 }
 
-let string = fun (str:string) -> Text str
+let string = fun (str: string) -> Text str
 
-let int = fun (x:int) -> Text (Int.to_string x)
+let int = fun (x: int) -> Text (Int.to_string x)
 
-let rec to_string = fun (t:'msg t) ->
+let rec to_string = fun (t: 'msg t) ->
   match t with
   | Text str -> str
   | Splat els -> String.concat "\n" (List.map to_string els)

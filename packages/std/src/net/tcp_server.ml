@@ -15,7 +15,7 @@ type error =
   | Closed
   | System_error of IO.error
 
-let read_line = fun (stream:Kernel.Net.Tcp_stream.t) ->
+let read_line = fun (stream: Kernel.Net.Tcp_stream.t) ->
   let buffer = Bytes.create 4_096 in
   let rec loop = fun acc ->
     match Tcp_stream.read stream buffer () with

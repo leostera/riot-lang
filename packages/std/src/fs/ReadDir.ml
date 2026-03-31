@@ -51,7 +51,7 @@ let rec next = fun t ->
     with
     | End_of_file ->
         close t
-        |> Result.expect ~msg:(((("Could not close ReadDir.t for " ^ Path.to_string t.path))));
+        |> Result.expect ~msg:((((("Could not close ReadDir.t for " ^ Path.to_string t.path)))));
         None
 
 (* MutIterator.Intf implementation *)

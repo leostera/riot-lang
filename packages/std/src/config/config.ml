@@ -83,7 +83,7 @@ let patch = fun ~app updates ->
 
 (* Value extraction helpers - panic on type mismatch or missing keys *)
 
-let get_string = fun (value:Spec.value) key ->
+let get_string = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -93,7 +93,7 @@ let get_string = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_char = fun (value:Spec.value) key ->
+let get_char = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -103,7 +103,7 @@ let get_char = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_int = fun (value:Spec.value) key ->
+let get_int = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -113,7 +113,7 @@ let get_int = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_int32 = fun (value:Spec.value) key ->
+let get_int32 = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -123,7 +123,7 @@ let get_int32 = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_int64 = fun (value:Spec.value) key ->
+let get_int64 = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -133,7 +133,7 @@ let get_int64 = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_bool = fun (value:Spec.value) key ->
+let get_bool = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -143,7 +143,7 @@ let get_bool = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_float = fun (value:Spec.value) key ->
+let get_float = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -153,7 +153,7 @@ let get_float = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_uri = fun (value:Spec.value) key ->
+let get_uri = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -163,7 +163,7 @@ let get_uri = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_datetime = fun (value:Spec.value) key ->
+let get_datetime = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -173,7 +173,7 @@ let get_datetime = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_path = fun (value:Spec.value) key ->
+let get_path = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -183,7 +183,7 @@ let get_path = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_uuid = fun (value:Spec.value) key ->
+let get_uuid = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -193,7 +193,7 @@ let get_uuid = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_list = fun (value:Spec.value) key ->
+let get_list = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -203,7 +203,7 @@ let get_list = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_discriminated_union = fun (value:Spec.value) key ->
+let get_discriminated_union = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -217,7 +217,7 @@ let get_discriminated_union = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let get_map = fun (value:Spec.value) key ->
+let get_map = fun (value: Spec.value) key ->
   match value with
   | Spec.Map kvs -> (
       match List.assoc_opt key kvs with
@@ -227,72 +227,72 @@ let get_map = fun (value:Spec.value) key ->
     )
   | _ -> panic "Expected Map value"
 
-let as_string = fun (value:Spec.value) ->
+let as_string = fun (value: Spec.value) ->
   match value with
   | Spec.String s -> s
   | _ -> panic "Expected String value"
 
-let as_char = fun (value:Spec.value) ->
+let as_char = fun (value: Spec.value) ->
   match value with
   | Spec.Char c -> c
   | _ -> panic "Expected Char value"
 
-let as_int = fun (value:Spec.value) ->
+let as_int = fun (value: Spec.value) ->
   match value with
   | Spec.Int i -> i
   | _ -> panic "Expected Int value"
 
-let as_int32 = fun (value:Spec.value) ->
+let as_int32 = fun (value: Spec.value) ->
   match value with
   | Spec.Int32 i -> i
   | _ -> panic "Expected Int32 value"
 
-let as_int64 = fun (value:Spec.value) ->
+let as_int64 = fun (value: Spec.value) ->
   match value with
   | Spec.Int64 i -> i
   | _ -> panic "Expected Int64 value"
 
-let as_bool = fun (value:Spec.value) ->
+let as_bool = fun (value: Spec.value) ->
   match value with
   | Spec.Bool b -> b
   | _ -> panic "Expected Bool value"
 
-let as_float = fun (value:Spec.value) ->
+let as_float = fun (value: Spec.value) ->
   match value with
   | Spec.Float f -> f
   | _ -> panic "Expected Float value"
 
-let as_uri = fun (value:Spec.value) ->
+let as_uri = fun (value: Spec.value) ->
   match value with
   | Spec.Uri uri -> uri
   | _ -> panic "Expected Uri value"
 
-let as_datetime = fun (value:Spec.value) ->
+let as_datetime = fun (value: Spec.value) ->
   match value with
   | Spec.Datetime dt -> dt
   | _ -> panic "Expected Datetime value"
 
-let as_path = fun (value:Spec.value) ->
+let as_path = fun (value: Spec.value) ->
   match value with
   | Spec.Path p -> p
   | _ -> panic "Expected Path value"
 
-let as_uuid = fun (value:Spec.value) ->
+let as_uuid = fun (value: Spec.value) ->
   match value with
   | Spec.Uuid uuid -> uuid
   | _ -> panic "Expected Uuid value"
 
-let as_list = fun (value:Spec.value) ->
+let as_list = fun (value: Spec.value) ->
   match value with
   | Spec.List items -> items
   | _ -> panic "Expected List value"
 
-let as_discriminated_union = fun (value:Spec.value) ->
+let as_discriminated_union = fun (value: Spec.value) ->
   match value with
   | Spec.DiscriminatedUnion { discriminant; variant; fields } -> (discriminant, variant, fields)
   | _ -> panic "Expected DiscriminatedUnion value"
 
-let as_map = fun (value:Spec.value) ->
+let as_map = fun (value: Spec.value) ->
   match value with
   | Spec.Map kvs -> kvs
   | _ -> panic "Expected Map value"

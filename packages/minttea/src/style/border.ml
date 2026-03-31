@@ -69,7 +69,7 @@ let make = fun ?top ?left ?bottom ?right ?top_left ?top_right ?bottom_left ?bott
 
 }
 
-let build_border = fun (border:t) text ->
+let build_border = fun (border: t) text ->
   let top = Option.unwrap_or ~default:"" border.top in
   let left = Option.unwrap_or ~default:"" border.left in
   let bottom = Option.unwrap_or ~default:"" border.bottom in

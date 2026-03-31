@@ -32,7 +32,7 @@ let bool_literal_value =
 
 let comparison_operands = fun expr ->
   match unwrap_parens expr with
-  | Syn.Cst.Expression.Infix (cmp:Syn.Cst.infix_expression) ->
+  | Syn.Cst.Expression.Infix (cmp: Syn.Cst.infix_expression) ->
       let op = Syn.Cst.InfixExpression.operator cmp in
       if String.equal op "=" || String.equal op "!=" || String.equal op "<>" then
         Some (op, Syn.Cst.InfixExpression.left cmp, Syn.Cst.InfixExpression.right cmp)
@@ -70,7 +70,7 @@ let suggestion_for_condition = fun expr ->
     )
   | None -> "Simplify this boolean comparison."
 
-let make_diagnostic = fun (if_expr:Syn.Cst.if_expression) -> Diagnostic.make
+let make_diagnostic = fun (if_expr: Syn.Cst.if_expression) -> Diagnostic.make
 ~severity:Warning
 ~kind:(Diagnostic.Known {rule_id; message = rule_description})
 ~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
@@ -83,7 +83,7 @@ let diagnostic_for_expression =
   if_expr)
   | _ -> None
 
-let check_tree = fun (ctx:Rule.context) _red_root ->
+let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]

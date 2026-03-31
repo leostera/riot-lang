@@ -14,16 +14,16 @@ type response_state =
   | Complete
 
 type t =
-  | Conn : {
-    protocol: (module Protocol.Intf);
-    writer: ('socket, 'err) IO.Writer.t;
-    reader: ('socket, 'err) IO.Reader.t;
-    uri: Net.Uri.t;
-    mutable buffer: Buffer.t;
-    mutable state: response_state;
-    mutable response: Net.Http.Response.t option;
-    of_io_error: 'err -> Error.t;
-  } -> t
+  | Conn: {
+      protocol: (module Protocol.Intf);
+      writer: ('socket, 'err) IO.Writer.t;
+      reader: ('socket, 'err) IO.Reader.t;
+      uri: Net.Uri.t;
+      mutable buffer: Buffer.t;
+      mutable state: response_state;
+      mutable response: Net.Http.Response.t option;
+      of_io_error: 'err -> Error.t;
+    } -> t
 
 let make : type socket err. reader:(socket, err) IO.Reader.t ->
 writer:(socket, err) IO.Writer.t ->

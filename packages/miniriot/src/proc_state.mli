@@ -9,16 +9,16 @@ type error_info = {
 }
 type 'a t =
   | Finished of ('a, error_info) result
-  | Suspended : ('a, 'b) continuation * 'a Effect.t -> 'b t
-  | Unhandled : ('a, 'b) continuation * 'a -> 'b t
+  | Suspended: ('a, 'b) continuation * 'a Effect.t -> 'b t
+  | Unhandled: ('a, 'b) continuation * 'a -> 'b t
 type 'a step =
   | Continue of 'a
   | Discontinue of exn
-  | Reperform : 'a Effect.t -> 'a step
-  | Delay : 'a step
-  | Suspend : 'a step
-  | Yield : unit step
-  | Terminate : 'a step
+  | Reperform: 'a Effect.t -> 'a step
+  | Delay: 'a step
+  | Suspend: 'a step
+  | Yield: unit step
+  | Terminate: 'a step
 type ('a, 'b) step_callback = ('a step -> 'b t) -> 'a Effect.t -> 'b t
 type perform = {
   perform: 'a 'b. ('a, 'b) step_callback;

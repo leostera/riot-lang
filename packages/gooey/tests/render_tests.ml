@@ -112,7 +112,7 @@ let test_render_command_bounding_boxes = fun () ->
   let commands = layout ~config:(make_config ()) elem in
   let all_valid =
     List.for_all
-    (fun (cmd:Render.command) -> cmd.bounding_box.width > 0.0 && cmd.bounding_box.height > 0.0)
+    (fun (cmd: Render.command) -> cmd.bounding_box.width > 0.0 && cmd.bounding_box.height > 0.0)
     commands
   in
   if all_valid then

@@ -24,7 +24,7 @@ let parse_result_to_json = fun result ->
     ]
     | Token.WhitespaceTrivia -> Json.Object [ ("kind", Json.String "whitespace") ]
   in
-  let trivia_to_json = fun (trivia:Token.trivia) ->
+  let trivia_to_json = fun (trivia: Token.trivia) ->
     match trivia_kind_to_json trivia.kind with
     | Json.Object fields -> Json.Object ([
       ("span", span_to_json trivia.span);
@@ -33,7 +33,7 @@ let parse_result_to_json = fun result ->
     @ fields)
     | json -> json
   in
-  let token_to_json = fun (token:Token.t) ->
+  let token_to_json = fun (token: Token.t) ->
     Json.Object [
       ("kind", Json.String (Token.show_kind token.kind));
       ("span", span_to_json token.span);

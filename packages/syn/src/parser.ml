@@ -151,7 +151,7 @@ let ident_starts_uppercase = fun text ->
 let green_nontrivia_token_texts = fun element ->
   let rec loop = fun acc ->
     function
-    | Ceibo.Green.Token ((token:(Syntax_kind.t, string) Ceibo.Green.token)) -> (
+    | Ceibo.Green.Token ((token: (Syntax_kind.t, string) Ceibo.Green.token)) -> (
         match Ceibo.Green.kind (Ceibo.Green.Token token) with
         | Syntax_kind.WHITESPACE
         | Syntax_kind.COMMENT
@@ -162,7 +162,7 @@ let green_nontrivia_token_texts = fun element ->
             | None -> acc
           )
       )
-    | Ceibo.Green.Node ((node:(Syntax_kind.t, string) Ceibo.Green.node)) -> Array.fold_left
+    | Ceibo.Green.Node ((node: (Syntax_kind.t, string) Ceibo.Green.node)) -> Array.fold_left
     loop
     acc
     (Ceibo.Green.children node)
@@ -340,7 +340,7 @@ let peek_trivia = fun parser -> Token_cursor.peek_leading_trivia parser.cursor |
 
 let leading_trivia_contains_newline = fun parser ->
   Token_cursor.peek_leading_trivia parser.cursor |> List.exists
-    (fun (trivia:Token.trivia) ->
+    (fun (trivia: Token.trivia) ->
       match trivia.Token.kind with
       | Token.WhitespaceTrivia -> String.contains
       (Token_cursor.view parser.cursor trivia.Token.span)
@@ -499,7 +499,7 @@ let make_node = fun kind children ->
   Ceibo.Green.make_node ~kind ~children:children_array
 
 (** Make an ERROR node with diagnostic *)
-let green_trivia_of_token_trivia = fun parser (trivia:Token.trivia) ->
+let green_trivia_of_token_trivia = fun parser (trivia: Token.trivia) ->
   let kind = trivia_kind_to_syntax_kind trivia.Token.kind in
   let text = Token_cursor.view parser.cursor trivia.Token.span in
   let width = String.length text in
@@ -3230,7 +3230,7 @@ and parse_char_literal = fun parser ->
               (* 'a (unclosed) - missing closing quote after the character *)
               let pos = ident.Token.span.end_ in
               let span = point_span pos in
-              let diagnostic = Diagnostic.unclosed_char_literal ~text:(((("'" ^ ident_text)))) ~span in
+              let diagnostic = Diagnostic.unclosed_char_literal ~text:((((("'" ^ ident_text))))) ~span in
               make_error_node parser ~diagnostic ~consumed_tokens:[ quote; ident ]
         )
       | Token.EOF ->

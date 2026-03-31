@@ -60,7 +60,7 @@ let make_relative = fun ~base ~path ->
 let is_binary_module = fun ~package_path ~binaries path ->
   let bin_rel = make_relative ~base:package_path ~path in
   List.exists
-    (fun (bin:Package.binary) ->
+    (fun (bin: Package.binary) ->
       let bin_abs_rel = make_relative ~base:package_path ~path:bin.path in
       Path.equal bin_rel bin_abs_rel)
     binaries

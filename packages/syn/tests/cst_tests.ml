@@ -67,7 +67,7 @@ let top_level_let_bindings = fun cst ->
     )
 
 let token_trivia_kinds = fun token -> token.Syn.Token.leading_trivia
-|> List.map (fun (trivia:Syn.Token.trivia) -> trivia.Syn.Token.kind)
+|> List.map (fun (trivia: Syn.Token.trivia) -> trivia.Syn.Token.kind)
 
 let green_token_kinds = fun node ->
   let rec loop = fun acc ->
@@ -195,7 +195,7 @@ let tests = [
       | Syn.Cst.StructureItem.LetBinding _ :: Syn.Cst.StructureItem.Comment comment :: _ ->
           Test.assert_equal
           ~expected:"tail"
-          ~actual:((((Syn.Cst.Comment.text comment |> String.trim))));
+          ~actual:(((((Syn.Cst.Comment.text comment |> String.trim)))));
           Ok ()
       | _ -> Error "expected trailing file comment after let binding");
   Test.case "build_cst keeps trailing file docstrings visible via EOF trivia"
@@ -307,7 +307,7 @@ let tests = [
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       Test.assert_equal
       ~expected:[ ";"; ";"; ";"; ";" ]
-      ~actual:((((Syn.Cst.SourceFile.phrase_separator_tokens cst |> List.map Syn.Cst.Token.text))));
+      ~actual:(((((Syn.Cst.SourceFile.phrase_separator_tokens cst |> List.map Syn.Cst.Token.text)))));
       Ok ());
   Test.case "cst polymorphic-variant inherit patterns keep the path after #"
     (fun () ->
@@ -320,10 +320,10 @@ let tests = [
           | { pattern=PolyVariantInherit first; _ } :: { pattern=PolyVariantInherit second; _ } :: _ ->
               Test.assert_equal
               ~expected:[ "color" ]
-              ~actual:((((Syn.Cst.Ident.segments first.type_path |> List.map Syn.Cst.Token.text))));
+              ~actual:(((((Syn.Cst.Ident.segments first.type_path |> List.map Syn.Cst.Token.text)))));
               Test.assert_equal
               ~expected:[ "M"; "color" ]
-              ~actual:((((Syn.Cst.Ident.segments second.type_path |> List.map Syn.Cst.Token.text))));
+              ~actual:(((((Syn.Cst.Ident.segments second.type_path |> List.map Syn.Cst.Token.text)))));
               Ok ()
           | _ -> Error "expected polymorphic-variant inherit match cases"
         )
@@ -343,7 +343,7 @@ let tests = [
       Test.assert_false (Syn.Cst.Ident.equal left wrong);
       Test.assert_equal
       ~expected:[ "List"; "rev" ]
-      ~actual:((((Syn.Cst.Ident.segments left |> List.map Syn.Cst.Token.text))));
+      ~actual:(((((Syn.Cst.Ident.segments left |> List.map Syn.Cst.Token.text)))));
       Ok ());
   Test.case "cst type extensions keep last module-path segment as name"
     (fun () ->
@@ -454,9 +454,9 @@ let tests = [
           Test.assert_true (Syn.Cst.TypeDeclaration.is_private hidden_alias);
           Test.assert_equal
           ~expected:(Some "private")
-          ~actual:((((Syn.Cst.TypeDeclaration.private_flag hidden_record
+          ~actual:(((((Syn.Cst.TypeDeclaration.private_flag hidden_record
           |> Syn.Cst.PrivateFlag.private_token
-          |> Option.map Syn.Cst.Token.text))));
+          |> Option.map Syn.Cst.Token.text)))));
           Ok ()
       | _ -> Error "expected private and public type declarations");
   Test.case "cst type declarations preserve nonrec and manifest aliases"
@@ -760,7 +760,7 @@ let tests = [
           let sides =
             constraints
             |> List.map
-              (fun ({ left; right; _ }:Syn.Cst.TypeConstraint.t) ->
+              (fun ({ left; right; _ }: Syn.Cst.TypeConstraint.t) ->
                 let left_name =
                   match left with
                   | Syn.Cst.CoreType.Var { name_token; _ } -> Syn.Cst.Token.text name_token
@@ -809,7 +809,7 @@ let tests = [
       | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
           match Syn.Cst.TypeDeclaration.type_definition decl with
           | Syn.Cst.TypeDefinition.Record { fields=[name_field;code_field]; _ } ->
-              let attribute_name = fun ({ name; _ }:Syn.Cst.attribute) -> Syn.Cst.Ident.name name in
+              let attribute_name = fun ({ name; _ }: Syn.Cst.attribute) -> Syn.Cst.Ident.name name in
               let attribute_names = fun field ->
                 Syn.Cst.RecordField.attributes field |> List.filter_map attribute_name in
               Test.assert_equal ~expected:[ "deprecated" ] ~actual:(attribute_names name_field);
@@ -3280,8 +3280,8 @@ val decode : Outer.Inner (* c *).(request -> response)
               Test.assert_equal ~expected:1 ~actual:(List.length attributes);
               Test.assert_equal
               ~expected:[ Some "foo" ]
-              ~actual:((((attributes
-              |> List.map (fun ({ name; _ }:Syn.Cst.attribute) -> Syn.Cst.Ident.name name)))));
+              ~actual:(((((attributes
+              |> List.map (fun ({ name; _ }: Syn.Cst.attribute) -> Syn.Cst.Ident.name name))))));
               Ok ()
           | _ -> Error "expected parenthesized identifier pattern"
         )
@@ -3460,9 +3460,11 @@ val decode : Outer.Inner (* c *).(request -> response)
             ~actual:((
               (
                 (
-                  match Syn.Cst.OpenStatement.module_path stmt with
-                  | Some module_path -> Syn.Cst.Ident.name module_path
-                  | None -> None
+                  (
+                    match Syn.Cst.OpenStatement.module_path stmt with
+                    | Some module_path -> Syn.Cst.Ident.name module_path
+                    | None -> None
+                  )
                 )
               )
             ));
@@ -3491,9 +3493,11 @@ val decode : Outer.Inner (* c *).(request -> response)
             ~actual:((
               (
                 (
-                  match Syn.Cst.OpenStatement.module_path stmt with
-                  | Some module_path -> Syn.Cst.Ident.name module_path
-                  | None -> None
+                  (
+                    match Syn.Cst.OpenStatement.module_path stmt with
+                    | Some module_path -> Syn.Cst.Ident.name module_path
+                    | None -> None
+                  )
                 )
               )
             ));
@@ -3518,8 +3522,8 @@ val decode : Outer.Inner (* c *).(request -> response)
       | Syn.Cst.SignatureItem.OpenStatement _ :: Syn.Cst.SignatureItem.ValueDeclaration decl :: _ ->
           Test.assert_equal
           ~expected:[ "(** Module overview. *)" ]
-          ~actual:((((node_leading_trivia (Syn.Cst.ValueDeclaration.syntax_node decl)
-          |> List.map Syn.Cst.Trivia.text))));
+          ~actual:(((((node_leading_trivia (Syn.Cst.ValueDeclaration.syntax_node decl)
+          |> List.map Syn.Cst.Trivia.text)))));
           Ok ()
       | _ -> Error "expected open statement and value declaration with leading doc");
   Test.case "cst keeps module overviews standalone before opens and repeated docs on the first type after open"
@@ -3548,8 +3552,8 @@ val decode : Outer.Inner (* c *).(request -> response)
           ~actual:(Syn.Cst.Docstring.text overview);
           Test.assert_equal
           ~expected:[ "(** Request/response ID type. *)"; "(** Request identifiers. *)";  ]
-          ~actual:((((node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node id_decl)
-          |> List.map Syn.Cst.Trivia.text))));
+          ~actual:(((((node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node id_decl)
+          |> List.map Syn.Cst.Trivia.text)))));
           Ok ()
       | _ -> Error "expected standalone module overview, two opens, and a type declaration with repeated leading docs");
   Test.case "cst preserves standalone implementation docstrings after open statements"
@@ -4814,11 +4818,11 @@ and second x = x
           Test.assert_equal ~expected:"second" ~actual:(Syn.Cst.Token.text name_token);
           Test.assert_equal
           ~expected:[ "(* Parse signature item (top-level in .mli files) *)"; "\n" ]
-          ~actual:((((nested
+          ~actual:(((((nested
           |> Syn.Cst.LetBinding.keyword_token
           |> Syn.Cst.Token.leading_trivia
           |> List.filter_map Syn.Cst.trivia_of_syntax_trivia
-          |> List.map Syn.Cst.Trivia.text))));
+          |> List.map Syn.Cst.Trivia.text)))));
           Ok ()
       | _ -> Error "expected grouped let binding with nested and-binding comment");
   Test.case "cst type declarations keep declaration attributes attached"
@@ -7003,7 +7007,7 @@ let x =
           Test.assert_equal ~expected:(Some "s") ~actual:(Syn.Cst.Ident.name path);
           Test.assert_equal
           ~expected:[ "."; "[" ]
-          ~actual:((((opening_tokens |> List.map Syn.Cst.Token.text))));
+          ~actual:(((((opening_tokens |> List.map Syn.Cst.Token.text)))));
           Test.assert_equal ~expected:"0" ~actual:(Syn.Cst.Token.text literal_token);
           Test.assert_equal ~expected:"]" ~actual:(Syn.Cst.Token.text closing_token);
           Ok ()
@@ -7026,7 +7030,7 @@ let x =
           Test.assert_equal ~expected:(Some "x") ~actual:(Syn.Cst.Ident.name path);
           Test.assert_equal
           ~expected:[ "."; "%"; "(" ]
-          ~actual:((((opening_tokens |> List.map Syn.Cst.Token.text))));
+          ~actual:(((((opening_tokens |> List.map Syn.Cst.Token.text)))));
           Test.assert_equal ~expected:"0" ~actual:(Syn.Cst.Token.text literal_token);
           Test.assert_equal ~expected:")" ~actual:(Syn.Cst.Token.text closing_token);
           Ok ()
