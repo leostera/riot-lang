@@ -1206,18 +1206,16 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         None
   in
   let head =
-    let bar_doc =
-      match Syn.Cst.VariantConstructor.bar_token constructor with
-      | Some bar_token ->
-          doc_of_token bar_token |> doc_with_leading_trivia bar_leading_trivia
-      | None ->
-          Doc.bar
-    in
-    Doc.concat [
-      bar_doc;
-      Doc.space;
-      doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor)
-    ]
+    match Syn.Cst.VariantConstructor.bar_token constructor with
+    | Some bar_token ->
+        Doc.concat
+          [
+            doc_of_token bar_token |> doc_with_leading_trivia bar_leading_trivia;
+            Doc.space;
+            doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor);
+          ]
+    | None ->
+        doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor)
   in
   let inline_separator_or_multiline_block =
     fun ~fallback_separator_doc ~separator_token ~next_syntax_node ~render_next ->
