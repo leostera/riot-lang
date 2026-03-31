@@ -173,7 +173,7 @@
             },
             "via_let_open": false
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

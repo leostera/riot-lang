@@ -135,81 +135,79 @@
                 "suffix": null
               }
             },
-            "and_bindings": [
-              {
+            "and_binding": {
+              "syntax_node": {
+                "kind": "LET_BINDING",
+                "span": {
+                  "start": 23,
+                  "end": 29
+                }
+              },
+              "keyword_token": {
+                "kind": "IDENT_EXPR",
+                "text": "and",
+                "span": {
+                  "start": 20,
+                  "end": 23
+                }
+              },
+              "rec_token": null,
+              "equals_token": {
+                "kind": "IDENT_EXPR",
+                "text": "=",
+                "span": {
+                  "start": 26,
+                  "end": 27
+                }
+              },
+              "attributes": [],
+              "binding_pattern": {
+                "tag": "identifier",
                 "syntax_node": {
-                  "kind": "LET_BINDING",
+                  "kind": "IDENT_PATTERN",
                   "span": {
                     "start": 23,
-                    "end": 29
+                    "end": 25
                   }
                 },
-                "keyword_token": {
+                "name_token": {
                   "kind": "IDENT_EXPR",
-                  "text": "and",
+                  "text": "b",
                   "span": {
-                    "start": 20,
-                    "end": 23
+                    "start": 24,
+                    "end": 25
                   }
-                },
-                "rec_token": null,
-                "equals_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "=",
-                  "span": {
-                    "start": 26,
-                    "end": 27
-                  }
-                },
-                "attributes": [],
-                "binding_pattern": {
-                  "tag": "identifier",
+                }
+              },
+              "parameters": [],
+              "value": {
+                "tag": "literal",
+                "literal": {
+                  "tag": "int",
                   "syntax_node": {
-                    "kind": "IDENT_PATTERN",
+                    "kind": "INT_LITERAL",
                     "span": {
-                      "start": 23,
-                      "end": 25
+                      "start": 27,
+                      "end": 29
                     }
                   },
-                  "name_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "b",
+                  "literal_token": {
+                    "kind": "INT_LITERAL",
+                    "text": "2",
                     "span": {
-                      "start": 24,
-                      "end": 25
+                      "start": 28,
+                      "end": 29
                     }
-                  }
-                },
-                "parameters": [],
-                "value": {
-                  "tag": "literal",
-                  "literal": {
-                    "tag": "int",
-                    "syntax_node": {
-                      "kind": "INT_LITERAL",
-                      "span": {
-                        "start": 27,
-                        "end": 29
-                      }
-                    },
-                    "literal_token": {
-                      "kind": "INT_LITERAL",
-                      "text": "2",
-                      "span": {
-                        "start": 28,
-                        "end": 29
-                      }
-                    },
-                    "base": "decimal",
-                    "prefix": null,
-                    "digits": "2",
-                    "suffix": null
-                  }
-                },
-                "and_bindings": [],
-                "is_recursive": false
-              }
-            ],
+                  },
+                  "base": "decimal",
+                  "prefix": null,
+                  "digits": "2",
+                  "suffix": null
+                }
+              },
+              "and_binding": null,
+              "is_recursive": false
+            },
             "body": {
               "tag": "infix",
               "syntax_node": {
@@ -286,7 +284,7 @@
             },
             "is_recursive": false
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

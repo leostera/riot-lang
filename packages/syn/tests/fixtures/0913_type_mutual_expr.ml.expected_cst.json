@@ -339,8 +339,35 @@
               }
             ]
           },
-          "and_declarations": [
-            {
+          "next_and_declaration": {
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 57,
+                "end": 90
+              }
+            },
+            "type_name": {
+              "tag": "ident",
+              "syntax_node": {
+                "kind": "IDENT_EXPR",
+                "span": {
+                  "start": 57,
+                  "end": 66
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "operator",
+                "span": {
+                  "start": 58,
+                  "end": 66
+                }
+              }
+            },
+            "type_params": [],
+            "type_definition": {
+              "tag": "variant",
               "syntax_node": {
                 "kind": "TYPE_DECL",
                 "span": {
@@ -348,112 +375,83 @@
                   "end": 90
                 }
               },
-              "type_name": {
-                "tag": "ident",
-                "syntax_node": {
-                  "kind": "IDENT_EXPR",
-                  "span": {
-                    "start": 57,
-                    "end": 66
-                  }
+              "constructors": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_VARIANT_CONSTR",
+                    "span": {
+                      "start": 68,
+                      "end": 72
+                    }
+                  },
+                  "constructor_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Add",
+                    "span": {
+                      "start": 69,
+                      "end": 72
+                    }
+                  },
+                  "payload_type": null
                 },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "operator",
-                  "span": {
-                    "start": 58,
-                    "end": 66
-                  }
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_VARIANT_CONSTR",
+                    "span": {
+                      "start": 74,
+                      "end": 78
+                    }
+                  },
+                  "constructor_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Sub",
+                    "span": {
+                      "start": 75,
+                      "end": 78
+                    }
+                  },
+                  "payload_type": null
+                },
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_VARIANT_CONSTR",
+                    "span": {
+                      "start": 80,
+                      "end": 84
+                    }
+                  },
+                  "constructor_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Mul",
+                    "span": {
+                      "start": 81,
+                      "end": 84
+                    }
+                  },
+                  "payload_type": null
+                },
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_VARIANT_CONSTR",
+                    "span": {
+                      "start": 86,
+                      "end": 90
+                    }
+                  },
+                  "constructor_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "Div",
+                    "span": {
+                      "start": 87,
+                      "end": 90
+                    }
+                  },
+                  "payload_type": null
                 }
-              },
-              "type_params": [],
-              "type_definition": {
-                "tag": "variant",
-                "syntax_node": {
-                  "kind": "TYPE_DECL",
-                  "span": {
-                    "start": 57,
-                    "end": 90
-                  }
-                },
-                "constructors": [
-                  {
-                    "syntax_node": {
-                      "kind": "TYPE_VARIANT_CONSTR",
-                      "span": {
-                        "start": 68,
-                        "end": 72
-                      }
-                    },
-                    "constructor_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Add",
-                      "span": {
-                        "start": 69,
-                        "end": 72
-                      }
-                    },
-                    "payload_type": null
-                  },
-                  {
-                    "syntax_node": {
-                      "kind": "TYPE_VARIANT_CONSTR",
-                      "span": {
-                        "start": 74,
-                        "end": 78
-                      }
-                    },
-                    "constructor_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Sub",
-                      "span": {
-                        "start": 75,
-                        "end": 78
-                      }
-                    },
-                    "payload_type": null
-                  },
-                  {
-                    "syntax_node": {
-                      "kind": "TYPE_VARIANT_CONSTR",
-                      "span": {
-                        "start": 80,
-                        "end": 84
-                      }
-                    },
-                    "constructor_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Mul",
-                      "span": {
-                        "start": 81,
-                        "end": 84
-                      }
-                    },
-                    "payload_type": null
-                  },
-                  {
-                    "syntax_node": {
-                      "kind": "TYPE_VARIANT_CONSTR",
-                      "span": {
-                        "start": 86,
-                        "end": 90
-                      }
-                    },
-                    "constructor_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "Div",
-                      "span": {
-                        "start": 87,
-                        "end": 90
-                      }
-                    },
-                    "payload_type": null
-                  }
-                ]
-              },
-              "is_destructive_substitution": false
-            }
-          ],
+              ]
+            },
+            "is_destructive_substitution": false
+          },
           "is_destructive_substitution": false
         }
       }

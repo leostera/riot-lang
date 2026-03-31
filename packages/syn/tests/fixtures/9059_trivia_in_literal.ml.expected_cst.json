@@ -82,7 +82,7 @@
               "suffix": null
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -155,7 +155,7 @@
               "value": true
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -232,7 +232,7 @@
               "terminated": true
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

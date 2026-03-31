@@ -304,7 +304,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

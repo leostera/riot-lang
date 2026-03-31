@@ -135,7 +135,7 @@
                 "suffix": null
               }
             },
-            "and_bindings": [],
+            "and_binding": null,
             "body": {
               "tag": "path",
               "syntax_node": {
@@ -166,7 +166,7 @@
             },
             "is_recursive": false
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

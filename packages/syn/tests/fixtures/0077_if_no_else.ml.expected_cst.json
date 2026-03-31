@@ -120,7 +120,7 @@
             },
             "else_branch": null
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

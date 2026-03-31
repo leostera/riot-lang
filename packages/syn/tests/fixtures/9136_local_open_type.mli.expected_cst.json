@@ -20,14 +20,16 @@
               "end": 46
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "decode",
-            "span": {
-              "start": 4,
-              "end": 10
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "decode",
+              "span": {
+                "start": 4,
+                "end": 10
+              }
             }
-          },
+          ],
           "type": {
             "tag": "local_open",
             "syntax_node": {
@@ -163,14 +165,16 @@
               "end": 68
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "wrap",
-            "span": {
-              "start": 51,
-              "end": 55
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "wrap",
+              "span": {
+                "start": 51,
+                "end": 55
+              }
             }
-          },
+          ],
           "type": {
             "tag": "local_open",
             "syntax_node": {

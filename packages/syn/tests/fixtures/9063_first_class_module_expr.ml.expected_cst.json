@@ -115,7 +115,7 @@
             },
             "package_type": null
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -226,7 +226,7 @@
               "attribute": null
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

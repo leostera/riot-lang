@@ -20,14 +20,16 @@
               "end": 27
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "add",
-            "span": {
-              "start": 4,
-              "end": 7
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "add",
+              "span": {
+                "start": 4,
+                "end": 7
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {

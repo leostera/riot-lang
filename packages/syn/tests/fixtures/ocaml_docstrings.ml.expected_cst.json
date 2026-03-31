@@ -201,7 +201,7 @@
               }
             }
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -342,7 +342,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -483,7 +483,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -584,7 +584,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -685,7 +685,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -786,7 +786,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -887,7 +887,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -988,7 +988,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1089,7 +1089,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1183,7 +1183,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1277,7 +1277,7 @@
               }
             ]
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1363,7 +1363,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1449,7 +1449,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1535,7 +1535,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1621,7 +1621,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1707,7 +1707,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1793,7 +1793,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1879,7 +1879,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1965,7 +1965,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -2051,7 +2051,7 @@
             },
             "item_syntax_nodes": []
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },

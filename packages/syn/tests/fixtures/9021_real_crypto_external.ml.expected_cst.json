@@ -20,14 +20,16 @@
               "end": 63
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "sha256_bytes",
-            "span": {
-              "start": 9,
-              "end": 21
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sha256_bytes",
+              "span": {
+                "start": 9,
+                "end": 21
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -120,14 +122,16 @@
               "end": 127
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "sha512_bytes",
-            "span": {
-              "start": 73,
-              "end": 85
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sha512_bytes",
+              "span": {
+                "start": 73,
+                "end": 85
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -220,14 +224,16 @@
               "end": 201
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "simple_hash_bytes",
-            "span": {
-              "start": 137,
-              "end": 154
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "simple_hash_bytes",
+              "span": {
+                "start": 137,
+                "end": 154
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {

@@ -92,8 +92,42 @@
               }
             }
           },
-          "and_declarations": [
-            {
+          "next_and_declaration": {
+            "syntax_node": {
+              "kind": "MODULE_DECL",
+              "span": {
+                "start": 67,
+                "end": 118
+              }
+            },
+            "module_name": {
+              "kind": "IDENT_EXPR",
+              "text": "B",
+              "span": {
+                "start": 68,
+                "end": 69
+              }
+            },
+            "functor_parameters": [],
+            "module_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "SIG_EXPR",
+                "span": {
+                  "start": 71,
+                  "end": 93
+                }
+              },
+              "signature_syntax_node": {
+                "kind": "SIG_EXPR",
+                "span": {
+                  "start": 71,
+                  "end": 93
+                }
+              }
+            },
+            "module_expression": {
+              "tag": "constraint",
               "syntax_node": {
                 "kind": "MODULE_DECL",
                 "span": {
@@ -101,15 +135,25 @@
                   "end": 118
                 }
               },
-              "module_name": {
-                "kind": "IDENT_EXPR",
-                "text": "B",
-                "span": {
-                  "start": 68,
-                  "end": 69
-                }
+              "module_expression": {
+                "tag": "structure",
+                "syntax_node": {
+                  "kind": "STRUCT_EXPR",
+                  "span": {
+                    "start": 95,
+                    "end": 118
+                  }
+                },
+                "item_syntax_nodes": [
+                  {
+                    "kind": "LET_BINDING",
+                    "span": {
+                      "start": 102,
+                      "end": 114
+                    }
+                  }
+                ]
               },
-              "functor_parameters": [],
               "module_type": {
                 "tag": "signature",
                 "syntax_node": {
@@ -126,57 +170,11 @@
                     "end": 93
                   }
                 }
-              },
-              "module_expression": {
-                "tag": "constraint",
-                "syntax_node": {
-                  "kind": "MODULE_DECL",
-                  "span": {
-                    "start": 67,
-                    "end": 118
-                  }
-                },
-                "module_expression": {
-                  "tag": "structure",
-                  "syntax_node": {
-                    "kind": "STRUCT_EXPR",
-                    "span": {
-                      "start": 95,
-                      "end": 118
-                    }
-                  },
-                  "item_syntax_nodes": [
-                    {
-                      "kind": "LET_BINDING",
-                      "span": {
-                        "start": 102,
-                        "end": 114
-                      }
-                    }
-                  ]
-                },
-                "module_type": {
-                  "tag": "signature",
-                  "syntax_node": {
-                    "kind": "SIG_EXPR",
-                    "span": {
-                      "start": 71,
-                      "end": 93
-                    }
-                  },
-                  "signature_syntax_node": {
-                    "kind": "SIG_EXPR",
-                    "span": {
-                      "start": 71,
-                      "end": 93
-                    }
-                  }
-                }
-              },
-              "and_declarations": [],
-              "is_recursive": true
-            }
-          ],
+              }
+            },
+            "next_and_declaration": null,
+            "is_recursive": true
+          },
           "is_recursive": true
         }
       }

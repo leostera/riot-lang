@@ -141,7 +141,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "body": {
             "tag": "infix",
             "syntax_node": {

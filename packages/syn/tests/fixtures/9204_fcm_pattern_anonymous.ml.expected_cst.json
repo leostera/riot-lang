@@ -224,7 +224,7 @@
                 }
               }
             },
-            "and_bindings": [],
+            "and_binding": null,
             "body": {
               "tag": "literal",
               "literal": {
@@ -240,7 +240,7 @@
             },
             "is_recursive": false
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -410,7 +410,7 @@
                 }
               }
             },
-            "and_bindings": [],
+            "and_binding": null,
             "body": {
               "tag": "literal",
               "literal": {
@@ -426,7 +426,7 @@
             },
             "is_recursive": false
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

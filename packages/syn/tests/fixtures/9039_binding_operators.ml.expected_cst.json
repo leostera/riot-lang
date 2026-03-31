@@ -288,7 +288,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -550,7 +550,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -812,7 +812,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -1074,7 +1074,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -1289,9 +1289,9 @@
                     }
                   }
                 }
-              }
+              },
+              "and_binding": null
             },
-            "and_bindings": [],
             "in_token": {
               "kind": "IDENT_EXPR",
               "text": "in",
@@ -1477,9 +1477,9 @@
                       }
                     }
                   }
-                }
+                },
+                "and_binding": null
               },
-              "and_bindings": [],
               "in_token": {
                 "kind": "IDENT_EXPR",
                 "text": "in",
@@ -1619,7 +1619,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -1850,10 +1850,8 @@
                     }
                   }
                 }
-              }
-            },
-            "and_bindings": [
-              {
+              },
+              "and_binding": {
                 "keyword_token": {
                   "kind": "IDENT_EXPR",
                   "text": "and",
@@ -1951,9 +1949,10 @@
                       }
                     }
                   }
-                }
+                },
+                "and_binding": null
               }
-            ],
+            },
             "in_token": {
               "kind": "IDENT_EXPR",
               "text": "in",
@@ -2092,7 +2091,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -2287,9 +2286,9 @@
                     }
                   }
                 }
-              }
+              },
+              "and_binding": null
             },
-            "and_bindings": [],
             "in_token": {
               "kind": "IDENT_EXPR",
               "text": "in",
@@ -2370,7 +2369,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

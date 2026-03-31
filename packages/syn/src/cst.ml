@@ -5,6 +5,8 @@ type syntax_node = (Syntax_kind.t, string) Ceibo.Red.syntax_node
 
 type syntax_token = (Syntax_kind.t, string) Ceibo.Red.syntax_token
 
+type syntax_trivia = (Syntax_kind.t, string) Ceibo.Red.syntax_trivia
+
 type green_node = (Syntax_kind.t, string) Ceibo.Green.node
 
 let is_trivia = fun kind -> let open Syntax_kind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
@@ -32,6 +34,9 @@ module Token = struct
       |> String.concat ""
     in
     leading ^ text token
+
+  let leading_trivia = fun token ->
+    Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
 
   let span = fun token -> Ceibo.Red.SyntaxToken.span token.syntax_token
 
@@ -1484,7 +1489,6 @@ and sequence_expression = {
   syntax_node : syntax_node;
   separator_token : Token.t;
   separator_tokens : Token.t list;
-  expression_leading_trivia : trivia list list;
   expressions : expression list;
   attributes : attribute list;
 }
@@ -1564,7 +1568,6 @@ and fun_expression = {
   keyword_token : Token.t;
   arrow_token : Token.t;
   parameters : parameter list;
-  body_leading_trivia : trivia list;
   body : fun_body;
   attributes : attribute list;
 }
@@ -1581,11 +1584,9 @@ and let_binding = {
   keyword_token : Token.t;
   rec_token : Token.t option;
   equals_token : Token.t;
-  leading_trivia : trivia list;
   attributes : attribute list;
   binding_pattern : pattern;
   parameters : parameter list;
-  value_leading_trivia : trivia list;
   value : expression;
   and_binding : let_binding option;
   is_recursive : bool;
@@ -1596,7 +1597,6 @@ and binding_operator_binding = {
   operator_token : Token.t;
   equals_token : Token.t;
   binding_pattern : pattern;
-  bound_value_leading_trivia : trivia list;
   bound_value : expression;
   and_binding : binding_operator_binding option;
 }
@@ -1605,7 +1605,6 @@ and let_operator_expression = {
   syntax_node : syntax_node;
   binding : binding_operator_binding;
   in_token : Token.t;
-  body_leading_trivia : trivia list;
   body : expression;
   attributes : attribute list;
 }
@@ -1618,10 +1617,8 @@ and let_expression = {
   in_token : Token.t;
   binding_pattern : pattern;
   parameters : parameter list;
-  bound_value_leading_trivia : trivia list;
   bound_value : expression;
   and_binding : let_binding option;
-  body_leading_trivia : trivia list;
   body : expression;
   is_recursive : bool;
   attributes : attribute list;
@@ -1652,7 +1649,6 @@ and match_case = {
   arrow_token : Token.t;
   pattern : pattern;
   guard : expression option;
-  body_leading_trivia : trivia list;
   body : expression;
 }
 
@@ -1662,9 +1658,7 @@ and if_expression = {
   then_token : Token.t;
   else_token : Token.t option;
   condition : expression;
-  then_branch_trailing_trivia : trivia list;
   then_branch : expression;
-  else_branch_leading_trivia : trivia list;
   else_branch : expression option;
   attributes : attribute list;
 }
@@ -1678,7 +1672,6 @@ and parenthesized_expression = {
   opening_token : Token.t;
   closing_token : Token.t;
   grouping : expression_grouping;
-  inner_leading_trivia : trivia list;
   inner : expression;
   attributes : attribute list;
 }
@@ -2722,11 +2715,9 @@ module LetBinding = struct
     keyword_token : Token.t;
     rec_token : Token.t option;
     equals_token : Token.t;
-    leading_trivia : trivia list;
     attributes : attribute list;
     binding_pattern : pattern;
     parameters : Parameter.t list;
-    value_leading_trivia : trivia list;
     value : expression;
     and_binding : let_binding option;
     is_recursive : bool;
@@ -2739,8 +2730,6 @@ module LetBinding = struct
   let rec_token = fun binding -> binding.rec_token
 
   let equals_token = fun binding -> binding.equals_token
-
-  let leading_trivia = fun binding -> binding.leading_trivia
 
   let attributes = fun binding -> binding.attributes
 
@@ -2770,8 +2759,6 @@ module LetBinding = struct
     | None -> panic "LetBinding.name: missing binding name token"
 
   let parameters = fun binding -> binding.parameters
-
-  let value_leading_trivia = fun binding -> binding.value_leading_trivia
 
   let value = fun binding -> binding.value
 

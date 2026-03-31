@@ -389,7 +389,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -813,7 +813,7 @@
               "payload": null
             }
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1121,7 +1121,7 @@
               }
             }
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1489,7 +1489,7 @@
               }
             }
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       },
@@ -1627,7 +1627,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -1845,7 +1845,7 @@
               "attribute": null
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -2285,7 +2285,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },

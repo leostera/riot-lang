@@ -20,14 +20,16 @@
               "end": 19
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "test",
-            "span": {
-              "start": 4,
-              "end": 8
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "test",
+              "span": {
+                "start": 4,
+                "end": 8
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {
@@ -103,14 +105,16 @@
               "end": 75
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "of_addr_info",
-            "span": {
-              "start": 24,
-              "end": 36
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "of_addr_info",
+              "span": {
+                "start": 24,
+                "end": 36
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {

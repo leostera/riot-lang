@@ -29,35 +29,38 @@
             }
           },
           "functor_parameters": [],
-          "module_type": {
-            "tag": "type_of",
-            "syntax_node": {
-              "kind": "MODULE_TYPE_OF",
-              "span": {
-                "start": 18,
-                "end": 43
-              }
-            },
-            "module_path": {
-              "tag": "ident",
+          "definition": {
+            "kind": "signature",
+            "module_type": {
+              "tag": "type_of",
               "syntax_node": {
-                "kind": "MODULE_TYPE_PATH",
+                "kind": "MODULE_TYPE_OF",
                 "span": {
-                  "start": 33,
+                  "start": 18,
                   "end": 43
                 }
               },
-              "name_token": {
-                "kind": "IDENT_EXPR",
-                "text": "Websocket",
-                "span": {
-                  "start": 34,
-                  "end": 43
+              "module_path": {
+                "tag": "ident",
+                "syntax_node": {
+                  "kind": "MODULE_TYPE_PATH",
+                  "span": {
+                    "start": 33,
+                    "end": 43
+                  }
+                },
+                "name_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "Websocket",
+                  "span": {
+                    "start": 34,
+                    "end": 43
+                  }
                 }
               }
             }
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       }

@@ -205,6 +205,17 @@ let pending_entry_of_trivia = fun trivia ->
              Syn.Cst.Docstring.is_section docstring,
              Doc.text (Syn.Cst.Docstring.text docstring) ))
 
+let pending_doc_of_trivia = fun trivia ->
+  trivia |> List.filter_map pending_entry_of_trivia |> render_pending_trivia
+
+let pending_doc_of_token_leading_trivia = fun token ->
+  Syn.Cst.Token.leading_trivia token
+  |> List.filter_map Syn.Cst.trivia_of_syntax_trivia
+  |> pending_doc_of_trivia
+
+let pending_doc_of_trivia_before_node = fun ~after syntax_node ->
+  Syn.Cst.leading_trivia_before_node ~after syntax_node |> pending_doc_of_trivia
+
 let doc_with_trailing_trivia = fun doc trivia ->
   match trivia with
   | None ->
@@ -2893,10 +2904,14 @@ and render_class_fun_expression ({ parameters; body; _ } : Syn.Cst.class_fun_exp
 and render_class_let_expression
     ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value; and_binding; in_token; body; _ } :
       Syn.Cst.class_let_expression) =
+  let leading_value_trivia =
+    pending_doc_of_trivia_before_node ~after:(Syn.Cst.Token.span equals_token).end_
+      (Syn.Cst.Expression.syntax_node bound_value)
+  in
   let first_binding =
     render_local_binding ~local_context:true ~source_has_explicit_fun:false
       ~keyword_token ~rec_token ~equals_token ~leading_binding_trivia:None
-      ~leading_value_trivia:None
+      ~leading_value_trivia
       ~pattern:binding_pattern ~parameters ~value:bound_value
   in
   let and_bindings =
@@ -2907,14 +2922,11 @@ and render_class_let_expression
              ~keyword_token:binding.keyword_token
              ~rec_token:binding.rec_token ~equals_token:binding.equals_token
              ~leading_binding_trivia:
-               (binding
-               |> Syn.Cst.LetBinding.leading_trivia
-               |> List.filter_map pending_entry_of_trivia
-               |> render_pending_trivia)
+               (pending_doc_of_token_leading_trivia binding.keyword_token)
              ~leading_value_trivia:
-               (binding.value_leading_trivia
-               |> List.filter_map pending_entry_of_trivia
-               |> render_pending_trivia)
+               (pending_doc_of_trivia_before_node
+                  ~after:(Syn.Cst.Token.span binding.equals_token).end_
+                  (Syn.Cst.LetBinding.value_syntax_node binding))
              ~pattern:binding.binding_pattern ~parameters:binding.parameters
              ~value:binding.value)
   in
@@ -3099,7 +3111,7 @@ and render_tuple_expression_bare elements =
     (join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements)
 
 and render_parenthesized_apply_payload
-    ({ opening_token; closing_token; inner_leading_trivia; inner; _ } :
+    ({ opening_token; closing_token; inner; _ } :
       Syn.Cst.parenthesized_expression) =
   let rendered_inner =
     match inner with
@@ -3111,7 +3123,10 @@ and render_parenthesized_apply_payload
   let rendered_inner =
     rendered_inner
     |> doc_with_leading_trivia
-         (doc_of_owned_trivia inner_leading_trivia)
+         (pending_doc_of_trivia
+            (Syn.Cst.leading_trivia_before_node
+               ~after:(Syn.Cst.Token.span opening_token).end_
+               (Syn.Cst.Expression.syntax_node inner)))
   in
   Doc.concat
     [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token ]
@@ -3355,7 +3370,7 @@ and render_apply_expression ({ syntax_node; callee; argument; _ } : Syn.Cst.appl
               rendered_arguments))
 
 and render_if_expression
-    ({ syntax_node; keyword_token; then_token; else_token; condition; then_branch; then_branch_trailing_trivia; else_branch_leading_trivia; else_branch; _ } :
+    ({ syntax_node; keyword_token; then_token; else_token; condition; then_branch; else_branch; _ } :
       Syn.Cst.if_expression) =
   render_if_expression_block
     {
@@ -3365,8 +3380,6 @@ and render_if_expression
       else_token;
       condition;
       then_branch;
-      then_branch_trailing_trivia;
-      else_branch_leading_trivia;
       else_branch;
       attributes = [];
     }
@@ -3374,7 +3387,10 @@ and render_if_expression
 and render_case ?(force_multiline_body = false) ?(force_leading_bar = false)
     (case : Syn.Cst.match_case) =
   let body_trivia =
-    doc_of_owned_trivia case.body_leading_trivia
+    pending_doc_of_trivia
+      (Syn.Cst.leading_trivia_before_node
+         ~after:(Syn.Cst.Token.span case.arrow_token).end_
+         (Syn.Cst.Expression.syntax_node case.body))
   in
   let body = render_expression case.body |> doc_with_leading_trivia body_trivia in
   let prefix =
@@ -3526,17 +3542,25 @@ and flatten_fun_expression ({ parameters; body; _ } : Syn.Cst.fun_expression) =
   loop (List.rev parameters) body
 
 and render_fun_expression
-    ({ keyword_token; arrow_token; parameters = _; body = _; body_leading_trivia; _ } as fun_ :
+    ({ keyword_token; arrow_token; parameters = _; body = _; _ } as fun_ :
       Syn.Cst.fun_expression) =
   let parameters = fun_.parameters in
   let body = fun_.body in
   let parameters = parameters |> List.map render_parameter in
   let has_multiline_parameter = List.exists Doc.is_multiline parameters in
   let body = render_fun_body body in
+  let body_syntax_node =
+    match fun_.body with
+    | Syn.Cst.Expression expression ->
+        Syn.Cst.Expression.syntax_node expression
+    | Syn.Cst.Cases cases ->
+        cases.syntax_node
+  in
   let body_trivia =
-    body_leading_trivia
-    |> List.filter_map pending_entry_of_trivia
-    |> render_pending_trivia
+    pending_doc_of_trivia
+      (Syn.Cst.leading_trivia_before_node
+         ~after:(Syn.Cst.Token.span arrow_token).end_
+         body_syntax_node)
   in
   let body = doc_with_leading_trivia body_trivia body in
   let body_prefers_multiline =
@@ -3655,7 +3679,7 @@ and render_block_expression = function
       render_expression expression
 
 and render_if_expression_block
-    ({ keyword_token; then_token; else_token; condition; then_branch; then_branch_trailing_trivia; else_branch_leading_trivia; else_branch; _ } :
+    ({ keyword_token; then_token; else_token; condition; then_branch; else_branch; _ } :
       Syn.Cst.if_expression) =
   let condition_doc = render_expression condition in
   let then_doc =
@@ -3664,13 +3688,20 @@ and render_if_expression_block
     else
       render_expression then_branch
   in
+  let then_branch_trailing_trivia =
+    match else_token with
+    | Some else_token ->
+        Syn.Cst.leading_trivia_after
+          ~after:((Syn.Cst.token_body_span (Syn.Cst.Expression.syntax_node then_branch)).end_)
+          else_token
+    | None ->
+        []
+  in
   let then_trivia =
     if List.is_empty then_branch_trailing_trivia then
         None
     else
-      then_branch_trailing_trivia
-      |> List.filter_map pending_entry_of_trivia
-      |> render_pending_trivia
+      pending_doc_of_trivia then_branch_trailing_trivia
   in
   let then_doc = doc_with_trailing_trivia then_doc then_trivia in
   let head =
@@ -3707,10 +3738,13 @@ and render_if_expression_block
           Doc.concat [ head; Doc.line; Doc.indent 2 then_doc ]
     )
   | Some (Syn.Cst.Expression.If nested_if), Some else_token ->
+      let else_branch_leading_trivia =
+        Syn.Cst.leading_trivia_before_node
+          ~after:(Syn.Cst.Token.span else_token).end_
+          (Syn.Cst.Expression.syntax_node (Syn.Cst.Expression.If nested_if))
+      in
       let else_trivia =
-        else_branch_leading_trivia
-        |> List.filter_map pending_entry_of_trivia
-        |> render_pending_trivia
+        pending_doc_of_trivia else_branch_leading_trivia
       in
       Doc.concat
         [
@@ -3730,7 +3764,12 @@ and render_if_expression_block
           | Some trivia ->
               Doc.indent 2 (doc_with_leading_trivia (Some trivia) (render_if_expression_block nested_if)));
         ]
-      | Some else_branch, Some else_token ->
+  | Some else_branch, Some else_token ->
+      let else_branch_leading_trivia =
+        Syn.Cst.leading_trivia_before_node
+          ~after:(Syn.Cst.Token.span else_token).end_
+          (Syn.Cst.Expression.syntax_node else_branch)
+      in
       let else_doc =
         if branch_prefers_multiline_layout else_branch then
           render_block_expression else_branch
@@ -3738,9 +3777,7 @@ and render_if_expression_block
           render_expression else_branch
       in
       let else_trivia =
-        else_branch_leading_trivia
-        |> List.filter_map pending_entry_of_trivia
-        |> render_pending_trivia
+        pending_doc_of_trivia else_branch_leading_trivia
       in
       let else_doc = doc_with_leading_trivia else_trivia else_doc in
       (match else_branch with
@@ -3772,11 +3809,16 @@ and render_if_expression_block
 
 and render_parenthesized_expression = function
   | Syn.Cst.Expression.Parenthesized
-      { opening_token; closing_token; grouping; inner_leading_trivia; inner; _ } ->
+      { opening_token; closing_token; grouping; inner; _ } ->
+      let inner_leading_trivia =
+        Syn.Cst.leading_trivia_before_node
+          ~after:(Syn.Cst.Token.span opening_token).end_
+          (Syn.Cst.Expression.syntax_node inner)
+      in
       let rendered_inner =
         render_expression inner
         |> doc_with_leading_trivia
-             (doc_of_owned_trivia inner_leading_trivia)
+             (pending_doc_of_trivia inner_leading_trivia)
       in
       let has_inner_leading_trivia =
         match inner_leading_trivia with
@@ -3928,7 +3970,7 @@ and render_let_exception_expression
     ]
 
 and render_binding_operator_binding
-    ({ keyword_token; operator_token; equals_token; binding_pattern; bound_value_leading_trivia; bound_value } :
+    ({ keyword_token; operator_token; equals_token; binding_pattern; bound_value; _ } :
       Syn.Cst.binding_operator_binding) =
   let header =
     Doc.concat
@@ -3940,9 +3982,8 @@ and render_binding_operator_binding
       ]
   in
   let leading_value_trivia =
-    bound_value_leading_trivia
-    |> List.filter_map pending_entry_of_trivia
-    |> render_pending_trivia
+    pending_doc_of_trivia_before_node ~after:(Syn.Cst.Token.span equals_token).end_
+      (Syn.Cst.Expression.syntax_node bound_value)
   in
   let rendered_value =
     render_expression bound_value
@@ -3960,7 +4001,7 @@ and render_binding_operator_binding
     Doc.concat [ header; Doc.space; doc_of_token equals_token; Doc.line; Doc.indent 2 rendered_value ]
 
 and render_let_operator_expression
-    ({ binding; in_token; body_leading_trivia; body; _ } : Syn.Cst.let_operator_expression) =
+    ({ binding; in_token; body; _ } : Syn.Cst.let_operator_expression) =
   let and_bindings =
     match binding.and_binding with
     | Some next -> binding_operator_group_items next
@@ -3981,9 +4022,8 @@ and render_let_operator_expression
         binding.bound_value
   in
   let body_trivia =
-    body_leading_trivia
-    |> List.filter_map pending_entry_of_trivia
-    |> render_pending_trivia
+    pending_doc_of_trivia_before_node ~after:(Syn.Cst.Token.span in_token).end_
+      (Syn.Cst.Expression.syntax_node body)
   in
   let body_doc = render_expression body |> doc_with_leading_trivia body_trivia in
   if Doc.is_multiline bindings then
@@ -3992,10 +4032,9 @@ and render_let_operator_expression
     Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc ]
 
 and render_sequence_expression
-    ({ separator_tokens; expression_leading_trivia; expressions; _ } : Syn.Cst.sequence_expression) =
+    ({ separator_tokens; expressions; _ } : Syn.Cst.sequence_expression) =
   let expression_count = List.length expressions in
   let separator_token_at = fun index -> List.nth_opt separator_tokens index in
-  let leading_trivia_at = fun index -> List.nth_opt expression_leading_trivia (index - 1) in
   let rec render_sequence_items previous_expression index = function
     | [] ->
         []
@@ -4004,11 +4043,15 @@ and render_sequence_expression
           match previous_expression with
           | None ->
               None
-          | Some _previous_expression ->
-              (match leading_trivia_at index with
-              | Some trivia ->
-                  trivia |> List.filter_map pending_entry_of_trivia
-                  |> render_pending_trivia
+          | Some previous_expression ->
+              (match separator_token_at (index - 1) with
+              | Some separator_token ->
+                  pending_doc_of_trivia
+                    (Syn.Cst.leading_trivia_after_token_before_node
+                       ~after:((Syn.Cst.token_body_span
+                                  (Syn.Cst.Expression.syntax_node previous_expression)).end_)
+                       separator_token
+                       (Syn.Cst.Expression.syntax_node expression))
               | None ->
                   None)
         in
@@ -4617,16 +4660,17 @@ and render_local_binding
   doc_with_leading_trivia leading_binding_trivia rendered_binding
 
 and render_let_expression
-    ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value_leading_trivia; bound_value; and_binding; body_leading_trivia; body; in_token; _ } :
+    ({ keyword_token; rec_token; equals_token; binding_pattern; parameters; bound_value; and_binding; body; in_token; _ } :
       Syn.Cst.let_expression) =
+  let leading_value_trivia =
+    pending_doc_of_trivia_before_node ~after:(Syn.Cst.Token.span equals_token).end_
+      (Syn.Cst.Expression.syntax_node bound_value)
+  in
   let first_binding =
     render_local_binding ~local_context:true ~source_has_explicit_fun:false
       ~keyword_token ~rec_token ~equals_token
       ~leading_binding_trivia:None
-      ~leading_value_trivia:
-        (bound_value_leading_trivia
-        |> List.filter_map pending_entry_of_trivia
-        |> render_pending_trivia)
+      ~leading_value_trivia
       ~pattern:binding_pattern
       ~parameters
       ~value:bound_value
@@ -4639,14 +4683,11 @@ and render_let_expression
              ~keyword_token:binding.keyword_token
              ~rec_token:binding.rec_token ~equals_token:binding.equals_token
              ~leading_binding_trivia:
-               (binding
-               |> Syn.Cst.LetBinding.leading_trivia
-               |> List.filter_map pending_entry_of_trivia
-               |> render_pending_trivia)
+               (pending_doc_of_token_leading_trivia binding.keyword_token)
              ~leading_value_trivia:
-               (binding.value_leading_trivia
-               |> List.filter_map pending_entry_of_trivia
-               |> render_pending_trivia)
+               (pending_doc_of_trivia_before_node
+                  ~after:(Syn.Cst.Token.span binding.equals_token).end_
+                  (Syn.Cst.LetBinding.value_syntax_node binding))
              ~pattern:binding.binding_pattern ~parameters:binding.parameters
              ~value:binding.value)
   in
@@ -4655,9 +4696,8 @@ and render_let_expression
       (first_binding :: List.map (fun binding -> Doc.concat [ Doc.line; binding ]) and_bindings)
   in
   let body_trivia =
-    body_leading_trivia
-    |> List.filter_map pending_entry_of_trivia
-    |> render_pending_trivia
+    pending_doc_of_trivia_before_node ~after:(Syn.Cst.Token.span in_token).end_
+      (Syn.Cst.Expression.syntax_node body)
   in
   let body_doc = render_expression body |> doc_with_leading_trivia body_trivia in
   if Doc.is_multiline first_binding then
@@ -4687,14 +4727,11 @@ and render_let_binding_group_item (binding : Syn.Cst.let_binding) =
     ~source_has_explicit_fun ~rec_token:binding.rec_token
     ~equals_token:binding.equals_token
     ~leading_binding_trivia:
-      (binding
-      |> Syn.Cst.LetBinding.leading_trivia
-      |> List.filter_map pending_entry_of_trivia
-      |> render_pending_trivia)
+      (pending_doc_of_token_leading_trivia binding.keyword_token)
     ~leading_value_trivia:
-      (binding.value_leading_trivia
-      |> List.filter_map pending_entry_of_trivia
-      |> render_pending_trivia)
+      (pending_doc_of_trivia_before_node
+         ~after:(Syn.Cst.Token.span binding.equals_token).end_
+         (Syn.Cst.LetBinding.value_syntax_node binding))
     ~pattern:binding.binding_pattern
     ~parameters:binding.parameters ~value:binding.value
 

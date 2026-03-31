@@ -47,6 +47,7 @@ type syntax_node = (Syntax_kind.t, string) Ceibo.Red.syntax_node
     at the `syntax_node` level.
 *)
 type syntax_token = (Syntax_kind.t, string) Ceibo.Red.syntax_token
+type syntax_trivia = (Syntax_kind.t, string) Ceibo.Red.syntax_trivia
 (** Thin wrapper around a Ceibo token with helpers for common token-oriented
     queries.
 
@@ -92,6 +93,8 @@ module Token : sig
 
   val full_text : t -> string
 
+  val leading_trivia : t -> syntax_trivia list
+
   val span : t -> Ceibo.Span.t
 
   val same_text : t -> t -> bool
@@ -118,6 +121,7 @@ type comment = {
 type trivia =
   | Docstring of docstring
   | Comment of comment
+val trivia_of_syntax_trivia : syntax_trivia -> trivia option
 
 (** Trivia that a CST node owns after token-order normalization.
 
@@ -2565,7 +2569,6 @@ and sequence_expression = {
   syntax_node : syntax_node;
   separator_token : Token.t;
   separator_tokens : Token.t list;
-  expression_leading_trivia : trivia list list;
   expressions : expression list;
   attributes : attribute list;
 }
@@ -2717,7 +2720,6 @@ and fun_expression = {
   keyword_token : Token.t;
   arrow_token : Token.t;
   parameters : parameter list;
-  body_leading_trivia : trivia list;
   body : fun_body;
   attributes : attribute list;
 }
@@ -2750,11 +2752,9 @@ and let_binding = {
   keyword_token : Token.t;
   rec_token : Token.t option;
   equals_token : Token.t;
-  leading_trivia : trivia list;
   attributes : attribute list;
   binding_pattern : pattern;
   parameters : parameter list;
-  value_leading_trivia : trivia list;
   value : expression;
   and_binding : let_binding option;
   is_recursive : bool;
@@ -2774,7 +2774,6 @@ and binding_operator_binding = {
   operator_token : Token.t;
   equals_token : Token.t;
   binding_pattern : pattern;
-  bound_value_leading_trivia : trivia list;
   bound_value : expression;
   and_binding : binding_operator_binding option;
 }
@@ -2792,7 +2791,6 @@ and let_operator_expression = {
   syntax_node : syntax_node;
   binding : binding_operator_binding;
   in_token : Token.t;
-  body_leading_trivia : trivia list;
   body : expression;
   attributes : attribute list;
 }
@@ -2812,10 +2810,8 @@ and let_expression = {
   in_token : Token.t;
   binding_pattern : pattern;
   parameters : parameter list;
-  bound_value_leading_trivia : trivia list;
   bound_value : expression;
   and_binding : let_binding option;
-  body_leading_trivia : trivia list;
   body : expression;
   is_recursive : bool;
   attributes : attribute list;
@@ -2859,7 +2855,6 @@ and match_case = {
   arrow_token : Token.t;
   pattern : pattern;
   guard : expression option;
-  body_leading_trivia : trivia list;
   body : expression;
 }
 
@@ -2874,9 +2869,7 @@ and if_expression = {
   then_token : Token.t;
   else_token : Token.t option;
   condition : expression;
-  then_branch_trailing_trivia : trivia list;
   then_branch : expression;
-  else_branch_leading_trivia : trivia list;
   else_branch : expression option;
   attributes : attribute list;
 }
@@ -2902,7 +2895,6 @@ and parenthesized_expression = {
   opening_token : Token.t;
   closing_token : Token.t;
   grouping : expression_grouping;
-  inner_leading_trivia : trivia list;
   inner : expression;
   attributes : attribute list;
 }
@@ -4002,11 +3994,9 @@ module LetBinding : sig
     keyword_token : Token.t;
     rec_token : Token.t option;
     equals_token : Token.t;
-    leading_trivia : trivia list;
     attributes : attribute list;
     binding_pattern : pattern;
     parameters : Parameter.t list;
-    value_leading_trivia : trivia list;
     value : expression;
     and_binding : let_binding option;
     is_recursive : bool;
@@ -4019,9 +4009,6 @@ module LetBinding : sig
 
   val equals_token : t -> Token.t
 
-  (** Comment/doc trivia attached before the binding keyword, especially `and`. *)
-  val leading_trivia : t -> trivia list
-
   val attributes : t -> attribute list
 
   val binding_pattern : t -> Pattern.t
@@ -4032,8 +4019,6 @@ module LetBinding : sig
   val name : t -> string
 
   val parameters : t -> Parameter.t list
-
-  val value_leading_trivia : t -> trivia list
 
   val value : t -> Expression.t
 

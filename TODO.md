@@ -13,6 +13,33 @@ This file is _yours_. Keep it up to date after every big change.
 
 - [ ] Delete the dead whole-tree `validate_source_file` scaffold from `packages/syn/src/cst_builder.ml` now that normal CST construction no longer calls it.
 - [ ] Keep migrating any real CST invariants into the specific builder helpers that own those facts, instead of reviving post-construction validation.
+- [ ] Tighten `syn` to follow the token-first CST contract:
+  - tokens own trivia
+  - CST preserves original syntax tokens and structure
+  - do not duplicate token-owned trivia into convenience fields when the same fact is already structurally reachable
+- [ ] Remove redundant expression boundary-trivia fields that duplicate token-owned facts:
+  - [x] `fun_expression.body_leading_trivia`
+  - [x] `sequence_expression.expression_leading_trivia`
+  - [x] `let_binding.leading_trivia`
+  - [x] `let_binding.value_leading_trivia`
+  - [x] `binding_operator_binding.bound_value_leading_trivia`
+  - [x] `let_operator_expression.body_leading_trivia`
+  - [x] `let_expression.bound_value_leading_trivia`
+  - [x] `let_expression.body_leading_trivia`
+  - [x] `match_case.body_leading_trivia`
+  - [x] `if_expression.then_branch_trailing_trivia`
+  - [x] `if_expression.else_branch_leading_trivia`
+  - [x] `parenthesized_expression.inner_leading_trivia`
+- [ ] Replace CST booleans that collapse real syntax choices with token-backed structure where the original tokens matter:
+  - `local_open_expression.via_let_open`
+  - `local_open_class_expression.via_let_open`
+  - object/class member modifier booleans when they should preserve `private` / `mutable` / `virtual` / `!`
+  - module declaration recursion when `rec` should stay token-backed instead of bool-only
+- [ ] Preserve declaration separator/head tokens where trivia can attach and the CST currently drops them:
+  - `ModuleTypeDeclaration` should preserve `=`
+  - `ValueDeclaration` should preserve `:`
+  - `ExternalDeclaration` should preserve `:` and `=`
+  - module declaration heads should preserve the relevant `module` / `and` / `rec` shell tokens if we need them structurally
 - [ ] Keep auditing real `tusk fmt` output for destructive regressions only:
   - dropped comments or docstrings
   - duplicated trivia

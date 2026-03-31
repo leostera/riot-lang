@@ -364,7 +364,7 @@
             },
             "via_let_open": false
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -742,7 +742,7 @@
             },
             "via_let_open": true
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -1058,7 +1058,7 @@
                     }
                   }
                 },
-                "and_bindings": [],
+                "and_binding": null,
                 "body": {
                   "tag": "sequence",
                   "syntax_node": {
@@ -1422,7 +1422,7 @@
                 },
                 "is_recursive": false
               },
-              "and_bindings": [],
+              "and_binding": null,
               "body": {
                 "tag": "literal",
                 "literal": {
@@ -1625,7 +1625,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -2004,7 +2004,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

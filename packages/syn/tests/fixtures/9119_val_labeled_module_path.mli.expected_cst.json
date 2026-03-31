@@ -40,14 +40,16 @@
               "end": 126
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "from_entries",
-            "span": {
-              "start": 56,
-              "end": 68
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "from_entries",
+              "span": {
+                "start": 56,
+                "end": 68
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {

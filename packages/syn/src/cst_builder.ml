@@ -5455,25 +5455,7 @@ and expression_from_node = fun node ->
               then_token;
               else_token;
               condition = expression_from_node condition_node;
-              then_branch_trailing_trivia = (
-                match else_token with
-                | Some else_token ->
-                    Cst.leading_trivia_after
-                      ~after:((Cst.token_body_span (Cst.Expression.syntax_node then_branch)).end_)
-                      else_token
-                | None ->
-                    []
-              );
               then_branch;
-              else_branch_leading_trivia = (
-                match else_token, else_branch with
-                | Some else_token, Some else_branch ->
-                    Cst.leading_trivia_before_node
-                      ~after:(Cst.Token.span else_token).end_
-                      (Cst.Expression.syntax_node else_branch)
-                | _ ->
-                    []
-              );
               else_branch;
               attributes = []
             }
@@ -5497,10 +5479,6 @@ and expression_from_node = fun node ->
               opening_token;
               closing_token;
               grouping = expression_grouping_from_node node;
-              inner_leading_trivia =
-                Cst.leading_trivia_before_node
-                  ~after:(Cst.Token.span opening_token).end_
-                  inner_node;
               inner = expression_from_node inner_node;
               attributes = []
             }
@@ -5838,28 +5816,10 @@ and sequence_expression_from_node = fun node ->
               "sequence_expression"
             ]
       in
-      let expression_leading_trivia =
-        let rec loop previous_expression separator_tokens expressions =
-          match separator_tokens, expressions with
-          | separator_token :: separator_tokens, expression :: expressions ->
-              Cst.leading_trivia_after_token_before_node
-                ~after:((Cst.token_body_span (Cst.Expression.syntax_node previous_expression)).end_)
-                separator_token (Cst.Expression.syntax_node expression)
-              :: loop expression separator_tokens expressions
-          | _, _ ->
-              []
-        in
-        match expressions with
-        | first_expression :: rest_expressions ->
-            loop first_expression separator_tokens rest_expressions
-        | [] ->
-            []
-      in
       Some {
         syntax_node = node;
         separator_token;
         separator_tokens;
-        expression_leading_trivia;
         expressions;
         attributes = []
       }
@@ -6081,17 +6041,6 @@ and fun_expression_from_node = fun node ->
         keyword_token = direct_required_token_with_text ~context:[ "fun_expression" ] node "fun";
         arrow_token;
         parameters = parameters_from_nodes prefix_nodes;
-        body_leading_trivia = (
-          match body with
-          | Cst.Expression expression ->
-              Cst.leading_trivia_before_node
-                ~after:(Cst.Token.span arrow_token).end_
-                (Cst.Expression.syntax_node expression)
-          | Cst.Cases cases ->
-              Cst.leading_trivia_before_node
-                ~after:(Cst.Token.span arrow_token).end_
-                cases.syntax_node
-        );
         body;
         attributes = []
       }
@@ -6144,10 +6093,6 @@ and let_operator_expression_from_node = fun node ->
                 operator_token = operator_token;
                 equals_token = equals_token;
                 binding_pattern = pattern_from_node binding_pattern_node;
-                bound_value_leading_trivia =
-                  Cst.leading_trivia_before_node
-                    ~after:(Cst.Token.span equals_token).end_
-                    bound_value_node;
                 bound_value = expression_from_node bound_value_node;
                 and_binding = None
               } in
@@ -6166,10 +6111,6 @@ and let_operator_expression_from_node = fun node ->
                 Cst.syntax_node = node;
                 binding = { binding with and_binding = binding_operator_chain_of_list and_bindings };
                 in_token;
-                body_leading_trivia =
-                  Cst.leading_trivia_before_node
-                    ~after:(Cst.Token.span in_token).end_
-                    body_node;
                 body = expression_from_node body_node;
                 attributes = []
               }
@@ -6215,16 +6156,9 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                       keyword_token = and_keyword_token;
                       rec_token = direct_token_with_text node "rec";
                       equals_token = binding_equals_token;
-                      leading_trivia =
-                        leading_trivia_from_syntax_token
-                          (Cst.Token.syntax_token and_keyword_token);
                       attributes = binding_attributes;
                       binding_pattern = pattern_from_node nested_binding_pattern_node;
                       parameters = binding_parameters_from_prefix prefix_nodes;
-                      value_leading_trivia =
-                        Cst.leading_trivia_before_node
-                          ~after:(Cst.Token.span binding_equals_token).end_
-                          value_node;
                       value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
                       and_binding = None;
                       is_recursive = is_recursive_binding
@@ -6259,10 +6193,7 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                 bail ~message:"expected let keyword during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                   "let_expression"
                 ]
-          ); rec_token = direct_token_with_text node "rec"; equals_token; in_token; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix prefix_nodes; bound_value_leading_trivia =
-            Cst.leading_trivia_before_node
-              ~after:(Cst.Token.span equals_token).end_
-              bound_value_node; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = and_binding_nodes
+          ); rec_token = direct_token_with_text node "rec"; equals_token; in_token; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix prefix_nodes; bound_value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = and_binding_nodes
           |> List.mapi
             (fun index and_binding_node ->
               match List.nth_opt and_keyword_tokens index with
@@ -6274,10 +6205,7 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                     "and_bindings"
                   ])
           |> List.filter_map (fun binding -> binding)
-          |> let_binding_chain_of_list; body_leading_trivia =
-            Cst.leading_trivia_before_node
-              ~after:(Cst.Token.span in_token).end_
-              body_node; body = expression_from_node body_node; is_recursive = is_recursive_binding; attributes = []}
+          |> let_binding_chain_of_list; body = expression_from_node body_node; is_recursive = is_recursive_binding; attributes = []}
     | _ -> None
 and apply_payload_and_item_attribute = fun ~can_lift_payload node ->
   match Ceibo.Red.SyntaxNode.kind node with
@@ -6619,25 +6547,9 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                               "class_let_expression.and"
                             ]
                       );
-                      leading_trivia =
-                        leading_trivia_from_syntax_token
-                          (Cst.Token.syntax_token and_keyword_token);
                       attributes = binding_attributes;
                       binding_pattern = pattern_from_node nested_binding_pattern_node;
                       parameters = binding_parameters_from_prefix prefix_nodes;
-                      value_leading_trivia =
-                        Cst.leading_trivia_before_node
-                          ~after:(Cst.Token.span
-                                    (
-                                      match direct_token_with_text node "=" with
-                                      | Some equals_token ->
-                                          equals_token
-                                      | None ->
-                                          bail ~message:"expected class let and-binding equals during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-                                            "class_let_expression.and"
-                                          ]
-                                    )).end_
-                          value_node;
                       value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
                       and_binding = None;
                       is_recursive = is_recursive_binding
@@ -6861,7 +6773,7 @@ and class_expression_from_node = fun node ->
   | _ ->
       unsupported_class_expression node
 and let_binding_from_binding_operator_binding = fun
-  ~binding_syntax_node ( { keyword_token = binding_keyword_token; equals_token = binding_equals_token; binding_pattern = clause_pattern; bound_value_leading_trivia; bound_value = clause_value; _ } :
+  ~binding_syntax_node ( { keyword_token = binding_keyword_token; equals_token = binding_equals_token; binding_pattern = clause_pattern; bound_value = clause_value; _ } :
         Cst.binding_operator_binding ) ->
   Cst.LetBinding.
     {
@@ -6869,11 +6781,9 @@ and let_binding_from_binding_operator_binding = fun
       keyword_token = binding_keyword_token;
       rec_token = None;
       equals_token = binding_equals_token;
-      leading_trivia = [];
       attributes = [];
       binding_pattern = clause_pattern;
       parameters = [];
-      value_leading_trivia = bound_value_leading_trivia;
       value = clause_value;
       and_binding = None;
       is_recursive = false
@@ -6905,10 +6815,6 @@ and match_case_from_node = fun node ->
                 arrow_token;
                 pattern = pattern_from_node pattern_node;
                 guard = None;
-                body_leading_trivia =
-                  Cst.leading_trivia_before_node
-                    ~after:(Cst.Token.span arrow_token).end_
-                    (Cst.Expression.syntax_node body_expr);
                 body = body_expr
               }
           | [] -> None
@@ -6924,10 +6830,6 @@ and match_case_from_node = fun node ->
             arrow_token;
             pattern = pattern_from_node pattern_node;
             guard = Some guard_expr;
-            body_leading_trivia =
-              Cst.leading_trivia_before_node
-                ~after:(Cst.Token.span arrow_token).end_
-                (Cst.Expression.syntax_node body_expr);
             body = body_expr
           }
       | body_expr :: _, true ->
@@ -6941,10 +6843,6 @@ and match_case_from_node = fun node ->
             arrow_token;
             pattern = pattern_from_node pattern_node;
             guard = None;
-            body_leading_trivia =
-              Cst.leading_trivia_before_node
-                ~after:(Cst.Token.span arrow_token).end_
-                (Cst.Expression.syntax_node body_expr);
             body = body_expr
           }
     )
@@ -7533,7 +7431,7 @@ let type_extension_from_node = fun node ->
     )
   | _ -> None
 
-let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_binding ~capture_leading_trivia node ->
+let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_binding node ->
   let binding_keyword_token = keyword_token in
   let binding_rec_token = direct_token_with_text node "rec" in
   let binding_equals_token =
@@ -7559,19 +7457,9 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
             keyword_token = binding_keyword_token;
             rec_token = binding_rec_token;
             equals_token = binding_equals_token;
-            leading_trivia =
-              if capture_leading_trivia then
-                leading_trivia_from_syntax_token
-                  (Cst.Token.syntax_token binding_keyword_token)
-              else
-                [];
             attributes = binding_attributes;
             binding_pattern = pattern_from_node binding_pattern_node;
             parameters = binding_parameters_from_prefix prefix_nodes;
-            value_leading_trivia =
-              Cst.leading_trivia_before_node
-                ~after:(Cst.Token.span binding_equals_token).end_
-                value_node;
             value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
             and_binding = None;
             is_recursive = is_recursive_binding
@@ -7580,7 +7468,7 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
     )
   | [] -> None
 
-let let_binding_from_node = fun ~is_recursive_binding ~capture_leading_trivia node ->
+let let_binding_from_node = fun ~is_recursive_binding node ->
   let binding_keyword_token =
     match direct_token_with_text node "let" with
     | Some keyword_token ->
@@ -7595,7 +7483,7 @@ let let_binding_from_node = fun ~is_recursive_binding ~capture_leading_trivia no
             ]
       )
   in
-  let_binding_from_node_with_keyword ~keyword_token:binding_keyword_token ~is_recursive_binding ~capture_leading_trivia node
+  let_binding_from_node_with_keyword ~keyword_token:binding_keyword_token ~is_recursive_binding node
 
 let let_expression_binding_from_node = fun ~is_recursive_binding node ->
   if (not is_recursive_binding) && is_binding_operator_expression_node node then
@@ -7625,11 +7513,8 @@ let let_expression_binding_from_node = fun ~is_recursive_binding node ->
                   bail ~message:"expected let-expression binding keyword during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                     "let_expression.binding"
                   ]
-            ); rec_token = direct_token_with_text node "rec"; equals_token = binding_equals_token; leading_trivia = []; attributes = []; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix
-            prefix_nodes; value_leading_trivia =
-              Cst.leading_trivia_before_node
-                ~after:(Cst.Token.span binding_equals_token).end_
-                bound_value_node; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = None; is_recursive = is_recursive_binding}
+            ); rec_token = direct_token_with_text node "rec"; equals_token = binding_equals_token; attributes = []; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix
+            prefix_nodes; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = None; is_recursive = is_recursive_binding}
     | _ -> None
 
 let module_declaration_parts_from_node = fun node ->
@@ -8111,12 +7996,12 @@ let rec structure_items_from_node = fun node ->
       else
         child_nodes |> List.concat_map structure_items_from_node
   | Syntax_kind.LET_BINDING -> (
-      match let_binding_from_node ~is_recursive_binding:false ~capture_leading_trivia:false node with
+      match let_binding_from_node ~is_recursive_binding:false node with
       | Some binding -> [ Cst.StructureItem.LetBinding binding ]
       | None -> unsupported_item node
     )
   | Syntax_kind.LET_REC_BINDING -> (
-      match let_binding_from_node ~is_recursive_binding:true ~capture_leading_trivia:false node with
+      match let_binding_from_node ~is_recursive_binding:true node with
       | Some binding -> [ Cst.StructureItem.LetBinding binding ]
       | None -> unsupported_item node
     )
@@ -8161,7 +8046,7 @@ let rec structure_items_from_node = fun node ->
                   String.equal (Ceibo.Red.SyntaxToken.text token) "and")
             in
             (
-              match let_binding_from_node_with_keyword ~keyword_token:(token let_keyword_token) ~is_recursive_binding:is_recursive_group ~capture_leading_trivia:false first_node with
+              match let_binding_from_node_with_keyword ~keyword_token:(token let_keyword_token) ~is_recursive_binding:is_recursive_group first_node with
               | Some first_binding ->
                   let and_bindings =
                     rest_nodes
@@ -8169,7 +8054,7 @@ let rec structure_items_from_node = fun node ->
                       (fun index binding_node ->
                         match List.nth_opt and_keyword_tokens index with
                         | Some and_keyword_token ->
-                            let_binding_from_node_with_keyword ~keyword_token:(token and_keyword_token) ~is_recursive_binding:is_recursive_group ~capture_leading_trivia:true binding_node
+                            let_binding_from_node_with_keyword ~keyword_token:(token and_keyword_token) ~is_recursive_binding:is_recursive_group binding_node
                         | None ->
                             bail ~message:"expected matching and keyword for let-mutual declaration during Ceibo -> CST lifting" ~syntax_node:binding_node ~context:[
                               "item";
@@ -9565,7 +9450,7 @@ and validate_expression = fun ~context ->
       Option.iter (validate_expression ~context:((("expression.if.else_branch" :: context)))) else_branch
   | Cst.Expression.Parenthesized { inner; _ } ->
       validate_expression ~context:((("expression.parenthesized" :: context))) inner
-and validate_match_case = fun ~context ({ pattern; guard; body; body_leading_trivia = _; _ } : Cst.match_case) ->
+and validate_match_case = fun ~context ({ pattern; guard; body; _ } : Cst.match_case) ->
   validate_pattern ~context:((("match_case.pattern" :: context))) pattern;
   Option.iter (validate_expression ~context:((("match_case.guard" :: context)))) guard;
   validate_expression ~context:((("match_case.body" :: context))) body

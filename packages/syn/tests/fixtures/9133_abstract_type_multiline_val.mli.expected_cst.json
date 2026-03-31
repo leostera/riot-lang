@@ -49,24 +49,27 @@
             }
           },
           "functor_parameters": [],
-          "module_type": {
-            "tag": "signature",
-            "syntax_node": {
-              "kind": "SIG_EXPR",
-              "span": {
-                "start": 86,
-                "end": 214
-              }
-            },
-            "signature_syntax_node": {
-              "kind": "SIG_EXPR",
-              "span": {
-                "start": 86,
-                "end": 214
+          "definition": {
+            "kind": "signature",
+            "module_type": {
+              "tag": "signature",
+              "syntax_node": {
+                "kind": "SIG_EXPR",
+                "span": {
+                  "start": 86,
+                  "end": 214
+                }
+              },
+              "signature_syntax_node": {
+                "kind": "SIG_EXPR",
+                "span": {
+                  "start": 86,
+                  "end": 214
+                }
               }
             }
           },
-          "and_declarations": [],
+          "next_and_declaration": null,
           "is_recursive": false
         }
       }

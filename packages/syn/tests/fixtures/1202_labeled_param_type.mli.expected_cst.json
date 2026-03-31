@@ -20,14 +20,16 @@
               "end": 40
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "make",
-            "span": {
-              "start": 4,
-              "end": 8
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "make",
+              "span": {
+                "start": 4,
+                "end": 8
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {

@@ -6425,7 +6425,9 @@ and second x = x
               ~expected:[ "(* Parse signature item (top-level in .mli files) *)"; "\n" ]
               ~actual:
                 (nested
-                |> Syn.Cst.LetBinding.leading_trivia
+                |> Syn.Cst.LetBinding.keyword_token
+                |> Syn.Cst.Token.leading_trivia
+                |> List.filter_map Syn.Cst.trivia_of_syntax_trivia
                 |> List.map Syn.Cst.Trivia.text);
             Ok ()
         | _ ->
@@ -9954,7 +9956,12 @@ let first_non_trivia_token node =
         | Syn.Cst.StructureItem.Comment _
           :: Syn.Cst.StructureItem.LetBinding binding
           :: _ -> (
-            match Syn.Cst.LetBinding.leading_trivia binding with
+            match
+              binding
+              |> Syn.Cst.LetBinding.keyword_token
+              |> Syn.Cst.Token.leading_trivia
+              |> List.filter_map Syn.Cst.trivia_of_syntax_trivia
+            with
             | [] -> Ok ()
             | _ ->
                 Error "expected top-level let binding not to duplicate preceding standalone comment")
@@ -9986,14 +9993,14 @@ let classify remaining available =
               Syn.Cst.Expression.If
                 {
                   then_branch =
-                    Syn.Cst.Expression.Parenthesized { inner_leading_trivia = [ Syn.Cst.Trivia.Comment comment ]; _ };
+                    Syn.Cst.Expression.Parenthesized { opening_token; inner; _ };
                   else_branch =
                     Some
                       (Syn.Cst.Expression.If
                          {
                            then_branch =
                              Syn.Cst.Expression.Parenthesized
-                               { inner_leading_trivia = [ Syn.Cst.Trivia.Comment nested_comment ]; _ };
+                               { opening_token = nested_opening_token; inner = nested_inner; _ };
                            _;
                          });
                   _;
@@ -10001,13 +10008,25 @@ let classify remaining available =
             _;
           }
           :: _ ->
-            Test.assert_equal
-              ~expected:"(* Body complete but buffer empty *)"
-              ~actual:(Syn.Cst.Comment.text comment);
-            Test.assert_equal
-              ~expected:"(* Partial data available, consume it and continue *)"
-              ~actual:(Syn.Cst.Comment.text nested_comment);
-            Ok ()
+            (match
+               ( Syn.Cst.leading_trivia_before_node
+                   ~after:(Syn.Cst.Token.span opening_token).end_
+                   (Syn.Cst.Expression.syntax_node inner),
+                 Syn.Cst.leading_trivia_before_node
+                   ~after:(Syn.Cst.Token.span nested_opening_token).end_
+                   (Syn.Cst.Expression.syntax_node nested_inner) )
+             with
+            | [ Syn.Cst.Trivia.Comment comment ],
+              [ Syn.Cst.Trivia.Comment nested_comment ] ->
+                Test.assert_equal
+                  ~expected:"(* Body complete but buffer empty *)"
+                  ~actual:(Syn.Cst.Comment.text comment);
+                Test.assert_equal
+                  ~expected:"(* Partial data available, consume it and continue *)"
+                  ~actual:(Syn.Cst.Comment.text nested_comment);
+                Ok ()
+            | _ ->
+                Error "expected comment trivia before parenthesized if branches")
         | _ ->
             Error "expected parenthesized if branches to preserve opening-delimiter trivia");
     Test.case "cst keeps polymorphic variant payload local opens distinct from raw local opens"

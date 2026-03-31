@@ -69,7 +69,7 @@
             "self_pattern": null,
             "members": []
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

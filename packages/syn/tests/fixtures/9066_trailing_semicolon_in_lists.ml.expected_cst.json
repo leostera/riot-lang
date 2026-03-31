@@ -154,7 +154,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -312,7 +312,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -394,7 +394,7 @@
             },
             "elements": []
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -601,7 +601,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -888,7 +888,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -1275,7 +1275,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -1735,7 +1735,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -1863,7 +1863,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -2021,7 +2021,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -2103,7 +2103,7 @@
             },
             "elements": []
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -2310,7 +2310,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -2711,7 +2711,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -3092,7 +3092,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -3277,7 +3277,7 @@
                       "suffix": null
                     }
                   },
-                  "and_bindings": [],
+                  "and_binding": null,
                   "body": {
                     "tag": "infix",
                     "syntax_node": {
@@ -3456,7 +3456,7 @@
                       "suffix": null
                     }
                   },
-                  "and_bindings": [],
+                  "and_binding": null,
                   "body": {
                     "tag": "infix",
                     "syntax_node": {
@@ -3533,7 +3533,7 @@
               }
             ]
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

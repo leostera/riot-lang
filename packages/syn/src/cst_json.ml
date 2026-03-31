@@ -1361,7 +1361,6 @@ and expression_to_json = fun expression ->
     opening_token;
     closing_token;
     grouping;
-    inner_leading_trivia;
     inner;
     _
   } ->
@@ -1371,8 +1370,6 @@ and expression_to_json = fun expression ->
         ("opening_token", token_to_json opening_token);
         ("closing_token", token_to_json closing_token);
         ("grouping", expression_grouping_to_json grouping);
-        ("inner_leading_trivia",
-         Json.Array (List.map trivia_to_json inner_leading_trivia));
         ("inner", expression_to_json inner)
       ]
       @ expression_attribute_fields expression)
@@ -1418,14 +1415,13 @@ and fun_body_to_json =
       Json.Object [ ("tag", Json.String "expression"); ("expression", expression_to_json body) ]
   | Cst.Cases cases ->
       Json.Object [ ("tag", Json.String "cases"); ("cases_body", function_case_body_to_json cases) ]
-and match_case_to_json = fun { syntax_node; bar_token; when_token; arrow_token; pattern; guard; body_leading_trivia; body } -> Json.Object [
+and match_case_to_json = fun { syntax_node; bar_token; when_token; arrow_token; pattern; guard; body } -> Json.Object [
   ("syntax_node", syntax_node_to_json syntax_node);
   ("bar_token", option_to_json token_to_json bar_token);
   ("when_token", option_to_json token_to_json when_token);
   ("arrow_token", token_to_json arrow_token);
   ("pattern", pattern_to_json pattern);
   ("guard", option_to_json expression_to_json guard);
-  ("body_leading_trivia", Json.Array (List.map trivia_to_json body_leading_trivia));
   ("body", expression_to_json body)
 ]
 and let_binding_to_json = fun binding ->
@@ -1434,7 +1430,6 @@ and let_binding_to_json = fun binding ->
     ("keyword_token", token_to_json (Cst.LetBinding.keyword_token binding));
     ("rec_token", option_to_json token_to_json (Cst.LetBinding.rec_token binding));
     ("equals_token", token_to_json (Cst.LetBinding.equals_token binding));
-    ("leading_trivia", Json.Array (List.map trivia_to_json (Cst.LetBinding.leading_trivia binding)));
     ("attributes", Json.Array (List.map attribute_to_json (Cst.LetBinding.attributes binding)));
     ("binding_pattern", pattern_to_json (Cst.LetBinding.binding_pattern binding));
     ("parameters", Json.Array (List.map parameter_to_json (Cst.LetBinding.parameters binding)));

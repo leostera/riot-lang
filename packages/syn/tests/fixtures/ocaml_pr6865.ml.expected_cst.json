@@ -102,7 +102,7 @@
               "suffix": null
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },
@@ -158,61 +158,59 @@
               }
             }
           },
-          "and_bindings": [
-            {
+          "and_binding": {
+            "syntax_node": {
+              "kind": "LET_BINDING",
+              "span": {
+                "start": 187,
+                "end": 194
+              }
+            },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "and",
+              "span": {
+                "start": 184,
+                "end": 187
+              }
+            },
+            "rec_token": null,
+            "equals_token": {
+              "kind": "IDENT_EXPR",
+              "text": "=",
+              "span": {
+                "start": 190,
+                "end": 191
+              }
+            },
+            "attributes": [],
+            "binding_pattern": {
+              "tag": "wildcard",
               "syntax_node": {
-                "kind": "LET_BINDING",
+                "kind": "WILDCARD_PATTERN",
                 "span": {
                   "start": 187,
-                  "end": 194
+                  "end": 189
                 }
-              },
-              "keyword_token": {
-                "kind": "IDENT_EXPR",
-                "text": "and",
-                "span": {
-                  "start": 184,
-                  "end": 187
-                }
-              },
-              "rec_token": null,
-              "equals_token": {
-                "kind": "IDENT_EXPR",
-                "text": "=",
-                "span": {
-                  "start": 190,
-                  "end": 191
-                }
-              },
-              "attributes": [],
-              "binding_pattern": {
-                "tag": "wildcard",
+              }
+            },
+            "parameters": [],
+            "value": {
+              "tag": "literal",
+              "literal": {
+                "tag": "unit",
                 "syntax_node": {
-                  "kind": "WILDCARD_PATTERN",
+                  "kind": "UNIT_LITERAL",
                   "span": {
-                    "start": 187,
-                    "end": 189
+                    "start": 191,
+                    "end": 194
                   }
                 }
-              },
-              "parameters": [],
-              "value": {
-                "tag": "literal",
-                "literal": {
-                  "tag": "unit",
-                  "syntax_node": {
-                    "kind": "UNIT_LITERAL",
-                    "span": {
-                      "start": 191,
-                      "end": 194
-                    }
-                  }
-                }
-              },
-              "and_bindings": [],
-              "is_recursive": false
-            }
-          ],
+              }
+            },
+            "and_binding": null,
+            "is_recursive": false
+          },
           "is_recursive": false
         }
       },
@@ -268,7 +266,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       },

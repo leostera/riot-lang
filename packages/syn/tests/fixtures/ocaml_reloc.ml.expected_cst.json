@@ -177,7 +177,7 @@
                 "terminated": true
               }
             },
-            "and_bindings": [],
+            "and_binding": null,
             "body": {
               "tag": "let",
               "syntax_node": {
@@ -404,7 +404,7 @@
                   }
                 }
               },
-              "and_bindings": [],
+              "and_binding": null,
               "body": {
                 "tag": "let",
                 "syntax_node": {
@@ -677,7 +677,7 @@
                       }
                     }
                   },
-                  "and_bindings": [],
+                  "and_binding": null,
                   "body": {
                     "tag": "let",
                     "syntax_node": {
@@ -795,7 +795,7 @@
                         }
                       }
                     },
-                    "and_bindings": [],
+                    "and_binding": null,
                     "body": {
                       "tag": "apply",
                       "syntax_node": {
@@ -1042,7 +1042,7 @@
                   },
                   "is_recursive": false
                 },
-                "and_bindings": [],
+                "and_binding": null,
                 "body": {
                   "tag": "apply",
                   "syntax_node": {
@@ -1350,7 +1350,7 @@
             },
             "is_recursive": false
           },
-          "and_bindings": [],
+          "and_binding": null,
           "is_recursive": false
         }
       }

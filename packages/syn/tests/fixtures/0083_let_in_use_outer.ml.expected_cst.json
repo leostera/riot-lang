@@ -90,7 +90,7 @@
               "suffix": null
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "body": {
             "tag": "let",
             "syntax_node": {
@@ -215,7 +215,7 @@
                 }
               }
             },
-            "and_bindings": [],
+            "and_binding": null,
             "body": {
               "tag": "path",
               "syntax_node": {

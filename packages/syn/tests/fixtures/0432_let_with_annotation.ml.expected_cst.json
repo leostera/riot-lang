@@ -171,7 +171,7 @@
               }
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "body": {
             "tag": "type_ascription",
             "syntax_node": {

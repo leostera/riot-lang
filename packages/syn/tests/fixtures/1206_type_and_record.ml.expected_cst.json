@@ -145,62 +145,70 @@
               }
             ]
           },
-          "and_declarations": [
-            {
+          "next_and_declaration": {
+            "syntax_node": {
+              "kind": "TYPE_DECL",
+              "span": {
+                "start": 35,
+                "end": 70
+              }
+            },
+            "type_name": {
+              "tag": "ident",
               "syntax_node": {
-                "kind": "TYPE_DECL",
+                "kind": "IDENT_EXPR",
                 "span": {
                   "start": 35,
+                  "end": 41
+                }
+              },
+              "name_token": {
+                "kind": "IDENT_EXPR",
+                "text": "color",
+                "span": {
+                  "start": 36,
+                  "end": 41
+                }
+              }
+            },
+            "type_params": [],
+            "type_definition": {
+              "tag": "record",
+              "syntax_node": {
+                "kind": "TYPE_RECORD",
+                "span": {
+                  "start": 43,
                   "end": 70
                 }
               },
-              "type_name": {
-                "tag": "ident",
-                "syntax_node": {
-                  "kind": "IDENT_EXPR",
-                  "span": {
-                    "start": 35,
-                    "end": 41
-                  }
-                },
-                "name_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "color",
-                  "span": {
-                    "start": 36,
-                    "end": 41
-                  }
-                }
-              },
-              "type_params": [],
-              "type_definition": {
-                "tag": "record",
-                "syntax_node": {
-                  "kind": "TYPE_RECORD",
-                  "span": {
-                    "start": 43,
-                    "end": 70
-                  }
-                },
-                "fields": [
-                  {
+              "fields": [
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_RECORD_FIELD",
+                    "span": {
+                      "start": 45,
+                      "end": 52
+                    }
+                  },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "r",
+                    "span": {
+                      "start": 46,
+                      "end": 47
+                    }
+                  },
+                  "field_type": {
+                    "tag": "constr",
                     "syntax_node": {
-                      "kind": "TYPE_RECORD_FIELD",
+                      "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 45,
+                        "start": 48,
                         "end": 52
                       }
                     },
-                    "field_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "r",
-                      "span": {
-                        "start": 46,
-                        "end": 47
-                      }
-                    },
-                    "field_type": {
-                      "tag": "constr",
+                    "constructor_path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
@@ -208,46 +216,46 @@
                           "end": 52
                         }
                       },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 48,
-                            "end": 52
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "int",
-                          "span": {
-                            "start": 49,
-                            "end": 52
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 49,
+                          "end": 52
                         }
-                      },
-                      "arguments": []
+                      }
                     },
-                    "is_mutable": false
+                    "arguments": []
                   },
-                  {
+                  "is_mutable": false
+                },
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_RECORD_FIELD",
+                    "span": {
+                      "start": 53,
+                      "end": 60
+                    }
+                  },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "g",
+                    "span": {
+                      "start": 54,
+                      "end": 55
+                    }
+                  },
+                  "field_type": {
+                    "tag": "constr",
                     "syntax_node": {
-                      "kind": "TYPE_RECORD_FIELD",
+                      "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 53,
+                        "start": 56,
                         "end": 60
                       }
                     },
-                    "field_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "g",
-                      "span": {
-                        "start": 54,
-                        "end": 55
-                      }
-                    },
-                    "field_type": {
-                      "tag": "constr",
+                    "constructor_path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
@@ -255,46 +263,46 @@
                           "end": 60
                         }
                       },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 56,
-                            "end": 60
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "int",
-                          "span": {
-                            "start": 57,
-                            "end": 60
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 57,
+                          "end": 60
                         }
-                      },
-                      "arguments": []
+                      }
                     },
-                    "is_mutable": false
+                    "arguments": []
                   },
-                  {
+                  "is_mutable": false
+                },
+                {
+                  "syntax_node": {
+                    "kind": "TYPE_RECORD_FIELD",
+                    "span": {
+                      "start": 61,
+                      "end": 68
+                    }
+                  },
+                  "field_name": {
+                    "kind": "IDENT_EXPR",
+                    "text": "b",
+                    "span": {
+                      "start": 62,
+                      "end": 63
+                    }
+                  },
+                  "field_type": {
+                    "tag": "constr",
                     "syntax_node": {
-                      "kind": "TYPE_RECORD_FIELD",
+                      "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 61,
+                        "start": 64,
                         "end": 68
                       }
                     },
-                    "field_name": {
-                      "kind": "IDENT_EXPR",
-                      "text": "b",
-                      "span": {
-                        "start": 62,
-                        "end": 63
-                      }
-                    },
-                    "field_type": {
-                      "tag": "constr",
+                    "constructor_path": {
+                      "tag": "ident",
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
@@ -302,33 +310,23 @@
                           "end": 68
                         }
                       },
-                      "constructor_path": {
-                        "tag": "ident",
-                        "syntax_node": {
-                          "kind": "TYPE_CONSTR",
-                          "span": {
-                            "start": 64,
-                            "end": 68
-                          }
-                        },
-                        "name_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "int",
-                          "span": {
-                            "start": 65,
-                            "end": 68
-                          }
+                      "name_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "int",
+                        "span": {
+                          "start": 65,
+                          "end": 68
                         }
-                      },
-                      "arguments": []
+                      }
                     },
-                    "is_mutable": false
-                  }
-                ]
-              },
-              "is_destructive_substitution": false
-            }
-          ],
+                    "arguments": []
+                  },
+                  "is_mutable": false
+                }
+              ]
+            },
+            "is_destructive_substitution": false
+          },
           "is_destructive_substitution": false
         }
       }

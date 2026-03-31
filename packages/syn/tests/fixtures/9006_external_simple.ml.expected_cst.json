@@ -20,14 +20,16 @@
               "end": 50
             }
           },
-          "name_token": {
-            "kind": "IDENT_EXPR",
-            "text": "sqrt",
-            "span": {
-              "start": 9,
-              "end": 13
+          "name_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "sqrt",
+              "span": {
+                "start": 9,
+                "end": 13
+              }
             }
-          },
+          ],
           "type": {
             "tag": "arrow",
             "syntax_node": {

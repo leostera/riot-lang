@@ -90,7 +90,7 @@
               "suffix": null
             }
           },
-          "and_bindings": [],
+          "and_binding": null,
           "body": {
             "tag": "let",
             "syntax_node": {
@@ -169,7 +169,7 @@
                 "suffix": null
               }
             },
-            "and_bindings": [],
+            "and_binding": null,
             "body": {
               "tag": "let",
               "syntax_node": {
@@ -248,7 +248,7 @@
                   "suffix": null
                 }
               },
-              "and_bindings": [],
+              "and_binding": null,
               "body": {
                 "tag": "infix",
                 "syntax_node": {
