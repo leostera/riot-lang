@@ -4227,7 +4227,7 @@ and render_parenthesized_expression = function
       render_expression expression
 
 and render_let_module_expression
-    ({ module_name_token; module_expression; body; _ } : Syn.Cst.let_module_expression) =
+    ({ module_name_token; equals_token; module_expression; body; _ } : Syn.Cst.let_module_expression) =
   let header =
     Doc.concat
       [
@@ -4236,7 +4236,9 @@ and render_let_module_expression
         kw_module;
         Doc.space;
         doc_of_token module_name_token;
-        equals;
+        Doc.space;
+        doc_of_token equals_token;
+        Doc.space;
         render_module_expression_doc module_expression;
         Doc.space;
         kw_in;

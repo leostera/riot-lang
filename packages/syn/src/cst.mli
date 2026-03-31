@@ -2225,6 +2225,7 @@ and module_pack_expression = {
 and let_module_expression = {
   syntax_node : syntax_node;
   module_name_token : Token.t;
+  equals_token : Token.t;
   module_expression : module_expression;
   body : expression;
   attributes : attribute list;

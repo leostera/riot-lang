@@ -56,6 +56,7 @@ Token-backed so far:
 - object member body `=`
 - class member body `=`
 - for loop `=`
+- let module expression `=`
 
 ## Next Targets
 

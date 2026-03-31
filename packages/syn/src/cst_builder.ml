@@ -5852,6 +5852,15 @@ and let_module_expression_from_node = fun node ->
       Some {
         syntax_node = node;
         module_name_token = token module_name_token;
+        equals_token =
+          (match direct_token_with_text node "=" with
+          | Some equals_token ->
+              equals_token
+          | None ->
+              bail ~message:"expected let module equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                "expression.let_module";
+                "equals_token"
+              ]);
         module_expression = module_expression_from_node module_expression_node;
         body = expression_from_node body_node;
         attributes = []
