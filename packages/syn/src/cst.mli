@@ -123,20 +123,6 @@ type trivia =
   | Comment of comment
 val trivia_of_syntax_trivia : syntax_trivia -> trivia option
 
-(** Trivia that a CST node owns after token-order normalization.
-
-    - `leading` holds trivia that should render before the node.
-    - `inner` holds trivia that lives inside the node's span but is not part of
-      a child node's owned trivia.
-    - `trailing` holds trivia that stays after the node.
-
-    This stays public because downstream renderers and analyses need the
-    normalized ownership buckets directly. *)
-type owned_trivia = {
-  leading : trivia list;
-  inner : trivia list;
-  trailing : trivia list;
-}
 (** An OCaml attribute attached to some surrounding grammar node.
 
     This covers item, type, pattern, expression, and module-language attributes.
@@ -828,7 +814,6 @@ and class_type_field =
   | Inherit of {
       syntax_node : syntax_node;
       class_type : class_type;
-      owned_trivia : owned_trivia;
     }
       (** An inherited class type field.
 
@@ -839,7 +824,6 @@ and class_type_field =
       name_token : Token.t;
       type_ : core_type;
       modifier_tokens : Token.t list;
-      owned_trivia : owned_trivia;
     }
       (** A value declaration in a class signature.
 
@@ -855,7 +839,6 @@ and class_type_field =
       name_token : Token.t;
       type_ : core_type;
       modifier_tokens : Token.t list;
-      owned_trivia : owned_trivia;
     }
       (** A method declaration in a class signature.
 
@@ -870,7 +853,6 @@ and class_type_field =
       syntax_node : syntax_node;
       left : core_type;
       right : core_type;
-      owned_trivia : owned_trivia;
     }
       (** A class-type constraint.
 
@@ -1163,27 +1145,23 @@ module ClassTypeField : sig
     | Inherit of {
         syntax_node : syntax_node;
         class_type : class_type;
-        owned_trivia : owned_trivia;
       }
     | Value of {
         syntax_node : syntax_node;
         name_token : Token.t;
         type_ : core_type;
         modifier_tokens : Token.t list;
-        owned_trivia : owned_trivia;
       }
     | Method of {
         syntax_node : syntax_node;
         name_token : Token.t;
         type_ : core_type;
         modifier_tokens : Token.t list;
-        owned_trivia : owned_trivia;
       }
     | Constraint of {
         syntax_node : syntax_node;
         left : core_type;
         right : core_type;
-        owned_trivia : owned_trivia;
       }
     | Attribute of {
         syntax_node : syntax_node;
@@ -1885,7 +1863,6 @@ and exception_declaration = {
   keyword_token : Token.t;
   name_token : Token.t;
   rhs : exception_rhs option;
-  owned_trivia : owned_trivia;
 }
 (** Expression syntax.
 
@@ -2091,7 +2068,6 @@ and object_expression = {
   syntax_node : syntax_node;
   self_pattern : pattern option;
   members : object_member list;
-  owned_trivia : owned_trivia;
   attributes : attribute list;
 }
 
@@ -2149,7 +2125,6 @@ and value_definition =
 *)
 and object_method = {
   syntax_node : syntax_node;
-  owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
   body : expression;
@@ -2164,7 +2139,6 @@ and object_method = {
 *)
 and object_value = {
   syntax_node : syntax_node;
-  owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
   value : expression;
@@ -2175,7 +2149,6 @@ and object_value = {
 (** Payload for `object_member` inheritance clauses. *)
 and object_inherit = {
   syntax_node : syntax_node;
-  owned_trivia : owned_trivia;
   attributes : attribute list;
   expression : expression;
 }
@@ -2186,7 +2159,6 @@ and object_inherit = {
 *)
 and object_initializer = {
   syntax_node : syntax_node;
-  owned_trivia : owned_trivia;
   body : expression;
 }
 
@@ -2993,7 +2965,6 @@ and class_method = {
   name_token : Token.t;
   definition : method_definition;
   modifier_tokens : Token.t list;
-  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassField.Value`.
@@ -3006,14 +2977,12 @@ and class_value = {
   name_token : Token.t;
   definition : value_definition;
   modifier_tokens : Token.t list;
-  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassField.Inherit`. *)
 and class_inherit = {
   syntax_node : syntax_node;
   class_expression : class_expression;
-  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassField.Constraint`.
@@ -3024,7 +2993,6 @@ and class_constraint = {
   syntax_node : syntax_node;
   left : core_type;
   right : core_type;
-  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassField.Initializer`.
@@ -3034,7 +3002,6 @@ and class_constraint = {
 and class_initializer = {
   syntax_node : syntax_node;
   body : expression;
-  owned_trivia : owned_trivia;
 }
 
 (** Payload for `ClassExpression.Apply`. *)
@@ -3592,7 +3559,6 @@ module RecordField : sig
     field_type : core_type;
     is_mutable : bool;
     attributes : attribute list;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -3606,7 +3572,6 @@ module RecordField : sig
 
   val attributes : t -> attribute list
 
-  val owned_trivia : t -> owned_trivia
 end
 
 (** Helper view over `poly_variant_tag`.
@@ -3673,7 +3638,6 @@ module VariantConstructor : sig
     payload_type : core_type option;
     arrow_token : Token.t option;
     result_type : core_type option;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -3693,7 +3657,6 @@ module VariantConstructor : sig
 
   val result_type : t -> core_type option
 
-  val owned_trivia : t -> owned_trivia
 
   val name : t -> string
 end
@@ -3897,7 +3860,6 @@ module TypeDeclaration : sig
     next_and_declaration : t option;
     is_nonrec : bool;
     is_destructive_substitution : bool;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -3934,7 +3896,6 @@ module TypeDeclaration : sig
   (** `true` for interface destructive substitutions such as `type t := string`. *)
   val is_destructive_substitution : t -> bool
 
-  val owned_trivia : t -> owned_trivia
 
   val is_private : t -> bool
 
@@ -3960,7 +3921,6 @@ module TypeExtension : sig
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     constructors : VariantConstructor.t list;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -3970,7 +3930,6 @@ module TypeExtension : sig
 
   val constructors : t -> VariantConstructor.t list
 
-  val owned_trivia : t -> owned_trivia
 
   val name_token : t -> Token.t
 end
@@ -4054,7 +4013,6 @@ module ModuleSignature : sig
     definition : definition;
     next_and_declaration : t option;
     is_recursive : bool;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -4078,7 +4036,6 @@ module ModuleSignature : sig
 
   val is_recursive : t -> bool
 
-  val owned_trivia : t -> owned_trivia
 
   val name : t -> string
 end
@@ -4103,7 +4060,6 @@ module ModuleStructure : sig
     module_expression : module_expression;
     next_and_declaration : t option;
     is_recursive : bool;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -4125,7 +4081,6 @@ module ModuleStructure : sig
 
   val is_recursive : t -> bool
 
-  val owned_trivia : t -> owned_trivia
 
   val name : t -> string
 end
@@ -4147,7 +4102,6 @@ module ModuleTypeDeclaration : sig
     module_type_name : Token.t;
     equals_token : Token.t option;
     module_type : module_type option;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -4157,7 +4111,6 @@ module ModuleTypeDeclaration : sig
 
   val module_type : t -> module_type option
 
-  val owned_trivia : t -> owned_trivia
 
   val name : t -> string
 end
@@ -4197,7 +4150,6 @@ module OpenStatement : sig
     keyword_token : Token.t;
     target : target;
     bang_token : Token.t option;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -4213,7 +4165,6 @@ module OpenStatement : sig
 
   val has_bang : t -> bool
 
-  val owned_trivia : t -> owned_trivia
 end
 
 module Docstring : sig
@@ -4287,24 +4238,6 @@ val token_body_span : syntax_node -> Ceibo.Span.t
     tools can keep the value typed and stringify it only at the edge. *)
 val syntax_kind : syntax_node -> Syntax_kind.t
 
-module OwnedTrivia : sig
-  type t = owned_trivia = {
-    leading : trivia list;
-    inner : trivia list;
-    trailing : trivia list;
-  }
-
-  val empty : t
-
-  val leading : t -> trivia list
-
-  val inner : t -> trivia list
-
-  val trailing : t -> trivia list
-
-  val is_empty : t -> bool
-end
-
 (** A `val` declaration item.
 
     Example:
@@ -4318,7 +4251,6 @@ type value_declaration = {
   name_tokens : Token.t list;
   colon_token : Token.t;
   type_ : core_type;
-  owned_trivia : owned_trivia;
 }
 (** An `external` declaration item.
 
@@ -4337,7 +4269,6 @@ module ValueDeclaration : sig
     name_tokens : Token.t list;
     colon_token : Token.t;
     type_ : core_type;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -4347,7 +4278,6 @@ module ValueDeclaration : sig
 
   val type_ : t -> core_type
 
-  val owned_trivia : t -> owned_trivia
 end
 
 type external_declaration = {
@@ -4358,7 +4288,6 @@ type external_declaration = {
   equals_token : Token.t;
   primitive_name_tokens : Token.t list;
   attributes : attribute list;
-  owned_trivia : owned_trivia;
 }
 (** A `class` declaration item that appears in signatures.
 
@@ -4376,7 +4305,6 @@ module ClassDeclaration : sig
     declaration_attributes : attribute list;
     class_name : Token.t;
     class_type : class_type;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -4390,7 +4318,6 @@ module ClassDeclaration : sig
 
   val class_type : t -> class_type
 
-  val owned_trivia : t -> owned_trivia
 
   val name : t -> string
 end
@@ -4413,7 +4340,6 @@ module ClassDefinition : sig
     class_name : Token.t;
     class_type : class_type option;
     class_body : class_expression;
-    owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
 
@@ -4429,7 +4355,6 @@ module ClassDefinition : sig
 
   val class_body : t -> class_expression
 
-  val owned_trivia : t -> owned_trivia
 
   val name : t -> string
 end
@@ -4452,7 +4377,6 @@ type class_type_declaration = {
   declaration_attributes : attribute list;
   class_type_name : Token.t;
   class_type_body : class_type;
-  owned_trivia : owned_trivia;
 }
 
 (** The payload of an `include` item.
@@ -4475,7 +4399,6 @@ type include_statement = {
   syntax_node : syntax_node;
   keyword_token : Token.t;
   target : include_target;
-  owned_trivia : owned_trivia;
 }
 (** Top-level items that can appear in an implementation source file.
 

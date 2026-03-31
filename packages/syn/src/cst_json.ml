@@ -41,17 +41,6 @@ let trivia_to_json =
   | Cst.Trivia.Comment comment ->
       Json.Object [ ("tag", Json.String "comment"); ("value", comment_to_json comment) ]
 
-let owned_trivia_fields_to_json = fun (owned : Cst.OwnedTrivia.t) ->
-  let field = fun name values ->
-    if values = [] then
-      []
-    else
-      [ (name, Json.Array (List.map trivia_to_json values)) ]
-  in
-  field "leading_trivia" (Cst.OwnedTrivia.leading owned)
-  @ field "inner_trivia" (Cst.OwnedTrivia.inner owned)
-  @ field "trailing_trivia" (Cst.OwnedTrivia.trailing owned)
-
 let expression_grouping_to_json =
   function
   | Cst.Parens ->
@@ -1494,7 +1483,6 @@ let type_parameter_to_json = fun type_parameter ->
 
 let record_field_to_json = fun field ->
   let attributes = Cst.RecordField.attributes field |> List.map attribute_to_json in
-  let owned_trivia = owned_trivia_fields_to_json (Cst.RecordField.owned_trivia field) in
   Json.Object (
     [
       ("syntax_node", syntax_node_to_json (Cst.RecordField.syntax_node field));
@@ -1508,7 +1496,6 @@ let record_field_to_json = fun field ->
       else
         [ ("attributes", Json.Array attributes) ]
     )
-    @ owned_trivia
   )
 
 let constructor_arguments_to_json =
@@ -1528,7 +1515,6 @@ let variant_constructor_to_json = fun constr ->
   let attributes = Cst.VariantConstructor.attributes constr |> List.map attribute_to_json in
   let arguments = Cst.VariantConstructor.arguments constr |> Option.map constructor_arguments_to_json in
   let result_type = Cst.VariantConstructor.result_type constr |> Option.map core_type_to_json in
-  let owned_trivia = owned_trivia_fields_to_json (Cst.VariantConstructor.owned_trivia constr) in
   Json.Object (
     [
       ("syntax_node", syntax_node_to_json (Cst.VariantConstructor.syntax_node constr));
@@ -1558,7 +1544,6 @@ let variant_constructor_to_json = fun constr ->
     @ [
       ("arrow_token", option_to_json token_to_json (Cst.VariantConstructor.arrow_token constr))
     ]
-    @ owned_trivia
   )
 
 let type_constraint_to_json = fun ({ syntax_node; left; right } : Cst.type_constraint) -> Json.Object [
@@ -1623,7 +1608,6 @@ let type_definition_to_json =
 
 let rec type_declaration_to_json = fun decl ->
   let constraints = Cst.TypeDeclaration.constraints decl |> List.map type_constraint_to_json in
-  let owned_trivia = owned_trivia_fields_to_json (Cst.TypeDeclaration.owned_trivia decl) in
   let attributes = Cst.TypeDeclaration.attributes decl |> List.map attribute_to_json in
   Json.Object (
     [
@@ -1678,7 +1662,6 @@ let rec type_declaration_to_json = fun decl ->
         Json.Bool (Cst.TypeDeclaration.is_destructive_substitution decl)
       )
     ]
-    @ owned_trivia
   )
 
 let type_extension_to_json = fun decl ->
@@ -1771,14 +1754,12 @@ let open_statement_to_json = fun stmt ->
   ]
 
 let value_declaration_to_json = fun (decl : Cst.value_declaration) ->
-  let owned_trivia = owned_trivia_fields_to_json (Cst.ValueDeclaration.owned_trivia decl) in
   Json.Object ([
     ("syntax_node", syntax_node_to_json (Cst.ValueDeclaration.syntax_node decl));
     ("name_tokens", Json.Array (List.map token_to_json (Cst.ValueDeclaration.name_tokens decl)));
     ("colon_token", token_to_json (Cst.ValueDeclaration.colon_token decl));
     ("type", core_type_to_json (Cst.ValueDeclaration.type_ decl))
-  ]
-  @ owned_trivia)
+  ])
 
 let external_declaration_to_json = fun (decl : Cst.external_declaration) -> Json.Object [
   ("syntax_node", syntax_node_to_json decl.syntax_node);

@@ -226,6 +226,11 @@ let doc_with_leading_trivia = fun trivia doc ->
 let doc_of_token_with_leading_trivia = fun token ->
   doc_of_token token |> doc_with_leading_trivia (pending_doc_of_token_leading_trivia token)
 
+let token_has_renderable_leading_trivia = fun token ->
+  match pending_doc_of_token_leading_trivia token with
+  | Some _ -> true
+  | None -> false
+
 let doc_with_trailing_trivia = fun doc trivia ->
   match trivia with
   | None ->
@@ -976,16 +981,7 @@ and render_record_definition_field_entry =
     else
       render_record_definition_field field
   in
-  let owned = Syn.Cst.RecordField.owned_trivia field in
-  let leading =
-    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
-  in
-  let trailing =
-    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned)
-  in
   body
-  |> doc_with_leading_trivia leading
-  |> fun body -> doc_with_trailing_trivia body trailing
 and render_record_definition_body_item = function
   | Syn.CstBuilder.RecordField field ->
       render_record_definition_field_entry field
@@ -1181,14 +1177,6 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
   | Syn.Cst.ConstructorArguments.Tuple types ->
       Doc.group (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type types)
   | Syn.Cst.ConstructorArguments.Record fields ->
-      let fields_have_owned_trivia =
-        fields
-        |> List.exists
-             (fun field ->
-               Syn.Cst.RecordField.owned_trivia field
-               |> Syn.Cst.OwnedTrivia.is_empty
-               |> not)
-      in
       let field_items = Syn.CstBuilder.record_field_items_of_fields fields in
       let has_standalone_record_trivia =
         field_items
@@ -1202,7 +1190,7 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
       in
       if List.is_empty fields then
         Doc.indent 2 (render_record_definition fields)
-      else if fields_have_owned_trivia || has_standalone_record_trivia then
+      else if has_standalone_record_trivia then
         Doc.indent 2 (render_record_definition fields)
       else if prefer_multiline_inline_record then
         Doc.indent 2 (render_record_definition fields)
@@ -1376,20 +1364,7 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
     | None, None ->
         head
   in
-  let owned = Syn.Cst.VariantConstructor.owned_trivia constructor in
-  let leading =
-    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
-  in
-  let trailing =
-    Syn.Cst.OwnedTrivia.trailing owned
-    |> doc_of_owned_trivia ~after_rendered_body:true
-  in
-  let body = body |> doc_with_leading_trivia leading in
-  match trailing with
-  | None ->
-      body
-  | Some suffix ->
-      Doc.concat [ body; suffix ]
+  body
 
 let render_variant_definition = fun constructors ->
   let constructors_all_inline_records =
@@ -1518,40 +1493,7 @@ let render_single_type_declaration_with_keyword = fun keyword decl ->
     [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ]) with_definition in
     with_constraints
 
-let doc_with_type_declaration_owned_trivia = fun decl doc ->
-  let owned = Syn.Cst.TypeDeclaration.owned_trivia decl in
-  let leading =
-    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
-  in
-  let trailing =
-    doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned)
-  in
-  let trailing_separator =
-    match Syn.Cst.TypeDeclaration.type_definition decl, trailing with
-    | Syn.Cst.TypeDefinition.Variant { constructors; _ }, Some _ -> (
-        match List.rev constructors with
-        | constructor :: _ ->
-            let trailing =
-              Syn.Cst.VariantConstructor.owned_trivia constructor
-              |> Syn.Cst.OwnedTrivia.trailing
-            in
-            if List.is_empty trailing then
-              Doc.line
-            else
-              blank_line
-        | [] ->
-            Doc.line)
-    | _ ->
-        Doc.line
-  in
-  doc
-  |> doc_with_leading_trivia leading
-  |> fun doc ->
-       match trailing with
-       | None ->
-           doc
-       | Some trailing ->
-           Doc.concat [ doc; trailing_separator; trailing ]
+let doc_with_type_declaration_owned_trivia = fun _decl doc -> doc
 
 let render_type_declaration_member_with_keyword = fun keyword decl ->
   render_single_type_declaration_with_keyword keyword decl
@@ -2710,24 +2652,16 @@ and render_object_member = function
       render_object_initializer initializer_
 
 and object_member_owned_trivia = function
-  | Syn.Cst.ObjectMember.Method method_ ->
-      method_.owned_trivia
-  | Syn.Cst.ObjectMember.Value value ->
-      value.owned_trivia
-  | Syn.Cst.ObjectMember.Inherit inherit_ ->
-      inherit_.owned_trivia
-  | Syn.Cst.ObjectMember.Initializer initializer_ ->
-      initializer_.owned_trivia
+  | Syn.Cst.ObjectMember.Method _
+  | Syn.Cst.ObjectMember.Value _
+  | Syn.Cst.ObjectMember.Inherit _
+  | Syn.Cst.ObjectMember.Initializer _
   | Syn.Cst.ObjectMember.Extension _ ->
-      Syn.Cst.OwnedTrivia.empty
+      []
 
 and render_object_expression_body_item = function
   | Syn.CstBuilder.ObjectMember member ->
-      let doc = render_object_member member in
-      let owned_trivia = object_member_owned_trivia member in
-      let leading_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned_trivia) in
-      let trailing_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned_trivia) in
-      doc |> doc_with_leading_trivia leading_trivia |> fun doc -> doc_with_trailing_trivia doc trailing_trivia
+      render_object_member member
   | Syn.CstBuilder.Comment comment ->
       Doc.text (Syn.Cst.Comment.text comment)
   | Syn.CstBuilder.Docstring docstring ->
@@ -2786,23 +2720,19 @@ and render_class_type_field = function
       render_extension_doc extension
 
 and class_type_field_owned_trivia = function
-  | Syn.Cst.ClassTypeField.Inherit { owned_trivia; _ }
-  | Syn.Cst.ClassTypeField.Value { owned_trivia; _ }
-  | Syn.Cst.ClassTypeField.Method { owned_trivia; _ }
-  | Syn.Cst.ClassTypeField.Constraint { owned_trivia; _ } ->
-      owned_trivia
+  | Syn.Cst.ClassTypeField.Inherit _
+  | Syn.Cst.ClassTypeField.Value _
+  | Syn.Cst.ClassTypeField.Method _
+  | Syn.Cst.ClassTypeField.Constraint _ ->
+      []
   | Syn.Cst.ClassTypeField.Attribute { field; _ } ->
       class_type_field_owned_trivia field
   | Syn.Cst.ClassTypeField.Extension _ ->
-      Syn.Cst.OwnedTrivia.empty
+      []
 
 and render_class_type_body_item = function
   | Syn.CstBuilder.ClassTypeField field ->
-      let doc = render_class_type_field field in
-      let owned_trivia = class_type_field_owned_trivia field in
-      let leading_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned_trivia) in
-      let trailing_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned_trivia) in
-      doc |> doc_with_leading_trivia leading_trivia |> fun doc -> doc_with_trailing_trivia doc trailing_trivia
+      render_class_type_field field
   | Syn.CstBuilder.Comment comment ->
       Doc.text (Syn.Cst.Comment.text comment)
   | Syn.CstBuilder.Docstring docstring ->
@@ -2937,28 +2867,20 @@ and render_class_field = function
       render_extension_doc extension
 
 and class_field_owned_trivia = function
-  | Syn.Cst.ClassField.Method method_ ->
-      method_.owned_trivia
-  | Syn.Cst.ClassField.Value value ->
-      value.owned_trivia
-  | Syn.Cst.ClassField.Inherit inherit_ ->
-      inherit_.owned_trivia
-  | Syn.Cst.ClassField.Constraint constraint_ ->
-      constraint_.owned_trivia
-  | Syn.Cst.ClassField.Initializer initializer_ ->
-      initializer_.owned_trivia
+  | Syn.Cst.ClassField.Method _
+  | Syn.Cst.ClassField.Value _
+  | Syn.Cst.ClassField.Inherit _
+  | Syn.Cst.ClassField.Constraint _
+  | Syn.Cst.ClassField.Initializer _ ->
+      []
   | Syn.Cst.ClassField.Attribute { field; _ } ->
       class_field_owned_trivia field
   | Syn.Cst.ClassField.Extension _ ->
-      Syn.Cst.OwnedTrivia.empty
+      []
 
 and render_class_expression_body_item = function
   | Syn.CstBuilder.ClassField field ->
-      let doc = render_class_field field in
-      let owned_trivia = class_field_owned_trivia field in
-      let leading_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned_trivia) in
-      let trailing_trivia = doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned_trivia) in
-      doc |> doc_with_leading_trivia leading_trivia |> fun doc -> doc_with_trailing_trivia doc trailing_trivia
+      render_class_field field
   | Syn.CstBuilder.Comment comment ->
       Doc.text (Syn.Cst.Comment.text comment)
   | Syn.CstBuilder.Docstring docstring ->
@@ -5337,34 +5259,24 @@ and is_open_signature_item = function
   | _ ->
       false
 
-and class_declaration_owned_trivia decl =
-  Syn.Cst.ClassDeclaration.owned_trivia decl
+and class_declaration_owned_trivia _decl = None
 
-and class_definition_owned_trivia decl =
-  Syn.Cst.ClassDefinition.owned_trivia decl
+and class_definition_owned_trivia _decl = None
 
 and render_structure_item_owned_trivia =
   function
-  | Syn.Cst.StructureItem.TypeDeclaration decl ->
-      Some (Syn.Cst.TypeDeclaration.owned_trivia decl)
-  | Syn.Cst.StructureItem.TypeExtension decl ->
-      Some (Syn.Cst.TypeExtension.owned_trivia decl)
+  | Syn.Cst.StructureItem.TypeDeclaration _
+  | Syn.Cst.StructureItem.TypeExtension _ ->
+      None
   | Syn.Cst.StructureItem.ClassDeclaration decl ->
-      Some (class_definition_owned_trivia decl)
-  | Syn.Cst.StructureItem.ClassTypeDeclaration decl ->
-      Some decl.owned_trivia
-  | Syn.Cst.StructureItem.ModuleDeclaration decl ->
-      Some (Syn.Cst.ModuleStructure.owned_trivia decl)
-  | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
-      Some (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl)
-  | Syn.Cst.StructureItem.OpenStatement stmt ->
-      Some (Syn.Cst.OpenStatement.owned_trivia stmt)
-  | Syn.Cst.StructureItem.ExternalDeclaration decl ->
-      Some decl.owned_trivia
-  | Syn.Cst.StructureItem.IncludeStatement stmt ->
-      Some stmt.owned_trivia
-  | Syn.Cst.StructureItem.ExceptionDeclaration decl ->
-      Some decl.owned_trivia
+      class_definition_owned_trivia decl
+  | Syn.Cst.StructureItem.ClassTypeDeclaration _
+  | Syn.Cst.StructureItem.ModuleDeclaration _
+  | Syn.Cst.StructureItem.ModuleTypeDeclaration _
+  | Syn.Cst.StructureItem.OpenStatement _
+  | Syn.Cst.StructureItem.ExternalDeclaration _
+  | Syn.Cst.StructureItem.IncludeStatement _
+  | Syn.Cst.StructureItem.ExceptionDeclaration _
   | Syn.Cst.StructureItem.LetBinding _
   | Syn.Cst.StructureItem.Expression _
   | Syn.Cst.StructureItem.Attribute _
@@ -5375,28 +5287,19 @@ and render_structure_item_owned_trivia =
 
 and render_signature_item_owned_trivia =
   function
-  | Syn.Cst.SignatureItem.TypeDeclaration decl ->
-      Some (Syn.Cst.TypeDeclaration.owned_trivia decl)
-  | Syn.Cst.SignatureItem.TypeExtension decl ->
-      Some (Syn.Cst.TypeExtension.owned_trivia decl)
+  | Syn.Cst.SignatureItem.TypeDeclaration _
+  | Syn.Cst.SignatureItem.TypeExtension _ ->
+      None
   | Syn.Cst.SignatureItem.ClassDeclaration decl ->
-      Some (class_declaration_owned_trivia decl)
-  | Syn.Cst.SignatureItem.ClassTypeDeclaration decl ->
-      Some decl.owned_trivia
-  | Syn.Cst.SignatureItem.ModuleDeclaration decl ->
-      Some (Syn.Cst.ModuleSignature.owned_trivia decl)
-  | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
-      Some (Syn.Cst.ModuleTypeDeclaration.owned_trivia decl)
-  | Syn.Cst.SignatureItem.OpenStatement stmt ->
-      Some (Syn.Cst.OpenStatement.owned_trivia stmt)
-  | Syn.Cst.SignatureItem.ValueDeclaration decl ->
-      Some (Syn.Cst.ValueDeclaration.owned_trivia decl)
-  | Syn.Cst.SignatureItem.ExternalDeclaration decl ->
-      Some decl.owned_trivia
-  | Syn.Cst.SignatureItem.IncludeStatement stmt ->
-      Some stmt.owned_trivia
-  | Syn.Cst.SignatureItem.ExceptionDeclaration decl ->
-      Some decl.owned_trivia
+      class_declaration_owned_trivia decl
+  | Syn.Cst.SignatureItem.ClassTypeDeclaration _
+  | Syn.Cst.SignatureItem.ModuleDeclaration _
+  | Syn.Cst.SignatureItem.ModuleTypeDeclaration _
+  | Syn.Cst.SignatureItem.OpenStatement _
+  | Syn.Cst.SignatureItem.ValueDeclaration _
+  | Syn.Cst.SignatureItem.ExternalDeclaration _
+  | Syn.Cst.SignatureItem.IncludeStatement _
+  | Syn.Cst.SignatureItem.ExceptionDeclaration _
   | Syn.Cst.SignatureItem.Attribute _
   | Syn.Cst.SignatureItem.Extension _
   | Syn.Cst.SignatureItem.Docstring _
@@ -5416,20 +5319,8 @@ and render_structure_entry ~trailing_suffix item =
       match item with
       | Syn.Cst.StructureItem.TypeDeclaration _ ->
           base_doc
-      | _ -> (
-          match render_structure_item_owned_trivia item with
-          | Some owned ->
-              let leading =
-                doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
-              in
-              let trailing =
-                doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned)
-              in
-              base_doc
-              |> doc_with_leading_trivia leading
-              |> fun doc -> doc_with_trailing_trivia doc trailing
-          | None ->
-              base_doc)
+      | _ ->
+          base_doc
     in
     match trailing_suffix with
     | None ->
@@ -5492,20 +5383,8 @@ and render_signature_entry ~trailing_suffix item =
       match item with
       | Syn.Cst.SignatureItem.TypeDeclaration _ ->
           base_doc
-      | _ -> (
-          match render_signature_item_owned_trivia item with
-          | Some owned ->
-              let leading =
-                doc_of_owned_trivia (Syn.Cst.OwnedTrivia.leading owned)
-              in
-              let trailing =
-                doc_of_owned_trivia (Syn.Cst.OwnedTrivia.trailing owned)
-              in
-              base_doc
-              |> doc_with_leading_trivia leading
-              |> fun doc -> doc_with_trailing_trivia doc trailing
-          | None ->
-              base_doc)
+      | _ ->
+          base_doc
     in
     match trailing_suffix with
     | None ->

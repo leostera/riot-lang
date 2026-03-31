@@ -436,27 +436,23 @@ and class_type_field =
   | Inherit of {
       syntax_node : syntax_node;
       class_type : class_type;
-      owned_trivia : owned_trivia;
     }
   | Value of {
       syntax_node : syntax_node;
       name_token : Token.t;
       type_ : core_type;
       modifier_tokens : Token.t list;
-      owned_trivia : owned_trivia;
     }
   | Method of {
       syntax_node : syntax_node;
       name_token : Token.t;
       type_ : core_type;
       modifier_tokens : Token.t list;
-      owned_trivia : owned_trivia;
     }
   | Constraint of {
       syntax_node : syntax_node;
       left : core_type;
       right : core_type;
-      owned_trivia : owned_trivia;
     }
   | Attribute of {
       syntax_node : syntax_node;
@@ -696,27 +692,23 @@ module ClassTypeField = struct
     | Inherit of {
         syntax_node : syntax_node;
         class_type : class_type;
-        owned_trivia : owned_trivia;
       }
     | Value of {
         syntax_node : syntax_node;
         name_token : Token.t;
         type_ : core_type;
         modifier_tokens : Token.t list;
-        owned_trivia : owned_trivia;
       }
     | Method of {
         syntax_node : syntax_node;
         name_token : Token.t;
         type_ : core_type;
         modifier_tokens : Token.t list;
-        owned_trivia : owned_trivia;
       }
     | Constraint of {
         syntax_node : syntax_node;
         left : core_type;
         right : core_type;
-        owned_trivia : owned_trivia;
       }
     | Attribute of {
         syntax_node : syntax_node;
@@ -1149,7 +1141,6 @@ and exception_declaration = {
   keyword_token : Token.t;
   name_token : Token.t;
   rhs : exception_rhs option;
-  owned_trivia : owned_trivia;
 }
 
 and expression =
@@ -1225,7 +1216,6 @@ and object_expression = {
   syntax_node : syntax_node;
   self_pattern : pattern option;
   members : object_member list;
-  owned_trivia : owned_trivia;
   attributes : attribute list;
 }
 
@@ -1258,7 +1248,6 @@ and value_definition =
 
 and object_method = {
   syntax_node : syntax_node;
-  owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
   body : expression;
@@ -1268,7 +1257,6 @@ and object_method = {
 
 and object_value = {
   syntax_node : syntax_node;
-  owned_trivia : owned_trivia;
   attributes : attribute list;
   name_token : Token.t;
   value : expression;
@@ -1278,14 +1266,12 @@ and object_value = {
 
 and object_inherit = {
   syntax_node : syntax_node;
-  owned_trivia : owned_trivia;
   attributes : attribute list;
   expression : expression;
 }
 
 and object_initializer = {
   syntax_node : syntax_node;
-  owned_trivia : owned_trivia;
   body : expression;
 }
 
@@ -1720,7 +1706,6 @@ and class_method = {
   name_token : Token.t;
   definition : method_definition;
   modifier_tokens : Token.t list;
-  owned_trivia : owned_trivia;
 }
 
 and class_value = {
@@ -1728,26 +1713,22 @@ and class_value = {
   name_token : Token.t;
   definition : value_definition;
   modifier_tokens : Token.t list;
-  owned_trivia : owned_trivia;
 }
 
 and class_inherit = {
   syntax_node : syntax_node;
   class_expression : class_expression;
-  owned_trivia : owned_trivia;
 }
 
 and class_constraint = {
   syntax_node : syntax_node;
   left : core_type;
   right : core_type;
-  owned_trivia : owned_trivia;
 }
 
 and class_initializer = {
   syntax_node : syntax_node;
   body : expression;
-  owned_trivia : owned_trivia;
 }
 
 and class_apply_expression = {
@@ -2493,7 +2474,6 @@ module RecordField = struct
     field_type : core_type;
     is_mutable : bool;
     attributes : attribute list;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun field -> field.syntax_node
@@ -2508,7 +2488,6 @@ module RecordField = struct
 
   let attributes = fun field -> field.attributes
 
-  let owned_trivia = fun field -> field.owned_trivia
 end
 
 module ConstructorArguments = struct
@@ -2528,7 +2507,6 @@ module VariantConstructor = struct
     payload_type : core_type option;
     arrow_token : Token.t option;
     result_type : core_type option;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun constr -> constr.syntax_node
@@ -2549,7 +2527,6 @@ module VariantConstructor = struct
 
   let result_type = fun constr -> constr.result_type
 
-  let owned_trivia = fun constr -> constr.owned_trivia
 
   let name = fun constr -> Token.text constr.constructor_name
 end
@@ -2691,7 +2668,6 @@ module TypeDeclaration = struct
     next_and_declaration : t option;
     is_nonrec : bool;
     is_destructive_substitution : bool;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -2721,7 +2697,6 @@ module TypeDeclaration = struct
 
   let is_destructive_substitution = fun decl -> decl.is_destructive_substitution
 
-  let owned_trivia = fun decl -> decl.owned_trivia
 
   let is_private = fun decl -> PrivateFlag.is_private decl.private_flag
 
@@ -2737,7 +2712,6 @@ module TypeExtension = struct
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     constructors : VariantConstructor.t list;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -2748,7 +2722,6 @@ module TypeExtension = struct
 
   let constructors = fun decl -> decl.constructors
 
-  let owned_trivia = fun decl -> decl.owned_trivia
 
   let name_token = fun decl ->
     match Ident.last_segment decl.type_name with
@@ -2842,7 +2815,6 @@ module ModuleSignature = struct
     definition : definition;
     next_and_declaration : t option;
     is_recursive : bool;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -2874,7 +2846,6 @@ module ModuleSignature = struct
 
   let is_recursive = fun decl -> decl.is_recursive
 
-  let owned_trivia = fun decl -> decl.owned_trivia
 
   let name = fun decl -> Token.text decl.module_name
 end
@@ -2891,7 +2862,6 @@ module ModuleStructure = struct
     module_expression : module_expression;
     next_and_declaration : t option;
     is_recursive : bool;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -2917,7 +2887,6 @@ module ModuleStructure = struct
 
   let is_recursive = fun decl -> decl.is_recursive
 
-  let owned_trivia = fun decl -> decl.owned_trivia
 
   let name = fun decl -> Token.text decl.module_name
 end
@@ -2928,7 +2897,6 @@ module ModuleTypeDeclaration = struct
     module_type_name : Token.t;
     equals_token : Token.t option;
     module_type : module_type option;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -2939,7 +2907,6 @@ module ModuleTypeDeclaration = struct
 
   let module_type = fun decl -> decl.module_type
 
-  let owned_trivia = fun decl -> decl.owned_trivia
 
   let name = fun decl -> Token.text decl.module_type_name
 end
@@ -2954,7 +2921,6 @@ module OpenStatement = struct
     keyword_token : Token.t;
     target : target;
     bang_token : Token.t option;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun stmt -> stmt.syntax_node
@@ -2978,7 +2944,6 @@ module OpenStatement = struct
 
   let has_bang = fun stmt -> Option.is_some stmt.bang_token
 
-  let owned_trivia = fun stmt -> stmt.owned_trivia
 end
 
 module Docstring = struct
@@ -3171,7 +3136,6 @@ type value_declaration = {
   name_tokens : Token.t list;
   colon_token : Token.t;
   type_ : core_type;
-  owned_trivia : owned_trivia;
 }
 
 module ValueDeclaration = struct
@@ -3180,7 +3144,6 @@ module ValueDeclaration = struct
     name_tokens : Token.t list;
     colon_token : Token.t;
     type_ : core_type;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -3191,7 +3154,6 @@ module ValueDeclaration = struct
 
   let type_ = fun decl -> decl.type_
 
-  let owned_trivia = fun decl -> decl.owned_trivia
 end
 
 type external_declaration = {
@@ -3202,7 +3164,6 @@ type external_declaration = {
   equals_token : Token.t;
   primitive_name_tokens : Token.t list;
   attributes : attribute list;
-  owned_trivia : owned_trivia;
 }
 
 module ClassDeclaration = struct
@@ -3213,7 +3174,6 @@ module ClassDeclaration = struct
     declaration_attributes : attribute list;
     class_name : Token.t;
     class_type : class_type;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun declaration -> declaration.syntax_node
@@ -3222,7 +3182,6 @@ module ClassDeclaration = struct
   let declaration_attributes = fun declaration -> declaration.declaration_attributes
   let class_name_token = fun declaration -> declaration.class_name
   let class_type = fun declaration -> declaration.class_type
-  let owned_trivia = fun declaration -> declaration.owned_trivia
   let name = fun declaration -> Token.text declaration.class_name
 end
 
@@ -3235,7 +3194,6 @@ module ClassDefinition = struct
     class_name : Token.t;
     class_type : class_type option;
     class_body : class_expression;
-    owned_trivia : owned_trivia;
   }
 
   let syntax_node = fun definition -> definition.syntax_node
@@ -3245,7 +3203,6 @@ module ClassDefinition = struct
   let class_name_token = fun definition -> definition.class_name
   let class_type = fun definition -> definition.class_type
   let class_body = fun definition -> definition.class_body
-  let owned_trivia = fun definition -> definition.owned_trivia
   let name = fun definition -> Token.text definition.class_name
 end
 
@@ -3256,7 +3213,6 @@ type class_type_declaration = {
   declaration_attributes : attribute list;
   class_type_name : Token.t;
   class_type_body : class_type;
-  owned_trivia : owned_trivia;
 }
 
 type include_target =
@@ -3267,7 +3223,6 @@ type include_statement = {
   syntax_node : syntax_node;
   keyword_token : Token.t;
   target : include_target;
-  owned_trivia : owned_trivia;
 }
 
 module StructureItem = struct
