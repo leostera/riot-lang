@@ -228,8 +228,10 @@ and type_binder =
 and record_type_field = {
   syntax_node : syntax_node;
   field_name : Token.t;
+  mutable_token : Token.t option;
   colon_token : Token.t;
   field_type : core_type;
+  semicolon_token : Token.t option;
   is_mutable : bool;
   attributes : attribute list;
 }

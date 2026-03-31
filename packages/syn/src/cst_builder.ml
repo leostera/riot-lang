@@ -3444,6 +3444,12 @@ and core_type_from_node = fun node ->
         {
           Cst.syntax_node = node;
           field_name;
+          mutable_token =
+            (match direct_non_trivia_tokens node with
+            | first :: _ when String.equal (Ceibo.Red.SyntaxToken.text first) "mutable" ->
+                Some (token first)
+            | _ ->
+                None);
           colon_token =
             (match direct_token_with_text node ":" with
             | Some colon_token ->
@@ -3454,6 +3460,7 @@ and core_type_from_node = fun node ->
                   "colon_token"
                 ]);
           field_type = core_type_from_node field_type_node;
+          semicolon_token = direct_token_with_text node semicolon_text;
           is_mutable = mutable_field;
           attributes
         }

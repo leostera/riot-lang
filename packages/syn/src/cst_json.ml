@@ -70,13 +70,15 @@ let rec object_type_field_to_json = fun ({ syntax_node; field_name; field_type }
   ("field_name", token_to_json field_name);
   ("field_type", core_type_to_json field_type)
 ]
-and record_type_field_to_json = fun ({ syntax_node; field_name; field_type; is_mutable; attributes } : Cst.record_type_field) ->
+and record_type_field_to_json = fun ({ syntax_node; field_name; mutable_token; field_type; semicolon_token; is_mutable; attributes } : Cst.record_type_field) ->
   let attributes = List.map attribute_to_json attributes in
   Json.Object (
     [
       ("syntax_node", syntax_node_to_json syntax_node);
       ("field_name", token_to_json field_name);
+      ("mutable_token", option_to_json token_to_json mutable_token);
       ("field_type", core_type_to_json field_type);
+      ("semicolon_token", option_to_json token_to_json semicolon_token);
       ("is_mutable", Json.Bool is_mutable)
     ]
     @ if attributes = [] then

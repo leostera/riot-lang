@@ -85,6 +85,8 @@ Token-backed so far:
 - object override delimiters and separators
 - object type delimiters `< >`
 - core record type delimiters and separators
+- record type field `;`
+- record type field `mutable`
 - type definition record delimiters `{ }`
 - constructor record argument delimiters `{ }`
 - polyvariant delimiters `[ ]`

@@ -909,8 +909,8 @@ and render_core_type =
       Doc.concat [ Doc.lparen; render_core_type inner; Doc.rparen ]
   | Syn.Cst.CoreType.PolyVariant poly_variant ->
       render_poly_variant_type poly_variant
-  | Syn.Cst.CoreType.Record { opening_token; fields; separator_tokens; closing_token; _ } ->
-      render_record_type ~opening_token ~separator_tokens ~closing_token fields
+  | Syn.Cst.CoreType.Record { opening_token; fields; closing_token; _ } ->
+      render_record_type ~opening_token ~closing_token fields
   | Syn.Cst.CoreType.FirstClassModule
       { opening_token; package_type; closing_token; _ } ->
       Doc.concat
@@ -937,7 +937,14 @@ and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
   in
   let prefix =
     if field.is_mutable then
-      Doc.concat [ kw_mutable; Doc.space; doc_of_token field.field_name ]
+      let mutable_doc =
+        match field.mutable_token with
+        | Some mutable_token ->
+            doc_of_token mutable_token
+        | None ->
+            kw_mutable
+      in
+      Doc.concat [ mutable_doc; Doc.space; doc_of_token field.field_name ]
     else
       doc_of_token field.field_name
   in
@@ -947,28 +954,32 @@ and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
     doc_of_token field.colon_token;
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
-and render_record_type = fun ~opening_token ~separator_tokens ~closing_token fields ->
-  let rec render_fields fields separator_tokens =
-    match fields, separator_tokens with
-    | [], [] ->
+and render_record_type = fun ~opening_token ~closing_token fields ->
+  let rec render_fields = function
+    | [] ->
         Doc.empty
-    | [ field ], [] ->
+    | [ field ] ->
         render_record_core_type_field field
-    | field :: rest, separator_token :: rest_separators ->
+    | field :: rest ->
+        let semicolon_token =
+          match field.semicolon_token with
+          | Some semicolon_token ->
+              semicolon_token
+          | None ->
+              unsupported "record type field missing semicolon token"
+        in
         Doc.concat
           [
             render_record_core_type_field field;
-            doc_of_token separator_token;
+            doc_of_token semicolon_token;
             Doc.line;
-            render_fields rest rest_separators;
+            render_fields rest;
           ]
-    | _ ->
-        unsupported "record type fields missing separator tokens"
   in
   Doc.concat [
     doc_of_token opening_token;
     Doc.line;
-    Doc.indent 2 (render_fields fields separator_tokens);
+    Doc.indent 2 (render_fields fields);
     Doc.line;
     doc_of_token closing_token
   ]
