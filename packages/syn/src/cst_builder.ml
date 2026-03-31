@@ -7018,14 +7018,21 @@ and class_expression_from_node = fun node ->
       | None -> unsupported_class_expression node
     )
   | Syntax_kind.PAREN_EXPR -> (
-      match direct_non_trivia_nodes node |> List.find_opt can_lift_class_expression_node with
-      | Some inner_node ->
+      match direct_non_trivia_nodes node |> List.find_opt can_lift_class_expression_node, direct_non_trivia_tokens node with
+      | Some inner_node, (opening_token :: _ :: _ as tokens) ->
+          let closing_token = List.hd (List.rev tokens) in
           Cst.ClassExpression.Parenthesized {
             syntax_node = node;
-            inner = class_expression_from_node inner_node
+            opening_token = token opening_token;
+            inner = class_expression_from_node inner_node;
+            closing_token = token closing_token
           }
-      | None ->
+      | None, _ ->
           unsupported_class_expression node
+      | Some _, _ ->
+          bail ~message:"expected parenthesized class expression delimiters during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+            "class_expression.parenthesized"
+          ]
     )
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with

@@ -3174,7 +3174,9 @@ and local_open_class_expression =
 (** Payload for `ClassExpression.Parenthesized`. *)
 and parenthesized_class_expression = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   inner : class_expression;
+  closing_token : Token.t;
 }
 
 (** Module expression syntax.

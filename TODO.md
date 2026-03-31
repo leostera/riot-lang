@@ -71,6 +71,7 @@ Token-backed so far:
 - module declaration `:`
 - functor parameter `:`
 - module expression constraint `:`
+- class expression parenthesized delimiters `( )`
 - polyvariant leading `|`
 - variant constructor leading `|`
 - or-pattern separator `|`

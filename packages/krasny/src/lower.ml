@@ -3511,8 +3511,8 @@ and render_class_expression = function
           Doc.concat [ doc_of_ident module_path; doc_of_token dot_token; render_class_expression body ]
       | _ ->
           panic "render_class_expression: mismatched class local-open delimiters")
-  | Syn.Cst.ClassExpression.Parenthesized { inner; _ } ->
-      Doc.concat [ Doc.lparen; render_class_expression inner; Doc.rparen ]
+  | Syn.Cst.ClassExpression.Parenthesized { opening_token; inner; closing_token; _ } ->
+      Doc.concat [ doc_of_token opening_token; render_class_expression inner; doc_of_token closing_token ]
   | Syn.Cst.ClassExpression.Attribute { class_expression; attribute; _ } ->
       Doc.concat [ render_class_expression class_expression; Doc.space; render_attribute attribute ]
   | Syn.Cst.ClassExpression.Extension extension ->
