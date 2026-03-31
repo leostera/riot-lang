@@ -1,53 +1,6 @@
-#!/bin/zsh
+#!/bin/bash
 
-set -eu
-
-repo_root=$(git rev-parse --show-toplevel)
-cd "$repo_root"
-
-staged_paths=${TUSK_PRECOMMIT_STAGED_PATHS-}
-if [ -z "$staged_paths" ]; then
-  staged_paths=$(git diff --cached --name-only --diff-filter=ACMR)
-fi
-
-if [ -z "$staged_paths" ]; then
-  exit 0
-fi
-
-packages=$(
-  printf "%s\n" "$staged_paths" \
-    | awk -F/ 'NF >= 3 && $1 == "packages" { print $2 }' \
-    | sort -u
-)
-
-run() {
-  if [ "${TUSK_PRECOMMIT_DRY_RUN-0}" = "1" ]; then
-    printf "dry-run:"
-    printf " %s" "$@"
-    printf "\n"
-    return 0
-  fi
-
-  "$@"
-}
-
-if [ -z "$packages" ]; then
-  printf "pre-commit: no modified packages in staged paths\n"
-  exit 0
-fi
-
-printf "pre-commit: checking packages\n"
-printf "%s\n" "$packages" | while IFS= read -r pkg; do
-  [ -n "$pkg" ] || continue
-  printf "  %s\n" "$pkg"
-done
-
-printf "%s\n" "$packages" | while IFS= read -r pkg; do
-  [ -n "$pkg" ] || continue
-
-  printf "pre-commit: tusk build %s\n" "$pkg"
-  run timeout 1800 tusk build "$pkg"
-
-  printf "pre-commit: tusk test %s\n" "$pkg"
-  run timeout 1800 tusk test "$pkg:..."
-done
+#tusk fmt --check
+#tusk fix --check
+tusk build
+tusk test
