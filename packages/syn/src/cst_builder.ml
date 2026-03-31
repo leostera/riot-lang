@@ -4630,14 +4630,26 @@ and module_expression_from_node = fun node ->
   | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
       match non_paren_tokens node, direct_non_trivia_nodes node with
       | val_kw :: _, expression_node :: _ when String.equal (Ceibo.Red.SyntaxToken.text val_kw) "val" ->
+          let direct_tokens = direct_non_trivia_tokens node in
+          let opening_token, closing_token =
+            match direct_tokens with
+            | opening_token :: _ ->
+                let closing_token = List.hd (List.rev direct_tokens) in
+                (token opening_token, token closing_token)
+            | [] ->
+                bail ~message:"expected first-class module unpack delimiters during Ceibo -> CST lifting" ~syntax_node:node
+                  ~context:[ "module_expression.module_unpack" ]
+          in
           let package_type = direct_non_trivia_nodes node
           |> List.find_opt can_lift_module_type_node
           |> Option.map package_type_from_module_type_node in
           Cst.ModuleExpression.ModuleUnpack {
             syntax_node = node;
+            opening_token;
             expression = expression_from_node expression_node;
             colon_token = token_with_text node ":";
-            package_type
+            package_type;
+            closing_token
           }
       | _ ->
           unsupported_module_expression node

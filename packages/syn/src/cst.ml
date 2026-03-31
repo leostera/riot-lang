@@ -1872,9 +1872,11 @@ and module_expression =
     }
   | ModuleUnpack of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       expression : expression;
       colon_token : Token.t option;
       package_type : package_type option;
+      closing_token : Token.t;
     }
   | Parenthesized of {
       syntax_node : syntax_node;
@@ -2302,9 +2304,11 @@ module ModuleExpression = struct
       }
     | ModuleUnpack of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         expression : expression;
         colon_token : Token.t option;
         package_type : package_type option;
+        closing_token : Token.t;
       }
     | Parenthesized of {
         syntax_node : syntax_node;

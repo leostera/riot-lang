@@ -74,6 +74,7 @@ Token-backed so far:
 - module pack delimiters `( )`
 - core type first-class module delimiters `( )`
 - type definition first-class module delimiters `( )`
+- module unpack delimiters `( )`
 
 ## Next Targets
 

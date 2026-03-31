@@ -5361,7 +5361,8 @@ and render_module_expression_doc = function
           Doc.space;
           render_module_type_doc module_type;
         ]
-  | Syn.Cst.ModuleExpression.ModuleUnpack { expression; colon_token; package_type; _ } ->
+  | Syn.Cst.ModuleExpression.ModuleUnpack
+      { opening_token; expression; colon_token; package_type; closing_token; _ } ->
       let constraint_doc =
         match package_type with
         | None ->
@@ -5378,12 +5379,12 @@ and render_module_expression_doc = function
       in
       Doc.concat
         [
-          Doc.lparen;
+          doc_of_token opening_token;
           kw_val;
           Doc.space;
           render_expression expression;
           constraint_doc;
-          Doc.rparen;
+          doc_of_token closing_token;
         ]
   | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
       Doc.concat [ Doc.lparen; render_module_expression_doc inner; Doc.rparen ]
