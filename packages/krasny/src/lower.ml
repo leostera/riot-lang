@@ -5137,10 +5137,7 @@ and nested_signature_items_from_module_type module_type =
 
 and render_module_type_constraint ~keyword (constraint_ : Syn.Cst.module_type_constraint) =
   let separator =
-    if constraint_.is_destructive then
-      Doc.concat [ Doc.space; Doc.text ":="; Doc.space ]
-    else
-      equals
+    Doc.concat [ Doc.space; doc_of_token constraint_.separator_token; Doc.space ]
   in
   Doc.concat
     [
