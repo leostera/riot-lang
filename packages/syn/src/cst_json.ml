@@ -952,6 +952,15 @@ and type_ascription_kind_to_json = function
           ("to_type", core_type_to_json to_type);
         ]
 and expression_to_json = fun expression ->
+  let node_is_recursive syntax_node rec_token =
+    Option.is_some rec_token
+    || match Ceibo.Red.SyntaxNode.parent syntax_node with
+    | Some parent ->
+        Ceibo.Red.SyntaxNode.direct_tokens parent
+        |> List.exists (fun token ->
+               String.equal (Ceibo.Red.SyntaxToken.text token) "rec")
+    | None -> false
+  in
   match expression with
   | Cst.Expression.Path { syntax_node; path; _ } ->
       Json.Object ([
@@ -1330,7 +1339,6 @@ and expression_to_json = fun expression ->
     bound_value;
     and_binding;
     body;
-    is_recursive;
     _
   } ->
       Json.Object (
@@ -1346,7 +1354,7 @@ and expression_to_json = fun expression ->
           ("bound_value", expression_to_json bound_value);
           ("and_binding", option_to_json let_binding_to_json and_binding);
           ("body", expression_to_json body);
-          ("is_recursive", Json.Bool is_recursive);
+          ("is_recursive", Json.Bool (node_is_recursive syntax_node rec_token));
         ] @ expression_attribute_fields expression
       )
   | Cst.Expression.Match {
@@ -1873,6 +1881,15 @@ let rec class_field_to_json =
   | Cst.ClassField.Extension extension ->
       Json.Object [ ("tag", Json.String "extension"); ("extension", extension_to_json extension) ]
 and class_expression_to_json =
+  let node_is_recursive syntax_node rec_token =
+    Option.is_some rec_token
+    || match Ceibo.Red.SyntaxNode.parent syntax_node with
+    | Some parent ->
+        Ceibo.Red.SyntaxNode.direct_tokens parent
+        |> List.exists (fun token ->
+               String.equal (Ceibo.Red.SyntaxToken.text token) "rec")
+    | None -> false
+  in
   function
   | Cst.ClassExpression.Path path ->
       Json.Object [ ("tag", Json.String "path"); ("path", ident_to_json path) ]
@@ -1907,8 +1924,7 @@ and class_expression_to_json =
     parameters;
     bound_value;
     and_binding;
-    body;
-    is_recursive
+    body
   } ->
       Json.Object [
         ("tag", Json.String "let");
@@ -1922,7 +1938,7 @@ and class_expression_to_json =
         ("bound_value", expression_to_json bound_value);
         ("and_binding", option_to_json let_binding_to_json and_binding);
         ("body", class_expression_to_json body);
-        ("is_recursive", Json.Bool is_recursive);
+        ("is_recursive", Json.Bool (node_is_recursive syntax_node rec_token));
       ]
   | Cst.ClassExpression.Constraint { syntax_node; class_expression; class_type } ->
       Json.Object [

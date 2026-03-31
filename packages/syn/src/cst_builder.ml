@@ -6483,8 +6483,7 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                       binding_pattern = pattern_from_node nested_binding_pattern_node;
                       parameters = binding_parameters_from_prefix prefix_nodes;
                       value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
-                      and_binding = None;
-                      is_recursive = is_recursive_binding
+                      and_binding = None
                     }
               | [] -> None
             )
@@ -6528,7 +6527,7 @@ and let_expression_from_node = fun ~is_recursive_binding node ->
                     "and_bindings"
                   ])
           |> List.filter_map (fun binding -> binding)
-          |> let_binding_chain_of_list; body = expression_from_node body_node; is_recursive = is_recursive_binding; attributes = []}
+          |> let_binding_chain_of_list; body = expression_from_node body_node; attributes = []}
     | _ -> None
 and apply_payload_and_item_attribute = fun ~can_lift_payload node ->
   match Ceibo.Red.SyntaxNode.kind node with
@@ -6932,8 +6931,7 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                       binding_pattern = pattern_from_node nested_binding_pattern_node;
                       parameters = binding_parameters_from_prefix prefix_nodes;
                       value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
-                      and_binding = None;
-                      is_recursive = is_recursive_binding
+                      and_binding = None
                     }
               | [] -> None
             )
@@ -6975,7 +6973,7 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
                     "and_bindings"
                   ])
           |> List.filter_map (fun binding -> binding)
-          |> let_binding_chain_of_list; body = class_expression_from_node body_node; is_recursive = is_recursive_binding}: Cst.class_let_expression)
+          |> let_binding_chain_of_list; body = class_expression_from_node body_node}: Cst.class_let_expression)
     | _ ->
         None
 and local_open_class_expression_from_node = fun node ->
@@ -7208,8 +7206,7 @@ and let_binding_from_binding_operator_binding = fun
       binding_pattern = clause_pattern;
       parameters = [];
       value = clause_value;
-      and_binding = None;
-      is_recursive = false
+      and_binding = None
     }
 and match_case_from_node = fun node ->
   let non_trivia_children = direct_non_trivia_nodes node in
@@ -8098,8 +8095,7 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
             binding_pattern = pattern_from_node binding_pattern_node;
             parameters = binding_parameters_from_prefix prefix_nodes;
             value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:value_node;
-            and_binding = None;
-            is_recursive = is_recursive_binding
+            and_binding = None
           }
       | [] -> None
     )
@@ -8151,7 +8147,7 @@ let let_expression_binding_from_node = fun ~is_recursive_binding node ->
                     "let_expression.binding"
                   ]
             ); rec_token = direct_token_with_text node "rec"; equals_token = binding_equals_token; attributes = []; binding_pattern = pattern_from_node binding_pattern_node; parameters = binding_parameters_from_prefix
-            prefix_nodes; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = None; is_recursive = is_recursive_binding}
+            prefix_nodes; value = binding_value_from_prefix ~binding_syntax_node:node ~prefix_nodes:prefix_nodes ~value_node:bound_value_node; and_binding = None}
     | _ -> None
 
 let module_declaration_parts_from_node = fun node ->
@@ -8165,12 +8161,6 @@ let module_declaration_parts_from_node = fun node ->
     |> Option.map token
   in
   let rec_token = direct_token_with_text node "rec" in
-  let is_recursive_declaration =
-    direct_tokens
-    |> List.exists
-      (fun syntax_token ->
-        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "rec")
-  in
   match find_declaration_name_token ~skip_keywords:[ "module"; "rec"; "and" ] direct_tokens with
   | Some module_name -> (
       let direct_children = direct_non_trivia_nodes node in
@@ -8227,7 +8217,6 @@ let module_declaration_parts_from_node = fun node ->
           equals_token,
           lifted_module_type,
           lifted_module_expression,
-          is_recursive_declaration,
           owned_trivia )
     )
   | None -> None
@@ -8256,7 +8245,7 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
            in
            match module_declaration_parts_from_node module_decl_node with
            | Some
-               (_parts_keyword_token, rec_token, module_name, functor_parameters, colon_token, equals_token, Some module_type, None, is_recursive_declaration, _owned_trivia) -> (
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, colon_token, equals_token, Some module_type, None, _owned_trivia) -> (
                match keyword_token with
                | Some keyword_token ->
                {
@@ -8269,7 +8258,6 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  equals_token;
                  definition = Cst.ModuleSignature.Signature module_type;
                  next_and_declaration = None;
-                 is_recursive = is_recursive_group || is_recursive_declaration;
                }
                | None ->
                    bail ~message:"expected module/and keyword for signature module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
@@ -8277,7 +8265,7 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                      "module_signature"
                    ])
            | Some
-               (_parts_keyword_token, rec_token, module_name, functor_parameters, colon_token, equals_token, None, Some module_expression, is_recursive_declaration, _owned_trivia) -> (
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, colon_token, equals_token, None, Some module_expression, _owned_trivia) -> (
                match keyword_token with
                | Some keyword_token ->
                {
@@ -8290,7 +8278,6 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  equals_token;
                  definition = Cst.ModuleSignature.Alias module_expression;
                  next_and_declaration = None;
-                 is_recursive = is_recursive_group || is_recursive_declaration;
                }
                | None ->
                    bail ~message:"expected module/and keyword for signature module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
@@ -8343,7 +8330,7 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
            in
            match module_declaration_parts_from_node module_decl_node with
            | Some
-               (_parts_keyword_token, rec_token, module_name, functor_parameters, colon_token, equals_token, module_type, Some module_expression, is_recursive_declaration, _owned_trivia) -> (
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, colon_token, equals_token, module_type, Some module_expression, _owned_trivia) -> (
                match keyword_token with
                | Some keyword_token ->
                {
@@ -8366,7 +8353,6 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  module_type;
                  module_expression;
                  next_and_declaration = None;
-                 is_recursive = is_recursive_group || is_recursive_declaration;
                }
                | None ->
                    bail ~message:"expected module/and keyword for structure module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[

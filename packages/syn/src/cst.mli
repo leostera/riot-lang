@@ -2812,7 +2812,6 @@ and let_binding = {
   parameters : parameter list;
   value : expression;
   and_binding : let_binding option;
-  is_recursive : bool;
 }
 
 (** A single binding-operator clause inside a `let*`/`let+`-style expression.
@@ -2868,7 +2867,6 @@ and let_expression = {
   bound_value : expression;
   and_binding : let_binding option;
   body : expression;
-  is_recursive : bool;
   attributes : attribute list;
 }
 
@@ -3146,7 +3144,6 @@ and class_let_expression = {
   bound_value : expression;
   and_binding : let_binding option;
   body : class_expression;
-  is_recursive : bool;
 }
 
 (** Payload for `ClassExpression.Constraint`. *)
@@ -4116,7 +4113,6 @@ module LetBinding : sig
     parameters : Parameter.t list;
     value : expression;
     and_binding : let_binding option;
-    is_recursive : bool;
   }
   val syntax_node : t -> syntax_node
 
@@ -4173,7 +4169,6 @@ module ModuleSignature : sig
     equals_token : Token.t option;
     definition : definition;
     next_and_declaration : t option;
-    is_recursive : bool;
   }
   val syntax_node : t -> syntax_node
 
@@ -4226,7 +4221,6 @@ module ModuleStructure : sig
     module_type : module_type option;
     module_expression : module_expression;
     next_and_declaration : t option;
-    is_recursive : bool;
   }
   val syntax_node : t -> syntax_node
 

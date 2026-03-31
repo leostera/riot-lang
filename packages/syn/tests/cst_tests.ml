@@ -1301,15 +1301,13 @@ let tests =
         let items = structure_items cst in
         match items with
         | Syn.Cst.StructureItem.ModuleDeclaration
-            {
-              module_name;
-              functor_parameters = [];
-              module_type = None;
-              module_expression =
-                Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = [ item_node ]; _ };
-              is_recursive = false;
-              _;
-            }
+            ({ module_name;
+               functor_parameters = [];
+               module_type = None;
+               module_expression =
+                 Syn.Cst.ModuleExpression.Structure { item_syntax_nodes = [ item_node ]; _ };
+               _;
+             } as decl)
           :: _ ->
             Test.assert_equal ~expected:"Foo_bar"
               ~actual:(Syn.Cst.Token.text module_name);
@@ -1317,6 +1315,7 @@ let tests =
               ~actual:
                 (SyntaxKind.to_string
                    (Ceibo.Red.SyntaxNode.kind item_node));
+            Test.assert_false (Syn.Cst.ModuleStructure.is_recursive decl);
             Ok ()
         | _ ->
             Error "expected module declaration with structure module expression");
@@ -1798,15 +1797,14 @@ let tests =
         in
         match signature_items cst with
         | Syn.Cst.SignatureItem.ModuleDeclaration
-            {
-              module_name;
-              definition = Syn.Cst.ModuleSignature.Signature (Syn.Cst.ModuleType.Signature _);
-              is_recursive = false;
-              _;
-            }
+            ({ module_name;
+               definition = Syn.Cst.ModuleSignature.Signature (Syn.Cst.ModuleType.Signature _);
+               _;
+             } as decl)
           :: _ ->
             Test.assert_equal ~expected:"M"
               ~actual:(Syn.Cst.Token.text module_name);
+            Test.assert_false (Syn.Cst.ModuleSignature.is_recursive decl);
             Ok ()
         | _ -> Error "expected first item to be an interface module declaration");
     Test.case "cst interface recursive modules preserve grouped signatures"

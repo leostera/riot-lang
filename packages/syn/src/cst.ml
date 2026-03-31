@@ -1688,7 +1688,6 @@ and let_binding = {
   parameters : parameter list;
   value : expression;
   and_binding : let_binding option;
-  is_recursive : bool;
 }
 
 and binding_operator_binding = {
@@ -1719,7 +1718,6 @@ and let_expression = {
   bound_value : expression;
   and_binding : let_binding option;
   body : expression;
-  is_recursive : bool;
   attributes : attribute list;
 }
 
@@ -1868,7 +1866,6 @@ and class_let_expression = {
   bound_value : expression;
   and_binding : let_binding option;
   body : class_expression;
-  is_recursive : bool;
 }
 
 and class_constraint_expression = {
@@ -2899,7 +2896,6 @@ module LetBinding = struct
     parameters : Parameter.t list;
     value : expression;
     and_binding : let_binding option;
-    is_recursive : bool;
   }
 
   let syntax_node = fun binding -> binding.syntax_node
@@ -2950,7 +2946,16 @@ module LetBinding = struct
 
   let value_syntax_node = fun binding -> Expression.syntax_node binding.value
 
-  let is_recursive = fun binding -> binding.is_recursive
+  let has_direct_token_text node expected =
+    Ceibo.Red.SyntaxNode.direct_tokens node
+    |> List.exists (fun token ->
+           String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+
+  let is_recursive = fun binding ->
+    Option.is_some binding.rec_token
+    || match Ceibo.Red.SyntaxNode.parent binding.syntax_node with
+    | Some parent -> has_direct_token_text parent "rec"
+    | None -> false
 
   let is_function = fun binding ->
     List.length binding.parameters > 0
@@ -2975,7 +2980,6 @@ module ModuleSignature = struct
     equals_token : Token.t option;
     definition : definition;
     next_and_declaration : t option;
-    is_recursive : bool;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -3009,7 +3013,16 @@ module ModuleSignature = struct
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
-  let is_recursive = fun decl -> decl.is_recursive
+  let has_direct_token_text node expected =
+    Ceibo.Red.SyntaxNode.direct_tokens node
+    |> List.exists (fun token ->
+           String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+
+  let is_recursive = fun decl ->
+    Option.is_some decl.rec_token
+    || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
+    | Some parent -> has_direct_token_text parent "rec"
+    | None -> false
 
 
   let name = fun decl -> Token.text decl.module_name
@@ -3028,7 +3041,6 @@ module ModuleStructure = struct
     module_type : module_type option;
     module_expression : module_expression;
     next_and_declaration : t option;
-    is_recursive : bool;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -3056,7 +3068,16 @@ module ModuleStructure = struct
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
-  let is_recursive = fun decl -> decl.is_recursive
+  let has_direct_token_text node expected =
+    Ceibo.Red.SyntaxNode.direct_tokens node
+    |> List.exists (fun token ->
+           String.equal (Ceibo.Red.SyntaxToken.text token) expected)
+
+  let is_recursive = fun decl ->
+    Option.is_some decl.rec_token
+    || match Ceibo.Red.SyntaxNode.parent decl.syntax_node with
+    | Some parent -> has_direct_token_text parent "rec"
+    | None -> false
 
 
   let name = fun decl -> Token.text decl.module_name

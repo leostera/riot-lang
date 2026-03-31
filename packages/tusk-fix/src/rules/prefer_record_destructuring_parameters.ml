@@ -284,7 +284,7 @@ let is_immediate_record_destructure expected_name = function
         binding_pattern;
         bound_value;
         and_binding = None;
-        is_recursive = false;
+        rec_token = None;
         _;
       } -> (
       match unwrap_record_pattern binding_pattern with
