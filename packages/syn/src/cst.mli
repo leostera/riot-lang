@@ -3994,6 +3994,7 @@ end
 module TypeDeclaration : sig
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
@@ -4008,6 +4009,8 @@ module TypeDeclaration : sig
     is_destructive_substitution : bool;
   }
   val syntax_node : t -> syntax_node
+
+  val keyword_token : t -> Token.t
 
   val type_name : t -> Ident.t
 

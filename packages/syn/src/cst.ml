@@ -2800,6 +2800,7 @@ end
 module TypeDeclaration = struct
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
     type_name : Ident.t;
     type_params : TypeParameter.t list;
     type_definition : TypeDefinition.t;
@@ -2815,6 +2816,8 @@ module TypeDeclaration = struct
   }
 
   let syntax_node = fun decl -> decl.syntax_node
+
+  let keyword_token = fun decl -> decl.keyword_token
 
   let type_name = fun decl -> decl.type_name
 

@@ -7716,6 +7716,20 @@ let type_definition_from_node = fun node ->
         )
 
 let type_declaration_from_node = fun node ->
+  let lifted_keyword_token =
+    match direct_non_trivia_tokens node
+    |> List.find_opt
+      (fun syntax_token ->
+        let text = Ceibo.Red.SyntaxToken.text syntax_token in
+        String.equal text "type" || String.equal text "and") with
+    | Some syntax_token ->
+        token syntax_token
+    | None ->
+        bail ~message:"expected type declaration keyword token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+          "type_declaration";
+          "keyword_token"
+        ]
+  in
   let lifted_type_params = direct_non_trivia_nodes node
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
   |> List.map type_parameter_from_node in
@@ -7757,6 +7771,7 @@ let type_declaration_from_node = fun node ->
       | Some _ ->
           Some Cst.TypeDeclaration.{
             syntax_node = node;
+            keyword_token = lifted_keyword_token;
             type_name = lifted_type_name;
             type_params = lifted_type_params;
             type_definition = definition;

@@ -226,6 +226,10 @@ let doc_with_leading_trivia = fun trivia doc ->
 let doc_of_token_with_leading_trivia = fun token ->
   doc_of_token token |> doc_with_leading_trivia (pending_doc_of_token_leading_trivia token)
 
+let doc_of_token_with_filtered_leading_trivia = fun ~after token ->
+  doc_of_token token
+  |> doc_with_leading_trivia (Syn.Cst.leading_trivia_after ~after token |> pending_doc_of_trivia)
+
 let token_has_renderable_leading_trivia = fun token ->
   match pending_doc_of_token_leading_trivia token with
   | Some _ -> true
@@ -1580,11 +1584,16 @@ let type_definition_layout = fun decl ->
   | Syn.Cst.TypeDefinition.Abstract ->
       Inline_definition
 
-let render_single_type_declaration_with_keyword = fun keyword decl ->
+let render_single_type_declaration_with_keyword = fun ~leading_after _keyword decl ->
   let type_name = Syn.Cst.TypeDeclaration.type_name decl in
   let type_definition = Syn.Cst.TypeDeclaration.type_definition decl in
   let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
   let keyword =
+    let keyword =
+      doc_of_token_with_filtered_leading_trivia
+        ~after:leading_after
+        (Syn.Cst.TypeDeclaration.keyword_token decl)
+    in
     if Syn.Cst.TypeDeclaration.is_nonrec decl then
       Doc.concat [ keyword; Doc.space; Doc.text "nonrec" ]
     else
@@ -1679,21 +1688,41 @@ let render_single_type_declaration_with_keyword = fun keyword decl ->
     [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ]) with_definition in
     with_constraints
 
-let doc_with_type_declaration_owned_trivia = fun _decl doc -> doc
+let render_type_declaration_member_with_keyword = fun ~leading_after keyword decl ->
+  render_single_type_declaration_with_keyword ~leading_after keyword decl
 
-let render_type_declaration_member_with_keyword = fun keyword decl ->
-  render_single_type_declaration_with_keyword keyword decl
-  |> doc_with_type_declaration_owned_trivia decl
-
-let render_type_declaration_with_keyword = fun keyword decl ->
+let render_type_declaration_with_keyword = fun ?(leading_after = 0) keyword decl ->
   let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
   let base =
     if and_declarations = [] then
-      render_type_declaration_member_with_keyword keyword decl
+      render_type_declaration_member_with_keyword ~leading_after keyword decl
     else
+      let rec render_items previous_end =
+        function
+        | [] ->
+            []
+        | declaration :: rest ->
+            let rendered =
+              render_type_declaration_member_with_keyword
+                ~leading_after:previous_end
+                kw_and
+                declaration
+            in
+            let next_previous_end =
+              let span = Syn.Cst.token_body_span declaration.Syn.Cst.TypeDeclaration.syntax_node in
+              span.end_
+            in
+            rendered :: render_items next_previous_end rest
+      in
+      let first =
+        render_type_declaration_member_with_keyword ~leading_after keyword decl
+      in
+      let first_end =
+        let span = Syn.Cst.token_body_span decl.Syn.Cst.TypeDeclaration.syntax_node in
+        span.end_
+      in
       Doc.join blank_line
-        (render_type_declaration_member_with_keyword keyword decl
-        :: List.map (render_type_declaration_member_with_keyword kw_and) and_declarations)
+        (first :: render_items first_end and_declarations)
   in
   match Syn.Cst.TypeDeclaration.attributes decl with
   | [] ->
@@ -2498,9 +2527,6 @@ type lowerer = {
 }
 
 let make_lowerer =
-  let render_type_declaration_with_keyword keyword decl =
-    render_type_declaration_with_keyword keyword decl
-  in
   let rec render_expression expression =
   let doc =
     match expression with
@@ -5915,12 +5941,12 @@ and render_signature_item_owned_trivia =
   | Syn.Cst.SignatureItem.Comment _ ->
       None
 
-and render_structure_entry ~trailing_suffix item =
+and render_structure_entry ~trailing_suffix ~leading_after item =
   let doc =
     let base_doc =
       match item with
       | Syn.Cst.StructureItem.TypeDeclaration decl ->
-          render_type_declaration_with_keyword kw_type decl
+          render_type_declaration_with_keyword ~leading_after kw_type decl
       | _ ->
           render_structure_item item
     in
@@ -5979,12 +6005,12 @@ and render_structure_entry ~trailing_suffix item =
     compact_before
   )
 
-and render_signature_entry ~trailing_suffix item =
+and render_signature_entry ~trailing_suffix ~leading_after item =
   let doc =
     let base_doc =
       match item with
       | Syn.Cst.SignatureItem.TypeDeclaration decl ->
-          render_type_declaration_with_keyword kw_type decl
+          render_type_declaration_with_keyword ~leading_after kw_type decl
       | _ ->
           render_signature_item item
     in
@@ -6310,7 +6336,7 @@ and render_structure_top_level_items ~trailing_phrase_separator_tokens ~items =
         in
         Doc.concat [ doc; separator; join_entries rest ]
   in
-  let rec loop_with_trailing acc items trailing_phrase_separator_tokens =
+  let rec loop_with_trailing acc previous_end items trailing_phrase_separator_tokens =
     yield ();
     match items with
     | [] ->
@@ -6323,7 +6349,11 @@ and render_structure_top_level_items ~trailing_phrase_separator_tokens ~items =
           | [] ->
               None
         in
-        let entry = render_structure_entry ~trailing_suffix item in
+        let entry = render_structure_entry ~trailing_suffix ~leading_after:previous_end item in
+        let next_previous_end =
+          let span = Syn.Cst.token_body_span (Syn.Cst.StructureItem.syntax_node item) in
+          span.end_
+        in
         let remaining_trailing =
           match trailing_phrase_separator_tokens with
           | _ :: trailing_rest ->
@@ -6331,9 +6361,9 @@ and render_structure_top_level_items ~trailing_phrase_separator_tokens ~items =
           | [] ->
               []
         in
-        loop_with_trailing (entry :: acc) rest remaining_trailing
+        loop_with_trailing (entry :: acc) next_previous_end rest remaining_trailing
   in
-  loop_with_trailing [] items trailing_phrase_separator_tokens
+  loop_with_trailing [] 0 items trailing_phrase_separator_tokens
 
 and render_structure_items ?(trailing_phrase_separator_tokens = []) ~source_node items =
   let _source_node = source_node in
@@ -6364,16 +6394,20 @@ and render_signature_top_level_items
         in
         Doc.concat [ doc; separator; join_entries rest ]
   in
-  let rec loop acc items =
+  let rec loop acc previous_end items =
     yield ();
     match items with
     | [] ->
         join_entries (List.rev acc)
     | item :: rest ->
-        let entry = render_signature_entry ~trailing_suffix:None item in
-        loop (entry :: acc) rest
+        let entry = render_signature_entry ~trailing_suffix:None ~leading_after:previous_end item in
+        let next_previous_end =
+          let span = Syn.Cst.token_body_span (Syn.Cst.SignatureItem.syntax_node item) in
+          span.end_
+        in
+        loop (entry :: acc) next_previous_end rest
   in
-  loop [] items
+  loop [] 0 items
 
 and render_signature_items ~source_node:_ items =
   render_signature_top_level_items ~items

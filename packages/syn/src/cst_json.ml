@@ -1648,6 +1648,7 @@ let rec type_declaration_to_json = fun decl ->
   Json.Object (
     [
       ("syntax_node", syntax_node_to_json (Cst.TypeDeclaration.syntax_node decl));
+      ("keyword_token", token_to_json (Cst.TypeDeclaration.keyword_token decl));
       ("type_name", ident_to_json (Cst.TypeDeclaration.type_name decl));
       (
         "type_params",

@@ -31,6 +31,7 @@ Token-backed so far:
 - type constraint `=`
 - type declaration manifest `=`
 - type declaration definition `=`
+- type declaration keyword `type` / `and`
 - type extension `+=`
 - record pattern field `=`
 - record expression field `=`
