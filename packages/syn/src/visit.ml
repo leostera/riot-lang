@@ -276,8 +276,7 @@ and descend_core_type = fun walk ctx (core_type : Cst.CoreType.t) ->
   | Cst.CoreType.Class { arguments; _ } ->
       List.fold_left walk.core_type ctx arguments
   | Cst.CoreType.Alias { type_; _ }
-  | Cst.CoreType.Parenthesized { inner = type_; _ }
-  | Cst.CoreType.LocalOpen { type_; _ } ->
+  | Cst.CoreType.Parenthesized { inner = type_; _ } ->
       walk.core_type ctx type_
   | Cst.CoreType.Attribute { type_; attribute; _ } ->
       let ctx = walk.core_type ctx type_ in
@@ -358,8 +357,6 @@ and descend_class_type = fun walk ctx (class_type : Cst.ClassType.t) ->
       walk.class_type ctx result_type
   | Cst.ClassType.Parenthesized { inner; _ } ->
       walk.class_type ctx inner
-  | Cst.ClassType.LocalOpen { class_type; _ } ->
-      walk.class_type ctx class_type
   | Cst.ClassType.Attribute { class_type; attribute; _ } ->
       let ctx = walk.class_type ctx class_type in
       walk.attribute ctx attribute
@@ -685,7 +682,8 @@ and descend_expression = fun walk ctx (expression : Cst.Expression.t) ->
       List.fold_left walk.expression ctx elements
   | Cst.Expression.Record record_expression ->
       walk.record_expression ctx record_expression
-  | Cst.Expression.LocalOpen { body; attributes; _ } ->
+  | Cst.Expression.LocalOpen (Cst.LetOpen { body; attributes; _ })
+  | Cst.Expression.LocalOpen (Cst.Delimited { body; attributes; _ }) ->
       let ctx = List.fold_left walk.attribute ctx attributes in
       walk.expression ctx body
   | Cst.Expression.Fun { parameters; body; attributes; _ } ->
@@ -837,8 +835,9 @@ and descend_class_expression = fun walk ctx (class_expression : Cst.ClassExpress
   | Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
       let ctx = walk.class_expression ctx class_expression in
       walk.class_type ctx class_type
-  | Cst.ClassExpression.LocalOpen { class_expression; _ } ->
-      walk.class_expression ctx class_expression
+  | Cst.ClassExpression.LocalOpen (Cst.LetOpen { body; _ })
+  | Cst.ClassExpression.LocalOpen (Cst.Delimited { body; _ }) ->
+      walk.class_expression ctx body
   | Cst.ClassExpression.Parenthesized { inner; _ } ->
       walk.class_expression ctx inner
   | Cst.ClassExpression.Attribute { class_expression; attribute; _ } ->

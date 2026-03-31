@@ -7,7 +7,6 @@ This file is _yours_. Keep it up to date after every big change.
 - [x] Make trivia, comments, and docstrings first-class at the token layer so the CST can derive reliable ownership and `krasny` can become a renderer again
 - [ ] Make `krasny` Structural Formatting Only: format from CST structure plus token-attached trivia, never by reparsing or sniffing source text
 - [ ] Implement RFD0025 - Snapshot Testing for Riot (./docs/rfds/RFD0025-snapshot-testing-for-riot.md)
-- [ ] Implement `tusk build --json` so we get jsonl events for builds instead of human-friendly output (this is good for LLMs and machines)
 
 ## Up Next
 
@@ -31,10 +30,12 @@ This file is _yours_. Keep it up to date after every big change.
   - [x] `if_expression.else_branch_leading_trivia`
   - [x] `parenthesized_expression.inner_leading_trivia`
 - [ ] Replace CST booleans that collapse real syntax choices with token-backed structure where the original tokens matter:
-  - `local_open_expression.via_let_open`
-  - `local_open_class_expression.via_let_open`
   - object/class member modifier booleans when they should preserve `private` / `mutable` / `virtual` / `!`
   - module declaration recursion when `rec` should stay token-backed instead of bool-only
+- [ ] Keep local opens token-backed and grammar-true:
+  - expression local opens should use explicit `LetOpen` / `Delimited` shapes with original tokens
+  - pattern local opens stay pattern-only
+  - do not reintroduce type-side local opens into the parser or CST
 - [ ] Preserve declaration separator/head tokens where trivia can attach and the CST currently drops them:
   - `ModuleTypeDeclaration` should preserve `=`
   - `ValueDeclaration` should preserve `:`

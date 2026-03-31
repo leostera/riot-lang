@@ -475,24 +475,6 @@ and functor_parameter = {
   module_type : module_type;
 }
 
-(** A locally opened type expression.
-
-    This preserves the explicit `Module.(...)` wrapper used to resolve the body
-    type inside a temporary module-open scope.
-
-    Examples:
-
-    ```ocaml,norun
-    Outer.Inner.(request -> response)
-    M.(t list)
-    ```
-*)
-and local_open_core_type = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  type_ : core_type;
-}
-
 (** A named label attached to an arrow parameter type.
 
     This mirrors the stock parsetree's distinction between regular labeled
@@ -654,16 +636,6 @@ and core_type =
           ('a * 'b) list
           ```
       *)
-  | LocalOpen of local_open_core_type
-      (** A locally opened type expression.
-
-          Examples:
-
-          ```ocaml,norun
-          Outer.Inner.(request -> response)
-          M.(t list)
-          ```
-      *)
   | PolyVariant of poly_variant
       (** A polymorphic variant type.
 
@@ -785,24 +757,6 @@ and module_type =
           Example: `[%foo: S]`.
       *)
 
-(** A locally opened class type.
-
-    This preserves the explicit `Module.(...)` wrapper used to resolve a class
-    type inside a temporary module-open scope.
-
-    Examples:
-
-    ```ocaml,norun
-    M.(c)
-    Outer.Inner.(service)
-    ```
-*)
-and local_open_class_type = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  class_type : class_type;
-}
-
 (** Class type syntax.
 
     This family covers the type grammar used by `class ... : ...` annotations
@@ -851,8 +805,6 @@ and class_type =
 
           Example: `([%driver])`.
       *)
-  | LocalOpen of local_open_class_type
-      (** A locally opened class type such as `M.(c)`. *)
   | Attribute of {
       syntax_node : syntax_node;
       class_type : class_type;
@@ -1027,7 +979,6 @@ module CoreType : sig
         syntax_node : syntax_node;
         inner : core_type;
       }
-    | LocalOpen of local_open_core_type
     | PolyVariant of poly_variant
     | Record of {
         syntax_node : syntax_node;
@@ -1195,7 +1146,6 @@ module ClassType : sig
         syntax_node : syntax_node;
         inner : class_type;
       }
-    | LocalOpen of local_open_class_type
     | Attribute of {
         syntax_node : syntax_node;
         class_type : class_type;
@@ -2668,16 +2618,28 @@ and object_override_field = {
 
 (** Payload for `Expression.LocalOpen`.
 
-    `via_let_open` is `true` for `let open M in expr` and `false` for
-    `M.(expr)`.
+    This preserves whether the source used `let open M in expr` or a prefix
+    local open such as `M.(expr)` / `M.[expr]`.
 *)
-and local_open_expression = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  body : expression;
-  via_let_open : bool;
-  attributes : attribute list;
-}
+and local_open_expression =
+  | LetOpen of {
+      syntax_node : syntax_node;
+      let_token : Token.t;
+      open_token : Token.t;
+      module_path : Ident.t;
+      in_token : Token.t;
+      body : expression;
+      attributes : attribute list;
+    }
+  | Delimited of {
+      syntax_node : syntax_node;
+      module_path : Ident.t;
+      dot_token : Token.t;
+      opening_token : Token.t option;
+      body : expression;
+      closing_token : Token.t option;
+      attributes : attribute list;
+    }
 
 (** A `function`-style case body.
 
@@ -3104,12 +3066,23 @@ and class_constraint_expression = {
 }
 
 (** Payload for `ClassExpression.LocalOpen`. *)
-and local_open_class_expression = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  class_expression : class_expression;
-  via_let_open : bool;
-}
+and local_open_class_expression =
+  | LetOpen of {
+      syntax_node : syntax_node;
+      let_token : Token.t;
+      open_token : Token.t;
+      module_path : Ident.t;
+      in_token : Token.t;
+      body : class_expression;
+    }
+  | Delimited of {
+      syntax_node : syntax_node;
+      module_path : Ident.t;
+      dot_token : Token.t;
+      opening_token : Token.t option;
+      body : class_expression;
+      closing_token : Token.t option;
+    }
 
 (** Payload for `ClassExpression.Parenthesized`. *)
 and parenthesized_class_expression = {

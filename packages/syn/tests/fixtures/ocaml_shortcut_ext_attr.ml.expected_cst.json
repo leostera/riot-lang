@@ -454,11 +454,28 @@
                   "grouping": "parens",
                   "inner": {
                     "tag": "local_open",
+                    "shape": "let_open",
                     "syntax_node": {
                       "kind": "LOCAL_OPEN_EXPR",
                       "span": {
                         "start": 264,
                         "end": 293
+                      }
+                    },
+                    "let_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "let",
+                      "span": {
+                        "start": 264,
+                        "end": 267
+                      }
+                    },
+                    "open_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "open",
+                      "span": {
+                        "start": 268,
+                        "end": 272
                       }
                     },
                     "module_path": {
@@ -472,11 +489,19 @@
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
-                        "text": "%",
+                        "text": "M",
                         "span": {
-                          "start": 272,
-                          "end": 273
+                          "start": 283,
+                          "end": 284
                         }
+                      }
+                    },
+                    "in_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "in",
+                      "span": {
+                        "start": 285,
+                        "end": 287
                       }
                     },
                     "body": {
@@ -491,8 +516,7 @@
                           }
                         }
                       }
-                    },
-                    "via_let_open": true
+                    }
                   }
                 },
                 {

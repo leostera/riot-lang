@@ -83,6 +83,7 @@
 76. Render expression `: t`, `:> t`, and `: t :> u` forms from `Syn.Cst.Expression.TypeAscription` and its explicit inner variants. Do not reconstruct the old split between typed expressions and coercions in `krasny`.
 77. Render nested `sig ... end` and `struct ... end` bodies from the normalized nested item streams exactly as lifted by `syn`; do not let nested relift paths skip inter-item comments/docstrings that file-level rendering would preserve.
 78. Render comments/docstrings between `->` and a match-case body from `case.arrow_token` plus `case.body` through `Syn.Cst.leading_trivia_before_node`. Do not recover that boundary from raw token walks or let it disappear when the body starts with `let`, `match`, or another nested expression.
+79. Render local opens from the original token-backed CST variants. Use `Syn.Cst.LetOpen` tokens for `let open M in ...` and `Syn.Cst.Delimited` tokens for `M.(...)` / `M.[...]` / `M.{...}`; do not synthesize `.` or delimiter punctuation, and do not expect any type-side local-open variants.
 
 ## Validate
 

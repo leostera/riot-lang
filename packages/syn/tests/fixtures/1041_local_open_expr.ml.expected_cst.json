@@ -59,6 +59,7 @@
           "parameters": [],
           "value": {
             "tag": "local_open",
+            "shape": "delimited",
             "syntax_node": {
               "kind": "LOCAL_OPEN_EXPR",
               "span": {
@@ -82,6 +83,22 @@
                   "start": 8,
                   "end": 12
                 }
+              }
+            },
+            "dot_token": {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 12,
+                "end": 13
+              }
+            },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 13,
+                "end": 14
               }
             },
             "body": {
@@ -212,7 +229,14 @@
                 }
               }
             },
-            "via_let_open": false
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 32,
+                "end": 33
+              }
+            }
           },
           "and_binding": null,
           "is_recursive": false

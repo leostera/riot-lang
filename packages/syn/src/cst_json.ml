@@ -341,13 +341,6 @@ and core_type_to_json =
         ("syntax_node", syntax_node_to_json syntax_node);
         ("inner", core_type_to_json inner)
       ]
-  | Cst.CoreType.LocalOpen { syntax_node; module_path; type_ } ->
-      Json.Object [
-        ("tag", Json.String "local_open");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("module_path", ident_to_json module_path);
-        ("type", core_type_to_json type_)
-      ]
   | Cst.CoreType.PolyVariant poly_variant ->
       Json.Object [
         ("tag", Json.String "poly_variant");
@@ -1216,19 +1209,28 @@ and expression_to_json = fun expression ->
         ("fields", Json.Array (List.map record_expression_field_to_json fields))
       ]
       @ expression_attribute_fields expression)
-  | Cst.Expression.LocalOpen {
-    syntax_node;
-    module_path;
-    body;
-    via_let_open;
-    _
-  } ->
+  | Cst.Expression.LocalOpen (Cst.LetOpen { syntax_node; let_token; open_token; module_path; in_token; body; _ }) ->
       Json.Object ([
         ("tag", Json.String "local_open");
+        ("shape", Json.String "let_open");
+        ("syntax_node", syntax_node_to_json syntax_node);
+        ("let_token", token_to_json let_token);
+        ("open_token", token_to_json open_token);
+        ("module_path", ident_to_json module_path);
+        ("in_token", token_to_json in_token);
+        ("body", expression_to_json body)
+      ]
+      @ expression_attribute_fields expression)
+  | Cst.Expression.LocalOpen (Cst.Delimited { syntax_node; module_path; dot_token; opening_token; body; closing_token; _ }) ->
+      Json.Object ([
+        ("tag", Json.String "local_open");
+        ("shape", Json.String "delimited");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("module_path", ident_to_json module_path);
+        ("dot_token", token_to_json dot_token);
+        ("opening_token", option_to_json token_to_json opening_token);
         ("body", expression_to_json body);
-        ("via_let_open", Json.Bool via_let_open)
+        ("closing_token", option_to_json token_to_json closing_token)
       ]
       @ expression_attribute_fields expression)
   | Cst.Expression.Fun {
@@ -1870,13 +1872,27 @@ and class_expression_to_json =
         ("class_expression", class_expression_to_json class_expression);
         ("class_type", class_type_to_json class_type)
       ]
-  | Cst.ClassExpression.LocalOpen { syntax_node; module_path; class_expression; via_let_open } ->
+  | Cst.ClassExpression.LocalOpen (Cst.LetOpen { syntax_node; let_token; open_token; module_path; in_token; body }) ->
       Json.Object [
         ("tag", Json.String "local_open");
+        ("shape", Json.String "let_open");
+        ("syntax_node", syntax_node_to_json syntax_node);
+        ("let_token", token_to_json let_token);
+        ("open_token", token_to_json open_token);
+        ("module_path", ident_to_json module_path);
+        ("in_token", token_to_json in_token);
+        ("body", class_expression_to_json body)
+      ]
+  | Cst.ClassExpression.LocalOpen (Cst.Delimited { syntax_node; module_path; dot_token; opening_token; body; closing_token }) ->
+      Json.Object [
+        ("tag", Json.String "local_open");
+        ("shape", Json.String "delimited");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("module_path", ident_to_json module_path);
-        ("class_expression", class_expression_to_json class_expression);
-        ("via_let_open", Json.Bool via_let_open)
+        ("dot_token", token_to_json dot_token);
+        ("opening_token", option_to_json token_to_json opening_token);
+        ("body", class_expression_to_json body);
+        ("closing_token", option_to_json token_to_json closing_token)
       ]
   | Cst.ClassExpression.Parenthesized { syntax_node; inner } ->
       Json.Object [
@@ -1956,13 +1972,6 @@ and class_type_to_json =
         ("tag", Json.String "parenthesized");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("inner", class_type_to_json inner)
-      ]
-  | Cst.ClassType.LocalOpen { syntax_node; module_path; class_type } ->
-      Json.Object [
-        ("tag", Json.String "local_open");
-        ("syntax_node", syntax_node_to_json syntax_node);
-        ("module_path", ident_to_json module_path);
-        ("class_type", class_type_to_json class_type)
       ]
   | Cst.ClassType.Attribute { syntax_node; class_type; attribute } ->
       Json.Object [

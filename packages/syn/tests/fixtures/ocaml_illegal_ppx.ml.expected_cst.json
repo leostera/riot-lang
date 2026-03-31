@@ -2692,6 +2692,7 @@
                 "tag": "positional",
                 "value": {
                   "tag": "local_open",
+                  "shape": "delimited",
                   "syntax_node": {
                     "kind": "LOCAL_OPEN_EXPR",
                     "span": {
@@ -2715,6 +2716,22 @@
                         "start": 552,
                         "end": 561
                       }
+                    }
+                  },
+                  "dot_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ".",
+                    "span": {
+                      "start": 561,
+                      "end": 562
+                    }
+                  },
+                  "opening_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "(",
+                    "span": {
+                      "start": 562,
+                      "end": 563
                     }
                   },
                   "body": {
@@ -2892,7 +2909,14 @@
                       }
                     }
                   },
-                  "via_let_open": false
+                  "closing_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ")",
+                    "span": {
+                      "start": 594,
+                      "end": 595
+                    }
+                  }
                 }
               }
             },

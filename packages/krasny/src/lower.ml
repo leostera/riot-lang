@@ -902,8 +902,6 @@ and render_core_type =
       Doc.group (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type elements)
   | Syn.Cst.CoreType.Parenthesized { inner; _ } ->
       Doc.concat [ Doc.lparen; render_core_type inner; Doc.rparen ]
-  | Syn.Cst.CoreType.LocalOpen { module_path; type_; _ } ->
-      Doc.concat [ doc_of_ident module_path; Doc.text ".("; render_core_type type_; Doc.rparen ]
   | Syn.Cst.CoreType.PolyVariant poly_variant ->
       render_poly_variant_type poly_variant
   | Syn.Cst.CoreType.Record { fields; _ } ->
@@ -2678,8 +2676,6 @@ and render_class_type_doc = function
       Doc.group (join_map (Doc.concat [ Doc.space; Doc.arrow; Doc.break () ]) (fun doc -> doc) parts)
   | Syn.Cst.ClassType.Parenthesized { inner; _ } ->
       Doc.concat [ Doc.lparen; render_class_type_doc inner; Doc.rparen ]
-  | Syn.Cst.ClassType.LocalOpen { module_path; class_type; _ } ->
-      Doc.concat [ doc_of_ident module_path; Doc.text ".("; render_class_type_doc class_type; Doc.rparen ]
   | Syn.Cst.ClassType.Attribute { class_type; attribute; _ } ->
       Doc.concat [ render_class_type_doc class_type; Doc.space; render_attribute attribute ]
   | Syn.Cst.ClassType.Extension extension ->
@@ -2995,8 +2991,34 @@ and render_class_expression = function
           render_class_type_doc class_type;
           Doc.rparen;
         ]
-  | Syn.Cst.ClassExpression.LocalOpen { module_path; class_expression; _ } ->
-      Doc.concat [ doc_of_ident module_path; Doc.text ".("; render_class_expression class_expression; Doc.rparen ]
+  | Syn.Cst.ClassExpression.LocalOpen (Syn.Cst.LetOpen { let_token; open_token; module_path; in_token; body; _ }) ->
+      Doc.concat
+        [
+          doc_of_token let_token;
+          Doc.space;
+          doc_of_token open_token;
+          Doc.space;
+          doc_of_ident module_path;
+          Doc.space;
+          doc_of_token in_token;
+          Doc.space;
+          render_class_expression body;
+        ]
+  | Syn.Cst.ClassExpression.LocalOpen (Syn.Cst.Delimited { module_path; dot_token; opening_token; body; closing_token; _ }) ->
+      (match opening_token, closing_token with
+      | Some opening_token, Some closing_token ->
+          Doc.concat
+            [
+              doc_of_ident module_path;
+              doc_of_token dot_token;
+              doc_of_token opening_token;
+              render_class_expression body;
+              doc_of_token closing_token;
+            ]
+      | None, None ->
+          Doc.concat [ doc_of_ident module_path; doc_of_token dot_token; render_class_expression body ]
+      | _ ->
+          panic "render_class_expression: mismatched class local-open delimiters")
   | Syn.Cst.ClassExpression.Parenthesized { inner; _ } ->
       Doc.concat [ Doc.lparen; render_class_expression inner; Doc.rparen ]
   | Syn.Cst.ClassExpression.Attribute { class_expression; attribute; _ } ->
@@ -3132,48 +3154,73 @@ and render_parenthesized_apply_payload
     [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token ]
 
 and render_local_open_expression
-    ({ module_path; body; via_let_open; _ } : Syn.Cst.local_open_expression) =
-  let module_doc = doc_of_ident module_path in
-  let body_doc = render_expression body in
-  if via_let_open then
-    let head =
-      Doc.concat
-        [
-          Doc.text "let";
-          Doc.space;
-          Doc.text "open";
-          Doc.space;
-          module_doc;
-          Doc.space;
-          Doc.text "in";
-        ]
-    in
-    if
-      Doc.is_multiline body_doc
-      || expression_requires_break_after_equals body
-    then
-      Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
-    else
-      Doc.concat [ head; Doc.space; body_doc ]
-  else if expression_can_use_delimited_local_open_sugar body then
-    if Doc.is_multiline body_doc then
-      Doc.concat [ module_doc; Doc.text "."; Doc.line; Doc.indent 2 body_doc ]
-    else
-      Doc.concat [ module_doc; Doc.text "."; body_doc ]
-  else if Doc.is_multiline body_doc then
-    Doc.concat
-      [
-        module_doc;
-        Doc.text ".(";
-        Doc.line;
-        Doc.indent 2 body_doc;
-        Doc.line;
-        Doc.rparen;
-      ]
-  else if expression_requires_spaced_delimited_local_open body then
-    Doc.concat [ module_doc; Doc.text ".("; Doc.space; body_doc; Doc.space; Doc.rparen ]
-  else
-    Doc.concat [ module_doc; Doc.text ".("; body_doc; Doc.rparen ]
+    (local_open : Syn.Cst.local_open_expression) =
+  match local_open with
+  | Syn.Cst.LetOpen { let_token; open_token; module_path; in_token; body; _ } ->
+      let module_doc = doc_of_ident module_path in
+      let body_doc = render_expression body in
+      let head =
+        Doc.concat
+          [
+            doc_of_token let_token;
+            Doc.space;
+            doc_of_token open_token;
+            Doc.space;
+            module_doc;
+            Doc.space;
+            doc_of_token in_token;
+          ]
+      in
+      if
+        Doc.is_multiline body_doc
+        || expression_requires_break_after_equals body
+      then
+        Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
+      else
+        Doc.concat [ head; Doc.space; body_doc ]
+  | Syn.Cst.Delimited { module_path; dot_token; opening_token; body; closing_token; _ } ->
+      let module_doc = doc_of_ident module_path in
+      let body_doc = render_expression body in
+      (match opening_token, closing_token with
+      | None, None ->
+          if Doc.is_multiline body_doc then
+            Doc.concat [ module_doc; doc_of_token dot_token; Doc.line; Doc.indent 2 body_doc ]
+          else
+            Doc.concat [ module_doc; doc_of_token dot_token; body_doc ]
+      | Some opening_token, Some closing_token ->
+          if Doc.is_multiline body_doc then
+            Doc.concat
+              [
+                module_doc;
+                doc_of_token dot_token;
+                doc_of_token opening_token;
+                Doc.line;
+                Doc.indent 2 body_doc;
+                Doc.line;
+                doc_of_token closing_token;
+              ]
+          else if expression_requires_spaced_delimited_local_open body then
+            Doc.concat
+              [
+                module_doc;
+                doc_of_token dot_token;
+                doc_of_token opening_token;
+                Doc.space;
+                body_doc;
+                Doc.space;
+                doc_of_token closing_token;
+              ]
+          else
+            Doc.concat
+              [
+                module_doc;
+                doc_of_token dot_token;
+                doc_of_token opening_token;
+                body_doc;
+                doc_of_token closing_token;
+              ]
+      | _ ->
+          panic "render_local_open_expression: mismatched delimited local-open tokens")
 
 and render_multiline_list_expression elements =
   let body =

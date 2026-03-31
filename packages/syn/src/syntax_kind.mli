@@ -148,7 +148,6 @@ type t =
   | TYPE_RECORD_FIELD  (** Record field in type def: `field: int` *)
   | OBJECT_TYPE  (** Object type: `< m : int; n : string >` *)
   | OBJECT_TYPE_FIELD  (** Object type field: `m : int` *)
-  | LOCAL_OPEN_TYPE  (** Local module open type: `Module.(t)` *)
   | TYPE_CONSTRAINT  (** Type constraint: `constraint 'a = int` *)
   | POLY_TYPE  (** Polymorphic type with explicit quantifiers: `'a 'b. int -> 'a -> 'b` *)
   | MODULE_TYPE_EXPR  (** Module type expression: `S with type t = int` *)

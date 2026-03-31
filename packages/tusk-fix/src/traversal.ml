@@ -287,7 +287,8 @@ and binding_sites_of_expression expr =
       (fields
       |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
              binding_sites_of_expression field.value))
-  | Syn.Cst.Expression.LocalOpen { body; _ } ->
+  | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
+  | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) ->
       binding_sites_of_expression body
   | Syn.Cst.Expression.Fun { body; _ } ->
       binding_sites_of_function_body body
@@ -376,8 +377,9 @@ and binding_sites_of_class_expression = function
       @ binding_sites_of_class_expression body
   | Syn.Cst.ClassExpression.Constraint { class_expression; _ } ->
       binding_sites_of_class_expression class_expression
-  | Syn.Cst.ClassExpression.LocalOpen { class_expression; _ } ->
-      binding_sites_of_class_expression class_expression
+  | Syn.Cst.ClassExpression.LocalOpen (Syn.Cst.LetOpen { body; _ })
+  | Syn.Cst.ClassExpression.LocalOpen (Syn.Cst.Delimited { body; _ }) ->
+      binding_sites_of_class_expression body
   | Syn.Cst.ClassExpression.Parenthesized { inner; _ } ->
       binding_sites_of_class_expression inner
   | Syn.Cst.ClassExpression.Attribute { class_expression; _ } ->

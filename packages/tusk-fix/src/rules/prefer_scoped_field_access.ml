@@ -135,7 +135,7 @@ let local_diagnostic_for_expression ~inside_local_open = function
              List.for_all (String.equal first) rest ->
       Some (make_record_diagnostic syntax_node)
   | Syn.Cst.Expression.LocalOpen
-      { syntax_node; body; via_let_open = true; _ }
+      (Syn.Cst.LetOpen { syntax_node; body; _ })
     when (not inside_local_open) && body_supports_scoped_brackets body ->
       Some (make_local_open_diagnostic syntax_node)
   | _ -> None
@@ -226,7 +226,8 @@ and diagnostics_for_expression ~inside_local_open expr =
         (fields
         |> List.concat_map (fun (field : Syn.Cst.record_expression_field) ->
                diagnostics_for_expression ~inside_local_open field.value))
-    | Syn.Cst.Expression.LocalOpen { body; _ } ->
+    | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
+    | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) ->
         diagnostics_for_expression ~inside_local_open:true body
     | Syn.Cst.Expression.Fun { body; _ } ->
         diagnostics_for_function_body ~inside_local_open body

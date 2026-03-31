@@ -233,7 +233,8 @@ and usage_in_expression expected_name expr =
              (fun (field : Syn.Cst.record_expression_field) ->
                usage_in_expression expected_name field.value)
              fields)
-  | Syn.Cst.Expression.LocalOpen { body; _ } ->
+  | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
+  | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) ->
       usage_in_expression expected_name body
   | Syn.Cst.Expression.Fun { body; _ } ->
       usage_in_function_body expected_name body

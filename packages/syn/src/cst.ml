@@ -298,12 +298,6 @@ and functor_parameter = {
   module_type : module_type;
 }
 
-and local_open_core_type = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  type_ : core_type;
-}
-
 and arrow_label =
   | Named of {
       sigil_token : Token.t option;
@@ -367,7 +361,6 @@ and core_type =
       syntax_node : syntax_node;
       inner : core_type;
     }
-  | LocalOpen of local_open_core_type
   | PolyVariant of poly_variant
   | Record of {
       syntax_node : syntax_node;
@@ -413,12 +406,6 @@ and module_type =
     }
   | Extension of extension
 
-and local_open_class_type = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  class_type : class_type;
-}
-
 and class_type =
   | Path of Ident.t
   | Signature of {
@@ -435,7 +422,6 @@ and class_type =
       syntax_node : syntax_node;
       inner : class_type;
     }
-  | LocalOpen of local_open_class_type
   | Attribute of {
       syntax_node : syntax_node;
       class_type : class_type;
@@ -530,7 +516,6 @@ module CoreType = struct
         syntax_node : syntax_node;
         inner : core_type;
       }
-    | LocalOpen of local_open_core_type
     | PolyVariant of poly_variant
     | Record of {
         syntax_node : syntax_node;
@@ -558,7 +543,6 @@ module CoreType = struct
     | Arrow { syntax_node; _ }
     | Tuple { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
-    | LocalOpen { syntax_node; _ }
     | Record { syntax_node; _ }
     | FirstClassModule { syntax_node; _ }
     | Object { syntax_node; _ } ->
@@ -685,7 +669,6 @@ module ClassType = struct
         syntax_node : syntax_node;
         inner : class_type;
       }
-    | LocalOpen of local_open_class_type
     | Attribute of {
         syntax_node : syntax_node;
         class_type : class_type;
@@ -699,7 +682,6 @@ module ClassType = struct
     | Signature { syntax_node; _ }
     | Arrow { syntax_node; _ }
     | Parenthesized { syntax_node; _ }
-    | LocalOpen { syntax_node; _ }
     | Attribute { syntax_node; _ } ->
         syntax_node
     | Extension extension ->
@@ -1546,13 +1528,25 @@ and object_override_field = {
   value : expression option;
 }
 
-and local_open_expression = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  body : expression;
-  via_let_open : bool;
-  attributes : attribute list;
-}
+and local_open_expression =
+  | LetOpen of {
+      syntax_node : syntax_node;
+      let_token : Token.t;
+      open_token : Token.t;
+      module_path : Ident.t;
+      in_token : Token.t;
+      body : expression;
+      attributes : attribute list;
+    }
+  | Delimited of {
+      syntax_node : syntax_node;
+      module_path : Ident.t;
+      dot_token : Token.t;
+      opening_token : Token.t option;
+      body : expression;
+      closing_token : Token.t option;
+      attributes : attribute list;
+    }
 
 and function_case_body = {
   syntax_node : syntax_node;
@@ -1780,12 +1774,23 @@ and class_constraint_expression = {
   class_type : class_type;
 }
 
-and local_open_class_expression = {
-  syntax_node : syntax_node;
-  module_path : Ident.t;
-  class_expression : class_expression;
-  via_let_open : bool;
-}
+and local_open_class_expression =
+  | LetOpen of {
+      syntax_node : syntax_node;
+      let_token : Token.t;
+      open_token : Token.t;
+      module_path : Ident.t;
+      in_token : Token.t;
+      body : class_expression;
+    }
+  | Delimited of {
+      syntax_node : syntax_node;
+      module_path : Ident.t;
+      dot_token : Token.t;
+      opening_token : Token.t option;
+      body : class_expression;
+      closing_token : Token.t option;
+    }
 
 and parenthesized_class_expression = {
   syntax_node : syntax_node;
@@ -1949,8 +1954,12 @@ module Expression = struct
         | Literal record -> record.syntax_node
         | Update record -> record.syntax_node
       )
-    | LocalOpen expr ->
-        expr.syntax_node
+    | LocalOpen expr -> (
+        match expr with
+        | LetOpen { syntax_node; _ }
+        | Delimited { syntax_node; _ } ->
+            syntax_node
+      )
     | Fun expr ->
         expr.syntax_node
     | Function expr ->
@@ -2039,8 +2048,12 @@ module Expression = struct
         | Literal record -> record.attributes
         | Update record -> record.attributes
       )
-    | LocalOpen expr ->
-        expr.attributes
+    | LocalOpen expr -> (
+        match expr with
+        | LetOpen { attributes; _ }
+        | Delimited { attributes; _ } ->
+            attributes
+      )
     | Fun expr ->
         expr.attributes
     | Function expr ->
@@ -2175,7 +2188,12 @@ module ClassExpression = struct
     | Apply expr -> expr.syntax_node
     | Let expr -> expr.syntax_node
     | Constraint expr -> expr.syntax_node
-    | LocalOpen expr -> expr.syntax_node
+    | LocalOpen expr -> (
+        match expr with
+        | LetOpen { syntax_node; _ }
+        | Delimited { syntax_node; _ } ->
+            syntax_node
+      )
     | Parenthesized expr -> expr.syntax_node
     | Attribute { syntax_node; _ } -> syntax_node
     | Extension extension -> extension.syntax_node

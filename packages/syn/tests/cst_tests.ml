@@ -2281,8 +2281,6 @@ end
                         Error "expected make_trivia leading docstring")
                 | None ->
                     Error "expected a nested value declaration")
-            | Ok _ ->
-                Error "expected normalized nested Green signature items"
             | Error _ ->
                 Error "expected nested Green signature items to reify successfully"
             )
@@ -2674,12 +2672,12 @@ end
                           class_name = opened_name;
                           class_body =
                             Syn.Cst.ClassExpression.LocalOpen
-                              {
+                              (Syn.Cst.Delimited {
                                 module_path = opened_module_path;
-                                class_expression =
+                                body =
                                   Syn.Cst.ClassExpression.Path opened_body_path;
                                 _;
-                              };
+                              });
                           _;
                         }
                       :: Syn.Cst.StructureItem.ClassDeclaration
@@ -3267,54 +3265,19 @@ end
               ~actual:(Syn.Cst.Ident.name constructor_path);
             Ok ()
         | _ -> Error "expected commented interface class type declaration");
-    Test.case "cst class type declarations preserve path, local-open, and extension bodies"
+    Test.case "cst rejects locally opened class types"
       (fun () ->
         let result =
           parse_ml
-            "class type direct = C\n\
-             class type opened = M.(C)\n\
-             class type generated = ([%ct])\n"
+            {|
+class type direct = C
+class type opened = M.(C)
+class type generated = ([%ct])
+|}
         in
-        let cst =
-          expect_some result.cst
-            ~msg:"expected CST for diagnostics-free parse"
-          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-        in
-        match structure_items cst with
-        | Syn.Cst.StructureItem.ClassTypeDeclaration
-            { class_type_body = Syn.Cst.ClassType.Path direct_path; _ }
-          :: Syn.Cst.StructureItem.ClassTypeDeclaration
-               {
-                 class_type_body =
-                   Syn.Cst.ClassType.LocalOpen
-                     {
-                       module_path = open_module;
-                       class_type = Syn.Cst.ClassType.Path opened_path;
-                       _;
-                     };
-                 _;
-               }
-             :: Syn.Cst.StructureItem.ClassTypeDeclaration
-                  {
-                    class_type_body =
-                      Syn.Cst.ClassType.Parenthesized
-                        {
-                          inner = Syn.Cst.ClassType.Extension extension;
-                          _;
-                        };
-                    _;
-                  }
-                :: _ ->
-            Test.assert_equal ~expected:(Some "C")
-              ~actual:(Syn.Cst.Ident.name direct_path);
-            Test.assert_equal ~expected:(Some "M")
-              ~actual:(Syn.Cst.Ident.name open_module);
-            Test.assert_equal ~expected:(Some "C")
-              ~actual:(Syn.Cst.Ident.name opened_path);
-            Test.assert_equal ~expected:(Some "ct")
-              ~actual:(Syn.Cst.Ident.name extension.name);
-            Ok ()
-        | _ -> Error "expected class type path/local-open/extension bodies");
+        Test.assert_true (List.length result.diagnostics > 0);
+        Test.assert_equal ~expected:None ~actual:result.cst;
+        Ok ());
     Test.case "cst interface class declarations preserve arrow-style class types"
       (fun () ->
         let result =
@@ -3935,160 +3898,38 @@ end
             Test.assert_equal ~expected:1 ~actual:(List.length constraints);
             Ok ()
         | _ -> Error "expected package core type");
-    Test.case "cst value declarations preserve locally opened core types"
+    Test.case "cst rejects locally opened core types"
       (fun () ->
         let result =
-          parse_mli "val decode : Outer.Inner.(request -> response)\n"
+          parse_mli {|
+val decode : Outer.Inner.(request -> response)
+|}
         in
-        let cst =
-          expect_some result.cst
-            ~msg:"expected CST for diagnostics-free parse"
-          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-        in
-        match signature_items cst with
-        | Syn.Cst.SignatureItem.ValueDeclaration
-            {
-              type_ =
-                Syn.Cst.CoreType.LocalOpen
-                  {
-                    module_path =
-                      Syn.Cst.Ident.Qualified
-                        {
-                          prefix =
-                            Syn.Cst.Ident.Ident { name_token = outer_module; _ };
-                          name_token = inner_module;
-                          _;
-                        };
-                    type_ =
-                      Syn.Cst.CoreType.Arrow
-                        {
-                          parameter_type =
-                            Syn.Cst.CoreType.Constr
-                              { constructor_path = parameter_path; _ };
-                          result_type =
-                            Syn.Cst.CoreType.Constr
-                              { constructor_path = result_path; _ };
-                          _;
-                        };
-                    _;
-                  };
-              _;
-            }
-          :: _ ->
-            Test.assert_equal ~expected:"Outer"
-              ~actual:(Syn.Cst.Token.text outer_module);
-            Test.assert_equal ~expected:"Inner"
-              ~actual:(Syn.Cst.Token.text inner_module);
-            Test.assert_equal ~expected:(Some "request")
-              ~actual:(Syn.Cst.Ident.name parameter_path);
-            Test.assert_equal ~expected:(Some "response")
-              ~actual:(Syn.Cst.Ident.name result_path);
-            Ok ()
-        | _ -> Error "expected local-open core type");
+        Test.assert_true (List.length result.diagnostics > 0);
+        Test.assert_equal ~expected:None ~actual:result.cst;
+        Ok ());
     Test.case
-      "cst value declarations preserve locally opened core types with inline comments"
+      "cst rejects locally opened core types with inline comments"
       (fun () ->
         let result =
-          parse_mli "val decode : Outer.Inner. (* c *) (request -> response)\n"
+          parse_mli {|
+val decode : Outer.Inner. (* c *) (request -> response)
+|}
         in
-        let cst =
-          expect_some result.cst
-            ~msg:"expected CST for diagnostics-free parse"
-          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-        in
-        match signature_items cst with
-        | Syn.Cst.SignatureItem.ValueDeclaration
-            {
-              type_ =
-                Syn.Cst.CoreType.LocalOpen
-                  {
-                    module_path =
-                      Syn.Cst.Ident.Qualified
-                        {
-                          prefix =
-                            Syn.Cst.Ident.Ident { name_token = outer_module; _ };
-                          name_token = inner_module;
-                          _;
-                        };
-                    type_ =
-                      Syn.Cst.CoreType.Arrow
-                        {
-                          parameter_type =
-                            Syn.Cst.CoreType.Constr
-                              { constructor_path = parameter_path; _ };
-                          result_type =
-                            Syn.Cst.CoreType.Constr
-                              { constructor_path = result_path; _ };
-                          _;
-                        };
-                    _;
-                  };
-              _;
-            }
-          :: _ ->
-            Test.assert_equal ~expected:"Outer"
-              ~actual:(Syn.Cst.Token.text outer_module);
-            Test.assert_equal ~expected:"Inner"
-              ~actual:(Syn.Cst.Token.text inner_module);
-            Test.assert_equal ~expected:(Some "request")
-              ~actual:(Syn.Cst.Ident.name parameter_path);
-            Test.assert_equal ~expected:(Some "response")
-              ~actual:(Syn.Cst.Ident.name result_path);
-            Ok ()
-        | _ ->
-            Error "expected commented local-open core type");
+        Test.assert_true (List.length result.diagnostics > 0);
+        Test.assert_equal ~expected:None ~actual:result.cst;
+        Ok ());
     Test.case
-      "cst value declarations preserve locally opened core types with comments before dots"
+      "cst rejects locally opened core types with comments before dots"
       (fun () ->
         let result =
-          parse_mli "val decode : Outer.Inner (* c *).(request -> response)\n"
+          parse_mli {|
+val decode : Outer.Inner (* c *).(request -> response)
+|}
         in
-        let cst =
-          expect_some result.cst
-            ~msg:"expected CST for diagnostics-free parse"
-          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-        in
-        match signature_items cst with
-        | Syn.Cst.SignatureItem.ValueDeclaration
-            {
-              type_ =
-                Syn.Cst.CoreType.LocalOpen
-                  {
-                    module_path =
-                      Syn.Cst.Ident.Qualified
-                        {
-                          prefix =
-                            Syn.Cst.Ident.Ident { name_token = outer_module; _ };
-                          name_token = inner_module;
-                          _;
-                        };
-                    type_ =
-                      Syn.Cst.CoreType.Arrow
-                        {
-                          parameter_type =
-                            Syn.Cst.CoreType.Constr
-                              { constructor_path = parameter_path; _ };
-                          result_type =
-                            Syn.Cst.CoreType.Constr
-                              { constructor_path = result_path; _ };
-                          _;
-                        };
-                    _;
-                  };
-              _;
-            }
-          :: _ ->
-            Test.assert_equal ~expected:"Outer"
-              ~actual:(Syn.Cst.Token.text outer_module);
-            Test.assert_equal ~expected:"Inner"
-              ~actual:(Syn.Cst.Token.text inner_module);
-            Test.assert_equal ~expected:(Some "request")
-              ~actual:(Syn.Cst.Ident.name parameter_path);
-            Test.assert_equal ~expected:(Some "response")
-              ~actual:(Syn.Cst.Ident.name result_path);
-            Ok ()
-        | _ ->
-            Error "expected commented local-open core type before dot");
+        Test.assert_true (List.length result.diagnostics > 0);
+        Test.assert_equal ~expected:None ~actual:result.cst;
+        Ok ());
     Test.case "cst external declarations preserve primitive names" (fun () ->
         let result =
           parse_ml
@@ -7204,12 +7045,11 @@ and second x = x
             {
               value =
                 Syn.Cst.Expression.LocalOpen
-                  {
+                  (Syn.Cst.LetOpen {
                     module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
                     body = Syn.Cst.Expression.Apply _;
-                    via_let_open = true;
                     _;
-                  };
+                  });
               _;
             }
           :: _ ->
@@ -7231,11 +7071,10 @@ and second x = x
             {
               value =
                 Syn.Cst.Expression.LocalOpen
-                  {
+                  (Syn.Cst.LetOpen {
                     module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
-                    via_let_open = true;
                     _;
-                  };
+                  });
               _;
             }
           :: _ ->
@@ -7244,6 +7083,39 @@ and second x = x
             Ok ()
         | _ ->
             Error "expected commented let-open local open expression");
+    Test.case "cst local opens preserve module paths through shortcut shells"
+      (fun () ->
+        let source =
+          {|
+let x =
+  let open%foo[@foo] M in
+  ()
+|}
+        in
+        let result = parse_ml source in
+        let cst =
+          expect_some result.cst
+            ~msg:"expected CST for diagnostics-free parse"
+          |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+        in
+        match structure_items cst with
+        | Syn.Cst.StructureItem.LetBinding
+            {
+              value =
+                Syn.Cst.Expression.LocalOpen
+                  (Syn.Cst.LetOpen {
+                    module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
+                    body = Syn.Cst.Expression.Literal (Syn.Cst.Constant.Unit _);
+                    _;
+                  });
+              _;
+            }
+          :: _ ->
+            Test.assert_equal ~expected:"M"
+              ~actual:(Syn.Cst.Token.text module_name);
+            Ok ()
+        | _ ->
+            Error "expected shortcut let-open local open expression");
     Test.case "cst prefix local opens preserve module paths and body expressions"
       (fun () ->
         let source = "let x = M.{ field = 42 }\n" in
@@ -7258,13 +7130,12 @@ and second x = x
             {
               value =
                 Syn.Cst.Expression.LocalOpen
-                  {
+                  (Syn.Cst.Delimited {
                     module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
                     body =
                       Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal _);
-                    via_let_open = false;
                     _;
-                  };
+                  });
               _;
             }
           :: _ ->
@@ -7287,12 +7158,11 @@ and second x = x
             {
               value =
                 Syn.Cst.Expression.LocalOpen
-                  {
+                  (Syn.Cst.Delimited {
                     module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
                     body = Syn.Cst.Expression.Apply _;
-                    via_let_open = false;
                     _;
-                  };
+                  });
               _;
             }
           :: _ ->
@@ -7315,12 +7185,11 @@ and second x = x
             {
               value =
                 Syn.Cst.Expression.LocalOpen
-                  {
+                  (Syn.Cst.Delimited {
                     module_path = Syn.Cst.Ident.Ident { name_token = module_name; _ };
                     body = Syn.Cst.Expression.List _;
-                    via_let_open = false;
                     _;
-                  };
+                  });
               _;
             }
           :: _ ->
@@ -10074,12 +9943,17 @@ let lifted =
                                            payload =
                                              Some
                                                (Syn.Cst.Expression.LocalOpen
-                                                  {
-                                                    module_path =
-                                                      Syn.Cst.Ident.Qualified
-                                                        { prefix; name_token; _ };
-                                                    _;
-                                                  });
+                                                  (Syn.Cst.Delimited
+                                                     {
+                                                       module_path =
+                                                         Syn.Cst.Ident.Qualified
+                                                           {
+                                                             prefix;
+                                                             name_token;
+                                                             _;
+                                                           };
+                                                       _;
+                                                     }));
                                            _;
                                          };
                                      _;

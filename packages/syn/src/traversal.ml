@@ -71,8 +71,9 @@ and expressions_of_class_expression =
       @ expressions_of_class_expression body
   | Cst.ClassExpression.Constraint { class_expression; _ } ->
       expressions_of_class_expression class_expression
-  | Cst.ClassExpression.LocalOpen { class_expression; _ } ->
-      expressions_of_class_expression class_expression
+  | Cst.ClassExpression.LocalOpen (Cst.LetOpen { body; _ })
+  | Cst.ClassExpression.LocalOpen (Cst.Delimited { body; _ }) ->
+      expressions_of_class_expression body
   | Cst.ClassExpression.Parenthesized { inner; _ } ->
       expressions_of_class_expression inner
   | Cst.ClassExpression.Attribute { class_expression; _ } ->
@@ -160,7 +161,8 @@ let children_of_expression =
       fields |> List.map (fun (field : Cst.record_expression_field) -> field.value)
   | Cst.Expression.Record (Cst.RecordExpression.Update { base; fields; _ }) ->
       base :: List.map (fun (field : Cst.record_expression_field) -> field.value) fields
-  | Cst.Expression.LocalOpen { body; _ } ->
+  | Cst.Expression.LocalOpen (Cst.LetOpen { body; _ })
+  | Cst.Expression.LocalOpen (Cst.Delimited { body; _ }) ->
       [ body ]
   | Cst.Expression.Fun { body; _ } -> (
       match body with
@@ -243,8 +245,7 @@ let children_of_core_type =
       arguments
   | Cst.CoreType.Alias { type_; _ }
   | Cst.CoreType.Attribute { type_; _ }
-  | Cst.CoreType.Parenthesized { inner = type_; _ }
-  | Cst.CoreType.LocalOpen { type_; _ } ->
+  | Cst.CoreType.Parenthesized { inner = type_; _ } ->
       [ type_ ]
   | Cst.CoreType.Poly { body; _ } ->
       [ body ]

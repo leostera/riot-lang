@@ -24,6 +24,7 @@
 17. Keep standalone top-level comments and docstrings explicit in the CST item stream; do not bury their ownership in enclosing declaration spans.
 18. Keep nested `sig ... end` and `struct ... end` syntax-node lifts normalized the same way as file-level lifts; callers should not have to provide extra source text just to get correct trivia ownership.
 19. Keep raw trivia ownership explicit on declaration nodes that can carry inline comments/docstrings, even before higher-level sequence normalization decides whether adjacent docstrings stay standalone or attach to a neighbor.
+20. Keep local opens limited to the real OCaml pattern/expression surface. Expression local opens should preserve their original `let`/`open`/`in`, `.` and delimiter tokens via explicit `LetOpen` / `Delimited` CST variants; do not reintroduce `LOCAL_OPEN_TYPE`, core-type local opens, or class-type local opens.
 20. Keep token-attached trivia as the source of truth; do not reintroduce standalone trivia tree children in Ceibo.
 21. Keep `Lexer.tokenize` emitting only real tokens plus `Token.EOF`, with trailing file trivia on `Token.EOF.leading_trivia`.
 22. Keep `Parser.parse_result.tokens` as the original lexer token stream, and use that stream as the source of truth for file-level standalone trivia instead of re-lexing source text.

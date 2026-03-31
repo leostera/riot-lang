@@ -2637,7 +2637,6 @@ let is_type_syntax_kind =
   | Syntax_kind.POLY_TYPE
   | Syntax_kind.FIRST_CLASS_MODULE_TYPE
   | Syntax_kind.OBJECT_TYPE
-  | Syntax_kind.LOCAL_OPEN_TYPE
   | Syntax_kind.ATTRIBUTE_EXPR
   | Syntax_kind.EXTENSION_EXPR ->
       true
@@ -3227,6 +3226,54 @@ let direct_required_token_with_text = fun ~context node expected ->
   | None ->
       bail ~message:((("expected '" ^ expected ^ "' token during Ceibo -> CST lifting"))) ~syntax_node:node ~context
 
+let direct_tokens_between_offsets = fun ~after_offset ~before_offset node ->
+  direct_non_trivia_tokens node
+  |> List.filter_map
+       (fun syntax_token ->
+         let span = Ceibo.Red.SyntaxToken.span syntax_token in
+         if span.start >= after_offset && span.end_ <= before_offset then
+           Some (token syntax_token)
+         else
+           None)
+
+let direct_syntax_tokens_between_offsets = fun ~after_offset ~before_offset node ->
+  direct_non_trivia_tokens node
+  |> List.filter
+       (fun syntax_token ->
+         let span = Ceibo.Red.SyntaxToken.span syntax_token in
+         span.start >= after_offset && span.end_ <= before_offset)
+
+let trailing_module_path_tokens = fun syntax_tokens ->
+  let is_ident_text text =
+    let len = String.length text in
+    let is_alpha_or_underscore ch =
+      (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch = '_'
+    in
+    if len = 0 then
+      false
+    else
+      let first = String.get text 0 in
+      is_alpha_or_underscore first || first = '\\'
+  in
+  let is_ident_token syntax_token =
+    is_ident_text (Ceibo.Red.SyntaxToken.text syntax_token)
+  in
+  let is_dot_token syntax_token =
+    String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "."
+  in
+  let rec collect expect_ident acc =
+    function
+    | syntax_token :: rest when expect_ident && is_ident_token syntax_token ->
+        collect false (syntax_token :: acc) rest
+    | syntax_token :: rest when (not expect_ident) && is_dot_token syntax_token ->
+        collect true (syntax_token :: acc) rest
+    | _ when expect_ident ->
+        []
+    | _ ->
+        acc
+  in
+  collect true [] (List.rev syntax_tokens)
+
 let rec take_tokens_until_equals = fun acc ->
   function
   | [] -> List.rev acc
@@ -3640,17 +3687,6 @@ and class_type_from_node = fun node ->
         syntax_node = node;
         fields = direct_non_trivia_nodes node |> List.map class_type_field_from_node
       }
-  | Syntax_kind.ARRAY_INDEX_EXPR -> (
-      match direct_non_trivia_nodes node with
-      | module_path_node :: class_type_node :: _ ->
-          Cst.ClassType.LocalOpen {
-            syntax_node = node;
-            module_path = module_path_like_from_node module_path_node;
-            class_type = class_type_from_node class_type_node
-          }
-      | _ ->
-          unsupported_class_type node
-    )
   | Syntax_kind.APPLY_EXPR -> (
       match direct_non_trivia_nodes node with
       | payload_node :: rest -> (
@@ -3726,18 +3762,6 @@ and core_type_from_node = fun node ->
     | None ->
         bail ~message:"expected class type marker during Ceibo -> CST lifting" ~syntax_node:node ~context:[
           "core_type.class"
-        ]
-  and local_open_core_type_from_node = fun node ->
-    match direct_non_trivia_nodes node with
-    | module_path_node :: type_node :: _ ->
-        {
-          Cst.syntax_node = node;
-          module_path = module_path_like_from_node module_path_node;
-          type_ = core_type_from_node type_node
-        }
-    | _ ->
-        bail ~message:"expected local-open module path and body during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-          "core_type.local_open"
         ]
   and object_type_field_from_node = fun node ->
     match first_ident_token_in_subtree node, direct_non_trivia_nodes node |> List.find_opt can_lift_core_type_node with
@@ -4010,8 +4034,6 @@ and core_type_from_node = fun node ->
             "core_type.parenthesized"
           ]
     )
-  | Syntax_kind.LOCAL_OPEN_TYPE ->
-      Cst.CoreType.LocalOpen (local_open_core_type_from_node node)
   | Syntax_kind.TYPE_POLY_VARIANT ->
       Cst.CoreType.PolyVariant (poly_variant_from_node node)
   | Syntax_kind.TYPE_RECORD ->
@@ -5011,8 +5033,10 @@ and expression_from_node = fun node ->
               expr
               with attributes = append expr.attributes
             })
-        | Cst.Expression.LocalOpen expr ->
-            Cst.Expression.LocalOpen {expr with attributes = append expr.attributes}
+        | Cst.Expression.LocalOpen (Cst.LetOpen expr) ->
+            Cst.Expression.LocalOpen (Cst.LetOpen { expr with attributes = append expr.attributes })
+        | Cst.Expression.LocalOpen (Cst.Delimited expr) ->
+            Cst.Expression.LocalOpen (Cst.Delimited { expr with attributes = append expr.attributes })
         | Cst.Expression.Fun expr ->
             Cst.Expression.Fun {expr with attributes = append expr.attributes}
         | Cst.Expression.Function expr ->
@@ -5917,19 +5941,22 @@ and poly_variant_expression_from_local_open_node = fun node ->
                        tag_token;
                        payload =
                          Some
-                           (Cst.Expression.LocalOpen {
-                              syntax_node = node;
-                              module_path =
-                                Cst.Ident.Qualified {
-                                  syntax_node = module_path_node;
-                                  prefix = module_path_like_from_node prefix_node;
-                                  dot_token = token dot_syntax_token;
-                                  name_token = token name_syntax_token;
-                                };
-                              body = expression_from_node body_node;
-                              via_let_open = false;
-                              attributes = [];
-                            });
+                           (Cst.Expression.LocalOpen
+                              (Cst.Delimited {
+                                 syntax_node = node;
+                                 module_path =
+                                   Cst.Ident.Qualified {
+                                     syntax_node = module_path_node;
+                                     prefix = module_path_like_from_node prefix_node;
+                                     dot_token = token dot_syntax_token;
+                                     name_token = token name_syntax_token;
+                                   };
+                                 dot_token = token dot_syntax_token;
+                                 opening_token = None;
+                                 body = expression_from_node body_node;
+                                 closing_token = None;
+                                 attributes = [];
+                               }));
                        attributes = [];
                      })
               | _ ->
@@ -5946,75 +5973,91 @@ and poly_variant_expression_from_local_open_node = fun node ->
 and local_open_expression_from_node = fun node ->
   let non_trivia_children = direct_non_trivia_nodes node in
   let non_trivia_tokens = direct_non_trivia_tokens node in
-  let via_let_open =
-    non_trivia_tokens
-    |> List.exists
-      (fun tok ->
-        String.equal (Ceibo.Red.SyntaxToken.text tok) "let")
-  in
-  let module_path =
-    let rec collect_after_open =
-      function
-      | [] -> []
-      | syntax_token :: rest ->
-          if String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "open" then
-            collect_module_tokens [] rest
-          else
-            collect_after_open rest
-    and collect_module_tokens = fun acc ->
-      function
-      | [] -> List.rev acc
-      | syntax_token :: rest ->
-          let text = Ceibo.Red.SyntaxToken.text syntax_token in
-          if String.equal text "in" then
-            List.rev acc
-          else
-            collect_module_tokens (syntax_token :: acc) rest
-    in
-    match collect_after_open non_trivia_tokens with
-    | [] -> None
-    | lifted_tokens ->
-        Some (module_path_from_tokens ~syntax_node:node lifted_tokens)
-  in
-  let prefix_module_path =
-    match non_trivia_children with
-    | module_path_node :: _body_node :: _ ->
-        Some (module_path_like_from_node module_path_node)
-    | _ -> None
-  in
-  let module_path =
-    if via_let_open then
-      module_path
-    else
-      prefix_module_path
-  in
-  let body_expr =
-    if via_let_open then
-      List.rev non_trivia_children |> List.find_map
-        (fun child ->
-          if can_lift_expression_node child then
-            Some (expression_from_node child)
-          else
-            None)
-    else
-      match non_trivia_children with
-      | _module_path_node :: body_node :: _ ->
-          if can_lift_expression_node body_node then
-            Some (expression_from_node body_node)
-          else
+  match non_trivia_tokens, non_trivia_children with
+  | first_token :: _, _ when String.equal (Ceibo.Red.SyntaxToken.text first_token) "let" ->
+      let let_token =
+        direct_required_token_with_text ~context:[ "expression"; "local_open"; "let_open" ] node "let"
+      in
+      let open_token =
+        direct_required_token_with_text ~context:[ "expression"; "local_open"; "let_open" ] node "open"
+      in
+      let in_token =
+        direct_required_token_with_text ~context:[ "expression"; "local_open"; "let_open" ] node "in"
+      in
+      let module_path =
+        match
+          direct_syntax_tokens_between_offsets ~after_offset:(Cst.Token.span open_token).end_
+            ~before_offset:(Cst.Token.span in_token).start node
+          |> trailing_module_path_tokens
+        with
+        | [] ->
             None
-      | _ -> None
-  in
-  match module_path, body_expr with
-  | Some lifted_module_path, Some lifted_body ->
-      Some {
-        syntax_node = node;
-        module_path = lifted_module_path;
-        body = lifted_body;
-        via_let_open;
-        attributes = []
-      }
-  | _ -> None
+        | syntax_tokens ->
+            Some (module_path_from_tokens ~syntax_node:node syntax_tokens)
+      in
+      let body_expr =
+        List.rev non_trivia_children |> List.find_map
+          (fun child ->
+            if can_lift_expression_node child then
+              Some (expression_from_node child)
+            else
+              None)
+      in
+      (match module_path, body_expr with
+      | Some module_path, Some body ->
+          Some
+            (Cst.LetOpen
+               {
+                 syntax_node = node;
+                 let_token;
+                 open_token;
+                 module_path;
+                 in_token;
+                 body;
+                 attributes = [];
+               })
+      | _ ->
+          None)
+  | _, module_path_node :: body_node :: _ when can_lift_expression_node body_node ->
+      let module_path = module_path_like_from_node module_path_node in
+      let dot_token =
+        direct_required_token_with_text ~context:[ "expression"; "local_open"; "delimited" ] node "."
+      in
+      let module_path_span = span_of_syntax_node_nontrivia_bounds module_path_node in
+      let body_span = span_of_syntax_node_nontrivia_bounds body_node in
+      let boundary_tokens =
+        direct_tokens_between_offsets ~after_offset:module_path_span.end_
+          ~before_offset:body_span.start node
+      in
+      let opening_token =
+        boundary_tokens
+        |> List.find_opt (fun token ->
+               let text = Cst.Token.text token in
+               String.equal text "(" || String.equal text "[" || String.equal text "[|" || String.equal text "{")
+      in
+      let trailing_tokens =
+        direct_tokens_between_offsets ~after_offset:body_span.end_
+          ~before_offset:(span_of_syntax_node_nontrivia_bounds node).end_ node
+      in
+      let closing_token =
+        trailing_tokens
+        |> List.find_opt (fun token ->
+               let text = Cst.Token.text token in
+               String.equal text ")" || String.equal text "]" || String.equal text "|]" || String.equal text "}")
+      in
+      Some
+        (Cst.Delimited
+           {
+             syntax_node = node;
+             module_path;
+             dot_token;
+             opening_token;
+             body = expression_from_node body_node;
+             closing_token;
+             attributes = [];
+           })
+  | _ ->
+      None
 and let_module_expression_from_node = fun node ->
   let direct_children = direct_non_trivia_nodes node in
   let payload_children = direct_children |> List.filter (fun child -> not (is_attribute_node child)) in
@@ -6600,67 +6643,87 @@ and class_let_expression_from_node = fun ~is_recursive_binding node ->
 and local_open_class_expression_from_node = fun node ->
   let non_trivia_children = direct_non_trivia_nodes node in
   let non_trivia_tokens = direct_non_trivia_tokens node in
-  let via_let_open =
-    non_trivia_tokens
-    |> List.exists
-      (fun tok ->
-        String.equal (Ceibo.Red.SyntaxToken.text tok) "let")
-  in
-  let module_path =
-    let rec collect_after_open =
-      function
-      | [] -> []
-      | syntax_token :: rest ->
-          if String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "open" then
-            collect_module_tokens [] rest
-          else
-            collect_after_open rest
-    and collect_module_tokens = fun acc ->
-      function
-      | [] -> List.rev acc
-      | syntax_token :: rest ->
-          let text = Ceibo.Red.SyntaxToken.text syntax_token in
-          if String.equal text "in" then
-            List.rev acc
-          else
-            collect_module_tokens (syntax_token :: acc) rest
-    in
-    match collect_after_open non_trivia_tokens with
-    | [] -> None
-    | lifted_tokens ->
-        Some (module_path_from_tokens ~syntax_node:node lifted_tokens)
-  in
-  let prefix_module_path =
-    match non_trivia_children with
-    | module_path_node :: _body_node :: _ ->
-        Some (module_path_like_from_node module_path_node)
-    | _ ->
-        None
-  in
-  let module_path =
-    if via_let_open then
-      module_path
-    else
-      prefix_module_path
-  in
-  let body_expr =
-    if via_let_open then
-      List.rev non_trivia_children |> List.find_map
-        (fun child ->
-          if can_lift_class_expression_node child then
-            Some (class_expression_from_node child)
-          else
-            None)
-    else
-      match non_trivia_children with
-      | _module_path_node :: body_node :: _ when can_lift_class_expression_node body_node ->
-          Some (class_expression_from_node body_node)
+  match non_trivia_tokens, non_trivia_children with
+  | first_token :: _, _ when String.equal (Ceibo.Red.SyntaxToken.text first_token) "let" ->
+      let let_token =
+        direct_required_token_with_text ~context:[ "class_expression"; "local_open"; "let_open" ] node "let"
+      in
+      let open_token =
+        direct_required_token_with_text ~context:[ "class_expression"; "local_open"; "let_open" ] node "open"
+      in
+      let in_token =
+        direct_required_token_with_text ~context:[ "class_expression"; "local_open"; "let_open" ] node "in"
+      in
+      let module_path =
+        match
+          direct_syntax_tokens_between_offsets ~after_offset:(Cst.Token.span open_token).end_
+            ~before_offset:(Cst.Token.span in_token).start node
+          |> trailing_module_path_tokens
+        with
+        | [] ->
+            None
+        | syntax_tokens ->
+            Some (module_path_from_tokens ~syntax_node:node syntax_tokens)
+      in
+      let body_expr =
+        List.rev non_trivia_children |> List.find_map
+          (fun child ->
+            if can_lift_class_expression_node child then
+              Some (class_expression_from_node child)
+            else
+              None)
+      in
+      (match module_path, body_expr with
+      | Some module_path, Some body ->
+          Some
+            (Cst.LetOpen
+               {
+                 syntax_node = node;
+                 let_token;
+                 open_token;
+                 module_path;
+                 in_token;
+                 body;
+               })
       | _ ->
-          None
-  in
-  match module_path, body_expr with
-  | Some module_path, Some class_expression ->
-      Some ({syntax_node = node; module_path; class_expression; via_let_open}: Cst.local_open_class_expression)
+          None)
+  | _, module_path_node :: body_node :: _ when can_lift_class_expression_node body_node ->
+      let module_path = module_path_like_from_node module_path_node in
+      let dot_token =
+        direct_required_token_with_text ~context:[ "class_expression"; "local_open"; "delimited" ] node "."
+      in
+      let module_path_span = span_of_syntax_node_nontrivia_bounds module_path_node in
+      let body_span = span_of_syntax_node_nontrivia_bounds body_node in
+      let boundary_tokens =
+        direct_tokens_between_offsets ~after_offset:module_path_span.end_
+          ~before_offset:body_span.start node
+      in
+      let opening_token =
+        boundary_tokens
+        |> List.find_opt (fun token ->
+               let text = Cst.Token.text token in
+               String.equal text "(" || String.equal text "[" || String.equal text "[|" || String.equal text "{")
+      in
+      let trailing_tokens =
+        direct_tokens_between_offsets ~after_offset:body_span.end_
+          ~before_offset:(span_of_syntax_node_nontrivia_bounds node).end_ node
+      in
+      let closing_token =
+        trailing_tokens
+        |> List.find_opt (fun token ->
+               let text = Cst.Token.text token in
+               String.equal text ")" || String.equal text "]" || String.equal text "|]" || String.equal text "}")
+      in
+      Some
+        (Cst.Delimited
+           {
+             syntax_node = node;
+             module_path;
+             dot_token;
+             opening_token;
+             body = class_expression_from_node body_node;
+             closing_token;
+           })
   | _ ->
       None
 and class_expression_from_node = fun node ->
@@ -6672,12 +6735,18 @@ and class_expression_from_node = fun node ->
   | Syntax_kind.ARRAY_INDEX_EXPR -> (
       match direct_non_trivia_nodes node with
       | module_path_node :: class_expression_node :: _ ->
-          Cst.ClassExpression.LocalOpen {
-            syntax_node = node;
-            module_path = module_path_like_from_node module_path_node;
-            class_expression = class_expression_from_node class_expression_node;
-            via_let_open = false
-          }
+          Cst.ClassExpression.LocalOpen
+            (Cst.Delimited {
+               syntax_node = node;
+               module_path = module_path_like_from_node module_path_node;
+               dot_token =
+                 direct_required_token_with_text
+                   ~context:[ "class_expression"; "local_open"; "delimited" ]
+                   node ".";
+               opening_token = None;
+               body = class_expression_from_node class_expression_node;
+               closing_token = None;
+             })
       | _ ->
           unsupported_class_expression node
     )
@@ -9066,8 +9135,6 @@ and validate_core_type = fun ~context ->
       :: context))) type_) elements
   | Cst.CoreType.Parenthesized { inner; _ } ->
       validate_core_type ~context:((("core_type.parenthesized" :: context))) inner
-  | Cst.CoreType.LocalOpen { type_; _ } ->
-      validate_core_type ~context:((("core_type.local_open.type" :: context))) type_
   | Cst.CoreType.PolyVariant poly_variant ->
       validate_poly_variant ~context:((("core_type.poly_variant" :: context))) poly_variant
   | Cst.CoreType.Record { fields; _ } ->
@@ -9121,8 +9188,6 @@ and validate_class_type = fun ~context ->
       validate_class_type ~context:((("class_type.arrow.result" :: context))) result_type
   | Cst.ClassType.Parenthesized { inner; _ } ->
       validate_class_type ~context:((("class_type.parenthesized" :: context))) inner
-  | Cst.ClassType.LocalOpen { class_type; _ } ->
-      validate_class_type ~context:((("class_type.local_open" :: context))) class_type
   | Cst.ClassType.Attribute { class_type; _ } ->
       validate_class_type ~context:((("class_type.attribute" :: context))) class_type
 and validate_class_field = fun ~context ->
@@ -9190,8 +9255,9 @@ and validate_class_expression = fun ~context ->
   | Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
       validate_class_expression ~context:((("class_expression.constraint.expression" :: context))) class_expression;
       validate_class_type ~context:((("class_expression.constraint.class_type" :: context))) class_type
-  | Cst.ClassExpression.LocalOpen { class_expression; _ } ->
-      validate_class_expression ~context:((("class_expression.local_open" :: context))) class_expression
+  | Cst.ClassExpression.LocalOpen (Cst.LetOpen { body; _ })
+  | Cst.ClassExpression.LocalOpen (Cst.Delimited { body; _ }) ->
+      validate_class_expression ~context:((("class_expression.local_open" :: context))) body
   | Cst.ClassExpression.Parenthesized { inner; _ } ->
       validate_class_expression ~context:((("class_expression.parenthesized" :: context))) inner
   | Cst.ClassExpression.Attribute { class_expression; _ } ->
@@ -9382,7 +9448,8 @@ and validate_expression = fun ~context ->
       ^ Int.to_string index
       ^ "].value")
       :: context))) field.value) fields
-  | Cst.Expression.LocalOpen { body; _ } ->
+  | Cst.Expression.LocalOpen (Cst.LetOpen { body; _ })
+  | Cst.Expression.LocalOpen (Cst.Delimited { body; _ }) ->
       validate_expression ~context:((("expression.local_open.body" :: context))) body
   | Cst.Expression.Fun { parameters; body; _ } ->
       List.iteri (fun index parameter -> validate_parameter ~context:(((("expression.fun.parameter["

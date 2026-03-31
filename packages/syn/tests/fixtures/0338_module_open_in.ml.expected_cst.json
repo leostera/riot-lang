@@ -59,11 +59,28 @@
           "parameters": [],
           "value": {
             "tag": "local_open",
+            "shape": "let_open",
             "syntax_node": {
               "kind": "LOCAL_OPEN_EXPR",
               "span": {
                 "start": 7,
                 "end": 29
+              }
+            },
+            "let_token": {
+              "kind": "IDENT_EXPR",
+              "text": "let",
+              "span": {
+                "start": 10,
+                "end": 13
+              }
+            },
+            "open_token": {
+              "kind": "IDENT_EXPR",
+              "text": "open",
+              "span": {
+                "start": 14,
+                "end": 18
               }
             },
             "module_path": {
@@ -82,6 +99,14 @@
                   "start": 19,
                   "end": 20
                 }
+              }
+            },
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 21,
+                "end": 23
               }
             },
             "body": {
@@ -152,8 +177,7 @@
                   }
                 }
               }
-            },
-            "via_let_open": true
+            }
           },
           "and_binding": null,
           "is_recursive": false

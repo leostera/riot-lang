@@ -116,7 +116,6 @@ type t =
   | TYPE_RECORD_FIELD (* field: int *)
   | OBJECT_TYPE (* < m : int; n : string > *)
   | OBJECT_TYPE_FIELD (* m : int *)
-  | LOCAL_OPEN_TYPE (* Module.(t) *)
   | TYPE_CONSTRAINT (* constraint 'a = int *)
   | POLY_TYPE (* 'a 'b. type - polymorphic type with explicit quantifiers *)
   | MODULE_TYPE_EXPR (* S | S with type t = int *)
@@ -263,7 +262,6 @@ let to_string = function
   | TYPE_RECORD_FIELD -> "TYPE_RECORD_FIELD"
   | OBJECT_TYPE -> "OBJECT_TYPE"
   | OBJECT_TYPE_FIELD -> "OBJECT_TYPE_FIELD"
-  | LOCAL_OPEN_TYPE -> "LOCAL_OPEN_TYPE"
   | TYPE_CONSTRAINT -> "TYPE_CONSTRAINT"
   | POLY_TYPE -> "POLY_TYPE"
   | MODULE_TYPE_EXPR -> "MODULE_TYPE_EXPR"
@@ -399,7 +397,6 @@ let from_string = function
   | "TYPE_RECORD_FIELD" -> Some TYPE_RECORD_FIELD
   | "OBJECT_TYPE" -> Some OBJECT_TYPE
   | "OBJECT_TYPE_FIELD" -> Some OBJECT_TYPE_FIELD
-  | "LOCAL_OPEN_TYPE" -> Some LOCAL_OPEN_TYPE
   | "TYPE_CONSTRAINT" -> Some TYPE_CONSTRAINT
   | "POLY_TYPE" -> Some POLY_TYPE
   | "MODULE_TYPE_EXPR" -> Some MODULE_TYPE_EXPR

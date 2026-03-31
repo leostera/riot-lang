@@ -46,7 +46,6 @@ let is_type_syntax_kind = function
   | Syn.SyntaxKind.POLY_TYPE
   | Syn.SyntaxKind.FIRST_CLASS_MODULE_TYPE
   | Syn.SyntaxKind.OBJECT_TYPE
-  | Syn.SyntaxKind.LOCAL_OPEN_TYPE
   | Syn.SyntaxKind.ATTRIBUTE_EXPR
   | Syn.SyntaxKind.EXTENSION_EXPR ->
       true
@@ -72,8 +71,7 @@ let rec is_bool_type_node (node : Syn.Cst.syntax_node) =
   match Syn.Ceibo.Red.SyntaxNode.kind node with
   | Syn.SyntaxKind.ATTRIBUTE_EXPR
   | Syn.SyntaxKind.TYPE_PAREN
-  | Syn.SyntaxKind.TYPE_ALIAS
-  | Syn.SyntaxKind.LOCAL_OPEN_TYPE ->
+  | Syn.SyntaxKind.TYPE_ALIAS ->
       direct_non_trivia_nodes node |> List.exists is_bool_type_node
   | Syn.SyntaxKind.TYPE_CONSTR ->
       let token_texts : string list =
@@ -110,8 +108,6 @@ let rec is_bool_core_type type_ =
           true
       | _ ->
           false)
-  | Syn.Cst.CoreType.LocalOpen { type_; _ } ->
-      is_bool_core_type type_
   | _ ->
       false
 

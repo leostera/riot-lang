@@ -59,6 +59,7 @@
           "parameters": [],
           "value": {
             "tag": "local_open",
+            "shape": "delimited",
             "syntax_node": {
               "kind": "LOCAL_OPEN_EXPR",
               "span": {
@@ -84,8 +85,25 @@
                 }
               }
             },
+            "dot_token": {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 9,
+                "end": 10
+              }
+            },
+            "opening_token": {
+              "kind": "IDENT_EXPR",
+              "text": "(",
+              "span": {
+                "start": 10,
+                "end": 11
+              }
+            },
             "body": {
               "tag": "local_open",
+              "shape": "delimited",
               "syntax_node": {
                 "kind": "LOCAL_OPEN_EXPR",
                 "span": {
@@ -109,6 +127,22 @@
                     "start": 11,
                     "end": 12
                   }
+                }
+              },
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 12,
+                  "end": 13
+                }
+              },
+              "opening_token": {
+                "kind": "IDENT_EXPR",
+                "text": "(",
+                "span": {
+                  "start": 13,
+                  "end": 14
                 }
               },
               "body": {
@@ -157,9 +191,23 @@
                   }
                 }
               },
-              "via_let_open": false
+              "closing_token": {
+                "kind": "IDENT_EXPR",
+                "text": ")",
+                "span": {
+                  "start": 21,
+                  "end": 22
+                }
+              }
             },
-            "via_let_open": false
+            "closing_token": {
+              "kind": "IDENT_EXPR",
+              "text": ")",
+              "span": {
+                "start": 22,
+                "end": 23
+              }
+            }
           },
           "and_binding": null,
           "is_recursive": false

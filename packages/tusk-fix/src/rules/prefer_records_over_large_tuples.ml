@@ -78,8 +78,7 @@ let rec diagnostics_for_core_type type_ =
       arguments |> List.concat_map diagnostics_for_core_type
   | Syn.Cst.CoreType.Alias { type_; _ }
   | Syn.Cst.CoreType.Attribute { type_ ; _ }
-  | Syn.Cst.CoreType.Parenthesized { inner = type_; _ }
-  | Syn.Cst.CoreType.LocalOpen { type_; _ } ->
+  | Syn.Cst.CoreType.Parenthesized { inner = type_; _ } ->
       diagnostics_for_core_type type_
   | Syn.Cst.CoreType.Poly { body; _ } ->
       diagnostics_for_core_type body

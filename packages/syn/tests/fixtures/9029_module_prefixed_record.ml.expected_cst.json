@@ -79,6 +79,7 @@
           "parameters": [],
           "value": {
             "tag": "local_open",
+            "shape": "delimited",
             "syntax_node": {
               "kind": "LOCAL_OPEN_EXPR",
               "span": {
@@ -104,6 +105,15 @@
                 }
               }
             },
+            "dot_token": {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 56,
+                "end": 57
+              }
+            },
+            "opening_token": null,
             "body": {
               "tag": "record",
               "syntax_node": {
@@ -239,7 +249,7 @@
                 }
               ]
             },
-            "via_let_open": false
+            "closing_token": null
           },
           "and_binding": null,
           "is_recursive": false
@@ -294,6 +304,7 @@
           "parameters": [],
           "value": {
             "tag": "local_open",
+            "shape": "delimited",
             "syntax_node": {
               "kind": "LOCAL_OPEN_EXPR",
               "span": {
@@ -319,6 +330,15 @@
                 }
               }
             },
+            "dot_token": {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 95,
+                "end": 96
+              }
+            },
+            "opening_token": null,
             "body": {
               "tag": "record",
               "syntax_node": {
@@ -497,7 +517,7 @@
                 }
               ]
             },
-            "via_let_open": false
+            "closing_token": null
           },
           "and_binding": null,
           "is_recursive": false

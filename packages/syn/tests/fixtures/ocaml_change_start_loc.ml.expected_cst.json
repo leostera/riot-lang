@@ -79,6 +79,7 @@
           "parameters": [],
           "value": {
             "tag": "local_open",
+            "shape": "delimited",
             "syntax_node": {
               "kind": "LOCAL_OPEN_EXPR",
               "span": {
@@ -104,6 +105,15 @@
                 }
               }
             },
+            "dot_token": {
+              "kind": "IDENT_EXPR",
+              "text": ".",
+              "span": {
+                "start": 121,
+                "end": 122
+              }
+            },
+            "opening_token": null,
             "body": {
               "tag": "record",
               "syntax_node": {
@@ -362,7 +372,7 @@
                 }
               ]
             },
-            "via_let_open": false
+            "closing_token": null
           },
           "and_binding": null,
           "is_recursive": false
@@ -510,11 +520,28 @@
           ],
           "value": {
             "tag": "local_open",
+            "shape": "let_open",
             "syntax_node": {
               "kind": "LOCAL_OPEN_EXPR",
               "span": {
                 "start": 495,
                 "end": 597
+              }
+            },
+            "let_token": {
+              "kind": "IDENT_EXPR",
+              "text": "let",
+              "span": {
+                "start": 498,
+                "end": 501
+              }
+            },
+            "open_token": {
+              "kind": "IDENT_EXPR",
+              "text": "open",
+              "span": {
+                "start": 502,
+                "end": 506
               }
             },
             "module_path": {
@@ -533,6 +560,14 @@
                   "start": 507,
                   "end": 513
                 }
+              }
+            },
+            "in_token": {
+              "kind": "IDENT_EXPR",
+              "text": "in",
+              "span": {
+                "start": 514,
+                "end": 516
               }
             },
             "body": {
@@ -739,8 +774,7 @@
                   }
                 ]
               }
-            },
-            "via_let_open": true
+            }
           },
           "and_binding": null,
           "is_recursive": false
