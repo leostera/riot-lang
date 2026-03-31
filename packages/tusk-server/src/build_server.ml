@@ -8,7 +8,7 @@ open Tusk_executor
 (* Build workers only report build progress and results back to the local
    session. *)
 
-let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
+let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~concurrency ~session_id ~client_pid
     ~server_pid ~target ~scope ~target_arch =
   Log.debug
     ("Build worker started for session " ^ Session_id.to_string session_id ^
@@ -148,6 +148,13 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
     let build_ctx =
       Build_ctx.make ~session_id ~profile ?target
         ~available_parallelism:concurrency ()
+    in
+    let target_triple_str =
+      Kernel.System.Host.to_string (Build_ctx.target_triplet build_ctx)
+    in
+    let store =
+      Tusk_store.Store.create_for_lane ~workspace ~profile:profile.name
+        ~target:target_triple_str
     in
     Log.info ("Build context created: target_platform=" ^ (Build_ctx.target_platform_name build_ctx) ^ 
               ", host_platform=" ^ (Build_ctx.host_platform_name build_ctx));
@@ -317,11 +324,11 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
   Ok ()
 
 (** Start a build in a spawned worker process *)
-let start ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
+let start ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~client_pid
     ~server_pid ~target ~scope ~target_arch =
   let _ =
     spawn (fun () ->
-        init ~workspace ~load_errors ~toolchain ~store ~concurrency ~session_id ~client_pid
+        init ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~client_pid
           ~server_pid ~target ~scope ~target_arch)
   in
   ()

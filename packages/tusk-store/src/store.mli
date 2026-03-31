@@ -28,6 +28,13 @@ type export_entry = {
 val create : workspace:Workspace.t -> t
 (** Create a new store for the given workspace *)
 
+val create_for_lane :
+  workspace:Workspace.t ->
+  profile:string ->
+  target:string ->
+  t
+(** Create a store rooted at a specific build lane. *)
+
 (** {1 Simple Interface} *)
 
 val get : t -> Std.Crypto.hash -> Artifact.t option

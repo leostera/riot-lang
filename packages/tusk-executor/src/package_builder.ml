@@ -362,7 +362,8 @@ let build ~workspace ~toolchain ~store ~package_graph ~package_key
           in
 
           match
-            Sandbox.with_sandbox ~workspace ~package ~inputs ~depset ~store
+            Sandbox.with_sandbox ~workspace ~profile:profile_name
+              ~target:target_triple_str ~package ~inputs ~depset ~store
               ~expected_outputs:outputs do_build
           with
           | exception exn ->

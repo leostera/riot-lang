@@ -46,6 +46,22 @@ let build_package package_name =
         false
     | Error _ -> false
 
+let find_built_binary_path ~workspace ~package_name ~binary_name =
+  let client =
+    Local_session.connect_local ~workspace ()
+    |> Result.expect ~msg:"Failed to start local tusk session"
+  in
+  let result =
+    match
+      Local_session.find_artifact client ~package:package_name ~kind:"binary"
+        ~name:binary_name
+    with
+    | Ok path -> Ok (Path.v path)
+    | Error err -> Error err
+  in
+  Local_session.close client;
+  result
+
 let install_temp_path dst =
   let dir = Path.dirname dst in
   let name = Path.basename dst in
@@ -104,37 +120,15 @@ let run matches =
         Error (Failure ("Failed to build " ^ binary_name)))
       else
         let workspace_root = workspace.root in
-        let build_root =
-          Tusk_model.Tusk_dirs.build_dir_root ~workspace_root
-        in
-        let debug_out = Tusk_model.Tusk_dirs.out_dir ~workspace_root in
-        let possible_binary_paths =
-          [
-            Path.(build_root / Path.v "bootstrap" / Path.v binary_name);
-            Path.(
-              build_root / Path.v "bootstrap/out"
-              / Path.v (package_name ^ "/" ^ binary_name));
-            Path.(build_root / Path.v "debug" / Path.v binary_name);
-            Path.(
-              debug_out
-              / Path.v (package_name ^ "/" ^ binary_name));
-            Path.(
-              debug_out
-              / Path.v ("packages/" ^ package_name ^ "/" ^ binary_name));
-          ]
-        in
-
         match
-          List.find_opt
-            (fun path -> Fs.exists path |> Result.unwrap_or ~default:false)
-            possible_binary_paths
+          find_built_binary_path ~workspace ~package_name ~binary_name
         with
-        | None ->
+        | Error _ ->
             println ("❌ Binary " ^ binary_name ^ " not found after build");
             println
               "Note: Only packages with binaries in [[bin]] can be installed";
             Error (Failure ("Binary not found: " ^ binary_name))
-        | Some binary_path ->
+        | Ok binary_path ->
             let perms = Fs.Permissions.executable in
 
             (* Always promote to project root *)

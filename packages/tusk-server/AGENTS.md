@@ -8,6 +8,7 @@
 2. Session orchestration belongs here; user-facing argument parsing belongs in `tusk-cli`.
 3. If behavior starts looking transport-shaped, first ask whether it should be deleted instead.
 4. Changes here commonly affect `tusk-cli`, `tusk-planner`, and `tusk-executor`.
+5. Artifact lookup must respect the active build lane (`profile` + `target`) instead of assuming host/default output directories.
 
 ## Validate
 

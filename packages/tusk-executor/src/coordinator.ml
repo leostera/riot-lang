@@ -367,7 +367,10 @@ let build_workspace_actions
         ]
     in
     let target_dir = target_dir_for package.name in
-    let sandbox = Sandbox.create ~workspace ~package_name:package.name in
+    let sandbox =
+      Sandbox.create ~workspace ~profile:profile_name ~target:target_triple_str
+        ~package_name:package.name
+    in
     Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
     let action_queue = Action_queue.create () in
     let action_nodes = Action_graph.nodes action_graph in

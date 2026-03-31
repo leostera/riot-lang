@@ -7,7 +7,6 @@ open Tusk_model
 type server_state = {
   workspace : Workspace.t;
   toolchain : Tusk_toolchain.t;
-  store : Tusk_store.Store.t;
   concurrency : int;
   package_graph : Tusk_planner.Package_graph.t;
   load_errors : Workspace_manager.load_error list;
@@ -36,8 +35,6 @@ let build_state ~(workspace : Workspace.t) ~load_errors ~config =
         exit 1
   in
 
-  let store = Tusk_store.Store.create ~workspace in
-
   let package_graph =
     match Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace with
     | Ok graph -> graph
@@ -56,7 +53,6 @@ let build_state ~(workspace : Workspace.t) ~load_errors ~config =
   {
     workspace;
     toolchain;
-    store;
     concurrency = System.available_parallelism;
     package_graph;
     load_errors;
@@ -271,7 +267,9 @@ and handle_find_artifact state client_pid package kind name =
            path. *)
         let promoted_artifact_dir =
           Path.(
-            Tusk_model.Tusk_dirs.out_dir ~workspace_root:state.workspace.root
+            Tusk_model.Tusk_dirs.out_dir_with_target
+              ~workspace_root:state.workspace.root ~profile:state.active_profile
+              ~target:state.active_target
             / Path.v package)
         in
         let promoted_artifact_path =
@@ -288,8 +286,12 @@ and handle_find_artifact state client_pid package kind name =
         | _ ->
             let profile = state.active_profile in
             let target = state.active_target in
+            let store =
+              Tusk_store.Store.create_for_lane ~workspace:state.workspace ~profile
+                ~target
+            in
             (match
-               Tusk_store.Store.find_package_export_path state.store
+               Tusk_store.Store.find_package_export_path store
                  ~package:pkg.name ~profile ~target ~name
              with
             | Some export_path -> (
@@ -500,9 +502,8 @@ and handle_build state client_pid target scope target_arch session_id =
 
   let server_pid = self () in
   Build_server.start ~workspace:updated_state.workspace ~load_errors:updated_state.load_errors
-    ~toolchain:updated_state.toolchain ~store:updated_state.store
-    ~concurrency:updated_state.concurrency ~session_id ~client_pid ~server_pid
-    ~target ~scope ~target_arch;
+    ~toolchain:updated_state.toolchain ~concurrency:updated_state.concurrency
+    ~session_id ~client_pid ~server_pid ~target ~scope ~target_arch;
 
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state

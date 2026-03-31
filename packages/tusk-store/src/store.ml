@@ -11,14 +11,21 @@ type t = { root_dir : Path.t (* Root directory for the store *) }
 type error = string
 type export_entry = { name : string; path : Path.t; action_hash : string }
 
-(** Create a new store for the given workspace *)
-let create ~(workspace : Workspace.t) =
-  let store_dir = Tusk_dirs.cache_dir ~workspace_root:workspace.root in
+(** Create a store rooted at a specific build lane *)
+let create_for_lane ~(workspace : Workspace.t) ~profile ~target =
+  let store_dir =
+    Tusk_dirs.cache_dir_with_target ~workspace_root:workspace.root ~profile
+      ~target
+  in
   Fs.create_dir_all store_dir
   |> Result.expect
        ~msg:
          ("Failed to create store directory: " ^ Path.to_string store_dir);
   { root_dir = store_dir }
+
+(** Create a new store for the given workspace *)
+let create ~(workspace : Workspace.t) =
+  create_for_lane ~workspace ~profile:"debug" ~target:(Tusk_dirs.host_target ())
 
 (** Get the path for a given hash in the store *)
 let get_hash_dir store hash =
