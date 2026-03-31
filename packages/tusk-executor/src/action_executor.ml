@@ -42,56 +42,67 @@ let make_flags_absolute sandbox_dir flags =
       | other -> other)
     flags
 
-let run_action ocamlc sandbox_dir action =
+let resolve_include_paths sandbox_dir includes =
+  List.map
+    (fun inc ->
+      let inc_str = Path.to_string inc in
+      if Path.is_absolute inc then inc
+      else if String.starts_with ~prefix:"+" inc_str then inc
+      else Path.join sandbox_dir inc)
+    includes
+
+let emit_action_command ~session_id ~package ~node command =
+  Telemetry.emit
+    Telemetry_events.(
+      ActionCommandStarted
+        {
+          session_id;
+          package;
+          action = node;
+          command;
+        })
+
+let run_action ~session_id ~package ~node ocamlc sandbox_dir action =
   match action with
   | Action.CompileInterface { source; outputs = output :: _; includes; flags }
     ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      let abs_includes =
-        List.map
-          (fun inc ->
-            let inc_str = Path.to_string inc in
-            if Path.is_absolute inc then inc
-            else if String.starts_with ~prefix:"+" inc_str then inc
-            else Path.join sandbox_dir inc)
-          includes
-      in
+      let abs_includes = resolve_include_paths sandbox_dir includes in
       let abs_flags = make_flags_absolute sandbox_dir flags in
-      Tusk_toolchain.Ocamlc.compile_interface ocamlc ~cwd:sandbox_dir
-        ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
+      let invocation =
+        Tusk_toolchain.Ocamlc.compile_interface ocamlc ~cwd:sandbox_dir
+          ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
+      in
+      emit_action_command ~session_id ~package ~node
+        (Tusk_toolchain.Ocamlc.to_string invocation);
+      Tusk_toolchain.Ocamlc.run invocation
   | Action.CompileImplementation
       { source; outputs = output :: _; includes; flags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      let abs_includes =
-        List.map
-          (fun inc ->
-            let inc_str = Path.to_string inc in
-            if Path.is_absolute inc then inc
-            else if String.starts_with ~prefix:"+" inc_str then inc
-            else Path.join sandbox_dir inc)
-          includes
-      in
+      let abs_includes = resolve_include_paths sandbox_dir includes in
       let abs_flags = make_flags_absolute sandbox_dir flags in
-      Tusk_toolchain.Ocamlc.compile_impl ocamlc ~cwd:sandbox_dir
-        ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
+      let invocation =
+        Tusk_toolchain.Ocamlc.compile_impl ocamlc ~cwd:sandbox_dir
+          ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
+      in
+      emit_action_command ~session_id ~package ~node
+        (Tusk_toolchain.Ocamlc.to_string invocation);
+      Tusk_toolchain.Ocamlc.run invocation
   | Action.GenerateInterface { source; outputs = output :: _; includes; flags }
     ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
-      let abs_includes =
-        List.map
-          (fun inc ->
-            let inc_str = Path.to_string inc in
-            if Path.is_absolute inc then inc
-            else if String.starts_with ~prefix:"+" inc_str then inc
-            else Path.join sandbox_dir inc)
-          includes
-      in
+      let abs_includes = resolve_include_paths sandbox_dir includes in
       let abs_flags = make_flags_absolute sandbox_dir flags in
-      Tusk_toolchain.Ocamlc.generate_interface ocamlc ~cwd:sandbox_dir
-        ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
+      let invocation =
+        Tusk_toolchain.Ocamlc.generate_interface ocamlc ~cwd:sandbox_dir
+          ~includes:abs_includes ~flags:abs_flags ~output:abs_output abs_source
+      in
+      emit_action_command ~session_id ~package ~node
+        (Tusk_toolchain.Ocamlc.to_string invocation);
+      Tusk_toolchain.Ocamlc.run invocation
   | Action.CompileC { source; outputs = output :: _; ccflags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
@@ -101,22 +112,24 @@ let run_action ocamlc sandbox_dir action =
         | None -> [ sandbox_dir ]
       in
       Log.debug ("[ACTION_EXECUTOR] CompileC ccflags: " ^ String.concat " " ccflags);
-      Tusk_toolchain.Ocamlc.compile_c ocamlc ~cwd:sandbox_dir
-        ~includes:source_dir ~ccflags ~output:abs_output abs_source
+      let invocation =
+        Tusk_toolchain.Ocamlc.compile_c ocamlc ~cwd:sandbox_dir
+          ~includes:source_dir ~ccflags ~output:abs_output abs_source
+      in
+      emit_action_command ~session_id ~package ~node
+        (Tusk_toolchain.Ocamlc.to_string invocation);
+      Tusk_toolchain.Ocamlc.run invocation
   | Action.CreateLibrary { outputs = output :: _; objects; includes } ->
       let abs_output = Path.join sandbox_dir output in
       let rel_objects = objects in
-      let abs_includes =
-        List.map
-          (fun inc ->
-            let inc_str = Path.to_string inc in
-            if Path.is_absolute inc then inc
-            else if String.starts_with ~prefix:"+" inc_str then inc
-            else Path.join sandbox_dir inc)
-          includes
+      let abs_includes = resolve_include_paths sandbox_dir includes in
+      let invocation =
+        Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
+          ~includes:abs_includes ~output:abs_output rel_objects
       in
-      Tusk_toolchain.Ocamlc.create_library ocamlc ~cwd:sandbox_dir
-        ~includes:abs_includes ~output:abs_output rel_objects
+      emit_action_command ~session_id ~package ~node
+        (Tusk_toolchain.Ocamlc.to_string invocation);
+      Tusk_toolchain.Ocamlc.run invocation
   | Action.CreateExecutable
       { outputs = output :: _; objects; libraries; includes; cclibs; ccopt_flags; cclib_flags } -> (
       Log.debug
@@ -130,21 +143,16 @@ let run_action ocamlc sandbox_dir action =
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
       let abs_libraries = libraries in
-      let abs_includes =
-        List.map
-          (fun inc ->
-            let inc_str = Path.to_string inc in
-            if Path.is_absolute inc then inc
-            else if String.starts_with ~prefix:"+" inc_str then inc
-            else Path.join sandbox_dir inc)
-          includes
-      in
+      let abs_includes = resolve_include_paths sandbox_dir includes in
       let abs_cclibs = cclibs in
-      let result =
+      let invocation =
         Tusk_toolchain.Ocamlc.create_executable ocamlc ~cwd:sandbox_dir
           ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs
           ~ccopt_flags ~cclib_flags ~output:abs_output abs_objects
       in
+      emit_action_command ~session_id ~package ~node
+        (Tusk_toolchain.Ocamlc.to_string invocation);
+      let result = Tusk_toolchain.Ocamlc.run invocation in
       match result with
       | Tusk_toolchain.Ocamlc.Success _ ->
           (match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
@@ -168,19 +176,16 @@ let run_action ocamlc sandbox_dir action =
       let abs_output = Path.join sandbox_dir output in
       let abs_objects = List.map (Path.join sandbox_dir) objects in
       let abs_libraries = libraries in
-      let abs_includes =
-        List.map
-          (fun inc ->
-            let inc_str = Path.to_string inc in
-            if Path.is_absolute inc then inc
-            else if String.starts_with ~prefix:"+" inc_str then inc
-            else Path.join sandbox_dir inc)
-          includes
-      in
+      let abs_includes = resolve_include_paths sandbox_dir includes in
       let abs_cclibs = cclibs in
-      Tusk_toolchain.Ocamlc.create_shared_library ocamlc ~cwd:sandbox_dir
-        ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs
-        ~ccopt_flags ~cclib_flags ~output:abs_output abs_objects)
+      let invocation =
+        Tusk_toolchain.Ocamlc.create_shared_library ocamlc ~cwd:sandbox_dir
+          ~includes:abs_includes ~libs:abs_libraries ~cclibs:abs_cclibs
+          ~ccopt_flags ~cclib_flags ~output:abs_output abs_objects
+      in
+      emit_action_command ~session_id ~package ~node
+        (Tusk_toolchain.Ocamlc.to_string invocation);
+      Tusk_toolchain.Ocamlc.run invocation)
   | Action.CompileInterface { outputs = []; _ }
   | Action.CompileImplementation { outputs = []; _ }
   | Action.GenerateInterface { outputs = []; _ }
@@ -222,13 +227,13 @@ let run_action ocamlc sandbox_dir action =
       | [] -> Tusk_toolchain.Ocamlc.Failed "BuildForeignDependency: empty build_cmd"
       | cmd_name :: cmd_args ->
           let normalized_path = Path.normalize path in
-          Log.debug
-            ("Executing: " ^ build_cmd_str ^ " in "
-           ^ Path.to_string normalized_path);
           let cmd =
             Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args
               cmd_name
           in
+          let cmd_str = Command.to_string cmd in
+          emit_action_command ~session_id ~package ~node cmd_str;
+          Log.debug ("Executing: " ^ cmd_str);
           match Command.output cmd with
           | Ok output when output.Command.status = 0 ->
               Log.debug ("Foreign build succeeded: " ^ name);
@@ -264,12 +269,16 @@ let run_action ocamlc sandbox_dir action =
               Tusk_toolchain.Ocamlc.Failed
                 ("Failed to execute foreign build command: " ^ msg))
 
-let execute_actions toolchain sandbox_dir actions =
+let execute_actions ~session_id ~(node : Action_node.t) toolchain sandbox_dir
+    actions =
   let ocamlc = Tusk_toolchain.ocamlc toolchain in
+  let package = node.value.package in
   let rec execute_next = function
     | [] -> Ok ()
     | action :: rest -> (
-        let result = run_action ocamlc sandbox_dir action in
+        let result =
+          run_action ~session_id ~package ~node ocamlc sandbox_dir action
+        in
         match result with
         | Tusk_toolchain.Ocamlc.Success _ -> execute_next rest
         | Tusk_toolchain.Ocamlc.Failed err -> Error err)
@@ -450,7 +459,7 @@ let execute_node ~completed ~store ~session_id toolchain sandbox_dir
           completed_at;
         }
     | Ok () -> (
-        match execute_actions toolchain sandbox_dir actions with
+        match execute_actions ~session_id ~node toolchain sandbox_dir actions with
         | Error msg ->
             Telemetry.emit
               Telemetry_events.(

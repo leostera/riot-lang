@@ -98,6 +98,12 @@ val make :
     The command is resolved using the system's PATH environment variable unless
     an absolute path is provided. *)
 
+val to_string : t -> string
+(** Render a command as a shell-style string for logging and debugging.
+
+    This is intended for observability only. Execution still goes through the
+    structured command value and does not invoke a shell. *)
+
 (** # Execution *)
 
 val output : t -> (output, error) result

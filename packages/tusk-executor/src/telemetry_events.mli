@@ -11,6 +11,13 @@ type package_error =
   | ActionOutputsNotCreated of { missing : Path.t list }
   | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
 
+type package_planning_status = [
+  | `Planned
+  | `MissingDependencies
+  | `FailedDependencies
+  | `Failed
+]
+
 (** Telemetry events for build system operations.
     
     These events extend the Std.Telemetry.event type and provide
@@ -21,6 +28,27 @@ type Telemetry.event +=
       session_id : Session_id.t;
       package : Package.t;
       target : Workspace_planner.target;
+    }
+  | PlanningWorkspaceStarted of {
+      session_id : Session_id.t;
+      target : Workspace_planner.target;
+      package_count : int;
+    }
+  | PlanningWorkspaceCompleted of {
+      session_id : Session_id.t;
+      target : Workspace_planner.target;
+      duration : Time.Duration.t;
+      planned_count : int;
+      missing_count : int;
+      failed_count : int;
+    }
+  | PackagePlanningResult of {
+      session_id : Session_id.t;
+      package : Package.t;
+      target : Workspace_planner.target;
+      status : package_planning_status;
+      duration : Time.Duration.t;
+      reason : string option;
     }
   | CompilationStarted of {
       session_id : Session_id.t;
@@ -50,6 +78,12 @@ type Telemetry.event +=
       session_id : Session_id.t;
       package : Package.t;
       action : Action_node.t;
+    }
+  | ActionCommandStarted of {
+      session_id : Session_id.t;
+      package : Package.t;
+      action : Action_node.t;
+      command : string;
     }
   | ActionCompleted of {
       session_id : Session_id.t;

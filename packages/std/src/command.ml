@@ -1,4 +1,5 @@
 open Global
+open Collections
 open Kernel.System
 
 module Stdio = struct
@@ -35,6 +36,35 @@ type t = {
 
 let make ?cwd ?(env = []) ?(args = []) cmd =
   { cmd; args; env; cwd; state = Pending }
+
+let is_shell_safe_char = function
+  | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9'
+  | '_' | '-' | '.' | '/' | ':' | '+' | '=' | ',' | '@' | '%' -> true
+  | _ -> false
+
+let shell_quote value =
+  if String.equal value "" then "''"
+  else if String.for_all is_shell_safe_char value then value
+  else
+    "'"
+    ^ String.concat "'\"'\"'" (String.split_on_char '\'' value)
+    ^ "'"
+
+let to_string t =
+  let command =
+    String.concat " " (List.map shell_quote (t.cmd :: t.args))
+  in
+  let command =
+    match t.env with
+    | [] -> command
+    | env ->
+        String.concat " "
+          (List.map (fun (key, value) -> key ^ "=" ^ shell_quote value) env)
+        ^ " " ^ command
+  in
+  match t.cwd with
+  | Some cwd -> "cd " ^ shell_quote cwd ^ " && " ^ command
+  | None -> command
 
 let output t =
   match t.state with

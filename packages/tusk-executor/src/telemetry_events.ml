@@ -12,11 +12,39 @@ type package_error =
   | ActionOutputsNotCreated of { missing : Path.t list }
   | ActionDependenciesFailed of { failed : Graph.SimpleGraph.Node_id.t list }
 
+type package_planning_status = [
+  | `Planned
+  | `MissingDependencies
+  | `FailedDependencies
+  | `Failed
+]
+
 type Telemetry.event +=
   | BuildStarted of {
       session_id : Session_id.t;
       package : Package.t;
       target : Workspace_planner.target;
+    }
+  | PlanningWorkspaceStarted of {
+      session_id : Session_id.t;
+      target : Workspace_planner.target;
+      package_count : int;
+    }
+  | PlanningWorkspaceCompleted of {
+      session_id : Session_id.t;
+      target : Workspace_planner.target;
+      duration : Time.Duration.t;
+      planned_count : int;
+      missing_count : int;
+      failed_count : int;
+    }
+  | PackagePlanningResult of {
+      session_id : Session_id.t;
+      package : Package.t;
+      target : Workspace_planner.target;
+      status : package_planning_status;
+      duration : Time.Duration.t;
+      reason : string option;
     }
   | CompilationStarted of {
       session_id : Session_id.t;
@@ -46,6 +74,12 @@ type Telemetry.event +=
       session_id : Session_id.t;
       package : Package.t;
       action : Action_node.t;
+    }
+  | ActionCommandStarted of {
+      session_id : Session_id.t;
+      package : Package.t;
+      action : Action_node.t;
+      command : string;
     }
   | ActionCompleted of {
       session_id : Session_id.t;
@@ -118,6 +152,19 @@ let action_to_json (action : Action_node.t) =
       ("action_node", Action_node.to_json action);
     ]
 
+let planning_status_to_json = function
+  | `Planned -> Data.Json.String "planned"
+  | `MissingDependencies -> Data.Json.String "missing_dependencies"
+  | `FailedDependencies -> Data.Json.String "failed_dependencies"
+  | `Failed -> Data.Json.String "failed"
+
+let planning_status_of_json = function
+  | Data.Json.String "planned" -> Ok `Planned
+  | Data.Json.String "missing_dependencies" -> Ok `MissingDependencies
+  | Data.Json.String "failed_dependencies" -> Ok `FailedDependencies
+  | Data.Json.String "failed" -> Ok `Failed
+  | _ -> Error (Data.Json.String "Invalid planning status")
+
 let to_json : Telemetry.event -> Data.Json.t option = function
   | BuildStarted { session_id; package; target } ->
       Some
@@ -128,6 +175,59 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("package", Package.to_json package);
              ("target", target_to_json target);
            ])
+  | PlanningWorkspaceStarted { session_id; target; package_count } ->
+      Some
+        (Data.Json.Object
+           [
+             ("type", Data.Json.String "PlanningWorkspaceStarted");
+             ("session_id", Data.Json.String (Session_id.to_string session_id));
+             ("target", target_to_json target);
+             ("package_count", Data.Json.Int package_count);
+           ])
+  | PlanningWorkspaceCompleted
+      {
+        session_id;
+        target;
+        duration;
+        planned_count;
+        missing_count;
+        failed_count;
+      } ->
+      Some
+        (Data.Json.Object
+           [
+             ("type", Data.Json.String "PlanningWorkspaceCompleted");
+             ("session_id", Data.Json.String (Session_id.to_string session_id));
+             ("target", target_to_json target);
+             ( "duration_ms",
+               Data.Json.Int (Time.Duration.to_millis duration) );
+             ("planned_count", Data.Json.Int planned_count);
+             ("missing_count", Data.Json.Int missing_count);
+             ("failed_count", Data.Json.Int failed_count);
+           ])
+  | PackagePlanningResult
+      {
+        session_id;
+        package;
+        target;
+        status;
+        duration;
+        reason;
+      } ->
+      Some
+        (Data.Json.Object
+           ([
+              ("type", Data.Json.String "PackagePlanningResult");
+              ("session_id", Data.Json.String (Session_id.to_string session_id));
+              ("package", Package.to_json package);
+              ("target", target_to_json target);
+              ("status", planning_status_to_json status);
+              ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
+            ]
+           @
+           match reason with
+           | Some reason -> [ ("reason", Data.Json.String reason) ]
+           | None -> []))
   | CompilationStarted { session_id; package; target } ->
       Some
         (Data.Json.Object
@@ -142,6 +242,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
         (Data.Json.Object
            [
              ("type", Data.Json.String "BuildCompleted");
+             ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
              ("target", target_to_json target);
              ( "status",
@@ -214,6 +315,16 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
              ("action", action_to_json action);
+           ])
+  | ActionCommandStarted { session_id; package; action; command } ->
+      Some
+        (Data.Json.Object
+           [
+             ("type", Data.Json.String "ActionCommandStarted");
+             ("session_id", Data.Json.String (Session_id.to_string session_id));
+             ("package", Package.to_json package);
+             ("action", action_to_json action);
+             ("command", Data.Json.String command);
            ])
   | ActionCompleted { session_id; package; action; artifact; status; duration } ->
       let artifact_files =
@@ -308,11 +419,95 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
               match Package.from_json package_json with
               | Ok package ->
                   let session_id = Session_id.of_string session_id_str in
-                  (match target_of_json target_json with
-                  | Ok target -> Ok (BuildStarted { session_id; package; target })
-                  | Error e -> Error e)
+                                  (match target_of_json target_json with
+                                  | Ok target -> Ok (BuildStarted { session_id; package; target })
+                                  | Error e -> Error e)
+                              | Error e -> Error (Data.Json.String e))
+              | _ -> Error (Data.Json.String "Invalid BuildStarted event"))
+      | Some (Data.Json.String "PlanningWorkspaceStarted") -> (
+          match
+            ( List.assoc_opt "target" fields,
+              List.assoc_opt "package_count" fields )
+          with
+          | Some (Data.Json.String target_str), Some (Data.Json.Int package_count) -> (
+              match target_of_json (Data.Json.String target_str) with
+              | Ok target ->
+                  Ok
+                    (PlanningWorkspaceStarted
+                       {
+                         session_id = get_session_id fields;
+                         target;
+                         package_count;
+                       })
+              | Error e -> Error e)
+          | _ ->
+              Error
+                (Data.Json.String "Invalid PlanningWorkspaceStarted event"))
+      | Some (Data.Json.String "PlanningWorkspaceCompleted") -> (
+          match
+            ( List.assoc_opt "target" fields,
+              List.assoc_opt "duration_ms" fields,
+              List.assoc_opt "planned_count" fields,
+              List.assoc_opt "missing_count" fields,
+              List.assoc_opt "failed_count" fields )
+          with
+          | ( Some (Data.Json.String target_str),
+              Some (Data.Json.Int duration_ms),
+              Some (Data.Json.Int planned_count),
+              Some (Data.Json.Int missing_count),
+              Some (Data.Json.Int failed_count) ) -> (
+              match target_of_json (Data.Json.String target_str) with
+              | Ok target ->
+                  Ok
+                    (PlanningWorkspaceCompleted
+                       {
+                         session_id = get_session_id fields;
+                         target;
+                         duration = Time.Duration.from_millis duration_ms;
+                         planned_count;
+                         missing_count;
+                         failed_count;
+                       })
+              | Error e -> Error e)
+          | _ ->
+              Error
+                (Data.Json.String "Invalid PlanningWorkspaceCompleted event"))
+      | Some (Data.Json.String "PackagePlanningResult") -> (
+          match
+            ( List.assoc_opt "package" fields,
+              List.assoc_opt "target" fields,
+              List.assoc_opt "status" fields,
+              List.assoc_opt "duration_ms" fields )
+          with
+          | ( Some package_json,
+              Some (Data.Json.String target_str),
+              Some status_json,
+              Some (Data.Json.Int duration_ms) ) -> (
+              match Package.from_json package_json with
+              | Ok package ->
+                  (match
+                     ( target_of_json (Data.Json.String target_str),
+                       planning_status_of_json status_json )
+                   with
+                  | Ok target, Ok status ->
+                      Ok
+                        (PackagePlanningResult
+                           {
+                             session_id = get_session_id fields;
+                             package;
+                             target;
+                             status;
+                             duration = Time.Duration.from_millis duration_ms;
+                             reason =
+                               (match List.assoc_opt "reason" fields with
+                               | Some (Data.Json.String reason) ->
+                                   Some reason
+                               | _ -> None);
+                           })
+                  | Error e, _ -> Error e
+                  | _, Error e -> Error e)
               | Error e -> Error (Data.Json.String e))
-          | _ -> Error (Data.Json.String "Invalid BuildStarted event"))
+          | _ -> Error (Data.Json.String "Invalid PackagePlanningResult event"))
       | Some (Data.Json.String "CompilationStarted") -> (
           match
             (List.assoc_opt "session_id" fields, List.assoc_opt "package" fields, List.assoc_opt "target" fields)
@@ -558,6 +753,7 @@ let from_json (json : Data.Json.t) : (Telemetry.event, Data.Json.t) result =
           | _ -> Error (Data.Json.String "Invalid WorkspaceCompleted event"))
       (* Action events still can't be deserialized - they need Action_node.t *)
       | Some (Data.Json.String "ActionStarted")
+      | Some (Data.Json.String "ActionCommandStarted")
       | Some (Data.Json.String "ActionCompleted")
       | Some (Data.Json.String "ActionFailed")
       | Some (Data.Json.String "CacheHit")

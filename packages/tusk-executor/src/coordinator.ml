@@ -219,11 +219,16 @@ let finalize_package_success ~session_id ~store ~runtime =
   | `Cached -> Package_builder.Cached artifact
   | `Fresh -> Built artifact
 
-let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~package_graph
-    ~build_ctx ~session_id ~nodes =
+let build_workspace_actions
+    ~(workspace : Workspace.t) ~toolchain ~store ~package_graph ~target ~build_ctx
+    ~session_id ~nodes =
   let profile_name = build_ctx.Build_ctx.profile.name in
   let target_triple_str =
     Kernel.System.Host.to_string (Build_ctx.target_triplet build_ctx)
+  in
+  let planning_duration = ref Time.Duration.zero in
+  let planning_results : (Package.key, package_planning_status) HashMap.t =
+    HashMap.create ()
   in
   let runtimes : (Package.key, package_runtime) HashMap.t = HashMap.create () in
   let package_results : (Package.key, Package_builder.build_result) HashMap.t =
@@ -248,6 +253,10 @@ let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~packag
         Some item
   in
 
+  Telemetry.emit
+    (PlanningWorkspaceStarted
+       { session_id; target; package_count = List.length nodes });
+
   let materialize_initial_failure package_key package status =
     let result =
       Package_builder.
@@ -260,6 +269,22 @@ let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~packag
     in
     let _ = HashMap.insert package_results package_key result in
     result
+  in
+
+  let update_planning_progress package_key status ~duration ~package ~reason =
+    planning_duration :=
+      Time.Duration.add !planning_duration duration;
+    let _ = HashMap.insert planning_results package_key status in
+    Telemetry.emit
+      (PackagePlanningResult
+         {
+           session_id;
+           package;
+           target;
+           status;
+           duration;
+           reason;
+         })
   in
 
   let target_dir_for package_name =
@@ -402,17 +427,48 @@ let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~packag
         (fun package_node ->
           let package = Package_graph.get_package package_node in
           let package_key = Package_graph.get_key package_node in
+          let planning_start = Time.Instant.now () in
           match
             Tusk_planner.plan_package_with_graph ~workspace ~toolchain ~store
               ~package_graph ~package_key ~package ~build_ctx
           with
           | Error err ->
+              update_planning_progress
+                package_key `Failed
+                ~duration:
+                  (Time.Instant.duration_since ~earlier:planning_start
+                     (Time.Instant.now ()))
+                ~package ~reason:(Some (Planning_error.to_string err));
               let _ =
                 materialize_initial_failure package_key package
                   (Package_builder.Failed (PlanningFailed err))
               in
               ()
-          | Ok (MissingDependencies _) | Ok (FailedDependencies _) ->
+          | Ok (MissingDependencies { missing }) ->
+              update_planning_progress
+                package_key `MissingDependencies
+                ~duration:
+                  (Time.Instant.duration_since ~earlier:planning_start
+                     (Time.Instant.now ()))
+                ~package
+                ~reason:
+                  (Some
+                     ("Missing dependencies: "
+                     ^ (missing |> List.map (fun p -> p.Package.name)
+                        |> String.concat ", ")));
+              Vector.push still_pending package_node
+          | Ok (FailedDependencies { failed; _ }) ->
+              update_planning_progress
+                package_key `FailedDependencies
+                ~duration:
+                  (Time.Instant.duration_since ~earlier:planning_start
+                     (Time.Instant.now ()))
+                ~package
+                ~reason:
+                  (Some
+                     ("Failed dependencies: "
+                     ^ (failed |> List.map (fun p -> p.Package.name)
+                        |> String.concat ", ")));
               Vector.push still_pending package_node
           | Ok
               (Planned
@@ -424,6 +480,12 @@ let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~packag
                   action_graph;
                   _;
                 }) ->
+              update_planning_progress
+                package_key `Planned
+                ~duration:
+                  (Time.Instant.duration_since planning_start
+                     (Time.Instant.now ()))
+                ~package ~reason:None;
               progressed := true;
               if
                 not
@@ -477,6 +539,11 @@ let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~packag
                   | _ -> None)
                 dep_keys
             in
+            update_planning_progress
+              package_key `FailedDependencies
+              ~duration:Time.Duration.zero
+              ~package
+              ~reason:(Some ("Failed dependencies: " ^ String.concat ", " names));
             let _ =
               materialize_initial_failure package_key package
                 (Package_builder.Failed
@@ -498,19 +565,49 @@ let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~packag
                 dep_keys
             in
             if deps_satisfied then
+              let planning_start = Time.Instant.now () in
               match
                 Tusk_planner.plan_package_with_graph ~workspace ~toolchain ~store
                   ~package_graph ~package_key ~package ~build_ctx
               with
               | Error err ->
+              update_planning_progress
+                package_key `Failed
+                ~duration:
+                  (Time.Instant.duration_since ~earlier:planning_start
+                     (Time.Instant.now ()))
+                ~package ~reason:(Some (Planning_error.to_string err));
                   let _ =
                     materialize_initial_failure package_key package
                       (Package_builder.Failed (PlanningFailed err))
                   in
                   let _ = HashMap.remove pending_planning package_key in
                   ()
-              | Ok (MissingDependencies _) -> ()
+              | Ok (MissingDependencies { missing }) ->
+                  update_planning_progress
+                    package_key `MissingDependencies
+                    ~duration:
+                      (Time.Instant.duration_since ~earlier:planning_start
+                         (Time.Instant.now ()))
+                    ~package
+                    ~reason:
+                      (Some
+                         ("Missing dependencies: "
+                         ^ (missing |> List.map (fun p -> p.Package.name)
+                            |> String.concat ", ")));
+                  ()
               | Ok (FailedDependencies { failed; _ }) ->
+                  update_planning_progress
+                    package_key `FailedDependencies
+                    ~duration:
+                      (Time.Instant.duration_since ~earlier:planning_start
+                         (Time.Instant.now ()))
+                    ~package
+                    ~reason:
+                      (Some
+                         ("Failed dependencies: "
+                         ^ (failed |> List.map (fun p -> p.Package.name)
+                            |> String.concat ", ")));
                   let names = List.map (fun p -> p.Package.name) failed in
                   let _ =
                     materialize_initial_failure package_key package
@@ -534,6 +631,12 @@ let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~packag
                       action_graph;
                       _;
                     }) ->
+                  update_planning_progress
+                    package_key `Planned
+                    ~duration:
+                      (Time.Instant.duration_since planning_start
+                         (Time.Instant.now ()))
+                    ~package ~reason:None;
                   if
                     not
                       (maybe_short_circuit_cached_package ~package_key ~package
@@ -790,7 +893,30 @@ let build_workspace_actions ~(workspace : Workspace.t) ~toolchain ~store ~packag
                 loop ())
         | _ -> loop ())
   in
+  let planning_counts () =
+    HashMap.into_iter planning_results
+    |> Iter.Iterator.to_list
+    |> List.fold_left
+         (fun (planned, missing, failed) (_, status) ->
+           match status with
+           | `Planned -> (planned + 1, missing, failed)
+           | `MissingDependencies -> (planned, missing + 1, failed)
+           | `FailedDependencies | `Failed -> (planned, missing, failed + 1))
+         (0, 0, 0)
+  in
   loop ();
+  let planned_count, missing_count, failed_count = planning_counts () in
+  let planning_duration = !planning_duration in
+  Telemetry.emit
+    (PlanningWorkspaceCompleted
+       {
+         session_id;
+         target;
+         duration = planning_duration;
+         planned_count;
+         missing_count;
+         failed_count;
+       });
   package_results
   |> HashMap.into_iter
   |> Iter.Iterator.to_list
@@ -818,6 +944,7 @@ let build_workspace ~workspace ~toolchain ~store ~target ~scope ~concurrency
       | nodes ->
           let results =
             build_workspace_actions ~workspace ~toolchain ~store ~package_graph
+              ~target
               ~build_ctx ~session_id ~nodes
           in
           let result = summarize_results ~package_graph results in

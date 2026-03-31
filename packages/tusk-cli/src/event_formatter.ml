@@ -53,6 +53,7 @@ let format ~displayed_packages (event : Telemetry.event) =
       ""
   (* Action events - mostly silent, let package-level events show *)
   | Telemetry_events.ActionStarted _ -> ""
+  | Telemetry_events.ActionCommandStarted _ -> ""
   | Telemetry_events.ActionCompleted _ -> ""
   | Telemetry_events.ActionFailed _ ->
       (* Don't show - BuildFailed will show the error *)

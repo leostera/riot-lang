@@ -35,14 +35,22 @@ let init ~(workspace : Workspace.t) ~load_errors ~toolchain ~store ~concurrency 
       | _ -> ());
       (* Filter events by session_id to prevent cross-contamination *)
       let event_session_id = match event with
+        | Tusk_executor.Telemetry_events.PlanningWorkspaceStarted { session_id; _ } ->
+            Some session_id
         | Tusk_executor.Telemetry_events.BuildStarted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.CompilationStarted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.BuildCompleted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.BuildFailed { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.BuildSkipped { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.PlanningWorkspaceCompleted { session_id; _ } ->
+            Some session_id
+        | Tusk_executor.Telemetry_events.PackagePlanningResult { session_id; _ } ->
+            Some session_id
         | Tusk_executor.Telemetry_events.WorkspaceStarted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.WorkspaceCompleted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.ActionStarted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.ActionCommandStarted { session_id; _ } ->
+            Some session_id
         | Tusk_executor.Telemetry_events.ActionCompleted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.ActionFailed { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.CacheHit { session_id; _ } -> Some session_id

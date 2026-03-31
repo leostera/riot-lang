@@ -12,6 +12,7 @@
 6. Toolchain downloads replace existing installs atomically enough to avoid mixing stale archives with new contents.
 7. Toolchain cache fingerprints must change when installed compiler artifacts or bundled sysroot markers change, even if the install path stays the same.
 8. Toolchains shipped in release archives should include `manifest.json` with a stable `toolchain_fingerprint`, and toolchain cache hashing should prefer this manifest over probing files on disk.
+9. Prepared compiler invocations should stay opaque to callers; keep execution semantics in `tusk-toolchain` instead of exposing raw process execution to higher layers.
 
 ## Validate
 
