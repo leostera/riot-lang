@@ -112,8 +112,16 @@
                   }
                 },
                 "type": null,
-                "is_mutable": true,
-                "is_override": false
+                "modifier_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "mutable",
+                    "span": {
+                      "start": 25,
+                      "end": 32
+                    }
+                  }
+                ]
               }
             ]
           },

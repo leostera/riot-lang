@@ -2433,35 +2433,14 @@ and render_object_method
        body;
        type_;
        attributes;
-       is_private;
-       is_override;
+       modifier_tokens;
        _;
      } : Syn.Cst.object_method) =
-  let keyword =
-    if is_override then
-      Doc.concat [ kw_method; Doc.text "!" ]
-    else
-      kw_method
-  in
-  let modifiers =
-    [
-      (if is_private then Some kw_private else None);
-    ]
-    |> List.filter_map (fun modifier -> modifier)
-  in
   let head =
-    match modifiers with
-    | [] ->
-        Doc.concat [ keyword; Doc.space; doc_of_token name_token ]
-    | modifiers ->
-        Doc.concat
-          [
-            keyword;
-            Doc.space;
-            Doc.join Doc.space modifiers;
-            Doc.space;
-            doc_of_token name_token;
-          ]
+    Doc.concat
+      ([ kw_method ]
+      @ List.map doc_of_token_with_leading_trivia modifier_tokens
+      @ [ doc_of_token_with_leading_trivia name_token ])
   in
   let doc =
     match type_ with
@@ -2478,35 +2457,14 @@ and render_object_value
        value;
        type_;
        attributes;
-       is_mutable;
-       is_override;
+       modifier_tokens;
        _;
      } : Syn.Cst.object_value) =
-  let keyword =
-    if is_override then
-      Doc.concat [ kw_val; Doc.text "!" ]
-    else
-      kw_val
-  in
-  let modifiers =
-    [
-      (if is_mutable then Some kw_mutable else None);
-    ]
-    |> List.filter_map (fun modifier -> modifier)
-  in
   let head =
-    match modifiers with
-    | [] ->
-        Doc.concat [ keyword; Doc.space; doc_of_token name_token ]
-    | modifiers ->
-        Doc.concat
-          [
-            keyword;
-            Doc.space;
-            Doc.join Doc.space modifiers;
-            Doc.space;
-            doc_of_token name_token;
-          ]
+    Doc.concat
+      ([ kw_val ]
+      @ List.map doc_of_token_with_leading_trivia modifier_tokens
+      @ [ doc_of_token_with_leading_trivia name_token ])
   in
   let doc =
     match type_ with
@@ -2589,20 +2547,20 @@ and render_object_expression
 and render_class_type_field = function
   | Syn.Cst.ClassTypeField.Inherit { class_type; _ } ->
       Doc.concat [ kw_inherit; Doc.space; render_class_type_doc class_type ]
-  | Syn.Cst.ClassTypeField.Value { name_token; type_; is_mutable; _ } ->
+  | Syn.Cst.ClassTypeField.Value { name_token; type_; modifier_tokens; _ } ->
       let head =
-        if is_mutable then
-          Doc.concat [ kw_val; Doc.space; kw_mutable; Doc.space; doc_of_token name_token ]
-        else
-          Doc.concat [ kw_val; Doc.space; doc_of_token name_token ]
+        Doc.concat
+          ([ kw_val ]
+          @ List.map doc_of_token_with_leading_trivia modifier_tokens
+          @ [ doc_of_token_with_leading_trivia name_token ])
       in
       Doc.concat [ head; annotation_colon; render_core_type type_ ]
-  | Syn.Cst.ClassTypeField.Method { name_token; type_; is_private; _ } ->
+  | Syn.Cst.ClassTypeField.Method { name_token; type_; modifier_tokens; _ } ->
       let head =
-        if is_private then
-          Doc.concat [ kw_method; Doc.space; kw_private; Doc.space; doc_of_token name_token ]
-        else
-          Doc.concat [ kw_method; Doc.space; doc_of_token name_token ]
+        Doc.concat
+          ([ kw_method ]
+          @ List.map doc_of_token_with_leading_trivia modifier_tokens
+          @ [ doc_of_token_with_leading_trivia name_token ])
       in
       Doc.concat [ head; annotation_colon; render_core_type type_ ]
   | Syn.Cst.ClassTypeField.Constraint { left; right; _ } ->
@@ -2700,39 +2658,17 @@ and render_class_method
     ({
        name_token;
        definition;
-       is_private;
-       is_override;
+       modifier_tokens;
        _;
      } : Syn.Cst.class_method) =
-  let keyword =
-    if is_override then
-      Doc.concat [ kw_method; Doc.text "!" ]
-    else
-      kw_method
-  in
-  let modifiers =
-    [
-      (if is_private then Some kw_private else None);
-      (match definition with Syn.Cst.VirtualMethod _ -> Some kw_virtual | Syn.Cst.ConcreteMethod _ -> None);
-    ]
-    |> List.filter_map (fun modifier -> modifier)
-  in
   let head =
-    match modifiers with
-    | [] ->
-        Doc.concat [ keyword; Doc.space; doc_of_token name_token ]
-    | modifiers ->
-        Doc.concat
-          [
-            keyword;
-            Doc.space;
-            Doc.join Doc.space modifiers;
-            Doc.space;
-            doc_of_token name_token;
-          ]
+    Doc.concat
+      ([ kw_method ]
+      @ List.map doc_of_token_with_leading_trivia modifier_tokens
+      @ [ doc_of_token_with_leading_trivia name_token ])
   in
   match definition with
-  | Syn.Cst.VirtualMethod { type_ } ->
+  | Syn.Cst.VirtualMethod { type_; _ } ->
       Doc.concat [ head; annotation_colon; render_core_type type_ ]
   | Syn.Cst.ConcreteMethod { body; type_ = None } ->
       render_class_member_body ~head body
@@ -2743,39 +2679,17 @@ and render_class_value
     ({
        name_token;
        definition;
-       is_mutable;
-       is_override;
+       modifier_tokens;
        _;
      } : Syn.Cst.class_value) =
-  let keyword =
-    if is_override then
-      Doc.concat [ kw_val; Doc.text "!" ]
-    else
-      kw_val
-  in
-  let modifiers =
-    [
-      (if is_mutable then Some kw_mutable else None);
-      (match definition with Syn.Cst.VirtualValue _ -> Some kw_virtual | Syn.Cst.ConcreteValue _ -> None);
-    ]
-    |> List.filter_map (fun modifier -> modifier)
-  in
   let head =
-    match modifiers with
-    | [] ->
-        Doc.concat [ keyword; Doc.space; doc_of_token name_token ]
-    | modifiers ->
-        Doc.concat
-          [
-            keyword;
-            Doc.space;
-            Doc.join Doc.space modifiers;
-            Doc.space;
-            doc_of_token name_token;
-          ]
+    Doc.concat
+      ([ kw_val ]
+      @ List.map doc_of_token_with_leading_trivia modifier_tokens
+      @ [ doc_of_token_with_leading_trivia name_token ])
   in
   match definition with
-  | Syn.Cst.VirtualValue { type_ } ->
+  | Syn.Cst.VirtualValue { type_; _ } ->
       Doc.concat [ head; annotation_colon; render_core_type type_ ]
   | Syn.Cst.ConcreteValue { value; type_ = None } ->
       render_class_member_body ~head value

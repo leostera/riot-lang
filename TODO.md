@@ -30,17 +30,9 @@ This file is _yours_. Keep it up to date after every big change.
   - [ ] `if_expression.else_branch_leading_trivia`
   - [ ] `parenthesized_expression.inner_leading_trivia`
 - [ ] Replace CST booleans that collapse real syntax choices with token-backed structure where the original tokens matter:
-  - object/class member modifier booleans when they should preserve `private` / `mutable` / `virtual` / `!`
-  - [x] module declaration heads preserve `module` / `and` / `rec` tokens
+  - keep auditing for any remaining bool-only syntax shells that still drop modifier trivia
 - [ ] Keep local opens token-backed and grammar-true:
-  - expression local opens should use explicit `LetOpen` / `Delimited` shapes with original tokens
-  - pattern local opens stay pattern-only
   - do not reintroduce type-side local opens into the parser or CST
-- [ ] Preserve declaration separator/head tokens where trivia can attach and the CST currently drops them:
-  - [x] `ModuleTypeDeclaration` preserves `=`
-  - [x] `ValueDeclaration` preserves `:`
-  - [x] `ExternalDeclaration` preserves `:` and `=`
-  - module declaration heads should preserve the relevant `module` / `and` / `rec` shell tokens if we need them structurally
 - [ ] Keep auditing real `tusk fmt` output for destructive regressions only:
   - dropped comments or docstrings
   - duplicated trivia

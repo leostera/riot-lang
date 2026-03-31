@@ -772,7 +772,7 @@ and descend_class_field = fun walk ctx (field : Cst.class_field) ->
               | Some type_ -> walk.core_type ctx type_
               | None -> ctx
             )
-        | Cst.VirtualMethod { type_ } ->
+        | Cst.VirtualMethod { type_; _ } ->
             walk.core_type ctx type_
       )
   | Cst.ClassField.Value value ->
@@ -785,7 +785,7 @@ and descend_class_field = fun walk ctx (field : Cst.class_field) ->
               | Some type_ -> walk.core_type ctx type_
               | None -> ctx
             )
-        | Cst.VirtualValue { type_ } ->
+        | Cst.VirtualValue { type_; _ } ->
             walk.core_type ctx type_
       )
   | Cst.ClassField.Inherit inherit_ ->

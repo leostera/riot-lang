@@ -439,14 +439,14 @@ and class_type_field =
       syntax_node : syntax_node;
       name_token : Token.t;
       type_ : core_type;
-      is_mutable : bool;
+      modifier_tokens : Token.t list;
       owned_trivia : owned_trivia;
     }
   | Method of {
       syntax_node : syntax_node;
       name_token : Token.t;
       type_ : core_type;
-      is_private : bool;
+      modifier_tokens : Token.t list;
       owned_trivia : owned_trivia;
     }
   | Constraint of {
@@ -699,14 +699,14 @@ module ClassTypeField = struct
         syntax_node : syntax_node;
         name_token : Token.t;
         type_ : core_type;
-        is_mutable : bool;
+        modifier_tokens : Token.t list;
         owned_trivia : owned_trivia;
       }
     | Method of {
         syntax_node : syntax_node;
         name_token : Token.t;
         type_ : core_type;
-        is_private : bool;
+        modifier_tokens : Token.t list;
         owned_trivia : owned_trivia;
       }
     | Constraint of {
@@ -1232,6 +1232,7 @@ and method_definition =
       type_ : core_type option;
     }
   | VirtualMethod of {
+      virtual_token : Token.t;
       type_ : core_type;
     }
 
@@ -1241,6 +1242,7 @@ and value_definition =
       type_ : core_type option;
     }
   | VirtualValue of {
+      virtual_token : Token.t;
       type_ : core_type;
     }
 
@@ -1251,8 +1253,7 @@ and object_method = {
   name_token : Token.t;
   body : expression;
   type_ : core_type option;
-  is_private : bool;
-  is_override : bool;
+  modifier_tokens : Token.t list;
 }
 
 and object_value = {
@@ -1262,8 +1263,7 @@ and object_value = {
   name_token : Token.t;
   value : expression;
   type_ : core_type option;
-  is_mutable : bool;
-  is_override : bool;
+  modifier_tokens : Token.t list;
 }
 
 and object_inherit = {
@@ -1709,8 +1709,7 @@ and class_method = {
   syntax_node : syntax_node;
   name_token : Token.t;
   definition : method_definition;
-  is_private : bool;
-  is_override : bool;
+  modifier_tokens : Token.t list;
   owned_trivia : owned_trivia;
 }
 
@@ -1718,8 +1717,7 @@ and class_value = {
   syntax_node : syntax_node;
   name_token : Token.t;
   definition : value_definition;
-  is_mutable : bool;
-  is_override : bool;
+  modifier_tokens : Token.t list;
   owned_trivia : owned_trivia;
 }
 

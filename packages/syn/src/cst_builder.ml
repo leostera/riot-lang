@@ -3559,14 +3559,17 @@ and class_type_field_from_node = fun node ->
           match first_ident_token_in_subtree name_node, List.find_opt can_lift_core_type_node remainder with
           | Some name_token, Some type_node ->
               let payload_type_node, field_attribute = core_type_payload_and_field_attribute type_node in
+              let modifier_tokens =
+                direct_non_trivia_tokens node
+                |> List.filter (fun token ->
+                  String.equal "mutable" (Ceibo.Red.SyntaxToken.text token))
+                |> List.map token
+              in
               let field = Cst.ClassTypeField.Value {
                 syntax_node = node;
                 name_token;
                 type_ = core_type_from_node payload_type_node;
-                is_mutable = List.exists
-                  (fun tok ->
-                    String.equal (Ceibo.Red.SyntaxToken.text tok) "mutable")
-                  (direct_non_trivia_tokens node);
+                modifier_tokens;
                 owned_trivia = owned_trivia_from_node node
               }
               in
@@ -3589,14 +3592,17 @@ and class_type_field_from_node = fun node ->
           match first_ident_token_in_subtree name_node, List.find_opt can_lift_core_type_node remainder with
           | Some name_token, Some type_node ->
               let payload_type_node, field_attribute = core_type_payload_and_field_attribute type_node in
+              let modifier_tokens =
+                direct_non_trivia_tokens node
+                |> List.filter (fun token ->
+                  String.equal "private" (Ceibo.Red.SyntaxToken.text token))
+                |> List.map token
+              in
               let field = Cst.ClassTypeField.Method {
                 syntax_node = node;
                 name_token;
                 type_ = core_type_from_node payload_type_node;
-                is_private = List.exists
-                  (fun tok ->
-                    String.equal (Ceibo.Red.SyntaxToken.text tok) "private")
-                  (direct_non_trivia_tokens node);
+                modifier_tokens;
                 owned_trivia = owned_trivia_from_node node
               }
               in
@@ -5519,6 +5525,13 @@ and object_method_from_node = fun node ->
   | name_node :: remainder when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
       match first_ident_token_in_subtree name_node with
       | Some name_token ->
+          let modifier_tokens =
+            direct_non_trivia_tokens node
+            |> List.filter (fun token ->
+              let text = Ceibo.Red.SyntaxToken.text token in
+              String.equal "!" text || String.equal "private" text)
+            |> List.map token
+          in
           let body =
             remainder |> List.rev |> List.find_opt can_lift_expression_node |> Option.map expression_from_node
           in
@@ -5535,18 +5548,11 @@ and object_method_from_node = fun node ->
                | Some body -> body
                | None ->
                    bail ~message:"expected body expression for object method during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-                     "object_member";
-                     "method"
-                   ]);
+                   "object_member";
+                   "method"
+                 ]);
             type_;
-            is_private = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "private")
-              (direct_non_trivia_tokens node);
-            is_override = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
-              (direct_non_trivia_tokens node)
+            modifier_tokens
           }
       | None -> None
     )
@@ -5558,6 +5564,13 @@ and object_value_from_node = fun node ->
   | name_node :: remainder when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
       match first_ident_token_in_subtree name_node with
       | Some name_token ->
+          let modifier_tokens =
+            direct_non_trivia_tokens node
+            |> List.filter (fun token ->
+              let text = Ceibo.Red.SyntaxToken.text token in
+              String.equal "!" text || String.equal "mutable" text)
+            |> List.map token
+          in
           let value =
             remainder |> List.rev |> List.find_opt can_lift_expression_node |> Option.map expression_from_node
           in
@@ -5574,18 +5587,11 @@ and object_value_from_node = fun node ->
                | Some value -> value
                | None ->
                    bail ~message:"expected bound expression for object value during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-                     "object_member";
-                     "value"
-                   ]);
+                   "object_member";
+                   "value"
+                 ]);
             type_;
-            is_mutable = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "mutable")
-              (direct_non_trivia_tokens node);
-            is_override = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
-              (direct_non_trivia_tokens node)
+            modifier_tokens
           }
       | None -> None
     )
@@ -6278,6 +6284,15 @@ and class_method_from_node = fun node ->
   | name_node :: remainder when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
       match first_ident_token_in_subtree name_node with
       | Some name_token ->
+          let modifier_tokens =
+            direct_non_trivia_tokens node
+            |> List.filter (fun token ->
+              let text = Ceibo.Red.SyntaxToken.text token in
+              String.equal "!" text
+              || String.equal "private" text
+              || String.equal "virtual" text)
+            |> List.map token
+          in
           let body, field_attributes =
             match remainder |> List.rev |> List.find_opt can_lift_expression_node with
             | Some body_node ->
@@ -6302,7 +6317,21 @@ and class_method_from_node = fun node ->
           let definition : Cst.method_definition =
             if is_virtual then
               match type_ with
-              | Some type_ -> Cst.VirtualMethod { type_ }
+              | Some type_ -> (
+                  match
+                    List.find_opt
+                      (fun token -> String.equal (Cst.Token.text token) "virtual")
+                      modifier_tokens
+                  with
+                  | Some virtual_token ->
+                      Cst.VirtualMethod { virtual_token; type_ }
+                  | None ->
+                      bail ~message:"expected virtual token for virtual class method during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                        "class_field";
+                        "method";
+                        "virtual"
+                      ]
+                )
               | None ->
                   bail ~message:"expected type annotation for virtual class method during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                     "class_field";
@@ -6323,14 +6352,7 @@ and class_method_from_node = fun node ->
             Cst.syntax_node = node;
             name_token;
             definition;
-            is_private = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "private")
-              (direct_non_trivia_tokens node);
-            is_override = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
-              (direct_non_trivia_tokens node);
+            modifier_tokens;
             owned_trivia = owned_trivia_from_node node
           }
           in
@@ -6346,6 +6368,15 @@ and class_value_from_node = fun node ->
   | name_node :: remainder when Ceibo.Red.SyntaxNode.kind name_node = Syntax_kind.IDENT_EXPR -> (
       match first_ident_token_in_subtree name_node with
       | Some name_token ->
+          let modifier_tokens =
+            direct_non_trivia_tokens node
+            |> List.filter (fun token ->
+              let text = Ceibo.Red.SyntaxToken.text token in
+              String.equal "!" text
+              || String.equal "mutable" text
+              || String.equal "virtual" text)
+            |> List.map token
+          in
           let value, field_attributes =
             match remainder |> List.rev |> List.find_opt can_lift_expression_node with
             | Some value_node ->
@@ -6370,7 +6401,21 @@ and class_value_from_node = fun node ->
           let definition : Cst.value_definition =
             if is_virtual then
               match type_ with
-              | Some type_ -> Cst.VirtualValue { type_ }
+              | Some type_ -> (
+                  match
+                    List.find_opt
+                      (fun token -> String.equal (Cst.Token.text token) "virtual")
+                      modifier_tokens
+                  with
+                  | Some virtual_token ->
+                      Cst.VirtualValue { virtual_token; type_ }
+                  | None ->
+                      bail ~message:"expected virtual token for virtual class value during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                        "class_field";
+                        "value";
+                        "virtual"
+                      ]
+                )
               | None ->
                   bail ~message:"expected type annotation for virtual class value during Ceibo -> CST lifting" ~syntax_node:node ~context:[
                     "class_field";
@@ -6391,14 +6436,7 @@ and class_value_from_node = fun node ->
             Cst.syntax_node = node;
             name_token;
             definition;
-            is_mutable = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "mutable")
-              (direct_non_trivia_tokens node);
-            is_override = List.exists
-              (fun tok ->
-                String.equal (Ceibo.Red.SyntaxToken.text tok) "!")
-              (direct_non_trivia_tokens node);
+            modifier_tokens;
             owned_trivia = owned_trivia_from_node node
           }
           in
@@ -9281,14 +9319,14 @@ and validate_class_field = fun ~context ->
       | Cst.ConcreteMethod { body; type_ } ->
           validate_expression ~context:((("class_field.method.body" :: context))) body;
           Option.iter (validate_core_type ~context:((("class_field.method.type" :: context)))) type_
-      | Cst.VirtualMethod { type_ } ->
+      | Cst.VirtualMethod { type_; _ } ->
           validate_core_type ~context:((("class_field.method.type" :: context))) type_)
   | Cst.ClassField.Value { definition; _ } ->
       (match definition with
       | Cst.ConcreteValue { value; type_ } ->
           validate_expression ~context:((("class_field.value.value" :: context))) value;
           Option.iter (validate_core_type ~context:((("class_field.value.type" :: context)))) type_
-      | Cst.VirtualValue { type_ } ->
+      | Cst.VirtualValue { type_; _ } ->
           validate_core_type ~context:((("class_field.value.type" :: context))) type_)
   | Cst.ClassField.Inherit { class_expression; _ } ->
       validate_class_expression ~context:((("class_field.inherit.class_expression" :: context))) class_expression

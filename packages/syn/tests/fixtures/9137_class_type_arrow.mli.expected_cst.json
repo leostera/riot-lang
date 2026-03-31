@@ -127,7 +127,7 @@
                     },
                     "arguments": []
                   },
-                  "is_private": false
+                  "modifier_tokens": []
                 }
               ]
             }

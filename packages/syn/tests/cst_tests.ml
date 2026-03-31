@@ -2944,7 +2944,7 @@ end
                                       { path = state_value; _ };
                                   type_ = None;
                                 };
-                            is_mutable = true;
+                            modifier_tokens = [state_mutable_token];
                             _;
                           };
                         Syn.Cst.ClassField.Inherit
@@ -2979,7 +2979,7 @@ end
                                       { path = method_body; _ };
                                   type_ = None;
                                 };
-                            is_private = true;
+                            modifier_tokens = [run_private_token];
                             _;
                           };
                         Syn.Cst.ClassField.Constraint
@@ -3017,6 +3017,8 @@ end
           :: _ ->
             Test.assert_equal ~expected:"state"
               ~actual:(Syn.Cst.Token.text state_name);
+            Test.assert_equal ~expected:"mutable"
+              ~actual:(Syn.Cst.Token.text state_mutable_token);
             Test.assert_equal ~expected:(Some "seed")
               ~actual:(Syn.Cst.Ident.name state_value);
             Test.assert_equal ~expected:(Some "builder")
@@ -3025,6 +3027,8 @@ end
               ~actual:(Syn.Cst.Ident.name inherit_arg);
             Test.assert_equal ~expected:"run"
               ~actual:(Syn.Cst.Token.text method_name);
+            Test.assert_equal ~expected:"private"
+              ~actual:(Syn.Cst.Token.text run_private_token);
             Test.assert_equal ~expected:(Some "state")
               ~actual:(Syn.Cst.Ident.name method_body);
             Test.assert_equal ~expected:(Some "t")
@@ -3073,7 +3077,7 @@ end
                                         { path = state_value; _ };
                                     type_ = None;
                                   };
-                              is_mutable = true;
+                              modifier_tokens = [state_mutable_token];
                               _;
                             };
                           Syn.Cst.ClassField.Value
@@ -3082,6 +3086,7 @@ end
                               definition =
                                 Syn.Cst.VirtualValue
                                   {
+                                    virtual_token = virtual_value_token;
                                     type_ =
                                       Syn.Cst.CoreType.Constr
                                         { constructor_path = virtual_value_type; _ };
@@ -3106,6 +3111,7 @@ end
                               definition =
                                 Syn.Cst.VirtualMethod
                                   {
+                                    virtual_token = virtual_method_token;
                                     type_ =
                                       Syn.Cst.CoreType.Constr
                                         { constructor_path = virtual_method_type; _ };
@@ -3120,14 +3126,20 @@ end
           :: _ ->
             Test.assert_equal ~expected:(Some "seed")
               ~actual:(Syn.Cst.Ident.name state_value);
+            Test.assert_equal ~expected:"mutable"
+              ~actual:(Syn.Cst.Token.text state_mutable_token);
             Test.assert_equal ~expected:"name"
               ~actual:(Syn.Cst.Token.text virtual_value_name);
+            Test.assert_equal ~expected:"virtual"
+              ~actual:(Syn.Cst.Token.text virtual_value_token);
             Test.assert_equal ~expected:(Some "string")
               ~actual:(Syn.Cst.Ident.name virtual_value_type);
             Test.assert_equal ~expected:(Some "state")
               ~actual:(Syn.Cst.Ident.name method_body);
             Test.assert_equal ~expected:"reset"
               ~actual:(Syn.Cst.Token.text virtual_method_name);
+            Test.assert_equal ~expected:"virtual"
+              ~actual:(Syn.Cst.Token.text virtual_method_token);
             Test.assert_equal ~expected:(Some "unit")
               ~actual:(Syn.Cst.Ident.name virtual_method_type);
             Ok ()
@@ -3445,7 +3457,7 @@ class type generated = ([%ct])
                                   type_ =
                                     Syn.Cst.CoreType.Constr
                                       { constructor_path = state_type; _ };
-                                  is_mutable = true;
+                                  modifier_tokens = [state_mutable_token];
                                   _;
                                 };
                             attribute = state_attribute;
@@ -3460,7 +3472,7 @@ class type generated = ([%ct])
                                   type_ =
                                     Syn.Cst.CoreType.Constr
                                       { constructor_path = close_type; _ };
-                                  is_private = true;
+                                  modifier_tokens = [close_private_token];
                                   _;
                                 };
                             attribute = method_attribute;
@@ -3494,12 +3506,16 @@ class type generated = ([%ct])
               ~actual:(Syn.Cst.Token.text inherit_attribute.sigil_token);
             Test.assert_equal ~expected:"state"
               ~actual:(Syn.Cst.Token.text state_name);
+            Test.assert_equal ~expected:"mutable"
+              ~actual:(Syn.Cst.Token.text state_mutable_token);
             Test.assert_equal ~expected:(Some "int")
               ~actual:(Syn.Cst.Ident.name state_type);
             Test.assert_equal ~expected:"@@"
               ~actual:(Syn.Cst.Token.text state_attribute.sigil_token);
             Test.assert_equal ~expected:"close"
               ~actual:(Syn.Cst.Token.text close_name);
+            Test.assert_equal ~expected:"private"
+              ~actual:(Syn.Cst.Token.text close_private_token);
             Test.assert_equal ~expected:(Some "string")
               ~actual:(Syn.Cst.Ident.name close_type);
             Test.assert_equal ~expected:"@@"

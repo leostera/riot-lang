@@ -86,6 +86,7 @@
 79. Render local opens from the original token-backed CST variants. Use `Syn.Cst.LetOpen` tokens for `let open M in ...` and `Syn.Cst.Delimited` tokens for `M.(...)` / `M.[...]` / `M.{...}`; do not synthesize `.` or delimiter punctuation, and do not expect any type-side local-open variants.
 80. Render declaration separators from the original CST tokens when trivia can attach there. Use `ValueDeclaration.colon_token`, `ExternalDeclaration.colon_token`, `ExternalDeclaration.equals_token`, and `ModuleTypeDeclaration.equals_token` instead of synthesized `:` / `=` docs so separator-owned comments survive formatting.
 81. Render module declaration heads from the original CST shell tokens too. Use `ModuleSignature.keyword_token` / `rec_token` and `ModuleStructure.keyword_token` / `rec_token` so comments attached to `module`, `and`, or `rec` survive formatting instead of being lost behind synthesized keywords.
+82. Render object/class member modifiers from CST-carried tokens too. Preserve comments on `!`, `private`, `mutable`, and `virtual` by lowering `modifier_tokens` and virtual-definition tokens directly instead of rebuilding those shells from booleans.
 
 ## Validate
 

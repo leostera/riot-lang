@@ -112,8 +112,7 @@
                   }
                 },
                 "type": null,
-                "is_mutable": false,
-                "is_override": false
+                "modifier_tokens": []
               }
             ]
           },
