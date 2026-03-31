@@ -3919,7 +3919,11 @@ and core_type_from_node = fun node ->
           | _ ->
               core_type_from_node node
         in
-        Cst.RowField.Inherit {syntax_node = node; type_ = inherited_type}
+        let bar_token =
+          previous_direct_token_with_text_in_parent ~text:"|" node
+          |> Option.map token
+        in
+        Cst.RowField.Inherit {bar_token; syntax_node = node; type_ = inherited_type}
     | _ ->
         bail ~message:"expected polymorphic variant row field during Ceibo -> CST lifting" ~syntax_node:node ~context:[
           "core_type.poly_variant.row_field"
@@ -7350,7 +7354,11 @@ let row_field_from_node = fun node ->
         | _ ->
             core_type_from_node node
       in
-      Cst.RowField.Inherit {syntax_node = node; type_ = inherited_type}
+      let bar_token =
+        previous_direct_token_with_text_in_parent ~text:"|" node
+        |> Option.map token
+      in
+      Cst.RowField.Inherit {bar_token; syntax_node = node; type_ = inherited_type}
   | _ ->
       bail ~message:"expected polymorphic variant row field during Ceibo -> CST lifting" ~syntax_node:node ~context:[
         "type_definition.poly_variant.row_field"

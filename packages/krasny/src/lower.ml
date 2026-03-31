@@ -1100,8 +1100,12 @@ and render_poly_variant_field =
                   Doc.indent 2 payload_doc;
                 ]
       )
-  | Syn.Cst.RowField.Inherit { type_; _ } ->
-      render_core_type type_
+  | Syn.Cst.RowField.Inherit { bar_token; type_; _ } ->
+      (match bar_token with
+      | Some bar_token ->
+          Doc.concat [ doc_of_token bar_token; Doc.space; render_core_type type_ ]
+      | None ->
+          render_core_type type_)
 and render_poly_variant_type = fun ?(field_indent = 2) poly_variant ->
   let open_doc =
     match Syn.Cst.PolyVariant.kind poly_variant with

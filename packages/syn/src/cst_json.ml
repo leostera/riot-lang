@@ -128,9 +128,10 @@ and row_field_to_json =
   function
   | Cst.RowField.Tag tag ->
       Json.Object [ ("tag", Json.String "tag"); ("field", poly_variant_tag_to_json tag) ]
-  | Cst.RowField.Inherit { syntax_node; type_ } ->
+  | Cst.RowField.Inherit { bar_token; syntax_node; type_ } ->
       Json.Object [
         ("tag", Json.String "inherit");
+        ("bar_token", option_to_json token_to_json bar_token);
         ("syntax_node", syntax_node_to_json syntax_node);
         ("type", core_type_to_json type_)
       ]

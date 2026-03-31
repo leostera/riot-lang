@@ -258,6 +258,7 @@ and poly_variant_bound =
 and row_field =
   | Tag of poly_variant_tag
   | Inherit of {
+      bar_token : Token.t option;
       syntax_node : syntax_node;
       type_ : core_type;
     }
@@ -2600,6 +2601,7 @@ module RowField = struct
   type t = row_field =
     | Tag of poly_variant_tag
     | Inherit of {
+        bar_token : Token.t option;
         syntax_node : syntax_node;
         type_ : core_type;
       }
@@ -2613,6 +2615,11 @@ module RowField = struct
     function
     | Tag tag -> Some tag
     | Inherit _ -> None
+
+  let bar_token =
+    function
+    | Tag tag -> tag.bar_token
+    | Inherit { bar_token; _ } -> bar_token
 
   let inherited_type =
     function

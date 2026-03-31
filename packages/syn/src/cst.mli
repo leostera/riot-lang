@@ -352,6 +352,7 @@ and row_field =
   | Tag of poly_variant_tag
       (** A concrete tag row such as `` `Ok of int ``. *)
   | Inherit of {
+      bar_token : Token.t option;
       syntax_node : syntax_node;
       type_ : core_type;
     }
@@ -3748,10 +3749,13 @@ module RowField : sig
   type t = row_field =
     | Tag of poly_variant_tag
     | Inherit of {
+        bar_token : Token.t option;
         syntax_node : syntax_node;
         type_ : core_type;
       }
   val syntax_node : t -> syntax_node
+
+  val bar_token : t -> Token.t option
 
   val tag : t -> PolyVariantTag.t option
 
