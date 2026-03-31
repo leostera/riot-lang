@@ -1860,6 +1860,7 @@ and module_expression =
   | Constraint of {
       syntax_node : syntax_node;
       module_expression : module_expression;
+      colon_token : Token.t;
       module_type : module_type;
     }
   | ModuleUnpack of {
@@ -2289,6 +2290,7 @@ module ModuleExpression = struct
     | Constraint of {
         syntax_node : syntax_node;
         module_expression : module_expression;
+        colon_token : Token.t;
         module_type : module_type;
       }
     | ModuleUnpack of {

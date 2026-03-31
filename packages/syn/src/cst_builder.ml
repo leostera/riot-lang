@@ -4547,6 +4547,15 @@ and binding_value_from_prefix = fun ~binding_syntax_node ~prefix_nodes ~value_no
 and constrain_module_expression = fun ~syntax_node ~module_expression module_type -> Cst.ModuleExpression.Constraint {
   syntax_node;
   module_expression;
+  colon_token =
+    (match direct_token_with_text syntax_node ":" with
+    | Some colon_token ->
+        colon_token
+    | None ->
+        bail ~message:"expected module expression constraint colon token during Ceibo -> CST lifting" ~syntax_node ~context:[
+          "module_expression.constraint";
+          "colon_token"
+        ]);
   module_type
 }
 and module_expression_from_node = fun node ->

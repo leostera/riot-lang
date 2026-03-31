@@ -5319,11 +5319,13 @@ and render_module_expression_doc = function
         ]
   | Syn.Cst.ModuleExpression.ApplyUnit { callee; _ } ->
       Doc.concat [ render_module_expression_doc callee; Doc.space; Doc.lparen; Doc.rparen ]
-  | Syn.Cst.ModuleExpression.Constraint { module_expression; module_type; _ } ->
+  | Syn.Cst.ModuleExpression.Constraint { module_expression; colon_token; module_type; _ } ->
       Doc.concat
         [
           render_module_expression_doc module_expression;
-          colon;
+          Doc.space;
+          doc_of_token colon_token;
+          Doc.space;
           render_module_type_doc module_type;
         ]
   | Syn.Cst.ModuleExpression.ModuleUnpack { expression; colon_token; package_type; _ } ->
