@@ -81,6 +81,7 @@ Token-backed so far:
 - list pattern delimiters and separators
 - array pattern delimiters and separators
 - record pattern delimiters and separators
+- record expression delimiters and separators
 
 ## Next Targets
 

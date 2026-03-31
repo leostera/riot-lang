@@ -2618,15 +2618,22 @@ and record_expression =
 (** Payload for `record_expression` literals. *)
 and record_literal_expression = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   fields : record_expression_field list;
+  separator_tokens : Token.t list;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 
 (** Payload for `record_expression` updates. *)
 and record_update_expression = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   base : expression;
+  with_token : Token.t;
   fields : record_expression_field list;
+  separator_tokens : Token.t list;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 

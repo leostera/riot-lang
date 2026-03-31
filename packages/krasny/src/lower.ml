@@ -3493,43 +3493,72 @@ and render_index_expression
     ]
 
 and render_record_expression = function
-  | Syn.Cst.RecordExpression.Literal { fields; _ } ->
+  | Syn.Cst.RecordExpression.Literal { opening_token; fields; separator_tokens; closing_token; _ } ->
+      let rec render_fields fields separator_tokens =
+        match fields, separator_tokens with
+        | [], [] ->
+            Doc.empty
+        | [ field ], [] ->
+            render_record_field field
+        | field :: rest, separator_token :: rest_separators ->
+            Doc.concat
+              [
+                render_record_field field;
+                doc_of_token separator_token;
+                Doc.break ();
+                render_fields rest rest_separators;
+              ]
+        | _ ->
+            unsupported "record literal fields missing separator tokens"
+      in
       Doc.group
         (Doc.concat
            [
-             Doc.lbrace;
+             doc_of_token opening_token;
              Doc.indent 2
                (Doc.concat
                   [
                     Doc.break ~flat:"" ();
-                    join_map
-                      (Doc.concat [ Doc.semi; Doc.break () ])
-                      render_record_field
-                      fields;
+                    render_fields fields separator_tokens;
                   ]);
              Doc.break ~flat:"" ();
-             Doc.rbrace;
+             doc_of_token closing_token;
            ])
-  | Syn.Cst.RecordExpression.Update { base; fields; _ } ->
+  | Syn.Cst.RecordExpression.Update
+      { opening_token; base; with_token; fields; separator_tokens; closing_token; _ } ->
+      let rec render_fields fields separator_tokens =
+        match fields, separator_tokens with
+        | [], [] ->
+            Doc.empty
+        | [ field ], [] ->
+            render_record_field field
+        | field :: rest, separator_token :: rest_separators ->
+            Doc.concat
+              [
+                render_record_field field;
+                doc_of_token separator_token;
+                Doc.break ();
+                render_fields rest rest_separators;
+              ]
+        | _ ->
+            unsupported "record update fields missing separator tokens"
+      in
       Doc.group
         (Doc.concat
            [
-             Doc.lbrace;
+             doc_of_token opening_token;
              Doc.indent 2
                (Doc.concat
                   [
                     Doc.break ~flat:"" ();
                     render_expression base;
                     Doc.break ();
-                    kw_with;
+                    doc_of_token with_token;
                     Doc.space;
-                    join_map
-                      (Doc.concat [ Doc.semi; Doc.break () ])
-                      render_record_field
-                      fields;
+                    render_fields fields separator_tokens;
                   ]);
              Doc.break ~flat:"" ();
-             Doc.rbrace;
+             doc_of_token closing_token;
            ])
 
 and render_tuple_expression_bare elements =

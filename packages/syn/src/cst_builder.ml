@@ -5859,11 +5859,42 @@ and record_expression_field_from_node = fun node ->
             source;
           }: Cst.record_expression_field))
 and record_literal_expression_from_node = fun node ->
+  let direct_tokens = direct_non_trivia_tokens node in
+  let opening_token, closing_token =
+    match direct_tokens with
+    | opening_token :: _ ->
+        let closing_token = List.hd (List.rev direct_tokens) in
+        (token opening_token, token closing_token)
+    | [] ->
+        bail ~message:"expected record literal delimiters during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "expression.record" ]
+  in
   let fields = direct_non_trivia_nodes node
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
   |> List.filter_map record_expression_field_from_node in
-  Some ({syntax_node = node; fields; attributes = []}: Cst.record_literal_expression)
+  Some ({
+    syntax_node = node;
+    opening_token;
+    fields;
+    separator_tokens =
+      direct_tokens
+      |> List.filter (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text)
+      |> List.map token;
+    closing_token;
+    attributes = []
+  }: Cst.record_literal_expression)
 and record_update_expression_from_node = fun node ->
+  let direct_tokens = direct_non_trivia_tokens node in
+  let opening_token, closing_token =
+    match direct_tokens with
+    | opening_token :: _ ->
+        let closing_token = List.hd (List.rev direct_tokens) in
+        (token opening_token, token closing_token)
+    | [] ->
+        bail ~message:"expected record update delimiters during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "expression.record_update" ]
+  in
   match direct_non_trivia_nodes node with
   | base_node :: rest -> (
       let lifted_base =
@@ -5888,10 +5919,19 @@ and record_update_expression_from_node = fun node ->
       | Some base ->
           Some ({
             syntax_node = node;
+            opening_token;
             base;
+            with_token =
+              direct_required_token_with_text ~context:[ "expression"; "record_update" ] node "with";
             fields = rest
             |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
             |> List.filter_map record_expression_field_from_node;
+            separator_tokens =
+              direct_tokens
+              |> List.filter (fun syntax_token ->
+                   String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text)
+              |> List.map token;
+            closing_token;
             attributes = []
           }: Cst.record_update_expression)
       | None -> None
