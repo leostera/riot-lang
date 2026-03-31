@@ -150,6 +150,10 @@
 0968_terminal_variant_constructor_doc.mli
 0969_terminal_variant_payload_doc.mli
 0967_type_and_doc_preserved.mli
+0970_signature_value_tight_colon.mli
+0971_external_tight_colon.ml
+0972_module_signature_tight_colon.mli
+0973_record_type_field_tight_colon.mli
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

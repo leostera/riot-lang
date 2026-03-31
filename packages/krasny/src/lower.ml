@@ -12,8 +12,8 @@ let star = Doc.text "*"
 
 let at = Doc.text "@"
 
-let let_binding_group_items = fun (binding:Syn.Cst.let_binding) ->
-  binding :: Syn.Cst.LetBinding.and_bindings binding
+let let_binding_group_items = fun (binding:Syn.Cst.let_binding) -> binding
+:: Syn.Cst.LetBinding.and_bindings binding
 
 let rec binding_operator_group_items = fun (binding:Syn.Cst.binding_operator_binding) ->
   binding :: (
@@ -27,8 +27,8 @@ type error_context_entry =
   | Context_syntax_kind of Syn.SyntaxKind.t
 
 type error = {
-  message : string;
-  context : error_context_entry list;
+  message: string;
+  context: error_context_entry list;
 }
 
 exception Unsupported of error
@@ -57,7 +57,7 @@ message
 let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
   let kind = Syn.Cst.syntax_kind syntax_node in
   unsupported_with_context_entries
-  ~context:((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ]))
+  ~context:(((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ])))
   message
 
 let extension_payload_context = [ "extension"; "payload" ]
@@ -605,18 +605,17 @@ let rec render_first_class_module_type_constraint = fun ~keyword (constraint_:Sy
     render_core_type constraint_.replacement_type;
 
   ]
-and render_first_class_functor_parameter = fun ({ name_token; colon_token; module_type; _ }:Syn.Cst.functor_parameter) ->
-  Doc.concat
-  [
-    Doc.lparen;
-    doc_of_token name_token;
-    Doc.space;
-    doc_of_token colon_token;
-    Doc.space;
-    render_first_class_module_type_doc module_type;
-    Doc.rparen;
+and render_first_class_functor_parameter = fun ({ name_token; colon_token; module_type; _ }:Syn.Cst.functor_parameter) -> Doc.concat
+[
+  Doc.lparen;
+  doc_of_token name_token;
+  Doc.space;
+  doc_of_token colon_token;
+  Doc.space;
+  render_first_class_module_type_doc module_type;
+  Doc.rparen;
 
-  ]
+]
 and render_package_type_doc = fun ({ module_type_path; constraints; attribute; _ }:Syn.Cst.package_type) ->
   let first, rest =
     match constraints with
@@ -674,16 +673,15 @@ and render_shared_attribute_payload_doc = fun (attribute:Syn.Cst.attribute) ->
   | None -> Doc.empty
   | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat
   (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
-and render_attribute_doc = fun ~floating (attribute:Syn.Cst.attribute) ->
-  Doc.concat
-  [
-    Doc.lbracket;
-    doc_of_token attribute.sigil_token;
-    doc_of_ident attribute.name;
-    render_shared_attribute_payload_doc attribute;
-    Doc.rbracket;
+and render_attribute_doc = fun ~floating (attribute:Syn.Cst.attribute) -> Doc.concat
+[
+  Doc.lbracket;
+  doc_of_token attribute.sigil_token;
+  doc_of_ident attribute.name;
+  render_shared_attribute_payload_doc attribute;
+  Doc.rbracket;
 
-  ]
+]
 and render_attribute = fun attribute -> render_attribute_doc ~floating:false attribute
 and render_floating_attribute = fun attribute -> render_attribute_doc ~floating:true attribute
 and render_first_class_module_type_doc =
@@ -905,12 +903,11 @@ and render_record_core_type_field = fun (field:Syn.Cst.record_type_field) ->
   in
   Doc.group
   (Doc.concat
-  [
-    prefix;
-    Doc.space;
-    doc_of_token field.colon_token;
-    Doc.indent 2 (Doc.concat [ separator; type_doc ])
-  ])
+  [ prefix; doc_of_token field.colon_token; Doc.indent 2 (Doc.concat [ separator; type_doc ]) ])
+and render_tight_colon_rhs = fun head colon_token rhs -> Doc.group
+(Doc.concat [ head; doc_of_token colon_token; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
+and render_tight_colon_block_rhs = fun head colon_token rhs ->
+  Doc.concat [ head; doc_of_token colon_token; Doc.space; rhs ]
 and render_record_type_field_separator = fun (field:Syn.Cst.record_type_field) ->
   match field.semicolon_token with
   | Some semicolon_token -> doc_of_token semicolon_token
@@ -961,7 +958,6 @@ and render_record_definition_field = fun (field:Syn.Cst.RecordField.t) ->
   (Doc.concat
   [
     prefix;
-    Doc.space;
     doc_of_token (Syn.Cst.RecordField.colon_token field);
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
@@ -1088,14 +1084,10 @@ and render_tokenized_inline_record_definition = fun ~opening_token ~closing_toke
       Doc.break ~flat:" " ();
       doc_of_token closing_token
     ])
-and render_object_type_field = fun (field:Syn.Cst.object_type_field) -> Doc.group
-(Doc.concat
-[
-  doc_of_token field.field_name;
-  Doc.space;
-  doc_of_token field.colon_token;
-  Doc.indent 2 (Doc.concat [ Doc.break (); render_core_type field.field_type ])
-])
+and render_object_type_field = fun (field:Syn.Cst.object_type_field) -> render_tight_colon_rhs
+(doc_of_token field.field_name)
+field.colon_token
+(render_core_type field.field_type)
 and render_object_type_field_entry = fun (field:Syn.Cst.object_type_field) ->
   Doc.concat
     [ render_object_type_field field; (
@@ -1296,8 +1288,8 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         let payload_doc, payload_multiline = inline_separator_or_multiline_block
         ~fallback_separator_doc:Doc.empty
         ~separator_token:(Some separator_token)
-        ~next_syntax_node:((Syn.Cst.VariantConstructor.payload_type constructor
-        |> Option.map Syn.Cst.CoreType.syntax_node))
+        ~next_syntax_node:(((Syn.Cst.VariantConstructor.payload_type constructor
+        |> Option.map Syn.Cst.CoreType.syntax_node)))
         ~render_next:payload in
         let arrow_token = Syn.Cst.VariantConstructor.arrow_token constructor in
         let arrow_leading_trivia =
@@ -1349,8 +1341,8 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
         let payload_doc, _payload_multiline = inline_separator_or_multiline_block
         ~fallback_separator_doc:Doc.empty
         ~separator_token:(Some separator_token)
-        ~next_syntax_node:((Syn.Cst.VariantConstructor.payload_type constructor
-        |> Option.map Syn.Cst.CoreType.syntax_node))
+        ~next_syntax_node:(((Syn.Cst.VariantConstructor.payload_type constructor
+        |> Option.map Syn.Cst.CoreType.syntax_node)))
         ~render_next:payload in
         Doc.concat [ head; payload_doc;  ]
     | None, Some result_type ->
@@ -1596,22 +1588,23 @@ let render_external_declaration = fun (decl:Syn.Cst.external_declaration) ->
     | attributes -> Doc.concat
     [ Doc.space; attributes |> List.map render_attribute |> Doc.join Doc.space ]
   in
-  Doc.concat
+  let head = Doc.concat [ kw_external; Doc.space; render_declaration_name decl.name_tokens ] in
+  let type_doc = render_tight_colon_rhs head decl.colon_token (render_core_type decl.type_) in
+  Doc.group
+  (Doc.concat
+  [
+    type_doc;
+    Doc.indent 2
+    (Doc.concat
     [
-      kw_external;
-      Doc.space;
-      render_declaration_name decl.name_tokens;
-      Doc.space;
-      doc_of_token_with_leading_trivia decl.colon_token;
-      Doc.space;
-      render_core_type decl.type_;
-      Doc.space;
+      Doc.break ();
       doc_of_token_with_leading_trivia decl.equals_token;
       Doc.space;
       primitive_names;
       attributes;
+    ]);
 
-    ]
+  ])
 
 let doc_with_pattern_attributes = fun pattern doc ->
   match Syn.Cst.Pattern.attributes pattern with
@@ -2261,12 +2254,12 @@ let infix_chain = fun operator_token expression ->
   collect [] expression
 
 type lowerer = {
-  render_structure_items :
+  render_structure_items:
     ?trailing_phrase_separator_tokens:Syn.Cst.Token.t list list ->
     source_node:Syn.Cst.syntax_node ->
     Syn.Cst.StructureItem.t list ->
     Doc.t;
-  render_signature_items : source_node:Syn.Cst.syntax_node -> Syn.Cst.SignatureItem.t list -> Doc.t;
+  render_signature_items: source_node:Syn.Cst.syntax_node -> Syn.Cst.SignatureItem.t list -> Doc.t;
 }
 
 let make_lowerer =
@@ -5068,9 +5061,9 @@ let make_lowerer =
     match Syn.CstBuilder.signature_items_of_module_type module_type with
     | Ok items -> items
     | Error error -> unsupported_with_context_entries
-    ~context:((Context_label "module_type"
+    ~context:(((Context_label "module_type"
     :: Context_syntax_kind error.syntax_kind
-    :: List.map (fun label -> Context_label label) error.context))
+    :: List.map (fun label -> Context_label label) error.context)))
     error.message
   and render_module_type_constraint = fun ~keyword (constraint_:Syn.Cst.module_type_constraint) ->
     let separator = Doc.concat [ Doc.space; doc_of_token constraint_.separator_token; Doc.space ] in
@@ -5164,9 +5157,9 @@ let make_lowerer =
           match Syn.CstBuilder.structure_items_from_syntax_nodes item_syntax_nodes with
           | Ok items -> render_structure_items ~source_node:syntax_node items
           | Error error -> unsupported_with_context_entries
-          ~context:((Context_label "module_expression"
+          ~context:(((Context_label "module_expression"
           :: Context_syntax_kind error.syntax_kind
-          :: List.map (fun label -> Context_label label) error.context))
+          :: List.map (fun label -> Context_label label) error.context)))
           error.message
         in
         Doc.concat [ Doc.text "struct"; Doc.line; Doc.indent 2 body; Doc.line; Doc.text "end";  ]
@@ -5289,14 +5282,7 @@ let make_lowerer =
           | Some colon_token -> colon_token
           | None -> unsupported "module signature with module type missing colon token"
         in
-        Doc.concat
-        [
-          header;
-          Doc.space;
-          doc_of_token colon_token;
-          Doc.space;
-          render_module_type_doc module_type
-        ]
+        render_tight_colon_block_rhs header colon_token (render_module_type_doc module_type)
     | Syn.Cst.ModuleSignature.Alias module_expression ->
         let equals_token =
           match Syn.Cst.ModuleSignature.equals_token decl with
@@ -5355,14 +5341,7 @@ let make_lowerer =
             | Some colon_token -> colon_token
             | None -> unsupported "module structure with module type missing colon token"
           in
-          Doc.concat
-          [
-            header;
-            Doc.space;
-            doc_of_token colon_token;
-            Doc.space;
-            render_module_type_doc module_type
-          ]
+          render_tight_colon_block_rhs header colon_token (render_module_type_doc module_type)
     in
     let equals_token = Syn.Cst.ModuleStructure.equals_token decl in
     match module_expression with
@@ -5573,19 +5552,19 @@ let make_lowerer =
     ~leading_after:0
     decl
   and render_signature_value_declaration = fun ~leading_after decl ->
-    let base = Doc.concat
+    let head = Doc.concat
     [
       doc_of_declaration_token_with_filtered_leading_trivia
       ~after:leading_after
       (Syn.Cst.ValueDeclaration.keyword_token decl);
       Doc.space;
       render_value_declaration_name decl;
-      Doc.space;
-      doc_of_token (Syn.Cst.ValueDeclaration.colon_token decl);
-      Doc.space;
-      render_core_type decl.type_;
 
     ] in
+    let base = render_tight_colon_rhs
+    head
+    (Syn.Cst.ValueDeclaration.colon_token decl)
+    (render_core_type decl.type_) in
     match Syn.Cst.ValueDeclaration.trailing_comment decl with
     | Some comment -> Doc.concat [ base; Doc.space; doc_of_token (Syn.Cst.Comment.token comment) ]
     | None -> base
