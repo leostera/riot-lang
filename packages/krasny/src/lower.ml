@@ -911,8 +911,16 @@ and render_core_type =
       render_poly_variant_type poly_variant
   | Syn.Cst.CoreType.Record { fields; _ } ->
       render_record_type fields
-  | Syn.Cst.CoreType.FirstClassModule { package_type; _ } ->
-      Doc.concat [ Doc.lparen; kw_module; Doc.space; render_package_type_doc package_type; Doc.rparen ]
+  | Syn.Cst.CoreType.FirstClassModule
+      { opening_token; package_type; closing_token; _ } ->
+      Doc.concat
+        [
+          doc_of_token opening_token;
+          kw_module;
+          Doc.space;
+          render_package_type_doc package_type;
+          doc_of_token closing_token;
+        ]
   | Syn.Cst.CoreType.Object { fields; _ } ->
       render_object_type fields
   | Syn.Cst.CoreType.Extension extension ->

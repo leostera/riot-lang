@@ -72,6 +72,7 @@ Token-backed so far:
 - variant constructor leading `|`
 - or-pattern separator `|`
 - module pack delimiters `( )`
+- core type first-class module delimiters `( )`
 
 ## Next Targets
 

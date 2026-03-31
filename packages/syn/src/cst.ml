@@ -373,7 +373,9 @@ and core_type =
     }
   | FirstClassModule of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       package_type : package_type;
+      closing_token : Token.t;
     }
   | Object of {
       syntax_node : syntax_node;
@@ -528,7 +530,9 @@ module CoreType = struct
       }
     | FirstClassModule of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         package_type : package_type;
+        closing_token : Token.t;
       }
     | Object of {
         syntax_node : syntax_node;

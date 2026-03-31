@@ -3715,9 +3715,21 @@ and core_type_from_node = fun node ->
         |> List.map record_type_field_from_node
       }
   | Syntax_kind.FIRST_CLASS_MODULE_TYPE ->
+      let direct_tokens = direct_non_trivia_tokens node in
+      let opening_token, closing_token =
+        match direct_tokens with
+        | opening_token :: _ ->
+            let closing_token = List.hd (List.rev direct_tokens) in
+            (token opening_token, token closing_token)
+        | [] ->
+            bail ~message:"expected first-class module type delimiters during Ceibo -> CST lifting" ~syntax_node:node
+              ~context:[ "core_type.first_class_module" ]
+      in
       (Cst.CoreType.FirstClassModule {
         syntax_node = node;
-        package_type = module_type_from_first_class_module_type_node node
+        opening_token;
+        package_type = module_type_from_first_class_module_type_node node;
+        closing_token
       })
   | Syntax_kind.OBJECT_TYPE ->
       Cst.CoreType.Object {
