@@ -748,8 +748,8 @@ and render_floating_attribute attribute =
 and render_first_class_module_type_doc = function
   | Syn.Cst.ModuleType.Path path ->
       doc_of_ident path
-  | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
-      Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; kw_of; Doc.space; doc_of_ident module_path ]
+  | Syn.Cst.ModuleType.TypeOf { of_token; module_path; _ } ->
+      Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; doc_of_token of_token; Doc.space; doc_of_ident module_path ]
   | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
       Doc.concat
         [

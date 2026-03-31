@@ -47,6 +47,7 @@ Token-backed so far:
 - class definition `:`
 - class definition `=`
 - class expression constraint `:`
+- module type of `of`
 
 ## Next Targets
 

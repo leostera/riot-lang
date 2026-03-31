@@ -2936,10 +2936,17 @@ and module_type_from_node = fun node ->
   | Syntax_kind.MODULE_TYPE_OF -> (
       match direct_non_trivia_nodes node with
       | module_path_node :: _ ->
-          Cst.ModuleType.TypeOf {
-            syntax_node = node;
-            module_path = module_path_like_from_node module_path_node
-          }
+          (match direct_token_with_text node "of" with
+          | Some of_token ->
+              Cst.ModuleType.TypeOf {
+                syntax_node = node;
+                of_token;
+                module_path = module_path_like_from_node module_path_node
+              }
+          | None ->
+              bail ~message:"expected of token in module type of expression during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                "module_type.type_of"
+              ])
       | [] ->
           bail ~message:"expected module path in module type of expression during Ceibo -> CST lifting" ~syntax_node:node ~context:[
             "module_type.type_of"

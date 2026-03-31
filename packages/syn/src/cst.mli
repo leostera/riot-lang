@@ -684,6 +684,7 @@ and module_type =
       (** A named module type path such as `S`, `Set.S`, or `Driver.Intf`. *)
   | TypeOf of {
       syntax_node : syntax_node;
+      of_token : Token.t;
       module_path : Ident.t;
     }
       (** A `module type of` expression.
@@ -1085,6 +1086,7 @@ module ModuleType : sig
     | Path of Ident.t
     | TypeOf of {
         syntax_node : syntax_node;
+        of_token : Token.t;
         module_path : Ident.t;
       }
     | Signature of {

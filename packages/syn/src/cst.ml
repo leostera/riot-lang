@@ -382,6 +382,7 @@ and module_type =
   | Path of Ident.t
   | TypeOf of {
       syntax_node : syntax_node;
+      of_token : Token.t;
       module_path : Ident.t;
     }
   | Signature of {
@@ -620,6 +621,7 @@ module ModuleType = struct
     | Path of Ident.t
     | TypeOf of {
         syntax_node : syntax_node;
+        of_token : Token.t;
         module_path : Ident.t;
       }
     | Signature of {
