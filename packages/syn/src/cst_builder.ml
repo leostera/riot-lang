@@ -7759,7 +7759,18 @@ let class_declaration_from_node = fun node ->
                     declaration_extension = class_declaration_extension;
                     declaration_attributes = class_declaration_attributes;
                     class_name = class_name;
+                    colon_token = direct_token_with_text node ":";
                     class_type = declaration_class_type;
+                    equals_token =
+                      (match direct_token_with_text node "=" with
+                      | Some equals_token ->
+                          equals_token
+                      | None ->
+                          bail ~message:"expected class definition equals token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                            "item";
+                            "class_definition";
+                            "equals_token"
+                          ]);
                     class_body = declaration_class_body;
                   })
           | None, Some declaration_class_type ->
@@ -7771,6 +7782,16 @@ let class_declaration_from_node = fun node ->
                     declaration_extension = class_declaration_extension;
                     declaration_attributes = class_declaration_attributes;
                     class_name = class_name;
+                    colon_token =
+                      (match direct_token_with_text node ":" with
+                      | Some colon_token ->
+                          colon_token
+                      | None ->
+                          bail ~message:"expected class declaration colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                            "item";
+                            "class_declaration";
+                            "colon_token"
+                          ]);
                     class_type = declaration_class_type;
                   })
           | None, None ->

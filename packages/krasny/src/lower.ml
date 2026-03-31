@@ -5693,7 +5693,7 @@ and render_class_declaration (declaration : Syn.Cst.ClassDeclaration.t) =
   Doc.concat
     [
       head;
-      annotation_colon;
+      doc_of_token (Syn.Cst.ClassDeclaration.colon_token declaration);
       render_class_type_doc (Syn.Cst.ClassDeclaration.class_type declaration);
     ]
 
@@ -5733,17 +5733,32 @@ and render_class_definition (declaration : Syn.Cst.ClassDefinition.t) =
   in
   match Syn.Cst.ClassDefinition.class_type declaration with
   | Some class_type ->
+      let colon_token =
+        match Syn.Cst.ClassDefinition.colon_token declaration with
+        | Some colon_token ->
+            colon_token
+        | None ->
+            unsupported "class definition with class type missing colon token"
+      in
       Doc.concat
         [
           head;
-          annotation_colon;
+          doc_of_token colon_token;
           render_class_type_doc class_type;
-          equals;
+          Doc.space;
+          doc_of_token_with_leading_trivia (Syn.Cst.ClassDefinition.equals_token declaration);
+          Doc.space;
           render_class_expression (Syn.Cst.ClassDefinition.class_body declaration);
         ]
   | None ->
       Doc.concat
-        [ head; equals; render_class_expression (Syn.Cst.ClassDefinition.class_body declaration) ]
+        [
+          head;
+          Doc.space;
+          doc_of_token_with_leading_trivia (Syn.Cst.ClassDefinition.equals_token declaration);
+          Doc.space;
+          render_class_expression (Syn.Cst.ClassDefinition.class_body declaration);
+        ]
 
 and render_class_type_declaration
     ({

@@ -4351,6 +4351,7 @@ module ClassDeclaration : sig
     declaration_extension : extension option;
     declaration_attributes : attribute list;
     class_name : Token.t;
+    colon_token : Token.t;
     class_type : class_type;
   }
   val syntax_node : t -> syntax_node
@@ -4362,6 +4363,8 @@ module ClassDeclaration : sig
   val declaration_attributes : t -> attribute list
 
   val class_name_token : t -> Token.t
+
+  val colon_token : t -> Token.t
 
   val class_type : t -> class_type
 
@@ -4385,7 +4388,9 @@ module ClassDefinition : sig
     declaration_extension : extension option;
     declaration_attributes : attribute list;
     class_name : Token.t;
+    colon_token : Token.t option;
     class_type : class_type option;
+    equals_token : Token.t;
     class_body : class_expression;
   }
   val syntax_node : t -> syntax_node
@@ -4398,7 +4403,11 @@ module ClassDefinition : sig
 
   val class_name_token : t -> Token.t
 
+  val colon_token : t -> Token.t option
+
   val class_type : t -> class_type option
+
+  val equals_token : t -> Token.t
 
   val class_body : t -> class_expression
 

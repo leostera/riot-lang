@@ -43,6 +43,9 @@ Token-backed so far:
 - arrow label `:`
 - class/class-type constraint `=`
 - module declaration `=`
+- class declaration `:`
+- class definition `:`
+- class definition `=`
 
 ## Next Targets
 

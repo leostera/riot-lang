@@ -3200,6 +3200,7 @@ module ClassDeclaration = struct
     declaration_extension : extension option;
     declaration_attributes : attribute list;
     class_name : Token.t;
+    colon_token : Token.t;
     class_type : class_type;
   }
 
@@ -3208,6 +3209,7 @@ module ClassDeclaration = struct
   let declaration_extension = fun declaration -> declaration.declaration_extension
   let declaration_attributes = fun declaration -> declaration.declaration_attributes
   let class_name_token = fun declaration -> declaration.class_name
+  let colon_token = fun declaration -> declaration.colon_token
   let class_type = fun declaration -> declaration.class_type
   let name = fun declaration -> Token.text declaration.class_name
 end
@@ -3219,7 +3221,9 @@ module ClassDefinition = struct
     declaration_extension : extension option;
     declaration_attributes : attribute list;
     class_name : Token.t;
+    colon_token : Token.t option;
     class_type : class_type option;
+    equals_token : Token.t;
     class_body : class_expression;
   }
 
@@ -3228,7 +3232,9 @@ module ClassDefinition = struct
   let declaration_extension = fun definition -> definition.declaration_extension
   let declaration_attributes = fun definition -> definition.declaration_attributes
   let class_name_token = fun definition -> definition.class_name
+  let colon_token = fun definition -> definition.colon_token
   let class_type = fun definition -> definition.class_type
+  let equals_token = fun definition -> definition.equals_token
   let class_body = fun definition -> definition.class_body
   let name = fun definition -> Token.text definition.class_name
 end
