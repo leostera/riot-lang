@@ -1795,8 +1795,26 @@ let rec render_pattern =
         ])
   | Syn.Cst.Pattern.Cons { head; tail; _ } ->
       Doc.concat [ render_pattern head; Doc.space; Doc.text "::"; Doc.space; render_pattern tail ]
-  | Syn.Cst.Pattern.Or { alternatives; _ } ->
-      join_map (Doc.concat [ Doc.space; Doc.bar; Doc.space ]) render_pattern alternatives
+  | Syn.Cst.Pattern.Or { alternatives; separator_tokens; _ } ->
+      let rec render_alternatives left separators right =
+        match left, separators, right with
+        | [], _, [] ->
+            Doc.empty
+        | [ pattern ], [], [] ->
+            render_pattern pattern
+        | pattern :: remaining_patterns, separator_token :: remaining_separators, [] ->
+            Doc.concat
+              [
+                render_pattern pattern;
+                Doc.space;
+                doc_of_token separator_token;
+                Doc.space;
+                render_alternatives remaining_patterns remaining_separators [];
+              ]
+        | _ ->
+            unsupported "or-pattern alternatives missing separator tokens"
+      in
+      render_alternatives alternatives separator_tokens []
   | Syn.Cst.Pattern.Alias { pattern; name_token; _ } ->
       Doc.concat [ render_pattern pattern; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
   | Syn.Cst.Pattern.Typed { pattern; colon_token; type_; _ } ->

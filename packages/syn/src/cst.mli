@@ -1725,6 +1725,7 @@ and cons_pattern = {
 and or_pattern = {
   syntax_node : syntax_node;
   alternatives : pattern list;
+  separator_tokens : Token.t list;
   attributes : attribute list;
 }
 

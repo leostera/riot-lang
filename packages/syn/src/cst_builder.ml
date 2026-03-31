@@ -4019,7 +4019,16 @@ let rec pattern_from_node = fun node ->
         | _ -> unsupported_pattern node
       )
     | Syntax_kind.OR_PATTERN ->
-        Cst.Pattern.Or {syntax_node = node; alternatives = pattern_children node; attributes = []}
+        Cst.Pattern.Or {
+          syntax_node = node;
+          alternatives = pattern_children node;
+          separator_tokens =
+            direct_non_trivia_tokens node
+            |> List.filter (fun syntax_token ->
+                 String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "|")
+            |> List.map token;
+          attributes = []
+        }
     | Syntax_kind.AS_PATTERN -> (
         match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
         | pattern_node :: _, name_syntax_token :: _ ->

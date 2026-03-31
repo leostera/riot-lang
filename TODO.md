@@ -70,6 +70,7 @@ Token-backed so far:
 - module expression constraint `:`
 - polyvariant leading `|`
 - variant constructor leading `|`
+- or-pattern separator `|`
 
 ## Next Targets
 
