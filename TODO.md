@@ -64,6 +64,8 @@ Token-backed so far:
 - local binding annotation `:`
 - first-class module pattern `:`
 - first-class module pattern delimiters `( )`
+- module type parenthesized delimiters `( )`
+- class type parenthesized delimiters `( )`
 - module pack expression `:`
 - module unpack expression `:`
 - module declaration `:`
@@ -73,6 +75,7 @@ Token-backed so far:
 - variant constructor leading `|`
 - or-pattern separator `|`
 - module pack delimiters `( )`
+- module expression parenthesized delimiters `( )`
 - core type first-class module delimiters `( )`
 - type definition first-class module delimiters `( )`
 - module unpack delimiters `( )`

@@ -745,7 +745,9 @@ and module_type =
       *)
   | Parenthesized of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       inner : module_type;
+      closing_token : Token.t;
     }
       (** A parenthesized module type used for grouping.
 
@@ -808,7 +810,9 @@ and class_type =
       *)
   | Parenthesized of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       inner : class_type;
+      closing_token : Token.t;
     }
       (** A parenthesized class type used for grouping.
 
@@ -1129,7 +1133,9 @@ module ModuleType : sig
       }
     | Parenthesized of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         inner : module_type;
+        closing_token : Token.t;
       }
     | Attribute of {
         syntax_node : syntax_node;
@@ -1167,7 +1173,9 @@ module ClassType : sig
       }
     | Parenthesized of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         inner : class_type;
+        closing_token : Token.t;
       }
     | Attribute of {
         syntax_node : syntax_node;
@@ -3250,7 +3258,9 @@ and module_expression =
       *)
   | Parenthesized of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       inner : module_expression;
+      closing_token : Token.t;
     }
       (** A parenthesized module expression used for grouping. *)
   | Attribute of {
@@ -3466,7 +3476,9 @@ module ModuleExpression : sig
       }
     | Parenthesized of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         inner : module_expression;
+        closing_token : Token.t;
       }
     | Attribute of {
         syntax_node : syntax_node;

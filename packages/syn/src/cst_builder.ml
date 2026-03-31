@@ -3006,11 +3006,21 @@ and module_type_from_node = fun node ->
           ]
     )
   | Syntax_kind.PAREN_EXPR -> (
-      match direct_non_trivia_nodes node |> List.find_opt can_lift_module_type_node with
-      | Some inner_node ->
-          Cst.ModuleType.Parenthesized {syntax_node = node; inner = module_type_from_node inner_node}
-      | None ->
+      match direct_non_trivia_nodes node |> List.find_opt can_lift_module_type_node, direct_non_trivia_tokens node with
+      | Some inner_node, (opening_token :: _ :: _ as tokens) ->
+          let closing_token = List.hd (List.rev tokens) in
+          Cst.ModuleType.Parenthesized {
+            syntax_node = node;
+            opening_token = token opening_token;
+            inner = module_type_from_node inner_node;
+            closing_token = token closing_token
+          }
+      | None, _ ->
           bail ~message:"expected inner module type in parenthesized module type during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+            "module_type.parenthesized"
+          ]
+      | Some _, _ ->
+          bail ~message:"expected parenthesized module type delimiters during Ceibo -> CST lifting" ~syntax_node:node ~context:[
             "module_type.parenthesized"
           ]
     )
@@ -3343,11 +3353,21 @@ and class_type_from_node = fun node ->
           unsupported_class_type node
     )
   | Syntax_kind.PAREN_EXPR -> (
-      match direct_non_trivia_nodes node |> List.find_opt can_lift_class_type_node with
-      | Some inner_node ->
-          Cst.ClassType.Parenthesized {syntax_node = node; inner = class_type_from_node inner_node}
-      | None ->
+      match direct_non_trivia_nodes node |> List.find_opt can_lift_class_type_node, direct_non_trivia_tokens node with
+      | Some inner_node, (opening_token :: _ :: _ as tokens) ->
+          let closing_token = List.hd (List.rev tokens) in
+          Cst.ClassType.Parenthesized {
+            syntax_node = node;
+            opening_token = token opening_token;
+            inner = class_type_from_node inner_node;
+            closing_token = token closing_token
+          }
+      | None, _ ->
           unsupported_class_type node
+      | Some _, _ ->
+          bail ~message:"expected parenthesized class type delimiters during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+            "class_type.parenthesized"
+          ]
     )
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with
@@ -4803,14 +4823,21 @@ and module_expression_from_node = fun node ->
           unsupported_module_expression node
     )
   | Syntax_kind.PAREN_EXPR -> (
-      match direct_non_trivia_nodes node |> List.find_opt can_lift_module_expression_node with
-      | Some inner_node ->
+      match direct_non_trivia_nodes node |> List.find_opt can_lift_module_expression_node, direct_non_trivia_tokens node with
+      | Some inner_node, (opening_token :: _ :: _ as tokens) ->
+          let closing_token = List.hd (List.rev tokens) in
           Cst.ModuleExpression.Parenthesized {
             syntax_node = node;
-            inner = module_expression_from_node inner_node
+            opening_token = token opening_token;
+            inner = module_expression_from_node inner_node;
+            closing_token = token closing_token
           }
-      | None ->
+      | None, _ ->
           unsupported_module_expression node
+      | Some _, _ ->
+          bail ~message:"expected parenthesized module expression delimiters during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+            "module_expression.parenthesized"
+          ]
     )
   | Syntax_kind.ATTRIBUTE_EXPR -> (
       match direct_non_trivia_nodes node with

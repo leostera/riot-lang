@@ -777,8 +777,8 @@ and render_first_class_module_type_doc = function
                    render_first_class_module_type_constraint ~keyword:kw_and constraint_;
                  ])
              rest)
-  | Syn.Cst.ModuleType.Parenthesized { inner; _ } ->
-      Doc.concat [ Doc.lparen; render_first_class_module_type_doc inner; Doc.rparen ]
+  | Syn.Cst.ModuleType.Parenthesized { opening_token; inner; closing_token; _ } ->
+      Doc.concat [ doc_of_token opening_token; render_first_class_module_type_doc inner; doc_of_token closing_token ]
   | Syn.Cst.ModuleType.Attribute { module_type; attribute; _ } ->
       Doc.concat [ render_first_class_module_type_doc module_type; Doc.space; render_attribute attribute ]
   | Syn.Cst.ModuleType.Extension extension ->
@@ -3151,8 +3151,8 @@ and render_class_type_doc = function
       let parameters, result = collect [] label parameter_type result_type in
       let parts = parameters @ [ result ] in
       Doc.group (join_map (Doc.concat [ Doc.space; Doc.arrow; Doc.break () ]) (fun doc -> doc) parts)
-  | Syn.Cst.ClassType.Parenthesized { inner; _ } ->
-      Doc.concat [ Doc.lparen; render_class_type_doc inner; Doc.rparen ]
+  | Syn.Cst.ClassType.Parenthesized { opening_token; inner; closing_token; _ } ->
+      Doc.concat [ doc_of_token opening_token; render_class_type_doc inner; doc_of_token closing_token ]
   | Syn.Cst.ClassType.Attribute { class_type; attribute; _ } ->
       Doc.concat [ render_class_type_doc class_type; Doc.space; render_attribute attribute ]
   | Syn.Cst.ClassType.Extension extension ->
@@ -5553,16 +5553,16 @@ and render_module_type_doc = function
                    render_module_type_constraint ~keyword:kw_and constraint_;
                  ])
              rest)
-  | Syn.Cst.ModuleType.Parenthesized { inner; _ } ->
-      Doc.concat [ Doc.lparen; render_module_type_doc inner; Doc.rparen ]
+  | Syn.Cst.ModuleType.Parenthesized { opening_token; inner; closing_token; _ } ->
+      Doc.concat [ doc_of_token opening_token; render_module_type_doc inner; doc_of_token closing_token ]
   | Syn.Cst.ModuleType.Attribute { module_type; attribute; _ } ->
       Doc.concat [ render_module_type_doc module_type; Doc.space; render_attribute attribute ]
   | Syn.Cst.ModuleType.Extension extension ->
       render_extension_doc extension
 
 and render_module_application_argument = function
-  | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
-      Doc.concat [ Doc.lparen; render_module_expression_doc inner; Doc.rparen ]
+  | Syn.Cst.ModuleExpression.Parenthesized { opening_token; inner; closing_token; _ } ->
+      Doc.concat [ doc_of_token opening_token; render_module_expression_doc inner; doc_of_token closing_token ]
   | argument ->
       Doc.concat [ Doc.lparen; render_module_expression_doc argument; Doc.rparen ]
 
@@ -5644,8 +5644,8 @@ and render_module_expression_doc = function
           constraint_doc;
           doc_of_token closing_token;
         ]
-  | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } ->
-      Doc.concat [ Doc.lparen; render_module_expression_doc inner; Doc.rparen ]
+  | Syn.Cst.ModuleExpression.Parenthesized { opening_token; inner; closing_token; _ } ->
+      Doc.concat [ doc_of_token opening_token; render_module_expression_doc inner; doc_of_token closing_token ]
   | Syn.Cst.ModuleExpression.Attribute { module_expression; attribute; _ } ->
       Doc.concat [ render_module_expression_doc module_expression; Doc.space; render_attribute attribute ]
   | Syn.Cst.ModuleExpression.Extension extension ->

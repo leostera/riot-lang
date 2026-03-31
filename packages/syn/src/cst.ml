@@ -414,7 +414,9 @@ and module_type =
     }
   | Parenthesized of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       inner : module_type;
+      closing_token : Token.t;
     }
   | Attribute of {
       syntax_node : syntax_node;
@@ -437,7 +439,9 @@ and class_type =
     }
   | Parenthesized of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       inner : class_type;
+      closing_token : Token.t;
     }
   | Attribute of {
       syntax_node : syntax_node;
@@ -664,7 +668,9 @@ module ModuleType = struct
       }
     | Parenthesized of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         inner : module_type;
+        closing_token : Token.t;
       }
     | Attribute of {
         syntax_node : syntax_node;
@@ -702,7 +708,9 @@ module ClassType = struct
       }
     | Parenthesized of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         inner : class_type;
+        closing_token : Token.t;
       }
     | Attribute of {
         syntax_node : syntax_node;
@@ -1924,7 +1932,9 @@ and module_expression =
     }
   | Parenthesized of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       inner : module_expression;
+      closing_token : Token.t;
     }
   | Attribute of {
       syntax_node : syntax_node;
@@ -2356,7 +2366,9 @@ module ModuleExpression = struct
       }
     | Parenthesized of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         inner : module_expression;
+        closing_token : Token.t;
       }
     | Attribute of {
         syntax_node : syntax_node;
