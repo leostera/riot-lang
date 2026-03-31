@@ -2220,9 +2220,11 @@ and poly_variant_expression = {
 *)
 and module_pack_expression = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   module_expression : module_expression;
   colon_token : Token.t option;
   package_type : package_type option;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 

@@ -5038,14 +5038,26 @@ and expression_from_node = fun node ->
     | Syntax_kind.FIRST_CLASS_MODULE_EXPR -> (
         match non_paren_tokens node, direct_non_trivia_nodes node with
         | module_kw :: _, module_expression_node :: _ when String.equal (Ceibo.Red.SyntaxToken.text module_kw) "module" ->
+            let direct_tokens = direct_non_trivia_tokens node in
+            let opening_token, closing_token =
+              match direct_tokens with
+              | opening_token :: _ ->
+                  let closing_token = List.hd (List.rev direct_tokens) in
+                  (token opening_token, token closing_token)
+              | [] ->
+                  bail ~message:"expected first-class module delimiters during Ceibo -> CST lifting" ~syntax_node:node
+                    ~context:[ "expression.module_pack" ]
+            in
             let package_type = direct_non_trivia_nodes node
             |> List.find_opt can_lift_module_type_node
             |> Option.map package_type_from_module_type_node in
             Cst.Expression.ModulePack {
               syntax_node = node;
+              opening_token;
               module_expression = module_expression_from_node module_expression_node;
               colon_token = token_with_text node ":";
               package_type;
+              closing_token;
               attributes = []
             }
         | _ -> unsupported_expression node

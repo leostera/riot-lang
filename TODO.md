@@ -71,6 +71,7 @@ Token-backed so far:
 - polyvariant leading `|`
 - variant constructor leading `|`
 - or-pattern separator `|`
+- module pack delimiters `( )`
 
 ## Next Targets
 

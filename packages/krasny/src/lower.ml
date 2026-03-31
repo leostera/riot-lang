@@ -2328,7 +2328,8 @@ let make_lowerer =
               render_expression payload
           in
           Doc.concat [ head; Doc.space; payload ])
-  | Syn.Cst.Expression.ModulePack { module_expression; colon_token; package_type; _ } ->
+  | Syn.Cst.Expression.ModulePack
+      { opening_token; closing_token; module_expression; colon_token; package_type; _ } ->
       let constraint_doc =
         match package_type with
         | None ->
@@ -2345,12 +2346,12 @@ let make_lowerer =
       in
       Doc.concat
         [
-          Doc.lparen;
+          doc_of_token opening_token;
           kw_module;
           Doc.space;
           render_module_expression_doc module_expression;
           constraint_doc;
-          Doc.rparen;
+          doc_of_token closing_token;
         ]
   | Syn.Cst.Expression.Assert { asserted; _ } ->
       Doc.concat [ kw_assert; Doc.space; render_expression asserted ]
