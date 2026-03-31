@@ -209,6 +209,7 @@ _tusk() {
             _arguments \
                 '(-x --target)'{-x,--target}'[Build for target architecture]:target:' \
                 '--all-targets[Build for all configured targets]' \
+                '--json[Emit machine-readable JSONL events]' \
                 '*:package:->packages'
 
             case $state in

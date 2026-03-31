@@ -11,6 +11,7 @@ The Tusk CLI provides a one-shot interface to the Tusk build system. Each comman
 ### Build Commands
 
 - `tusk build` - Build all packages in the workspace
+- `tusk build --json` - Stream machine-readable JSONL build events
 - `tusk build --package <name>` - Build a specific package
 - `tusk clean` - Clean build artifacts
 - `tusk install` - Install dependencies
