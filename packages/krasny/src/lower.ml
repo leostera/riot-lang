@@ -4463,10 +4463,10 @@ and render_binding_header ~keyword_token ~rec_token pattern =
 
 and split_typed_binding_value = function
   | Syn.Cst.Expression.TypeAscription
-      { expression; kind = Syn.Cst.Type { type_; _ }; _ } ->
-      (expression, Some type_)
-  | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
-      (expression, Some type_)
+      { expression; kind = Syn.Cst.Type { colon_token; type_ }; _ } ->
+      (expression, Some (colon_token, type_))
+  | Syn.Cst.Expression.Polymorphic { expression; colon_token; type_; _ } ->
+      (expression, Some (colon_token, type_))
   | expression ->
       (expression, None)
 
@@ -4919,9 +4919,6 @@ and render_local_binding
     ~leading_value_trivia:(leading_value_trivia : Doc.t option)
     ~pattern ~parameters ~value =
   let pattern, type_annotation_from_pattern = split_typed_binding_pattern pattern in
-  let type_annotation_from_pattern =
-    type_annotation_from_pattern |> Option.map snd
-  in
   let value, type_annotation = split_typed_binding_value value in
   let type_annotation =
     match type_annotation with
@@ -4956,14 +4953,14 @@ and render_local_binding
     match type_annotation with
     | None ->
         (None, parameters, false)
-    | Some type_ when parameters = [] ->
-        (Some (render_core_type type_), parameters, false)
-    | Some type_ -> (
+    | Some (colon_token, type_) when parameters = [] ->
+        (Some (Some colon_token, render_core_type type_), parameters, false)
+    | Some (_colon_token, type_) -> (
         match synthesize_binding_type_annotation parameters type_ with
         | Some (type_doc, remaining_parameters) ->
-            (Some type_doc, remaining_parameters, true)
+            (Some (None, type_doc), remaining_parameters, true)
         | None ->
-            (Some (render_core_type type_), parameters, false))
+            (Some (None, render_core_type type_), parameters, false))
   in
   let header = render_binding_header ~keyword_token ~rec_token pattern in
   let parameter_doc =
@@ -4989,8 +4986,15 @@ and render_local_binding
     match rendered_type_annotation with
     | None ->
         header
-    | Some type_doc ->
-        Doc.concat [ header; colon; type_doc ]
+    | Some (colon_token, type_doc) ->
+        let colon_doc =
+          match colon_token with
+          | Some colon_token ->
+              Doc.concat [ Doc.space; doc_of_token colon_token; Doc.space ]
+          | None ->
+              colon
+        in
+        Doc.concat [ header; colon_doc; type_doc ]
   in
   let force_multiline_body =
     local_binding_forces_multiline_body ~local_context ~rec_token value

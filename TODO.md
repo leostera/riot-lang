@@ -18,7 +18,7 @@ Rules:
 - Do not reintroduce `owned_trivia`.
 - Prefer original tokens over duplicated trivia fields.
 - If a formatter branch needs a token, make `krasny` ask for it first.
-- Commit every slice with conventional commits
+- Update this file and commit every slice with conventional commits
 
 ## Landed
 
@@ -61,6 +61,7 @@ Token-backed so far:
 - optional parameter alias `:`
 - optional parameter default `=`
 - polymorphic expression `:`
+- local binding annotation `:`
 - first-class module pattern `:`
 - module pack expression `:`
 - module unpack expression `:`
