@@ -78,6 +78,7 @@ Token-backed so far:
 - pattern local-open shell tokens
 - list expression delimiters and separators
 - array expression delimiters and separators
+- list pattern delimiters and separators
 
 ## Next Targets
 

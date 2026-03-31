@@ -1654,7 +1654,10 @@ and tuple_pattern_open_tail = {
 *)
 and list_pattern = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
   elements : pattern list;
+  separator_tokens : Token.t list;
+  closing_token : Token.t;
   attributes : attribute list;
 }
 

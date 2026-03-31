@@ -1740,19 +1740,37 @@ let rec render_pattern =
               | Some label_token ->
                   Doc.concat [ doc_of_token label_token; render_pattern element.pattern ])
             elements; Doc.rparen ]
-  | Syn.Cst.Pattern.List { elements; _ } ->
+  | Syn.Cst.Pattern.List
+      { opening_token; elements; separator_tokens; closing_token; _ } ->
       if elements = [] then
-        Doc.concat [ Doc.lbracket; Doc.rbracket ]
+        Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
       else
         let edge_space = if List.length elements = 1 then " " else "" in
+        let rec render_elements elements separator_tokens =
+          match elements, separator_tokens with
+          | [], [] ->
+              Doc.empty
+          | [ element ], [] ->
+              render_pattern element
+          | element :: rest, separator_token :: rest_separators ->
+              Doc.concat
+                [
+                  render_pattern element;
+                  doc_of_token separator_token;
+                  Doc.break ~flat:edge_space ();
+                  render_elements rest rest_separators;
+                ]
+          | _ ->
+              unsupported "list pattern elements missing separator tokens"
+        in
         Doc.group (Doc.concat [
-          Doc.lbracket;
+          doc_of_token opening_token;
           Doc.indent 2 (Doc.concat [
             Doc.break ~flat:edge_space ();
-            join_map (Doc.concat [ Doc.semi; Doc.break ~flat:edge_space () ]) render_pattern elements
+            render_elements elements separator_tokens
           ]);
           Doc.break ~flat:edge_space ();
-          Doc.rbracket
+          doc_of_token closing_token
         ])
   | Syn.Cst.Pattern.Array { elements; _ } ->
       Doc.concat [

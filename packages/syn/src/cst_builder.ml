@@ -3995,7 +3995,28 @@ let rec pattern_from_node = fun node ->
     | Syntax_kind.TUPLE_PATTERN ->
         Cst.Pattern.Tuple (tuple_pattern_from_node node)
     | Syntax_kind.LIST_PATTERN ->
-        Cst.Pattern.List {syntax_node = node; elements = pattern_children node; attributes = []}
+        let direct_tokens = direct_non_trivia_tokens node in
+        let opening_token, closing_token =
+          match direct_tokens with
+          | opening_token :: _ ->
+              let closing_token = List.hd (List.rev direct_tokens) in
+              (token opening_token, token closing_token)
+          | [] ->
+              bail ~message:"expected list pattern delimiters during Ceibo -> CST lifting" ~syntax_node:node
+                ~context:[ "pattern.list" ]
+        in
+        Cst.Pattern.List {
+          syntax_node = node;
+          opening_token;
+          elements = pattern_children node;
+          separator_tokens =
+            direct_tokens
+            |> List.filter (fun syntax_token ->
+                 String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text)
+            |> List.map token;
+          closing_token;
+          attributes = []
+        }
     | Syntax_kind.ARRAY_PATTERN ->
         Cst.Pattern.Array {syntax_node = node; elements = pattern_children node; attributes = []}
     | Syntax_kind.RECORD_PATTERN ->
