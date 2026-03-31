@@ -2893,18 +2893,27 @@ let arrow_label_from_node = fun node ->
 let rec module_type_constraint_from_node = fun node ->
   match direct_non_trivia_nodes node |> List.filter can_lift_core_type_node with
   | constrained_type_node :: replacement_type_node :: _ ->
-      let is_destructive =
-        direct_non_trivia_tokens node
-        |> List.exists
-          (fun syntax_token ->
-            String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
-      in
-      Cst.ModuleTypeConstraint.{
-        syntax_node = node;
-        constrained_type = core_type_from_node constrained_type_node;
-        replacement_type = core_type_from_node replacement_type_node;
-        is_destructive
-      }
+      (match direct_token_with_text node ":=", direct_token_with_text node "=" with
+      | Some separator_token, _ ->
+          Cst.ModuleTypeConstraint.{
+            syntax_node = node;
+            constrained_type = core_type_from_node constrained_type_node;
+            replacement_type = core_type_from_node replacement_type_node;
+            separator_token;
+            is_destructive = true
+          }
+      | None, Some separator_token ->
+          Cst.ModuleTypeConstraint.{
+            syntax_node = node;
+            constrained_type = core_type_from_node constrained_type_node;
+            replacement_type = core_type_from_node replacement_type_node;
+            separator_token;
+            is_destructive = false
+          }
+      | None, None ->
+          bail ~message:"expected = or := token in module type constraint during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+            "module_type_constraint"
+          ])
   | _ ->
       bail ~message:"expected constrained and replacement types in module type constraint during Ceibo -> CST lifting" ~syntax_node:node ~context:[
         "module_type.constraint"

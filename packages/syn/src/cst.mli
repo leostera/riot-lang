@@ -417,6 +417,7 @@ and module_type_constraint = {
   syntax_node : syntax_node;
   constrained_type : core_type;
   replacement_type : core_type;
+  separator_token : Token.t;
   is_destructive : bool;
 }
 
@@ -999,6 +1000,7 @@ module ModuleTypeConstraint : sig
     syntax_node : syntax_node;
     constrained_type : core_type;
     replacement_type : core_type;
+    separator_token : Token.t;
     is_destructive : bool;
   }
 end
