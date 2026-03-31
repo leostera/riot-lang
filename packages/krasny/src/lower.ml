@@ -5089,8 +5089,8 @@ and render_functor_parameter ({ name_token; module_type; _ } : Syn.Cst.functor_p
 and render_module_type_doc = function
   | Syn.Cst.ModuleType.Path path ->
       doc_of_ident path
-  | Syn.Cst.ModuleType.TypeOf { module_path; _ } ->
-      Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; kw_of; Doc.space; doc_of_ident module_path ]
+  | Syn.Cst.ModuleType.TypeOf { of_token; module_path; _ } ->
+      Doc.concat [ kw_module; Doc.space; kw_type; Doc.space; doc_of_token of_token; Doc.space; doc_of_ident module_path ]
   | (Syn.Cst.ModuleType.Signature { syntax_node; _ } as module_type) ->
       let body =
         render_signature_items ~source_node:syntax_node
