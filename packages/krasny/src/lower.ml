@@ -4902,10 +4902,11 @@ and render_module_signature_with_keyword _keyword_doc
     (decl : Syn.Cst.ModuleSignature.t) =
   let rest = Syn.Cst.ModuleSignature.and_declarations decl in
   Doc.join blank_line
-    (render_module_signature_header decl
-    :: List.map render_module_signature_header rest)
+    (render_module_signature_header ~include_keyword_leading_trivia:false decl
+    :: List.map (render_module_signature_header ~include_keyword_leading_trivia:true) rest)
 
-and render_module_signature_header (decl : Syn.Cst.ModuleSignature.t) =
+and render_module_signature_header ~include_keyword_leading_trivia
+    (decl : Syn.Cst.ModuleSignature.t) =
   let keyword_token = Syn.Cst.ModuleSignature.keyword_token decl in
   let rec_token = Syn.Cst.ModuleSignature.rec_token decl in
   let module_name = Syn.Cst.ModuleSignature.module_name_token decl in
@@ -4913,7 +4914,10 @@ and render_module_signature_header (decl : Syn.Cst.ModuleSignature.t) =
   let header =
     Doc.concat
       [
-        doc_of_token_with_leading_trivia keyword_token;
+        (if include_keyword_leading_trivia then
+           doc_of_token_with_leading_trivia keyword_token
+         else
+           doc_of_token keyword_token);
         (match rec_token with
         | None ->
             Doc.empty
@@ -4941,10 +4945,11 @@ and render_module_structure_with_keyword _keyword_doc
     (decl : Syn.Cst.ModuleStructure.t) =
   let rest = Syn.Cst.ModuleStructure.and_declarations decl in
   Doc.join blank_line
-    (render_module_structure_header decl
-    :: List.map render_module_structure_header rest)
+    (render_module_structure_header ~include_keyword_leading_trivia:false decl
+    :: List.map (render_module_structure_header ~include_keyword_leading_trivia:true) rest)
 
-and render_module_structure_header (decl : Syn.Cst.ModuleStructure.t) =
+and render_module_structure_header ~include_keyword_leading_trivia
+    (decl : Syn.Cst.ModuleStructure.t) =
   let keyword_token = Syn.Cst.ModuleStructure.keyword_token decl in
   let rec_token = Syn.Cst.ModuleStructure.rec_token decl in
   let module_name = Syn.Cst.ModuleStructure.module_name_token decl in
@@ -4954,7 +4959,10 @@ and render_module_structure_header (decl : Syn.Cst.ModuleStructure.t) =
   let header =
     Doc.concat
       [
-        doc_of_token_with_leading_trivia keyword_token;
+        (if include_keyword_leading_trivia then
+           doc_of_token_with_leading_trivia keyword_token
+         else
+           doc_of_token keyword_token);
         (match rec_token with
         | None ->
             Doc.empty

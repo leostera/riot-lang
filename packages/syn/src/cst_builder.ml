@@ -873,26 +873,77 @@ let type_definition_owned_trivia_end = fun type_definition ->
 let value_declaration_owned_trivia_spans = fun decl -> owned_trivia_spans
 (Cst.ValueDeclaration.owned_trivia decl)
 
-let structure_item_owned_trivia_spans =
+let structure_item_owned_trivia =
   function
   | Cst.StructureItem.TypeDeclaration decl ->
-      type_declaration_owned_trivia_spans decl
-  | Cst.StructureItem.TypeExtension _
+      Some (Cst.TypeDeclaration.owned_trivia decl)
+  | Cst.StructureItem.TypeExtension decl ->
+      Some (Cst.TypeExtension.owned_trivia decl)
+  | Cst.StructureItem.ClassDeclaration decl ->
+      Some (Cst.ClassDefinition.owned_trivia decl)
+  | Cst.StructureItem.ClassTypeDeclaration decl ->
+      Some decl.owned_trivia
+  | Cst.StructureItem.ModuleDeclaration decl ->
+      Some (Cst.ModuleStructure.owned_trivia decl)
+  | Cst.StructureItem.ModuleTypeDeclaration decl ->
+      Some (Cst.ModuleTypeDeclaration.owned_trivia decl)
+  | Cst.StructureItem.OpenStatement stmt ->
+      Some (Cst.OpenStatement.owned_trivia stmt)
+  | Cst.StructureItem.ExternalDeclaration decl ->
+      Some decl.owned_trivia
+  | Cst.StructureItem.IncludeStatement stmt ->
+      Some stmt.owned_trivia
+  | Cst.StructureItem.ExceptionDeclaration decl ->
+      Some decl.owned_trivia
   | Cst.StructureItem.LetBinding _
   | Cst.StructureItem.Expression _
   | Cst.StructureItem.Attribute _
   | Cst.StructureItem.Extension _
-  | Cst.StructureItem.ClassDeclaration _
-  | Cst.StructureItem.ClassTypeDeclaration _
-  | Cst.StructureItem.ModuleDeclaration _
-  | Cst.StructureItem.ModuleTypeDeclaration _
-  | Cst.StructureItem.OpenStatement _
   | Cst.StructureItem.Docstring _
-  | Cst.StructureItem.Comment _
-  | Cst.StructureItem.ExternalDeclaration _
-  | Cst.StructureItem.IncludeStatement _
-  | Cst.StructureItem.ExceptionDeclaration _ ->
-      []
+  | Cst.StructureItem.Comment _ ->
+      None
+
+let structure_item_owned_trivia_spans =
+  function
+  | Cst.StructureItem.TypeDeclaration decl ->
+      type_declaration_owned_trivia_spans decl
+  | item -> (
+      match structure_item_owned_trivia item with
+      | Some owned ->
+          owned_trivia_spans owned
+      | None ->
+          []
+    )
+
+let signature_item_owned_trivia =
+  function
+  | Cst.SignatureItem.TypeDeclaration decl ->
+      Some (Cst.TypeDeclaration.owned_trivia decl)
+  | Cst.SignatureItem.ValueDeclaration decl ->
+      Some (Cst.ValueDeclaration.owned_trivia decl)
+  | Cst.SignatureItem.TypeExtension decl ->
+      Some (Cst.TypeExtension.owned_trivia decl)
+  | Cst.SignatureItem.ClassDeclaration decl ->
+      Some (Cst.ClassDeclaration.owned_trivia decl)
+  | Cst.SignatureItem.ClassTypeDeclaration decl ->
+      Some decl.owned_trivia
+  | Cst.SignatureItem.ModuleDeclaration decl ->
+      Some (Cst.ModuleSignature.owned_trivia decl)
+  | Cst.SignatureItem.ModuleTypeDeclaration decl ->
+      Some (Cst.ModuleTypeDeclaration.owned_trivia decl)
+  | Cst.SignatureItem.OpenStatement stmt ->
+      Some (Cst.OpenStatement.owned_trivia stmt)
+  | Cst.SignatureItem.ExternalDeclaration decl ->
+      Some decl.owned_trivia
+  | Cst.SignatureItem.IncludeStatement stmt ->
+      Some stmt.owned_trivia
+  | Cst.SignatureItem.ExceptionDeclaration decl ->
+      Some decl.owned_trivia
+  | Cst.SignatureItem.Attribute _
+  | Cst.SignatureItem.Extension _
+  | Cst.SignatureItem.Docstring _
+  | Cst.SignatureItem.Comment _ ->
+      None
 
 let signature_item_owned_trivia_spans =
   function
@@ -900,20 +951,13 @@ let signature_item_owned_trivia_spans =
       type_declaration_owned_trivia_spans decl
   | Cst.SignatureItem.ValueDeclaration decl ->
       value_declaration_owned_trivia_spans decl
-  | Cst.SignatureItem.TypeExtension _
-  | Cst.SignatureItem.Attribute _
-  | Cst.SignatureItem.Extension _
-  | Cst.SignatureItem.ClassDeclaration _
-  | Cst.SignatureItem.ClassTypeDeclaration _
-  | Cst.SignatureItem.ModuleDeclaration _
-  | Cst.SignatureItem.ModuleTypeDeclaration _
-  | Cst.SignatureItem.OpenStatement _
-  | Cst.SignatureItem.Docstring _
-  | Cst.SignatureItem.Comment _
-  | Cst.SignatureItem.ExternalDeclaration _
-  | Cst.SignatureItem.IncludeStatement _
-  | Cst.SignatureItem.ExceptionDeclaration _ ->
-      []
+  | item -> (
+      match signature_item_owned_trivia item with
+      | Some owned ->
+          owned_trivia_spans owned
+      | None ->
+          []
+    )
 
 let trivia_indentation = fun ~source trivia -> source_position_indentation_before
 source
