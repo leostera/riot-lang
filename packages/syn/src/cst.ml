@@ -2806,6 +2806,8 @@ module ModuleSignature = struct
 
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
+    rec_token : Token.t option;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
     definition : definition;
@@ -2815,6 +2817,10 @@ module ModuleSignature = struct
   }
 
   let syntax_node = fun decl -> decl.syntax_node
+
+  let keyword_token = fun decl -> decl.keyword_token
+
+  let rec_token = fun decl -> decl.rec_token
 
   let module_name_token = fun decl -> decl.module_name
 
@@ -2848,6 +2854,8 @@ module ModuleStructure = struct
   type t =
     {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
+    rec_token : Token.t option;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
     module_type : module_type option;
@@ -2858,6 +2866,10 @@ module ModuleStructure = struct
   }
 
   let syntax_node = fun decl -> decl.syntax_node
+
+  let keyword_token = fun decl -> decl.keyword_token
+
+  let rec_token = fun decl -> decl.rec_token
 
   let module_name_token = fun decl -> decl.module_name
 

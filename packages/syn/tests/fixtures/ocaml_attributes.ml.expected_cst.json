@@ -731,6 +731,15 @@
               "end": 407
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 307,
+              "end": 313
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "M",
@@ -963,6 +972,15 @@
               "end": 656
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 631,
+              "end": 637
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "WILDCARD_PATTERN",
             "text": "_",
@@ -1151,6 +1169,15 @@
               "end": 702
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 657,
+              "end": 663
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "WILDCARD_PATTERN",
             "text": "_",

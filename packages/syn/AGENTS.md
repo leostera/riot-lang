@@ -80,6 +80,7 @@
 71. Keep nested `sig ... end` and `struct ... end` relift paths going through the same payload-node ordered-item builders as file-level lifts. Nested helper item streams must preserve inter-item comments/docstrings, not just declaration nodes.
 72. Keep body/branch trivia token-owned when possible. Comments/docstrings after `->`, `=`, `in`, `then`, `else`, or an opening delimiter should stay reachable through the relevant CST-carried token plus the following child node instead of being copied into parallel trivia fields.
 73. Keep declaration separator tokens when trivia can attach to them. `ModuleTypeDeclaration`, `ValueDeclaration`, and `ExternalDeclaration` should preserve their original `=` / `:` tokens so downstream tools never synthesize those boundaries and lose separator-owned comments.
+74. Keep module declaration head tokens explicit on the recursive chain. `ModuleSignature` and `ModuleStructure` should preserve their original `module` / `and` shell token on each node plus any explicit `rec` token, instead of collapsing that shell down to `is_recursive` alone.
 
 ## Validate
 

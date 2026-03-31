@@ -7588,6 +7588,15 @@ let let_expression_binding_from_node = fun ~is_recursive_binding node ->
 
 let module_declaration_parts_from_node = fun node ->
   let direct_tokens = direct_non_trivia_tokens node in
+  let keyword_token =
+    direct_tokens
+    |> List.find_opt
+         (fun syntax_token ->
+           let text = Ceibo.Red.SyntaxToken.text syntax_token in
+           String.equal text "module" || String.equal text "and")
+    |> Option.map token
+  in
+  let rec_token = direct_token_with_text node "rec" in
   let is_recursive_declaration =
     direct_tokens
     |> List.exists
@@ -7640,21 +7649,48 @@ let module_declaration_parts_from_node = fun node ->
       in
       let owned_trivia = owned_trivia_from_node node in
       Some
-        (module_name, functor_parameters, lifted_module_type, lifted_module_expression,
-         is_recursive_declaration, owned_trivia)
+        ( keyword_token,
+          rec_token,
+          module_name,
+          functor_parameters,
+          lifted_module_type,
+          lifted_module_expression,
+          is_recursive_declaration,
+          owned_trivia )
     )
   | None -> None
 
 let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive_group module_decl_nodes ->
+  let and_keyword_tokens =
+    direct_non_trivia_tokens group_syntax_node
+    |> List.filter
+         (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "and")
+    |> List.map token
+  in
   let declarations =
     module_decl_nodes
-    |> List.map
-         (fun module_decl_node ->
+    |> List.mapi
+         (fun index module_decl_node ->
+           let keyword_token =
+             if index = 0 then
+               direct_non_trivia_tokens module_decl_node
+               |> List.find_opt
+                    (fun syntax_token ->
+                      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "module")
+               |> Option.map token
+             else
+               List.nth_opt and_keyword_tokens (index - 1)
+           in
            match module_declaration_parts_from_node module_decl_node with
            | Some
-               (module_name, functor_parameters, Some module_type, None, is_recursive_declaration, owned_trivia) ->
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, Some module_type, None, is_recursive_declaration, owned_trivia) -> (
+               match keyword_token with
+               | Some keyword_token ->
                {
                  Cst.ModuleSignature.syntax_node = module_decl_node;
+                 keyword_token;
+                 rec_token;
                  module_name;
                  functor_parameters;
                  definition = Cst.ModuleSignature.Signature module_type;
@@ -7662,10 +7698,19 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  is_recursive = is_recursive_group || is_recursive_declaration;
                  owned_trivia;
                }
+               | None ->
+                   bail ~message:"expected module/and keyword for signature module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
+                     "item";
+                     "module_signature"
+                   ])
            | Some
-               (module_name, functor_parameters, None, Some module_expression, is_recursive_declaration, owned_trivia) ->
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, None, Some module_expression, is_recursive_declaration, owned_trivia) -> (
+               match keyword_token with
+               | Some keyword_token ->
                {
                  Cst.ModuleSignature.syntax_node = module_decl_node;
+                 keyword_token;
+                 rec_token;
                  module_name;
                  functor_parameters;
                  definition = Cst.ModuleSignature.Alias module_expression;
@@ -7673,6 +7718,11 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  is_recursive = is_recursive_group || is_recursive_declaration;
                  owned_trivia;
                }
+               | None ->
+                   bail ~message:"expected module/and keyword for signature module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
+                     "item";
+                     "module_signature"
+                   ])
            | Some _ ->
                bail ~message:"expected signature module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
                  "item";
@@ -7704,15 +7754,36 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
         }
 
 let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive_group module_decl_nodes ->
+  let and_keyword_tokens =
+    direct_non_trivia_tokens group_syntax_node
+    |> List.filter
+         (fun syntax_token ->
+           String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "and")
+    |> List.map token
+  in
   let declarations =
     module_decl_nodes
-    |> List.map
-         (fun module_decl_node ->
+    |> List.mapi
+         (fun index module_decl_node ->
+           let keyword_token =
+             if index = 0 then
+               direct_non_trivia_tokens module_decl_node
+               |> List.find_opt
+                    (fun syntax_token ->
+                      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "module")
+               |> Option.map token
+             else
+               List.nth_opt and_keyword_tokens (index - 1)
+           in
            match module_declaration_parts_from_node module_decl_node with
            | Some
-               (module_name, functor_parameters, module_type, Some module_expression, is_recursive_declaration, owned_trivia) ->
+               (_parts_keyword_token, rec_token, module_name, functor_parameters, module_type, Some module_expression, is_recursive_declaration, owned_trivia) -> (
+               match keyword_token with
+               | Some keyword_token ->
                {
                  Cst.ModuleStructure.syntax_node = module_decl_node;
+                 keyword_token;
+                 rec_token;
                  module_name;
                  functor_parameters;
                  module_type;
@@ -7721,6 +7792,11 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
                  is_recursive = is_recursive_group || is_recursive_declaration;
                  owned_trivia;
                }
+               | None ->
+                   bail ~message:"expected module/and keyword for structure module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
+                     "item";
+                     "module_structure"
+                   ])
            | Some _ ->
                bail ~message:"expected structure module declaration during Ceibo -> CST lifting" ~syntax_node:module_decl_node ~context:[
                  "item";

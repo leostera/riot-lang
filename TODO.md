@@ -31,7 +31,7 @@ This file is _yours_. Keep it up to date after every big change.
   - [ ] `parenthesized_expression.inner_leading_trivia`
 - [ ] Replace CST booleans that collapse real syntax choices with token-backed structure where the original tokens matter:
   - object/class member modifier booleans when they should preserve `private` / `mutable` / `virtual` / `!`
-  - module declaration recursion when `rec` should stay token-backed instead of bool-only
+  - [x] module declaration heads preserve `module` / `and` / `rec` tokens
 - [ ] Keep local opens token-backed and grammar-true:
   - expression local opens should use explicit `LetOpen` / `Delimited` shapes with original tokens
   - pattern local opens stay pattern-only

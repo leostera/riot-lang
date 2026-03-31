@@ -1685,6 +1685,8 @@ let rec module_signature_to_json decl =
   in
   Json.Object [
     ("syntax_node", syntax_node_to_json (Cst.ModuleSignature.syntax_node decl));
+    ("keyword_token", token_to_json (Cst.ModuleSignature.keyword_token decl));
+    ("rec_token", option_to_json token_to_json (Cst.ModuleSignature.rec_token decl));
     ("module_name", token_to_json (Cst.ModuleSignature.module_name_token decl));
     (
       "functor_parameters",
@@ -1699,6 +1701,8 @@ let rec module_signature_to_json decl =
 let rec module_structure_to_json decl =
   Json.Object [
     ("syntax_node", syntax_node_to_json (Cst.ModuleStructure.syntax_node decl));
+    ("keyword_token", token_to_json (Cst.ModuleStructure.keyword_token decl));
+    ("rec_token", option_to_json token_to_json (Cst.ModuleStructure.rec_token decl));
     ("module_name", token_to_json (Cst.ModuleStructure.module_name_token decl));
     (
       "functor_parameters",

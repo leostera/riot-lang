@@ -40,6 +40,15 @@
               "end": 70
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 42,
+              "end": 48
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "A",
@@ -5202,6 +5211,15 @@
               "end": 2522
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 2333,
+              "end": 2339
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "M",

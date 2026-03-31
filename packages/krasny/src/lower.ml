@@ -4984,28 +4984,29 @@ and render_module_expression_doc = function
   | Syn.Cst.ModuleExpression.Extension extension ->
       render_extension_doc extension
 
-and render_module_signature_with_keyword keyword_doc
+and render_module_signature_with_keyword _keyword_doc
     (decl : Syn.Cst.ModuleSignature.t) =
   let rest = Syn.Cst.ModuleSignature.and_declarations decl in
   Doc.join blank_line
-    (render_module_signature_header
-       (if Syn.Cst.ModuleSignature.is_recursive decl then
-          Doc.concat [ kw_module; Doc.space; kw_rec ]
-        else
-          keyword_doc)
-       decl
-    :: List.map (render_module_signature_header kw_and) rest)
+    (render_module_signature_header decl
+    :: List.map render_module_signature_header rest)
 
-and render_module_signature_header keyword_doc
-    (decl : Syn.Cst.ModuleSignature.t) =
+and render_module_signature_header (decl : Syn.Cst.ModuleSignature.t) =
+  let keyword_token = Syn.Cst.ModuleSignature.keyword_token decl in
+  let rec_token = Syn.Cst.ModuleSignature.rec_token decl in
   let module_name = Syn.Cst.ModuleSignature.module_name_token decl in
   let functor_parameters = Syn.Cst.ModuleSignature.functor_parameters decl in
   let header =
     Doc.concat
       [
-        keyword_doc;
+        doc_of_token_with_leading_trivia keyword_token;
+        (match rec_token with
+        | None ->
+            Doc.empty
+        | Some rec_token ->
+            Doc.concat [ Doc.space; doc_of_token_with_leading_trivia rec_token ]);
         Doc.space;
-        doc_of_token module_name;
+        doc_of_token_with_leading_trivia module_name;
         (if functor_parameters = [] then
            Doc.empty
          else
@@ -5022,20 +5023,16 @@ and render_module_signature_header keyword_doc
   | Syn.Cst.ModuleSignature.Alias module_expression ->
       Doc.concat [ header; equals; render_module_expression_doc module_expression ]
 
-and render_module_structure_with_keyword keyword_doc
+and render_module_structure_with_keyword _keyword_doc
     (decl : Syn.Cst.ModuleStructure.t) =
   let rest = Syn.Cst.ModuleStructure.and_declarations decl in
   Doc.join blank_line
-    (render_module_structure_header
-       (if Syn.Cst.ModuleStructure.is_recursive decl then
-          Doc.concat [ kw_module; Doc.space; kw_rec ]
-        else
-          keyword_doc)
-       decl
-    :: List.map (render_module_structure_header kw_and) rest)
+    (render_module_structure_header decl
+    :: List.map render_module_structure_header rest)
 
-and render_module_structure_header keyword_doc
-    (decl : Syn.Cst.ModuleStructure.t) =
+and render_module_structure_header (decl : Syn.Cst.ModuleStructure.t) =
+  let keyword_token = Syn.Cst.ModuleStructure.keyword_token decl in
+  let rec_token = Syn.Cst.ModuleStructure.rec_token decl in
   let module_name = Syn.Cst.ModuleStructure.module_name_token decl in
   let functor_parameters = Syn.Cst.ModuleStructure.functor_parameters decl in
   let module_type = Syn.Cst.ModuleStructure.module_type decl in
@@ -5043,9 +5040,14 @@ and render_module_structure_header keyword_doc
   let header =
     Doc.concat
       [
-        keyword_doc;
+        doc_of_token_with_leading_trivia keyword_token;
+        (match rec_token with
+        | None ->
+            Doc.empty
+        | Some rec_token ->
+            Doc.concat [ Doc.space; doc_of_token_with_leading_trivia rec_token ]);
         Doc.space;
-        doc_of_token module_name;
+        doc_of_token_with_leading_trivia module_name;
         (if functor_parameters = [] then
            Doc.empty
          else

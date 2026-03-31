@@ -4021,6 +4021,8 @@ module ModuleSignature : sig
 
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
+    rec_token : Token.t option;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
     definition : definition;
@@ -4029,6 +4031,10 @@ module ModuleSignature : sig
     owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
+
+  val keyword_token : t -> Token.t
+
+  val rec_token : t -> Token.t option
 
   val module_name_token : t -> Token.t
 
@@ -4063,6 +4069,8 @@ end
 module ModuleStructure : sig
   type t = {
     syntax_node : syntax_node;
+    keyword_token : Token.t;
+    rec_token : Token.t option;
     module_name : Token.t;
     functor_parameters : functor_parameter list;
     module_type : module_type option;
@@ -4072,6 +4080,10 @@ module ModuleStructure : sig
     owned_trivia : owned_trivia;
   }
   val syntax_node : t -> syntax_node
+
+  val keyword_token : t -> Token.t
+
+  val rec_token : t -> Token.t option
 
   val module_name_token : t -> Token.t
 

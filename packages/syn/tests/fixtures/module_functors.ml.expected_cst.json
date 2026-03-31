@@ -40,6 +40,15 @@
               "end": 64
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 20,
+              "end": 26
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "F",
@@ -142,6 +151,15 @@
               "end": 150
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 92,
+              "end": 98
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "G",
@@ -282,6 +300,15 @@
               "end": 193
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 178,
+              "end": 184
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "M",
@@ -378,6 +405,15 @@
               "end": 252
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 231,
+              "end": 237
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "N",
@@ -536,6 +572,15 @@
               "end": 300
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 279,
+              "end": 285
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "O",
@@ -694,6 +739,15 @@
               "end": 390
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "module",
+            "span": {
+              "start": 342,
+              "end": 348
+            }
+          },
+          "rec_token": null,
           "module_name": {
             "kind": "IDENT_EXPR",
             "text": "P",
