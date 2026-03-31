@@ -3732,11 +3732,23 @@ and core_type_from_node = fun node ->
         closing_token
       })
   | Syntax_kind.OBJECT_TYPE ->
+      let direct_tokens = direct_non_trivia_tokens node in
+      let opening_token, closing_token =
+        match direct_tokens with
+        | opening_token :: _ ->
+            let closing_token = List.hd (List.rev direct_tokens) in
+            (token opening_token, token closing_token)
+        | [] ->
+            bail ~message:"expected object type delimiters during Ceibo -> CST lifting"
+              ~syntax_node:node ~context:[ "core_type.object" ]
+      in
       Cst.CoreType.Object {
         syntax_node = node;
+        opening_token;
         fields = direct_non_trivia_nodes node
         |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.OBJECT_TYPE_FIELD)
-        |> List.map object_type_field_from_node
+        |> List.map object_type_field_from_node;
+        closing_token
       }
   | _ ->
       bail ~message:"unsupported core type shape during Ceibo -> CST lifting" ~syntax_node:node ~context:[
@@ -7484,8 +7496,19 @@ let type_definition_from_node = fun node ->
                   if kind = Syntax_kind.TYPE_EXTENSIBLE then
                     Cst.TypeDefinition.Extensible {syntax_node = first}
                   else if kind = Syntax_kind.OBJECT_TYPE then
+                    let direct_tokens = direct_non_trivia_tokens first in
+                    let opening_token, closing_token =
+                      match direct_tokens with
+                      | opening_token :: _ ->
+                          let closing_token = List.hd (List.rev direct_tokens) in
+                          (token opening_token, token closing_token)
+                      | [] ->
+                          bail ~message:"expected type definition object delimiters during Ceibo -> CST lifting"
+                            ~syntax_node:first ~context:[ "type_definition.object" ]
+                    in
                     Cst.TypeDefinition.Object {
                       syntax_node = first;
+                      opening_token;
                       fields = direct_non_trivia_nodes first
                       |> List.filter
                       (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.OBJECT_TYPE_FIELD)
@@ -7513,6 +7536,8 @@ let type_definition_from_node = fun node ->
                               bail ~message:"expected object type field name and type during Ceibo -> CST lifting" ~syntax_node:field_node ~context:[
                                 "type_definition.object_field"
                               ])
+                      ;
+                      closing_token
                     }
                   else if kind = Syntax_kind.FIRST_CLASS_MODULE_TYPE then
                     let direct_tokens = direct_non_trivia_tokens first in

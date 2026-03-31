@@ -670,7 +670,9 @@ and core_type =
       *)
   | Object of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       fields : object_type_field list;
+      closing_token : Token.t;
     }
       (** An object type written between `<` and `>`.
 
@@ -991,7 +993,9 @@ module CoreType : sig
       }
     | Object of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         fields : object_type_field list;
+        closing_token : Token.t;
       }
   val syntax_node : t -> syntax_node
 end
@@ -3913,7 +3917,9 @@ module TypeDefinition : sig
         *)
     | Object of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         fields : object_type_field list;
+        closing_token : Token.t;
       }
     (** An object type definition such as `type t = < run : unit -> unit >`. *)
     | Record of {

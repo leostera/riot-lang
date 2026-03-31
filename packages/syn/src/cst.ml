@@ -379,7 +379,9 @@ and core_type =
     }
   | Object of {
       syntax_node : syntax_node;
+      opening_token : Token.t;
       fields : object_type_field list;
+      closing_token : Token.t;
     }
 
 and module_type =
@@ -536,7 +538,9 @@ module CoreType = struct
       }
     | Object of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         fields : object_type_field list;
+        closing_token : Token.t;
       }
 
   let syntax_node =
@@ -2744,7 +2748,9 @@ module TypeDefinition = struct
       }
     | Object of {
         syntax_node : syntax_node;
+        opening_token : Token.t;
         fields : object_type_field list;
+        closing_token : Token.t;
       }
     | Record of {
         syntax_node : syntax_node;

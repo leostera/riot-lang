@@ -921,8 +921,8 @@ and render_core_type =
           render_package_type_doc package_type;
           doc_of_token closing_token;
         ]
-  | Syn.Cst.CoreType.Object { fields; _ } ->
-      render_object_type fields
+  | Syn.Cst.CoreType.Object { opening_token; fields; closing_token; _ } ->
+      render_object_type ~opening_token ~closing_token fields
   | Syn.Cst.CoreType.Extension extension ->
       render_core_type_extension_doc extension
 and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
@@ -1039,13 +1039,13 @@ and render_object_type_field_entry = fun (field : Syn.Cst.object_type_field) ->
     | None ->
         Doc.empty)
   ]
-and render_object_type = fun fields ->
+and render_object_type = fun ~opening_token ~closing_token fields ->
   Doc.concat [
-    Doc.text "<";
+    doc_of_token opening_token;
     Doc.line;
     Doc.indent 2 (join_map Doc.line render_object_type_field_entry fields);
     Doc.line;
-    Doc.text ">"
+    doc_of_token closing_token
   ]
 and render_poly_variant_field =
   function
@@ -1437,8 +1437,8 @@ let render_type_definition = function
              render_package_type_doc package_type;
              doc_of_token closing_token;
            ])
-  | Syn.Cst.TypeDefinition.Object { fields; _ } ->
-      Some (render_object_type fields)
+  | Syn.Cst.TypeDefinition.Object { opening_token; fields; closing_token; _ } ->
+      Some (render_object_type ~opening_token ~closing_token fields)
 
 type type_definition_layout =
   | Inline_definition
