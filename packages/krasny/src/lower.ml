@@ -2551,17 +2551,17 @@ let make_lowerer =
   | Syn.Cst.Expression.TypeAscription { expression; kind; _ } ->
       let tail =
         match kind with
-        | Syn.Cst.Type type_ ->
-            Doc.concat [ annotation_colon; render_core_type type_ ]
-        | Syn.Cst.Coerce type_ ->
-            Doc.concat [ Doc.space; coercion_arrow; Doc.space; render_core_type type_ ]
-        | Syn.Cst.ConstraintCoerce { from_type; to_type } ->
+        | Syn.Cst.Type { colon_token; type_ } ->
+            Doc.concat [ doc_of_token colon_token; render_core_type type_ ]
+        | Syn.Cst.Coerce { coercion_token; type_ } ->
+            Doc.concat [ Doc.space; doc_of_token coercion_token; Doc.space; render_core_type type_ ]
+        | Syn.Cst.ConstraintCoerce { colon_token; from_type; coercion_token; to_type } ->
             Doc.concat
               [
-                annotation_colon;
+                doc_of_token colon_token;
                 render_core_type from_type;
                 Doc.space;
-                coercion_arrow;
+                doc_of_token coercion_token;
                 Doc.space;
                 render_core_type to_type;
               ]
@@ -4344,7 +4344,8 @@ and render_binding_header ~keyword_token ~rec_token pattern =
   Doc.concat ([ doc_of_token keyword_token ] @ rec_part @ [ Doc.space; pattern ])
 
 and split_typed_binding_value = function
-  | Syn.Cst.Expression.TypeAscription { expression; kind = Syn.Cst.Type type_; _ } ->
+  | Syn.Cst.Expression.TypeAscription
+      { expression; kind = Syn.Cst.Type { type_; _ }; _ } ->
       (expression, Some type_)
   | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
       (expression, Some type_)

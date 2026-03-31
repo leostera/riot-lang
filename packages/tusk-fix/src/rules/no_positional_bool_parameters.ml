@@ -131,7 +131,8 @@ let rec arrow_parameters type_ =
 
 let typed_value_function_type binding =
   let rec go = function
-    | Syn.Cst.Expression.TypeAscription { expression; kind = Syn.Cst.Type type_; _ }
+    | Syn.Cst.Expression.TypeAscription
+        { expression; kind = Syn.Cst.Type { type_; _ }; _ }
     | Syn.Cst.Expression.Polymorphic { expression; type_; _ } ->
         if Syn.Cst.LetBinding.is_function binding then
           Some (expression, type_)

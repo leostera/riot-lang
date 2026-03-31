@@ -37,6 +37,8 @@ Token-backed so far:
 - object override field `=`
 - record definition field `:`
 - typed pattern `:`
+- expression type ascription `:`
+- expression coercion `:>`
 
 ## Next Targets
 

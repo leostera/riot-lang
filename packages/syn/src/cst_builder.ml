@@ -4441,6 +4441,16 @@ and normalize_greedy_labeled_argument = fun ~syntax_node ~callee argument ->
       Cst.Expression.Apply {syntax_node; callee; argument; attributes = []}
 and expression_with_type_annotation = fun ~syntax_node ~expression type_node ->
   let type_ = core_type_from_node type_node in
+  let colon_token =
+    match direct_token_with_text syntax_node ":" with
+    | Some colon_token ->
+        colon_token
+    | None ->
+        bail ~message:"expected expression type ascription colon token during Ceibo -> CST lifting" ~syntax_node ~context:[
+          "expression.type_ascription";
+          "colon_token"
+        ]
+  in
   match type_ with
   | Cst.CoreType.Poly { binders; _ } when List.exists Cst.TypeBinder.is_quoted binders ->
       Cst.Expression.Polymorphic {syntax_node; expression; type_; attributes = []}
@@ -4448,7 +4458,7 @@ and expression_with_type_annotation = fun ~syntax_node ~expression type_node ->
       Cst.Expression.TypeAscription {
         syntax_node;
         expression;
-        kind = Cst.Type type_;
+        kind = Cst.Type { colon_token; type_ };
         attributes = []
       }
 and binding_type_annotation_node = fun prefix_nodes -> prefix_nodes |> List.find_opt can_lift_core_type_node
@@ -5015,7 +5025,19 @@ and expression_from_node = fun node ->
             Cst.Expression.TypeAscription {
               syntax_node = node;
               expression = expression_from_node expr_node;
-              kind = Cst.Coerce (core_type_from_node to_type_node);
+              kind =
+                Cst.Coerce {
+                  coercion_token =
+                    (match direct_token_with_text node ":>" with
+                    | Some coercion_token ->
+                        coercion_token
+                    | None ->
+                        bail ~message:"expected expression coercion token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                          "expression.type_ascription";
+                          "coercion_token"
+                        ]);
+                  type_ = core_type_from_node to_type_node;
+                };
               attributes = []
             }
         | expr_node :: from_type_node :: to_type_node :: _ ->
@@ -5024,7 +5046,25 @@ and expression_from_node = fun node ->
               expression = expression_from_node expr_node;
               kind =
                 Cst.ConstraintCoerce {
+                  colon_token =
+                    (match direct_token_with_text node ":" with
+                    | Some colon_token ->
+                        colon_token
+                    | None ->
+                        bail ~message:"expected expression constraint-coercion colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                          "expression.type_ascription";
+                          "colon_token"
+                        ]);
                   from_type = core_type_from_node from_type_node;
+                  coercion_token =
+                    (match direct_token_with_text node ":>" with
+                    | Some coercion_token ->
+                        coercion_token
+                    | None ->
+                        bail ~message:"expected expression constraint-coercion coercion token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                          "expression.type_ascription";
+                          "coercion_token"
+                        ]);
                   to_type = core_type_from_node to_type_node;
                 };
               attributes = []
@@ -9285,9 +9325,10 @@ and validate_expression = fun ~context ->
   | Cst.Expression.TypeAscription { expression; kind; _ } ->
       validate_expression ~context:((("expression.type_ascription.expression" :: context))) expression;
       (match kind with
-      | Cst.Type type_ | Cst.Coerce type_ ->
+      | Cst.Type { type_; _ }
+      | Cst.Coerce { type_; _ } ->
           validate_core_type ~context:((("expression.type_ascription.type" :: context))) type_
-      | Cst.ConstraintCoerce { from_type; to_type } ->
+      | Cst.ConstraintCoerce { from_type; to_type; _ } ->
           validate_core_type ~context:((("expression.type_ascription.from_type" :: context))) from_type;
           validate_core_type ~context:((("expression.type_ascription.to_type" :: context))) to_type)
   | Cst.Expression.Polymorphic { expression; type_; _ } ->

@@ -906,15 +906,27 @@ and expression_attribute_fields = fun expression ->
   | attributes ->
       [ ("attributes", Json.Array (List.map attribute_to_json attributes)) ]
 and type_ascription_kind_to_json = function
-  | Cst.Type type_ ->
-      Json.Object [ ("tag", Json.String "type"); ("type", core_type_to_json type_) ]
-  | Cst.Coerce type_ ->
-      Json.Object [ ("tag", Json.String "coerce"); ("type", core_type_to_json type_) ]
-  | Cst.ConstraintCoerce { from_type; to_type } ->
+  | Cst.Type { colon_token; type_ } ->
+      Json.Object
+        [
+          ("tag", Json.String "type");
+          ("colon_token", token_to_json colon_token);
+          ("type", core_type_to_json type_);
+        ]
+  | Cst.Coerce { coercion_token; type_ } ->
+      Json.Object
+        [
+          ("tag", Json.String "coerce");
+          ("coercion_token", token_to_json coercion_token);
+          ("type", core_type_to_json type_);
+        ]
+  | Cst.ConstraintCoerce { colon_token; from_type; coercion_token; to_type } ->
       Json.Object
         [
           ("tag", Json.String "constraint_coerce");
+          ("colon_token", token_to_json colon_token);
           ("from_type", core_type_to_json from_type);
+          ("coercion_token", token_to_json coercion_token);
           ("to_type", core_type_to_json to_type);
         ]
 and expression_to_json = fun expression ->

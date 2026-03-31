@@ -1450,10 +1450,18 @@ and type_ascription_expression = {
 }
 
 and type_ascription_kind =
-  | Type of core_type
-  | Coerce of core_type
+  | Type of {
+      colon_token : Token.t;
+      type_ : core_type;
+    }
+  | Coerce of {
+      coercion_token : Token.t;
+      type_ : core_type;
+    }
   | ConstraintCoerce of {
+      colon_token : Token.t;
       from_type : core_type;
+      coercion_token : Token.t;
       to_type : core_type;
     }
 
