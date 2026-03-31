@@ -8701,7 +8701,7 @@ let build_source_file_body = fun ~source ~tokens ~comment_item_of_comment ~docst
 
 let build_items_from_payload_nodes =
   fun ~comment_item_of_comment ~docstring_item_of_docstring ~syntax_node_of_item
-    ~owned_trivia_spans_of_item payload_nodes items_from_node ->
+    ~owned_trivia_spans_of_item ?container_node payload_nodes items_from_node ->
   let next_index =
     let cell = Cell.create 0 in
     fun () ->
@@ -8727,14 +8727,23 @@ let build_items_from_payload_nodes =
   in
   let trivia_entries =
     let terminal_tokens =
-      payload_nodes
-      |> List.concat_map (fun payload_node ->
-             match List.rev (direct_non_trivia_tokens payload_node) with
-             | closing_token :: _ ->
-                 Ceibo.Red.SyntaxToken.leading_trivia closing_token
-                 |> List.map syntax_token_from_trivia
-             | [] ->
-                 [])
+      match container_node with
+      | Some node -> (
+          match List.rev (direct_non_trivia_tokens node) with
+          | closing_token :: _ ->
+              Ceibo.Red.SyntaxToken.leading_trivia closing_token
+              |> List.map syntax_token_from_trivia
+          | [] ->
+              [])
+      | None ->
+          payload_nodes
+          |> List.concat_map (fun payload_node ->
+                 match List.rev (direct_non_trivia_tokens payload_node) with
+                 | closing_token :: _ ->
+                     Ceibo.Red.SyntaxToken.leading_trivia closing_token
+                     |> List.map syntax_token_from_trivia
+                 | [] ->
+                     [])
     in
     ((item_entries
       |> List.concat_map (fun (_, _, item) ->
@@ -10022,6 +10031,7 @@ let raw_structure_items_from_syntax_node = fun node ->
     match Ceibo.Red.SyntaxNode.kind node with
     | Syntax_kind.STRUCT_EXPR ->
         build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.StructureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.StructureItem.Docstring doc) ~syntax_node_of_item:Cst.StructureItem.syntax_node ~owned_trivia_spans_of_item:structure_item_owned_trivia_spans
+          ~container_node:node
           (structure_item_payload_nodes_from_node node)
           structure_items_from_node
     | _ ->
@@ -10057,8 +10067,8 @@ let structure_items_from_syntax_nodes = fun nodes ->
   | exception Bail error -> Error error
 
 let structure_items_of_module_expression = function
-  | Cst.ModuleExpression.Structure {item_syntax_nodes; _} ->
-      structure_items_from_syntax_nodes item_syntax_nodes
+  | Cst.ModuleExpression.Structure {syntax_node; _} ->
+      structure_items_from_syntax_node syntax_node
   | module_expression ->
       Error
         {
@@ -10073,10 +10083,12 @@ let raw_signature_items_from_syntax_node = fun node ->
     match Ceibo.Red.SyntaxNode.kind node with
     | Syntax_kind.SIGNATURE ->
         build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans
+          ~container_node:node
           (signature_item_payload_nodes_from_node node)
           signature_items_from_node
     | Syntax_kind.SIG_EXPR ->
         build_items_from_payload_nodes ~comment_item_of_comment:(fun comment -> Cst.SignatureItem.Comment comment) ~docstring_item_of_docstring:(fun doc -> Cst.SignatureItem.Docstring doc) ~syntax_node_of_item:Cst.SignatureItem.syntax_node ~owned_trivia_spans_of_item:signature_item_owned_trivia_spans
+          ~container_node:node
           (signature_item_payload_nodes_from_node node)
           signature_items_from_node
     | _ ->
@@ -10113,8 +10125,7 @@ let signature_items_from_syntax_nodes = fun nodes ->
 
 let signature_items_of_module_type = function
   | Cst.ModuleType.Signature {signature_syntax_node; _} ->
-      signature_items_from_syntax_nodes
-        (signature_item_payload_nodes_from_node signature_syntax_node)
+      signature_items_from_syntax_node signature_syntax_node
   | module_type ->
       Error
         {
