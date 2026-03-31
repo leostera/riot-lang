@@ -1334,7 +1334,9 @@ let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record 
                | Syn.CstBuilder.RecordField _ ->
                    false
                | Syn.CstBuilder.Comment _
-               | Syn.CstBuilder.Docstring _ ->
+               | Syn.CstBuilder.Docstring _
+               | Syn.CstBuilder.TrailingComment _
+               | Syn.CstBuilder.TrailingDocstring _ ->
                    true)
       in
       if List.is_empty fields then
