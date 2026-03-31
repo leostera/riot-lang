@@ -7715,20 +7715,24 @@ let type_definition_from_node = fun node ->
             )
         )
 
-let type_declaration_from_node = fun node ->
+let type_declaration_from_node = fun ?keyword_token node ->
   let lifted_keyword_token =
-    match direct_non_trivia_tokens node
-    |> List.find_opt
-      (fun syntax_token ->
-        let text = Ceibo.Red.SyntaxToken.text syntax_token in
-        String.equal text "type" || String.equal text "and") with
-    | Some syntax_token ->
-        token syntax_token
+    match keyword_token with
+    | Some keyword_token ->
+        keyword_token
     | None ->
-        bail ~message:"expected type declaration keyword token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
-          "type_declaration";
-          "keyword_token"
-        ]
+        match direct_non_trivia_tokens node
+        |> List.find_opt
+          (fun syntax_token ->
+            let text = Ceibo.Red.SyntaxToken.text syntax_token in
+            String.equal text "type" || String.equal text "and") with
+        | Some syntax_token ->
+            token syntax_token
+        | None ->
+            bail ~message:"expected type declaration keyword token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+              "type_declaration";
+              "keyword_token"
+            ]
   in
   let lifted_type_params = direct_non_trivia_nodes node
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_PARAM)
@@ -7792,18 +7796,43 @@ let type_declaration_from_node = fun node ->
 let rec flatten_type_declaration_group = fun (decl : Cst.TypeDeclaration.t) ->
   let direct_type_decl_nodes = direct_non_trivia_nodes (Cst.TypeDeclaration.syntax_node decl)
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL) in
-  match direct_type_decl_nodes |> List.filter_map type_declaration_from_node with
-  | _ :: _ as flattened ->
-      flattened
-  | [] ->
+  match grouped_type_declaration_from_nodes ~group_syntax_node:(Cst.TypeDeclaration.syntax_node decl) direct_type_decl_nodes with
+  | Some grouped_decl ->
+      grouped_decl :: Cst.TypeDeclaration.and_declarations grouped_decl
+  | None ->
       let existing_and_declarations = Cst.TypeDeclaration.and_declarations decl in
       let decl = {decl with next_and_declaration = None} in
       decl :: (existing_and_declarations |> List.concat_map flatten_type_declaration_group)
 
-let grouped_type_declaration_from_nodes = fun ~group_syntax_node nodes ->
+and grouped_type_declaration_from_nodes = fun ~group_syntax_node nodes ->
+  let and_keyword_tokens =
+    direct_non_trivia_tokens group_syntax_node
+    |> List.filter
+      (fun syntax_token ->
+        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "and")
+    |> List.map token
+  in
   let decls = nodes
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_DECL)
-  |> List.filter_map type_declaration_from_node in
+  |> List.mapi
+    (fun index node ->
+      let keyword_token =
+        if index = 0 then
+          direct_non_trivia_tokens node
+          |> List.find_opt
+            (fun syntax_token ->
+              String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "type")
+          |> Option.map token
+        else
+          List.nth_opt and_keyword_tokens (index - 1)
+      in
+      match keyword_token with
+      | Some keyword_token ->
+          type_declaration_from_node ~keyword_token node
+      | None ->
+          bail ~message:"expected type/and keyword for grouped type declaration during Ceibo -> CST lifting"
+            ~syntax_node:node ~context:[ "type_declaration"; "keyword_token" ])
+  |> List.filter_map (fun decl -> decl) in
   match decls with
   | [] ->
       None
