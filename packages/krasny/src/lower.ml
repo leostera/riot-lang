@@ -4151,7 +4151,7 @@ let make_lowerer =
       );
       Doc.space;
       doc_of_token arrow_token;
-      Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
+      Doc.concat [ Doc.break (); Doc.indent 2 body ];
     ])
   and render_parenthesized_expression =
     function
@@ -5035,14 +5035,14 @@ let make_lowerer =
           match value with
           | Syn.Cst.Expression.Fun _
           | Syn.Cst.Expression.Function _ ->
-              Doc.group
-              (Doc.concat
+              Doc.concat
               [
                 header;
                 Doc.space;
                 doc_of_token equals_token;
-                Doc.indent 2 (Doc.concat [ Doc.break (); rendered_value ]);
-              ])
+                Doc.space;
+                Doc.indent 2 rendered_value;
+              ]
           | _ ->
               Doc.concat [ header; Doc.space; doc_of_token equals_token; Doc.space; rendered_value;  ]
         )
