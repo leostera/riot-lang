@@ -1784,6 +1784,7 @@ and class_let_expression = {
 and class_constraint_expression = {
   syntax_node : syntax_node;
   class_expression : class_expression;
+  colon_token : Token.t;
   class_type : class_type;
 }
 

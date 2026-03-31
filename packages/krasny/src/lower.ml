@@ -3150,12 +3150,12 @@ and render_class_expression = function
       render_class_apply_expression apply
   | Syn.Cst.ClassExpression.Let let_ ->
       render_class_let_expression let_
-  | Syn.Cst.ClassExpression.Constraint { class_expression; class_type; _ } ->
+  | Syn.Cst.ClassExpression.Constraint { class_expression; colon_token; class_type; _ } ->
       Doc.concat
         [
           Doc.lparen;
           render_class_expression class_expression;
-          annotation_colon;
+          doc_of_token colon_token;
           render_class_type_doc class_type;
           Doc.rparen;
         ]

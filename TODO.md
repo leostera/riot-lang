@@ -46,6 +46,7 @@ Token-backed so far:
 - class declaration `:`
 - class definition `:`
 - class definition `=`
+- class expression constraint `:`
 
 ## Next Targets
 

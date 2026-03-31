@@ -6558,6 +6558,15 @@ and class_expression_from_node = fun node ->
           Cst.ClassExpression.Constraint {
             syntax_node = node;
             class_expression = class_expression_from_node expression_node;
+            colon_token =
+              (match direct_token_with_text node ":" with
+              | Some colon_token ->
+                  colon_token
+              | None ->
+                  bail ~message:"expected class expression constraint colon token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+                    "class_expression.constraint";
+                    "colon_token"
+                  ]);
             class_type = class_type_from_node type_node
           }
       | _ ->
