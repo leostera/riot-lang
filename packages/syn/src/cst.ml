@@ -1121,6 +1121,7 @@ and labeled_parameter = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   label_token : Token.t;
+  colon_token : Token.t option;
   binding_name_token : Token.t option;
   binding_name_matches_label : bool;
   binding_pattern : pattern option;
@@ -1130,6 +1131,8 @@ and optional_parameter = {
   syntax_node : syntax_node;
   sigil_token : Token.t;
   label_token : Token.t;
+  colon_token : Token.t option;
+  equals_token : Token.t option;
   binding_name_token : Token.t option;
   binding_name_matches_label : bool;
   default_value : expression option;

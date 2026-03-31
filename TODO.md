@@ -57,6 +57,9 @@ Token-backed so far:
 - class member body `=`
 - for loop `=`
 - let module expression `=`
+- named parameter alias `:`
+- optional parameter alias `:`
+- optional parameter default `=`
 
 ## Next Targets
 

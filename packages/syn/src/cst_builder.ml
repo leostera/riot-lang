@@ -4187,6 +4187,7 @@ let rec parameter_from_node = fun node ->
             syntax_node = node;
             sigil_token = sigil_token;
             label_token = label_name_token;
+            colon_token = token_with_text node ":";
             binding_name_token;
             binding_name_matches_label =
               binding_name_matches_label ~label_name_token binding_name_token;
@@ -4219,6 +4220,8 @@ let rec parameter_from_node = fun node ->
             syntax_node = node;
             sigil_token = sigil_token;
             label_token = label_name_token;
+            colon_token = token_with_text node ":";
+            equals_token = token_with_text node "=";
             binding_name_token;
             binding_name_matches_label =
               binding_name_matches_label ~label_name_token binding_name_token;
@@ -4255,6 +4258,8 @@ let rec parameter_from_node = fun node ->
                 syntax_node = node;
                 sigil_token = sigil_token;
                 label_token;
+                colon_token = token_with_text node ":";
+                equals_token = token_with_text node "=";
                 binding_name_token;
                 binding_name_matches_label =
                   binding_name_matches_label ~label_name_token:label_token binding_name_token;
