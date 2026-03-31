@@ -2459,25 +2459,43 @@ let make_lowerer =
                Doc.break ~flat:"" ();
                Doc.rparen;
              ])
-  | Syn.Cst.Expression.List { syntax_node; elements; _ } ->
+  | Syn.Cst.Expression.List
+      { syntax_node; opening_token; elements; separator_tokens; closing_token; _ } ->
       if elements = [] then
-        Doc.concat [ Doc.lbracket; Doc.rbracket ]
+        Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
       else if List.length elements >= multiline_list_threshold then
-        render_multiline_list_expression elements
+        render_multiline_list_expression ~opening_token ~separator_tokens
+          ~closing_token elements
       else
+        let rec render_elements elements separator_tokens =
+          match elements, separator_tokens with
+          | [], [] ->
+              Doc.empty
+          | [ element ], [] ->
+              render_expression element
+          | element :: rest, separator_token :: rest_separators ->
+              Doc.concat
+                [
+                  render_expression element;
+                  doc_of_token separator_token;
+                  Doc.break ();
+                  render_elements rest rest_separators;
+                ]
+          | _ ->
+              unsupported "list expression elements missing separator tokens"
+        in
         Doc.group
           (Doc.concat
              [
-               Doc.lbracket;
+               doc_of_token opening_token;
                Doc.indent 2
                  (Doc.concat
                     [
                       Doc.break ~flat:" " ();
-                      join_map (Doc.concat [ Doc.semi; Doc.break () ]) render_expression
-                        elements;
+                      render_elements elements separator_tokens;
                     ]);
                Doc.break ~flat:" " ();
-               Doc.rbracket;
+               doc_of_token closing_token;
              ])
   | Syn.Cst.Expression.Array { elements; _ } ->
       Doc.group
@@ -3537,17 +3555,33 @@ and render_local_open_expression
       | _ ->
           panic "render_local_open_expression: mismatched delimited local-open tokens")
 
-and render_multiline_list_expression elements =
-  let body =
-    join_map (Doc.concat [ Doc.semi; Doc.line ]) render_expression elements
+and render_multiline_list_expression ~opening_token ~separator_tokens
+    ~closing_token elements =
+  let rec render_body elements separator_tokens =
+    match elements, separator_tokens with
+    | [], [] ->
+        Doc.empty
+    | [ element ], [] ->
+        render_expression element
+    | element :: rest, separator_token :: rest_separators ->
+        Doc.concat
+          [
+            render_expression element;
+            doc_of_token separator_token;
+            Doc.line;
+            render_body rest rest_separators;
+          ]
+    | _ ->
+        unsupported "list expression elements missing separator tokens"
   in
+  let body = render_body elements separator_tokens in
   Doc.concat
     [
-      Doc.lbracket;
+      doc_of_token opening_token;
       Doc.line;
       Doc.indent 2 (Doc.concat [ body; Doc.semi ]);
       Doc.line;
-      Doc.rbracket;
+      doc_of_token closing_token;
     ]
 
 and render_apply_argument = function

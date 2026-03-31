@@ -76,6 +76,7 @@ Token-backed so far:
 - type definition first-class module delimiters `( )`
 - module unpack delimiters `( )`
 - pattern local-open shell tokens
+- list expression delimiters and separators
 
 ## Next Targets
 
