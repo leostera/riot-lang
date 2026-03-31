@@ -110,6 +110,14 @@ let target_of_json = function
   | Data.Json.String pkg -> Ok (Workspace_planner.Package pkg)
   | _ -> Error (Data.Json.String "Invalid target")
 
+let action_to_json (action : Action_node.t) =
+  let action_hash = Crypto.Digest.hex (Action_node.get_hash action) in
+  Data.Json.Object
+    [
+      ("action_hash", Data.Json.String action_hash);
+      ("action_node", Action_node.to_json action);
+    ]
+
 let to_json : Telemetry.event -> Data.Json.t option = function
   | BuildStarted { session_id; package; target } ->
       Some
@@ -199,17 +207,15 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("reason", Data.Json.String reason);
            ])
   | ActionStarted { session_id; package; action } ->
-      let action_hash = Crypto.Digest.hex (Action_node.get_hash action) in
       Some
         (Data.Json.Object
            [
              ("type", Data.Json.String "ActionStarted");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ("action_hash", Data.Json.String action_hash);
+             ("action", action_to_json action);
            ])
   | ActionCompleted { session_id; package; action; artifact; status; duration } ->
-      let action_hash = Crypto.Digest.hex (Action_node.get_hash action) in
       let artifact_files =
         Data.Json.Array
           (List.map
@@ -222,7 +228,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("type", Data.Json.String "ActionCompleted");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ("action_hash", Data.Json.String action_hash);
+             ("action", action_to_json action);
              ("artifact_files", artifact_files);
              ( "status",
                Data.Json.String
@@ -230,36 +236,33 @@ let to_json : Telemetry.event -> Data.Json.t option = function
              ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
            ])
   | ActionFailed { session_id; package; action; error } ->
-      let action_hash = Crypto.Digest.hex (Action_node.get_hash action) in
       Some
         (Data.Json.Object
            [
              ("type", Data.Json.String "ActionFailed");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ("action_hash", Data.Json.String action_hash);
+             ("action", action_to_json action);
              ("error", Data.Json.String error);
            ])
   | CacheHit { session_id; package; action; hash } ->
-      let action_hash = Crypto.Digest.hex (Action_node.get_hash action) in
       Some
         (Data.Json.Object
            [
              ("type", Data.Json.String "CacheHit");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ("action_hash", Data.Json.String action_hash);
+             ("action", action_to_json action);
              ("hash", Data.Json.String (Crypto.Digest.hex hash));
            ])
   | CacheMiss { session_id; package; action; hash } ->
-      let action_hash = Crypto.Digest.hex (Action_node.get_hash action) in
       Some
         (Data.Json.Object
            [
              ("type", Data.Json.String "CacheMiss");
              ("session_id", Data.Json.String (Session_id.to_string session_id));
              ("package", Package.to_json package);
-             ("action_hash", Data.Json.String action_hash);
+             ("action", action_to_json action);
              ("hash", Data.Json.String (Crypto.Digest.hex hash));
            ])
   | WorkspaceStarted { session_id; target; package_count } ->

@@ -98,8 +98,9 @@ type Telemetry.event +=
 val to_json : Telemetry.event -> Data.Json.t option
 
 (** Parse a telemetry event from JSON.
-    
-    Note: Action-related events (ActionStarted, ActionCompleted, etc.) cannot
-    be fully deserialized because they contain Action_node.t which is not
-    serializable. *)
+
+    Note: Action-related events (ActionStarted, ActionCompleted, etc.) can be
+    emitted for logging and debugging, but they are still not currently
+    reconstructed to full event values during parsing because Action_node.t does
+    not yet have a reverse deserialization path. *)
 val from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result
