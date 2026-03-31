@@ -82,6 +82,7 @@
                       "end": 62
                     }
                   },
+                  "bar_token": null,
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Red",
@@ -90,6 +91,7 @@
                       "end": 62
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               },
@@ -103,6 +105,14 @@
                       "end": 71
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 63,
+                      "end": 64
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Green",
@@ -111,6 +121,7 @@
                       "end": 71
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               },
@@ -124,6 +135,14 @@
                       "end": 79
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 72,
+                      "end": 73
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Blue",
@@ -132,6 +151,7 @@
                       "end": 79
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               }
@@ -231,6 +251,14 @@
                       "end": 121
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 112,
+                      "end": 113
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Yellow",
@@ -239,6 +267,7 @@
                       "end": 121
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               },
@@ -252,6 +281,14 @@
                       "end": 131
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 122,
+                      "end": 123
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Orange",
@@ -260,6 +297,7 @@
                       "end": 131
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               }
@@ -340,6 +378,7 @@
                       "end": 188
                     }
                   },
+                  "bar_token": null,
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Eof",
@@ -348,6 +387,7 @@
                       "end": 188
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               },
@@ -361,6 +401,14 @@
                       "end": 199
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 189,
+                      "end": 190
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Timeout",
@@ -369,6 +417,7 @@
                       "end": 199
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               },
@@ -382,6 +431,14 @@
                       "end": 220
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 200,
+                      "end": 201
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Connection_closed",
@@ -390,6 +447,7 @@
                       "end": 220
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               }

@@ -236,12 +236,21 @@
                                       "end": 82
                                     }
                                   },
+                                  "bar_token": null,
                                   "tag_name": {
                                     "kind": "IDENT_EXPR",
                                     "text": "select",
                                     "span": {
                                       "start": 68,
                                       "end": 74
+                                    }
+                                  },
+                                  "separator_token": {
+                                    "kind": "IDENT_EXPR",
+                                    "text": "of",
+                                    "span": {
+                                      "start": 75,
+                                      "end": 77
                                     }
                                   },
                                   "payload_type": {
@@ -282,6 +291,14 @@
                                       "end": 90
                                     }
                                   },
+                                  "bar_token": {
+                                    "kind": "IDENT_EXPR",
+                                    "text": "|",
+                                    "span": {
+                                      "start": 83,
+                                      "end": 84
+                                    }
+                                  },
                                   "tag_name": {
                                     "kind": "IDENT_EXPR",
                                     "text": "skip",
@@ -290,6 +307,7 @@
                                       "end": 90
                                     }
                                   },
+                                  "separator_token": null,
                                   "payload_type": null
                                 }
                               }
@@ -434,12 +452,21 @@
                                     "end": 82
                                   }
                                 },
+                                "bar_token": null,
                                 "tag_name": {
                                   "kind": "IDENT_EXPR",
                                   "text": "select",
                                   "span": {
                                     "start": 68,
                                     "end": 74
+                                  }
+                                },
+                                "separator_token": {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "of",
+                                  "span": {
+                                    "start": 75,
+                                    "end": 77
                                   }
                                 },
                                 "payload_type": {
@@ -480,6 +507,14 @@
                                     "end": 90
                                   }
                                 },
+                                "bar_token": {
+                                  "kind": "IDENT_EXPR",
+                                  "text": "|",
+                                  "span": {
+                                    "start": 83,
+                                    "end": 84
+                                  }
+                                },
                                 "tag_name": {
                                   "kind": "IDENT_EXPR",
                                   "text": "skip",
@@ -488,6 +523,7 @@
                                     "end": 90
                                   }
                                 },
+                                "separator_token": null,
                                 "payload_type": null
                               }
                             }

@@ -1033,13 +1033,72 @@ and render_object_type = fun fields ->
 and render_poly_variant_field =
   function
   | Syn.Cst.RowField.Tag tag ->
-      let head = Doc.concat [ Doc.text "`"; doc_of_token tag.tag_name ] in
+      let head =
+        let bar_doc =
+          match tag.bar_token with
+          | Some bar_token ->
+              doc_of_token bar_token
+          | None ->
+              Doc.bar
+        in
+        Doc.concat [ bar_doc; Doc.space; Doc.text "`"; doc_of_token tag.tag_name ]
+      in
       (
         match tag.payload_type with
         | None ->
             head
         | Some payload_type ->
-            Doc.concat [ head; Doc.space; kw_of; Doc.space; render_core_type payload_type ]
+            let separator_token = tag.separator_token in
+            let separator_leading_trivia =
+              match separator_token with
+              | Some separator_token ->
+                  pending_doc_of_token_leading_trivia separator_token
+              | None ->
+                  None
+            in
+            let payload_leading_trivia =
+              match separator_token with
+              | Some separator_token ->
+                  pending_doc_of_trivia_before_node
+                    ~after:(Syn.Cst.Token.span separator_token).end_
+                    (Syn.Cst.CoreType.syntax_node payload_type)
+              | None ->
+                  None
+            in
+            if separator_leading_trivia = None && payload_leading_trivia = None then
+              Doc.concat
+                [
+                  head;
+                  Doc.space;
+                  (match separator_token with
+                  | Some separator_token ->
+                      doc_of_token separator_token
+                  | None ->
+                      kw_of);
+                  Doc.space;
+                  render_core_type payload_type;
+                ]
+            else
+              let separator_doc =
+                (match separator_token with
+                | Some separator_token ->
+                    doc_of_token separator_token
+                | None ->
+                    kw_of)
+                |> doc_with_leading_trivia separator_leading_trivia
+              in
+              let payload_doc =
+                render_core_type payload_type
+                |> doc_with_leading_trivia payload_leading_trivia
+              in
+              Doc.concat
+                [
+                  head;
+                  Doc.line;
+                  Doc.indent 2 separator_doc;
+                  Doc.line;
+                  Doc.indent 2 payload_doc;
+                ]
       )
   | Syn.Cst.RowField.Inherit { type_; _ } ->
       render_core_type type_
@@ -1054,9 +1113,36 @@ and render_poly_variant_type = fun ?(field_indent = 2) poly_variant ->
         Doc.concat [ Doc.lbracket; doc_of_token marker_token ]
   in
   let fields =
-    Syn.Cst.PolyVariant.fields poly_variant
-    |> List.map
-         (fun field -> Doc.concat [ Doc.bar; Doc.space; render_poly_variant_field field ])
+    let rec render_fields = fun previous_boundary_end ->
+      function
+      | [] ->
+          []
+      | field :: rest ->
+          let leading =
+            match field with
+            | Syn.Cst.RowField.Tag tag -> (
+                match tag.bar_token with
+                | Some bar_token ->
+                    Syn.Cst.leading_trivia_after_token_before_node
+                      ~after:previous_boundary_end bar_token
+                      (Syn.Cst.RowField.syntax_node field)
+                    |> pending_doc_of_trivia
+                | None ->
+                    None)
+            | Syn.Cst.RowField.Inherit _ ->
+                None
+          in
+          let rendered =
+            render_poly_variant_field field
+            |> doc_with_leading_trivia leading
+          in
+          let next_boundary_end =
+            (Syn.Cst.token_body_span (Syn.Cst.RowField.syntax_node field)).end_
+          in
+          rendered :: render_fields next_boundary_end rest
+    in
+    render_fields (Syn.Cst.token_body_span (Syn.Cst.PolyVariant.syntax_node poly_variant)).start
+      (Syn.Cst.PolyVariant.fields poly_variant)
   in
   Doc.concat [
     open_doc;
@@ -1330,22 +1416,8 @@ let render_type_definition = function
   | Syn.Cst.TypeDefinition.Variant { syntax_node = _; constructors } ->
       Some
         (render_variant_definition constructors)
-  | Syn.Cst.TypeDefinition.PolyVariant poly_variant -> (
-      match Syn.Cst.PolyVariant.kind poly_variant with
-      | Syn.Cst.PolyVariantBound.Exact when not (poly_variant_has_inherit_field poly_variant) ->
-          let fields = Syn.Cst.PolyVariant.fields poly_variant
-          |> List.map (fun field -> Doc.concat
-          [ Doc.bar; Doc.space; render_poly_variant_field field ]) in
-          Some (Doc.concat [
-            Doc.indent 2 (Doc.concat [ Doc.lbracket; Doc.line; Doc.join Doc.line fields ]);
-            Doc.line;
-            Doc.rbracket
-          ])
-      | Syn.Cst.PolyVariantBound.Exact
-      | Syn.Cst.PolyVariantBound.UpperBound _
-      | Syn.Cst.PolyVariantBound.LowerBound _ ->
-          Some (render_poly_variant_type poly_variant)
-    )
+  | Syn.Cst.TypeDefinition.PolyVariant poly_variant ->
+      Some (render_poly_variant_type poly_variant)
   | Syn.Cst.TypeDefinition.Extensible _ ->
       Some (Doc.text "..")
   | Syn.Cst.TypeDefinition.FirstClassModule { package_type; _ } ->

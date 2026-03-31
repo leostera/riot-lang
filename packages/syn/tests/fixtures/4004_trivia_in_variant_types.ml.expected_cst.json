@@ -870,6 +870,7 @@
                       "end": 499
                     }
                   },
+                  "bar_token": null,
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "A",
@@ -878,6 +879,7 @@
                       "end": 499
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               },
@@ -891,12 +893,28 @@
                       "end": 550
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 512,
+                      "end": 513
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "B",
                     "span": {
                       "start": 515,
                       "end": 516
+                    }
+                  },
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "of",
+                    "span": {
+                      "start": 530,
+                      "end": 532
                     }
                   },
                   "payload_type": {

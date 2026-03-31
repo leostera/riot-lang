@@ -2909,6 +2909,14 @@
                       "end": 17056
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 17050,
+                      "end": 17051
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Foo",
@@ -2917,6 +2925,7 @@
                       "end": 17056
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               },
@@ -2930,12 +2939,28 @@
                       "end": 17092
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 17070,
+                      "end": 17071
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Bar",
                     "span": {
                       "start": 17073,
                       "end": 17076
+                    }
+                  },
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "of",
+                    "span": {
+                      "start": 17077,
+                      "end": 17079
                     }
                   },
                   "payload_type": {

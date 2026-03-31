@@ -3873,14 +3873,22 @@ and core_type_from_node = fun node ->
         {
           Cst.syntax_node = node;
           attributes = lifted_attributes;
+          bar_token =
+            previous_direct_token_with_text_in_parent ~text:"|" node
+            |> Option.map token;
           tag_name = token tag_name;
+          separator_token = direct_token_with_text node "of";
           payload_type = (direct_children |> List.find_opt can_lift_core_type_node |> Option.map core_type_from_node)
         }
     | tag_name :: _ ->
         {
           Cst.syntax_node = node;
           attributes = lifted_attributes;
+          bar_token =
+            previous_direct_token_with_text_in_parent ~text:"|" node
+            |> Option.map token;
           tag_name = token tag_name;
+          separator_token = direct_token_with_text node "of";
           payload_type = (direct_children |> List.find_opt can_lift_core_type_node |> Option.map core_type_from_node)
         }
     | [] ->
@@ -7285,14 +7293,22 @@ let poly_variant_tag_from_node = fun node ->
       Cst.PolyVariantTag.{
         syntax_node = node;
         attributes = lifted_attributes;
+        bar_token =
+          previous_direct_token_with_text_in_parent ~text:"|" node
+          |> Option.map token;
         tag_name = token tag_name;
+        separator_token = direct_token_with_text node "of";
         payload_type = (direct_children |> List.find_opt can_lift_core_type_node |> Option.map core_type_from_node)
       }
   | tag_name :: _ ->
       Cst.PolyVariantTag.{
         syntax_node = node;
         attributes = lifted_attributes;
+        bar_token =
+          previous_direct_token_with_text_in_parent ~text:"|" node
+          |> Option.map token;
         tag_name = token tag_name;
+        separator_token = direct_token_with_text node "of";
         payload_type = (direct_children |> List.find_opt can_lift_core_type_node |> Option.map core_type_from_node)
       }
   | [] ->

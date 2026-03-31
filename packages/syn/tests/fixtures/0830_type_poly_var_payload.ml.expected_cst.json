@@ -62,12 +62,21 @@
                       "end": 22
                     }
                   },
+                  "bar_token": null,
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Int",
                     "span": {
                       "start": 12,
                       "end": 15
+                    }
+                  },
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "of",
+                    "span": {
+                      "start": 16,
+                      "end": 18
                     }
                   },
                   "payload_type": {
@@ -111,12 +120,28 @@
                       "end": 42
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 23,
+                      "end": 24
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "String",
                     "span": {
                       "start": 26,
                       "end": 32
+                    }
+                  },
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "of",
+                    "span": {
+                      "start": 33,
+                      "end": 35
                     }
                   },
                   "payload_type": {

@@ -240,7 +240,9 @@ and record_type_field = {
 and poly_variant_tag = {
   syntax_node : syntax_node;
   attributes : attribute list;
+  bar_token : Token.t option;
   tag_name : Token.t;
+  separator_token : Token.t option;
   payload_type : core_type option;
 }
 
@@ -2555,7 +2557,9 @@ module PolyVariantTag = struct
   type t = poly_variant_tag = {
     syntax_node : syntax_node;
     attributes : attribute list;
+    bar_token : Token.t option;
     tag_name : Token.t;
+    separator_token : Token.t option;
     payload_type : core_type option;
   }
 
@@ -2563,7 +2567,11 @@ module PolyVariantTag = struct
 
   let attributes = fun tag -> tag.attributes
 
+  let bar_token = fun tag -> tag.bar_token
+
   let tag_name_token = fun tag -> tag.tag_name
+
+  let separator_token = fun tag -> tag.separator_token
 
   let payload_type = fun tag -> tag.payload_type
 

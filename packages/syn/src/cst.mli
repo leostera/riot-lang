@@ -300,7 +300,9 @@ and record_type_field = {
 and poly_variant_tag = {
   syntax_node : syntax_node;
   attributes : attribute list;
+  bar_token : Token.t option;
   tag_name : Token.t;
+  separator_token : Token.t option;
   payload_type : core_type option;
 }
 
@@ -3704,14 +3706,20 @@ module PolyVariantTag : sig
   type t = poly_variant_tag = {
     syntax_node : syntax_node;
     attributes : attribute list;
+    bar_token : Token.t option;
     tag_name : Token.t;
+    separator_token : Token.t option;
     payload_type : core_type option;
   }
   val syntax_node : t -> syntax_node
 
   val attributes : t -> attribute list
 
+  val bar_token : t -> Token.t option
+
   val tag_name_token : t -> Token.t
+
+  val separator_token : t -> Token.t option
 
   val payload_type : t -> core_type option
 

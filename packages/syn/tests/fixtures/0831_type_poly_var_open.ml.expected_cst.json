@@ -70,6 +70,7 @@
                       "end": 14
                     }
                   },
+                  "bar_token": null,
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "A",
@@ -78,6 +79,7 @@
                       "end": 14
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               },
@@ -91,6 +93,14 @@
                       "end": 19
                     }
                   },
+                  "bar_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "span": {
+                      "start": 15,
+                      "end": 16
+                    }
+                  },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "B",
@@ -99,6 +109,7 @@
                       "end": 19
                     }
                   },
+                  "separator_token": null,
                   "payload_type": null
                 }
               }

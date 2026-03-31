@@ -95,12 +95,14 @@ and record_type_field_to_json = fun ({ syntax_node; field_name; field_type; is_m
     else
       [ ("attributes", Json.Array attributes) ]
   )
-and poly_variant_tag_to_json = fun ({ syntax_node; attributes; tag_name; payload_type } : Cst.poly_variant_tag) ->
+and poly_variant_tag_to_json = fun ({ syntax_node; attributes; bar_token; tag_name; separator_token; payload_type } : Cst.poly_variant_tag) ->
   let attributes = List.map attribute_to_json attributes in
   Json.Object (
     [
       ("syntax_node", syntax_node_to_json syntax_node);
+      ("bar_token", option_to_json token_to_json bar_token);
       ("tag_name", token_to_json tag_name);
+      ("separator_token", option_to_json token_to_json separator_token);
       ("payload_type", option_to_json core_type_to_json payload_type)
     ]
     @ if attributes = [] then
