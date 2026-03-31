@@ -3759,7 +3759,7 @@ and parse_labeled_param parser =
 
     (* Check for optional :pattern *)
     let colon_pattern_parts =
-      if peek_kind parser = Token.Colon then
+      if peek_kind parser = Token.Colon && trivia_after_label = [] then
         let colon = consume parser in
         let trivia_after_colon = consume_trivia parser in
         let pattern = parse_pattern parser in
@@ -3892,7 +3892,7 @@ and parse_optional_param parser =
 
         (* Check for optional :pattern *)
         let colon_pattern_parts =
-          if peek_kind parser = Token.Colon then
+          if peek_kind parser = Token.Colon && trivia_after_label = [] then
             let colon = consume parser in
             let trivia_after_colon = consume_trivia parser in
             if peek_kind parser = Token.OpenDelim Token.Paren then

@@ -4410,7 +4410,7 @@ and render_unsugared_named_parameter ~sigil_token ~label_token ~binding_name_mat
     ~binding_name_matches_label ~binding_pattern
 
 and render_optional_parameter_with_default_internal ~include_type ~sigil_token ~label_token
-    ~binding_pattern ~default_value =
+    ~binding_name_matches_label ~binding_pattern ~default_value =
   let binding_doc =
     match binding_pattern with
     | Some pattern ->
@@ -4418,24 +4418,36 @@ and render_optional_parameter_with_default_internal ~include_type ~sigil_token ~
     | None ->
         doc_of_token label_token
   in
-  Doc.concat [
-    doc_of_token sigil_token;
-    Doc.lparen;
-    binding_doc;
-    equals;
-    render_expression default_value;
-    Doc.rparen;
-  ]
+  if binding_name_matches_label then
+    Doc.concat [
+      doc_of_token sigil_token;
+      Doc.lparen;
+      binding_doc;
+      equals;
+      render_expression default_value;
+      Doc.rparen;
+    ]
+  else
+    Doc.concat [
+      doc_of_token sigil_token;
+      doc_of_token label_token;
+      Doc.colon;
+      Doc.lparen;
+      binding_doc;
+      equals;
+      render_expression default_value;
+      Doc.rparen;
+    ]
 
-and render_optional_parameter_with_default ~sigil_token ~label_token ~binding_pattern
-    ~default_value =
+and render_optional_parameter_with_default ~sigil_token ~label_token ~binding_name_matches_label
+    ~binding_pattern ~default_value =
   render_optional_parameter_with_default_internal ~include_type:true ~sigil_token ~label_token
-    ~binding_pattern ~default_value
+    ~binding_name_matches_label ~binding_pattern ~default_value
 
 and render_unsugared_optional_parameter_with_default ~sigil_token ~label_token
-    ~binding_pattern ~default_value =
+    ~binding_name_matches_label ~binding_pattern ~default_value =
   render_optional_parameter_with_default_internal ~include_type:false ~sigil_token ~label_token
-    ~binding_pattern ~default_value
+    ~binding_name_matches_label ~binding_pattern ~default_value
 
 and render_arrow_parameter_type_doc parameter_type =
   match parameter_type with
@@ -4543,7 +4555,7 @@ and render_unsugared_binding_parameter = function
       (match default_value with
       | Some default_value ->
           render_unsugared_optional_parameter_with_default ~sigil_token ~label_token
-            ~binding_pattern ~default_value
+            ~binding_name_matches_label ~binding_pattern ~default_value
       | None ->
           render_unsugared_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
             ~binding_pattern)
@@ -4560,8 +4572,8 @@ and render_parameter = function
       { sigil_token; label_token; binding_name_matches_label; binding_pattern; default_value; _ } ->
       (match default_value with
       | Some default_value ->
-          render_optional_parameter_with_default ~sigil_token ~label_token ~binding_pattern
-            ~default_value
+          render_optional_parameter_with_default ~sigil_token ~label_token
+            ~binding_name_matches_label ~binding_pattern ~default_value
       | None ->
           render_named_parameter ~sigil_token ~label_token ~binding_name_matches_label
             ~binding_pattern)

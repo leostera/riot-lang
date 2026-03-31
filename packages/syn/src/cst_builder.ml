@@ -4581,6 +4581,15 @@ let rec parameter_from_node = fun node ->
       match token_with_text node "?", first_ident_token_in_subtree node with
       | Some sigil_token, Some label_name_token ->
           let binding_pattern = binding_pattern_from_direct_nodes ~label_name_token direct_nodes in
+          let default_value =
+            if Option.is_some (token_with_text node "=") then
+              direct_nodes
+              |> List.rev
+              |> List.find_opt can_lift_expression_node
+              |> Option.map expression_from_node
+            else
+              None
+          in
           let binding_name_token =
             match binding_pattern with
             | Some pattern ->
@@ -4595,7 +4604,7 @@ let rec parameter_from_node = fun node ->
             binding_name_token;
             binding_name_matches_label =
               binding_name_matches_label ~label_name_token binding_name_token;
-            default_value = None;
+            default_value;
             binding_pattern
           }
       | _ -> unsupported_parameter node
