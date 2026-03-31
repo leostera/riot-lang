@@ -951,31 +951,24 @@ and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
     doc_of_token field.colon_token;
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
+and render_record_type_field_separator = fun (field : Syn.Cst.record_type_field) ->
+  match field.semicolon_token with
+  | Some semicolon_token ->
+      doc_of_token semicolon_token
+  | None ->
+      Doc.semi
 and render_record_type = fun ~opening_token ~closing_token fields ->
   let rec render_fields = function
     | [] ->
         Doc.empty
     | [ (field : Syn.Cst.record_type_field) ] ->
-        let semicolon_doc =
-          match field.semicolon_token with
-          | Some semicolon_token ->
-              doc_of_token semicolon_token
-          | None ->
-              Doc.semi
-        in
-        Doc.concat [ render_record_core_type_field field; semicolon_doc ]
+        Doc.concat
+          [ render_record_core_type_field field; render_record_type_field_separator field ]
     | (field : Syn.Cst.record_type_field) :: rest ->
-        let semicolon_doc =
-          match field.semicolon_token with
-          | Some semicolon_token ->
-              doc_of_token semicolon_token
-          | None ->
-              Doc.semi
-        in
         Doc.concat
           [
             render_record_core_type_field field;
-            semicolon_doc;
+            render_record_type_field_separator field;
             Doc.line;
             render_fields rest;
           ]
@@ -1011,17 +1004,19 @@ and render_record_definition_field = fun (field : Syn.Cst.RecordField.t) ->
     doc_of_token (Syn.Cst.RecordField.colon_token field);
     Doc.indent 2 (Doc.concat [ separator; type_doc ])
   ])
+and render_record_definition_field_separator = fun (field : Syn.Cst.RecordField.t) ->
+  match field.semicolon_token with
+  | Some semicolon_token ->
+      doc_of_token semicolon_token
+  | None ->
+      Doc.semi
 and render_record_definition_field_entry =
   fun ?(include_trailing_semicolon = true) (field : Syn.Cst.RecordField.t) ->
   let body =
     if include_trailing_semicolon then
       Doc.concat [
         render_record_definition_field field;
-        (match field.semicolon_token with
-        | Some semicolon_token ->
-            doc_of_token semicolon_token
-        | None ->
-            Doc.semi)
+        render_record_definition_field_separator field
       ]
     else
       render_record_definition_field field
@@ -1095,26 +1090,13 @@ and render_inline_record_definition = fun fields ->
     | [] ->
         Doc.empty
     | [ field ] ->
-        let separator_doc =
-          match Syn.Cst.RecordField.semicolon_token field with
-          | Some semicolon_token ->
-              doc_of_token semicolon_token
-          | None ->
-              Doc.semi
-        in
-        Doc.concat [ render_record_definition_field field; separator_doc ]
+        Doc.concat
+          [ render_record_definition_field field; render_record_definition_field_separator field ]
     | field :: rest ->
-        let separator_doc =
-          match Syn.Cst.RecordField.semicolon_token field with
-          | Some semicolon_token ->
-              doc_of_token semicolon_token
-          | None ->
-              Doc.semi
-        in
         Doc.concat
           [
             render_record_definition_field field;
-            separator_doc;
+            render_record_definition_field_separator field;
             Doc.break ~flat:" " ();
             render_fields rest;
           ]
@@ -1136,26 +1118,13 @@ and render_tokenized_inline_record_definition = fun ~opening_token ~closing_toke
     | [] ->
         Doc.empty
     | [ field ] ->
-        let separator_doc =
-          match Syn.Cst.RecordField.semicolon_token field with
-          | Some semicolon_token ->
-              doc_of_token semicolon_token
-          | None ->
-              Doc.semi
-        in
-        Doc.concat [ render_record_definition_field field; separator_doc ]
+        Doc.concat
+          [ render_record_definition_field field; render_record_definition_field_separator field ]
     | field :: rest ->
-        let separator_doc =
-          match Syn.Cst.RecordField.semicolon_token field with
-          | Some semicolon_token ->
-              doc_of_token semicolon_token
-          | None ->
-              Doc.semi
-        in
         Doc.concat
           [
             render_record_definition_field field;
-            separator_doc;
+            render_record_definition_field_separator field;
             Doc.break ~flat:" " ();
             render_fields rest;
           ]
