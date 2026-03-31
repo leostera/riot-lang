@@ -91,8 +91,9 @@ module BuildLock = struct
 
   let retry_interval = Time.Duration.from_millis 500
 
-  let path workspace_root =
-    Path.(Tusk_model.Tusk_dirs.build_dir_root ~workspace_root / Path.v "tusk.lock")
+  let path ~workspace_root ~profile ~target =
+    Tusk_model.Tusk_dirs.build_lock_path_with_target ~workspace_root ~profile
+      ~target
 
   let release t =
     let _ = Fs.File.unlock t.file in
@@ -112,13 +113,15 @@ module BuildLock = struct
         release t;
         raise (lock_failure "lock" t.path)
 
-  let wait workspace_root =
-    let build_dir = Tusk_model.Tusk_dirs.build_dir_root ~workspace_root in
+  let wait ~workspace_root ~profile ~target =
+    let build_dir =
+      Tusk_model.Tusk_dirs.target_dir ~workspace_root ~profile ~target
+    in
     let _ =
       Fs.create_dir_all build_dir
       |> Result.expect ~msg:"Failed to create build directory"
     in
-    let path = path workspace_root in
+    let path = path ~workspace_root ~profile ~target in
     let file =
       match Fs.File.open_write path with
       | Ok file -> file
@@ -132,8 +135,8 @@ module BuildLock = struct
         release t;
         raise (lock_failure "lock" path)
 
-  let acquire workspace_root fn =
-    match wait workspace_root with
+  let acquire ~workspace_root ~profile ~target fn =
+    match wait ~workspace_root ~profile ~target with
     | Error err -> Error err
     | Ok t ->
         try
@@ -252,9 +255,16 @@ let rec handle_streaming_events t session_id callback =
         Error (PackagesNotFound { package_names; available_packages })
       else handle_streaming_events t session_id callback
 
-let build_streaming t target ?(scope = Runtime) ?target_arch callback =
-  BuildLock.acquire t.workspace_root (fun () ->
-      let target =
+let build_streaming t target ?(scope = Runtime) ?(profile = "debug") ?target_arch
+    callback =
+  let lock_target =
+    match target_arch with
+    | Some target -> target
+    | None -> Tusk_model.Tusk_dirs.host_target ()
+  in
+  BuildLock.acquire ~workspace_root:t.workspace_root ~profile ~target:lock_target
+    (fun () ->
+      let request_target =
         match target with
         | BuildPackage package -> Protocol.Package package
         | BuildPackages packages -> Protocol.Packages packages
@@ -265,7 +275,7 @@ let build_streaming t target ?(scope = Runtime) ?target_arch callback =
         (Protocol.Build
            {
              client_pid = self ();
-             target;
+             target = request_target;
              scope =
                (match scope with
                | Runtime -> Protocol.Runtime

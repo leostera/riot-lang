@@ -73,6 +73,9 @@ let sandbox_dir_with_target ~workspace_root ~profile ~target =
 let cache_dir_with_target ~workspace_root ~profile ~target =
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "cache")
 
+let build_lock_path_with_target ~workspace_root ~profile ~target =
+  Path.(target_dir ~workspace_root ~profile ~target / Path.v "tusk.lock")
+
 (** Backward compatible functions - default to debug profile + host target *)
 
 let debug_dir ~workspace_root =

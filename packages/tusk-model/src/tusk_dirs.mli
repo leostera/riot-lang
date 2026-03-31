@@ -34,6 +34,9 @@ val sandbox_dir_with_target : workspace_root:Path.t -> profile:string -> target:
 (** Get cache directory for specific profile and target *)
 val cache_dir_with_target : workspace_root:Path.t -> profile:string -> target:string -> Path.t
 
+(** Get build lock path for a specific profile and target lane *)
+val build_lock_path_with_target : workspace_root:Path.t -> profile:string -> target:string -> Path.t
+
 (** Backward compatible functions - default to debug profile + host target *)
 
 (** Get the debug build directory (e.g., /path/to/project/_build/debug) *)
