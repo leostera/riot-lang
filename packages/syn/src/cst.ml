@@ -3285,6 +3285,7 @@ type value_declaration = {
   name_tokens : Token.t list;
   colon_token : Token.t;
   type_ : core_type;
+  trailing_comment : comment option;
 }
 
 module ValueDeclaration = struct
@@ -3294,6 +3295,7 @@ module ValueDeclaration = struct
     name_tokens : Token.t list;
     colon_token : Token.t;
     type_ : core_type;
+    trailing_comment : comment option;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -3305,6 +3307,8 @@ module ValueDeclaration = struct
   let colon_token = fun decl -> decl.colon_token
 
   let type_ = fun decl -> decl.type_
+
+  let trailing_comment = fun decl -> decl.trailing_comment
 
 end
 

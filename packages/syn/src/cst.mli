@@ -4420,6 +4420,7 @@ type value_declaration = {
   name_tokens : Token.t list;
   colon_token : Token.t;
   type_ : core_type;
+  trailing_comment : comment option;
 }
 (** An `external` declaration item.
 
@@ -4439,6 +4440,7 @@ module ValueDeclaration : sig
     name_tokens : Token.t list;
     colon_token : Token.t;
     type_ : core_type;
+    trailing_comment : comment option;
   }
   val syntax_node : t -> syntax_node
 
@@ -4449,6 +4451,8 @@ module ValueDeclaration : sig
   val colon_token : t -> Token.t
 
   val type_ : t -> core_type
+
+  val trailing_comment : t -> comment option
 
 end
 

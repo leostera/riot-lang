@@ -139,6 +139,11 @@
 0956_record_type_field_docs_preserved.mli
 0957_signature_value_doc_preserved.mli
 0958_inline_record_type_field_docs_preserved.mli
+0959_signature_module_type_doc_preserved.mli
+0960_signature_external_doc_preserved.mli
+0961_signature_exception_doc_preserved.mli
+0962_signature_value_trailing_comment_preserved.mli
+0963_signature_module_type_doc_between_items.mli
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

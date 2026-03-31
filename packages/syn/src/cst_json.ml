@@ -1796,7 +1796,8 @@ let value_declaration_to_json = fun (decl : Cst.value_declaration) ->
     ("keyword_token", token_to_json (Cst.ValueDeclaration.keyword_token decl));
     ("name_tokens", Json.Array (List.map token_to_json (Cst.ValueDeclaration.name_tokens decl)));
     ("colon_token", token_to_json (Cst.ValueDeclaration.colon_token decl));
-    ("type", core_type_to_json (Cst.ValueDeclaration.type_ decl))
+    ("type", core_type_to_json (Cst.ValueDeclaration.type_ decl));
+    ("trailing_comment", option_to_json comment_to_json (Cst.ValueDeclaration.trailing_comment decl))
   ])
 
 let external_declaration_to_json = fun (decl : Cst.external_declaration) -> Json.Object [

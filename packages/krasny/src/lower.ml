@@ -6162,16 +6162,23 @@ and render_signature_item item =
   | Syn.Cst.SignatureItem.Comment comment ->
       doc_of_token (Syn.Cst.Comment.token comment)
   | Syn.Cst.SignatureItem.ValueDeclaration decl ->
-      Doc.concat
-        [
-          doc_of_token_with_leading_trivia (Syn.Cst.ValueDeclaration.keyword_token decl);
-          Doc.space;
-          render_value_declaration_name decl;
-          Doc.space;
-          doc_of_token_with_leading_trivia (Syn.Cst.ValueDeclaration.colon_token decl);
-          Doc.space;
-          render_core_type decl.type_;
-        ]
+      let base =
+        Doc.concat
+          [
+            doc_of_token_with_leading_trivia (Syn.Cst.ValueDeclaration.keyword_token decl);
+            Doc.space;
+            render_value_declaration_name decl;
+            Doc.space;
+            doc_of_token_with_leading_trivia (Syn.Cst.ValueDeclaration.colon_token decl);
+            Doc.space;
+            render_core_type decl.type_;
+          ]
+      in
+      (match Syn.Cst.ValueDeclaration.trailing_comment decl with
+      | Some comment ->
+          Doc.concat [ base; Doc.space; doc_of_token (Syn.Cst.Comment.token comment) ]
+      | None ->
+          base)
   | Syn.Cst.SignatureItem.ExternalDeclaration decl ->
       render_external_declaration decl
   | Syn.Cst.SignatureItem.ExceptionDeclaration decl ->

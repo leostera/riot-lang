@@ -942,6 +942,9 @@ let append_value_declaration_leading_trivia = fun decl trivia ->
   let _ = trivia in
   decl
 
+let append_value_declaration_trailing_comment = fun (decl : Cst.value_declaration) comment ->
+  { decl with trailing_comment = Some comment }
+
 let sort_trivia_by_source = fun trivia ->
   List.sort
     (fun left right ->
@@ -1377,6 +1380,7 @@ let rec take_adjacent_item_docstrings = fun ~docstring_of_item ->
 
 type ('item, 'value_decl) ordered_item_ops = {
   trivia_of_item : 'item -> Cst.trivia option;
+  comment_of_item : 'item -> Cst.comment option;
   docstring_of_item : 'item -> Cst.docstring option;
   type_declaration_of_item : 'item -> Cst.TypeDeclaration.t option;
   value_declaration_of_item : 'item -> 'value_decl option;
@@ -1385,7 +1389,23 @@ type ('item, 'value_decl) ordered_item_ops = {
   item_of_value_declaration : 'value_decl -> 'item;
   normalize_value_declaration : 'value_decl -> 'value_decl;
   append_value_declaration_leading_trivia : 'value_decl -> Cst.trivia list -> 'value_decl;
+  append_value_declaration_trailing_comment : 'value_decl -> Cst.comment -> 'value_decl;
+  value_declaration_nontrivia_end : 'value_decl -> int;
 }
+
+let has_newline_between_offsets = fun ~source ~start ~end_ ->
+  let source_length = String.length source in
+  let start = Int.max 0 (Int.min start source_length) in
+  let end_ = Int.max start (Int.min end_ source_length) in
+  let rec loop = fun index ->
+    if index >= end_ then
+      false
+    else if Char.equal source.[index] '\n' then
+      true
+    else
+      loop (index + 1)
+  in
+  loop start
 
 let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
   let finalize_normalized_type_declaration = fun normalized_decl next_trivia rest ->
@@ -1507,6 +1527,21 @@ let rec normalize_ordered_items_owned_trivia = fun ~source ops ->
               match ops.value_declaration_of_item item with
               | Some decl ->
                   let decl = ops.normalize_value_declaration decl in
+                  let decl, rest =
+                    match rest with
+                    | next_item :: tail -> (
+                        match ops.comment_of_item next_item with
+                        | Some comment
+                          when not
+                                 (has_newline_between_offsets ~source
+                                    ~start:(ops.value_declaration_nontrivia_end decl)
+                                    ~end_:(Ceibo.Red.SyntaxNode.span (Cst.Comment.syntax_node comment)).start) ->
+                            (ops.append_value_declaration_trailing_comment decl comment, tail)
+                        | _ ->
+                            (decl, rest))
+                    | [] ->
+                        (decl, rest)
+                  in
                   ops.item_of_value_declaration decl
                   :: normalize_ordered_items_owned_trivia ~source ops rest
               | None ->
@@ -1526,6 +1561,20 @@ let signature_item_docstring =
   function
   | Cst.SignatureItem.Docstring docstring ->
       Some docstring
+  | _ ->
+      None
+
+let structure_item_comment =
+  function
+  | Cst.StructureItem.Comment comment ->
+      Some comment
+  | _ ->
+      None
+
+let signature_item_comment =
+  function
+  | Cst.SignatureItem.Comment comment ->
+      Some comment
   | _ ->
       None
 
@@ -1558,6 +1607,7 @@ let signature_item_value_declaration =
 let normalize_structure_items_owned_trivia = fun ~source items ->
   normalize_ordered_items_owned_trivia ~source {
     trivia_of_item = trivia_of_structure_item;
+    comment_of_item = structure_item_comment;
     docstring_of_item = structure_item_docstring;
     type_declaration_of_item = structure_item_type_declaration;
     value_declaration_of_item = structure_item_value_declaration;
@@ -1567,11 +1617,14 @@ let normalize_structure_items_owned_trivia = fun ~source items ->
       panic "structure_items cannot contain value declarations");
     normalize_value_declaration = normalize_value_declaration_owned_trivia;
     append_value_declaration_leading_trivia = append_value_declaration_leading_trivia;
+    append_value_declaration_trailing_comment = append_value_declaration_trailing_comment;
+    value_declaration_nontrivia_end = (fun _ -> 0);
   } items
 
 let normalize_signature_items_owned_trivia = fun ~source items ->
   normalize_ordered_items_owned_trivia ~source {
     trivia_of_item = trivia_of_signature_item;
+    comment_of_item = signature_item_comment;
     docstring_of_item = signature_item_docstring;
     type_declaration_of_item = signature_item_type_declaration;
     value_declaration_of_item = signature_item_value_declaration;
@@ -1580,6 +1633,9 @@ let normalize_signature_items_owned_trivia = fun ~source items ->
     item_of_value_declaration = (fun decl -> Cst.SignatureItem.ValueDeclaration decl);
     normalize_value_declaration = normalize_value_declaration_owned_trivia;
     append_value_declaration_leading_trivia = append_value_declaration_leading_trivia;
+    append_value_declaration_trailing_comment = append_value_declaration_trailing_comment;
+    value_declaration_nontrivia_end = (fun decl ->
+      span_of_syntax_node_nontrivia_bounds decl.syntax_node |> fun span -> span.end_);
   } items
 
 let expression_grouping_from_node = fun node ->
@@ -8544,6 +8600,7 @@ let value_declaration_from_node = fun node ->
         name_tokens = lifted_name_tokens;
         colon_token = lifted_colon_token;
         type_ = core_type_from_node lifted_type_node;
+        trailing_comment = None;
       }: Cst.value_declaration)
   | None, _, _, _
   | _, None, _, _ ->

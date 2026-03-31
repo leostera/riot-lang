@@ -847,6 +847,7 @@ and descend_class_expression = fun walk ctx (class_expression : Cst.ClassExpress
   | Cst.ClassExpression.Extension extension ->
       walk.extension ctx extension
 and descend_value_declaration = fun walk ctx (declaration : Cst.value_declaration) ->
+  let _ = declaration.trailing_comment in
   walk.core_type ctx declaration.type_
 and descend_external_declaration = fun walk ctx (declaration : Cst.external_declaration) ->
   let ctx = walk.core_type ctx declaration.type_ in
