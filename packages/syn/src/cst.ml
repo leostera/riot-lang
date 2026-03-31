@@ -232,7 +232,6 @@ and record_type_field = {
   colon_token : Token.t;
   field_type : core_type;
   semicolon_token : Token.t option;
-  is_mutable : bool;
   attributes : attribute list;
 }
 
@@ -288,7 +287,6 @@ and module_type_constraint = {
   constrained_type : core_type;
   replacement_type : core_type;
   separator_token : Token.t;
-  is_destructive : bool;
 }
 
 and package_type = {
@@ -353,6 +351,7 @@ and core_type =
   | Poly of {
       syntax_node : syntax_node;
       type_keyword_token : Token.t option;
+      dot_token : Token.t;
       binders : type_binder list;
       body : core_type;
     }
@@ -519,6 +518,7 @@ module CoreType = struct
     | Poly of {
         syntax_node : syntax_node;
         type_keyword_token : Token.t option;
+        dot_token : Token.t;
         binders : type_binder list;
         body : core_type;
       }
@@ -584,7 +584,6 @@ module ModuleTypeConstraint = struct
     constrained_type : core_type;
     replacement_type : core_type;
     separator_token : Token.t;
-    is_destructive : bool;
   }
 end
 
@@ -1031,7 +1030,10 @@ and poly_variant_inherit_pattern = {
 
 and constructor_pattern_existentials = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
+  type_keyword_token : Token.t;
   binders : type_binder list;
+  closing_token : Token.t;
 }
 
 and constructor_pattern = {
@@ -1185,7 +1187,10 @@ and optional_parameter = {
 
 and locally_abstract_type_parameter = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
+  type_keyword_token : Token.t;
   binders : type_binder list;
+  closing_token : Token.t;
 }
 
 and parameter =
@@ -2561,7 +2566,6 @@ module TypeParameter = struct
     syntax_node : syntax_node;
     variance : TypeParameterVariance.t option;
     injectivity_token : Token.t option;
-    is_injective : bool;
     type_variable : TypeVariable.t option;
   }
 
@@ -2570,8 +2574,6 @@ module TypeParameter = struct
   let variance = fun type_param -> type_param.variance
 
   let injectivity_token = fun type_param -> type_param.injectivity_token
-
-  let is_injective = fun type_param -> type_param.is_injective
 
   let type_variable = fun type_param -> type_param.type_variable
 end
@@ -2598,16 +2600,18 @@ module RecordField = struct
   type t = {
     syntax_node : syntax_node;
     field_name : Token.t;
+    mutable_token : Token.t option;
     colon_token : Token.t;
     field_type : core_type;
     semicolon_token : Token.t option;
-    is_mutable : bool;
     attributes : attribute list;
   }
 
   let syntax_node = fun field -> field.syntax_node
 
   let field_name_token = fun field -> field.field_name
+
+  let mutable_token = fun field -> field.mutable_token
 
   let colon_token = fun field -> field.colon_token
 
@@ -2616,8 +2620,6 @@ module RecordField = struct
   let semicolon_token = fun field -> field.semicolon_token
 
   let name = fun field -> Token.text field.field_name
-
-  let is_mutable = fun field -> field.is_mutable
 
   let attributes = fun field -> field.attributes
 
@@ -2816,8 +2818,6 @@ module TypeDeclaration = struct
     constraints : type_constraint list;
     attributes : attribute list;
     next_and_declaration : t option;
-    is_nonrec : bool;
-    is_destructive_substitution : bool;
   }
 
   let syntax_node = fun decl -> decl.syntax_node
@@ -2852,10 +2852,6 @@ module TypeDeclaration = struct
     | Some next -> next :: and_declarations next
 
   let next_and_declaration = fun decl -> decl.next_and_declaration
-
-  let is_nonrec = fun decl -> decl.is_nonrec
-
-  let is_destructive_substitution = fun decl -> decl.is_destructive_substitution
 
 
   let is_private = fun decl -> PrivateFlag.is_private decl.private_flag

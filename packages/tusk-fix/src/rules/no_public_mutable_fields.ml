@@ -31,7 +31,7 @@ let diagnostics_for_decl ({ type_definition; _ } : Syn.Cst.TypeDeclaration.t) =
   | Syn.Cst.TypeDefinition.Record { fields; _ } ->
       fields
       |> List.filter_map (fun (field : Syn.Cst.RecordField.t) ->
-             if field.is_mutable then
+             if Option.is_some field.mutable_token then
                Some (make_diagnostic field)
              else
                None)

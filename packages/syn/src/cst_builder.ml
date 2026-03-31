@@ -2871,11 +2871,45 @@ let bare_type_binders_from_node = fun ~context node ->
 
 let locally_abstract_type_parameter_from_node node : Cst.locally_abstract_type_parameter =
   let binders = bare_type_binders_from_node ~context:[ "parameter.locally_abstract" ] node in
-  {Cst.syntax_node = node; binders}
+  let direct_tokens = direct_non_trivia_tokens node in
+  let opening_token, closing_token =
+    match direct_tokens with
+    | opening_token :: _ ->
+        (token opening_token, token (List.hd (List.rev direct_tokens)))
+    | [] ->
+        bail ~message:"expected locally abstract type parameter delimiters during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "parameter.locally_abstract" ]
+  in
+  let type_keyword_token =
+    match direct_tokens |> List.find_opt (fun syntax_token -> String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "type") with
+    | Some type_keyword_token ->
+        token type_keyword_token
+    | None ->
+        bail ~message:"expected locally abstract type parameter type keyword during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "parameter.locally_abstract"; "type_keyword_token" ]
+  in
+  {Cst.syntax_node = node; opening_token; type_keyword_token; binders; closing_token}
 
 let constructor_pattern_existentials_from_node node : Cst.constructor_pattern_existentials =
   let binders = bare_type_binders_from_node ~context:[ "pattern.constructor.existentials" ] node in
-  {Cst.syntax_node = node; binders}
+  let direct_tokens = direct_non_trivia_tokens node in
+  let opening_token, closing_token =
+    match direct_tokens with
+    | opening_token :: _ ->
+        (token opening_token, token (List.hd (List.rev direct_tokens)))
+    | [] ->
+        bail ~message:"expected constructor pattern existential delimiters during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "pattern.constructor.existentials" ]
+  in
+  let type_keyword_token =
+    match direct_tokens |> List.find_opt (fun syntax_token -> String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "type") with
+    | Some type_keyword_token ->
+        token type_keyword_token
+    | None ->
+        bail ~message:"expected constructor pattern existential type keyword during Ceibo -> CST lifting"
+          ~syntax_node:node ~context:[ "pattern.constructor.existentials"; "type_keyword_token" ]
+  in
+  {Cst.syntax_node = node; opening_token; type_keyword_token; binders; closing_token}
 
 let constructor_pattern_existentials_from_children = fun node ->
   direct_non_trivia_nodes node |> List.find_map
@@ -3001,16 +3035,14 @@ let rec module_type_constraint_from_node = fun node ->
             syntax_node = node;
             constrained_type = core_type_from_node constrained_type_node;
             replacement_type = core_type_from_node replacement_type_node;
-            separator_token;
-            is_destructive = true
+            separator_token
           }
       | None, Some separator_token ->
           Cst.ModuleTypeConstraint.{
             syntax_node = node;
             constrained_type = core_type_from_node constrained_type_node;
             replacement_type = core_type_from_node replacement_type_node;
-            separator_token;
-            is_destructive = false
+            separator_token
           }
       | None, None ->
           bail ~message:"expected = or := token in module type constraint during Ceibo -> CST lifting" ~syntax_node:node ~context:[
@@ -3580,7 +3612,6 @@ and core_type_from_node = fun node ->
                 ]);
           field_type = core_type_from_node field_type_node;
           semicolon_token = direct_token_with_text node semicolon_text;
-          is_mutable = mutable_field;
           attributes
         }
     | _ ->
@@ -3797,6 +3828,16 @@ and core_type_from_node = fun node ->
         | _ ->
             None
       in
+      let dot_token =
+        match direct_non_trivia_tokens node |> List.rev |> List.find_opt (fun syntax_token -> String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ".") with
+        | Some dot_token ->
+            token dot_token
+        | None ->
+            bail ~message:"expected quantified type dot token during Ceibo -> CST lifting" ~syntax_node:node ~context:[
+              "core_type.poly";
+              "dot_token"
+            ]
+      in
       let body_node = direct_non_trivia_nodes node
       |> List.rev
       |> List.find_opt (fun child -> can_lift_core_type_node child
@@ -3806,6 +3847,7 @@ and core_type_from_node = fun node ->
           Cst.CoreType.Poly {
             syntax_node = node;
             type_keyword_token;
+            dot_token;
             binders;
             body = core_type_from_node body_node
           }
@@ -7286,12 +7328,6 @@ and type_parameter_from_node = fun node ->
             Some (Cst.TypeParameterVariance.Contravariant {marker_token = token syntax_token})
         | _ -> None)
   in
-  let parameter_is_injective =
-    direct_non_trivia_tokens node
-    |> List.exists
-      (fun syntax_token ->
-        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "!")
-  in
   let parameter_injectivity_token =
     direct_token_with_text node "!"
   in
@@ -7299,7 +7335,6 @@ and type_parameter_from_node = fun node ->
     syntax_node = node;
     variance = parameter_variance;
     injectivity_token = parameter_injectivity_token;
-    is_injective = parameter_is_injective;
     type_variable = lifted_type_variable
   }
 and type_parameters_from_node = fun node -> direct_non_trivia_nodes node
@@ -7365,6 +7400,12 @@ let record_field_from_node = fun node ->
       Cst.RecordField.{
         syntax_node = node;
         field_name;
+        mutable_token =
+          (match direct_non_trivia_tokens node with
+          | first :: _ when String.equal (Ceibo.Red.SyntaxToken.text first) "mutable" ->
+              Some (token first)
+          | _ ->
+              None);
         colon_token =
           (match direct_token_with_text node ":" with
           | Some colon_token ->
@@ -7376,7 +7417,6 @@ let record_field_from_node = fun node ->
               ]);
         field_type = lifted_field_type;
         semicolon_token = direct_token_with_text node semicolon_text;
-        is_mutable = mutable_field;
         attributes = lifted_attributes
       })
 
@@ -7896,9 +7936,7 @@ let type_declaration_from_node = fun ?keyword_token node ->
             private_flag = private_flag_from_type_declaration_node node;
             constraints = lifted_constraints;
             attributes = [];
-            next_and_declaration = None;
-            is_nonrec = type_declaration_has_nonrec node;
-            is_destructive_substitution = has_destructive_substitution
+            next_and_declaration = None
           }
       | None -> None
     )

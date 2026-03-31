@@ -275,7 +275,6 @@ and record_type_field = {
   colon_token : Token.t;
   field_type : core_type;
   semicolon_token : Token.t option;
-  is_mutable : bool;
   attributes : attribute list;
 }
 
@@ -422,7 +421,6 @@ and module_type_constraint = {
   constrained_type : core_type;
   replacement_type : core_type;
   separator_token : Token.t;
-  is_destructive : bool;
 }
 
 (** A package type used in first-class module positions.
@@ -583,6 +581,7 @@ and core_type =
   | Poly of {
       syntax_node : syntax_node;
       type_keyword_token : Token.t option;
+      dot_token : Token.t;
       binders : type_binder list;
       body : core_type;
     }
@@ -974,6 +973,7 @@ module CoreType : sig
     | Poly of {
         syntax_node : syntax_node;
         type_keyword_token : Token.t option;
+        dot_token : Token.t;
         binders : type_binder list;
         body : core_type;
       }
@@ -1026,7 +1026,6 @@ module ModuleTypeConstraint : sig
     constrained_type : core_type;
     replacement_type : core_type;
     separator_token : Token.t;
-    is_destructive : bool;
   }
 end
 
@@ -1624,7 +1623,10 @@ and poly_variant_inherit_pattern = {
 *)
 and constructor_pattern_existentials = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
+  type_keyword_token : Token.t;
   binders : type_binder list;
+  closing_token : Token.t;
 }
 
 (** Payload for `Pattern.Constructor`.
@@ -1880,7 +1882,10 @@ and optional_parameter = {
 *)
 and locally_abstract_type_parameter = {
   syntax_node : syntax_node;
+  opening_token : Token.t;
+  type_keyword_token : Token.t;
   binders : type_binder list;
+  closing_token : Token.t;
 }
 
 (** Function parameter syntax.
@@ -3622,7 +3627,6 @@ module TypeParameter : sig
     syntax_node : syntax_node;
     variance : TypeParameterVariance.t option;
     injectivity_token : Token.t option;
-    is_injective : bool;
     type_variable : TypeVariable.t option;
   }
   val syntax_node : t -> syntax_node
@@ -3630,8 +3634,6 @@ module TypeParameter : sig
   val variance : t -> TypeParameterVariance.t option
 
   val injectivity_token : t -> Token.t option
-
-  val is_injective : t -> bool
 
   val type_variable : t -> TypeVariable.t option
 end
@@ -3685,15 +3687,17 @@ module RecordField : sig
   type t = {
     syntax_node : syntax_node;
     field_name : Token.t;
+    mutable_token : Token.t option;
     colon_token : Token.t;
     field_type : core_type;
     semicolon_token : Token.t option;
-    is_mutable : bool;
     attributes : attribute list;
   }
   val syntax_node : t -> syntax_node
 
   val field_name_token : t -> Token.t
+
+  val mutable_token : t -> Token.t option
 
   val colon_token : t -> Token.t
 
@@ -3702,8 +3706,6 @@ module RecordField : sig
   val semicolon_token : t -> Token.t option
 
   val name : t -> string
-
-  val is_mutable : t -> bool
 
   val attributes : t -> attribute list
 
@@ -4010,8 +4012,6 @@ module TypeDeclaration : sig
     constraints : type_constraint list;
     attributes : attribute list;
     next_and_declaration : t option;
-    is_nonrec : bool;
-    is_destructive_substitution : bool;
   }
   val syntax_node : t -> syntax_node
 
@@ -4051,12 +4051,6 @@ module TypeDeclaration : sig
   val and_declarations : t -> t list
 
   val next_and_declaration : t -> t option
-
-  (** `true` for `type nonrec t = ...`. *)
-  val is_nonrec : t -> bool
-
-  (** `true` for interface destructive substitutions such as `type t := string`. *)
-  val is_destructive_substitution : t -> bool
 
 
   val is_private : t -> bool

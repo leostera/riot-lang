@@ -537,10 +537,11 @@ let render_type_parameter = fun parameter ->
         doc_of_token marker_token
   in
   let injective =
-    if Syn.Cst.TypeParameter.is_injective parameter then
-      Doc.text "!"
-    else
-      Doc.empty
+    match Syn.Cst.TypeParameter.injectivity_token parameter with
+    | Some injectivity_token ->
+        doc_of_token injectivity_token
+    | None ->
+        Doc.empty
   in
   let variable =
     match Syn.Cst.TypeParameter.type_variable parameter with
@@ -940,7 +941,7 @@ and render_record_core_type_field = fun (field : Syn.Cst.record_type_field) ->
       Doc.break ()
   in
   let prefix =
-    if field.is_mutable then
+    if Option.is_some field.mutable_token then
       let mutable_doc =
         match field.mutable_token with
         | Some mutable_token ->
@@ -1006,10 +1007,11 @@ and render_record_definition_field = fun (field : Syn.Cst.RecordField.t) ->
       Doc.break ()
   in
   let prefix =
-    if Syn.Cst.RecordField.is_mutable field then
-      Doc.concat [ kw_mutable; Doc.space; doc_of_token (Syn.Cst.RecordField.field_name_token field) ]
-    else
-      doc_of_token (Syn.Cst.RecordField.field_name_token field)
+    match Syn.Cst.RecordField.mutable_token field with
+    | Some mutable_token ->
+        Doc.concat [ doc_of_token mutable_token; Doc.space; doc_of_token (Syn.Cst.RecordField.field_name_token field) ]
+    | None ->
+        doc_of_token (Syn.Cst.RecordField.field_name_token field)
   in
   Doc.group (Doc.concat [
     prefix;
@@ -1628,10 +1630,11 @@ let render_single_type_declaration_with_keyword = fun ~leading_after _keyword de
         ~after:leading_after
         (Syn.Cst.TypeDeclaration.keyword_token decl)
     in
-    if Syn.Cst.TypeDeclaration.is_nonrec decl then
-      Doc.concat [ keyword; Doc.space; Doc.text "nonrec" ]
-    else
-      keyword
+    match Syn.Cst.TypeDeclaration.nonrec_token decl with
+    | Some nonrec_token ->
+        Doc.concat [ keyword; Doc.space; doc_of_token nonrec_token ]
+    | None ->
+        keyword
   in
   let header =
     if params = Doc.empty then

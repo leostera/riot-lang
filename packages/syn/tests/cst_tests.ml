@@ -466,15 +466,15 @@ let tests =
         | Syn.Cst.SignatureItem.TypeDeclaration
             { type_definition = Syn.Cst.TypeDefinition.Abstract; _ }
           :: Syn.Cst.SignatureItem.TypeDeclaration
-               {
-                 type_definition =
-                   Syn.Cst.TypeDefinition.Alias
+                 {
+                   type_definition =
+                     Syn.Cst.TypeDefinition.Alias
                      {
                        manifest =
                          Syn.Cst.CoreType.Constr { constructor_path; _ };
                        _;
                      };
-                 is_destructive_substitution = false;
+                 destructive_substitution_token = None;
                  _;
                }
              :: _ ->
@@ -501,7 +501,7 @@ let tests =
                       Syn.Cst.CoreType.Constr { constructor_path; _ };
                     _;
                   };
-              is_destructive_substitution = true;
+              destructive_substitution_token = Some _;
               _;
             }
           :: _ ->
@@ -567,7 +567,7 @@ let tests =
         in
         match declarations with
         | option_decl :: point_decl :: color_decl :: _ -> (
-            Test.assert_true (Syn.Cst.TypeDeclaration.is_nonrec option_decl);
+            Test.assert_true (Option.is_some (Syn.Cst.TypeDeclaration.nonrec_token option_decl));
             (match Syn.Cst.TypeDeclaration.manifest_alias option_decl with
             | Some
                 (Syn.Cst.CoreType.Constr
@@ -871,7 +871,9 @@ let tests =
                      | None -> None)
             in
             let injectivity =
-              params |> List.map Syn.Cst.TypeParameter.is_injective
+              params
+              |> List.map (fun param ->
+                     Option.is_some (Syn.Cst.TypeParameter.injectivity_token param))
             in
             let names =
               params
@@ -948,7 +950,9 @@ let tests =
                   fields |> List.map Syn.Cst.RecordField.name
                 in
                 let mutability =
-                  fields |> List.map Syn.Cst.RecordField.is_mutable
+                  fields
+                  |> List.map (fun field ->
+                         Option.is_some (Syn.Cst.RecordField.mutable_token field))
                 in
                 Test.assert_equal ~expected:[ "userName"; "created_at" ]
                   ~actual:names;

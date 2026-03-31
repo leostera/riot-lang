@@ -70,7 +70,7 @@ let rec object_type_field_to_json = fun ({ syntax_node; field_name; field_type }
   ("field_name", token_to_json field_name);
   ("field_type", core_type_to_json field_type)
 ]
-and record_type_field_to_json = fun ({ syntax_node; field_name; mutable_token; field_type; semicolon_token; is_mutable; attributes } : Cst.record_type_field) ->
+and record_type_field_to_json = fun ({ syntax_node; field_name; mutable_token; field_type; semicolon_token; attributes } : Cst.record_type_field) ->
   let attributes = List.map attribute_to_json attributes in
   Json.Object (
     [
@@ -78,8 +78,7 @@ and record_type_field_to_json = fun ({ syntax_node; field_name; mutable_token; f
       ("field_name", token_to_json field_name);
       ("mutable_token", option_to_json token_to_json mutable_token);
       ("field_type", core_type_to_json field_type);
-      ("semicolon_token", option_to_json token_to_json semicolon_token);
-      ("is_mutable", Json.Bool is_mutable)
+      ("semicolon_token", option_to_json token_to_json semicolon_token)
     ]
     @ if attributes = [] then
       []
@@ -307,11 +306,12 @@ and core_type_to_json =
       ]
   | Cst.CoreType.Extension extension ->
       Json.Object [ ("tag", Json.String "extension"); ("extension", extension_to_json extension) ]
-  | Cst.CoreType.Poly { syntax_node; type_keyword_token; binders; body } ->
+  | Cst.CoreType.Poly { syntax_node; type_keyword_token; dot_token; binders; body } ->
       Json.Object [
         ("tag", Json.String "poly");
         ("syntax_node", syntax_node_to_json syntax_node);
         ("type_keyword_token", option_to_json token_to_json type_keyword_token);
+        ("dot_token", token_to_json dot_token);
         ("binders", Json.Array (List.map type_binder_to_json binders));
         ("body", core_type_to_json body)
       ]
@@ -361,13 +361,13 @@ and core_type_to_json =
         ("fields", Json.Array (List.map object_type_field_to_json fields))
       ]
 and module_type_constraint_to_json = fun
-  ({ syntax_node; constrained_type; replacement_type; is_destructive } :
+  ({ syntax_node; constrained_type; replacement_type; separator_token } :
       Cst.module_type_constraint) ->
   Json.Object [
     ("syntax_node", syntax_node_to_json syntax_node);
     ("constrained_type", core_type_to_json constrained_type);
     ("replacement_type", core_type_to_json replacement_type);
-    ("is_destructive", Json.Bool is_destructive)
+    ("separator_token", token_to_json separator_token)
   ]
 and package_type_to_json =
   fun ({ syntax_node; module_type_path; constraints; attribute } : Cst.package_type) ->
@@ -1508,7 +1508,10 @@ let type_parameter_to_json = fun type_parameter ->
       "variance",
       option_to_json type_parameter_variance_to_json (Cst.TypeParameter.variance type_parameter)
     );
-    ("is_injective", Json.Bool (Cst.TypeParameter.is_injective type_parameter));
+    (
+      "injectivity_token",
+      option_to_json token_to_json (Cst.TypeParameter.injectivity_token type_parameter)
+    );
     (
       "type_variable",
       option_to_json type_variable_to_json (Cst.TypeParameter.type_variable type_parameter)
@@ -1521,8 +1524,8 @@ let record_field_to_json = fun field ->
     [
       ("syntax_node", syntax_node_to_json (Cst.RecordField.syntax_node field));
       ("field_name", token_to_json (Cst.RecordField.field_name_token field));
-      ("field_type", core_type_to_json (Cst.RecordField.field_type field));
-      ("is_mutable", Json.Bool (Cst.RecordField.is_mutable field))
+      ("mutable_token", option_to_json token_to_json (Cst.RecordField.mutable_token field));
+      ("field_type", core_type_to_json (Cst.RecordField.field_type field))
     ]
     @ (
       if attributes = [] then
@@ -1688,15 +1691,14 @@ let rec type_declaration_to_json = fun decl ->
       | Some next -> [ ("next_and_declaration", type_declaration_to_json next) ]
     )
     @ (
-      if Cst.TypeDeclaration.is_nonrec decl then
-        [ ("is_nonrec", Json.Bool true) ]
-      else
-        []
+      match Cst.TypeDeclaration.nonrec_token decl with
+      | Some nonrec_token -> [ ("nonrec_token", token_to_json nonrec_token) ]
+      | None -> []
     )
     @ [
       (
-        "is_destructive_substitution",
-        Json.Bool (Cst.TypeDeclaration.is_destructive_substitution decl)
+        "destructive_substitution_token",
+        option_to_json token_to_json (Cst.TypeDeclaration.destructive_substitution_token decl)
       )
     ]
   )
