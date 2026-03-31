@@ -159,6 +159,9 @@
 0976_object_type_field_tight_colon.mli
 0977_class_type_field_tight_colon.mli
 0978_variant_result_tight_colon.mli
+0979_nested_redundant_parens.ml
+0980_fun_breaks_after_arrow.ml
+0981_top_level_letrec_blank_line.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

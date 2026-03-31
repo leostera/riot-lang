@@ -2246,6 +2246,20 @@ and apply_expression_is_simple_after_equals = fun ({ callee; argument; _ }: Syn.
 callee
 && apply_argument_is_simple_after_equals argument
 
+let rec collapse_redundant_parenthesized_value_after_equals =
+  function
+  | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.Parens; opening_token; inner; _ } as expression ->
+      let inner_leading_trivia = Syn.Cst.leading_trivia_before_node
+      ~after:(Syn.Cst.Token.span opening_token).end_
+      (Syn.Cst.Expression.syntax_node inner) in
+      if inner_leading_trivia = [] then
+        collapse_redundant_parenthesized_value_after_equals inner
+      else
+        expression
+  | (Syn.Cst.Expression.Infix _ as expression) -> expression
+  | expression when expression_is_simple_after_equals expression -> expression
+  | expression -> expression
+
 let expression_requires_break_after_equals =
   function
   | Syn.Cst.Expression.Function _
@@ -2274,6 +2288,7 @@ let rec collapse_redundant_parenthesized_expression =
   function
   | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.Parens; inner; _ } -> collapse_redundant_parenthesized_expression
   inner
+  | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.BeginEnd; _ } -> None
   | Syn.Cst.Expression.Operator _ -> None
   | Syn.Cst.Expression.Prefix { operator_token; operand=Syn.Cst.Expression.Literal literal; _;  } when (
     match Syn.Cst.Token.fixed_operator operator_token with
@@ -3142,8 +3157,16 @@ let make_lowerer =
               Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
           ); Doc.space; Doc.arrow; Doc.line; Doc.indent 2 body;  ]
     else
-      Doc.concat
-      [ kw_fun; Doc.space; Doc.join Doc.space parameters; Doc.space; Doc.arrow; Doc.space; body;  ]
+      Doc.group
+      (Doc.concat
+      [
+        kw_fun;
+        Doc.space;
+        Doc.join Doc.space parameters;
+        Doc.space;
+        Doc.arrow;
+        Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
+      ])
   and render_class_let_expression = fun
     ({
         keyword_token;
@@ -3915,13 +3938,11 @@ let make_lowerer =
               Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
           ); Doc.space; doc_of_token arrow_token; Doc.line; Doc.indent 2 body;  ]
     else
-      Doc.concat
-        [ doc_of_token keyword_token; (
-            if List.length parameters = 0 then
-              Doc.empty
-            else
-              Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
-          ); Doc.space; doc_of_token arrow_token; Doc.space; body;  ]
+      render_fun_arrow_body
+      ~keyword:(doc_of_token keyword_token)
+      ~parameters:(Doc.join Doc.space parameters)
+      ~arrow_token
+      ~body
   and render_function_expression = fun ({ keyword_token; cases; _ }: Syn.Cst.function_expression) ->
     let force_multiline_cases = List.length cases > 2 && List.exists case_body_prefers_multiline cases in
     Doc.concat
@@ -4111,6 +4132,21 @@ let make_lowerer =
         let else_doc = render_expression else_branch in
         Doc.concat
         [ head; Doc.line; Doc.indent 2 then_doc; Doc.line; kw_else; Doc.line; Doc.indent 2 else_doc ]
+  and render_fun_arrow_body = fun ~keyword ~parameters ~arrow_token ~body ->
+    Doc.group
+    (Doc.concat
+    [
+      keyword;
+      (
+        if parameters = Doc.empty then
+          Doc.empty
+        else
+          Doc.concat [ Doc.space; parameters ]
+      );
+      Doc.space;
+      doc_of_token arrow_token;
+      Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
+    ])
   and render_parenthesized_expression =
     function
     | Syn.Cst.Expression.Parenthesized {
@@ -4143,6 +4179,8 @@ let make_lowerer =
           ]
           | Syn.Cst.Parens -> (
               match inner with
+              | Syn.Cst.Expression.Parenthesized _ when not has_inner_leading_trivia ->
+                  render_expression inner
               | Syn.Cst.Expression.Tuple _
               | Syn.Cst.Expression.List _
               | Syn.Cst.Expression.Array _
@@ -4765,6 +4803,7 @@ let make_lowerer =
   and render_binding_value = fun ~leading_body_trivia ~force_multiline_body ~parameters ~value ->
     match parameters with
     | [] -> (
+        let value = collapse_redundant_parenthesized_value_after_equals value in
         match value with
         | Syn.Cst.Expression.Fun ({ keyword_token; arrow_token; _ } as fun_) when force_multiline_body ->
             let parameters, body = flatten_fun_expression fun_ in
@@ -4850,13 +4889,15 @@ let make_lowerer =
       true
     else
       match value with
-      | Syn.Cst.Expression.Fun _ -> true
+      | Syn.Cst.Expression.Fun _ -> not (function_body_prefers_multiline value)
       | _ when expression_is_boolean_infix value -> false
       | _ when expression_requires_break_after_equals value -> false
       | _ -> expression_is_simple_after_equals value
   and adjust_local_binding_value_after_equals = fun ~rendered_value value stays_after_equals ->
     match value with
-    | Syn.Cst.Expression.Fun _ -> stays_after_equals
+    | Syn.Cst.Expression.Fun _
+    | Syn.Cst.Expression.Function _ ->
+        stays_after_equals && not (Doc.is_multiline rendered_value)
     | _ when expression_is_pipeline value && Doc.is_multiline rendered_value -> false
     | _ -> stays_after_equals
   and local_binding_keeps_parameters_in_header = fun ~parameters ~rendered_type_annotation ~synthesized_type_annotation ->
@@ -4984,7 +5025,21 @@ let make_lowerer =
     let keep_value_after_equals = adjust_local_binding_value_after_equals ~rendered_value value keep_value_after_equals in
     let rendered_binding =
       if keep_value_after_equals then
-        Doc.concat [ header; Doc.space; doc_of_token equals_token; Doc.space; rendered_value;  ]
+        (
+          match value with
+          | Syn.Cst.Expression.Fun _
+          | Syn.Cst.Expression.Function _ ->
+              Doc.group
+              (Doc.concat
+              [
+                header;
+                Doc.space;
+                doc_of_token equals_token;
+                Doc.indent 2 (Doc.concat [ Doc.break (); rendered_value ]);
+              ])
+          | _ ->
+              Doc.concat [ header; Doc.space; doc_of_token equals_token; Doc.space; rendered_value;  ]
+        )
       else if
         not (expression_is_simple_after_equals value)
         || expression_prefers_multiline_layout value
@@ -5093,7 +5148,7 @@ let make_lowerer =
     let first = render_let_binding_group_item ~leading_binding_trivia_override:None binding in
     let trailing = Syn.Cst.LetBinding.and_bindings binding
     |> List.map
-    (fun and_binding -> Doc.concat [ Doc.line; render_let_binding_group_item and_binding;  ]) in
+    (fun and_binding -> Doc.concat [ blank_line; render_let_binding_group_item and_binding;  ]) in
     Doc.concat (first :: trailing)
   and nested_signature_items_from_module_type = fun module_type ->
     match Syn.CstBuilder.signature_items_of_module_type module_type with
