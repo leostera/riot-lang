@@ -37,7 +37,13 @@ let test_lock_deps_projects_workspace_packages = fun () ->
       ~build_dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
       ()
   in
-  match Tusk_pm.Dep_solver.lock_deps ~mode:Refresh ~registry_name:"pkgs.ml" [ app_pkg; std_pkg ] with
+  match
+    Tusk_pm.Dep_solver.lock_deps
+      ~mode:Refresh
+      ~registry_name:"pkgs.ml"
+      ~existing_lock:None
+      [ app_pkg; std_pkg ]
+  with
   | Error err -> Error ("expected workspace lock projection to succeed: " ^ err)
   | Ok lockfile ->
       let app_lock = List.hd lockfile.packages in
@@ -66,13 +72,99 @@ let test_lock_deps_rejects_path_dependencies_for_now = fun () ->
       ~dependencies:[ { name = "foo"; source = Tusk_model.Package.Path (Path.v "../vendor/foo") } ]
       ()
   in
-  match Tusk_pm.Dep_solver.lock_deps ~mode:Refresh ~registry_name:"pkgs.ml" [ vendor_pkg ] with
+  match
+    Tusk_pm.Dep_solver.lock_deps
+      ~mode:Refresh
+      ~registry_name:"pkgs.ml"
+      ~existing_lock:None
+      [ vendor_pkg ]
+  with
   | Ok _ -> Error "expected path dependencies to fail until materialization exists"
   | Error err ->
       if String.contains err "path dependencies are not implemented in tusk-pm yet" then
         Ok ()
       else
         Error ("unexpected error: " ^ err)
+
+let test_lock_refresh_preserves_existing_external_nodes = fun () ->
+  let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
+  let existing_lock =
+    Tusk_model.Lockfile.{
+      format_version = 1;
+      packages = [
+        {
+          id = { registry = None; name = "app"; version = None };
+          path = Path.v "/workspace/packages/app";
+          manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+          provenance = Workspace;
+          dependencies = [];
+          build_dependencies = [];
+          dev_dependencies = [];
+        };
+        {
+          id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
+          path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0";
+          manifest_path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0/tusk.toml";
+          provenance = Registry { registry = "pkgs.ml" };
+          dependencies = [];
+          build_dependencies = [];
+          dev_dependencies = [];
+        };
+      ];
+    }
+  in
+  match
+    Tusk_pm.Dep_solver.lock_deps
+      ~mode:Refresh
+      ~registry_name:"pkgs.ml"
+      ~existing_lock:(Some existing_lock)
+      [ app_pkg ]
+  with
+  | Error err -> Error ("expected refresh lock to preserve existing nodes: " ^ err)
+  | Ok lockfile ->
+      if
+        List.length lockfile.packages = 2
+        && (List.nth lockfile.packages 1).id.name = "std"
+        && (List.nth lockfile.packages 1).id.version = Some "0.1.0"
+      then
+        Ok ()
+      else
+        Error "expected refresh to preserve existing external lock nodes"
+
+let test_unlock_discards_existing_external_nodes = fun () ->
+  let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
+  let existing_lock =
+    Tusk_model.Lockfile.{
+      format_version = 1;
+      packages = [
+        {
+          id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
+          path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0";
+          manifest_path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0/tusk.toml";
+          provenance = Registry { registry = "pkgs.ml" };
+          dependencies = [];
+          build_dependencies = [];
+          dev_dependencies = [];
+        };
+      ];
+    }
+  in
+  match
+    Tusk_pm.Dep_solver.lock_deps
+      ~mode:Unlock
+      ~registry_name:"pkgs.ml"
+      ~existing_lock:(Some existing_lock)
+      [ app_pkg ]
+  with
+  | Error err -> Error ("expected unlock to rebuild workspace nodes: " ^ err)
+  | Ok lockfile ->
+      if
+        List.length lockfile.packages = 1
+        && (List.hd lockfile.packages).id.name = "app"
+      then
+        Ok ()
+      else
+        Error "expected unlock to discard preserved external lock nodes"
 
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
@@ -186,6 +278,8 @@ let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
     case "dep solver: rejects path dependencies for now" test_lock_deps_rejects_path_dependencies_for_now;
+    case "dep solver: refresh preserves existing external nodes" test_lock_refresh_preserves_existing_external_nodes;
+    case "dep solver: unlock discards existing external nodes" test_unlock_discards_existing_external_nodes;
     case "lock refresh: missing lock requires refresh" test_lock_refresh_requires_lock_when_missing;
     case "lock refresh: newer lock avoids refresh" test_lock_refresh_false_when_lock_is_newer;
     case "lock refresh: newer manifest requires refresh" test_lock_refresh_true_when_manifest_is_newer;

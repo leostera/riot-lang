@@ -62,9 +62,27 @@ let rec lock_packages = fun acc packages ->
       | Error _ as err -> err
     )
 
-let lock_deps = fun ~mode ~registry_name packages ->
-  let _ = mode in
+let keep_existing_package = fun workspace_packages (pkg: Tusk_model.Lockfile.package) ->
+  let workspace_names = List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) workspace_packages in
+  not (List.mem pkg.id.name workspace_names)
+
+let lock_deps = fun ~mode ~registry_name ~existing_lock packages ->
   let _ = registry_name in
   match lock_packages [] packages with
-  | Ok packages -> Ok Tusk_model.Lockfile.{ format_version = 1; packages }
+  | Ok workspace_packages ->
+      let packages =
+        match (mode, existing_lock) with
+        | Unlock, _ ->
+            workspace_packages
+        | Refresh, Some (existing_lock: Tusk_model.Lockfile.t) ->
+            let preserved =
+              List.filter
+                (keep_existing_package packages)
+                existing_lock.packages
+            in
+            workspace_packages @ preserved
+        | Refresh, None ->
+            workspace_packages
+      in
+      Ok Tusk_model.Lockfile.{ format_version = 1; packages }
   | Error _ as err -> err
