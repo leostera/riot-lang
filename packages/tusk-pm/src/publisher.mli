@@ -22,6 +22,7 @@ type error =
       stderr: string;
     }
   | TarCommandSpawnFailed of { command: string; error: string }
+  | GitProvenanceFailed of Git_provenance.error
   | RegistryPublishFailed of { locator: string; error: string }
   | CyclicWorkspacePublishOrder of { cycle: string list }
 
@@ -40,6 +41,12 @@ val publish_from_locator:
   package:Tusk_model.Package.t ->
   locator:string ->
   selector:string ->
+  api_token:string ->
+  (Pkgs_ml.Registry.published_release, error) result
+
+val publish:
+  registry:Pkgs_ml.Registry.t ->
+  package:Tusk_model.Package.t ->
   api_token:string ->
   (Pkgs_ml.Registry.published_release, error) result
 

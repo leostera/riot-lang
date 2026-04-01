@@ -22,6 +22,7 @@ type error =
       stderr: string;
     }
   | TarCommandSpawnFailed of { command: string; error: string }
+  | GitProvenanceFailed of Git_provenance.error
   | RegistryPublishFailed of { locator: string; error: string }
   | CyclicWorkspacePublishOrder of { cycle: string list }
 
@@ -87,6 +88,8 @@ let message = function
       ^ detail
   | TarCommandSpawnFailed { command; error } ->
       "failed to spawn publish artifact command '" ^ command ^ "': " ^ error
+  | GitProvenanceFailed error ->
+      Git_provenance.message error
   | RegistryPublishFailed { locator; error } ->
       "failed to publish '" ^ locator ^ "': " ^ error
   | CyclicWorkspacePublishOrder { cycle } ->
@@ -238,6 +241,18 @@ let publish_from_locator = fun ~registry ~(package:Tusk_model.Package.t) ~locato
       | Error error ->
           Error (RegistryPublishFailed { locator; error })
     )
+
+let publish = fun ~registry ~(package:Tusk_model.Package.t) ~api_token ->
+  match Git_provenance.discover ~package_root:package.path with
+  | Error error ->
+      Error (GitProvenanceFailed error)
+  | Ok provenance ->
+      publish_from_locator
+        ~registry
+        ~package
+        ~locator:provenance.locator
+        ~selector:provenance.selector
+        ~api_token
 
 let assoc_package = fun packages name ->
   List.find_opt

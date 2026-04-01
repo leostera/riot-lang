@@ -562,6 +562,101 @@ public = true
       | _, _, _, _, Error err, _
       | _, _, _, _, _, Error err -> Error err)
 
+let test_publisher_publish_discovers_git_provenance = fun () ->
+  with_tempdir "tusk_pm_publish_with_git_provenance"
+    (fun root ->
+      let package_root = Path.(root / Path.v "packages/demo") in
+      write_file Path.(package_root / Path.v "tusk.toml")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+      write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
+      match
+        run_git ~cwd:root [ "init"; "-q" ],
+        run_git ~cwd:root [ "config"; "user.email"; "demo@example.com" ],
+        run_git ~cwd:root [ "config"; "user.name"; "Demo" ],
+        run_git ~cwd:root [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ],
+        run_git ~cwd:root [ "add"; "." ],
+        run_git ~cwd:root [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ],
+        run_git ~cwd:package_root [ "rev-parse"; "HEAD" ]
+      with
+      | Ok _, Ok _, Ok _, Ok _, Ok _, Ok _, Ok selector -> (
+          let package = make_package ~name:"demo" ~path:package_root () in
+          let fetch, requests =
+            make_fetch_recorder
+              ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+                Ok {
+                  Pkgs_ml.Registry.status_code = 200;
+                  body = {|{
+  "package": "github.com/example/riot/packages/demo",
+  "source_url": "https://github.com/example/riot",
+  "package_subdir": "packages/demo",
+  "selector": "ignored-by-test",
+  "resolved_sha": "0123456789abcdef0123456789abcdef01234567",
+  "package_name": "demo",
+  "package_version": "0.1.0",
+  "manifest": {
+    "key": "packages/github.com/example/riot/packages/demo/manifest.json",
+    "url": "https://api.pkgs.ml/v1/packages/github.com/example/riot/packages/demo/manifest/main.json",
+    "cdn_url": "https://cdn.pkgs.ml/packages/github.com/example/riot/packages/demo/manifest.json"
+  },
+  "source_archive": {
+    "key": "sources/github.com/example/riot/packages/demo/source.tar.gz",
+    "url": "https://api.pkgs.ml/v1/packages/github.com/example/riot/packages/demo/source/main.tar.gz",
+    "cdn_url": "https://cdn.pkgs.ml/sources/github.com/example/riot/packages/demo/source.tar.gz"
+  },
+  "claim": {
+    "key": "claims/demo.json",
+    "created": true
+  },
+  "release": {
+    "key": "releases/demo/0.1.0.json",
+    "created": true
+  },
+  "materialization": {
+    "manifest": false,
+    "source": false
+  }
+}|};
+                })
+              (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+          in
+          let registry =
+            Pkgs_ml.Registry.filesystem
+              ~fetch
+              (make_registry_cache ())
+          in
+          match Tusk_pm.Publisher.publish ~registry ~package ~api_token:"root-secret" with
+          | Error err -> Error ("expected publish to succeed: " ^ Tusk_pm.Publisher.message err)
+          | Ok published -> (
+              match List.rev !requests with
+              | [ request ] ->
+                  if
+                    String.equal request.method_ "POST"
+                    && String.equal request.url
+                      ("https://api.pkgs.ml/v1/packages/github.com/example/riot/packages/demo/publish?ref="
+                      ^ selector)
+                    && String.equal published.package_name "demo"
+                  then
+                    Ok ()
+                  else
+                    Error "unexpected publish request discovered from git provenance"
+              | _ -> Error "expected exactly one publish request"
+            )
+        )
+      | Error err, _, _, _, _, _, _
+      | _, Error err, _, _, _, _, _
+      | _, _, Error err, _, _, _, _
+      | _, _, _, Error err, _, _, _
+      | _, _, _, _, Error err, _, _
+      | _, _, _, _, _, Error err, _
+      | _, _, _, _, _, _, Error err -> Error err)
+
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -1727,6 +1822,7 @@ let tests =
     case "publisher: workspace publish order reports cycles" test_publisher_workspace_publish_order_reports_cycles;
     case "git provenance: discovers nested package locator" test_git_provenance_discovers_nested_package_locator;
     case "git provenance: discovers repo root locator" test_git_provenance_discovers_repo_root_locator;
+    case "publisher: publish discovers git provenance automatically" test_publisher_publish_discovers_git_provenance;
   ]
 
 let name = "Tusk PM Tests"
