@@ -34,14 +34,14 @@ module Counter = struct
 
   let init = fun _conn () ->
     Log.info "Counter initialized";
-    {count = 0;}
+    { count = 0 }
 
   let update = fun event state ->
     let new_state =
       match event with
-      | App Increment -> {count = state.count + 1;}
-      | App Decrement -> {count = state.count - 1;}
-      | App Reset -> {count = 0;}
+      | App Increment -> { count = state.count + 1 }
+      | App Decrement -> { count = state.count - 1 }
+      | App Reset -> { count = 0 }
       | _ -> state
     in
     Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);

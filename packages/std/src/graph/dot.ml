@@ -37,12 +37,12 @@ let create = fun ~name ~style ->
   }
 
 let add_node = fun t ~id ?label ?(attrs = []) () ->
-  let node = {id;label;attrs;} in
-  {t with nodes = node :: t.nodes;}
+  let node = { id; label; attrs } in
+  { t with nodes = node :: t.nodes }
 
 let add_edge = fun t ~from_node ~to_node ?label ?(attrs = []) () ->
-  let edge = {from_node;to_node;label;attrs;} in
-  {t with edges = edge :: t.edges;}
+  let edge = { from_node; to_node; label; attrs } in
+  { t with edges = edge :: t.edges }
 
 let escape_string = fun s ->
   (* Escape quotes and backslashes for DOT format *)

@@ -27,7 +27,7 @@ let set_total_pages = fun t ~total:items ->
       else
         n
     in
-    let new_t = {t with total_pages = n;} in
+    let new_t = { t with total_pages = n } in
     (new_t, n)
 
 let get_slice_bounds = fun t length ->
@@ -46,13 +46,13 @@ let on_last_page = fun t -> t.page = t.total_pages - 1
 
 let on_first_page = fun t -> t.page = 0
 
-let prev_page = fun t -> {t with page = max (t.page - 1) 0;}
+let prev_page = fun t -> { t with page = max (t.page - 1) 0 }
 
 let next_page = fun t ->
   if on_last_page t then
     t
   else
-    {t with page = t.page + 1;}
+    { t with page = t.page + 1 }
 
 let make = fun ?(style = Numerals) ?(page = 0) ?(per_page = 1) ?(total_pages = 1) ?(active_dot = "•") ?(inactive_dot = "○") ?(numerals_format = fun page total ->
   Int.to_string page ^ "/" ^ Int.to_string total) ?(text_style = Style.default) () ->

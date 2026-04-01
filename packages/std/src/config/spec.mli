@@ -103,7 +103,7 @@ type value =
   (** UUID (e.g., "550e8400-e29b-41d4-a716-446655440000") *)
   | List of value list
   (** Array of homogeneous values *)
-  | DiscriminatedUnion of { discriminant: string; variant: string; fields: (string * value) list; }
+  | DiscriminatedUnion of { discriminant: string; variant: string; fields: (string * value) list }
   (** Discriminated union - structure determined by discriminant field *)
   | Map of (string * value) list
 (** Nested configuration object *)
@@ -515,19 +515,19 @@ val all_specs: unit -> t list
 *)
 
 type field_type =
-  | String of { default: string option; }
-  | Char of { default: char option; }
-  | Int of { default: int option; }
-  | Int32 of { default: int32 option; }
-  | Int64 of { default: int64 option; }
-  | Bool of { default: bool option; }
-  | Float of { default: float option; }
-  | Uri of { default: Net.Uri.t option; }
-  | Datetime of { default: Datetime.t option; }
-  | Path of { default: Path.t option; }
-  | Uuid of { default: Uuid.t option; }
-  | List of { item_spec: field; default: value list option; }
-  | DiscriminatedUnion of { discriminant: string; cases: (string * field list) list; }
+  | String of { default: string option }
+  | Char of { default: char option }
+  | Int of { default: int option }
+  | Int32 of { default: int32 option }
+  | Int64 of { default: int64 option }
+  | Bool of { default: bool option }
+  | Float of { default: float option }
+  | Uri of { default: Net.Uri.t option }
+  | Datetime of { default: Datetime.t option }
+  | Path of { default: Path.t option }
+  | Uuid of { default: Uuid.t option }
+  | List of { item_spec: field; default: value list option }
+  | DiscriminatedUnion of { discriminant: string; cases: (string * field list) list }
   | Map of field list
 
 (** Internal representation of field types with default values *)

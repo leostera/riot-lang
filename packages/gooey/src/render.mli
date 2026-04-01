@@ -42,7 +42,7 @@ type command_type =
   (** Start clipping region *)
   | ScissorEnd
   (** End clipping region *)
-  | Custom of { data: string; }
+  | Custom of { data: string }
 (** Custom render data *)
 (** A single render command *)
 type command = {

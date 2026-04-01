@@ -18,12 +18,12 @@ let make_package = fun () ->
     name = "minttea";
     path = Path.v "packages/minttea";
     relative_path = Path.v "packages/minttea";
-    dependencies = [ {name = "std";source = Tusk_model.Package.Workspace;} ];
-    dev_dependencies = [ {name = "propane";source = Tusk_model.Package.Workspace;} ];
-    build_dependencies = [ {name = "std";source = Tusk_model.Package.Workspace;} ];
+    dependencies = [ { name = "std"; source = Tusk_model.Package.Workspace } ];
+    dev_dependencies = [ { name = "propane"; source = Tusk_model.Package.Workspace } ];
+    build_dependencies = [ { name = "std"; source = Tusk_model.Package.Workspace } ];
     foreign_dependencies = [];
-    binaries = [ {name = "demo-bin";path = Path.v "src/demo_bin.ml";} ];
-    library = Some {path = Path.v "src/minttea.ml";};
+    binaries = [ { name = "demo-bin"; path = Path.v "src/demo_bin.ml" } ];
+    library = Some { path = Path.v "src/minttea.ml" };
     sources =
       {
         src = [ Path.v "src/minttea.ml"; Path.v "src/demo_cmd.ml" ];
@@ -32,7 +32,7 @@ let make_package = fun () ->
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [ command ];
     fix_providers = [];
   }

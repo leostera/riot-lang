@@ -1458,7 +1458,7 @@ end
           Test.assert_equal ~expected:0 ~actual:result.summary.failed_files;
           let start_json = capture_json_event
             ~root:tmpdir
-            (Krasny.Report.Start {mode = Krasny.Runner.Check;concurrency = 3;})
+            (Krasny.Report.Start { mode = Krasny.Runner.Check; concurrency = 3 })
           |> Data.Json.of_string
           |> Result.expect ~msg:"parse start json" in
           let open Data.Json in

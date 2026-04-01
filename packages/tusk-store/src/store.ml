@@ -21,7 +21,7 @@ let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir = Tusk_dirs.cache_dir_with_target ~workspace_root:workspace.root ~profile ~target in
   Fs.create_dir_all store_dir
   |> Result.expect ~msg:(("Failed to create store directory: " ^ Path.to_string store_dir));
-  {root_dir = store_dir;}
+  { root_dir = store_dir }
 (** Create a new store for the given workspace *)
 let create = fun ~(workspace:Workspace.t) ->
   create_for_lane ~workspace ~profile:"debug" ~target:(Tusk_dirs.host_target ())
@@ -142,7 +142,7 @@ let store_artifacts = fun store ~package hash sandbox_dir declared_outputs ->
   let stored_files =
     List.map (fun ((path, _)) -> path) stored_files_with_sizes
   in
-  Artifact.{hash;files = List.rev stored_files;}
+  Artifact.{ hash; files = List.rev stored_files }
 (** Simple interface - check if we have cached artifacts for a hash *)
 let get = fun store hash ->
   if exists store hash then
@@ -151,7 +151,7 @@ let get = fun store hash ->
         let files =
           List.map (fun entry -> entry.Manifest.path) manifest.files
         in
-        Some Artifact.{hash;files;}
+        Some Artifact.{ hash; files }
     | Error _ -> None
   else
     None
@@ -232,7 +232,7 @@ let export_entry_of_json = fun json ->
       | Some (Std.Data.Json.String name), Some (Std.Data.Json.String path), Some (Std.Data.Json.String action_hash) -> Some {
         name;
         path = Path.v path;
-        action_hash;
+        action_hash
       }
       | _ -> None
     )

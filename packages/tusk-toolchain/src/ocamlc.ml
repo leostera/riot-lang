@@ -80,7 +80,7 @@ let flags_to_string = fun flags ->
 let make_include_flags = fun dirs -> dirs |> List.map (fun dir -> "-I " ^ dir) |> String.concat " "
 
 let make_invocation = fun ?(output_mode = Normal) ~cwd command_string ->
-  {cwd;env = [ ("OCAML_COLOR", "always") ];command_string;output_mode;}
+  { cwd; env = [ ("OCAML_COLOR", "always") ]; command_string; output_mode }
 
 let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ccopt_flags = []) ?(cclib_flags = []) ?(output = None) ?(mode = Compile) ?(flags = []) sources ->
   let ocamlc = base_command t in

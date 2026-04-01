@@ -57,13 +57,13 @@ let update = fun event model ->
   | Event.KeyDown (Event.Enter, _) ->
       (* Get the selected item and quit *)
       let selected = Listbox.selected_item model.list in
-      ({model with selected;}, Command.Quit)
+      ({ model with selected }, Command.Quit)
   | Event.KeyDown (Event.Up, _) ->
       let list = Listbox.select_prev model.list in
-      ({model with list;}, Command.Noop)
+      ({ model with list }, Command.Noop)
   | Event.KeyDown (Event.Down, _) ->
       let list = Listbox.select_next model.list in
-      ({model with list;}, Command.Noop)
+      ({ model with list }, Command.Noop)
   | _ ->
       (model, Command.Noop)
 
@@ -92,6 +92,6 @@ let app = App.make ~init ~update ~view ()
 (* Run it *)
 
 let () =
-  let initial_model = {list = Listbox.make items |> Listbox.set_height ~height:10;selected = None;} in
+  let initial_model = { list = Listbox.make items |> Listbox.set_height ~height:10; selected = None } in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

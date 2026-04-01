@@ -7,7 +7,7 @@ let make = fun path -> path
 let path = fun t -> t
 
 type format_result =
-  | Formatted of { code: string; changed: bool; }
+  | Formatted of { code: string; changed: bool }
   | Error of string
 
 let find_ocamlformat_config = fun path ->
@@ -59,11 +59,11 @@ let format_file = fun t ~file_path ~check_only ->
     match Command.output cmd with
     | Ok output when output.Command.status = 0 -> (
         if check_only then
-          Formatted {code = output.Command.stdout;changed = false;}
+          Formatted { code = output.Command.stdout; changed = false }
         else
           (* In inplace mode, we need to read the file to get formatted content *)
           match Fs.read file_path with
-          | Ok content -> Formatted {code = content;changed = true;}
+          | Ok content -> Formatted { code = content; changed = true }
           | Error err -> Error ("Failed to read formatted file: " ^ IO.error_message err)
       )
     | Ok output ->
@@ -107,7 +107,7 @@ let format_code = fun t ~code ~file_path ->
             | Ok output when output.Command.status = 0 ->
                 let changed = not
                   (String.equal (String.trim output.Command.stdout) (String.trim code)) in
-                Formatted {code = output.Command.stdout;changed;}
+                Formatted { code = output.Command.stdout; changed }
             | Ok output ->
                 Error ("ocamlformat failed with status " ^ Int.to_string output.Command.status)
             | Error (Command.SystemError msg) ->

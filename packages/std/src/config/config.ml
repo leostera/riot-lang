@@ -7,20 +7,10 @@ module Provider = Provider
 module Server = Server
 
 type error =
-  | NotFound of {
-      app: string;
-    }
-  | ValidationError of {
-      app: string;
-      errors: string list;
-    }
-  | ParseError of {
-      path: string;
-      message: string;
-    }
-  | FileNotFound of {
-      path: string;
-    }
+  | NotFound of { app: string }
+  | ValidationError of { app: string; errors: string list }
+  | ParseError of { path: string; message: string }
+  | FileNotFound of { path: string }
 
 let error_to_string = function
   | NotFound { app } ->
@@ -63,7 +53,7 @@ let get (type a) ((module M : ConfigSpec with type t = a)) : (a, error) result =
   let app_name = Spec.app_name M.spec in
   let server = ensure_loaded () in
   match Server.get server ~app:app_name with
-  | None -> Error (NotFound {app = app_name;})
+  | None -> Error (NotFound { app = app_name })
   | Some value -> M.get value
 
 let reload = fun ?provider () ->

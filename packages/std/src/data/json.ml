@@ -13,15 +13,15 @@ type t =
   | Object of (string * t) list
 
 type error =
-  | Unterminated_string of { position: int; }
-  | Invalid_literal of { expected: string; position: int; found: string; }
-  | Invalid_number of { position: int; text: string; }
-  | Expected_comma_or_bracket of { kind: string; position: int; found: char option; }
-  | Expected_string_key of { position: int; found: char option; }
-  | Expected_colon of { position: int; found: char option; }
-  | Unexpected_end_of_input of { expected: string; }
-  | Unexpected_character of { position: int; character: char; expected: string; }
-  | Extra_input_after_value of { position: int; }
+  | Unterminated_string of { position: int }
+  | Invalid_literal of { expected: string; position: int; found: string }
+  | Invalid_number of { position: int; text: string }
+  | Expected_comma_or_bracket of { kind: string; position: int; found: char option }
+  | Expected_string_key of { position: int; found: char option }
+  | Expected_colon of { position: int; found: char option }
+  | Unexpected_end_of_input of { expected: string }
+  | Unexpected_character of { position: int; character: char; expected: string }
+  | Extra_input_after_value of { position: int }
   | Unknown_error of string
 
 let error_to_string = function
@@ -162,7 +162,7 @@ let of_string = fun str ->
     let buffer = Buffer.create 16 in
     let rec loop () =
       if !pos >= len then
-        raise_error (Unterminated_string {position = !pos;})
+        raise_error (Unterminated_string { position = !pos })
       else
         match str.[!pos] with
         | '"' ->
@@ -171,7 +171,7 @@ let of_string = fun str ->
         | '\\' ->
             advance ();
             if !pos >= len then
-              raise_error (Unterminated_string {position = !pos;});
+              raise_error (Unterminated_string { position = !pos });
             (
               match str.[!pos] with
               | '"' -> Buffer.add_char buffer '"'
@@ -216,7 +216,7 @@ let of_string = fun str ->
     skip_whitespace ();
     match peek () with
     | None ->
-        raise_error (Unexpected_end_of_input {expected = "value";})
+        raise_error (Unexpected_end_of_input { expected = "value" })
     | Some 'n' ->
         let start_pos = !pos in
         if !pos + 4 <= len then
@@ -227,7 +227,8 @@ let of_string = fun str ->
               Null
             )
           else
-            raise_error (Invalid_literal {expected = "null";position = start_pos;found = substring;})
+            raise_error
+              (Invalid_literal { expected = "null"; position = start_pos; found = substring })
         else
           let found =
             if !pos < len then
@@ -235,7 +236,7 @@ let of_string = fun str ->
             else
               ""
           in
-          raise_error (Invalid_literal {expected = "null";position = start_pos;found;})
+          raise_error (Invalid_literal { expected = "null"; position = start_pos; found })
     | Some 't' ->
         let start_pos = !pos in
         if !pos + 4 <= len && String.sub str !pos 4 = "true" then
@@ -252,7 +253,7 @@ let of_string = fun str ->
             else
               ""
           in
-          raise_error (Invalid_literal {expected = "true";position = start_pos;found;})
+          raise_error (Invalid_literal { expected = "true"; position = start_pos; found })
     | Some 'f' ->
         let start_pos = !pos in
         if !pos + 5 <= len && String.sub str !pos 5 = "false" then
@@ -269,7 +270,7 @@ let of_string = fun str ->
             else
               ""
           in
-          raise_error (Invalid_literal {expected = "false";position = start_pos;found;})
+          raise_error (Invalid_literal { expected = "false"; position = start_pos; found })
     | Some '"' ->
         String (parse_string ())
     | Some '[' ->
@@ -293,10 +294,10 @@ let of_string = fun str ->
                 Array (List.rev (item :: acc))
             | Some c ->
                 raise_error
-                  (Expected_comma_or_bracket {kind = "array";position = !pos;found = Some c;})
+                  (Expected_comma_or_bracket { kind = "array"; position = !pos; found = Some c })
             | None ->
                 raise_error
-                  (Expected_comma_or_bracket {kind = "array";position = !pos;found = None;})
+                  (Expected_comma_or_bracket { kind = "array"; position = !pos; found = None })
           in
           parse_items []
     | Some '{' ->
@@ -313,16 +314,16 @@ let of_string = fun str ->
             (
               match peek () with
               | Some '"' -> ()
-              | Some c -> raise_error (Expected_string_key {position = !pos;found = Some c;})
-              | None -> raise_error (Expected_string_key {position = !pos;found = None;})
+              | Some c -> raise_error (Expected_string_key { position = !pos; found = Some c })
+              | None -> raise_error (Expected_string_key { position = !pos; found = None })
             );
             let key = parse_string () in
             skip_whitespace ();
             (
               match peek () with
               | Some ':' -> advance ()
-              | Some c -> raise_error (Expected_colon {position = !pos;found = Some c;})
-              | None -> raise_error (Expected_colon {position = !pos;found = None;})
+              | Some c -> raise_error (Expected_colon { position = !pos; found = Some c })
+              | None -> raise_error (Expected_colon { position = !pos; found = None })
             );
             let value = parse_value () in
             skip_whitespace ();
@@ -335,23 +336,23 @@ let of_string = fun str ->
                 Object (List.rev ((key, value) :: acc))
             | Some c ->
                 raise_error
-                  (Expected_comma_or_bracket {kind = "object";position = !pos;found = Some c;})
+                  (Expected_comma_or_bracket { kind = "object"; position = !pos; found = Some c })
             | None ->
                 raise_error
-                  (Expected_comma_or_bracket {kind = "object";position = !pos;found = None;})
+                  (Expected_comma_or_bracket { kind = "object"; position = !pos; found = None })
           in
           parse_fields []
     | Some ('-' | '0' .. '9') ->
         parse_number ()
     | Some c ->
-        raise_error (Unexpected_character {position = !pos;character = c;expected = "value";})
+        raise_error (Unexpected_character { position = !pos; character = c; expected = "value" })
   in
   try
     skip_whitespace ();
     let result = parse_value () in
     skip_whitespace ();
     if !pos < len then
-      Error (Extra_input_after_value {position = !pos;})
+      Error (Extra_input_after_value { position = !pos })
     else
       Ok result
   with
@@ -410,7 +411,7 @@ let rec diff = fun a b ->
     | String x, String y when x = y -> []
     | Array xs, Array ys -> diff_arrays path xs ys
     | Object xs, Object ys -> diff_objects path xs ys
-    | _ -> [ {Diff.path;kind = Diff.Changed (a, b);} ]
+    | _ -> [ { Diff.path; kind = Diff.Changed (a, b) } ]
   and diff_arrays path xs ys =
     let max_len = max (List.length xs) (List.length ys) in
     let rec loop acc idx =
@@ -431,10 +432,10 @@ let rec diff = fun a b ->
             let diffs = diff_at_path idx_path x y in
             loop (List.rev_append diffs acc) (idx + 1)
         | Some x, None ->
-            let diff = {Diff.path = idx_path;kind = Diff.Removed x;} in
+            let diff = { Diff.path = idx_path; kind = Diff.Removed x } in
             loop (diff :: acc) (idx + 1)
         | None, Some y ->
-            let diff = {Diff.path = idx_path;kind = Diff.Added y;} in
+            let diff = { Diff.path = idx_path; kind = Diff.Added y } in
             loop (diff :: acc) (idx + 1)
         | None, None ->
             loop acc (idx + 1)
@@ -456,8 +457,8 @@ let rec diff = fun a b ->
           let new_diffs =
             match (x_opt, y_opt) with
             | Some x, Some y -> diff_at_path key_path x y
-            | Some x, None -> [ {Diff.path = key_path;kind = Diff.Removed x;} ]
-            | None, Some y -> [ {Diff.path = key_path;kind = Diff.Added y;} ]
+            | Some x, None -> [ { Diff.path = key_path; kind = Diff.Removed x } ]
+            | None, Some y -> [ { Diff.path = key_path; kind = Diff.Added y } ]
             | None, None -> []
           in
           loop (List.rev_append new_diffs acc) rest

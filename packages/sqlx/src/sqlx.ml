@@ -12,7 +12,7 @@ module ProtocolError = struct
 
   let to_string = fun (P { error; to_string; _ }) -> to_string error
 
-  let make = fun error ~to_json ~to_string -> P {error;to_json;to_string;}
+  let make = fun error ~to_json ~to_string -> P { error; to_json; to_string }
 end
 
 type operation =
@@ -22,8 +22,8 @@ type operation =
 
 type error =
   | PoolError of Pool.error
-  | InvalidValue of { field: string; value: string; expected_type: string; reason: string option; }
-  | Timeout of { operation: operation; duration: Time.Duration.t; }
+  | InvalidValue of { field: string; value: string; expected_type: string; reason: string option }
+  | Timeout of { operation: operation; duration: Time.Duration.t }
 
 module Config = struct
   type isolation_level =

@@ -83,7 +83,7 @@ let make_diagnostic = fun syntax_node ->
     ~severity:Warning
     ~kind:(Api.Diagnostic.Known {
       rule_id = package_rule_id;
-      message = explanation.Api.Explanation.message;
+      message = explanation.Api.Explanation.message
     })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Start the loop body with `yield ()` so each iteration cooperates with the scheduler."

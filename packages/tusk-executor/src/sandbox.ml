@@ -24,7 +24,7 @@ let create = fun ~workspace ?(profile = "debug") ?(target = Tusk_model.Tusk_dirs
     / sandbox_id ~package_name) in
   Fs.create_dir_all sandbox_dir
   |> Result.expect ~msg:(("Failed to create sandbox dir: " ^ (Path.to_string sandbox_dir)));
-  {dir = sandbox_dir;workspace;}
+  { dir = sandbox_dir; workspace }
 
 let get_dir = fun t -> t.dir
 

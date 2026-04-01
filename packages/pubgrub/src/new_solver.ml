@@ -39,7 +39,7 @@ module DependencyGraph = struct
     reverse: (package, (package * version) list) HashMap.t;
   }
 
-  let empty = fun () -> {deps = HashMap.create ();reverse = HashMap.create ();}
+  let empty = fun () -> { deps = HashMap.create (); reverse = HashMap.create () }
 
   let add_dependencies = fun graph pkg ver deps ->
     (* Store forward mapping: (pkg, ver) -> deps *)
@@ -413,7 +413,7 @@ let unit_propagation = fun root_package root_version state changed_packages ->
                               (* Mark the root cause as contradicted at current decision level *)
                               let current_level = Partial_solution.current_decision_level new_solution in
                               ignore (HashMap.insert state.contradicted root_cause current_level);
-                              let new_state = {state with solution = new_solution;} in
+                              let new_state = { state with solution = new_solution } in
                               (* After backtracking, return to solve loop to pick next package *)
                               Log.info
                                 "🔄 Returning from unit_propagation after \
@@ -437,7 +437,7 @@ let unit_propagation = fun root_package root_version state changed_packages ->
                           (* Mark as contradicted immediately after adding derivation *)
                           let current_level = Partial_solution.current_decision_level new_solution in
                           ignore (HashMap.insert state.contradicted incompat current_level);
-                          let new_state = {state with solution = new_solution;} in
+                          let new_state = { state with solution = new_solution } in
                           (* Continue with remaining incompats, then process satisfier_pkg *)
                           Log.info
                             ("  ⏭️  Continuing: satisfier="
@@ -585,7 +585,7 @@ let solve = fun provider root_package root_version ->
     solution;
     incompatibilities = incompats;
     dependency_graph = DependencyGraph.empty ();
-    contradicted = HashMap.create ();
+    contradicted = HashMap.create ()
   } in
   (* Get root dependencies *)
   match provider.Provider.get_dependencies root_package root_version with
@@ -605,7 +605,7 @@ let solve = fun provider root_package root_version ->
         root_package
         root_version
         dep_list in
-      let state = {initial_state with dependency_graph = dep_graph;} in
+      let state = { initial_state with dependency_graph = dep_graph } in
       (* Check for impossible root dependencies *)
       let has_impossible_root_dep = ref None in
       List.iter
@@ -789,7 +789,7 @@ let solve = fun provider root_package root_version ->
                                     propagated_state.solution
                                     pkg
                                     ver in
-                                  let new_state = {propagated_state with solution = new_solution;} in
+                                  let new_state = { propagated_state with solution = new_solution } in
                                   (* Add dependencies to graph *)
                                   let dep_list =
                                     List.map (fun ((d, r)) -> (d, r)) pkg_deps
@@ -799,7 +799,7 @@ let solve = fun provider root_package root_version ->
                                     pkg
                                     ver
                                     dep_list in
-                                  let new_state = {new_state with dependency_graph = new_dep_graph;} in
+                                  let new_state = { new_state with dependency_graph = new_dep_graph } in
                                   (* Add dependency incompatibilities and collect affected packages *)
                                   let affected_packages = ref [] in
                                   List.iter

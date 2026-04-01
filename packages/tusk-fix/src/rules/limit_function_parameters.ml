@@ -28,14 +28,14 @@ type parameter_counts = {
 
 let count_parameter = fun counts parameter ->
   match parameter with
-  | Syn.Cst.Parameter.Positional _ -> {counts with positional_count = counts.positional_count + 1;}
+  | Syn.Cst.Parameter.Positional _ -> { counts with positional_count = counts.positional_count + 1 }
   | Syn.Cst.Parameter.Labeled _
-  | Syn.Cst.Parameter.Optional _ -> {counts with named_count = counts.named_count + 1;}
+  | Syn.Cst.Parameter.Optional _ -> { counts with named_count = counts.named_count + 1 }
   | Syn.Cst.Parameter.LocallyAbstract _ -> counts
 
 let parameter_counts = fun binding ->
   Syn.Cst.LetBinding.parameters binding
-  |> List.fold_left count_parameter {positional_count = 0;named_count = 0;}
+  |> List.fold_left count_parameter { positional_count = 0; named_count = 0 }
 
 let exceeds_limit = fun counts ->
   let total = counts.positional_count + counts.named_count in
@@ -59,7 +59,7 @@ let make_diagnostic = fun binding counts ->
   match Syn.Cst.LetBinding.binding_name_token binding with
   | Some token -> Some (Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Cst.Token.span token)
     ~suggestion:(("This function has "
     ^ Int.to_string total

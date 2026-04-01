@@ -13,4 +13,4 @@ let default_text_measurer = fun text style ->
   let height = float_of_int style.Style.text_size in
   Viewport.make ~width ~height
 
-let make = fun ~viewport ~text_measurer () -> {viewport;text_measurer;}
+let make = fun ~viewport ~text_measurer () -> { viewport; text_measurer }

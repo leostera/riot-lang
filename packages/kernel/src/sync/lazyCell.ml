@@ -4,7 +4,7 @@ type 'a t = {
   init: unit -> 'a;
 }
 
-let create = fun init -> {storage = Cell.create None;init;}
+let create = fun init -> { storage = Cell.create None; init }
 
 let force = fun lazy_cell ->
   match Cell.get lazy_cell.storage with

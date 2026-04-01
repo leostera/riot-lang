@@ -34,13 +34,13 @@ let make = fun ?(render = default_render) items ->
     scroll_offset = 0;
   }
 
-let set_height = fun t ~height:h -> {t with height = max 0 h;}
+let set_height = fun t ~height:h -> { t with height = max 0 h }
 
-let set_width = fun t ~width:w -> {t with width = max 0 w;}
+let set_width = fun t ~width:w -> { t with width = max 0 w }
 
-let set_cursor_char = fun t ~char:c -> {t with cursor_char = c;}
+let set_cursor_char = fun t ~char:c -> { t with cursor_char = c }
 
-let set_filter_enabled = fun t ~enabled -> {t with filter_enabled = enabled;}
+let set_filter_enabled = fun t ~enabled -> { t with filter_enabled = enabled }
 
 let items = fun t -> t.all_items
 
@@ -67,10 +67,10 @@ let selected_index = fun t ->
 let clamp_selection = fun t ->
   let len = List.length t.filtered_items in
   if len = 0 then
-    {t with selected = 0;}
+    { t with selected = 0 }
   else
     let selected = max 0 (min (len - 1) t.selected) in
-    {t with selected;}
+    { t with selected }
 
 let set_items = fun t ~items ->
   {
@@ -112,7 +112,7 @@ let string_contains = fun haystack needle ->
 
 let apply_filter = fun t query ->
   if query = "" then
-    {t with filtered_items = t.all_items;filter_query = "";}
+    { t with filtered_items = t.all_items; filter_query = "" }
   else
     let query_lower = String.lowercase_ascii query in
     let filtered =
@@ -122,44 +122,44 @@ let apply_filter = fun t query ->
           string_contains rendered query_lower)
         t.all_items
     in
-    {t with filtered_items = filtered;filter_query = query;} |> clamp_selection
+    { t with filtered_items = filtered; filter_query = query } |> clamp_selection
 
 let set_filter = fun t ~filter:query -> apply_filter t query
 
 let clear_filter = fun t ->
-  {t with filter_query = "";filtered_items = t.all_items;filtering_active = false;}
+  { t with filter_query = ""; filtered_items = t.all_items; filtering_active = false }
 
 let start_filtering = fun t ->
   if t.filter_enabled then
-    {t with filtering_active = true;}
+    { t with filtering_active = true }
   else
     t
 
-let stop_filtering = fun t -> {t with filtering_active = false;}
+let stop_filtering = fun t -> { t with filtering_active = false }
 
-let select = fun t idx -> {t with selected = idx;} |> clamp_selection
+let select = fun t idx -> { t with selected = idx } |> clamp_selection
 
 let select_next = fun t ->
   let len = List.length t.filtered_items in
   if len = 0 then
     t
   else
-    {t with selected = min (len - 1) (t.selected + 1);}
+    { t with selected = min (len - 1) (t.selected + 1) }
 
 let select_prev = fun t ->
   if List.length t.filtered_items = 0 then
     t
   else
-    {t with selected = max 0 (t.selected - 1);}
+    { t with selected = max 0 (t.selected - 1) }
 
-let select_first = fun t -> {t with selected = 0;}
+let select_first = fun t -> { t with selected = 0 }
 
 let select_last = fun t ->
   let len = List.length t.filtered_items in
   if len = 0 then
     t
   else
-    {t with selected = len - 1;}
+    { t with selected = len - 1 }
 
 let handle_key = fun t (key: Event.key) modifier ->
   if t.filtering_active then
@@ -173,12 +173,12 @@ let handle_key = fun t (key: Event.key) modifier ->
         let len = String.length query in
         if len > 0 then
           let new_query = String.sub query 0 (len - 1) in
-          apply_filter t new_query |> fun t -> {t with filtering_active = true;}
+          apply_filter t new_query |> fun t -> { t with filtering_active = true }
         else
           t
     | Event.Key s when modifier = Event.NoModifier && String.length s = 1 ->
         let new_query = t.filter_query ^ s in
-        apply_filter t new_query |> fun t -> {t with filtering_active = true;}
+        apply_filter t new_query |> fun t -> { t with filtering_active = true }
     | _ ->
         t
   else

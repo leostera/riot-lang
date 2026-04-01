@@ -71,7 +71,7 @@ let rec loop = fun state ->
 let sigwinch_handler = fun tty parent _signum ->
   Log.trace "[IO_LOOP] SIGWINCH received - terminal resized";
   let size = Tty.size tty in
-  send parent (Input (Event.Resize {width = size.cols;height = size.rows;}))
+  send parent (Input (Event.Resize { width = size.cols; height = size.rows }))
 
 let init = fun ~parent ~tty ->
   Log.trace ("[IO_LOOP] Starting IO loop, parent=" ^ Pid.to_string parent);
@@ -79,7 +79,7 @@ let init = fun ~parent ~tty ->
     parent;
     termios = tty;
     sigwinch_handler = sigwinch_handler tty parent;
-    parser = Ansi_parser.create ();
+    parser = Ansi_parser.create ()
   } in
   (* Set up SIGWINCH handler for terminal resize *)
   (* SIGWINCH is signal 28 on macOS/Linux *)

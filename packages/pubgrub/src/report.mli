@@ -7,7 +7,7 @@ type derivation_tree =
       terms: Term.t list;
       cause1: derivation_tree;
       cause2: derivation_tree;
-      shared_id: int option;
+      shared_id: int option
     }
 val build_derivation_tree: Incompatibility.t -> derivation_tree
 

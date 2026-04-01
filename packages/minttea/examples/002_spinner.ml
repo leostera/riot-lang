@@ -23,7 +23,7 @@ let update = fun event model ->
   | Event.Frame now ->
       (* Update spinner animation *)
       let spinner = Component.Sprite.update ~now model.spinner in
-      ({spinner;}, Command.Noop)
+      ({ spinner }, Command.Noop)
   | _ ->
       (model, Command.Noop)
 
@@ -48,7 +48,7 @@ let app = App.make ~init ~update ~view ()
 
 (* Initial model with a dot spinner *)
 
-let initial_model = {spinner = Component.Spinner.dot ();}
+let initial_model = { spinner = Component.Spinner.dot () }
 
 (* Run it *)
 

@@ -9,14 +9,8 @@ type severity = Fixme.Diagnostic.severity =
   | Hint
 
 type kind = Fixme.Diagnostic.kind =
-  | Known of {
-      rule_id: string;
-      message: string;
-    }
-  | Generic of {
-      rule_id: string;
-      message: string;
-    }
+  | Known of { rule_id: string; message: string }
+  | Generic of { rule_id: string; message: string }
 
 type t = Fixme.Diagnostic.t = {
   severity: severity;
@@ -105,7 +99,7 @@ let make_source_layout = fun source ->
     line_starts.(index) <- !offset;
     offset := !offset + String.length lines.(index) + 1
   done;
-  {lines;line_starts;}
+  { lines; line_starts }
 
 let line_for_pos = fun layout pos ->
   let rec search low high best =

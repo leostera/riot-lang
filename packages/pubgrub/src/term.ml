@@ -22,14 +22,14 @@ let ranges = fun t -> t.ranges
 
 let is_positive = fun t -> t.positive
 
-let positive = fun pkg ranges -> {package = pkg;ranges;positive = true;}
+let positive = fun pkg ranges -> { package = pkg; ranges; positive = true }
 
-let negative = fun pkg ranges -> {package = pkg;ranges;positive = false;}
+let negative = fun pkg ranges -> { package = pkg; ranges; positive = false }
 
 let is_any = fun t ->
   (t.positive && Ranges.is_empty t.ranges) || ((not t.positive) && t.ranges = Ranges.full)
 
-let negate = fun t -> {t with positive = not t.positive;}
+let negate = fun t -> { t with positive = not t.positive }
 
 let union = fun t1 t2 ->
   if t1.package != t2.package then
@@ -40,13 +40,13 @@ let union = fun t1 t2 ->
         {
           package = t1.package;
           ranges = Ranges.union ~compare_v:version_compare t1.ranges t2.ranges;
-          positive = true;
+          positive = true
         }
     | false, false ->
         {
           package = t1.package;
           ranges = Ranges.intersection ~compare_v:version_compare t1.ranges t2.ranges;
-          positive = false;
+          positive = false
         }
     | (true, false)
     | (false, true) ->
@@ -63,7 +63,7 @@ let union = fun t1 t2 ->
             t1.ranges
         in
         if Ranges.subset_of ~compare_v:version_compare pos_ranges neg_ranges then
-          {package = t1.package;ranges = Ranges.empty;positive = true;}
+          { package = t1.package; ranges = Ranges.empty; positive = true }
         else
           {
             package = t1.package;
@@ -71,7 +71,7 @@ let union = fun t1 t2 ->
               ~compare_v:version_compare
               pos_ranges
               (Ranges.complement ~compare_v:version_compare neg_ranges);
-            positive = true;
+            positive = true
           }
 
 let intersection = fun t1 t2 ->
@@ -82,12 +82,12 @@ let intersection = fun t1 t2 ->
     | true, true -> {
       package = t1.package;
       ranges = Ranges.intersection ~compare_v:version_compare t1.ranges t2.ranges;
-      positive = true;
+      positive = true
     }
     | false, false -> {
       package = t1.package;
       ranges = Ranges.union ~compare_v:version_compare t1.ranges t2.ranges;
-      positive = false;
+      positive = false
     }
     | true, false -> {
       package = t1.package;
@@ -95,7 +95,7 @@ let intersection = fun t1 t2 ->
         ~compare_v:version_compare
         t1.ranges
         (Ranges.complement ~compare_v:version_compare t2.ranges);
-      positive = true;
+      positive = true
     }
     | false, true -> {
       package = t1.package;
@@ -103,5 +103,5 @@ let intersection = fun t1 t2 ->
         ~compare_v:version_compare
         (Ranges.complement ~compare_v:version_compare t1.ranges)
         t2.ranges;
-      positive = true;
+      positive = true
     }

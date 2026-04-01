@@ -396,7 +396,7 @@ let parse_sandbox_path = fun path ->
               in
               let after_slash = slash_pos + 1 in
               let relative_path = String.sub rest after_slash (String.length rest - after_slash) in
-              Some {package_name;relative_path;}
+              Some { package_name; relative_path }
         )
 (** Try to connect to tusk server and get package sources *)
 let get_package_sources = fun package_name ->
@@ -453,20 +453,20 @@ let resolve_source_path = fun path ->
   match parse_sandbox_path path with
   | None ->
       (* Not a sandbox path, make it relative to workspace *)
-      {resolved_path = make_workspace_relative path;found_via_tusk = false;}
+      { resolved_path = make_workspace_relative path; found_via_tusk = false }
   | Some sandbox_info -> (* Try to find via tusk server *)
     (
       match find_source_via_tusk sandbox_info with
       | Some actual_path -> {
         resolved_path = make_workspace_relative actual_path;
-        found_via_tusk = true;
+        found_via_tusk = true
       }
       | None ->
           (* Fallback: construct expected path *)
           let fallback = String.concat
             ""
             [ "./packages/"; sandbox_info.package_name; "/"; sandbox_info.relative_path ] in
-          {resolved_path = fallback;found_via_tusk = false;}
+          { resolved_path = fallback; found_via_tusk = false }
     )
 (** Extract quoted string after a pattern *)
 let extract_quoted = fun line pattern ->

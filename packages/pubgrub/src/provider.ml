@@ -28,10 +28,10 @@ type offline = {
   packages: (package, offline_entry list) Collections.HashMap.t;
 }
 
-let create_offline = fun () -> {packages = Collections.HashMap.create ();}
+let create_offline = fun () -> { packages = Collections.HashMap.create () }
 
 let add_package = fun provider pkg ver deps ->
-  let entry = {version = ver;deps;} in
+  let entry = { version = ver; deps } in
   match Collections.HashMap.get provider.packages pkg with
   | None -> ignore (Collections.HashMap.insert provider.packages pkg [ entry ])
   | Some entries -> ignore (Collections.HashMap.insert provider.packages pkg (entry :: entries))
@@ -74,4 +74,4 @@ let to_provider : offline -> string t = fun offline ->
         | Some entry -> Ok (Available entry.deps)
       )
   in
-  {choose_version;get_dependencies;}
+  { choose_version; get_dependencies }

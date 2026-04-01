@@ -11,18 +11,9 @@ type load_error =
       package: string;
       path: string;
     }
-  | PackageTomlReadFailed of {
-      package: string;
-      path: string;
-    }
-  | PackageTomlParseFailed of {
-      package: string;
-      path: string;
-    }
-  | PackageFromTomlFailed of {
-      package: string;
-      path: string;
-    }
+  | PackageTomlReadFailed of { package: string; path: string }
+  | PackageTomlParseFailed of { package: string; path: string }
+  | PackageFromTomlFailed of { package: string; path: string }
 
 let rec find_workspace_root : Path.t -> Path.t option = fun start_dir ->
   let tusk_toml = Path.(start_dir / tusk_toml) in
@@ -103,10 +94,10 @@ dependant:string option ->
         match Fs.exists toml_path with
         | Ok true -> (
             match Fs.read_to_string toml_path with
-            | Error _ -> ([], [ PackageTomlReadFailed {package = dep.name;path = path_str;} ])
+            | Error _ -> ([], [ PackageTomlReadFailed { package = dep.name; path = path_str } ])
             | Ok content -> (
                 match Data.Toml.parse content with
-                | Error _ -> ([], [ PackageTomlParseFailed {package = dep.name;path = path_str;} ])
+                | Error _ -> ([], [ PackageTomlParseFailed { package = dep.name; path = path_str } ])
                 | Ok toml -> (
                     let rel_path =
                       let abs_str = Path.to_string abs_path in
@@ -135,7 +126,7 @@ dependant:string option ->
                               | Package.Workspace -> dep
                               | Package.Path rel_path ->
                                   let resolved_path = Path.(abs_path / rel_path) in
-                                  {dep with source = Package.Path resolved_path;})
+                                  { dep with source = Package.Path resolved_path })
                             (Package.all_dependencies pkg)
                         in
                         let transitive_results = List.map
@@ -152,12 +143,12 @@ dependant:string option ->
                         (pkg :: transitive_pkgs, transitive_errs)
                     | Error _ -> (
                       [],
-                      [ PackageFromTomlFailed {package = dep.name;path = path_str;} ]
+                      [ PackageFromTomlFailed { package = dep.name; path = path_str } ]
                     )
                   )
               )
           )
-        | _ -> ([], [ PackageNotFound {dependant;package = dep.name;path = path_str;} ])
+        | _ -> ([], [ PackageNotFound { dependant; package = dep.name; path = path_str } ])
       )
 
 let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun workspace_root workspace_manifest ->

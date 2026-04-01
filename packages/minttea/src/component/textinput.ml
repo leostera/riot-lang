@@ -50,11 +50,11 @@ let validation_error = fun t -> t.validation_error
 
 let validate = fun t ->
   match t.validator with
-  | None -> {t with validation_error = None;}
+  | None -> { t with validation_error = None }
   | Some validator -> (
       match validator t.value with
-      | Ok () -> {t with validation_error = None;}
-      | Error msg -> {t with validation_error = Some msg;}
+      | Ok () -> { t with validation_error = None }
+      | Error msg -> { t with validation_error = Some msg }
     )
 
 let set_value = fun t ~value:str ->
@@ -65,31 +65,31 @@ let set_value = fun t ~value:str ->
       str
   in
   let cursor_pos = String.length value in
-  validate {t with value;cursor_pos;offset = 0;}
+  validate { t with value; cursor_pos; offset = 0 }
 
 let clear = fun t -> set_value t ~value:""
 
-let set_prompt = fun t ~prompt -> {t with prompt;}
+let set_prompt = fun t ~prompt -> { t with prompt }
 
-let set_placeholder = fun t ~placeholder -> {t with placeholder;}
+let set_placeholder = fun t ~placeholder -> { t with placeholder }
 
-let set_width = fun t ~width -> {t with width = Int.max 0 width;}
+let set_width = fun t ~width -> { t with width = Int.max 0 width }
 
-let set_char_limit = fun t ~limit:char_limit -> {t with char_limit = Int.max 0 char_limit;}
+let set_char_limit = fun t ~limit:char_limit -> { t with char_limit = Int.max 0 char_limit }
 
-let set_echo_mode = fun t ~mode:echo_mode -> {t with echo_mode;}
+let set_echo_mode = fun t ~mode:echo_mode -> { t with echo_mode }
 
-let set_echo_char = fun t ~char:echo_char -> {t with echo_char;}
+let set_echo_char = fun t ~char:echo_char -> { t with echo_char }
 
-let focus = fun t -> {t with focused = true;}
+let focus = fun t -> { t with focused = true }
 
-let blur = fun t -> {t with focused = false;}
+let blur = fun t -> { t with focused = false }
 
-let set_validator = fun t ~validator -> validate {t with validator;}
+let set_validator = fun t ~validator -> validate { t with validator }
 
 let set_cursor_position = fun t ~pos ->
   let clamped = Int.max 0 (Int.min pos (String.length t.value)) in
-  {t with cursor_pos = clamped;}
+  { t with cursor_pos = clamped }
 
 (* Helper: insert text at cursor *)
 
@@ -105,7 +105,7 @@ let insert_at_cursor = fun t text ->
       new_value
   in
   let new_cursor = Int.min (t.cursor_pos + String.length text) (String.length new_value) in
-  validate {t with value = new_value;cursor_pos = new_cursor;}
+  validate { t with value = new_value; cursor_pos = new_cursor }
 
 (* Helper: delete character before cursor *)
 
@@ -115,7 +115,7 @@ let delete_char_backward = fun t ->
   else
     let before = String.sub t.value 0 (t.cursor_pos - 1) in
     let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
-    validate {t with value = before ^ after;cursor_pos = t.cursor_pos - 1;}
+    validate { t with value = before ^ after; cursor_pos = t.cursor_pos - 1 }
 
 (* Helper: delete character after cursor *)
 
@@ -125,19 +125,19 @@ let delete_char_forward = fun t ->
   else
     let before = String.sub t.value 0 t.cursor_pos in
     let after = String.sub t.value (t.cursor_pos + 1) (String.length t.value - t.cursor_pos - 1) in
-    validate {t with value = before ^ after;}
+    validate { t with value = before ^ after }
 
 (* Helper: clear before cursor *)
 
 let clear_before_cursor = fun t ->
   let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
-  validate {t with value = after;cursor_pos = 0;}
+  validate { t with value = after; cursor_pos = 0 }
 
 (* Helper: clear after cursor *)
 
 let clear_after_cursor = fun t ->
   let before = String.sub t.value 0 t.cursor_pos in
-  validate {t with value = before;}
+  validate { t with value = before }
 
 (* Helper: delete word backward *)
 
@@ -157,7 +157,7 @@ let delete_word_backward = fun t ->
     let word_start = find_word_start t.cursor_pos in
     let before = String.sub t.value 0 word_start in
     let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
-    validate {t with value = before ^ after;cursor_pos = word_start;}
+    validate { t with value = before ^ after; cursor_pos = word_start }
 
 let handle_paste = fun t text ->
   if not t.focused then

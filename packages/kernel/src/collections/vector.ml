@@ -5,9 +5,9 @@ type 'a t = {
   mutable length: int;
 }
 
-let create = fun () -> {data = [||];length = 0;}
+let create = fun () -> { data = [||]; length = 0 }
 
-let with_capacity = fun capacity -> {data = Array.make capacity (Obj.magic 0);length = 0;}
+let with_capacity = fun capacity -> { data = Array.make capacity (Obj.magic 0); length = 0 }
 
 let capacity = fun vector -> Array.length vector.data
 
@@ -163,11 +163,11 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun vector ->
         (None, state)
       else
         let item = state.vec.data.(state.pos) in
-        (Some item, {state with pos = state.pos + 1;})
+        (Some item, { state with pos = state.pos + 1 })
 
     let size = fun state -> max 0 (state.vec.length - state.pos)
   end in
-  Iter.Iterator.make (module VecIter) {VecIter.vec = vector;pos = 0;}
+  Iter.Iterator.make (module VecIter) { VecIter.vec = vector; pos = 0 }
 
 let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun vector ->
   let module VecIter = struct
@@ -188,6 +188,6 @@ let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun vector ->
 
     let size = fun state -> max 0 (state.vec.length - state.pos)
 
-    let clone = fun state -> {vec = state.vec;pos = state.pos;}
+    let clone = fun state -> { vec = state.vec; pos = state.pos }
   end in
-  Iter.MutIterator.make (module VecIter) {VecIter.vec = vector;pos = 0;}
+  Iter.MutIterator.make (module VecIter) { VecIter.vec = vector; pos = 0 }

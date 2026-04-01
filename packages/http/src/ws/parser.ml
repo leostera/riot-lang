@@ -6,7 +6,7 @@ open Std
 let ( let* ) = Result.and_then
 
 type 'a parse_result =
-  | Done of { value: 'a; remaining: string; }
+  | Done of { value: 'a; remaining: string }
   | Need_more
   | Error of string
 
@@ -116,4 +116,4 @@ let parse = fun input ->
               input
               (total_header_size + payload_length)
               (len - total_header_size - payload_length) in
-            Done {value = frame;remaining;}
+            Done { value = frame; remaining }

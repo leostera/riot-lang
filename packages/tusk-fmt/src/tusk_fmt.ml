@@ -60,18 +60,18 @@ let load_fmt_scope = function
         |> List.map
           (fun (pkg: Package.t) ->
             let package_toml = Path.(pkg.path / Path.v "tusk.toml") in
-            {package_root = pkg.path;config = Fmt_config.load package_toml;})
+            { package_root = pkg.path; config = Fmt_config.load package_toml })
       in
       Some {
         workspace_root = workspace.Workspace.root;
         workspace_config = Fmt_config.load workspace_toml;
-        packages;
+        packages
       }
   | None ->
       let cwd = resolve_root None in
       let toml_path = Path.(cwd / Path.v "tusk.toml") in
       if Fs.exists toml_path |> Result.unwrap_or ~default:false then
-        Some {workspace_root = cwd;workspace_config = Fmt_config.load toml_path;packages = [];}
+        Some { workspace_root = cwd; workspace_config = Fmt_config.load toml_path; packages = [] }
       else
         None
 
@@ -121,7 +121,7 @@ let write_json_event = fun ~root event ->
   Krasny.Report.write_json_event ~writer:output_writer ~root event |> Result.expect ~msg:"failed to write fmt JSON event"
 
 let write_json_start = fun ~root ~mode ~concurrency ->
-  write_json_event ~root (Krasny.Report.Start {mode;concurrency;})
+  write_json_event ~root (Krasny.Report.Start { mode; concurrency })
 
 let write_json_file = fun ~root file_result ->
   write_json_event ~root (Krasny.Report.File file_result)

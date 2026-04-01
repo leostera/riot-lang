@@ -1,7 +1,7 @@
 open Std
 
 type error =
-  | Exhausted of { waiting: int; max_connections: int; timeout: Time.Duration.t; }
+  | Exhausted of { waiting: int; max_connections: int; timeout: Time.Duration.t }
   | ConnectionError of Connection.error
   | Timeout of Time.Duration.t
 type config =

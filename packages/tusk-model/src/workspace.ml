@@ -26,10 +26,10 @@ let parse_dependency : string -> Toml.value -> Package.dependency = fun name val
   match value with
   | Toml.Table attrs -> (
       match List.assoc_opt "path" attrs with
-      | Some (Toml.String path_str) -> {name;source = Path (Path.v path_str);}
-      | _ -> {name;source = Workspace;}
+      | Some (Toml.String path_str) -> { name; source = Path (Path.v path_str) }
+      | _ -> { name; source = Workspace }
     )
-  | _ -> {name;source = Workspace;}
+  | _ -> { name; source = Workspace }
 
 let parse_dependencies : (string * Toml.value) list -> Package.dependency list = fun items ->
   List.map (fun ((name, value)) -> parse_dependency name value) items
@@ -159,7 +159,7 @@ let make ~root ~packages ?(profile_overrides = []) ?target_dir () : t = {
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
   packages;
-  profile_overrides;
+  profile_overrides
 }
 (** Utility functions *)
 let project_id = fun workspace ->

@@ -20,14 +20,14 @@ let rec loop = fun state ->
       (* Execute the user's worker function *)
       state.worker_fn ~owner:state.owner ~task;
       (* Notify coordinator that we're done *)
-      let handle = {pid = self ();task_ref = state.task_ref;} in
+      let handle = { pid = self (); task_ref = state.task_ref } in
       send state.coordinator (ToCoordinator (WorkerReady handle));
       (* Continue looping for more tasks *)
       loop state
   | None -> panic "Worker received task with mismatched type"
 
 let init = fun ~coordinator ~owner ~worker_fn ~task_ref () ->
-  let state = {coordinator;owner;worker_fn;task_ref;} in
+  let state = { coordinator; owner; worker_fn; task_ref } in
   loop state
 
 let start = fun ~coordinator ~owner ~worker_fn ~task_ref ->

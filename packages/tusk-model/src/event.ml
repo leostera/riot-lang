@@ -44,11 +44,11 @@ type skip_reason =
 
 type error_kind =
   | SyntaxError
-  | TypeError of { description: string; }
-  | UnboundValue of { name: string; }
-  | UnboundModule of { name: string; }
-  | FileNotFound of { filename: string; }
-  | OtherError of { message: string; }
+  | TypeError of { description: string }
+  | UnboundValue of { name: string }
+  | UnboundModule of { name: string }
+  | FileNotFound of { filename: string }
+  | OtherError of { message: string }
 
 type build_error = {
   file: string;
@@ -74,54 +74,54 @@ type kind =
       duration_ms: int;
       results: build_result list;
       succeeded: string list;
-      failed: string list;
+      failed: string list
     }
-  | BuildGraphCreated of { nodes: int; duration_ms: int; }
+  | BuildGraphCreated of { nodes: int; duration_ms: int }
   | BuildGraphCreating
-  | BuildStarted of { packages: string list; total_modules: int; workers: int; }
-  | CacheHit of { package: string; hash: string; }
-  | CacheMiss of { package: string; hash: string; }
-  | CacheStored of { package: string; hash: string; artifacts: string list; }
-  | CompileError of { package: string; error: build_error; }
-  | CompilingImplementation of { package: string; file: string; }
-  | CompilingInterface of { package: string; file: string; }
-  | ComputingHash of { package: string; }
-  | CopyingFile of { source: string; dest: string; }
-  | CreatingDirectory of { path: string; }
-  | CycleDetected of { packages: string list; }
-  | DependencyMissing of { package: string; missing: string list; }
-  | DependencySatisfied of { package: string; }
-  | HashComputed of { package: string; hash: string; }
-  | LinkingExecutable of { package: string; output: string; }
-  | LinkingLibrary of { package: string; output: string; }
-  | McpToolCall of { tool: string; args: Json.t; }
+  | BuildStarted of { packages: string list; total_modules: int; workers: int }
+  | CacheHit of { package: string; hash: string }
+  | CacheMiss of { package: string; hash: string }
+  | CacheStored of { package: string; hash: string; artifacts: string list }
+  | CompileError of { package: string; error: build_error }
+  | CompilingImplementation of { package: string; file: string }
+  | CompilingInterface of { package: string; file: string }
+  | ComputingHash of { package: string }
+  | CopyingFile of { source: string; dest: string }
+  | CreatingDirectory of { path: string }
+  | CycleDetected of { packages: string list }
+  | DependencyMissing of { package: string; missing: string list }
+  | DependencySatisfied of { package: string }
+  | HashComputed of { package: string; hash: string }
+  | LinkingExecutable of { package: string; output: string }
+  | LinkingLibrary of { package: string; output: string }
+  | McpToolCall of { tool: string; args: Json.t }
   | PackageComplete of build_result
-  | PackageSkipped of { package: string; reason: skip_reason; }
-  | PackageStarted of { package: string; }
+  | PackageSkipped of { package: string; reason: skip_reason }
+  | PackageStarted of { package: string }
   | QueuePackage of { package: string; queue_type:
         [
           `Ready
           | `Waiting
-        ]; }
-  | QueueStats of { ready: int; waiting: int; busy: int; }
-  | RpcRequestReceived of { request_type: string; args: Json.t; }
-  | RpcResponseSent of { result: (unit, string) result; }
-  | ServerRestarted of { packages: int; toolchain: string; }
-  | ServerScanning of { root: string; }
+        ] }
+  | QueueStats of { ready: int; waiting: int; busy: int }
+  | RpcRequestReceived of { request_type: string; args: Json.t }
+  | RpcResponseSent of { result: (unit, string) result }
+  | ServerRestarted of { packages: int; toolchain: string }
+  | ServerScanning of { root: string }
   | ServerShutdown
-  | ServerStarted of { pid: string; }
-  | WorkerAssigned of { worker_id: Worker_id.t; package: string; }
-  | WorkerIdle of { worker_id: Worker_id.t; }
-  | WorkerPoolStarted of { workers: int; }
-  | WorkerStarted of { worker_id: Worker_id.t; }
+  | ServerStarted of { pid: string }
+  | WorkerAssigned of { worker_id: Worker_id.t; package: string }
+  | WorkerIdle of { worker_id: Worker_id.t }
+  | WorkerPoolStarted of { workers: int }
+  | WorkerStarted of { worker_id: Worker_id.t }
   | StoreCreating
-  | StoreCreated of { duration_ms: int; }
-  | WorkerPoolCreating of { workers: int; }
-  | WorkerPoolCreated of { workers: int; duration_ms: int; }
+  | StoreCreated of { duration_ms: int }
+  | WorkerPoolCreating of { workers: int }
+  | WorkerPoolCreated of { workers: int; duration_ms: int }
   | WorkspaceEmpty
   | WorkspaceScanning
-  | WorkspaceScanned of { packages: int; duration_ms: int; }
-  | WritingFile of { path: string; }
+  | WorkspaceScanned of { packages: int; duration_ms: int }
+  | WritingFile of { path: string }
 
 type t = {
   timestamp: Datetime.t;
@@ -130,7 +130,7 @@ type t = {
   kind: kind;
 }
 (** Create a new event with current timestamp *)
-let create = fun ~session_id ~level kind -> {timestamp = Datetime.now ();session_id;level;kind;}
+let create = fun ~session_id ~level kind -> { timestamp = Datetime.now (); session_id; level; kind }
 (** Format timestamp for display *)
 
 (** Get the machine-readable event name *)
@@ -518,9 +518,9 @@ let to_json = fun event ->
         let clean_error = {
           error
           with raw = strip_ansi_codes error.raw;
-          hint = strip_ansi_codes error.hint;
+          hint = strip_ansi_codes error.hint
         } in
-        {event with kind = CompileError {package;error = clean_error;};}
+        { event with kind = CompileError { package; error = clean_error } }
     | _ -> event
   in
   Json.Object [
@@ -571,7 +571,7 @@ let kind_from_json = fun json ->
                           arr
                     | _ -> []
                   in
-                  Ok (BuildComplete {duration_ms;results = [];succeeded;failed;})
+                  Ok (BuildComplete { duration_ms; results = []; succeeded; failed })
               | _ -> Error "Invalid BuildComplete data"
             )
           | "tusk.build.started" -> (
@@ -599,7 +599,7 @@ let kind_from_json = fun json ->
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (BuildStarted {packages;total_modules;workers;})
+                  Ok (BuildStarted { packages; total_modules; workers })
               | _ -> Error "Invalid BuildStarted data"
             )
           | "tusk.build.package.started" -> (
@@ -610,7 +610,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
-                  Ok (PackageStarted {package;})
+                  Ok (PackageStarted { package })
               | _ -> Error "Invalid PackageStarted data"
             )
           | "tusk.build.package.completed" -> (
@@ -690,7 +690,7 @@ let kind_from_json = fun json ->
                       )
                     | _ -> DependenciesFailed []
                   in
-                  Ok (PackageSkipped {package;reason;})
+                  Ok (PackageSkipped { package; reason })
               | _ -> Error "Invalid PackageSkipped data"
             )
           | "tusk.build.cache.hit" -> (
@@ -706,7 +706,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
-                  Ok (CacheHit {package;hash;})
+                  Ok (CacheHit { package; hash })
               | _ -> Error "Invalid CacheHit data"
             )
           | "tusk.build.cache.miss" -> (
@@ -722,7 +722,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
-                  Ok (CacheMiss {package;hash;})
+                  Ok (CacheMiss { package; hash })
               | _ -> Error "Invalid CacheMiss data"
             )
           | "tusk.build.cache.stored" -> (
@@ -750,7 +750,7 @@ let kind_from_json = fun json ->
                           arr
                     | _ -> []
                   in
-                  Ok (CacheStored {package;hash;artifacts;})
+                  Ok (CacheStored { package; hash; artifacts })
               | _ -> Error "Invalid CacheStored data"
             )
           | "tusk.build.compile.interface" -> (
@@ -766,7 +766,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String f) -> f
                     | _ -> ""
                   in
-                  Ok (CompilingInterface {package;file;})
+                  Ok (CompilingInterface { package; file })
               | _ -> Error "Invalid CompilingInterface data"
             )
           | "tusk.build.compile.implementation" -> (
@@ -782,7 +782,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String f) -> f
                     | _ -> ""
                   in
-                  Ok (CompilingImplementation {package;file;})
+                  Ok (CompilingImplementation { package; file })
               | _ -> Error "Invalid CompilingImplementation data"
             )
           | "tusk.build.compile.error" -> (
@@ -833,13 +833,13 @@ let kind_from_json = fun json ->
                     if message = "Syntax error" then
                       SyntaxError
                     else if String.starts_with ~prefix:"Unbound value " message then
-                      UnboundValue {name = String.sub message 14 (String.length message - 14);}
+                      UnboundValue { name = String.sub message 14 (String.length message - 14) }
                     else if String.starts_with ~prefix:"Unbound module " message then
-                      UnboundModule {name = String.sub message 15 (String.length message - 15);}
+                      UnboundModule { name = String.sub message 15 (String.length message - 15) }
                     else if String.starts_with ~prefix:"Cannot find file " message then
-                      FileNotFound {filename = String.sub message 17 (String.length message - 17);}
+                      FileNotFound { filename = String.sub message 17 (String.length message - 17) }
                     else
-                      OtherError {message;}
+                      OtherError { message }
                   in
                   Ok (
                     CompileError {
@@ -870,7 +870,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String o) -> o
                     | _ -> ""
                   in
-                  Ok (LinkingLibrary {package;output;})
+                  Ok (LinkingLibrary { package; output })
               | _ -> Error "Invalid LinkingLibrary data"
             )
           | "tusk.build.hash.computing" -> (
@@ -881,7 +881,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
-                  Ok (ComputingHash {package;})
+                  Ok (ComputingHash { package })
               | _ -> Error "Invalid ComputingHash data"
             )
           | "tusk.build.hash.computed" -> (
@@ -897,7 +897,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
-                  Ok (HashComputed {package;hash;})
+                  Ok (HashComputed { package; hash })
               | _ -> Error "Invalid HashComputed data"
             )
           | "tusk.build.link.executable" -> (
@@ -913,7 +913,7 @@ let kind_from_json = fun json ->
                     | Some (Json.String o) -> o
                     | _ -> ""
                   in
-                  Ok (LinkingExecutable {package;output;})
+                  Ok (LinkingExecutable { package; output })
               | _ -> Error "Invalid LinkingExecutable data"
             )
           | "tusk.workspace.scanning" ->
@@ -931,7 +931,7 @@ let kind_from_json = fun json ->
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (WorkspaceScanned {packages;duration_ms;})
+                  Ok (WorkspaceScanned { packages; duration_ms })
               | _ -> Error "Invalid WorkspaceScanned data"
             )
           | "tusk.build_graph.creating" ->
@@ -949,7 +949,7 @@ let kind_from_json = fun json ->
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (BuildGraphCreated {nodes;duration_ms;})
+                  Ok (BuildGraphCreated { nodes; duration_ms })
               | _ -> Error "Invalid BuildGraphCreated data"
             )
           | "tusk.store.creating" ->
@@ -962,7 +962,7 @@ let kind_from_json = fun json ->
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (StoreCreated {duration_ms;})
+                  Ok (StoreCreated { duration_ms })
               | _ -> Error "Invalid StoreCreated data"
             )
           | "tusk.worker_pool.creating" -> (
@@ -973,7 +973,7 @@ let kind_from_json = fun json ->
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (WorkerPoolCreating {workers;})
+                  Ok (WorkerPoolCreating { workers })
               | _ -> Error "Invalid WorkerPoolCreating data"
             )
           | "tusk.worker_pool.created" -> (
@@ -989,7 +989,7 @@ let kind_from_json = fun json ->
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  Ok (WorkerPoolCreated {workers;duration_ms;})
+                  Ok (WorkerPoolCreated { workers; duration_ms })
               | _ -> Error "Invalid WorkerPoolCreated data"
             )
           | _ ->
@@ -1024,7 +1024,7 @@ let from_json = fun json ->
         | _ -> Info
       in
       match kind_from_json json with
-      | Ok kind -> Ok {timestamp;session_id;level;kind;}
+      | Ok kind -> Ok { timestamp; session_id; level; kind }
       | Error e -> Error e
     )
   | _ -> Error "Invalid JSON format for Event"

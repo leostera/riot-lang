@@ -47,7 +47,7 @@ let make_diagnostic = fun binding ->
   in
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span
     ~suggestion:"Remove rec from this binding."
     ()

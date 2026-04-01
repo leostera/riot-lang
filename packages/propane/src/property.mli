@@ -8,8 +8,8 @@ open Std
 
 type property_result =
   | Success
-  | Failure of { counter_example: string; shrink_steps: int; }
-  | Error of { exception_: exn; backtrace: string; }
+  | Failure of { counter_example: string; shrink_steps: int }
+  | Error of { exception_: exn; backtrace: string }
   | Assumption_violated
 (** Result of running a property test. *)
 type test_property

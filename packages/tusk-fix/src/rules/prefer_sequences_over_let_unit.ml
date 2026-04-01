@@ -28,7 +28,7 @@ let rec is_unit_pattern = function
 let make_diagnostic = fun (expr: Syn.Cst.let_expression) ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Replace this let-unit binding with a `;` sequence."
     ()

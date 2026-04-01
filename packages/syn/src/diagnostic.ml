@@ -10,316 +10,316 @@ type found_token = {
 
 type kind =
   (* Specific parsing errors with helpful hints *)
-  | MalformedTypeVariable of { found: found_token; }
-  | MissingLetBindingPattern of { found: found_token; }
-  | MissingLetBindingEquals of { found: found_token; }
-  | MissingLetBindingExpr of { found: found_token; }
-  | UnexpectedStructureItem of { found: found_token; }
-  | UnexpectedSignatureItem of { found: found_token; }
-  | InvalidPattern of { found: found_token; }
-  | InvalidExpression of { found: found_token; }
-  | InvalidConstant of { found: found_token; }
-  | InvalidTypeExpression of { found: found_token; }
-  | MissingLetKeyword of { found: found_token; }
-  | MissingTypeKeyword of { found: found_token; }
-  | MissingTypeName of { found: found_token; }
-  | MissingTypeDeclEquals of { found: found_token; }
-  | UnclosedDelimiter of { opener: string; found: found_token; }
-  | UnclosedTypeParams of { found: found_token; }
+  | MalformedTypeVariable of { found: found_token }
+  | MissingLetBindingPattern of { found: found_token }
+  | MissingLetBindingEquals of { found: found_token }
+  | MissingLetBindingExpr of { found: found_token }
+  | UnexpectedStructureItem of { found: found_token }
+  | UnexpectedSignatureItem of { found: found_token }
+  | InvalidPattern of { found: found_token }
+  | InvalidExpression of { found: found_token }
+  | InvalidConstant of { found: found_token }
+  | InvalidTypeExpression of { found: found_token }
+  | MissingLetKeyword of { found: found_token }
+  | MissingTypeKeyword of { found: found_token }
+  | MissingTypeName of { found: found_token }
+  | MissingTypeDeclEquals of { found: found_token }
+  | UnclosedDelimiter of { opener: string; found: found_token }
+  | UnclosedTypeParams of { found: found_token }
   | EmptyCharLiteral
-  | MultiCharLiteral of { text: string; }
-  | UnclosedCharLiteral of { text: string; }
-  | MissingBinaryOperand of { operator: string; side: string; found: found_token; }
-  | ConsecutiveBinaryOperators of { operators: string; found: found_token; }
-  | InvalidTypeParameter of { text: string; found: found_token; }
-  | UppercaseTypeVariable of { text: string; found: found_token; }
-  | UppercaseTypeName of { text: string; found: found_token; }
-  | BracketedTypeParameters of { type_name: string; found: found_token; }
-  | ListDoubleSemicolon of { found: found_token; }
-  | IfMissingThen of { found: found_token; }
-  | MatchMissingScrutinee of { found: found_token; }
-  | MatchMissingWith of { found: found_token; }
-  | MatchMissingPattern of { found: found_token; }
-  | MatchGuardMissingExpr of { found: found_token; }
-  | TuplePatternExtraComma of { found: found_token; }
-  | ConstructorPatternNeedsParens of { constructor: string; found: found_token; }
-  | ConsPatternMissingHead of { found: found_token; }
-  | ConsPatternMissingTail of { found: found_token; }
-  | OrPatternMissing of { found: found_token; }
-  | OrPatternDouble of { found: found_token; }
-  | MutableFieldMissingName of { found: found_token; }
-  | RecordFieldMissingColon of { field_name: string; found: found_token; }
-  | RecordFieldMissingType of { field_name: string; found: found_token; }
-  | PolyTypeMissingVarName of { found: found_token; }
-  | PolyTypeMissingDot of { found: found_token; }
-  | UnexpectedClosingDelimiter of { delimiter: string; found: found_token; }
-  | MissingModuleDeclEquals of { found: found_token; }
-  | MissingExternalColon of { found: found_token; }
-  | MissingExceptionName of { found: found_token; }
-  | MissingModulePath of { found: found_token; }
-  | MissingModuleTypeName of { found: found_token; }
-  | MissingModuleTypeExpr of { found: found_token; }
-  | MissingModuleExpr of { found: found_token; }
-  | MissingWithKeyword of { found: found_token; }
-  | InvalidModuleName of { found: found_token; }
+  | MultiCharLiteral of { text: string }
+  | UnclosedCharLiteral of { text: string }
+  | MissingBinaryOperand of { operator: string; side: string; found: found_token }
+  | ConsecutiveBinaryOperators of { operators: string; found: found_token }
+  | InvalidTypeParameter of { text: string; found: found_token }
+  | UppercaseTypeVariable of { text: string; found: found_token }
+  | UppercaseTypeName of { text: string; found: found_token }
+  | BracketedTypeParameters of { type_name: string; found: found_token }
+  | ListDoubleSemicolon of { found: found_token }
+  | IfMissingThen of { found: found_token }
+  | MatchMissingScrutinee of { found: found_token }
+  | MatchMissingWith of { found: found_token }
+  | MatchMissingPattern of { found: found_token }
+  | MatchGuardMissingExpr of { found: found_token }
+  | TuplePatternExtraComma of { found: found_token }
+  | ConstructorPatternNeedsParens of { constructor: string; found: found_token }
+  | ConsPatternMissingHead of { found: found_token }
+  | ConsPatternMissingTail of { found: found_token }
+  | OrPatternMissing of { found: found_token }
+  | OrPatternDouble of { found: found_token }
+  | MutableFieldMissingName of { found: found_token }
+  | RecordFieldMissingColon of { field_name: string; found: found_token }
+  | RecordFieldMissingType of { field_name: string; found: found_token }
+  | PolyTypeMissingVarName of { found: found_token }
+  | PolyTypeMissingDot of { found: found_token }
+  | UnexpectedClosingDelimiter of { delimiter: string; found: found_token }
+  | MissingModuleDeclEquals of { found: found_token }
+  | MissingExternalColon of { found: found_token }
+  | MissingExceptionName of { found: found_token }
+  | MissingModulePath of { found: found_token }
+  | MissingModuleTypeName of { found: found_token }
+  | MissingModuleTypeExpr of { found: found_token }
+  | MissingModuleExpr of { found: found_token }
+  | MissingWithKeyword of { found: found_token }
+  | InvalidModuleName of { found: found_token }
 
 type t = {
   kind: kind;
   span: Ceibo.Span.t;
 }
 
-let make = fun ~kind ~span -> {kind;span;}
+let make = fun ~kind ~span -> { kind; span }
 
 let malformed_type_variable = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MalformedTypeVariable {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MalformedTypeVariable { found }) ~span
 
 let missing_let_binding_pattern = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingLetBindingPattern {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingLetBindingPattern { found }) ~span
 
 let missing_let_binding_equals = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingLetBindingEquals {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingLetBindingEquals { found }) ~span
 
 let missing_let_binding_expr = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingLetBindingExpr {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingLetBindingExpr { found }) ~span
 
 let unexpected_structure_item = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(UnexpectedStructureItem {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(UnexpectedStructureItem { found }) ~span
 
 let unexpected_signature_item = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(UnexpectedSignatureItem {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(UnexpectedSignatureItem { found }) ~span
 
 let invalid_pattern = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(InvalidPattern {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(InvalidPattern { found }) ~span
 
 let invalid_expression = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(InvalidExpression {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(InvalidExpression { found }) ~span
 
 let invalid_constant = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(InvalidConstant {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(InvalidConstant { found }) ~span
 
 let invalid_type_expression = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(InvalidTypeExpression {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(InvalidTypeExpression { found }) ~span
 
 let missing_let_keyword = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingLetKeyword {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingLetKeyword { found }) ~span
 
 let missing_type_keyword = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingTypeKeyword {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingTypeKeyword { found }) ~span
 
 let missing_type_name = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingTypeName {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingTypeName { found }) ~span
 
 let missing_type_decl_equals = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingTypeDeclEquals {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingTypeDeclEquals { found }) ~span
 
 let unclosed_delimiter = fun ~opener ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(UnclosedDelimiter {opener;found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(UnclosedDelimiter { opener; found }) ~span
 
 let empty_char_literal = fun ~span -> make ~kind:EmptyCharLiteral ~span
 
-let multi_char_literal = fun ~text ~span -> make ~kind:(MultiCharLiteral {text;}) ~span
+let multi_char_literal = fun ~text ~span -> make ~kind:(MultiCharLiteral { text }) ~span
 
-let unclosed_char_literal = fun ~text ~span -> make ~kind:(UnclosedCharLiteral {text;}) ~span
+let unclosed_char_literal = fun ~text ~span -> make ~kind:(UnclosedCharLiteral { text }) ~span
 
 let unclosed_type_params = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(UnclosedTypeParams {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(UnclosedTypeParams { found }) ~span
 
 let missing_binary_operand = fun ~operator ~side ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingBinaryOperand {operator;side;found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingBinaryOperand { operator; side; found }) ~span
 
 let consecutive_binary_operators = fun ~operators ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(ConsecutiveBinaryOperators {operators;found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(ConsecutiveBinaryOperators { operators; found }) ~span
 
 let invalid_type_parameter = fun ~text ~found:token ~text_found ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text = text_found;} in
-  make ~kind:(InvalidTypeParameter {text;found;}) ~span
+  let found = { kind = kind_str; text = text_found } in
+  make ~kind:(InvalidTypeParameter { text; found }) ~span
 
 let uppercase_type_variable = fun ~text ~found:token ~text_found ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text = text_found;} in
-  make ~kind:(UppercaseTypeVariable {text;found;}) ~span
+  let found = { kind = kind_str; text = text_found } in
+  make ~kind:(UppercaseTypeVariable { text; found }) ~span
 
 let uppercase_type_name = fun ~text ~found:token ~text_found ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text = text_found;} in
-  make ~kind:(UppercaseTypeName {text;found;}) ~span
+  let found = { kind = kind_str; text = text_found } in
+  make ~kind:(UppercaseTypeName { text; found }) ~span
 
 let bracketed_type_parameters = fun ~type_name ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(BracketedTypeParameters {type_name;found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(BracketedTypeParameters { type_name; found }) ~span
 
 let list_double_semicolon = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(ListDoubleSemicolon {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(ListDoubleSemicolon { found }) ~span
 
 let if_missing_then = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(IfMissingThen {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(IfMissingThen { found }) ~span
 
 let match_missing_scrutinee = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MatchMissingScrutinee {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MatchMissingScrutinee { found }) ~span
 
 let match_missing_with = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MatchMissingWith {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MatchMissingWith { found }) ~span
 
 let match_missing_pattern = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MatchMissingPattern {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MatchMissingPattern { found }) ~span
 
 let match_guard_missing_expr = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MatchGuardMissingExpr {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MatchGuardMissingExpr { found }) ~span
 
 let tuple_pattern_extra_comma = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(TuplePatternExtraComma {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(TuplePatternExtraComma { found }) ~span
 
 let constructor_pattern_needs_parens = fun ~constructor ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(ConstructorPatternNeedsParens {constructor;found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(ConstructorPatternNeedsParens { constructor; found }) ~span
 
 let cons_pattern_missing_head = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(ConsPatternMissingHead {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(ConsPatternMissingHead { found }) ~span
 
 let cons_pattern_missing_tail = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(ConsPatternMissingTail {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(ConsPatternMissingTail { found }) ~span
 
 let or_pattern_missing = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(OrPatternMissing {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(OrPatternMissing { found }) ~span
 
 let or_pattern_double = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(OrPatternDouble {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(OrPatternDouble { found }) ~span
 
 let mutable_field_missing_name = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MutableFieldMissingName {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MutableFieldMissingName { found }) ~span
 
 let record_field_missing_colon = fun ~field_name ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(RecordFieldMissingColon {field_name;found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(RecordFieldMissingColon { field_name; found }) ~span
 
 let record_field_missing_type = fun ~field_name ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(RecordFieldMissingType {field_name;found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(RecordFieldMissingType { field_name; found }) ~span
 
 let poly_type_missing_var_name = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(PolyTypeMissingVarName {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(PolyTypeMissingVarName { found }) ~span
 
 let poly_type_missing_dot = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(PolyTypeMissingDot {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(PolyTypeMissingDot { found }) ~span
 
 let unexpected_closing_delimiter = fun ~delimiter ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(UnexpectedClosingDelimiter {delimiter;found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(UnexpectedClosingDelimiter { delimiter; found }) ~span
 
 let missing_module_decl_equals = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingModuleDeclEquals {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModuleDeclEquals { found }) ~span
 
 let missing_external_colon = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingExternalColon {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingExternalColon { found }) ~span
 
 let missing_exception_name = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingExceptionName {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingExceptionName { found }) ~span
 
 let missing_module_path = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingModulePath {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModulePath { found }) ~span
 
 let missing_module_type_name = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingModuleTypeName {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModuleTypeName { found }) ~span
 
 let missing_module_type_expr = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingModuleTypeExpr {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModuleTypeExpr { found }) ~span
 
 let missing_module_expr = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingModuleExpr {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingModuleExpr { found }) ~span
 
 let missing_with_keyword = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(MissingWithKeyword {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(MissingWithKeyword { found }) ~span
 
 let invalid_module_name = fun ~found:token ~text ~span ->
   let kind_str = Token.to_string token in
-  let found = {kind = kind_str;text;} in
-  make ~kind:(InvalidModuleName {found;}) ~span
+  let found = { kind = kind_str; text } in
+  make ~kind:(InvalidModuleName { found }) ~span
 
 let expected_message = fun diag ->
   match diag.kind with
@@ -651,9 +651,9 @@ let found_token = fun diag ->
   | MissingTypeDeclEquals { found } -> found
   | UnclosedDelimiter { found; _ } -> found
   | UnclosedTypeParams { found } -> found
-  | EmptyCharLiteral -> {kind = "char literal";text = "''";}
-  | MultiCharLiteral { text } -> {kind = "char literal";text;}
-  | UnclosedCharLiteral { text } -> {kind = "char literal";text;}
+  | EmptyCharLiteral -> { kind = "char literal"; text = "''" }
+  | MultiCharLiteral { text } -> { kind = "char literal"; text }
+  | UnclosedCharLiteral { text } -> { kind = "char literal"; text }
   | MissingBinaryOperand { found; _ } -> found
   | ConsecutiveBinaryOperators { found; _ } -> found
   | InvalidTypeParameter { found; _ } -> found
@@ -785,8 +785,8 @@ let from_json = fun json ->
                       )
                     |> Option.unwrap_or ~default:""
                   in
-                  {kind;text;}
-              | _ -> {kind = "";text = "";}
+                  { kind; text }
+              | _ -> { kind = ""; text = "" }
             in
             let start =
               Option.and_then (List.assoc_opt "start" span_fields)
@@ -889,123 +889,123 @@ let from_json = fun json ->
                 let kind =
                   match Error.id_of_string id with
                   | Some E0001_MalformedTypeVariable ->
-                      MalformedTypeVariable {found;}
+                      MalformedTypeVariable { found }
                   | Some E0002_MissingLetBindingPattern ->
-                      MissingLetBindingPattern {found;}
+                      MissingLetBindingPattern { found }
                   | Some E0003_MissingLetBindingEquals ->
-                      MissingLetBindingEquals {found;}
+                      MissingLetBindingEquals { found }
                   | Some E0004_MissingLetBindingExpr ->
-                      MissingLetBindingExpr {found;}
+                      MissingLetBindingExpr { found }
                   | Some E0005_UnexpectedStructureItem ->
-                      UnexpectedStructureItem {found;}
+                      UnexpectedStructureItem { found }
                   | Some E0006_UnexpectedSignatureItem ->
-                      UnexpectedSignatureItem {found;}
+                      UnexpectedSignatureItem { found }
                   | Some E0007_InvalidPattern ->
-                      InvalidPattern {found;}
+                      InvalidPattern { found }
                   | Some E0008_InvalidExpression ->
-                      InvalidExpression {found;}
+                      InvalidExpression { found }
                   | Some E0009_InvalidConstant ->
-                      InvalidConstant {found;}
+                      InvalidConstant { found }
                   | Some E0010_InvalidTypeExpression ->
-                      InvalidTypeExpression {found;}
+                      InvalidTypeExpression { found }
                   | Some E0011_MissingLetKeyword ->
-                      MissingLetKeyword {found;}
+                      MissingLetKeyword { found }
                   | Some E0012_MissingTypeKeyword ->
-                      MissingTypeKeyword {found;}
+                      MissingTypeKeyword { found }
                   | Some E0013_MissingTypeDeclEquals ->
-                      MissingTypeDeclEquals {found;}
+                      MissingTypeDeclEquals { found }
                   | Some E0014_UnclosedDelimiter ->
-                      UnclosedDelimiter {opener = parse_unclosed_delimiter expected fix;found;}
+                      UnclosedDelimiter { opener = parse_unclosed_delimiter expected fix; found }
                   | Some E0015_MissingTypeName ->
-                      MissingTypeName {found;}
+                      MissingTypeName { found }
                   | Some E0016_EmptyCharLiteral ->
                       EmptyCharLiteral
                   | Some E0017_MultiCharLiteral ->
-                      MultiCharLiteral {text = found.text;}
+                      MultiCharLiteral { text = found.text }
                   | Some E0018_UnclosedCharLiteral ->
-                      UnclosedCharLiteral {text = found.text;}
+                      UnclosedCharLiteral { text = found.text }
                   | Some E0019_UnclosedTypeParams ->
-                      UnclosedTypeParams {found;}
+                      UnclosedTypeParams { found }
                   | Some E0020_MissingBinaryOperand ->
                       let side, operator = parse_missing_binary_operand expected in
-                      MissingBinaryOperand {operator;side;found;}
+                      MissingBinaryOperand { operator; side; found }
                   | Some E0021_ConsecutiveBinaryOperators ->
                       ConsecutiveBinaryOperators {
                         operators = parse_consecutive_binary_operators expected;
-                        found;
+                        found
                       }
                   | Some E0022_InvalidTypeParameter ->
-                      InvalidTypeParameter {text = found.text;found;}
+                      InvalidTypeParameter { text = found.text; found }
                   | Some E0023_UppercaseTypeVariable ->
-                      UppercaseTypeVariable {text = found.text;found;}
+                      UppercaseTypeVariable { text = found.text; found }
                   | Some E0024_UppercaseTypeName ->
-                      UppercaseTypeName {text = found.text;found;}
+                      UppercaseTypeName { text = found.text; found }
                   | Some E0025_BracketedTypeParameters ->
-                      BracketedTypeParameters {type_name = parse_bracketed_type_name fix;found;}
+                      BracketedTypeParameters { type_name = parse_bracketed_type_name fix; found }
                   | Some E0026_ListDoubleSemicolon ->
-                      ListDoubleSemicolon {found;}
+                      ListDoubleSemicolon { found }
                   | Some E0027_IfMissingThen ->
-                      IfMissingThen {found;}
+                      IfMissingThen { found }
                   | Some E0028_MatchMissingScrutinee ->
-                      MatchMissingScrutinee {found;}
+                      MatchMissingScrutinee { found }
                   | Some E0029_MatchMissingWith ->
-                      MatchMissingWith {found;}
+                      MatchMissingWith { found }
                   | Some E0030_MatchMissingPattern ->
-                      MatchMissingPattern {found;}
+                      MatchMissingPattern { found }
                   | Some E0031_MatchGuardMissingExpr ->
-                      MatchGuardMissingExpr {found;}
+                      MatchGuardMissingExpr { found }
                   | Some E0032_TuplePatternExtraComma ->
-                      TuplePatternExtraComma {found;}
+                      TuplePatternExtraComma { found }
                   | Some E0033_ConstructorPatternNeedsParens ->
-                      ConstructorPatternNeedsParens {constructor = "";found;}
+                      ConstructorPatternNeedsParens { constructor = ""; found }
                   | Some E0034_ConsPatternMissingHead ->
-                      ConsPatternMissingHead {found;}
+                      ConsPatternMissingHead { found }
                   | Some E0035_ConsPatternMissingTail ->
-                      ConsPatternMissingTail {found;}
+                      ConsPatternMissingTail { found }
                   | Some E0036_OrPatternMissing ->
-                      OrPatternMissing {found;}
+                      OrPatternMissing { found }
                   | Some E0037_OrPatternDouble ->
-                      OrPatternDouble {found;}
+                      OrPatternDouble { found }
                   | Some E0038_MutableFieldMissingName ->
-                      MutableFieldMissingName {found;}
+                      MutableFieldMissingName { found }
                   | Some E0039_RecordFieldMissingColon ->
                       RecordFieldMissingColon {
                         field_name = parse_quoted_field expected ~prefix:"colon after field name '";
-                        found;
+                        found
                       }
                   | Some E0040_RecordFieldMissingType ->
                       RecordFieldMissingType {
                         field_name = parse_quoted_field expected ~prefix:"type definition for field '";
-                        found;
+                        found
                       }
                   | Some E0041_PolyTypeMissingVarName ->
-                      PolyTypeMissingVarName {found;}
+                      PolyTypeMissingVarName { found }
                   | Some E0042_PolyTypeMissingDot ->
-                      PolyTypeMissingDot {found;}
+                      PolyTypeMissingDot { found }
                   | Some E0043_UnexpectedClosingDelimiter ->
-                      UnexpectedClosingDelimiter {delimiter = found.text;found;}
+                      UnexpectedClosingDelimiter { delimiter = found.text; found }
                   | Some E0044_MissingModuleDeclEquals ->
-                      MissingModuleDeclEquals {found;}
+                      MissingModuleDeclEquals { found }
                   | Some E0045_MissingExternalColon ->
-                      MissingExternalColon {found;}
+                      MissingExternalColon { found }
                   | Some E0046_MissingExceptionName ->
-                      MissingExceptionName {found;}
+                      MissingExceptionName { found }
                   | Some E0047_MissingModulePath ->
-                      MissingModulePath {found;}
+                      MissingModulePath { found }
                   | Some E0048_MissingModuleTypeName ->
-                      MissingModuleTypeName {found;}
+                      MissingModuleTypeName { found }
                   | Some E0049_MissingModuleTypeExpr ->
-                      MissingModuleTypeExpr {found;}
+                      MissingModuleTypeExpr { found }
                   | Some E0050_MissingModuleExpr ->
-                      MissingModuleExpr {found;}
+                      MissingModuleExpr { found }
                   | Some E0051_MissingWithKeyword ->
-                      MissingWithKeyword {found;}
+                      MissingWithKeyword { found }
                   | Some E0052_InvalidModuleName ->
-                      InvalidModuleName {found;}
+                      InvalidModuleName { found }
                   | _ ->
-                      InvalidExpression {found;}
+                      InvalidExpression { found }
                 in
-                Ok {kind;span;}
+                Ok { kind; span }
             | None -> Error "Missing 'id' field in diagnostic kind"
           )
         | _ -> Error "Invalid diagnostic JSON structure"

@@ -21,8 +21,8 @@ type Conn.assign_value +=
 (** Create empty session *)
 let create = fun ~cookie_name ~secret () ->
   let now = Unix.gettimeofday () |> Int64.of_float in
-  let data = {values = HashMap.create ();created_at = now;expires_at = Option.none;} in
-  {data;cookie_name;secret;modified = false;}
+  let data = { values = HashMap.create (); created_at = now; expires_at = Option.none } in
+  { data; cookie_name; secret; modified = false }
 (** Get value from session *)
 let get_value = fun key session ->
   HashMap.get session.data.values key
@@ -103,7 +103,7 @@ let from_json = fun json ->
           | Option.None ->
               Option.none
         in
-        Option.some {values;created_at;expires_at;}
+        Option.some { values; created_at; expires_at }
     | _ -> Option.none
 
 (** {1 Basic Crypto (XOR placeholder - NOT SECURE for production)} *)
@@ -166,7 +166,7 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
                 match Data.Json.of_string json_str with
                 | Result.Ok json -> (
                     match from_json json with
-                    | Option.Some data -> Result.ok {data;cookie_name;secret;modified = false;}
+                    | Option.Some data -> Result.ok { data; cookie_name; secret; modified = false }
                     | Option.None -> Result.err "Invalid session data"
                   )
                 | Result.Error _err -> Result.err "Invalid JSON in session"

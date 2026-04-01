@@ -26,11 +26,11 @@ module MutIter = struct
 
   let size = fun { current_pos; source } -> length source - current_pos
 
-  let clone = fun { source; current_pos } -> {source;current_pos;}
+  let clone = fun { source; current_pos } -> { source; current_pos }
 end
 
 let into_mut_iter = fun source ->
-  MutIterator.make (module MutIter) {source;current_pos = 0;}
+  MutIterator.make (module MutIter) { source; current_pos = 0 }
 
 module Iter = struct
   type state = {
@@ -45,7 +45,7 @@ module Iter = struct
       let utf_decoded = get_utf_8_uchar source current_pos in
       let char_size = Uchar.utf_decode_length utf_decoded in
       let item = Uchar.utf_decode_uchar utf_decoded in
-      (Some item, {state with current_pos = current_pos + char_size;})
+      (Some item, { state with current_pos = current_pos + char_size })
     else
       (None, state)
 
@@ -53,7 +53,7 @@ module Iter = struct
 end
 
 let into_iter = fun source ->
-  Iterator.make (module Iter) {source;current_pos = 0;}
+  Iterator.make (module Iter) { source; current_pos = 0 }
 
 (* Unicode-aware operations *)
 
@@ -157,11 +157,11 @@ module GraphemeMutIter = struct
 
   let size = fun { current_pos; source } -> length source - current_pos
 
-  let clone = fun { source; current_pos } -> {source;current_pos;}
+  let clone = fun { source; current_pos } -> { source; current_pos }
 end
 
 let into_grapheme_mut_iter = fun source ->
-  MutIterator.make (module GraphemeMutIter) {source;current_pos = 0;}
+  MutIterator.make (module GraphemeMutIter) { source; current_pos = 0 }
 
 module GraphemeIter = struct
   type state = {
@@ -178,7 +178,7 @@ module GraphemeIter = struct
       | None -> (None, state)
       | Some (grapheme, rest) ->
           let consumed = length remaining - length rest in
-          (Some grapheme, {state with current_pos = current_pos + consumed;})
+          (Some grapheme, { state with current_pos = current_pos + consumed })
     else
       (None, state)
 
@@ -186,7 +186,7 @@ module GraphemeIter = struct
 end
 
 let into_grapheme_iter = fun source ->
-  Iterator.make (module GraphemeIter) {source;current_pos = 0;}
+  Iterator.make (module GraphemeIter) { source; current_pos = 0 }
 
 (* Text segmentation *)
 

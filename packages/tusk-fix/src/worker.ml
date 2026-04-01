@@ -33,7 +33,7 @@ let rec worker_loop = fun config ->
   | `Stop -> Ok ()
   | `RunTask file_path ->
       let result = run_file config file_path in
-      send config.coordinator (Messages.FileResult {worker = self ();result;});
+      send config.coordinator (Messages.FileResult { worker = self (); result });
       worker_loop config
 
 let init = fun config () -> worker_loop config

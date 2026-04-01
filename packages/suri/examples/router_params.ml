@@ -12,9 +12,9 @@ type article = {
 (* Mock database *)
 
 let articles = [
-  {id = 1;title = "First Post";content = "Hello, World!";};
-  {id = 2;title = "Second Post";content = "More content here...";};
-  {id = 3;title = "Third Post";content = "Even more content!";};
+  { id = 1; title = "First Post"; content = "Hello, World!" };
+  { id = 2; title = "Second Post"; content = "More content here..." };
+  { id = 3; title = "Third Post"; content = "Even more content!" };
 ]
 
 (* Route handlers that use params *)

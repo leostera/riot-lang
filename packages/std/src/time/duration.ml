@@ -9,43 +9,43 @@ type t = timespec
 
 (* Constants *)
 
-let zero = {secs = 0;nanos = 0;}
+let zero = { secs = 0; nanos = 0 }
 
-let max = {secs = max_int;nanos = 999_999_999;}
+let max = { secs = max_int; nanos = 999_999_999 }
 
 (* Creation *)
 
-let make = fun ~secs ~nanos -> {secs;nanos;}
+let make = fun ~secs ~nanos -> { secs; nanos }
 
-let from_days = fun days -> {secs = days * 86_400;nanos = 0;}
+let from_days = fun days -> { secs = days * 86_400; nanos = 0 }
 
-let from_hours = fun hours -> {secs = hours * 3_600;nanos = 0;}
+let from_hours = fun hours -> { secs = hours * 3_600; nanos = 0 }
 
-let from_mins = fun mins -> {secs = mins * 60;nanos = 0;}
+let from_mins = fun mins -> { secs = mins * 60; nanos = 0 }
 
-let from_secs = fun secs -> {secs;nanos = 0;}
+let from_secs = fun secs -> { secs; nanos = 0 }
 
 let from_millis = fun millis ->
   let secs = millis / 1_000 in
   let nanos = millis mod 1_000 * 1_000_000 in
-  {secs;nanos;}
+  { secs; nanos }
 
 let from_micros = fun micros ->
   let secs = micros / 1_000_000 in
   let nanos = micros mod 1_000_000 * 1_000 in
-  {secs;nanos;}
+  { secs; nanos }
 
 let from_nanos = fun nanos ->
   let secs = nanos / 1_000_000_000 in
   let remaining_nanos = nanos mod 1_000_000_000 in
-  {secs;nanos = remaining_nanos;}
+  { secs; nanos = remaining_nanos }
 
 let from_secs_float = fun f ->
   let secs = int_of_float f in
   let nanos = int_of_float ((f -. float_of_int secs) *. 1_000_000_000.0) in
-  {secs;nanos;}
+  { secs; nanos }
 
-let from_weeks = fun weeks -> {secs = weeks * 604_800;nanos = 0;}
+let from_weeks = fun weeks -> { secs = weeks * 604_800; nanos = 0 }
 
 (* Conversion *)
 
@@ -95,19 +95,19 @@ let normalize = fun t ->
   if t.nanos >= 1_000_000_000 then
     let extra_secs = t.nanos / 1_000_000_000 in
     let remaining_nanos = t.nanos mod 1_000_000_000 in
-    {secs = t.secs + extra_secs;nanos = remaining_nanos;}
+    { secs = t.secs + extra_secs; nanos = remaining_nanos }
   else if t.nanos < 0 then
     let borrow_secs = (abs t.nanos + 999_999_999) / 1_000_000_000 in
-    {secs = t.secs - borrow_secs;nanos = t.nanos + (borrow_secs * 1_000_000_000);}
+    { secs = t.secs - borrow_secs; nanos = t.nanos + (borrow_secs * 1_000_000_000) }
   else
     t
 
 (* Arithmetic operations *)
 
-let add = fun a b -> normalize {secs = a.secs + b.secs;nanos = a.nanos + b.nanos;}
+let add = fun a b -> normalize { secs = a.secs + b.secs; nanos = a.nanos + b.nanos }
 
 let sub = fun a b ->
-  let result = {secs = a.secs - b.secs;nanos = a.nanos - b.nanos;} in
+  let result = { secs = a.secs - b.secs; nanos = a.nanos - b.nanos } in
   if result.secs < 0 || (result.secs = 0 && result.nanos < 0) then
     zero
   else
@@ -124,7 +124,7 @@ let mul = fun t factor ->
     let new_secs = Int64.mul total_secs factor_64 in
     let final_secs = Int64.add new_secs (Int64.div new_nanos 1_000_000_000L) in
     let final_nanos = Int64.rem new_nanos 1_000_000_000L in
-    {secs = Int64.to_int final_secs;nanos = Int64.to_int final_nanos;}
+    { secs = Int64.to_int final_secs; nanos = Int64.to_int final_nanos }
 
 let div = fun t divisor ->
   if divisor <= 0 then
@@ -136,7 +136,7 @@ let div = fun t divisor ->
     let result_nanos = Int64.div total_nanos (Int64.of_int divisor) in
     let secs = Int64.div result_nanos 1_000_000_000L in
     let nanos = Int64.rem result_nanos 1_000_000_000L in
-    {secs = Int64.to_int secs;nanos = Int64.to_int nanos;}
+    { secs = Int64.to_int secs; nanos = Int64.to_int nanos }
 
 (* Checked operations *)
 
@@ -213,7 +213,7 @@ let mul_f64 = fun t factor ->
     let result_nanos_f = total_nanos_f *. factor in
     let secs = int_of_float (result_nanos_f /. 1_000_000_000.0) in
     let nanos = int_of_float (mod_float result_nanos_f 1_000_000_000.0) in
-    {secs;nanos;}
+    { secs; nanos }
 
 let div_f64 = fun t divisor ->
   if divisor <= 0.0 then
@@ -223,7 +223,7 @@ let div_f64 = fun t divisor ->
     let result_nanos_f = total_nanos_f /. divisor in
     let secs = int_of_float (result_nanos_f /. 1_000_000_000.0) in
     let nanos = int_of_float (mod_float result_nanos_f 1_000_000_000.0) in
-    {secs;nanos;}
+    { secs; nanos }
 
 (* Utility *)
 

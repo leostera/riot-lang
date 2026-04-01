@@ -79,7 +79,7 @@ let listen = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) add
   | Error Tcp_listener.Connection_refused ->
       Error Connection_refused
   | Ok listener ->
-      let server = {listener;handler;} in
+      let server = { listener; handler } in
       accept_loop server
 
 let close = fun t -> Tcp_listener.close t.listener

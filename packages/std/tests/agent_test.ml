@@ -63,9 +63,9 @@ let run_test = fun () ->
   Agent.stop string_agent;
   (* Test with record type *)
   let person_agent =
-    Agent.start (fun () -> {name = "Alice";age = 30;})
+    Agent.start (fun () -> { name = "Alice"; age = 30 })
   in
-  Agent.update person_agent (fun p -> {p with age = p.age + 1;});
+  Agent.update person_agent (fun p -> { p with age = p.age + 1 });
   let person =
     Agent.get person_agent (fun p -> p)
   in

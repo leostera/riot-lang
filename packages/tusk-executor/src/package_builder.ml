@@ -7,18 +7,18 @@ open Telemetry_events
 
 type package_error = Telemetry_events.package_error =
   | PlanningFailed of Tusk_planner.Planning_error.t
-  | ExecutionFailed of { message: string; }
-  | ActionExecutionFailed of { message: string; }
-  | ActionOutputsNotCreated of { missing: Path.t list; }
-  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list; }
+  | ExecutionFailed of { message: string }
+  | ActionExecutionFailed of { message: string }
+  | ActionOutputsNotCreated of { missing: Path.t list }
+  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list }
 
 let convert_action_error = function
-  | Action_executor.ExecutionFailed { message } -> Telemetry_events.ActionExecutionFailed {message;}
+  | Action_executor.ExecutionFailed { message } -> Telemetry_events.ActionExecutionFailed { message }
   | Action_executor.OutputsNotCreated { missing } -> Telemetry_events.ActionOutputsNotCreated {
-    missing;
+    missing
   }
   | Action_executor.DependenciesFailed { failed } -> Telemetry_events.ActionDependenciesFailed {
-    failed;
+    failed
   }
 
 let package_error_to_string = function
@@ -151,7 +151,7 @@ let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry lis
             Tusk_store.Store.{
               name = Path.basename out_path;
               path = out_path;
-              action_hash = action_hash_hex;
+              action_hash = action_hash_hex
             })
           node.value.outs)
   in
@@ -171,7 +171,7 @@ let artifact_from_exports = fun ~package_hash (exports: Tusk_store.Store.export_
   let files =
     List.map (fun (entry: Tusk_store.Store.export_entry) -> Path.v entry.name) exports
   in
-  Tusk_store.Artifact.{hash = package_hash;files;}
+  Tusk_store.Artifact.{ hash = package_hash; files }
 
 let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
   let start = Instant.now () in
@@ -212,9 +212,9 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           session_id;
           package;
           target = Workspace_planner.Package package.name;
-          error = PlanningFailed err;
+          error = PlanningFailed err
         });
-      {package_key;package;status = Failed (PlanningFailed err);duration;}
+      { package_key; package; status = Failed (PlanningFailed err); duration }
   | Ok (MissingDependencies { missing; _ }) ->
       let missing_names =
         List.map (fun p -> p.Package.name) missing
@@ -222,15 +222,15 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       let error = "Missing dependencies: " ^ String.concat ", " missing_names in
       (* Don't mark as Failed - this is a transient planning state *)
-      let error_variant = ExecutionFailed {message = error;} in
+      let error_variant = ExecutionFailed { message = error } in
       Telemetry.emit
         (BuildFailed {
           session_id;
           package;
           target = Workspace_planner.Package package.name;
-          error = error_variant;
+          error = error_variant
         });
-      {package_key;package;status = Failed error_variant;duration;}
+      { package_key; package; status = Failed error_variant; duration }
   | Ok (FailedDependencies { failed; _ }) ->
       let failed_names =
         List.map (fun p -> p.Package.name) failed
@@ -244,17 +244,24 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         | Some node -> node.value <- Tusk_planner.Package_graph.Skipped {
           package;
           scope = Tusk_planner.Package_graph.get_scope node.value;
-          reason;
+          reason
         }
         | None -> ()
       );
       Telemetry.emit
-        (BuildSkipped {session_id;package;target = Workspace_planner.Package package.name;reason;});
+        (BuildSkipped {
+          session_id;
+          package;
+          target = Workspace_planner.Package package.name;
+          reason
+        });
       {
         package_key;
         package;
-        status = Failed (ExecutionFailed {message = "Skipped " ^ package.name ^ " (" ^ reason ^ ")";});
-        duration;
+        status = Failed (ExecutionFailed {
+          message = "Skipped " ^ package.name ^ " (" ^ reason ^ ")"
+        });
+        duration
       }
   | Ok (Planned {
     package_key=planned_key;
@@ -266,7 +273,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       Log.info ("Package " ^ package.Package.name ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
       if emit_visible_progress then
         Telemetry.emit
-          (BuildStarted {session_id;package;target = Workspace_planner.Package package.name;});
+          (BuildStarted { session_id; package; target = Workspace_planner.Package package.name });
       Log.info ("Package " ^ package.name ^ ": executing action graph");
       Log.info
         ("Package "
@@ -276,7 +283,11 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         ^ " nodes");
       if emit_visible_progress && List.length (Action_graph.nodes action_graph) > 0 then
         Telemetry.emit
-          (CompilationStarted {session_id;package;target = Workspace_planner.Package package.name;});
+          (CompilationStarted {
+            session_id;
+            package;
+            target = Workspace_planner.Package package.name
+          });
       (
         match Tusk_planner.Package_graph.get_node_by_key package_graph planned_key with
         | Some node ->
@@ -334,7 +345,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       | exception exn ->
           let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
           let error_msg = "Exception: " ^ Exception.to_string exn in
-          let error = ExecutionFailed {message = error_msg;} in
+          let error = ExecutionFailed { message = error_msg } in
           (* Mark as Failed in package graph *)
           (
             match Tusk_planner.Package_graph.get_node_by_key package_graph planned_key with
@@ -342,13 +353,18 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               package;
               scope = Tusk_planner.Package_graph.get_scope node.value;
               hash = package_hash;
-              error = error_msg;
+              error = error_msg
             }
             | None -> ()
           );
           Telemetry.emit
-            (BuildFailed {session_id;package;target = Workspace_planner.Package package.name;error;});
-          {package_key = planned_key;package;status = Failed error;duration;}
+            (BuildFailed {
+              session_id;
+              package;
+              target = Workspace_planner.Package package.name;
+              error
+            });
+          { package_key = planned_key; package; status = Failed error; duration }
       | Ok (artifact, export_entries) ->
           let _ = Tusk_store.Store.save_package_exports
             store
@@ -399,7 +415,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
                   duration;
                 }
               );
-          {package_key = planned_key;package;status = Built artifact;duration;}
+          { package_key = planned_key; package; status = Built artifact; duration }
       | Error err ->
           let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
           let error_str = package_error_to_string err in
@@ -410,7 +426,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               package;
               scope = Tusk_planner.Package_graph.get_scope node.value;
               hash = package_hash;
-              error = error_str;
+              error = error_str
             }
             | None -> ()
           );
@@ -419,7 +435,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               session_id;
               package;
               target = Workspace_planner.Package package.name;
-              error = err;
+              error = err
             });
-          {package_key = planned_key;package;status = Failed err;duration;}
+          { package_key = planned_key; package; status = Failed err; duration }
     )

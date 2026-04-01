@@ -19,7 +19,7 @@ let emit = fun event ->
       | _ -> ())
     handlers
 (** Attach a handler *)
-let attach = fun id fn -> HashMap.insert handlers id {id;fn;} |> ignore
+let attach = fun id fn -> HashMap.insert handlers id { id; fn } |> ignore
 (** Detach a handler by ID *)
 let detach = fun id -> HashMap.remove handlers id |> ignore
 (** Detach all handlers *)

@@ -38,10 +38,10 @@ let parse_quality = fun param ->
     - "text/html;q=0.9" -> { media_type = "text/html"; quality = 0.9 } *)
 let parse_accept_entry = fun entry ->
   match String.split_on_char ';' entry with
-  | [] -> {media_type = "*/*";quality = 1.0;}
+  | [] -> { media_type = "*/*"; quality = 1.0 }
   | media_type :: params ->
       let quality = List.find_map parse_quality params |> Option.unwrap_or ~default:1.0 in
-      {media_type = String.trim media_type;quality;}
+      { media_type = String.trim media_type; quality }
 (** Parse full Accept header.
     
     Returns list sorted by quality (highest first). *)
@@ -84,7 +84,7 @@ let default_config = {
   types = [ "*/*" ];
   check_accept = true;
   check_content_type = true;
-  on_reject = None;
+  on_reject = None
 }
 
 (** {1 HTTP Responses} *)
@@ -172,6 +172,6 @@ let middleware = fun ?config:(cfg = default_config) types ->
     if List.is_empty types then
       cfg
     else
-      {cfg with types;}
+      { cfg with types }
   in
   make cfg'

@@ -55,7 +55,7 @@ let make_diagnostic = fun (decl: Syn.Cst.TypeDeclaration.t) accessor_names ->
   in
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl))
     ~suggestion:(("Make `t` opaque in the interface and keep " ^ accessor_summary ^ " as the public surface"))
     ()

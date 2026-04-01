@@ -15,7 +15,7 @@ let () =
       let size =
         match Tty.make () with
         | Ok tty -> Tty.size tty
-        | Error _ -> {Tty.rows = 24;cols = 80;}
+        | Error _ -> { Tty.rows = 24; cols = 80 }
       in
       (* Create UI: Three columns (sidebar, content, sidebar) *)
       let ui = Element.row

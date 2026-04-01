@@ -67,19 +67,19 @@ let parse_set_cookie = fun header ->
                 match parse_attribute attr with
                 | (Some "max-age", Some value) -> (
                     match int_of_string_opt value with
-                    | Some age -> {c with max_age = Some age;}
+                    | Some age -> { c with max_age = Some age }
                     | Option.None -> c
                   )
                 | (Some "expires", Some value) ->
-                    {c with expires = Some value;}
+                    { c with expires = Some value }
                 | (Some "path", Some value) ->
-                    {c with path = value;}
+                    { c with path = value }
                 | (Some "domain", Some value) ->
-                    {c with domain = Some value;}
+                    { c with domain = Some value }
                 | (Some "secure", Option.None) ->
-                    {c with secure = true;}
+                    { c with secure = true }
                 | (Some "httponly", Option.None) ->
-                    {c with http_only = true;}
+                    { c with http_only = true }
                 | (Some "samesite", Some value) ->
                     let same_site =
                       match String.lowercase_ascii value with
@@ -88,7 +88,7 @@ let parse_set_cookie = fun header ->
                       | "none" -> Some None
                       | _ -> Option.none
                     in
-                    {c with same_site;}
+                    { c with same_site }
                 | _ ->
                     c)
               cookie

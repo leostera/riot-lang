@@ -9,12 +9,8 @@ type content_type = {
 }
 
 type content_disposition =
-  | Inline of {
-      filename: string Option.t;
-    }
-  | Attachment of {
-      filename: string Option.t;
-    }
+  | Inline of { filename: string Option.t }
+  | Attachment of { filename: string Option.t }
 
 type encoding =
   | SevenBit
@@ -39,7 +35,7 @@ type part = {
 
 type t =
   | SinglePart of part
-  | MultiPart of { boundary: string; parts: t List.t; }
+  | MultiPart of { boundary: string; parts: t List.t }
 
 let find_header = fun name headers ->
   let name_lower = String.lowercase_ascii name in
@@ -210,11 +206,11 @@ and combine_rfc2231_params = fun raw_params ->
 let parse_content_type = fun value ->
   let main_type, params = parse_content_type_string value in
   match String.index_opt main_type '/' with
-  | None -> {media_type = main_type;subtype = "";parameters = params;}
+  | None -> { media_type = main_type; subtype = ""; parameters = params }
   | Some slash ->
       let media = String.sub main_type 0 slash in
       let sub = String.sub main_type (slash + 1) (String.length main_type - slash - 1) in
-      {media_type = media;subtype = sub;parameters = params;}
+      { media_type = media; subtype = sub; parameters = params }
 
 let parse_content_disposition = fun value ->
   let value = String.trim value in
@@ -228,9 +224,9 @@ let parse_content_disposition = fun value ->
   in
   let filename = List.assoc_opt "filename" params in
   match String.lowercase_ascii disp_type with
-  | "inline" -> Inline {filename;}
-  | "attachment" -> Attachment {filename;}
-  | _ -> Inline {filename = None;}
+  | "inline" -> Inline { filename }
+  | "attachment" -> Attachment { filename }
+  | _ -> Inline { filename = None }
 
 let parse_header = fun ((name, value)) ->
   let name_lower = String.lowercase_ascii name in
@@ -275,7 +271,7 @@ let rec parse = fun ~headers ~body ->
   let typed_headers = parse_headers headers in
   match find_header "content-type" typed_headers with
   | None ->
-      Ok (SinglePart {headers = typed_headers;content = body;})
+      Ok (SinglePart { headers = typed_headers; content = body })
   | Some (ContentType ct) ->
       let full_type = ct.media_type ^ "/" ^ ct.subtype in
       if String.starts_with ~prefix:"multipart/" full_type then
@@ -283,11 +279,11 @@ let rec parse = fun ~headers ~body ->
         | None -> Error "Multipart message missing boundary parameter"
         | Some boundary ->
             let parts = parse_multipart boundary body in
-            Ok (MultiPart {boundary;parts;})
+            Ok (MultiPart { boundary; parts })
       else
-        Ok (SinglePart {headers = typed_headers;content = body;})
+        Ok (SinglePart { headers = typed_headers; content = body })
   | Some _ ->
-      Ok (SinglePart {headers = typed_headers;content = body;})
+      Ok (SinglePart { headers = typed_headers; content = body })
 
 and parse_multipart = fun boundary body ->
   let delimiter = "--" ^ boundary in
@@ -334,7 +330,7 @@ and parse_multipart = fun boundary body ->
         let raw_headers, body = parse_part_headers_and_body content in
         match parse ~headers:raw_headers ~body with
         | Ok parsed_part -> Some parsed_part
-        | Error _ -> Some (SinglePart {headers = parse_headers raw_headers;content = body;}))
+        | Error _ -> Some (SinglePart { headers = parse_headers raw_headers; content = body }))
     part_contents
 
 let is_attachment = fun part ->

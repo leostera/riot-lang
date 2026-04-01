@@ -15,7 +15,11 @@ type t = {
 
 let default_ocaml_version = "5.5.0-riot.1"
 
-let default = {version = default_ocaml_version;source = Version default_ocaml_version;targets = [];}
+let default = {
+  version = default_ocaml_version;
+  source = Version default_ocaml_version;
+  targets = []
+}
 
 let from_workspace = fun workspace ->
   let toolchain_file = Path.(workspace.Workspace.root / Path.v "ocaml-toolchain.toml") in
@@ -46,14 +50,14 @@ let from_workspace = fun workspace ->
                   in
                   match List.assoc_opt "version" toolchain_items with
                   | Some (Data.Toml.String v) ->
-                      {version = v;source = Version v;targets;}
+                      { version = v; source = Version v; targets }
                   | Some (Data.Toml.Table version_items) -> (
                       match List.assoc_opt "path" version_items with
                       | Some (Data.Toml.String path_str) -> (
                           match Path.of_string path_str with
                           | Ok source_path ->
                               let version_name = Path.basename source_path ^ "-local" in
-                              {version = version_name;source = Path source_path;targets;}
+                              { version = version_name; source = Path source_path; targets }
                           | Error _ -> default
                         )
                       | _ -> (
@@ -71,7 +75,7 @@ let from_workspace = fun workspace ->
                                   "custom"
                               in
                               match Net.Uri.of_string url_str with
-                              | Ok uri -> {version = version_name;source = Url uri;targets;}
+                              | Ok uri -> { version = version_name; source = Url uri; targets }
                               | Error _ -> default
                             )
                           | _ -> default

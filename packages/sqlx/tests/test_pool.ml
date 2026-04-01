@@ -18,15 +18,15 @@ module MockDriver: Driver.Intf = struct
 
   let name = "Mock"
 
-  let connect = fun () -> Ok {id = Random.int 1_000;}
+  let connect = fun () -> Ok { id = Random.int 1_000 }
 
   let close = fun _ -> ()
 
   let ping = fun _ -> true
 
-  let prepare = fun conn sql -> Ok {sql;}
+  let prepare = fun conn sql -> Ok { sql }
 
-  let execute = fun _ _ -> Ok {data = [];}
+  let execute = fun _ _ -> Ok { data = [] }
 
   let fetch_row = fun rs ->
     match rs.data with

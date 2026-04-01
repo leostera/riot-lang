@@ -17,7 +17,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     );
   send
     client_pid
-    (Protocol.ServerResponse (Protocol.BuildStarted {session_id;started_at = Datetime.now ();}));
+    (Protocol.ServerResponse (Protocol.BuildStarted { session_id; started_at = Datetime.now () }));
   let stats = Protocol.BuildStats.make () in
   Protocol.BuildStats.mark_started stats;
   let handler_name = "build-worker-" ^ Session_id.to_string session_id in
@@ -53,7 +53,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
       match event_session_id with
       | Some event_sid when Session_id.to_string event_sid = Session_id.to_string session_id -> send
         client_pid
-        (Protocol.ServerResponse (Protocol.BuildEvent {session_id;event;}))
+        (Protocol.ServerResponse (Protocol.BuildEvent { session_id; event }))
       | _ ->
           (* Skip events from other sessions or non-build events *)
           ());
@@ -74,7 +74,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
         (Protocol.ServerResponse (Protocol.PlanningFailed {
           session_id;
           failed_at = Datetime.now ();
-          reason = "Could not load external packages:\n" ^ error_msg;
+          reason = "Could not load external packages:\n" ^ error_msg
         }))
     )
   else
@@ -220,7 +220,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 session_id;
                 completed_at = Datetime.now ();
                 stats;
-                results = workspace_result.results;
+                results = workspace_result.results
               }));
             (
               match scope with
@@ -238,7 +238,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 (Protocol.ServerResponse (Protocol.PackageNotFound {
                   session_id;
                   package_name = name;
-                  available_packages = available;
+                  available_packages = available
                 }))
           | Tusk_planner.Workspace_planner.PackagesNotFound { names; available } ->
               send
@@ -246,7 +246,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 (Protocol.ServerResponse (Protocol.PackagesNotFound {
                   session_id;
                   package_names = names;
-                  available_packages = available;
+                  available_packages = available
                 }))
           | Tusk_planner.Workspace_planner.CycleDetected { cycle } ->
               send
@@ -254,7 +254,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 (Protocol.ServerResponse (Protocol.CycleDetected {
                   session_id;
                   cycle_nodes = cycle;
-                  detected_at = Datetime.now ();
+                  detected_at = Datetime.now ()
                 }))
           | Tusk_planner.Workspace_planner.MissingDependencies { missing } ->
               Log.error "Planning failed: Missing dependencies";
@@ -286,7 +286,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 (Protocol.ServerResponse (Protocol.PlanningFailed {
                   session_id;
                   failed_at = Datetime.now ();
-                  reason = "Missing dependencies:\n" ^ error_msg;
+                  reason = "Missing dependencies:\n" ^ error_msg
                 }))
           | Tusk_planner.Workspace_planner.PackageLoadFailed { errors } ->
               Log.error "Planning failed: Could not load external packages";
@@ -299,7 +299,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 (Protocol.ServerResponse (Protocol.PlanningFailed {
                   session_id;
                   failed_at = Datetime.now ();
-                  reason = "Could not load external packages:\n  " ^ error_msg;
+                  reason = "Could not load external packages:\n  " ^ error_msg
                 }))
         )
     );

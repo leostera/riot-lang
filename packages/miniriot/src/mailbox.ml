@@ -10,7 +10,7 @@ type t = {
 }
 
 let create = fun () ->
-  {producer_lock = Mutex.create ();inbox_rev = [];outbox = [];size = Atomic.make 0;}
+  { producer_lock = Mutex.create (); inbox_rev = []; outbox = []; size = Atomic.make 0 }
 
 let queue = fun t msg ->
   Mutex.lock t.producer_lock;

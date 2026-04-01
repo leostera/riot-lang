@@ -164,12 +164,12 @@ let test_package_exports_round_trip = fun () ->
           Tusk_store.Store.{
             name = "foo.cmxa";
             path = Path.v "lib/foo.cmxa";
-            action_hash = Crypto.Digest.hex hash;
+            action_hash = Crypto.Digest.hex hash
           };
           Tusk_store.Store.{
             name = "foo.cmxs";
             path = Path.v "lib/foo.cmxs";
-            action_hash = Crypto.Digest.hex hash;
+            action_hash = Crypto.Digest.hex hash
           };
         ] in
         let _ = Tusk_store.Store.save_package_exports
@@ -199,7 +199,7 @@ let test_find_package_export_path_round_trip = fun () ->
         let hash = Crypto.hash_string "find-export-hash" in
         let action_hash = Crypto.Digest.hex hash in
         let rel_path = Path.v "bin/tool" in
-        let exports = [ Tusk_store.Store.{name = "tool";path = rel_path;action_hash;} ] in
+        let exports = [ Tusk_store.Store.{ name = "tool"; path = rel_path; action_hash } ] in
         let _ = Tusk_store.Store.save_package_exports
           store
           ~package:"pkg"
@@ -231,7 +231,11 @@ let test_find_package_export_path_rejects_absolute_export_paths = fun () ->
         let workspace = make_test_workspace tmpdir in
         let store = Tusk_store.Store.create ~workspace in
         let exports = [
-          Tusk_store.Store.{name = "tool";path = Path.v "/tmp/not-allowed";action_hash = "deadbeef";};
+          Tusk_store.Store.{
+            name = "tool";
+            path = Path.v "/tmp/not-allowed";
+            action_hash = "deadbeef"
+          };
         ] in
         let _ = Tusk_store.Store.save_package_exports
           store
@@ -259,7 +263,7 @@ let test_find_package_export_path_returns_none_when_name_missing = fun () ->
         let workspace = make_test_workspace tmpdir in
         let store = Tusk_store.Store.create ~workspace in
         let exports = [
-          Tusk_store.Store.{name = "existing";path = Path.v "bin/existing";action_hash = "abc";};
+          Tusk_store.Store.{ name = "existing"; path = Path.v "bin/existing"; action_hash = "abc" };
         ] in
         let _ = Tusk_store.Store.save_package_exports
           store
@@ -324,7 +328,7 @@ let test_materialize_package_exports_from_action_artifact = fun () ->
           Tusk_store.Store.{
             name = "tool";
             path = Path.v "bin/tool";
-            action_hash = Crypto.Digest.hex action_hash;
+            action_hash = Crypto.Digest.hex action_hash
           };
         ] in
         let target_dir = Path.(tmpdir / Path.v "out" / Path.v "pkg") in

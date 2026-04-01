@@ -65,7 +65,7 @@ let make_diagnostic = fun expr ->
   in
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span
     ~suggestion:(("Replace " ^ operator ^ " with a named function"))
     ()
@@ -90,7 +90,7 @@ let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.Fun expr ->
       diagnostics_for_function_body expr.body
   | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
-      diagnostics_for_function_body (Syn.Cst.Cases {syntax_node;cases;})
+      diagnostics_for_function_body (Syn.Cst.Cases { syntax_node; cases })
   | Syn.Cst.Expression.Parenthesized expr ->
       diagnostics_for_expression expr.inner
   | Syn.Cst.Expression.Let expr ->

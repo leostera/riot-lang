@@ -100,7 +100,7 @@ let make_diagnostic = fun (expr: Syn.Cst.match_expression) ->
     ~severity:Warning
     ~kind:(Api.Diagnostic.Known {
       rule_id = package_rule_id;
-      message = explanation.Api.Explanation.message;
+      message = explanation.Api.Explanation.message
     })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Prefer Option.map for this Some/None-preserving transformation."

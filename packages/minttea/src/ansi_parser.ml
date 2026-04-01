@@ -5,7 +5,7 @@ open Event
 type Message.t +=
   | BracketedPasteStart
   | BracketedPasteEnd
-  | CursorPosition of { row: int; col: int; }
+  | CursorPosition of { row: int; col: int }
   | WindowTitleChange of string
 
 (** ANSI Parser State Machine
@@ -167,7 +167,7 @@ let csi_to_event = fun p ->
   | Some 'R' -> (* Cursor position report *)
     (
       match p.params with
-      | [row;col] -> Some (Event.Custom (CursorPosition {row;col;}))
+      | [row;col] -> Some (Event.Custom (CursorPosition { row; col }))
       | _ -> None
     )
   | _ ->

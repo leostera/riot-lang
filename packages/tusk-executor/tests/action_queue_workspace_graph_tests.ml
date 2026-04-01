@@ -15,7 +15,7 @@ let make_test_package = fun name ->
     build_dependencies = [];
     foreign_dependencies = [];
     binaries = [];
-    library = Some {path = Path.v "src/lib.ml";};
+    library = Some { path = Path.v "src/lib.ml" };
     sources =
       {
         src = [];
@@ -24,7 +24,7 @@ let make_test_package = fun name ->
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
   }
@@ -57,7 +57,7 @@ let failed_result = fun node_id ->
   let now = Time.Instant.now () in
   Tusk_executor.Action_queue.{
     node_id;
-    status = Failed (ExecutionFailed {message = "boom";});
+    status = Failed (ExecutionFailed { message = "boom" });
     duration = Time.Duration.zero;
     started_at = now;
     completed_at = now;
@@ -68,12 +68,12 @@ let queue_respects_dependency_order = fun () ->
   let dep_node = make_action_node
     "kernel"
     ~actions:[
-      Tusk_planner.Action.WriteFile {destination = Path.v "kernel.txt";content = "kernel";};
+      Tusk_planner.Action.WriteFile { destination = Path.v "kernel.txt"; content = "kernel" };
     ] in
   let app_node = make_action_node
     "app"
     ~deps:[ dep_node.id ]
-    ~actions:[ Tusk_planner.Action.WriteFile {destination = Path.v "app.txt";content = "app";}; ] in
+    ~actions:[ Tusk_planner.Action.WriteFile { destination = Path.v "app.txt"; content = "app" }; ] in
   Tusk_executor.Action_queue.queue queue app_node;
   Tusk_executor.Action_queue.queue queue dep_node;
   match Tusk_executor.Action_queue.next queue with

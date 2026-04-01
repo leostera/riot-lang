@@ -41,36 +41,17 @@ type request = {
 (** JSON-RPC 2.0 Request - represents both regular requests and notifications *)
 (** Standard JSON-RPC 2.0 error codes *)
 type error =
-  | ParseError of {
-      raw_input: string;
-      parse_error: string;
-    }
+  | ParseError of { raw_input: string; parse_error: string }
   (** Client failed to parse JSON or JSON-RPC structure *)
-  | InvalidRequest of {
-      request_json: Json.t;
-      reason: string;
-    }
+  | InvalidRequest of { request_json: Json.t; reason: string }
   (** Received malformed JSON-RPC request/response *)
-  | MethodNotFound of {
-      method_name: string;
-    }
+  | MethodNotFound of { method_name: string }
   (** Method does not exist *)
-  | InvalidParams of {
-      method_name: string;
-      params: params;
-      reason: string;
-    }
+  | InvalidParams of { method_name: string; params: params; reason: string }
   (** Invalid method parameters *)
-  | InternalError of {
-      context: string;
-      details: string;
-    }
+  | InternalError of { context: string; details: string }
   (** Internal client error (transport, serialization, etc.) *)
-  | UnknownServerError of {
-      code: int;
-      message: string;
-      data: Json.t option;
-    }
+  | UnknownServerError of { code: int; message: string; data: Json.t option }
 (** Server returned a JSON-RPC error object that couldn't be parsed into a
           typed response variant *)
 (** Client-side errors with rich context information. Includes

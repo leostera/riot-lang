@@ -21,7 +21,7 @@ open Std
 (** Keyword type from the `Keyword` module. *)
 type keyword = Keyword.t
 type literal =
-  | String of { value: string; terminated: bool; }
+  | String of { value: string; terminated: bool }
   (** String literal. `terminated` is false if the closing quote is missing.
       *)
   | Int of int
@@ -49,8 +49,8 @@ type delimiter =
 (** `object` / `end` pair *)
 (** A token with its kind and source location. *)
 type trivia_kind =
-  | CommentTrivia of { value: string; terminated: bool; }
-  | DocstringTrivia of { value: string; terminated: bool; }
+  | CommentTrivia of { value: string; terminated: bool }
+  | DocstringTrivia of { value: string; terminated: bool }
   | WhitespaceTrivia
 type trivia = {
   kind: trivia_kind;
@@ -72,9 +72,9 @@ type token_kind =
   | CloseDelim of delimiter
   (** Closing delimiter: `)`, `}`, `]`, `end` *)
   (* Trivia *)
-  | Comment of { value: string; terminated: bool; }
+  | Comment of { value: string; terminated: bool }
   (** Block comment `(* ... *)`. `terminated` is false if unclosed. *)
-  | Docstring of { value: string; terminated: bool; }
+  | Docstring of { value: string; terminated: bool }
   (** Documentation comment `(** ... *)`. `terminated` is false if unclosed.
       *)
   | Whitespace

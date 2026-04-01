@@ -29,7 +29,7 @@ let set_raw_mode = fun () ->
     stdout = IO.stdout;
     stderr = IO.stderr;
     original_attrs = termios;
-    size = {rows = 24;cols = 80;};
+    size = { rows = 24; cols = 80 };
     mode = Immediate;
     input_buffer = None;
     data_buffer = None;

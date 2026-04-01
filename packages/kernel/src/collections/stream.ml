@@ -34,6 +34,6 @@ let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun seq ->
 
     (* Unknown size for lazy sequences *)
 
-    let clone = fun state -> {seq = state.seq;}
+    let clone = fun state -> { seq = state.seq }
   end in
-  Iter.MutIterator.make (module StreamMutIter) {seq;}
+  Iter.MutIterator.make (module StreamMutIter) { seq }

@@ -6,12 +6,8 @@ type content_type = {
   parameters: (string * string) List.t;
 }
 type content_disposition =
-  | Inline of {
-      filename: string Option.t;
-    }
-  | Attachment of {
-      filename: string Option.t;
-    }
+  | Inline of { filename: string Option.t }
+  | Attachment of { filename: string Option.t }
 type encoding =
   | SevenBit
   | EightBit
@@ -32,7 +28,7 @@ type part = {
 }
 type t =
   | SinglePart of part
-  | MultiPart of { boundary: string; parts: t List.t; }
+  | MultiPart of { boundary: string; parts: t List.t }
 val parse: headers:(string * string) List.t -> body:string -> (t, string) Result.t
 
 val attachments: t -> part List.t

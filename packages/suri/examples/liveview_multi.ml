@@ -34,13 +34,13 @@ module Counter = struct
 
   let deserialize_args = fun _ -> Ok ()
 
-  let init = fun _conn () -> {count = 0;}
+  let init = fun _conn () -> { count = 0 }
 
   let update = fun event state ->
     match event with
-    | LiveView.App Increment -> {count = state.count + 1;}
-    | App Decrement -> {count = state.count - 1;}
-    | App Reset -> {count = 0;}
+    | LiveView.App Increment -> { count = state.count + 1 }
+    | App Decrement -> { count = state.count - 1 }
+    | App Reset -> { count = 0 }
     | _ -> state
 
   let render = fun ~state () ->
@@ -101,14 +101,14 @@ module Status = struct
       (self ())
       ~interval:(Time.Duration.from_secs 1)
       (TimerTick Refresh) in
-    {timer;updates = 0;last_update = "Not refreshed yet";}
+    { timer; updates = 0; last_update = "Not refreshed yet" }
 
   let update = fun event state ->
     match event with
     | Custom (TimerTick Refresh)
     | App Refresh ->
         let timestamp = Datetime.(now () |> to_iso8601) in
-        {state with updates = state.updates + 1;last_update = timestamp;}
+        { state with updates = state.updates + 1; last_update = timestamp }
     | _ -> state
 
   let render = fun ~state () ->

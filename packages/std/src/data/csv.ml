@@ -16,8 +16,8 @@ type config = {
 }
 
 type error =
-  | Unterminated_quote of { line: int; column: int; }
-  | Invalid_escape_sequence of { line: int; column: int; }
+  | Unterminated_quote of { line: int; column: int }
+  | Invalid_escape_sequence of { line: int; column: int }
   | Empty_input
   | Unknown_error of string
 
@@ -33,10 +33,10 @@ let error_to_string = function
   | Empty_input -> "Empty CSV input"
   | Unknown_error msg -> "Unknown error: " ^ msg
 
-let default_config = {delimiter = ',';quote = '"';escape = '"';trim_fields = false;}
+let default_config = { delimiter = ','; quote = '"'; escape = '"'; trim_fields = false }
 
 let config = fun ?(delimiter = ',') ?(quote = '"') ?(escape = '"') ?(trim_fields = false) () ->
-  {delimiter;quote;escape;trim_fields;}
+  { delimiter; quote; escape; trim_fields }
 
 let of_string = fun ?(config = default_config) str ->
   let cursor = Iter.MutCursor.create str in
@@ -71,7 +71,7 @@ let of_string = fun ?(config = default_config) str ->
         let rec loop () =
           match peek () with
           | None ->
-              raise_error (Unterminated_quote {line = !line;column = !column;})
+              raise_error (Unterminated_quote { line = !line; column = !column })
           | Some c when c = config.quote -> (
               advance ();
               match peek () with
@@ -93,7 +93,7 @@ let of_string = fun ?(config = default_config) str ->
                   advance ();
                   loop ()
               | None ->
-                  raise_error (Unterminated_quote {line = !line;column = !column;})
+                  raise_error (Unterminated_quote { line = !line; column = !column })
               | _ ->
                   Buffer.add_char buffer c;
                   loop ()

@@ -91,7 +91,7 @@ let send_settings_ack = fun conn ->
 (** Send HTTP/2 HEADERS frame *)
 let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
   let headers =
-    List.map (fun ((name, value)) -> {Http.Http2.Hpack.name;value;}) headers
+    List.map (fun ((name, value)) -> { Http.Http2.Hpack.name; value }) headers
   in
   let header_block = Http.Http2.Hpack.encode hpack_encoder ~headers ~sensitive_headers:[] |> Bytes.to_string in
   let frame = Http.Http2.Frame.headers ~stream_id ~end_stream ~end_headers:true header_block in
@@ -174,7 +174,7 @@ let process_frame = fun conn state frame ->
                     stream_id;
                     headers = Cell.create [];
                     data_chunks = Cell.create [];
-                    end_stream = Cell.create false;
+                    end_stream = Cell.create false
                   } in
                   let _ = HashMap.insert state.streams stream_id s in
                   s

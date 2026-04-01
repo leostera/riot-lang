@@ -69,26 +69,26 @@ let update = fun event model ->
       (model, Command.Quit)
   | Event.KeyDown (Event.Up, _) ->
       let viewport = Viewport.scroll_up model.viewport ~lines:1 in
-      ({model with viewport;}, Command.Noop)
+      ({ model with viewport }, Command.Noop)
   | Event.KeyDown (Event.Down, _) ->
       let viewport = Viewport.scroll_down model.viewport ~lines:1 in
-      ({model with viewport;}, Command.Noop)
+      ({ model with viewport }, Command.Noop)
   | Event.KeyDown (Event.PageUp, _) ->
       let height = Viewport.height model.viewport in
       let viewport = Viewport.scroll_up model.viewport ~lines:height in
-      ({model with viewport;}, Command.Noop)
+      ({ model with viewport }, Command.Noop)
   | Event.KeyDown (Event.PageDown, _) ->
       let height = Viewport.height model.viewport in
       let viewport = Viewport.scroll_down model.viewport ~lines:height in
-      ({model with viewport;}, Command.Noop)
+      ({ model with viewport }, Command.Noop)
   | Event.KeyDown (Event.Home, _) ->
       (* Scroll to top by scrolling up by a large amount *)
       let viewport = Viewport.scroll_up model.viewport ~lines:10_000 in
-      ({model with viewport;}, Command.Noop)
+      ({ model with viewport }, Command.Noop)
   | Event.KeyDown (Event.End, _) ->
       (* Scroll to bottom by scrolling down by a large amount *)
       let viewport = Viewport.scroll_down model.viewport ~lines:10_000 in
-      ({model with viewport;}, Command.Noop)
+      ({ model with viewport }, Command.Noop)
   | _ ->
       (model, Command.Noop)
 
@@ -141,6 +141,6 @@ let () =
   let content = generate_content () in
   (* Create viewport with fixed height *)
   let viewport = Viewport.make ~width:70 ~height:15 |> Viewport.set_content ~content in
-  let initial_model = {viewport;content;} in
+  let initial_model = { viewport; content } in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

@@ -6,7 +6,7 @@ type t = {
   length: int;
 }
 
-let create = fun source -> {source;pos = 0;length = String.length source;}
+let create = fun source -> { source; pos = 0; length = String.length source }
 
 let source = fun t -> t.source
 
@@ -33,14 +33,14 @@ let advance = fun t ->
   if is_eof t then
     None
   else
-    Some {t with pos = t.pos + 1;}
+    Some { t with pos = t.pos + 1 }
 
 let advance_by = fun t n ->
   let new_pos = t.pos + n in
   if new_pos > t.length then
     None
   else
-    Some {t with pos = new_pos;}
+    Some { t with pos = new_pos }
 
 let take_while = fun t f ->
   let start = t.pos in
@@ -54,7 +54,7 @@ let take_while = fun t f ->
   in
   let end_pos = loop start in
   let taken = String.sub t.source start (end_pos - start) in
-  (taken, {t with pos = end_pos;})
+  (taken, { t with pos = end_pos })
 
 let skip_while = fun t f ->
   let _, new_cursor = take_while t f in
@@ -74,14 +74,14 @@ let take_until = fun t f ->
   | None -> None
   | Some end_pos ->
       let taken = String.sub t.source start (end_pos - start) in
-      Some (taken, {t with pos = end_pos;})
+      Some (taken, { t with pos = end_pos })
 
 let take_n = fun t n ->
   if t.pos + n > t.length then
     None
   else
     let taken = String.sub t.source t.pos n in
-    Some (taken, {t with pos = t.pos + n;})
+    Some (taken, { t with pos = t.pos + n })
 
 let remaining = fun t ->
   if is_eof t then

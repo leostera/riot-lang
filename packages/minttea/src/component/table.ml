@@ -20,7 +20,7 @@ type t = {
   cursor_char: string;
 }
 
-let column = fun ~title ~width -> {title;width;}
+let column = fun ~title ~width -> { title; width }
 
 let make = fun columns rows ->
   {
@@ -34,19 +34,19 @@ let make = fun columns rows ->
     cursor_char = "> ";
   }
 
-let set_height = fun t ~height:h -> {t with height = max 0 h;}
+let set_height = fun t ~height:h -> { t with height = max 0 h }
 
-let set_width = fun t ~width:w -> {t with width = max 0 w;}
+let set_width = fun t ~width:w -> { t with width = max 0 w }
 
-let set_show_header = fun t ~show -> {t with show_header = show;}
+let set_show_header = fun t ~show -> { t with show_header = show }
 
-let set_cursor_char = fun t ~char:c -> {t with cursor_char = c;}
+let set_cursor_char = fun t ~char:c -> { t with cursor_char = c }
 
 let columns = fun t -> t.columns
 
 let rows = fun t -> t.rows
 
-let set_columns = fun t ~columns:cols -> {t with columns = cols;}
+let set_columns = fun t ~columns:cols -> { t with columns = cols }
 
 let set_rows = fun t ~rows ->
   let cursor =
@@ -55,7 +55,7 @@ let set_rows = fun t ~rows ->
     else
       t.cursor
   in
-  {t with rows;cursor;}
+  { t with rows; cursor }
 
 let selected_row = fun t ->
   if List.length t.rows = 0 then
@@ -74,28 +74,28 @@ let cursor = fun t -> t.cursor
 let clamp_cursor = fun t ->
   let len = List.length t.rows in
   if len = 0 then
-    {t with cursor = 0;}
+    { t with cursor = 0 }
   else
-    {t with cursor = max 0 (min (len - 1) t.cursor);}
+    { t with cursor = max 0 (min (len - 1) t.cursor) }
 
-let select = fun t idx -> {t with cursor = idx;} |> clamp_cursor
+let select = fun t idx -> { t with cursor = idx } |> clamp_cursor
 
-let move_up = fun t n -> {t with cursor = t.cursor - n;} |> clamp_cursor
+let move_up = fun t n -> { t with cursor = t.cursor - n } |> clamp_cursor
 
-let move_down = fun t n -> {t with cursor = t.cursor + n;} |> clamp_cursor
+let move_down = fun t n -> { t with cursor = t.cursor + n } |> clamp_cursor
 
-let goto_top = fun t -> {t with cursor = 0;}
+let goto_top = fun t -> { t with cursor = 0 }
 
 let goto_bottom = fun t ->
   let len = List.length t.rows in
   if len = 0 then
     t
   else
-    {t with cursor = len - 1;}
+    { t with cursor = len - 1 }
 
-let focus = fun t -> {t with focused = true;}
+let focus = fun t -> { t with focused = true }
 
-let blur = fun t -> {t with focused = false;}
+let blur = fun t -> { t with focused = false }
 
 let is_focused = fun t -> t.focused
 

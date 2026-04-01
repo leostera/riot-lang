@@ -19,7 +19,7 @@ let parse_size = fun cursor ->
       | Some cursor -> (
           try
             let size = int_of_string ("0x" ^ size_hex) in
-            Done {value = size;remaining = Cursor.remaining cursor;}
+            Done { value = size; remaining = Cursor.remaining cursor }
           with
           | _ -> Error "Invalid chunk size"
         )
@@ -33,7 +33,7 @@ let parse = fun input ->
   | Error e ->
       Error e
   | Done { value=0; remaining } ->
-      Done {value = {data = "";remaining;};remaining = "";}
+      Done { value = { data = ""; remaining }; remaining = "" }
   | Done { value=size; remaining } -> (
       let cursor = Cursor.create remaining in
       match Cursor.take_n cursor size with
@@ -41,6 +41,9 @@ let parse = fun input ->
       | Some (data, cursor) -> (
           match Cursor.advance_by cursor 2 with
           | None -> Need_more
-          | Some cursor -> Done {value = {data;remaining = Cursor.remaining cursor;};remaining = "";}
+          | Some cursor -> Done {
+            value = { data; remaining = Cursor.remaining cursor };
+            remaining = ""
+          }
         )
     )

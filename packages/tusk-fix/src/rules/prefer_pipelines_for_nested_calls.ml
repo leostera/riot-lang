@@ -40,7 +40,7 @@ let threshold = 4
 let make_diagnostic = fun expr ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
     ~suggestion:"Rewrite this call chain as a pipeline."
     ()

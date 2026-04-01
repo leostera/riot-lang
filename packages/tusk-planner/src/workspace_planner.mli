@@ -21,23 +21,11 @@ type package_plan = {
     Returns the ordered list of packages to build. Does NOT plan module/action
     graphs - that's done lazily per-package by the executor. *)
 type plan_error =
-  | PackageNotFound of {
-      name: string;
-      available: string list;
-    }
-  | PackagesNotFound of {
-      names: string list;
-      available: string list;
-    }
-  | CycleDetected of {
-      cycle: string list;
-    }
-  | MissingDependencies of {
-      missing: Package_graph.missing_dependency list;
-    }
-  | PackageLoadFailed of {
-      errors: Workspace_manager.load_error list;
-    }
+  | PackageNotFound of { name: string; available: string list }
+  | PackagesNotFound of { names: string list; available: string list }
+  | CycleDetected of { cycle: string list }
+  | MissingDependencies of { missing: Package_graph.missing_dependency list }
+  | PackageLoadFailed of { errors: Workspace_manager.load_error list }
 val plan_workspace:
   workspace:Workspace.t ->
   target:target ->

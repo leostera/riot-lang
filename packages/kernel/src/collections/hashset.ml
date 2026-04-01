@@ -104,12 +104,12 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun set ->
         (None, state)
       else
         let item = List.nth state.items state.pos in
-        (Some item, {state with pos = state.pos + 1;})
+        (Some item, { state with pos = state.pos + 1 })
 
     let size = fun state -> max 0 (List.length state.items - state.pos)
   end in
   let items = to_list set in
-  Iter.Iterator.make (module SetIter) {SetIter.items;pos = 0;}
+  Iter.Iterator.make (module SetIter) { SetIter.items; pos = 0 }
 
 let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun set ->
   let module SetIter = struct
@@ -130,7 +130,7 @@ let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun set ->
 
     let size = fun state -> max 0 (List.length state.items - state.pos)
 
-    let clone = fun state -> {items = state.items;pos = state.pos;}
+    let clone = fun state -> { items = state.items; pos = state.pos }
   end in
   let items = to_list set in
-  Iter.MutIterator.make (module SetIter) {SetIter.items;pos = 0;}
+  Iter.MutIterator.make (module SetIter) { SetIter.items; pos = 0 }

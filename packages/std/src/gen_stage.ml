@@ -49,7 +49,7 @@ type subscription_options = {
   partition: string option;
 }
 
-let default_subscription_options = {min_demand = 5;max_demand = 1_000;partition = None;}
+let default_subscription_options = { min_demand = 5; max_demand = 1_000; partition = None }
 
 (** {1 GenStage Protocol Messages} *)
 
@@ -58,15 +58,15 @@ type Message.t +=
       consumer: Pid.t;
       subscription_ref: unit Ref.t;
       options: subscription_options;
-      reply_to: Pid.t;
+      reply_to: Pid.t
     }
-  | GenStage_subscribe_reply of { result: (unit, string) result; subscription_ref: unit Ref.t; }
-  | GenStage_ask of { subscription_ref: unit Ref.t; count: int; }
+  | GenStage_subscribe_reply of { result: (unit, string) result; subscription_ref: unit Ref.t }
+  | GenStage_ask of { subscription_ref: unit Ref.t; count: int }
   | GenStage_events: {
       subscription_ref: unit Ref.t;
       events: Message.t list;
     } -> Message.t
-  | GenStage_cancel of { subscription_ref: unit Ref.t; }
+  | GenStage_cancel of { subscription_ref: unit Ref.t }
 
 (** {1 Producer Stage} *)
 

@@ -285,7 +285,7 @@ let matches = fun ((op, req_version)) test_version ->
       (* If only major.minor: >= version and < next major *)
       let at_least = gte test_version req_version in
       let below_next =
-        let next_minor = {req_version with minor = req_version.minor + 1;patch = 0;pre = [];} in
+        let next_minor = { req_version with minor = req_version.minor + 1; patch = 0; pre = [] } in
         lt test_version next_minor
       in
       at_least && below_next

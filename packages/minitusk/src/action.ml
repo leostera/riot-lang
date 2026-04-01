@@ -1,20 +1,14 @@
 open Stdlib
 
 type t =
-  | WriteFile of {
-      path: string;
-      content: string;
-    }
-  | CopyFile of {
-      src: string;
-      dst: string;
-    }
+  | WriteFile of { path: string; content: string }
+  | CopyFile of { src: string; dst: string }
   | CompileInterface of {
       sandbox_dir: string;
       src_file: string;
       output: string;
       includes: string list;
-      opens: string list;
+      opens: string list
     }
   | CompileImplementation of {
       sandbox_dir: string;
@@ -22,17 +16,14 @@ type t =
       output: string;
       includes: string list;
       opens: string list;
-      is_aliases: bool;
+      is_aliases: bool
     }
-  | CompileC of {
-      sandbox_dir: string;
-      src_file: string;
-    }
+  | CompileC of { sandbox_dir: string; src_file: string }
   | CreateArchive of {
       sandbox_dir: string;
       archive_name: string;
       object_files: string list;
-      includes: string list;
+      includes: string list
     }
   | CreateExecutable of {
       sandbox_dir: string;
@@ -41,10 +32,7 @@ type t =
       archive: string;
       dependencies: string list;  (* List of dependency package names *)
     }
-  | SetPermissions of {
-      path: string;
-      executable: bool;
-    }
+  | SetPermissions of { path: string; executable: bool }
 
 type build_plan = {
   package_name: Dep_graph.Module_name.t;
@@ -464,7 +452,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
     (fun node ->
       let open Dep_graph in
         match node.value with
-        | { kind=H; file=Concrete path; _ } -> actions := CopyFile {src = path;dst = path;} :: !actions
+        | { kind=H; file=Concrete path; _ } -> actions := CopyFile { src = path; dst = path } :: !actions
         | _ -> ())
     dep_graph;
   (* Generate actions in dependency order *)
@@ -474,7 +462,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
         match node.value with
         | { kind=MLI mod_; file=Concrete path; open_modules; _ } ->
             (* Copy source file to sandbox *)
-            actions := CopyFile {src = path;dst = path;} :: !actions;
+            actions := CopyFile { src = path; dst = path } :: !actions;
             (* Compile interface *)
             let output = Module.cmi mod_ in
             let opens = opens open_modules in
@@ -490,7 +478,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
             outputs := Filename.concat sandbox_dir output :: !outputs
         | { kind=ML mod_; file=Concrete path; open_modules; _ } ->
             (* Copy source file to sandbox *)
-            actions := CopyFile {src = path;dst = path;} :: !actions;
+            actions := CopyFile { src = path; dst = path } :: !actions;
             (* Compile implementation *)
             let output = Module.cmo mod_ in
             let opens = opens open_modules in
@@ -508,7 +496,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
             outputs := Filename.concat sandbox_dir output :: !outputs
         | { file=Generated { path; contents }; kind=ML mod_; open_modules; _ } ->
             (* Write generated .ml file *)
-            let write = WriteFile {path;content = contents;} in
+            let write = WriteFile { path; content = contents } in
             actions := write :: !actions;
             (* Compile the generated file *)
             let output = Module.cmo mod_ in
@@ -532,7 +520,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
               outputs := Filename.concat sandbox_dir cmi_output :: !outputs
         | { file=Generated { path; contents }; kind=MLI mod_; open_modules; _;  } ->
             (* Write generated .mli file *)
-            let write = WriteFile {path;content = contents;} in
+            let write = WriteFile { path; content = contents } in
             actions := write :: !actions;
             (* Compile the generated interface file *)
             let output = Module.cmi mod_ in
@@ -549,13 +537,13 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
             outputs := Filename.concat sandbox_dir output :: !outputs
         | { file=Generated { path; contents }; _ } ->
             (* Other generated files (not .ml or .mli) *)
-            let action = WriteFile {path;content = contents;} in
+            let action = WriteFile { path; content = contents } in
             actions := action :: !actions
         | { kind=C; file=Concrete path; _ } ->
             (* Copy and compile C files *)
-            actions := CopyFile {src = path;dst = path;} :: !actions;
+            actions := CopyFile { src = path; dst = path } :: !actions;
             (* Note: CompileC will get cc_flags from the package when executed *)
-            let compile = CompileC {sandbox_dir;src_file = path;} in
+            let compile = CompileC { sandbox_dir; src_file = path } in
             actions := compile :: !actions;
             (* The .o file is created in the current directory with just the basename *)
             let obj_basename = Filename.basename (Filename.chop_extension path) ^ ".o" in
@@ -580,7 +568,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
           sandbox_dir;
           archive_name;
           object_files = all_objects;
-          includes = [];
+          includes = []
         } in
         actions := archive :: !actions;
         outputs := Filename.concat sandbox_dir archive_name :: !outputs
@@ -595,7 +583,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
       (fun (binary: Package.binary) ->
         Printf.printf "  Building binary: %s from %s\n" binary.name binary.path;
         (* Copy the binary source *)
-        actions := CopyFile {src = binary.path;dst = binary.path;} :: !actions;
+        actions := CopyFile { src = binary.path; dst = binary.path } :: !actions;
         (* Compile it with -open Package to access library modules *)
         let binary_basename = Filename.basename binary.path in
         let binary_cmo = Filename.chop_extension binary_basename ^ ".cmo" in
@@ -620,7 +608,7 @@ let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
         in
         actions := link_action :: !actions;
         (* Make it executable *)
-        let chmod_action = SetPermissions {path = binary.name;executable = true;} in
+        let chmod_action = SetPermissions { path = binary.name; executable = true } in
         actions := chmod_action :: !actions;
         outputs := Filename.concat sandbox_dir binary.name :: !outputs)
       (Package.binaries dep_graph.package)

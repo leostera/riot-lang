@@ -22,7 +22,7 @@ let make_diagnostic = fun token ->
   let original = Syn.Ceibo.Red.SyntaxToken.text token in
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:(("Rename " ^ original ^ " to a descriptive type name"))
     ()

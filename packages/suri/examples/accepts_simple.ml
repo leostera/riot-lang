@@ -67,7 +67,7 @@ let () =
               types = [ "application/json" ];
               check_accept = true;
               check_content_type = true;
-              on_reject = None;
+              on_reject = None
             }
             [];
           router routes;

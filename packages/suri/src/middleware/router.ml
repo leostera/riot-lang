@@ -7,21 +7,14 @@ type route_method =
   | AnyMethod
 
 type route =
-  | Route of {
-      meth: route_method;
-      path: string;
-      handler: handler;
-    }
-  | Scope of {
-      prefix: string;
-      routes: route list;
-    }
+  | Route of { meth: route_method; path: string; handler: handler }
+  | Scope of { prefix: string; routes: route list }
 
 type t = route list
 
-let route = fun meth path handler -> Route {meth = SpecificMethod meth;path;handler;}
+let route = fun meth path handler -> Route { meth = SpecificMethod meth; path; handler }
 
-let any = fun path handler -> Route {meth = AnyMethod;path;handler;}
+let any = fun path handler -> Route { meth = AnyMethod; path; handler }
 
 let get = fun path handler -> route Get path handler
 
@@ -35,7 +28,7 @@ let delete = fun path handler -> route Delete path handler
 
 let head = fun path handler -> route Head path handler
 
-let scope = fun prefix routes -> Scope {prefix;routes;}
+let scope = fun prefix routes -> Scope { prefix; routes }
 
 let websocket = fun (type a s) path ((module H : Channel.Handler.Intf with type args = a and type state = s)) (
   args: a

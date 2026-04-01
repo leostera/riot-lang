@@ -35,11 +35,11 @@ type 'value t = {
   nodes: (Node_id.t, 'value node) Hashtbl.t;
 }
 
-let make = fun () -> {nodes = Hashtbl.create 100;}
+let make = fun () -> { nodes = Hashtbl.create 100 }
 
 let add_node = fun graph value ->
   let id = Node_id.next () in
-  let node = {id;deps = [];value;} in
+  let node = { id; deps = []; value } in
   Hashtbl.add graph.nodes id node;
   node
 

@@ -6,14 +6,8 @@ type severity =
   | Info
   | Hint
 type kind =
-  | Known of {
-      rule_id: string;
-      message: string;
-    }
-  | Generic of {
-      rule_id: string;
-      message: string;
-    }
+  | Known of { rule_id: string; message: string }
+  | Generic of { rule_id: string; message: string }
 type t = {
   severity: severity;
   kind: kind;

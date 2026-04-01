@@ -75,7 +75,7 @@ module SSEIterator = struct
         if data = "[DONE]" then
           Some (None, remaining)
         else
-          let event = {data;event_type = !event_type;id = !id;} in
+          let event = { data; event_type = !event_type; id = !id } in
           Some (Some event, remaining)
 
   let rec next = fun state ->
@@ -119,9 +119,9 @@ module SSEIterator = struct
 
   (* Unknown size for streaming *)
 
-  let clone = fun state -> {conn = state.conn;buffer = state.buffer;done_ = state.done_;}
+  let clone = fun state -> { conn = state.conn; buffer = state.buffer; done_ = state.done_ }
 end
 
 let await = fun conn ->
   let module I = SSEIterator in
-  Iter.MutIterator.make (module I) {I.conn;buffer = "";done_ = false;}
+  Iter.MutIterator.make (module I) { I.conn; buffer = ""; done_ = false }

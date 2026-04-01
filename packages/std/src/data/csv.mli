@@ -91,8 +91,8 @@ type config = {
   trim_fields: bool;
 }
 type error =
-  | Unterminated_quote of { line: int; column: int; }
-  | Invalid_escape_sequence of { line: int; column: int; }
+  | Unterminated_quote of { line: int; column: int }
+  | Invalid_escape_sequence of { line: int; column: int }
   | Empty_input
   | Unknown_error of string
 (** CSV parsing errors with position information *)

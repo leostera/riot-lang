@@ -70,29 +70,12 @@ type value =
 (** TOML value representation supporting strings, integers, booleans, arrays, and
           tables. *)
 type error =
-  | Invalid_path of {
-      path: string;
-    }
-  | File_read_error of {
-      path: string;
-      reason: string;
-    }
-  | Parse_error of {
-      position: int;
-      context: string;
-      reason: string;
-    }
-  | Unterminated_string of {
-      position: int;
-    }
-  | Unterminated_array of {
-      position: int;
-    }
-  | Unexpected_char of {
-      position: int;
-      found: char;
-      expected: string;
-    }
+  | Invalid_path of { path: string }
+  | File_read_error of { path: string; reason: string }
+  | Parse_error of { position: int; context: string; reason: string }
+  | Unterminated_string of { position: int }
+  | Unterminated_array of { position: int }
+  | Unexpected_char of { position: int; found: char; expected: string }
 (** TOML parsing errors with position information for debugging. *)
 (** {1 Parsing} *)
 (** Parses a string into TOML and returns the root table.

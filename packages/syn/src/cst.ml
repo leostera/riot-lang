@@ -105,16 +105,8 @@ type trivia =
 
 module Ident = struct
   type t =
-    | Ident of {
-        syntax_node: syntax_node;
-        name_token: Token.t;
-      }
-    | Qualified of {
-        syntax_node: syntax_node;
-        prefix: t;
-        dot_token: Token.t;
-        name_token: Token.t;
-      }
+    | Ident of { syntax_node: syntax_node; name_token: Token.t }
+    | Qualified of { syntax_node: syntax_node; prefix: t; dot_token: Token.t; name_token: Token.t }
 
   let syntax_node = function
     | Ident { syntax_node; _ } -> syntax_node
@@ -144,7 +136,7 @@ module Ident = struct
         let syntax_token = Red.new_token
           green_token
           (Span.make ~start:0 ~end_:(String.length segment)) in
-        {Token.syntax_token = syntax_token;}
+        { Token.syntax_token = syntax_token }
       in
       let make_node () = Green.make_node_list ~kind:Syntax_kind.PATH_EXPR [] |> Red.new_root in
       let segments = String.split_on_char '.' text in
@@ -155,7 +147,7 @@ module Ident = struct
           let first_token = make_ident_segment first in
           let first_width = String.length first in
           let first_node = make_node () in
-          let initial = Ident {syntax_node = first_node;name_token = first_token;} in
+          let initial = Ident { syntax_node = first_node; name_token = first_token } in
           List.fold_left
             (fun ((prefix, width)) segment ->
               if String.length segment = 0 then
@@ -163,7 +155,7 @@ module Ident = struct
               let name_token = make_ident_segment segment in
               let dot_token = make_ident_segment "." in
               let width = width + 1 + String.length segment in
-              (Qualified {syntax_node = make_node ();prefix;dot_token;name_token;}, width))
+              (Qualified { syntax_node = make_node (); prefix; dot_token; name_token }, width))
             (initial, first_width)
             rest |> fst
 
@@ -189,9 +181,7 @@ and extension = {
 }
 
 and payload =
-  | Opaque of {
-      tokens: Token.t list;
-    }
+  | Opaque of { tokens: Token.t list }
 
 and object_type_field = {
   syntax_node: syntax_node;
@@ -202,13 +192,8 @@ and object_type_field = {
 }
 
 and type_binder =
-  | Quoted of {
-      syntax_node: syntax_node;
-      name_token: Token.t;
-    }
-  | Bare of {
-      name_token: Token.t;
-    }
+  | Quoted of { syntax_node: syntax_node; name_token: Token.t }
+  | Bare of { name_token: Token.t }
 
 and record_type_field = {
   syntax_node: syntax_node;
@@ -231,12 +216,12 @@ and poly_variant_tag = {
 
 and poly_variant_bound =
   | Exact
-  | UpperBound of { marker_token: Token.t; }
-  | LowerBound of { marker_token: Token.t; }
+  | UpperBound of { marker_token: Token.t }
+  | LowerBound of { marker_token: Token.t }
 
 and row_field =
   | Tag of poly_variant_tag
-  | Inherit of { bar_token: Token.t option; syntax_node: syntax_node; type_: core_type; }
+  | Inherit of { bar_token: Token.t option; syntax_node: syntax_node; type_: core_type }
 
 and poly_variant = {
   syntax_node: syntax_node;
@@ -255,7 +240,7 @@ and type_constraint = {
 
 and private_flag =
   | Public
-  | Private of { private_token: Token.t; }
+  | Private of { private_token: Token.t }
 
 and module_type_constraint = {
   syntax_node: syntax_node;
@@ -279,186 +264,174 @@ and functor_parameter = {
 }
 
 and arrow_label =
-  | Named of {
-      sigil_token: Token.t option;
-      label_token: Token.t;
-      colon_token: Token.t;
-    }
-  | OptionalNamed of {
-      sigil_token: Token.t;
-      label_token: Token.t;
-      colon_token: Token.t;
-    }
+  | Named of { sigil_token: Token.t option; label_token: Token.t; colon_token: Token.t }
+  | OptionalNamed of { sigil_token: Token.t; label_token: Token.t; colon_token: Token.t }
 
 and core_type =
-  | Wildcard of { syntax_node: syntax_node; wildcard_token: Token.t; }
-  | Var of { syntax_node: syntax_node; sigil_token: Token.t option; name_token: Token.t; }
-  | Constr of { syntax_node: syntax_node; constructor_path: Ident.t; arguments: core_type list; }
+  | Wildcard of { syntax_node: syntax_node; wildcard_token: Token.t }
+  | Var of { syntax_node: syntax_node; sigil_token: Token.t option; name_token: Token.t }
+  | Constr of { syntax_node: syntax_node; constructor_path: Ident.t; arguments: core_type list }
   | Class of {
       syntax_node: syntax_node;
       hash_token: Token.t;
       class_path: Ident.t;
-      arguments: core_type list;
+      arguments: core_type list
     }
   | Alias of {
       syntax_node: syntax_node;
       type_: core_type;
       sigil_token: Token.t option;
-      name_token: Token.t;
+      name_token: Token.t
     }
-  | Attribute of { syntax_node: syntax_node; type_: core_type; attribute: attribute; }
+  | Attribute of { syntax_node: syntax_node; type_: core_type; attribute: attribute }
   | Extension of extension
   | Poly of {
       syntax_node: syntax_node;
       type_keyword_token: Token.t option;
       dot_token: Token.t;
       binders: type_binder list;
-      body: core_type;
+      body: core_type
     }
   | Arrow of {
       syntax_node: syntax_node;
       label: arrow_label option;
       parameter_type: core_type;
-      result_type: core_type;
+      result_type: core_type
     }
-  | Tuple of { syntax_node: syntax_node; elements: core_type list; }
-  | Parenthesized of { syntax_node: syntax_node; inner: core_type; }
+  | Tuple of { syntax_node: syntax_node; elements: core_type list }
+  | Parenthesized of { syntax_node: syntax_node; inner: core_type }
   | PolyVariant of poly_variant
   | Record of {
       syntax_node: syntax_node;
       opening_token: Token.t;
       fields: record_type_field list;
       separator_tokens: Token.t list;
-      closing_token: Token.t;
+      closing_token: Token.t
     }
   | FirstClassModule of {
       syntax_node: syntax_node;
       opening_token: Token.t;
       package_type: package_type;
-      closing_token: Token.t;
+      closing_token: Token.t
     }
   | Object of {
       syntax_node: syntax_node;
       opening_token: Token.t;
       fields: object_type_field list;
-      closing_token: Token.t;
+      closing_token: Token.t
     }
 
 and module_type =
   | Path of Ident.t
-  | TypeOf of { syntax_node: syntax_node; of_token: Token.t; module_path: Ident.t; }
-  | Signature of { syntax_node: syntax_node; signature_syntax_node: syntax_node; }
-  | Functor of { syntax_node: syntax_node; parameters: functor_parameter list; result: module_type; }
-  | With of {
-      syntax_node: syntax_node;
-      base: module_type;
-      constraints: module_type_constraint list;
-    }
+  | TypeOf of { syntax_node: syntax_node; of_token: Token.t; module_path: Ident.t }
+  | Signature of { syntax_node: syntax_node; signature_syntax_node: syntax_node }
+  | Functor of { syntax_node: syntax_node; parameters: functor_parameter list; result: module_type }
+  | With of { syntax_node: syntax_node; base: module_type; constraints: module_type_constraint list }
   | Parenthesized of {
       syntax_node: syntax_node;
       opening_token: Token.t;
       inner: module_type;
-      closing_token: Token.t;
+      closing_token: Token.t
     }
-  | Attribute of { syntax_node: syntax_node; module_type: module_type; attribute: attribute; }
+  | Attribute of { syntax_node: syntax_node; module_type: module_type; attribute: attribute }
   | Extension of extension
 
 and class_type =
   | Path of Ident.t
-  | Signature of { syntax_node: syntax_node; fields: class_type_field list; }
+  | Signature of { syntax_node: syntax_node; fields: class_type_field list }
   | Arrow of {
       syntax_node: syntax_node;
       label: arrow_label option;
       parameter_type: core_type;
-      result_type: class_type;
+      result_type: class_type
     }
   | Parenthesized of {
       syntax_node: syntax_node;
       opening_token: Token.t;
       inner: class_type;
-      closing_token: Token.t;
+      closing_token: Token.t
     }
-  | Attribute of { syntax_node: syntax_node; class_type: class_type; attribute: attribute; }
+  | Attribute of { syntax_node: syntax_node; class_type: class_type; attribute: attribute }
   | Extension of extension
 
 and class_type_field =
-  | Inherit of { syntax_node: syntax_node; class_type: class_type; }
+  | Inherit of { syntax_node: syntax_node; class_type: class_type }
   | Value of {
       syntax_node: syntax_node;
       name_token: Token.t;
       colon_token: Token.t;
       type_: core_type;
-      modifier_tokens: Token.t list;
+      modifier_tokens: Token.t list
     }
   | Method of {
       syntax_node: syntax_node;
       name_token: Token.t;
       colon_token: Token.t;
       type_: core_type;
-      modifier_tokens: Token.t list;
+      modifier_tokens: Token.t list
     }
   | Constraint of {
       syntax_node: syntax_node;
       left: core_type;
       equals_token: Token.t;
-      right: core_type;
+      right: core_type
     }
-  | Attribute of { syntax_node: syntax_node; field: class_type_field; attribute: attribute; }
+  | Attribute of { syntax_node: syntax_node; field: class_type_field; attribute: attribute }
   | Extension of extension
 
 module CoreType = struct
   type t = core_type =
-    | Wildcard of { syntax_node: syntax_node; wildcard_token: Token.t; }
-    | Var of { syntax_node: syntax_node; sigil_token: Token.t option; name_token: Token.t; }
-    | Constr of { syntax_node: syntax_node; constructor_path: Ident.t; arguments: core_type list; }
+    | Wildcard of { syntax_node: syntax_node; wildcard_token: Token.t }
+    | Var of { syntax_node: syntax_node; sigil_token: Token.t option; name_token: Token.t }
+    | Constr of { syntax_node: syntax_node; constructor_path: Ident.t; arguments: core_type list }
     | Class of {
         syntax_node: syntax_node;
         hash_token: Token.t;
         class_path: Ident.t;
-        arguments: core_type list;
+        arguments: core_type list
       }
     | Alias of {
         syntax_node: syntax_node;
         type_: core_type;
         sigil_token: Token.t option;
-        name_token: Token.t;
+        name_token: Token.t
       }
-    | Attribute of { syntax_node: syntax_node; type_: core_type; attribute: attribute; }
+    | Attribute of { syntax_node: syntax_node; type_: core_type; attribute: attribute }
     | Extension of extension
     | Poly of {
         syntax_node: syntax_node;
         type_keyword_token: Token.t option;
         dot_token: Token.t;
         binders: type_binder list;
-        body: core_type;
+        body: core_type
       }
     | Arrow of {
         syntax_node: syntax_node;
         label: arrow_label option;
         parameter_type: core_type;
-        result_type: core_type;
+        result_type: core_type
       }
-    | Tuple of { syntax_node: syntax_node; elements: core_type list; }
-    | Parenthesized of { syntax_node: syntax_node; inner: core_type; }
+    | Tuple of { syntax_node: syntax_node; elements: core_type list }
+    | Parenthesized of { syntax_node: syntax_node; inner: core_type }
     | PolyVariant of poly_variant
     | Record of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         fields: record_type_field list;
         separator_tokens: Token.t list;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
     | FirstClassModule of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         package_type: package_type;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
     | Object of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         fields: object_type_field list;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
 
   let syntax_node = function
@@ -499,16 +472,8 @@ end
 
 module ArrowLabel = struct
   type t = arrow_label =
-    | Named of {
-        sigil_token: Token.t option;
-        label_token: Token.t;
-        colon_token: Token.t;
-      }
-    | OptionalNamed of {
-        sigil_token: Token.t;
-        label_token: Token.t;
-        colon_token: Token.t;
-      }
+    | Named of { sigil_token: Token.t option; label_token: Token.t; colon_token: Token.t }
+    | OptionalNamed of { sigil_token: Token.t; label_token: Token.t; colon_token: Token.t }
 
   let sigil_token = function
     | Named { sigil_token; _ } -> sigil_token
@@ -541,25 +506,25 @@ end
 module ModuleType = struct
   type t = module_type =
     | Path of Ident.t
-    | TypeOf of { syntax_node: syntax_node; of_token: Token.t; module_path: Ident.t; }
-    | Signature of { syntax_node: syntax_node; signature_syntax_node: syntax_node; }
+    | TypeOf of { syntax_node: syntax_node; of_token: Token.t; module_path: Ident.t }
+    | Signature of { syntax_node: syntax_node; signature_syntax_node: syntax_node }
     | Functor of {
         syntax_node: syntax_node;
         parameters: functor_parameter list;
-        result: module_type;
+        result: module_type
       }
     | With of {
         syntax_node: syntax_node;
         base: module_type;
-        constraints: module_type_constraint list;
+        constraints: module_type_constraint list
       }
     | Parenthesized of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         inner: module_type;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
-    | Attribute of { syntax_node: syntax_node; module_type: module_type; attribute: attribute; }
+    | Attribute of { syntax_node: syntax_node; module_type: module_type; attribute: attribute }
     | Extension of extension
 
   let syntax_node = function
@@ -576,20 +541,20 @@ end
 module ClassType = struct
   type t = class_type =
     | Path of Ident.t
-    | Signature of { syntax_node: syntax_node; fields: class_type_field list; }
+    | Signature of { syntax_node: syntax_node; fields: class_type_field list }
     | Arrow of {
         syntax_node: syntax_node;
         label: arrow_label option;
         parameter_type: core_type;
-        result_type: class_type;
+        result_type: class_type
       }
     | Parenthesized of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         inner: class_type;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
-    | Attribute of { syntax_node: syntax_node; class_type: class_type; attribute: attribute; }
+    | Attribute of { syntax_node: syntax_node; class_type: class_type; attribute: attribute }
     | Extension of extension
 
   let syntax_node = function
@@ -603,28 +568,28 @@ end
 
 module ClassTypeField = struct
   type t = class_type_field =
-    | Inherit of { syntax_node: syntax_node; class_type: class_type; }
+    | Inherit of { syntax_node: syntax_node; class_type: class_type }
     | Value of {
         syntax_node: syntax_node;
         name_token: Token.t;
         colon_token: Token.t;
         type_: core_type;
-        modifier_tokens: Token.t list;
+        modifier_tokens: Token.t list
       }
     | Method of {
         syntax_node: syntax_node;
         name_token: Token.t;
         colon_token: Token.t;
         type_: core_type;
-        modifier_tokens: Token.t list;
+        modifier_tokens: Token.t list
       }
     | Constraint of {
         syntax_node: syntax_node;
         left: core_type;
         equals_token: Token.t;
-        right: core_type;
+        right: core_type
       }
-    | Attribute of { syntax_node: syntax_node; field: class_type_field; attribute: attribute; }
+    | Attribute of { syntax_node: syntax_node; field: class_type_field; attribute: attribute }
     | Extension of extension
 
   let syntax_node = function
@@ -638,7 +603,7 @@ end
 
 type string_delimiter =
   | DoubleQuote
-  | Quoted of { marker: string; }
+  | Quoted of { marker: string }
 
 type integer_base =
   | Decimal
@@ -707,7 +672,7 @@ type constant =
   | Float of float_constant
   | Char of char_constant
   | Bool of bool_constant
-  | Unit of { syntax_node: syntax_node; attributes: attribute list; }
+  | Unit of { syntax_node: syntax_node; attributes: attribute list }
 
 module Constant = struct
   type t = constant =
@@ -716,7 +681,7 @@ module Constant = struct
     | Float of float_constant
     | Char of char_constant
     | Bool of bool_constant
-    | Unit of { syntax_node: syntax_node; attributes: attribute list; }
+    | Unit of { syntax_node: syntax_node; attributes: attribute list }
 
   let syntax_node = function
     | String { syntax_node; _ }
@@ -739,13 +704,8 @@ module PatternLiteral = Constant
 
 module TypeBinder = struct
   type t = type_binder =
-    | Quoted of {
-        syntax_node: syntax_node;
-        name_token: Token.t;
-      }
-    | Bare of {
-        name_token: Token.t;
-      }
+    | Quoted of { syntax_node: syntax_node; name_token: Token.t }
+    | Bare of { name_token: Token.t }
 
   let name_token = function
     | Quoted { name_token; _ }
@@ -839,12 +799,8 @@ and operator_pattern = {
 }
 
 and first_class_module_pattern_binding =
-  | Named of {
-      name_token: Token.t;
-    }
-  | Anonymous of {
-      wildcard_token: Token.t;
-    }
+  | Named of { name_token: Token.t }
+  | Anonymous of { wildcard_token: Token.t }
 
 and first_class_module_pattern = {
   syntax_node: syntax_node;
@@ -931,7 +887,7 @@ and record_pattern = {
 
 and record_pattern_closedness =
   | Closed
-  | Open of { wildcard_token: Token.t; }
+  | Open of { wildcard_token: Token.t }
 
 and record_pattern_field = {
   syntax_node: syntax_node;
@@ -1039,14 +995,8 @@ and parameter =
   | LocallyAbstract of locally_abstract_type_parameter
 
 and exception_rhs =
-  | Alias of {
-      equals_token: Token.t;
-      alias: Ident.t;
-    }
-  | Payload of {
-      of_token: Token.t;
-      payload_type: core_type;
-    }
+  | Alias of { equals_token: Token.t; alias: Ident.t }
+  | Payload of { of_token: Token.t; payload_type: core_type }
 
 and exception_declaration = {
   syntax_node: syntax_node;
@@ -1139,24 +1089,12 @@ and object_member =
   | Initializer of object_initializer
 
 and method_definition =
-  | ConcreteMethod of {
-      body: expression;
-      type_: (Token.t * core_type) option;
-    }
-  | VirtualMethod of {
-      virtual_token: Token.t;
-      type_: core_type;
-    }
+  | ConcreteMethod of { body: expression; type_: (Token.t * core_type) option }
+  | VirtualMethod of { virtual_token: Token.t; type_: core_type }
 
 and value_definition =
-  | ConcreteValue of {
-      value: expression;
-      type_: (Token.t * core_type) option;
-    }
-  | VirtualValue of {
-      virtual_token: Token.t;
-      type_: core_type;
-    }
+  | ConcreteValue of { value: expression; type_: (Token.t * core_type) option }
+  | VirtualValue of { virtual_token: Token.t; type_: core_type }
 
 and object_method = {
   syntax_node: syntax_node;
@@ -1244,12 +1182,8 @@ and while_expression = {
 }
 
 and for_direction =
-  | To of {
-      direction_token: Token.t;
-    }
-  | Downto of {
-      direction_token: Token.t;
-    }
+  | To of { direction_token: Token.t }
+  | Downto of { direction_token: Token.t }
 
 and for_expression = {
   syntax_node: syntax_node;
@@ -1374,19 +1308,13 @@ and type_ascription_expression = {
 }
 
 and type_ascription_kind =
-  | Type of {
-      colon_token: Token.t;
-      type_: core_type;
-    }
-  | Coerce of {
-      coercion_tokens: Token.t list;
-      type_: core_type;
-    }
+  | Type of { colon_token: Token.t; type_: core_type }
+  | Coerce of { coercion_tokens: Token.t list; type_: core_type }
   | ConstraintCoerce of {
       colon_token: Token.t;
       from_type: core_type;
       coercion_tokens: Token.t list;
-      to_type: core_type;
+      to_type: core_type
     }
 
 and polymorphic_expression = {
@@ -1481,7 +1409,7 @@ and local_open_expression =
       module_path: Ident.t;
       in_token: Token.t;
       body: expression;
-      attributes: attribute list;
+      attributes: attribute list
     }
   | Delimited of {
       syntax_node: syntax_node;
@@ -1490,7 +1418,7 @@ and local_open_expression =
       opening_token: Token.t option;
       body: expression;
       closing_token: Token.t option;
-      attributes: attribute list;
+      attributes: attribute list
     }
 
 and function_case_body = {
@@ -1625,7 +1553,7 @@ and class_expression =
   | Attribute of {
       syntax_node: syntax_node;
       class_expression: class_expression;
-      attribute: attribute;
+      attribute: attribute
     }
   | Extension of extension
 
@@ -1641,7 +1569,7 @@ and class_field =
   | Inherit of class_inherit
   | Constraint of class_constraint
   | Initializer of class_initializer
-  | Attribute of { syntax_node: syntax_node; field: class_field; attribute: attribute; }
+  | Attribute of { syntax_node: syntax_node; field: class_field; attribute: attribute }
   | Extension of extension
 
 and class_method = {
@@ -1718,7 +1646,7 @@ and local_open_class_expression =
       open_token: Token.t;
       module_path: Ident.t;
       in_token: Token.t;
-      body: class_expression;
+      body: class_expression
     }
   | Delimited of {
       syntax_node: syntax_node;
@@ -1726,7 +1654,7 @@ and local_open_class_expression =
       dot_token: Token.t;
       opening_token: Token.t option;
       body: class_expression;
-      closing_token: Token.t option;
+      closing_token: Token.t option
     }
 
 and parenthesized_class_expression = {
@@ -1738,19 +1666,19 @@ and parenthesized_class_expression = {
 
 and module_expression =
   | Path of Ident.t
-  | Structure of { syntax_node: syntax_node; item_syntax_nodes: syntax_node list; }
+  | Structure of { syntax_node: syntax_node; item_syntax_nodes: syntax_node list }
   | Functor of {
       syntax_node: syntax_node;
       parameters: functor_parameter list;
-      body: module_expression;
+      body: module_expression
     }
-  | Apply of { syntax_node: syntax_node; callee: module_expression; argument: module_expression; }
-  | ApplyUnit of { syntax_node: syntax_node; callee: module_expression; }
+  | Apply of { syntax_node: syntax_node; callee: module_expression; argument: module_expression }
+  | ApplyUnit of { syntax_node: syntax_node; callee: module_expression }
   | Constraint of {
       syntax_node: syntax_node;
       module_expression: module_expression;
       colon_token: Token.t;
-      module_type: module_type;
+      module_type: module_type
     }
   | ModuleUnpack of {
       syntax_node: syntax_node;
@@ -1758,18 +1686,18 @@ and module_expression =
       expression: expression;
       colon_token: Token.t option;
       package_type: package_type option;
-      closing_token: Token.t;
+      closing_token: Token.t
     }
   | Parenthesized of {
       syntax_node: syntax_node;
       opening_token: Token.t;
       inner: module_expression;
-      closing_token: Token.t;
+      closing_token: Token.t
     }
   | Attribute of {
       syntax_node: syntax_node;
       module_expression: module_expression;
-      attribute: attribute;
+      attribute: attribute
     }
   | Extension of extension
 
@@ -2087,7 +2015,7 @@ module ClassExpression = struct
     | Attribute of {
         syntax_node: syntax_node;
         class_expression: class_expression;
-        attribute: attribute;
+        attribute: attribute
       }
     | Extension of extension
 
@@ -2124,7 +2052,7 @@ module ClassField = struct
     | Inherit of class_inherit
     | Constraint of class_constraint
     | Initializer of class_initializer
-    | Attribute of { syntax_node: syntax_node; field: class_field; attribute: attribute; }
+    | Attribute of { syntax_node: syntax_node; field: class_field; attribute: attribute }
     | Extension of extension
 
   let syntax_node = function
@@ -2140,19 +2068,19 @@ end
 module ModuleExpression = struct
   type t = module_expression =
     | Path of Ident.t
-    | Structure of { syntax_node: syntax_node; item_syntax_nodes: syntax_node list; }
+    | Structure of { syntax_node: syntax_node; item_syntax_nodes: syntax_node list }
     | Functor of {
         syntax_node: syntax_node;
         parameters: functor_parameter list;
-        body: module_expression;
+        body: module_expression
       }
-    | Apply of { syntax_node: syntax_node; callee: module_expression; argument: module_expression; }
-    | ApplyUnit of { syntax_node: syntax_node; callee: module_expression; }
+    | Apply of { syntax_node: syntax_node; callee: module_expression; argument: module_expression }
+    | ApplyUnit of { syntax_node: syntax_node; callee: module_expression }
     | Constraint of {
         syntax_node: syntax_node;
         module_expression: module_expression;
         colon_token: Token.t;
-        module_type: module_type;
+        module_type: module_type
       }
     | ModuleUnpack of {
         syntax_node: syntax_node;
@@ -2160,18 +2088,18 @@ module ModuleExpression = struct
         expression: expression;
         colon_token: Token.t option;
         package_type: package_type option;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
     | Parenthesized of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         inner: module_expression;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
     | Attribute of {
         syntax_node: syntax_node;
         module_expression: module_expression;
-        attribute: attribute;
+        attribute: attribute
       }
     | Extension of extension
 
@@ -2299,9 +2227,7 @@ end
 
 module Payload = struct
   type t = payload =
-    | Opaque of {
-        tokens: Token.t list;
-      }
+    | Opaque of { tokens: Token.t list }
 
   let tokens = function
     | Opaque { tokens } -> tokens
@@ -2331,12 +2257,8 @@ end
 
 module TypeParameterVariance = struct
   type t =
-    | Covariant of {
-        marker_token: Token.t;
-      }
-    | Contravariant of {
-        marker_token: Token.t;
-      }
+    | Covariant of { marker_token: Token.t }
+    | Contravariant of { marker_token: Token.t }
 
   let marker_token = function
     | Covariant { marker_token }
@@ -2363,7 +2285,7 @@ end
 module PrivateFlag = struct
   type t = private_flag =
     | Public
-    | Private of { private_token: Token.t; }
+    | Private of { private_token: Token.t }
 
   let private_token = function
     | Public -> None
@@ -2405,7 +2327,7 @@ end
 module ConstructorArguments = struct
   type t =
     | Tuple of core_type list
-    | Record of { opening_token: Token.t; fields: RecordField.t list; closing_token: Token.t; }
+    | Record of { opening_token: Token.t; fields: RecordField.t list; closing_token: Token.t }
 end
 
 module VariantConstructor = struct
@@ -2470,8 +2392,8 @@ end
 module PolyVariantBound = struct
   type t = poly_variant_bound =
     | Exact
-    | UpperBound of { marker_token: Token.t; }
-    | LowerBound of { marker_token: Token.t; }
+    | UpperBound of { marker_token: Token.t }
+    | LowerBound of { marker_token: Token.t }
 
   let marker_token = function
     | Exact -> None
@@ -2482,7 +2404,7 @@ end
 module RowField = struct
   type t = row_field =
     | Tag of poly_variant_tag
-    | Inherit of { bar_token: Token.t option; syntax_node: syntax_node; type_: core_type; }
+    | Inherit of { bar_token: Token.t option; syntax_node: syntax_node; type_: core_type }
 
   let syntax_node = function
     | Tag tag -> tag.syntax_node
@@ -2528,27 +2450,27 @@ end
 module TypeDefinition = struct
   type t =
     | Abstract
-    | Alias of { syntax_node: syntax_node; manifest: core_type; }
-    | Extensible of { syntax_node: syntax_node; }
+    | Alias of { syntax_node: syntax_node; manifest: core_type }
+    | Extensible of { syntax_node: syntax_node }
     | FirstClassModule of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         package_type: package_type;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
     | Object of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         fields: object_type_field list;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
     | Record of {
         syntax_node: syntax_node;
         opening_token: Token.t;
         fields: RecordField.t list;
-        closing_token: Token.t;
+        closing_token: Token.t
       }
-    | Variant of { syntax_node: syntax_node; constructors: VariantConstructor.t list; }
+    | Variant of { syntax_node: syntax_node; constructors: VariantConstructor.t list }
     | PolyVariant of PolyVariant.t
 end
 
@@ -2977,12 +2899,12 @@ let trivia_of_syntax_trivia = fun trivia ->
   match Ceibo.Red.SyntaxTrivia.kind trivia with
   | Syntax_kind.COMMENT -> Some (Comment {
     syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
-    comment_token = {Token.syntax_token = syntax_token;};
+    comment_token = { Token.syntax_token = syntax_token }
   })
   | Syntax_kind.DOCSTRING -> Some (Docstring {
     syntax_node = synthetic_syntax_node_wrapping_token syntax_token;
-    docstring_token = {Token.syntax_token = syntax_token;};
-    kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text syntax_token);
+    docstring_token = { Token.syntax_token = syntax_token };
+    kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text syntax_token)
   })
   | _ -> None
 
@@ -2998,7 +2920,7 @@ let leading_trivia_after = fun ~after token ->
 let leading_trivia_before_node = fun ~after syntax_node ->
   match Ceibo.Red.SyntaxNode.first_token syntax_node with
   | None -> []
-  | Some first_token -> leading_trivia_after ~after {Token.syntax_token = first_token;}
+  | Some first_token -> leading_trivia_after ~after { Token.syntax_token = first_token }
 
 let leading_trivia_after_token_before_node = fun ~after token syntax_node ->
   let pending = leading_trivia_after ~after token in
@@ -3007,7 +2929,7 @@ let leading_trivia_after_token_before_node = fun ~after token syntax_node ->
   | Some first_token -> pending
   @ leading_trivia_after
     ~after:(Ceibo.Red.SyntaxToken.span token.Token.syntax_token).end_
-    {Token.syntax_token = first_token;}
+    { Token.syntax_token = first_token }
 
 let token_body_span = fun syntax_node ->
   let full_span = Ceibo.Red.SyntaxNode.span syntax_node in
@@ -3019,7 +2941,7 @@ let token_body_span = fun syntax_node ->
       in
       {
         Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
-        end_ = (Ceibo.Red.SyntaxToken.span last).end_;
+        end_ = (Ceibo.Red.SyntaxToken.span last).end_
       }
 
 let syntax_kind = fun syntax_node -> Ceibo.Red.SyntaxNode.kind syntax_node

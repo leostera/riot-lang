@@ -44,7 +44,7 @@ let init = fun ~owner ~concurrency ~worker_fn ~task_ref ->
     spawn_n [] concurrency
   in
   let worker_handles =
-    List.map (fun pid -> {pid;task_ref;}) worker_pids
+    List.map (fun pid -> { pid; task_ref }) worker_pids
   in
   (* Create coordinator state *)
   let state = {

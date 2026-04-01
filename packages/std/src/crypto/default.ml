@@ -8,7 +8,7 @@ module DefaultHasher = struct
     mutable buffer: Buffer.t;
   }
 
-  let create = fun () -> {buffer = Buffer.create 64;}
+  let create = fun () -> { buffer = Buffer.create 64 }
 
   let write = fun state bytes ->
     Buffer.add_bytes state.buffer bytes
@@ -128,7 +128,7 @@ module RandomState = struct
     (* In production, these should be truly random *)
     {
       seed1 = Kernel.Random.int64 Kernel.Int64.max_int;
-      seed2 = Kernel.Random.int64 Kernel.Int64.max_int;
+      seed2 = Kernel.Random.int64 Kernel.Int64.max_int
     }
   (** Hash with this random state for DoS resistance *)
   let hash_with_seed = fun state data seed1 seed2 ->

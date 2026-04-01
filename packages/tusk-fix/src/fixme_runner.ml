@@ -134,7 +134,7 @@ let plan = fun ~workspace_root ~target_dir_root providers ->
     providers = [];
   }
   in
-  {plan with providers = List.map (generated_provider plan) providers;}
+  { plan with providers = List.map (generated_provider plan) providers }
 
 let provider_module_line = fun (provider: generated_provider) ->
   "    (module " ^ provider.module_name ^ " : Tusk_fix.Provider.S);"

@@ -41,4 +41,4 @@ let run = fun rule ctx tree ->
     []
 
 let explanation = fun rule ->
-  Explanation.{rule_id = rule.id;body = rule.explain;message = rule.description;}
+  Explanation.{ rule_id = rule.id; body = rule.explain; message = rule.description }

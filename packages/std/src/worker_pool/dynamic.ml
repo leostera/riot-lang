@@ -23,7 +23,7 @@ task t = fun ~concurrency ~owner ~worker_fn () ->
   let coordinator_pid =
     spawn (fun () -> Coordinator.init ~owner ~concurrency ~worker_fn ~task_ref)
   in
-  {coordinator_pid;task_ref;}
+  { coordinator_pid; task_ref }
 (** Send a task to a specific worker *)
 let send_task : 'task t -> 'task worker -> 'task -> unit = fun t worker task ->
   let task = Task.make task t.task_ref in

@@ -204,7 +204,7 @@ module ProbeSeq = struct
 
   let start = fun hash bucket_mask ->
     let pos = hash land bucket_mask in
-    {pos;stride = 0;}
+    { pos; stride = 0 }
 
   (* Move to next probe position (triangular sequence) *)
 
@@ -263,7 +263,7 @@ module RawTable = struct
       buckets = Array.make buckets None;
       ctrl = Bytes.make (buckets + Group.width) (Kernel.Char.chr Tag.empty);
       len = 0;
-      bucket_mask;
+      bucket_mask
     }
 
   (* Find the bucket index for a key with precomputed hash, or None if not found *)
@@ -537,12 +537,12 @@ let into_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.Iterator.t = fun map -
         (None, state)
       else
         let item = List.nth state.items state.pos in
-        (Some item, {state with pos = state.pos + 1;})
+        (Some item, { state with pos = state.pos + 1 })
 
     let size = fun state -> max 0 (List.length state.items - state.pos)
   end in
   let items = to_list map in
-  Kernel.Iter.Iterator.make (module MapIter) {MapIter.items;pos = 0;}
+  Kernel.Iter.Iterator.make (module MapIter) { MapIter.items; pos = 0 }
 
 let to_mut_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.MutIterator.t = fun map ->
   let module MapIter = struct
@@ -563,7 +563,7 @@ let to_mut_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.MutIterator.t = fun 
 
     let size = fun state -> max 0 (List.length state.items - state.pos)
 
-    let clone = fun state -> {items = state.items;pos = state.pos;}
+    let clone = fun state -> { items = state.items; pos = state.pos }
   end in
   let items = to_list map in
-  Kernel.Iter.MutIterator.make (module MapIter) {MapIter.items;pos = 0;}
+  Kernel.Iter.MutIterator.make (module MapIter) { MapIter.items; pos = 0 }

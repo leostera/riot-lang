@@ -24,7 +24,7 @@ let make_package = fun name ->
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
   }
@@ -48,7 +48,7 @@ let make_package_with_paths = fun ~name ~path ~relative_path ->
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
   }
@@ -56,7 +56,7 @@ let make_package_with_paths = fun ~name ~path ~relative_path ->
 let test_action_graph_json_round_trip_preserves_dependencies = fun () ->
   let package = make_package "pkg" in
   let graph = Tusk_planner.Action_graph.create () in
-  let write_a = Tusk_planner.Action.WriteFile {destination = Path.v "a.txt";content = "a";} in
+  let write_a = Tusk_planner.Action.WriteFile { destination = Path.v "a.txt"; content = "a" } in
   let spec_a =
     Tusk_planner.Action_node.make
       ~actions:[ write_a ]
@@ -68,7 +68,7 @@ let test_action_graph_json_round_trip_preserves_dependencies = fun () ->
       ~deps:[]
   in
   let node_a = Tusk_planner.Action_graph.add_node graph spec_a in
-  let write_b = Tusk_planner.Action.WriteFile {destination = Path.v "b.txt";content = "b";} in
+  let write_b = Tusk_planner.Action.WriteFile { destination = Path.v "b.txt"; content = "b" } in
   let spec_b =
     Tusk_planner.Action_node.make ~actions:[ write_b ] ~outs:[ Path.v "b.txt" ] ~srcs:[] ~package ~toolchain:test_toolchain
       ~dependency_hashes:(fun dep_id ->
@@ -113,7 +113,10 @@ let test_action_graph_json_round_trip_preserves_package_paths_and_hashes = fun (
     ~path:(Path.v "packages/kernel")
     ~relative_path:(Path.v "packages/kernel") in
   let graph = Tusk_planner.Action_graph.create () in
-  let action = Tusk_planner.Action.WriteFile {destination = Path.v "build/meta.txt";content = "ok";} in
+  let action = Tusk_planner.Action.WriteFile {
+    destination = Path.v "build/meta.txt";
+    content = "ok"
+  } in
   let spec =
     Tusk_planner.Action_node.make
       ~actions:[ action ]
@@ -162,7 +165,7 @@ let test_action_hash_tracks_package_relative_source_contents = fun () ->
           source = Path.v "src/demo.ml";
           outputs = [ Path.v "Demo.cmt"; Path.v "Demo.cmi"; Path.v "Demo.cmx" ];
           includes = [ Path.v "." ];
-          flags = [];
+          flags = []
         } in
         let write contents = Fs.write contents source |> Result.expect ~msg:"write source failed" in
         write "let value = 1\n";
@@ -206,7 +209,7 @@ let test_library_builds_do_not_emit_shared_library_actions = fun () ->
             ~name:"minttea"
             ~path:Path.(tmpdir / Path.v "packages" / Path.v "minttea")
             ~relative_path:(Path.v "packages/minttea"))
-          with library = Some {path = Path.v "src/minttea.ml";};
+          with library = Some { path = Path.v "src/minttea.ml" }
         } in
         let ctx = Tusk_model.Build_ctx.make
           ~session_id:(Tusk_model.Session_id.of_string "test-session")

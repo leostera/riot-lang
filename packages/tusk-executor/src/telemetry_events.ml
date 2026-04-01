@@ -7,10 +7,10 @@ open Tusk_store
 (** Error types for package builds *)
 type package_error =
   | PlanningFailed of Planning_error.t
-  | ExecutionFailed of { message: string; }
-  | ActionExecutionFailed of { message: string; }
-  | ActionOutputsNotCreated of { missing: Path.t list; }
-  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list; }
+  | ExecutionFailed of { message: string }
+  | ActionExecutionFailed of { message: string }
+  | ActionOutputsNotCreated of { missing: Path.t list }
+  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list }
 
 type package_planning_status =
 [
@@ -24,12 +24,12 @@ type Telemetry.event +=
   | BuildStarted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: Workspace_planner.target
     }
   | PlanningWorkspaceStarted of {
       session_id: Session_id.t;
       target: Workspace_planner.target;
-      package_count: int;
+      package_count: int
     }
   | PlanningWorkspaceCompleted of {
       session_id: Session_id.t;
@@ -37,7 +37,7 @@ type Telemetry.event +=
       duration: Time.Duration.t;
       planned_count: int;
       missing_count: int;
-      failed_count: int;
+      failed_count: int
     }
   | PackagePlanningResult of {
       session_id: Session_id.t;
@@ -45,12 +45,12 @@ type Telemetry.event +=
       target: Workspace_planner.target;
       status: package_planning_status;
       duration: Time.Duration.t;
-      reason: string option;
+      reason: string option
     }
   | CompilationStarted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: Workspace_planner.target
     }
   | BuildCompleted of {
       session_id: Session_id.t;
@@ -61,30 +61,26 @@ type Telemetry.event +=
           `Fresh
           | `Cached
         ];
-      duration: Time.Duration.t;
+      duration: Time.Duration.t
     }
   | BuildFailed of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
-      error: package_error;
+      error: package_error
     }
   | BuildSkipped of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
-      reason: string;
+      reason: string
     }
-  | ActionStarted of {
-      session_id: Session_id.t;
-      package: Package.t;
-      action: Action_node.t;
-    }
+  | ActionStarted of { session_id: Session_id.t; package: Package.t; action: Action_node.t }
   | ActionCommandStarted of {
       session_id: Session_id.t;
       package: Package.t;
       action: Action_node.t;
-      command: string;
+      command: string
     }
   | ActionCompleted of {
       session_id: Session_id.t;
@@ -96,30 +92,30 @@ type Telemetry.event +=
           `Fresh
           | `Cached
         ];
-      duration: Time.Duration.t;
+      duration: Time.Duration.t
     }
   | ActionFailed of {
       session_id: Session_id.t;
       package: Package.t;
       action: Action_node.t;
-      error: string;
+      error: string
     }
   | CacheHit of {
       session_id: Session_id.t;
       package: Package.t;
       action: Action_node.t;
-      hash: Crypto.hash;
+      hash: Crypto.hash
     }
   | CacheMiss of {
       session_id: Session_id.t;
       package: Package.t;
       action: Action_node.t;
-      hash: Crypto.hash;
+      hash: Crypto.hash
     }
   | WorkspaceStarted of {
       session_id: Session_id.t;
       target: Workspace_planner.target;
-      package_count: int;
+      package_count: int
     }
   | WorkspaceCompleted of {
       session_id: Session_id.t;
@@ -127,7 +123,7 @@ type Telemetry.event +=
       total_duration: Time.Duration.t;
       cached_count: int;
       built_count: int;
-      failed_count: int;
+      failed_count: int
     }
 
 let target_to_json = fun target ->
@@ -422,7 +418,7 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
                   let session_id = Session_id.of_string session_id_str in
                   (
                     match target_of_json target_json with
-                    | Ok target -> Ok (BuildStarted {session_id;package;target;})
+                    | Ok target -> Ok (BuildStarted { session_id; package; target })
                     | Error e -> Error e
                   )
               | Error e -> Error (Data.Json.String e)
@@ -436,7 +432,7 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
               | Ok target -> Ok (PlanningWorkspaceStarted {
                 session_id = get_session_id fields;
                 target;
-                package_count;
+                package_count
               })
               | Error e -> Error e
             )
@@ -516,7 +512,7 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
                   let session_id = Session_id.of_string session_id_str in
                   (
                     match target_of_json target_json with
-                    | Ok target -> Ok (CompilationStarted {session_id;package;target;})
+                    | Ok target -> Ok (CompilationStarted { session_id; package; target })
                     | Error e -> Error e
                   )
               | Error e -> Error (Data.Json.String e)
@@ -587,9 +583,9 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
                                             )
                                             arr
                                         in
-                                        Ok (PlanningFailed (Planning_error.CyclicDependency {cycle;}))
+                                        Ok (PlanningFailed (Planning_error.CyclicDependency { cycle }))
                                     | _ -> Ok (ExecutionFailed {
-                                      message = "Planning failed: cyclic dependency";
+                                      message = "Planning failed: cyclic dependency"
                                     })
                                   )
                                 | Some (Data.Json.String "scan_failed") -> (
@@ -599,61 +595,61 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
                                     ) with
                                     | (Some (Data.Json.String path), Some (Data.Json.String reason)) -> Ok (PlanningFailed (Planning_error.ScanFailed {
                                       path = Path.v path;
-                                      reason;
+                                      reason
                                     }))
                                     | _ -> Ok (ExecutionFailed {
-                                      message = "Planning failed: scan failed";
+                                      message = "Planning failed: scan failed"
                                     })
                                   )
                                 | Some (Data.Json.String "dependency_analysis_failed") -> (
                                     match List.assoc_opt "reason" planning_fields with
                                     | Some (Data.Json.String reason) -> Ok (PlanningFailed (Planning_error.DependencyAnalysisFailed {
-                                      reason;
+                                      reason
                                     }))
                                     | _ -> Ok (ExecutionFailed {
-                                      message = "Planning failed: dependency analysis failed";
+                                      message = "Planning failed: dependency analysis failed"
                                     })
                                   )
                                 | Some (Data.Json.String "graph_build_failed") -> (
                                     match List.assoc_opt "reason" planning_fields with
                                     | Some (Data.Json.String reason) -> Ok (PlanningFailed (Planning_error.GraphBuildFailed {
-                                      reason;
+                                      reason
                                     }))
                                     | _ -> Ok (ExecutionFailed {
-                                      message = "Planning failed: graph build failed";
+                                      message = "Planning failed: graph build failed"
                                     })
                                   )
                                 | Some (Data.Json.String "exception") -> (
                                     match List.assoc_opt "message" planning_fields with
                                     | Some (Data.Json.String msg) -> Ok (PlanningFailed (Planning_error.Exception {
-                                      exn = Failure msg;
+                                      exn = Failure msg
                                     }))
                                     | _ -> Ok (ExecutionFailed {
-                                      message = "Planning failed: exception";
+                                      message = "Planning failed: exception"
                                     })
                                   )
                                 | _ ->
                                     Ok (ExecutionFailed {
-                                      message = "Planning failed: unknown planning error";
+                                      message = "Planning failed: unknown planning error"
                                     })
                               )
                             | _ -> Ok (ExecutionFailed {
-                              message = "Planning failed: missing error details";
+                              message = "Planning failed: missing error details"
                             })
                           )
                         | Some (Data.Json.String "execution_failed") -> (
                             match List.assoc_opt "message" error_fields with
-                            | Some (Data.Json.String msg) -> Ok (ExecutionFailed {message = msg;})
+                            | Some (Data.Json.String msg) -> Ok (ExecutionFailed { message = msg })
                             | _ -> Ok (ExecutionFailed {
-                              message = "Execution failed: missing message";
+                              message = "Execution failed: missing message"
                             })
                           )
                         | Some (Data.Json.String "action_failed") -> (
                             match List.assoc_opt "message" error_fields with
                             | Some (Data.Json.String msg) -> Ok (ActionExecutionFailed {
-                              message = msg;
+                              message = msg
                             })
-                            | _ -> Ok (ExecutionFailed {message = "Action failed: missing message";})
+                            | _ -> Ok (ExecutionFailed { message = "Action failed: missing message" })
                           )
                         | Some (Data.Json.String "outputs_not_created") -> (
                             match List.assoc_opt "missing" error_fields with
@@ -667,17 +663,17 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
                                     )
                                     arr
                                 in
-                                Ok (ActionOutputsNotCreated {missing;})
+                                Ok (ActionOutputsNotCreated { missing })
                             | _ -> Ok (ExecutionFailed {
-                              message = "Outputs not created: missing list";
+                              message = "Outputs not created: missing list"
                             })
                           )
                         | Some (Data.Json.String "dependencies_failed") ->
-                            Ok (ActionDependenciesFailed {failed = [];})
+                            Ok (ActionDependenciesFailed { failed = [] })
                         | _ ->
-                            Ok (ExecutionFailed {message = "Unknown error type";})
+                            Ok (ExecutionFailed { message = "Unknown error type" })
                       )
-                    | _ -> Ok (ExecutionFailed {message = "Invalid error format";})
+                    | _ -> Ok (ExecutionFailed { message = "Invalid error format" })
                   in
                   (
                     match (target_of_json target_json, error_result) with
@@ -685,7 +681,7 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
                       session_id = get_session_id fields;
                       package;
                       target;
-                      error;
+                      error
                     })
                     | Error e, _ -> Error e
                     | _, Error e -> Error e
@@ -708,7 +704,7 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
                     session_id = get_session_id fields;
                     package;
                     target;
-                    reason;
+                    reason
                   })
                   | Error e -> Error e
                 )
@@ -723,7 +719,7 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
               | Ok target -> Ok (WorkspaceStarted {
                 session_id = get_session_id fields;
                 target;
-                package_count;
+                package_count
               })
               | Error e -> Error e
             )

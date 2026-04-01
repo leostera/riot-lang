@@ -9,4 +9,4 @@ type t = {
 }
 
 let make = fun ~level ~message ?(metadata = Metadata.empty) () ->
-  {timestamp = Datetime.now ();level;message;metadata;}
+  { timestamp = Datetime.now (); level; message; metadata }

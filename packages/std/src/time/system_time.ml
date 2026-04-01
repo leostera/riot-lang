@@ -7,7 +7,7 @@ type timespec = {
 
 type t = timespec
 
-let epoch = {secs = 0;nanos = 0;}
+let epoch = { secs = 0; nanos = 0 }
 
 (* Accessors *)
 
@@ -23,12 +23,12 @@ let nanos = fun t ->
 let from_seconds = fun f ->
   let secs = int_of_float (floor f) in
   let nanos = int_of_float ((f -. floor f) *. 1_000_000_000.0) in
-  {secs;nanos;}
+  { secs; nanos }
 
 let from_nanos = fun nanos_total ->
   let secs = Int64.to_int (Int64.div nanos_total 1_000_000_000L) in
   let nanos = Int64.to_int (Int64.rem nanos_total 1_000_000_000L) in
-  {secs;nanos;}
+  { secs; nanos }
 
 (* Creation *)
 
@@ -36,7 +36,7 @@ let now = fun () ->
   let time = Kernel.Time.gettimeofday () in
   let secs = int_of_float time in
   let nanos = int_of_float ((time -. float_of_int secs) *. 1_000_000_000.0) in
-  {secs;nanos;}
+  { secs; nanos }
 
 (* Duration operations *)
 
@@ -58,9 +58,9 @@ let add = fun systime duration ->
   let new_secs = systime.secs + dur_secs in
   let new_nanos = systime.nanos + dur_nanos in
   if new_nanos >= 1_000_000_000 then
-    {secs = new_secs + 1;nanos = new_nanos - 1_000_000_000;}
+    { secs = new_secs + 1; nanos = new_nanos - 1_000_000_000 }
   else
-    {secs = new_secs;nanos = new_nanos;}
+    { secs = new_secs; nanos = new_nanos }
 
 let sub = fun systime duration ->
   let dur_secs = Duration.to_secs duration in
@@ -68,9 +68,9 @@ let sub = fun systime duration ->
   let new_secs = systime.secs - dur_secs in
   let new_nanos = systime.nanos - dur_nanos in
   if new_nanos < 0 then
-    {secs = new_secs - 1;nanos = new_nanos + 1_000_000_000;}
+    { secs = new_secs - 1; nanos = new_nanos + 1_000_000_000 }
   else
-    {secs = new_secs;nanos = new_nanos;}
+    { secs = new_secs; nanos = new_nanos }
 
 (* Checked operations *)
 
@@ -121,7 +121,7 @@ let max = fun a b ->
 
 let to_unix_timestamp = fun t -> t.secs
 
-let from_unix_timestamp = fun secs -> {secs;nanos = 0;}
+let from_unix_timestamp = fun secs -> { secs; nanos = 0 }
 
 let duration_since_epoch = fun () ->
   let t = now () in

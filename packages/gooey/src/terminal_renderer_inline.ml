@@ -25,7 +25,7 @@ type cell = {
   mutable bg_color: Tty.Color.t option;
 }
 
-let make_cell = fun () -> {char = " ";fg_color = None;bg_color = None;}
+let make_cell = fun () -> { char = " "; fg_color = None; bg_color = None }
 
 let render_to_string = fun commands ->
   if commands = [] then

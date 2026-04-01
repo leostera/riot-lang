@@ -79,10 +79,10 @@ let make_summary = fun results ->
   List.fold_left
     (fun acc (result: t) ->
       match result.result with
-      | Completed _ -> {acc with completed = acc.completed + 1;}
-      | Skipped -> {acc with skipped = acc.skipped + 1;}
-      | Failed _ -> {acc with failed = acc.failed + 1;})
-    {total = List.length results;completed = 0;skipped = 0;failed = 0;}
+      | Completed _ -> { acc with completed = acc.completed + 1 }
+      | Skipped -> { acc with skipped = acc.skipped + 1 }
+      | Failed _ -> { acc with failed = acc.failed + 1 })
+    { total = List.length results; completed = 0; skipped = 0; failed = 0 }
     results
 
 (* Comparison results *)
@@ -121,4 +121,4 @@ let make_comparison_result = fun description case_results ->
           (res.name, ratio))
       case_results
   in
-  {description;case_results;fastest = fastest.name;speedup_ratios;}
+  { description; case_results; fastest = fastest.name; speedup_ratios }

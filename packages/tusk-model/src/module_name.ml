@@ -7,7 +7,7 @@ type t = {
   name: string;
 }
 
-let make = fun ~filename ~namespace ~name -> {filename;namespace;name;}
+let make = fun ~filename ~namespace ~name -> { filename; namespace; name }
 
 let sanitize_name = fun name ->
   String.map
@@ -20,16 +20,16 @@ let sanitize_name = fun name ->
 
 let of_filename = fun ?(namespace = Namespace.empty) filename ->
   let name = Path.remove_extension filename |> Path.basename |> sanitize_name |> String.capitalize_ascii in
-  {filename;namespace;name;}
+  { filename; namespace; name }
 
 let of_string = fun ?(namespace = Namespace.empty) s ->
   let name = sanitize_name s |> String.capitalize_ascii in
   let filename = Path.of_string s |> Result.expect ~msg:(("Expected '" ^ s ^ "' to be a valid Path")) in
-  {filename;namespace;name;}
+  { filename; namespace; name }
 
 let of_path = fun path ->
   let name = Path.remove_extension path |> Path.basename |> sanitize_name |> String.capitalize_ascii in
-  {filename = path;namespace = Namespace.empty;name;}
+  { filename = path; namespace = Namespace.empty; name }
 
 let filename = fun t -> t.filename
 

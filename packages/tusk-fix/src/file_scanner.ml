@@ -16,7 +16,7 @@ type state = {
 
 let create_many = fun ~roots ?(exclude_patterns = [ "."; "_build"; "target" ]) ?(should_ignore = fun _ ->
   false) () ->
-  {roots;exclude_patterns;should_ignore;}
+  { roots; exclude_patterns; should_ignore }
 
 let create = fun ~root ?exclude_patterns ?should_ignore () ->
   create_many ~roots:[ root ] ?exclude_patterns ?should_ignore ()
@@ -49,7 +49,7 @@ let compare_paths = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
 
 let init_state = fun ?owner scanner ->
-  {scanner;owner;seen = HashSet.create ();pending = List.sort compare_paths scanner.roots;}
+  { scanner; owner; seen = HashSet.create (); pending = List.sort compare_paths scanner.roots }
 
 let rec next_discovered_file = fun state ->
   match state.pending with

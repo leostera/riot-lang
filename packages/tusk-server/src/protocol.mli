@@ -54,101 +54,65 @@ type request =
       target: target;
       scope: build_scope;
       target_arch: string option;
-      session_id: Session_id.t;
+      session_id: Session_id.t
     }
-  | Ping of {
-      client_pid: Pid.t;
-    }
-  | ScanWorkspace of {
-      client_pid: Pid.t;
-      current_dir: Path.t;
-    }
-  | GetWorkspaceConfig of {
-      client_pid: Pid.t;
-    }
-  | GetPackageInfo of {
-      client_pid: Pid.t;
-      package_name: string;
-    }
-  | GetPackageGraph of {
-      client_pid: Pid.t;
-    }
-  | FindExecutable of {
-      client_pid: Pid.t;
-      name: string;
-    }
-  | FindArtifact of {
-      client_pid: Pid.t;
-      package: string;
-      kind: string;
-      name: string;
-    }
-  | FormatFile of {
-      client_pid: Pid.t;
-      file_path: Path.t;
-      check_only: bool;
-    }
-  | FormatCode of {
-      client_pid: Pid.t;
-      code: string;
-      file_path: Path.t option;
-    }
-  | FormatAll of {
-      client_pid: Pid.t;
-      mode:
+  | Ping of { client_pid: Pid.t }
+  | ScanWorkspace of { client_pid: Pid.t; current_dir: Path.t }
+  | GetWorkspaceConfig of { client_pid: Pid.t }
+  | GetPackageInfo of { client_pid: Pid.t; package_name: string }
+  | GetPackageGraph of { client_pid: Pid.t }
+  | FindExecutable of { client_pid: Pid.t; name: string }
+  | FindArtifact of { client_pid: Pid.t; package: string; kind: string; name: string }
+  | FormatFile of { client_pid: Pid.t; file_path: Path.t; check_only: bool }
+  | FormatCode of { client_pid: Pid.t; code: string; file_path: Path.t option }
+  | FormatAll of { client_pid: Pid.t; mode:
         [
           `check
           | `write
-        ];
-    }
-  | NewPackage of {
-      client_pid: Pid.t;
-      path: Path.t;
-      name: string;
-      is_library: bool;
-    }
+        ] }
+  | NewPackage of { client_pid: Pid.t; path: Path.t; name: string; is_library: bool }
 (** Response types from the server *)
 type response =
   | Pong
   | WorkspaceScanned
-  | BuildStarted of { session_id: Session_id.t; started_at: Datetime.t; }
-  | BuildEvent of { session_id: Session_id.t; event: Telemetry.event; }
+  | BuildStarted of { session_id: Session_id.t; started_at: Datetime.t }
+  | BuildEvent of { session_id: Session_id.t; event: Telemetry.event }
   | BuildCompleted of {
       session_id: Session_id.t;
       completed_at: Datetime.t;
       stats: BuildStats.t;
-      results: Tusk_executor.Package_builder.build_result list;
+      results: Tusk_executor.Package_builder.build_result list
     }
   | BuildFailed of {
       session_id: Session_id.t;
       failed_at: Datetime.t;
       stats: BuildStats.t;
       built: Tusk_executor.Package_builder.build_result list;
-      errors: Tusk_executor.Package_builder.build_result list;
+      errors: Tusk_executor.Package_builder.build_result list
     }
-  | PlanningFailed of { session_id: Session_id.t; failed_at: Datetime.t; reason: string; }
-  | CycleDetected of { session_id: Session_id.t; cycle_nodes: string list; detected_at: Datetime.t; }
-  | WorkspaceConfig of { workspace: Workspace.t; toolchain: Tusk_toolchain.t; }
-  | PackageInfo of { package: Package.t; sources: Path.t list; dependencies: Package.t list; }
-  | PackageGraph of { nodes: Package.t list; }
-  | ExecutableFound of { package: string; binary: string; }
+  | PlanningFailed of { session_id: Session_id.t; failed_at: Datetime.t; reason: string }
+  | CycleDetected of { session_id: Session_id.t; cycle_nodes: string list; detected_at: Datetime.t }
+  | WorkspaceConfig of { workspace: Workspace.t; toolchain: Tusk_toolchain.t }
+  | PackageInfo of { package: Package.t; sources: Path.t list; dependencies: Package.t list }
+  | PackageGraph of { nodes: Package.t list }
+  | ExecutableFound of { package: string; binary: string }
   | ExecutableNotFound
-  | ArtifactFound of { path: Path.t; }
-  | ArtifactNotFound of { error: string; }
-  | FormatResult of { formatted_code: string; changed: bool; }
-  | FormatError of { error: string; }
-  | FormatAllResult of { files_formatted: int; files_failed: int; errors: (string * string) list; }
-  | PackageCreated of { path: string; name: string; }
-  | PackageCreationError of { error: string; }
+  | ArtifactFound of { path: Path.t }
+  | ArtifactNotFound of { error: string }
+  | FormatResult of { formatted_code: string; changed: bool }
+  | FormatError of { error: string }
+  | FormatAllResult of { files_formatted: int; files_failed: int; errors: (string * string) list }
+  | PackageCreated of { path: string; name: string }
+  | PackageCreationError of { error: string }
   | PackageNotFound of {
       session_id: Session_id.t;
       package_name: string;
-      available_packages: string list;
+      available_packages: string list
     }
   | PackagesNotFound of {
       session_id: Session_id.t;
       package_names: string list;
-      available_packages: string list;
+      available_packages: string list
     }
 (** Message types for server communication *)
 type Message.t +=

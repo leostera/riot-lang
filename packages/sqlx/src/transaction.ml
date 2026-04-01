@@ -14,7 +14,7 @@ type isolation_level =
 
 (* TODO(@leostera): Implement actual transaction support by adding transaction messages to Connection *)
 
-let begin_transaction = fun conn -> Ok {connection = conn;}
+let begin_transaction = fun conn -> Ok { connection = conn }
 
 let commit = fun _t -> Ok ()
 

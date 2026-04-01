@@ -44,7 +44,7 @@ and string_literal_chain_size = function
   | Syn.Cst.Expression.Fun expr ->
       string_literal_chain_size_in_function_body expr.body
   | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
-      string_literal_chain_size_in_function_body (Syn.Cst.Cases {syntax_node;cases;})
+      string_literal_chain_size_in_function_body (Syn.Cst.Cases { syntax_node; cases })
   | Syn.Cst.Expression.Parenthesized expr ->
       string_literal_chain_size expr.inner
   | Syn.Cst.Expression.Infix expr when String.equal (Syn.Cst.InfixExpression.operator expr) "^" -> (
@@ -103,7 +103,7 @@ and string_literal_chain_size = function
 let make_diagnostic = fun expr ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
     ~suggestion:"Use a multiline string literal like {| ... |} instead of concatenating string literals"
     ()

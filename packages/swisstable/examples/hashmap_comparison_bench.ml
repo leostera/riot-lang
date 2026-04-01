@@ -186,56 +186,56 @@ let benchmarks =
         make_case "Swisstable" bench_swisstable_insert_100;
       ];
     compare_with_config
-      ~config:{iterations = 10;warmup = 2;}
+      ~config:{ iterations = 10; warmup = 2 }
       "insert 10k items"
       [
         make_case "HashMap" bench_hashmap_insert_10k;
         make_case "Swisstable" bench_swisstable_insert_10k;
       ];
     compare_with_config
-      ~config:{iterations = 5;warmup = 1;}
+      ~config:{ iterations = 5; warmup = 1 }
       "insert 100k items"
       [
         make_case "HashMap" bench_hashmap_insert_100k;
         make_case "Swisstable" bench_swisstable_insert_100k;
       ];
     compare_with_config
-      ~config:{iterations = 50;warmup = 5;}
+      ~config:{ iterations = 50; warmup = 5 }
       "get from 10k items"
       [
         make_case "HashMap" bench_hashmap_get_from_10k;
         make_case "Swisstable" bench_swisstable_get_from_10k;
       ];
     compare_with_config
-      ~config:{iterations = 20;warmup = 2;}
+      ~config:{ iterations = 20; warmup = 2 }
       "get from 100k items"
       [
         make_case "HashMap" bench_hashmap_get_from_100k;
         make_case "Swisstable" bench_swisstable_get_from_100k;
       ];
     compare_with_config
-      ~config:{iterations = 50;warmup = 5;}
+      ~config:{ iterations = 50; warmup = 5 }
       "get missing key from 10k items"
       [
         make_case "HashMap" bench_hashmap_get_missing;
         make_case "Swisstable" bench_swisstable_get_missing;
       ];
     compare_with_config
-      ~config:{iterations = 10;warmup = 2;}
+      ~config:{ iterations = 10; warmup = 2 }
       "iterate over 10k items"
       [
         make_case "HashMap" bench_hashmap_iter_10k;
         make_case "Swisstable" bench_swisstable_iter_10k;
       ];
     compare_with_config
-      ~config:{iterations = 5;warmup = 1;}
+      ~config:{ iterations = 5; warmup = 1 }
       "iterate over 100k items"
       [
         make_case "HashMap" bench_hashmap_iter_100k;
         make_case "Swisstable" bench_swisstable_iter_100k;
       ];
     compare_with_config
-      ~config:{iterations = 50;warmup = 5;}
+      ~config:{ iterations = 50; warmup = 5 }
       "remove from 10k items"
       [
         make_case "HashMap" bench_hashmap_remove_from_10k;

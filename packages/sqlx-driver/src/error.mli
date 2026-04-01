@@ -15,11 +15,11 @@ type db_error = {
 }
 (** Main error type representing different categories of database errors *)
 type t =
-  | Connection_error of { message: string; cause: db_error option; }
-  | Query_error of { sql: string option; cause: db_error; }
-  | Preparation_error of { sql: string; cause: db_error; }
-  | Execution_error of { cause: db_error; }
-  | Transaction_error of { message: string; cause: db_error option; }
+  | Connection_error of { message: string; cause: db_error option }
+  | Query_error of { sql: string option; cause: db_error }
+  | Preparation_error of { sql: string; cause: db_error }
+  | Execution_error of { cause: db_error }
+  | Transaction_error of { message: string; cause: db_error option }
   | Pool_error of string
   | Generic_error of string
 (** {1 Constructors} *)

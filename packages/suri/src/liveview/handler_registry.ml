@@ -5,7 +5,7 @@ type 'msg t = {
   mutable next_id: int;
 }
 
-let create = fun () -> {handlers = Std.Collections.HashMap.create ();next_id = 0;}
+let create = fun () -> { handlers = Std.Collections.HashMap.create (); next_id = 0 }
 
 let register = fun t handler ->
   let id = "lv-" ^ Int.to_string t.next_id in

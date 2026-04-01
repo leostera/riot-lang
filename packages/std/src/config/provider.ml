@@ -4,9 +4,9 @@ type env = Loader.env
 
 type t =
   | Empty
-  | Env of { env: env; }
-  | Path of { path: Path.t; }
-  | Static of { toml_string: string; }
+  | Env of { env: env }
+  | Path of { path: Path.t }
+  | Static of { toml_string: string }
 
 let empty = Empty
 
@@ -16,11 +16,11 @@ let env = fun ?env () ->
     | Some e -> e
     | None -> Loader.detect_env ()
   in
-  Env {env = e;}
+  Env { env = e }
 
-let file = fun path -> Path {path;}
+let file = fun path -> Path { path }
 
-let static = fun toml_string -> Static {toml_string;}
+let static = fun toml_string -> Static { toml_string }
 
 let load = function
   | Empty ->

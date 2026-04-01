@@ -38,11 +38,11 @@ type 'value t = {
   nodes: (Node_id.t, 'value node) HashMap.t;
 }
 
-let make = fun () -> {nodes = HashMap.with_capacity 100;}
+let make = fun () -> { nodes = HashMap.with_capacity 100 }
 
 let add_node = fun graph value ->
   let id = Node_id.next () in
-  let node = {id;deps = [];value;} in
+  let node = { id; deps = []; value } in
   let _ = HashMap.insert graph.nodes id node in
   node
 

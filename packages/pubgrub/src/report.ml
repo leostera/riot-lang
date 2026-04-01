@@ -8,7 +8,7 @@ type derivation_tree =
       terms: Term.t list;
       cause1: derivation_tree;
       cause2: derivation_tree;
-      shared_id: int option;
+      shared_id: int option
     }
 
 let rec build_derivation_tree = fun incompat ->
@@ -18,7 +18,7 @@ let rec build_derivation_tree = fun incompat ->
     terms;
     cause1 = build_derivation_tree cause1;
     cause2 = build_derivation_tree cause2;
-    shared_id;
+    shared_id
   }
 
 let version_to_string = fun ver -> Version.to_string ver

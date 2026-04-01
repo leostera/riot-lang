@@ -1,7 +1,7 @@
 open Std
 
 type event =
-  | Start of { mode: Runner.run_mode; concurrency: int; }
+  | Start of { mode: Runner.run_mode; concurrency: int }
   | File of Runner.file_result
   | Summary of Runner.summary
 

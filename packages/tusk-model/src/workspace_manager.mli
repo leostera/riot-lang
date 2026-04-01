@@ -1,23 +1,10 @@
 open Std
 
 type load_error =
-  | PackageNotFound of {
-      dependant: string option;
-      package: string;
-      path: string;
-    }
-  | PackageTomlReadFailed of {
-      package: string;
-      path: string;
-    }
-  | PackageTomlParseFailed of {
-      package: string;
-      path: string;
-    }
-  | PackageFromTomlFailed of {
-      package: string;
-      path: string;
-    }
+  | PackageNotFound of { dependant: string option; package: string; path: string }
+  | PackageTomlReadFailed of { package: string; path: string }
+  | PackageTomlParseFailed of { package: string; path: string }
+  | PackageFromTomlFailed of { package: string; path: string }
 val load_error_to_string: load_error -> string
 (** Starting from the given directory, walk up the filesystem tree looking for a
     tusk.toml with a [workspace] section. Returns None if no workspace is found.

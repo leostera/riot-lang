@@ -13,7 +13,7 @@ module Registry = struct
     mutable commands: (string * (module Command)) list;
   }
 
-  let registry = {commands = [];}
+  let registry = { commands = [] }
 
   let register = fun (cmd: (module Command)) ->
     let module Cmd = (val cmd) in

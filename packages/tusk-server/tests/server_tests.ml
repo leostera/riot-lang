@@ -32,7 +32,7 @@ let make_simple_package = fun tmpdir name ->
     build_dependencies = [];
     foreign_dependencies = [];
     binaries = [];
-    library = Some {path = Path.v "src/lib.ml";};
+    library = Some { path = Path.v "src/lib.ml" };
     sources =
       {
         src = [];
@@ -41,7 +41,7 @@ let make_simple_package = fun tmpdir name ->
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
   }

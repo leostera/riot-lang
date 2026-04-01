@@ -4,9 +4,9 @@ type env = Loader.env
 (** Load config from environment-based path (./config/{dev,test,prod}.toml) *)
 type t =
   | Empty
-  | Env of { env: env; }
-  | Path of { path: Path.t; }
-  | Static of { toml_string: string; }
+  | Env of { env: env }
+  | Path of { path: Path.t }
+  | Static of { toml_string: string }
 val env: ?env:env -> unit -> t
 (** The empty configuration provider *)
 val empty: t

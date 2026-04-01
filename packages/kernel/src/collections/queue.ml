@@ -11,7 +11,7 @@ type 'a t = {
   mutable length: int;
 }
 
-let create = fun () -> {front = None;back = None;length = 0;}
+let create = fun () -> { front = None; back = None; length = 0 }
 
 let with_capacity = fun _ -> create ()
 
@@ -20,7 +20,7 @@ let len = fun queue -> queue.length
 let is_empty = fun queue -> queue.length = 0
 
 let push = fun queue value ->
-  let new_node = {value;next = None;} in
+  let new_node = { value; next = None } in
   match queue.back with
   | None ->
       queue.front <- Some new_node;

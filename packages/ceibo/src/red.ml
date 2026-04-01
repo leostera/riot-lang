@@ -22,7 +22,7 @@ type ('kind, 'text) syntax_element =
   | Node of ('kind, 'text) syntax_node
   | Token of ('kind, 'text) syntax_token
 
-let new_token = fun green_token span -> {green_token;parent = None;offset = span.Span.start;}
+let new_token = fun green_token span -> { green_token; parent = None; offset = span.Span.start }
 
 module SyntaxNode = struct
   let green = fun (node: ('kind, 'text) syntax_node) -> node.green_node
@@ -51,12 +51,12 @@ module SyntaxNode = struct
             + List.fold_left
               (fun acc trivia -> acc + Green.trivia_width trivia)
               0
-              (Green.leading_trivia token);
+              (Green.leading_trivia token)
           }
           | Green.Node child_node -> Node {
             green_node = child_node;
             parent = Some node;
-            offset = !running_offset;
+            offset = !running_offset
           }
         in
         acc := f !acc child;
@@ -77,12 +77,12 @@ module SyntaxNode = struct
               + List.fold_left
                 (fun acc trivia -> acc + Green.trivia_width trivia)
                 0
-                (Green.leading_trivia token);
+                (Green.leading_trivia token)
             }
             | Green.Node child_node -> Node {
               green_node = child_node;
               parent = Some node;
-              offset = running_offset;
+              offset = running_offset
             }
           )
       | Some elem -> loop (current_index + 1) (running_offset + Green.width elem)
@@ -248,12 +248,12 @@ module SyntaxToken = struct
     let running_offset = ref (token.offset - total_width) in
     Green.leading_trivia green_token |> List.map
       (fun green_trivia ->
-        let syntax_trivia = {green_trivia;offset = !running_offset;} in
+        let syntax_trivia = { green_trivia; offset = !running_offset } in
         running_offset := !running_offset + Green.trivia_width green_trivia;
         syntax_trivia)
 end
 
-let new_root = fun green_node -> {green_node;parent = None;offset = 0;}
+let new_root = fun green_node -> { green_node; parent = None; offset = 0 }
 
 let syntax_trivia_to_json = fun ~kind_to_json ~text_to_json trivia ->
   Data.Json.Object [

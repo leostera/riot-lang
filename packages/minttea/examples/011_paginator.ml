@@ -107,16 +107,16 @@ let update = fun event model ->
       (model, Command.Quit)
   | Event.KeyDown (Event.Left, _) ->
       let current_page = max 0 (model.current_page - 1) in
-      ({model with current_page;}, Command.Noop)
+      ({ model with current_page }, Command.Noop)
   | Event.KeyDown (Event.Right, _) ->
       let max_page = List.length model.pages - 1 in
       let current_page = min max_page (model.current_page + 1) in
-      ({model with current_page;}, Command.Noop)
+      ({ model with current_page }, Command.Noop)
   | Event.KeyDown (Event.Home, _) ->
-      ({model with current_page = 0;}, Command.Noop)
+      ({ model with current_page = 0 }, Command.Noop)
   | Event.KeyDown (Event.End, _) ->
       let current_page = List.length model.pages - 1 in
-      ({model with current_page;}, Command.Noop)
+      ({ model with current_page }, Command.Noop)
   | Event.KeyDown (Event.Key s, _) when String.length s = 1 -> (* Jump to page by number *)
     (
       match s.[0] with
@@ -124,7 +124,7 @@ let update = fun event model ->
           let page = Char.code c - Char.code '0' - 1 in
           let max_page = List.length model.pages - 1 in
           let current_page = min max_page (max 0 page) in
-          ({model with current_page;}, Command.Noop)
+          ({ model with current_page }, Command.Noop)
       | _ -> (model, Command.Noop)
     )
   | _ ->
@@ -182,6 +182,6 @@ let app = App.make ~init ~update ~view ()
 
 let () =
   let pages = generate_pages () in
-  let initial_model = {current_page = 0;pages;} in
+  let initial_model = { current_page = 0; pages } in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

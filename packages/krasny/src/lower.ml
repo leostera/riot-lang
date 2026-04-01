@@ -48,7 +48,7 @@ let error_to_string = fun err ->
   | context -> err.message ^ " [" ^ String.concat " > " context ^ "]"
 
 let unsupported_with_context_entries = fun ?(context = []) message ->
-  raise (Unsupported {message;context;})
+  raise (Unsupported { message; context })
 
 let unsupported = fun ?(context = []) message ->
   unsupported_with_context_entries ~context:(List.map (fun label -> Context_label label) context) message
@@ -1453,8 +1453,7 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
 
 let render_variant_definition = fun constructors ->
   let constructor_docs = constructors
-  |> List.map
-    (fun constructor -> render_variant_constructor constructor) in
+  |> List.map (fun constructor -> render_variant_constructor constructor) in
   constructor_docs |> Doc.join Doc.line
 
 let render_type_definition = function
@@ -3451,7 +3450,13 @@ let make_lowerer =
             [
               doc_of_token opening_token;
               Doc.line;
-              Doc.indent 2 (render_fields ~include_trailing_separator:true rendered_fields separator_tokens Doc.line);
+              Doc.indent
+                2
+                (render_fields
+                  ~include_trailing_separator:true
+                  rendered_fields
+                  separator_tokens
+                  Doc.line);
               Doc.line;
               doc_of_token closing_token;
             ]
@@ -3524,7 +3529,11 @@ let make_lowerer =
                     Doc.line;
                     doc_of_token with_token;
                     Doc.space;
-                    render_fields ~include_trailing_separator:true rendered_fields separator_tokens Doc.line;
+                    render_fields
+                      ~include_trailing_separator:true
+                      rendered_fields
+                      separator_tokens
+                      Doc.line;
                   ]);
               Doc.line;
               doc_of_token closing_token;
@@ -5977,7 +5986,7 @@ let make_lowerer =
     loop [] 0 items
   and render_signature_items ~source_node:_ items = render_signature_top_level_items ~items
   in
-  {render_structure_items;render_signature_items;}
+  { render_structure_items; render_signature_items }
 
 let source_file = fun source_file ->
   try

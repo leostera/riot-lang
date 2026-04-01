@@ -132,7 +132,7 @@ let connect = fun uri ->
                     if not has_correct_accept then
                       Error (Error.Handshake_failed "Invalid Sec-WebSocket-Accept header")
                     else
-                      Ok {stream;uri;buffer = Buffer.create 4_096;closed = false;}
+                      Ok { stream; uri; buffer = Buffer.create 4_096; closed = false }
             )
         )
     )

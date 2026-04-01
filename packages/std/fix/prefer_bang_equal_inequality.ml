@@ -39,7 +39,7 @@ let make_diagnostic = fun token ->
     ~severity:Warning
     ~kind:(Api.Diagnostic.Known {
       rule_id = explanation.Api.Explanation.rule_id;
-      message = explanation.Api.Explanation.message;
+      message = explanation.Api.Explanation.message
     })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:"Replace <> with !=."

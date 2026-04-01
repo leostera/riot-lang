@@ -12,16 +12,10 @@ type plan_result =
       module_graph: Module_node.t G.t;
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash;
-      depset: Dependency.t list;
+      depset: Dependency.t list
     }
-  | MissingDependencies of {
-      package: Package.t;
-      missing: Package.t list;
-    }
-  | FailedDependencies of {
-      package: Package.t;
-      failed: Package.t list;
-    }
+  | MissingDependencies of { package: Package.t; missing: Package.t list }
+  | FailedDependencies of { package: Package.t; failed: Package.t list }
 
 type check_deps_error =
   Missing of Package.t list
@@ -52,7 +46,7 @@ let file_of_json = fun json ->
         | Some (String "concrete"), Some (String path), _ -> Ok (Module_node.Concrete (Path.v path))
         | Some (String "generated"), Some (String path), Some (String contents) -> Ok (Module_node.Generated {
           path = Path.v path;
-          contents;
+          contents
         })
         | _ -> Error "invalid module file payload"
       )
@@ -161,7 +155,7 @@ let module_kind_of_json = fun json ->
             match List.assoc_opt "files" fields with
             | Some files_json -> (
                 match parse_string_array files_json with
-                | Ok files -> Ok (Module_node.Native {files = List.map Path.v files;})
+                | Ok files -> Ok (Module_node.Native { files = List.map Path.v files })
                 | Error e -> Error e
               )
             | None -> Error "invalid native kind payload"
@@ -170,7 +164,10 @@ let module_kind_of_json = fun json ->
             match (List.assoc_opt "name" fields, List.assoc_opt "includes" fields) with
             | Some (String name), Some includes_json -> (
                 match parse_string_array includes_json with
-                | Ok includes -> Ok (Module_node.Library {name;includes = List.map Path.v includes;})
+                | Ok includes -> Ok (Module_node.Library {
+                  name;
+                  includes = List.map Path.v includes
+                })
                 | Error e -> Error e
               )
             | _ -> Error "invalid library kind payload"
@@ -188,7 +185,7 @@ let module_kind_of_json = fun json ->
                   name;
                   source = Path.v source;
                   libraries = List.map Path.v libraries;
-                  includes = List.map Path.v includes;
+                  includes = List.map Path.v includes
                 })
                 | (Error e, _)
                 | (_, Error e) -> Error e
@@ -258,7 +255,7 @@ let module_graph_of_json = fun json ->
                                 parse_int_array deps_json
                               ) with
                               | Ok file, Ok kind, Ok deps ->
-                                  let node_value : Module_node.t = {file;open_modules = [];kind;} in
+                                  let node_value : Module_node.t = { file; open_modules = []; kind } in
                                   let node = G.add_node graph node_value in
                                   let _ = HashMap.insert id_to_node legacy_id node in
                                   Vector.push pending_deps (node, deps);
@@ -426,7 +423,7 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
             package;
             artifact_dir = Tusk_store.Store.hash_dir_of store hash;
             depset = dep_depset;
-            hash;
+            hash
           }
         else (
           unplanned := pkg :: !unplanned;
@@ -446,7 +443,7 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
             package;
             artifact_dir = Tusk_store.Store.hash_dir_of store hash;
             depset = dep_depset;
-            hash;
+            hash
           }
     | Package_graph.Failed _ ->
         (* Dependency failed to build *)
@@ -469,9 +466,9 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
 let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
   match check_dependencies_built ~store ~package_graph ~package_key with
   | Error (Failed failed) ->
-      Ok (FailedDependencies {package;failed;})
+      Ok (FailedDependencies { package; failed })
   | Error (Missing missing) ->
-      Ok (MissingDependencies {package;missing;})
+      Ok (MissingDependencies { package; missing })
   | Ok depset ->
       (* Resolve profile for this package *)
       let base_profile = build_ctx.Build_ctx.profile in

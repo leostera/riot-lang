@@ -4,7 +4,7 @@ type t =
       ref: 'v Ref.t;
     } -> t
 
-let make = fun value ref -> Task {value;ref;}
+let make = fun value ref -> Task { value; ref }
 
 let value : type v. t -> v Ref.t -> v option = fun (Task { ref; value }) ref' ->
   match Ref.type_equal ref ref' with

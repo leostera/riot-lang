@@ -21,7 +21,7 @@ late. `open!` makes that problem easier to miss.
 let make_diagnostic = fun token ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:"Remove ! or qualify the module usage explicitly."
     ()

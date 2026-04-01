@@ -26,25 +26,25 @@ let default = {
   overline = false;
 }
 
-let fg = fun color t -> {t with fg = Some color;}
+let fg = fun color t -> { t with fg = Some color }
 
-let bg = fun color t -> {t with bg = Some color;}
+let bg = fun color t -> { t with bg = Some color }
 
-let bold = fun t -> {t with bold = true;}
+let bold = fun t -> { t with bold = true }
 
-let faint = fun t -> {t with faint = true;}
+let faint = fun t -> { t with faint = true }
 
-let italic = fun t -> {t with italic = true;}
+let italic = fun t -> { t with italic = true }
 
-let underline = fun t -> {t with underline = true;}
+let underline = fun t -> { t with underline = true }
 
-let blink = fun t -> {t with blink = true;}
+let blink = fun t -> { t with blink = true }
 
-let reverse = fun t -> {t with reverse = true;}
+let reverse = fun t -> { t with reverse = true }
 
-let strikethrough = fun t -> {t with strikethrough = true;}
+let strikethrough = fun t -> { t with strikethrough = true }
 
-let overline = fun t -> {t with overline = true;}
+let overline = fun t -> { t with overline = true }
 
 let to_escape_seq = fun t ->
   let codes = [] in

@@ -11,16 +11,13 @@ type build_scope =
   | Dev
 type package_scope = build_scope
 type package_node =
-  | Unplanned of {
-      package: Package.t;
-      scope: package_scope;
-    }
+  | Unplanned of { package: Package.t; scope: package_scope }
   | Planned of {
       package: Package.t;
       scope: package_scope;
       module_graph: Module_node.t Graph.SimpleGraph.t;
       action_graph: Action_graph.t;
-      hash: Std.Crypto.hash;
+      hash: Std.Crypto.hash
     }
   | Built of {
       package: Package.t;
@@ -30,19 +27,10 @@ type package_node =
       hash: Std.Crypto.hash;
       artifact: Tusk_store.Artifact.t;
       status: build_status;
-      depset: Dependency.t list;
+      depset: Dependency.t list
     }
-  | Failed of {
-      package: Package.t;
-      scope: package_scope;
-      hash: Std.Crypto.hash;
-      error: string;
-    }
-  | Skipped of {
-      package: Package.t;
-      scope: package_scope;
-      reason: string;
-    }
+  | Failed of { package: Package.t; scope: package_scope; hash: Std.Crypto.hash; error: string }
+  | Skipped of { package: Package.t; scope: package_scope; reason: string }
 exception Cycle_detected of string list
 
 type missing_dependency = {
@@ -55,9 +43,7 @@ type missing_dependency = {
     Returns Error(MissingPackages) if any package depends on packages that are
     not in the workspace. *)
 type create_error =
-  | MissingPackages of {
-      missing: missing_dependency list;
-    }
+  | MissingPackages of { missing: missing_dependency list }
 val create: scope:build_scope -> Workspace.t -> (t, create_error) result
 (** Extract the Package.t from a package_node *)
 val get_package: package_node -> Package.t

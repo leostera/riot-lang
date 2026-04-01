@@ -51,7 +51,7 @@ module Parser = struct
     len: int;
   }
 
-  let create = fun input -> {input;pos = 0;len = String.length input;}
+  let create = fun input -> { input; pos = 0; len = String.length input }
 
   let peek = fun state ->
     if state.pos < state.len then

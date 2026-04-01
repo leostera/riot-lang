@@ -44,7 +44,7 @@ let create = fun (Config { driver; config }) ->
   | Error e -> Error (DriverError {
     error = e;
     to_string = D.error_to_string;
-    to_json = D.error_to_json;
+    to_json = D.error_to_json
   })
 (** Query executes DIRECTLY in caller's process *)
 let query = fun (Connection t) sql params ->
@@ -54,14 +54,14 @@ let query = fun (Connection t) sql params ->
   | Error e -> Error (DriverError {
     error = e;
     to_string = D.error_to_string;
-    to_json = D.error_to_json;
+    to_json = D.error_to_json
   })
   | Ok stmt -> (
       match D.execute stmt params with
       | Error e -> Error (DriverError {
         error = e;
         to_string = D.error_to_string;
-        to_json = D.error_to_json;
+        to_json = D.error_to_json
       })
       | Ok result_set ->
           let cursor_id = "cursor_" ^ string_of_int (Random.int 1_000_000) in
@@ -81,14 +81,14 @@ let execute = fun (Connection t) sql params ->
   | Error e -> Error (DriverError {
     error = e;
     to_string = D.error_to_string;
-    to_json = D.error_to_json;
+    to_json = D.error_to_json
   })
   | Ok stmt -> (
       match D.execute stmt params with
       | Error e -> Error (DriverError {
         error = e;
         to_string = D.error_to_string;
-        to_json = D.error_to_json;
+        to_json = D.error_to_json
       })
       | Ok result_set -> Ok (D.rows_affected result_set)
     )

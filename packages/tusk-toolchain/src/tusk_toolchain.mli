@@ -69,16 +69,9 @@ val download_and_install_toolchain: string -> host:string -> target:string -> (u
     Returns Ok () on success, Error msg on failure. *)
 (** Toolchain management *)
 type toolchain_status =
-  | Installed of {
-      path: Path.t;
-    }
-  | NotInstalled of {
-      expected_path: Path.t;
-    }
-  | Incomplete of {
-      path: Path.t;
-      missing: string list;
-    }
+  | Installed of { path: Path.t }
+  | NotInstalled of { expected_path: Path.t }
+  | Incomplete of { path: Path.t; missing: string list }
 type toolchain_info = {
   version: string;
   target: string;

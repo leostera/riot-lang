@@ -19,11 +19,11 @@ val level_to_string: level -> string
 
 type error_kind =
   | SyntaxError
-  | TypeError of { description: string; }
-  | UnboundValue of { name: string; }
-  | UnboundModule of { name: string; }
-  | FileNotFound of { filename: string; }
-  | OtherError of { message: string; }
+  | TypeError of { description: string }
+  | UnboundValue of { name: string }
+  | UnboundModule of { name: string }
+  | FileNotFound of { filename: string }
+  | OtherError of { message: string }
 type build_error = {
   file: string;
   line: int;
@@ -51,54 +51,54 @@ type kind =
       duration_ms: int;
       results: build_result list;
       succeeded: string list;
-      failed: string list;
+      failed: string list
     }
-  | BuildGraphCreated of { nodes: int; duration_ms: int; }
+  | BuildGraphCreated of { nodes: int; duration_ms: int }
   | BuildGraphCreating
-  | BuildStarted of { packages: string list; total_modules: int; workers: int; }
-  | CacheHit of { package: string; hash: string; }
-  | CacheMiss of { package: string; hash: string; }
-  | CacheStored of { package: string; hash: string; artifacts: string list; }
-  | CompileError of { package: string; error: build_error; }
-  | CompilingImplementation of { package: string; file: string; }
-  | CompilingInterface of { package: string; file: string; }
-  | ComputingHash of { package: string; }
-  | CopyingFile of { source: string; dest: string; }
-  | CreatingDirectory of { path: string; }
-  | CycleDetected of { packages: string list; }
-  | DependencyMissing of { package: string; missing: string list; }
-  | DependencySatisfied of { package: string; }
-  | HashComputed of { package: string; hash: string; }
-  | LinkingExecutable of { package: string; output: string; }
-  | LinkingLibrary of { package: string; output: string; }
-  | McpToolCall of { tool: string; args: Json.t; }
+  | BuildStarted of { packages: string list; total_modules: int; workers: int }
+  | CacheHit of { package: string; hash: string }
+  | CacheMiss of { package: string; hash: string }
+  | CacheStored of { package: string; hash: string; artifacts: string list }
+  | CompileError of { package: string; error: build_error }
+  | CompilingImplementation of { package: string; file: string }
+  | CompilingInterface of { package: string; file: string }
+  | ComputingHash of { package: string }
+  | CopyingFile of { source: string; dest: string }
+  | CreatingDirectory of { path: string }
+  | CycleDetected of { packages: string list }
+  | DependencyMissing of { package: string; missing: string list }
+  | DependencySatisfied of { package: string }
+  | HashComputed of { package: string; hash: string }
+  | LinkingExecutable of { package: string; output: string }
+  | LinkingLibrary of { package: string; output: string }
+  | McpToolCall of { tool: string; args: Json.t }
   | PackageComplete of build_result
-  | PackageSkipped of { package: string; reason: skip_reason; }
-  | PackageStarted of { package: string; }
+  | PackageSkipped of { package: string; reason: skip_reason }
+  | PackageStarted of { package: string }
   | QueuePackage of { package: string; queue_type:
         [
           | `Ready
           | `Waiting
-        ]; }
-  | QueueStats of { ready: int; waiting: int; busy: int; }
-  | RpcRequestReceived of { request_type: string; args: Json.t; }
-  | RpcResponseSent of { result: (unit, string) result; }
-  | ServerRestarted of { packages: int; toolchain: string; }
-  | ServerScanning of { root: string; }
+        ] }
+  | QueueStats of { ready: int; waiting: int; busy: int }
+  | RpcRequestReceived of { request_type: string; args: Json.t }
+  | RpcResponseSent of { result: (unit, string) result }
+  | ServerRestarted of { packages: int; toolchain: string }
+  | ServerScanning of { root: string }
   | ServerShutdown
-  | ServerStarted of { pid: string; }
-  | WorkerAssigned of { worker_id: Worker_id.t; package: string; }
-  | WorkerIdle of { worker_id: Worker_id.t; }
-  | WorkerPoolStarted of { workers: int; }
-  | WorkerStarted of { worker_id: Worker_id.t; }
+  | ServerStarted of { pid: string }
+  | WorkerAssigned of { worker_id: Worker_id.t; package: string }
+  | WorkerIdle of { worker_id: Worker_id.t }
+  | WorkerPoolStarted of { workers: int }
+  | WorkerStarted of { worker_id: Worker_id.t }
   | StoreCreating
-  | StoreCreated of { duration_ms: int; }
-  | WorkerPoolCreating of { workers: int; }
-  | WorkerPoolCreated of { workers: int; duration_ms: int; }
+  | StoreCreated of { duration_ms: int }
+  | WorkerPoolCreating of { workers: int }
+  | WorkerPoolCreated of { workers: int; duration_ms: int }
   | WorkspaceEmpty
   | WorkspaceScanning
-  | WorkspaceScanned of { packages: int; duration_ms: int; }
-  | WritingFile of { path: string; }
+  | WorkspaceScanned of { packages: int; duration_ms: int }
+  | WritingFile of { path: string }
 (** Create a new event with current timestamp *)
 type t = {
   timestamp: Std.Datetime.t;

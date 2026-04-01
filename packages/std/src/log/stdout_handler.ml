@@ -58,10 +58,10 @@ module Server = struct
         config.handlers
     in
     match stdout_format with
-    | Some format -> loop {style = format;}
+    | Some format -> loop { style = format }
     | None ->
         (* No stdout handler configured, use default *)
-        loop {style = Log_config.Full;}
+        loop { style = Log_config.Full }
 end
 (** Shared process state - updated by supervised process on start *)
 let handler_pid = Cell.create None

@@ -137,22 +137,22 @@ let bench_sort_100k = fun () ->
 let benchmarks =
   Bench.[
     case "push: 100 items" bench_push_100;
-    with_config ~config:{iterations = 10;warmup = 2;} "push: 10k items" bench_push_10k;
-    with_config ~config:{iterations = 5;warmup = 1;} "push: 100k items" bench_push_100k;
-    with_config ~config:{iterations = 3;warmup = 1;} "push: 1M items" bench_push_1m;
+    with_config ~config:{ iterations = 10; warmup = 2 } "push: 10k items" bench_push_10k;
+    with_config ~config:{ iterations = 5; warmup = 1 } "push: 100k items" bench_push_100k;
+    with_config ~config:{ iterations = 3; warmup = 1 } "push: 1M items" bench_push_1m;
     case "get: from 100 items" bench_get_from_100;
-    with_config ~config:{iterations = 50;warmup = 5;} "get: from 10k items" bench_get_from_10k;
-    with_config ~config:{iterations = 20;warmup = 2;} "get: from 100k items" bench_get_from_100k;
-    with_config ~config:{iterations = 10;warmup = 2;} "get: from 1M items" bench_get_from_1m;
+    with_config ~config:{ iterations = 50; warmup = 5 } "get: from 10k items" bench_get_from_10k;
+    with_config ~config:{ iterations = 20; warmup = 2 } "get: from 100k items" bench_get_from_100k;
+    with_config ~config:{ iterations = 10; warmup = 2 } "get: from 1M items" bench_get_from_1m;
     case "pop: from 100 items" bench_pop_from_100;
-    with_config ~config:{iterations = 50;warmup = 5;} "pop: from 10k items" bench_pop_from_10k;
-    with_config ~config:{iterations = 20;warmup = 2;} "pop: from 100k items" bench_pop_from_100k;
+    with_config ~config:{ iterations = 50; warmup = 5 } "pop: from 10k items" bench_pop_from_10k;
+    with_config ~config:{ iterations = 20; warmup = 2 } "pop: from 100k items" bench_pop_from_100k;
     case "iter: 100 items" bench_iter_100;
-    with_config ~config:{iterations = 10;warmup = 2;} "iter: 10k items" bench_iter_10k;
-    with_config ~config:{iterations = 5;warmup = 1;} "iter: 100k items" bench_iter_100k;
+    with_config ~config:{ iterations = 10; warmup = 2 } "iter: 10k items" bench_iter_10k;
+    with_config ~config:{ iterations = 5; warmup = 1 } "iter: 100k items" bench_iter_100k;
     case "sort: 100 items" bench_sort_100;
-    with_config ~config:{iterations = 10;warmup = 2;} "sort: 10k items" bench_sort_10k;
-    with_config ~config:{iterations = 5;warmup = 1;} "sort: 100k items" bench_sort_100k;
+    with_config ~config:{ iterations = 10; warmup = 2 } "sort: 10k items" bench_sort_10k;
+    with_config ~config:{ iterations = 5; warmup = 1 } "sort: 100k items" bench_sort_100k;
   ]
 
 let () =

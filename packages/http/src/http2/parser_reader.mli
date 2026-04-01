@@ -24,11 +24,11 @@ val create: ?config:config -> unit -> state
 type parse_error =
   | Incomplete_frame_header
   (** Frame header has fewer than 9 bytes *)
-  | Frame_size_exceeds_maximum of { size: int; max_size: int; }
+  | Frame_size_exceeds_maximum of { size: int; max_size: int }
   (** Frame payload size exceeds configured maximum *)
   | Unknown_frame_type of int
   (** Unknown HTTP/2 frame type byte *)
-  | Invalid_payload_length of { frame_type: string; expected: int; actual: int; }
+  | Invalid_payload_length of { frame_type: string; expected: int; actual: int }
   (** Payload length doesn't match frame type requirements *)
   | Incomplete_settings_payload
 (** SETTINGS payload is not multiple of 6 bytes *)

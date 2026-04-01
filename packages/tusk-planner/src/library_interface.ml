@@ -31,7 +31,7 @@ let make_node = fun (lib: Module.t) (children: Module.t list) aliases ~exists ~a
     if exists then
       Module_node.Concrete path
     else
-      Module_node.Generated {path;contents = template children;}
+      Module_node.Generated { path; contents = template children }
   in
   let kind =
     match Module.kind lib with
@@ -39,4 +39,4 @@ let make_node = fun (lib: Module.t) (children: Module.t list) aliases ~exists ~a
     | `implementation -> Module_node.ML lib
   in
   let open_modules = aliases in
-  {Module_node.file;open_modules;kind;}
+  { Module_node.file; open_modules; kind }

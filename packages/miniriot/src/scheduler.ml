@@ -39,7 +39,7 @@ let create_counters () : runtime_counters = {
   steals = Atomic.make 0;
   failed_steals = Atomic.make 0;
   remote_wakeups = Atomic.make 0;
-  duplicate_enqueue_races = Atomic.make 0;
+  duplicate_enqueue_races = Atomic.make 0
 }
 
 let increment = fun counter -> ignore (Atomic.fetch_and_add counter 1)
@@ -53,7 +53,7 @@ let snapshot_counters = fun (counters: runtime_counters) ->
     steals = Atomic.get counters.steals;
     failed_steals = Atomic.get counters.failed_steals;
     remote_wakeups = Atomic.get counters.remote_wakeups;
-    duplicate_enqueue_races = Atomic.get counters.duplicate_enqueue_races;
+    duplicate_enqueue_races = Atomic.get counters.duplicate_enqueue_races
   }
 
 let enable_trace = fun () ->
@@ -77,7 +77,7 @@ let ensure_can_run_once = fun () ->
        in a separate executable.";
   has_run := true
 
-let make_response = fun () -> {lock = Mutex.create ();cond = Condition.create ();value = None;}
+let make_response = fun () -> { lock = Mutex.create (); cond = Condition.create (); value = None }
 
 let with_response = fun (response: 'a response) f ->
   Mutex.lock response.lock;
@@ -120,7 +120,7 @@ let with_reactor_commands = fun t f ->
       raise exn
 
 let create_worker = fun id ->
-  {id;queue = Queue.create ();lock = Mutex.create ();cond = Condition.create ();}
+  { id; queue = Queue.create (); lock = Mutex.create (); cond = Condition.create () }
 
 let default_worker_count = fun config ->
   let requested = Config.worker_count config in
@@ -142,9 +142,11 @@ let process_shard_count = fun worker_count ->
 let create_process_registry = fun worker_count ->
   let shard_count = process_shard_count worker_count in
   let shards =
-    Array.init shard_count (fun _ -> {lock = Mutex.create ();processes = HashMap.with_capacity 64;})
+    Array.init
+      shard_count
+      (fun _ -> { lock = Mutex.create (); processes = HashMap.with_capacity 64 })
   in
-  {shards;size = Atomic.make 0;}
+  { shards; size = Atomic.make 0 }
 
 let create_process_slot = fun proc ~owner_worker ->
   {
@@ -431,7 +433,7 @@ let register_io = fun t ~token ~interest ~source ->
     Error IO.Closed
   else
     let reply = make_response () in
-    push_reactor_command t (Register_io {token;interest;source;reply;});
+    push_reactor_command t (Register_io { token; interest; source; reply });
     await_response reply
 
 let deregister_io = fun t source -> push_reactor_command t (Deregister_io source)
@@ -649,7 +651,7 @@ let perform = fun t proc ->
           timeout
         | _ -> k Suspend
       in
-      {perform;}
+      { perform }
 
 let handle_exit_proc = fun t proc reason ->
   let pid = Process.pid proc in
@@ -664,7 +666,7 @@ let handle_exit_proc = fun t proc reason ->
               Process.demonitor monitor_proc monitor_ref;
               Process.send_message
                 monitor_proc
-                (Process.Messages.DOWN {ref = monitor_ref;pid;reason;});
+                (Process.Messages.DOWN { ref = monitor_ref; pid; reason });
               wake_process t monitor_slot)
         (Process.get_monitored_by proc);
       List.iter
@@ -684,7 +686,7 @@ let handle_exit_proc = fun t proc reason ->
               Process.unlink linked_proc pid;
               if Process.get_trap_exit linked_proc then
                 (
-                  Process.send_message linked_proc (Process.Messages.EXIT {from = pid;reason;});
+                  Process.send_message linked_proc (Process.Messages.EXIT { from = pid; reason });
                   wake_process t linked_slot
                 )
               else

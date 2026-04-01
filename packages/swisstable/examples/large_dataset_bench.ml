@@ -5,9 +5,9 @@ module Cell = Kernel.Sync.Cell
 
 (* Benchmark configuration for very large datasets *)
 
-let large_config = {iterations = 10;warmup = 2;}
+let large_config = { iterations = 10; warmup = 2 }
 
-let xlarge_config = {iterations = 3;warmup = 1;}
+let xlarge_config = { iterations = 3; warmup = 1 }
 
 (* Reduced for 1m items *)
 

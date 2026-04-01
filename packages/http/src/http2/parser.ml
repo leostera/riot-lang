@@ -3,7 +3,7 @@ open Std
 let ( let* ) = Result.and_then
 
 type 'a parse_result =
-  | Done of { value: 'a; remaining: string; }
+  | Done of { value: 'a; remaining: string }
   | Need_more
   | Error of string
 
@@ -23,7 +23,7 @@ type config = {
   max_frame_size: int;
 }
 
-let default_config = {max_frame_size = default_max_frame_size;}
+let default_config = { max_frame_size = default_max_frame_size }
 
 let read_uint24_be = fun data offset ->
   if offset + 3 > String.length data then
@@ -123,7 +123,7 @@ let parse_frame_header = fun ?(config = default_config) data ->
                             let stream_id = stream_id_raw land 0x7fff_ffff in
                             Done {
                               value = (length, frame_type, flags, stream_id);
-                              remaining = String.sub data 9 (String.length data - 9);
+                              remaining = String.sub data 9 (String.length data - 9)
                             }
                       )
                   )
@@ -146,15 +146,15 @@ let parse_data_payload = fun length flags data ->
           let payload_data = String.sub data 1 data_length in
           let remaining = String.sub data length (String.length data - length) in
           Done {
-            value = Frame.DataPayload {data = payload_data;pad_length = Some pad_length;};
-            remaining;
+            value = Frame.DataPayload { data = payload_data; pad_length = Some pad_length };
+            remaining
           }
   else if String.length data < length then
     Need_more
   else
     let payload_data = String.sub data 0 length in
     let remaining = String.sub data length (String.length data - length) in
-    Done {value = Frame.DataPayload {data = payload_data;pad_length = None;};remaining;}
+    Done { value = Frame.DataPayload { data = payload_data; pad_length = None }; remaining }
 
 let parse_priority_fields = fun data offset ->
   match read_uint32_be data offset with
@@ -226,7 +226,7 @@ let parse_priority_payload = fun length data ->
     | None -> Error "Failed to parse PRIORITY payload"
     | Some (stream_dependency, exclusive, weight) ->
         let remaining = String.sub data 5 (String.length data - 5) in
-        Done {value = Frame.PriorityPayload {stream_dependency;exclusive;weight;};remaining;}
+        Done { value = Frame.PriorityPayload { stream_dependency; exclusive; weight }; remaining }
 
 let parse_rst_stream_payload = fun length data ->
   if length != 4 then
@@ -243,7 +243,7 @@ let parse_rst_stream_payload = fun length data ->
           | None -> Frame.ProtocolError
         in
         let remaining = String.sub data 4 (String.length data - 4) in
-        Done {value = Frame.RstStreamPayload error_code;remaining;}
+        Done { value = Frame.RstStreamPayload error_code; remaining }
 
 let parse_settings_payload = fun length flags data ->
   if flags.Frame.ack && length != 0 then
@@ -282,7 +282,7 @@ let parse_settings_payload = fun length flags data ->
     match parse_settings 0 [] with
     | Ok settings ->
         let remaining = String.sub data length (String.length data - length) in
-        Done {value = Frame.SettingsPayload settings;remaining;}
+        Done { value = Frame.SettingsPayload settings; remaining }
     | Result.Error msg -> Error msg
 
 let parse_push_promise_payload = fun length flags data ->
@@ -320,9 +320,9 @@ let parse_push_promise_payload = fun length flags data ->
             value = Frame.PushPromisePayload {
               pad_length = pad_length_opt;
               promised_stream_id;
-              header_block_fragment;
+              header_block_fragment
             };
-            remaining;
+            remaining
           }
 
 let parse_ping_payload = fun length data ->
@@ -333,7 +333,7 @@ let parse_ping_payload = fun length data ->
   else
     let opaque_data = String.sub data 0 8 in
     let remaining = String.sub data 8 (String.length data - 8) in
-    Done {value = Frame.PingPayload opaque_data;remaining;}
+    Done { value = Frame.PingPayload opaque_data; remaining }
 
 let parse_goaway_payload = fun length data ->
   if length < 8 then
@@ -355,7 +355,10 @@ let parse_goaway_payload = fun length data ->
             in
             let debug_data = String.sub data 8 (length - 8) in
             let remaining = String.sub data length (String.length data - length) in
-            Done {value = Frame.GoawayPayload {last_stream_id;error_code;debug_data;};remaining;}
+            Done {
+              value = Frame.GoawayPayload { last_stream_id; error_code; debug_data };
+              remaining
+            }
       )
 
 let parse_window_update_payload = fun length data ->
@@ -372,7 +375,7 @@ let parse_window_update_payload = fun length data ->
           Error "WINDOW_UPDATE increment must be non-zero"
         else
           let remaining = String.sub data 4 (String.length data - 4) in
-          Done {value = Frame.WindowUpdatePayload increment;remaining;}
+          Done { value = Frame.WindowUpdatePayload increment; remaining }
 
 let parse_continuation_payload = fun length data ->
   if String.length data < length then
@@ -380,7 +383,7 @@ let parse_continuation_payload = fun length data ->
   else
     let header_block_fragment = String.sub data 0 length in
     let remaining = String.sub data length (String.length data - length) in
-    Done {value = Frame.ContinuationPayload header_block_fragment;remaining;}
+    Done { value = Frame.ContinuationPayload header_block_fragment; remaining }
 
 let parse_payload = fun length frame_type flags data ->
   match frame_type with

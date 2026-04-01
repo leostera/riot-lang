@@ -7,7 +7,7 @@ type test_result =
   | Error of exn
 type test_type =
   | UnitTest
-  | Property of { examples: int; }
+  | Property of { examples: int }
 (** [case name fn] creates a regular unit test. *)
 type t = {
   name: string;

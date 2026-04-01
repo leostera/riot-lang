@@ -171,14 +171,14 @@ let update = fun event model ->
         | Some idx when idx > 0 -> Table.select model.table (idx - 1)
         | _ -> model.table
       in
-      ({model with table;}, Command.Noop)
+      ({ model with table }, Command.Noop)
   | Event.KeyDown (Event.Down, _) ->
       let table =
         match Table.selected_index model.table with
         | Some idx -> Table.select model.table (idx + 1)
         | None -> Table.select model.table 0
       in
-      ({model with table;}, Command.Noop)
+      ({ model with table }, Command.Noop)
   | Event.KeyDown (Event.Enter, _) ->
       (* Get selected row index and find corresponding user *)
       let selected_user =
@@ -186,9 +186,9 @@ let update = fun event model ->
         | Some idx when idx < List.length model.users -> Some (List.nth model.users idx)
         | _ -> None
       in
-      ({model with selected_user;}, Command.Noop)
+      ({ model with selected_user }, Command.Noop)
   | Event.KeyDown (Event.Key "c", _) -> (* Clear selection *)
-    ({model with selected_user = None;}, Command.Noop)
+    ({ model with selected_user = None }, Command.Noop)
   | _ ->
       (model, Command.Noop)
 
@@ -244,6 +244,6 @@ let () =
   let rows = List.map user_to_row users in
   (* Create table *)
   let table = Table.make columns rows |> Table.set_height ~height:10 |> Table.focus in
-  let initial_model = {table;selected_user = None;users;} in
+  let initial_model = { table; selected_user = None; users } in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

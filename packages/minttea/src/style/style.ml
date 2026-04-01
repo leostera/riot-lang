@@ -113,85 +113,85 @@ let default = {
   align_horizontal = None;
   align_vertical = None;
   overflow = Visible;
-  constraints = {min_width = None;max_width = None;min_height = None;max_height = None;};
+  constraints = { min_width = None; max_width = None; min_height = None; max_height = None };
 }
 
-let bg = fun x t -> {t with background = Some x;}
+let bg = fun x t -> { t with background = Some x }
 
-let blink = fun x t -> {t with blink = x;}
+let blink = fun x t -> { t with blink = x }
 
-let bold = fun x t -> {t with bold = x;}
+let bold = fun x t -> { t with bold = x }
 
-let faint = fun x t -> {t with faint = x;}
+let faint = fun x t -> { t with faint = x }
 
-let fg = fun x t -> {t with foreground = Some x;}
+let fg = fun x t -> { t with foreground = Some x }
 
-let italic = fun x t -> {t with italic = x;}
+let italic = fun x t -> { t with italic = x }
 
-let margin_bottom = fun x t -> {t with margin_bottom = x;}
+let margin_bottom = fun x t -> { t with margin_bottom = x }
 
-let margin_left = fun x t -> {t with margin_left = x;}
+let margin_left = fun x t -> { t with margin_left = x }
 
-let margin_right = fun x t -> {t with margin_right = x;}
+let margin_right = fun x t -> { t with margin_right = x }
 
-let margin_top = fun x t -> {t with margin_top = x;}
+let margin_top = fun x t -> { t with margin_top = x }
 
-let padding_bottom = fun x t -> {t with padding_bottom = x;}
+let padding_bottom = fun x t -> { t with padding_bottom = x }
 
-let padding_left = fun x t -> {t with padding_left = x;}
+let padding_left = fun x t -> { t with padding_left = x }
 
-let padding_right = fun x t -> {t with padding_right = x;}
+let padding_right = fun x t -> { t with padding_right = x }
 
-let padding_top = fun x t -> {t with padding_top = x;}
+let padding_top = fun x t -> { t with padding_top = x }
 
-let reverse = fun x t -> {t with reverse = x;}
+let reverse = fun x t -> { t with reverse = x }
 
-let strikethrough = fun x t -> {t with strikethrough = x;}
+let strikethrough = fun x t -> { t with strikethrough = x }
 
-let underline = fun x t -> {t with underline = x;}
+let underline = fun x t -> { t with underline = x }
 
-let border = fun x t -> {t with border = Some x;}
+let border = fun x t -> { t with border = Some x }
 
-let align_horizontal = fun x t -> {t with align_horizontal = Some x;}
+let align_horizontal = fun x t -> { t with align_horizontal = Some x }
 
-let align_vertical = fun x t -> {t with align_vertical = Some x;}
+let align_vertical = fun x t -> { t with align_vertical = Some x }
 
 (* Legacy API - kept for compatibility *)
 
-let height = fun x t -> {t with height = Fixed x;}
+let height = fun x t -> { t with height = Fixed x }
 
 let width = fun x t ->
   match x with
-  | Some w -> {t with width = Fixed w;}
-  | None -> {t with width = Auto;}
+  | Some w -> { t with width = Fixed w }
+  | None -> { t with width = Auto }
 
-let max_height = fun x t -> {t with constraints = {t.constraints with max_height = Some x;};}
+let max_height = fun x t -> { t with constraints = { t.constraints with max_height = Some x } }
 
-let max_width = fun x t -> {t with constraints = {t.constraints with max_width = Some x;};}
+let max_width = fun x t -> { t with constraints = { t.constraints with max_width = Some x } }
 
 (* New size API *)
 
-let width_auto = fun t -> {t with width = Auto;}
+let width_auto = fun t -> { t with width = Auto }
 
-let width_fixed = fun x t -> {t with width = Fixed x;}
+let width_fixed = fun x t -> { t with width = Fixed x }
 
-let width_flex = fun x t -> {t with width = Flex x;}
+let width_flex = fun x t -> { t with width = Flex x }
 
-let height_auto = fun t -> {t with height = Auto;}
+let height_auto = fun t -> { t with height = Auto }
 
-let height_fixed = fun x t -> {t with height = Fixed x;}
+let height_fixed = fun x t -> { t with height = Fixed x }
 
-let height_flex = fun x t -> {t with height = Flex x;}
+let height_flex = fun x t -> { t with height = Flex x }
 
 (* Constraint API *)
 
-let min_width = fun x t -> {t with constraints = {t.constraints with min_width = Some x;};}
+let min_width = fun x t -> { t with constraints = { t.constraints with min_width = Some x } }
 
-let min_height = fun x t -> {t with constraints = {t.constraints with min_height = Some x;};}
+let min_height = fun x t -> { t with constraints = { t.constraints with min_height = Some x } }
 
 (* Overflow API *)
 
-let overflow = fun x t -> {t with overflow = x;}
+let overflow = fun x t -> { t with overflow = x }
 
 let do_render = fun t str ->
   (* Pre-process padding *)

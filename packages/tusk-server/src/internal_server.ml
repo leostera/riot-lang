@@ -65,7 +65,7 @@ let rec loop = fun state ->
   match receive ~selector () with
   | `UpdateGraph package_graph ->
       Log.info "[INTERNAL_SERVER] Received updated package graph from build worker";
-      loop {state with package_graph;load_errors = [];}
+      loop { state with package_graph; load_errors = [] }
   | `Request (Protocol.Ping { client_pid }) ->
       Log.debug "Server loop received: Ping";
       handle_ping state client_pid
@@ -135,7 +135,7 @@ and handle_scan_workspace = fun state client_pid current_dir ->
         Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime ws
         |> Result.expect ~msg:"Failed to create empty package graph"
   in
-  let new_state = {state with workspace;package_graph;load_errors;} in
+  let new_state = { state with workspace; package_graph; load_errors } in
   send client_pid (Protocol.ServerResponse Protocol.WorkspaceScanned);
   loop new_state
 
@@ -146,7 +146,7 @@ and handle_get_workspace_config = fun state client_pid ->
     client_pid
     (Protocol.ServerResponse (Protocol.WorkspaceConfig {
       workspace = state.workspace;
-      toolchain = state.toolchain;
+      toolchain = state.toolchain
     }));
   loop state
 
@@ -184,7 +184,7 @@ and handle_get_package_info = fun state client_pid package_name ->
                         examples = [];
                         bench = [];
                       };
-                    compiler = {profile_overrides = [];target_overrides = [];};
+                    compiler = { profile_overrides = []; target_overrides = [] };
                     commands = [];
                     fix_providers = [];
                   };
@@ -203,7 +203,7 @@ and handle_get_package_info = fun state client_pid package_name ->
           (Protocol.ServerResponse (Protocol.PackageInfo {
             package;
             sources = all_sources;
-            dependencies;
+            dependencies
           }))
   );
   loop state
@@ -213,7 +213,7 @@ and handle_get_package_graph = fun state client_pid ->
   Log.debug ("Server: Received GetPackageGraph from " ^ Pid.to_string client_pid);
   let sorted_packages = Tusk_planner.Package_graph.(topological_sort state.package_graph
   |> List.map get_package) in
-  send client_pid (Protocol.ServerResponse (Protocol.PackageGraph {nodes = sorted_packages;}));
+  send client_pid (Protocol.ServerResponse (Protocol.PackageGraph { nodes = sorted_packages }));
   loop state
 
 and handle_find_executable = fun state client_pid name ->
@@ -231,7 +231,7 @@ and handle_find_executable = fun state client_pid name ->
     match found with
     | Some pkg -> send
       client_pid
-      (Protocol.ServerResponse (Protocol.ExecutableFound {package = pkg.name;binary = name;}))
+      (Protocol.ServerResponse (Protocol.ExecutableFound { package = pkg.name; binary = name }))
     | None -> send client_pid (Protocol.ServerResponse Protocol.ExecutableNotFound)
   );
   loop state
@@ -247,7 +247,7 @@ and handle_find_artifact = fun state client_pid package kind name ->
     | None ->
         Log.info ("Server: Package '" ^ package ^ "' not found in workspace");
         Protocol.ServerResponse (Protocol.ArtifactNotFound {
-          error = "Package '" ^ package ^ "' not found";
+          error = "Package '" ^ package ^ "' not found"
         })
     | Some pkg ->
         (* Artifact resolution order:
@@ -266,7 +266,7 @@ and handle_find_artifact = fun state client_pid package kind name ->
         match Fs.exists promoted_artifact_path with
         | Ok true ->
             Log.info ("Server: Found promoted artifact at " ^ Path.to_string promoted_artifact_path);
-            Protocol.ServerResponse (Protocol.ArtifactFound {path = promoted_artifact_path;})
+            Protocol.ServerResponse (Protocol.ArtifactFound { path = promoted_artifact_path })
         | _ ->
             let profile = state.active_profile in
             let target = state.active_target in
@@ -283,16 +283,16 @@ and handle_find_artifact = fun state client_pid package kind name ->
                   | Ok true ->
                       Log.info
                         ("Server: Found export manifest artifact at " ^ Path.to_string export_path);
-                      Protocol.ServerResponse (Protocol.ArtifactFound {path = export_path;})
+                      Protocol.ServerResponse (Protocol.ArtifactFound { path = export_path })
                   | _ ->
                       Log.warn
                         ("Server: Export manifest pointed to missing path " ^ Path.to_string export_path);
                       Protocol.ServerResponse (Protocol.ArtifactNotFound {
-                        error = "Artifact '" ^ name ^ "' was not materialized and export source is missing";
+                        error = "Artifact '" ^ name ^ "' was not materialized and export source is missing"
                       })
                 )
               | None -> Protocol.ServerResponse (Protocol.ArtifactNotFound {
-                error = "Artifact '" ^ name ^ "' not found in package export manifest";
+                error = "Artifact '" ^ name ^ "' not found in package export manifest"
               })
             )
   in
@@ -315,9 +315,9 @@ and handle_format_file = fun state client_pid file_path check_only ->
     match Tusk_toolchain.Ocamlformat.format_file ocamlformat ~file_path ~check_only with
     | Tusk_toolchain.Ocamlformat.Formatted { code; changed } -> Protocol.FormatResult {
       formatted_code = code;
-      changed;
+      changed
     }
-    | Tusk_toolchain.Ocamlformat.Error err -> Protocol.FormatError {error = err;}
+    | Tusk_toolchain.Ocamlformat.Error err -> Protocol.FormatError { error = err }
   in
   send client_pid (Protocol.ServerResponse response);
   loop state
@@ -329,9 +329,9 @@ and handle_format_code = fun state client_pid code file_path ->
     match Tusk_toolchain.Ocamlformat.format_code ocamlformat ~code ~file_path with
     | Tusk_toolchain.Ocamlformat.Formatted { code; changed } -> Protocol.FormatResult {
       formatted_code = code;
-      changed;
+      changed
     }
-    | Tusk_toolchain.Ocamlformat.Error err -> Protocol.FormatError {error = err;}
+    | Tusk_toolchain.Ocamlformat.Error err -> Protocol.FormatError { error = err }
   in
   send client_pid (Protocol.ServerResponse response);
   loop state
@@ -348,7 +348,7 @@ and handle_format_all = fun state client_pid mode ->
   send
     client_pid
     (Protocol.ServerResponse (Protocol.FormatError {
-      error = "FormatAll not yet implemented with worker pool";
+      error = "FormatAll not yet implemented with worker pool"
     }));
   loop state
 
@@ -366,7 +366,7 @@ and handle_new_package = fun state client_pid path name is_library ->
       send
         client_pid
         (Protocol.ServerResponse (Protocol.PackageCreationError {
-          error = "Failed to create src directory";
+          error = "Failed to create src directory"
         }));
       loop state
   | Ok () -> (
@@ -421,17 +421,17 @@ and handle_new_package = fun state client_pid path name is_library ->
             state
             with workspace = updated_workspace;
             package_graph = updated_package_graph;
-            load_errors = updated_load_errors;
+            load_errors = updated_load_errors
           } in
           send
             client_pid
-            (Protocol.ServerResponse (Protocol.PackageCreated {path = Path.to_string path;name;}));
+            (Protocol.ServerResponse (Protocol.PackageCreated { path = Path.to_string path; name }));
           loop updated_state
       | _ ->
           send
             client_pid
             (Protocol.ServerResponse (Protocol.PackageCreationError {
-              error = "Failed to write package files";
+              error = "Failed to write package files"
             }));
           loop state
     )
@@ -462,7 +462,7 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
       )
     | None -> Tusk_model.Tusk_dirs.host_target ()
   in
-  let updated_state = {state with active_profile;active_target;} in
+  let updated_state = { state with active_profile; active_target } in
   let server_pid = self () in
   Build_server.start
     ~workspace:updated_state.workspace

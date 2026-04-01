@@ -22,7 +22,7 @@ let max_parenthesis_depth = 5
 let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) depth ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
     ~suggestion:(("Reduce parenthesis depth from " ^ Int.to_string depth ^ " by removing redundant grouping or extracting a named value"))
     ()
@@ -67,7 +67,9 @@ and diagnostics_for_expression = fun ~inside_parenthesized_chain ->
   | Syn.Cst.Expression.Fun expr ->
       diagnostics_for_function_body ~inside_parenthesized_chain expr.body
   | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
-      diagnostics_for_function_body ~inside_parenthesized_chain (Syn.Cst.Cases {syntax_node;cases;})
+      diagnostics_for_function_body
+        ~inside_parenthesized_chain
+        (Syn.Cst.Cases { syntax_node; cases })
   | Syn.Cst.Expression.Let expr ->
       diagnostics_for_expression ~inside_parenthesized_chain expr.bound_value
       @ diagnostics_for_expression ~inside_parenthesized_chain expr.body

@@ -8,7 +8,7 @@ type 'a t = {
   compare: 'a -> 'a -> int;
 }
 
-let create_with = fun ~compare () -> {data = [||];size = 0;compare;}
+let create_with = fun ~compare () -> { data = [||]; size = 0; compare }
 
 let create = fun () -> create_with ~compare ()
 
@@ -121,7 +121,7 @@ let of_list_with = fun ~compare list ->
       let len = List.length list in
       let data = Array.make len first in
       List.iteri (fun i x -> data.(i) <- x) list;
-      let heap = {data;size = len;compare;} in
+      let heap = { data; size = len; compare } in
       heapify heap;
       heap
 
@@ -172,7 +172,7 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun heap ->
 
     let size = fun state -> state.size
   end in
-  let heap_copy = {data = Array.copy heap.data;size = heap.size;compare = heap.compare;} in
+  let heap_copy = { data = Array.copy heap.data; size = heap.size; compare = heap.compare } in
   Iter.Iterator.make (module HeapIter) heap_copy
 
 let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun heap ->
@@ -186,6 +186,6 @@ let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun heap ->
     let size = fun state -> state.size
 
     let clone = fun state ->
-      {data = Array.copy state.data;size = state.size;compare = state.compare;}
+      { data = Array.copy state.data; size = state.size; compare = state.compare }
   end in
   Iter.MutIterator.make (module HeapIter) heap

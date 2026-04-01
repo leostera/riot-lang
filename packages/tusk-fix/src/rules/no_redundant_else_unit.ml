@@ -24,7 +24,7 @@ let rec is_unit_expression = function
 let make_diagnostic = fun (expr: Syn.Cst.if_expression) ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
     ~suggestion:"Remove else () from this if expression."
     ()

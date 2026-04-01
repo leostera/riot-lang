@@ -60,7 +60,7 @@ let rec loop : type task res. (task, res) state -> (unit, Process.exit_reason) r
           (* Only send Completed when queue is empty AND no tasks in flight *)
           if state.tasks_in_flight = 0 then
             (
-              send state.owner (Completed {results = state.results;result_ref = state.result_ref;});
+              send state.owner (Completed { results = state.results; result_ref = state.result_ref });
               Ok ()
             )
           else
@@ -72,7 +72,7 @@ let init = fun ~owner ~concurrency ~tasks ~result_ref ~fn () ->
   (* Worker function: execute user's fn and send result back *)
   let worker_fn ~owner ~task:(idx, task) =
     let result = fn task in
-    send owner (TaskResult {idx;result;result_ref;})
+    send owner (TaskResult { idx; result; result_ref })
   in
   (* Start dynamic pool with indexed tasks *)
   let indexed_tasks =

@@ -16,7 +16,7 @@ let of_http = fun ~body http_request ->
       )
     | None -> 0
   in
-  {http_request;body;remaining;}
+  { http_request; body; remaining }
 
 let method_ = fun t -> Net.Http.Request.method_ t.http_request
 

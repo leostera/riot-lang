@@ -4,8 +4,8 @@ open Std
 
 type property_result =
   | Success
-  | Failure of { counter_example: string; shrink_steps: int; }
-  | Error of { exception_: exn; backtrace: string; }
+  | Failure of { counter_example: string; shrink_steps: int }
+  | Error of { exception_: exn; backtrace: string }
   | Assumption_violated
 
 type config = {
@@ -15,7 +15,7 @@ type config = {
   verbose: bool;
 }
 
-let default_config = {test_count = 100;max_shrink_steps = 1_000;seed = None;verbose = false;}
+let default_config = { test_count = 100; max_shrink_steps = 1_000; seed = None; verbose = false }
 
 (* Internal property representation *)
 
@@ -148,7 +148,7 @@ let check = fun ?(config = default_config) (Prop prop) ->
             | Some printer -> printer minimal_value
             | None -> "<no printer available>"
           in
-          Failure {counter_example;shrink_steps;}
+          Failure { counter_example; shrink_steps }
       | Some (`Failed_with_msg (value, msg)) ->
           let (minimal_value, shrink_steps) = shrink_counter_example
             arbitrary
@@ -161,7 +161,7 @@ let check = fun ?(config = default_config) (Prop prop) ->
             | None -> "<no printer available>"
           in
           let counter_example = value_str ^ "\nMessage: " ^ msg in
-          Failure {counter_example;shrink_steps;}
+          Failure { counter_example; shrink_steps }
       | Some (`Exception (value, exn, backtrace)) ->
           let (minimal_value, shrink_steps) =
             shrink_counter_example arbitrary value
@@ -178,13 +178,13 @@ let check = fun ?(config = default_config) (Prop prop) ->
             | Some printer -> printer minimal_value
             | None -> "<no printer available>"
           in
-          Error {exception_ = exn;backtrace = counter_example_str ^ "\nBacktrace:\n" ^ backtrace;}
+          Error { exception_ = exn; backtrace = counter_example_str ^ "\nBacktrace:\n" ^ backtrace }
   in
   test_loop 0
 
 (* === CREATING PROPERTIES === *)
 
-let for_all = fun arbitrary predicate -> Prop {name = "unnamed property";arbitrary;predicate;}
+let for_all = fun arbitrary predicate -> Prop { name = "unnamed property"; arbitrary; predicate }
 
 let get_test_count_from_env = fun () ->
   Env.var Int ~name:"PROPANE_TESTS" |> Option.unwrap_or ~default:default_config.test_count
@@ -194,8 +194,8 @@ let get_seed_from_env = fun () -> Env.var Int ~name:"PROPANE_SEED"
 let property = fun name arbitrary predicate ->
   let test_count = get_test_count_from_env () in
   let seed = get_seed_from_env () in
-  let config = {default_config with test_count;seed;} in
-  let prop = Prop {name;arbitrary;predicate;} in
+  let config = { default_config with test_count; seed } in
+  let prop = Prop { name; arbitrary; predicate } in
   Test.property name ~examples:test_count
     (fun () ->
       let result = check ~config prop in

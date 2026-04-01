@@ -171,12 +171,12 @@ let take : type a. a t -> int -> a t = fun iter n ->
         (None, state)
       else
         match iter_next state.iter with
-        | Some x, iter' -> (Some x, {iter = iter';remaining = state.remaining - 1;})
-        | None, iter' -> (None, {state with iter = iter';})
+        | Some x, iter' -> (Some x, { iter = iter'; remaining = state.remaining - 1 })
+        | None, iter' -> (None, { state with iter = iter' })
 
     let size = fun state -> min state.remaining (size state.iter)
   end in
-  make (module TakeIter) {iter;remaining = n;}
+  make (module TakeIter) { iter; remaining = n }
 
 let drop : type a. a t -> int -> a t = fun iter n ->
   let rec skip t count =
@@ -200,12 +200,12 @@ let enumerate : type a. a t -> (int * a) t = fun iter ->
     let next = fun state ->
       let item, iter' = iter_next state.iter in
       match item with
-      | Some x -> (Some (state.index, x), {iter = iter';index = state.index + 1;})
-      | None -> (None, {state with iter = iter';})
+      | Some x -> (Some (state.index, x), { iter = iter'; index = state.index + 1 })
+      | None -> (None, { state with iter = iter' })
 
     let size = fun state -> size state.iter
   end in
-  make (module EnumIter) {iter;index = 0;}
+  make (module EnumIter) { iter; index = 0 }
 
 let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
   let module ZipIter = struct
@@ -220,12 +220,12 @@ let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
       let x_opt, iter1' = iter_next state.iter1 in
       let y_opt, iter2' = iter_next state.iter2 in
       match (x_opt, y_opt) with
-      | Some x, Some y -> (Some (x, y), {iter1 = iter1';iter2 = iter2';})
-      | _ -> (None, {iter1 = iter1';iter2 = iter2';})
+      | Some x, Some y -> (Some (x, y), { iter1 = iter1'; iter2 = iter2' })
+      | _ -> (None, { iter1 = iter1'; iter2 = iter2' })
 
     let size = fun state -> min (size state.iter1) (size state.iter2)
   end in
-  make (module ZipIter) {iter1;iter2;}
+  make (module ZipIter) { iter1; iter2 }
 
 let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
   let module ChainIter = struct
@@ -241,13 +241,13 @@ let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
       if state.in_first then
         let item, first' = iter_next state.first in
         match item with
-        | Some x -> (Some x, {state with first = first';})
-        | None -> next_chain {state with in_first = false;}
+        | Some x -> (Some x, { state with first = first' })
+        | None -> next_chain { state with in_first = false }
       else
         let item, second' = iter_next state.second in
         match item with
-        | Some x -> (Some x, {state with second = second';})
-        | None -> (None, {state with second = second';})
+        | Some x -> (Some x, { state with second = second' })
+        | None -> (None, { state with second = second' })
 
     let next = next_chain
 
@@ -257,7 +257,7 @@ let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
       else
         size state.second
   end in
-  make (module ChainIter) {first = iter1;second = iter2;in_first = true;}
+  make (module ChainIter) { first = iter1; second = iter2; in_first = true }
 
 (*************************************************************************************************)
 

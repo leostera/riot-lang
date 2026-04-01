@@ -17,7 +17,7 @@ type state = {
 }
 
 let make_handler = fun ~config ~handler () ->
-  {config;handler;buffer = Cell.create "";detected = Cell.create false;}
+  { config; handler; buffer = Cell.create ""; detected = Cell.create false }
 
 let http1_handler =
   Socket_pool.Handler.{
@@ -77,7 +77,7 @@ let handle_data = fun data conn state ->
             () in
           Socket_pool.Handler.Switch (Socket_pool.Handler.H {
             handler = http2_handler;
-            state = http2_state;
+            state = http2_state
           })
       | Some false ->
           (* Looks like HTTP/1.1 *)
@@ -91,7 +91,7 @@ let handle_data = fun data conn state ->
                 () in
               Socket_pool.Handler.Switch (Socket_pool.Handler.H {
                 handler = http1_handler;
-                state = http1_state;
+                state = http1_state
               })
             end
           else

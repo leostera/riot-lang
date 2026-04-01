@@ -2,7 +2,7 @@
 open Std
 
 type 'a parse_result =
-  | Done of { value: 'a; remaining: string; }
+  | Done of { value: 'a; remaining: string }
   (** Successfully parsed + remaining input *)
   | Need_more
   (** Need more data to continue parsing *)

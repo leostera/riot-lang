@@ -18,7 +18,7 @@ type ('request, 'response) t = {
   handlers: ('request, 'response) handler list;
 }
 
-let create = fun ~protocol:protocol_mod ~methods:handlers -> {protocol_mod;handlers;}
+let create = fun ~protocol:protocol_mod ~methods:handlers -> { protocol_mod; handlers }
 
 let handle_message = fun (type req res) (server: (req, res) t) (reply: string -> unit) (
   message: string

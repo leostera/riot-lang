@@ -105,15 +105,15 @@ let empty = {
       min_height = None;
       max_height = None;
     };
-  alignment = {x = Left;y = Top;};
+  alignment = { x = Left; y = Top };
   child_gap = 0;
-  padding = {left = 0;right = 0;top = 0;bottom = 0;};
-  margin = {left = 0;right = 0;top = 0;bottom = 0;};
+  padding = { left = 0; right = 0; top = 0; bottom = 0 };
+  margin = { left = 0; right = 0; top = 0; bottom = 0 };
   background = None;
   foreground = None;
   border_width = 0;
   border_color = None;
-  corner_radius = {top_left = 0.0;top_right = 0.0;bottom_left = 0.0;bottom_right = 0.0;};
+  corner_radius = { top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0 };
   text_size = 12;
   text_wrap = Words;
   text_align = TextLeft;
@@ -122,90 +122,100 @@ let empty = {
   z_index = 0;
 }
 
-let row = fun t -> {t with direction = LeftToRight;}
+let row = fun t -> { t with direction = LeftToRight }
 
-let column = fun t -> {t with direction = TopToBottom;}
+let column = fun t -> { t with direction = TopToBottom }
 
-let size = fun ~width ~height t -> {t with sizing = {t.sizing with width;height;};}
+let size = fun ~width ~height t -> { t with sizing = { t.sizing with width; height } }
 
-let width = fun w t -> {t with sizing = {t.sizing with width = w;};}
+let width = fun w t -> { t with sizing = { t.sizing with width = w } }
 
-let height = fun h t -> {t with sizing = {t.sizing with height = h;};}
+let height = fun h t -> { t with sizing = { t.sizing with height = h } }
 
-let min_width = fun w t -> {t with sizing = {t.sizing with min_width = Some w;};}
+let min_width = fun w t -> { t with sizing = { t.sizing with min_width = Some w } }
 
-let max_width = fun w t -> {t with sizing = {t.sizing with max_width = Some w;};}
+let max_width = fun w t -> { t with sizing = { t.sizing with max_width = Some w } }
 
-let min_height = fun h t -> {t with sizing = {t.sizing with min_height = Some h;};}
+let min_height = fun h t -> { t with sizing = { t.sizing with min_height = Some h } }
 
-let max_height = fun h t -> {t with sizing = {t.sizing with max_height = Some h;};}
+let max_height = fun h t -> { t with sizing = { t.sizing with max_height = Some h } }
 
-let padding = fun p t -> {t with padding = p;}
+let padding = fun p t -> { t with padding = p }
 
-let margin = fun m t -> {t with margin = m;}
+let margin = fun m t -> { t with margin = m }
 
-let bg = fun color t -> {t with background = Some color;}
+let bg = fun color t -> { t with background = Some color }
 
-let fg = fun color t -> {t with foreground = Some color;}
+let fg = fun color t -> { t with foreground = Some color }
 
 let border = fun ?(width = 1) ?color ?(radius = {
   top_left = 0.0;
   top_right = 0.0;
   bottom_left = 0.0;
-  bottom_right = 0.0;
+  bottom_right = 0.0
 }) () t ->
-  {t with border_width = width;border_color = color;corner_radius = radius;}
+  { t with border_width = width; border_color = color; corner_radius = radius }
 
-let text_size = fun size t -> {t with text_size = size;}
+let text_size = fun size t -> { t with text_size = size }
 
-let bold = fun t -> {t with font_weight = Bold;}
+let bold = fun t -> { t with font_weight = Bold }
 
-let underline = fun t -> {t with text_decoration = Underline;}
+let underline = fun t -> { t with text_decoration = Underline }
 
-let align = fun ~x ~y t -> {t with alignment = {x;y;};}
+let align = fun ~x ~y t -> { t with alignment = { x; y } }
 
-let align_left = fun t -> {t with alignment = {t.alignment with x = Left;};}
+let align_left = fun t -> { t with alignment = { t.alignment with x = Left } }
 
-let align_center = fun t -> {t with alignment = {t.alignment with x = Center;};}
+let align_center = fun t -> { t with alignment = { t.alignment with x = Center } }
 
-let align_right = fun t -> {t with alignment = {t.alignment with x = Right;};}
+let align_right = fun t -> { t with alignment = { t.alignment with x = Right } }
 
-let grow = fun t -> {t with sizing = {t.sizing with width = Grow;height = Grow;};}
+let grow = fun t -> { t with sizing = { t.sizing with width = Grow; height = Grow } }
 
 let fixed = fun ~width ~height t ->
-  {t with sizing = {t.sizing with width = Fixed width;height = Fixed height;};}
+  { t with sizing = { t.sizing with width = Fixed width; height = Fixed height } }
 
-let child_gap = fun gap t -> {t with child_gap = gap;}
+let child_gap = fun gap t -> { t with child_gap = gap }
 
-let z_index = fun z t -> {t with z_index = z;}
+let z_index = fun z t -> { t with z_index = z }
 
 module Padding = struct
-  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) () : padding = {left;right;top;bottom;}
+  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) () : padding = {
+    left;
+    right;
+    top;
+    bottom
+  }
 
-  let all n : padding = {left = n;right = n;top = n;bottom = n;}
+  let all n : padding = { left = n; right = n; top = n; bottom = n }
 
-  let symmetric ~h ~v : padding = {left = h;right = h;top = v;bottom = v;}
+  let symmetric ~h ~v : padding = { left = h; right = h; top = v; bottom = v }
 
-  let empty : padding = {left = 0;right = 0;top = 0;bottom = 0;}
+  let empty : padding = { left = 0; right = 0; top = 0; bottom = 0 }
 end
 
 module Margin = struct
-  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) () : margin = {left;right;top;bottom;}
+  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) () : margin = {
+    left;
+    right;
+    top;
+    bottom
+  }
 
-  let all n : margin = {left = n;right = n;top = n;bottom = n;}
+  let all n : margin = { left = n; right = n; top = n; bottom = n }
 
-  let symmetric ~h ~v : margin = {left = h;right = h;top = v;bottom = v;}
+  let symmetric ~h ~v : margin = { left = h; right = h; top = v; bottom = v }
 
-  let empty : margin = {left = 0;right = 0;top = 0;bottom = 0;}
+  let empty : margin = { left = 0; right = 0; top = 0; bottom = 0 }
 end
 
 module CornerRadius = struct
   let make = fun ?(top_left = 0.0) ?(top_right = 0.0) ?(bottom_left = 0.0) ?(bottom_right = 0.0) () ->
-    {top_left;top_right;bottom_left;bottom_right;}
+    { top_left; top_right; bottom_left; bottom_right }
 
-  let all = fun r -> {top_left = r;top_right = r;bottom_left = r;bottom_right = r;}
+  let all = fun r -> { top_left = r; top_right = r; bottom_left = r; bottom_right = r }
 
-  let zero = {top_left = 0.0;top_right = 0.0;bottom_left = 0.0;bottom_right = 0.0;}
+  let zero = { top_left = 0.0; top_right = 0.0; bottom_left = 0.0; bottom_right = 0.0 }
 end
 
 (* Note: italic not implemented - terminal support is limited *)

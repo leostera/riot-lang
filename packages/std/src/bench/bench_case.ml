@@ -5,7 +5,7 @@ type bench_config = {
   warmup: int;
 }
 
-let default_config = {iterations = 100;warmup = 10;}
+let default_config = { iterations = 100; warmup = 10 }
 
 type t = {
   name: string;
@@ -14,8 +14,8 @@ type t = {
   skip: bool;
 }
 
-let case = fun name fn -> {name;fn;config = default_config;skip = false;}
+let case = fun name fn -> { name; fn; config = default_config; skip = false }
 
-let skip = fun name fn -> {name;fn;config = default_config;skip = true;}
+let skip = fun name fn -> { name; fn; config = default_config; skip = true }
 
-let with_config = fun ~config name fn -> {name;fn;config;skip = false;}
+let with_config = fun ~config name fn -> { name; fn; config; skip = false }

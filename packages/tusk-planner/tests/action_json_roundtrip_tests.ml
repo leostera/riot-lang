@@ -17,7 +17,7 @@ let compile_interface_roundtrip_preserves_fields = fun () ->
       source = Path.v "src/a.mli";
       outputs = [ Path.v "a.cmi" ];
       includes = [ Path.v "src"; Path.v "vendor/lib" ];
-      flags = [ Tusk_toolchain.Ocamlc.Open "Std"; Tusk_toolchain.Ocamlc.NoAliasDeps ];
+      flags = [ Tusk_toolchain.Ocamlc.Open "Std"; Tusk_toolchain.Ocamlc.NoAliasDeps ]
     })
 
 let compile_implementation_roundtrip_preserves_flags = fun () ->
@@ -30,7 +30,7 @@ let compile_implementation_roundtrip_preserves_flags = fun () ->
         Tusk_toolchain.Ocamlc.Open "Std";
         Tusk_toolchain.Ocamlc.NoStdlib;
         Tusk_toolchain.Ocamlc.NoPervasives;
-      ];
+      ]
     })
 
 let compile_c_roundtrip_preserves_ccflags = fun () ->
@@ -38,7 +38,7 @@ let compile_c_roundtrip_preserves_ccflags = fun () ->
     (Tusk_planner.Action.CompileC {
       source = Path.v "native/stub.c";
       outputs = [ Path.v "stub.o" ];
-      ccflags = [ "-O3"; "-fPIC"; "-DTEST=1" ];
+      ccflags = [ "-O3"; "-fPIC"; "-DTEST=1" ]
     })
 
 let create_executable_roundtrip_preserves_linker_fields = fun () ->
@@ -89,7 +89,7 @@ let compile_implementation_roundtrip_preserves_combined_warning_flags = fun () -
       includes = [ Path.v "src" ];
       flags = [
         Tusk_toolchain.Ocamlc.Warning [ Tusk_toolchain.Ocamlc.All; Tusk_toolchain.Ocamlc.NoCmiFile; ];
-      ];
+      ]
     })
 
 let tests =

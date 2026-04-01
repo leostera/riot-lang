@@ -5,12 +5,12 @@ type t = {
   ignore_patterns: string list;
 }
 
-let empty = {ignore_patterns = [];}
+let empty = { ignore_patterns = [] }
 
 let parse_fmt_table = function
   | Toml.Table fmt_items -> (
       match List.assoc_opt "ignore" fmt_items with
-      | Some (Toml.Array items) -> {ignore_patterns = List.filter_map Toml.get_string items;}
+      | Some (Toml.Array items) -> { ignore_patterns = List.filter_map Toml.get_string items }
       | _ -> empty
     )
   | _ -> empty

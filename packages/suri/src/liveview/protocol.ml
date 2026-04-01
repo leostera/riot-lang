@@ -3,7 +3,7 @@ open Std
 (** Messages sent between client and server over WebSocket *)
 type client_msg =
   | Mount
-  | Event of { handler_id: string; event_data: string; }
+  | Event of { handler_id: string; event_data: string }
 
 type server_msg =
   | Patch of string
@@ -32,7 +32,7 @@ let deserialize_client_msg = fun json_str ->
           match Data.Json.get_field "Event" json with
           | Some (Data.Json.Array [Data.Json.String handler_id;Data.Json.String event_data]) -> Ok (Event {
             handler_id;
-            event_data;
+            event_data
           })
           | _ -> Error "Unknown message format"
   with

@@ -36,7 +36,7 @@ let make_diagnostic = fun parameter ->
   let current_kind = kind_name parameter in
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
     ~suggestion:(("Move this " ^ current_kind ^ " argument earlier so parameters stay ordered as labeled, optional, then positional"))
     ()

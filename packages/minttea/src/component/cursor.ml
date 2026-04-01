@@ -31,7 +31,7 @@ let update = fun t (e: Event.t) ->
   | Frame now when t.blink ->
       if Fps.tick ~now t.fps = `frame then
         let show = not t.show in
-        {t with show;}
+        { t with show }
       else
         t
   | _ -> t
@@ -42,10 +42,10 @@ let view = fun t ~text_style str ->
   else
     Style.render text_style str
 
-let focus = fun t -> {t with focus = true;show = true;}
+let focus = fun t -> { t with focus = true; show = true }
 
-let unfocus = fun t -> {t with focus = false;}
+let unfocus = fun t -> { t with focus = false }
 
-let disable_blink = fun t -> {t with blink = false;show = true;}
+let disable_blink = fun t -> { t with blink = false; show = true }
 
-let enable_blink = fun t -> {t with blink = true;show = true;}
+let enable_blink = fun t -> { t with blink = true; show = true }

@@ -40,10 +40,10 @@ type run_result = {
 }
 
 type Message.t +=
-  | ScannerDiscovered of { scanner_ref: unit Ref.t; file: Path.t; }
+  | ScannerDiscovered of { scanner_ref: unit Ref.t; file: Path.t }
   | ScannerComplete of unit Ref.t
-  | DispatchFileChecked of { result_ref: file_result Ref.t; result: file_result; }
-  | StreamFileResult of { run_ref: unit Ref.t; result: file_result; }
+  | DispatchFileChecked of { result_ref: file_result Ref.t; result: file_result }
+  | StreamFileResult of { run_ref: unit Ref.t; result: file_result }
   | StreamCompleted of unit Ref.t
 
 let is_ocaml_source = fun path ->
@@ -348,7 +348,7 @@ let rec next_discovered_file = fun state ->
 let rec scanner_loop = fun state ->
   match next_discovered_file state with
   | Some file ->
-      send state.owner (ScannerDiscovered {scanner_ref = state.scanner_ref;file;});
+      send state.owner (ScannerDiscovered { scanner_ref = state.scanner_ref; file });
       scanner_loop state
   | None ->
       send state.owner (ScannerComplete state.scanner_ref);
@@ -437,7 +437,7 @@ let rec dispatch_loop = fun state ->
         dispatch_loop state
     | `FileChecked result ->
         state.tasks_in_flight <- max 0 (state.tasks_in_flight - 1);
-        send state.owner (StreamFileResult {run_ref = state.run_ref;result;});
+        send state.owner (StreamFileResult { run_ref = state.run_ref; result });
         dispatch_ready_workers state;
         dispatch_loop state
 
@@ -447,7 +447,7 @@ let start_dispatcher = fun ~owner ~run_ref ~concurrency ~roots ~should_ignore ~c
   let result_ref = Ref.make () in
   let worker_fn ~owner ~task =
     let result = check_fn task in
-    send owner (DispatchFileChecked {result_ref;result;})
+    send owner (DispatchFileChecked { result_ref; result })
   in
   let _scanner = start_scanner ~owner:dispatcher_owner ~roots ~scanner_ref ~should_ignore in
   let pool = WorkerPool.DynamicWorkerPool.start ~concurrency ~owner:dispatcher_owner ~worker_fn () in
@@ -469,31 +469,31 @@ let summarize = fun ~duration files ->
   List.fold_left
     (fun acc result ->
       match result.status with
-      | Failed -> {acc with total_files = acc.total_files + 1;failed_files = acc.failed_files + 1;}
+      | Failed -> { acc with total_files = acc.total_files + 1; failed_files = acc.failed_files + 1 }
       | Needs_formatting -> {
         acc
         with total_files = acc.total_files + 1;
-        needs_formatting = acc.needs_formatting + 1;
+        needs_formatting = acc.needs_formatting + 1
       }
       | Would_reformat -> {
         acc
         with total_files = acc.total_files + 1;
-        would_reformat = acc.would_reformat + 1;
+        would_reformat = acc.would_reformat + 1
       }
       | Unsafe_to_format -> {
         acc
         with total_files = acc.total_files + 1;
-        unsafe_to_format = acc.unsafe_to_format + 1;
+        unsafe_to_format = acc.unsafe_to_format + 1
       }
       | Formatted -> {
         acc
         with total_files = acc.total_files + 1;
-        formatted_files = acc.formatted_files + 1;
+        formatted_files = acc.formatted_files + 1
       }
       | Already_formatted -> {
         acc
         with total_files = acc.total_files + 1;
-        already_formatted = acc.already_formatted + 1;
+        already_formatted = acc.already_formatted + 1
       })
     {
       total_files = 0;
@@ -538,7 +538,7 @@ let run_streaming = fun ~mode ?(concurrency = System.available_parallelism) ?(sh
     | `Completed ->
         let files = List.rev results_rev in
         let duration = Time.Instant.elapsed start in
-        {files;summary = summarize ~duration files;}
+        { files; summary = summarize ~duration files }
   in
   collect []
 
@@ -565,7 +565,7 @@ let run_batch = fun ~mode ?(concurrency = System.available_parallelism) ?(should
   |> List.map snd
   |> List.sort (fun left right -> compare_paths left.file right.file) in
   let duration = Time.Instant.elapsed start in
-  {files = results;summary = summarize ~duration results;}
+  { files = results; summary = summarize ~duration results }
 
 let run_checks = fun ?concurrency ?should_ignore files ->
   run_batch ~mode:Check ?concurrency ?should_ignore files

@@ -143,7 +143,7 @@ let binding_site_of_let_binding = fun binding ->
   | Some name_token -> Some {
     syntax_node = Syn.Cst.LetBinding.syntax_node binding;
     name_token;
-    is_function = Syn.Cst.LetBinding.is_function binding;
+    is_function = Syn.Cst.LetBinding.is_function binding
   }
   | None -> None
 
@@ -152,7 +152,7 @@ let binding_site_of_expression_let = fun ~syntax_node ~binding_pattern ~bound_va
   | Some name_token -> Some {
     syntax_node;
     name_token;
-    is_function = has_parameter_prefix syntax_node || expression_is_function bound_value;
+    is_function = has_parameter_prefix syntax_node || expression_is_function bound_value
   }
   | None -> None
 

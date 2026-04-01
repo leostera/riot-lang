@@ -59,7 +59,7 @@ let app =
     request_id;
     logger;
     static ~at:"/public" (Path.v "./packages/suri/examples/public") ();
-    static ~at:"/browse" ~config:{Static.default_config with show_directory = true;} (Path.v "./") ();
+    static ~at:"/browse" ~config:{ Static.default_config with show_directory = true } (Path.v "./") ();
     router routes;
   ]
 

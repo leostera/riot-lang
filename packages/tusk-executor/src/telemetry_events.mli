@@ -6,10 +6,10 @@ open Tusk_store
 (** Error types for package builds *)
 type package_error =
   | PlanningFailed of Planning_error.t
-  | ExecutionFailed of { message: string; }
-  | ActionExecutionFailed of { message: string; }
-  | ActionOutputsNotCreated of { missing: Path.t list; }
-  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list; }
+  | ExecutionFailed of { message: string }
+  | ActionExecutionFailed of { message: string }
+  | ActionOutputsNotCreated of { missing: Path.t list }
+  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list }
 type package_planning_status =
 [
   | `Planned
@@ -26,12 +26,12 @@ type Telemetry.event +=
   | BuildStarted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: Workspace_planner.target
     }
   | PlanningWorkspaceStarted of {
       session_id: Session_id.t;
       target: Workspace_planner.target;
-      package_count: int;
+      package_count: int
     }
   | PlanningWorkspaceCompleted of {
       session_id: Session_id.t;
@@ -39,7 +39,7 @@ type Telemetry.event +=
       duration: Time.Duration.t;
       planned_count: int;
       missing_count: int;
-      failed_count: int;
+      failed_count: int
     }
   | PackagePlanningResult of {
       session_id: Session_id.t;
@@ -47,12 +47,12 @@ type Telemetry.event +=
       target: Workspace_planner.target;
       status: package_planning_status;
       duration: Time.Duration.t;
-      reason: string option;
+      reason: string option
     }
   | CompilationStarted of {
       session_id: Session_id.t;
       package: Package.t;
-      target: Workspace_planner.target;
+      target: Workspace_planner.target
     }
   | BuildCompleted of {
       session_id: Session_id.t;
@@ -63,30 +63,26 @@ type Telemetry.event +=
           `Fresh
           | `Cached
         ];
-      duration: Time.Duration.t;
+      duration: Time.Duration.t
     }
   | BuildFailed of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
-      error: package_error;
+      error: package_error
     }
   | BuildSkipped of {
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
-      reason: string;
+      reason: string
     }
-  | ActionStarted of {
-      session_id: Session_id.t;
-      package: Package.t;
-      action: Action_node.t;
-    }
+  | ActionStarted of { session_id: Session_id.t; package: Package.t; action: Action_node.t }
   | ActionCommandStarted of {
       session_id: Session_id.t;
       package: Package.t;
       action: Action_node.t;
-      command: string;
+      command: string
     }
   | ActionCompleted of {
       session_id: Session_id.t;
@@ -98,30 +94,30 @@ type Telemetry.event +=
           `Fresh
           | `Cached
         ];
-      duration: Time.Duration.t;
+      duration: Time.Duration.t
     }
   | ActionFailed of {
       session_id: Session_id.t;
       package: Package.t;
       action: Action_node.t;
-      error: string;
+      error: string
     }
   | CacheHit of {
       session_id: Session_id.t;
       package: Package.t;
       action: Action_node.t;
-      hash: Crypto.hash;
+      hash: Crypto.hash
     }
   | CacheMiss of {
       session_id: Session_id.t;
       package: Package.t;
       action: Action_node.t;
-      hash: Crypto.hash;
+      hash: Crypto.hash
     }
   | WorkspaceStarted of {
       session_id: Session_id.t;
       target: Workspace_planner.target;
-      package_count: int;
+      package_count: int
     }
   | WorkspaceCompleted of {
       session_id: Session_id.t;
@@ -129,7 +125,7 @@ type Telemetry.event +=
       total_duration: Time.Duration.t;
       cached_count: int;
       built_count: int;
-      failed_count: int;
+      failed_count: int
     }
 (** Convert a telemetry event to JSON.
     

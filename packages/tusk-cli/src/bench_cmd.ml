@@ -50,7 +50,7 @@ let collect_suite_binaries = fun (workspace: Workspace.t) ?package_filter () ->
       List.filter_map
         (fun (bin: Package.binary) ->
           if is_benchmark_binary_name bin.name then
-            Some {package_name = pkg.name;suite_name = bin.name;}
+            Some { package_name = pkg.name; suite_name = bin.name }
           else
             None)
         pkg.binaries) |> List.sort compare_suite_binary

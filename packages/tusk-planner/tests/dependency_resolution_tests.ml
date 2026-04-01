@@ -21,7 +21,7 @@ let make_package = fun name ->
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
   }
@@ -32,21 +32,21 @@ let test_transitive_closure_dependency_first_order = fun () ->
       package = make_package "c";
       artifact_dir = Path.v "/cache/c";
       depset = [];
-      hash = Crypto.hash_string "c";
+      hash = Crypto.hash_string "c"
     } in
   let dep_b =
     Tusk_planner.Dependency.{
       package = make_package "b";
       artifact_dir = Path.v "/cache/b";
       depset = [ dep_c ];
-      hash = Crypto.hash_string "b";
+      hash = Crypto.hash_string "b"
     } in
   let dep_a =
     Tusk_planner.Dependency.{
       package = make_package "a";
       artifact_dir = Path.v "/cache/a";
       depset = [ dep_b; dep_c ];
-      hash = Crypto.hash_string "a";
+      hash = Crypto.hash_string "a"
     } in
   let names = Tusk_planner.Dependency.transitive_closure [ dep_a ]
   |> List.map (fun d -> d.Tusk_planner.Dependency.package.name) in
@@ -61,7 +61,7 @@ let test_library_cmxa_uses_store_location = fun () ->
       package = make_package "std";
       artifact_dir = Path.v "/tmp/cache/abcd";
       depset = [];
-      hash = Crypto.hash_string "std";
+      hash = Crypto.hash_string "std"
     } in
   let expected =
     Path.(dep.artifact_dir / Tusk_model.Module_name.(of_string dep.package.name |> cmxa)) in

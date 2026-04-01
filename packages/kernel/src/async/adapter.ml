@@ -43,7 +43,7 @@ end
 module Kevent = struct
   type t = event
 
-  let make = fun fd ~filter ~flags ~token -> {fd;filter;flags;token;}
+  let make = fun fd ~filter ~flags ~token -> { fd; filter; flags; token }
 
   let filter = fun t -> t.filter
 
@@ -76,7 +76,7 @@ module Selector = struct
     let* _ =
       FFI.(fcntl kq Libc.f_setfd Libc.f_dupfd_cloexec)
     in
-    Ok {kq;}
+    Ok { kq }
 
   let select = fun ?(timeout = 500_000_000L) ?(max_events = 1_000) t ->
     let* events = FFI.kevent ~timeout ~max_events t.kq in

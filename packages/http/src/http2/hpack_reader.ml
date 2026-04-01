@@ -17,15 +17,15 @@ type decoder_phase =
       first_byte: int;
       prefix_bits: int;
       accumulated_value: int;
-      multiplier: int;
+      multiplier: int
     }
-  | ReadingLiteralName of { name_length: int; bytes_read: int; buffer: Buffer.t; }
+  | ReadingLiteralName of { name_length: int; bytes_read: int; buffer: Buffer.t }
   | ReadingLiteralValue of {
       name: string;
       value_length: int;
       bytes_read: int;
       buffer: Buffer.t;
-      should_index: bool;
+      should_index: bool
     }
 
 type decoder = {
@@ -50,7 +50,7 @@ let create = fun ?(max_dynamic_table_size = 4_096) () ->
   {
     hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size ();
     phase = WaitingForHeader;
-    accumulated_headers = Cell.create [];
+    accumulated_headers = Cell.create []
   }
 
 let update_max_table_size = fun decoder size ->
@@ -134,7 +134,7 @@ let handle_literal_incremental = fun decoder reader first_byte decode_next ->
                 decoder.phase <- ReadingLiteralName {
                   name_length;
                   bytes_read = 0;
-                  buffer = Buffer.create name_length;
+                  buffer = Buffer.create name_length
                 };
                 decode_next ()
           )
@@ -221,7 +221,7 @@ let decode = fun decoder reader ->
           | Some data ->
               Buffer.add_bytes buffer data;
               let value = Buffer.contents buffer in
-              let header = {Hpack.name;value;} in
+              let header = { Hpack.name; value } in
               (* TODO: Add to dynamic table if needed *)
               (* if should_index then ... *)
               (* Add to accumulated headers *)

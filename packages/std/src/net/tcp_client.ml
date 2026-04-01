@@ -17,7 +17,7 @@ let connect = fun ~host ~port ->
   | Error err -> Error (System_error err)
   | Ok addr -> (
       match Tcp_stream.connect addr with
-      | Ok stream -> Ok {stream;leftover = "";}
+      | Ok stream -> Ok { stream; leftover = "" }
       | Error Tcp_stream.Closed -> Error Closed
       | Error (Tcp_stream.System_error io_err) -> Error (System_error io_err)
       | Error Tcp_stream.Connection_refused -> Error Connection_refused

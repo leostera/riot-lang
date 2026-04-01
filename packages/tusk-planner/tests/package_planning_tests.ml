@@ -37,7 +37,7 @@ let make_package = fun tmpdir name ->
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
   }
@@ -91,7 +91,7 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun () ->
           let ag = Tusk_planner.Action_graph.create () in
           let action = Tusk_planner.Action.WriteFile {
             destination = Path.v "out.txt";
-            content = "cached";
+            content = "cached"
           } in
           let spec =
             Tusk_planner.Action_node.make
@@ -178,7 +178,7 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun () ->
       (fun tmpdir ->
         let package = {
           (make_package tmpdir "pkg")
-          with library = Some {path = Path.v "src/pkg.ml";};
+          with library = Some { path = Path.v "src/pkg.ml" };
           sources =
             {
               src = [ Path.v "src/pkg.ml" ];
@@ -209,7 +209,7 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun () ->
           let ag = Tusk_planner.Action_graph.create () in
           let action = Tusk_planner.Action.WriteFile {
             destination = Path.v "out.txt";
-            content = "stale";
+            content = "stale"
           } in
           let spec =
             Tusk_planner.Action_node.make

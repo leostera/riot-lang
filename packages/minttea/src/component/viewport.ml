@@ -31,7 +31,7 @@ let set_content = fun t ~content ->
   let lines = String.split_on_char '\n' content in
   let max_offset = Int.max 0 (List.length lines - t.height) in
   let y_offset = Int.min t.y_offset max_offset in
-  {t with lines;y_offset;}
+  { t with lines; y_offset }
 
 let get_content = fun t ->
   String.concat "\n" t.lines
@@ -70,9 +70,9 @@ let visible_lines = fun t ->
   let end_idx = Int.min (start_idx + t.height) (List.length t.lines) in
   end_idx - start_idx
 
-let set_width = fun t ~width -> {t with width;}
+let set_width = fun t ~width -> { t with width }
 
-let set_height = fun t ~height -> {t with height;}
+let set_height = fun t ~height -> { t with height }
 
 let width = fun t -> t.width
 
@@ -80,13 +80,13 @@ let height = fun t -> t.height
 
 let y_offset = fun t -> t.y_offset
 
-let set_wrap_mode = fun t ~mode -> {t with wrap_mode = mode;}
+let set_wrap_mode = fun t ~mode -> { t with wrap_mode = mode }
 
 let wrap_mode = fun t -> t.wrap_mode
 
 let set_y_offset = fun t ~offset ->
   let clamped = Int.max 0 (Int.min offset (max_y_offset t)) in
-  {t with y_offset = clamped;}
+  { t with y_offset = clamped }
 
 let at_top = fun t -> t.y_offset <= 0
 
@@ -126,9 +126,9 @@ let scroll_percent = fun t ->
     let percent = y /. (total -. h) in
     Float.max 0.0 (Float.min 1.0 percent)
 
-let set_mouse_wheel_enabled = fun t ~enabled -> {t with mouse_wheel_enabled = enabled;}
+let set_mouse_wheel_enabled = fun t ~enabled -> { t with mouse_wheel_enabled = enabled }
 
-let set_mouse_wheel_delta = fun t ~delta -> {t with mouse_wheel_delta = delta;}
+let set_mouse_wheel_delta = fun t ~delta -> { t with mouse_wheel_delta = delta }
 
 let view = fun t ->
   (* Apply word wrapping if enabled *)

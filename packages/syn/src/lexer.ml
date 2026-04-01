@@ -5,7 +5,7 @@ type t = Cursor.t
 
 let create = fun source -> Cursor.create source
 
-let make_token = fun ~kind ~span -> {Token.kind;span;leading_trivia = [];}
+let make_token = fun ~kind ~span -> { Token.kind; span; leading_trivia = [] }
 
 let is_whitespace = function
   | ' '
@@ -185,7 +185,7 @@ let quoted_string_info_at_cursor = fun cursor ->
             if is_extension && pipe_offset = header_start then
               None
             else
-              Some {pipe_offset;delimiter;is_extension;}
+              Some { pipe_offset; delimiter; is_extension }
     )
   | _ -> None
 
@@ -223,7 +223,9 @@ let rec lex_block_comment = fun cursor depth content_start token_start ->
   | None ->
       let value = Cursor.slice cursor content_start (Cursor.position cursor - content_start) in
       let end_ = Cursor.position cursor in
-      make_token ~kind:(Token.Comment {value;terminated = false;}) ~span:{start = token_start;end_;}
+      make_token
+        ~kind:(Token.Comment { value; terminated = false })
+        ~span:{ start = token_start; end_ }
   | Some '(' -> (
       Cursor.advance cursor;
       match Cursor.peek cursor with
@@ -244,8 +246,8 @@ let rec lex_block_comment = fun cursor depth content_start token_start ->
               (Cursor.position cursor - content_start - 2) in
             let end_ = Cursor.position cursor in
             make_token
-              ~kind:(Token.Comment {value;terminated = true;})
-              ~span:{start = token_start;end_;}
+              ~kind:(Token.Comment { value; terminated = true })
+              ~span:{ start = token_start; end_ }
           else
             lex_block_comment cursor (depth - 1) content_start token_start
       | _ -> lex_block_comment cursor depth content_start token_start
@@ -286,12 +288,12 @@ let lex_comment = fun cursor token_start ->
         let end_ = Cursor.position cursor in
         if is_docstring then
           make_token
-            ~kind:(Token.Docstring {value;terminated = false;})
-            ~span:{start = token_start;end_;}
+            ~kind:(Token.Docstring { value; terminated = false })
+            ~span:{ start = token_start; end_ }
         else
           make_token
-            ~kind:(Token.Comment {value;terminated = false;})
-            ~span:{start = token_start;end_;}
+            ~kind:(Token.Comment { value; terminated = false })
+            ~span:{ start = token_start; end_ }
     | Some '(' -> (
         Cursor.advance cursor;
         match Cursor.peek cursor with
@@ -313,12 +315,12 @@ let lex_comment = fun cursor token_start ->
               let end_ = Cursor.position cursor in
               if is_docstring then
                 make_token
-                  ~kind:(Token.Docstring {value;terminated = true;})
-                  ~span:{start = token_start;end_;}
+                  ~kind:(Token.Docstring { value; terminated = true })
+                  ~span:{ start = token_start; end_ }
               else
                 make_token
-                  ~kind:(Token.Comment {value;terminated = true;})
-                  ~span:{start = token_start;end_;}
+                  ~kind:(Token.Comment { value; terminated = true })
+                  ~span:{ start = token_start; end_ }
             else
               lex_content (depth - 1)
         | _ -> lex_content depth
@@ -372,7 +374,7 @@ let lex_ident = fun cursor delim_stack token_start ->
         )
       | None -> Token.Ident ident
   in
-  make_token ~kind ~span:{start = token_start;end_;}
+  make_token ~kind ~span:{ start = token_start; end_ }
 
 let lex_raw_ident = fun cursor token_start ->
   Cursor.advance cursor;
@@ -382,7 +384,7 @@ let lex_raw_ident = fun cursor token_start ->
   let len = Cursor.position cursor - start in
   let ident = Cursor.slice cursor start len in
   let end_ = Cursor.position cursor in
-  make_token ~kind:(Token.Ident ("\\#" ^ ident)) ~span:{start = token_start;end_;}
+  make_token ~kind:(Token.Ident ("\\#" ^ ident)) ~span:{ start = token_start; end_ }
 
 let lex_number = fun cursor token_start ->
   (* Helper to remove underscores from a string *)
@@ -520,7 +522,7 @@ let lex_string = fun cursor token_start ->
   in
   let value, terminated = loop () in
   let end_ = Cursor.position cursor in
-  make_token ~kind:(Token.Literal (String {value;terminated;})) ~span:{start = token_start;end_;}
+  make_token ~kind:(Token.Literal (String { value; terminated })) ~span:{ start = token_start; end_ }
 
 let lex_quoted_string = fun cursor token_start ->
   let rec find_pipe_offset offset =
@@ -559,7 +561,9 @@ let lex_quoted_string = fun cursor token_start ->
       in
       let value, terminated = loop () in
       let end_ = Cursor.position cursor in
-      make_token ~kind:(Token.Literal (String {value;terminated;})) ~span:{start = token_start;end_;}
+      make_token
+        ~kind:(Token.Literal (String { value; terminated }))
+        ~span:{ start = token_start; end_ }
   | None ->
       Cursor.advance cursor;
       let end_ = Cursor.position cursor in
@@ -674,7 +678,7 @@ let lex_char = fun cursor token_start ->
       )
   in
   let end_ = Cursor.position cursor in
-  make_token ~kind ~span:{start = token_start;end_;}
+  make_token ~kind ~span:{ start = token_start; end_ }
 
 let lex_type_var = fun cursor token_start ->
   (* Type variable: 'ident
@@ -682,16 +686,16 @@ let lex_type_var = fun cursor token_start ->
      The next call to `next` will lex the identifier. *)
   Cursor.advance cursor;
   let end_ = Cursor.position cursor in
-  make_token ~kind:Token.Quote ~span:{start = token_start;end_;}
+  make_token ~kind:Token.Quote ~span:{ start = token_start; end_ }
 
 let next = fun cursor delim_stack ->
   let start = Cursor.position cursor in
   if Cursor.is_eof cursor then
-    make_token ~kind:Token.EOF ~span:{start;end_ = start;}
+    make_token ~kind:Token.EOF ~span:{ start; end_ = start }
   else
     match Cursor.peek cursor with
     | None ->
-        make_token ~kind:Token.EOF ~span:{start;end_ = start;}
+        make_token ~kind:Token.EOF ~span:{ start; end_ = start }
     | Some c when is_whitespace c ->
         lex_whitespace cursor start
     | Some '(' -> (

@@ -38,7 +38,7 @@ let test_collect_source_files = fun () ->
                 examples = [];
                 bench = [];
               };
-            compiler = {profile_overrides = [];target_overrides = [];};
+            compiler = { profile_overrides = []; target_overrides = [] };
             commands = [];
             fix_providers = [];
           }
@@ -96,12 +96,12 @@ let test_build_result_status_variants = fun () ->
           examples = [];
           bench = [];
         };
-      compiler = {profile_overrides = [];target_overrides = [];};
+      compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
     }
   in
-  let artifact = Tusk_store.Artifact.{hash = Crypto.hash_string "test";files = [];} in
+  let artifact = Tusk_store.Artifact.{ hash = Crypto.hash_string "test"; files = [] } in
   let result_cached =
     Tusk_executor.Package_builder.{
       package_key = Tusk_planner.Package_graph.package_key
@@ -109,7 +109,7 @@ let test_build_result_status_variants = fun () ->
         Tusk_planner.Package_graph.Runtime;
       package;
       status = Cached artifact;
-      duration = Time.Duration.from_millis 5;
+      duration = Time.Duration.from_millis 5
     } in
   let result_built =
     Tusk_executor.Package_builder.{
@@ -118,7 +118,7 @@ let test_build_result_status_variants = fun () ->
         Tusk_planner.Package_graph.Runtime;
       package;
       status = Built artifact;
-      duration = Time.Duration.from_millis 100;
+      duration = Time.Duration.from_millis 100
     } in
   let result_failed =
     Tusk_executor.Package_builder.{
@@ -126,17 +126,17 @@ let test_build_result_status_variants = fun () ->
         ~package_name:package.name
         Tusk_planner.Package_graph.Runtime;
       package;
-      status = Failed (ExecutionFailed {message = "compilation error";});
-      duration = Time.Duration.from_millis 50;
+      status = Failed (ExecutionFailed { message = "compilation error" });
+      duration = Time.Duration.from_millis 50
     } in
   match (result_cached.status, result_built.status, result_failed.status) with
   | Cached _, Built _, Failed _ -> Ok ()
   | _ -> Error "Status variants don't match expected types"
 
 let test_package_error_variants = fun () ->
-  let planning_error = Tusk_planner.Planning_error.Exception {exn = Failure "test";} in
+  let planning_error = Tusk_planner.Planning_error.Exception { exn = Failure "test" } in
   let error1 = Tusk_executor.Package_builder.PlanningFailed planning_error in
-  let error2 = Tusk_executor.Package_builder.ExecutionFailed {message = "build failed";} in
+  let error2 = Tusk_executor.Package_builder.ExecutionFailed { message = "build failed" } in
   match (error1, error2) with
   | PlanningFailed _, ExecutionFailed _ -> Ok ()
   | _ -> Error "Error variants don't match expected types"
@@ -159,7 +159,7 @@ let test_build_writes_package_export_manifest = fun () ->
             build_dependencies = [];
             foreign_dependencies = [];
             binaries = [];
-            library = Some {path = Path.v "src/lib.ml";};
+            library = Some { path = Path.v "src/lib.ml" };
             sources =
               {
                 src = [];
@@ -168,7 +168,7 @@ let test_build_writes_package_export_manifest = fun () ->
                 examples = [];
                 bench = [];
               };
-            compiler = {profile_overrides = [];target_overrides = [];};
+            compiler = { profile_overrides = []; target_overrides = [] };
             commands = [];
             fix_providers = [];
           }

@@ -276,8 +276,8 @@ let rec generate_commands : layout_node -> Render.command Vector.t -> unit = fun
     | Some color ->
         let cmd = {
           Render.bounding_box = node.final_box;
-          command_type = Render.Rectangle {color;corner_radius = style.corner_radius;};
-          z_index = style.z_index;
+          command_type = Render.Rectangle { color; corner_radius = style.corner_radius };
+          z_index = style.z_index
         } in
         Vector.push commands cmd
     | None -> ()
@@ -294,12 +294,12 @@ let rec generate_commands : layout_node -> Render.command Vector.t -> unit = fun
                 left = style.border_width;
                 right = style.border_width;
                 top = style.border_width;
-                bottom = style.border_width;
+                bottom = style.border_width
               };
               color;
-              corner_radius = style.corner_radius;
+              corner_radius = style.corner_radius
             };
-            z_index = style.z_index;
+            z_index = style.z_index
           } in
           Vector.push commands cmd
       | None -> ()
@@ -315,9 +315,9 @@ let rec generate_commands : layout_node -> Render.command Vector.t -> unit = fun
             content;
             color = text_color;
             size = style.text_size;
-            weight = style.font_weight;
+            weight = style.font_weight
           };
-          z_index = style.z_index;
+          z_index = style.z_index
         } in
         Vector.push commands cmd
     | Element.Container _ ->

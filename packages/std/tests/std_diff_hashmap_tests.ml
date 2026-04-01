@@ -8,9 +8,9 @@ let diff_hashmaps = fun left right ->
     (fun key ->
       match (HashMap.get left key, HashMap.get right key) with
       | Some x, Some y when x = y -> None
-      | None, Some y -> Some {Diff.path = [ Diff.Key key ];kind = Diff.Added y;}
-      | Some x, None -> Some {Diff.path = [ Diff.Key key ];kind = Diff.Removed x;}
-      | Some x, Some y -> Some {Diff.path = [ Diff.Key key ];kind = Diff.Changed (x, y);}
+      | None, Some y -> Some { Diff.path = [ Diff.Key key ]; kind = Diff.Added y }
+      | Some x, None -> Some { Diff.path = [ Diff.Key key ]; kind = Diff.Removed x }
+      | Some x, Some y -> Some { Diff.path = [ Diff.Key key ]; kind = Diff.Changed (x, y) }
       | None, None -> None)
     keys
 
@@ -62,7 +62,7 @@ let test_diff_mixed_changes = fun () ->
 let test_diff_nested_hashmaps = fun () ->
   let before = make_map [ ("x", 1); ("y", 2) ] in
   let after = make_map [ ("x", 1); ("y", 3) ] in
-  let nested_change = {Diff.path = [ Diff.Key "outer" ];kind = Diff.Changed (before, after);} in
+  let nested_change = { Diff.path = [ Diff.Key "outer" ]; kind = Diff.Changed (before, after) } in
   match Diff.changes [ nested_change ] with
   | [ { kind=Diff.Changed (left, right); _ } ] when HashMap.get left "y" = Some 2
   && HashMap.get right "y" = Some 3 -> Ok ()

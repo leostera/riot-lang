@@ -31,11 +31,11 @@ let update = fun event model ->
         let progress = Progress.increment model.progress ~delta:0.02 in
         if Progress.is_finished progress then
           let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 1.0) in
-          ({progress;waiting_to_quit = true;}, cmd)
+          ({ progress; waiting_to_quit = true }, cmd)
         else
           (* Continue incrementing *)
           let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 0.1) in
-          ({progress;waiting_to_quit = false;}, cmd)
+          ({ progress; waiting_to_quit = false }, cmd)
   | _ ->
       (model, Command.Noop)
 
@@ -69,7 +69,7 @@ let initial_model = {
     ~show_percentage:true
     ~color:(`Gradient (Style.color "#FF00FF", Style.color "#00FFFF"))
     ();
-  waiting_to_quit = false;
+  waiting_to_quit = false
 }
 
 (* Run it *)

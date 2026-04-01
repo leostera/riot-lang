@@ -37,14 +37,14 @@ let parse_line = fun line ->
         | "" ->
             None
         | "data" ->
-            Some {data = value;event_type = None;id = None;retry = None;}
+            Some { data = value; event_type = None; id = None; retry = None }
         | "event" ->
-            Some {data = "";event_type = Some value;id = None;retry = None;}
+            Some { data = ""; event_type = Some value; id = None; retry = None }
         | "id" ->
-            Some {data = "";event_type = None;id = Some value;retry = None;}
+            Some { data = ""; event_type = None; id = Some value; retry = None }
         | "retry" -> (
             match int_of_string_opt value with
-            | Some retry -> Some {data = "";event_type = None;id = None;retry = Some retry;}
+            | Some retry -> Some { data = ""; event_type = None; id = None; retry = Some retry }
             | None -> None
           )
         | _ ->

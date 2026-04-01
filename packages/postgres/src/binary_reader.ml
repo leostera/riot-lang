@@ -6,7 +6,7 @@ type t = {
   mutable offset: int;
 }
 
-let create = fun bytes -> {bytes;offset = 0;}
+let create = fun bytes -> { bytes; offset = 0 }
 
 let remaining = fun reader -> Bytes.length reader.bytes - reader.offset
 

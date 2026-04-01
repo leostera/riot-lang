@@ -102,18 +102,20 @@ let start : type state. (unit -> state) -> state t = fun init ->
   let pid =
     spawn (fun () -> loop state_ref (init ()))
   in
-  {pid;state_ref;}
+  { pid; state_ref }
 
 let start_link : type state. (unit -> state) -> state t = fun init ->
   let state_ref : state Ref.t = Ref.make () in
   let pid =
     spawn_link (fun () -> loop state_ref (init ()))
   in
-  {pid;state_ref;}
+  { pid; state_ref }
 
 let get : type state reply. state t -> (state -> reply) -> reply = fun agent fn ->
   let reply_ref : reply Ref.t = Ref.make () in
-  send agent.pid (AgentRequest (Get {reply_to = self ();fn;state_ref = agent.state_ref;reply_ref;}));
+  send
+    agent.pid
+    (AgentRequest (Get { reply_to = self (); fn; state_ref = agent.state_ref; reply_ref }));
   let selector msg =
     match msg with
     | AgentResponse res -> `select res
@@ -128,7 +130,7 @@ let get : type state reply. state t -> (state -> reply) -> reply = fun agent fn 
   | _ -> panic "unexpected agent response"
 
 let update : type state. state t -> (state -> state) -> unit = fun agent fn ->
-  send agent.pid (AgentRequest (Update {reply_to = self ();fn;state_ref = agent.state_ref;}));
+  send agent.pid (AgentRequest (Update { reply_to = self (); fn; state_ref = agent.state_ref }));
   let selector msg =
     match msg with
     | AgentResponse res -> `select res
@@ -142,7 +144,7 @@ let get_and_update : type state reply. state t -> (state -> reply * state) -> re
   let reply_ref : reply Ref.t = Ref.make () in
   send
     agent.pid
-    (AgentRequest (GetAndUpdate {reply_to = self ();fn;state_ref = agent.state_ref;reply_ref;}));
+    (AgentRequest (GetAndUpdate { reply_to = self (); fn; state_ref = agent.state_ref; reply_ref }));
   let selector msg =
     match msg with
     | AgentResponse res -> `select res
@@ -157,10 +159,10 @@ let get_and_update : type state reply. state t -> (state -> reply * state) -> re
   | _ -> panic "unexpected agent response"
 
 let cast : type state. state t -> (state -> state) -> unit = fun agent fn ->
-  send agent.pid (AgentRequest (Cast {fn;state_ref = agent.state_ref;}))
+  send agent.pid (AgentRequest (Cast { fn; state_ref = agent.state_ref }))
 
 let stop : type state. state t -> unit = fun agent ->
-  send agent.pid (AgentRequest (Stop {reply_to = self ();}));
+  send agent.pid (AgentRequest (Stop { reply_to = self () }));
   let selector msg =
     match msg with
     | AgentResponse res -> `select res

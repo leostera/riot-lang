@@ -9,24 +9,29 @@ type 'value t = {
 
 (* === BUILDING ARBITRARIES === *)
 
-let make = fun ?shrink ?print ?small gen -> {gen;shrink;print;small;}
+let make = fun ?shrink ?print ?small gen -> { gen; shrink; print; small }
 
 (* === PRIMITIVE ARBITRARIES === *)
 
-let int = {gen = Generator.int;shrink = Some Shrinker.int;print = Some Printer.int;small = Some abs;}
+let int = {
+  gen = Generator.int;
+  shrink = Some Shrinker.int;
+  print = Some Printer.int;
+  small = Some abs
+}
 
 let int32 = {
   gen = Generator.int32;
   shrink = Some Shrinker.int32;
   print = Some Printer.int32;
-  small = Some (fun n -> Int32.to_int (Int32.abs n));
+  small = Some (fun n -> Int32.to_int (Int32.abs n))
 }
 
 let int64 = {
   gen = Generator.int64;
   shrink = Some Shrinker.int64;
   print = Some Printer.int64;
-  small = Some (fun n -> Int64.to_int (Int64.abs n));
+  small = Some (fun n -> Int64.to_int (Int64.abs n))
 }
 
 let bool = {
@@ -45,28 +50,28 @@ let float = {
   gen = Generator.float;
   shrink = Some Shrinker.float;
   print = Some Printer.float;
-  small = Some (fun f -> int_of_float (Float.abs f));
+  small = Some (fun f -> int_of_float (Float.abs f))
 }
 
 let char = {
   gen = Generator.char;
   shrink = Some Shrinker.char;
   print = Some Printer.char;
-  small = Some Char.code;
+  small = Some Char.code
 }
 
 let rune = {
   gen = Generator.rune;
   shrink = Some Shrinker.rune;
   print = Some Printer.rune;
-  small = Some Unicode.Rune.to_int;
+  small = Some Unicode.Rune.to_int
 }
 
 let string = {
   gen = Generator.string;
   shrink = Some Shrinker.string;
   print = Some Printer.string;
-  small = Some String.length;
+  small = Some String.length
 }
 
 (* === COLLECTION ARBITRARIES === *)
@@ -322,4 +327,4 @@ let map = fun f f_inv arb ->
       );
   }
 
-let map_gen = fun gen arb -> {arb with gen;}
+let map_gen = fun gen arb -> { arb with gen }

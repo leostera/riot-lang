@@ -21,16 +21,10 @@ type plan_result =
       module_graph: Module_node.t Graph.SimpleGraph.t;
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash;
-      depset: Dependency.t list;
+      depset: Dependency.t list
     }
-  | MissingDependencies of {
-      package: Package.t;
-      missing: Package.t list;
-    }
-  | FailedDependencies of {
-      package: Package.t;
-      failed: Package.t list;
-    }
+  | MissingDependencies of { package: Package.t; missing: Package.t list }
+  | FailedDependencies of { package: Package.t; failed: Package.t list }
 val plan_package:
   workspace:Workspace.t ->
   toolchain:Tusk_toolchain.t ->

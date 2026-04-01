@@ -44,7 +44,7 @@ let run_single_test = fun reporter index (test: Test_case.t) ->
   let test_type = test.test_type in
   let result =
     if test.skip then
-      Test_result.{index;name;test_type;result = Skipped;}
+      Test_result.{ index; name; test_type; result = Skipped }
     else
       match test.fn () with
       | exception exn ->
@@ -54,11 +54,11 @@ let run_single_test = fun reporter index (test: Test_case.t) ->
             let reason = exn ^ "\n\n" ^ bt in
             Test_result.Failed reason
           in
-          Test_result.{index;name;test_type;result;}
+          Test_result.{ index; name; test_type; result }
       | Error msg ->
-          Test_result.{index;name;test_type;result = Failed msg;}
+          Test_result.{ index; name; test_type; result = Failed msg }
       | Ok () ->
-          Test_result.{index;name;test_type;result = Passed;}
+          Test_result.{ index; name; test_type; result = Passed }
   in
   let module R = (val reporter : Reporter.Intf) in
   R.on_result index result;

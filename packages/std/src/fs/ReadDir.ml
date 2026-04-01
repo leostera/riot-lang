@@ -16,7 +16,7 @@ let create = fun path ->
   let path_str = Path.to_string path in
   match Kernel.Fs.ReadDir.open_ path_str with
   | Error e -> Error e
-  | Ok handle -> Ok {path;handle;closed = false;}
+  | Ok handle -> Ok { path; handle; closed = false }
 
 let close = fun t ->
   if not t.closed then
@@ -63,7 +63,7 @@ let clone = fun t ->
   (* Can't really clone a directory handle, so we create a new one *)
   let path_str = Path.to_string t.path in
   match Kernel.Fs.ReadDir.open_ path_str with
-  | Ok handle -> {path = t.path;handle;closed = false;}
+  | Ok handle -> { path = t.path; handle; closed = false }
   | Error _ -> t
 
 (* Fall back to the original if we can't create a new one *)

@@ -27,7 +27,7 @@ let empty = fun () ->
     assignments = [];
     decisions = Collections.HashMap.create ();
     decision_level = 0;
-    next_global_index = 0;
+    next_global_index = 0
   }
 
 let current_decision_level = fun solution -> solution.decision_level
@@ -40,7 +40,7 @@ let add_decision = fun solution pkg ver ->
     solution
     with assignments = Decision (pkg, ver, new_level, global_index) :: solution.assignments;
     decision_level = new_level;
-    next_global_index = global_index + 1;
+    next_global_index = global_index + 1
   }
 
 let add_derivation = fun solution pkg incompat ->
@@ -68,7 +68,7 @@ let add_derivation = fun solution pkg incompat ->
     solution
     with assignments = Derivation (pkg, ranges, incompat, solution.decision_level, global_index)
     :: solution.assignments;
-    next_global_index = global_index + 1;
+    next_global_index = global_index + 1
   }
 
 let get_decision = fun solution pkg ->
@@ -152,7 +152,7 @@ let backtrack = fun solution target_level ->
     assignments = new_assignments;
     decisions = new_decisions;
     decision_level = target_level;
-    next_global_index = solution.next_global_index;
+    next_global_index = solution.next_global_index
   }
 
 let version_compare = fun a b ->

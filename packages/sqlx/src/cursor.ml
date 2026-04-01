@@ -58,11 +58,11 @@ module RowIterator = struct
       let module D = (val cursor.driver) in
       D.rows_affected cursor.result_set
 
-  let clone = fun state -> {cursor = state.cursor;exhausted = state.exhausted;}
+  let clone = fun state -> { cursor = state.cursor; exhausted = state.exhausted }
 end
 
 let to_mut_iter = fun cursor ->
-  MutIterator.make (module RowIterator) {RowIterator.cursor;exhausted = false;}
+  MutIterator.make (module RowIterator) { RowIterator.cursor; exhausted = false }
 
 let fetch_one = fun cursor ->
   let iter = to_mut_iter cursor in

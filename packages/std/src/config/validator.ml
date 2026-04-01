@@ -328,7 +328,7 @@ let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) resul
               | item :: rest ->
                   let item_field = {
                     item_spec
-                    with Spec.name = field_name ^ "[" ^ string_of_int index ^ "]";
+                    with Spec.name = field_name ^ "[" ^ string_of_int index ^ "]"
                   } in
                   (
                     match validate_field item_field (Some item) with
@@ -365,7 +365,7 @@ let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) resul
                     | Ok (Spec.Map validated_fields) -> Ok (Spec.DiscriminatedUnion {
                       discriminant;
                       variant = variant_str;
-                      fields = validated_fields;
+                      fields = validated_fields
                     })
                     | Ok _ -> Error (field_name ^ ": internal error - expected Map from validate_fields")
                     | Error err -> Error err

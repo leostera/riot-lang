@@ -54,7 +54,7 @@ let is_redundant_reraise_case = fun ({ pattern; guard; body; _ }: Syn.Cst.match_
 let make_diagnostic = fun ({ syntax_node; _ }: Syn.Cst.try_expression) ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Remove this try/with and use the body directly."
     ()

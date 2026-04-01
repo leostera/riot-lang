@@ -19,8 +19,8 @@ module Host = struct
 
   let from_string = fun s ->
     match String.split_on_char '-' s with
-    | [arch;vendor;os] -> Ok {architecture = arch;vendor;os;abi = None;}
-    | [arch;vendor;os;abi] -> Ok {architecture = arch;vendor;os;abi = Some abi;}
+    | [arch;vendor;os] -> Ok { architecture = arch; vendor; os; abi = None }
+    | [arch;vendor;os;abi] -> Ok { architecture = arch; vendor; os; abi = Some abi }
     | _ -> Error ("Invalid host triplet format: " ^ s)
 
   let equal = fun a b ->
@@ -37,7 +37,7 @@ module Host = struct
       else
         Some abi_str
     in
-    {architecture = arch;vendor;os;abi;}
+    { architecture = arch; vendor; os; abi }
 end
 (** Get the host triplet from C FFI *)
 let host_triplet = Host.current

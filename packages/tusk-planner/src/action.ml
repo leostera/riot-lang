@@ -7,30 +7,22 @@ type t =
       source: Path.t;
       outputs: Path.t list;
       includes: Path.t list;
-      flags: Tusk_toolchain.Ocamlc.compiler_flag list;
+      flags: Tusk_toolchain.Ocamlc.compiler_flag list
     }
   | CompileImplementation of {
       source: Path.t;
       outputs: Path.t list;
       includes: Path.t list;
-      flags: Tusk_toolchain.Ocamlc.compiler_flag list;
+      flags: Tusk_toolchain.Ocamlc.compiler_flag list
     }
   | GenerateInterface of {
       source: Path.t;
       outputs: Path.t list;
       includes: Path.t list;
-      flags: Tusk_toolchain.Ocamlc.compiler_flag list;
+      flags: Tusk_toolchain.Ocamlc.compiler_flag list
     }
-  | CompileC of {
-      source: Path.t;
-      outputs: Path.t list;
-      ccflags: string list;
-    }
-  | CreateLibrary of {
-      outputs: Path.t list;
-      objects: Path.t list;
-      includes: Path.t list;
-    }
+  | CompileC of { source: Path.t; outputs: Path.t list; ccflags: string list }
+  | CreateLibrary of { outputs: Path.t list; objects: Path.t list; includes: Path.t list }
   | CreateExecutable of {
       outputs: Path.t list;
       objects: Path.t list;
@@ -47,22 +39,16 @@ type t =
       includes: Path.t list;
       cclibs: Path.t list;
       ccopt_flags: string list;
-      cclib_flags: string list;
+      cclib_flags: string list
     }
-  | CopyFile of {
-      source: Path.t;
-      destination: Path.t;
-    }
-  | WriteFile of {
-      destination: Path.t;
-      content: string;
-    }
+  | CopyFile of { source: Path.t; destination: Path.t }
+  | WriteFile of { destination: Path.t; content: string }
   | BuildForeignDependency of {
       name: string;
       path: Path.t;
       build_cmd: string list;
       outputs: Path.t list;
-      env: (string * string) list;
+      env: (string * string) list
     }
 (** Compute a deterministic content-based hash of an action.
 
@@ -519,7 +505,7 @@ let from_json = fun json ->
           source = Path.v src;
           outputs = outs;
           includes;
-          flags;
+          flags
         })
         | _ -> Error "Invalid CompileInterface"
       )
@@ -534,7 +520,7 @@ let from_json = fun json ->
           source = Path.v src;
           outputs = outs;
           includes;
-          flags;
+          flags
         })
         | _ -> Error "Invalid CompileImplementation"
       )
@@ -549,7 +535,7 @@ let from_json = fun json ->
           source = Path.v src;
           outputs = outs;
           includes;
-          flags;
+          flags
         })
         | _ -> Error "Invalid GenerateInterface"
       )
@@ -561,7 +547,7 @@ let from_json = fun json ->
               | Some flags -> flags
               | None -> []
             in
-            Ok (CompileC {source = Path.v src;outputs = outs;ccflags;})
+            Ok (CompileC { source = Path.v src; outputs = outs; ccflags })
         | _ -> Error "Invalid CompileC"
       )
     | Some (String "CreateLibrary") -> (
@@ -573,7 +559,7 @@ let from_json = fun json ->
         | Some outs, Some objects, Some includes -> Ok (CreateLibrary {
           outputs = outs;
           objects;
-          includes;
+          includes
         })
         | _ -> Error "Invalid CreateLibrary"
       )
@@ -629,7 +615,7 @@ let from_json = fun json ->
         match (get_field "source" json, get_field "destination" json) with
         | Some (String src), Some (String dst) -> Ok (CopyFile {
           source = Path.v src;
-          destination = Path.v dst;
+          destination = Path.v dst
         })
         | _ -> Error "Invalid CopyFile"
       )
@@ -637,7 +623,7 @@ let from_json = fun json ->
         match (get_field "destination" json, get_field "content" json) with
         | Some (String dst), Some (String content) -> Ok (WriteFile {
           destination = Path.v dst;
-          content;
+          content
         })
         | _ -> Error "Invalid WriteFile"
       )

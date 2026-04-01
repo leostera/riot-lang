@@ -838,8 +838,8 @@ type backend_message =
   | AuthenticationOk
   | AuthenticationCleartextPassword
   | AuthenticationMD5Password of bytes
-  | BackendKeyData of { process_id: int; secret_key: int; }
-  | ParameterStatus of { name: string; value: string; }
+  | BackendKeyData of { process_id: int; secret_key: int }
+  | ParameterStatus of { name: string; value: string }
   | ReadyForQuery of char
   | RowDescription of Row.description
   | DataRow of Row.data
@@ -995,11 +995,11 @@ module Reader = struct
     | 'K' ->
         let process_id = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected process_id in BackendKeyData" in
         let secret_key = Binary_reader.read_int32 reader |> Option.expect ~msg:"Protocol error: expected secret_key in BackendKeyData" in
-        BackendKeyData {process_id;secret_key;}
+        BackendKeyData { process_id; secret_key }
     | 'S' ->
         let name = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected name in ParameterStatus" in
         let value = Binary_reader.read_string reader |> Option.expect ~msg:"Protocol error: expected value in ParameterStatus" in
-        ParameterStatus {name;value;}
+        ParameterStatus { name; value }
     | 'Z' ->
         let status = Binary_reader.read_byte reader |> Option.expect ~msg:"Protocol error: expected status in ReadyForQuery" in
         ReadyForQuery (Char.chr status)
@@ -1090,23 +1090,23 @@ module Reader = struct
                 | Some value ->
                     let err =
                       match field_char with
-                      | 'S' -> {err with Error.severity = Some value;}
-                      | 'C' -> {err with Error.sqlstate = Some (Sqlstate.of_string value);}
-                      | 'M' -> {err with Error.message = value;}
-                      | 'D' -> {err with Error.detail = Some value;}
-                      | 'H' -> {err with Error.hint = Some value;}
-                      | 'P' -> {err with Error.position = int_of_string_opt value;}
-                      | 'p' -> {err with Error.internal_position = int_of_string_opt value;}
-                      | 'q' -> {err with Error.internal_query = Some value;}
-                      | 'W' -> {err with Error.where_context = Some value;}
-                      | 's' -> {err with Error.schema_name = Some value;}
-                      | 't' -> {err with Error.table_name = Some value;}
-                      | 'c' -> {err with Error.column_name = Some value;}
-                      | 'd' -> {err with Error.datatype_name = Some value;}
-                      | 'n' -> {err with Error.constraint_name = Some value;}
-                      | 'F' -> {err with Error.source_file = Some value;}
-                      | 'L' -> {err with Error.source_line = int_of_string_opt value;}
-                      | 'R' -> {err with Error.source_routine = Some value;}
+                      | 'S' -> { err with Error.severity = Some value }
+                      | 'C' -> { err with Error.sqlstate = Some (Sqlstate.of_string value) }
+                      | 'M' -> { err with Error.message = value }
+                      | 'D' -> { err with Error.detail = Some value }
+                      | 'H' -> { err with Error.hint = Some value }
+                      | 'P' -> { err with Error.position = int_of_string_opt value }
+                      | 'p' -> { err with Error.internal_position = int_of_string_opt value }
+                      | 'q' -> { err with Error.internal_query = Some value }
+                      | 'W' -> { err with Error.where_context = Some value }
+                      | 's' -> { err with Error.schema_name = Some value }
+                      | 't' -> { err with Error.table_name = Some value }
+                      | 'c' -> { err with Error.column_name = Some value }
+                      | 'd' -> { err with Error.datatype_name = Some value }
+                      | 'n' -> { err with Error.constraint_name = Some value }
+                      | 'F' -> { err with Error.source_file = Some value }
+                      | 'L' -> { err with Error.source_line = int_of_string_opt value }
+                      | 'R' -> { err with Error.source_routine = Some value }
                       | _ -> err
                     in
                     read_fields err

@@ -57,20 +57,20 @@ let switch_focus = fun model ->
     model
     with focus = EmailField;
     name_input = Textinput.blur model.name_input;
-    email_input = Textinput.focus model.email_input;
+    email_input = Textinput.focus model.email_input
   }
   | EmailField -> {
     model
     with focus = PasswordField;
     email_input = Textinput.blur model.email_input;
-    password_input = Textinput.focus model.password_input;
+    password_input = Textinput.focus model.password_input
   }
   | PasswordField -> {
     model
     with focus = SubmitButton;
-    password_input = Textinput.blur model.password_input;
+    password_input = Textinput.blur model.password_input
   }
-  | SubmitButton -> {model with focus = NameField;name_input = Textinput.focus model.name_input;}
+  | SubmitButton -> { model with focus = NameField; name_input = Textinput.focus model.name_input }
 
 (* Handle form submission *)
 
@@ -80,13 +80,13 @@ let submit_form = fun model ->
   let password = Textinput.value model.password_input in
   (* Validate *)
   if String.length name = 0 then
-    {model with error = Some "Name is required";}
+    { model with error = Some "Name is required" }
   else if not (validate_email email) then
-    {model with error = Some "Invalid email address";}
+    { model with error = Some "Invalid email address" }
   else if String.length password < 6 then
-    {model with error = Some "Password must be at least 6 characters";}
+    { model with error = Some "Password must be at least 6 characters" }
   else
-    {model with submitted = true;error = None;}
+    { model with submitted = true; error = None }
 
 (* Update function *)
 
@@ -113,15 +113,15 @@ let update = fun event model ->
         | NameField ->
             let current = Textinput.value model.name_input in
             let input = Textinput.set_value model.name_input ~value:((current ^ s)) in
-            {model with name_input = input;error = None;}
+            { model with name_input = input; error = None }
         | EmailField ->
             let current = Textinput.value model.email_input in
             let input = Textinput.set_value model.email_input ~value:((current ^ s)) in
-            {model with email_input = input;error = None;}
+            { model with email_input = input; error = None }
         | PasswordField ->
             let current = Textinput.value model.password_input in
             let input = Textinput.set_value model.password_input ~value:((current ^ s)) in
-            {model with password_input = input;error = None;}
+            { model with password_input = input; error = None }
         | SubmitButton ->
             model
       in
@@ -140,7 +140,7 @@ let update = fun event model ->
                 ""
             in
             let input = Textinput.set_value model.name_input ~value in
-            {model with name_input = input;error = None;}
+            { model with name_input = input; error = None }
         | EmailField ->
             let current = Textinput.value model.email_input in
             let len = String.length current in
@@ -151,7 +151,7 @@ let update = fun event model ->
                 ""
             in
             let input = Textinput.set_value model.email_input ~value in
-            {model with email_input = input;error = None;}
+            { model with email_input = input; error = None }
         | PasswordField ->
             let current = Textinput.value model.password_input in
             let len = String.length current in
@@ -162,7 +162,7 @@ let update = fun event model ->
                 ""
             in
             let input = Textinput.set_value model.password_input ~value in
-            {model with password_input = input;error = None;}
+            { model with password_input = input; error = None }
         | SubmitButton ->
             model
       in

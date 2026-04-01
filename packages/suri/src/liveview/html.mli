@@ -90,7 +90,7 @@ val attr_src: string -> [>
     attr_src "/static/logo.png"
     ```*)
 type 'msg t =
-  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list; }
+  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
   (** HTML element with tag, attributes, and children *)
   | Text of string
   (** Text node *)

@@ -20,7 +20,7 @@ let make = fun ~namespace ~filename ->
     | Some ".ml" -> `implementation
     | _ -> `implementation
   in
-  {module_name = mod_name;namespace;filename;kind;}
+  { module_name = mod_name; namespace; filename; kind }
 
 let module_name = fun t -> t.module_name
 

@@ -56,6 +56,6 @@ let open_file = fun path flags perm ->
 
 let pipe = fun () ->
   let read_fd, write_fd = Unix.pipe () in
-  {read_fd = of_unix read_fd;write_fd = of_unix write_fd;}
+  { read_fd = of_unix read_fd; write_fd = of_unix write_fd }
 
 let is_tty = fun fd -> Unix.isatty fd

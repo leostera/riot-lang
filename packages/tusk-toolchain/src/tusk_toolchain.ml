@@ -555,16 +555,9 @@ let get_for_target = fun ~config ~target -> init_for_target ~config ~target
 
 (** Toolchain management types and functions *)
 type toolchain_status =
-  | Installed of {
-      path: Path.t;
-    }
-  | NotInstalled of {
-      expected_path: Path.t;
-    }
-  | Incomplete of {
-      path: Path.t;
-      missing: string list;
-    }
+  | Installed of { path: Path.t }
+  | NotInstalled of { expected_path: Path.t }
+  | Incomplete of { path: Path.t; missing: string list }
 
 type toolchain_info = {
   version: string;
@@ -585,11 +578,11 @@ let check_toolchain_status = fun ~version ~target ->
   in
   match Fs.is_dir toolchain_path with
   | Ok false
-  | Error _ -> NotInstalled {expected_path = toolchain_path;}
+  | Error _ -> NotInstalled { expected_path = toolchain_path }
   | Ok true -> (
       match validate_toolchain_install ~version ~target ~source with
-      | Ok _ -> Installed {path = toolchain_path;}
-      | Error missing -> Incomplete {path = toolchain_path;missing;}
+      | Ok _ -> Installed { path = toolchain_path }
+      | Error missing -> Incomplete { path = toolchain_path; missing }
     )
 
 let list_toolchains = fun ~config ->
@@ -604,7 +597,7 @@ let list_toolchains = fun ~config ->
     (fun target ->
       let is_host = target = host in
       let status = check_toolchain_status ~version ~target in
-      {version;target;is_host;status;})
+      { version; target; is_host; status })
     targets
 
 let install_all_toolchains = fun ~config ->

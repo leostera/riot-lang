@@ -6,15 +6,9 @@ open Tusk_store
 module G = Graph.SimpleGraph
 
 type action_error = Action_queue.action_error =
-  | ExecutionFailed of {
-      message: string;
-    }
-  | OutputsNotCreated of {
-      missing: Path.t list;
-    }
-  | DependenciesFailed of {
-      failed: G.Node_id.t list;
-    }
+  | ExecutionFailed of { message: string }
+  | OutputsNotCreated of { missing: Path.t list }
+  | DependenciesFailed of { failed: G.Node_id.t list }
 
 type action_status = Action_queue.action_status =
   | Cached of Crypto.hash
@@ -35,7 +29,7 @@ type t = {
 }
 
 type Message.t +=
-  | ActionCompleted of { worker_pid: Pid.t; result: execution_result; }
+  | ActionCompleted of { worker_pid: Pid.t; result: execution_result }
   | AssignAction of Action_node.t
 
 let make_flags_absolute = fun sandbox_dir flags ->
@@ -59,7 +53,8 @@ let resolve_include_paths = fun sandbox_dir includes ->
     includes
 
 let emit_action_command = fun ~session_id ~package ~node command ->
-  Telemetry.emit Telemetry_events.(ActionCommandStarted {session_id;package;action = node;command;})
+  Telemetry.emit
+    Telemetry_events.(ActionCommandStarted { session_id; package; action = node; command })
 
 let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
   match action with
@@ -437,7 +432,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               session_id;
               package = node.value.package;
               action = node;
-              hash = action_hash;
+              hash = action_hash
             });
           let _ = Tusk_store.Store.promote store artifact.Tusk_store.Artifact.hash ~target_dir:sandbox_dir
           |> Result.expect
@@ -468,13 +463,17 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               session_id;
               package = node.value.package;
               action = node;
-              hash = action_hash;
+              hash = action_hash
             });
           let actions = node.value.actions in
           let outputs = node.value.outs in
           let sources = node.value.srcs in
           Telemetry.emit
-            Telemetry_events.(ActionStarted {session_id;package = node.value.package;action = node;});
+            Telemetry_events.(ActionStarted {
+              session_id;
+              package = node.value.package;
+              action = node
+            });
           let copy_result : (unit, string) Result.t =
             List.fold_left
               (fun acc src_path ->
@@ -513,7 +512,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           | Error msg ->
               {
                 node_id = node.id;
-                status = Failed (ExecutionFailed {message = "Failed to copy sources: " ^ msg;});
+                status = Failed (ExecutionFailed { message = "Failed to copy sources: " ^ msg });
                 duration;
                 started_at = start;
                 completed_at;
@@ -526,11 +525,11 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                       session_id;
                       package = node.value.package;
                       action = node;
-                      error = msg;
+                      error = msg
                     });
                   {
                     node_id = node.id;
-                    status = Failed (ExecutionFailed {message = msg;});
+                    status = Failed (ExecutionFailed { message = msg });
                     duration;
                     started_at = start;
                     completed_at;
@@ -578,7 +577,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                     | Error missing ->
                         {
                           node_id = node.id;
-                          status = Failed (OutputsNotCreated {missing;});
+                          status = Failed (OutputsNotCreated { missing });
                           duration;
                           started_at = start;
                           completed_at;
@@ -618,7 +617,7 @@ let rec worker_loop = fun ~coordinator ~toolchain ~sandbox_dir ~completed ~store
   match receive_any () with
   | AssignAction node ->
       let result = execute_node ~completed ~store ~session_id toolchain sandbox_dir node in
-      send coordinator (ActionCompleted {worker_pid = self ();result;});
+      send coordinator (ActionCompleted { worker_pid = self (); result });
       worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed ~store ~session_id
   | _ -> worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed ~store ~session_id
 
@@ -724,4 +723,4 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
       | _ -> dispatch_loop ()
   in
   dispatch_loop ();
-  {completed = queue.completed;}
+  { completed = queue.completed }

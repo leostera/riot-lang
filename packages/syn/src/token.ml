@@ -3,7 +3,7 @@ open Std
 type keyword = Keyword.t
 
 type literal =
-  | String of { value: string; terminated: bool; }
+  | String of { value: string; terminated: bool }
   | Int of int
   | Float of float
   | Char of char
@@ -19,8 +19,8 @@ type delimiter =
   | ObjectEnd
 
 type trivia_kind =
-  | CommentTrivia of { value: string; terminated: bool; }
-  | DocstringTrivia of { value: string; terminated: bool; }
+  | CommentTrivia of { value: string; terminated: bool }
+  | DocstringTrivia of { value: string; terminated: bool }
   | WhitespaceTrivia
 
 type token_kind =
@@ -29,8 +29,8 @@ type token_kind =
   | Literal of literal
   | OpenDelim of delimiter
   | CloseDelim of delimiter
-  | Comment of { value: string; terminated: bool; }
-  | Docstring of { value: string; terminated: bool; }
+  | Comment of { value: string; terminated: bool }
+  | Docstring of { value: string; terminated: bool }
   | Whitespace
   | Plus
   | Minus
@@ -104,23 +104,23 @@ let delimiter_of_keyword : keyword -> delimiter option = function
   | _ -> None
 
 let token_kind_of_trivia_kind = function
-  | CommentTrivia { value; terminated } -> Comment {value;terminated;}
-  | DocstringTrivia { value; terminated } -> Docstring {value;terminated;}
+  | CommentTrivia { value; terminated } -> Comment { value; terminated }
+  | DocstringTrivia { value; terminated } -> Docstring { value; terminated }
   | WhitespaceTrivia -> Whitespace
 
 let trivia_kind_of_token_kind = function
-  | Comment { value; terminated } -> Some (CommentTrivia {value;terminated;})
-  | Docstring { value; terminated } -> Some (DocstringTrivia {value;terminated;})
+  | Comment { value; terminated } -> Some (CommentTrivia { value; terminated })
+  | Docstring { value; terminated } -> Some (DocstringTrivia { value; terminated })
   | Whitespace -> Some WhitespaceTrivia
   | _ -> None
 
 let trivia_of_token = fun token ->
-  Option.map (fun kind -> {kind;span = token.span;}) (trivia_kind_of_token_kind token.kind)
+  Option.map (fun kind -> { kind; span = token.span }) (trivia_kind_of_token_kind token.kind)
 
 let trivia_to_token = fun (trivia: trivia) ->
-  {kind = token_kind_of_trivia_kind trivia.kind;span = trivia.span;leading_trivia = [];}
+  { kind = token_kind_of_trivia_kind trivia.kind; span = trivia.span; leading_trivia = [] }
 
-let with_leading_trivia = fun token leading_trivia -> {token with leading_trivia;}
+let with_leading_trivia = fun token leading_trivia -> { token with leading_trivia }
 
 let show_kind = function
   | Keyword _ -> "keyword"

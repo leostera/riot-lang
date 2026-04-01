@@ -6,15 +6,9 @@ module G = Graph.SimpleGraph
 
 (** Errors that can occur during action execution *)
 type action_error = Action_queue.action_error =
-  | ExecutionFailed of {
-      message: string;
-    }
-  | OutputsNotCreated of {
-      missing: Path.t list;
-    }
-  | DependenciesFailed of {
-      failed: G.Node_id.t list;
-    }
+  | ExecutionFailed of { message: string }
+  | OutputsNotCreated of { missing: Path.t list }
+  | DependenciesFailed of { failed: G.Node_id.t list }
 (** Status of an executed action *)
 type action_status = Action_queue.action_status =
   | Cached of Crypto.hash

@@ -353,7 +353,7 @@ module Directory = struct
                     name;
                     is_dir = Fs.Metadata.is_dir meta;
                     size = Fs.Metadata.len meta;
-                    modified = Fs.Metadata.modified meta;
+                    modified = Fs.Metadata.modified meta
                   } in
                   entries := entry :: !entries
               | Error _ -> ());

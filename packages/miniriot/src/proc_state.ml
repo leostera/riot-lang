@@ -44,11 +44,11 @@ let handler_continue =
   let retc signal = finished (Ok signal) in
   let exnc exn =
     let backtrace = Exception.get_raw_backtrace () in
-    finished (Error {exn;backtrace;})
+    finished (Error { exn; backtrace })
   in
   let effc : type c. c Effect.t -> ((c, 'a) continuation -> 'b) option = fun e ->
     Some (fun k -> suspended_with k e) in
-  Effect.Shallow.{retc;exnc;effc;}
+  Effect.Shallow.{ retc; exnc; effc }
 
 let continue_with = fun k v ->
   Effect.Shallow.continue_with k v handler_continue
@@ -105,7 +105,7 @@ let drop = fun k exn _id ->
   let retc _signal = () in
   let exnc _exn = () in
   let effc _eff = None in
-  let handler = Effect.Shallow.{retc;exnc;effc;} in
+  let handler = Effect.Shallow.{ retc; exnc; effc } in
   Effect.Shallow.discontinue_with k exn handler
 
 let unwind = fun ~id (t: 'a t) ->

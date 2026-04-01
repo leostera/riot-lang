@@ -20,7 +20,7 @@ let receive_any = fun ?timeout () ->
     | None -> `infinity
     | Some after -> `after after
   in
-  Effect.perform (Proc_effect.Receive {selector = (fun msg -> `select msg);timeout;})
+  Effect.perform (Proc_effect.Receive { selector = (fun msg -> `select msg); timeout })
 
 let receive = fun ~selector ?timeout () ->
   let timeout =
@@ -28,7 +28,7 @@ let receive = fun ~selector ?timeout () ->
     | None -> `infinity
     | Some after -> `after after
   in
-  Effect.perform (Proc_effect.Receive {selector;timeout;})
+  Effect.perform (Proc_effect.Receive { selector; timeout })
 
 let exit = fun () -> Ok ()
 
@@ -38,5 +38,5 @@ let syscall = fun ?timeout ~name ~interest ~source cb ->
     | None -> `infinity
     | Some after -> `after after
   in
-  Effect.perform (Proc_effect.Syscall {name;interest;source;timeout;});
+  Effect.perform (Proc_effect.Syscall { name; interest; source; timeout });
   cb ()

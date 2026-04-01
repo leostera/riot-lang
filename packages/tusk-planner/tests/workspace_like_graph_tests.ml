@@ -4,7 +4,7 @@ module Package_graph = Tusk_planner.Package_graph
 module Package = Tusk_model.Package
 module Workspace = Tusk_model.Workspace
 
-let dependency = fun name -> Package.{name;source = Workspace;}
+let dependency = fun name -> Package.{ name; source = Workspace }
 
 let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name ->
   Package.{
@@ -16,7 +16,7 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
     build_dependencies = List.map dependency build_dependencies;
     foreign_dependencies = [];
     binaries = [];
-    library = Some {path = Path.v "src/lib.ml";};
+    library = Some { path = Path.v "src/lib.ml" };
     sources =
       {
         src = [];
@@ -25,7 +25,7 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
   }
@@ -35,7 +35,7 @@ let make_workspace = fun packages ->
     root = Path.v "/tmp/workspace_like_graph_tests";
     target_dir_root = Path.v "/tmp/workspace_like_graph_tests/_build";
     packages;
-    profile_overrides = [];
+    profile_overrides = []
   }
 
 let node_for = fun graph package_name scope ->

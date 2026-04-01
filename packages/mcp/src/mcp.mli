@@ -66,14 +66,8 @@ type tool = {
 
 type resource_uri = string
 type resource_contents =
-  | TextContent of {
-      text: string;
-      mime_type: string option;
-    }
-  | BlobContent of {
-      data: string;
-      mime_type: string;
-    }
+  | TextContent of { text: string; mime_type: string option }
+  | BlobContent of { data: string; mime_type: string }
 type resource = {
   uri: resource_uri;
   name: string option;
@@ -122,16 +116,16 @@ type request_params =
   | InitializeParams of {
       protocol_version: protocol_version;
       capabilities: client_capabilities;
-      client_info: client_info;
+      client_info: client_info
     }
   | InitializedParams
   | ShutdownParams
   | ListToolsParams
-  | CallToolParams of { name: string; arguments: json option; }
+  | CallToolParams of { name: string; arguments: json option }
   | ListResourcesParams
-  | ReadResourceParams of { uri: resource_uri; }
+  | ReadResourceParams of { uri: resource_uri }
   | ListPromptsParams
-  | GetPromptParams of { name: string; arguments: (string * string) list option; }
+  | GetPromptParams of { name: string; arguments: (string * string) list option }
   | CompleteSamplingParams of {
       messages: message list;
       model_preferences: json option;
@@ -140,7 +134,7 @@ type request_params =
       temperature: float option;
       max_tokens: int option;
       stop_sequences: string list option;
-      metadata: json option;
+      metadata: json option
     }
   | PingParams
   | CustomParams of json
@@ -157,20 +151,20 @@ type response_result =
       protocol_version: protocol_version;
       capabilities: server_capabilities;
       server_info: server_info;
-      instructions: string option;
+      instructions: string option
     }
   | InitializedResult
   | ShutdownResult
-  | ListToolsResult of { tools: tool list; next_cursor: string option; }
-  | CallToolResult of { content: message_content list; is_error: bool option; }
-  | ListResourcesResult of { resources: resource list; next_cursor: string option; }
-  | ReadResourceResult of { contents: resource_contents list; }
-  | ListPromptsResult of { prompts: prompt list; next_cursor: string option; }
-  | GetPromptResult of { description: string option; messages: message list; }
+  | ListToolsResult of { tools: tool list; next_cursor: string option }
+  | CallToolResult of { content: message_content list; is_error: bool option }
+  | ListResourcesResult of { resources: resource list; next_cursor: string option }
+  | ReadResourceResult of { contents: resource_contents list }
+  | ListPromptsResult of { prompts: prompt list; next_cursor: string option }
+  | GetPromptResult of { description: string option; messages: message list }
   | CompleteSamplingResult of {
       messages: message list;
       model: string option;
-      stop_reason: string option;
+      stop_reason: string option
     }
   | PingResult
   | CustomResult of json
@@ -198,8 +192,8 @@ type notification_params =
   | ResourceListChangedParams
   | ToolListChangedParams
   | PromptListChangedParams
-  | ProgressParams of { progress_token: string; progress: float; total: float option; }
-  | LogMessageParams of { level: string; logger: string option; data: json option; message: string; }
+  | ProgressParams of { progress_token: string; progress: float; total: float option }
+  | LogMessageParams of { level: string; logger: string option; data: json option; message: string }
   | CustomNotificationParams of json
 type notification = {
   jsonrpc: string;  (** Always "2.0" *)

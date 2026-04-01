@@ -27,7 +27,7 @@ let run_benchmarks_cmd =
 
 let list_benchmarks_cmd = command "list-benchmarks" |> about "List all benchmarks"
 
-let get_suite_info name : Reporter.Intf.suite_info = {name;}
+let get_suite_info name : Reporter.Intf.suite_info = { name }
 
 let benchmark_name = function
   | Bench_runner.Single case -> case.Bench_case.name
@@ -47,9 +47,9 @@ let apply_overrides = fun ~iterations_override ~warmup_override benchmarks ->
               let config = case.Bench_case.config in
               let new_config = {
                 Bench_case.iterations = Option.unwrap_or ~default:config.iterations iterations_override;
-                warmup = Option.unwrap_or ~default:config.warmup warmup_override;
+                warmup = Option.unwrap_or ~default:config.warmup warmup_override
               } in
-              Bench_runner.Single {case with config = new_config;}
+              Bench_runner.Single { case with config = new_config }
           | Bench_runner.Compare comp ->
               (* Apply to all cases in comparison *)
               let new_cases =
@@ -58,12 +58,12 @@ let apply_overrides = fun ~iterations_override ~warmup_override benchmarks ->
                     let config = case.config in
                     let new_config = {
                       Bench_case.iterations = Option.unwrap_or ~default:config.iterations iterations_override;
-                      warmup = Option.unwrap_or ~default:config.warmup warmup_override;
+                      warmup = Option.unwrap_or ~default:config.warmup warmup_override
                     } in
-                    {case with config = new_config;})
+                    { case with config = new_config })
                   comp.Bench_comparison.cases
               in
-              Bench_runner.Compare {comp with cases = new_cases;})
+              Bench_runner.Compare { comp with cases = new_cases })
         benchmarks
 
 let main = fun ~name ~benchmarks ~args ->
@@ -91,14 +91,14 @@ let main = fun ~name ~benchmarks ~args ->
             | Some pattern -> List.filter (matches_pattern ~pattern) benchmarks_to_run
             | None -> benchmarks_to_run
           in
-          let config = Bench_runner.{reporter = (module Reporter.Default);suite_info;} in
+          let config = Bench_runner.{ reporter = (module Reporter.Default); suite_info } in
           let summary = Bench_runner.run_benchmarks ~config benchmarks_to_run in
           if summary.failed > 0 then
             exit 1;
           Ok ()
       | _ ->
           (* Default: run benchmarks with no overrides *)
-          let config = Bench_runner.{reporter = (module Reporter.Default);suite_info;} in
+          let config = Bench_runner.{ reporter = (module Reporter.Default); suite_info } in
           let summary = Bench_runner.run_benchmarks ~config benchmarks in
           if summary.failed > 0 then
             exit 1;

@@ -55,9 +55,9 @@ let singleton = fun (type a) (value: a) ->
       else
         0
 
-    let clone = fun state -> {value = state.value;}
+    let clone = fun state -> { value = state.value }
   end in
-  make (module Singleton) {value = Some value;}
+  make (module Singleton) { value = Some value }
 
 let next : type item. item t -> item option = fun (Iter ((module Iter), state)) -> Iter.next state
 
@@ -170,9 +170,9 @@ let flat_map : type a b. a t -> fn:(a -> b t) -> b t = fun iter ~fn ->
 
     (* Approximate *)
 
-    let clone = fun state -> {outer = clone state.outer;current = Option.map clone state.current;}
+    let clone = fun state -> { outer = clone state.outer; current = Option.map clone state.current }
   end in
-  make (module FlatMapIter) {outer = iter;current = None;}
+  make (module FlatMapIter) { outer = iter; current = None }
 
 (*************************************************************************************************)
 
@@ -253,9 +253,9 @@ let take : type a. a t -> int -> a t = fun iter n ->
 
     let size = fun state -> min state.remaining (size state.iter)
 
-    let clone = fun state -> {iter = clone state.iter;remaining = state.remaining;}
+    let clone = fun state -> { iter = clone state.iter; remaining = state.remaining }
   end in
-  make (module TakeIter) {iter;remaining = n;}
+  make (module TakeIter) { iter; remaining = n }
 
 let drop : type a. a t -> int -> a t = fun iter n ->
   for _ = 1 to n do
@@ -282,9 +282,9 @@ let enumerate : type a. a t -> (int * a) t = fun iter ->
 
     let size = fun state -> size state.iter
 
-    let clone = fun state -> {iter = clone state.iter;index = state.index;}
+    let clone = fun state -> { iter = clone state.iter; index = state.index }
   end in
-  make (module EnumIter) {iter;index = 0;}
+  make (module EnumIter) { iter; index = 0 }
 
 let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
   let module ZipIter = struct
@@ -302,9 +302,9 @@ let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
 
     let size = fun state -> min (size state.iter1) (size state.iter2)
 
-    let clone = fun state -> {iter1 = clone state.iter1;iter2 = clone state.iter2;}
+    let clone = fun state -> { iter1 = clone state.iter1; iter2 = clone state.iter2 }
   end in
-  make (module ZipIter) {iter1;iter2;}
+  make (module ZipIter) { iter1; iter2 }
 
 let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
   let module ChainIter = struct
@@ -333,9 +333,9 @@ let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
         size state.second
 
     let clone = fun state ->
-      {first = clone state.first;second = clone state.second;in_first = state.in_first;}
+      { first = clone state.first; second = clone state.second; in_first = state.in_first }
   end in
-  make (module ChainIter) {first = iter1;second = iter2;in_first = true;}
+  make (module ChainIter) { first = iter1; second = iter2; in_first = true }
 
 (*************************************************************************************************)
 

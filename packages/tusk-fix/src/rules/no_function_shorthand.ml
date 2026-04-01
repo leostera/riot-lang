@@ -20,7 +20,7 @@ available for places where the shorthand is genuinely a better fit.
 let make_diagnostic = fun binding ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.LetBinding.value_syntax_node binding))
     ~suggestion:"Use explicit parameters with `let name x = ...` or `let name = fun x -> ...`"
     ()

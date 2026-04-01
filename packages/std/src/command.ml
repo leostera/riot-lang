@@ -33,7 +33,7 @@ type error =
 
 type state =
   | Pending
-  | Running of { proc: OsProcess.t; stdout: Fs.File.t option; stderr: Fs.File.t option; }
+  | Running of { proc: OsProcess.t; stdout: Fs.File.t option; stderr: Fs.File.t option }
   | Exited of output
 
 type t = {
@@ -98,7 +98,7 @@ let output = fun t ->
       Error (SystemError "Command is already running")
   | Pending -> (
       (* Build stdio config to capture stdout and stderr *)
-      let stdio = OsProcess.{stdin = `Null;stdout = `Pipe;stderr = `Pipe;} in
+      let stdio = OsProcess.{ stdin = `Null; stdout = `Pipe; stderr = `Pipe } in
       (* Spawn the process *)
       match OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env ?cwd:t.cwd ~stdio () with
       | Error (`SpawnFailed msg) -> Error (SystemError msg)
@@ -107,7 +107,7 @@ let output = fun t ->
           let stdout_fd = OsProcess.stdout proc |> Option.unwrap |> Fs.File.from_fd in
           let stderr_fd = OsProcess.stderr proc |> Option.unwrap |> Fs.File.from_fd in
           (* Update state to Running *)
-          t.state <- Running {proc;stdout = Some stdout_fd;stderr = Some stderr_fd;};
+          t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
           (* Read output BEFORE waiting - prevents deadlock if pipes fill up *)
           let stdout_str =
             match Fs.File.read_to_end stdout_fd with
@@ -140,7 +140,7 @@ let output = fun t ->
             | OsProcess.Signaled n -> 128 + n
             | OsProcess.Stopped n -> 128 + n
           in
-          let result = {status = status_code;stdout = stdout_str;stderr = stderr_str;} in
+          let result = { status = status_code; stdout = stdout_str; stderr = stderr_str } in
           (* Update state to Exited *)
           t.state <- Exited result;
           Ok result
@@ -154,7 +154,7 @@ let status = fun t ->
       Error (SystemError "Command is already running")
   | Pending -> (
       (* Build stdio config to inherit stdin, stdout and stderr (don't capture) *)
-      let stdio = OsProcess.{stdin = `Inherit;stdout = `Inherit;stderr = `Inherit;} in
+      let stdio = OsProcess.{ stdin = `Inherit; stdout = `Inherit; stderr = `Inherit } in
       (* Spawn the process *)
       match OsProcess.spawn ~program:t.cmd ~args:t.args ~env:t.env ?cwd:t.cwd ~stdio () with
       | Error (`SpawnFailed msg) -> Error (SystemError msg)
@@ -180,6 +180,6 @@ let status = fun t ->
             | OsProcess.Stopped n -> 128 + n
           in
           (* Update state to Exited (with empty stdout/stderr since we didn't capture) *)
-          t.state <- Exited {status = status_code;stdout = "";stderr = "";};
+          t.state <- Exited { status = status_code; stdout = ""; stderr = "" };
           Ok status_code
     )

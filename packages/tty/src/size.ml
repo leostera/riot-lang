@@ -14,7 +14,7 @@ let get = fun () ->
         ^ Int.to_string cols
         ^ " rows="
         ^ Int.to_string rows);
-      Ok {rows;cols;}
+      Ok { rows; cols }
   | Error _ as e ->
       Log.debug "[SIZE.GET] Failed to get terminal size from stdout";
       e

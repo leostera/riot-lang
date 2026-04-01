@@ -43,7 +43,7 @@ and child_expressions = function
   | Syn.Cst.Expression.Fun expr ->
       child_expressions_of_function_body expr.body
   | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
-      child_expressions_of_function_body (Syn.Cst.Cases {syntax_node;cases;})
+      child_expressions_of_function_body (Syn.Cst.Cases { syntax_node; cases })
   | Syn.Cst.Expression.Let expr ->
       [ expr.bound_value; expr.body ]
   | Syn.Cst.Expression.Match expr ->
@@ -109,7 +109,7 @@ let is_obviously_redundant = function
 let make_diagnostic = fun (expr: Syn.Cst.parenthesized_expression) ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
     ~suggestion:"Remove these redundant parentheses."
     ()

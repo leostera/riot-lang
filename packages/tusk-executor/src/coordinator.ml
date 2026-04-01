@@ -36,34 +36,34 @@ type Message.t +=
   | WorkspaceAssignAction of {
       package_key: Package.key;
       runtime: package_runtime;
-      node: Action_node.t;
+      node: Action_node.t
     }
   | WorkspaceActionCompleted of {
       worker_pid: Pid.t;
       package_key: Package.key;
-      result: Action_executor.execution_result;
+      result: Action_executor.execution_result
     }
 
 let action_error_to_package_error = function
-  | Action_executor.ExecutionFailed { message } -> Package_builder.ActionExecutionFailed {message;}
+  | Action_executor.ExecutionFailed { message } -> Package_builder.ActionExecutionFailed { message }
   | Action_executor.OutputsNotCreated { missing } -> Package_builder.ActionOutputsNotCreated {
-    missing;
+    missing
   }
   | Action_executor.DependenciesFailed { failed } -> Package_builder.ActionDependenciesFailed {
-    failed;
+    failed
   }
 
 let package_error_to_telemetry_error = function
   | Package_builder.PlanningFailed err -> Telemetry_events.PlanningFailed err
-  | Package_builder.ExecutionFailed { message } -> Telemetry_events.ExecutionFailed {message;}
+  | Package_builder.ExecutionFailed { message } -> Telemetry_events.ExecutionFailed { message }
   | Package_builder.ActionExecutionFailed { message } -> Telemetry_events.ActionExecutionFailed {
-    message;
+    message
   }
   | Package_builder.ActionOutputsNotCreated { missing } -> Telemetry_events.ActionOutputsNotCreated {
-    missing;
+    missing
   }
   | Package_builder.ActionDependenciesFailed { failed } -> Telemetry_events.ActionDependenciesFailed {
-    failed;
+    failed
   }
 
 let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry list = fun action_graph ->
@@ -77,7 +77,7 @@ let compute_export_entries : Action_graph.t -> Tusk_store.Store.export_entry lis
             Tusk_store.Store.{
               name = Path.basename out_path;
               path = out_path;
-              action_hash = action_hash_hex;
+              action_hash = action_hash_hex
             })
           node.value.outs)
   in
@@ -97,7 +97,7 @@ let artifact_from_exports = fun ~package_hash (exports: Tusk_store.Store.export_
   let files =
     List.map (fun (entry: Tusk_store.Store.export_entry) -> Path.v entry.name) exports
   in
-  Tusk_store.Artifact.{hash = package_hash;files;}
+  Tusk_store.Artifact.{ hash = package_hash; files }
 
 let summarize_results = fun ~package_graph (results: Package_builder.build_result list) ->
   let cached_count, built_count, failed_count =
@@ -144,7 +144,7 @@ let mark_package_failed_in_graph = fun package_graph ~package ~package_key ~hash
     package;
     scope = Package_graph.get_scope node.value;
     hash;
-    error;
+    error
   }
 
 let mark_package_built_in_graph = fun package_graph ~runtime ~artifact ~status ->
@@ -241,9 +241,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
         ready_count := !ready_count - 1;
         Some item
   in
-  Telemetry.emit (PlanningWorkspaceStarted {session_id;target;package_count = List.length nodes;});
+  Telemetry.emit (PlanningWorkspaceStarted { session_id; target; package_count = List.length nodes });
   let materialize_initial_failure package_key package status =
-    let result = Package_builder.{package_key;package;status;duration = Time.Duration.zero;} in
+    let result = Package_builder.{ package_key; package; status; duration = Time.Duration.zero } in
     let _ = HashMap.insert package_results package_key result in
     result
   in
@@ -299,7 +299,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   package_key;
                   package;
                   status = Cached artifact;
-                  duration = Time.Duration.zero;
+                  duration = Time.Duration.zero
                 } in
               let _ = HashMap.insert package_results package_key result in
               (
@@ -515,7 +515,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 package_key
                 package
                 (Package_builder.Failed (ExecutionFailed {
-                  message = "Failed dependencies: " ^ String.concat ", " names;
+                  message = "Failed dependencies: " ^ String.concat ", " names
                 })) in
               let _ = HashMap.remove pending_planning package_key in
               ()
@@ -582,7 +582,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     package_key
                     package
                     (Package_builder.Failed (ExecutionFailed {
-                      message = "Failed dependencies: " ^ String.concat ", " names;
+                      message = "Failed dependencies: " ^ String.concat ", " names
                     })) in
                   let _ = HashMap.remove pending_planning package_key in
                   ()
@@ -642,16 +642,16 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   session_id;
                   package = runtime.package;
                   target = Workspace_planner.Package runtime.package.name;
-                  reason;
+                  reason
                 });
               let result =
                 Package_builder.{
                   package_key;
                   package = runtime.package;
                   status = Failed (ExecutionFailed {
-                    message = "Skipped " ^ runtime.package.name ^ " (" ^ reason ^ ")";
+                    message = "Skipped " ^ runtime.package.name ^ " (" ^ reason ^ ")"
                   });
-                  duration = Time.Duration.zero;
+                  duration = Time.Duration.zero
                 } in
               let _ = HashMap.insert package_results package_key result in
               mark_package_failed_in_graph
@@ -678,7 +678,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   (BuildStarted {
                     session_id;
                     package = runtime.package;
-                    target = Workspace_planner.Package runtime.package.name;
+                    target = Workspace_planner.Package runtime.package.name
                   });
                 enqueue_all_ready_actions ~package_key runtime enqueue_ready
               ))
@@ -708,7 +708,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               package_key;
               package = runtime.package;
               status = Failed pkg_err;
-              duration = Time.Duration.zero;
+              duration = Time.Duration.zero
             } in
           let _ = HashMap.insert package_results package_key result in
           mark_package_failed_in_graph
@@ -722,7 +722,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               session_id;
               package = runtime.package;
               target = Workspace_planner.Package runtime.package.name;
-              error = package_error_to_telemetry_error pkg_err;
+              error = package_error_to_telemetry_error pkg_err
             });
           Sandbox.cleanup runtime.sandbox
       | [] ->
@@ -743,7 +743,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               package_key;
               package = runtime.package;
               status = build_status;
-              duration = Time.Duration.zero;
+              duration = Time.Duration.zero
             } in
           let _ = HashMap.insert package_results package_key result in
           Sandbox.cleanup runtime.sandbox
@@ -761,7 +761,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
           toolchain
           sandbox_dir
           node in
-        send coordinator_pid (WorkspaceActionCompleted {worker_pid = self ();package_key;result;});
+        send coordinator_pid (WorkspaceActionCompleted { worker_pid = self (); package_key; result });
         workspace_worker_loop ()
     | _ -> workspace_worker_loop ()
   in
@@ -787,7 +787,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 drain_work_queue ()
             | Some runtime ->
                 let _ = HashMap.insert busy_workers worker_pid package_key in
-                send worker_pid (WorkspaceAssignAction {package_key;runtime;node = action_node;});
+                send worker_pid (WorkspaceAssignAction { package_key; runtime; node = action_node });
                 drain_work_queue ()
           )
       )
@@ -820,8 +820,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                         Package_builder.{
                           package_key;
                           package = pkg_runtime.package;
-                          status = Failed (ExecutionFailed {message = error;});
-                          duration = Time.Duration.zero;
+                          status = Failed (ExecutionFailed { message = error });
+                          duration = Time.Duration.zero
                         } in
                       let _ = HashMap.insert package_results package_key result in
                       mark_package_failed_in_graph
@@ -854,7 +854,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                       (CompilationStarted {
                         session_id;
                         package = runtime.package;
-                        target = Workspace_planner.Package runtime.package.name;
+                        target = Workspace_planner.Package runtime.package.name
                       })
                   );
                 Action_queue.mark_completed runtime.action_queue result;
@@ -901,7 +901,7 @@ let build_workspace = fun ~workspace ~toolchain ~store ~target ~scope ~concurren
   match Tusk_planner.plan_workspace ~workspace ~target ~scope ~load_errors:[] with
   | Error err -> Error err
   | Ok { packages; package_graph; _ } -> (
-      Telemetry.emit (WorkspaceStarted {session_id;target;package_count = List.length packages;});
+      Telemetry.emit (WorkspaceStarted { session_id; target; package_count = List.length packages });
       Log.info
         ("Building "
         ^ Int.to_string (List.length packages)
@@ -909,7 +909,7 @@ let build_workspace = fun ~workspace ~toolchain ~store ~target ~scope ~concurren
         ^ Int.to_string concurrency);
       match Package_graph.topological_sort package_graph with
       | exception Package_graph.Cycle_detected cycle -> Error (Workspace_planner.CycleDetected {
-        cycle;
+        cycle
       })
       | nodes ->
           let results = build_workspace_actions
@@ -934,5 +934,5 @@ let build_workspace = fun ~workspace ~toolchain ~store ~target ~scope ~concurren
                 failed_count = result.failed_count;
               }
             );
-          Ok {result with total_duration;}
+          Ok { result with total_duration }
     )

@@ -51,7 +51,7 @@ let make_diagnostic = fun token ->
   let replacement = to_class_case original in
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~suggestion:(("Rename " ^ original ^ " to " ^ replacement))
     ()

@@ -51,7 +51,7 @@ let scenario_of_seed = fun raw_seed ->
   {
     seed;
     sender_count = Int.add 2 (Kernel.Random.State.int rng 3);
-    messages_per_sender = Int.add 6 (Kernel.Random.State.int rng 9);
+    messages_per_sender = Int.add 6 (Kernel.Random.State.int rng 9)
   }
 
 let scenario_to_string = fun s ->

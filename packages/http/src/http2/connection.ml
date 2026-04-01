@@ -69,16 +69,16 @@ type t = {
 }
 
 type event =
-  | HeadersReceived of { stream_id: int; headers: Hpack.header list; end_stream: bool; }
-  | DataReceived of { stream_id: int; data: bytes; end_stream: bool; }
+  | HeadersReceived of { stream_id: int; headers: Hpack.header list; end_stream: bool }
+  | DataReceived of { stream_id: int; data: bytes; end_stream: bool }
   | SettingsReceived of Frame.setting list
   | SettingsAckReceived
-  | PingReceived of { data: string; }
-  | PingAckReceived of { data: string; }
-  | GoawayReceived of { last_stream_id: int; error_code: Frame.error_code; debug_data: string; }
-  | RstStreamReceived of { stream_id: int; error_code: Frame.error_code; }
-  | WindowUpdateReceived of { stream_id: int; increment: int; }
-  | PriorityReceived of { stream_id: int; stream_dependency: int; weight: int; exclusive: bool; }
+  | PingReceived of { data: string }
+  | PingAckReceived of { data: string }
+  | GoawayReceived of { last_stream_id: int; error_code: Frame.error_code; debug_data: string }
+  | RstStreamReceived of { stream_id: int; error_code: Frame.error_code }
+  | WindowUpdateReceived of { stream_id: int; increment: int }
+  | PriorityReceived of { stream_id: int; stream_dependency: int; weight: int; exclusive: bool }
 
 (** {1 Constants} *)
 (** RFC 9113: Connection preface for clients *)
@@ -88,7 +88,7 @@ let default_config = {
   max_frame_size = 16_384;
   initial_window_size = 65_535;
   max_concurrent_streams = 100;
-  enable_push = true;
+  enable_push = true
 }
 
 let create_settings = fun config ->
@@ -256,7 +256,7 @@ let send_data = fun conn ~stream_id ~data ~end_stream ->
               ack = false;
             };
           stream_id;
-          payload = Frame.DataPayload {data = Bytes.to_string data;pad_length = None;};
+          payload = Frame.DataPayload { data = Bytes.to_string data; pad_length = None };
         }
         in
         (* Update flow control windows *)
@@ -436,7 +436,7 @@ let send_goaway = fun conn ~last_stream_id ~error_code ?(debug_data = "") () ->
         ack = false;
       };
     stream_id = 0;
-    payload = Frame.GoawayPayload {last_stream_id;error_code;debug_data;};
+    payload = Frame.GoawayPayload { last_stream_id; error_code; debug_data };
   }
   in
   Serializer.serialize_frame frame
@@ -503,7 +503,7 @@ let process_headers_frame = fun conn stream_id payload flags ->
           Cell.set stream.headers headers;
           if end_stream then
             Cell.set stream.state StreamHalfClosedRemote;
-          Ok [ HeadersReceived {stream_id;headers;end_stream;} ]
+          Ok [ HeadersReceived { stream_id; headers; end_stream } ]
     )
   | _ -> Error "Invalid HEADERS payload"
 
@@ -521,7 +521,7 @@ let process_data_frame = fun conn stream_id payload flags ->
               Cell.set stream.state StreamHalfClosedRemote
         | None -> ()
       );
-      Ok [ DataReceived {stream_id;data = data_bytes;end_stream;} ]
+      Ok [ DataReceived { stream_id; data = data_bytes; end_stream } ]
   | _ -> Error "Invalid DATA payload"
 
 let process_frame = fun conn frame ->
@@ -547,23 +547,23 @@ let process_frame = fun conn frame ->
               | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
               | None -> ()
             );
-            Ok [ WindowUpdateReceived {stream_id = frame.stream_id;increment;} ]
+            Ok [ WindowUpdateReceived { stream_id = frame.stream_id; increment } ]
       | _ -> Error "Invalid WINDOW_UPDATE payload"
     )
   | Frame.Ping -> (
       match frame.payload with
       | Frame.PingPayload data ->
           if frame.flags.ack then
-            Ok [ PingAckReceived {data;} ]
+            Ok [ PingAckReceived { data } ]
           else
-            Ok [ PingReceived {data;} ]
+            Ok [ PingReceived { data } ]
       | _ -> Error "Invalid PING payload"
     )
   | Frame.Goaway -> (
       match frame.payload with
       | Frame.GoawayPayload { last_stream_id; error_code; debug_data } ->
           Cell.set conn.state GoingAway;
-          Ok [ GoawayReceived {last_stream_id;error_code;debug_data;} ]
+          Ok [ GoawayReceived { last_stream_id; error_code; debug_data } ]
       | _ -> Error "Invalid GOAWAY payload"
     )
   | Frame.RstStream -> (
@@ -574,13 +574,13 @@ let process_frame = fun conn frame ->
             | Some stream -> Cell.set stream.state StreamClosed
             | None -> ()
           );
-          Ok [ RstStreamReceived {stream_id = frame.stream_id;error_code;} ]
+          Ok [ RstStreamReceived { stream_id = frame.stream_id; error_code } ]
       | _ -> Error "Invalid RST_STREAM payload"
     )
   | Frame.Priority -> (
       match frame.payload with
       | Frame.PriorityPayload { stream_dependency; exclusive; weight } -> Ok [
-        PriorityReceived {stream_id = frame.stream_id;stream_dependency;weight;exclusive;};
+        PriorityReceived { stream_id = frame.stream_id; stream_dependency; weight; exclusive };
       ]
       | _ -> Error "Invalid PRIORITY payload"
     )

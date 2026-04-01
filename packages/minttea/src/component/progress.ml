@@ -145,8 +145,8 @@ let view = fun t ->
   let render box = [
     {
       Gooey.Render.bounding_box = box;
-      command_type = Gooey.Render.Custom {data = progress_string;};
-      z_index = 0;
+      command_type = Gooey.Render.Custom { data = progress_string };
+      z_index = 0
     }
   ] in
   Gooey.Element.custom ~measure ~render ()

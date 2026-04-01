@@ -85,7 +85,7 @@ type 'a value_box = {
   mutable data: 'a option;
 }
 
-let make_box = fun value -> {data = Some value;}
+let make_box = fun value -> { data = Some value }
 
 external unsafe_coerce: 'a -> 'b = "%identity"
 

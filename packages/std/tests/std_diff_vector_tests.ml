@@ -10,9 +10,9 @@ let diff_vectors = fun left right ->
       let next =
         match (Vector.get left idx, Vector.get right idx) with
         | Some x, Some y when x = y -> acc
-        | None, Some y -> {Diff.path = [ Diff.Index idx ];kind = Diff.Added y;} :: acc
-        | Some x, None -> {Diff.path = [ Diff.Index idx ];kind = Diff.Removed x;} :: acc
-        | Some x, Some y -> {Diff.path = [ Diff.Index idx ];kind = Diff.Changed (x, y);} :: acc
+        | None, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
+        | Some x, None -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc
+        | Some x, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Changed (x, y) } :: acc
         | None, None -> acc
       in
       loop (idx + 1) next
@@ -77,7 +77,7 @@ let test_diff_all_different = fun () ->
 let test_diff_nested_vectors = fun () ->
   let left = make_vec [ make_vec [ 1 ] ] in
   let right = make_vec [ make_vec [ 2 ] ] in
-  let diffs = [ {Diff.path = [ Diff.Index 0 ];kind = Diff.Changed (left, right);} ] in
+  let diffs = [ { Diff.path = [ Diff.Index 0 ]; kind = Diff.Changed (left, right) } ] in
   match Diff.changes diffs with
   | [ { kind=Diff.Changed (l, r); _ } ] when Vector.len l = 1 && Vector.len r = 1 -> Ok ()
   | _ -> Error "Expected changed nested vector payload"

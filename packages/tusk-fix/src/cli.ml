@@ -72,17 +72,17 @@ let rec take = fun n xs ->
 
 let clip_result_to_limit = fun remaining result ->
   if remaining <= 0 then
-    {result with Runner.parse_diagnostics = [];diagnostics = [];}
+    { result with Runner.parse_diagnostics = []; diagnostics = [] }
   else
     let parse_count = List.length result.Runner.parse_diagnostics in
     if parse_count >= remaining then
       {
         result
         with Runner.parse_diagnostics = take remaining result.parse_diagnostics;
-        diagnostics = [];
+        diagnostics = []
       }
     else
-      {result with Runner.diagnostics = take (remaining - parse_count) result.diagnostics;}
+      { result with Runner.diagnostics = take (remaining - parse_count) result.diagnostics }
 
 let print_text_result = fun mode result ->
   let rel = relative_to_cwd result.Runner.file in
@@ -405,7 +405,7 @@ let run_result_with = fun ~on_result ~mode ~scope ~limit ~files ->
         let summary = Runner.summarize files in
         {
           result =
-            Runner.{files;summary;};
+            Runner.{ files; summary };
           limit_reached;
         }
   in
@@ -464,7 +464,7 @@ let run_with_coordinator = fun ~format ~mode ~scope ~limit ~roots () ->
             let summary = Runner.summarize files in
             {
               result =
-                Runner.{files;summary;};
+                Runner.{ files; summary };
               limit_reached;
             }
       in

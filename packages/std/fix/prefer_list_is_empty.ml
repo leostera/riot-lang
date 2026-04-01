@@ -83,7 +83,7 @@ let make_diagnostic = fun ~suggestion expr ->
     ~severity:Warning
     ~kind:(Api.Diagnostic.Known {
       rule_id = package_rule_id;
-      message = explanation.Api.Explanation.message;
+      message = explanation.Api.Explanation.message
     })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
     ~suggestion

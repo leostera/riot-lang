@@ -38,7 +38,7 @@ let test_serialize_data_frame = fun () ->
         ack = false;
       };
     stream_id = 1;
-    payload = Frame.DataPayload {data = "hello";pad_length = None;};
+    payload = Frame.DataPayload { data = "hello"; pad_length = None };
   }
   in
   let serialized = Serializer.serialize_frame frame in

@@ -5,10 +5,10 @@ open Tusk_planner
 (** Package build errors *)
 type package_error =
   | PlanningFailed of Tusk_planner.Planning_error.t
-  | ExecutionFailed of { message: string; }
-  | ActionExecutionFailed of { message: string; }
-  | ActionOutputsNotCreated of { missing: Path.t list; }
-  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list; }
+  | ExecutionFailed of { message: string }
+  | ActionExecutionFailed of { message: string }
+  | ActionOutputsNotCreated of { missing: Path.t list }
+  | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list }
 val package_error_to_string: package_error -> string
 
 val package_error_to_json: package_error -> Std.Data.Json.t

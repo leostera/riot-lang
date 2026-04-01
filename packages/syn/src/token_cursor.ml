@@ -35,7 +35,7 @@ let set_position = fun t pos ->
 let is_eof = fun t -> t.pos >= t.length
 
 let eof_token = fun () ->
-  {Token.kind = Token.EOF;span = Ceibo.Span.make ~start:0 ~end_:0;leading_trivia = [];}
+  { Token.kind = Token.EOF; span = Ceibo.Span.make ~start:0 ~end_:0; leading_trivia = [] }
 
 let peek = fun t ->
   if is_eof t then

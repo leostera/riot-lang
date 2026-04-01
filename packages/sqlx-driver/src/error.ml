@@ -15,11 +15,11 @@ type db_error = {
 }
 
 type t =
-  | Connection_error of { message: string; cause: db_error option; }
-  | Query_error of { sql: string option; cause: db_error; }
-  | Preparation_error of { sql: string; cause: db_error; }
-  | Execution_error of { cause: db_error; }
-  | Transaction_error of { message: string; cause: db_error option; }
+  | Connection_error of { message: string; cause: db_error option }
+  | Query_error of { sql: string option; cause: db_error }
+  | Preparation_error of { sql: string; cause: db_error }
+  | Execution_error of { cause: db_error }
+  | Transaction_error of { message: string; cause: db_error option }
   | Pool_error of string
   | Generic_error of string
 
@@ -29,23 +29,23 @@ let of_string = fun msg -> Generic_error msg
 
 (* Create connection error *)
 
-let connection_error = fun ~message ?cause () -> Connection_error {message;cause;}
+let connection_error = fun ~message ?cause () -> Connection_error { message; cause }
 
 (* Create query error *)
 
-let query_error = fun ~sql cause -> Query_error {sql = Some sql;cause;}
+let query_error = fun ~sql cause -> Query_error { sql = Some sql; cause }
 
 (* Create preparation error *)
 
-let preparation_error = fun ~sql cause -> Preparation_error {sql;cause;}
+let preparation_error = fun ~sql cause -> Preparation_error { sql; cause }
 
 (* Create execution error *)
 
-let execution_error = fun cause -> Execution_error {cause;}
+let execution_error = fun cause -> Execution_error { cause }
 
 (* Create transaction error *)
 
-let transaction_error = fun ~message ?cause () -> Transaction_error {message;cause;}
+let transaction_error = fun ~message ?cause () -> Transaction_error { message; cause }
 
 (* Create pool error *)
 

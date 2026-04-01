@@ -56,12 +56,12 @@ type parameter_usage = {
   has_whole_value_use: bool;
 }
 
-let empty_usage = {field_names = [];has_whole_value_use = false;}
+let empty_usage = { field_names = []; has_whole_value_use = false }
 
 let merge_usage = fun left right ->
   {
     field_names = left.field_names @ right.field_names;
-    has_whole_value_use = left.has_whole_value_use || right.has_whole_value_use;
+    has_whole_value_use = left.has_whole_value_use || right.has_whole_value_use
   }
 
 let merge_all = fun usages ->
@@ -73,7 +73,7 @@ let whole_value_use = fun expected_name ->
     field_names = [];
     has_whole_value_use = (Syn.Cst.Ident.name path
     |> Option.map (String.equal expected_name)
-    |> Option.unwrap_or ~default:false);
+    |> Option.unwrap_or ~default:false)
   }
   | _ -> empty_usage
 
@@ -163,7 +163,7 @@ and usage_in_expression = fun expected_name expr ->
       usage_in_expression expected_name operand
   | Syn.Cst.Expression.FieldAccess ({ receiver; _ } as field_access) -> (
       match direct_field_access_name expected_name (Syn.Cst.Expression.FieldAccess field_access) with
-      | Some field_name -> {field_names = [ field_name ];has_whole_value_use = false;}
+      | Some field_name -> { field_names = [ field_name ]; has_whole_value_use = false }
       | None -> usage_in_expression expected_name receiver
     )
   | Syn.Cst.Expression.Index { collection; index; _ } ->
@@ -280,7 +280,7 @@ let diagnostic_for_binding = fun binding ->
       then
         Some (Diagnostic.make
           ~severity:Warning
-          ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+          ~kind:(Diagnostic.Known { rule_id; message = rule_description })
           ~span:(Syn.Cst.Token.span parameter_token)
           ~suggestion:(("Destructure this record in the parameter list instead of binding "
           ^ parameter_name

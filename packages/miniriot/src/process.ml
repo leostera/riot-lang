@@ -14,22 +14,15 @@ type 'a atomic_ref = 'a Sync.Atomic.t
 
 module Messages = struct
   type Message.t +=
-    | EXIT of {
-        from: Pid.t;
-        reason: (unit, exit_reason) result;
-      }
-    | DOWN of {
-        ref: monitor_ref;
-        pid: Pid.t;
-        reason: (unit, exit_reason) result;
-      }
+    | EXIT of { from: Pid.t; reason: (unit, exit_reason) result }
+    | DOWN of { ref: monitor_ref; pid: Pid.t; reason: (unit, exit_reason) result }
 end
 
 type state =
   | Uninitialized
   | Runnable
   | Waiting_message
-  | Waiting_io of { name: string; token: Async.Token.t; source: Async.Source.t; }
+  | Waiting_io of { name: string; token: Async.Token.t; source: Async.Source.t }
   | Running
   | Exited of (unit, exit_reason) result
   | Finalized
@@ -249,7 +242,7 @@ let send_message = fun t msg ->
 
 let mark_as_awaiting_io = fun t ~name token source ->
   if is_alive t then
-    Sync.Atomic.set t.state (Waiting_io {name;token;source;})
+    Sync.Atomic.set t.state (Waiting_io { name; token; source })
 
 let add_ready_token = fun t token source ->
   with_lock t (fun () -> t.ready_tokens <- (token, source) :: t.ready_tokens)

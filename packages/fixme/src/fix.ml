@@ -10,25 +10,11 @@ type replacement =
   | Text of string
 
 type operation =
-  | Delete of {
-      target: target;
-    }
-  | Replace of {
-      target: target;
-      replacement: replacement;
-    }
-  | Insert_before of {
-      anchor: target;
-      content: replacement;
-    }
-  | Insert_after of {
-      anchor: target;
-      content: replacement;
-    }
-  | Swap of {
-      left: target;
-      right: target;
-    }
+  | Delete of { target: target }
+  | Replace of { target: target; replacement: replacement }
+  | Insert_before of { anchor: target; content: replacement }
+  | Insert_after of { anchor: target; content: replacement }
+  | Swap of { left: target; right: target }
 
 type fix = {
   title: string;
@@ -46,11 +32,11 @@ let source_of_token = fun token -> Source_of_token token
 
 let text = fun value -> Text value
 
-let delete = fun ~target -> Delete {target;}
+let delete = fun ~target -> Delete { target }
 
 let delete_node = fun target -> delete ~target:(Node target)
 
-let replace = fun ~target ~replacement -> Replace {target;replacement;}
+let replace = fun ~target ~replacement -> Replace { target; replacement }
 
 let replace_node = fun ~target ~replacement ->
   replace ~target:(Node target) ~replacement:(source_of_node replacement)
@@ -61,13 +47,13 @@ let replace_node_with_text = fun ~target ~text:value ->
 let replace_token_with_text = fun ~target ~text:value ->
   replace ~target:(Token target) ~replacement:(text value)
 
-let insert_before = fun ~anchor ~content -> Insert_before {anchor;content;}
+let insert_before = fun ~anchor ~content -> Insert_before { anchor; content }
 
-let insert_after = fun ~anchor ~content -> Insert_after {anchor;content;}
+let insert_after = fun ~anchor ~content -> Insert_after { anchor; content }
 
-let swap = fun ~left ~right -> Swap {left;right;}
+let swap = fun ~left ~right -> Swap { left; right }
 
-let make = fun ~title ~operations -> {title;operations;}
+let make = fun ~title ~operations -> { title; operations }
 
 let title = fun fix -> fix.title
 
@@ -89,14 +75,14 @@ let replacement_text = fun ~source ->
 
 let make_insert_at = fun pos ~new_text ->
   let span = Syn.Ceibo.Span.make ~start:pos ~end_:pos in
-  {span;new_text;}
+  { span; new_text }
 
 let lower_operation = fun ~source ->
   function
   | Delete { target } ->
-      Ok [ {span = target_span target;new_text = "";} ]
+      Ok [ { span = target_span target; new_text = "" } ]
   | Replace { target; replacement } ->
-      Ok [ {span = target_span target;new_text = replacement_text ~source replacement;} ]
+      Ok [ { span = target_span target; new_text = replacement_text ~source replacement } ]
   | Insert_before { anchor; content } ->
       let anchor_span = target_span anchor in
       Ok [ make_insert_at anchor_span.start ~new_text:(replacement_text ~source content); ]
@@ -110,8 +96,8 @@ let lower_operation = fun ~source ->
         Error "Swap operations require non-overlapping syntax objects"
       else
         Ok [
-          {span = left_span;new_text = source_slice ~source right_span;};
-          {span = right_span;new_text = source_slice ~source left_span;};
+          { span = left_span; new_text = source_slice ~source right_span };
+          { span = right_span; new_text = source_slice ~source left_span };
         ]
 
 let compare_text_edit = fun a b ->

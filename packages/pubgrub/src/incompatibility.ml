@@ -11,20 +11,13 @@ type external_cause =
   | Custom of package * version Ranges.t * string
 
 type t =
-  | External of {
-      terms: Term.t list;
-      cause: external_cause;
-    }
-  | Derived of {
-      terms: Term.t list;
-      cause1: t;
-      cause2: t;
-      shared_id: int option;
-    }
+  | External of { terms: Term.t list; cause: external_cause }
+  | Derived of { terms: Term.t list; cause1: t; cause2: t; shared_id: int option }
 
-let create_external = fun terms cause -> External {terms;cause;}
+let create_external = fun terms cause -> External { terms; cause }
 
-let create_derived = fun terms cause1 cause2 shared_id -> Derived {terms;cause1;cause2;shared_id;}
+let create_derived = fun terms cause1 cause2 shared_id ->
+  Derived { terms; cause1; cause2; shared_id }
 
 let not_root = fun pkg ver ->
   let term = Term.negative pkg (Ranges.singleton ver) in

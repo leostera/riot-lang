@@ -366,11 +366,11 @@ module PathAndQuery = struct
 
   let of_string = fun s ->
     match String.index_opt s '?' with
-    | None -> Ok {path = s;query = None;}
+    | None -> Ok { path = s; query = None }
     | Some idx ->
         let path = String.sub s 0 idx in
         let query = String.sub s (idx + 1) (String.length s - idx - 1) in
-        Ok {path;query = Some query;}
+        Ok { path; query = Some query }
 
   let to_string = fun pq ->
     match pq.query with
@@ -406,19 +406,19 @@ module Builder = struct
       fragment = None;
     }
 
-  let scheme = fun builder s -> {builder with scheme = Some s;}
+  let scheme = fun builder s -> { builder with scheme = Some s }
 
-  let authority = fun builder s -> {builder with authority = Some s;}
+  let authority = fun builder s -> { builder with authority = Some s }
 
-  let host = fun builder s -> {builder with host = Some s;}
+  let host = fun builder s -> { builder with host = Some s }
 
-  let port = fun builder p -> {builder with port = Some p;}
+  let port = fun builder p -> { builder with port = Some p }
 
-  let path = fun builder s -> {builder with path = Some s;}
+  let path = fun builder s -> { builder with path = Some s }
 
-  let query = fun builder s -> {builder with query = Some s;}
+  let query = fun builder s -> { builder with query = Some s }
 
-  let fragment = fun builder s -> {builder with fragment = Some s;}
+  let fragment = fun builder s -> { builder with fragment = Some s }
 
   let build = fun builder ->
     let authority =
@@ -470,7 +470,7 @@ let join = fun base relative_path ->
             in
             base_dir ^ relative_path
         in
-        Ok {base with path = new_path;query = rel_url.query;fragment = rel_url.fragment;}
+        Ok { base with path = new_path; query = rel_url.query; fragment = rel_url.fragment }
 
 let equal = fun url1 url2 ->
   String.equal (to_string url1) (to_string url2)

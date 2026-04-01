@@ -32,7 +32,7 @@ type t = {
 
 let make = fun socket_conn req ->
   let peer_addr = Socket_pool.Connection.peer socket_conn in
-  let peer = {ip = Net.Addr.ip peer_addr;port = Net.Addr.port peer_addr;} in
+  let peer = { ip = Net.Addr.ip peer_addr; port = Net.Addr.port peer_addr } in
   {
     socket_conn;
     req;
@@ -95,15 +95,15 @@ let peer = fun t -> t.peer
 
 let resp_headers = fun t -> t.resp_headers
 
-let with_status = fun status t -> {t with resp_status = status;}
+let with_status = fun status t -> { t with resp_status = status }
 
-let with_body = fun body t -> {t with resp_body = body;}
+let with_body = fun body t -> { t with resp_body = body }
 
-let with_header = fun name value t -> {t with resp_headers = (name, value) :: t.resp_headers;}
+let with_header = fun name value t -> { t with resp_headers = (name, value) :: t.resp_headers }
 
-let with_method = fun method_ t -> {t with method_override = Some method_;}
+let with_method = fun method_ t -> { t with method_override = Some method_ }
 
-let with_peer = fun peer t -> {t with peer;}
+let with_peer = fun peer t -> { t with peer }
 
 let respond = fun ~status ?body t ->
   let t = with_status status t in
@@ -111,7 +111,7 @@ let respond = fun ~status ?body t ->
   | Some b -> with_body b t
   | None -> t
 
-let send = fun t -> {t with sent = true;}
+let send = fun t -> { t with sent = true }
 
 let sent = fun t -> t.sent
 
@@ -151,17 +151,18 @@ let redirect = fun ?(headers = []) path t ->
   in
   t |> with_status Found |> with_header "Location" path |> with_body "" |> send
 
-let halt = fun t -> {t with halted = true;}
+let halt = fun t -> { t with halted = true }
 
 let halted = fun t -> t.halted
 
-let set_params = fun params t -> {t with params;}
+let set_params = fun params t -> { t with params }
 
-let set_body_params = fun body_params t -> {t with body_params;}
+let set_body_params = fun body_params t -> { t with body_params }
 
 let socket_conn = fun t -> t.socket_conn
 
-let upgrade_websocket = fun opts handler t -> {t with upgrade = Some {opts;handler;};halted = true;}
+let upgrade_websocket = fun opts handler t ->
+  { t with upgrade = Some { opts; handler }; halted = true }
 
 let get_upgrade = fun t -> t.upgrade
 

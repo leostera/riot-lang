@@ -38,7 +38,7 @@ let init = fun ~latency ~root:path ~ignore_prefixes ~subscriber ->
   let watcher = Events.create () |> Result.expect ~msg:"Failed to create file watcher" in
   let _watch_id = Events.watch watcher ~path ~latency
   |> Result.expect ~msg:(("Failed to watch: " ^ (Path.to_string path))) in
-  loop {subscriber;watcher;ignore_prefixes;}
+  loop { subscriber; watcher; ignore_prefixes }
 
 let start_link = fun ?(latency = (Time.Duration.from_millis 1)) ?(ignore_prefixes = []) ~root () ->
   let subscriber = self () in

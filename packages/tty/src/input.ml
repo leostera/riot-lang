@@ -248,7 +248,7 @@ let pp_event = fun _fmt _event -> ()
 
 (* Helper to create key event *)
 
-let make_key = fun ?(kind = Press) ?(mods = []) code -> `Key {code;modifiers = mods;kind;}
+let make_key = fun ?(kind = Press) ?(mods = []) code -> `Key { code; modifiers = mods; kind }
 
 (* Parse CSI sequence like \x1b[A for Up arrow *)
 

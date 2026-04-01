@@ -29,7 +29,7 @@ type scope = {
   providers: Tusk_model.Fix_provider.t list;
 }
 
-let empty_fix_config = {ignore_patterns = [];rules = [];}
+let empty_fix_config = { ignore_patterns = []; rules = [] }
 
 let parse_rule_state = function
   | "enabled" -> Some Enabled
@@ -39,9 +39,9 @@ let parse_rule_state = function
 let parse_rule_override = function
   | Data.Toml.String name ->
       if String.starts_with ~prefix:"-" name then
-        Some {name = String.sub name 1 (String.length name - 1);state = Disabled;}
+        Some { name = String.sub name 1 (String.length name - 1); state = Disabled }
       else
-        Some {name;state = Enabled;}
+        Some { name; state = Enabled }
   | Data.Toml.Table attrs -> (
       match List.assoc_opt "name" attrs with
       | Some (Data.Toml.String name) ->
@@ -51,7 +51,7 @@ let parse_rule_override = function
               ~default:Enabled (parse_rule_state state)
             | _ -> Enabled
           in
-          Some {name;state;}
+          Some { name; state }
       | _ -> None
     )
   | _ ->
@@ -73,7 +73,7 @@ let parse_fix_config = function
                 | Some (Data.Toml.Array items) -> List.filter_map parse_rule_override items
                 | _ -> []
               in
-              {ignore_patterns;rules;}
+              { ignore_patterns; rules }
           | _ -> empty_fix_config
         )
       | _ -> empty_fix_config
@@ -101,7 +101,7 @@ let load_scope = fun ~cwd ->
         |> List.map
           (fun (pkg: Package.t) ->
             let package_toml = Path.(pkg.path / Path.v "tusk.toml") in
-            {package_root = pkg.path;config = load_fix_config package_toml;})
+            { package_root = pkg.path; config = load_fix_config package_toml })
       in
       Some {
         workspace_root = workspace.root;

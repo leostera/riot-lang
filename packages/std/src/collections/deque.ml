@@ -9,10 +9,10 @@ type 'a t = {
   mutable size: int;
 }
 
-let create = fun () -> {data = Array.make 16 None;front = 0;back = 0;size = 0;}
+let create = fun () -> { data = Array.make 16 None; front = 0; back = 0; size = 0 }
 
 let with_capacity = fun capacity ->
-  {data = Array.make (max 1 capacity) None;front = 0;back = 0;size = 0;}
+  { data = Array.make (max 1 capacity) None; front = 0; back = 0; size = 0 }
 
 let len = fun deque -> deque.size
 
@@ -225,11 +225,11 @@ let into_iter : type v. v t -> v Iter.Iterator.t = fun deque ->
     let next = fun state ->
       match get state.deque state.idx with
       | None -> (None, state)
-      | Some value -> (Some value, {state with idx = state.idx + 1;})
+      | Some value -> (Some value, { state with idx = state.idx + 1 })
 
     let size = fun state -> max 0 (len state.deque - state.idx)
   end in
-  Iter.Iterator.make (module DequeIter) {deque;idx = 0;}
+  Iter.Iterator.make (module DequeIter) { deque; idx = 0 }
 
 let to_mut_iter : type v. v t -> v Iter.MutIterator.t = fun deque ->
   let module DequeIter = struct

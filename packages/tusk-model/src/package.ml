@@ -127,8 +127,8 @@ let commands_for_scope = fun scope (pkg: t) ->
 
 let sources_for_scope = fun scope (pkg: t) ->
   match scope with
-  | Normal -> {pkg.sources with tests = [];examples = [];bench = [];}
-  | Dev -> {pkg.sources with src = [];native = [];}
+  | Normal -> { pkg.sources with tests = []; examples = []; bench = [] }
+  | Dev -> { pkg.sources with src = []; native = [] }
   | Build ->
       {
         pkg.sources
@@ -226,11 +226,11 @@ let parse_dependency : string -> Toml.value -> workspace_deps:dependency list ->
       | Some (Toml.Bool true) -> resolve_workspace_dependency name workspace_deps
       | _ -> (
           match List.assoc_opt "path" attrs with
-          | Some (Toml.String path_str) -> {name;source = Path (Path.v path_str);}
-          | _ -> {name;source = Workspace;}
+          | Some (Toml.String path_str) -> { name; source = Path (Path.v path_str) }
+          | _ -> { name; source = Workspace }
         )
     )
-  | _ -> {name;source = Workspace;}
+  | _ -> { name; source = Workspace }
 
 let parse_dependencies : (string * Toml.value) list -> workspace_deps:dependency list -> dependency list = fun items ~workspace_deps ->
   List.map (fun ((name, value)) -> parse_dependency name value ~workspace_deps) items
@@ -448,7 +448,7 @@ let parse_binary : Toml.value -> package_path:Path.t -> (binary, string) result 
       match (List.assoc_opt "name" items, List.assoc_opt "path" items) with
       | Some (Toml.String name), Some (Toml.String path_str) ->
           let bin_path = Path.v path_str in
-          Ok {name;path = bin_path;}
+          Ok { name; path = bin_path }
       | Some (Toml.String _), None ->
           Error "Binary entry missing required 'path' field"
       | None, Some (Toml.String _) ->
@@ -504,7 +504,7 @@ package_name:string ->
       let default_lib_path = Path.(package_path / Path.v "src" / Path.v (package_name ^ ".ml")) in
       (
         match Fs.exists default_lib_path with
-        | Ok true -> Ok (Some {path = default_lib_path;})
+        | Ok true -> Ok (Some { path = default_lib_path })
         | Ok false
         | Error _ -> Ok None
       )
@@ -512,10 +512,10 @@ package_name:string ->
       match List.assoc_opt "path" lib_items with
       | Some (Toml.String path_str) ->
           let lib_path = Path.(package_path / Path.v path_str) in
-          Ok (Some {path = lib_path;})
+          Ok (Some { path = lib_path })
       | None ->
           let default_path = Path.(package_path / Path.v "src" / Path.v (package_name ^ ".ml")) in
-          Ok (Some {path = default_path;})
+          Ok (Some { path = default_path })
       | Some _ ->
           Error "Library 'path' field must be a string"
     )
@@ -546,12 +546,12 @@ let parse_compiler_config : (string * Toml.value) list -> compiler_config = fun 
             match value with
             | Toml.Table platform_items ->
                 let profile_override = Profile.override_from_toml platform_items in
-                Some (platform, {profile_override = Some profile_override;})
+                Some (platform, { profile_override = Some profile_override })
             | _ -> None)
           target_table
     | _ -> []
   in
-  {profile_overrides;target_overrides;}
+  { profile_overrides; target_overrides }
 
 let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
   let ocaml_source_suffix path_str =
@@ -651,7 +651,7 @@ let autodiscover_test_binaries : sources -> package_path:Path.t -> binary list =
         let binary_name = Path.remove_extension (Path.v filename) |> Path.to_string in
         (* test_file is already relative to package (e.g., tests/foo_tests.ml) *)
         let binary_path = test_file in
-        Some {name = binary_name;path = binary_path;}
+        Some { name = binary_name; path = binary_path }
       else
         None)
     sources.tests
@@ -663,7 +663,7 @@ let autodiscover_example_binaries : sources -> package_path:Path.t -> binary lis
       if String.ends_with ~suffix:".ml" filename then
         let binary_name = Path.remove_extension (Path.v filename) |> Path.to_string in
         (* example_file is already relative to package (e.g., examples/sqltool.ml) *)
-        Some {name = binary_name;path = example_file;}
+        Some { name = binary_name; path = example_file }
       else
         None)
     sources.examples
@@ -675,7 +675,7 @@ let autodiscover_bench_binaries : sources -> package_path:Path.t -> binary list 
       if String.ends_with ~suffix:"_bench.ml" filename then
         let binary_name = Path.remove_extension (Path.v filename) |> Path.to_string in
         (* bench_file is already relative to package (e.g., bench/foo_bench.ml) *)
-        Some {name = binary_name;path = bench_file;}
+        Some { name = binary_name; path = bench_file }
       else
         None)
     sources.bench
@@ -876,11 +876,11 @@ let from_json : Json.t -> (t, string) result = fun json ->
                             ) with
                             | (Some (Json.String dep_name), Some (Json.String "workspace")) -> Some {
                               name = dep_name;
-                              source = Workspace;
+                              source = Workspace
                             }
                             | (Some (Json.String dep_name), Some (Json.String source_path)) -> Some {
                               name = dep_name;
-                              source = Path (Path.v source_path);
+                              source = Path (Path.v source_path)
                             }
                             | _ -> None
                           )
@@ -905,7 +905,7 @@ let from_json : Json.t -> (t, string) result = fun json ->
                             ) with
                             | (Some (Json.String bin_name), Some (Json.String bin_path)) -> Some {
                               name = bin_name;
-                              path = Path.v bin_path;
+                              path = Path.v bin_path
                             }
                             | _ -> None
                           )
@@ -918,7 +918,7 @@ let from_json : Json.t -> (t, string) result = fun json ->
                 match List.assoc_opt "library" fields with
                 | Some (Json.Object lib_fields) -> (
                     match List.assoc_opt "path" lib_fields with
-                    | Some (Json.String lib_path) -> Some {path = Path.v lib_path;}
+                    | Some (Json.String lib_path) -> Some { path = Path.v lib_path }
                     | _ -> None
                   )
                 | _ -> None
@@ -941,7 +941,7 @@ let from_json : Json.t -> (t, string) result = fun json ->
                     examples = [];
                     bench = [];
                   };
-                compiler = {profile_overrides = [];target_overrides = [];};
+                compiler = { profile_overrides = []; target_overrides = [] };
                 commands = [];
                 fix_providers = [];
               }
@@ -1175,7 +1175,7 @@ fixme = { path = "../fixme" }
 |}
       |> Result.expect ~msg:"expected package toml to parse"
     in
-    let workspace_dep name = {name;source = Workspace;} in
+    let workspace_dep name = { name; source = Workspace } in
     let pkg = from_toml
       toml
       ~workspace_deps:[ workspace_dep "std" ]
@@ -1198,9 +1198,9 @@ fixme = { path = "../fixme" }
       name = "example";
       path = Path.v "/tmp/example";
       relative_path = Path.v "packages/example";
-      dependencies = [ {name = "std";source = Workspace;} ];
-      dev_dependencies = [ {name = "propane";source = Workspace;} ];
-      build_dependencies = [ {name = "fixme";source = Workspace;} ];
+      dependencies = [ { name = "std"; source = Workspace } ];
+      dev_dependencies = [ { name = "propane"; source = Workspace } ];
+      build_dependencies = [ { name = "fixme"; source = Workspace } ];
       foreign_dependencies = [];
       binaries = [];
       library = None;
@@ -1212,7 +1212,7 @@ fixme = { path = "../fixme" }
           examples = [];
           bench = [];
         };
-      compiler = {profile_overrides = [];target_overrides = [];};
+      compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
     }

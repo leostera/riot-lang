@@ -9,9 +9,9 @@ let diff_lists = fun left right ->
       let next =
         match (List.nth_opt left idx, List.nth_opt right idx) with
         | Some x, Some y when x = y -> acc
-        | None, Some y -> {Diff.path = [ Diff.Index idx ];kind = Diff.Added y;} :: acc
-        | Some x, None -> {Diff.path = [ Diff.Index idx ];kind = Diff.Removed x;} :: acc
-        | Some x, Some y -> {Diff.path = [ Diff.Index idx ];kind = Diff.Changed (x, y);} :: acc
+        | None, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
+        | Some x, None -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc
+        | Some x, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Changed (x, y) } :: acc
         | None, None -> acc
       in
       loop (idx + 1) next
@@ -58,7 +58,7 @@ let test_diff_reordered_elements = fun () ->
     Error "Expected both positions to change when reordered"
 
 let test_diff_nested_lists = fun () ->
-  let diffs = [ {Diff.path = [ Diff.Index 0 ];kind = Diff.Changed ([ 1 ], [ 2 ]);} ] in
+  let diffs = [ { Diff.path = [ Diff.Index 0 ]; kind = Diff.Changed ([ 1 ], [ 2 ]) } ] in
   match Diff.changes diffs with
   | [ { kind=Diff.Changed ([ 1 ], [ 2 ]); _ } ] -> Ok ()
   | _ -> Error "Expected changed nested list payload"

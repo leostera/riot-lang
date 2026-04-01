@@ -10,7 +10,7 @@ type config = {
   max_body_size: int;
 }
 
-let default_config = fun () -> {parsers = [ Urlencoded; Json ];max_body_size = 10 * 1_024 * 1_024;}
+let default_config = fun () -> { parsers = [ Urlencoded; Json ]; max_body_size = 10 * 1_024 * 1_024 }
 (** Parse application/x-www-form-urlencoded body using Net.Uri.Query.parse *)
 let parse_urlencoded = fun body -> Net.Uri.Query.parse body
 (** Parse JSON body - convert JSON object to string pairs *)

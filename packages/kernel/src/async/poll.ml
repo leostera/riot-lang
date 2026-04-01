@@ -6,7 +6,7 @@ type t = {
 
 let make = fun () ->
   let* selector = Adapter.Selector.make () in
-  Ok {selector;}
+  Ok { selector }
 
 let poll = fun ?max_events ?timeout t -> Adapter.Selector.select ?timeout ?max_events t.selector
 

@@ -76,7 +76,7 @@ let run_timeout_loop = fun ~parent ~source ~rounds ->
 
 let test_syscall_timeout_deregisters_wait_registration = fun () ->
   let parent = self () in
-  let state = {registered = false;register_count = 0;deregister_count = 0;} in
+  let state = { registered = false; register_count = 0; deregister_count = 0 } in
   let source =
     Source.make (module Tracking_source) state
   in

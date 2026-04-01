@@ -14,8 +14,8 @@ open Std.IO
     code within the context of the current project.
 *)
 type eval_result =
-  | Success of { output: string; typ: string option; }
-  | Error of { message: string; backtrace: string option; }
+  | Success of { output: string; typ: string option }
+  | Error of { message: string; backtrace: string option }
   | ParseError of string
   | TypeError of string
 (** Parse and validate OCaml code *)
@@ -28,7 +28,10 @@ let parse_code = fun code ->
     ParseError msg
   else
     (* Successfully parsed - for now just indicate success *)
-    Success {output = "(* Code parsed successfully - evaluation not yet implemented *)";typ = None;}
+    Success {
+      output = "(* Code parsed successfully - evaluation not yet implemented *)";
+      typ = None
+    }
 (** Format the result for display *)
 let format_result = function
   | Success { output; typ=Some t } -> "- : " ^ t ^ " = " ^ output

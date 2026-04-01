@@ -132,7 +132,7 @@ let detect = fun ?toolchain_root ~target_triplet ->
         | Some sr -> Log.info ("✓ Found sysroot: " ^ Path.to_string sr)
         | None -> Log.warn "⚠ No sysroot found for cross-compiler"
       );
-      {sysroot;bin_dir;bin_prefix;c_compiler = Some cc_path;}
+      { sysroot; bin_dir; bin_prefix; c_compiler = Some cc_path }
 (** Get full path to a cross-compilation binary *)
 let binary_path = fun config bin_name ->
   match config.bin_dir with

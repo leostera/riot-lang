@@ -7,8 +7,8 @@ type t = string
 (* Internal representation - always valid UTF-8 *)
 
 type error =
-  | InvalidUtf8 of { path: string; }
-  | SystemInvalidUtf8 of { syscall: string; path: string; }
+  | InvalidUtf8 of { path: string }
+  | SystemInvalidUtf8 of { syscall: string; path: string }
   | SystemError of string
 
 let is_absolute = fun path -> String.length path > 0 && path.[0] = '/'
@@ -65,7 +65,7 @@ let of_string = fun s ->
   if is_valid_utf8 s then
     Result.ok s
   else
-    Result.err (InvalidUtf8 {path = s;})
+    Result.err (InvalidUtf8 { path = s })
 
 let v = fun path -> of_string path |> Result.expect ~msg:(("Invalid string path " ^ path))
 

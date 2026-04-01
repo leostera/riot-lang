@@ -24,7 +24,7 @@ let async = fun fn ->
         send this reply;
         Ok ())
   in
-  {pid;ref;}
+  { pid; ref }
 
 let await : type res. res t -> (res, exn) result = fun t ->
   let selector : Message.t -> [

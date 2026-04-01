@@ -2,7 +2,7 @@ open Std
 module Test = Std.Test
 
 let sample_benchmarks =
-  let config : Bench.bench_config = {iterations = 1;warmup = 0;} in
+  let config : Bench.bench_config = { iterations = 1; warmup = 0 } in
   [
     Bench.with_config ~config "alpha_long" (fun () -> ());
     Bench.with_config ~config "beta" (fun () -> ());

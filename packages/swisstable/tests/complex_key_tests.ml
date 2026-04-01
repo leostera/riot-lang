@@ -59,7 +59,7 @@ type customer = {
 
 let user_gen =
   Generator.map
-    (fun ((id, name)) -> {id;name;})
+    (fun ((id, name)) -> { id; name })
     (Generator.pair (Generator.int_range 0 1_000) Generator.string)
 
 let user_arb =
@@ -69,7 +69,7 @@ let user_arb =
 
 let point_gen =
   Generator.map
-    (fun ((x, y)) -> {x;y;})
+    (fun ((x, y)) -> { x; y })
     (Generator.pair (Generator.int_range (-100) 100) (Generator.int_range (-100) 100))
 
 let point_arb =
@@ -79,7 +79,7 @@ let point_arb =
 
 let person_gen =
   Generator.map
-    (fun ((age, email, active)) -> {age;email;active;})
+    (fun ((age, email, active)) -> { age; email; active })
     (Generator.triple (Generator.int_range 0 120) Generator.string Generator.bool)
 
 let person_arb =
@@ -144,7 +144,7 @@ let status_arb =
 
 let customer_gen =
   Generator.map
-    (fun ((user, location, status)) -> {user;location;status;})
+    (fun ((user, location, status)) -> { user; location; status })
     (Generator.triple user_gen point_gen status_gen)
 
 let customer_arb =
@@ -220,7 +220,7 @@ let person_key_prop =
       (* Insert original person *)
       let _ = Swisstable.insert map person val1 in
       (* Create slightly different person *)
-      let different_person = {person with age = person.age + 1;} in
+      let different_person = { person with age = person.age + 1 } in
       let _ = Swisstable.insert map different_person val2 in
       (* Both should be accessible with correct values *)
       let r1 = Swisstable.get map person in
@@ -374,7 +374,7 @@ let collision_point_prop =
               else
                 k mod 10
             in
-            ({x;y = x;}, v))
+            ({ x; y = x }, v))
           pairs
       in
       let map = Swisstable.create () in

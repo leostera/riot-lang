@@ -75,39 +75,39 @@ module Arg = struct
       requires = [];
     }
 
-  let flag = fun name -> {(make name) with action = SetTrue;}
+  let flag = fun name -> { (make name) with action = SetTrue }
 
   let option = fun name -> make name
 
-  let positional = fun name -> {(make name) with required = true;}
+  let positional = fun name -> { (make name) with required = true }
 
-  let trailing = fun name -> {(make name) with multiple = true;}
+  let trailing = fun name -> { (make name) with multiple = true }
 
-  let short = fun c arg -> {arg with short = Some c;}
+  let short = fun c arg -> { arg with short = Some c }
 
-  let long = fun s arg -> {arg with long = Some s;}
+  let long = fun s arg -> { arg with long = Some s }
 
-  let help = fun s arg -> {arg with help = Some s;}
+  let help = fun s arg -> { arg with help = Some s }
 
-  let value_name = fun s arg -> {arg with value_name = Some s;}
+  let value_name = fun s arg -> { arg with value_name = Some s }
 
-  let default = fun v arg -> {arg with default = Some v;}
+  let default = fun v arg -> { arg with default = Some v }
 
-  let required = fun b arg -> {arg with required = b;}
+  let required = fun b arg -> { arg with required = b }
 
-  let env = fun s arg -> {arg with env = Some s;}
+  let env = fun s arg -> { arg with env = Some s }
 
-  let action = fun a arg -> {arg with action = a;}
+  let action = fun a arg -> { arg with action = a }
 
-  let multiple = fun arg -> {arg with multiple = true;}
+  let multiple = fun arg -> { arg with multiple = true }
 
-  let count = fun arg -> {arg with action = Count;}
+  let count = fun arg -> { arg with action = Count }
 
-  let possible_values = fun vals arg -> {arg with possible_values = Some vals;}
+  let possible_values = fun vals arg -> { arg with possible_values = Some vals }
 
-  let conflicts_with = fun name arg -> {arg with conflicts_with = name :: arg.conflicts_with;}
+  let conflicts_with = fun name arg -> { arg with conflicts_with = name :: arg.conflicts_with }
 
-  let requires = fun name arg -> {arg with requires = name :: arg.requires;}
+  let requires = fun name arg -> { arg with requires = name :: arg.requires }
 end
 
 let command = fun name ->
@@ -121,21 +121,21 @@ let command = fun name ->
     allow_trailing = false;
   }
 
-let version = fun v cmd -> {cmd with version = Some v;}
+let version = fun v cmd -> { cmd with version = Some v }
 
-let about = fun a cmd -> {cmd with about = Some a;}
+let about = fun a cmd -> { cmd with about = Some a }
 
-let author = fun a cmd -> {cmd with author = Some a;}
+let author = fun a cmd -> { cmd with author = Some a }
 
-let arg = fun a cmd -> {cmd with args = cmd.args @ [ a ];}
+let arg = fun a cmd -> { cmd with args = cmd.args @ [ a ] }
 
-let args = fun a_list cmd -> {cmd with args = cmd.args @ a_list;}
+let args = fun a_list cmd -> { cmd with args = cmd.args @ a_list }
 
-let subcommand = fun sub cmd -> {cmd with subcommands = cmd.subcommands @ [ sub ];}
+let subcommand = fun sub cmd -> { cmd with subcommands = cmd.subcommands @ [ sub ] }
 
-let subcommands = fun sub_list cmd -> {cmd with subcommands = cmd.subcommands @ sub_list;}
+let subcommands = fun sub_list cmd -> { cmd with subcommands = cmd.subcommands @ sub_list }
 
-let allow_trailing_args = fun cmd -> {cmd with allow_trailing = true;}
+let allow_trailing_args = fun cmd -> { cmd with allow_trailing = true }
 
 let create_matches = fun name ->
   {

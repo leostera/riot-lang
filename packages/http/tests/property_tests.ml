@@ -25,7 +25,7 @@ let header_value_gen = Generator.(string_of char_printable)
 
 let header_gen =
   Generator.map
-    (fun ((name, value)) -> Http2.Hpack.{name;value;})
+    (fun ((name, value)) -> Http2.Hpack.{ name; value })
     (Generator.pair header_name_gen header_value_gen)
 
 (* Arbitrary for headers *)
@@ -103,7 +103,7 @@ let data_frame_gen =
         frame_type = Data;
         flags;
         stream_id;
-        payload = DataPayload {data = payload_data;pad_length = None;};
+        payload = DataPayload { data = payload_data; pad_length = None };
       })
     Generator.(triple (int_range 1 100) (string_of char_printable) frame_flags_gen)
 

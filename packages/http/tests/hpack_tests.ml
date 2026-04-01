@@ -5,8 +5,8 @@ let test_encoder_decoder_roundtrip = fun () ->
   let encoder = Hpack.create_encoder () in
   let decoder = Hpack.create_decoder () in
   let headers = [
-    {Hpack.name = "content-type";value = "application/json";};
-    {Hpack.name = "content-length";value = "123";};
+    { Hpack.name = "content-type"; value = "application/json" };
+    { Hpack.name = "content-length"; value = "123" };
   ] in
   let encoded = Hpack.encode encoder ~headers ~sensitive_headers:[] in
   let decoded = Hpack.decode decoder encoded in
@@ -32,7 +32,7 @@ let test_static_table_lookup = fun () ->
 
 let test_encode_simple_header = fun () ->
   let encoder = Hpack.create_encoder () in
-  let headers = [ {Hpack.name = ":method";value = "GET";} ] in
+  let headers = [ { Hpack.name = ":method"; value = "GET" } ] in
   let encoded = Hpack.encode encoder ~headers ~sensitive_headers:[] in
   if IO.Bytes.length encoded > 0 then
     Result.Ok ()

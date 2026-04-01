@@ -299,8 +299,8 @@ type backend_message =
   | AuthenticationOk
   | AuthenticationCleartextPassword
   | AuthenticationMD5Password of bytes
-  | BackendKeyData of { process_id: int; secret_key: int; }
-  | ParameterStatus of { name: string; value: string; }
+  | BackendKeyData of { process_id: int; secret_key: int }
+  | ParameterStatus of { name: string; value: string }
   | ReadyForQuery of char
   | RowDescription of Row.description
   | DataRow of Row.data

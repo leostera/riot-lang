@@ -33,7 +33,7 @@ let test_kind_changed = Test.case "create Changed kind" @@ fun () ->
   | _ -> Error "Failed to create Changed kind"
 
 let test_change_empty_path = Test.case "change with empty path" @@ fun () ->
-  let result = {Diff.path = [];kind = Diff.Added 42;} in
+  let result = { Diff.path = []; kind = Diff.Added 42 } in
   match result.path with
   | [] -> Ok ()
   | _ -> Error "Expected empty path"
@@ -41,7 +41,7 @@ let test_change_empty_path = Test.case "change with empty path" @@ fun () ->
 let test_change_nested_path = Test.case "change with nested path" @@ fun () ->
   let result = {
     Diff.path = [ Diff.Key "user"; Diff.Key "address"; Diff.Key "city" ];
-    kind = Diff.Changed ("NYC", "SF");
+    kind = Diff.Changed ("NYC", "SF")
   } in
   match result.path with
   | [Diff.Key "user";Diff.Key "address";Diff.Key "city"] -> Ok ()
@@ -50,7 +50,7 @@ let test_change_nested_path = Test.case "change with nested path" @@ fun () ->
 let test_change_mixed_path = Test.case "change with mixed Key and Index path" @@ fun () ->
   let result = {
     Diff.path = [ Diff.Key "users"; Diff.Index 0; Diff.Key "name" ];
-    kind = Diff.Changed ("Alice", "Bob");
+    kind = Diff.Changed ("Alice", "Bob")
   } in
   match result.path with
   | [Diff.Key "users";Diff.Index 0;Diff.Key "name"] -> Ok ()
@@ -64,7 +64,7 @@ let test_has_changes_empty = Test.case "has_changes on empty list" @@ fun () ->
     Error "Expected false for empty list"
 
 let test_has_changes_with_changes = Test.case "has_changes with actual changes" @@ fun () ->
-  let changes = [ {Diff.path = [];kind = Diff.Added 1;} ] in
+  let changes = [ { Diff.path = []; kind = Diff.Added 1 } ] in
   let result = Diff.has_changes changes in
   if result then
     Ok ()
@@ -73,10 +73,10 @@ let test_has_changes_with_changes = Test.case "has_changes with actual changes" 
 
 let test_additions_filter = Test.case "additions filters only Added changes" @@ fun () ->
   let changes = [
-    {Diff.path = [ Diff.Key "a" ];kind = Diff.Added 1;};
-    {Diff.path = [ Diff.Key "b" ];kind = Diff.Removed 2;};
-    {Diff.path = [ Diff.Key "c" ];kind = Diff.Changed (3, 4);};
-    {Diff.path = [ Diff.Key "d" ];kind = Diff.Added 5;};
+    { Diff.path = [ Diff.Key "a" ]; kind = Diff.Added 1 };
+    { Diff.path = [ Diff.Key "b" ]; kind = Diff.Removed 2 };
+    { Diff.path = [ Diff.Key "c" ]; kind = Diff.Changed (3, 4) };
+    { Diff.path = [ Diff.Key "d" ]; kind = Diff.Added 5 };
   ] in
   let added = Diff.additions changes in
   match added with
@@ -85,9 +85,9 @@ let test_additions_filter = Test.case "additions filters only Added changes" @@ 
 
 let test_removals_filter = Test.case "removals filters only Removed changes" @@ fun () ->
   let changes = [
-    {Diff.path = [ Diff.Key "a" ];kind = Diff.Added 1;};
-    {Diff.path = [ Diff.Key "b" ];kind = Diff.Removed 2;};
-    {Diff.path = [ Diff.Key "c" ];kind = Diff.Removed 3;};
+    { Diff.path = [ Diff.Key "a" ]; kind = Diff.Added 1 };
+    { Diff.path = [ Diff.Key "b" ]; kind = Diff.Removed 2 };
+    { Diff.path = [ Diff.Key "c" ]; kind = Diff.Removed 3 };
   ] in
   let removed = Diff.removals changes in
   match removed with
@@ -96,10 +96,10 @@ let test_removals_filter = Test.case "removals filters only Removed changes" @@ 
 
 let test_changes_filter = Test.case "changes filters only Changed changes" @@ fun () ->
   let changes = [
-    {Diff.path = [ Diff.Key "a" ];kind = Diff.Added 1;};
-    {Diff.path = [ Diff.Key "b" ];kind = Diff.Changed (2, 3);};
-    {Diff.path = [ Diff.Key "c" ];kind = Diff.Removed 4;};
-    {Diff.path = [ Diff.Key "d" ];kind = Diff.Changed (5, 6);};
+    { Diff.path = [ Diff.Key "a" ]; kind = Diff.Added 1 };
+    { Diff.path = [ Diff.Key "b" ]; kind = Diff.Changed (2, 3) };
+    { Diff.path = [ Diff.Key "c" ]; kind = Diff.Removed 4 };
+    { Diff.path = [ Diff.Key "d" ]; kind = Diff.Changed (5, 6) };
   ] in
   let changed = Diff.changes changes in
   match changed with
@@ -112,9 +112,9 @@ let test_changes_filter = Test.case "changes filters only Changed changes" @@ fu
 
 let test_at_path_exact_match = Test.case "at_path with exact match" @@ fun () ->
   let diffs = [
-    {Diff.path = [ Diff.Key "user"; Diff.Key "name" ];kind = Diff.Added "Alice";};
-    {Diff.path = [ Diff.Key "user"; Diff.Key "age" ];kind = Diff.Added "30";};
-    {Diff.path = [ Diff.Key "config"; Diff.Key "port" ];kind = Diff.Added "8080";};
+    { Diff.path = [ Diff.Key "user"; Diff.Key "name" ]; kind = Diff.Added "Alice" };
+    { Diff.path = [ Diff.Key "user"; Diff.Key "age" ]; kind = Diff.Added "30" };
+    { Diff.path = [ Diff.Key "config"; Diff.Key "port" ]; kind = Diff.Added "8080" };
   ] in
   let at_user_name = Diff.at_path [ Diff.Key "user"; Diff.Key "name" ] diffs in
   match at_user_name with
@@ -122,7 +122,7 @@ let test_at_path_exact_match = Test.case "at_path with exact match" @@ fun () ->
   | _ -> Error ("Expected 1 match at user.name, got " ^ Int.to_string (List.length at_user_name))
 
 let test_at_path_no_match = Test.case "at_path with no match" @@ fun () ->
-  let diffs = [ {Diff.path = [ Diff.Key "user"; Diff.Key "name" ];kind = Diff.Added "Alice";}; ] in
+  let diffs = [ { Diff.path = [ Diff.Key "user"; Diff.Key "name" ]; kind = Diff.Added "Alice" }; ] in
   let at_config = Diff.at_path [ Diff.Key "config" ] diffs in
   if List.length at_config = 0 then
     Ok ()

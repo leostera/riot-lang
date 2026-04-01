@@ -69,14 +69,8 @@ type resource_uri = string
 
 (** Resources *)
 type resource_contents =
-  | TextContent of {
-      text: string;
-      mime_type: string option;
-    }
-  | BlobContent of {
-      data: string;
-      mime_type: string;
-    }
+  | TextContent of { text: string; mime_type: string option }
+  | BlobContent of { data: string; mime_type: string }
 
 type resource = {
   uri: resource_uri;
@@ -127,16 +121,16 @@ type request_params =
   | InitializeParams of {
       protocol_version: protocol_version;
       capabilities: client_capabilities;
-      client_info: client_info;
+      client_info: client_info
     }
   | InitializedParams
   | ShutdownParams
   | ListToolsParams
-  | CallToolParams of { name: string; arguments: json option; }
+  | CallToolParams of { name: string; arguments: json option }
   | ListResourcesParams
-  | ReadResourceParams of { uri: resource_uri; }
+  | ReadResourceParams of { uri: resource_uri }
   | ListPromptsParams
-  | GetPromptParams of { name: string; arguments: (string * string) list option; }
+  | GetPromptParams of { name: string; arguments: (string * string) list option }
   | CompleteSamplingParams of {
       messages: message list;
       model_preferences: json option;
@@ -145,7 +139,7 @@ type request_params =
       temperature: float option;
       max_tokens: int option;
       stop_sequences: string list option;
-      metadata: json option;
+      metadata: json option
     }
   | PingParams
   | CustomParams of json
@@ -162,35 +156,27 @@ type response_result =
       protocol_version: protocol_version;
       capabilities: server_capabilities;
       server_info: server_info;
-      instructions: string option;
+      instructions: string option
     }
   | InitializedResult
   | ShutdownResult
-  | ListToolsResult of { tools: tool list; next_cursor: string option; }
-  | CallToolResult of { content: message_content list; is_error: bool option; }
-  | ListResourcesResult of { resources: resource list; next_cursor: string option; }
-  | ReadResourceResult of { contents: resource_contents list; }
-  | ListPromptsResult of { prompts: prompt list; next_cursor: string option; }
-  | GetPromptResult of { description: string option; messages: message list; }
+  | ListToolsResult of { tools: tool list; next_cursor: string option }
+  | CallToolResult of { content: message_content list; is_error: bool option }
+  | ListResourcesResult of { resources: resource list; next_cursor: string option }
+  | ReadResourceResult of { contents: resource_contents list }
+  | ListPromptsResult of { prompts: prompt list; next_cursor: string option }
+  | GetPromptResult of { description: string option; messages: message list }
   | CompleteSamplingResult of {
       messages: message list;
       model: string option;
-      stop_reason: string option;
+      stop_reason: string option
     }
   | PingResult
   | CustomResult of json
 
 type response =
-  | SuccessResponse of {
-      jsonrpc: string;
-      id: request_id;
-      result: response_result;
-    }
-  | ErrorResponse of {
-      jsonrpc: string;
-      id: request_id;
-      error: error;
-    }
+  | SuccessResponse of { jsonrpc: string; id: request_id; result: response_result }
+  | ErrorResponse of { jsonrpc: string; id: request_id; error: error }
 
 type notification_method =
   | ResourceListChanged
@@ -204,8 +190,8 @@ type notification_params =
   | ResourceListChangedParams
   | ToolListChangedParams
   | PromptListChangedParams
-  | ProgressParams of { progress_token: string; progress: float; total: float option; }
-  | LogMessageParams of { level: string; logger: string option; data: json option; message: string; }
+  | ProgressParams of { progress_token: string; progress: float; total: float option }
+  | LogMessageParams of { level: string; logger: string option; data: json option; message: string }
   | CustomNotificationParams of json
 
 type notification = {
@@ -575,15 +561,15 @@ let response_of_json _json : (response, string) result = Error "Not implemented"
 let notification_of_json _json : (notification, string) result = Error "Not implemented"
 (** Helper functions *)
 let make_request = fun ?params id method_type ->
-  {jsonrpc = "2.0";id;method_name = method_to_string method_type;params;}
+  { jsonrpc = "2.0"; id; method_name = method_to_string method_type; params }
 
-let make_success = fun id result -> SuccessResponse {jsonrpc = "2.0";id;result;}
+let make_success = fun id result -> SuccessResponse { jsonrpc = "2.0"; id; result }
 
 let make_error = fun id code message ->
-  ErrorResponse {jsonrpc = "2.0";id;error = {code;message;data = None;};}
+  ErrorResponse { jsonrpc = "2.0"; id; error = { code; message; data = None } }
 
 let make_notification = fun ?params method_type ->
-  {jsonrpc = "2.0";method_name = notification_method_to_string method_type;params;}
+  { jsonrpc = "2.0"; method_name = notification_method_to_string method_type; params }
 
 module Protocol: Jsonrpc.ApplicationProtocol with type request = request and type response = response = struct
   type nonrec request = request
@@ -598,11 +584,11 @@ module Protocol: Jsonrpc.ApplicationProtocol with type request = request and typ
           let json = request_params_to_json p in
           Jsonrpc.Named [ ("params", json) ]
     in
-    {Jsonrpc.method_ = req.method_name;params;}
+    { Jsonrpc.method_ = req.method_name; params }
 
   let request_of_params : string -> Jsonrpc.params -> (request, Json.t) result = fun method_ params ->
     let id = String "0" in
-    Ok {jsonrpc = "2.0";id;method_name = method_;params = None;}
+    Ok { jsonrpc = "2.0"; id; method_name = method_; params = None }
 
   let response_to_json : response -> Json.t = fun resp ->
     match resp with
@@ -636,13 +622,13 @@ module type McpApplicationProtocol = sig
     | Initialize of {
         protocol_version: string;
         capabilities: client_capabilities;
-        client_info: client_info;
+        client_info: client_info
       }
     | Initialized
     | ListTools
     | CallTool of tool_request
     | ListResources
-    | ReadResource of { uri: string; }
+    | ReadResource of { uri: string }
     | Ping
     | Shutdown
   type response =
@@ -650,13 +636,13 @@ module type McpApplicationProtocol = sig
         protocol_version: string;
         capabilities: server_capabilities;
         server_info: server_info;
-        instructions: string option;
+        instructions: string option
       }
     | InitializedResult
-    | ListToolsResult of { tools: tool list; }
+    | ListToolsResult of { tools: tool list }
     | CallToolResult of tool_response
-    | ListResourcesResult of { resources: resource list; }
-    | ReadResourceResult of { contents: resource_contents list; }
+    | ListResourcesResult of { resources: resource list }
+    | ReadResourceResult of { contents: resource_contents list }
     | PingResult
     | ShutdownResult
     | Error of string
@@ -695,13 +681,13 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
     | Initialize of {
         protocol_version: string;
         capabilities: client_capabilities;
-        client_info: client_info;
+        client_info: client_info
       }
     | Initialized
     | ListTools
     | CallTool of T.tool_request
     | ListResources
-    | ReadResource of { uri: string; }
+    | ReadResource of { uri: string }
     | Ping
     | Shutdown
 
@@ -710,13 +696,13 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
         protocol_version: string;
         capabilities: server_capabilities;
         server_info: server_info;
-        instructions: string option;
+        instructions: string option
       }
     | InitializedResult
-    | ListToolsResult of { tools: tool list; }
+    | ListToolsResult of { tools: tool list }
     | CallToolResult of T.tool_response
-    | ListResourcesResult of { resources: resource list; }
-    | ReadResourceResult of { contents: resource_contents list; }
+    | ListResourcesResult of { resources: resource list }
+    | ReadResourceResult of { contents: resource_contents list }
     | PingResult
     | ShutdownResult
     | Error of string
@@ -724,18 +710,18 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
   let request_to_params = function
     | Initialize { protocol_version; capabilities; client_info } -> {
       Jsonrpc.method_ = "initialize";
-      params = Jsonrpc.NoParams;
+      params = Jsonrpc.NoParams
     }
-    | Initialized -> {method_ = "initialized";params = NoParams;}
-    | ListTools -> {method_ = "tools/list";params = NoParams;}
-    | CallTool _ -> {method_ = "tools/call";params = NoParams;}
-    | ListResources -> {method_ = "resources/list";params = NoParams;}
+    | Initialized -> { method_ = "initialized"; params = NoParams }
+    | ListTools -> { method_ = "tools/list"; params = NoParams }
+    | CallTool _ -> { method_ = "tools/call"; params = NoParams }
+    | ListResources -> { method_ = "resources/list"; params = NoParams }
     | ReadResource { uri } -> {
       method_ = "resources/read";
-      params = Named [ ("uri", Json.String uri) ];
+      params = Named [ ("uri", Json.String uri) ]
     }
-    | Ping -> {method_ = "ping";params = NoParams;}
-    | Shutdown -> {method_ = "shutdown";params = NoParams;}
+    | Ping -> { method_ = "ping"; params = NoParams }
+    | Shutdown -> { method_ = "shutdown"; params = NoParams }
 
   let request_of_params = fun method_ params ->
     match method_ with
@@ -766,7 +752,7 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
         match params with
         | Jsonrpc.Named fields -> (
             match List.assoc_opt "uri" fields with
-            | Some (Json.String uri) -> Ok (ReadResource {uri;})
+            | Some (Json.String uri) -> Ok (ReadResource { uri })
             | _ -> Error (Json.String "Missing uri parameter")
           )
         | _ -> Error (Json.String "resources/read requires named parameters")
@@ -845,17 +831,17 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
   let response_of_json _json : (response, Json.t) result = Error (Json.String "Not implemented")
 
   let make_initialize_result = fun ~protocol_version ~capabilities ~server_info ~instructions ->
-    InitializeResult {protocol_version;capabilities;server_info;instructions;}
+    InitializeResult { protocol_version; capabilities; server_info; instructions }
 
   let make_initialized_result = InitializedResult
 
-  let make_list_tools_result = fun ~tools -> ListToolsResult {tools;}
+  let make_list_tools_result = fun ~tools -> ListToolsResult { tools }
 
   let make_call_tool_result = fun resp -> CallToolResult resp
 
-  let make_list_resources_result = fun ~resources -> ListResourcesResult {resources;}
+  let make_list_resources_result = fun ~resources -> ListResourcesResult { resources }
 
-  let make_read_resource_result = fun ~contents -> ReadResourceResult {contents;}
+  let make_read_resource_result = fun ~contents -> ReadResourceResult { contents }
 
   let make_ping_result = PingResult
 

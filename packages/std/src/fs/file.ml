@@ -26,7 +26,7 @@ let open_with_flags = fun path flags ~mode ->
   let mode_int = Permissions.to_mode mode in
   try
     let fd = Kernel.Fd.open_file path_str flags mode_int in
-    Ok {fd;closed = false;}
+    Ok { fd; closed = false }
   with
   | e -> Error (IO.Unknown_error ("Failed to open " ^ path_str ^ ": " ^ Exception.to_string e))
 
@@ -276,11 +276,11 @@ let try_clone = fun t ->
   | Error e -> Error e
   | Ok () -> Kernel.Fs.File.dup t.fd
   |> convert_kernel_result
-  |> Result.map (fun new_fd -> {fd = new_fd;closed = false;})
+  |> Result.map (fun new_fd -> { fd = new_fd; closed = false })
 
 let into_fd = fun t -> t.fd
 
-let from_fd = fun fd -> {fd;closed = false;}
+let from_fd = fun fd -> { fd; closed = false }
 
 (* Closing *)
 

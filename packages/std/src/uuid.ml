@@ -97,7 +97,7 @@ module Monotonic = struct
     last_timestamp_ms: int64 Cell.t;
   }
 
-  let create = fun () -> {last_timestamp_ms = cell 0L;}
+  let create = fun () -> { last_timestamp_ms = cell 0L }
   (** Extract timestamp (ms since epoch) from UUIDv7 bytes.
       UUIDv7 format: [timestamp_ms(48 bits) | ver(4) | rand_a(12) | var(2) | rand_b(62)]
   *)

@@ -7,7 +7,7 @@ type 'a t = 'a cell = {
 
 (* Creation *)
 
-let create = fun value -> {value;}
+let create = fun value -> { value }
 
 (* Reading *)
 

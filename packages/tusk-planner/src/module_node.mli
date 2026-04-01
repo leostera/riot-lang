@@ -10,12 +10,12 @@ type kind =
   | H
   | Other of string
   | Root
-  | Native of { files: Path.t list; }
-  | Library of { name: string; includes: Path.t list; }
-  | Binary of { name: string; source: Path.t; libraries: Path.t list; includes: Path.t list; }
+  | Native of { files: Path.t list }
+  | Library of { name: string; includes: Path.t list }
+  | Binary of { name: string; source: Path.t; libraries: Path.t list; includes: Path.t list }
 type file =
   | Concrete of Path.t
-  | Generated of { path: Path.t; contents: string; }
+  | Generated of { path: Path.t; contents: string }
 type t = {
   file: file;
   mutable open_modules: t G.node list;

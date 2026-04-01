@@ -17,20 +17,10 @@ type build_stats = {
 }
 
 type error =
-  | PackageNotFound of {
-      package_name: string;
-      available_packages: string list;
-    }
-  | PackagesNotFound of {
-      package_names: string list;
-      available_packages: string list;
-    }
-  | BuildAlreadyRunning of {
-      lock_path: Path.t;
-    }
-  | UnexpectedEvent of {
-      reason: string;
-    }
+  | PackageNotFound of { package_name: string; available_packages: string list }
+  | PackagesNotFound of { package_names: string list; available_packages: string list }
+  | BuildAlreadyRunning of { lock_path: Path.t }
+  | UnexpectedEvent of { reason: string }
 
 type streaming_event =
   | BuildStarted of Session_id.t
@@ -39,17 +29,17 @@ type streaming_event =
       session_id: Session_id.t;
       completed_at: Datetime.t;
       stats: build_stats;
-      results: Tusk_executor.Package_builder.build_result list;
+      results: Tusk_executor.Package_builder.build_result list
     }
   | BuildFailed of {
       session_id: Session_id.t;
       failed_at: Datetime.t;
       stats: build_stats;
       built: Tusk_executor.Package_builder.build_result list;
-      errors: Tusk_executor.Package_builder.build_result list;
+      errors: Tusk_executor.Package_builder.build_result list
     }
-  | PlanningFailed of { session_id: Session_id.t; failed_at: Datetime.t; reason: string; }
-  | CycleDetected of { session_id: Session_id.t; detected_at: Datetime.t; cycle_nodes: string list; }
+  | PlanningFailed of { session_id: Session_id.t; failed_at: Datetime.t; reason: string }
+  | CycleDetected of { session_id: Session_id.t; detected_at: Datetime.t; cycle_nodes: string list }
 
 type build_target =
   BuildPackage of string
@@ -62,7 +52,7 @@ type build_scope =
 
 let connect_local = fun ?(load_errors = []) ~workspace () ->
   match Tusk_server.start_local ~workspace ~load_errors ~config:Tusk_server.Server_config.default () with
-  | Ok server_pid -> Ok {server_pid;workspace_root = workspace.root;}
+  | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
   | Error exn -> Error (Exception.to_string exn)
 
 let close = fun _t -> ()
@@ -72,7 +62,7 @@ let send_request = fun t request -> send t.server_pid (Protocol.ServerRequest re
 let receive_response = fun ~selector -> receive ~selector ()
 
 let scan_workspace = fun t ~current_dir ->
-  send_request t (Protocol.ScanWorkspace {client_pid = self ();current_dir;});
+  send_request t (Protocol.ScanWorkspace { client_pid = self (); current_dir });
   let selector msg =
     match msg with
     | Protocol.ServerResponse Protocol.WorkspaceScanned -> `select (Ok ())
@@ -121,7 +111,7 @@ module BuildLock = struct
       | Ok file -> file
       | Error _ -> raise (lock_failure "open" path)
     in
-    let t = {path;file;} in
+    let t = { path; file } in
     match Fs.File.try_lock_exclusive file with
     | Ok true ->
         Ok t
@@ -210,7 +200,7 @@ let rec handle_streaming_events = fun t session_id callback ->
           session_id = event_session_id;
           completed_at;
           stats = convert_build_stats stats;
-          results;
+          results
         } in
         callback final_event;
         Ok final_event
@@ -232,26 +222,26 @@ let rec handle_streaming_events = fun t session_id callback ->
         handle_streaming_events t session_id callback
   | `PlanningFailed (event_session_id, failed_at, reason) ->
       if same_session session_id event_session_id then
-        let final_event = PlanningFailed {session_id = event_session_id;failed_at;reason;} in
+        let final_event = PlanningFailed { session_id = event_session_id; failed_at; reason } in
         callback final_event;
         Ok final_event
       else
         handle_streaming_events t session_id callback
   | `CycleDetected (event_session_id, detected_at, cycle_nodes) ->
       if same_session session_id event_session_id then
-        let final_event = CycleDetected {session_id = event_session_id;detected_at;cycle_nodes;} in
+        let final_event = CycleDetected { session_id = event_session_id; detected_at; cycle_nodes } in
         callback final_event;
         Ok final_event
       else
         handle_streaming_events t session_id callback
   | `PackageNotFound (event_session_id, package_name, available_packages) ->
       if same_session session_id event_session_id then
-        Error (PackageNotFound {package_name;available_packages;})
+        Error (PackageNotFound { package_name; available_packages })
       else
         handle_streaming_events t session_id callback
   | `PackagesNotFound (event_session_id, package_names, available_packages) ->
       if same_session session_id event_session_id then
-        Error (PackagesNotFound {package_names;available_packages;})
+        Error (PackagesNotFound { package_names; available_packages })
       else
         handle_streaming_events t session_id callback
 
@@ -297,7 +287,7 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
           available_packages
         }) when same_session session_id event_session_id -> `select (Error (PackageNotFound {
           package_name;
-          available_packages;
+          available_packages
         }))
         | Protocol.ServerResponse (Protocol.PackagesNotFound {
           session_id=event_session_id;
@@ -305,7 +295,7 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
           available_packages
         }) when same_session session_id event_session_id -> `select (Error (PackagesNotFound {
           package_names;
-          available_packages;
+          available_packages
         }))
         | _ -> `skip
       in
@@ -316,7 +306,7 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
       | Error err -> Error err)
 
 let find_executable = fun t name ->
-  send_request t (Protocol.FindExecutable {client_pid = self ();name;});
+  send_request t (Protocol.FindExecutable { client_pid = self (); name });
   let selector msg =
     match msg with
     | Protocol.ServerResponse (Protocol.ExecutableFound { package; binary }) -> `select (Ok (Some (
@@ -329,7 +319,7 @@ let find_executable = fun t name ->
   receive_response ~selector
 
 let find_artifact = fun t ~package ~kind ~name ->
-  send_request t (Protocol.FindArtifact {client_pid = self ();package;kind;name;});
+  send_request t (Protocol.FindArtifact { client_pid = self (); package; kind; name });
   let selector msg =
     match msg with
     | Protocol.ServerResponse (Protocol.ArtifactFound { path }) -> `select (Ok (Path.to_string path))
@@ -344,7 +334,7 @@ let new_package = fun t ~path ~name ~is_library ->
     | Ok path -> path
     | Error _ -> Path.v path
   in
-  send_request t (Protocol.NewPackage {client_pid = self ();path;name;is_library;});
+  send_request t (Protocol.NewPackage { client_pid = self (); path; name; is_library });
   let selector msg =
     match msg with
     | Protocol.ServerResponse (Protocol.PackageCreated { path; name }) -> `select (Ok (path, name))

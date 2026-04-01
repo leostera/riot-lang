@@ -26,13 +26,8 @@ type format_style =
 (** Level and message only *)
 (** Handler configuration discriminated union *)
 type handler_config =
-  | Stdout of {
-      format: format_style;
-    }
-  | File of {
-      path: string;
-      format: format_style;
-    }
+  | Stdout of { format: format_style }
+  | File of { path: string; format: format_style }
 (** Log configuration containing list of handlers *)
 type t = {
   handlers: handler_config list;

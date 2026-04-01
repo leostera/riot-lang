@@ -38,7 +38,7 @@ let get_size = fun fd ->
   | Unix.Unix_error (err, _, _) -> Error (`System_error (Unix.error_message err))
 
 let make_raw_mode = fun termios ->
-  Unix.{termios with c_echo = false;c_icanon = false;c_icrnl = false;}
+  Unix.{ termios with c_echo = false; c_icanon = false; c_icrnl = false }
 
 let default_termios = fun () ->
   Unix.{

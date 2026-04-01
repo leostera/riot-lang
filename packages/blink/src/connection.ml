@@ -9,7 +9,7 @@ type message =
 
 type response_state =
   | Waiting_for_headers
-  | Reading_fixed_body of { length: int; received: int; }
+  | Reading_fixed_body of { length: int; received: int }
   | Reading_chunked_body
   | Complete
 
@@ -120,7 +120,7 @@ let stream = fun (Conn conn as c) ->
                   | Some len -> (
                       try
                         let length = int_of_string len in
-                        Reading_fixed_body {length;received = 0;}
+                        Reading_fixed_body { length; received = 0 }
                       with
                       | _ -> Complete
                     )
@@ -161,7 +161,7 @@ let stream = fun (Conn conn as c) ->
         (
           (* Partial data available, consume it and continue *)
           Buffer.clear conn.buffer;
-          conn.state <- Reading_fixed_body {length;received = received + available;};
+          conn.state <- Reading_fixed_body { length; received = received + available };
           Ok [ Data data ]
         )
       else

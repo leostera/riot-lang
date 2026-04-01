@@ -74,23 +74,13 @@ open Global
 (** {1 Types} *)
 
 type error =
-  | NotFound of {
-      app: string;
-    }
+  | NotFound of { app: string }
   (** Config section not found in TOML file *)
-  | ValidationError of {
-      app: string;
-      errors: string list;
-    }
+  | ValidationError of { app: string; errors: string list }
   (** Configuration validation failed *)
-  | ParseError of {
-      path: string;
-      message: string;
-    }
+  | ParseError of { path: string; message: string }
   (** TOML parsing error *)
-  | FileNotFound of {
-      path: string;
-    }
+  | FileNotFound of { path: string }
 (** Configuration file not found *)
 (** {1 Configuration Providers} *)
 

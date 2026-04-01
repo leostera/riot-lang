@@ -310,7 +310,7 @@ and handle_library = fun ~t ~ctx dir name children ->
       ns;
       aliases = aliases @ [ aliases_node ];
       parent_impl = impl_node;
-      parent_intf = intf_node;
+      parent_intf = intf_node
     } in
     do_scan ~t ~ctx children_without_lib;
     let deps_for_library_interface = Library_definition.deps_for_library_interface lib_def in
@@ -335,7 +335,7 @@ and handle_library = fun ~t ~ctx dir name children ->
 let scan_sources = fun t (sources: Module_scanner.entry list) ->
   let root_node = Module_node.make_root () in
   let root = G.add_node t.graph root_node in
-  let ctx = {ns = Namespace.empty;parent_impl = root;parent_intf = root;aliases = [];} in
+  let ctx = { ns = Namespace.empty; parent_impl = root; parent_intf = root; aliases = [] } in
   handle_library ~t ~ctx t.config.source_dir t.config.package.name sources
 
 let create = fun config ->
@@ -343,7 +343,7 @@ let create = fun config ->
   |> filter_entries ~allowed:config.allowed_source_files in
   let graph = G.make () in
   let registry = Module_registry.create () in
-  let t = {config;graph;registry;entries;} in
+  let t = { config; graph; registry; entries } in
   scan_sources t entries;
   t
 (** Wire module dependencies using ocamldep.

@@ -10,7 +10,7 @@ type run_summary = Bench_result.summary
 
 let run_single_benchmark = fun index (bench: Bench_case.t) ->
   if bench.skip then
-    Bench_result.{index;name = bench.name;result = Skipped;}
+    Bench_result.{ index; name = bench.name; result = Skipped }
   else
     try
       for _i = 1 to bench.config.warmup do
@@ -23,15 +23,15 @@ let run_single_benchmark = fun index (bench: Bench_case.t) ->
         bench.fn ();
         let finish = Time.Instant.now () in
         let duration = Time.Instant.duration_since ~earlier:start finish in
-        timings := Bench_result.{iteration = i;duration;} :: !timings
+        timings := Bench_result.{ iteration = i; duration } :: !timings
       done;
       (* Calculate statistics *)
       let stats = Bench_result.make_statistics (List.rev !timings) in
-      Bench_result.{index;name = bench.name;result = Completed stats;}
+      Bench_result.{ index; name = bench.name; result = Completed stats }
     with
     | exn ->
         let msg = Exception.to_string exn in
-        Bench_result.{index;name = bench.name;result = Failed msg;}
+        Bench_result.{ index; name = bench.name; result = Failed msg }
 
 (* Run a comparison benchmark *)
 
@@ -47,7 +47,7 @@ let run_comparison = fun index ((module R : Reporter.Intf.Intf)) (comp: Bench_co
         | Bench_result.Completed stats ->
             (* Report immediately *)
             R.on_comparison_case_result (i + 1) case.name stats;
-            Some {Bench_result.name = case.name;statistics = stats;}
+            Some { Bench_result.name = case.name; statistics = stats }
         | Bench_result.Failed msg ->
             println ("    [" ^ string_of_int (i + 1) ^ "] " ^ case.name ^ ": FAILED");
             println ("      Error: " ^ msg);

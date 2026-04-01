@@ -17,7 +17,7 @@ type mouse_mode =
 
 type Message.t +=
   | Render of Gooey.Element.t
-  | Resize of { width: int; height: int; }
+  | Resize of { width: int; height: int }
   | EnterAltScreen
   | ExitAltScreen
   | Tick
@@ -421,7 +421,7 @@ let start = fun ~config ~tty () ->
 
 let render = fun pid element -> send pid (Render element)
 
-let resize = fun pid ~width ~height -> send pid (Resize {width;height;})
+let resize = fun pid ~width ~height -> send pid (Resize { width; height })
 
 let enter_alt_screen = fun pid -> send pid EnterAltScreen
 

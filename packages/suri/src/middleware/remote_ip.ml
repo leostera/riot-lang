@@ -40,7 +40,7 @@ let middleware = fun ?(header = "x-forwarded-for") ~proxies ~conn ~next ->
         | Some real_ip_str ->
             (* Update peer with real client IP (tcp_addr is just a string) *)
             let current_peer = Conn.peer conn in
-            let new_peer = {current_peer with ip = real_ip_str;} in
+            let new_peer = { current_peer with ip = real_ip_str } in
             let conn' = Conn.with_peer new_peer conn in
             next conn'
         | None ->

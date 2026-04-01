@@ -131,7 +131,7 @@ let typed_value_function_type = fun binding ->
 let make_diagnostic = fun ~span ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span
     ~suggestion:"Replace this positional bool with a named parameter like ~enabled, or introduce an explicit enum"
     ()

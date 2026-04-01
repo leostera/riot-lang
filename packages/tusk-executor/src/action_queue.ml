@@ -6,15 +6,9 @@ open Tusk_planner
 type action_node = Action_node.t
 
 type action_error =
-  | ExecutionFailed of {
-      message: string;
-    }
-  | OutputsNotCreated of {
-      missing: Path.t list;
-    }
-  | DependenciesFailed of {
-      failed: Graph.SimpleGraph.Node_id.t list;
-    }
+  | ExecutionFailed of { message: string }
+  | OutputsNotCreated of { missing: Path.t list }
+  | DependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list }
 
 type action_status =
   | Cached of Crypto.hash
@@ -42,7 +36,7 @@ let create = fun () ->
     ready_queue = Queue.create ();
     later_queue = Queue.create ();
     busy_tasks = HashMap.create ();
-    completed = HashMap.create ();
+    completed = HashMap.create ()
   }
 
 let is_in_queue = fun queue node_id ->
@@ -171,7 +165,7 @@ let mark_failed = fun t ~node_id ~error ->
   let now = Instant.now () in
   let failed_result = {
     node_id;
-    status = Failed (ExecutionFailed {message = error;});
+    status = Failed (ExecutionFailed { message = error });
     duration = Duration.zero;
     started_at = now;
     completed_at = now;

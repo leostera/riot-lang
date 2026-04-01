@@ -22,7 +22,7 @@ let parameter_span = fun parameter ->
 let make_diagnostic = fun parameter ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
     ~suggestion:"Move t to the front of the positional arguments so the function reads as named configuration followed by the receiver"
     ()

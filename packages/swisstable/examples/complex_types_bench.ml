@@ -25,17 +25,17 @@ type address = {
 (* Event variants *)
 
 type event =
-  | Click of { x: int; y: int; }
+  | Click of { x: int; y: int }
   | KeyPress of string
   | Scroll of int
-  | MouseMove of { x: int; y: int; button: int; }
+  | MouseMove of { x: int; y: int; button: int }
 
 (* Order status *)
 
 type order_status =
   | Pending
   | Processing
-  | Shipped of { tracking: string; carrier: string; }
+  | Shipped of { tracking: string; carrier: string }
   | Delivered
 
 (* Complex order record *)
@@ -60,11 +60,11 @@ type customer = {
  * Benchmark Configuration
  * ======================================================================== *)
 
-let small_config = {iterations = 100;warmup = 10;}
+let small_config = { iterations = 100; warmup = 10 }
 
-let medium_config = {iterations = 50;warmup = 5;}
+let medium_config = { iterations = 50; warmup = 5 }
 
-let large_config = {iterations = 20;warmup = 2;}
+let large_config = { iterations = 20; warmup = 2 }
 
 (* ========================================================================
  * Record Keys Benchmarks
@@ -78,7 +78,7 @@ let bench_hashmap_record_keys_insert = fun () ->
     let user = {
       id = i;
       name = "user_" ^ string_of_int i;
-      email = "user" ^ string_of_int i ^ "@example.com";
+      email = "user" ^ string_of_int i ^ "@example.com"
     } in
     HashMap.insert map user i
   done
@@ -91,7 +91,7 @@ let bench_swisstable_record_keys_insert = fun () ->
     let user = {
       id = i;
       name = "user_" ^ string_of_int i;
-      email = "user" ^ string_of_int i ^ "@example.com";
+      email = "user" ^ string_of_int i ^ "@example.com"
     } in
     ignore (Swisstable.insert map user i)
   done
@@ -104,7 +104,7 @@ let bench_hashmap_record_keys_get = fun () ->
     let user = {
       id = i;
       name = "user_" ^ string_of_int i;
-      email = "user" ^ string_of_int i ^ "@example.com";
+      email = "user" ^ string_of_int i ^ "@example.com"
     } in
     HashMap.insert map user i
   done;
@@ -112,7 +112,7 @@ let bench_hashmap_record_keys_get = fun () ->
     let user = {
       id = i * 10;
       name = "user_" ^ string_of_int (i * 10);
-      email = "user" ^ string_of_int (i * 10) ^ "@example.com";
+      email = "user" ^ string_of_int (i * 10) ^ "@example.com"
     } in
     ignore (HashMap.get map user)
   done
@@ -125,7 +125,7 @@ let bench_swisstable_record_keys_get = fun () ->
     let user = {
       id = i;
       name = "user_" ^ string_of_int i;
-      email = "user" ^ string_of_int i ^ "@example.com";
+      email = "user" ^ string_of_int i ^ "@example.com"
     } in
     ignore (Swisstable.insert map user i)
   done;
@@ -133,7 +133,7 @@ let bench_swisstable_record_keys_get = fun () ->
     let user = {
       id = i * 10;
       name = "user_" ^ string_of_int (i * 10);
-      email = "user" ^ string_of_int (i * 10) ^ "@example.com";
+      email = "user" ^ string_of_int (i * 10) ^ "@example.com"
     } in
     ignore (Swisstable.get map user)
   done
@@ -149,10 +149,10 @@ let bench_hashmap_variant_keys_insert = fun () ->
   for i = 0 to 9_999 do
     let event =
       match i mod 4 with
-      | 0 -> Click {x = i;y = i * 2;}
+      | 0 -> Click { x = i; y = i * 2 }
       | 1 -> KeyPress ("key_" ^ string_of_int i)
       | 2 -> Scroll i
-      | _ -> MouseMove {x = i;y = i * 2;button = i mod 3;}
+      | _ -> MouseMove { x = i; y = i * 2; button = i mod 3 }
     in
     HashMap.insert map event i
   done
@@ -164,10 +164,10 @@ let bench_swisstable_variant_keys_insert = fun () ->
   for i = 0 to 9_999 do
     let event =
       match i mod 4 with
-      | 0 -> Click {x = i;y = i * 2;}
+      | 0 -> Click { x = i; y = i * 2 }
       | 1 -> KeyPress ("key_" ^ string_of_int i)
       | 2 -> Scroll i
-      | _ -> MouseMove {x = i;y = i * 2;button = i mod 3;}
+      | _ -> MouseMove { x = i; y = i * 2; button = i mod 3 }
     in
     ignore (Swisstable.insert map event i)
   done
@@ -179,20 +179,20 @@ let bench_hashmap_variant_keys_get = fun () ->
   for i = 0 to 9_999 do
     let event =
       match i mod 4 with
-      | 0 -> Click {x = i;y = i * 2;}
+      | 0 -> Click { x = i; y = i * 2 }
       | 1 -> KeyPress ("key_" ^ string_of_int i)
       | 2 -> Scroll i
-      | _ -> MouseMove {x = i;y = i * 2;button = i mod 3;}
+      | _ -> MouseMove { x = i; y = i * 2; button = i mod 3 }
     in
     HashMap.insert map event i
   done;
   for i = 0 to 999 do
     let event =
       match i mod 4 with
-      | 0 -> Click {x = i * 10;y = (i * 10) * 2;}
+      | 0 -> Click { x = i * 10; y = (i * 10) * 2 }
       | 1 -> KeyPress ("key_" ^ string_of_int (i * 10))
       | 2 -> Scroll (i * 10)
-      | _ -> MouseMove {x = i * 10;y = (i * 10) * 2;button = (i * 10) mod 3;}
+      | _ -> MouseMove { x = i * 10; y = (i * 10) * 2; button = (i * 10) mod 3 }
     in
     ignore (HashMap.get map event)
   done
@@ -204,20 +204,20 @@ let bench_swisstable_variant_keys_get = fun () ->
   for i = 0 to 9_999 do
     let event =
       match i mod 4 with
-      | 0 -> Click {x = i;y = i * 2;}
+      | 0 -> Click { x = i; y = i * 2 }
       | 1 -> KeyPress ("key_" ^ string_of_int i)
       | 2 -> Scroll i
-      | _ -> MouseMove {x = i;y = i * 2;button = i mod 3;}
+      | _ -> MouseMove { x = i; y = i * 2; button = i mod 3 }
     in
     ignore (Swisstable.insert map event i)
   done;
   for i = 0 to 999 do
     let event =
       match i mod 4 with
-      | 0 -> Click {x = i * 10;y = (i * 10) * 2;}
+      | 0 -> Click { x = i * 10; y = (i * 10) * 2 }
       | 1 -> KeyPress ("key_" ^ string_of_int (i * 10))
       | 2 -> Scroll (i * 10)
-      | _ -> MouseMove {x = i * 10;y = (i * 10) * 2;button = (i * 10) mod 3;}
+      | _ -> MouseMove { x = i * 10; y = (i * 10) * 2; button = (i * 10) mod 3 }
     in
     ignore (Swisstable.get map event)
   done
@@ -288,7 +288,7 @@ let bench_hashmap_complex_values_insert = fun () ->
         if i mod 3 = 0 then
           Delivered
         else if i mod 3 = 1 then
-          Shipped {tracking = "TRK" ^ string_of_int i;carrier = "FedEx";}
+          Shipped { tracking = "TRK" ^ string_of_int i; carrier = "FedEx" }
         else
           Pending;
     }
@@ -310,7 +310,7 @@ let bench_swisstable_complex_values_insert = fun () ->
         if i mod 3 = 0 then
           Delivered
         else if i mod 3 = 1 then
-          Shipped {tracking = "TRK" ^ string_of_int i;carrier = "FedEx";}
+          Shipped { tracking = "TRK" ^ string_of_int i; carrier = "FedEx" }
         else
           Pending;
     }
@@ -369,10 +369,10 @@ let bench_hashmap_nested_keys_insert = fun () ->
       user = {
         id = i;
         name = "user_" ^ string_of_int i;
-        email = "user" ^ string_of_int i ^ "@example.com";
+        email = "user" ^ string_of_int i ^ "@example.com"
       };
-      address = {street = string_of_int i ^ " Main St";city = "City";zip = 10_000 + i;};
-      order_count = i mod 50;
+      address = { street = string_of_int i ^ " Main St"; city = "City"; zip = 10_000 + i };
+      order_count = i mod 50
     } in
     HashMap.insert map customer i
   done
@@ -386,10 +386,10 @@ let bench_swisstable_nested_keys_insert = fun () ->
       user = {
         id = i;
         name = "user_" ^ string_of_int i;
-        email = "user" ^ string_of_int i ^ "@example.com";
+        email = "user" ^ string_of_int i ^ "@example.com"
       };
-      address = {street = string_of_int i ^ " Main St";city = "City";zip = 10_000 + i;};
-      order_count = i mod 50;
+      address = { street = string_of_int i ^ " Main St"; city = "City"; zip = 10_000 + i };
+      order_count = i mod 50
     } in
     ignore (Swisstable.insert map customer i)
   done

@@ -58,7 +58,7 @@ Replace direct `Pervasives` references with `Std`.
 let rule_explain = String.concat "\n\n" [ unix_body; sys_body; stdlib_body; pervasives_body; ]
 
 let explanation =
-  Api.Explanation.{rule_id = package_rule_id;body = rule_explain;message = rule_description;}
+  Api.Explanation.{ rule_id = package_rule_id; body = rule_explain; message = rule_description }
 
 let explanations = fun () -> [ explanation ]
 
@@ -88,7 +88,7 @@ let make_diagnostic = fun token ->
   let text = Syn.Ceibo.Red.SyntaxToken.text token in
   let suggestion = make_suggestion text in
   let fix = replacement_for text |> Option.map (make_fix token) in
-  let kind = Api.Diagnostic.Known {rule_id = package_rule_id;message = make_message text;} in
+  let kind = Api.Diagnostic.Known { rule_id = package_rule_id; message = make_message text } in
   Api.Diagnostic.make
     ~severity:Warning
     ~kind

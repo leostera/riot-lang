@@ -113,7 +113,7 @@ end = struct
 
   let of_path = fun ~ns path ->
     let module_name = Module_name.of_path path in
-    {file_path = path;module_name;namespaced_name = Namespace.add ns module_name;}
+    { file_path = path; module_name; namespaced_name = Namespace.add ns module_name }
 
   let module_name = fun t -> t.module_name
 
@@ -199,7 +199,7 @@ end = struct
     mutable order: Module_name.t list;
   }
 
-  let create = fun () -> {packages = Hashtbl.create 8;order = [];}
+  let create = fun () -> { packages = Hashtbl.create 8; order = [] }
 
   let register = fun t package module_name ~outputs ~cc_flags ~ld_flags ->
     (* Add to order list if not already there *)
@@ -324,7 +324,11 @@ end = struct
   }
 
   let create = fun () ->
-    {modules = Hashtbl.create 16;intf_by_name = Hashtbl.create 16;impl_by_name = Hashtbl.create 16;}
+    {
+      modules = Hashtbl.create 16;
+      intf_by_name = Hashtbl.create 16;
+      impl_by_name = Hashtbl.create 16
+    }
 
   let register = fun t mod_ node_id ->
     Hashtbl.add t.modules node_id mod_;
@@ -384,7 +388,7 @@ type kind =
 
 type file =
   | Concrete of string
-  | Generated of { path: string; contents: string; }
+  | Generated of { path: string; contents: string }
 
 let file_to_string = fun file ->
   match file with
@@ -409,7 +413,7 @@ type t = {
   package: Package.t;
 }
 
-let root_node = {file = Concrete "";open_modules = [];kind = Root;}
+let root_node = { file = Concrete ""; open_modules = []; kind = Root }
 
 let make = fun ~root ~package ~build_results ->
   let src_root = Filename.concat root Const.src_dir in
@@ -498,9 +502,9 @@ module Alias_module = struct
   let make_node = fun (ns: Namespace.t) (modules: Module.t list) ->
     let mod_ = Module.of_path ~ns "aliases" in
     let path = Module.namespaced_name mod_ ^ ".ml.gen" in
-    let file = Generated {path;contents = template modules;} in
+    let file = Generated { path; contents = template modules } in
     let kind = ML mod_ in
-    {file;open_modules = [];kind;}
+    { file; open_modules = []; kind }
 end
 
 module Library_interface = struct
@@ -535,7 +539,7 @@ module Library_interface = struct
       if exists then
         Concrete path
       else
-        Generated {path;contents = template children;}
+        Generated { path; contents = template children }
     in
     let kind =
       match Module.kind lib with
@@ -543,7 +547,7 @@ module Library_interface = struct
       | `implementation -> ML lib
     in
     let open_modules = aliases in
-    {file;open_modules;kind;}
+    { file; open_modules; kind }
 end
 
 module Ocaml_module = struct
@@ -556,7 +560,7 @@ module Ocaml_module = struct
       | `implementation -> ML lib
     in
     let open_modules = aliases in
-    {file;open_modules;kind;}
+    { file; open_modules; kind }
 end
 
 module Dependency_rules = struct
@@ -615,7 +619,7 @@ and handle_c_file = fun ~t ~ctx file ->
   (* printf "HANDLE_C_FILE: %s\n" file.path; *)
   let { parent_impl; _ } = ctx in
   (* Create a C file node *)
-  let node = {file = Concrete file.path;open_modules = [];kind = C;} in
+  let node = { file = Concrete file.path; open_modules = []; kind = C } in
   let c_node = Graph.add_node t.graph node in
   (* printf "  Added C node %d for %s\n" (Graph.Node_id.to_int c_node.id) file.path; *)
   (* C files are dependencies of the implementation *)
@@ -623,7 +627,7 @@ and handle_c_file = fun ~t ~ctx file ->
 
 and handle_h_file = fun ~t ~ctx file ->
   (* Header files just need to be copied, not compiled *)
-  let node = {file = Concrete file.path;open_modules = [];kind = H;} in
+  let node = { file = Concrete file.path; open_modules = []; kind = H } in
   let _h_node = Graph.add_node t.graph node in
   ()
 
@@ -896,7 +900,7 @@ and handle_library = fun ~t ~ctx { path; name; children } ->
     ns;
     aliases = aliases @ [ aliases_node ];
     parent_impl = impl_node;
-    parent_intf = intf_node;
+    parent_intf = intf_node
   } in
   (* Sort children to process directories FIRST, then .mli files, then .ml files *)
   (* This ensures subdirectory library interfaces are created before files that depend on them *)
@@ -973,8 +977,13 @@ let scan_from_root = fun t ->
   match t.file_tree with
   | File_scanner.Dir dir ->
       let root_node = Graph.add_node t.graph root_node in
-      let dir = {dir with name = Module_name.to_string t.package_name;} in
-      let ctx = {ns = Namespace.empty;parent_impl = root_node;parent_intf = root_node;aliases = [];} in
+      let dir = { dir with name = Module_name.to_string t.package_name } in
+      let ctx = {
+        ns = Namespace.empty;
+        parent_impl = root_node;
+        parent_intf = root_node;
+        aliases = []
+      } in
       handle_library ~t ~ctx dir
   | File file -> failwith (Format.sprintf "Expected root src dir! Instead found: %S\n" file.path)
 
@@ -1179,7 +1188,7 @@ let scan_native_dir = fun t ->
                 let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
                 printf "    Found C file: %s\n" relative_path;
                 (* Add as a standalone node - it will be picked up during iteration *)
-                let node = {file = Concrete relative_path;open_modules = [];kind = C;} in
+                let node = { file = Concrete relative_path; open_modules = []; kind = C } in
                 let _c_node = Graph.add_node t.graph node in
                 ()
               )
@@ -1188,7 +1197,7 @@ let scan_native_dir = fun t ->
                 (* Path relative to package root: packages/kernel/native/file.h *)
                 let relative_path = t.root ^ "/" ^ Const.native_dir ^ "/" ^ filename in
                 printf "    Found H file: %s\n" relative_path;
-                let node = {file = Concrete relative_path;open_modules = [];kind = H;} in
+                let node = { file = Concrete relative_path; open_modules = []; kind = H } in
                 let _h_node = Graph.add_node t.graph node in
                 ()
               ))

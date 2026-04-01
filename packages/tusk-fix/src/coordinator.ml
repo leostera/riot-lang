@@ -183,7 +183,7 @@ let init = fun config () ->
         false
   in
   for _ = 1 to config.concurrency do
-    ignore (Worker.start {mode = config.mode;scope = config.scope;coordinator = self ();})
+    ignore (Worker.start { mode = config.mode; scope = config.scope; coordinator = self () })
   done;
   let state = {
     file_queue;

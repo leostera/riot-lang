@@ -17,10 +17,10 @@ and cross_config = {
 let make_cross = fun ~target_triplet ->
   (* Note: We can't call Tusk_toolchain here due to circular dependency.
      Detection will be done at Build_ctx creation time. *)
-  Cross {target_triplet;sysroot = None;bin_dir = None;bin_prefix = "";}
+  Cross { target_triplet; sysroot = None; bin_dir = None; bin_prefix = "" }
 (** Create Cross target with explicit configuration *)
 let make_cross_with_config = fun ~target_triplet ~sysroot ~bin_dir ~bin_prefix ->
-  Cross {target_triplet;sysroot;bin_dir;bin_prefix;}
+  Cross { target_triplet; sysroot; bin_dir; bin_prefix }
 (** Get target triplet (works for both Host and Cross) *)
 let triplet = function
   | Host -> System.Host.current

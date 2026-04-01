@@ -123,12 +123,12 @@ let is_valid_date = fun { year; month; day } ->
 
 (* Internal helper for backwards compatibility during transition *)
 
-let valid_date = fun year month day -> is_valid_date {year;month;day;}
+let valid_date = fun year month day -> is_valid_date { year; month; day }
 
 (** {1 Gregorian Days Conversions} *)
 
 let date_to_gregorian_days = fun { year; month; day } ->
-  if not (is_valid_date {year;month;day;}) then
+  if not (is_valid_date { year; month; day }) then
     panic
       ("date_to_gregorian_days: invalid date "
       ^ string_of_int year
@@ -220,7 +220,7 @@ let day_to_year = fun days ->
 let gregorian_days_to_date = fun days ->
   let year, day_of_year = day_to_year days in
   let month, day = year_day_to_date year day_of_year in
-  {year;month;day;}
+  { year; month; day }
 
 (** {1 Gregorian Seconds Conversions} *)
 
@@ -237,7 +237,7 @@ let gregorian_seconds_to_naive = fun secs ->
   let remaining = remaining_secs mod seconds_per_hour in
   let minute = remaining / seconds_per_minute in
   let second = remaining mod seconds_per_minute in
-  (date, {hour;minute;second;})
+  (date, { hour; minute; second })
 
 (** {1 Day of Week} *)
 
@@ -257,7 +257,7 @@ let day_of_week = fun ({ year; month; day } as date) ->
 (** {1 ISO Week Number} *)
 (** Get gregorian days for the Monday of ISO week 1 in the given year *)
 let gregorian_days_of_iso_w01_1 = fun year ->
-  let jan1_date = {year;month = 1;day = 1;} in
+  let jan1_date = { year; month = 1; day = 1 } in
   let jan1 = date_to_gregorian_days jan1_date in
   let dow = day_of_week jan1_date in
   (* ISO week 1 is the week with the first Thursday
@@ -281,22 +281,22 @@ let iso_week_number = fun ({ year; month; day } as date) ->
   let w01_1_year = gregorian_days_of_iso_w01_1 year in
   let w01_1_next_year = gregorian_days_of_iso_w01_1 (year + 1) in
   if w01_1_year <= d && d < w01_1_next_year then
-    {year;week = ((d - w01_1_year) / 7) + 1;}
+    { year; week = ((d - w01_1_year) / 7) + 1 }
   else if d < w01_1_year then
     let prev_week_num =
-      match day_of_week {year = year - 1;month = 1;day = 1;} with
+      match day_of_week { year = year - 1; month = 1; day = 1 } with
       | 4 -> 53
       | _ -> (
-          match day_of_week {year = year - 1;month = 12;day = 31;} with
+          match day_of_week { year = year - 1; month = 12; day = 31 } with
           | 4 -> 53
           | _ -> 52
         )
     in
-    {year = year - 1;week = prev_week_num;}
+    { year = year - 1; week = prev_week_num }
   else
     (* d >= w01_1_next_year *)
     (* Next year, week 01 *)
-    {year = year + 1;week = 1;}
+    { year = year + 1; week = 1 }
 
 (** {1 Time Conversions} *)
 
@@ -310,7 +310,7 @@ let seconds_to_time = fun secs ->
   let remaining = secs mod seconds_per_hour in
   let minute = remaining / seconds_per_minute in
   let second = remaining mod seconds_per_minute in
-  {hour;minute;second;}
+  { hour; minute; second }
 
 let seconds_to_daystime = fun secs ->
   let days = secs / seconds_per_day in

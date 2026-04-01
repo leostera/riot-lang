@@ -89,7 +89,7 @@ module Driver = struct
 
   let connect : config -> (connection, error) result = fun config ->
     let id = "sqlite_" ^ string_of_int (Random.int 1_000_000) in
-    Ok {id;path = config.path;handle = ();closed = false;}
+    Ok { id; path = config.path; handle = (); closed = false }
 
   let close = fun conn -> conn.closed <- true
 
@@ -99,11 +99,11 @@ module Driver = struct
     if conn.closed then
       Error ConnectionClosed
     else
-      Ok {sql;conn;}
+      Ok { sql; conn }
 
   let execute = fun _stmt _params ->
     (* TODO: Implement actual SQLite execution via FFI *)
-    Ok {rows = [];rows_affected = 0;}
+    Ok { rows = []; rows_affected = 0 }
 
   let fetch_row = fun result_set ->
     match result_set.rows with

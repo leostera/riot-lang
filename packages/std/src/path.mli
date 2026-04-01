@@ -39,9 +39,9 @@ type t
 (** # Errors *)
 
 type error =
-  | InvalidUtf8 of { path: string; }
+  | InvalidUtf8 of { path: string }
   (** Path contains invalid UTF-8 bytes *)
-  | SystemInvalidUtf8 of { syscall: string; path: string; }
+  | SystemInvalidUtf8 of { syscall: string; path: string }
   (** System call returned invalid UTF-8 *)
   | SystemError of string
 (** Other system-level error *)

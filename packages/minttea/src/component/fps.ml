@@ -11,7 +11,7 @@ let add_duration = fun time rate ->
 let make = fun frame_rate ->
   (* Initialize next_frame to now, so the first tick will succeed immediately *)
   let now = Time.Instant.now () in
-  {frame_rate;next_frame = now;}
+  { frame_rate; next_frame = now }
 
 let of_int = fun i -> make (1.0 /. float_of_int i)
 

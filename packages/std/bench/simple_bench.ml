@@ -20,7 +20,7 @@ let benchmarks =
   Bench.[
     case "simple addition" bench_addition;
     case "string concatenation" bench_string_concat;
-    with_config ~config:{iterations = 200;warmup = 20;} "list creation" bench_list_creation;
+    with_config ~config:{ iterations = 200; warmup = 20 } "list creation" bench_list_creation;
   ]
 
 (* Main entry point using new Bench.Cli *)

@@ -75,7 +75,7 @@ let from_kernel_event : Ev.event -> t = fun ev ->
       inode_meta = has_flag Ev.flag_inode_meta_mod;
       finder_info = has_flag Ev.flag_finder_info_mod;
       owner = has_flag Ev.flag_metadata;
-      xattr = has_flag Ev.flag_xattr_mod;
+      xattr = has_flag Ev.flag_xattr_mod
     };
     system =
       {

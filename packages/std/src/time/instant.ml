@@ -13,7 +13,7 @@ let now = fun () ->
   let time = Kernel.Time.gettimeofday () in
   let secs = int_of_float time in
   let nanos = int_of_float ((time -. float_of_int secs) *. 1_000_000_000.0) in
-  {secs;nanos;}
+  { secs; nanos }
 
 (* Duration operations *)
 
@@ -45,9 +45,9 @@ let add = fun instant duration ->
   let new_secs = instant.secs + dur_secs in
   let new_nanos = instant.nanos + dur_nanos in
   if new_nanos >= 1_000_000_000 then
-    {secs = new_secs + 1;nanos = new_nanos - 1_000_000_000;}
+    { secs = new_secs + 1; nanos = new_nanos - 1_000_000_000 }
   else
-    {secs = new_secs;nanos = new_nanos;}
+    { secs = new_secs; nanos = new_nanos }
 
 let sub = fun instant duration ->
   let dur_secs = Duration.to_secs duration in
@@ -55,9 +55,9 @@ let sub = fun instant duration ->
   let new_secs = instant.secs - dur_secs in
   let new_nanos = instant.nanos - dur_nanos in
   if new_nanos < 0 then
-    {secs = new_secs - 1;nanos = new_nanos + 1_000_000_000;}
+    { secs = new_secs - 1; nanos = new_nanos + 1_000_000_000 }
   else
-    {secs = new_secs;nanos = new_nanos;}
+    { secs = new_secs; nanos = new_nanos }
 
 (* Checked operations *)
 

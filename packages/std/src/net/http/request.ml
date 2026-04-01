@@ -25,25 +25,25 @@ let headers = fun request -> request.headers
 
 let body = fun request -> request.body
 
-let with_method = fun request method_ -> {request with method_;}
+let with_method = fun request method_ -> { request with method_ }
 
-let with_uri = fun request uri -> {request with uri;}
+let with_uri = fun request uri -> { request with uri }
 
-let with_version = fun request version -> {request with version;}
+let with_version = fun request version -> { request with version }
 
-let with_headers = fun request headers -> {request with headers;}
+let with_headers = fun request headers -> { request with headers }
 
-let with_body = fun request body -> {request with body = Some body;}
+let with_body = fun request body -> { request with body = Some body }
 
-let without_body = fun request -> {request with body = None;}
+let without_body = fun request -> { request with body = None }
 
 let with_header = fun request name value ->
-  {request with headers = Header.set request.headers name value;}
+  { request with headers = Header.set request.headers name value }
 
 let add_header = fun request name value ->
-  {request with headers = Header.add request.headers name value;}
+  { request with headers = Header.add request.headers name value }
 
-let remove_header = fun request name -> {request with headers = Header.remove request.headers name;}
+let remove_header = fun request name -> { request with headers = Header.remove request.headers name }
 
 let get_header = fun request name ->
   Header.get request.headers name
@@ -71,18 +71,18 @@ module Builder = struct
       body = None;
     }
 
-  let method_ = fun builder method_ -> {builder with method_;}
+  let method_ = fun builder method_ -> { builder with method_ }
 
-  let uri = fun builder uri -> {builder with uri;}
+  let uri = fun builder uri -> { builder with uri }
 
-  let version = fun builder version -> {builder with version;}
+  let version = fun builder version -> { builder with version }
 
-  let headers = fun builder headers -> {builder with headers;}
+  let headers = fun builder headers -> { builder with headers }
 
-  let body = fun builder body -> {builder with body = Some body;}
+  let body = fun builder body -> { builder with body = Some body }
 
   let header = fun builder name value ->
-    {builder with headers = Header.set builder.headers name value;}
+    { builder with headers = Header.set builder.headers name value }
 
   let build builder : request = {
     method_ = builder.method_;

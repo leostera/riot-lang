@@ -104,7 +104,7 @@ let has_trailing_separator = fun name ->
 let make_diagnostic = fun ~suggestion path ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
     ~suggestion:((suggestion ^ " In `" ^ Path.to_string path ^ "`."))
     ()

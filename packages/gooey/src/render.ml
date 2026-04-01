@@ -31,7 +31,7 @@ type command_type =
   | Border of border_data
   | ScissorStart of Geometry.Rect.t
   | ScissorEnd
-  | Custom of { data: string; }
+  | Custom of { data: string }
 
 type command = {
   bounding_box: Geometry.Rect.t;

@@ -21,7 +21,7 @@ module that understands the invariants.
 let make_diagnostic = fun (field: Syn.Cst.RecordField.t) ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span field.syntax_node)
     ~suggestion:"Keep this mutable field private to the implementation and expose operations instead."
     ()

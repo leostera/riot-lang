@@ -39,6 +39,6 @@ let make_node = fun (ns: Namespace.t) (modules: Module.t list) ->
   in
   let path = Path.v filename in
   let mod_ = Module.make ~namespace:Namespace.empty ~filename:path in
-  let file = Module_node.Generated {path;contents = template modules;} in
+  let file = Module_node.Generated { path; contents = template modules } in
   let kind = Module_node.ML mod_ in
-  {Module_node.file;open_modules = [];kind;}
+  { Module_node.file; open_modules = []; kind }

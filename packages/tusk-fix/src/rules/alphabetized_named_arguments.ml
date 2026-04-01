@@ -30,7 +30,7 @@ let make_diagnostic = fun ~previous_name parameter ->
   let current_name = parameter_name parameter in
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
     ~suggestion:(("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized"))
     ()

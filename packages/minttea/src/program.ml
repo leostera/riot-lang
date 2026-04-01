@@ -31,7 +31,7 @@ let rec loop = fun state ->
   Log.trace "[PROGRAM] Received event";
   forward_event event state;
   let model, cmd = state.app.update event state.model in
-  let state = {state with model;} in
+  let state = { state with model } in
   let view = state.app.view model in
   Renderer.render state.renderer view;
   (* Handle command after rendering *)
@@ -112,7 +112,7 @@ and handle_shutdown = fun state ->
 let init = fun state ->
   (* Initialize app with initial model - size will be updated by renderer *)
   let model, init_cmd = state.app.init state.model in
-  let state = {state with model;} in
+  let state = { state with model } in
   (* Handle init command BEFORE first render *)
   let should_quit = handle_cmd init_cmd state in
   let initial_view = state.app.view state.model in

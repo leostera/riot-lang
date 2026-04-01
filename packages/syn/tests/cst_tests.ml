@@ -36,7 +36,7 @@ let with_optional_cst = fun result ->
     tokens = result.Syn.Parser.tokens;
     tree = result.Syn.Parser.tree;
     diagnostics = result.Syn.Parser.diagnostics;
-    cst;
+    cst
   }
 
 let parse_ml = fun source -> Syn.parse ~filename:sample_ml source |> with_optional_cst

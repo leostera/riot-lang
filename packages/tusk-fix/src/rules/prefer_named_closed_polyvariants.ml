@@ -21,7 +21,7 @@ enough to deserve a proper name.
 let make_diagnostic = fun syntax_node ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Introduce a named type alias for this closed polymorphic variant and use that name instead"
     ()

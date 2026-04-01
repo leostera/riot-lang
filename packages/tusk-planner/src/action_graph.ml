@@ -9,7 +9,7 @@ type t = {
   graph: Action_node.action_spec G.t;
 }
 
-let create = fun () -> {graph = G.make ();}
+let create = fun () -> { graph = G.make () }
 
 let add_node = fun t node_value ->
   G.add_node t.graph node_value
@@ -69,7 +69,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         source = path;
         outputs;
         includes = Path.v "." :: dep_includes;
-        flags = stdlib_flags package @ opens open_modules;
+        flags = stdlib_flags package @ opens open_modules
       } in
       ([ compile ], outputs, sources)
   | { kind=ML mod_; file=Concrete path; open_modules; _ } ->
@@ -83,11 +83,11 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         source = path;
         outputs;
         includes = Path.v "." :: dep_includes;
-        flags = stdlib_flags package @ opens open_modules;
+        flags = stdlib_flags package @ opens open_modules
       } in
       ([ compile ], outputs, sources)
   | { kind=ML mod_; file=Generated { path; contents }; open_modules; _ } ->
-      let write_action = Action.WriteFile {destination = path;content = contents;} in
+      let write_action = Action.WriteFile { destination = path; content = contents } in
       let native_object_output = Module.o mod_ in
       let cmx_output = Module.cmx mod_ in
       let cmi_output = Module.cmi mod_ in
@@ -106,11 +106,11 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         source = path;
         outputs;
         includes = Path.v "." :: dep_includes;
-        flags;
+        flags
       } in
       ([ write_action; compile_action ], outputs, sources)
   | { kind=MLI mod_; file=Generated { path; contents }; open_modules; _ } ->
-      let write_action = Action.WriteFile {destination = path;content = contents;} in
+      let write_action = Action.WriteFile { destination = path; content = contents } in
       let cmi_output = Module.cmi mod_ in
       let cmti_output = Module.cmti mod_ in
       let outputs = [ cmti_output; cmi_output ] in
@@ -119,7 +119,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         source = path;
         outputs;
         includes = Path.v "." :: dep_includes;
-        flags = stdlib_flags package @ opens open_modules;
+        flags = stdlib_flags package @ opens open_modules
       } in
       ([ write_action; compile_action ], outputs, sources)
   | { kind=Native { files }; _ } ->
@@ -143,7 +143,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
           (fun c_file ->
             let obj_file = Path.remove_extension c_file |> Path.add_extension ~ext:"o" in
             let output_name = Path.basename obj_file |> Path.v in
-            Action.CompileC {source = c_file;outputs = [ output_name ];ccflags;})
+            Action.CompileC { source = c_file; outputs = [ output_name ]; ccflags })
           c_files
       in
       let outputs =
@@ -183,7 +183,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
       let create_lib = Action.CreateLibrary {
         outputs = [ library_name; archive_name ];
         objects;
-        includes;
+        includes
       } in
       let all_outputs = [ library_name; archive_name ] in
       ([ create_lib ], all_outputs, sources)
@@ -195,7 +195,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         source;
         outputs = [ binary_cmx ];
         includes = Path.v "." :: dep_includes;
-        flags = stdlib_flags package;
+        flags = stdlib_flags package
       } in
       (* Collect foreign library outputs for linking *)
       let cclibs =
@@ -527,7 +527,7 @@ let from_json = fun json ->
                                       examples = [];
                                       bench = [];
                                     };
-                                  compiler = {profile_overrides = [];target_overrides = [];};
+                                  compiler = { profile_overrides = []; target_overrides = [] };
                                   commands = [];
                                   fix_providers = [];
                                 }

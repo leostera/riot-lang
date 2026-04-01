@@ -27,31 +27,12 @@ type request = {
 }
 
 type error =
-  | ParseError of {
-      raw_input: string;
-      parse_error: string;
-    }
-  | InvalidRequest of {
-      request_json: Json.t;
-      reason: string;
-    }
-  | MethodNotFound of {
-      method_name: string;
-    }
-  | InvalidParams of {
-      method_name: string;
-      params: params;
-      reason: string;
-    }
-  | InternalError of {
-      context: string;
-      details: string;
-    }
-  | UnknownServerError of {
-      code: int;
-      message: string;
-      data: Json.t option;
-    }
+  | ParseError of { raw_input: string; parse_error: string }
+  | InvalidRequest of { request_json: Json.t; reason: string }
+  | MethodNotFound of { method_name: string }
+  | InvalidParams of { method_name: string; params: params; reason: string }
+  | InternalError of { context: string; details: string }
+  | UnknownServerError of { code: int; message: string; data: Json.t option }
 
 type 'res response = {
   jsonrpc: string;
@@ -119,7 +100,7 @@ let request_of_json = fun json ->
               )
           in
           match (params, id_result) with
-          | Ok params, Ok id -> Ok {jsonrpc = "2.0";method_;params;id;}
+          | Ok params, Ok id -> Ok { jsonrpc = "2.0"; method_; params; id }
           | Error e, _ -> Error e
           | _, Error e -> Error e
         )
@@ -137,14 +118,14 @@ let request_of_json = fun json ->
 
 (** Helper to make a request *)
 let request = fun ~method_ ?params ?id () ->
-  {jsonrpc = version;method_;params = Option.unwrap_or params ~default:NoParams;id;}
+  { jsonrpc = version; method_; params = Option.unwrap_or params ~default:NoParams; id }
 (** Create a successful response with result *)
-let result = fun res ~id -> {jsonrpc = version;result = Ok res;id;}
+let result = fun res ~id -> { jsonrpc = version; result = Ok res; id }
 
-let ok = fun ?(id = Null) res -> {jsonrpc = version;result = res;id;}
+let ok = fun ?(id = Null) res -> { jsonrpc = version; result = res; id }
 (** Helper to make a notification (request without id) *)
 let notification = fun ~method_ ?params () ->
-  {jsonrpc = version;method_;params = Option.unwrap_or params ~default:NoParams;id = None;}
+  { jsonrpc = version; method_; params = Option.unwrap_or params ~default:NoParams; id = None }
 (** Check if a request is a notification *)
 let is_notification = fun (req: request) ->
   match req.id with

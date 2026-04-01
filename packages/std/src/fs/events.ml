@@ -18,7 +18,7 @@ let create = fun () ->
   | Error e -> Error e
   | Ok kernel ->
       let source = Ev.to_source kernel in
-      Ok {kernel;source;buffer = IO.Bytes.create 4_096;buffer_len = 0;}
+      Ok { kernel; source; buffer = IO.Bytes.create 4_096; buffer_len = 0 }
 
 let watch = fun t ~path ~latency ->
   Ev.watch t.kernel ~path:(Path.to_string path) ~latency:(Time.Duration.to_secs_float latency)
@@ -42,7 +42,7 @@ let try_parse_event = fun buffer buffer_len ->
       let flags = IO.Bytes.get_int32_ne buffer 4 in
       let event_id = IO.Bytes.get_int64_ne buffer 8 in
       let path = IO.Bytes.sub_string buffer 16 path_len in
-      let kernel_event = {Ev.path;flags;event_id;} in
+      let kernel_event = { Ev.path; flags; event_id } in
       let event = Event.from_kernel_event kernel_event in
       (Some event, total_needed)
 

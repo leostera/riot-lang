@@ -18,4 +18,4 @@ let envelope = fun msg ->
     else
       next_id ()
   in
-  {msg;uid = next_id ();}
+  { msg; uid = next_id () }

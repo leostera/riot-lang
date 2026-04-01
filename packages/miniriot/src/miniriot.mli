@@ -38,21 +38,14 @@ module Process: sig
     TrapExit of bool
   type monitor_ref
   type Message.t +=
-    | EXIT of {
-        from: Pid.t;
-        reason: (unit, exit_reason) result;
-      }
-    | DOWN of {
-        ref: monitor_ref;
-        pid: Pid.t;
-        reason: (unit, exit_reason) result;
-      }
+    | EXIT of { from: Pid.t; reason: (unit, exit_reason) result }
+    | DOWN of { ref: monitor_ref; pid: Pid.t; reason: (unit, exit_reason) result }
 
   type state =
     private | Uninitialized
     | Runnable
     | Waiting_message
-    | Waiting_io of { name: string; token: Kernel.Async.Token.t; source: Kernel.Async.Source.t; }
+    | Waiting_io of { name: string; token: Kernel.Async.Token.t; source: Kernel.Async.Source.t }
     | Running
     | Exited of (unit, exit_reason) result
     | Finalized

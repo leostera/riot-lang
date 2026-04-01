@@ -3,14 +3,8 @@ open Global
 type event = ..
 
 type event +=
-  | SpanStarted of {
-      started_at: Time.Instant.t;
-      event: event;
-    }
-  | SpanCompleted of {
-      completed_at: Time.Instant.t;
-      event: event;
-    }
+  | SpanStarted of { started_at: Time.Instant.t; event: event }
+  | SpanCompleted of { completed_at: Time.Instant.t; event: event }
 
 type handler_id = string
 
@@ -35,23 +29,18 @@ module Server = struct
     | AttachHandler of handler
     | DetachHandler of handler_id
     | DetachAll
-    | ListHandlers of { reply_to: reply_to; request_id: request_id; }
+    | ListHandlers of { reply_to: reply_to; request_id: request_id }
     | Emit of event
-    | Stop of { reply_to: reply_to; request_id: request_id; }
+    | Stop of { reply_to: reply_to; request_id: request_id }
 
   type Message.t +=
     Telemetry of message
 
   type Message.t +=
-    HandlerList of {
-        request_id: request_id;
-        ids: string list;
-      }
+    HandlerList of { request_id: request_id; ids: string list }
 
   type Message.t +=
-    Stopped of {
-        request_id: request_id;
-      }
+    Stopped of { request_id: request_id }
 
   let rec loop = fun state ->
     let selector msg =
@@ -71,7 +60,7 @@ module Server = struct
         loop state
     | ListHandlers { reply_to; request_id } ->
         let handler_ids = HashMap.keys state.handlers in
-        send reply_to (HandlerList {request_id;ids = handler_ids;});
+        send reply_to (HandlerList { request_id; ids = handler_ids });
         loop state
     | Emit event ->
         HashMap.iter
@@ -81,11 +70,11 @@ module Server = struct
           state.handlers;
         loop state
     | Stop { reply_to; request_id } ->
-        send reply_to (Stopped {request_id;});
+        send reply_to (Stopped { request_id });
         Ok ()
 
   let init = fun () ->
-    let state = {handlers = HashMap.create ();} in
+    let state = { handlers = HashMap.create () } in
     loop state
 
   let start = fun () -> spawn init
@@ -137,7 +126,7 @@ let emit = fun event ->
 let attach = fun id fn ->
   match read_pid () with
   | None -> ()
-  | Some pid -> send pid Server.(Telemetry (AttachHandler {id;fn;}))
+  | Some pid -> send pid Server.(Telemetry (AttachHandler { id; fn }))
 
 let detach = fun id ->
   match read_pid () with
@@ -154,7 +143,7 @@ let list_handlers = fun () ->
   | None -> []
   | Some pid ->
       let request_id = next_request_id () in
-      send pid Server.(Telemetry (ListHandlers {reply_to = self ();request_id;}));
+      send pid Server.(Telemetry (ListHandlers { reply_to = self (); request_id }));
       let selector msg =
         match msg with
         | Server.HandlerList { request_id=got; ids } when Kernel.Int.equal got request_id -> `select ids
@@ -179,7 +168,7 @@ let stop = fun () ->
   | None -> ()
   | Some pid ->
       let request_id = next_request_id () in
-      send pid Server.(Telemetry (Stop {reply_to = self ();request_id;}));
+      send pid Server.(Telemetry (Stop { reply_to = self (); request_id }));
       let selector msg =
         match msg with
         | Server.Stopped { request_id=got } when Kernel.Int.equal got request_id -> `select ()

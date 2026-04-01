@@ -15,7 +15,7 @@ let create = fun ?(count = 1) ~size () ->
   assert (count > 0);
   assert (size > 0);
   let size = size / count in
-  Array.init count (fun _id -> {ba = Bytes.create size;off = 0;len = size;})
+  Array.init count (fun _id -> { ba = Bytes.create size; off = 0; len = size })
 
 let with_capacity = fun size -> create ~size ()
 
@@ -39,7 +39,7 @@ let sub = fun ?(pos = 0) ~len t ->
         else if diff > 0 then
           (
             curr := len;
-            Some {iov with len = diff;}
+            Some { iov with len = diff }
           )
         else
           None) |> Array.of_list
@@ -50,7 +50,7 @@ let length = fun t ->
 let iter = fun (t: t) fn ->
   Array.iter fn t
 
-let of_bytes = fun ba -> [|{ba;off = 0;len = Bytes.length ba;}|]
+let of_bytes = fun ba -> [|{ ba; off = 0; len = Bytes.length ba }|]
 
 let from_string = fun str -> of_bytes (Bytes.of_string str)
 

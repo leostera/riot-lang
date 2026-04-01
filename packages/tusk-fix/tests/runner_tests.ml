@@ -1965,14 +1965,15 @@ let render x y z =
     (fun () ->
       let result = Syn.parse_implementation "let render x = let y = x + 1 in y; y\n" in
       let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
-      let expressions = Tusk_fix.Rule_query.expressions Tusk_fix.Rule.{file_path = "sample.ml";cst;} in
+      let expressions = Tusk_fix.Rule_query.expressions
+        Tusk_fix.Rule.{ file_path = "sample.ml"; cst } in
       Test.assert_true (List.length expressions >= 5);
       Ok ());
   Test.case "rule query collects let bindings from the typed CST"
     (fun () ->
       let result = Syn.parse_implementation "let render x = x\nlet other y = let z = y in z\n" in
       let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
-      let bindings = Tusk_fix.Rule_query.let_bindings Tusk_fix.Rule.{file_path = "sample.ml";cst;} in
+      let bindings = Tusk_fix.Rule_query.let_bindings Tusk_fix.Rule.{ file_path = "sample.ml"; cst } in
       Test.assert_equal
         ~expected:[ "render"; "other" ]
         ~actual:((bindings |> List.map Syn.Cst.LetBinding.name));
@@ -1984,11 +1985,11 @@ let render x y z =
       let implementation_cst = Syn.build_cst implementation |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
       let interface_cst = Syn.build_cst interface |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
       let implementation_types = Tusk_fix.Rule_query.type_declarations
-        Tusk_fix.Rule.{file_path = "sample.ml";cst = implementation_cst;}
+        Tusk_fix.Rule.{ file_path = "sample.ml"; cst = implementation_cst }
       |> List.map
         (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
       let interface_types = Tusk_fix.Rule_query.type_declarations
-        Tusk_fix.Rule.{file_path = "sample.mli";cst = interface_cst;}
+        Tusk_fix.Rule.{ file_path = "sample.mli"; cst = interface_cst }
       |> List.map
         (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
       Test.assert_equal ~expected:[ "user" ] ~actual:implementation_types;

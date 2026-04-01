@@ -56,15 +56,15 @@ type t = {
   edges: edge list;
 }
 
-let create = fun ?(direction = TD) () -> {direction;nodes = [];edges = [];}
+let create = fun ?(direction = TD) () -> { direction; nodes = []; edges = [] }
 
 let add_node = fun t ~id ~label ?(shape = Rectangle) () ->
-  let node = {id;label;shape;} in
-  {t with nodes = node :: t.nodes;}
+  let node = { id; label; shape } in
+  { t with nodes = node :: t.nodes }
 
 let add_edge = fun t ~from_node ~to_node ?label ?(style = Solid) () ->
-  let edge = {from_node;to_node;label;style;} in
-  {t with edges = edge :: t.edges;}
+  let edge = { from_node; to_node; label; style } in
+  { t with edges = edge :: t.edges }
 
 let direction_to_string = function
   | TD -> "TD"

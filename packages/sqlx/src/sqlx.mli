@@ -15,8 +15,8 @@ type operation =
   | Transaction
 type error =
   | PoolError of Pool.error
-  | InvalidValue of { field: string; value: string; expected_type: string; reason: string option; }
-  | Timeout of { operation: operation; duration: Time.Duration.t; }
+  | InvalidValue of { field: string; value: string; expected_type: string; reason: string option }
+  | Timeout of { operation: operation; duration: Time.Duration.t }
 module Config: sig
   type isolation_level =
     ReadUncommitted

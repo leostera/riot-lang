@@ -25,7 +25,7 @@ let start_link = fun ~host ~port ?(acceptors = 100) ?(buffer_size = 4_096) ?(tra
           Log.info ("Listening on " ^ host ^ ":" ^ (Int.to_string port));
           (* Start a dynamic supervisor for acceptors *)
           let acceptor_supervisor = Supervisor.Dynamic.start_link
-            ~intensity:{max_restarts = 10;window = Time.Duration.from_secs 60;}
+            ~intensity:{ max_restarts = 10; window = Time.Duration.from_secs 60 }
             ~max_children:((acceptors * 2))
             () in
           (* Spawn acceptors under the supervisor *)

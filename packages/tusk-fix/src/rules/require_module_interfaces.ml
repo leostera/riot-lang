@@ -27,7 +27,7 @@ let interface_path_for = fun path -> Path.(add_extension (remove_extension path)
 let make_diagnostic = fun path ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
     ~suggestion:(("Add a matching interface file at `" ^ Path.to_string (interface_path_for path) ^ "`."))
     ()

@@ -36,14 +36,14 @@ type reactor_command =
       duration_nanos: int64;
       mode: Timer.mode;
       action: Timer.action;
-      reply: Timer.id response;
+      reply: Timer.id response
     }
   | Cancel_timer of Timer.id
   | Register_io of {
       token: Async.Token.t;
       interest: Async.Interest.t;
       source: Async.Source.t;
-      reply: (unit, IO.error) result response;
+      reply: (unit, IO.error) result response
     }
   | Deregister_io of Async.Source.t
 

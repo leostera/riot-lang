@@ -68,7 +68,7 @@ let current_span = fun parser ->
 let expected_span = fun parser ->
   let last_tok = Token_cursor.last_token parser.cursor in
   let end_pos = last_tok.Token.span.end_ in
-  {Ceibo.Span.start = end_pos;end_ = end_pos;}
+  { Ceibo.Span.start = end_pos; end_ = end_pos }
 
 let point_span = fun pos -> Ceibo.Span.make ~start:pos ~end_:pos
 

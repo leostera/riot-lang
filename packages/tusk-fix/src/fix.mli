@@ -8,25 +8,11 @@ type replacement = Fixme.Fix.replacement =
   | Source_of_token of Syn.Cst.syntax_token
   | Text of string
 type operation = Fixme.Fix.operation =
-  | Delete of {
-      target: target;
-    }
-  | Replace of {
-      target: target;
-      replacement: replacement;
-    }
-  | Insert_before of {
-      anchor: target;
-      content: replacement;
-    }
-  | Insert_after of {
-      anchor: target;
-      content: replacement;
-    }
-  | Swap of {
-      left: target;
-      right: target;
-    }
+  | Delete of { target: target }
+  | Replace of { target: target; replacement: replacement }
+  | Insert_before of { anchor: target; content: replacement }
+  | Insert_after of { anchor: target; content: replacement }
+  | Swap of { left: target; right: target }
 type fix = Fixme.Fix.fix = {
   title: string;
   operations: operation list;

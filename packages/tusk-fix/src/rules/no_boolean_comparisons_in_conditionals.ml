@@ -71,7 +71,7 @@ let suggestion_for_condition = fun expr ->
 let make_diagnostic = fun (if_expr: Syn.Cst.if_expression) ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span if_expr.syntax_node)
     ~suggestion:(suggestion_for_condition if_expr.condition)
     ()

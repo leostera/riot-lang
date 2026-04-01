@@ -78,7 +78,7 @@ type read_state = {
 
 let from_bytes = fun data ->
   (* Create a stateful reader that tracks offset *)
-  let state = {offset = 0;} in
+  let state = { offset = 0 } in
   let module BytesRead = struct
     type t = bytes
 
@@ -98,7 +98,7 @@ let from_bytes = fun data ->
 
     let read_vectored = fun data iov ->
       (* Simple implementation: iterate through buffers *)
-      let read_state = {total = 0;continue = true;} in
+      let read_state = { total = 0; continue = true } in
       Iovec.iter iov
         (fun { ba; off; len } ->
           if read_state.continue then
@@ -116,7 +116,7 @@ let from_bytes = fun data ->
   of_read_src (module BytesRead) data
 
 let from_string = fun str ->
-  let state = {offset = 0;} in
+  let state = { offset = 0 } in
   let data = Bytes.of_string str in
   let module StringRead = struct
     type t = string
@@ -137,7 +137,7 @@ let from_string = fun str ->
 
     let read_vectored = fun _str iov ->
       (* Simple implementation: iterate through buffers *)
-      let read_state = {total = 0;continue = true;} in
+      let read_state = { total = 0; continue = true } in
       Iovec.iter iov
         (fun { ba; off; len } ->
           if read_state.continue then

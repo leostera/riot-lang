@@ -85,19 +85,19 @@ let update = fun event model ->
       (model, Command.Quit)
   | Event.KeyDown (Event.Left, _) ->
       let active_tab = max 0 (model.active_tab - 1) in
-      ({model with active_tab;}, Command.Noop)
+      ({ model with active_tab }, Command.Noop)
   | Event.KeyDown (Event.Right, _)
   | Event.KeyDown (Event.Tab, _) ->
       let active_tab = min (num_tabs - 1) (model.active_tab + 1) in
-      ({model with active_tab;}, Command.Noop)
+      ({ model with active_tab }, Command.Noop)
   | Event.KeyDown (Event.Key "1", _) when num_tabs > 0 ->
-      ({model with active_tab = 0;}, Command.Noop)
+      ({ model with active_tab = 0 }, Command.Noop)
   | Event.KeyDown (Event.Key "2", _) when num_tabs > 1 ->
-      ({model with active_tab = 1;}, Command.Noop)
+      ({ model with active_tab = 1 }, Command.Noop)
   | Event.KeyDown (Event.Key "3", _) when num_tabs > 2 ->
-      ({model with active_tab = 2;}, Command.Noop)
+      ({ model with active_tab = 2 }, Command.Noop)
   | Event.KeyDown (Event.Key "4", _) when num_tabs > 3 ->
-      ({model with active_tab = 3;}, Command.Noop)
+      ({ model with active_tab = 3 }, Command.Noop)
   | _ ->
       (model, Command.Noop)
 
@@ -153,6 +153,6 @@ let app = App.make ~init ~update ~view ()
 (* Run it *)
 
 let () =
-  let initial_model = {active_tab = 0;tabs = tabs_data;} in
+  let initial_model = { active_tab = 0; tabs = tabs_data } in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

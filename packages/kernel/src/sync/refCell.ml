@@ -18,7 +18,7 @@ exception BorrowError of string
 
 exception BorrowMutError of string
 
-let create = fun value -> {value;state = Available;}
+let create = fun value -> { value; state = Available }
 
 (* Immutable borrow *)
 

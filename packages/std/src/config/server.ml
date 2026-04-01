@@ -6,22 +6,13 @@ type t = {
   provider: Provider.t;
 }
 
-let empty = {configs = HashMap.create ();provider = Provider.empty;}
+let empty = { configs = HashMap.create (); provider = Provider.empty }
 
 type error =
-  | App_not_found of {
-      app: string;
-    }
-  | Load_failed of {
-      message: string;
-    }
-  | Validation_failed of {
-      app: string;
-      message: string;
-    }
-  | Patch_failed of {
-      message: string;
-    }
+  | App_not_found of { app: string }
+  | Load_failed of { message: string }
+  | Validation_failed of { app: string; message: string }
+  | Patch_failed of { message: string }
 
 let error_to_string = function
   | App_not_found { app } -> "App not found: " ^ app
@@ -93,7 +84,7 @@ let apply_patches (base_value: Spec.value) updates : Spec.value =
 (** Public API *)
 let init = fun ~provider ->
   let configs = load_and_validate_all_specs provider in
-  {configs;provider;}
+  { configs; provider }
 
 let get = fun t ~app ->
   HashMap.get t.configs app
@@ -105,11 +96,11 @@ let reload = fun ?provider t ->
     | None -> t.provider
   in
   let configs = load_and_validate_all_specs new_provider in
-  {configs;provider = new_provider;}
+  { configs; provider = new_provider }
 
 let patch = fun t ~app ~updates ->
   match HashMap.get t.configs app with
-  | None -> Error (App_not_found {app;})
+  | None -> Error (App_not_found { app })
   | Some value ->
       (* Merge updates into value *)
       let patched_value = apply_patches value updates in

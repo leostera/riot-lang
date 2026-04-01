@@ -12,7 +12,7 @@ let build_package = fun ~build_results ?(needs_stdlib_and_unix = false) pkg_name
   (* Override stdlib/unix dependencies if specified *)
   let pkg =
     if needs_stdlib_and_unix then
-      {pkg with uses_stdlib = true;uses_unix = true;uses_dynlink = true;}
+      { pkg with uses_stdlib = true; uses_unix = true; uses_dynlink = true }
     else
       pkg
   in

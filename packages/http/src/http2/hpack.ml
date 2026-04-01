@@ -29,67 +29,67 @@ type encoding_type =
 *)
 
 let static_table = [|
-  {name = ":authority";value = "";};
-  {name = ":method";value = "GET";};
-  {name = ":method";value = "POST";};
-  {name = ":path";value = "/";};
-  {name = ":path";value = "/index.html";};
-  {name = ":scheme";value = "http";};
-  {name = ":scheme";value = "https";};
-  {name = ":status";value = "200";};
-  {name = ":status";value = "204";};
-  {name = ":status";value = "206";};
-  {name = ":status";value = "304";};
-  {name = ":status";value = "400";};
-  {name = ":status";value = "404";};
-  {name = ":status";value = "500";};
-  {name = "accept-charset";value = "";};
-  {name = "accept-encoding";value = "gzip, deflate";};
-  {name = "accept-language";value = "";};
-  {name = "accept-ranges";value = "";};
-  {name = "accept";value = "";};
-  {name = "access-control-allow-origin";value = "";};
-  {name = "age";value = "";};
-  {name = "allow";value = "";};
-  {name = "authorization";value = "";};
-  {name = "cache-control";value = "";};
-  {name = "content-disposition";value = "";};
-  {name = "content-encoding";value = "";};
-  {name = "content-language";value = "";};
-  {name = "content-length";value = "";};
-  {name = "content-location";value = "";};
-  {name = "content-range";value = "";};
-  {name = "content-type";value = "";};
-  {name = "cookie";value = "";};
-  {name = "date";value = "";};
-  {name = "etag";value = "";};
-  {name = "expect";value = "";};
-  {name = "expires";value = "";};
-  {name = "from";value = "";};
-  {name = "host";value = "";};
-  {name = "if-match";value = "";};
-  {name = "if-modified-since";value = "";};
-  {name = "if-none-match";value = "";};
-  {name = "if-range";value = "";};
-  {name = "if-unmodified-since";value = "";};
-  {name = "last-modified";value = "";};
-  {name = "link";value = "";};
-  {name = "location";value = "";};
-  {name = "max-forwards";value = "";};
-  {name = "proxy-authenticate";value = "";};
-  {name = "proxy-authorization";value = "";};
-  {name = "range";value = "";};
-  {name = "referer";value = "";};
-  {name = "refresh";value = "";};
-  {name = "retry-after";value = "";};
-  {name = "server";value = "";};
-  {name = "set-cookie";value = "";};
-  {name = "strict-transport-security";value = "";};
-  {name = "transfer-encoding";value = "";};
-  {name = "user-agent";value = "";};
-  {name = "vary";value = "";};
-  {name = "via";value = "";};
-  {name = "www-authenticate";value = "";};
+  { name = ":authority"; value = "" };
+  { name = ":method"; value = "GET" };
+  { name = ":method"; value = "POST" };
+  { name = ":path"; value = "/" };
+  { name = ":path"; value = "/index.html" };
+  { name = ":scheme"; value = "http" };
+  { name = ":scheme"; value = "https" };
+  { name = ":status"; value = "200" };
+  { name = ":status"; value = "204" };
+  { name = ":status"; value = "206" };
+  { name = ":status"; value = "304" };
+  { name = ":status"; value = "400" };
+  { name = ":status"; value = "404" };
+  { name = ":status"; value = "500" };
+  { name = "accept-charset"; value = "" };
+  { name = "accept-encoding"; value = "gzip, deflate" };
+  { name = "accept-language"; value = "" };
+  { name = "accept-ranges"; value = "" };
+  { name = "accept"; value = "" };
+  { name = "access-control-allow-origin"; value = "" };
+  { name = "age"; value = "" };
+  { name = "allow"; value = "" };
+  { name = "authorization"; value = "" };
+  { name = "cache-control"; value = "" };
+  { name = "content-disposition"; value = "" };
+  { name = "content-encoding"; value = "" };
+  { name = "content-language"; value = "" };
+  { name = "content-length"; value = "" };
+  { name = "content-location"; value = "" };
+  { name = "content-range"; value = "" };
+  { name = "content-type"; value = "" };
+  { name = "cookie"; value = "" };
+  { name = "date"; value = "" };
+  { name = "etag"; value = "" };
+  { name = "expect"; value = "" };
+  { name = "expires"; value = "" };
+  { name = "from"; value = "" };
+  { name = "host"; value = "" };
+  { name = "if-match"; value = "" };
+  { name = "if-modified-since"; value = "" };
+  { name = "if-none-match"; value = "" };
+  { name = "if-range"; value = "" };
+  { name = "if-unmodified-since"; value = "" };
+  { name = "last-modified"; value = "" };
+  { name = "link"; value = "" };
+  { name = "location"; value = "" };
+  { name = "max-forwards"; value = "" };
+  { name = "proxy-authenticate"; value = "" };
+  { name = "proxy-authorization"; value = "" };
+  { name = "range"; value = "" };
+  { name = "referer"; value = "" };
+  { name = "refresh"; value = "" };
+  { name = "retry-after"; value = "" };
+  { name = "server"; value = "" };
+  { name = "set-cookie"; value = "" };
+  { name = "strict-transport-security"; value = "" };
+  { name = "transfer-encoding"; value = "" };
+  { name = "user-agent"; value = "" };
+  { name = "vary"; value = "" };
+  { name = "via"; value = "" };
+  { name = "www-authenticate"; value = "" };
 |]
 
 let static_table_size = Array.length static_table
@@ -144,7 +144,7 @@ module DynamicTable = struct
   }
 
   let create = fun max_size ->
-    {entries = Cell.create [];current_size = Cell.create 0;max_size = Cell.create max_size;}
+    { entries = Cell.create []; current_size = Cell.create 0; max_size = Cell.create max_size }
 
   let size = fun t -> Cell.get t.current_size
 
@@ -328,7 +328,7 @@ type encoder = {
 let create_encoder = fun ?(max_dynamic_table_size = 4_096) () ->
   {
     dynamic_table = DynamicTable.create max_dynamic_table_size;
-    sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ];
+    sensitive_headers = Cell.create [ "authorization"; "cookie"; "set-cookie" ]
   }
 
 let update_max_table_size = fun encoder new_size ->
@@ -457,7 +457,7 @@ type decoder = {
 }
 
 let create_decoder = fun ?(max_dynamic_table_size = 4_096) () ->
-  {dynamic_table = DynamicTable.create max_dynamic_table_size;}
+  { dynamic_table = DynamicTable.create max_dynamic_table_size }
 
 let update_max_table_size = fun decoder new_size ->
   DynamicTable.update_max_size decoder.dynamic_table new_size
@@ -501,7 +501,7 @@ let decode_header_block = fun decoder data offset ->
               match String_.decode data pos2 with
               | Error e -> Error e
               | Ok (value, new_offset) ->
-                  let header = {name;value;} in
+                  let header = { name; value } in
                   Ok ([ header ], new_offset)
         )
     else if first_code land 0x20 != 0 then
@@ -528,7 +528,7 @@ let decode_header_block = fun decoder data offset ->
           | Ok (name, pos2) ->
               match String_.decode data pos2 with
               | Error e -> Error e
-              | Ok (value, new_offset) -> Ok ([ {name;value;} ], new_offset)
+              | Ok (value, new_offset) -> Ok ([ { name; value } ], new_offset)
         )
     else
       (* Literal without Indexing: 0000xxxx *)
@@ -549,7 +549,7 @@ let decode_header_block = fun decoder data offset ->
           | Ok (name, pos2) ->
               match String_.decode data pos2 with
               | Error e -> Error e
-              | Ok (value, new_offset) -> Ok ([ {name;value;} ], new_offset)
+              | Ok (value, new_offset) -> Ok ([ { name; value } ], new_offset)
         )
 
 let decode = fun decoder data ->

@@ -6,7 +6,7 @@ type t = {
   length: int;
 }
 
-let create = fun source -> {source;pos = 0;length = String.length source;}
+let create = fun source -> { source; pos = 0; length = String.length source }
 
 let position = fun t -> t.pos
 

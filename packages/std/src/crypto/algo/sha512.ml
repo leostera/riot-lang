@@ -8,7 +8,7 @@ type state = {
   mutable buffer: IO.Buffer.t;
 }
 
-let create = fun () -> {buffer = IO.Buffer.create 512;}
+let create = fun () -> { buffer = IO.Buffer.create 512 }
 
 let write = fun state bytes ->
   IO.Buffer.add_bytes state.buffer bytes

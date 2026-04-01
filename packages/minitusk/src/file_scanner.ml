@@ -43,11 +43,11 @@ let rec walk = fun ~root ->
           walk ~root:full_path)
         entries
     in
-    Dir {path = root;name;children;}
+    Dir { path = root; name; children }
   else
     (* It's a file *)
     let ext = Filename.extension name in
-    File {path = root;name;ext;}
+    File { path = root; name; ext }
 (** Pretty print a file tree for debugging *)
 let rec print_tree = fun ?(indent = 0) tree ->
   let prefix = String.make (indent * 2) ' ' in
@@ -67,4 +67,4 @@ let rec get_directories_only = fun tree ->
   | File _ -> None
   | Dir { path; name; children } ->
       let dir_children = List.filter_map get_directories_only children in
-      Some (Dir {path;name;children = dir_children;})
+      Some (Dir { path; name; children = dir_children })

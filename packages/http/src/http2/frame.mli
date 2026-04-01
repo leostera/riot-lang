@@ -49,7 +49,7 @@ type setting =
   | MaxHeaderListSize of int
 (** Frame payload types *)
 type payload =
-  | DataPayload of { data: string; pad_length: int option; }
+  | DataPayload of { data: string; pad_length: int option }
   | HeadersPayload of {
       pad_length: int option;
       stream_dependency: int option;  (** Present if PRIORITY flag set *)
@@ -57,17 +57,17 @@ type payload =
       exclusive: bool;
       header_block_fragment: string;
     }
-  | PriorityPayload of { stream_dependency: int; exclusive: bool; weight: int; }
+  | PriorityPayload of { stream_dependency: int; exclusive: bool; weight: int }
   | RstStreamPayload of error_code
   | SettingsPayload of setting list
   | PushPromisePayload of {
       pad_length: int option;
       promised_stream_id: int;
-      header_block_fragment: string;
+      header_block_fragment: string
     }
   | PingPayload of string
   (** 8 bytes *)
-  | GoawayPayload of { last_stream_id: int; error_code: error_code; debug_data: string; }
+  | GoawayPayload of { last_stream_id: int; error_code: error_code; debug_data: string }
   | WindowUpdatePayload of int
   (** Window size increment *)
   | ContinuationPayload of string

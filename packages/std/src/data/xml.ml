@@ -3,7 +3,7 @@ open IO
 open Collections
 
 type t =
-  | Element of { name: string; attrs: (string * string) list; children: t list; }
+  | Element of { name: string; attrs: (string * string) list; children: t list }
   | Text of string
   | CData of string
 
@@ -20,7 +20,7 @@ let escape_xml = fun str ->
     str;
   Buffer.contents buf
 
-let element = fun name ?(attrs = []) children -> Element {name;attrs;children;}
+let element = fun name ?(attrs = []) children -> Element { name; attrs; children }
 
 let text = fun str -> Text (escape_xml str)
 

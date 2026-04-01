@@ -3,7 +3,7 @@ open Std.Collections
 open Std.Sync
 
 type error =
-  | Exhausted of { waiting: int; max_connections: int; timeout: Time.Duration.t; }
+  | Exhausted of { waiting: int; max_connections: int; timeout: Time.Duration.t }
   | ConnectionError of Connection.error
   | Timeout of Time.Duration.t
 
@@ -61,7 +61,7 @@ type pool_state = {
 }
 
 let spawn_connection = fun (Config { driver; driver_config; _ }) ->
-  Connection.create (Connection.Config {driver;config = driver_config;})
+  Connection.create (Connection.Config { driver; config = driver_config })
 
 let find_available = fun connections ->
   List.find_opt
@@ -241,7 +241,7 @@ let create = fun (Config { min_connections; max_connections; _ } as config) ->
     Error (Connection.DriverError {
       error = "Invalid pool configuration";
       to_string = (fun s -> s);
-      to_json = (fun s -> Data.Json.string s);
+      to_json = (fun s -> Data.Json.string s)
     })
   else
     (* Try to create at least one connection to validate driver config *)
@@ -254,7 +254,7 @@ let create = fun (Config { min_connections; max_connections; _ } as config) ->
               pool_supervisor config;
               Ok ())
         in
-        Ok {config;supervisor;}
+        Ok { config; supervisor }
 
 let acquire = fun t ->
   send t.supervisor (PoolMsg (Acquire (self ())));

@@ -13,9 +13,7 @@ type missing_dependency = {
 }
 
 type create_error =
-  | MissingPackages of {
-      missing: missing_dependency list;
-    }
+  | MissingPackages of { missing: missing_dependency list }
 
 type build_status =
   Cached
@@ -29,16 +27,13 @@ type build_scope =
 type package_scope = build_scope
 
 type package_node =
-  | Unplanned of {
-      package: Package.t;
-      scope: package_scope;
-    }
+  | Unplanned of { package: Package.t; scope: package_scope }
   | Planned of {
       package: Package.t;
       scope: package_scope;
       module_graph: Module_node.t G.t;
       action_graph: Action_graph.t;
-      hash: Std.Crypto.hash;
+      hash: Std.Crypto.hash
     }
   | Built of {
       package: Package.t;
@@ -48,19 +43,10 @@ type package_node =
       hash: Std.Crypto.hash;
       artifact: Artifact.t;
       status: build_status;
-      depset: Dependency.t list;
+      depset: Dependency.t list
     }
-  | Failed of {
-      package: Package.t;
-      scope: package_scope;
-      hash: Std.Crypto.hash;
-      error: string;
-    }
-  | Skipped of {
-      package: Package.t;
-      scope: package_scope;
-      reason: string;
-    }
+  | Failed of { package: Package.t; scope: package_scope; hash: Std.Crypto.hash; error: string }
+  | Skipped of { package: Package.t; scope: package_scope; reason: string }
 
 type t = {
   graph: package_node G.t;
@@ -159,7 +145,7 @@ let create ~scope (workspace: Workspace.t) : (t, create_error) result =
   let name_to_node = HashMap.create () in
   let missing = vec [] in
   let insert_node package scope =
-    let node = G.add_node graph (Unplanned {package;scope;}) in
+    let node = G.add_node graph (Unplanned { package; scope }) in
     let _ = HashMap.insert name_to_node (package_key ~package_name:package.name scope) node in
     ()
   in
@@ -208,7 +194,7 @@ let create ~scope (workspace: Workspace.t) : (t, create_error) result =
             | Some dep_node -> G.add_edge from_node ~depends_on:dep_node
             | None ->
                 if not (is_well_known_package dep_name) then
-                  Vector.push missing {package = pkg.name;dependency = dep_name;}
+                  Vector.push missing { package = pkg.name; dependency = dep_name }
           )
       in
       (
@@ -257,9 +243,9 @@ let create ~scope (workspace: Workspace.t) : (t, create_error) result =
         pkg.dev_dependencies)
     workspace.packages;
   if Vector.len missing > 0 then
-    Error (MissingPackages {missing = Vector.into_iter missing |> Iterator.to_list;})
+    Error (MissingPackages { missing = Vector.into_iter missing |> Iterator.to_list })
   else
-    Ok {graph;name_to_node;}
+    Ok { graph; name_to_node }
 
 let get_node = fun pg package ->
   HashMap.get pg.name_to_node (package_key ~package_name:package.Package.name Runtime)
@@ -304,7 +290,7 @@ let target_node_for_package = fun pg pkg_name ->
 let filter_for_packages = fun pg pkg_names ->
   let target_nodes = List.filter_map (target_node_for_package pg) pkg_names in
   match target_nodes with
-  | [] -> {graph = G.make ();name_to_node = HashMap.create ();}
+  | [] -> { graph = G.make (); name_to_node = HashMap.create () }
   | _ ->
       let reachable_ids = G.reachable_from pg.graph target_nodes in
       let reachable_set = HashSet.create () in
@@ -343,7 +329,7 @@ let filter_for_packages = fun pg pkg_names ->
                         )
                       | None -> ())
                   node.deps);
-      {graph = filtered_graph;name_to_node = filtered_name_to_node;}
+      { graph = filtered_graph; name_to_node = filtered_name_to_node }
 
 let filter_for_package = fun pg pkg_name -> filter_for_packages pg [ pkg_name ]
 

@@ -527,7 +527,7 @@ module Driver = struct
       Error ConnectionClosed
     else
       let name = "stmt_" ^ string_of_int (Random.int 1_000_000) in
-      let stmt = {name;sql;conn;} in
+      let stmt = { name; sql; conn } in
       Collections.HashMap.insert conn.prepared_statements name stmt |> ignore;
       Ok stmt
 
@@ -565,7 +565,7 @@ module Driver = struct
             | (_, _, _, Error e, _)
             | (_, _, _, _, Error e) -> Error e
             | Ok (), Ok (), Ok (), Ok (), Ok () ->
-                let result_set = {rows = Collections.Queue.create ();rows_affected = 0;} in
+                let result_set = { rows = Collections.Queue.create (); rows_affected = 0 } in
                 let column_info = ref [] in
                 let rec read_extended_results () =
                   match read_message stream with
@@ -640,7 +640,7 @@ module Driver = struct
             match write_message stream query_msg with
             | Error e -> Error e
             | Ok () ->
-                let result_set = {rows = Collections.Queue.create ();rows_affected = 0;} in
+                let result_set = { rows = Collections.Queue.create (); rows_affected = 0 } in
                 let column_info = ref [] in
                 let rec read_query_results () =
                   match read_message stream with

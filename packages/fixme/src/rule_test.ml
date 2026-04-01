@@ -13,9 +13,9 @@ let run = fun ~rules ?filename source ->
   | Error _ as err ->
       err
   | Ok None ->
-      Ok {initial;fixed_source = None;applied_fixes = [];after = None;}
+      Ok { initial; fixed_source = None; applied_fixes = []; after = None }
   | Ok (Some (fixed_source, applied_fixes)) ->
       let after = Source_runner.run ~rules ?filename fixed_source in
-      Ok {initial;fixed_source = Some fixed_source;applied_fixes;after = Some after;}
+      Ok { initial; fixed_source = Some fixed_source; applied_fixes; after = Some after }
 
 let run_rule = fun ~rule ?filename source -> run ~rules:[ rule ] ?filename source

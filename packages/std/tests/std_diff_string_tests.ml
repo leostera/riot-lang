@@ -21,9 +21,9 @@ let diff_strings = fun left right ->
         in
         match (left_char, right_char) with
         | Some x, Some y when x = y -> acc
-        | None, Some y -> {Diff.path = [ Diff.Index idx ];kind = Diff.Added y;} :: acc
-        | Some x, None -> {Diff.path = [ Diff.Index idx ];kind = Diff.Removed x;} :: acc
-        | Some x, Some y -> {Diff.path = [ Diff.Index idx ];kind = Diff.Changed (x, y);} :: acc
+        | None, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
+        | Some x, None -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc
+        | Some x, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Changed (x, y) } :: acc
         | None, None -> acc
       in
       loop (idx + 1) next

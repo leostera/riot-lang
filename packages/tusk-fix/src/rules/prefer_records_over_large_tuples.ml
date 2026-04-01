@@ -47,7 +47,7 @@ let should_prefer_record = fun elements ->
 let make_diagnostic = fun (decl: Syn.Cst.TypeDeclaration.t) ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.TypeDeclaration.syntax_node decl))
     ~suggestion:"Replace this tuple alias with a record type so each position has a stable field name."
     ()
@@ -55,7 +55,7 @@ let make_diagnostic = fun (decl: Syn.Cst.TypeDeclaration.t) ->
 let make_type_diagnostic = fun syntax_node ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Replace this tuple type with a record type so each position has a stable field name."
     ()

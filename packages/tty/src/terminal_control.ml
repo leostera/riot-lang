@@ -51,7 +51,7 @@ type window_size = {
 
 let window_size = fun t ->
   let size = Terminal.(t.size) in
-  {rows = size.rows;columns = size.cols;width_px = 0;height_px = 0;}
+  { rows = size.rows; columns = size.cols; width_px = 0; height_px = 0 }
 
 (* Raw mode check *)
 

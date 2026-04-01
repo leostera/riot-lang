@@ -36,7 +36,7 @@ type Message.t +=
 (** Component process messages *)
 type Message.t +=
   | ComponentMount
-  | ComponentEvent of { handler_id: string; event_data: string; }
+  | ComponentEvent of { handler_id: string; event_data: string }
 (** Attach handler IDs to component tree and register handlers *)
 let rec attach_handler_ids registry (component: 'msg Component.t) : 'msg Component.t =
   match component with
@@ -71,7 +71,7 @@ let rec attach_handler_ids registry (component: 'msg Component.t) : 'msg Compone
       in
       (* Process children recursively *)
       let new_children = List.map (attach_handler_ids registry) children in
-      Component.El {tag;attrs = regular_attrs @ handler_attrs;children = new_children;}
+      Component.El { tag; attrs = regular_attrs @ handler_attrs; children = new_children }
 (** Render component with handler IDs attached *)
 let render_with_handlers = fun registry component ->
   let component_with_ids = attach_handler_ids registry component in
@@ -204,7 +204,7 @@ module MountHandler (C : Component) = struct
     let component =
       ComponentProcess.start_link this (module C) conn component_args
     in
-    `ok {component;}
+    `ok { component }
 
   let handle_frame = fun (frame: Http.Ws.Frame.t) _conn state ->
     match frame.opcode with
@@ -216,7 +216,7 @@ module MountHandler (C : Component) = struct
             `ok state
         | Ok Protocol.Event { handler_id; event_data } ->
             Log.debug ("Received Event: " ^ handler_id);
-            send state.component (ComponentEvent {handler_id;event_data;});
+            send state.component (ComponentEvent { handler_id; event_data });
             `ok state
         | Error err ->
             Log.error ("Failed to deserialize: " ^ err);
@@ -487,7 +487,7 @@ let mount = fun (type s m) ((module C : Component with type state = s and type m
   conn: Middleware.Conn.t
 ) ->
   let module M = MountHandler (C) in
-  let opts = Channel.Handler.{do_upgrade = true;} in
+  let opts = Channel.Handler.{ do_upgrade = true } in
   (opts, Channel.Handler.make (module M) conn)
 (** Embed a LiveView component into a page.
     

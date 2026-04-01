@@ -27,7 +27,7 @@ let make_package = fun ~root ~name ->
     build_dependencies = [];
     foreign_dependencies = [];
     binaries = [];
-    library = Some {path = Path.v "src/lib.ml";};
+    library = Some { path = Path.v "src/lib.ml" };
     sources =
       {
         src = [];
@@ -36,7 +36,7 @@ let make_package = fun ~root ~name ->
         examples = [];
         bench = [];
       };
-    compiler = {profile_overrides = [];target_overrides = [];};
+    compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
   }
@@ -45,7 +45,7 @@ let make_node = fun ~package ~srcs ->
   let graph = Tusk_planner.Action_graph.create () in
   let spec =
     Tusk_planner.Action_node.make
-      ~actions:[ Tusk_planner.Action.WriteFile {destination = Path.v "out.txt";content = "ok";}; ]
+      ~actions:[ Tusk_planner.Action.WriteFile { destination = Path.v "out.txt"; content = "ok" }; ]
       ~outs:[ Path.v "out.txt" ]
       ~srcs
       ~package
@@ -59,7 +59,7 @@ let make_cache_node = fun ~package ~content ->
   let graph = Tusk_planner.Action_graph.create () in
   let spec =
     Tusk_planner.Action_node.make
-      ~actions:[ Tusk_planner.Action.WriteFile {destination = Path.v "out.txt";content;}; ]
+      ~actions:[ Tusk_planner.Action.WriteFile { destination = Path.v "out.txt"; content }; ]
       ~outs:[ Path.v "out.txt" ]
       ~srcs:[]
       ~package

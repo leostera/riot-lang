@@ -48,7 +48,7 @@ let benchmarks =
     case "vector 100 pushes" bench_vector_100_pushes;
     case "hashmap single insert" bench_hashmap_insert;
     case "hashmap 100 inserts" bench_hashmap_100_inserts;
-    with_config ~config:{iterations = 1_000;warmup = 50;} "list append" bench_list_append;
+    with_config ~config:{ iterations = 1_000; warmup = 50 } "list append" bench_list_append;
     skip "skipped benchmark" (fun () -> ());
     compare
       "insert 100 sequential elements"

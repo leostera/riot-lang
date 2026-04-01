@@ -38,7 +38,7 @@ let parameter_has_inline_type = fun parameter ->
 let make_diagnostic = fun parameter ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Parameter.syntax_node parameter))
     ~suggestion:"Move the parameter type annotation into the function signature"
     ()

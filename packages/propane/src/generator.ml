@@ -13,13 +13,13 @@ let string_of_char_list = fun chars ->
 
 (* === CONSTANTS === *)
 
-let return = fun v -> {run = fun _rnd _size -> v;}
+let return = fun v -> { run = fun _rnd _size -> v }
 
 let exactly = return
 
 (* === TRANSFORMATIONS === *)
 
-let map = fun f gen -> {run = fun rnd size -> f (gen.run rnd size);}
+let map = fun f gen -> { run = fun rnd size -> f (gen.run rnd size) }
 
 let map2 = fun f gen1 gen2 ->
   {
@@ -104,7 +104,7 @@ let frequency = fun weighted_gens ->
 
 (* === SIZE CONTROL === *)
 
-let sized = fun f -> {run = fun rnd size -> (f size).run rnd size;}
+let sized = fun f -> { run = fun rnd size -> (f size).run rnd size }
 
 let resize = fun new_size gen ->
   {
@@ -115,17 +115,17 @@ let resize = fun new_size gen ->
 
 (* === RECURSIVE GENERATORS === *)
 
-let delay = fun f -> {run = fun rnd size -> (f ()).run rnd size;}
+let delay = fun f -> { run = fun rnd size -> (f ()).run rnd size }
 
 let fix = fun f ->
   let rec self n = f self n in
-  fun n -> {run = fun rnd size -> (self n).run rnd size;}
+  fun n -> { run = fun rnd size -> (self n).run rnd size }
 
 (* === PRIMITIVE GENERATORS === *)
 
 (* Integers *)
 
-let int = {run = fun rnd _size -> Random.State.bits rnd;}
+let int = { run = fun rnd _size -> Random.State.bits rnd }
 
 let int32 = {
   run =
@@ -225,7 +225,7 @@ let float_negative =
 
 (* Booleans *)
 
-let bool = {run = fun rnd _size -> Random.State.bool rnd;}
+let bool = { run = fun rnd _size -> Random.State.bool rnd }
 
 let weighted_bool = fun weight_true weight_false ->
   if weight_true <= 0 || weight_false <= 0 then
@@ -234,7 +234,7 @@ let weighted_bool = fun weight_true weight_false ->
 
 (* Characters *)
 
-let char = {run = fun rnd _size -> Char.chr (Random.State.int rnd 256);}
+let char = { run = fun rnd _size -> Char.chr (Random.State.int rnd 256) }
 
 let char_range = fun low high ->
   {

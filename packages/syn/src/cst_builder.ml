@@ -39,7 +39,7 @@ let bail = fun ~message ~syntax_node ~context ->
       message;
       syntax_kind = Ceibo.Red.SyntaxNode.kind syntax_node;
       span = Ceibo.Red.SyntaxNode.span syntax_node;
-      context;
+      context
     })
 
 let unsupported_parameter = fun node ->
@@ -86,7 +86,7 @@ let unsupported_item = fun node ->
 
 let is_trivia = fun kind -> let open Syntax_kind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
 
-let token = fun syntax_tok -> Cst.Token.{syntax_token = syntax_tok;}
+let token = fun syntax_tok -> Cst.Token.{ syntax_token = syntax_tok }
 
 let keyword_let_text = "let"
 
@@ -172,7 +172,7 @@ let docstring_from_token = fun docstring_syntax_token ->
   Cst.Docstring.{
     syntax_node = synthetic_syntax_node_wrapping_token docstring_syntax_token;
     docstring_token =
-      Cst.Token.{syntax_token = docstring_syntax_token;};
+      Cst.Token.{ syntax_token = docstring_syntax_token };
     kind = docstring_kind_from_text (Ceibo.Red.SyntaxToken.text docstring_syntax_token);
   }
 
@@ -180,7 +180,7 @@ let comment_from_token = fun comment_syntax_token ->
   Cst.Comment.{
     syntax_node = synthetic_syntax_node_wrapping_token comment_syntax_token;
     comment_token =
-      Cst.Token.{syntax_token = comment_syntax_token;};
+      Cst.Token.{ syntax_token = comment_syntax_token };
   }
 
 let syntax_token_from_trivia = fun trivia ->
@@ -390,7 +390,7 @@ let source_file_phrase_separator_tokens = fun root ->
   |> List.filter_map
     (fun syntax_token ->
       if String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ";" then
-        Some {Cst.Token.syntax_token = syntax_token;}
+        Some { Cst.Token.syntax_token = syntax_token }
       else
         None)
 
@@ -533,11 +533,11 @@ let string_delimiter_and_contents = fun text ->
             len
         in
         (
-          Cst.Quoted {marker;},
+          Cst.Quoted { marker },
           substring text contents_start (contents_end - contents_start),
           terminated
         )
-    | None -> (Cst.Quoted {marker = "";}, substring text 1 (len - 1), false)
+    | None -> (Cst.Quoted { marker = "" }, substring text 1 (len - 1), false)
   else
     (Cst.DoubleQuote, text, false)
 
@@ -632,7 +632,7 @@ let float_parts = fun text ->
             | '-' -> (Some Cst.Negative, substring exponent_body 1 (String.length exponent_body - 1))
             | _ -> (None, exponent_body)
         in
-        (substring body 0 index, Some {Cst.marker = substring body index 1;sign;digits;})
+        (substring body 0 index, Some { Cst.marker = substring body index 1; sign; digits })
     | None -> (body, None)
   in
   let dot_index = find_char_from body_without_exponent 0 '.' in
@@ -694,7 +694,7 @@ let span_of_syntax_node_nontrivia_bounds = fun syntax_node ->
       in
       {
         Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
-        end_ = (Ceibo.Red.SyntaxToken.span last).end_;
+        end_ = (Ceibo.Red.SyntaxToken.span last).end_
       }
 
 let owned_trivia_from_node_excluding_spans = fun _node _excluded_spans -> []
@@ -895,7 +895,7 @@ let append_value_declaration_leading_trivia = fun decl trivia ->
   decl
 
 let append_value_declaration_trailing_comment = fun (decl: Cst.value_declaration) comment ->
-  {decl with trailing_comment = Some comment;}
+  { decl with trailing_comment = Some comment }
 
 let sort_trivia_by_source = fun trivia ->
   List.sort
@@ -1032,7 +1032,7 @@ let normalize_constructor_arguments_owned_trivia = fun ~source ->
   | Cst.ConstructorArguments.Record { opening_token; fields; closing_token } -> Cst.ConstructorArguments.Record {
     opening_token;
     fields = normalize_record_fields_owned_trivia ~source fields;
-    closing_token;
+    closing_token
   }
   | Cst.ConstructorArguments.Tuple _ as arguments -> arguments
 
@@ -1041,7 +1041,7 @@ let rec normalize_variant_constructor_owned_trivia = fun ~source constructor ->
   match Cst.VariantConstructor.arguments constructor with
   | Some arguments -> {
     constructor
-    with arguments = Some (normalize_constructor_arguments_owned_trivia ~source arguments);
+    with arguments = Some (normalize_constructor_arguments_owned_trivia ~source arguments)
   }
   | None -> constructor
 
@@ -1055,11 +1055,16 @@ let normalize_type_definition_owned_trivia = fun ~source ->
   function
   | Cst.TypeDefinition.Record { syntax_node; opening_token; fields; closing_token } ->
       let normalized_fields = normalize_record_fields_owned_trivia ~source fields in
-      Cst.TypeDefinition.Record {syntax_node;opening_token;fields = normalized_fields;closing_token;}
+      Cst.TypeDefinition.Record {
+        syntax_node;
+        opening_token;
+        fields = normalized_fields;
+        closing_token
+      }
   | Cst.TypeDefinition.Variant { syntax_node; constructors } ->
       let normalized_constructors = constructors
       |> normalize_variant_constructor_sequence_owned_trivia ~source ~source_node:syntax_node in
-      Cst.TypeDefinition.Variant {syntax_node;constructors = normalized_constructors;}
+      Cst.TypeDefinition.Variant { syntax_node; constructors = normalized_constructors }
   | type_definition ->
       type_definition
 
@@ -1067,7 +1072,7 @@ let normalize_single_type_declaration_owned_trivia = fun ~source decl ->
   let normalized_type_definition = normalize_type_definition_owned_trivia
     ~source
     (Cst.TypeDeclaration.type_definition decl) in
-  {decl with type_definition = normalized_type_definition;}
+  { decl with type_definition = normalized_type_definition }
 
 let split_type_declaration_trailing_trivia = fun ~source ~has_next_sibling decl ->
   let _ = source in
@@ -1112,7 +1117,7 @@ let rec let_binding_chain_of_list = function
   | [] -> None
   | (binding: Cst.LetBinding.t) :: rest -> Some {
     binding
-    with and_binding = let_binding_chain_of_list rest;
+    with and_binding = let_binding_chain_of_list rest
   }
 
 let let_binding_chain_to_list = fun (binding: Cst.LetBinding.t) ->
@@ -1122,7 +1127,7 @@ let rec binding_operator_chain_of_list = function
   | [] -> None
   | (binding: Cst.binding_operator_binding) :: rest -> Some {
     binding
-    with and_binding = binding_operator_chain_of_list rest;
+    with and_binding = binding_operator_chain_of_list rest
   }
 
 let rec binding_operator_bindings_of_chain = fun (binding: Cst.binding_operator_binding) ->
@@ -1141,21 +1146,21 @@ let rec type_declaration_chain_of_list = function
   | [] -> None
   | (decl: Cst.TypeDeclaration.t) :: rest -> Some {
     decl
-    with next_and_declaration = type_declaration_chain_of_list rest;
+    with next_and_declaration = type_declaration_chain_of_list rest
   }
 
 let rec module_signature_chain_of_list = function
   | [] -> None
   | (decl: Cst.ModuleSignature.t) :: rest -> Some {
     decl
-    with next_and_declaration = module_signature_chain_of_list rest;
+    with next_and_declaration = module_signature_chain_of_list rest
   }
 
 let rec module_structure_chain_of_list = function
   | [] -> None
   | (decl: Cst.ModuleStructure.t) :: rest -> Some {
     decl
-    with next_and_declaration = module_structure_chain_of_list rest;
+    with next_and_declaration = module_structure_chain_of_list rest
   }
 
 let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_leading = []) decl ->
@@ -1178,7 +1183,7 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
   let rec restore_member_nodes acc nodes decls =
     match nodes, decls with
     | node :: node_rest, ((decl: Cst.TypeDeclaration.t) :: decl_rest) -> restore_member_nodes
-      ({decl with syntax_node = node;next_and_declaration = None;} :: acc)
+      ({ decl with syntax_node = node; next_and_declaration = None } :: acc)
       node_rest
       decl_rest
     | [], [] -> Some (List.rev acc)
@@ -1191,7 +1196,7 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
       (decl :: Cst.TypeDeclaration.and_declarations decl) with
     | Some member_decls -> member_decls
     | None -> decl :: Cst.TypeDeclaration.and_declarations decl
-    |> List.map (fun (decl: Cst.TypeDeclaration.t) -> {decl with next_and_declaration = None;})
+    |> List.map (fun (decl: Cst.TypeDeclaration.t) -> { decl with next_and_declaration = None })
   in
   let normalized_decls, bubbled_to_next = normalize_type_declaration_sequence
     ~source
@@ -1219,10 +1224,10 @@ let normalize_type_declaration_group = fun ~source ~has_next_sibling ?(initial_l
   | first :: rest ->
       let first =
         match Ceibo.Red.SyntaxNode.kind group_syntax_node with
-        | Syntax_kind.TYPE_MUTUAL_DECL -> {first with syntax_node = group_syntax_node;}
+        | Syntax_kind.TYPE_MUTUAL_DECL -> { first with syntax_node = group_syntax_node }
         | _ -> first
       in
-      ({first with next_and_declaration = type_declaration_chain_of_list rest;}, bubbled_to_next)
+      ({ first with next_and_declaration = type_declaration_chain_of_list rest }, bubbled_to_next)
 
 let map_last_type_declaration_in_group = fun decl f ->
   match List.rev (Cst.TypeDeclaration.and_declarations decl) with
@@ -1232,7 +1237,7 @@ let map_last_type_declaration_in_group = fun decl f ->
       {
         decl
         with next_and_declaration = type_declaration_chain_of_list
-          (List.rev (updated_last :: previous_rev));
+          (List.rev (updated_last :: previous_rev))
       }
 
 let absorb_next_type_declaration_leading_trivia = fun ~source:_ current_decl next_decl ->
@@ -1548,7 +1553,7 @@ let rec detach_multiline_signature_value_trailing_comments = fun ~source ->
         ~start:(value_declaration_nontrivia_end decl)
         ~end_:(Ceibo.Red.SyntaxNode.span (Cst.Comment.syntax_node comment)).start -> Cst.SignatureItem.ValueDeclaration {
         decl
-        with trailing_comment = None;
+        with trailing_comment = None
       }
       :: Cst.SignatureItem.Comment comment
       :: detach_multiline_signature_value_trailing_comments ~source rest
@@ -1805,17 +1810,17 @@ let constant_from_syntax_token = fun ~syntax_node syntax_token ->
         syntax_node;
         literal_token;
         contents = char_contents (Cst.Token.text literal_token);
-        attributes = [];
+        attributes = []
       }
   | Syntax_kind.BOOL_LITERAL ->
       Cst.Constant.Bool {
         syntax_node;
         literal_token;
         value = String.equal (Cst.Token.text literal_token) "true";
-        attributes = [];
+        attributes = []
       }
   | Syntax_kind.UNIT_LITERAL ->
-      Cst.Constant.Unit {syntax_node;attributes = [];}
+      Cst.Constant.Unit { syntax_node; attributes = [] }
   | _ ->
       bail
         ~message:"expected literal token during Ceibo -> CST lifting"
@@ -1824,7 +1829,7 @@ let constant_from_syntax_token = fun ~syntax_node syntax_token ->
 
 let constant_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
-  | Syntax_kind.UNIT_LITERAL -> Cst.Constant.Unit {syntax_node = node;attributes = [];}
+  | Syntax_kind.UNIT_LITERAL -> Cst.Constant.Unit { syntax_node = node; attributes = [] }
   | _ ->
       let literal_token = literal_token_from_node ~context:[ "constant" ] node in
       constant_from_syntax_token ~syntax_node:node (Cst.Token.syntax_token literal_token)
@@ -1849,7 +1854,7 @@ let module_path_from_tokens = fun ~syntax_node syntax_tokens ->
             syntax_node;
             prefix;
             dot_token = token dot_token;
-            name_token = token name_syntax_token;
+            name_token = token name_syntax_token
           })
           tail
         | None -> prefix
@@ -1859,7 +1864,7 @@ let module_path_from_tokens = fun ~syntax_node syntax_tokens ->
   in
   match skip_to_name syntax_tokens with
   | Some (name_syntax_token, rest) -> build
-    (Cst.Ident.Ident {syntax_node;name_token = token name_syntax_token;})
+    (Cst.Ident.Ident { syntax_node; name_token = token name_syntax_token })
     rest
   | None -> bail
     ~message:"expected at least one path segment during Ceibo -> CST lifting"
@@ -1886,7 +1891,7 @@ let ident_path_from_node = fun node ->
             let end_offset = (Ceibo.Red.SyntaxToken.span last).end_ in
             synthetic_token ~kind:Syntax_kind.IDENT_EXPR ~text ~start_offset ~end_offset
       in
-      Cst.Ident.Ident {syntax_node = node;name_token;}
+      Cst.Ident.Ident { syntax_node = node; name_token }
   | [] -> bail
     ~message:"expected identifier path segment during Ceibo -> CST lifting"
     ~syntax_node:node
@@ -1907,7 +1912,7 @@ let rec module_path_like_from_node = fun node ->
             syntax_node = node;
             prefix;
             dot_token = token dot_syntax_token;
-            name_token = token name_syntax_token;
+            name_token = token name_syntax_token
           }
       | _ -> module_path_from_tokens ~syntax_node:node (direct_non_trivia_tokens node)
     )
@@ -1993,7 +1998,7 @@ let rec module_like_path_from_expression_node = fun node ->
             syntax_node = node;
             prefix;
             dot_token = token dot_syntax_token;
-            name_token = token name_syntax_token;
+            name_token = token name_syntax_token
           })
           | None -> None
         )
@@ -2108,7 +2113,7 @@ let attribute_from_node node : Cst.attribute =
     Cst.syntax_node = node;
     sigil_tokens = List.map token sigil_syntax_tokens;
     name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:attribute_sigil_texts shell_tokens;
-    payload = attribute_payload_from_shell shell_node;
+    payload = attribute_payload_from_shell shell_node
   }
   | [] -> bail
     ~message:"expected attribute sigil during Ceibo -> CST lifting"
@@ -2190,7 +2195,7 @@ let is_initializer_node = fun node ->
 let class_field_with_attributes = fun field attributes ->
   List.fold_left
     (fun field attribute ->
-      Cst.ClassField.Attribute {syntax_node = Cst.ClassField.syntax_node field;field;attribute;})
+      Cst.ClassField.Attribute { syntax_node = Cst.ClassField.syntax_node field; field; attribute })
     field
     attributes
 
@@ -2455,95 +2460,95 @@ let pattern_with_attributes = fun pattern attributes ->
       match pattern with
       | Cst.Pattern.Identifier pattern -> Cst.Pattern.Identifier {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Wildcard pattern -> Cst.Pattern.Wildcard {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Extension pattern -> Cst.Pattern.Extension {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Literal pattern -> Cst.Pattern.Literal {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Lazy pattern -> Cst.Pattern.Lazy {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Exception pattern -> Cst.Pattern.Exception {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Range pattern -> Cst.Pattern.Range {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Operator pattern -> Cst.Pattern.Operator {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.FirstClassModule pattern -> Cst.Pattern.FirstClassModule {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.PolyVariant pattern -> Cst.Pattern.PolyVariant {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.PolyVariantInherit pattern -> Cst.Pattern.PolyVariantInherit {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Constructor pattern -> Cst.Pattern.Constructor {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Tuple pattern -> Cst.Pattern.Tuple {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.List pattern -> Cst.Pattern.List {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Array pattern -> Cst.Pattern.Array {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Record pattern -> Cst.Pattern.Record {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Cons pattern -> Cst.Pattern.Cons {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Or pattern -> Cst.Pattern.Or {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Alias pattern -> Cst.Pattern.Alias {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Typed pattern -> Cst.Pattern.Typed {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Effect pattern -> Cst.Pattern.Effect {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.LocalOpen pattern -> Cst.Pattern.LocalOpen {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
       | Cst.Pattern.Parenthesized pattern -> Cst.Pattern.Parenthesized {
         pattern
-        with attributes = append pattern.attributes;
+        with attributes = append pattern.attributes
       }
 
 let name_token_from_ident_pattern = fun node ->
@@ -2728,7 +2733,7 @@ let first_ident_token_in_subtree = fun node ->
 
 let quoted_type_binder_from_node = fun node ->
   match first_ident_token_in_subtree node with
-  | Some name_token -> Cst.TypeBinder.Quoted {syntax_node = node;name_token;}
+  | Some name_token -> Cst.TypeBinder.Quoted { syntax_node = node; name_token }
   | None -> bail
     ~message:"expected quantified type binder name during Ceibo -> CST lifting"
     ~syntax_node:node
@@ -2744,7 +2749,7 @@ let bare_type_binders_from_tokens = fun syntax_tokens ->
           if String.equal text "." then
             List.rev acc
           else if is_identifier_like_text text then
-            collect true (Cst.TypeBinder.Bare {name_token = token syntax_token;} :: acc) rest
+            collect true (Cst.TypeBinder.Bare { name_token = token syntax_token } :: acc) rest
           else
             collect true acc rest
         else if String.equal text "type" then
@@ -2968,7 +2973,7 @@ let arrow_label_from_node = fun node ->
   | label_syntax_token :: colon_syntax_token :: _ when String.equal (text colon_syntax_token) ":" -> Some (Cst.ArrowLabel.Named {
     sigil_token = None;
     label_token = token label_syntax_token;
-    colon_token = token colon_syntax_token;
+    colon_token = token colon_syntax_token
   })
   | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _ when String.equal
     (text sigil_syntax_token)
@@ -2976,7 +2981,7 @@ let arrow_label_from_node = fun node ->
   && String.equal (text colon_syntax_token) ":" -> Some (Cst.ArrowLabel.Named {
     sigil_token = Some (token sigil_syntax_token);
     label_token = token label_syntax_token;
-    colon_token = token colon_syntax_token;
+    colon_token = token colon_syntax_token
   })
   | sigil_syntax_token :: label_syntax_token :: colon_syntax_token :: _ when String.equal
     (text sigil_syntax_token)
@@ -2984,7 +2989,7 @@ let arrow_label_from_node = fun node ->
   && String.equal (text colon_syntax_token) ":" -> Some (Cst.ArrowLabel.OptionalNamed {
     sigil_token = token sigil_syntax_token;
     label_token = token label_syntax_token;
-    colon_token = token colon_syntax_token;
+    colon_token = token colon_syntax_token
   })
   | _ -> None
 
@@ -2996,13 +3001,13 @@ let rec module_type_constraint_from_node = fun node ->
         syntax_node = node;
         constrained_type = core_type_from_node constrained_type_node;
         replacement_type = core_type_from_node replacement_type_node;
-        separator_token;
+        separator_token
       }
       | None, Some separator_token -> Cst.ModuleTypeConstraint.{
         syntax_node = node;
         constrained_type = core_type_from_node constrained_type_node;
         replacement_type = core_type_from_node replacement_type_node;
-        separator_token;
+        separator_token
       }
       | None, None -> bail
         ~message:"expected = or := token in module type constraint during Ceibo -> CST lifting"
@@ -3039,7 +3044,7 @@ and functor_parameter_from_node = fun node ->
       ~syntax_node:node
       ~context:[ "module_type.functor.parameter" ]
   in
-  Cst.FunctorParameter.{syntax_node = node;name_token;colon_token;module_type;}
+  Cst.FunctorParameter.{ syntax_node = node; name_token; colon_token; module_type }
 
 and module_type_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
@@ -3052,7 +3057,7 @@ and module_type_from_node = fun node ->
           | Some of_token -> Cst.ModuleType.TypeOf {
             syntax_node = node;
             of_token;
-            module_path = module_path_like_from_node module_path_node;
+            module_path = module_path_like_from_node module_path_node
           }
           | None -> bail
             ~message:"expected of token in module type of expression during Ceibo -> CST lifting"
@@ -3071,7 +3076,7 @@ and module_type_from_node = fun node ->
         base = module_type_from_node base_node;
         constraints = constraint_nodes
         |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
-        |> List.map module_type_constraint_from_node;
+        |> List.map module_type_constraint_from_node
       }
       | [] -> bail
         ~message:"expected base module type in constrained module type during Ceibo -> CST lifting"
@@ -3085,7 +3090,7 @@ and module_type_from_node = fun node ->
         parameters = List.rev rev_parameter_nodes
         |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.FUNCTOR_PARAM)
         |> List.map functor_parameter_from_node;
-        result = module_type_from_node result_node;
+        result = module_type_from_node result_node
       }
       | [] -> bail
         ~message:"expected functor parameters and result module type during Ceibo -> CST lifting"
@@ -3101,7 +3106,7 @@ and module_type_from_node = fun node ->
             syntax_node = node;
             opening_token = token opening_token;
             inner = module_type_from_node inner_node;
-            closing_token = token closing_token;
+            closing_token = token closing_token
           }
       | None, _ ->
           bail
@@ -3123,7 +3128,7 @@ and module_type_from_node = fun node ->
           | Some payload_node, Some attribute_node -> Cst.ModuleType.Attribute {
             syntax_node = node;
             module_type = module_type_from_node payload_node;
-            attribute = attribute_from_node attribute_node;
+            attribute = attribute_from_node attribute_node
           }
           | _ -> bail
             ~message:"expected attributed module type payload during Ceibo -> CST lifting"
@@ -3138,7 +3143,7 @@ and module_type_from_node = fun node ->
   | Syntax_kind.EXTENSION_EXPR ->
       Cst.ModuleType.Extension (extension_from_node node)
   | Syntax_kind.SIG_EXPR ->
-      Cst.ModuleType.Signature {syntax_node = node;signature_syntax_node = node;}
+      Cst.ModuleType.Signature { syntax_node = node; signature_syntax_node = node }
   | _ ->
       bail
         ~message:"unsupported module type shape during Ceibo -> CST lifting"
@@ -3157,7 +3162,7 @@ and module_type_from_first_class_module_type_node = fun node ->
         Cst.syntax_node = node;
         module_type_path;
         constraints = base_constraints @ constraints;
-        attribute;
+        attribute
       }
   | [] -> bail
     ~message:"expected module type inside first-class module type during Ceibo -> CST lifting"
@@ -3167,13 +3172,13 @@ and module_type_from_first_class_module_type_node = fun node ->
 and package_type_from_module_type_node = fun node ->
   match module_type_from_node node with
   | Cst.ModuleType.Path module_type_path ->
-      {Cst.syntax_node = node;module_type_path;constraints = [];attribute = None;}
+      { Cst.syntax_node = node; module_type_path; constraints = []; attribute = None }
   | Cst.ModuleType.With { syntax_node; base=Cst.ModuleType.Path module_type_path; constraints } ->
-      {Cst.syntax_node = syntax_node;module_type_path;constraints;attribute = None;}
+      { Cst.syntax_node = syntax_node; module_type_path; constraints; attribute = None }
   | Cst.ModuleType.Attribute { syntax_node; module_type; attribute } ->
       let { module_type_path; constraints; _ } : Cst.package_type = package_type_from_module_type_node
         (Cst.ModuleType.syntax_node module_type) in
-      {Cst.syntax_node = syntax_node;module_type_path;constraints;attribute = Some attribute;}
+      { Cst.syntax_node = syntax_node; module_type_path; constraints; attribute = Some attribute }
   | Cst.ModuleType.With {
     syntax_node;
     base=Cst.ModuleType.Attribute { module_type; attribute; _ };
@@ -3186,7 +3191,7 @@ and package_type_from_module_type_node = fun node ->
         Cst.syntax_node = syntax_node;
         module_type_path;
         constraints = base_constraints @ constraints;
-        attribute = Some attribute;
+        attribute = Some attribute
       }
     )
   | Cst.ModuleType.With { base; _ } ->
@@ -3222,7 +3227,7 @@ and core_type_payload_and_field_attribute = fun node ->
 and class_type_field_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.OBJECT_INHERIT ->
-      let make_field class_type = Cst.ClassTypeField.Inherit {syntax_node = node;class_type;} in
+      let make_field class_type = Cst.ClassTypeField.Inherit { syntax_node = node; class_type } in
       begin
         match direct_non_trivia_nodes node with
         | child :: _ when Ceibo.Red.SyntaxNode.kind child = Syntax_kind.APPLY_EXPR -> (
@@ -3232,7 +3237,7 @@ and class_type_field_from_node = fun node ->
                 | Some attribute_node when can_lift_class_type_node payload_node -> Cst.ClassTypeField.Attribute {
                   syntax_node = node;
                   field = make_field (class_type_from_node payload_node);
-                  attribute = attribute_from_node attribute_node;
+                  attribute = attribute_from_node attribute_node
                 }
                 | _ -> unsupported_class_type node
               )
@@ -3277,7 +3282,7 @@ and class_type_field_from_node = fun node ->
                 | Some attribute -> Cst.ClassTypeField.Attribute {
                   syntax_node = node;
                   field;
-                  attribute;
+                  attribute
                 }
                 | None -> field
               )
@@ -3319,7 +3324,7 @@ and class_type_field_from_node = fun node ->
                 | Some attribute -> Cst.ClassTypeField.Attribute {
                   syntax_node = node;
                   field;
-                  attribute;
+                  attribute
                 }
                 | None -> field
               )
@@ -3348,7 +3353,7 @@ and class_type_field_from_node = fun node ->
           in
           (
             match field_attribute with
-            | Some attribute -> Cst.ClassTypeField.Attribute {syntax_node = node;field;attribute;}
+            | Some attribute -> Cst.ClassTypeField.Attribute { syntax_node = node; field; attribute }
             | None -> field
           )
       | _ -> unsupported_class_type node
@@ -3362,7 +3367,7 @@ and class_type_field_from_node = fun node ->
           | Some payload_node, Some attribute_node -> Cst.ClassTypeField.Attribute {
             syntax_node = node;
             field = class_type_field_from_node payload_node;
-            attribute = attribute_from_node attribute_node;
+            attribute = attribute_from_node attribute_node
           }
           | _ -> unsupported_class_type node
         )
@@ -3397,14 +3402,14 @@ and class_type_from_node = fun node ->
         syntax_node = node;
         label = arrow_label_from_node node;
         parameter_type = core_type_from_node parameter_node;
-        result_type = class_type_from_node result_node;
+        result_type = class_type_from_node result_node
       }
       | _ -> unsupported_class_type node
     )
   | Syntax_kind.OBJECT_EXPR ->
       Cst.ClassType.Signature {
         syntax_node = node;
-        fields = direct_non_trivia_nodes node |> List.map class_type_field_from_node;
+        fields = direct_non_trivia_nodes node |> List.map class_type_field_from_node
       }
   | Syntax_kind.APPLY_EXPR -> (
       match direct_non_trivia_nodes node with
@@ -3413,7 +3418,7 @@ and class_type_from_node = fun node ->
           | Some attribute_node when can_lift_class_type_node payload_node -> Cst.ClassType.Attribute {
             syntax_node = node;
             class_type = class_type_from_node payload_node;
-            attribute = attribute_from_node attribute_node;
+            attribute = attribute_from_node attribute_node
           }
           | _ -> unsupported_class_type node
         )
@@ -3428,7 +3433,7 @@ and class_type_from_node = fun node ->
             syntax_node = node;
             opening_token = token opening_token;
             inner = class_type_from_node inner_node;
-            closing_token = token closing_token;
+            closing_token = token closing_token
           }
       | None, _ ->
           unsupported_class_type node
@@ -3447,7 +3452,7 @@ and class_type_from_node = fun node ->
           | Some payload_node, Some attribute_node -> Cst.ClassType.Attribute {
             syntax_node = node;
             class_type = class_type_from_node payload_node;
-            attribute = attribute_from_node attribute_node;
+            attribute = attribute_from_node attribute_node
           }
           | _ -> unsupported_class_type node
         )
@@ -3590,10 +3595,10 @@ and core_type_from_node = fun node ->
     match direct_non_trivia_tokens node with
     | _open_bracket :: marker_token :: _ when String.equal
       (Ceibo.Red.SyntaxToken.text marker_token)
-      "<" -> Cst.PolyVariantBound.UpperBound {marker_token = token marker_token;}
+      "<" -> Cst.PolyVariantBound.UpperBound { marker_token = token marker_token }
     | _open_bracket :: marker_token :: _ when String.equal
       (Ceibo.Red.SyntaxToken.text marker_token)
-      ">" -> Cst.PolyVariantBound.LowerBound {marker_token = token marker_token;}
+      ">" -> Cst.PolyVariantBound.LowerBound { marker_token = token marker_token }
     | _ -> Cst.PolyVariantBound.Exact
   and row_field_from_node node =
     match Ceibo.Red.SyntaxNode.kind node with
@@ -3605,12 +3610,12 @@ and core_type_from_node = fun node ->
           | Syntax_kind.TYPE_CONSTR -> Cst.CoreType.Constr {
             syntax_node = node;
             constructor_path = type_constructor_path_from_node node;
-            arguments = [];
+            arguments = []
           }
           | _ -> core_type_from_node node
         in
         let bar_token = previous_direct_token_with_text_in_parent ~text:"|" node |> Option.map token in
-        Cst.RowField.Inherit {bar_token;syntax_node = node;type_ = inherited_type;}
+        Cst.RowField.Inherit { bar_token; syntax_node = node; type_ = inherited_type }
     | _ ->
         bail
           ~message:"expected polymorphic variant row field during Ceibo -> CST lifting"
@@ -3647,14 +3652,14 @@ and core_type_from_node = fun node ->
           let syntax_token = List.hd (List.rev syntax_tokens) in
           let lifted = token syntax_token in
           if String.equal (Cst.Token.text lifted) "_" then
-            Cst.CoreType.Wildcard {syntax_node = node;wildcard_token = lifted;}
+            Cst.CoreType.Wildcard { syntax_node = node; wildcard_token = lifted }
           else
             let sigil_token =
               match syntax_tokens with
               | first :: _ when String.equal (Ceibo.Red.SyntaxToken.text first) "'" -> Some (token first)
               | _ -> None
             in
-            Cst.CoreType.Var {syntax_node = node;sigil_token;name_token = lifted;}
+            Cst.CoreType.Var { syntax_node = node; sigil_token; name_token = lifted }
       | [] -> bail
         ~message:"expected type variable token during Ceibo -> CST lifting"
         ~syntax_node:node
@@ -3677,7 +3682,7 @@ and core_type_from_node = fun node ->
         match child_types with
         | [ inner_type ] -> Cst.CoreType.Parenthesized {
           syntax_node = node;
-          inner = core_type_from_node inner_type;
+          inner = core_type_from_node inner_type
         }
         | _ -> bail
           ~message:"expected a single inner type inside parenthesized type"
@@ -3691,13 +3696,13 @@ and core_type_from_node = fun node ->
           syntax_node = node;
           hash_token;
           class_path;
-          arguments = child_types |> List.map core_type_from_node;
+          arguments = child_types |> List.map core_type_from_node
         }
       else
         Cst.CoreType.Constr {
           syntax_node = node;
           constructor_path = type_constructor_path_from_node node;
-          arguments = child_types |> List.map core_type_from_node;
+          arguments = child_types |> List.map core_type_from_node
         }
   | Syntax_kind.TYPE_ALIAS -> (
       match child_type_nodes node with
@@ -3707,13 +3712,13 @@ and core_type_from_node = fun node ->
             syntax_node = node;
             type_ = core_type_from_node type_node;
             sigil_token = None;
-            name_token = token alias_token;
+            name_token = token alias_token
           }
           | [sigil_token;alias_token] -> Cst.CoreType.Alias {
             syntax_node = node;
             type_ = core_type_from_node type_node;
             sigil_token = Some (token sigil_token);
-            name_token = token alias_token;
+            name_token = token alias_token
           }
           | [] -> bail
             ~message:"expected alias name token during Ceibo -> CST lifting"
@@ -3738,7 +3743,7 @@ and core_type_from_node = fun node ->
           | Some payload_node, Some attribute_node -> Cst.CoreType.Attribute {
             syntax_node = node;
             type_ = core_type_from_node payload_node;
-            attribute = attribute_from_node attribute_node;
+            attribute = attribute_from_node attribute_node
           }
           | _ -> bail
             ~message:"expected attribute payload during Ceibo -> CST lifting"
@@ -3800,7 +3805,7 @@ and core_type_from_node = fun node ->
         syntax_node = node;
         label = arrow_label_from_node node;
         parameter_type = core_type_from_node parameter_node;
-        result_type = core_type_from_node result_node;
+        result_type = core_type_from_node result_node
       }
       | _ -> bail
         ~message:"expected arrow parameter and result types during Ceibo -> CST lifting"
@@ -3810,13 +3815,13 @@ and core_type_from_node = fun node ->
   | Syntax_kind.TYPE_TUPLE ->
       Cst.CoreType.Tuple {
         syntax_node = node;
-        elements = child_type_nodes node |> List.map core_type_from_node;
+        elements = child_type_nodes node |> List.map core_type_from_node
       }
   | Syntax_kind.TYPE_PAREN -> (
       match child_type_nodes node with
       | inner_node :: _ -> Cst.CoreType.Parenthesized {
         syntax_node = node;
-        inner = core_type_from_node inner_node;
+        inner = core_type_from_node inner_node
       }
       | [] -> bail
         ~message:"expected inner type inside parenthesized type during Ceibo -> CST lifting"
@@ -3865,7 +3870,7 @@ and core_type_from_node = fun node ->
         syntax_node = node;
         opening_token;
         package_type = module_type_from_first_class_module_type_node node;
-        closing_token;
+        closing_token
       })
   | Syntax_kind.OBJECT_TYPE ->
       let direct_tokens = direct_non_trivia_tokens node in
@@ -3885,7 +3890,7 @@ and core_type_from_node = fun node ->
         fields = direct_non_trivia_nodes node
         |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.OBJECT_TYPE_FIELD)
         |> List.map object_type_field_from_node;
-        closing_token;
+        closing_token
       }
   | _ ->
       bail
@@ -3938,15 +3943,15 @@ let rec pattern_from_node = fun node ->
   let tuple_pattern_from_node node =
     let labeled_punning_element label_pattern_node = {
       Cst.label_token = Some (tuple_pattern_label_token_from_node label_pattern_node);
-      pattern = pattern_from_node label_pattern_node;
+      pattern = pattern_from_node label_pattern_node
     } in
     let labeled_payload_element label_pattern_node payload_pattern_node = {
       Cst.label_token = Some (tuple_pattern_label_token_from_node label_pattern_node);
-      pattern = pattern_from_node payload_pattern_node;
+      pattern = pattern_from_node payload_pattern_node
     } in
     let unlabeled_element pattern_node = {
       Cst.label_token = None;
-      pattern = pattern_from_node pattern_node;
+      pattern = pattern_from_node pattern_node
     } in
     let rec loop children saw_tilde pending_label awaiting_payload acc =
       match children with
@@ -3956,7 +3961,7 @@ let rec pattern_from_node = fun node ->
             | Some label_pattern_node, false -> labeled_punning_element label_pattern_node :: acc
             | _ -> acc
           in
-          {Cst.syntax_node = node;elements = List.rev acc;open_tail = None;attributes = [];}
+          { Cst.syntax_node = node; elements = List.rev acc; open_tail = None; attributes = [] }
       | Ceibo.Red.Token syntax_token :: rest when is_trivia (Ceibo.Red.SyntaxToken.kind syntax_token) ->
           loop rest saw_tilde pending_label awaiting_payload acc
       | Ceibo.Red.Token syntax_token :: rest ->
@@ -3981,8 +3986,8 @@ let rec pattern_from_node = fun node ->
             {
               Cst.syntax_node = node;
               elements = List.rev acc;
-              open_tail = Some {dotdot_token = token syntax_token;};
-              attributes = [];
+              open_tail = Some { dotdot_token = token syntax_token };
+              attributes = []
             }
           else if String.equal text "(" || String.equal text ")" then
             loop rest saw_tilde pending_label awaiting_payload acc
@@ -4023,26 +4028,26 @@ let rec pattern_from_node = fun node ->
         | first :: _ -> Cst.Pattern.Identifier {
           syntax_node = node;
           name_token = token first;
-          attributes = [];
+          attributes = []
         }
         | [] -> unsupported_pattern node
       )
     | Syntax_kind.WILDCARD_PATTERN ->
-        Cst.Pattern.Wildcard {syntax_node = node;attributes = [];}
+        Cst.Pattern.Wildcard { syntax_node = node; attributes = [] }
     | Syntax_kind.ATTRIBUTE_EXPR ->
         unsupported_pattern node
     | Syntax_kind.EXTENSION_EXPR ->
         Cst.Pattern.Extension {
           syntax_node = node;
           extension = extension_from_node node;
-          attributes = [];
+          attributes = []
         }
     | Syntax_kind.LAZY_PATTERN -> (
         match direct_non_trivia_nodes node with
         | inner_node :: _ -> Cst.Pattern.Lazy {
           syntax_node = node;
           pattern = pattern_from_node inner_node;
-          attributes = [];
+          attributes = []
         }
         | _ -> unsupported_pattern node
       )
@@ -4052,7 +4057,7 @@ let rec pattern_from_node = fun node ->
           syntax_node = node;
           keyword_token = direct_required_token_with_text ~context:[ "exception_pattern" ] node "exception";
           pattern = pattern_from_node inner_node;
-          attributes = [];
+          attributes = []
         }
         | _ -> unsupported_pattern node
       )
@@ -4062,7 +4067,7 @@ let rec pattern_from_node = fun node ->
           syntax_node = node;
           lower = constant_from_syntax_token ~syntax_node:node lower_syntax_token;
           upper = constant_from_syntax_token ~syntax_node:node upper_syntax_token;
-          attributes = [];
+          attributes = []
         }
         | _ -> unsupported_pattern node
       )
@@ -4070,7 +4075,7 @@ let rec pattern_from_node = fun node ->
         Cst.Pattern.Operator {
           syntax_node = node;
           operator_tokens = operator_tokens_from_node node;
-          attributes = [];
+          attributes = []
         }
     | Syntax_kind.FIRST_CLASS_MODULE_PATTERN -> (
         match direct_non_trivia_tokens node with
@@ -4088,9 +4093,9 @@ let rec pattern_from_node = fun node ->
               opening_token = token lparen;
               binding =
                 if String.equal (Ceibo.Red.SyntaxToken.text binding_syntax_token) "_" then
-                  Cst.Anonymous {wildcard_token = token binding_syntax_token;}
+                  Cst.Anonymous { wildcard_token = token binding_syntax_token }
                 else
-                  Cst.Named {name_token = token binding_syntax_token;};
+                  Cst.Named { name_token = token binding_syntax_token };
               colon_token = token_with_text node ":";
               package_type = (direct_non_trivia_nodes node
               |> List.find_opt can_lift_module_type_node
@@ -4106,7 +4111,11 @@ let rec pattern_from_node = fun node ->
     | Syntax_kind.CHAR_LITERAL
     | Syntax_kind.BOOL_LITERAL
     | Syntax_kind.UNIT_LITERAL ->
-        Cst.Pattern.Literal {syntax_node = node;literal = constant_from_node node;attributes = [];}
+        Cst.Pattern.Literal {
+          syntax_node = node;
+          literal = constant_from_node node;
+          attributes = []
+        }
     | Syntax_kind.POLY_VARIANT_PATTERN -> (
         match poly_variant_tag_token node with
         | Some tag_token -> Cst.Pattern.PolyVariant {
@@ -4115,7 +4124,7 @@ let rec pattern_from_node = fun node ->
           payload = (direct_non_trivia_nodes node
           |> List.find_opt (fun child -> is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
           |> Option.map pattern_from_node);
-          attributes = [];
+          attributes = []
         }
         | None -> unsupported_pattern node
       )
@@ -4123,7 +4132,7 @@ let rec pattern_from_node = fun node ->
         Cst.Pattern.PolyVariantInherit {
           syntax_node = node;
           type_path = poly_variant_type_path_from_node node;
-          attributes = [];
+          attributes = []
         }
     | Syntax_kind.CONSTRUCTOR_PATTERN ->
         Cst.Pattern.Constructor {
@@ -4199,7 +4208,7 @@ let rec pattern_from_node = fun node ->
               (fun syntax_token ->
                 String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "_")
           with
-          | Some wildcard_token -> Cst.Open {wildcard_token = token wildcard_token;}
+          | Some wildcard_token -> Cst.Open { wildcard_token = token wildcard_token }
           | None -> Cst.Closed
         in
         Cst.Pattern.Record {
@@ -4223,7 +4232,7 @@ let rec pattern_from_node = fun node ->
           syntax_node = node;
           head = pattern_from_node head_node;
           tail = pattern_from_node tail_node;
-          attributes = [];
+          attributes = []
         }
         | _ -> unsupported_pattern node
       )
@@ -4243,7 +4252,7 @@ let rec pattern_from_node = fun node ->
           syntax_node = node;
           pattern = pattern_from_node pattern_node;
           name_token = token name_syntax_token;
-          attributes = [];
+          attributes = []
         }
         | _ -> unsupported_pattern node
       )
@@ -4282,7 +4291,7 @@ let rec pattern_from_node = fun node ->
         | inner_node :: _ -> Cst.Pattern.Parenthesized {
           syntax_node = node;
           inner = pattern_from_node inner_node;
-          attributes = [];
+          attributes = []
         }
         | [] -> unsupported_pattern node
       )
@@ -4304,7 +4313,7 @@ and record_pattern_field_from_node = fun node ->
     equals_token = direct_token_with_text node "=";
     pattern = (direct_non_trivia_nodes node
     |> List.find_opt (fun child -> is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
-    |> Option.map pattern_from_node);
+    |> Option.map pattern_from_node)
   }
 
 and local_open_pattern_from_node = fun node ->
@@ -4358,7 +4367,7 @@ and effect_pattern_from_node = fun node ->
     syntax_node = node;
     effect_pattern = pattern_from_node effect_node;
     continuation = pattern_from_node continuation_node;
-    attributes = [];
+    attributes = []
   }
   | _ -> None
 
@@ -4408,7 +4417,7 @@ let rec parameter_from_node = fun node ->
         let identifier_pattern = Cst.Pattern.Identifier {
           syntax_node = node;
           name_token = label_name_token;
-          attributes = [];
+          attributes = []
         } in
         Some (
           Cst.Pattern.Typed {
@@ -4524,7 +4533,7 @@ let rec parameter_from_node = fun node ->
       Cst.Parameter.Positional {
         syntax_node = node;
         pattern = pattern_from_node node;
-        name_token = simple_pattern_name_token node;
+        name_token = simple_pattern_name_token node
       }
 
 and parameter_with_attributes = fun parameter attributes ->
@@ -4534,13 +4543,13 @@ and parameter_with_attributes = fun parameter attributes ->
   | _, Cst.Parameter.Positional parameter ->
       Cst.Parameter.Positional {
         parameter
-        with pattern = pattern_with_attributes parameter.pattern attributes;
+        with pattern = pattern_with_attributes parameter.pattern attributes
       }
   | _, Cst.Parameter.Labeled parameter -> (
       match parameter.binding_pattern with
       | Some pattern -> Cst.Parameter.Labeled {
         parameter
-        with binding_pattern = Some (pattern_with_attributes pattern attributes);
+        with binding_pattern = Some (pattern_with_attributes pattern attributes)
       }
       | None -> Cst.Parameter.Labeled parameter
     )
@@ -4548,7 +4557,7 @@ and parameter_with_attributes = fun parameter attributes ->
       match parameter.binding_pattern with
       | Some pattern -> Cst.Parameter.Optional {
         parameter
-        with binding_pattern = Some (pattern_with_attributes pattern attributes);
+        with binding_pattern = Some (pattern_with_attributes pattern attributes)
       }
       | None -> Cst.Parameter.Optional parameter
     )
@@ -4586,7 +4595,7 @@ and apply_argument_from_node = fun node ->
         syntax_node = node;
         sigil_token = token sigil_syntax_token;
         label_token = token label_syntax_token;
-        value = first_nontrivia_expression_child node;
+        value = first_nontrivia_expression_child node
       }
       | _ -> unsupported_expression node
     )
@@ -4596,7 +4605,7 @@ and apply_argument_from_node = fun node ->
         syntax_node = node;
         sigil_token = token sigil_syntax_token;
         label_token = token label_syntax_token;
-        value = first_nontrivia_expression_child node;
+        value = first_nontrivia_expression_child node
       }
       | _ -> unsupported_expression node
     )
@@ -4612,7 +4621,7 @@ and rebuild_apply_chain = fun ~syntax_node callee ->
   function
   | [] -> callee
   | arguments -> List.fold_left
-    (fun callee argument -> Cst.Expression.Apply {syntax_node;callee;argument;attributes = [];})
+    (fun callee argument -> Cst.Expression.Apply { syntax_node; callee; argument; attributes = [] })
     callee
     arguments
 
@@ -4637,7 +4646,7 @@ and split_greedy_argument_value = fun value ->
       in
       (head, extra_arguments, tail)
   | Cst.Expression.PolyVariant ({ payload=Some payload; _ } as poly_variant) ->
-      let head = Cst.Expression.PolyVariant {poly_variant with payload = None;} in
+      let head = Cst.Expression.PolyVariant { poly_variant with payload = None } in
       (head, [ Cst.Positional payload ], None)
   | _ ->
       let head, extra_arguments = collect_apply_arguments [] value in
@@ -4656,10 +4665,10 @@ and normalize_greedy_tuple_argument_value = fun ~syntax_node ~callee make_argume
               syntax_node;
               callee;
               argument = make_argument payload;
-              attributes = [];
+              attributes = []
             })
             extra_arguments in
-          Some (Cst.Expression.Tuple {syntax_node;elements = left :: trailing;attributes = [];})
+          Some (Cst.Expression.Tuple { syntax_node; elements = left :: trailing; attributes = [] })
       | _ -> None
     )
   | _ -> None
@@ -4670,7 +4679,7 @@ and normalize_greedy_labeled_argument = fun ~syntax_node ~callee argument ->
       syntax_node;
       callee;
       argument = make_argument value;
-      attributes = [];
+      attributes = []
     } in
     rebuild_apply_chain ~syntax_node callee extra_arguments
   in
@@ -4691,7 +4700,7 @@ and normalize_greedy_labeled_argument = fun ~syntax_node ~callee argument ->
       match normalize_greedy_tuple_argument_value
         ~syntax_node
         ~callee
-        (fun value -> Cst.Labeled {labeled_argument with value = Some value;})
+        (fun value -> Cst.Labeled { labeled_argument with value = Some value })
         value with
       | Some expression -> expression
       | None ->
@@ -4701,12 +4710,12 @@ and normalize_greedy_labeled_argument = fun ~syntax_node ~callee argument ->
             | _ :: _ -> rebuild
               head
               extra_arguments
-              (fun value -> Cst.Labeled {labeled_argument with value = Some value;})
+              (fun value -> Cst.Labeled { labeled_argument with value = Some value })
             | [] -> Cst.Expression.Apply {
               syntax_node;
               callee;
-              argument = Cst.Labeled {labeled_argument with value = Some head;};
-              attributes = [];
+              argument = Cst.Labeled { labeled_argument with value = Some head };
+              attributes = []
             }
           in
           wrap_infix_tail left infix_tail
@@ -4715,7 +4724,7 @@ and normalize_greedy_labeled_argument = fun ~syntax_node ~callee argument ->
       match normalize_greedy_tuple_argument_value
         ~syntax_node
         ~callee
-        (fun value -> Cst.Optional {optional_argument with value = Some value;})
+        (fun value -> Cst.Optional { optional_argument with value = Some value })
         value with
       | Some expression -> expression
       | None ->
@@ -4725,18 +4734,18 @@ and normalize_greedy_labeled_argument = fun ~syntax_node ~callee argument ->
             | _ :: _ -> rebuild
               head
               extra_arguments
-              (fun value -> Cst.Optional {optional_argument with value = Some value;})
+              (fun value -> Cst.Optional { optional_argument with value = Some value })
             | [] -> Cst.Expression.Apply {
               syntax_node;
               callee;
-              argument = Cst.Optional {optional_argument with value = Some head;};
-              attributes = [];
+              argument = Cst.Optional { optional_argument with value = Some head };
+              attributes = []
             }
           in
           wrap_infix_tail left infix_tail
     )
   | _ ->
-      Cst.Expression.Apply {syntax_node;callee;argument;attributes = [];}
+      Cst.Expression.Apply { syntax_node; callee; argument; attributes = [] }
 
 and expression_with_type_annotation = fun ~syntax_node ~expression type_node ->
   let type_ = core_type_from_node type_node in
@@ -4760,8 +4769,8 @@ and expression_with_type_annotation = fun ~syntax_node ~expression type_node ->
   | _ -> Cst.Expression.TypeAscription {
     syntax_node;
     expression;
-    kind = Cst.Type {colon_token;type_;};
-    attributes = [];
+    kind = Cst.Type { colon_token; type_ };
+    attributes = []
   }
 
 and binding_type_annotation_node = fun prefix_nodes -> prefix_nodes |> List.find_opt can_lift_core_type_node
@@ -4805,7 +4814,7 @@ and module_expression_from_node = fun node ->
   | Syntax_kind.STRUCT_EXPR ->
       Cst.ModuleExpression.Structure {
         syntax_node = node;
-        item_syntax_nodes = direct_non_trivia_nodes node |> List.concat_map split_payload_item_nodes_from_node;
+        item_syntax_nodes = direct_non_trivia_nodes node |> List.concat_map split_payload_item_nodes_from_node
       }
   | Syntax_kind.FUNCTOR_TYPE -> (
       match direct_non_trivia_tokens node, List.rev (direct_non_trivia_nodes node) with
@@ -4816,7 +4825,7 @@ and module_expression_from_node = fun node ->
         parameters = List.rev rev_parameter_nodes
         |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.FUNCTOR_PARAM)
         |> List.map functor_parameter_from_node;
-        body = module_expression_from_node body_node;
+        body = module_expression_from_node body_node
       }
       | _ -> unsupported_module_expression node
     )
@@ -4825,7 +4834,7 @@ and module_expression_from_node = fun node ->
       | callee_node :: argument_node :: _ -> Cst.ModuleExpression.Apply {
         syntax_node = node;
         callee = module_expression_from_node callee_node;
-        argument = module_expression_from_node argument_node;
+        argument = module_expression_from_node argument_node
       }
       | _ -> unsupported_module_expression node
     )
@@ -4833,7 +4842,7 @@ and module_expression_from_node = fun node ->
       match direct_non_trivia_nodes node with
       | callee_node :: _ -> Cst.ModuleExpression.ApplyUnit {
         syntax_node = node;
-        callee = module_expression_from_node callee_node;
+        callee = module_expression_from_node callee_node
       }
       | _ -> unsupported_module_expression node
     )
@@ -4873,7 +4882,7 @@ and module_expression_from_node = fun node ->
             syntax_node = node;
             opening_token = token opening_token;
             inner = module_expression_from_node inner_node;
-            closing_token = token closing_token;
+            closing_token = token closing_token
           }
       | None, _ ->
           unsupported_module_expression node
@@ -4892,7 +4901,7 @@ and module_expression_from_node = fun node ->
           | Some payload_node, Some attribute_node -> Cst.ModuleExpression.Attribute {
             syntax_node = node;
             module_expression = module_expression_from_node payload_node;
-            attribute = attribute_from_node attribute_node;
+            attribute = attribute_from_node attribute_node
           }
           | _ -> unsupported_module_expression node
         )
@@ -4932,27 +4941,27 @@ and expression_from_node = fun node ->
         match constant with
         | Cst.Constant.String constant -> Cst.Constant.String {
           constant
-          with attributes = append constant.attributes;
+          with attributes = append constant.attributes
         }
         | Cst.Constant.Int constant -> Cst.Constant.Int {
           constant
-          with attributes = append constant.attributes;
+          with attributes = append constant.attributes
         }
         | Cst.Constant.Float constant -> Cst.Constant.Float {
           constant
-          with attributes = append constant.attributes;
+          with attributes = append constant.attributes
         }
         | Cst.Constant.Char constant -> Cst.Constant.Char {
           constant
-          with attributes = append constant.attributes;
+          with attributes = append constant.attributes
         }
         | Cst.Constant.Bool constant -> Cst.Constant.Bool {
           constant
-          with attributes = append constant.attributes;
+          with attributes = append constant.attributes
         }
         | Cst.Constant.Unit constant -> Cst.Constant.Unit {
           constant
-          with attributes = append constant.attributes;
+          with attributes = append constant.attributes
         }
   in
   let expression_with_attributes expression attributes =
@@ -4963,178 +4972,178 @@ and expression_from_node = fun node ->
         match expression with
         | Cst.Expression.Path expr -> Cst.Expression.Path {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Constructor expr -> Cst.Expression.Constructor {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Operator expr -> Cst.Expression.Operator {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Literal literal -> Cst.Expression.Literal (constant_with_attributes
           literal
           attributes)
         | Cst.Expression.Unreachable expr -> Cst.Expression.Unreachable {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Extension ext -> Cst.Expression.Extension {
           ext
-          with attributes = append ext.attributes;
+          with attributes = append ext.attributes
         }
         | Cst.Expression.Object expr -> Cst.Expression.Object {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.PolyVariant expr -> Cst.Expression.PolyVariant {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.ModulePack expr -> Cst.Expression.ModulePack {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.LetModule expr -> Cst.Expression.LetModule {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.LetException expr -> Cst.Expression.LetException {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Assert expr -> Cst.Expression.Assert {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Lazy expr -> Cst.Expression.Lazy {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.While expr -> Cst.Expression.While {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.For expr -> Cst.Expression.For {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Apply expr -> Cst.Expression.Apply {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.MethodCall expr -> Cst.Expression.MethodCall {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.New expr -> Cst.Expression.New {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Prefix expr -> Cst.Expression.Prefix {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.FieldAccess expr -> Cst.Expression.FieldAccess {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Index expr -> Cst.Expression.Index {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.ObjectOverride expr -> Cst.Expression.ObjectOverride {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.InstanceVariableAssign expr -> Cst.Expression.InstanceVariableAssign {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.FieldAssign expr -> Cst.Expression.FieldAssign {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Assign expr -> Cst.Expression.Assign {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Infix expr -> Cst.Expression.Infix {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.TypeAscription expr -> Cst.Expression.TypeAscription {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Polymorphic expr -> Cst.Expression.Polymorphic {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Sequence expr -> Cst.Expression.Sequence {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Tuple expr -> Cst.Expression.Tuple {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.List expr -> Cst.Expression.List {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Array expr -> Cst.Expression.Array {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Record (Cst.RecordExpression.Literal expr) -> Cst.Expression.Record (Cst.RecordExpression.Literal {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         })
         | Cst.Expression.Record (Cst.RecordExpression.Update expr) -> Cst.Expression.Record (Cst.RecordExpression.Update {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         })
         | Cst.Expression.LocalOpen (Cst.LetOpen expr) -> Cst.Expression.LocalOpen (Cst.LetOpen {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         })
         | Cst.Expression.LocalOpen (Cst.Delimited expr) -> Cst.Expression.LocalOpen (Cst.Delimited {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         })
         | Cst.Expression.Fun expr -> Cst.Expression.Fun {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Function expr -> Cst.Expression.Function {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.LetOperator expr -> Cst.Expression.LetOperator {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Let expr -> Cst.Expression.Let {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Match expr -> Cst.Expression.Match {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Try expr -> Cst.Expression.Try {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.If expr -> Cst.Expression.If {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
         | Cst.Expression.Parenthesized expr -> Cst.Expression.Parenthesized {
           expr
-          with attributes = append expr.attributes;
+          with attributes = append expr.attributes
         }
   in
   let poly_variant_tag_token node =
@@ -5153,10 +5162,10 @@ and expression_from_node = fun node ->
             syntax_node = node;
             constructor_path = path;
             payload = None;
-            attributes = [];
+            attributes = []
           }
         else
-          Cst.Expression.Path {syntax_node = node;path;attributes = [];}
+          Cst.Expression.Path { syntax_node = node; path; attributes = [] }
       )
     | Syntax_kind.MODULE_PATH -> (
         let path = module_path_from_node node in
@@ -5165,23 +5174,23 @@ and expression_from_node = fun node ->
             syntax_node = node;
             constructor_path = path;
             payload = None;
-            attributes = [];
+            attributes = []
           }
         else
-          Cst.Expression.Path {syntax_node = node;path;attributes = [];}
+          Cst.Expression.Path { syntax_node = node; path; attributes = [] }
       )
     | Syntax_kind.OPERATOR_PATTERN ->
         Cst.Expression.Operator {
           syntax_node = node;
           operator_tokens = operator_tokens_from_node node;
-          attributes = [];
+          attributes = []
         }
     | Syntax_kind.UNREACHABLE_EXPR -> (
         match direct_non_trivia_tokens node with
         | dot_syntax_token :: _ -> Cst.Expression.Unreachable {
           syntax_node = node;
           dot_token = token dot_syntax_token;
-          attributes = [];
+          attributes = []
         }
         | [] -> unsupported_expression node
       )
@@ -5210,7 +5219,7 @@ and expression_from_node = fun node ->
           syntax_node = node;
           constructor_path;
           payload = None;
-          attributes = [];
+          attributes = []
         }
         | None -> (
             match field_access_expression_from_node node with
@@ -5241,12 +5250,12 @@ and expression_from_node = fun node ->
         Cst.Expression.Literal (constant_from_node node)
     | Syntax_kind.ASSERT_EXPR -> (
         match direct_non_trivia_nodes node |> List.find_opt can_lift_expression_node |> Option.map expression_from_node with
-        | Some asserted -> Cst.Expression.Assert {syntax_node = node;asserted;attributes = [];}
+        | Some asserted -> Cst.Expression.Assert { syntax_node = node; asserted; attributes = [] }
         | None -> unsupported_expression node
       )
     | Syntax_kind.LAZY_EXPR -> (
         match direct_non_trivia_nodes node |> List.find_opt can_lift_expression_node |> Option.map expression_from_node with
-        | Some body -> Cst.Expression.Lazy {syntax_node = node;body;attributes = [];}
+        | Some body -> Cst.Expression.Lazy { syntax_node = node; body; attributes = [] }
         | None -> unsupported_expression node
       )
     | Syntax_kind.WHILE_EXPR -> (
@@ -5256,7 +5265,7 @@ and expression_from_node = fun node ->
           syntax_node = node;
           condition = expression_from_node condition_node;
           body = expression_from_node body_node;
-          attributes = [];
+          attributes = []
         }
         | _ -> unsupported_expression node
       )
@@ -5272,8 +5281,8 @@ and expression_from_node = fun node ->
             (fun direction_syntax_token ->
               let direction_token = token direction_syntax_token in
               match Ceibo.Red.SyntaxToken.text direction_syntax_token with
-              | "to" -> Cst.To {direction_token;}
-              | "downto" -> Cst.Downto {direction_token;}
+              | "to" -> Cst.To { direction_token }
+              | "downto" -> Cst.Downto { direction_token }
               | _ -> bail
                 ~message:"expected for-loop direction token during Ceibo -> CST lifting"
                 ~syntax_node:node
@@ -5320,7 +5329,7 @@ and expression_from_node = fun node ->
                     syntax_node = node;
                     constructor_path;
                     payload = Some payload;
-                    attributes = [];
+                    attributes = []
                   }
                   | _ -> normalize_greedy_labeled_argument
                     ~syntax_node:node
@@ -5334,7 +5343,7 @@ and expression_from_node = fun node ->
               syntax_node = node;
               constructor_path;
               payload = Some payload;
-              attributes = [];
+              attributes = []
             }
             | _ -> normalize_greedy_labeled_argument
               ~syntax_node:node
@@ -5352,7 +5361,7 @@ and expression_from_node = fun node ->
           payload = (direct_non_trivia_nodes node
           |> List.find_opt can_lift_expression_node
           |> Option.map expression_from_node);
-          attributes = [];
+          attributes = []
         }
         | None -> unsupported_expression node
       )
@@ -5427,7 +5436,7 @@ and expression_from_node = fun node ->
                                 match direct_token_with_text exception_decl_node "of" with
                                 | Some of_token -> Some Cst.(Payload {
                                   of_token;
-                                  payload_type = core_type_from_node child;
+                                  payload_type = core_type_from_node child
                                 })
                                 | None -> None
                               )
@@ -5435,7 +5444,7 @@ and expression_from_node = fun node ->
                                 match direct_token_with_text exception_decl_node "=" with
                                 | Some equals_token -> Some Cst.(Alias {
                                   equals_token;
-                                  alias = module_path_like_from_node child;
+                                  alias = module_path_like_from_node child
                                 })
                                 | None -> None
                               )
@@ -5479,9 +5488,9 @@ and expression_from_node = fun node ->
               ~before_offset:(Ceibo.Red.SyntaxNode.span to_type_node).start
               ~expected_texts:[ ":"; ">" ]
               node;
-            type_ = core_type_from_node to_type_node;
+            type_ = core_type_from_node to_type_node
           };
-          attributes = [];
+          attributes = []
         }
         | expr_node :: from_type_node :: to_type_node :: _ ->
             Cst.Expression.TypeAscription {
@@ -5537,7 +5546,7 @@ and expression_from_node = fun node ->
         Cst.Expression.Tuple {
           syntax_node = node;
           elements = known_expression_children node;
-          attributes = [];
+          attributes = []
         }
     | Syntax_kind.LIST_EXPR ->
         let direct_tokens = direct_non_trivia_tokens node in
@@ -5788,7 +5797,7 @@ and object_inherit_from_node = fun node ->
   | Some expression -> Some {
     Cst.syntax_node = node;
     attributes = attributes_from_node node;
-    expression;
+    expression
   }
   | None -> None
 
@@ -5868,7 +5877,7 @@ and object_expression_from_node = fun node ->
   match lift_members [] member_children with
   | Some members ->
       let child_owned_spans = members |> List.concat_map object_member_owned_trivia_spans in
-      Some (({syntax_node = node;self_pattern;members;attributes = [];}: Cst.object_expression))
+      Some (({ syntax_node = node; self_pattern; members; attributes = [] }: Cst.object_expression))
   | None -> None
 
 and method_call_expression_from_node = fun node ->
@@ -5901,7 +5910,7 @@ and new_expression_from_node = fun node ->
   | class_path_node :: _ -> Some {
     Cst.syntax_node = node;
     class_path = module_path_like_from_node class_path_node;
-    attributes = [];
+    attributes = []
   }
   | [] -> None
 
@@ -5913,7 +5922,7 @@ and object_override_field_from_node = fun node ->
       Cst.syntax_node = node;
       field_name;
       equals_token = direct_token_with_text node "=";
-      value = record_field_value_from_node node;
+      value = record_field_value_from_node node
     }:
       Cst.object_override_field
   ))
@@ -5954,14 +5963,14 @@ and field_access_expression_from_node = fun node ->
   | receiver_node :: _, field_token :: _ ->
       let receiver =
         match module_like_path_from_expression_node receiver_node with
-        | Some path -> Cst.Expression.Path {syntax_node = receiver_node;path;attributes = [];}
+        | Some path -> Cst.Expression.Path { syntax_node = receiver_node; path; attributes = [] }
         | None -> expression_from_node receiver_node
       in
       Some (Cst.Expression.FieldAccess {
         syntax_node = node;
         receiver;
         field_name = token field_token;
-        attributes = [];
+        attributes = []
       })
   | _ -> None
 
@@ -6037,7 +6046,7 @@ and prefix_expression_from_node = fun node ->
     syntax_node = node;
     operator_token = token operator_syntax_token;
     operand = expression_from_node operand_node;
-    attributes = [];
+    attributes = []
   }
   | _ -> None
 
@@ -6090,7 +6099,7 @@ and record_expression_field_from_node = fun node ->
         match record_field_value_from_node node with
         | Some value -> (value, Cst.Explicit)
         | None -> (
-          Cst.Expression.Path {syntax_node = node;path = lifted_field_path;attributes = [];},
+          Cst.Expression.Path { syntax_node = node; path = lifted_field_path; attributes = [] },
           Cst.Punned
         )
       in
@@ -6155,7 +6164,7 @@ and record_update_expression_from_node = fun node ->
             | Some { field_path; source=Cst.Punned; _ } -> Some (Cst.Expression.Path {
               syntax_node = base_node;
               path = field_path;
-              attributes = [];
+              attributes = []
             })
             | _ -> None
           )
@@ -6216,7 +6225,7 @@ and poly_variant_expression_from_local_open_node = fun node ->
                                 syntax_node = module_path_node;
                                 prefix = module_path_like_from_node prefix_node;
                                 dot_token = token dot_syntax_token;
-                                name_token = token name_syntax_token;
+                                name_token = token name_syntax_token
                               };
                               dot_token = token dot_syntax_token;
                               opening_token = None;
@@ -6385,12 +6394,12 @@ and function_case_body_from_node = fun node ->
     match direct_token_with_text node "|", cases with
     | Some leading_bar_token, ({ Cst.bar_token=None; _ } as first_case) :: rest -> {
       first_case
-      with bar_token = Some leading_bar_token;
+      with bar_token = Some leading_bar_token
     }
     :: rest
     | _ -> cases
   in
-  ({Cst.syntax_node = node;cases;}: Cst.function_case_body)
+  ({ Cst.syntax_node = node; cases }: Cst.function_case_body)
 
 and fun_body_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
@@ -6402,7 +6411,7 @@ and function_expression_from_node = fun node ->
     Cst.syntax_node = node;
     keyword_token = direct_required_token_with_text ~context:[ "function_expression" ] node "function";
     cases = (function_case_body_from_node node).cases;
-    attributes = [];
+    attributes = []
   }
 
 and let_operator_expression_from_node = fun node ->
@@ -6445,7 +6454,7 @@ and let_operator_expression_from_node = fun node ->
           | binding :: and_bindings ->
               Some {
                 Cst.syntax_node = node;
-                binding = {binding with and_binding = binding_operator_chain_of_list and_bindings;};
+                binding = { binding with and_binding = binding_operator_chain_of_list and_bindings };
                 in_token;
                 body = expression_from_node body_node;
                 attributes = [];
@@ -6620,7 +6629,7 @@ and class_method_from_node = fun node ->
                         String.equal (Cst.Token.text token) "virtual")
                       modifier_tokens
                   with
-                  | Some virtual_token -> Cst.VirtualMethod {virtual_token;type_;}
+                  | Some virtual_token -> Cst.VirtualMethod { virtual_token; type_ }
                   | None -> bail
                     ~message:"expected virtual token for virtual class method during Ceibo -> CST lifting"
                     ~syntax_node:node
@@ -6716,7 +6725,7 @@ and class_value_from_node = fun node ->
                         String.equal (Cst.Token.text token) "virtual")
                       modifier_tokens
                   with
-                  | Some virtual_token -> Cst.VirtualValue {virtual_token;type_;}
+                  | Some virtual_token -> Cst.VirtualValue { virtual_token; type_ }
                   | None -> bail
                     ~message:"expected virtual token for virtual class value during Ceibo -> CST lifting"
                     ~syntax_node:node
@@ -6779,7 +6788,7 @@ and class_inherit_from_node = fun node ->
           None)
   with
   | Some (class_expression, field_attributes) -> Some (
-    ({syntax_node = node;class_expression;}: Cst.class_inherit),
+    ({ syntax_node = node; class_expression }: Cst.class_inherit),
     field_attributes
   )
   | None -> None
@@ -6904,7 +6913,7 @@ and class_structure_from_node = fun node ->
       )
   in
   match lift_fields [] field_children with
-  | Some fields -> Some (({syntax_node = node;self_pattern;fields;}: Cst.class_structure))
+  | Some fields -> Some (({ syntax_node = node; self_pattern; fields }: Cst.class_structure))
   | None -> None
 
 and class_let_expression_from_node = fun ~is_recursive_binding node ->
@@ -7142,7 +7151,7 @@ and class_expression_from_node = fun node ->
       | body_node :: rev_param_nodes when can_lift_class_expression_node body_node -> Cst.ClassExpression.Fun {
         syntax_node = node;
         parameters = rev_param_nodes |> List.rev |> parameters_from_nodes;
-        body = class_expression_from_node body_node;
+        body = class_expression_from_node body_node
       }
       | _ -> unsupported_class_expression node
     )
@@ -7152,12 +7161,12 @@ and class_expression_from_node = fun node ->
       && Ceibo.Red.SyntaxNode.kind attribute_node = Syntax_kind.ATTRIBUTE_EXPR -> Cst.ClassExpression.Attribute {
         syntax_node = node;
         class_expression = class_expression_from_node callee_node;
-        attribute = attribute_from_node attribute_node;
+        attribute = attribute_from_node attribute_node
       }
       | callee_node :: argument_node :: _ when can_lift_class_expression_node callee_node -> Cst.ClassExpression.Apply {
         syntax_node = node;
         callee = class_expression_from_node callee_node;
-        argument = apply_argument_from_node argument_node;
+        argument = apply_argument_from_node argument_node
       }
       | _ -> unsupported_class_expression node
     )
@@ -7205,7 +7214,7 @@ and class_expression_from_node = fun node ->
             syntax_node = node;
             opening_token = token opening_token;
             inner = class_expression_from_node inner_node;
-            closing_token = token closing_token;
+            closing_token = token closing_token
           }
       | None, _ ->
           unsupported_class_expression node
@@ -7224,7 +7233,7 @@ and class_expression_from_node = fun node ->
           | Some payload_node, Some attribute_node -> Cst.ClassExpression.Attribute {
             syntax_node = node;
             class_expression = class_expression_from_node payload_node;
-            attribute = attribute_from_node attribute_node;
+            attribute = attribute_from_node attribute_node
           }
           | _ -> unsupported_class_expression node
         )
@@ -7347,7 +7356,7 @@ and try_expression_from_node = fun node ->
 
 and type_variable_from_node = fun node ->
   match List.rev (direct_non_trivia_tokens node) with
-  | name_tok :: _ -> Some Cst.TypeVariable.{syntax_node = node;name_token = token name_tok;}
+  | name_tok :: _ -> Some Cst.TypeVariable.{ syntax_node = node; name_token = token name_tok }
   | [] -> None
 
 and type_parameter_from_node = fun node ->
@@ -7363,8 +7372,8 @@ and type_parameter_from_node = fun node ->
     |> List.find_map
       (fun syntax_token ->
         match Ceibo.Red.SyntaxToken.text syntax_token with
-        | "+" -> Some (Cst.TypeParameterVariance.Covariant {marker_token = token syntax_token;})
-        | "-" -> Some (Cst.TypeParameterVariance.Contravariant {marker_token = token syntax_token;})
+        | "+" -> Some (Cst.TypeParameterVariance.Covariant { marker_token = token syntax_token })
+        | "-" -> Some (Cst.TypeParameterVariance.Contravariant { marker_token = token syntax_token })
         | _ -> None)
   in
   let parameter_injectivity_token = direct_token_with_text node "!" in
@@ -7372,7 +7381,7 @@ and type_parameter_from_node = fun node ->
     syntax_node = node;
     variance = parameter_variance;
     injectivity_token = parameter_injectivity_token;
-    type_variable = lifted_type_variable;
+    type_variable = lifted_type_variable
   }
 
 and type_parameters_from_node = fun node ->
@@ -7410,7 +7419,7 @@ let private_flag_from_type_declaration_node = fun node ->
   direct_non_trivia_tokens node |> List.find_opt
     (fun syntax_token ->
       String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "private") |> function
-  | Some private_token -> Cst.PrivateFlag.Private {private_token = token private_token;}
+  | Some private_token -> Cst.PrivateFlag.Private { private_token = token private_token }
   | None -> Cst.PrivateFlag.Public
 
 let record_field_from_node = fun node ->
@@ -7523,7 +7532,7 @@ let variant_constructor_from_node = fun node ->
                     |> List.filter
                       (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
                     |> List.filter_map record_field_from_node;
-                    closing_token;
+                    closing_token
                   })
               | [ tuple_node ] when Ceibo.Red.SyntaxNode.kind tuple_node = Syntax_kind.TYPE_TUPLE ->
                   Some (Cst.ConstructorArguments.Tuple (direct_non_trivia_nodes tuple_node
@@ -7618,10 +7627,10 @@ let poly_variant_tag_from_node = fun node ->
 let poly_variant_bound_from_node = fun node ->
   match direct_non_trivia_tokens node with
   | _open_bracket :: marker_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text marker_token) "<" -> Cst.PolyVariantBound.UpperBound {
-    marker_token = token marker_token;
+    marker_token = token marker_token
   }
   | _open_bracket :: marker_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text marker_token) ">" -> Cst.PolyVariantBound.LowerBound {
-    marker_token = token marker_token;
+    marker_token = token marker_token
   }
   | _ -> Cst.PolyVariantBound.Exact
 
@@ -7635,12 +7644,12 @@ let row_field_from_node = fun node ->
         | Syntax_kind.TYPE_CONSTR -> Cst.CoreType.Constr {
           syntax_node = node;
           constructor_path = type_constructor_path_from_node node;
-          arguments = [];
+          arguments = []
         }
         | _ -> core_type_from_node node
       in
       let bar_token = previous_direct_token_with_text_in_parent ~text:"|" node |> Option.map token in
-      Cst.RowField.Inherit {bar_token;syntax_node = node;type_ = inherited_type;}
+      Cst.RowField.Inherit { bar_token; syntax_node = node; type_ = inherited_type }
   | _ ->
       bail
         ~message:"expected polymorphic variant row field during Ceibo -> CST lifting"
@@ -7728,14 +7737,14 @@ let type_declaration_has_nonrec = fun node ->
 
 let type_definition_from_node = fun node ->
   if Ceibo.Red.SyntaxNode.kind node = Syntax_kind.TYPE_EXTENSIBLE then
-    Cst.TypeDefinition.Extensible {syntax_node = node;}
+    Cst.TypeDefinition.Extensible { syntax_node = node }
   else
     let direct_children = direct_non_trivia_nodes node in
     let variant_constructors = direct_children
     |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_VARIANT_CONSTR)
     |> List.filter_map variant_constructor_from_node in
     if List.length variant_constructors > 0 then
-      Cst.TypeDefinition.Variant {syntax_node = node;constructors = variant_constructors;}
+      Cst.TypeDefinition.Variant { syntax_node = node; constructors = variant_constructors }
     else
       match direct_children
       |> List.find_opt (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD) with
@@ -7755,7 +7764,12 @@ let type_definition_from_node = fun node ->
           |> List.filter
             (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_RECORD_FIELD)
           |> List.filter_map record_field_from_node in
-          Cst.TypeDefinition.Record {syntax_node = record_node;opening_token;fields;closing_token;}
+          Cst.TypeDefinition.Record {
+            syntax_node = record_node;
+            opening_token;
+            fields;
+            closing_token
+          }
       | None -> (
           match direct_children
           |> List.find_opt
@@ -7773,7 +7787,7 @@ let type_definition_from_node = fun node ->
               | Some first ->
                   let kind = Ceibo.Red.SyntaxNode.kind first in
                   if kind = Syntax_kind.TYPE_EXTENSIBLE then
-                    Cst.TypeDefinition.Extensible {syntax_node = first;}
+                    Cst.TypeDefinition.Extensible { syntax_node = first }
                   else if kind = Syntax_kind.OBJECT_TYPE then
                     let direct_tokens = direct_non_trivia_tokens first in
                     let opening_token, closing_token =
@@ -7835,7 +7849,7 @@ let type_definition_from_node = fun node ->
                       syntax_node = first;
                       opening_token;
                       package_type = module_type_from_first_class_module_type_node first;
-                      closing_token;
+                      closing_token
                     }
                   else
                     bail
@@ -7859,11 +7873,11 @@ let type_definition_from_node = fun node ->
                   | first :: _ ->
                       let kind = Ceibo.Red.SyntaxNode.kind first in
                       if kind = Syntax_kind.TYPE_EXTENSIBLE then
-                        Cst.TypeDefinition.Extensible {syntax_node = first;}
+                        Cst.TypeDefinition.Extensible { syntax_node = first }
                       else if can_lift_core_type_node first then
                         Cst.TypeDefinition.Alias {
                           syntax_node = first;
-                          manifest = core_type_from_node first;
+                          manifest = core_type_from_node first
                         }
                       else
                         bail
@@ -7958,7 +7972,7 @@ let rec flatten_type_declaration_group = fun (decl: Cst.TypeDeclaration.t) ->
   | Some grouped_decl -> grouped_decl :: Cst.TypeDeclaration.and_declarations grouped_decl
   | None ->
       let existing_and_declarations = Cst.TypeDeclaration.and_declarations decl in
-      let decl = {decl with next_and_declaration = None;} in
+      let decl = { decl with next_and_declaration = None } in
       decl :: (existing_and_declarations |> List.concat_map flatten_type_declaration_group)
 
 and grouped_type_declaration_from_nodes = fun ~group_syntax_node nodes ->
@@ -7995,13 +8009,13 @@ and grouped_type_declaration_from_nodes = fun ~group_syntax_node nodes ->
   | first :: rest -> Some {
     first
     with syntax_node = group_syntax_node;
-    next_and_declaration = type_declaration_chain_of_list rest;
+    next_and_declaration = type_declaration_chain_of_list rest
   }
 
 let merge_type_declaration_groups = fun (first: Cst.TypeDeclaration.t) (next: Cst.TypeDeclaration.t) ->
   match flatten_type_declaration_group first @ flatten_type_declaration_group next with
   | [] -> first
-  | first :: rest -> {first with next_and_declaration = type_declaration_chain_of_list rest;}
+  | first :: rest -> { first with next_and_declaration = type_declaration_chain_of_list rest }
 
 let rec coalesce_structure_type_declaration_groups = function
   | Cst.StructureItem.TypeDeclaration first :: Cst.StructureItem.TypeDeclaration next :: rest when type_declaration_starts_with_and
@@ -8296,7 +8310,7 @@ let rec module_signature_group_from_nodes = fun ~group_syntax_node ~is_recursive
   | first :: rest -> Some {
     first
     with syntax_node = group_syntax_node;
-    next_and_declaration = module_signature_chain_of_list rest;
+    next_and_declaration = module_signature_chain_of_list rest
   }
 
 let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive_group module_decl_nodes ->
@@ -8364,7 +8378,7 @@ let rec module_structure_group_from_nodes = fun ~group_syntax_node ~is_recursive
   | first :: rest -> Some {
     first
     with syntax_node = group_syntax_node;
-    next_and_declaration = module_structure_chain_of_list rest;
+    next_and_declaration = module_structure_chain_of_list rest
   }
 
 let module_type_declaration_from_node = fun node ->
@@ -8605,7 +8619,7 @@ let open_statement_from_node = fun node ->
         syntax_node = node;
         keyword_token = open_keyword_token;
         target = lifted_target;
-        bang_token = bang_token_opt;
+        bang_token = bang_token_opt
       }
   | Some open_keyword_token, None ->
       let module_tokens =
@@ -8622,7 +8636,7 @@ let open_statement_from_node = fun node ->
           syntax_node = node;
           keyword_token = open_keyword_token;
           target = Cst.OpenStatement.Path (module_path_from_tokens ~syntax_node:node module_tokens);
-          bang_token = bang_token_opt;
+          bang_token = bang_token_opt
         }
       )
   | None, _ ->
@@ -8724,14 +8738,14 @@ let exception_declaration_from_node = fun node ->
     with
     | Some child when can_lift_core_type_node child -> (
         match direct_token_with_text node "of" with
-        | Some of_token -> Some Cst.(Payload {of_token;payload_type = core_type_from_node child;})
+        | Some of_token -> Some Cst.(Payload { of_token; payload_type = core_type_from_node child })
         | None -> None
       )
     | Some child -> (
         match direct_token_with_text node "=" with
         | Some equals_token -> Some Cst.(Alias {
           equals_token;
-          alias = module_path_like_from_node child;
+          alias = module_path_like_from_node child
         })
         | None -> None
       )
@@ -8742,7 +8756,7 @@ let exception_declaration_from_node = fun node ->
     ~skip_keywords:[ "exception" ]
     (direct_non_trivia_tokens node) with
   | Some keyword_token, Some name_syntax_token -> Some ((
-    {syntax_node = node;keyword_token;name_token = token name_syntax_token;rhs;}: Cst.exception_declaration
+    { syntax_node = node; keyword_token; name_token = token name_syntax_token; rhs }: Cst.exception_declaration
   ))
   | _ -> None
 
@@ -8848,7 +8862,7 @@ let rec structure_items_from_node = fun node ->
                   let grouped_binding = {
                     first_binding
                     with syntax_node = node;
-                    and_binding = let_binding_chain_of_list and_bindings;
+                    and_binding = let_binding_chain_of_list and_bindings
                   } in
                   [ Cst.StructureItem.LetBinding grouped_binding ]
               | None -> unsupported_item node
@@ -9044,7 +9058,7 @@ let raw_annotation_payload_from_shell = fun shell_node ->
           all_tokens
           ~start_offset:(Ceibo.Red.SyntaxToken.span first_content_token).start
           ~end_offset:shell_close_offset;
-        start_offset = (Ceibo.Red.SyntaxToken.span first_content_token).start;
+        start_offset = (Ceibo.Red.SyntaxToken.span first_content_token).start
       }
       | [] -> None
     )
@@ -9056,7 +9070,7 @@ let raw_annotation_payload_from_shell = fun shell_node ->
           all_tokens
           ~start_offset:(Ceibo.Red.SyntaxToken.span first_content_token).start
           ~end_offset:shell_close_offset;
-        start_offset = (Ceibo.Red.SyntaxToken.span first_content_token).start;
+        start_offset = (Ceibo.Red.SyntaxToken.span first_content_token).start
       }
       | [] -> None
     )
@@ -9067,7 +9081,7 @@ let raw_annotation_payload_from_shell = fun shell_node ->
           all_tokens
           ~start_offset:(Ceibo.Red.SyntaxToken.span first_payload_token).start
           ~end_offset:shell_close_offset;
-        start_offset = (Ceibo.Red.SyntaxToken.span first_payload_token).start;
+        start_offset = (Ceibo.Red.SyntaxToken.span first_payload_token).start
       }
 
 let annotation_payload_from_shell_default = fun shell_node ->
@@ -9109,7 +9123,7 @@ let annotation_payload_from_shell_default = fun shell_node ->
           if tokens = [] then
             None
           else
-            Some (Cst.Payload.Opaque {tokens;})
+            Some (Cst.Payload.Opaque { tokens })
       | [] -> None
     )
   | _ -> None
@@ -10463,7 +10477,7 @@ let rec attach_structure_type_declaration_attributes = function
         if attributes = [] then
           decl
         else
-          {decl with attributes = decl.attributes @ attributes;}
+          { decl with attributes = decl.attributes @ attributes }
       in
       Cst.StructureItem.TypeDeclaration decl :: attach_structure_type_declaration_attributes rest
   | item :: rest ->
@@ -10485,7 +10499,7 @@ let rec attach_signature_type_declaration_attributes = function
         if attributes = [] then
           decl
         else
-          {decl with attributes = decl.attributes @ attributes;}
+          { decl with attributes = decl.attributes @ attributes }
       in
       Cst.SignatureItem.TypeDeclaration decl :: attach_signature_type_declaration_attributes rest
   | item :: rest ->
@@ -10526,7 +10540,7 @@ let lift = fun ~kind ~source ~tokens tree ->
           syntax_node;
           phrase_separator_tokens;
           trailing_phrase_separator_tokens;
-          items;
+          items
         }
     | `Interface ->
         let syntax_node, items, phrase_separator_tokens, trailing_phrase_separator_tokens =
@@ -10541,7 +10555,12 @@ let lift = fun ~kind ~source ~tokens tree ->
             signature_items_from_node
         in
         let items = normalize_signature_items ~source items in
-        Cst.Interface {syntax_node;phrase_separator_tokens;trailing_phrase_separator_tokens;items;}
+        Cst.Interface {
+          syntax_node;
+          phrase_separator_tokens;
+          trailing_phrase_separator_tokens;
+          items
+        }
   in
   cst
 
@@ -10606,7 +10625,7 @@ let structure_items_of_module_expression = function
     message = "module expression does not have a structural item stream";
     syntax_kind = Cst.syntax_kind (Cst.ModuleExpression.syntax_node module_expression);
     span = Ceibo.Red.SyntaxNode.span (Cst.ModuleExpression.syntax_node module_expression);
-    context = [ "module_expression" ];
+    context = [ "module_expression" ]
   }
 
 let raw_signature_items_from_syntax_node = fun node ->
@@ -10662,7 +10681,7 @@ let signature_items_of_module_type = function
     message = "module type does not have a structural item stream";
     syntax_kind = Cst.syntax_kind (Cst.ModuleType.syntax_node module_type);
     span = Ceibo.Red.SyntaxNode.span (Cst.ModuleType.syntax_node module_type);
-    context = [ "module_type" ];
+    context = [ "module_type" ]
   }
 
 let pattern_of_syntax_node = fun node ->

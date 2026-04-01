@@ -41,7 +41,7 @@ let parse_request_line = fun ?(max_length = 8_192) input ->
                     match Cursor.take_n version_cursor 5 with
                     | Some ("HTTP/", _) -> Done {
                       value = (method_str, path, version_str);
-                      remaining = Cursor.remaining cursor;
+                      remaining = Cursor.remaining cursor
                     }
                     | _ -> Error "Invalid HTTP version"
                   )
@@ -74,7 +74,7 @@ let parse_header_line = fun cursor ->
                     Cursor.skip_while name_cursor (fun c -> c = ' ' || c = '\t')
                   in
                   let name = Cursor.remaining name_cursor in
-                  Done {value = (name, value);remaining = Cursor.remaining cursor;}
+                  Done { value = (name, value); remaining = Cursor.remaining cursor }
             )
         )
     )
@@ -83,7 +83,7 @@ let rec parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = [])
   match Cursor.take_n cursor 2 with
   | Some ("\r\n", cursor) ->
       (* End of headers *)
-      Done {value = (List.rev acc, Cursor.remaining cursor);remaining = "";}
+      Done { value = (List.rev acc, Cursor.remaining cursor); remaining = "" }
   | _ -> (
       if List.length acc >= max_count then
         Error "Too many headers"
@@ -141,5 +141,5 @@ let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_le
               else
                 req
           in
-          Done {value = request;remaining = body_start;}
+          Done { value = request; remaining = body_start }
     )

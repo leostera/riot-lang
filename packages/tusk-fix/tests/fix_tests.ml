@@ -16,7 +16,7 @@ let find_token_by_text = fun red_root text ->
 let warning_diagnostic = fun ~rule_id ~message ~token ~fix ->
   Tusk_fix.Diagnostic.make
     ~severity:Warning
-    ~kind:(Tusk_fix.Diagnostic.Known {rule_id;message;})
+    ~kind:(Tusk_fix.Diagnostic.Known { rule_id; message })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
     ~fix
     ()

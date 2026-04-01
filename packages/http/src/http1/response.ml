@@ -40,7 +40,7 @@ let parse_status_line = fun input ->
                       | None -> Error "Invalid status code"
                       | Some status_code -> Done {
                         value = (version, status_code, reason);
-                        remaining = Cursor.remaining cursor;
+                        remaining = Cursor.remaining cursor
                       }
                     )
                   | _ -> Error "Invalid HTTP version"
@@ -83,5 +83,5 @@ let parse = fun input ->
               else
                 res
           in
-          Done {value = response;remaining = body_start;}
+          Done { value = response; remaining = body_start }
     )

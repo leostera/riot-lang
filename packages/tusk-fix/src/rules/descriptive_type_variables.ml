@@ -25,7 +25,7 @@ let make_diagnostic = fun type_variable ->
   let original = Syn.Cst.TypeVariable.text type_variable in
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:((Syn.Cst.TypeVariable.syntax_node type_variable |> Syn.Ceibo.Red.SyntaxNode.span))
     ~suggestion:(("Prefer a descriptive type variable name instead of " ^ original ^ ", for example 'value or 'error"))
     ()

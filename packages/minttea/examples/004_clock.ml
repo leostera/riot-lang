@@ -96,7 +96,7 @@ let space = [|"  "; "  "; "  "; "  "; "  ";|]
 
 let init = fun model ->
   let timer_ref, timer_cmd = Command.timer ~after:(Time.Duration.from_secs 1) in
-  ({model with timer_ref;}, timer_cmd)
+  ({ model with timer_ref }, timer_cmd)
 
 (* Update: Handle events *)
 
@@ -109,7 +109,7 @@ let update = fun event model ->
   | Event.Timer ref when Ref.equal ref model.timer_ref ->
       (* Update time and reset timer *)
       let timer_ref, timer_cmd = Command.timer ~after:(Time.Duration.from_secs 1) in
-      let new_model = {time = Datetime.now ();timer_ref;} in
+      let new_model = { time = Datetime.now (); timer_ref } in
       (new_model, timer_cmd)
   | _ ->
       (model, Command.Noop)
@@ -182,6 +182,6 @@ let app = App.make ~init ~update ~view ()
 (* Run it *)
 
 let () =
-  let initial_model = {time = Datetime.now ();timer_ref = Ref.make ();} in
+  let initial_model = { time = Datetime.now (); timer_ref = Ref.make () } in
   let config = Minttea.config () in
   Minttea.start ~config app initial_model

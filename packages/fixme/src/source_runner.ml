@@ -24,7 +24,7 @@ let lint_diagnostics = fun ~rules ?filename (parse_result: Syn.Parser.parse_resu
           | Some filename -> Path.to_string filename
           | None -> "<stdin>"
         in
-        let ctx = Rule.{file_path;cst;} in
+        let ctx = Rule.{ file_path; cst } in
         rules |> List.concat_map
           (fun rule ->
             Rule.run rule ctx red_tree)
@@ -34,7 +34,7 @@ let run = fun ~rules ?filename source ->
   {
     tree = parse_result.tree;
     diagnostics = lint_diagnostics ~rules ?filename parse_result;
-    parse_diagnostics = parse_result.diagnostics;
+    parse_diagnostics = parse_result.diagnostics
   }
 
 let run_rule = fun ~rule ?filename source -> run ~rules:[ rule ] ?filename source

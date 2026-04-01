@@ -32,7 +32,7 @@ let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression
 let make_diagnostic = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
   Diagnostic.make
     ~severity:Warning
-    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
     ~suggestion:"Replace begin/end with ordinary grouping or remove it entirely."
     ()

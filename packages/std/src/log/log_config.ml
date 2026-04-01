@@ -7,13 +7,8 @@ type format_style =
   | Compact
 
 type handler_config =
-  | Stdout of {
-      format: format_style;
-    }
-  | File of {
-      path: string;
-      format: format_style;
-    }
+  | Stdout of { format: format_style }
+  | File of { path: string; format: format_style }
 
 type t = {
   handlers: handler_config list;
@@ -52,7 +47,7 @@ let get = fun conf ->
               | Some (Spec.String s) -> parse_format s
               | _ -> Full
             in
-            Stdout {format;}
+            Stdout { format }
         | "file" ->
             let path =
               match List.assoc_opt "path" fields with
@@ -64,10 +59,10 @@ let get = fun conf ->
               | Some (Spec.String s) -> parse_format s
               | _ -> Full
             in
-            File {path;format;}
+            File { path; format }
         | _ ->
             panic
               ("Unknown handler type: " ^ variant ^ " (this should not happen - spec should enforce it)"))
       handlers_list
   in
-  Ok {handlers;}
+  Ok { handlers }

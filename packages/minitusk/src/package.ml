@@ -107,7 +107,7 @@ let read = fun path ->
                           | _ -> None
                         in
                         match (bin_name, bin_path) with
-                        | Some n, Some p -> Some {name = n;path = Filename.concat path p;}
+                        | Some n, Some p -> Some { name = n; path = Filename.concat path p }
                         | _ -> None
                       )
                     | _ -> None)

@@ -48,7 +48,7 @@ let get = fun conf ->
   if String.length liveview_secret < 32 then
     Error (Config.ValidationError {
       app = "suri";
-      errors = [ "liveview_secret must be at least 32 characters long" ];
+      errors = [ "liveview_secret must be at least 32 characters long" ]
     })
   else
     Ok {

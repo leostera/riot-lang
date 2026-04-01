@@ -135,7 +135,7 @@ let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
   let results =
     List.map (fun file -> run_file ?pipeline ?pipeline_for_file ~mode file) files
   in
-  {files = results;summary = summarize results;}
+  { files = results; summary = summarize results }
 
 let summary_to_json = fun summary ->
   let open Data.Json in Object [

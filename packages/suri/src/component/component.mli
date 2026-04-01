@@ -98,7 +98,7 @@ type 'msg attr =
     - Attributes (class, id, etc.) are rendered in static HTML
     - Events (on_click, etc.) are only active in LiveView *)
 type 'msg t =
-  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list; }
+  | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
   | Text of string
   | Fragment of 'msg t list
 (** Component tree - can be an element, text, or fragment. *)

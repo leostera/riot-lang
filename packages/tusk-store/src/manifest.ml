@@ -78,7 +78,7 @@ let of_json = fun json ->
                         | Some (String path), Some (String hash), Some (Int size) -> Ok {
                           path = Path.v path;
                           hash;
-                          size;
+                          size
                         }
                         | _ -> Error "Invalid file entry"
                       )
@@ -147,7 +147,7 @@ let create = fun ?base_dir ~package ~build_hash ~files ->
         match Std.Fs.read_to_string readable_path with
         | Ok file ->
             let hash = Std.Crypto.(Sha512.hash_string file |> Digest.hex) in
-            Some {path;hash;size;}
+            Some { path; hash; size }
         | Error _ -> None)
       files
   in

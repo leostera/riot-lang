@@ -6,7 +6,7 @@ type parse_state =
   | WaitingForBody of {
       http_req: Net.Http.Request.t;
       expected_length: int;
-      accumulated_body: string;
+      accumulated_body: string
     }
 
 type state = {
@@ -153,7 +153,7 @@ let websocket_to_socket_pool_handler : Channel.Handler.t -> Socket_pool.Handler.
             Socket_pool.Handler.Error (ws_handler, err));
   }
   in
-  Socket_pool.Handler.H {handler;state = ws_handler;}
+  Socket_pool.Handler.H { handler; state = ws_handler }
 
 let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
   (* Check for required WebSocket headers *)
@@ -205,7 +205,7 @@ let handle_request = fun state socket_conn (req: Request.t) ->
             state
             with is_keep_alive;
             requests_processed;
-            parse_state = WaitingForHeaders;
+            parse_state = WaitingForHeaders
           } in
           if is_keep_alive then
             Socket_pool.Handler.Continue new_state
@@ -238,16 +238,16 @@ let handle_data_waiting_headers = fun full_data conn state ->
       let body_received = String.length remaining in
       if body_received >= expected_length then
         let req = Request.of_http ~body:remaining http_req in
-        handle_request {state with parse_state = WaitingForHeaders;sniffed_data = "";} conn req
+        handle_request { state with parse_state = WaitingForHeaders; sniffed_data = "" } conn req
       else
         (* Need to read more body data - transition to WaitingForBody state *)
         Socket_pool.Handler.Continue {
           state
           with sniffed_data = "";
-          parse_state = WaitingForBody {http_req;expected_length;accumulated_body = remaining;};
+          parse_state = WaitingForBody { http_req; expected_length; accumulated_body = remaining }
         }
   | Need_more ->
-      Socket_pool.Handler.Continue {state with sniffed_data = full_data;}
+      Socket_pool.Handler.Continue { state with sniffed_data = full_data }
   | Error msg ->
       let res = Response.bad_request ~body:msg () in
       let _ = send_response conn res in
@@ -267,7 +267,7 @@ let handle_data_waiting_body = fun data conn state http_req expected_length accu
     (* Process the request with complete body *)
     let req = Request.of_http ~body:complete_body http_req in
     let result = handle_request
-      {state with parse_state = WaitingForHeaders;sniffed_data = remaining_data;}
+      { state with parse_state = WaitingForHeaders; sniffed_data = remaining_data }
       conn
       req in
     (* If there's remaining data and we're keeping the connection alive, it might be the start of the next request *)
@@ -276,7 +276,7 @@ let handle_data_waiting_body = fun data conn state http_req expected_length accu
     (* Still need more data *)
     Socket_pool.Handler.Continue {
       state
-      with parse_state = WaitingForBody {http_req;expected_length;accumulated_body = new_body;};
+      with parse_state = WaitingForBody { http_req; expected_length; accumulated_body = new_body }
     }
 
 let handle_data = fun data conn state ->

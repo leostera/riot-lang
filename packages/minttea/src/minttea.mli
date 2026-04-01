@@ -111,7 +111,7 @@ module Command: sig
     | DisableFocusTracking
     | SetWindowTitle of string
     | Seq of t list
-    | SetTimer of { ref: Timer.id Ref.t; duration: Time.Duration.t; }
+    | SetTimer of { ref: Timer.id Ref.t; duration: Time.Duration.t }
   val timer: after:Time.Duration.t -> Timer.id Ref.t * t
 end
 (** Declarative layout system - re-exported from Gooey *)

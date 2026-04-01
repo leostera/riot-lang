@@ -98,11 +98,11 @@ let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
               s
           | None when is_real_tty -> (
               match Kernel.Terminal.get_size tty_fd with
-              | Ok (cols, rows) -> {rows;cols;}
-              | Error _ -> {rows = 24;cols = 80;}
+              | Ok (cols, rows) -> { rows; cols }
+              | Error _ -> { rows = 24; cols = 80 }
             )
           | None ->
-              {rows = 24;cols = 80;}
+              { rows = 24; cols = 80 }
         in
         (* Determine input mode: dual FD if stdin is piped and we have a TTY *)
         let stdin_is_tty = Kernel.Terminal.is_tty IO.stdin in
@@ -114,7 +114,7 @@ let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
           | None, false, true ->
               (* stdin is piped but we have a TTY - use dual FD mode *)
               let data_fd = IO.stdin in
-              Terminal.DualFd {data_fd;control_fd = tty_fd;active = `Control;}
+              Terminal.DualFd { data_fd; control_fd = tty_fd; active = `Control }
           | None, _, _ ->
               (* Normal mode - stdin is a TTY or no TTY available *)
               let fd =
@@ -199,7 +199,7 @@ let size = fun t -> t.size
 
 let refresh_size = fun t ->
   match Kernel.Terminal.get_size t.fd with
-  | Ok (cols, rows) -> t.size <- {rows;cols;}
+  | Ok (cols, rows) -> t.size <- { rows; cols }
   | Error _ -> ()
 
 (* Keep cached size on error *)
@@ -293,7 +293,7 @@ let ensure_buffer = fun t ->
             b
         | None ->
             (* Create new 256-byte buffer for responsive input *)
-            Terminal.{data = Bytes.create 256;pos = 0;len = 0;}
+            Terminal.{ data = Bytes.create 256; pos = 0; len = 0 }
       in
       (* Try to fill buffer from active FD *)
       let fd = get_input_fd t in

@@ -184,7 +184,7 @@ let plan_node = fun input ->
               cycle_ids
             |> List.rev
           in
-          Error (Planning_error.CyclicDependency {cycle;})
+          Error (Planning_error.CyclicDependency { cycle })
       | Ok sorted_modules -> (
           let action_graph, _outputs = Action_graph.from_module_graph
             ~package:input.package
@@ -222,8 +222,8 @@ let plan_node = fun input ->
                     | _ -> []
                   ))
           in
-          Ok {sources;module_graph;action_graph;}
+          Ok { sources; module_graph; action_graph }
         )
     )
   with
-  | exn -> Error (Planning_error.Exception {exn;})
+  | exn -> Error (Planning_error.Exception { exn })

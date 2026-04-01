@@ -2,22 +2,11 @@ open Std
 open Std.Collections
 
 type t =
-  | CyclicDependency of {
-      cycle: string list;
-    }
-  | ScanFailed of {
-      path: Path.t;
-      reason: string;
-    }
-  | DependencyAnalysisFailed of {
-      reason: string;
-    }
-  | GraphBuildFailed of {
-      reason: string;
-    }
-  | Exception of {
-      exn: exn;
-    }
+  | CyclicDependency of { cycle: string list }
+  | ScanFailed of { path: Path.t; reason: string }
+  | DependencyAnalysisFailed of { reason: string }
+  | GraphBuildFailed of { reason: string }
+  | Exception of { exn: exn }
 
 let to_string = function
   | CyclicDependency { cycle } -> "Cyclic dependency detected: " ^ String.concat " -> " cycle

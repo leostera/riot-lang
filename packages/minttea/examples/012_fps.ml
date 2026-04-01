@@ -47,13 +47,13 @@ let update = fun event model ->
   | Event.KeyDown (Event.Escape, _) ->
       (model, Command.Quit)
   | Event.KeyDown (Event.Space, _) -> (* Toggle animation *)
-    ({model with animating = not model.animating;}, Command.Noop)
+    ({ model with animating = not model.animating }, Command.Noop)
   | Event.KeyDown (Event.Key "+", _) -> (* Increase speed *)
-    ({model with speed = min 5.0 (model.speed +. 0.5);}, Command.Noop)
+    ({ model with speed = min 5.0 (model.speed +. 0.5) }, Command.Noop)
   | Event.KeyDown (Event.Key "-", _) -> (* Decrease speed *)
-    ({model with speed = max 0.5 (model.speed -. 0.5);}, Command.Noop)
+    ({ model with speed = max 0.5 (model.speed -. 0.5) }, Command.Noop)
   | Event.KeyDown (Event.Key "r", _) -> (* Reset position *)
-    ({model with box_x = 10.0;box_y = 5.0;}, Command.Noop)
+    ({ model with box_x = 10.0; box_y = 5.0 }, Command.Noop)
   | Event.Frame _instant when model.animating ->
       (* Update FPS counter *)
       let _frame_status = Fps.tick model.fps in
@@ -74,7 +74,7 @@ let update = fun event model ->
           (new_y, model.velocity_y)
       in
       (
-        {model with box_x = final_x;box_y = final_y;velocity_x = vel_x;velocity_y = vel_y;},
+        { model with box_x = final_x; box_y = final_y; velocity_x = vel_x; velocity_y = vel_y },
         Command.Noop
       )
   | Event.Frame _instant ->
@@ -82,7 +82,7 @@ let update = fun event model ->
       let _frame_status = Fps.tick model.fps in
       (model, Command.Noop)
   | Event.Resize size -> (* Update window dimensions *)
-    ({model with width = size.width;height = size.height;}, Command.Noop)
+    ({ model with width = size.width; height = size.height }, Command.Noop)
   | _ ->
       (model, Command.Noop)
 

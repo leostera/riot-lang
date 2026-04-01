@@ -12,29 +12,12 @@ type value =
   | Bool of bool
 
 type error =
-  | Invalid_path of {
-      path: string;
-    }
-  | File_read_error of {
-      path: string;
-      reason: string;
-    }
-  | Parse_error of {
-      position: int;
-      context: string;
-      reason: string;
-    }
-  | Unterminated_string of {
-      position: int;
-    }
-  | Unterminated_array of {
-      position: int;
-    }
-  | Unexpected_char of {
-      position: int;
-      found: char;
-      expected: string;
-    }
+  | Invalid_path of { path: string }
+  | File_read_error of { path: string; reason: string }
+  | Parse_error of { position: int; context: string; reason: string }
+  | Unterminated_string of { position: int }
+  | Unterminated_array of { position: int }
+  | Unexpected_char of { position: int; found: char; expected: string }
 
 let error_to_string = function
   | Invalid_path { path } -> "Invalid path: " ^ path
@@ -119,13 +102,13 @@ let parse = fun content ->
         (Parse_exception (Unexpected_char {
           position = !pos;
           found = current_char ();
-          expected = "double-quote";
+          expected = "double-quote"
         }));
     advance ();
     let buf = Buffer.create 16 in
     let rec loop () =
       if at_end () then
-        raise (Parse_exception (Unterminated_string {position = start_pos;}));
+        raise (Parse_exception (Unterminated_string { position = start_pos }));
       match current_char () with
       | '"' ->
           advance ();
@@ -133,7 +116,7 @@ let parse = fun content ->
       | '\\' ->
           advance ();
           if at_end () then
-            raise (Parse_exception (Unterminated_string {position = start_pos;}));
+            raise (Parse_exception (Unterminated_string { position = start_pos }));
           (
             match current_char () with
             | 'n' -> Buffer.add_char buf '\n'
@@ -157,13 +140,17 @@ let parse = fun content ->
     let start_pos = !pos in
     if current_char () != '[' then
       raise
-        (Parse_exception (Unexpected_char {position = !pos;found = current_char ();expected = "[";}));
+        (Parse_exception (Unexpected_char {
+          position = !pos;
+          found = current_char ();
+          expected = "["
+        }));
     advance ();
     let items = ref [] in
     let rec parse_items () =
       skip_noise ();
       if at_end () then
-        raise (Parse_exception (Unterminated_array {position = start_pos;}));
+        raise (Parse_exception (Unterminated_array { position = start_pos }));
       match current_char () with
       | ']' ->
           advance ();
@@ -180,7 +167,7 @@ let parse = fun content ->
               advance ();
               Array (List.rev !items)
           | None ->
-              raise (Parse_exception (Unterminated_array {position = start_pos;}))
+              raise (Parse_exception (Unterminated_array { position = start_pos }))
           | Some c ->
               parse_items ()
         )
@@ -191,7 +178,11 @@ let parse = fun content ->
     let start_pos = !pos in
     if current_char () != '{' then
       raise
-        (Parse_exception (Unexpected_char {position = !pos;found = current_char ();expected = "{";}));
+        (Parse_exception (Unexpected_char {
+          position = !pos;
+          found = current_char ();
+          expected = "{"
+        }));
     advance ();
     skip_ws ();
     let items = ref [] in
@@ -202,7 +193,7 @@ let parse = fun content ->
           (Parse_exception (Parse_error {
             position = start_pos;
             context = "inline table";
-            reason = "unterminated";
+            reason = "unterminated"
           }));
       match current_char () with
       | '}' ->
@@ -221,7 +212,7 @@ let parse = fun content ->
               (Parse_exception (Parse_error {
                 position = !pos;
                 context = "inline table";
-                reason = "expected =";
+                reason = "expected ="
               }));
           advance ();
           skip_ws ();
@@ -240,7 +231,7 @@ let parse = fun content ->
                 (Parse_exception (Parse_error {
                   position = !pos;
                   context = "inline table";
-                  reason = "expected , or }";
+                  reason = "expected , or }"
                 }))
         )
     in
@@ -250,7 +241,11 @@ let parse = fun content ->
     skip_noise ();
     if at_end () then
       raise
-        (Parse_exception (Parse_error {position = !pos;context = "value";reason = "unexpected end";}));
+        (Parse_exception (Parse_error {
+          position = !pos;
+          context = "value";
+          reason = "unexpected end"
+        }));
     match current_char () with
     | '"' ->
         parse_quoted_string ()
@@ -307,7 +302,11 @@ let parse = fun content ->
   let parse_section_header () =
     if current_char () != '[' then
       raise
-        (Parse_exception (Unexpected_char {position = !pos;found = current_char ();expected = "[";}));
+        (Parse_exception (Unexpected_char {
+          position = !pos;
+          found = current_char ();
+          expected = "["
+        }));
     advance ();
     skip_ws ();
     let is_array = current_char () = '[' in
@@ -322,7 +321,11 @@ let parse = fun content ->
     done;
     if at_end () then
       raise
-        (Parse_exception (Parse_error {position = start;context = "section";reason = "unterminated";}));
+        (Parse_exception (Parse_error {
+          position = start;
+          context = "section";
+          reason = "unterminated"
+        }));
     let name = String.trim (String.sub content start (!pos - start)) in
     advance ();
     (* skip first ] *)
@@ -335,7 +338,7 @@ let parse = fun content ->
             (Parse_exception (Parse_error {
               position = !pos;
               context = "array section";
-              reason = "expected ]]";
+              reason = "expected ]]"
             }));
         advance ()
       );
@@ -359,7 +362,7 @@ let parse = fun content ->
           (
             match !current_section with
             | Some (name, false) ->
-                sections := {name;items = List.rev !current_items;} :: !sections
+                sections := { name; items = List.rev !current_items } :: !sections
             | Some (name, true) ->
                 (* Array section - add current items as a table to the array *)
                 let existing =
@@ -371,7 +374,7 @@ let parse = fun content ->
             | None ->
                 (* Save top-level items with empty section name *)
                 if List.length !current_items > 0 then
-                  sections := {name = "";items = List.rev !current_items;} :: !sections
+                  sections := { name = ""; items = List.rev !current_items } :: !sections
           );
           let section_name, is_array = parse_section_header () in
           current_section := Some (section_name, is_array);
@@ -404,7 +407,7 @@ let parse = fun content ->
       (
         match !current_section with
         | Some (name, false) ->
-            sections := {name;items = List.rev !current_items;} :: !sections
+            sections := { name; items = List.rev !current_items } :: !sections
         | Some (name, true) ->
             (* Array section - add current items as final table *)
             let existing =
@@ -416,7 +419,7 @@ let parse = fun content ->
         | None ->
             (* Save top-level items with empty section name *)
             if List.length !current_items > 0 then
-              sections := {name = "";items = List.rev !current_items;} :: !sections
+              sections := { name = ""; items = List.rev !current_items } :: !sections
       );
       let all_sections = List.rev !sections in
       (* Helper to insert a dotted key path into nested tables *)
@@ -467,7 +470,7 @@ let parse = fun content ->
   | Parse_exception err ->
       Error err
   | exn ->
-      Error (Parse_error {position = !pos;context = "unknown";reason = Exception.to_string exn;})
+      Error (Parse_error { position = !pos; context = "unknown"; reason = Exception.to_string exn })
 
 (* Recursive descent TOML parser *)
 
