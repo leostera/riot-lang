@@ -95,6 +95,120 @@ let collect_event_names = fun fn ->
 
 let pm_error_message = Tusk_model.Pm_error.message
 
+let write_file = fun path contents ->
+  let parent =
+    match Path.parent path with
+    | Some parent -> parent
+    | None -> Path.v "."
+  in
+  Fs.create_dir_all parent |> Result.expect ~msg:"expected parent directory to be created";
+  Fs.write contents path |> Result.expect ~msg:"expected file to be written"
+
+let list_tar_entries = fun artifact ->
+  with_tempdir "tusk_pm_publish_artifact"
+    (fun tempdir ->
+      let artifact_path = Path.(tempdir / Path.v "artifact.tar.gz") in
+      write_file artifact_path artifact;
+      match Command.make "tar" ~args:[ "-tzf"; Path.to_string artifact_path ] |> Command.output with
+      | Error (Command.SystemError err) -> Error ("failed to spawn tar: " ^ err)
+      | Ok output when not (Int.equal output.status 0) ->
+          Error ("failed to list artifact entries: " ^ output.stderr)
+      | Ok output ->
+          Ok (String.split_on_char '\n' output.stdout |> List.filter (fun line -> not (String.equal line "")))
+    )
+
+let test_publisher_rejects_path_only_runtime_dependencies = fun () ->
+  let package = make_package
+    ~name:"demo"
+    ~path:(Path.v "/workspace/packages/demo")
+    ~dependencies:[
+      { name = "std"; source = source ~path:(Path.v "../std") () }
+    ]
+    () in
+  match Tusk_pm.Publisher.validate_runtime_dependencies ~package with
+  | Ok () -> Error "expected path-only runtime dependency to be rejected for publish"
+  | Error (Tusk_pm.Publisher.RuntimeDependencyNotPublishable { dependency; reason = `PathOnly path; _ }) ->
+      if String.equal dependency "std" && Path.equal path (Path.v "../std") then
+        Ok ()
+      else
+        Error "unexpected path-only runtime dependency payload"
+  | Error err ->
+      Error ("unexpected publish validation error: " ^ Tusk_pm.Publisher.message err)
+
+let test_publisher_allows_path_with_version_runtime_dependencies = fun () ->
+  let package = make_package
+    ~name:"demo"
+    ~path:(Path.v "/workspace/packages/demo")
+    ~dependencies:[
+      { name = "std"; source = source ~path:(Path.v "../std") ~version:Std.Version.any () }
+    ]
+    () in
+  match Tusk_pm.Publisher.validate_runtime_dependencies ~package with
+  | Ok () -> Ok ()
+  | Error err ->
+      Error ("expected path+version runtime dependency to be publishable: " ^ Tusk_pm.Publisher.message err)
+
+let test_publisher_creates_package_root_tarball = fun () ->
+  with_tempdir "tusk_pm_publish_tarball"
+    (fun root ->
+      let package_root = Path.(root / Path.v "packages/demo") in
+      write_file Path.(package_root / Path.v "tusk.toml")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+      write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
+      write_file Path.(package_root / Path.v "README.md") "# Demo\n";
+      write_file Path.(package_root / Path.v "_build/ignore.txt") "ignore\n";
+      write_file Path.(package_root / Path.v ".git/config") "ignore\n";
+      write_file Path.(package_root / Path.v "node_modules/left-pad.js") "ignore\n";
+      write_file Path.(package_root / Path.v ".DS_Store") "ignore\n";
+      let package = make_package ~name:"demo" ~path:package_root () in
+      match Tusk_pm.Publisher.create_artifact ~package with
+      | Error err -> Error ("expected artifact creation to succeed: " ^ Tusk_pm.Publisher.message err)
+      | Ok artifact -> (
+          match list_tar_entries artifact with
+          | Error _ as err -> err
+          | Ok entries ->
+              let entries = List.sort String.compare entries in
+              let expected = List.sort String.compare [ "README.md"; "src/demo.ml"; "tusk.toml" ] in
+              if entries = expected then
+                Ok ()
+              else
+                Error ("unexpected publish artifact entries: " ^ String.concat "," entries)
+        ))
+
+let test_publisher_rejects_symlink_entries = fun () ->
+  with_tempdir "tusk_pm_publish_symlink"
+    (fun root ->
+      let package_root = Path.(root / Path.v "packages/demo") in
+      write_file Path.(package_root / Path.v "tusk.toml")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+      write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
+      let link = Path.(package_root / Path.v "README.md") in
+      Fs.symlink ~src:(Path.v "src/demo.ml") ~dst:link |> Result.expect ~msg:"expected symlink to be created";
+      let package = make_package ~name:"demo" ~path:package_root () in
+      match Tusk_pm.Publisher.create_artifact ~package with
+      | Ok _ -> Error "expected publisher to reject symlink entries"
+      | Error (Tusk_pm.Publisher.SymlinkNotAllowed { path }) ->
+          if Path.equal path link then
+            Ok ()
+          else
+            Error "unexpected symlink rejection path"
+      | Error err ->
+          Error ("unexpected publish artifact error: " ^ Tusk_pm.Publisher.message err))
+
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -1249,6 +1363,10 @@ let tests =
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
     case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;
     case "projection: fails when lockfile is missing package" test_projection_fails_when_lockfile_is_missing_package;
+    case "publisher: rejects path-only runtime dependencies" test_publisher_rejects_path_only_runtime_dependencies;
+    case "publisher: allows path+version runtime dependencies" test_publisher_allows_path_with_version_runtime_dependencies;
+    case "publisher: creates package-root tarball" test_publisher_creates_package_root_tarball;
+    case "publisher: rejects symlink entries" test_publisher_rejects_symlink_entries;
   ]
 
 let name = "Tusk PM Tests"

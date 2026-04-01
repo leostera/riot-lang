@@ -1,0 +1,224 @@
+open Std
+
+type error =
+  | MissingManifest of { package_root: Path.t }
+  | RuntimeDependencyNotPublishable of {
+      package: string;
+      dependency: string;
+      reason: [
+        | `PathOnly of Path.t
+        | `WorkspaceOnly
+      ];
+    }
+  | SymlinkNotAllowed of { path: Path.t }
+  | UnsupportedEntry of { path: Path.t; kind: string }
+  | DirectoryReadFailed of { path: Path.t; error: string }
+  | MetadataReadFailed of { path: Path.t; error: string }
+  | ArtifactReadFailed of { path: Path.t; error: string }
+  | TarCommandFailed of {
+      command: string;
+      status: int;
+      stdout: string;
+      stderr: string;
+    }
+  | TarCommandSpawnFailed of { command: string; error: string }
+
+let excluded_entry_names = [
+  "_build";
+  ".git";
+  ".hg";
+  "node_modules";
+  ".direnv";
+  ".DS_Store";
+  "dist";
+  "coverage";
+  ".turbo";
+  ".cache";
+  ".tmp";
+  "tmp";
+]
+
+let message = function
+  | MissingManifest { package_root } ->
+      "package root '"
+      ^ Path.to_string package_root
+      ^ "' is missing tusk.toml at archive root"
+  | RuntimeDependencyNotPublishable { package; dependency; reason = `PathOnly path } ->
+      "runtime dependency '"
+      ^ dependency
+      ^ "' in package '"
+      ^ package
+      ^ "' is path-only and cannot be published (path = "
+      ^ Path.to_string path
+      ^ ")"
+  | RuntimeDependencyNotPublishable { package; dependency; reason = `WorkspaceOnly } ->
+      "runtime dependency '"
+      ^ dependency
+      ^ "' in package '"
+      ^ package
+      ^ "' is workspace-only and cannot be published"
+  | SymlinkNotAllowed { path } ->
+      "publish artifacts do not support symlinks: " ^ Path.to_string path
+  | UnsupportedEntry { path; kind } ->
+      "publish artifacts only support regular files and directories; found "
+      ^ kind
+      ^ " at "
+      ^ Path.to_string path
+  | DirectoryReadFailed { path; error } ->
+      "failed to read directory '" ^ Path.to_string path ^ "': " ^ error
+  | MetadataReadFailed { path; error } ->
+      "failed to read metadata for '" ^ Path.to_string path ^ "': " ^ error
+  | ArtifactReadFailed { path; error } ->
+      "failed to read publish artifact '" ^ Path.to_string path ^ "': " ^ error
+  | TarCommandFailed { command; status; stdout; stderr } ->
+      let detail =
+        if String.equal stderr "" then
+          stdout
+        else
+          stderr
+      in
+      "failed to create publish artifact with '"
+      ^ command
+      ^ "' (exit "
+      ^ Int.to_string status
+      ^ "): "
+      ^ detail
+  | TarCommandSpawnFailed { command; error } ->
+      "failed to spawn publish artifact command '" ^ command ^ "': " ^ error
+
+let should_skip_entry = fun path ->
+  let name = Path.basename path in
+  List.exists (String.equal name) excluded_entry_names
+
+let file_kind_to_string = function
+  | `Regular -> "regular file"
+  | `Directory -> "directory"
+  | `Symlink -> "symlink"
+  | `Block -> "block device"
+  | `Character -> "character device"
+  | `Fifo -> "fifo"
+  | `Socket -> "socket"
+
+let path_error_message = function
+  | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } ->
+      "invalid utf8 from " ^ syscall ^ ": " ^ path
+  | Path.SystemError msg -> msg
+
+let validate_runtime_dependency = fun ~(package:Tusk_model.Package.t) (dep: Tusk_model.Package.dependency) ->
+  match dep.source with
+  | { builtin = true; _ } ->
+      Ok ()
+  | { workspace = true; _ } ->
+      Error (RuntimeDependencyNotPublishable {
+        package = package.name;
+        dependency = dep.name;
+        reason = `WorkspaceOnly;
+      })
+  | { path = Some path; version = None; _ } ->
+      Error (RuntimeDependencyNotPublishable {
+        package = package.name;
+        dependency = dep.name;
+        reason = `PathOnly path;
+      })
+  | _ ->
+      Ok ()
+
+let validate_runtime_dependencies = fun ~(package:Tusk_model.Package.t) ->
+  let rec loop = function
+    | [] -> Ok ()
+    | dep :: rest -> (
+        match validate_runtime_dependency ~package dep with
+        | Ok () -> loop rest
+        | Error _ as err -> err
+      )
+  in
+  loop package.dependencies
+
+let collect_relative_files = fun ~package_root ->
+  let rec walk_dir acc dir =
+    match Fs.read_dir dir with
+    | Error err ->
+        Error (DirectoryReadFailed { path = dir; error = IO.error_message err })
+    | Ok iter ->
+        let entries = Std.Iter.MutIterator.to_list iter in
+        let rec walk_entries acc = function
+          | [] -> Ok acc
+          | entry :: rest ->
+              if should_skip_entry entry then
+                walk_entries acc rest
+              else
+                let full_path = Path.join dir entry in
+                match Fs.symlink_metadata full_path with
+                | Error err ->
+                    Error (MetadataReadFailed { path = full_path; error = IO.error_message err })
+                | Ok meta when Fs.Metadata.is_symlink meta ->
+                    Error (SymlinkNotAllowed { path = full_path })
+                | Ok meta when Fs.Metadata.is_dir meta -> (
+                    match walk_dir acc full_path with
+                    | Ok acc -> walk_entries acc rest
+                    | Error _ as err -> err
+                  )
+                | Ok meta when Fs.Metadata.is_file meta -> (
+                    match Path.strip_prefix full_path ~prefix:package_root with
+                    | Ok relative -> walk_entries (relative :: acc) rest
+                    | Error err ->
+                        Error (MetadataReadFailed {
+                          path = full_path;
+                          error = path_error_message err;
+                        })
+                  )
+                | Ok meta ->
+                    Error (UnsupportedEntry {
+                      path = full_path;
+                      kind = file_kind_to_string (Fs.Metadata.file_type meta);
+                    })
+        in
+        walk_entries acc entries
+  in
+  walk_dir [] package_root
+
+let create_archive = fun ~package_root ~relative_files ->
+  match Fs.with_tempdir ~prefix:"tusk_publish_artifact" (fun tempdir ->
+    let artifact_path = Path.(tempdir / Path.v "package.tar.gz") in
+    let args =
+      [ "-czf"; Path.to_string artifact_path; "-C"; Path.to_string package_root ]
+      @ List.rev_map Path.to_string relative_files
+    in
+    let command = Command.make "tar" ~args in
+    match Command.output command with
+    | Error (Command.SystemError error) ->
+        Error (TarCommandSpawnFailed { command = Command.to_string command; error })
+    | Ok output when not (Int.equal output.status 0) ->
+        Error (TarCommandFailed {
+          command = Command.to_string command;
+          status = output.status;
+          stdout = output.stdout;
+          stderr = output.stderr;
+        })
+    | Ok _ -> (
+        match Fs.read artifact_path with
+        | Ok artifact -> Ok artifact
+        | Error err ->
+            Error (ArtifactReadFailed { path = artifact_path; error = IO.error_message err })
+      )) with
+  | Error err ->
+      Error (ArtifactReadFailed {
+        path = package_root;
+        error = IO.error_message err;
+      })
+  | Ok result ->
+      result
+
+let create_artifact = fun ~(package:Tusk_model.Package.t) ->
+  match validate_runtime_dependencies ~package with
+  | Error _ as err -> err
+  | Ok () -> (
+      match collect_relative_files ~package_root:package.path with
+      | Error _ as err -> err
+      | Ok relative_files ->
+          if not (List.exists (Path.equal (Path.v "tusk.toml")) relative_files) then
+            Error (MissingManifest { package_root = package.path })
+          else
+            create_archive ~package_root:package.path ~relative_files
+    )
