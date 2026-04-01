@@ -6,6 +6,7 @@ open Std
 type protocol_version = string
 (** Protocol version string (e.g., "2024-11-05") *)
 type json = Data.Json.t
+
 (** JSON type alias *)
 (** {2 JSON-RPC Base Types} *)
 
@@ -20,6 +21,7 @@ type error = {
   message: string;
   data: json option;
 }
+
 (** JSON-RPC error *)
 (** {2 Client/Server Info} *)
 
@@ -34,4 +36,5 @@ type server_info = {
 (** {2 Capabilities} *)
 
 type tool_capability = unit
+
 (** Empty for now, can be extended *)

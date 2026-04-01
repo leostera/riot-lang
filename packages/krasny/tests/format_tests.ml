@@ -299,6 +299,38 @@ let z = x.%(0)
 |}
         ~actual;
       Ok ());
+  Test.case "format leaves a blank line before docstring-led top-level items"
+    (fun () ->
+      let source = {|let first = 1
+(** doc for second *)
+let second = 2
+|}
+      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"top-level docstring-led items should stay visually separated" in
+      Test.assert_equal
+        ~expected:{|let first = 1
+
+(** doc for second *)
+let second = 2
+|}
+        ~actual;
+      Ok ());
+  Test.case "format leaves a blank line before docstring-led signature items"
+    (fun () ->
+      let source = {|val first : int
+(** doc for second *)
+val second : int
+|}
+      in
+      let actual = parse_mli source |> Krasny.format |> Result.expect ~msg:"signature docstring-led items should stay visually separated" in
+      Test.assert_equal
+        ~expected:{|val first: int
+
+(** doc for second *)
+val second: int
+|}
+        ~actual;
+      Ok ());
   Test.case "format operator expressions and patterns from explicit operator tokens"
     (fun () ->
       let source = {|let op = ( + )

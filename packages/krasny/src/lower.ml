@@ -5797,7 +5797,7 @@ let make_lowerer =
             else if is_docstring && next_is_docstring then
               blank_line
             else if next_is_trivia then
-              Doc.line
+              blank_line
             else if is_type_declaration && next_compact_before then
               Doc.line
             else if tight_after || is_trivia then
@@ -5850,7 +5850,7 @@ let make_lowerer =
             else if is_docstring && next_is_docstring then
               blank_line
             else if next_is_trivia then
-              Doc.line
+              blank_line
             else if tight_after || is_trivia then
               Doc.line
             else if is_open && next_is_open then

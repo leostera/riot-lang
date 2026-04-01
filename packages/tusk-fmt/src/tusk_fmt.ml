@@ -20,7 +20,10 @@ let output_writer =
     type err = unit
 
     let write = fun () ~buf ->
-      print buf;
+      if String.ends_with ~suffix:"\n" buf then
+        println (String.sub buf 0 (String.length buf - 1))
+      else
+        print buf;
       Ok (String.length buf)
 
     let write_owned_vectored = fun () ~bufs:_ -> unimplemented ()
@@ -144,19 +147,6 @@ let stream_result_writer = fun ~json ~root ~mode ~concurrency ->
 let explicit_targets = fun matches ->
   ArgParser.get_many matches "path" |> List.map Path.v |> List.sort_uniq compare_paths
 
-let expand_explicit_targets = fun targets ->
-  let rec loop = fun acc ->
-    function
-    | [] -> List.rev acc
-    | target :: rest ->
-        if Fs.is_dir target |> Result.unwrap_or ~default:false then
-          let nested = Krasny.Runner.collect_ocaml_files ~roots:[ target ] () in
-          loop (List.rev_append nested acc) rest
-        else
-          loop (target :: acc) rest
-  in
-  loop [] targets |> List.sort_uniq compare_paths
-
 let run = fun ?workspace fmt_matches ->
   let check = get_flag fmt_matches "check" in
   let verify = get_flag fmt_matches "verify" in
@@ -201,15 +191,25 @@ let run = fun ?workspace fmt_matches ->
             ~on_result
             ()
         else
-          let targets = expand_explicit_targets explicit_targets in
-          let result =
-            match mode with
-            | Krasny.Runner.Check -> Krasny.Runner.run_checks ~concurrency targets
-            | Krasny.Runner.Verify -> Krasny.Runner.run_verify ~concurrency targets
-            | Krasny.Runner.Format -> Krasny.Runner.run_format ~concurrency targets
-          in
-          List.iter on_result result.files;
-          result
+          match mode with
+          | Krasny.Runner.Check -> Krasny.Runner.run_checks_streaming
+            ~concurrency
+            ~should_ignore:(should_ignore_file fmt_scope)
+            ~roots:explicit_targets
+            ~on_result
+            ()
+          | Krasny.Runner.Verify -> Krasny.Runner.run_verify_streaming
+            ~concurrency
+            ~should_ignore:(should_ignore_file fmt_scope)
+            ~roots:explicit_targets
+            ~on_result
+            ()
+          | Krasny.Runner.Format -> Krasny.Runner.run_format_streaming
+            ~concurrency
+            ~should_ignore:(should_ignore_file fmt_scope)
+            ~roots:explicit_targets
+            ~on_result
+            ()
       in
       if json then
         write_json_summary ~root result.summary

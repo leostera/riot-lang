@@ -1,4 +1,5 @@
 open Global0
+
 (** First-class module type for writable destinations. *)
 module type Write = sig
   type t

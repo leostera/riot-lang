@@ -2,6 +2,7 @@ let create_default_package () =
   let* () = Ok () in
   println "";
   Ok ()
+
 (** Main run function *)
 let run matches =
   let open Result in

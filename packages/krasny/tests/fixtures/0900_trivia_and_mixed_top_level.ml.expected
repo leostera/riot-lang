@@ -14,6 +14,7 @@
 (* Leading comment for a formatted let binding. *)
 
 let before = 1
+
 (** Docstring for a formatted let binding. *)
 let documented = 2
 
@@ -48,6 +49,7 @@ let inline_comment_expr = before + (* inline operator comment *) after
 let inline_comment_args = configure ~timeout:30
   (* comment between arguments *)
   ~retries:3
+
 (** Module-level doc comment. *)
 module Commented: sig
   (** Inline signature comment. *)

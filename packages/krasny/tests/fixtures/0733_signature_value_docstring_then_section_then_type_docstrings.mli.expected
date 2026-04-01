@@ -1,4 +1,5 @@
 val home_dir: unit -> string option
+
 (** Returns the user's home directory. *)
 (** # Environment Variables *)
 
