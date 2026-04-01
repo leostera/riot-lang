@@ -59,24 +59,28 @@ let () =
   Printf.printf "=== Minitusk Build System ===\n";
   (* Create build results tracker for cross-package dependencies *)
   let build_results = Dep_graph.Build_results.create () in
-  (* Build packages in dependency order *)
+  (* Build packages in runtime dependency order for bootstrapping tusk-cli. *)
   build_package ~build_results ~needs_stdlib_and_unix:true "kernel" "packages/kernel";
   build_package ~build_results "miniriot" "packages/miniriot";
   build_package ~build_results "std" "packages/std";
   build_package ~build_results "colors" "packages/colors";
   build_package ~build_results "tty" "packages/tty";
   build_package ~build_results "ceibo" "packages/ceibo";
+  build_package ~build_results "http" "packages/http";
+  build_package ~build_results "blink" "packages/blink";
+  build_package ~build_results "pkgs-ml" "packages/pkgs-ml";
   build_package ~build_results "syn" "packages/syn";
+  build_package ~build_results "fixme" "packages/fixme";
   build_package ~build_results "krasny" "packages/krasny";
   build_package ~build_results "tusk-model" "packages/tusk-model";
   build_package ~build_results "tusk-store" "packages/tusk-store";
   build_package ~build_results "tusk-toolchain" "packages/tusk-toolchain";
   build_package ~build_results "tusk-planner" "packages/tusk-planner";
   build_package ~build_results "tusk-executor" "packages/tusk-executor";
-  build_package ~build_results "tusk-build" "packages/tusk-build";
   build_package ~build_results "tusk-init" "packages/tusk-init";
-  build_package ~build_results "fixme" "packages/fixme";
   build_package ~build_results "tusk-fix" "packages/tusk-fix";
   build_package ~build_results "tusk-fmt" "packages/tusk-fmt";
+  build_package ~build_results "tusk-pm" "packages/tusk-pm";
+  build_package ~build_results "tusk-build" "packages/tusk-build";
   build_package ~build_results "tusk-cli" "packages/tusk-cli";
   Printf.printf "\n=== Build complete! ===\n"

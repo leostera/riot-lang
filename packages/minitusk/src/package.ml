@@ -54,6 +54,15 @@ let parse_string_list = fun toml_array ->
         items
   | _ -> []
 
+let is_runtime_binary_path = fun path ->
+  not
+    (String.starts_with ~prefix:"tests/" path
+    || String.starts_with ~prefix:"test/" path
+    || String.starts_with ~prefix:"examples/" path
+    || String.starts_with ~prefix:"example/" path
+    || String.starts_with ~prefix:"bench/" path
+    || String.starts_with ~prefix:"benchmarks/" path)
+
 let read = fun path ->
   let toml_path = Filename.concat path "tusk.toml" in
   if Sys.file_exists toml_path then
@@ -107,7 +116,10 @@ let read = fun path ->
                           | _ -> None
                         in
                         match (bin_name, bin_path) with
-                        | Some n, Some p -> Some { name = n; path = Filename.concat path p }
+                        | Some n, Some p when is_runtime_binary_path p -> Some {
+                          name = n;
+                          path = Filename.concat path p
+                        }
                         | _ -> None
                       )
                     | _ -> None)
