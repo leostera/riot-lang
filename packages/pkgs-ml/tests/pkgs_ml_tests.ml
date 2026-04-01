@@ -32,9 +32,26 @@ let test_registry_split_layout = fun () ->
       ^ "\nsrc="
       ^ src)
 
+let test_sparse_index_layout = fun () ->
+  let cache =
+    Pkgs_ml.Registry_cache.create
+      ~tusk_home:(Path.v "/tmp/.tusk")
+      ~registry_name:"pkgs.ml"
+    |> Result.expect ~msg:"expected registry cache to be created"
+  in
+  let actual =
+    Pkgs_ml.Sparse_index.package_cache_path cache ~package_name:"AbCd"
+    |> Path.to_string
+  in
+  if String.equal actual "/tmp/.tusk/registry/pkgs.ml/index/ab/cd/abcd" then
+    Ok ()
+  else
+    Error ("unexpected sparse index cache path: " ^ actual)
+
 let tests =
   Test.[
     case "registry cache: uses cargo-style split layout" test_registry_split_layout;
+    case "sparse index: resolves cache path from normalized package name" test_sparse_index_layout;
   ]
 
 let name = "pkgs-ml Tests"
