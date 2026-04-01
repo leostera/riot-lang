@@ -274,6 +274,48 @@ let test_lockfile_store_bubbles_parse_errors = fun () ->
           else
             Error ("unexpected error: " ^ err))
 
+let test_projection_resolves_workspace_packages = fun () ->
+  let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
+  let app_pkg =
+    make_package
+      ~name:"app"
+      ~path:(Path.v "/workspace/packages/app")
+      ~dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
+      ()
+  in
+  let lockfile =
+    Tusk_pm.Dep_solver.lock_deps
+      ~mode:Tusk_pm.Dep_solver.Refresh
+      ~registry_name:"pkgs.ml"
+      ~existing_lock:None
+      [ app_pkg; std_pkg ]
+    |> Result.expect ~msg:"expected lock projection to succeed"
+  in
+  match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg; std_pkg ] ~lockfile with
+  | Error err -> Error ("expected projection to resolve workspace packages: " ^ err)
+  | Ok resolved ->
+      let app = List.hd resolved in
+      if
+        List.length resolved = 2
+        && app.id.name = "app"
+        && List.length app.runtime_resolved = 1
+        && (List.hd app.runtime_resolved).resolved_id.name = "std"
+      then
+        Ok ()
+      else
+        Error "expected projection to preserve resolved runtime dependency ids"
+
+let test_projection_fails_when_lockfile_is_missing_package = fun () ->
+  let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
+  let lockfile = Tusk_model.Lockfile.{ format_version = 1; packages = [] } in
+  match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile with
+  | Ok _ -> Error "expected projection to fail when lockfile is missing package"
+  | Error err ->
+      if String.contains err "lockfile is missing package 'app'" then
+        Ok ()
+      else
+        Error ("unexpected error: " ^ err)
+
 let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
@@ -286,6 +328,8 @@ let tests =
     case "lockfile store: roundtrips root lockfile" test_lockfile_store_roundtrips;
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
+    case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
+    case "projection: fails when lockfile is missing package" test_projection_fails_when_lockfile_is_missing_package;
   ]
 
 let name = "Tusk PM Tests"
