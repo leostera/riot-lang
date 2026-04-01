@@ -10,6 +10,7 @@
 4. Changes here commonly affect `tusk-cli`, `tusk-planner`, and `tusk-executor`.
 5. Artifact lookup must respect the active build lane (`profile` + `target`) instead of assuming host/default output directories.
 6. Public command entrypoints should expose typed request/event/error APIs from this package; `tusk-cli` should only translate `matches` into those requests and render the resulting events.
+7. Normal command entrypoints should assume `tusk-cli` already validated workspace load errors; do not reintroduce `load_errors` plumbing into public request types unless a command truly needs partial-workspace behavior.
 
 ## Validate
 

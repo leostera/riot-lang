@@ -120,3 +120,47 @@ let test_error_message = Test_runtime.test_error_message
 let test_event_to_json = Test_runtime.test_event_to_json
 
 let test = Test_runtime.test
+
+type bench_request = Bench_runtime.bench_request = {
+  workspace: Tusk_model.Workspace.t;
+  package_filter: string option;
+  query: string option;
+  extra_args: string list;
+}
+
+type bench_event = Bench_runtime.bench_event =
+  | Build of build_event
+  | NoSuitesFound of { package_name: string option }
+  | RunningSuite of suite_binary
+  | SuiteCompleted of {
+      suite: suite_binary;
+      status: int;
+      stdout: string;
+      stderr: string;
+    }
+  | Summary of {
+      total: int;
+      passed: int;
+      failed: int;
+    }
+
+type bench_error = Bench_runtime.bench_error =
+  | BuildFailed of build_error
+  | ClientError of Client.error
+  | SuiteArtifactNotFound of {
+      suite: suite_binary;
+      reason: string;
+    }
+  | SuiteExecutionError of {
+      suite: suite_binary;
+      reason: string;
+    }
+  | SuitesFailed of int
+
+let collect_bench_suites = Bench_runtime.collect_suite_binaries
+
+let bench_error_message = Bench_runtime.bench_error_message
+
+let bench_event_to_json = Bench_runtime.bench_event_to_json
+
+let bench = Bench_runtime.bench
