@@ -9,6 +9,7 @@
 3. Do not rewrite downloaded manifests into path manifests.
 4. Bubble errors up instead of hiding them behind fallback behavior.
 5. Prefer small slices with tests; phase 1 may be naive operationally, but it should stay structurally honest.
+6. Keep the reusable publish command surface at the top level as `Tusk_pm.publish` with `publish_request` / `publish_event` / `publish_error`, even if implementation details live in submodules.
 
 ## Validate
 

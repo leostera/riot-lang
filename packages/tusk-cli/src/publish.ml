@@ -8,7 +8,7 @@ type request =
 
 type error =
   | ConflictingSelection
-  | PublishFailed of Tusk_pm.Publish.error
+  | PublishFailed of Tusk_pm.publish_error
 
 let out = eprintln
 
@@ -25,7 +25,7 @@ let command =
 
 let message = function
   | ConflictingSelection -> "cannot combine --package with --workspace"
-  | PublishFailed error -> Tusk_pm.Publish.message error
+  | PublishFailed error -> Tusk_pm.publish_error_message error
 
 let fail = fun err ->
   out ("\027[1;31mError\027[0m: " ^ message err);
@@ -38,8 +38,8 @@ let resolve_request = fun ~package_name ~workspace_mode ->
   | None, _ -> Ok Workspace
 
 let publish_request = function
-  | Workspace -> Tusk_pm.Publish.Workspace
-  | Package package -> Tusk_pm.Publish.Package package
+  | Workspace -> Tusk_pm.Workspace
+  | Package package -> Tusk_pm.Package package
 
 let format_pm_event = fun ~seen_registry_updates kind ->
   match kind with
@@ -66,13 +66,13 @@ let render_published = fun (published: Pkgs_ml.Registry.published_release) ->
 
 let format_publish_event = fun ~seen_registry_updates event ->
   match event with
-  | Tusk_pm.Publish.Pm kind -> format_pm_event ~seen_registry_updates kind
-  | Tusk_pm.Publish.DryRunPlanned prepared -> Some (render_dry_run prepared)
-  | Tusk_pm.Publish.PackagePublished published -> Some (render_published published)
-  | Tusk_pm.Publish.Fmt _
-  | Tusk_pm.Publish.Fix _
-  | Tusk_pm.Publish.CheckStarted _
-  | Tusk_pm.Publish.CheckFinished _ -> None
+  | Tusk_pm.Pm kind -> format_pm_event ~seen_registry_updates kind
+  | Tusk_pm.DryRunPlanned prepared -> Some (render_dry_run prepared)
+  | Tusk_pm.PackagePublished published -> Some (render_published published)
+  | Tusk_pm.Fmt _
+  | Tusk_pm.Fix _
+  | Tusk_pm.CheckStarted _
+  | Tusk_pm.CheckFinished _ -> None
 
 let write_publish_event = fun ~seen_registry_updates event ->
   match format_publish_event ~seen_registry_updates event with
@@ -87,12 +87,12 @@ let run = fun (workspace: Workspace.t) matches ->
   | Ok request ->
       let mode =
         if ArgParser.get_flag matches "dry-run" then
-          Tusk_pm.Publish.Dry_run
+          Tusk_pm.Dry_run
         else
-          Tusk_pm.Publish.Publish
+          Tusk_pm.Publish
       in
       let seen_registry_updates = HashSet.create () in
-      match Tusk_pm.Publish.run
+      match Tusk_pm.publish
         ~on_event:(write_publish_event ~seen_registry_updates)
         ~workspace
         ~request:(publish_request request)
