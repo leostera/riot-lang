@@ -572,7 +572,7 @@ A package is publishable only if:
 
 - it is public
 - its version is valid
-- it passes local verification
+- it passes local verification (builds correctly)
 - the source commit already exists on GitHub
 - its runtime dependencies are publish-valid
 
@@ -588,6 +588,364 @@ Tusk should store credentials in:
 ```
 
 That file should hold the API token used for authenticated publish operations.
+
+## Implementation
+
+This section records the current implementation plan for the first rollout.
+
+### Package boundaries
+
+The package-management implementation should live in:
+
+```text
+packages/tusk-pm
+```
+
+`tusk-pm` owns:
+
+- manifest-to-resolution orchestration
+- registry/source metadata fetches
+- package materialization
+- lock refresh and unlock behavior
+- projection of resolved packages into build-ready data
+
+`tusk-model` owns:
+
+- the manifest-intent package model (`Package.t`)
+- the resolved package model used by the builder (`Package.resolved`)
+- the lockfile schema and TOML serialization (`tusk.lock`)
+- package-management and download event types
+
+This split keeps package-management policy and network/materialization logic in
+`tusk-pm`, while keeping the durable shared data model in `tusk-model`.
+
+### Phase-1 ownership and responsibilities
+
+For the first rollout, `tusk-pm` should own four concrete responsibilities:
+
+1. build dependency universes by traversing and connecting manifest
+   dependencies
+2. fetch all manifests needed for packages in those universes
+3. run a naive solver per universe to establish exact package versions
+4. present the final resolved package graph in `tusk-model` terms for the
+   builder
+
+In other words, the operational flow should look like:
+
+1. read `tusk.toml` files into `Tusk_model.Package.t`
+2. feed those package roots into `Tusk_pm.Dep_solver`
+3. have `tusk-pm` compute a `tusk.lock` plus resolved package data
+4. pass the resolved package data into the builder/planner
+
+For phase 1 there should be no separate solver backend abstraction. A concrete
+naive solver is enough. When PubGrub lands later, it should replace the solver
+internals rather than forcing an early abstraction layer now.
+
+### Global registry cache
+
+Registry state should be split by configured registry name from day one. For a
+registry named `pkgs.ml`, the global cache layout should be:
+
+```text
+~/.tusk/registry/pkgs.ml/index/...
+~/.tusk/registry/pkgs.ml/archive/<package-name>/<exact-version>.tar
+~/.tusk/registry/pkgs.ml/src/<package-name>/<exact-version>/...
+```
+
+This keeps:
+
+- sparse index metadata separate from package artifacts
+- downloaded archives separate from extracted sources
+- registry caches partitioned cleanly once multiple registries are supported
+
+For build purposes, the canonical on-disk home of a resolved external package is
+its extracted source directory under:
+
+```text
+~/.tusk/registry/<registry-name>/src/<package-name>/<exact-version>/...
+```
+
+Phase 1 should use the configured registry name directly in the path, not a
+generic placeholder and not a derived URL host.
+
+### Manifests stay name-based
+
+Downloaded package manifests must not be rewritten into path-based manifests.
+
+For example, a downloaded package may still contain:
+
+```toml
+[dependencies]
+kernel = "^0.3.0"
+```
+
+The lockfile and resolved graph, not rewritten manifests, determine which exact
+`kernel` node that name refers to.
+
+This means there are three distinct layers:
+
+1. manifest intent in `tusk.toml`
+2. the exact resolved graph in `tusk.lock`
+3. materialized package roots in `~/.tusk/registry/<registry-name>/src/...`
+
+The builder should consume the resolved graph, not re-resolve transitive
+dependencies from downloaded manifests.
+
+### End-to-end data flow
+
+The intended data flow is:
+
+1. `tusk-model` parses local manifests into `Package.t`
+2. `tusk-pm` traverses dependency names and builds the runtime/build/dev
+   universes
+3. `tusk-pm` fetches package metadata and manifests for the packages entering
+   those universes
+4. `tusk-pm` computes exact package selections
+5. `tusk-pm` downloads package archives into the registry archive cache
+6. `tusk-pm` materializes those archives into the registry source cache
+7. `tusk-pm` writes `tusk.lock`
+8. `tusk-pm` projects the resolved graph into `Tusk_model.Package.resolved`
+9. the builder consumes `Package.resolved`, not unresolved downloaded manifests
+
+This means that for build purposes every external dependency is eventually a
+materialized package root on disk, but it is still resolved through the lock
+graph rather than by mutating manifests into path dependencies.
+
+### Concrete example
+
+Suppose a workspace package declares:
+
+```toml
+[dependencies]
+std = "^0.1.0"
+jsonrpc = "^0.2.0"
+```
+
+and the downloaded `std` manifest still says:
+
+```toml
+[dependencies]
+kernel = "^0.3.0"
+```
+
+Phase 1 should work like this:
+
+1. the workspace manifest is parsed into `Tusk_model.Package.t`
+2. `tusk-pm` discovers the transitive universe:
+   - `std`
+   - `jsonrpc`
+   - `kernel`
+3. `tusk-pm` fetches their manifests
+4. the naive solver picks exact versions
+5. their downloaded archives are cached at paths like:
+   - `~/.tusk/registry/pkgs.ml/archive/std/<version>.tar`
+   - `~/.tusk/registry/pkgs.ml/archive/jsonrpc/<version>.tar`
+   - `~/.tusk/registry/pkgs.ml/archive/kernel/<version>.tar`
+6. their extracted sources are materialized at paths like:
+   - `~/.tusk/registry/pkgs.ml/src/std/<version>/...`
+   - `~/.tusk/registry/pkgs.ml/src/jsonrpc/<version>/...`
+   - `~/.tusk/registry/pkgs.ml/src/kernel/<version>/...`
+7. `tusk.lock` records that:
+   - the workspace depends on exact `std`
+   - exact `std` depends on exact `kernel`
+   - exact `jsonrpc` depends on exact `std`
+8. the builder consumes the resolved graph and the extracted source paths
+   directly
+
+At no point should `std`'s downloaded manifest be rewritten to say:
+
+```toml
+[dependencies]
+kernel = { path = "..." }
+```
+
+The lockfile is what explains what `kernel` means in that context.
+
+### Build-time flow
+
+The build path should ensure that a build always uses the latest lock.
+
+The flow is:
+
+1. read workspace and package manifests into `Tusk_model.Package.t`
+2. check whether `tusk.lock` exists
+3. if `tusk.lock` is missing, solve and write it
+4. if any participating workspace `tusk.toml` is newer than `tusk.lock`,
+   refresh the lock and rewrite it
+5. otherwise read the existing lock
+6. project the lock into `Tusk_model.Package.resolved`
+7. feed resolved packages into the builder/planner
+
+The staleness check is against:
+
+- the workspace `tusk.toml`
+- each workspace member `tusk.toml`
+
+It should not be driven by downloaded manifests in the global cache.
+
+This guarantees that if a build runs, it is using the latest lock.
+
+### Refresh vs unlock
+
+There are two solve modes:
+
+- lock refresh
+- unlock
+
+Lock refresh is used by:
+
+- `tusk build`
+- `tusk add`
+- `tusk rm`
+
+Unlock is used by:
+
+- `tusk update`
+
+Lock refresh must not behave like a full cold solve when an existing lock is
+present. It should preserve the current locked selections whenever possible and
+only reopen the affected frontier when required by changed manifests or missing
+lock state.
+
+Unlock is the mode that is allowed to reopen the whole graph intentionally.
+
+The intended behavioral split is:
+
+- `tusk build`
+  - solve only when the lock is missing or stale
+  - otherwise trust the existing lock
+- `tusk add`
+  - edit the manifest
+  - refresh the lock conservatively around that new requirement
+- `tusk rm`
+  - edit the manifest
+  - refresh the lock conservatively after removal
+- `tusk update`
+  - unlock and intentionally reopen the graph
+
+Even in phase 1, this policy distinction matters, even if the actual solver is
+still naive.
+
+### Phase-1 solver
+
+Phase 1 should use a deliberately naive solver so the operational system can be
+built first.
+
+The phase-1 solver should:
+
+- ignore version constraints entirely
+- always pick the latest available version of each package
+
+This is intentionally temporary. PubGrub will replace this logic later, but the
+rest of the package-management pipeline should already be real:
+
+- manifest parsing
+- graph construction
+- metadata fetches
+- lockfile writes
+- materialization
+- build integration
+
+It should still be a real solver pass in the operational sense:
+
+- it traverses the universes
+- it fetches the manifests
+- it picks exact versions
+- it produces a lockfile
+
+The only intentionally fake part is the selection policy.
+
+### Builder integration
+
+For the builder, resolved external packages are effectively packages with
+materialized roots on disk.
+
+The builder should therefore consume `Tusk_model.Package.resolved` and emit a
+download/materialization action for any non-workspace package whose cache root
+is missing.
+
+That means the planner can produce actions such as:
+
+- `DownloadPackage`
+- regular build/compile/link actions
+
+The download action is responsible for ensuring the resolved package exists at
+its expected cache path before normal build actions consume it.
+
+This means a build can repair a missing cache entry lazily without forcing the
+planner to rediscover dependency resolution from scratch.
+
+### Events
+
+Package management should emit explicit events so solving, locking, and
+materialization are visible in both CLI and server flows.
+
+These events should be part of the shared `tusk-model` event surface so both
+CLI and server/session flows can report them consistently.
+
+Phase 1 should add explicit package-management event kinds such as:
+
+#### Lockfile events
+
+- `LockfileReadStarted` of `{ path: string }`
+- `LockfileReadFinished` of `{ path: string; duration_ms: int }`
+- `LockfileReadFailed` of `{ path: string; error: string }`
+- `LockfileWriteStarted` of `{ path: string }`
+- `LockfileWriteFinished` of `{ path: string; duration_ms: int }`
+- `LockfileWriteFailed` of `{ path: string; error: string }`
+
+#### Resolution lifecycle events
+
+- `DependencyResolutionStarted` of `{ packages: string list; mode:
+    [ `Refresh | `Unlock ] }`
+- `DependencyResolutionUsingExistingLock` of `{ path: string }`
+- `DependencyResolutionRefreshingLock` of `{ path: string }`
+- `DependencyResolutionUnlocking` of `{ path: string option }`
+- `DependencyResolutionFinished` of
+    `{ duration_ms: int; resolved_packages: int; resolved_edges: int }`
+- `DependencyResolutionFailed` of `{ error: string }`
+
+#### Universe-building events
+
+- `DependencyUniverseBuilding` of `{ packages: string list }`
+- `DependencyUniverseBuilt` of
+    `{ runtime_packages: int; build_packages: int; dev_packages: int; duration_ms: int }`
+
+#### Registry / manifest metadata events
+
+- `PackageMetadataFetchStarted` of `{ package: string }`
+- `PackageMetadataFetchFinished` of
+    `{ package: string; version: string option; duration_ms: int }`
+- `PackageMetadataFetchFailed` of `{ package: string; error: string }`
+- `PackageManifestFetchStarted` of `{ package: string; version: string }`
+- `PackageManifestFetchFinished` of
+    `{ package: string; version: string; duration_ms: int }`
+- `PackageManifestFetchFailed` of
+    `{ package: string; version: string option; error: string }`
+
+#### Materialization / download events
+
+- `PackageDownloadStarted` of `{ package: string; version: string; path: string }`
+- `PackageDownloadFinished` of
+    `{ package: string; version: string; path: string; duration_ms: int }`
+- `PackageDownloadFailed` of
+    `{ package: string; version: string; path: string; error: string }`
+- `PackageDownloadSkipped` of `{ package: string; version: string; path: string; reason: string }`
+- `PackageCacheHit` of `{ package: string; version: string; path: string }`
+- `PackageMaterializationStarted` of `{ package: string; version: string; path: string }`
+- `PackageMaterializationFinished` of
+    `{ package: string; version: string; path: string; duration_ms: int }`
+- `PackageMaterializationFailed` of
+    `{ package: string; version: string; path: string; error: string }`
+
+#### Build-integration events
+
+- `PackageResolvedForBuild` of
+    `{ package: string; version: string option; path: string; workspace: bool }`
+- `PackageDownloadQueued` of `{ package: string; version: string; path: string }`
+
+The CLI should surface these as progress while operations such as `tusk add`,
+`tusk update`, `tusk publish`, and stale-lock `tusk build` are running.
 
 ## Drawbacks
 [drawbacks]: #drawbacks

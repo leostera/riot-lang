@@ -10,6 +10,8 @@ module Fix_provider = Fix_provider
 
 module Fmt_config = Fmt_config
 
+module Lockfile = Lockfile
+
 module Module_name = Module_name
 
 module Module = Module
