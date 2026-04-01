@@ -122,6 +122,66 @@ let test_lock_refresh_true_when_manifest_is_newer = fun () ->
       | Ok false -> Error "expected newer manifest to require refresh"
       | Error err -> Error err)
 
+let test_lockfile_store_roundtrips = fun () ->
+  with_tempdir "tusk_pm_lockfile_store"
+    (fun workspace_root ->
+      let lockfile =
+        Tusk_model.Lockfile.{
+          format_version = 1;
+          packages = [
+            {
+              id = { registry = None; name = "app"; version = None };
+              path = Path.(workspace_root / Path.v "packages/app");
+              manifest_path = Path.(workspace_root / Path.v "packages/app/tusk.toml");
+              provenance = Workspace;
+              dependencies = [];
+              build_dependencies = [];
+              dev_dependencies = [];
+            };
+          ];
+        }
+      in
+      match Tusk_pm.Lockfile_store.write ~workspace_root lockfile with
+      | Error err -> Error ("expected lockfile write to succeed: " ^ err)
+      | Ok () -> (
+          match Tusk_pm.Lockfile_store.read ~workspace_root with
+          | Error err -> Error ("expected lockfile read to succeed: " ^ err)
+          | Ok None -> Error "expected written lockfile to exist"
+          | Ok (Some reloaded) ->
+              if
+                reloaded.format_version = 1
+                && List.length reloaded.packages = 1
+                && (List.hd reloaded.packages).id.name = "app"
+              then
+                Ok ()
+              else
+                Error "expected lockfile store roundtrip to preserve package data"))
+
+let test_lockfile_store_returns_none_when_missing = fun () ->
+  with_tempdir "tusk_pm_missing_store"
+    (fun workspace_root ->
+      match Tusk_pm.Lockfile_store.read ~workspace_root with
+      | Ok None -> Ok ()
+      | Ok (Some _) -> Error "expected missing lockfile to return none"
+      | Error err -> Error err)
+
+let test_lockfile_store_bubbles_parse_errors = fun () ->
+  with_tempdir "tusk_pm_invalid_lockfile"
+    (fun workspace_root ->
+      let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
+      Fs.write "not = [valid\n" lock_path
+      |> Result.expect ~msg:"expected invalid lockfile write to succeed";
+      match Tusk_pm.Lockfile_store.read ~workspace_root with
+      | Ok _ -> Error "expected invalid lockfile to fail"
+      | Error err ->
+          if
+            String.contains err "failed to parse lockfile TOML"
+            || String.contains err "failed to decode lockfile"
+          then
+            Ok ()
+          else
+            Error ("unexpected error: " ^ err))
+
 let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
@@ -129,6 +189,9 @@ let tests =
     case "lock refresh: missing lock requires refresh" test_lock_refresh_requires_lock_when_missing;
     case "lock refresh: newer lock avoids refresh" test_lock_refresh_false_when_lock_is_newer;
     case "lock refresh: newer manifest requires refresh" test_lock_refresh_true_when_manifest_is_newer;
+    case "lockfile store: roundtrips root lockfile" test_lockfile_store_roundtrips;
+    case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
+    case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
   ]
 
 let name = "Tusk PM Tests"

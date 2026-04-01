@@ -215,8 +215,69 @@ let of_toml = fun value ->
     )
   | _ -> Error "lockfile must be a table"
 
+let render_string = fun value ->
+  Toml.to_string (Toml.String value)
+
+let render_package_id = fun (id: package_id) ->
+  let fields = [ ("name", render_string id.name) ] in
+  let fields =
+    match id.registry with
+    | Some registry -> ("registry", render_string registry) :: fields
+    | None -> fields
+  in
+  let fields =
+    match id.version with
+    | Some version -> ("version", render_string version) :: fields
+    | None -> fields
+  in
+  "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
+
+let render_provenance = fun provenance ->
+  match provenance with
+  | Workspace ->
+      "{ kind = " ^ render_string "workspace" ^ " }"
+  | Path path ->
+      "{ kind = "
+      ^ render_string "path"
+      ^ ", path = "
+      ^ render_string (Path.to_string path)
+      ^ " }"
+  | Registry { registry } ->
+      "{ kind = "
+      ^ render_string "registry"
+      ^ ", registry = "
+      ^ render_string registry
+      ^ " }"
+
+let render_dependency = fun (dep: dependency) ->
+  "{ name = "
+  ^ render_string dep.name
+  ^ ", package = "
+  ^ render_package_id dep.package
+  ^ " }"
+
+let render_dependency_list = fun deps ->
+  "[" ^ String.concat ", " (List.map render_dependency deps) ^ "]"
+
+let render_package = fun (pkg: package) ->
+  String.concat "\n"
+    [
+      "[[packages]]";
+      "id = " ^ render_package_id pkg.id;
+      "path = " ^ render_string (Path.to_string pkg.path);
+      "manifest_path = " ^ render_string (Path.to_string pkg.manifest_path);
+      "provenance = " ^ render_provenance pkg.provenance;
+      "dependencies = " ^ render_dependency_list pkg.dependencies;
+      "build_dependencies = " ^ render_dependency_list pkg.build_dependencies;
+      "dev_dependencies = " ^ render_dependency_list pkg.dev_dependencies;
+    ]
+
 let to_string = fun lockfile ->
-  lockfile |> to_toml |> Toml.to_string
+  let parts =
+    ("format_version = " ^ Int.to_string lockfile.format_version)
+    :: List.map render_package lockfile.packages
+  in
+  String.concat "\n\n" parts ^ "\n"
 
 module Tests = struct
   let test_lockfile_roundtrip_toml () : (unit, string) result =
