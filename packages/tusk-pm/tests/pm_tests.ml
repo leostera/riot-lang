@@ -440,6 +440,173 @@ let test_projection_resolves_workspace_packages = fun () ->
       else
         Error "expected projection to preserve resolved runtime dependency ids"
 
+let test_projection_loads_external_manifests_from_lockfile = fun () ->
+  with_tempdir "tusk_pm_projection_external"
+    (fun workspace_root ->
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } } ]
+        ()
+      in
+      let std_root = Path.(workspace_root / Path.v ".tusk/registry/pkgs.ml/src/std/0.2.0") in
+      let kernel_root = Path.(workspace_root / Path.v ".tusk/registry/pkgs.ml/src/kernel/1.0.0") in
+      let std_manifest_path = Path.(std_root / Path.v "tusk.toml") in
+      let kernel_manifest_path = Path.(kernel_root / Path.v "tusk.toml") in
+      Fs.create_dir_all std_root |> Result.expect ~msg:"expected std root to be created";
+      Fs.create_dir_all kernel_root |> Result.expect ~msg:"expected kernel root to be created";
+      Fs.write
+        {|
+[package]
+name = "std"
+version = "0.2.0"
+
+[dependencies]
+kernel = "*"
+|}
+        std_manifest_path
+      |> Result.expect ~msg:"expected std manifest to be written";
+      Fs.write
+        {|
+[package]
+name = "kernel"
+version = "1.0.0"
+|}
+        kernel_manifest_path
+      |> Result.expect ~msg:"expected kernel manifest to be written";
+      let lockfile =
+        Tusk_model.Lockfile.{
+          format_version = 1;
+          packages =
+            [ {
+                id = { registry = None; name = "app"; version = None };
+                path = app_pkg.path;
+                manifest_path = Path.(app_pkg.path / Path.v "tusk.toml");
+                provenance = Workspace;
+                dependencies = [
+                  {
+                    name = "std";
+                    package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" };
+                  }
+                ];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" };
+                path = std_root;
+                manifest_path = std_manifest_path;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [
+                  {
+                    name = "kernel";
+                    package = { registry = Some "pkgs.ml"; name = "kernel"; version = Some "1.0.0" };
+                  }
+                ];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = { registry = Some "pkgs.ml"; name = "kernel"; version = Some "1.0.0" };
+                path = kernel_root;
+                manifest_path = kernel_manifest_path;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [];
+                build_dependencies = [];
+                dev_dependencies = [];
+              } ];
+        }
+      in
+      match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile with
+      | Error err -> Error ("expected projection to load external manifests: " ^ err)
+      | Ok resolved ->
+          let std_resolved =
+            List.find_opt
+              (fun (pkg: Tusk_model.Package.resolved) ->
+                pkg.id.name = "std" && pkg.id.version = Some "0.2.0")
+              resolved
+          in
+          let kernel_resolved =
+            List.find_opt
+              (fun (pkg: Tusk_model.Package.resolved) ->
+                pkg.id.name = "kernel" && pkg.id.version = Some "1.0.0")
+              resolved
+          in
+          match std_resolved, kernel_resolved with
+          | Some std_resolved, Some kernel_resolved ->
+              if
+                List.length resolved = 3
+                && Path.to_string std_resolved.materialized_root = Path.to_string std_root
+                && List.length std_resolved.runtime_resolved = 1
+                && (List.hd std_resolved.runtime_resolved).resolved_id.name = "kernel"
+                && Path.to_string kernel_resolved.materialized_root = Path.to_string kernel_root
+              then
+                Ok ()
+              else
+                Error "expected projection to include external lockfile packages"
+          | _ ->
+              Error "expected projection to resolve both std and kernel from external manifests")
+
+let test_projection_bubbles_external_manifest_errors = fun () ->
+  with_tempdir "tusk_pm_projection_manifest_error"
+    (fun workspace_root ->
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } } ]
+        ()
+      in
+      let std_root = Path.(workspace_root / Path.v ".tusk/registry/pkgs.ml/src/std/0.2.0") in
+      let std_manifest_path = Path.(std_root / Path.v "tusk.toml") in
+      Fs.create_dir_all std_root |> Result.expect ~msg:"expected std root to be created";
+      Fs.write
+        {|
+[package]
+name = "std"
+version = "0.2.0"
+
+[dependencies]
+kernel = 123
+|}
+        std_manifest_path
+      |> Result.expect ~msg:"expected invalid std manifest to be written";
+      let lockfile =
+        Tusk_model.Lockfile.{
+          format_version = 1;
+          packages =
+            [ {
+                id = { registry = None; name = "app"; version = None };
+                path = app_pkg.path;
+                manifest_path = Path.(app_pkg.path / Path.v "tusk.toml");
+                provenance = Workspace;
+                dependencies = [
+                  {
+                    name = "std";
+                    package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" };
+                  }
+                ];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" };
+                path = std_root;
+                manifest_path = std_manifest_path;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [];
+                build_dependencies = [];
+                dev_dependencies = [];
+              } ];
+        }
+      in
+      match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile with
+      | Ok _ -> Error "expected invalid external manifest to fail projection"
+      | Error err ->
+          if
+            String.contains err "must be a string or table"
+            || String.contains err "failed to decode package manifest"
+          then
+            Ok ()
+          else
+            Error ("unexpected projection error: " ^ err))
+
 let test_projection_fails_when_lockfile_is_missing_package = fun () ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
   let lockfile = Tusk_model.Lockfile.{ format_version = 1; packages = [] } in
@@ -466,6 +633,8 @@ let tests =
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
+    case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
+    case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;
     case "projection: fails when lockfile is missing package" test_projection_fails_when_lockfile_is_missing_package;
   ]
 
