@@ -657,6 +657,52 @@ public = true
       | _, _, _, _, _, Error err, _
       | _, _, _, _, _, _, Error err -> Error err)
 
+let test_publisher_prepare_publish_discovers_git_provenance_without_registry = fun () ->
+  with_tempdir "tusk_pm_prepare_publish"
+    (fun root ->
+      let package_root = Path.(root / Path.v "packages/demo") in
+      write_file Path.(package_root / Path.v "tusk.toml")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+      write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
+      match
+        run_git ~cwd:root [ "init"; "-q" ],
+        run_git ~cwd:root [ "config"; "user.email"; "demo@example.com" ],
+        run_git ~cwd:root [ "config"; "user.name"; "Demo" ],
+        run_git ~cwd:root [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ],
+        run_git ~cwd:root [ "add"; "." ],
+        run_git ~cwd:root [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ],
+        run_git ~cwd:package_root [ "rev-parse"; "HEAD" ]
+      with
+      | Ok _, Ok _, Ok _, Ok _, Ok _, Ok _, Ok selector -> (
+          let package = make_package ~name:"demo" ~path:package_root () in
+          match Tusk_pm.Publisher.prepare_publish ~package with
+          | Error err ->
+              Error ("expected prepare_publish to succeed: " ^ Tusk_pm.Publisher.message err)
+          | Ok prepared ->
+              if
+                String.equal prepared.package.name "demo"
+                && String.equal prepared.locator "github.com/example/riot/packages/demo"
+                && String.equal prepared.selector selector
+                && String.length prepared.artifact > 0
+              then
+                Ok ()
+              else
+                Error "unexpected prepared publish payload")
+      | Error err, _, _, _, _, _, _
+      | _, Error err, _, _, _, _, _
+      | _, _, Error err, _, _, _, _
+      | _, _, _, Error err, _, _, _
+      | _, _, _, _, Error err, _, _
+      | _, _, _, _, _, Error err, _
+      | _, _, _, _, _, _, Error err -> Error err)
+
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -1822,6 +1868,7 @@ let tests =
     case "publisher: workspace publish order reports cycles" test_publisher_workspace_publish_order_reports_cycles;
     case "git provenance: discovers nested package locator" test_git_provenance_discovers_nested_package_locator;
     case "git provenance: discovers repo root locator" test_git_provenance_discovers_repo_root_locator;
+    case "publisher: prepare_publish discovers git provenance automatically" test_publisher_prepare_publish_discovers_git_provenance_without_registry;
     case "publisher: publish discovers git provenance automatically" test_publisher_publish_discovers_git_provenance;
   ]
 

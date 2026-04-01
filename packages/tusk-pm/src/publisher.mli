@@ -26,6 +26,13 @@ type error =
   | RegistryPublishFailed of { locator: string; error: string }
   | CyclicWorkspacePublishOrder of { cycle: string list }
 
+type prepared_publish = {
+  package: Tusk_model.Package.t;
+  locator: string;
+  selector: string;
+  artifact: string;
+}
+
 val message: error -> string
 
 val validate_runtime_dependencies:
@@ -35,6 +42,10 @@ val validate_runtime_dependencies:
 val create_artifact:
   package:Tusk_model.Package.t ->
   (string, error) result
+
+val prepare_publish:
+  package:Tusk_model.Package.t ->
+  (prepared_publish, error) result
 
 val publish_from_locator:
   registry:Pkgs_ml.Registry.t ->

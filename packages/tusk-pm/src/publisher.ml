@@ -26,6 +26,13 @@ type error =
   | RegistryPublishFailed of { locator: string; error: string }
   | CyclicWorkspacePublishOrder of { cycle: string list }
 
+type prepared_publish = {
+  package: Tusk_model.Package.t;
+  locator: string;
+  selector: string;
+  artifact: string;
+}
+
 let excluded_entry_names = [
   "_build";
   ".git";
@@ -232,6 +239,23 @@ let create_artifact = fun ~(package:Tusk_model.Package.t) ->
             create_archive ~package_root:package.path ~relative_files
     )
 
+let prepare_publish = fun ~(package:Tusk_model.Package.t) ->
+  match create_artifact ~package with
+  | Error _ as err ->
+      err
+  | Ok artifact -> (
+      match Git_provenance.discover ~package_root:package.path with
+      | Error error ->
+          Error (GitProvenanceFailed error)
+      | Ok provenance ->
+          Ok {
+            package;
+            locator = provenance.locator;
+            selector = provenance.selector;
+            artifact;
+          }
+    )
+
 let publish_from_locator = fun ~registry ~(package:Tusk_model.Package.t) ~locator ~selector ~api_token ->
   match create_artifact ~package with
   | Error _ as err -> err
@@ -243,16 +267,24 @@ let publish_from_locator = fun ~registry ~(package:Tusk_model.Package.t) ~locato
     )
 
 let publish = fun ~registry ~(package:Tusk_model.Package.t) ~api_token ->
-  match Git_provenance.discover ~package_root:package.path with
-  | Error error ->
-      Error (GitProvenanceFailed error)
-  | Ok provenance ->
-      publish_from_locator
-        ~registry
-        ~package
-        ~locator:provenance.locator
-        ~selector:provenance.selector
+  match prepare_publish ~package with
+  | Error _ as err ->
+      err
+  | Ok prepared -> (
+      match Pkgs_ml.Registry.publish_from_locator
+        registry
+        ~locator:prepared.locator
+        ~selector:prepared.selector
         ~api_token
+        ~artifact:prepared.artifact with
+      | Ok published ->
+          Ok published
+      | Error error ->
+          Error (RegistryPublishFailed {
+            locator = prepared.locator;
+            error;
+          })
+    )
 
 let assoc_package = fun packages name ->
   List.find_opt

@@ -27,6 +27,7 @@ let command =
       [
         option "package" |> short 'p' |> long "package" |> help "Publish a specific workspace package";
         flag "workspace" |> long "workspace" |> help "Publish workspace packages in dependency order";
+        flag "dry-run" |> long "dry-run" |> help "Run local publish checks without uploading";
       ]
 
 let message = function
@@ -52,6 +53,10 @@ let message = function
       Tusk_pm.Publisher.message err
   | PublishFailed { error; _ } ->
       Tusk_pm.Publisher.message error
+
+let fail = fun err ->
+  out ("\027[1;31mError\027[0m: " ^ message err);
+  Error (Failure (message err))
 
 let resolve_request = fun ~package_name ~workspace_mode ->
   match package_name, workspace_mode with
@@ -118,6 +123,34 @@ let render_published = fun (published: Pkgs_ml.Registry.published_release) ->
   ^ " "
   ^ published.package_version
 
+let render_dry_run = fun (prepared: Tusk_pm.Publisher.prepared_publish) ->
+  "    \027[1;32mWouldPublish\027[0m "
+  ^ prepared.package.name
+  ^ " "
+  ^ prepared.locator
+  ^ "@"
+  ^ prepared.selector
+
+let dry_run_one = fun (package: Package.t) ->
+  match Tusk_pm.Publisher.prepare_publish ~package with
+  | Error error ->
+      Error (PublishFailed { package = package.name; error })
+  | Ok prepared ->
+      out (render_dry_run prepared);
+      Ok ()
+
+let rec dry_run_all = fun packages ->
+  match packages with
+  | [] ->
+      Ok ()
+  | package :: rest -> (
+      match dry_run_one package with
+      | Ok () ->
+          dry_run_all rest
+      | Error _ as err ->
+          err
+    )
+
 let publish_one = fun ~registry ~api_token (package: Package.t) ->
   out (render_publishing package.name);
   Tusk_pm.Publisher.publish ~registry ~package ~api_token
@@ -141,28 +174,37 @@ let rec publish_all = fun ~registry ~api_token packages ->
 let run = fun (workspace: Workspace.t) matches ->
   let package_name = ArgParser.get_one matches "package" in
   let workspace_mode = ArgParser.get_flag matches "workspace" in
+  let dry_run = ArgParser.get_flag matches "dry-run" in
   match resolve_request ~package_name ~workspace_mode with
   | Error err ->
-      Error (Failure (message err))
+      fail err
   | Ok request -> (
       match select_packages ~workspace request with
       | Error err ->
-          Error (Failure (message err))
-      | Ok packages -> (
+          fail err
+      | Ok packages ->
+          if dry_run then
+            match dry_run_all packages with
+            | Ok () ->
+                Ok ()
+            | Error err ->
+                fail err
+          else
+            (
           match load_api_token ~registry_name:default_registry_name with
           | Error err ->
-              Error (Failure (message err))
+              fail err
           | Ok api_token -> (
               match registry ~registry_name:default_registry_name with
               | Error err ->
-                  Error (Failure (message err))
+                  fail err
               | Ok registry -> (
                   match publish_all ~registry ~api_token packages with
                   | Ok () ->
                       Ok ()
                   | Error err ->
-                      Error (Failure (message err))
+                      fail err
                 )
             )
-        )
+            )
     )

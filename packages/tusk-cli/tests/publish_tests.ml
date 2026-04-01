@@ -49,6 +49,15 @@ let test_publish_accepts_workspace_flag = fun () ->
       else
         Error "expected --workspace flag to be parsed"
 
+let test_publish_accepts_dry_run_flag = fun () ->
+  match parse_publish [ "publish"; "--dry-run" ] with
+  | Error err -> Error ("expected publish args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "dry-run" then
+        Ok ()
+      else
+        Error "expected --dry-run flag to be parsed"
+
 let test_publish_conflicting_selection_fails = fun () ->
   match Tusk_cli.Publish.resolve_request ~package_name:(Some "demo") ~workspace_mode:true with
   | Error Tusk_cli.Publish.ConflictingSelection -> Ok ()
@@ -80,6 +89,7 @@ let tests =
   Test.[
     case "publish: parse -p option" test_publish_accepts_package_option;
     case "publish: parse --workspace flag" test_publish_accepts_workspace_flag;
+    case "publish: parse --dry-run flag" test_publish_accepts_dry_run_flag;
     case "publish: conflicting selection fails" test_publish_conflicting_selection_fails;
     case "publish: workspace selection orders runtime deps" test_publish_select_packages_orders_workspace_dependencies;
     case "publish: package selection finds a workspace package" test_publish_selects_single_workspace_package;
