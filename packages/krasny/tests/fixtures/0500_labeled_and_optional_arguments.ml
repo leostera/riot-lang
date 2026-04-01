@@ -11,6 +11,7 @@ let labeled_arg_shorthand = configure ~timeout
 let labeled_arg_multiple = configure ~timeout:30 ~retries:3
 let labeled_arg_with_unlabeled = connect address ~timeout:30 ~retries:3
 let labeled_arg_parenthesized = configure ~style:(Style.Grow)
+let labeled_arg_tuple = (configure ~style:Style.Grow, fallback)
 
 let labeled_param_simple =
   fun ~timeout -> timeout

@@ -5395,6 +5395,46 @@ and second x = x
           Test.assert_equal ~expected:"y" ~actual:(Syn.Cst.Token.text label_token);
           Ok ()
       | _ -> Error "expected labeled apply argument");
+  Test.case "cst tuples keep labeled applies separate from following comma expressions"
+    (fun () ->
+      let source = "let x = (f ~y:value, fallback)\n" in
+      let result = parse_ml source in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding {
+        value=Syn.Cst.Expression.Parenthesized {
+          inner=Syn.Cst.Expression.Tuple {
+            elements=[
+              Syn.Cst.Expression.Apply {
+                callee=Syn.Cst.Expression.Path { path=callee_path; _ };
+                argument=Syn.Cst.Labeled {
+                  label_token;
+                  value=Some (Syn.Cst.Expression.Path { path=value_path; _ });
+                  _;
+
+                };
+                _;
+
+              };
+              Syn.Cst.Expression.Path { path=fallback_path; _ };
+
+            ];
+            _;
+
+          };
+          _;
+
+        };
+        _;
+
+      } :: _ ->
+          Test.assert_equal ~expected:(Some "f") ~actual:(Syn.Cst.Ident.name callee_path);
+          Test.assert_equal ~expected:"y" ~actual:(Syn.Cst.Token.text label_token);
+          Test.assert_equal ~expected:(Some "value") ~actual:(Syn.Cst.Ident.name value_path);
+          Test.assert_equal ~expected:(Some "fallback") ~actual:(Syn.Cst.Ident.name fallback_path);
+          Ok ()
+      | _ -> Error "expected tuple expression whose first element is a labeled apply");
   Test.case "cst apply expressions preserve optional shorthand arguments"
     (fun () ->
       let source = "let x = f ?y\n" in

@@ -3958,7 +3958,7 @@ and parse_argument = fun parser ->
       if peek_kind parser = Token.Colon then
         let colon = consume parser in
         let trivia_after_colon = consume_trivia parser in
-        let value_expr = parse_assign_expr parser in
+        let value_expr = parse_assign_expr_no_comma parser in
         make_node
           Syntax_kind.LABELED_ARG
           ([ make_token parser tilde ]
@@ -3995,7 +3995,7 @@ and parse_argument = fun parser ->
       if peek_kind parser = Token.Colon then
         let colon = consume parser in
         let trivia_after_colon = consume_trivia parser in
-        let value_expr = parse_assign_expr parser in
+        let value_expr = parse_assign_expr_no_comma parser in
         make_node
           Syntax_kind.OPTIONAL_ARG
           ([ make_token parser question ]
@@ -5203,6 +5203,45 @@ and parse_tuple_expr = fun parser ->
 
 (** Parse expression (top-level entry point) *)
 and parse_expr = fun parser -> parse_sequence_expr parser
+
+(** Parse assignment expression while reserving top-level commas for surrounding syntax. *)
+and parse_assign_expr_no_comma = fun parser ->
+  let left = parse_binary_expr parser 0 in
+  (* Check for assignment operator *)
+  match peek_kind parser with
+  | Token.LeftArrow
+  | Token.ColonEq ->
+      let trivia_after_left = consume_trivia parser in
+      let arrow = consume parser in
+      let trivia_after_arrow = consume_trivia parser in
+      let right =
+        match peek_kind parser with
+        | Token.EOF
+        | Token.Keyword Keyword.In
+        | Token.Keyword Keyword.Done
+        | Token.Keyword Keyword.End
+        | Token.CloseDelim Token.Paren
+        | Token.CloseDelim Token.Bracket
+        | Token.CloseDelim Token.Array
+        | Token.CloseDelim Token.Brace
+        | Token.CloseDelim Token.ObjectEnd ->
+            let diagnostic = Diagnostic.missing_binary_operand
+              ~operator:(token_text parser arrow)
+              ~side:"right"
+              ~found:(peek parser)
+              ~text:(token_text parser (peek parser))
+              ~span:(expected_span parser) in
+            make_error_node parser ~diagnostic ~consumed_tokens:[]
+        | _ -> parse_assign_expr parser
+      in
+      make_node
+        Syntax_kind.ASSIGN_EXPR
+        ([ Ceibo.Green.Node left ]
+        @ tokens_to_green parser trivia_after_left
+        @ [ make_token parser arrow ]
+        @ tokens_to_green parser trivia_after_arrow
+        @ [ Ceibo.Green.Node right ])
+  | _ -> left
 
 (** Parse assignment expression: lvalue <- expr or ref := expr *)
 and parse_assign_expr = fun parser ->

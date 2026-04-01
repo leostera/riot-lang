@@ -166,7 +166,7 @@ let in_memory = fun ?config ~cache ?(releases = []) ~packages () ->
   let releases =
     List.map
       (fun (release: release_source) ->
-        (release_key ~package_name:release.package_name ~version:(release.version, release)))
+        (release_key ~package_name:release.package_name ~version:release.version, release))
       releases
   in
   { cache; fetch = default_fetch; source = In_memory { config; packages; releases } }
