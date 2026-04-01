@@ -19,6 +19,9 @@ type error =
   | StartupFailed of { error: Internal_server.error }
   | PackageNotFound of { package_name: string; available_packages: string list }
   | PackagesNotFound of { package_names: string list; available_packages: string list }
+  | BuildFailed of { errors: Tusk_executor.Package_builder.build_result list }
+  | PlanningFailed of { reason: string }
+  | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
   | UnexpectedEvent of { reason: string }
 

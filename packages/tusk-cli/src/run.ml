@@ -51,7 +51,8 @@ let write_run_event = fun (event: Tusk_build.run_event) ->
   | Tusk_build.RunningBinary { package; binary; _ } ->
       println ("     \027[1;32mRunning\027[0m " ^ package ^ ":" ^ binary)
 
-let write_run_error = function
+let write_run_error = fun (err: Tusk_build.run_error) ->
+  match err with
   | Tusk_build.BinaryNotFound { binary_name } ->
       println ("error: binary '" ^ binary_name ^ "' not found")
   | err ->

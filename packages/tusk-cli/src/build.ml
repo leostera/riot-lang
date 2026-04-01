@@ -290,6 +290,28 @@ let write_build_error = fun ~mode err ->
             ("another tusk build is already running\nLock file: "
             ^ Path.to_string lock_path
             ^ "\nWait for the current build to finish and try again.")
+      | Client.BuildFailed { errors } ->
+          write_command_error
+            ~mode
+            "BuildFailed"
+            [
+              ( "errors",
+                Data.Json.Array
+                  (List.map Tusk_executor.Package_builder.build_result_to_json errors) );
+            ]
+            (Client.error_message client_error)
+      | Client.PlanningFailed { reason } ->
+          write_command_error
+            ~mode
+            "PlanningFailed"
+            [ ("reason", Data.Json.String reason) ]
+            (Client.error_message client_error)
+      | Client.CycleDetected { cycle_nodes } ->
+          write_command_error
+            ~mode
+            "CycleDetected"
+            [ ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes)) ]
+            (Client.error_message client_error)
       | Client.UnexpectedEvent { reason } ->
           write_command_error
             ~mode

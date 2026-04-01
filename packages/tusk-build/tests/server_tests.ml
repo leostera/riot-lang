@@ -35,7 +35,7 @@ let make_simple_package = fun tmpdir name ->
     library = Some { path = Path.v "src/lib.ml" };
     sources =
       {
-        src = [];
+        src = [ Path.v "src/lib.ml" ];
         native = [];
         tests = [];
         examples = [];

@@ -1,4 +1,6 @@
 (** Tusk Build - Exports the local build session runtime *)
+open Std
+
 module Build_server = Build_server
 module Client = Client
 module Event = Event
@@ -164,3 +166,48 @@ let bench_error_message = Bench_runtime.bench_error_message
 let bench_event_to_json = Bench_runtime.bench_event_to_json
 
 let bench = Bench_runtime.bench
+
+type install_request = Install_runtime.install_request = {
+  workspace: Tusk_model.Workspace.t;
+  binary_name: string;
+  local_only: bool;
+}
+
+type install_event = Install_runtime.install_event =
+  | Build of build_event
+  | InstallingBinary of {
+      package: string;
+      binary: string;
+    }
+  | PromotedBinary of {
+      binary: string;
+      destination: Path.t;
+      global: bool;
+    }
+  | PromotionWarning of {
+      binary: string;
+      destination: Path.t;
+      global: bool;
+      reason: string;
+    }
+  | InstalledBinary of {
+      binary: string;
+      duration_ms: int;
+      global_destination: Path.t option;
+    }
+
+type install_error = Install_runtime.install_error =
+  | BinaryNotFound of { binary_name: string }
+  | BuildFailed of build_error
+  | ArtifactNotFound of {
+      package_name: string;
+      binary_name: string;
+      reason: string;
+    }
+  | ClientError of Client.error
+
+let install_error_message = Install_runtime.install_error_message
+
+let install_event_to_json = Install_runtime.install_event_to_json
+
+let install = Install_runtime.install
