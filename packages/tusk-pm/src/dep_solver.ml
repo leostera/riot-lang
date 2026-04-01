@@ -239,7 +239,7 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
         dependency = Tusk_model.Lockfile.{ name = package_name; package = existing_pkg.id };
         packages = [];
       }, state)
-  | _ -> (
+  | _ ->
       let key = registry_resolution_key ~registry_name ~package_name in
       match find_resolved_package ~state ~key with
       | Some lock_package ->
@@ -254,80 +254,80 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
                 dependency = Tusk_model.Lockfile.{ name = package_name; package = package_id };
                 packages = [];
               }, state)
-          | None ->
-      match Pkgs_ml.Registry.read_package_document registry ~package_name with
-      | Error err ->
-          Error ("failed to read package document for '" ^ package_name ^ "': " ^ err)
-      | Ok None ->
-          Error ("package '" ^ package_name ^ "' was not found in registry '" ^ registry_name ^ "'")
-      | Ok (Some document) -> (
-          match latest_release_of_document document with
-          | Error _ as err -> err
-          | Ok (release: Pkgs_ml.Sparse_index.release) ->
-              let package_id =
-                Tusk_model.Lockfile.{
-                  registry = Some registry_name;
-                  name = document.name;
-                  version = Some release.version;
-                }
-              in
-              let state = add_resolving ~state ~key ~package_id in
-              let rec resolve_release_dependencies
-                ~(state: resolution_state)
-                (acc_packages: Tusk_model.Lockfile.package list)
-                (acc_dependencies: Tusk_model.Lockfile.dependency list)
-                (release_dependencies: Pkgs_ml.Sparse_index.dependency list)
-              =
-                match release_dependencies with
-                | [] -> Ok (List.rev acc_dependencies, acc_packages, state)
-                | (dep: Pkgs_ml.Sparse_index.dependency) :: rest -> (
-                    match
-                      resolve_registry_dependency
-                        ~mode
-                        ~registry
-                        ~registry_cache
-                        ~registry_name
-                        ~existing_lock
-                        ~state
-                        dep.name
-                    with
-                    | Error _ as err -> err
-                    | Ok (resolved, state) ->
-                        resolve_release_dependencies
-                          ~state
-                          (List.rev_append resolved.packages acc_packages)
-                          (resolved.dependency :: acc_dependencies)
-                          rest
-                  )
-              in
-              match resolve_release_dependencies ~state [] [] release.dependencies with
-              | Error _ as err -> err
-              | Ok (dependencies, dependency_packages, state) ->
-                  let path =
-                    materialized_root_for_registry_package
-                      ~registry_cache
-                      ~package_name:document.name
-                      ~version:release.version
-                  in
-                  let lock_package =
-                    Tusk_model.Lockfile.{
-                      id = package_id;
-                      path;
-                      manifest_path = manifest_path_for_materialized_root path;
-                      provenance = Registry { registry = registry_name };
-                      dependencies;
-                      build_dependencies = [];
-                      dev_dependencies = [];
-                    }
-                  in
-                  let state = add_resolved ~state ~key ~pkg:lock_package in
-                  Ok ({
-                    dependency = Tusk_model.Lockfile.{ name = package_name; package = lock_package.id };
-                    packages = dependency_packages @ [ lock_package ];
-                  }, state)
-        ))
+          | None -> (
+              match Pkgs_ml.Registry.read_package_document registry ~package_name with
+              | Error err ->
+                  Error ("failed to read package document for '" ^ package_name ^ "': " ^ err)
+              | Ok None ->
+                  Error ("package '" ^ package_name ^ "' was not found in registry '" ^ registry_name ^ "'")
+              | Ok (Some document) -> (
+                  match latest_release_of_document document with
+                  | Error _ as err -> err
+                  | Ok (release: Pkgs_ml.Sparse_index.release) ->
+                      let package_id =
+                        Tusk_model.Lockfile.{
+                          registry = Some registry_name;
+                          name = document.name;
+                          version = Some release.version;
+                        }
+                      in
+                      let state = add_resolving ~state ~key ~package_id in
+                      let rec resolve_release_dependencies
+                        ~(state: resolution_state)
+                        (acc_packages: Tusk_model.Lockfile.package list)
+                        (acc_dependencies: Tusk_model.Lockfile.dependency list)
+                        (release_dependencies: Pkgs_ml.Sparse_index.dependency list)
+                      =
+                        match release_dependencies with
+                        | [] -> Ok (List.rev acc_dependencies, acc_packages, state)
+                        | (dep: Pkgs_ml.Sparse_index.dependency) :: rest -> (
+                            match
+                              resolve_registry_dependency
+                                ~mode
+                                ~registry
+                                ~registry_cache
+                                ~registry_name
+                                ~existing_lock
+                                ~state
+                                dep.name
+                            with
+                            | Error _ as err -> err
+                            | Ok (resolved, state) ->
+                                resolve_release_dependencies
+                                  ~state
+                                  (List.rev_append resolved.packages acc_packages)
+                                  (resolved.dependency :: acc_dependencies)
+                                  rest
+                          )
+                      in
+                      match resolve_release_dependencies ~state [] [] release.dependencies with
+                      | Error _ as err -> err
+                      | Ok (dependencies, dependency_packages, state) ->
+                          let path =
+                            materialized_root_for_registry_package
+                              ~registry_cache
+                              ~package_name:document.name
+                              ~version:release.version
+                          in
+                          let lock_package =
+                            Tusk_model.Lockfile.{
+                              id = package_id;
+                              path;
+                              manifest_path = manifest_path_for_materialized_root path;
+                              provenance = Registry { registry = registry_name };
+                              dependencies;
+                              build_dependencies = [];
+                              dev_dependencies = [];
+                            }
+                          in
+                          let state = add_resolved ~state ~key ~pkg:lock_package in
+                          Ok ({
+                            dependency = Tusk_model.Lockfile.{ name = package_name; package = lock_package.id };
+                            packages = dependency_packages @ [ lock_package ];
+                          }, state)
+                )
+            )
         )
-    )
 
 and resolve_path_dependency = fun
   ~mode
