@@ -19,7 +19,7 @@ type materialize_result =
 ]
 
 type source =
-  | Filesystem of Registry_cache.t
+  | Filesystem
   | In_memory of {
       config: Sparse_index.config option;
       packages: (string * Sparse_index.package_document) list;
@@ -27,14 +27,24 @@ type source =
     }
 
 type t = {
+  cache: Registry_cache.t;
   source: source;
 }
 
-let filesystem = fun cache -> { source = Filesystem cache }
+let create_filesystem = fun ~registry_name ?tusk_home () ->
+  match Registry_cache.create ?tusk_home ~registry_name with
+  | Error _ as err -> err
+  | Ok cache -> Ok { cache; source = Filesystem }
+
+let filesystem = fun cache -> { cache; source = Filesystem }
+
+let cache = fun registry -> registry.cache
+
+let name = fun registry -> Registry_cache.registry_name registry.cache
 
 let release_key = fun ~package_name ~version -> (Sparse_index.normalized_name package_name, version)
 
-let in_memory = fun ?config ?(releases = []) ~packages () ->
+let in_memory = fun ?config ~cache ?(releases = []) ~packages () ->
   let packages =
     List.map
       (fun (document: Sparse_index.package_document) ->
@@ -47,16 +57,16 @@ let in_memory = fun ?config ?(releases = []) ~packages () ->
         (release_key ~package_name:release.package_name ~version:release.version, release))
       releases
   in
-  { source = In_memory { config; packages; releases } }
+  { cache; source = In_memory { config; packages; releases } }
 
 let read_config = fun registry ->
   match registry.source with
-  | Filesystem cache -> Sparse_index.read_cached_config cache
+  | Filesystem -> Sparse_index.read_cached_config registry.cache
   | In_memory { config; packages=_; releases=_ } -> Ok config
 
 let read_package_document = fun registry ~package_name ->
   match registry.source with
-  | Filesystem cache -> Sparse_index.read_cached_package_document cache ~package_name
+  | Filesystem -> Sparse_index.read_cached_package_document registry.cache ~package_name
   | In_memory { packages; config=_; releases=_ } -> Ok (List.assoc_opt
     (Sparse_index.normalized_name package_name)
     packages)
@@ -134,12 +144,8 @@ let extract_cached_archive = fun ~archive_path ~root ->
           Ok ()
     )
 
-let materialize_release = fun registry ~cache ~package_name ~version ->
-  let root =
-    match registry.source with
-    | Filesystem cache -> Registry_cache.package_src_dir cache ~package_name ~version
-    | In_memory _ -> Registry_cache.package_src_dir cache ~package_name ~version
-  in
+let materialize_release = fun registry ~package_name ~version ->
+  let root = Registry_cache.package_src_dir registry.cache ~package_name ~version in
   let manifest_path = Path.(root / Path.v "tusk.toml") in
   match Fs.exists manifest_path with
   | Error err ->
@@ -151,8 +157,8 @@ let materialize_release = fun registry ~cache ~package_name ~version ->
       Ok `Already_present
   | Ok false -> (
       match registry.source with
-      | Filesystem cache -> (
-          let archive_path = Registry_cache.archive_path cache ~package_name ~version in
+      | Filesystem -> (
+          let archive_path = Registry_cache.archive_path registry.cache ~package_name ~version in
           match Fs.exists archive_path with
           | Error err ->
               Error ("failed to check cached package archive '"

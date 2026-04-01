@@ -113,8 +113,8 @@ let add_resolved = fun ~(state: resolution_state) ~key ~(pkg: Tusk_model.Lockfil
     state with resolved = (key, pkg) :: state.resolved;
   }
 
-let materialized_root_for_registry_package = fun ~registry_cache ~package_name ~version ->
-  Pkgs_ml.Registry_cache.package_src_dir registry_cache ~package_name ~version
+let materialized_root_for_registry_package = fun ~registry ~package_name ~version ->
+  Pkgs_ml.Registry_cache.package_src_dir (Pkgs_ml.Registry.cache registry) ~package_name ~version
 
 let manifest_path_for_materialized_root = fun root ->
   Path.(root / Path.v "tusk.toml")
@@ -165,8 +165,6 @@ let merge_lock_packages = fun packages ->
 let rec lock_package_of_local_package = fun
   ~mode
   ~registry
-  ~registry_cache
-  ~registry_name
   ~existing_lock
   ~state
   ~provenance
@@ -176,8 +174,6 @@ let rec lock_package_of_local_package = fun
     resolve_manifest_dependencies
       ~mode
       ~registry
-      ~registry_cache
-      ~registry_name
       ~existing_lock
       ~state
       ~declared_from:pkg.path
@@ -191,8 +187,6 @@ let rec lock_package_of_local_package = fun
         resolve_manifest_dependencies
           ~mode
           ~registry
-          ~registry_cache
-          ~registry_name
           ~existing_lock
           ~state
           ~declared_from:pkg.path
@@ -206,8 +200,6 @@ let rec lock_package_of_local_package = fun
             resolve_manifest_dependencies
               ~mode
               ~registry
-              ~registry_cache
-              ~registry_name
               ~existing_lock
               ~state
               ~declared_from:pkg.path
@@ -232,7 +224,8 @@ let rec lock_package_of_local_package = fun
         )
     )
 
-and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock ~state package_name ->
+and resolve_registry_dependency = fun ~mode ~registry ~existing_lock ~state package_name ->
+  let registry_name = Pkgs_ml.Registry.name registry in
   match mode, find_existing_external_package ~registry_name ~existing_lock ~package_name with
   | Refresh, Some (existing_pkg: Tusk_model.Lockfile.package) ->
       Ok ({
@@ -285,8 +278,6 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
                               resolve_registry_dependency
                                 ~mode
                                 ~registry
-                                ~registry_cache
-                                ~registry_name
                                 ~existing_lock
                                 ~state
                                 dep.name
@@ -305,7 +296,7 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
                       | Ok (dependencies, dependency_packages, state) ->
                           let path =
                             materialized_root_for_registry_package
-                              ~registry_cache
+                              ~registry
                               ~package_name:document.name
                               ~version:release.version
                           in
@@ -332,8 +323,6 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
 and resolve_path_dependency = fun
   ~mode
   ~registry
-  ~registry_cache
-  ~registry_name
   ~existing_lock
   ~state
   ~declared_from
@@ -347,8 +336,6 @@ and resolve_path_dependency = fun
         lock_package_of_local_package
           ~mode
           ~registry
-          ~registry_cache
-          ~registry_name
           ~existing_lock
           ~state
           ~provenance:(Tusk_model.Lockfile.Path dep_path)
@@ -365,8 +352,6 @@ and resolve_path_dependency = fun
 and resolve_manifest_dependencies = fun
   ~mode
   ~registry
-  ~registry_cache
-  ~registry_name
   ~existing_lock
   ~state
   ~declared_from
@@ -382,8 +367,6 @@ and resolve_manifest_dependencies = fun
           resolve_manifest_dependencies
             ~mode
             ~registry
-            ~registry_cache
-            ~registry_name
             ~existing_lock
             ~state
             ~declared_from
@@ -395,8 +378,6 @@ and resolve_manifest_dependencies = fun
             resolve_registry_dependency
               ~mode
               ~registry
-              ~registry_cache
-              ~registry_name
               ~existing_lock
               ~state
               dep.name
@@ -406,8 +387,6 @@ and resolve_manifest_dependencies = fun
             resolve_manifest_dependencies
                 ~mode
                 ~registry
-                ~registry_cache
-                ~registry_name
                 ~existing_lock
                 ~state
                 ~declared_from
@@ -420,8 +399,6 @@ and resolve_manifest_dependencies = fun
             resolve_path_dependency
               ~mode
               ~registry
-              ~registry_cache
-              ~registry_name
               ~existing_lock
               ~state
               ~declared_from
@@ -433,8 +410,6 @@ and resolve_manifest_dependencies = fun
               resolve_manifest_dependencies
                 ~mode
                 ~registry
-                ~registry_cache
-                ~registry_name
                 ~existing_lock
                 ~state
                 ~declared_from
@@ -444,18 +419,16 @@ and resolve_manifest_dependencies = fun
         )
     )
 
-let lock_package_of_workspace_package = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock ~state (pkg: Tusk_model.Package.t) ->
+let lock_package_of_workspace_package = fun ~mode ~registry ~existing_lock ~state (pkg: Tusk_model.Package.t) ->
   lock_package_of_local_package
     ~mode
     ~registry
-    ~registry_cache
-    ~registry_name
     ~existing_lock
     ~state
     ~provenance:Tusk_model.Lockfile.Workspace
     pkg
 
-let rec lock_packages = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock ~state acc_workspace acc_external packages ->
+let rec lock_packages = fun ~mode ~registry ~existing_lock ~state acc_workspace acc_external packages ->
   match packages with
   | [] -> Ok (List.rev acc_workspace, List.rev acc_external, state)
   | pkg :: rest -> (
@@ -463,8 +436,6 @@ let rec lock_packages = fun ~mode ~registry ~registry_cache ~registry_name ~exis
         lock_package_of_workspace_package
           ~mode
           ~registry
-          ~registry_cache
-          ~registry_name
           ~existing_lock
           ~state
           pkg
@@ -473,8 +444,6 @@ let rec lock_packages = fun ~mode ~registry ~registry_cache ~registry_name ~exis
           lock_packages
             ~mode
             ~registry
-            ~registry_cache
-            ~registry_name
             ~existing_lock
             ~state
             (pkg :: acc_workspace)
@@ -489,13 +458,11 @@ let keep_existing_package = fun workspace_packages (pkg: Tusk_model.Lockfile.pac
   in
   not (List.mem pkg.id.name workspace_names)
 
-let lock_deps = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock packages ->
+let lock_deps = fun ~mode ~registry ~existing_lock packages ->
   match
     lock_packages
       ~mode
       ~registry
-      ~registry_cache
-      ~registry_name
       ~existing_lock
       ~state:empty_resolution_state
       []

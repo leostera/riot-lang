@@ -11,13 +11,10 @@ module Projection = Projection
 module Materializer = Materializer
 
 type event_sink = Tusk_model.Event.kind -> unit
-
 val ensure_lock:
   ?emit:event_sink ->
   mode:Dep_solver.mode ->
   registry:Pkgs_ml.Registry.t ->
-  registry_cache:Pkgs_ml.Registry_cache.t ->
-  registry_name:string ->
   workspace_root:Path.t ->
   manifest_paths:Path.t list ->
   packages:Tusk_model.Package.t list ->
@@ -28,8 +25,6 @@ val ensure_workspace:
   ?emit:event_sink ->
   mode:Dep_solver.mode ->
   registry:Pkgs_ml.Registry.t ->
-  registry_cache:Pkgs_ml.Registry_cache.t ->
-  registry_name:string ->
   workspace:Tusk_model.Workspace.t ->
   unit ->
   (Tusk_model.Workspace.t, string) result

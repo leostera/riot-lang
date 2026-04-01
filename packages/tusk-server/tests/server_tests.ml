@@ -276,6 +276,7 @@ std = "*"
         in
         let registry =
           Pkgs_ml.Registry.in_memory
+            ~cache:registry_cache
             ~packages:[
               Pkgs_ml.Sparse_index.{
                 schema_version = 1;
@@ -323,8 +324,6 @@ version = "0.2.0"
           Tusk_server.start_local
             ~workspace
             ~registry
-            ~registry_cache
-            ~registry_name:"pkgs.ml"
             ~config:Tusk_server.Server_config.default
             ()
         with
