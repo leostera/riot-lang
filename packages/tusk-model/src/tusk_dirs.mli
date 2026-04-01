@@ -4,26 +4,6 @@ val dot_tusk: Path.t
 
 val package_lock_path: workspace_root:Path.t -> Path.t
 
-val registry_dir: registry_name:string -> Path.t
-
-val registry_index_dir: registry_name:string -> Path.t
-
-val registry_archive_dir: registry_name:string -> Path.t
-
-val registry_archive_path:
-  registry_name:string ->
-  package_name:string ->
-  version:string ->
-  Path.t
-
-val registry_src_dir: registry_name:string -> Path.t
-
-val registry_package_src_dir:
-  registry_name:string ->
-  package_name:string ->
-  version:string ->
-  Path.t
-
 val toolchains_dir: Toolchain_config.t -> Path.t
 
 val project_dir: Workspace.t -> Path.t

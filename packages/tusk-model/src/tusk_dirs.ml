@@ -10,29 +10,6 @@ let dot_tusk =
 
 let package_lock_path = fun ~workspace_root -> Path.(workspace_root / Path.v "tusk.lock")
 
-let registry_dir = fun ~registry_name -> Path.(dot_tusk / Path.v "registry" / Path.v registry_name)
-
-let registry_index_dir = fun ~registry_name ->
-  Path.(registry_dir ~registry_name / Path.v "index")
-
-let registry_archive_dir = fun ~registry_name ->
-  Path.(registry_dir ~registry_name / Path.v "archive")
-
-let registry_archive_path = fun ~registry_name ~package_name ~version ->
-  Path.(
-    registry_archive_dir ~registry_name
-    / Path.v package_name
-    / Path.v (version ^ ".tar"))
-
-let registry_src_dir = fun ~registry_name ->
-  Path.(registry_dir ~registry_name / Path.v "src")
-
-let registry_package_src_dir = fun ~registry_name ~package_name ~version ->
-  Path.(
-    registry_src_dir ~registry_name
-    / Path.v package_name
-    / Path.v version)
-
 let toolchains_dir = fun toolchain_config ->
   let version = toolchain_config.Toolchain_config.version in
   Path.(dot_tusk / Path.v "toolchains" / Path.v version)
@@ -114,51 +91,9 @@ let sandbox_dir = fun ~workspace_root ->
 
 module Tests = struct
   let test_package_lock_path () : (unit, string) result =
-    let actual =
-      package_lock_path ~workspace_root:(Path.v "/tmp/workspace")
-      |> Path.to_string
-    in
+    let actual = package_lock_path ~workspace_root:(Path.v "/tmp/workspace") |> Path.to_string in
     if String.equal actual "/tmp/workspace/tusk.lock" then
       Ok ()
     else
-      Error ("expected root tusk.lock path, got " ^ actual)
-    [@test]
-
-  let test_registry_split_layout () : (unit, string) result =
-    let index = registry_index_dir ~registry_name:"pkgs.ml" |> Path.to_string in
-    let archive =
-      registry_archive_path
-        ~registry_name:"pkgs.ml"
-        ~package_name:"std"
-        ~version:"0.1.0"
-      |> Path.to_string
-    in
-    let src =
-      registry_package_src_dir
-        ~registry_name:"pkgs.ml"
-        ~package_name:"std"
-        ~version:"0.1.0"
-      |> Path.to_string
-    in
-    let home =
-      match Env.home_dir () with
-      | Some path -> path
-      | None -> panic "expected home directory for tests"
-    in
-    let prefix = Path.(home / Path.v ".tusk" / Path.v "registry" / Path.v "pkgs.ml") |> Path.to_string in
-    if
-      String.equal index (prefix ^ "/index")
-      && String.equal archive (prefix ^ "/archive/std/0.1.0.tar")
-      && String.equal src (prefix ^ "/src/std/0.1.0")
-    then
-      Ok ()
-    else
-      Error
-        ("unexpected registry layout:\nindex="
-        ^ index
-        ^ "\narchive="
-        ^ archive
-        ^ "\nsrc="
-        ^ src)
-    [@test]
+      Error ("expected root tusk.lock path, got " ^ actual) [@test]
 end [@test]
