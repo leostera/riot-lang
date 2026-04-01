@@ -14,7 +14,7 @@ let package_prefix = fun package_name ->
 
 let package_relpath = fun package_name ->
   let name = normalized_name package_name in
-  Path.(package_prefix name / Path.v name)
+  Path.(package_prefix name / Path.v (name ^ ".json"))
 
 let package_cache_path = fun cache ~package_name ->
   Path.(Registry_cache.index_dir cache / package_relpath package_name)
@@ -28,17 +28,17 @@ module Tests = struct
       Error ("expected sparse index path '" ^ expected ^ "', got '" ^ actual ^ "'")
 
   let test_single_character_name () =
-    expect_relpath ~package_name:"a" ~expected:"1/a" [@test]
+    expect_relpath ~package_name:"a" ~expected:"1/a.json" [@test]
 
   let test_two_character_name () =
-    expect_relpath ~package_name:"ab" ~expected:"2/ab" [@test]
+    expect_relpath ~package_name:"ab" ~expected:"2/ab.json" [@test]
 
   let test_three_character_name () =
-    expect_relpath ~package_name:"abc" ~expected:"3/a/abc" [@test]
+    expect_relpath ~package_name:"abc" ~expected:"3/a/abc.json" [@test]
 
   let test_longer_name () =
-    expect_relpath ~package_name:"cargo" ~expected:"ca/rg/cargo" [@test]
+    expect_relpath ~package_name:"cargo" ~expected:"ca/rg/cargo.json" [@test]
 
   let test_names_are_normalized_to_lowercase () =
-    expect_relpath ~package_name:"AbCd" ~expected:"ab/cd/abcd" [@test]
+    expect_relpath ~package_name:"AbCd" ~expected:"ab/cd/abcd.json" [@test]
 end [@test]

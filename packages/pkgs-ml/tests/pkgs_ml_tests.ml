@@ -43,7 +43,7 @@ let test_sparse_index_layout = fun () ->
     Pkgs_ml.Sparse_index.package_cache_path cache ~package_name:"AbCd"
     |> Path.to_string
   in
-  if String.equal actual "/tmp/.tusk/registry/pkgs.ml/index/ab/cd/abcd" then
+  if String.equal actual "/tmp/.tusk/registry/pkgs.ml/index/ab/cd/abcd.json" then
     Ok ()
   else
     Error ("unexpected sparse index cache path: " ^ actual)
