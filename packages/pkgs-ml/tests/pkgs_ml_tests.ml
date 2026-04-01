@@ -123,12 +123,131 @@ let test_sparse_index_cached_reads = fun () ->
   | Error err, _
   | _, Error err -> Error err
 
+let test_registry_materializes_in_memory_release = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_materialize"
+      (fun tempdir ->
+        let cache =
+          Pkgs_ml.Registry_cache.create
+            ~tusk_home:Path.(tempdir / Path.v ".tusk")
+            ~registry_name:"pkgs.ml"
+          |> Result.expect ~msg:"expected registry cache to be created"
+        in
+        let package =
+          Pkgs_ml.Sparse_index.{
+            schema_version = 1;
+            name = "std";
+            latest = "0.1.0";
+            updated_at = "2026-04-01T00:00:00Z";
+            releases = [];
+          }
+        in
+        let registry =
+          Pkgs_ml.Registry.in_memory
+            ~packages:[ package ]
+            ~releases:[
+              {
+                package_name = "std";
+                version = "0.1.0";
+                manifest_toml = "[package]\nname = \"std\"\n";
+                files = [
+                  { path = Path.v "src/std.ml"; contents = "let answer = 42\n" };
+                  { path = Path.v "README.md"; contents = "# std\n" };
+                ];
+              };
+            ]
+            ()
+        in
+        match Pkgs_ml.Registry.materialize_release registry ~cache ~package_name:"std" ~version:"0.1.0" with
+        | Error err -> Error err
+        | Ok `Already_present -> Error "expected in-memory release to be materialized on first attempt"
+        | Ok `Materialized ->
+            let manifest_path =
+              Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
+              |> fun root -> Path.(root / Path.v "tusk.toml")
+            in
+            let source_path =
+              Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
+              |> fun root -> Path.(root / Path.v "src/std.ml")
+            in
+            match Fs.read manifest_path, Fs.read source_path with
+            | Ok manifest, Ok source
+              when
+                String.equal manifest "[package]\nname = \"std\"\n"
+                && String.equal source "let answer = 42\n" -> Ok ()
+            | Ok _, Ok _ -> Error "expected materialized release contents to roundtrip from the in-memory registry"
+            | Error err, _
+            | _, Error err -> Error (IO.error_message err))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_registry_materialize_skips_existing_release = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_materialize_skip"
+      (fun tempdir ->
+        let cache =
+          Pkgs_ml.Registry_cache.create
+            ~tusk_home:Path.(tempdir / Path.v ".tusk")
+            ~registry_name:"pkgs.ml"
+          |> Result.expect ~msg:"expected registry cache to be created"
+        in
+        let registry =
+          Pkgs_ml.Registry.in_memory
+            ~packages:[]
+            ~releases:[
+              {
+                package_name = "std";
+                version = "0.1.0";
+                manifest_toml = "[package]\nname = \"std\"\n";
+                files = [];
+              };
+            ]
+            ()
+        in
+        match Pkgs_ml.Registry.materialize_release registry ~cache ~package_name:"std" ~version:"0.1.0" with
+        | Error err -> Error err
+        | Ok _ -> (
+            match Pkgs_ml.Registry.materialize_release registry ~cache ~package_name:"std" ~version:"0.1.0" with
+            | Ok `Already_present -> Ok ()
+            | Ok `Materialized -> Error "expected second materialization to detect existing package sources"
+            | Error err -> Error err
+          ))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_filesystem_registry_errors_for_uncached_release = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_filesystem_registry"
+      (fun tempdir ->
+        let cache =
+          Pkgs_ml.Registry_cache.create
+            ~tusk_home:Path.(tempdir / Path.v ".tusk")
+            ~registry_name:"pkgs.ml"
+          |> Result.expect ~msg:"expected registry cache to be created"
+        in
+        let registry = Pkgs_ml.Registry.filesystem cache in
+        match Pkgs_ml.Registry.materialize_release registry ~cache ~package_name:"std" ~version:"0.1.0" with
+        | Ok _ -> Error "expected filesystem registry to fail for uncached releases"
+        | Error err ->
+            if String.contains err "cannot materialize uncached package" then
+              Ok ()
+            else
+              Error ("unexpected error: " ^ err))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
 let tests =
   Test.[
     case "registry cache: uses cargo-style split layout" test_registry_split_layout;
     case "sparse index: resolves cache path from normalized package name" test_sparse_index_layout;
     case "sparse index: parses package documents" test_sparse_index_document_parsing;
     case "registry: in-memory registry returns config and packages" test_sparse_index_cached_reads;
+    case "registry: in-memory registry materializes release source trees" test_registry_materializes_in_memory_release;
+    case "registry: materialization skips existing release sources" test_registry_materialize_skips_existing_release;
+    case "registry: filesystem registry errors for uncached releases" test_filesystem_registry_errors_for_uncached_release;
   ]
 
 let name = "pkgs-ml Tests"
