@@ -52,8 +52,12 @@ let check_tree = fun (ctx: Api.Rule.context) _red_root ->
             | Syn.Cst.Expression.Infix expr when String.equal
               (Syn.Cst.InfixExpression.operator expr)
               "<>" ->
-                let token = Syn.Cst.InfixExpression.operator_token expr |> Syn.Cst.Token.syntax_token in
-                Some (make_diagnostic token)
+                let token =
+                  match Syn.Cst.InfixExpression.operator_tokens expr with
+                  | token :: _ -> Some (Syn.Cst.Token.syntax_token token)
+                  | [] -> None
+                in
+                token |> Option.map make_diagnostic
             | _ -> None
           )
     | Syn.Cst.Interface _ -> []

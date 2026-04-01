@@ -79,12 +79,14 @@
 ### After Syntax/Layout Stabilization
 
 1. Fix `tusk fix` for the new CST.
-   - Lints still need to be updated to the current CST shape.
+   - Generated `fixme-runner` now builds against the current CST again.
+   - `timeout 180 tusk test tusk-fix:runner_tests` is green.
+   - Current blocker: `timeout 120 tusk fix --check` now scans until timeout instead of failing at compile time.
    - Once `tusk fix` is healthy again, re-enable the `scripts/git-hooks/pre-commit` check so every commit runs:
      - `tusk fix --check`
    - Loop:
      - `timeout 120 tusk build syn fixme tusk-fix`
-     - `timeout 120 tusk fix --check`
+      - `timeout 120 tusk fix --check`
      - fix one root CST consumer at a time
      - re-run `timeout 180 tusk test syn:cst_tests`
      - re-run `timeout 30 tusk test krasny:format_tests` when formatter-facing CST APIs change

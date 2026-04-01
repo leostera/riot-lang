@@ -33,9 +33,8 @@ let explanations = fun () -> [ explanation ]
 let rec unwrap_expression = fun expr ->
     match expr with
     | Syn.Cst.Expression.Parenthesized { inner; _ } -> unwrap_expression inner
-    | Syn.Cst.Expression.Typed { expression; _ }
-    | Syn.Cst.Expression.Polymorphic { expression; _ }
-    | Syn.Cst.Expression.Coerce { expression; _ } -> unwrap_expression expression
+    | Syn.Cst.Expression.TypeAscription { expression; _ }
+    | Syn.Cst.Expression.Polymorphic { expression; _ } -> unwrap_expression expression
     | _ -> expr
 
 let constructor_name_of_ident = fun ident -> Syn.Cst.Ident.name ident
