@@ -11,7 +11,7 @@ path = "src/tusk_build.ml"
 [dependencies]
 std = { path = "../std" }
 tusk-model = { path = "../tusk-model" }
-tusk-pm = { path = "../tusk-pm" }
+tusk-deps = { path = "../tusk-deps" }
 pkgs-ml = { path = "../pkgs-ml" }
 tusk-executor = { path = "../tusk-executor" }
 tusk-planner = { path = "../tusk-planner" }

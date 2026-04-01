@@ -18,7 +18,7 @@
 12. `tusk install` must reuse the normal streamed build path. Do not keep a silent private build loop in `install.ml`.
 13. CLI workspace commands should reject workspace load errors at the boundary instead of threading partial-workspace state through downstream request APIs.
 14. `fix_cmd.ml` should parse `matches`, build a `Tusk_fix.fix_request`, call `Tusk_fix.fix`, and render the returned output/events. Do not delegate raw `matches` into `Tusk_fix.Cli.run`.
-15. `publish.ml` should parse `matches`, build a `Tusk_pm.publish_request`, call `Tusk_pm.publish`, and render publish events. Do not keep the reusable publish command surface hidden under `Tusk_pm.Publish.run`.
+15. `publish.ml` should parse `matches`, build a `Tusk_publish.publish_request`, call `Tusk_publish.publish`, and render publish events. Keep the combined publish command surface in `tusk-publish`, not in `tusk-deps`.
 
 ## Validate
 

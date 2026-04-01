@@ -5,7 +5,7 @@ type request =
   | Package of string
 type error =
   | ConflictingSelection
-  | PublishFailed of Tusk_pm.Publish.error
+  | PublishFailed of Tusk_publish.publish_error
 val command: Std.ArgParser.command
 
 val message: error -> string

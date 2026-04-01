@@ -1,12 +1,12 @@
 [package]
-name = "tusk-pm"
+name = "tusk-deps"
 version = "0.1.0"
 description = "Package management and dependency solving for Tusk."
 license = "Apache-2.0"
 public = true
 
 [lib]
-path = "src/tusk_pm.ml"
+path = "src/tusk_deps.ml"
 
 [[bin]]
 name = "pm_tests"

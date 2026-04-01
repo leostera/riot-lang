@@ -1,49 +1,53 @@
 open Std
 
-type request =
+type publish_request =
   | Workspace
   | Package of string
-type mode =
+
+type publish_mode =
   | Dry_run
   | Publish
-type check_stage =
+
+type publish_check_stage =
 [
   | `Fmt
   | `Fix
   | `Build
   | `Metadata
 ]
-type event =
-  | Pm of Tusk_model.Event.kind
+
+type publish_event =
   | Fmt of Krasny.Report.event
   | Fix of Tusk_fix.Event.t
-  | CheckStarted of { package: string; stage: check_stage }
-  | CheckFinished of { package: string; stage: check_stage }
-  | DryRunPlanned of Publisher.prepared_publish
+  | Build of Tusk_build.build_event
+  | CheckStarted of { package: string; stage: publish_check_stage }
+  | CheckFinished of { package: string; stage: publish_check_stage }
+  | DryRunPlanned of Tusk_deps.Publisher.prepared_publish
   | PackagePublished of Pkgs_ml.Registry.published_release
-type outcome =
-  | DryRun of Publisher.prepared_publish
+
+type publish_outcome =
+  | DryRun of Tusk_deps.Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release
-type error =
+
+type publish_error =
   | PackageNotFound of { package: string }
   | NoWorkspacePackages
   | PublishConfigLoadFailed of Tusk_model.User_config.error
   | MissingApiToken of { registry_name: string; path: Path.t }
   | RegistryInitializationFailed of { registry_name: string; error: string }
-  | WorkspacePreparationFailed of { error: Tusk_model.Pm_error.t }
   | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
-  | ToolchainInitializationFailed of { error: string }
   | FmtCheckFailed of { package: string; error: string }
   | FixCheckFailed of { package: string; error: string }
   | BuildCheckFailed of { package: string; error: string }
-  | PublishPlanFailed of Publisher.error
-  | PublishFailed of { package: string; error: Publisher.error }
-val message: error -> string
+  | PublishPlanFailed of Tusk_deps.Publisher.error
+  | PublishFailed of { package: string; error: Tusk_deps.Publisher.error }
 
-val run:
-  ?on_event:(event -> unit) ->
+val publish_error_message: publish_error -> string
+
+val publish:
+  ?on_event:(publish_event -> unit) ->
   workspace:Tusk_model.Workspace.t ->
-  request:request ->
-  mode:mode ->
+  request:publish_request ->
+  mode:publish_mode ->
   unit ->
-  (outcome list, error) result
+  (publish_outcome list, publish_error) result

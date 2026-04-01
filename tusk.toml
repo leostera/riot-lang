@@ -35,7 +35,8 @@ members = [
   "packages/tusk-fmt",
   "packages/tusk-init",
   "packages/tusk-model",
-  "packages/tusk-pm",
+  "packages/tusk-deps",
+  "packages/tusk-publish",
   "packages/tusk-planner",
   "packages/tusk-repl",
   "packages/tusk-build",
@@ -63,4 +64,9 @@ ignore = [
 rules = [
   "no-stdlib", 
   "-class-case-module-names",
+  "-limit-open-statements",
+  "-no-unnecessary-rec",
+  "-limit-nested-match-depth",
+  "-prefer-pipelines-for-nested-calls",
+  "-std:prefer-result-map-over-manual-match",
 ]

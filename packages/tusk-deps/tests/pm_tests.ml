@@ -90,7 +90,7 @@ let with_tempdir = fun prefix fn ->
   | Error err -> Error (IO.error_message err)
 
 let run_lock_deps = fun ?emit ?(registry = make_registry []) ?(workspace_root = Path.v "/workspace") ~mode ~existing_lock packages ->
-  Tusk_pm.Dep_solver.lock_deps ?emit ~mode ~registry ~existing_lock ~workspace_root packages
+  Tusk_deps.Dep_solver.lock_deps ?emit ~mode ~registry ~existing_lock ~workspace_root packages
 
 let collect_event_names = fun fn ->
   let names = ref [] in
@@ -190,14 +190,14 @@ let test_publisher_rejects_path_only_runtime_dependencies = fun () ->
     ~path:(Path.v "/workspace/packages/demo")
     ~dependencies:[ { name = "std"; source = source ~path:(Path.v "../std") () } ]
     () in
-  match Tusk_pm.Publisher.validate_runtime_dependencies ~package with
+  match Tusk_deps.Publisher.validate_runtime_dependencies ~package with
   | Ok () -> Error "expected path-only runtime dependency to be rejected for publish"
-  | Error (Tusk_pm.Publisher.RuntimeDependencyNotPublishable { dependency; reason=`PathOnly path; _ }) ->
+  | Error (Tusk_deps.Publisher.RuntimeDependencyNotPublishable { dependency; reason=`PathOnly path; _ }) ->
       if String.equal dependency "std" && Path.equal path (Path.v "../std") then
         Ok ()
       else
         Error "unexpected path-only runtime dependency payload"
-  | Error err -> Error ("unexpected publish validation error: " ^ Tusk_pm.Publisher.message err)
+  | Error err -> Error ("unexpected publish validation error: " ^ Tusk_deps.Publisher.message err)
 
 let test_publisher_allows_path_with_version_runtime_dependencies = fun () ->
   let package = make_package
@@ -207,13 +207,13 @@ let test_publisher_allows_path_with_version_runtime_dependencies = fun () ->
       { name = "std"; source = source ~path:(Path.v "../std") ~version:Std.Version.any () }
     ]
     () in
-  match Tusk_pm.Publisher.validate_runtime_dependencies ~package with
+  match Tusk_deps.Publisher.validate_runtime_dependencies ~package with
   | Ok () -> Ok ()
   | Error err -> Error ("expected path+version runtime dependency to be publishable: "
-  ^ Tusk_pm.Publisher.message err)
+  ^ Tusk_deps.Publisher.message err)
 
 let test_publisher_creates_package_root_tarball = fun () ->
-  with_tempdir "tusk_pm_publish_tarball"
+  with_tempdir "tusk_deps_publish_tarball"
     (fun root ->
       let package_root = Path.(root / Path.v "packages/demo") in
       write_file Path.(package_root / Path.v "tusk.toml")
@@ -232,11 +232,11 @@ public = true
       write_file Path.(package_root / Path.v "node_modules/left-pad.js") "ignore\n";
       write_file Path.(package_root / Path.v ".DS_Store") "ignore\n";
       let package = make_package ~name:"demo" ~path:package_root () in
-      match Tusk_pm.Publisher.create_artifact
+      match Tusk_deps.Publisher.create_artifact
         ~target_dir_root:root
         ~package
         ~version:(Std.Version.make ~major:0 ~minor:1 ~patch:0 ()) with
-      | Error err -> Error ("expected artifact creation to succeed: " ^ Tusk_pm.Publisher.message err)
+      | Error err -> Error ("expected artifact creation to succeed: " ^ Tusk_deps.Publisher.message err)
       | Ok artifact -> (
           match list_tar_entries artifact with
           | Error _ as err -> err
@@ -250,7 +250,7 @@ public = true
         ))
 
 let test_publisher_rejects_symlink_entries = fun () ->
-  with_tempdir "tusk_pm_publish_symlink"
+  with_tempdir "tusk_deps_publish_symlink"
     (fun root ->
       let package_root = Path.(root / Path.v "packages/demo") in
       write_file Path.(package_root / Path.v "tusk.toml")
@@ -266,20 +266,20 @@ public = true
       let link = Path.(package_root / Path.v "README.md") in
       Fs.symlink ~src:(Path.v "src/demo.ml") ~dst:link |> Result.expect ~msg:"expected symlink to be created";
       let package = make_package ~name:"demo" ~path:package_root () in
-      match Tusk_pm.Publisher.create_artifact
+      match Tusk_deps.Publisher.create_artifact
         ~target_dir_root:root
         ~package
         ~version:(Std.Version.make ~major:0 ~minor:1 ~patch:0 ()) with
       | Ok _ -> Error "expected publisher to reject symlink entries"
-      | Error (Tusk_pm.Publisher.SymlinkNotAllowed { path }) ->
+      | Error (Tusk_deps.Publisher.SymlinkNotAllowed { path }) ->
           if Path.equal path link then
             Ok ()
           else
             Error "unexpected symlink rejection path"
-      | Error err -> Error ("unexpected publish artifact error: " ^ Tusk_pm.Publisher.message err))
+      | Error err -> Error ("unexpected publish artifact error: " ^ Tusk_deps.Publisher.message err))
 
 let test_publisher_publishes_from_locator = fun () ->
-  with_tempdir "tusk_pm_publish_from_locator"
+  with_tempdir "tusk_deps_publish_from_locator"
     (fun root ->
       let package_root = Path.(root / Path.v "packages/demo") in
       write_file Path.(package_root / Path.v "tusk.toml")
@@ -334,14 +334,14 @@ public = true
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
-      match Tusk_pm.Publisher.publish_from_locator
+      match Tusk_deps.Publisher.publish_from_locator
         ~registry
         ~target_dir_root:root
         ~package
         ~locator:"github.com/example/demo"
         ~selector:"main"
         ~api_token:"root-secret" with
-      | Error err -> Error ("expected publish to succeed: " ^ Tusk_pm.Publisher.message err)
+      | Error err -> Error ("expected publish to succeed: " ^ Tusk_deps.Publisher.message err)
       | Ok published -> (
           match List.rev !requests with
           | [ request ] ->
@@ -366,7 +366,7 @@ public = true
         ))
 
 let test_publisher_bubbles_registry_publish_errors = fun () ->
-  with_tempdir "tusk_pm_publish_registry_error"
+  with_tempdir "tusk_deps_publish_registry_error"
     (fun root ->
       let package_root = Path.(root / Path.v "packages/demo") in
       write_file Path.(package_root / Path.v "tusk.toml")
@@ -394,7 +394,7 @@ public = true
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
-      match Tusk_pm.Publisher.publish_from_locator
+      match Tusk_deps.Publisher.publish_from_locator
         ~registry
         ~target_dir_root:root
         ~package
@@ -402,14 +402,14 @@ public = true
         ~selector:"main"
         ~api_token:"root-secret" with
       | Ok _ -> Error "expected publish to bubble registry error"
-      | Error (Tusk_pm.Publisher.RegistryPublishFailed { locator; error }) ->
+      | Error (Tusk_deps.Publisher.RegistryPublishFailed { locator; error }) ->
           if
             String.equal locator "github.com/example/demo" && String.equal error "package `demo` was not found in registry `pkgs.ml`"
           then
             Ok ()
           else
             Error "unexpected registry publish error payload"
-      | Error err -> Error ("unexpected publish error: " ^ Tusk_pm.Publisher.message err))
+      | Error err -> Error ("unexpected publish error: " ^ Tusk_deps.Publisher.message err))
 
 let test_publisher_workspace_publish_order_uses_runtime_local_dependencies = fun () ->
   let core = make_package ~name:"core" ~path:(Path.v "packages/core") () in
@@ -425,8 +425,8 @@ let test_publisher_workspace_publish_order_uses_runtime_local_dependencies = fun
       { name = "util"; source = source ~path:(Path.v "../util") ~version:Std.Version.any () }
     ]
     () in
-  match Tusk_pm.Publisher.workspace_publish_order ~packages:[ app; util; core ] with
-  | Error err -> Error ("expected publish order to succeed: " ^ Tusk_pm.Publisher.message err)
+  match Tusk_deps.Publisher.workspace_publish_order ~packages:[ app; util; core ] with
+  | Error err -> Error ("expected publish order to succeed: " ^ Tusk_deps.Publisher.message err)
   | Ok ordered ->
       if List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) ordered = [ "core"; "util"; "app" ] then
         Ok ()
@@ -441,8 +441,8 @@ let test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies = 
     ~build_dependencies:[ { name = "core"; source = source ~workspace:true () } ]
     ~dev_dependencies:[ { name = "core"; source = source ~workspace:true () } ]
     () in
-  match Tusk_pm.Publisher.workspace_publish_order ~packages:[ app; core ] with
-  | Error err -> Error ("expected publish order to succeed: " ^ Tusk_pm.Publisher.message err)
+  match Tusk_deps.Publisher.workspace_publish_order ~packages:[ app; core ] with
+  | Error err -> Error ("expected publish order to succeed: " ^ Tusk_deps.Publisher.message err)
   | Ok ordered ->
       if List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) ordered = [ "app"; "core" ] then
         Ok ()
@@ -460,10 +460,10 @@ let test_publisher_workspace_publish_order_reports_cycles = fun () ->
     ~path:(Path.v "packages/b")
     ~dependencies:[ { name = "a"; source = source ~workspace:true () } ]
     () in
-  match Tusk_pm.Publisher.workspace_publish_order ~packages:[ a; b ] with
+  match Tusk_deps.Publisher.workspace_publish_order ~packages:[ a; b ] with
   | Ok _ -> Error "expected cyclic workspace publish order to fail"
-  | Error (Tusk_pm.Publisher.CyclicWorkspacePublishOrder _) -> Ok ()
-  | Error err -> Error ("unexpected publish order error: " ^ Tusk_pm.Publisher.message err)
+  | Error (Tusk_deps.Publisher.CyclicWorkspacePublishOrder _) -> Ok ()
+  | Error err -> Error ("unexpected publish order error: " ^ Tusk_deps.Publisher.message err)
 
 let test_publisher_validate_registry_dependencies_skips_workspace_publish_set = fun () ->
   let core = make_package ~name:"core" ~path:(Path.v "packages/core") () in
@@ -475,16 +475,16 @@ let test_publisher_validate_registry_dependencies_skips_workspace_publish_set = 
     ]
     () in
   let registry = make_registry [] in
-  match Tusk_pm.Publisher.validate_registry_dependencies
+  match Tusk_deps.Publisher.validate_registry_dependencies
     ~registry
     ~publishing_workspace_packages:[ core.name; app.name ]
     ~package:app with
   | Ok () -> Ok ()
   | Error err -> Error ("expected workspace publish set to skip registry lookup: "
-  ^ Tusk_pm.Publisher.message err)
+  ^ Tusk_deps.Publisher.message err)
 
 let test_git_provenance_discovers_nested_package_locator = fun () ->
-  with_tempdir "tusk_pm_git_provenance_nested"
+  with_tempdir "tusk_deps_git_provenance_nested"
     (fun root ->
       let package_root = Path.(root / Path.v "packages/demo") in
       write_file Path.(package_root / Path.v "tusk.toml")
@@ -509,9 +509,9 @@ public = true
         ] with
       | Ok _ -> (
           let canonical_root = Fs.canonicalize root |> Result.expect ~msg:"expected temp repo root to canonicalize" in
-          match Tusk_pm.Git_provenance.discover ~package_root with
+          match Tusk_deps.Git_provenance.discover ~package_root with
           | Error err -> Error ("expected git provenance discovery to succeed: "
-          ^ Tusk_pm.Git_provenance.message err)
+          ^ Tusk_deps.Git_provenance.message err)
           | Ok provenance ->
               if
                 String.equal provenance.locator "github.com/example/riot/packages/demo"
@@ -527,7 +527,7 @@ public = true
       | Error err -> Error err)
 
 let test_git_provenance_discovers_repo_root_locator = fun () ->
-  with_tempdir "tusk_pm_git_provenance_root"
+  with_tempdir "tusk_deps_git_provenance_root"
     (fun root ->
       write_file Path.(root / Path.v "tusk.toml")
         {|
@@ -551,9 +551,9 @@ public = true
         ] with
       | Ok _ -> (
           let canonical_root = Fs.canonicalize root |> Result.expect ~msg:"expected temp repo root to canonicalize" in
-          match Tusk_pm.Git_provenance.discover ~package_root:root with
+          match Tusk_deps.Git_provenance.discover ~package_root:root with
           | Error err -> Error ("expected git provenance discovery to succeed: "
-          ^ Tusk_pm.Git_provenance.message err)
+          ^ Tusk_deps.Git_provenance.message err)
           | Ok provenance ->
               if
                 String.equal provenance.locator "github.com/example/demo"
@@ -569,7 +569,7 @@ public = true
       | Error err -> Error err)
 
 let test_publisher_publish_discovers_git_provenance = fun () ->
-  with_tempdir "tusk_pm_publish_with_git_provenance"
+  with_tempdir "tusk_deps_publish_with_git_provenance"
     (fun root ->
       let package_root = Path.(root / Path.v "packages/demo") in
       write_file Path.(package_root / Path.v "tusk.toml")
@@ -638,13 +638,13 @@ public = true
                   (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
               in
               let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
-              match Tusk_pm.Publisher.publish
+              match Tusk_deps.Publisher.publish
                 ~registry
                 ~target_dir_root:root
                 ~publishing_workspace_packages:[]
                 ~package
                 ~api_token:"root-secret" with
-              | Error err -> Error ("expected publish to succeed: " ^ Tusk_pm.Publisher.message err)
+              | Error err -> Error ("expected publish to succeed: " ^ Tusk_deps.Publisher.message err)
               | Ok published -> (
                   match List.rev !requests with
                   | [ request ] ->
@@ -666,7 +666,7 @@ public = true
       | Error err -> Error err)
 
 let test_publisher_prepare_publish_discovers_git_provenance_without_registry = fun () ->
-  with_tempdir "tusk_pm_prepare_publish"
+  with_tempdir "tusk_deps_prepare_publish"
     (fun root ->
       let package_root = Path.(root / Path.v "packages/demo") in
       write_file Path.(package_root / Path.v "tusk.toml")
@@ -695,13 +695,13 @@ public = true
           | Ok selector -> (
               let package = make_package ~name:"demo" ~path:package_root () in
               let registry = Pkgs_ml.Registry.filesystem (make_registry_cache ()) in
-              match Tusk_pm.Publisher.prepare_publish
+              match Tusk_deps.Publisher.prepare_publish
                 ~registry
                 ~target_dir_root:root
                 ~publishing_workspace_packages:[]
                 ~package with
               | Error err -> Error ("expected prepare_publish to succeed: "
-              ^ Tusk_pm.Publisher.message err)
+              ^ Tusk_deps.Publisher.message err)
               | Ok prepared ->
                   if
                     String.equal prepared.package.name "demo"
@@ -746,7 +746,7 @@ let test_lock_deps_projects_workspace_packages = fun () ->
         Error "expected workspace packages to be projected into the lockfile"
 
 let test_lock_deps_resolves_path_dependencies = fun () ->
-  with_tempdir "tusk_pm_path_dep"
+  with_tempdir "tusk_deps_path_dep"
     (fun workspace_root ->
       let foo_root = Path.(workspace_root / Path.v "vendor/foo") in
       write_package_manifest ~root:foo_root
@@ -784,7 +784,7 @@ version = "1.2.3"
         ))
 
 let test_lock_deps_resolves_transitive_path_dependencies = fun () ->
-  with_tempdir "tusk_pm_transitive_path_dep"
+  with_tempdir "tusk_deps_transitive_path_dep"
     (fun workspace_root ->
       let foo_root = Path.(workspace_root / Path.v "vendor/foo") in
       let bar_root = Path.(workspace_root / Path.v "vendor/bar") in
@@ -942,7 +942,7 @@ let test_lock_deps_reports_missing_registry_package_with_required_by = fun () ->
     () in
   match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Ok _ -> Error "expected missing registry package to fail"
-  | Error (Tusk_pm.Error.PackageNotFound { package; registry; required_by=Some required_by }) ->
+  | Error (Tusk_deps.Error.PackageNotFound { package; registry; required_by=Some required_by }) ->
       if
         String.equal package "std"
         && String.equal registry "pkgs.ml"
@@ -995,7 +995,7 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
     )
 
 let test_lock_deps_prefers_available_local_packages_over_registry_dependencies = fun () ->
-  with_tempdir "tusk_pm_local_beats_registry"
+  with_tempdir "tusk_deps_local_beats_registry"
     (fun workspace_root ->
       let std_root = Path.(workspace_root / Path.v "vendor/std") in
       let fixme_root = Path.(workspace_root / Path.v "vendor/fixme") in
@@ -1182,7 +1182,7 @@ let test_lock_deps_handles_cyclic_registry_dependencies = fun () ->
     )
 
 let test_lock_deps_handles_cyclic_local_path_dependencies = fun () ->
-  with_tempdir "tusk_pm_cyclic_local_path_dep"
+  with_tempdir "tusk_deps_cyclic_local_path_dep"
     (fun workspace_root ->
       let std_root = Path.(workspace_root / Path.v "vendor/std") in
       let fixme_root = Path.(workspace_root / Path.v "vendor/fixme") in
@@ -1350,30 +1350,30 @@ let test_unlock_discards_existing_external_nodes = fun () ->
         Error "expected unlock to discard preserved external lock nodes"
 
 let test_lock_refresh_requires_lock_when_missing = fun () ->
-  with_tempdir "tusk_pm_missing_lock"
+  with_tempdir "tusk_deps_missing_lock"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
-      match Tusk_pm.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      match Tusk_deps.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
       | Ok true -> Ok ()
       | Ok false -> Error "expected missing lockfile to require refresh"
       | Error err -> Error err)
 
 let test_lock_refresh_false_when_lock_is_newer = fun () ->
-  with_tempdir "tusk_pm_fresh_lock"
+  with_tempdir "tusk_deps_fresh_lock"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
       let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
       sleep (Time.Duration.from_millis 20);
       Fs.write "format_version = 1\npackages = []\n" lock_path |> Result.expect ~msg:"expected lockfile write to succeed";
-      match Tusk_pm.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      match Tusk_deps.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
       | Ok false -> Ok ()
       | Ok true -> Error "expected newer lockfile to avoid refresh"
       | Error err -> Error err)
 
 let test_lock_refresh_true_when_manifest_is_newer = fun () ->
-  with_tempdir "tusk_pm_stale_lock"
+  with_tempdir "tusk_deps_stale_lock"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
       let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
@@ -1381,13 +1381,13 @@ let test_lock_refresh_true_when_manifest_is_newer = fun () ->
       Fs.write "format_version = 1\npackages = []\n" lock_path |> Result.expect ~msg:"expected lockfile write to succeed";
       sleep (Time.Duration.from_millis 20);
       Fs.write "[workspace]\nmembers = [\"packages/demo\"]\n" manifest_path |> Result.expect ~msg:"expected manifest rewrite to succeed";
-      match Tusk_pm.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      match Tusk_deps.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
       | Ok true -> Ok ()
       | Ok false -> Error "expected newer manifest to require refresh"
       | Error err -> Error err)
 
 let test_lockfile_store_roundtrips = fun () ->
-  with_tempdir "tusk_pm_lockfile_store"
+  with_tempdir "tusk_deps_lockfile_store"
     (fun workspace_root ->
       let lockfile =
         Tusk_model.Lockfile.{
@@ -1403,10 +1403,10 @@ let test_lockfile_store_roundtrips = fun () ->
               }; ];
         }
       in
-      match Tusk_pm.Lockfile_store.write ~workspace_root lockfile with
+      match Tusk_deps.Lockfile_store.write ~workspace_root lockfile with
       | Error err -> Error ("expected lockfile write to succeed: " ^ err)
       | Ok () -> (
-          match Tusk_pm.Lockfile_store.read ~workspace_root with
+          match Tusk_deps.Lockfile_store.read ~workspace_root with
           | Error err -> Error ("expected lockfile read to succeed: " ^ err)
           | Ok None -> Error "expected written lockfile to exist"
           | Ok (Some reloaded) ->
@@ -1421,19 +1421,19 @@ let test_lockfile_store_roundtrips = fun () ->
         ))
 
 let test_lockfile_store_returns_none_when_missing = fun () ->
-  with_tempdir "tusk_pm_missing_store"
+  with_tempdir "tusk_deps_missing_store"
     (fun workspace_root ->
-      match Tusk_pm.Lockfile_store.read ~workspace_root with
+      match Tusk_deps.Lockfile_store.read ~workspace_root with
       | Ok None -> Ok ()
       | Ok (Some _) -> Error "expected missing lockfile to return none"
       | Error err -> Error err)
 
 let test_lockfile_store_bubbles_parse_errors = fun () ->
-  with_tempdir "tusk_pm_invalid_lockfile"
+  with_tempdir "tusk_deps_invalid_lockfile"
     (fun workspace_root ->
       let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
       Fs.write "not = [valid\n" lock_path |> Result.expect ~msg:"expected invalid lockfile write to succeed";
-      match Tusk_pm.Lockfile_store.read ~workspace_root with
+      match Tusk_deps.Lockfile_store.read ~workspace_root with
       | Ok _ -> Error "expected invalid lockfile to fail"
       | Error err ->
           if
@@ -1444,7 +1444,7 @@ let test_lockfile_store_bubbles_parse_errors = fun () ->
             Error ("unexpected error: " ^ err))
 
 let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun () ->
-  with_tempdir "tusk_pm_ensure_lock_missing"
+  with_tempdir "tusk_deps_ensure_lock_missing"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected workspace manifest to be written";
@@ -1456,9 +1456,9 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun () ->
         () in
       match collect_event_names
         (fun emit ->
-          Tusk_pm.ensure_lock
+          Tusk_deps.ensure_lock
             ~emit
-            ~mode:Tusk_pm.Dep_solver.Refresh
+            ~mode:Tusk_deps.Dep_solver.Refresh
             ~registry:(make_registry [])
             ~workspace_root
             ~manifest_paths:[ manifest_path ]
@@ -1482,7 +1482,7 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun () ->
             Error "expected ensure_lock to write a fresh lockfile and emit PM lifecycle events")
 
 let test_ensure_lock_uses_existing_fresh_lock = fun () ->
-  with_tempdir "tusk_pm_ensure_lock_existing"
+  with_tempdir "tusk_deps_ensure_lock_existing"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected workspace manifest to be written";
@@ -1498,12 +1498,12 @@ let test_ensure_lock_uses_existing_fresh_lock = fun () ->
         ~mode:Refresh
         ~existing_lock:None [ app_pkg; std_pkg ]
       |> Result.expect ~msg:"expected workspace lock projection to succeed" in
-      Tusk_pm.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile to be written";
+      Tusk_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile to be written";
       match collect_event_names
         (fun emit ->
-          Tusk_pm.ensure_lock
+          Tusk_deps.ensure_lock
             ~emit
-            ~mode:Tusk_pm.Dep_solver.Refresh
+            ~mode:Tusk_deps.Dep_solver.Refresh
             ~registry:(make_registry [])
             ~workspace_root
             ~manifest_paths:[ manifest_path ]
@@ -1523,7 +1523,7 @@ let test_ensure_lock_uses_existing_fresh_lock = fun () ->
             Error "expected ensure_lock to reuse a fresh existing lock without rewriting it")
 
 let test_ensure_lock_materializes_registry_packages_before_projection = fun () ->
-  with_tempdir "tusk_pm_ensure_lock_materializes"
+  with_tempdir "tusk_deps_ensure_lock_materializes"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected workspace manifest to be written";
@@ -1558,9 +1558,9 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun () -
         () in
       match collect_event_names
         (fun emit ->
-          Tusk_pm.ensure_lock
+          Tusk_deps.ensure_lock
             ~emit
-            ~mode:Tusk_pm.Dep_solver.Refresh
+            ~mode:Tusk_deps.Dep_solver.Refresh
             ~registry
             ~workspace_root
             ~manifest_paths:[ manifest_path ]
@@ -1592,7 +1592,7 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun () -
             Error "expected ensure_lock to materialize external package manifests before projection")
 
 let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_packages = fun () ->
-  with_tempdir "tusk_pm_ensure_lock_materializes_existing"
+  with_tempdir "tusk_deps_ensure_lock_materializes_existing"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected workspace manifest to be written";
@@ -1625,19 +1625,19 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
           };
         ]
         () in
-      let existing_lock = Tusk_pm.Dep_solver.lock_deps
-        ~mode:Tusk_pm.Dep_solver.Refresh
+      let existing_lock = Tusk_deps.Dep_solver.lock_deps
+        ~mode:Tusk_deps.Dep_solver.Refresh
         ~registry
         ~existing_lock:None
         ~workspace_root
         [ app_pkg ]
       |> Result.expect ~msg:"expected initial lock solve to succeed" in
-      Tusk_pm.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
+      Tusk_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
       match collect_event_names
         (fun emit ->
-          Tusk_pm.ensure_lock
+          Tusk_deps.ensure_lock
             ~emit
-            ~mode:Tusk_pm.Dep_solver.Refresh
+            ~mode:Tusk_deps.Dep_solver.Refresh
             ~registry
             ~workspace_root
             ~manifest_paths:[ manifest_path ]
@@ -1656,7 +1656,7 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
             Error "expected ensure_lock to reuse the lock while still materializing missing registry packages")
 
 let test_ensure_workspace_projects_materialized_registry_packages = fun () ->
-  with_tempdir "tusk_pm_ensure_workspace"
+  with_tempdir "tusk_deps_ensure_workspace"
     (fun workspace_root ->
       let workspace_manifest = Path.(workspace_root / Path.v "tusk.toml") in
       Fs.write "[workspace]\nmembers = [\"packages/app\"]\n" workspace_manifest
@@ -1693,7 +1693,7 @@ version = "0.2.0"
           } ]
         ()
       in
-      match Tusk_pm.ensure_workspace ~mode:Tusk_pm.Dep_solver.Refresh ~registry ~workspace () with
+      match Tusk_deps.ensure_workspace ~mode:Tusk_deps.Dep_solver.Refresh ~registry ~workspace () with
       | Error err -> Error ("expected ensure_workspace to succeed: " ^ pm_error_message err)
       | Ok resolved_workspace ->
           let std_pkg =
@@ -1726,10 +1726,10 @@ let test_projection_resolves_workspace_packages = fun () ->
     ~dependencies:[ { name = "std"; source = source ~workspace:true () } ]
     () in
   let lockfile = run_lock_deps
-    ~mode:Tusk_pm.Dep_solver.Refresh
+    ~mode:Tusk_deps.Dep_solver.Refresh
     ~existing_lock:None [ app_pkg; std_pkg ]
   |> Result.expect ~msg:"expected lock projection to succeed" in
-  match Tusk_pm.Projection.resolve_packages
+  match Tusk_deps.Projection.resolve_packages
     ~registry:(make_registry [])
     ~workspace_root:(Path.v "/workspace")
     ~packages:[ app_pkg; std_pkg ]
@@ -1749,7 +1749,7 @@ let test_projection_resolves_workspace_packages = fun () ->
         Error "expected projection to preserve resolved runtime dependency ids"
 
 let test_projection_loads_external_manifests_from_lockfile = fun () ->
-  with_tempdir "tusk_pm_projection_external"
+  with_tempdir "tusk_deps_projection_external"
     (fun workspace_root ->
       let app_pkg = make_package
         ~name:"app"
@@ -1825,7 +1825,7 @@ version = "1.0.0"
       let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[] () in
       match collect_event_names
         (fun emit ->
-          Tusk_pm.Projection.resolve_packages
+          Tusk_deps.Projection.resolve_packages
             ~emit
             ~registry
             ~workspace_root
@@ -1864,7 +1864,7 @@ version = "1.0.0"
           | _ -> Error "expected projection to resolve both std and kernel from external manifests")
 
 let test_projection_bubbles_external_manifest_errors = fun () ->
-  with_tempdir "tusk_pm_projection_manifest_error"
+  with_tempdir "tusk_deps_projection_manifest_error"
     (fun workspace_root ->
       let app_pkg = make_package
         ~name:"app"
@@ -1916,7 +1916,7 @@ kernel = 123
         ()
       |> Result.expect ~msg:"expected registry cache to initialize" in
       let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[] () in
-      match Tusk_pm.Projection.resolve_packages
+      match Tusk_deps.Projection.resolve_packages
         ~registry
         ~workspace_root
         ~packages:[ app_pkg ]
@@ -1935,7 +1935,7 @@ kernel = 123
 let test_projection_fails_when_lockfile_is_missing_package = fun () ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
   let lockfile = Tusk_model.Lockfile.{ format_version = 1; packages = [] } in
-  match Tusk_pm.Projection.resolve_packages
+  match Tusk_deps.Projection.resolve_packages
     ~registry:(make_registry [])
     ~workspace_root:(Path.v "/workspace")
     ~packages:[ app_pkg ]

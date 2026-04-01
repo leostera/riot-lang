@@ -19,7 +19,8 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/syn/AGENTS.md`: parser, lexer, CST, diagnostics
 - `packages/krasny/AGENTS.md`: OCaml formatter, document layout, syntax-to-text rendering
 - `packages/tusk-model/AGENTS.md`: shared build-system types and workspace/package model
-- `packages/tusk-pm/AGENTS.md`: package management, dependency solving, lock refresh, registry cache layout
+- `packages/tusk-deps/AGENTS.md`: package management, dependency solving, lock refresh, registry cache layout
+- `packages/tusk-publish/AGENTS.md`: publish command orchestration across fmt, fix, build, and registry upload
 - `packages/tusk-planner/AGENTS.md`: build planning and dependency graph construction
 - `packages/tusk-executor/AGENTS.md`: build execution and result aggregation
 - `packages/tusk-store/AGENTS.md`: artifact store and cache layout

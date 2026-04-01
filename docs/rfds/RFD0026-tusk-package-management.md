@@ -599,7 +599,7 @@ The package-management implementation should live in:
 
 ```text
 packages/pkgs-ml
-packages/tusk-pm
+packages/tusk-deps
 ```
 
 `pkgs-ml` owns:
@@ -611,7 +611,7 @@ packages/tusk-pm
 - an in-memory registry implementation for tests that should not require
   network I/O
 
-`tusk-pm` owns:
+`tusk-deps` owns:
 
 - manifest-to-resolution orchestration
 - registry/source metadata fetches
@@ -627,12 +627,12 @@ packages/tusk-pm
 - package-management and download event types
 
 This split keeps package-management policy and network/materialization logic in
-`tusk-pm`, reusable registry mechanics in `pkgs-ml`, and the durable shared
+`tusk-deps`, reusable registry mechanics in `pkgs-ml`, and the durable shared
 data model in `tusk-model`.
 
 ### Phase-1 ownership and responsibilities
 
-For the first rollout, `tusk-pm` should own four concrete responsibilities:
+For the first rollout, `tusk-deps` should own four concrete responsibilities:
 
 1. build dependency universes by traversing and connecting manifest
    dependencies
@@ -644,8 +644,8 @@ For the first rollout, `tusk-pm` should own four concrete responsibilities:
 In other words, the operational flow should look like:
 
 1. read `tusk.toml` files into `Tusk_model.Package.t`
-2. feed those package roots into `Tusk_pm.Dep_solver`
-3. have `tusk-pm`, using `pkgs-ml` for registry access, compute a `tusk.lock`
+2. feed those package roots into `Tusk_deps.Dep_solver`
+3. have `tusk-deps`, using `pkgs-ml` for registry access, compute a `tusk.lock`
    plus resolved package data
 4. pass the resolved package data into the builder/planner
 
@@ -690,7 +690,7 @@ That means the library should provide:
 - an in-memory registry that can serve sparse-index config and per-package
   documents directly from test data
 
-`tusk-pm` tests should prefer the in-memory registry whenever they are testing
+`tusk-deps` tests should prefer the in-memory registry whenever they are testing
 solver and lockfile behavior rather than transport or on-disk cache behavior.
 
 ### Manifests stay name-based
@@ -721,15 +721,15 @@ dependencies from downloaded manifests.
 The intended data flow is:
 
 1. `tusk-model` parses local manifests into `Package.t`
-2. `tusk-pm` traverses dependency names and builds the runtime/build/dev
+2. `tusk-deps` traverses dependency names and builds the runtime/build/dev
    universes
-3. `tusk-pm` fetches package metadata and manifests for the packages entering
+3. `tusk-deps` fetches package metadata and manifests for the packages entering
    those universes
-4. `tusk-pm` computes exact package selections
-5. `tusk-pm` downloads package archives into the registry archive cache
-6. `tusk-pm` materializes those archives into the registry source cache
-7. `tusk-pm` writes `tusk.lock`
-8. `tusk-pm` projects the resolved graph into `Tusk_model.Package.resolved`
+4. `tusk-deps` computes exact package selections
+5. `tusk-deps` downloads package archives into the registry archive cache
+6. `tusk-deps` materializes those archives into the registry source cache
+7. `tusk-deps` writes `tusk.lock`
+8. `tusk-deps` projects the resolved graph into `Tusk_model.Package.resolved`
 9. the builder consumes `Package.resolved`, not unresolved downloaded manifests
 
 This means that for build purposes every external dependency is eventually a
@@ -756,11 +756,11 @@ kernel = "^0.3.0"
 Phase 1 should work like this:
 
 1. the workspace manifest is parsed into `Tusk_model.Package.t`
-2. `tusk-pm` discovers the transitive universe:
+2. `tusk-deps` discovers the transitive universe:
    - `std`
    - `jsonrpc`
    - `kernel`
-3. `tusk-pm` fetches their manifests
+3. `tusk-deps` fetches their manifests
 4. the naive solver picks exact versions
 5. their downloaded archives are cached at paths like:
    - `~/.tusk/registry/pkgs.ml/archive/std/<version>.tar`

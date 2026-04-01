@@ -57,7 +57,7 @@ let prepare_workspace = fun ?(emit = no_emit) ~(registry:Pkgs_ml.Registry.t) ~(w
     ^ Path.to_string workspace.root
     ^ " packages="
     ^ Int.to_string (List.length workspace.packages));
-  Tusk_pm.ensure_workspace ~emit ~mode:Tusk_pm.Dep_solver.Refresh ~registry ~workspace ()
+  Tusk_deps.ensure_workspace ~emit ~mode:Tusk_deps.Dep_solver.Refresh ~registry ~workspace ()
 
 let build_state = fun ~(workspace:Workspace.t) ~load_errors ~(registry:Pkgs_ml.Registry.t) ~(config:Server_config.t) ->
   let _ = config in

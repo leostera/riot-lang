@@ -80,7 +80,8 @@ let () =
   build_package ~build_results "tusk-init" "packages/tusk-init";
   build_package ~build_results "tusk-fix" "packages/tusk-fix";
   build_package ~build_results "tusk-fmt" "packages/tusk-fmt";
-  build_package ~build_results "tusk-pm" "packages/tusk-pm";
+  build_package ~build_results "tusk-deps" "packages/tusk-deps";
   build_package ~build_results "tusk-build" "packages/tusk-build";
+  build_package ~build_results "tusk-publish" "packages/tusk-publish";
   build_package ~build_results "tusk-cli" "packages/tusk-cli";
   Printf.printf "\n=== Build complete! ===\n"

@@ -51,7 +51,7 @@ digest, and emits lifecycle events.
 Riot's current package-publication contract has a mismatch:
 
 - the registry stores a raw repository tarball at `source_key`
-- installers and `tusk-pm` consume `source_key` as if it were a package install
+- installers and `tusk-deps` consume `source_key` as if it were a package install
   artifact
 
 That mismatch is especially visible for packages published from a subdirectory.
@@ -69,7 +69,7 @@ while the installer needs:
 ~/.tusk/registry/pkgs.ml/src/std/0.1.0/src/...
 ```
 
-This forces `pkgs-ml` and `tusk-pm` to recover repository structure that should
+This forces `pkgs-ml` and `tusk-deps` to recover repository structure that should
 not matter during installation:
 
 - discover and strip the synthetic tarball root directory
@@ -83,7 +83,7 @@ The install artifact should already be shaped like the installed package. If we
 fix that upstream:
 
 - `pkgs-ml` becomes a simple "download archive -> extract package" client
-- `tusk-pm` stops caring about repository archive layout
+- `tusk-deps` stops caring about repository archive layout
 - install failures become much easier to reason about
 - package publication becomes explicit about what bytes are being published
 
@@ -308,7 +308,7 @@ These checks are purely for fast feedback.
 The registry must rerun publish validation after upload.
 
 Local publish does not need to solve dependency compatibility or lock the
-workspace. Those concerns remain in `tusk-pm`.
+workspace. Those concerns remain in `tusk-deps`.
 
 Local publish also does not solve workspace ordering by itself. If a workspace
 contains packages that depend on one another, `tusk publish` still needs to
