@@ -390,21 +390,117 @@ let test_registry_materialize_skips_existing_release = fun () ->
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
+let tar_block_size = 512
+
+let tar_bytes_set_string = fun dst ~offset ~width value ->
+  let bytes = IO.Bytes.of_string value in
+  let copy_len = min width (IO.Bytes.length bytes) in
+  IO.Bytes.blit bytes 0 dst offset copy_len
+
+let tar_octal_string = fun value ->
+  let rec loop acc remaining =
+    if Int64.equal remaining 0L then
+      acc
+    else
+      let digit = Int64.to_int (Int64.rem remaining 8L) in
+      let ch = Char.chr (Char.code '0' + digit) in
+      loop (String.make 1 ch ^ acc) (Int64.div remaining 8L)
+  in
+  if Int64.equal value 0L then
+    "0"
+  else
+    loop "" value
+
+let tar_zero_pad_left = fun width value ->
+  if String.length value >= width then
+    String.sub value (String.length value - width) width
+  else
+    String.make (width - String.length value) '0' ^ value
+
+let tar_bytes_set_octal = fun dst ~offset ~width value ->
+  let digits_width = max 1 (width - 1) in
+  let trimmed = tar_zero_pad_left digits_width (tar_octal_string value) in
+  tar_bytes_set_string dst ~offset ~width:(width - 1) trimmed;
+  IO.Bytes.set dst (offset + width - 1) '\000'
+
+let tar_compute_checksum = fun header ->
+  let sum = ref 0 in
+  for index = 0 to tar_block_size - 1 do
+    sum := !sum + Char.code (IO.Bytes.get header index)
+  done;
+  !sum
+
+let tar_make_header = fun ~name ~kind ~mode ~size ->
+  let header = IO.Bytes.make tar_block_size '\000' in
+  tar_bytes_set_string header ~offset:0 ~width:100 name;
+  tar_bytes_set_octal header ~offset:100 ~width:8 mode;
+  tar_bytes_set_octal header ~offset:108 ~width:8 0L;
+  tar_bytes_set_octal header ~offset:116 ~width:8 0L;
+  tar_bytes_set_octal header ~offset:124 ~width:12 size;
+  tar_bytes_set_octal header ~offset:136 ~width:12 0L;
+  tar_bytes_set_string header ~offset:148 ~width:8 "        ";
+  IO.Bytes.set header 156 kind;
+  tar_bytes_set_string header ~offset:257 ~width:6 "ustar";
+  tar_bytes_set_string header ~offset:263 ~width:2 "00";
+  let checksum = tar_compute_checksum header in
+  let checksum_field = tar_zero_pad_left 6 (tar_octal_string (Int64.of_int checksum)) ^ "\000 " in
+  tar_bytes_set_string header ~offset:148 ~width:8 checksum_field;
+  header
+
+let tar_pad_data = fun data ->
+  let len = String.length data in
+  let remainder = Int.rem len tar_block_size in
+  if remainder = 0 then
+    ""
+  else
+    String.make (tar_block_size - remainder) '\000'
+
 let create_test_archive = fun ~source_root ~archive_path ->
   let archive_parent =
     match Path.parent archive_path with
     | Some parent -> parent
     | None -> Path.v "."
   in
+  let manifest_path = Path.(source_root / Path.v "tusk.toml") in
+  let source_file_path = Path.(source_root / Path.v "src/std.ml") in
   match Fs.create_dir_all archive_parent with
   | Error err -> Error ("failed to create archive parent directory: " ^ IO.error_message err)
   | Ok () -> (
-      let cmd = Command.make
-        ~args:[ "-cf"; Path.to_string archive_path; "-C"; Path.to_string source_root; "." ]
-        "tar" in
+      match Fs.read manifest_path, Fs.read source_file_path with
+      | Error err, _
+      | _, Error err ->
+          Error ("failed to read source fixture for test archive: " ^ IO.error_message err)
+      | Ok manifest, Ok source ->
+          let buffer = IO.Buffer.create 2_048 in
+          let add_entry = fun ~name ~kind ~mode data ->
+            let size = Int64.of_int (String.length data) in
+            IO.Buffer.add_bytes buffer (tar_make_header ~name ~kind ~mode ~size);
+            IO.Buffer.add_string buffer data;
+            IO.Buffer.add_string buffer (tar_pad_data data)
+          in
+          add_entry ~name:"./" ~kind:'5' ~mode:0o755L "";
+          add_entry ~name:"./src/" ~kind:'5' ~mode:0o755L "";
+          add_entry ~name:"./tusk.toml" ~kind:'0' ~mode:0o644L manifest;
+          add_entry ~name:"./src/std.ml" ~kind:'0' ~mode:0o644L source;
+          IO.Buffer.add_string buffer (String.make (tar_block_size * 2) '\000');
+          Fs.write (IO.Buffer.contents buffer) archive_path
+          |> Result.map_err (fun err -> "failed to write test archive: " ^ IO.error_message err)
+    )
+
+let gzip_file = fun ~src ~dst ->
+  let parent =
+    match Path.parent dst with
+    | Some parent -> parent
+    | None -> Path.v "."
+  in
+  match Fs.create_dir_all parent with
+  | Error err ->
+      Error ("failed to create gzip output parent directory: " ^ IO.error_message err)
+  | Ok () -> (
+      let cmd = Command.make ~args:[ "-c"; Path.to_string src ] "gzip" in
       match Command.output cmd with
       | Error (Command.SystemError msg) ->
-          Error ("failed to create test archive: " ^ msg)
+          Error ("failed to gzip test archive: " ^ msg)
       | Ok output when output.Command.status != 0 ->
           let detail =
             if String.equal output.stderr "" then
@@ -412,9 +508,10 @@ let create_test_archive = fun ~source_root ~archive_path ->
             else
               output.stderr
           in
-          Error ("failed to create test archive: " ^ detail)
-      | Ok _ ->
-          Ok ()
+          Error ("failed to gzip test archive: " ^ detail)
+      | Ok output ->
+          Fs.write output.stdout dst
+          |> Result.map_err (fun err -> "failed to write gzipped test archive: " ^ IO.error_message err)
     )
 
 let test_filesystem_registry_materializes_cached_release = fun () ->
@@ -461,6 +558,59 @@ let test_filesystem_registry_materializes_cached_release = fun () ->
                 | Ok _, Ok _ -> Error "expected filesystem registry to extract the cached archive into src/"
                 | (Error err, _)
                 | (_, Error err) -> Error (IO.error_message err))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_filesystem_registry_materializes_gzip_cached_release = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_filesystem_materialize_gzip"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let source_root = Path.(tempdir / Path.v "source/std-0.1.0") in
+        let plain_archive = Path.(tempdir / Path.v "downloads/std-0.1.0.tar") in
+        let source_file = Path.(source_root / Path.v "src/std.ml") in
+        Fs.create_dir_all Path.(source_root / Path.v "src") |> Result.expect ~msg:"expected source directory to be created";
+        Fs.write
+          "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
+          Path.(source_root / Path.v "tusk.toml")
+        |> Result.expect ~msg:"expected manifest to be written";
+        Fs.write "let answer = 42\n" source_file |> Result.expect ~msg:"expected source file to be written";
+        let archive_path = Pkgs_ml.Registry_cache.archive_path cache ~package_name:"std" ~version:"0.1.0" in
+        match create_test_archive ~source_root ~archive_path:plain_archive with
+        | Error err -> Error err
+        | Ok () -> (
+            match gzip_file ~src:plain_archive ~dst:archive_path with
+            | Error err -> Error err
+            | Ok () ->
+                let registry = Pkgs_ml.Registry.filesystem cache in
+                match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
+                | Error err ->
+                    Error err
+                | Ok `Already_present ->
+                    Error "expected gzipped cached archive to materialize on first attempt"
+                | Ok `Materialized ->
+                    let manifest_path = Pkgs_ml.Registry_cache.package_src_dir
+                      cache
+                      ~package_name:"std"
+                      ~version:"0.1.0"
+                    |> fun root -> Path.(root / Path.v "tusk.toml") in
+                    let materialized_source = Pkgs_ml.Registry_cache.package_src_dir
+                      cache
+                      ~package_name:"std"
+                      ~version:"0.1.0"
+                    |> fun root -> Path.(root / Path.v "src/std.ml") in
+                    match Fs.read manifest_path, Fs.read materialized_source with
+                    | Ok manifest, Ok source when String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
+                    && String.equal source "let answer = 42\n" -> Ok ()
+                    | Ok _, Ok _ -> Error "expected filesystem registry to extract a gzipped cached archive into src/"
+                    | (Error err, _)
+                    | (_, Error err) -> Error (IO.error_message err)
+          ))
   with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
@@ -749,6 +899,7 @@ let tests =
     case "registry: in-memory registry materializes release source trees" test_registry_materializes_in_memory_release;
     case "registry: materialization skips existing release sources" test_registry_materialize_skips_existing_release;
     case "registry: filesystem registry materializes cached release archives" test_filesystem_registry_materializes_cached_release;
+    case "registry: filesystem registry materializes gzipped cached release archives" test_filesystem_registry_materializes_gzip_cached_release;
     case "registry: filesystem registry downloads release archives on cache miss" test_filesystem_registry_downloads_release_archive_on_cache_miss;
     case "registry: publish from locator posts tarball to publish route" test_registry_publish_from_locator_posts_tarball_to_publish_route;
     case "registry: publish from locator bubbles registry error message" test_registry_publish_from_locator_bubbles_registry_error_message;

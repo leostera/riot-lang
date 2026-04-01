@@ -128,6 +128,30 @@ let test_extract_writes_regular_files = fun () ->
               Error ("failed to read extracted file: " ^ Kernel.IO.error_message err)
         ))
 
+let test_extract_allows_dot_root_directory_entry = fun () ->
+  let archive =
+    build_archive [
+      ("./", '5', 0o755L, "");
+      ("./src/", '5', 0o755L, "");
+      ("./src/std.ml", '0', 0o644L, "let answer = 42\n");
+    ]
+  in
+  with_temp_dir "tar_dot_root"
+    (fun dir ->
+      match Tar.extract (IO.Reader.from_string archive) ~into:dir with
+      | Error _ ->
+          Error "failed to extract tar archive with dot root entry"
+      | Ok () -> (
+          let extracted = Path.join (Path.join dir (Path.v "src")) (Path.v "std.ml") in
+          match Fs.read_to_string extracted with
+          | Ok "let answer = 42\n" ->
+              Ok ()
+          | Ok text ->
+              Error ("unexpected extracted dot-root content: " ^ text)
+          | Error err ->
+              Error ("failed to read dot-root extracted file: " ^ Kernel.IO.error_message err)
+        ))
+
 let test_extract_rejects_path_traversal = fun () ->
   let archive =
     build_archive [
@@ -148,6 +172,7 @@ let tests =
   Test.[
     case "tar entries lists archive members" test_entries_lists_archive_members;
     case "tar extract writes regular files" test_extract_writes_regular_files;
+    case "tar extract allows dot root directory entry" test_extract_allows_dot_root_directory_entry;
     case "tar extract rejects path traversal" test_extract_rejects_path_traversal;
   ]
 

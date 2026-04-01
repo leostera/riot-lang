@@ -10,6 +10,7 @@ Tusk-specific workflow policy.
 2. Bubble errors up instead of hiding them behind fallback behavior.
 3. Prefer small, composable modules that `tusk-pm` can build on.
 4. Validate each slice with focused build and package tests.
+5. Use Riot-owned archive and compression APIs for source materialization instead of shelling out to external `tar` commands.
 
 ## Validate
 

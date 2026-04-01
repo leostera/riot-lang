@@ -212,18 +212,24 @@ let entries = fun reader ->
           in
           loop [])
 
-let safe_relative_path = fun path ->
+let safe_relative_path = fun ~kind path ->
   if Path.is_absolute path then
     Error (Unsafe_path (Path.to_string path))
   else
     let normalized = Path.normalize path in
     let path_str = Path.to_string normalized in
-    if path_str = "." || path_str = "" then
+    if path_str = "." then
+      match kind with
+      | Directory ->
+          Ok None
+      | _ ->
+          Error (Unsafe_path path_str)
+    else if path_str = "" then
       Error (Unsafe_path path_str)
     else if List.exists (fun component -> Path.to_string component = "..") (Path.components normalized) then
       Error (Unsafe_path path_str)
     else
-      Ok normalized
+      Ok (Some normalized)
 
 let register_target = fun seen path ->
   if HashSet.contains seen path then
@@ -292,17 +298,25 @@ let extract = fun reader ~into ->
                   |> Result.map_err (fun err -> Extract_error err)
                 in
                 let* relative_path =
-                  safe_relative_path entry.path
-                  |> Result.map_err (fun err -> Extract_error err)
-                in
-                let target = Path.join into relative_path in
-                let* () =
-                  register_target seen target
+                  safe_relative_path ~kind:entry.kind entry.path
                   |> Result.map_err (fun err -> Extract_error err)
                 in
                 let* () =
-                  match entry.kind with
-                  | Directory ->
+                  match entry.kind, relative_path with
+                  | Directory, None ->
+                      let* () =
+                        Fs.create_dir_all into
+                        |> Result.map_err (fun err -> Extract_fs_error err)
+                      in
+                      let* () = drain_entry_extract source tar_reader in
+                      set_permissions into entry.mode
+                      |> Result.map_err (fun err -> Extract_fs_error err)
+                  | Directory, Some relative_path ->
+                      let target = Path.join into relative_path in
+                      let* () =
+                        register_target seen target
+                        |> Result.map_err (fun err -> Extract_error err)
+                      in
                       let* () =
                         Fs.create_dir_all target
                         |> Result.map_err (fun err -> Extract_fs_error err)
@@ -310,7 +324,12 @@ let extract = fun reader ~into ->
                       let* () = drain_entry_extract source tar_reader in
                       set_permissions target entry.mode
                       |> Result.map_err (fun err -> Extract_fs_error err)
-                  | File ->
+                  | File, Some relative_path ->
+                      let target = Path.join into relative_path in
+                      let* () =
+                        register_target seen target
+                        |> Result.map_err (fun err -> Extract_error err)
+                      in
                       let* () =
                         match Path.parent target with
                         | None ->
@@ -331,9 +350,10 @@ let extract = fun reader ~into ->
                                 set_permissions target entry.mode
                                 |> Result.map_err (fun err -> Extract_fs_error err))
                       end
-                  | Symlink
-                  | Hardlink
-                  | Other _ ->
+                  | File, None
+                  | Symlink, _
+                  | Hardlink, _
+                  | Other _, _ ->
                       Error (Extract_error (Unsupported_entry_kind entry.kind))
                 in
                 loop ()

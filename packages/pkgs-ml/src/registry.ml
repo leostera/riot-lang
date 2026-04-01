@@ -1,5 +1,7 @@
 open Std
 
+let ( let* ) = Result.and_then
+
 type fetch_response = {
   status_code: int;
   body: string;
@@ -272,63 +274,72 @@ let published_materialization_of_json = fun ~context json ->
 
 let published_release_of_json = fun json ->
   match json with
-  | Data.Json.Object fields -> (
-      match
-        optional_string_field ~context:"publish response" ~field:"package" fields,
-        optional_string_field ~context:"publish response" ~field:"source_url" fields,
-        optional_string_field ~context:"publish response" ~field:"package_subdir" fields,
-        string_field ~context:"publish response" ~field:"selector" fields,
-        string_field ~context:"publish response" ~field:"resolved_sha" fields,
-        string_field ~context:"publish response" ~field:"package_name" fields,
-        string_field ~context:"publish response" ~field:"package_version" fields,
-        object_field ~context:"publish response" ~field:"manifest" fields,
-        object_field ~context:"publish response" ~field:"source_archive" fields,
-        object_field ~context:"publish response" ~field:"claim" fields,
-        object_field ~context:"publish response" ~field:"release" fields,
+  | Data.Json.Object fields ->
+      let* package_locator =
+        optional_string_field ~context:"publish response" ~field:"package" fields
+      in
+      let* source_url =
+        optional_string_field ~context:"publish response" ~field:"source_url" fields
+      in
+      let* package_subdir =
+        optional_string_field ~context:"publish response" ~field:"package_subdir" fields
+      in
+      let* selector = string_field ~context:"publish response" ~field:"selector" fields in
+      let* resolved_sha =
+        string_field ~context:"publish response" ~field:"resolved_sha" fields
+      in
+      let* package_name =
+        string_field ~context:"publish response" ~field:"package_name" fields
+      in
+      let* package_version =
+        string_field ~context:"publish response" ~field:"package_version" fields
+      in
+      let* manifest_json =
+        object_field ~context:"publish response" ~field:"manifest" fields
+      in
+      let* source_archive_json =
+        object_field ~context:"publish response" ~field:"source_archive" fields
+      in
+      let* claim_json = object_field ~context:"publish response" ~field:"claim" fields in
+      let* release_json =
+        object_field ~context:"publish response" ~field:"release" fields
+      in
+      let* materialization_json =
         object_field ~context:"publish response" ~field:"materialization" fields
-      with
-      | Ok package_locator, Ok source_url, Ok package_subdir, Ok selector, Ok resolved_sha, Ok package_name, Ok package_version, Ok manifest_json, Ok source_archive_json, Ok claim_json, Ok release_json, Ok materialization_json -> (
-          match
-            published_artifact_location_of_json ~context:"publish response.manifest" manifest_json,
-            published_artifact_location_of_json ~context:"publish response.source_archive" source_archive_json,
-            published_record_of_json ~context:"publish response.claim" claim_json,
-            published_record_of_json ~context:"publish response.release" release_json,
-            published_materialization_of_json ~context:"publish response.materialization" materialization_json
-          with
-          | Ok manifest, Ok source_archive, Ok claim, Ok release, Ok materialization ->
-              Ok {
-                package_locator;
-                source_url;
-                package_subdir;
-                selector;
-                resolved_sha;
-                package_name;
-                package_version;
-                manifest;
-                source_archive;
-                claim;
-                release;
-                materialization;
-              }
-          | Error err, _, _, _, _
-          | _, Error err, _, _, _
-          | _, _, Error err, _, _
-          | _, _, _, Error err, _
-          | _, _, _, _, Error err -> Error err
-        )
-      | Error err, _, _, _, _, _, _, _, _, _, _, _
-      | _, Error err, _, _, _, _, _, _, _, _, _, _
-      | _, _, Error err, _, _, _, _, _, _, _, _, _
-      | _, _, _, Error err, _, _, _, _, _, _, _, _
-      | _, _, _, _, Error err, _, _, _, _, _, _, _
-      | _, _, _, _, _, Error err, _, _, _, _, _, _
-      | _, _, _, _, _, _, Error err, _, _, _, _, _
-      | _, _, _, _, _, _, _, Error err, _, _, _, _
-      | _, _, _, _, _, _, _, _, Error err, _, _, _
-      | _, _, _, _, _, _, _, _, _, Error err, _, _
-      | _, _, _, _, _, _, _, _, _, _, Error err, _
-      | _, _, _, _, _, _, _, _, _, _, _, Error err -> Error err
-    )
+      in
+      let* manifest =
+        published_artifact_location_of_json
+          ~context:"publish response.manifest"
+          manifest_json
+      in
+      let* source_archive =
+        published_artifact_location_of_json
+          ~context:"publish response.source_archive"
+          source_archive_json
+      in
+      let* claim = published_record_of_json ~context:"publish response.claim" claim_json in
+      let* release =
+        published_record_of_json ~context:"publish response.release" release_json
+      in
+      let* materialization =
+        published_materialization_of_json
+          ~context:"publish response.materialization"
+          materialization_json
+      in
+      Ok {
+        package_locator;
+        source_url;
+        package_subdir;
+        selector;
+        resolved_sha;
+        package_name;
+        package_version;
+        manifest;
+        source_archive;
+        claim;
+        release;
+        materialization;
+      }
   | _ -> Error "publish response must be an object"
 
 let publish_from_locator_url = fun ~registry_name ~locator ~selector ->
@@ -445,6 +456,68 @@ let write_release_files = fun ~root (release: release_source) ->
           loop release.files
     )
 
+let gzip_error_message = function
+  | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Invalid_data -> "invalid gzip data"
+  | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Need_dictionary -> "gzip stream requires a preset dictionary"
+  | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Buffer_error -> "gzip decoder buffer error"
+  | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Out_of_memory -> "gzip decoder out of memory"
+  | Compress.Gzip.Kernel_error (Kernel.Compress.Gzip.Unknown_error msg) -> msg
+  | Compress.Gzip.Truncated_input -> "truncated gzip input"
+
+let tar_entry_kind_to_string = function
+  | Archive.Tar.File -> "file"
+  | Archive.Tar.Directory -> "directory"
+  | Archive.Tar.Symlink -> "symlink"
+  | Archive.Tar.Hardlink -> "hardlink"
+  | Archive.Tar.Other kind -> kind
+
+let tar_error_message = function
+  | Archive.Tar.Kernel_error (Kernel.Archive.Tar.Invalid_header msg) -> "invalid tar header: " ^ msg
+  | Archive.Tar.Kernel_error Kernel.Archive.Tar.Entry_in_progress -> "tar entry is already being read"
+  | Archive.Tar.Kernel_error (Kernel.Archive.Tar.Invalid_state msg) -> "invalid tar reader state: " ^ msg
+  | Archive.Tar.Kernel_error Kernel.Archive.Tar.Unexpected_eof -> "unexpected end of tar archive"
+  | Archive.Tar.Kernel_error Kernel.Archive.Tar.Out_of_memory -> "tar reader out of memory"
+  | Archive.Tar.Kernel_error (Kernel.Archive.Tar.Unknown_error msg) -> msg
+  | Archive.Tar.Invalid_path path -> "invalid archive path '" ^ path ^ "'"
+  | Archive.Tar.Unsafe_path path -> "unsafe archive path '" ^ path ^ "'"
+  | Archive.Tar.Unsupported_entry_kind kind -> "unsupported archive entry kind '" ^ tar_entry_kind_to_string kind ^ "'"
+  | Archive.Tar.Duplicate_entry path -> "duplicate archive entry '" ^ Path.to_string path ^ "'"
+
+let tar_extract_file_error_message = function
+  | Archive.Tar.Extract_source_error err -> IO.error_message err
+  | Archive.Tar.Extract_fs_error err -> IO.error_message err
+  | Archive.Tar.Extract_error err -> tar_error_message err
+
+let gzip_tar_extract_error_message = function
+  | Archive.Tar.Extract_source_error (Compress.Gzip.Source_error err) -> IO.error_message err
+  | Archive.Tar.Extract_source_error (Compress.Gzip.Decode_error err) -> gzip_error_message err
+  | Archive.Tar.Extract_fs_error err -> IO.error_message err
+  | Archive.Tar.Extract_error err -> tar_error_message err
+
+let cached_archive_is_gzip = fun archive_path ->
+  match Fs.File.open_read archive_path with
+  | Error err ->
+      Error ("failed to open cached package archive '"
+      ^ Path.to_string archive_path
+      ^ "': "
+      ^ IO.error_message err)
+  | Ok file ->
+      Kernel.Fun.protect
+        ~finally:(fun () -> ignore (Fs.File.close file))
+        (fun () ->
+          let magic = IO.Bytes.make 2 '\000' in
+          match Fs.File.read file magic ~offset:0 ~len:2 with
+          | Error err ->
+              Error ("failed to read cached package archive '"
+              ^ Path.to_string archive_path
+              ^ "': "
+              ^ IO.error_message err)
+          | Ok bytes_read ->
+              Ok
+                (bytes_read = 2
+                && Char.equal (IO.Bytes.get magic 0) '\x1f'
+                && Char.equal (IO.Bytes.get magic 1) '\x8b'))
+
 let extract_cached_archive = fun ~archive_path ~root ->
   match Fs.create_dir_all root with
   | Error err -> Error ("failed to create package source directory '"
@@ -452,30 +525,40 @@ let extract_cached_archive = fun ~archive_path ~root ->
   ^ "': "
   ^ IO.error_message err)
   | Ok () -> (
-      let extract_cmd = Command.make
-        ~args:[ "-xf"; Path.to_string archive_path; "-C"; Path.to_string root ]
-        "tar" in
-      match Command.output extract_cmd with
-      | Error (Command.SystemError msg) ->
+      let fail = fun detail ->
+        let _ = Fs.remove_dir_all root in
+        Error ("failed to extract cached package archive '"
+        ^ Path.to_string archive_path
+        ^ "': "
+        ^ detail)
+      in
+      match cached_archive_is_gzip archive_path with
+      | Error _ as err ->
           let _ = Fs.remove_dir_all root in
-          Error ("failed to extract cached package archive '"
-          ^ Path.to_string archive_path
-          ^ "': "
-          ^ msg)
-      | Ok output when output.Command.status != 0 ->
-          let _ = Fs.remove_dir_all root in
-          let detail =
-            if String.equal output.stderr "" then
-              output.stdout
-            else
-              output.stderr
-          in
-          Error ("failed to extract cached package archive '"
-          ^ Path.to_string archive_path
-          ^ "': "
-          ^ detail)
-      | Ok _ ->
-          Ok ()
+          err
+      | Ok true -> (
+          match Fs.File.open_read archive_path with
+          | Error err ->
+              fail (IO.error_message err)
+          | Ok file ->
+              Kernel.Fun.protect
+                ~finally:(fun () -> ignore (Fs.File.close file))
+                (fun () ->
+                  let reader =
+                    Fs.File.to_reader file
+                    |> Compress.Gzip.to_reader
+                  in
+                  match Archive.Tar.extract reader ~into:root with
+                  | Ok () ->
+                      Ok ()
+                  | Error err ->
+                      fail (gzip_tar_extract_error_message err)))
+      | Ok false -> (
+          match Archive.Tar.extract_file ~archive:archive_path ~into:root with
+          | Ok () ->
+              Ok ()
+          | Error err ->
+              fail (tar_extract_file_error_message err))
     )
 
 let find_release = fun registry ~package_name ~version ->
