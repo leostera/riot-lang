@@ -158,7 +158,7 @@ let to_cookie_value = fun session ->
   let json_str = Data.Json.to_string json in
   (* Encrypt *)
   let encrypted = encrypt ~secret:session.secret json_str in
-  let encrypted_b64 = Data.Base64.encode encrypted in
+  let encrypted_b64 = Encoding.Base64.encode encrypted in
   (* Sign *)
   let signature = sign ~secret:session.secret encrypted_b64 in
   (* Return: encrypted.signature *)
@@ -174,7 +174,7 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
       else
         (* Decrypt *)
         (
-          match Data.Base64.decode encrypted_b64 with
+          match Encoding.Base64.decode encrypted_b64 with
           | Result.Ok encrypted ->
               let json_str = decrypt ~secret encrypted in
               (* Parse JSON *)

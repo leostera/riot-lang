@@ -1,5 +1,5 @@
 open Std
-module Base85 = Std.Data.Base85
+module Base85 = Std.Encoding.Base85
 open Std.IO
 
 let test_encode_simple = fun () ->

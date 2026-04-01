@@ -11,6 +11,7 @@
 5. `std` owns its package-provided `tusk-fix` rules under `fix/`; keep those diagnostics aligned with the scheduler and `std` ownership rationale.
 6. `Std.Test.Cli` owns the portable test-binary contract (`list-tests`, `run-tests`, and query filtering). Keep individual test binaries on that runner instead of inventing local CLIs.
 7. Archive and compression APIs should compose with `IO.Reader` and `IO.Writer`. Keep path-based helpers as thin wrappers around the streaming APIs rather than making them the only surface.
+8. Binary/text codecs belong under `Std.Encoding`. Keep `Std.Data` focused on structured data formats like JSON, TOML, CSV, XML, and S-expressions.
 
 ## Validate
 

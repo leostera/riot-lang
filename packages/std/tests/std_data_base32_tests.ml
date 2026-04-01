@@ -1,5 +1,5 @@
 open Std
-open Std.Data
+open Std.Encoding
 open Std.Collections
 open Std.IO
 

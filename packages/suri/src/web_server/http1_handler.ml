@@ -83,7 +83,7 @@ let compute_websocket_accept = fun key ->
   let concat = key ^ magic in
   let hash = Crypto.Sha1.hash_string concat in
   let hash_bytes = Kernel.Crypto.Hash.to_bytes hash in
-  Data.Base64.encode_bytes hash_bytes
+  Encoding.Base64.encode_bytes hash_bytes
 
 (* Bridge Channel.Handler.t to Socket_pool.Handler.t for WebSocket connections *)
 

@@ -58,7 +58,7 @@ let decode_credentials = fun auth_header ->
   (* Split "Basic <encoded>" *)
   match String.split_on_char ' ' auth_header with
   | ["Basic";encoded] -> (
-      match Data.Base64.decode encoded with
+      match Encoding.Base64.decode encoded with
       | Result.Ok decoded -> (
           (* Split on first colon only - password can contain colons *)
           match String.index_opt decoded ':' with

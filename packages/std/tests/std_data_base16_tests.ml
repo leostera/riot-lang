@@ -1,5 +1,5 @@
 open Std
-open Std.Data
+open Std.Encoding
 open Std.IO
 
 let test_encode_simple = fun () ->

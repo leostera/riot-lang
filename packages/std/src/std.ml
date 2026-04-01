@@ -17,6 +17,7 @@ module Datetime = Datetime
 module Diff = Diff
 module Dynlink = Kernel.Dynlink
 module Env = Env
+module Encoding = Encoding
 module Exception = Exception
 module Float = Float
 module Fs = Fs

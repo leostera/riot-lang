@@ -1,0 +1,90 @@
+open Global
+
+type decode_error = [ `Invalid_octal ]
+
+let digit_char = fun digit -> Char.chr (Char.code '0' + digit)
+
+let rec encode_positive_int64 = fun value ->
+  if Int64.compare value 8L < 0 then
+    String.make 1 (digit_char (Int64.to_int value))
+  else
+    encode_positive_int64 (Int64.div value 8L)
+    ^ String.make 1 (digit_char (Int64.to_int (Int64.rem value 8L)))
+
+let rec encode_negative_int64 = fun value ->
+  if Int64.compare value (-8L) > 0 then
+    String.make 1 (digit_char (Int64.to_int (Int64.neg value)))
+  else
+    encode_negative_int64 (Int64.div value 8L)
+    ^ String.make 1 (digit_char (Int64.to_int (Int64.neg (Int64.rem value 8L))))
+
+let encode_signed_int64 = fun value ->
+  if Int64.compare value 0L < 0 then
+    "-" ^ encode_negative_int64 value
+  else
+    encode_positive_int64 value
+
+let classify = fun s ->
+  if String.equal s "" then
+    Error `Invalid_octal
+  else
+    let len = String.length s in
+    let sign, start =
+      if s.[0] = '-' || s.[0] = '+' then
+        (String.make 1 s.[0], 1)
+      else
+        ("", 0)
+    in
+    if start >= len then
+      Error `Invalid_octal
+    else
+      let has_octal_prefix =
+        if start + 1 < len then
+          let marker = s.[start + 1] in
+          s.[start] = '0' && (marker = 'o' || marker = 'O')
+        else
+          false
+      in
+      let digits =
+        if has_octal_prefix then
+          String.sub s (start + 2) (len - start - 2)
+        else
+          String.sub s start (len - start)
+      in
+      if String.equal digits "" then
+        Error `Invalid_octal
+      else if String.for_all (function '0' .. '7' -> true | _ -> false) digits then
+        Ok (sign ^ "0o" ^ digits)
+      else
+        Error `Invalid_octal
+
+let encode_int = fun value -> encode_signed_int64 (Int64.of_int value)
+let encode_int32 = fun value -> encode_signed_int64 (Int64.of_int32 value)
+let encode_int64 = encode_signed_int64
+
+let decode_int = fun s ->
+  match classify s with
+  | Error _ as err -> err
+  | Ok normalized -> (
+      match int_of_string_opt normalized with
+      | Some value -> Ok value
+      | None -> Error `Invalid_octal
+    )
+
+let decode_int32 = fun s ->
+  match classify s with
+  | Error _ as err -> err
+  | Ok normalized -> (
+      match Int32.of_string_opt normalized with
+      | Some value -> Ok value
+      | None -> Error `Invalid_octal
+    )
+
+let decode_int64 = fun s ->
+  match classify s with
+  | Error _ as err -> err
+  | Ok normalized -> (
+      match Int64.of_string_opt normalized with
+      | Some value -> Ok value
+      | None -> Error `Invalid_octal
+    )

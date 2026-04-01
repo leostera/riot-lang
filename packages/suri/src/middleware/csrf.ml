@@ -67,11 +67,11 @@ let mask_token = fun raw_token_hex ->
       done;
       (* Combine pad + masked (64 bytes total) and base64 encode *)
       let combined = pad ^ IO.Bytes.to_string masked in
-      Data.Base64.encode combined
+      Encoding.Base64.encode combined
 
 (** Unmask token received from client *)
 let unmask_token = fun masked_b64 ->
-  match Data.Base64.decode masked_b64 with
+  match Encoding.Base64.decode masked_b64 with
   | Result.Error `Invalid_base64 -> Option.none
   | Result.Ok decoded ->
       let len = String.length decoded in

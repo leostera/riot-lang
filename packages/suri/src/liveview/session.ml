@@ -6,7 +6,7 @@ let sign = fun ~secret ~data ->
   let mac_bytes = Kernel.Crypto.FFI.hmac_sha256 ~key:secret ~data in
   (* Use unsafe conversion since bytes and string have same representation *)
   let mac_string = Kernel.IO.Bytes.unsafe_to_string mac_bytes in
-  Data.Base64.encode mac_string
+  Encoding.Base64.encode mac_string
 
 (* Constant-time string comparison to prevent timing attacks *)
 
@@ -34,7 +34,7 @@ let encode = fun ~secret ~json ->
   (* 1. Serialize JSON to string *)
   let json_str = Data.Json.to_string json in
   (* 2. Base64-encode the JSON *)
-  let payload = Data.Base64.encode json_str in
+  let payload = Encoding.Base64.encode json_str in
   (* 3. Sign the payload *)
   let signature = sign ~secret ~data:payload in
   (* 4. Return "<payload>.<signature>" *)
@@ -52,7 +52,7 @@ let decode = fun ~secret ~token ->
       else
         (* 3. Base64-decode the payload *)
         (
-          match Data.Base64.decode payload with
+          match Encoding.Base64.decode payload with
           | Error _ -> Error "Invalid base64 encoding in payload"
           | Ok json_str ->
               (* 4. Parse JSON *)

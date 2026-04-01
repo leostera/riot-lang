@@ -286,19 +286,22 @@
     - {!Data.Xml} - **When:** Parsing or generating XML.
       For SOAP, RSS, SVG, legacy APIs.
     
-    - {!Data.Base16} - **When:** Hex encoding/decoding.
+    - {!Encoding.Base16} / {!Encoding.Hex} - **When:** Hex encoding/decoding.
       For displaying binary data, hash digests, debugging.
-      *Example:* `Base16.encode bytes |> println`
+      *Example:* `Encoding.Hex.encode bytes |> println`
     
-    - {!Data.Base32} - **When:** Base32 encoding (URL-safe, case-insensitive).
+    - {!Encoding.Base32} - **When:** Base32 encoding (URL-safe, case-insensitive).
       For IDs that must be human-readable and case-insensitive.
     
-    - {!Data.Base64} - **When:** Base64 encoding/decoding.
+    - {!Encoding.Base64} - **When:** Base64 encoding/decoding.
       For embedding binary in text (emails, JSON), basic auth headers.
-      *Example:* `Base64.encode image_bytes`
+      *Example:* `Encoding.Base64.encode image_bytes`
     
-    - {!Data.Base85} - **When:** Ascii85/Base85 encoding (more compact).
+    - {!Encoding.Base85} - **When:** Ascii85/Base85 encoding (more compact).
       For embedding binary when space matters (PostScript, PDF).
+
+    - {!Encoding.Octal} - **When:** Octal numeric text for modes and archive fields.
+      *Example:* `Encoding.Octal.encode_int 0o755`
 
     ## Cryptography
 
@@ -525,7 +528,7 @@
     → {!UUID}
 
     **...Encode/Decode Data**
-    → {!Data.Base64}, {!Data.Base16}, {!Data.Base32}
+    → {!Encoding.Base64}, {!Encoding.Hex}, {!Encoding.Base32}, {!Encoding.Octal}
 
     **...Visualize Graphs**
     → {!Graph.Dot}, {!Graph.Mermaid}, {!Graph.SimpleGraph}
@@ -552,6 +555,7 @@
     - {!Data} - Data format parsing (JSON, TOML, CSV, etc.)
     - {!Datetime} - Calendar date and time
     - {!Diff} - Compute differences in data structures
+    - {!Encoding} - Binary/text and numeric encodings
     - {!Env} - Environment variables
     - {!Exception} - Exception handling utilities
     - {!Float} - Floating-point operations
@@ -659,11 +663,16 @@
     │   ├── Toml - TOML config files
     │   ├── Sexp - S-expressions
     │   ├── Csv - CSV data
-    │   ├── Xml - XML parsing
+    │   └── Xml - XML parsing
+    │
+    ├── Encodings
+    │   ├── Encoding (parent)
     │   ├── Base16 - Hex encoding
+    │   ├── Hex - Alias for Base16
     │   ├── Base32 - Base32 encoding
     │   ├── Base64 - Base64 encoding
-    │   └── Base85 - Ascii85 encoding
+    │   ├── Base85 - Ascii85 encoding
+    │   └── Octal - Octal numeric text encoding
     │
     ├── Cryptography
     │   ├── Crypto (parent)
@@ -1009,15 +1018,26 @@ module Data = Data
 
 (** **When to use:** Parsing/generating data formats
     
-    Parent module for JSON, TOML, CSV, XML, Sexp, and encoding formats.
+    Parent module for structured data formats.
     
     **Use cases:**
     - API communication → Json
     - Configuration files → Toml  
     - Data export/import → Csv
     - Legacy systems → Xml
-    - Lisp-like data → Sexp
-    - Binary encoding → Base64, Base16, Base32, Base85 *)
+    - Lisp-like data → Sexp *)
+module Encoding = Encoding
+
+(** **When to use:** Binary/text and numeric encodings
+
+    Parent module for Base16/Hex, Base32, Base64, Base85, and Octal.
+
+    **Use cases:**
+    - Hex digests and binary inspection → Hex / Base16
+    - Human-friendly binary transport → Base32
+    - Binary-in-text payloads → Base64
+    - Compact text encodings → Base85
+    - Octal numeric fields → Octal *)
 module Calendar = Calendar
 
 module Datetime = Datetime
