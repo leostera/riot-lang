@@ -131,7 +131,12 @@ let binary_scope = fun (bin: binary) ->
     Normal
 
 let scope_of_binary_name = fun (pkg: t) ~binary_name ->
-  match List.find_opt (fun (bin: binary) -> String.equal bin.name binary_name) pkg.binaries with
+  match
+    List.find_opt
+      (fun (bin: binary) ->
+        String.equal bin.name binary_name)
+      pkg.binaries
+  with
   | None -> None
   | Some bin -> Some (binary_scope bin)
 
@@ -708,7 +713,6 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
   let ocaml_source_suffix path_str =
     String.ends_with ~suffix:".ml" path_str || String.ends_with ~suffix:".mli" path_str in
   let collect_provider_tree rel_path =
-    let rel_str = Path.to_string rel_path in
     let provider_parent = Path.dirname rel_path in
     let parent_basename = Path.basename provider_parent in
     let basename = Path.basename rel_path in
