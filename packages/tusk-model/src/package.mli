@@ -12,6 +12,10 @@ type dependency = {
   name: string;
   source: dependency_source;
 }
+type resolved_dependency = {
+  requirement: dependency;
+  resolved_id: Lockfile.package_id;
+}
 type binary = {
   name: string;
   path: Path.t;
@@ -65,6 +69,16 @@ type t = {
   commands: Package_command.t list;
   fix_providers: Fix_provider.t list;
 }
+type resolved = {
+  package: t;
+  id: Lockfile.package_id;
+  manifest_path: Path.t;
+  materialized_root: Path.t;
+  provenance: Lockfile.provenance;
+  runtime_resolved: resolved_dependency list;
+  build_resolved: resolved_dependency list;
+  dev_resolved: resolved_dependency list;
+}
 val equal: t -> t -> bool
 
 val is_workspace_member: t -> bool
@@ -107,5 +121,7 @@ val for_scope: dependency_scope -> t -> t
 val build_graph_dependencies: t -> dependency list
 
 val all_dependencies: t -> dependency list
+
+val resolve: package:t -> lock_package:Lockfile.package -> (resolved, string) result
 (** Hash package metadata into a Sha256 hasher state *)
 val hash: Crypto.Sha256.state -> t -> unit

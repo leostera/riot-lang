@@ -21,6 +21,11 @@ type dependency = {
   source: dependency_source;
 }
 
+type resolved_dependency = {
+  requirement: dependency;
+  resolved_id: Lockfile.package_id;
+}
+
 type binary = {
   name: string;
   path: Path.t;
@@ -82,6 +87,17 @@ type t = {
   compiler: compiler_config;
   commands: Package_command.t list;
   fix_providers: Fix_provider.t list;
+}
+
+type resolved = {
+  package: t;
+  id: Lockfile.package_id;
+  manifest_path: Path.t;
+  materialized_root: Path.t;
+  provenance: Lockfile.provenance;
+  runtime_resolved: resolved_dependency list;
+  build_resolved: resolved_dependency list;
+  dev_resolved: resolved_dependency list;
 }
 
 let equal = fun a b -> a.name = b.name && a.path = b.path
@@ -173,6 +189,61 @@ let for_scope = fun scope (pkg: t) ->
 let build_graph_dependencies = fun (pkg: t) -> pkg.dependencies @ pkg.dev_dependencies
 
 let all_dependencies = fun (pkg: t) -> pkg.dependencies @ pkg.dev_dependencies @ pkg.build_dependencies
+
+let resolve_scope = fun ~scope_name ~manifest_dependencies ~lock_dependencies ->
+  let rec loop (acc: resolved_dependency list) (requirements: dependency list) =
+    match requirements with
+    | [] -> Ok (List.rev acc)
+    | (requirement: dependency) :: rest -> (
+        match List.find_opt (fun (dep: Lockfile.dependency) -> dep.name = requirement.name) lock_dependencies with
+        | Some resolved ->
+            loop ({ requirement; resolved_id = resolved.package } :: acc) rest
+        | None ->
+            Error
+              ("lockfile is missing resolved "
+              ^ scope_name
+              ^ " dependency '"
+              ^ requirement.name
+              ^ "'")
+      )
+  in
+  loop [] manifest_dependencies
+
+let resolve = fun ~(package: t) ~(lock_package: Lockfile.package) ->
+  match
+    resolve_scope
+      ~scope_name:"runtime"
+      ~manifest_dependencies:package.dependencies
+      ~lock_dependencies:lock_package.dependencies
+  with
+  | Error _ as err -> err
+  | Ok dependencies -> (
+      match
+        resolve_scope
+          ~scope_name:"build"
+          ~manifest_dependencies:package.build_dependencies
+          ~lock_dependencies:lock_package.build_dependencies
+      with
+      | Error _ as err -> err
+      | Ok build_dependencies -> (
+          match
+            resolve_scope
+              ~scope_name:"dev"
+              ~manifest_dependencies:package.dev_dependencies
+              ~lock_dependencies:lock_package.dev_dependencies
+          with
+          | Error _ as err -> err
+          | Ok dev_dependencies ->
+              Ok {
+                package;
+                id = lock_package.id;
+                manifest_path = lock_package.manifest_path;
+                materialized_root = lock_package.path;
+                provenance = lock_package.provenance;
+                runtime_resolved = dependencies;
+                build_resolved = build_dependencies;
+                dev_resolved = dev_dependencies;
+              }))
 (** Check if this package is a workspace member (not an external dependency).
     External dependencies have relative_path that escapes the workspace (starts with "../")
     or uses absolute paths. *)
@@ -1192,6 +1263,104 @@ fixme = { path = "../fixme" }
       Ok ()
     else
       Error "expected dependency classes to round-trip" [@test]
+
+  let test_resolve_projects_runtime_and_build_edges () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "app"
+version = "0.1.0"
+
+[dependencies]
+std = {}
+
+[build-dependencies]
+ppx = {}
+|}
+      |> Result.expect ~msg:"expected test toml to parse"
+    in
+    let package =
+      from_toml
+        toml
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:(Path.v "/workspace/packages/app")
+        ~relative_path:(Path.v "packages/app")
+      |> Result.expect ~msg:"expected package manifest"
+    in
+    let lock_package: Lockfile.package = {
+      id = { registry = None; name = "app"; version = None };
+      path = Path.v "/workspace/packages/app";
+      manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+      provenance = Lockfile.Workspace;
+      dependencies = [
+        {
+          name = "std";
+          package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
+        };
+      ];
+      build_dependencies = [
+        {
+          name = "ppx";
+          package = { registry = Some "pkgs.ml"; name = "ppx"; version = Some "1.2.3" };
+        };
+      ];
+      dev_dependencies = [];
+    }
+    in
+    match resolve ~package ~lock_package with
+    | Ok resolved ->
+        if
+          List.length resolved.runtime_resolved = 1
+          && List.length resolved.build_resolved = 1
+          && (List.hd resolved.runtime_resolved).resolved_id.name = "std"
+          && (List.hd resolved.build_resolved).resolved_id.version = Some "1.2.3"
+        then
+          Ok ()
+        else
+          Error "expected resolved package projection to preserve exact ids"
+    | Error err -> Error err
+    [@test]
+
+  let test_resolve_requires_all_declared_dependencies () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "app"
+version = "0.1.0"
+
+[dependencies]
+std = {}
+|}
+      |> Result.expect ~msg:"expected test toml to parse"
+    in
+    let package =
+      from_toml
+        toml
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:(Path.v "/workspace/packages/app")
+        ~relative_path:(Path.v "packages/app")
+      |> Result.expect ~msg:"expected package manifest"
+    in
+    let lock_package: Lockfile.package = {
+      id = { registry = None; name = "app"; version = None };
+      path = Path.v "/workspace/packages/app";
+      manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+      provenance = Lockfile.Workspace;
+      dependencies = [];
+      build_dependencies = [];
+      dev_dependencies = [];
+    }
+    in
+    match resolve ~package ~lock_package with
+    | Ok _ -> Error "expected resolve to fail when a declared dependency is missing from the lockfile"
+    | Error _ -> Ok ()
+    [@test]
 
   let test_build_graph_dependencies_exclude_build_only_deps () : (unit, string) result =
     let pkg = {
