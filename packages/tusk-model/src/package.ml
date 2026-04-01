@@ -6,6 +6,7 @@ open Std.Collections
 (** Types *)
 type dependency_source =
   Workspace
+  | Registry of { version: Std.Version.requirement option }
   | Path of Path.t
 
 type dependency_scope =
@@ -290,26 +291,118 @@ let resolve_workspace_dependency : string -> dependency list -> dependency = fun
   | None -> panic
     ("Dependency '" ^ name ^ "' with { workspace = true } not found in workspace dependencies")
 
-let parse_dependency : string -> Toml.value -> workspace_deps:dependency list -> dependency = fun name value ~workspace_deps ->
+let version_parse_error_to_string = function
+  | Version.Invalid_format msg -> msg
+  | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
+  | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
+
+let validate_requirement = fun ~dependency_name requirement ->
+  match Version.parse_requirement requirement with
+  | Ok requirement -> Ok requirement
+  | Error err ->
+      Error
+        ("dependency '"
+        ^ dependency_name
+        ^ "' has invalid version requirement '"
+        ^ requirement
+        ^ "': "
+        ^ version_parse_error_to_string err)
+
+let parse_dependency : string -> Toml.value -> workspace_deps:dependency list -> (dependency, string) result = fun name value ~workspace_deps ->
   match value with
   | Toml.Table attrs -> (
       match List.assoc_opt "workspace" attrs with
-      | Some (Toml.Bool true) -> resolve_workspace_dependency name workspace_deps
+      | Some (Toml.Bool true) -> Ok (resolve_workspace_dependency name workspace_deps)
       | _ -> (
           match List.assoc_opt "path" attrs with
-          | Some (Toml.String path_str) -> { name; source = Path (Path.v path_str) }
-          | _ -> { name; source = Workspace }
+          | Some (Toml.String path_str) -> Ok { name; source = Path (Path.v path_str) }
+          | _ -> (
+              match List.assoc_opt "version" attrs with
+              | Some (Toml.String requirement) ->
+                  validate_requirement ~dependency_name:name requirement
+                  |> Result.map (fun version -> { name; source = Registry { version = Some version } })
+              | Some _ ->
+                  Error ("dependency '" ^ name ^ "' has non-string version requirement")
+              | None ->
+                  Ok { name; source = Registry { version = None } }
+            )
         )
     )
-  | _ -> { name; source = Workspace }
+  | Toml.String requirement ->
+      validate_requirement ~dependency_name:name requirement
+      |> Result.map (fun version -> { name; source = Registry { version = Some version } })
+  | _ ->
+      Error ("dependency '" ^ name ^ "' must be a string or table")
 
-let parse_dependencies : (string * Toml.value) list -> workspace_deps:dependency list -> dependency list = fun items ~workspace_deps ->
-  List.map (fun ((name, value)) -> parse_dependency name value ~workspace_deps) items
+let parse_dependencies : (string * Toml.value) list -> workspace_deps:dependency list -> (dependency list, string) result = fun items ~workspace_deps ->
+  let rec loop acc entries =
+    match entries with
+    | [] -> Ok (List.rev acc)
+    | (name, value) :: rest -> (
+        match parse_dependency name value ~workspace_deps with
+        | Ok dep -> loop (dep :: acc) rest
+        | Error _ as err -> err
+      )
+  in
+  loop [] items
 
 let parse_dependency_section = fun section_name items ~(workspace_deps:dependency list) ->
   match List.assoc_opt section_name items with
   | Some (Toml.Table dep_items) -> parse_dependencies dep_items ~workspace_deps
-  | _ -> []
+  | Some _ -> Error ("[" ^ section_name ^ "] must be a table")
+  | None -> Ok []
+
+let dependency_source_to_json = fun source ->
+  match source with
+  | Workspace ->
+      Json.Object [ ("kind", Json.String "workspace") ]
+  | Registry { version } ->
+      Json.Object [
+        ("kind", Json.String "registry");
+        (
+          "version",
+          match version with
+          | Some requirement -> Json.String (Version.requirement_to_string requirement)
+          | None -> Json.Null
+        );
+      ]
+  | Path p ->
+      Json.Object [
+        ("kind", Json.String "path");
+        ("path", Json.String (Path.to_string p));
+      ]
+
+let dependency_source_of_json = fun json ->
+  match json with
+  | Json.String "workspace" ->
+      Ok Workspace
+  | Json.String source_path ->
+      Ok (Path (Path.v source_path))
+  | Json.Object fields -> (
+      match List.assoc_opt "kind" fields with
+      | Some (Json.String "workspace") ->
+          Ok Workspace
+      | Some (Json.String "path") -> (
+          match List.assoc_opt "path" fields with
+          | Some (Json.String path) -> Ok (Path (Path.v path))
+          | _ -> Error "path dependency source is missing a string path"
+        )
+      | Some (Json.String "registry") -> (
+          match List.assoc_opt "version" fields with
+          | Some Json.Null
+          | None -> Ok (Registry { version = None })
+          | Some (Json.String requirement) ->
+              validate_requirement ~dependency_name:"<json>" requirement
+              |> Result.map (fun requirement -> Registry { version = Some requirement })
+          | _ -> Error "registry dependency source has non-string version requirement"
+        )
+      | Some (Json.String kind) ->
+          Error ("unknown dependency source kind: " ^ kind)
+      | _ ->
+          Error "dependency source is missing kind"
+    )
+  | _ ->
+      Error "dependency source must be a string or object"
 
 let parse_foreign_dependency : string ->
 Toml.value ->
@@ -774,127 +867,129 @@ path:Path.t ->
 relative_path:Path.t ->
 (t, string) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
   match toml with
-  | Toml.Table items ->
+  | Toml.Table items -> (
       let fallback_name = Path.basename path in
       let name = parse_name items fallback_name in
-      let dependencies = parse_dependency_section "dependencies" items ~workspace_deps in
-      let dev_dependencies = parse_dependency_section "dev-dependencies" items ~workspace_deps:workspace_dev_deps in
-      let build_dependencies = parse_dependency_section "build-dependencies" items ~workspace_deps:workspace_build_deps in
-      let binaries =
-        match parse_binaries items ~package_path:path with
-        | Ok bins -> bins
-        | Error msg ->
-            Log.warn ("[PACKAGE] Failed to parse binaries for " ^ name ^ ": " ^ msg);
-            []
-      in
-      let library =
-        match parse_library items ~package_path:path ~package_name:name with
-        | Ok lib -> lib
-        | Error msg ->
-            Log.warn ("[PACKAGE] Failed to parse library for " ^ name ^ ": " ^ msg);
-            None
-      in
-      let foreign =
-        match parse_foreign_dependencies items ~package_path:path with
-        | Ok deps -> deps
-        | Error msg ->
-            Log.warn ("[PACKAGE] Failed to parse foreign dependencies for " ^ name ^ ": " ^ msg);
-            []
-      in
-      let fix_providers = Fix_provider.parse_from_toml items ~package_name:name ~package_path:path in
-      let excluded_relpaths = provider_excluded_relpaths ~package_path:path fix_providers in
-      let sources = scan_sources ~package_path:path ~excluded_relpaths () in
-      let compiler = parse_compiler_config items in
-      let test_binaries = autodiscover_test_binaries sources ~package_path:path in
-      let example_binaries = autodiscover_example_binaries sources ~package_path:path in
-      let bench_binaries = autodiscover_bench_binaries sources ~package_path:path in
-      Log.debug
-        ("[PACKAGE] "
-        ^ name
-        ^ ": discovered "
-        ^ Int.to_string (List.length test_binaries)
-        ^ " test binaries from "
-        ^ Int.to_string (List.length sources.tests)
-        ^ " test files");
-      Log.debug
-        ("[PACKAGE] "
-        ^ name
-        ^ ": discovered "
-        ^ Int.to_string (List.length example_binaries)
-        ^ " example binaries from "
-        ^ Int.to_string (List.length sources.examples)
-        ^ " example files");
-      Log.debug
-        ("[PACKAGE] "
-        ^ name
-        ^ ": discovered "
-        ^ Int.to_string (List.length bench_binaries)
-        ^ " benchmark binaries from "
-        ^ Int.to_string (List.length sources.bench)
-        ^ " benchmark files");
-      let all_binaries = merge_binaries
-        ~declared:binaries
-        ~autodiscovered:((test_binaries @ example_binaries @ bench_binaries)) in
-      (* Parse commands using Package_command module *)
-      let commands =
-        match List.assoc_opt "command" items with
-        | Some (Toml.Array cmd_entries) -> Package_command.parse_from_toml
-          cmd_entries
-          ~package_name:name
-          ~package_path:path
-        | _ -> []
-      in
-      Ok {
-        name;
-        path;
-        relative_path;
-        dependencies;
-        dev_dependencies;
-        build_dependencies;
-        foreign_dependencies = foreign;
-        binaries = all_binaries;
-        library;
-        sources;
-        compiler;
-        commands;
-        fix_providers;
-      }
+      match parse_dependency_section "dependencies" items ~workspace_deps with
+      | Error _ as err -> err
+      | Ok dependencies ->
+          match parse_dependency_section "dev-dependencies" items ~workspace_deps:workspace_dev_deps with
+          | Error _ as err -> err
+          | Ok dev_dependencies ->
+              match parse_dependency_section "build-dependencies" items ~workspace_deps:workspace_build_deps with
+              | Error _ as err -> err
+              | Ok build_dependencies ->
+                  let binaries =
+                    match parse_binaries items ~package_path:path with
+                    | Ok bins -> bins
+                    | Error msg ->
+                        Log.warn ("[PACKAGE] Failed to parse binaries for " ^ name ^ ": " ^ msg);
+                        []
+                  in
+                  let library =
+                    match parse_library items ~package_path:path ~package_name:name with
+                    | Ok lib -> lib
+                    | Error msg ->
+                        Log.warn ("[PACKAGE] Failed to parse library for " ^ name ^ ": " ^ msg);
+                        None
+                  in
+                  let foreign =
+                    match parse_foreign_dependencies items ~package_path:path with
+                    | Ok deps -> deps
+                    | Error msg ->
+                        Log.warn ("[PACKAGE] Failed to parse foreign dependencies for " ^ name ^ ": " ^ msg);
+                        []
+                  in
+                  let fix_providers = Fix_provider.parse_from_toml items ~package_name:name ~package_path:path in
+                  let excluded_relpaths = provider_excluded_relpaths ~package_path:path fix_providers in
+                  let sources = scan_sources ~package_path:path ~excluded_relpaths () in
+                  let compiler = parse_compiler_config items in
+                  let test_binaries = autodiscover_test_binaries sources ~package_path:path in
+                  let example_binaries = autodiscover_example_binaries sources ~package_path:path in
+                  let bench_binaries = autodiscover_bench_binaries sources ~package_path:path in
+                  Log.debug
+                    ("[PACKAGE] "
+                    ^ name
+                    ^ ": discovered "
+                    ^ Int.to_string (List.length test_binaries)
+                    ^ " test binaries from "
+                    ^ Int.to_string (List.length sources.tests)
+                    ^ " test files");
+                  Log.debug
+                    ("[PACKAGE] "
+                    ^ name
+                    ^ ": discovered "
+                    ^ Int.to_string (List.length example_binaries)
+                    ^ " example binaries from "
+                    ^ Int.to_string (List.length sources.examples)
+                    ^ " example files");
+                  Log.debug
+                    ("[PACKAGE] "
+                    ^ name
+                    ^ ": discovered "
+                    ^ Int.to_string (List.length bench_binaries)
+                    ^ " benchmark binaries from "
+                    ^ Int.to_string (List.length sources.bench)
+                    ^ " benchmark files");
+                  let all_binaries = merge_binaries
+                    ~declared:binaries
+                    ~autodiscovered:(test_binaries @ example_binaries @ bench_binaries)
+                  in
+                  let commands =
+                    match List.assoc_opt "command" items with
+                    | Some (Toml.Array cmd_entries) ->
+                        Package_command.parse_from_toml
+                          cmd_entries
+                          ~package_name:name
+                          ~package_path:path
+                    | _ -> []
+                  in
+                  Ok {
+                    name;
+                    path;
+                    relative_path;
+                    dependencies;
+                    dev_dependencies;
+                    build_dependencies;
+                    foreign_dependencies = foreign;
+                    binaries = all_binaries;
+                    library;
+                    sources;
+                    compiler;
+                    commands;
+                    fix_providers;
+                  }
+    )
   | _ -> Error "TOML is not a table"
 
 let to_json : t -> Json.t = fun pkg ->
   let dependencies_json = Json.Array (
     List.map
       (fun (dep: dependency) ->
-        Json.Object [ ("name", Json.String dep.name); (
-            "source",
-            match dep.source with
-            | Workspace -> Json.String "workspace"
-            | Path p -> Json.String (Path.to_string p)
-          ); ])
+        Json.Object [
+          ("name", Json.String dep.name);
+          ("source", dependency_source_to_json dep.source);
+        ])
       pkg.dependencies
   )
   in
   let dev_dependencies_json = Json.Array (
     List.map
       (fun (dep: dependency) ->
-        Json.Object [ ("name", Json.String dep.name); (
-            "source",
-            match dep.source with
-            | Workspace -> Json.String "workspace"
-            | Path p -> Json.String (Path.to_string p)
-          ); ])
+        Json.Object [
+          ("name", Json.String dep.name);
+          ("source", dependency_source_to_json dep.source);
+        ])
       pkg.dev_dependencies
   )
   in
   let build_dependencies_json = Json.Array (
     List.map
       (fun (dep: dependency) ->
-        Json.Object [ ("name", Json.String dep.name); (
-            "source",
-            match dep.source with
-            | Workspace -> Json.String "workspace"
-            | Path p -> Json.String (Path.to_string p)
-          ); ])
+        Json.Object [
+          ("name", Json.String dep.name);
+          ("source", dependency_source_to_json dep.source);
+        ])
       pkg.build_dependencies
   )
   in
@@ -932,94 +1027,105 @@ let from_json : Json.t -> (t, string) result = fun json ->
         List.assoc_opt "relative_path" fields
       ) with
       | (Some (Json.String name), Some (Json.String path_str), Some (Json.String rel_path_str)) -> (
-          match Path.of_string path_str, Path.of_string rel_path_str with
-          | Ok path, Ok relative_path ->
-              let parse_dependencies_field field_name =
-                match List.assoc_opt field_name fields with
-                | Some (Json.Array deps) ->
-                    List.filter_map
-                      (
-                        function
-                        | Json.Object dep_fields -> (
-                            match (
-                              List.assoc_opt "name" dep_fields,
-                              List.assoc_opt "source" dep_fields
-                            ) with
-                            | (Some (Json.String dep_name), Some (Json.String "workspace")) -> Some {
-                              name = dep_name;
-                              source = Workspace
-                            }
-                            | (Some (Json.String dep_name), Some (Json.String source_path)) -> Some {
-                              name = dep_name;
-                              source = Path (Path.v source_path)
-                            }
-                            | _ -> None
-                          )
-                        | _ -> None
-                      )
-                      deps
-                | _ -> []
-              in
-              let dependencies = parse_dependencies_field "dependencies" in
-              let dev_dependencies = parse_dependencies_field "dev_dependencies" in
-              let build_dependencies = parse_dependencies_field "build_dependencies" in
-              let binaries =
-                match List.assoc_opt "binaries" fields with
-                | Some (Json.Array bins) ->
-                    List.filter_map
-                      (
-                        function
-                        | Json.Object bin_fields -> (
-                            match (
-                              List.assoc_opt "name" bin_fields,
-                              List.assoc_opt "path" bin_fields
-                            ) with
-                            | (Some (Json.String bin_name), Some (Json.String bin_path)) -> Some {
-                              name = bin_name;
-                              path = Path.v bin_path
-                            }
-                            | _ -> None
-                          )
-                        | _ -> None
-                      )
-                      bins
-                | _ -> []
-              in
-              let library =
-                match List.assoc_opt "library" fields with
-                | Some (Json.Object lib_fields) -> (
-                    match List.assoc_opt "path" lib_fields with
-                    | Some (Json.String lib_path) -> Some { path = Path.v lib_path }
-                    | _ -> None
-                  )
-                | _ -> None
-              in
-              Ok {
-                name;
-                path;
-                relative_path;
-                dependencies;
-                dev_dependencies;
-                build_dependencies;
-                foreign_dependencies = [];
-                binaries;
-                library;
-                sources =
-                  {
-                    src = [];
-                    native = [];
-                    tests = [];
-                    examples = [];
-                    bench = [];
-                  };
-                compiler = { profile_overrides = []; target_overrides = [] };
-                commands = [];
-                fix_providers = [];
-              }
-          | Error _, _ ->
+          let parse_dependencies_field field_name =
+            match List.assoc_opt field_name fields with
+            | Some (Json.Array deps) ->
+                let rec loop acc entries =
+                  match entries with
+                  | [] -> Ok (List.rev acc)
+                  | entry :: rest -> (
+                      match entry with
+                      | Json.Object dep_fields -> (
+                          match (
+                            List.assoc_opt "name" dep_fields,
+                            List.assoc_opt "source" dep_fields
+                          ) with
+                          | Some (Json.String dep_name), Some source_json -> (
+                              match dependency_source_of_json source_json with
+                              | Ok source ->
+                                  loop ({ name = dep_name; source } :: acc) rest
+                              | Error _ as err -> err
+                            )
+                          | _ -> Error ("Invalid dependency entry in '" ^ field_name ^ "'")
+                        )
+                      | _ -> Error ("Invalid dependency entry in '" ^ field_name ^ "'")
+                    )
+                in
+                loop [] deps
+            | _ -> Ok []
+          in
+          match Path.of_string path_str with
+          | Error _ ->
               Error ("Invalid path in package JSON: " ^ path_str)
-          | _, Error _ ->
-              Error ("Invalid relative_path in package JSON: " ^ rel_path_str)
+          | Ok path -> (
+              match Path.of_string rel_path_str with
+              | Error _ ->
+                  Error ("Invalid relative_path in package JSON: " ^ rel_path_str)
+              | Ok relative_path -> (
+                  match parse_dependencies_field "dependencies" with
+                  | Error _ as err -> err
+                  | Ok dependencies -> (
+                      match parse_dependencies_field "dev_dependencies" with
+                      | Error _ as err -> err
+                      | Ok dev_dependencies -> (
+                          match parse_dependencies_field "build_dependencies" with
+                          | Error _ as err -> err
+                          | Ok build_dependencies ->
+                              let binaries =
+                                match List.assoc_opt "binaries" fields with
+                                | Some (Json.Array bins) ->
+                                    List.filter_map
+                                      (
+                                        function
+                                        | Json.Object bin_fields -> (
+                                            match (
+                                              List.assoc_opt "name" bin_fields,
+                                              List.assoc_opt "path" bin_fields
+                                            ) with
+                                            | (Some (Json.String bin_name), Some (Json.String bin_path)) -> Some {
+                                              name = bin_name;
+                                              path = Path.v bin_path
+                                            }
+                                            | _ -> None
+                                          )
+                                        | _ -> None
+                                      )
+                                      bins
+                                | _ -> []
+                              in
+                              let library =
+                                match List.assoc_opt "library" fields with
+                                | Some (Json.Object lib_fields) -> (
+                                    match List.assoc_opt "path" lib_fields with
+                                    | Some (Json.String lib_path) -> Some { path = Path.v lib_path }
+                                    | _ -> None
+                                  )
+                                | _ -> None
+                              in
+                              Ok {
+                                name;
+                                path;
+                                relative_path;
+                                dependencies;
+                                dev_dependencies;
+                                build_dependencies;
+                                foreign_dependencies = [];
+                                binaries;
+                                library;
+                                sources =
+                                  {
+                                    src = [];
+                                    native = [];
+                                    tests = [];
+                                    examples = [];
+                                    bench = [];
+                                  };
+                                compiler = { profile_overrides = []; target_overrides = [] };
+                                commands = [];
+                                fix_providers = [];
+                              }
+                        ))
+                ))
         )
       | _ -> Error "Invalid package JSON"
     )
@@ -1040,6 +1146,13 @@ let hash = fun state (pkg: t) ->
       H.write_string state dep.name;
       match dep.source with
       | Workspace -> H.write_string state "workspace"
+      | Registry { version } ->
+          H.write_string state "registry";
+          (
+            match version with
+            | Some requirement -> H.write_string state (Version.requirement_to_string requirement)
+            | None -> H.write_string state "none"
+          )
       | Path path -> H.write_string state (Path.to_string path))
     sorted_deps;
   (* Binaries metadata *)
@@ -1263,6 +1376,102 @@ fixme = { path = "../fixme" }
       Ok ()
     else
       Error "expected dependency classes to round-trip" [@test]
+
+  let test_parse_registry_requirement () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "example"
+version = "0.1.0"
+
+[dependencies]
+std = ">= 1.2.3"
+|}
+      |> Result.expect ~msg:"expected package toml to parse"
+    in
+    let pkg = from_toml
+      toml
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:(Path.v "/tmp/example")
+      ~relative_path:(Path.v "packages/example")
+    |> Result.expect ~msg:"expected package manifest" in
+    match pkg.dependencies with
+    | [ { source = Registry { version = Some requirement }; _ } ] ->
+        if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
+          Ok ()
+        else
+          Error "expected parsed dependency requirement to be preserved structurally"
+    | _ -> Error "expected a registry dependency with a parsed requirement" [@test]
+
+  let test_invalid_registry_requirement_fails_manifest_parse () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "example"
+version = "0.1.0"
+
+[dependencies]
+std = "definitely-not-semver"
+|}
+      |> Result.expect ~msg:"expected package toml to parse"
+    in
+    match
+      from_toml
+        toml
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:(Path.v "/tmp/example")
+        ~relative_path:(Path.v "packages/example")
+    with
+    | Ok _ -> Error "expected invalid semver requirement to fail package parsing"
+    | Error _ -> Ok ()
+    [@test]
+
+  let test_package_json_round_trips_registry_requirement () : (unit, string) result =
+    let requirement =
+      Version.parse_requirement ">= 1.2.3"
+      |> Result.expect ~msg:"expected requirement to parse"
+    in
+    let package = {
+      name = "example";
+      path = Path.v "/tmp/example";
+      relative_path = Path.v "packages/example";
+      dependencies = [ { name = "std"; source = Registry { version = Some requirement } } ];
+      dev_dependencies = [];
+      build_dependencies = [];
+      foreign_dependencies = [];
+      binaries = [];
+      library = None;
+      sources =
+        {
+          src = [];
+          native = [];
+          tests = [];
+          examples = [];
+          bench = [];
+        };
+      compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
+      fix_providers = [];
+    }
+    in
+    match from_json (to_json package) with
+    | Error err -> Error err
+    | Ok decoded -> (
+        match decoded.dependencies with
+        | [ { source = Registry { version = Some decoded_requirement }; _ } ] ->
+            if String.equal (Version.requirement_to_string decoded_requirement) ">= 1.2.3" then
+              Ok ()
+            else
+              Error "expected registry requirement to survive package json roundtrip"
+        | _ -> Error "expected registry dependency after package json roundtrip"
+      )
+    [@test]
 
   let test_resolve_projects_runtime_and_build_edges () : (unit, string) result =
     let toml =

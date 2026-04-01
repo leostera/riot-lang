@@ -172,6 +172,8 @@ val parse_requirement: string -> (requirement, parse_error) result
     - "<= 1.2.3" - less than or equal
     - "~> 1.2.3" - allows patch-level changes (>= 1.2.3 and < 1.3.0)
     - "~> 1.2" - allows minor-level changes (>= 1.2.0 and < 2.0.0) *)
+val requirement_to_string: requirement -> string
+(** Convert a requirement to its canonical string representation *)
 val matches: requirement -> t -> bool
 (** Check if a version satisfies a requirement *)
 (** {1 Constructors} *)

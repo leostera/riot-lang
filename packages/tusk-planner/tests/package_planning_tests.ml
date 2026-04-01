@@ -5,7 +5,7 @@ module G = Graph.SimpleGraph
 let test_toolchain = Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v5"
+let planner_artifacts_version = "planner-artifacts:v7"
 
 let make_test_workspace = fun tmpdir packages ->
   Tusk_model.Workspace.{
@@ -72,6 +72,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
                 )
           | None -> ()
         )
+      | Tusk_model.Package.Registry _ -> ()
       | Tusk_model.Package.Path _ -> ())
     sorted_deps;
   H.finish state

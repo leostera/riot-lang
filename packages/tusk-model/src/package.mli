@@ -2,6 +2,7 @@ open Std
 
 type dependency_source =
   Workspace
+  | Registry of { version: Std.Version.requirement option }
   | Path of Path.t
 type dependency_scope =
   Normal

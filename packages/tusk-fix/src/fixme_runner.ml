@@ -219,6 +219,7 @@ let dependency_entries = fun workspace_root providers ->
             match dep.source with
             | Tusk_model.Package.Workspace -> workspace_package_path dep.name
             |> Option.map (fun path -> (dep.name, path))
+            | Tusk_model.Package.Registry _ -> None
             | Tusk_model.Package.Path path -> Some (dep.name, path)))
   in
   let entries = [

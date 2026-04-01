@@ -86,6 +86,41 @@ let test_lock_deps_rejects_path_dependencies_for_now = fun () ->
       else
         Error ("unexpected error: " ^ err)
 
+let test_lock_deps_projects_registry_dependencies_with_registry_name = fun () ->
+  let requirement =
+    Std.Version.parse_requirement ">= 1.2.3"
+    |> Result.expect ~msg:"expected requirement to parse"
+  in
+  let app_pkg =
+    make_package
+      ~name:"app"
+      ~path:(Path.v "/workspace/packages/app")
+      ~dependencies:[ { name = "std"; source = Tusk_model.Package.Registry { version = Some requirement } } ]
+      ()
+  in
+  match
+    Tusk_pm.Dep_solver.lock_deps
+      ~mode:Refresh
+      ~registry_name:"pkgs.ml"
+      ~existing_lock:None
+      [ app_pkg ]
+  with
+  | Error err -> Error ("expected registry dependency lock projection to succeed: " ^ err)
+  | Ok lockfile -> (
+      match lockfile.packages with
+      | [ app_lock ] ->
+          if
+            List.length app_lock.dependencies = 1
+            && (List.hd app_lock.dependencies).package.registry = Some "pkgs.ml"
+            && (List.hd app_lock.dependencies).package.name = "std"
+            && (List.hd app_lock.dependencies).package.version = None
+          then
+            Ok ()
+          else
+            Error "expected registry dependency to be projected with the active registry name"
+      | _ -> Error "expected a single workspace lock package"
+    )
+
 let test_lock_refresh_preserves_existing_external_nodes = fun () ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
   let existing_lock =

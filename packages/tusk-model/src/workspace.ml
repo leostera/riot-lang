@@ -22,26 +22,65 @@ type manifest = {
   target_dir: string option;
 }
 
-let parse_dependency : string -> Toml.value -> Package.dependency = fun name value ->
+let version_parse_error_to_string = function
+  | Version.Invalid_format msg -> msg
+  | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
+  | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
+
+let validate_requirement = fun ~dependency_name requirement ->
+  match Version.parse_requirement requirement with
+  | Ok requirement -> Ok requirement
+  | Error err ->
+      Error
+        ("dependency '"
+        ^ dependency_name
+        ^ "' has invalid version requirement '"
+        ^ requirement
+        ^ "': "
+        ^ version_parse_error_to_string err)
+
+let parse_dependency : string -> Toml.value -> (Package.dependency, string) result = fun name value ->
+  let make_dependency source : Package.dependency = { name; source } in
   match value with
   | Toml.Table attrs -> (
       match List.assoc_opt "path" attrs with
-      | Some (Toml.String path_str) -> { name; source = Path (Path.v path_str) }
-      | _ -> { name; source = Workspace }
+      | Some (Toml.String path_str) -> Ok (make_dependency (Path (Path.v path_str)))
+      | _ -> (
+          match List.assoc_opt "version" attrs with
+          | Some (Toml.String requirement) ->
+              validate_requirement ~dependency_name:name requirement
+              |> Result.map (fun version -> make_dependency (Package.Registry { version = Some version }))
+          | Some _ ->
+              Error ("dependency '" ^ name ^ "' has non-string version requirement")
+          | None -> Ok (make_dependency (Package.Registry { version = None }))
+        )
     )
-  | _ -> { name; source = Workspace }
+  | Toml.String requirement ->
+      validate_requirement ~dependency_name:name requirement
+      |> Result.map (fun version -> make_dependency (Package.Registry { version = Some version }))
+  | _ -> Error ("dependency '" ^ name ^ "' must be a string or table")
 
-let parse_dependencies : (string * Toml.value) list -> Package.dependency list = fun items ->
-  List.map (fun ((name, value)) -> parse_dependency name value) items
+let parse_dependencies : (string * Toml.value) list -> (Package.dependency list, string) result = fun items ->
+  let rec loop acc entries =
+    match entries with
+    | [] -> Ok (List.rev acc)
+    | (name, value) :: rest -> (
+        match parse_dependency name value with
+        | Ok dep -> loop (dep :: acc) rest
+        | Error _ as err -> err
+      )
+  in
+  loop [] items
 
-let parse_dependency_section section_name (toml: Toml.value) : Package.dependency list =
+let parse_dependency_section section_name (toml: Toml.value) : (Package.dependency list, string) result =
   match toml with
   | Toml.Table items -> (
       match List.assoc_opt section_name items with
       | Some (Toml.Table dep_items) -> parse_dependencies dep_items
-      | _ -> []
+      | Some _ -> Error ("[" ^ section_name ^ "] must be a table")
+      | None -> Ok []
     )
-  | _ -> []
+  | _ -> Ok []
 
 let parse_members : Toml.value -> Path.t list = fun toml ->
   match toml with
@@ -63,12 +102,15 @@ let parse_members : Toml.value -> Path.t list = fun toml ->
 let parse_workspace_dependencies : Toml.value -> Package.dependency list = fun toml ->
   Log.debug ("[WORKSPACE] parse_workspacE_dependencies has items: " ^ Toml.to_string toml);
   parse_dependency_section "dependencies" toml
+  |> Result.expect ~msg:"workspace dependencies should be parsed through of_toml"
 
 let parse_workspace_dev_dependencies : Toml.value -> Package.dependency list = fun toml ->
   parse_dependency_section "dev-dependencies" toml
+  |> Result.expect ~msg:"workspace dev dependencies should be parsed through of_toml"
 
 let parse_workspace_build_dependencies : Toml.value -> Package.dependency list = fun toml ->
   parse_dependency_section "build-dependencies" toml
+  |> Result.expect ~msg:"workspace build dependencies should be parsed through of_toml"
 
 let parse_profile_overrides : Toml.value -> (string * Profile.profile_override) list = fun toml ->
   Log.debug "[WORKSPACE] parse_profile_overrides called";
@@ -127,19 +169,25 @@ let parse_target_dir : Toml.value -> string option = fun toml ->
 
 let of_toml : Toml.value -> (manifest, string) result = fun toml ->
   let members = parse_members toml in
-  let dependencies = parse_workspace_dependencies toml in
-  let dev_dependencies = parse_workspace_dev_dependencies toml in
-  let build_dependencies = parse_workspace_build_dependencies toml in
-  let profile_overrides = parse_profile_overrides toml in
-  let target_dir = parse_target_dir toml in
-  Ok {
-    members;
-    dependencies;
-    dev_dependencies;
-    build_dependencies;
-    profile_overrides;
-    target_dir;
-  }
+  match parse_dependency_section "dependencies" toml with
+  | Error _ as err -> err
+  | Ok dependencies -> (
+      match parse_dependency_section "dev-dependencies" toml with
+      | Error _ as err -> err
+      | Ok dev_dependencies -> (
+          match parse_dependency_section "build-dependencies" toml with
+          | Error _ as err -> err
+          | Ok build_dependencies ->
+              let profile_overrides = parse_profile_overrides toml in
+              let target_dir = parse_target_dir toml in
+              Ok {
+                members;
+                dependencies;
+                dev_dependencies;
+                build_dependencies;
+                profile_overrides;
+                target_dir;
+              }))
 
 let manifest_from_toml = of_toml [@@deprecated "Use of_toml instead"]
 
@@ -215,6 +263,31 @@ target_dir = "build-out"
       Ok ()
     else
       Error "expected custom target_dir_root" [@test]
+
+  let test_workspace_dependencies_parse_registry_requirements () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[workspace]
+members = []
+
+[dependencies]
+std = ">= 1.2.3"
+|}
+      |> Result.expect ~msg:"expected workspace toml to parse"
+    in
+    match of_toml toml with
+    | Error err -> Error err
+    | Ok manifest -> (
+        match manifest.dependencies with
+        | [ { Package.source = Package.Registry { version = Some requirement }; _ } ] ->
+            if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
+              Ok ()
+            else
+              Error "expected workspace registry requirement to be parsed structurally"
+        | _ -> Error "expected workspace dependency to parse as a registry requirement"
+      )
+    [@test]
 
   let test_discover_fix_providers () : (unit, string) result =
     let package_toml =

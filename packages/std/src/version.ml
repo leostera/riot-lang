@@ -163,6 +163,15 @@ let to_string = fun v ->
   | None -> with_pre
   | Some build -> with_pre ^ "+" ^ build
 
+let requirement_op_to_string = function
+  | ReqEq -> "=="
+  | ReqNeq -> "!="
+  | ReqGt -> ">"
+  | ReqGte -> ">="
+  | ReqLt -> "<"
+  | ReqLte -> "<="
+  | ReqTilde -> "~>"
+
 (* Comparison *)
 
 let compare_pre_release_segment = fun s1 s2 ->
@@ -264,6 +273,9 @@ let parse_requirement = fun req_string ->
     | Ok version -> Ok (op, version)
     | Error e -> Error e
 
+let requirement_to_string = fun ((op, version): requirement) ->
+  requirement_op_to_string op ^ " " ^ to_string version
+
 let matches = fun ((op, req_version)) test_version ->
   let cmp = compare test_version req_version in
   match op with
@@ -300,3 +312,14 @@ let make = fun ~major ~minor ~patch ?(pre = []) ?build () ->
     pre;
     build;
   }
+
+module Tests = struct
+  let test_requirement_to_string () : (unit, string) result =
+    match parse_requirement ">= 1.2.3" with
+    | Ok requirement ->
+        if String.equal (requirement_to_string requirement) ">= 1.2.3" then
+          Ok ()
+        else
+          Error "expected requirement_to_string to preserve operator and version"
+    | Error _ -> Error "expected requirement to parse" [@test]
+end

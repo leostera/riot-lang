@@ -338,7 +338,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
   (* Planner artifact contract version.
      Bump this when planned output shapes or link-time artifact requirements
      change in ways that must invalidate cached package artifacts. *)
-  H.write_string state "planner-artifacts:v6";
+  H.write_string state "planner-artifacts:v7";
   (* Build context (includes resolved profile) *)
   Build_ctx.hash state build_ctx;
   (* Toolchain identity must participate in package cache invalidation so
@@ -368,6 +368,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
             )
           | None -> ()
         )
+      | Package.Registry _ -> ()
       | Package.Path _ -> ())
     sorted_deps;
   (* Dependency hashes *)

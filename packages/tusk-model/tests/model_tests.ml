@@ -180,6 +180,121 @@ ignore = ["fixtures"]
   Test.assert_equal ~expected:[ "fixtures" ] ~actual:config.ignore_patterns;
   Ok ()
 
+let test_package_dependency_requirement_parses_structurally = fun () ->
+  let manifest =
+    Std.Data.Toml.parse
+      {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[dependencies]
+std = ">= 1.2.3"
+|}
+    |> Result.expect ~msg:"expected package TOML to parse"
+  in
+  let pkg =
+    Tusk_model.Package.from_toml
+      manifest
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:(Path.v "/tmp/demo")
+      ~relative_path:(Path.v "packages/demo")
+    |> Result.expect ~msg:"expected package manifest to parse"
+  in
+  match pkg.dependencies with
+  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = Some requirement }; _ } ] ->
+      Test.assert_equal
+        ~expected:">= 1.2.3"
+        ~actual:(Std.Version.requirement_to_string requirement);
+      Ok ()
+  | _ -> Error "expected a parsed registry dependency requirement"
+
+let test_package_dependency_invalid_requirement_fails = fun () ->
+  let manifest =
+    Std.Data.Toml.parse
+      {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[dependencies]
+std = "not-a-semver-range"
+|}
+    |> Result.expect ~msg:"expected package TOML to parse"
+  in
+  match
+    Tusk_model.Package.from_toml
+      manifest
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:(Path.v "/tmp/demo")
+      ~relative_path:(Path.v "packages/demo")
+  with
+  | Ok _ -> Error "expected invalid package semver requirement to fail"
+  | Error _ -> Ok ()
+
+let test_package_json_roundtrips_registry_requirement = fun () ->
+  let requirement =
+    Std.Version.parse_requirement ">= 1.2.3"
+    |> Result.expect ~msg:"expected requirement to parse"
+  in
+  let package =
+    Tusk_model.Package.{
+      name = "demo";
+      path = Path.v "/tmp/demo";
+      relative_path = Path.v "packages/demo";
+      dependencies = [ { name = "std"; source = Registry { version = Some requirement } } ];
+      dev_dependencies = [];
+      build_dependencies = [];
+      foreign_dependencies = [];
+      binaries = [];
+      library = None;
+      sources = { src = []; native = []; tests = []; examples = []; bench = [] };
+      compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
+      fix_providers = [];
+    }
+  in
+  let decoded =
+    Tusk_model.Package.to_json package
+    |> Tusk_model.Package.from_json
+    |> Result.expect ~msg:"expected package JSON to roundtrip"
+  in
+  match decoded.dependencies with
+  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = Some requirement }; _ } ] ->
+      Test.assert_equal
+        ~expected:">= 1.2.3"
+        ~actual:(Std.Version.requirement_to_string requirement);
+      Ok ()
+  | _ -> Error "expected registry dependency after JSON roundtrip"
+
+let test_workspace_dependency_requirement_parses_structurally = fun () ->
+  let manifest =
+    Std.Data.Toml.parse
+      {|
+[workspace]
+members = []
+
+[dependencies]
+std = ">= 1.2.3"
+|}
+    |> Result.expect ~msg:"expected workspace TOML to parse"
+  in
+  let workspace_manifest =
+    Tusk_model.Workspace.of_toml manifest
+    |> Result.expect ~msg:"expected workspace manifest to parse"
+  in
+  match workspace_manifest.dependencies with
+  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = Some requirement }; _ } ] ->
+      Test.assert_equal
+        ~expected:">= 1.2.3"
+        ~actual:(Std.Version.requirement_to_string requirement);
+      Ok ()
+  | _ -> Error "expected a parsed workspace registry dependency requirement"
+
 let tests =
   Test.[
     case "for_scope: build drops commands and runtime outputs" test_build_scope_drops_commands_and_runtime_outputs;
@@ -189,6 +304,10 @@ let tests =
     case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;
     case "fmt config: package ignore loads" test_package_fmt_ignore_loads;
     case "fmt config: legacy top-level fmt still loads" test_legacy_fmt_ignore_still_loads;
+    case "package: registry dependency requirement parses structurally" test_package_dependency_requirement_parses_structurally;
+    case "package: invalid dependency requirement fails" test_package_dependency_invalid_requirement_fails;
+    case "package: registry dependency JSON roundtrips" test_package_json_roundtrips_registry_requirement;
+    case "workspace: registry dependency requirement parses structurally" test_workspace_dependency_requirement_parses_structurally;
   ]
 
 let name = "Tusk Model Tests"

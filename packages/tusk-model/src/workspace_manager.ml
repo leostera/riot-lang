@@ -83,6 +83,7 @@ dependant:string option ->
 (Package.t list * load_error list) = fun workspace_root dep ~seen ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~dependant ->
   match dep.source with
   | Package.Workspace -> ([], [])
+  | Package.Registry _ -> ([], [])
   | Package.Path dep_path ->
       if List.mem dep.name !seen then
         ([], [])
@@ -124,6 +125,7 @@ dependant:string option ->
                             (fun (dep: Package.dependency) ->
                               match dep.source with
                               | Package.Workspace -> dep
+                              | Package.Registry _ -> dep
                               | Package.Path rel_path ->
                                   let resolved_path = Path.(abs_path / rel_path) in
                                   { dep with source = Package.Path resolved_path })

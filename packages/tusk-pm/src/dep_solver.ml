@@ -10,12 +10,17 @@ let package_id_of_workspace_package = fun (pkg: Tusk_model.Package.t) ->
 let manifest_path_for_package = fun (pkg: Tusk_model.Package.t) ->
   Path.(pkg.path / Path.v "tusk.toml")
 
-let lock_dependency_of_manifest_dependency = fun (dep: Tusk_model.Package.dependency) ->
+let lock_dependency_of_manifest_dependency = fun ~registry_name (dep: Tusk_model.Package.dependency) ->
   match dep.source with
   | Tusk_model.Package.Workspace ->
       Ok Tusk_model.Lockfile.{
         name = dep.name;
         package = { registry = None; name = dep.name; version = None };
+      }
+  | Tusk_model.Package.Registry _ ->
+      Ok Tusk_model.Lockfile.{
+        name = dep.name;
+        package = { registry = Some registry_name; name = dep.name; version = None };
       }
   | Tusk_model.Package.Path path ->
       Error
@@ -24,23 +29,23 @@ let lock_dependency_of_manifest_dependency = fun (dep: Tusk_model.Package.depend
         ^ "' -> "
         ^ Path.to_string path)
 
-let rec lock_dependencies_of_manifest_dependencies = fun acc deps ->
+let rec lock_dependencies_of_manifest_dependencies = fun ~registry_name acc deps ->
   match deps with
   | [] -> Ok (List.rev acc)
   | dep :: rest -> (
-      match lock_dependency_of_manifest_dependency dep with
-      | Ok dep -> lock_dependencies_of_manifest_dependencies (dep :: acc) rest
+      match lock_dependency_of_manifest_dependency ~registry_name dep with
+      | Ok dep -> lock_dependencies_of_manifest_dependencies ~registry_name (dep :: acc) rest
       | Error _ as err -> err
     )
 
-let lock_package_of_workspace_package = fun (pkg: Tusk_model.Package.t) ->
-  match lock_dependencies_of_manifest_dependencies [] pkg.dependencies with
+let lock_package_of_workspace_package = fun ~registry_name (pkg: Tusk_model.Package.t) ->
+  match lock_dependencies_of_manifest_dependencies ~registry_name [] pkg.dependencies with
   | Error _ as err -> err
   | Ok dependencies -> (
-      match lock_dependencies_of_manifest_dependencies [] pkg.build_dependencies with
+      match lock_dependencies_of_manifest_dependencies ~registry_name [] pkg.build_dependencies with
       | Error _ as err -> err
       | Ok build_dependencies -> (
-          match lock_dependencies_of_manifest_dependencies [] pkg.dev_dependencies with
+          match lock_dependencies_of_manifest_dependencies ~registry_name [] pkg.dev_dependencies with
           | Error _ as err -> err
           | Ok dev_dependencies ->
               Ok Tusk_model.Lockfile.{
@@ -53,12 +58,12 @@ let lock_package_of_workspace_package = fun (pkg: Tusk_model.Package.t) ->
                 dev_dependencies;
               }))
 
-let rec lock_packages = fun acc packages ->
+let rec lock_packages = fun ~registry_name acc packages ->
   match packages with
   | [] -> Ok (List.rev acc)
   | pkg :: rest -> (
-      match lock_package_of_workspace_package pkg with
-      | Ok pkg -> lock_packages (pkg :: acc) rest
+      match lock_package_of_workspace_package ~registry_name pkg with
+      | Ok pkg -> lock_packages ~registry_name (pkg :: acc) rest
       | Error _ as err -> err
     )
 
@@ -67,8 +72,7 @@ let keep_existing_package = fun workspace_packages (pkg: Tusk_model.Lockfile.pac
   not (List.mem pkg.id.name workspace_names)
 
 let lock_deps = fun ~mode ~registry_name ~existing_lock packages ->
-  let _ = registry_name in
-  match lock_packages [] packages with
+  match lock_packages ~registry_name [] packages with
   | Ok workspace_packages ->
       let packages =
         match (mode, existing_lock) with
