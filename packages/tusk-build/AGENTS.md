@@ -9,6 +9,7 @@
 3. If behavior starts looking transport-shaped, first ask whether it should be deleted instead.
 4. Changes here commonly affect `tusk-cli`, `tusk-planner`, and `tusk-executor`.
 5. Artifact lookup must respect the active build lane (`profile` + `target`) instead of assuming host/default output directories.
+6. Public command entrypoints should expose typed request/event/error APIs from this package; `tusk-cli` should only translate `matches` into those requests and render the resulting events.
 
 ## Validate
 

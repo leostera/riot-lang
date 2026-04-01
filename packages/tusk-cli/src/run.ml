@@ -1,10 +1,7 @@
 open Std
 open Tusk_model
-open Tusk_model
 open Tusk_build
 open ArgParser
-
-let reconnect = fun ~workspace -> Client.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session"
 
 let command =
   let open ArgParser in
@@ -30,21 +27,19 @@ let trailing_args = fun matches ->
   | "--" :: rest -> rest
   | _ -> args
 
-let build_scope_for_binary = fun (workspace: Workspace.t) ~package_name ~binary_name ->
-  match
-    List.find_opt
-      (fun (pkg: Package.t) ->
-        String.equal pkg.name package_name)
-      workspace.packages
-  with
-  | None -> Build.Runtime
-  | Some pkg -> (
-      match Package.scope_of_binary_name pkg ~binary_name with
-      | Some Package.Dev -> Build.Dev
-      | Some Package.Normal
-      | Some Package.Build
-      | None -> Build.Runtime
-    )
+let build_scope_for_binary = Tusk_build.build_scope_for_binary
+
+let write_run_event = function
+  | Tusk_build.Build _ ->
+      ()
+  | Tusk_build.RunningBinary { package; binary; _ } ->
+      println ("     \027[1;32mRunning\027[0m " ^ package ^ ":" ^ binary)
+
+let write_run_error = function
+  | Tusk_build.BinaryNotFound { binary_name } ->
+      println ("error: binary '" ^ binary_name ^ "' not found")
+  | err ->
+      println ("error: " ^ Tusk_build.run_error_message err)
 
 let run = fun matches ->
   match pick_name matches with
@@ -87,65 +82,23 @@ let run = fun matches ->
       else
         (
           let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-          let (workspace, _load_errors) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
-          let client = Client.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session" in
-          let _ = Client.scan_workspace client ~current_dir:cwd |> Result.expect ~msg:"Failed to scan workspace" in
-          let result =
-            match Client.find_executable client bin_name with
-            | Ok (Some (pkg, _binary)) -> (
-                match pkg_filter with
-                | Some expected_pkg when expected_pkg != pkg ->
-                    println
-                      ("error: binary '" ^ bin_name ^ "' not found in package '" ^ expected_pkg ^ "'");
-                    Error (Failure "binary not found in specified package")
-                | _ -> (
-                    let build_scope = build_scope_for_binary
-                      workspace
-                      ~package_name:pkg
-                      ~binary_name:bin_name in
-                    match Build.build_command ~scope:build_scope (Some pkg) None with
-                    | Ok () ->
-                        let refreshed_client = reconnect ~workspace in
-                        let artifact_result = Client.find_artifact
-                          refreshed_client
-                          ~package:pkg
-                          ~kind:"binary"
-                          ~name:bin_name in
-                        let result =
-                          match artifact_result with
-                          | Ok path ->
-                              println ("     \027[1;32mRunning\027[0m " ^ pkg ^ ":" ^ bin_name);
-                              let cmd = Command.make path ~args:extra in
-                              (
-                                match Command.status cmd with
-                                | Ok 0 ->
-                                    Ok ()
-                                | Ok code ->
-                                    println ("error: process exited with " ^ Int.to_string code);
-                                    Error (Failure ("process exited with " ^ Int.to_string code))
-                                | Error (Command.SystemError msg) ->
-                                    println ("error: " ^ msg);
-                                    Error (Failure msg)
-                              )
-                          | Error msg ->
-                              println ("error: " ^ msg);
-                              Error (Failure msg)
-                        in
-                        Client.close refreshed_client;
-                        result
-                    | Error _ ->
-                        println ("error: build failed for package '" ^ pkg ^ "'");
-                        Error (Failure "build failed")
-                  )
-              )
-            | Ok None ->
-                println ("error: binary '" ^ name ^ "' not found");
-                Error (Failure "binary not found")
-            | Error msg ->
-                println ("error: " ^ msg);
-                Error (Failure msg)
-          in
-          Client.close client;
-          result
+          let (workspace, load_errors) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
+          match
+            Tusk_build.run
+              ~on_event:write_run_event
+              {
+                workspace;
+                load_errors;
+                current_dir = cwd;
+                package_name = pkg_filter;
+                binary_name = bin_name;
+                args = extra;
+              }
+          with
+          | Ok () ->
+              Ok ()
+          | Error err ->
+              write_run_error err;
+              Error (Failure (Tusk_build.run_error_message err))
         )
     )

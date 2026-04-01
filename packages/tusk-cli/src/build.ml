@@ -3,7 +3,7 @@ open Std.Collections
 open Tusk_model
 open Tusk_build
 
-type build_scope =
+type build_scope = Tusk_build.build_scope =
   Runtime
   | Dev
 
@@ -12,6 +12,12 @@ let out = eprintln
 type output_mode =
   | Human
   | Json
+
+type request = {
+  build_request: Tusk_build.build_request;
+  output_mode: output_mode;
+  show_finished_summary: bool;
+}
 
 let build_trace_enabled = fun () ->
   match Env.var String ~name:"TUSK_BUILD_TRACE" with
@@ -24,10 +30,19 @@ let trace_build = fun message ->
   else
     ()
 
-let request_label = function
-  | Client.BuildPackage package -> "BuildPackage(" ^ package ^ ")"
-  | Client.BuildPackages packages -> "BuildPackages(" ^ String.concat "," packages ^ ")"
-  | Client.BuildAll -> "BuildAll"
+let build_request_label = fun (request: Tusk_build.build_request) ->
+  let packages =
+    match request.packages with
+    | [] -> "all"
+    | packages -> String.concat "," packages
+  in
+  let targets =
+    match request.targets with
+    | Tusk_build.Host -> "host"
+    | Tusk_build.All -> "all"
+    | Tusk_build.Pattern pattern -> pattern
+  in
+  "Build(" ^ packages ^ "; targets=" ^ targets ^ ")"
 
 let streaming_event_label = function
   | Client.BuildStarted _ -> "BuildStarted"
@@ -41,56 +56,10 @@ let write_json_event = fun (json: Data.Json.t) ->
   print (Data.Json.to_string json);
   print "\n"
 
-let telemetry_event_to_json = fun event ->
-  match Tusk_executor.Telemetry_events.to_json event with
-  | Some json -> json
-  | None -> Data.Json.Null
-
-let build_stats_to_json = fun (stats: Client.build_stats) ->
-  Data.Json.Object [
-    ("duration_ms", Data.Json.Int stats.duration_ms);
-    ("packages_built", Data.Json.Int stats.packages_built);
-    ("packages_failed", Data.Json.Int stats.packages_failed);
-    ("total_modules", Data.Json.Int stats.total_modules);
-    ("cache_hits", Data.Json.Int stats.cache_hits);
-    ("cache_misses", Data.Json.Int stats.cache_misses);
-  ]
-
-let package_results_to_json = fun (results: Tusk_executor.Package_builder.build_result list) ->
-  Data.Json.Array (List.map Tusk_executor.Package_builder.build_result_to_json results)
-
-let build_failed_event_to_json = fun session_id failed_at errors ->
-  Data.Json.Object [
-    ("type", Data.Json.String "BuildFailed");
-    ("session_id", Data.Json.String (Session_id.to_string session_id));
-    ("failed_at", Data.Json.String (Datetime.to_iso8601 failed_at));
-    ("errors", package_results_to_json errors);
-  ]
-
-let build_completed_event_to_json = fun session_id completed_at stats results ->
-  Data.Json.Object [
-    ("type", Data.Json.String "BuildCompleted");
-    ("session_id", Data.Json.String (Session_id.to_string session_id));
-    ("completed_at", Data.Json.String (Datetime.to_iso8601 completed_at));
-    ("stats", build_stats_to_json stats);
-    ("results", package_results_to_json results);
-  ]
-
-let planning_failed_event_to_json = fun session_id failed_at reason ->
-  Data.Json.Object [
-    ("type", Data.Json.String "PlanningFailed");
-    ("session_id", Data.Json.String (Session_id.to_string session_id));
-    ("failed_at", Data.Json.String (Datetime.to_iso8601 failed_at));
-    ("reason", Data.Json.String reason);
-  ]
-
-let cycle_detected_event_to_json = fun session_id detected_at cycle_nodes ->
-  Data.Json.Object [
-    ("type", Data.Json.String "CycleDetected");
-    ("session_id", Data.Json.String (Session_id.to_string session_id));
-    ("detected_at", Data.Json.String (Datetime.to_iso8601 detected_at));
-    ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes));
-  ]
+let write_build_event_json = fun event ->
+  match Tusk_build.Event.to_json event with
+  | Some json -> write_json_event json
+  | None -> ()
 
 let command_error_event_to_json = fun kind details ->
   Data.Json.Object (("type", Data.Json.String kind) :: details)
@@ -154,13 +123,11 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       None
   | kind -> Some (Tusk_model.Event.display kind)
 
-let write_pm_event = fun ~mode ~session_id ~seen_registry_updates kind ->
+let write_pm_event = fun ~mode ~seen_registry_updates event ->
   match mode with
-  | Json -> Tusk_model.Event.create ~session_id ~level:Tusk_model.Event.Info kind
-  |> Tusk_model.Event.to_json
-  |> write_json_event
+  | Json -> write_build_event_json (Tusk_build.Pm event)
   | Human -> (
-      match format_pm_event ~seen_registry_updates kind with
+      match format_pm_event ~seen_registry_updates event.kind with
       | Some message -> out message
       | None -> ()
     )
@@ -169,83 +136,6 @@ let write_command_error = fun ~mode kind details human_message ->
   match mode with
   | Json -> write_json_event (command_error_event_to_json kind details)
   | Human -> out ("\027[1;31mError\027[0m: " ^ human_message)
-
-(** Helper functions for target resolution *)
-let ensure_toolchains_for_targets = fun workspace targets ->
-  let config = Toolchain_config.from_workspace workspace in
-  (* Check which toolchains are missing *)
-  let missing =
-    List.filter
-      (fun target ->
-        match Tusk_toolchain.check_toolchain_status ~version:config.version ~target with
-        | Tusk_toolchain.NotInstalled _
-        | Tusk_toolchain.Incomplete _ -> true
-        | Tusk_toolchain.Installed _ -> false)
-      targets
-  in
-  if List.length missing > 0 then
-    (
-      out "";
-      out ("📥 Installing " ^ Int.to_string (List.length missing) ^ " missing toolchain(s)...");
-      out "";
-      let host = Tusk_toolchain.get_host_triple () in
-      List.iter
-        (fun target ->
-          match Tusk_toolchain.download_and_install_toolchain config.version ~host ~target with
-          | Ok () -> out ("  ✓ " ^ target)
-          | Error msg ->
-              out ("  ✗ " ^ target ^ ": " ^ msg);
-              out "";
-              out ("❌ Failed to install toolchain for " ^ target);
-              exit 1)
-        missing;
-      out ""
-    )
-
-let get_configured_targets = fun workspace ->
-  let config = Toolchain_config.from_workspace workspace in
-  match config.targets with
-  | [] -> [ Tusk_toolchain.get_host_triple () ]
-  | targets -> targets
-
-let resolve_target_pattern = fun workspace pattern ->
-  let configured = get_configured_targets workspace in
-  let host = Tusk_toolchain.get_host_triple () in
-  match String.lowercase_ascii pattern with
-  | "host"
-  | "native" ->
-      Ok [ host ]
-  | "all" ->
-      Ok configured
-  | exact when List.mem exact configured ->
-      Ok [ exact ]
-  | pattern ->
-      (* Substring matching *)
-      let matches =
-        List.filter
-          (fun t ->
-            String.contains t pattern)
-          configured
-      in
-      if List.length matches = 0 then
-        Error (
-          "No targets match pattern '" ^ pattern ^ "'.\n\
-                Available targets: " ^ String.concat ", " configured
-        )
-      else
-        Ok matches
-
-let resolve_targets = fun workspace matches ->
-  let all_targets = ArgParser.get_flag matches "all-targets" in
-  let target_pattern = ArgParser.get_one matches "target" in
-  if all_targets then
-    Ok (get_configured_targets workspace)
-  else
-    match target_pattern with
-    | Some pattern -> resolve_target_pattern workspace pattern
-    | None ->
-        (* Default to host *)
-        Ok [ Tusk_toolchain.get_host_triple () ]
 
 let command =
   let open ArgParser in
@@ -259,194 +149,215 @@ let command =
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
       ]
 
-let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary =
-  true) request target_arch ->
+let target_request_of_matches = fun matches ->
+  if ArgParser.get_flag matches "all-targets" then
+    Tusk_build.All
+  else
+    match ArgParser.get_one matches "target" with
+    | Some pattern -> Tusk_build.Pattern pattern
+    | None -> Tusk_build.Host
+
+let output_mode_of_matches = fun matches ->
+  if ArgParser.get_flag matches "json" then
+    Json
+  else
+    Human
+
+let make_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) ~packages
+  ~targets () ->
+  {
+    build_request = Tusk_build.{
+      workspace;
+      load_errors;
+      packages;
+      targets;
+      scope;
+      profile = "debug";
+    };
+    output_mode = mode;
+    show_finished_summary;
+  }
+
+let request_of_matches = fun ~workspace ~load_errors matches ->
+  make_request
+    ~workspace
+    ~load_errors
+    ~mode:(output_mode_of_matches matches)
+    ~packages:(ArgParser.get_many matches "package")
+    ~targets:(target_request_of_matches matches)
+    ()
+
+let write_building_target_event = fun ~mode ~target ~host ->
+  match mode with
+  | Json -> write_build_event_json (Tusk_build.BuildingTarget { target; host })
+  | Human ->
+      if not host then
+        out ("🔨 Cross-compiling for " ^ target)
+
+let write_streaming_event = fun ~mode ~displayed_packages ~built_count ~cached_count ~failed_count ~skipped_count event ->
+  trace_build ("streaming event: " ^ streaming_event_label event);
+  match mode with
+  | Json -> ()
+  | Human -> (
+      match event with
+      | Client.BuildStarted _ ->
+          ()
+      | Client.BuildEvent event ->
+          (
+            match event with
+            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> built_count := !built_count + 1
+            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> cached_count := !cached_count + 1
+            | Tusk_executor.Telemetry_events.BuildFailed _ -> failed_count := !failed_count + 1
+            | Tusk_executor.Telemetry_events.BuildSkipped _ -> skipped_count := !skipped_count + 1
+            | _ -> ()
+          );
+          let msg = Event_formatter.format ~displayed_packages event in
+          if msg != "" then
+            out msg
+      | Client.BuildCompleted _ ->
+          ()
+      | Client.BuildFailed _ ->
+          ()
+      | Client.PlanningFailed { reason; _ } ->
+          out "";
+          out ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
+          failed_count := !failed_count + 1
+      | Client.CycleDetected { cycle_nodes; _ } ->
+          out "      \027[1;31mError\027[0m: Cyclic dependency detected:";
+          out ("         " ^ String.concat " ->\n         " cycle_nodes)
+    )
+
+let write_build_error = fun ~mode err ->
+  match err with
+  | Tusk_build.NoTargetsMatched { pattern; available_targets } ->
+      write_command_error
+        ~mode
+        "NoTargetsMatched"
+        [
+          ("pattern", Data.Json.String pattern);
+          ("available_targets", Data.Json.Array (List.map (fun target -> Data.Json.String target) available_targets));
+        ]
+        (Tusk_build.build_error_message err)
+  | Tusk_build.ToolchainInstallFailed { target; error } ->
+      write_command_error
+        ~mode
+        "ToolchainInstallFailed"
+        [ ("target", Data.Json.String target); ("reason", Data.Json.String error) ]
+        (Tusk_build.build_error_message err)
+  | Tusk_build.ToolchainInitializationFailed { target; error } ->
+      write_command_error
+        ~mode
+        "ToolchainInitializationFailed"
+        [ ("target", Data.Json.String target); ("reason", Data.Json.String error) ]
+        (Tusk_build.build_error_message err)
+  | Tusk_build.ClientError client_error -> (
+      match client_error with
+      | Client.PackageNotFound { package_name; available_packages } ->
+          if mode = Json then
+            write_json_event
+              (command_error_event_to_json
+                "PackageNotFound"
+                [
+                  ("package_name", Data.Json.String package_name);
+                  ("available_packages", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages));
+                ])
+          else
+            (
+              out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
+              out "";
+              out "Available packages:";
+              List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages
+            )
+      | Client.PackagesNotFound { package_names; available_packages } ->
+          if mode = Json then
+            write_json_event
+              (command_error_event_to_json
+                "PackagesNotFound"
+                [
+                  ("package_names", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) package_names));
+                  ("available_packages", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages));
+                ])
+          else
+            (
+              out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
+              out "";
+              out "Available packages:";
+              List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages
+            )
+      | Client.BuildAlreadyRunning { lock_path } ->
+          write_command_error
+            ~mode
+            "BuildAlreadyRunning"
+            [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
+            ("another tusk build is already running\nLock file: "
+            ^ Path.to_string lock_path
+            ^ "\nWait for the current build to finish and try again.")
+      | Client.UnexpectedEvent { reason } ->
+          write_command_error
+            ~mode
+            "UnexpectedEvent"
+            [ ("reason", Data.Json.String reason) ]
+            reason
+      | Client.StartupFailed { error } ->
+          let reason = Tusk_build.error_message error in
+          write_command_error
+            ~mode
+            "SessionStartFailed"
+            [ ("reason", Data.Json.String reason) ]
+            reason
+    )
+
+let run_request = fun (request: request) ->
   trace_build
-    ("run_build_request request="
-    ^ request_label request
+    ("run_request request="
+    ^ build_request_label request.build_request
     ^ " scope="
     ^
-    match scope with
+    match request.build_request.scope with
     | Runtime -> "runtime"
     | Dev -> "dev"
     ^ " mode="
     ^
-    match mode with
+    match request.output_mode with
     | Human -> "human"
     | Json -> "json"
-    ^ " target="
-    ^ (target_arch |> Option.unwrap_or ~default:"host"));
-  let startup_session_id = Session_id.make () in
+    );
   let seen_registry_updates = HashSet.create () in
-  trace_build "connecting local session";
-  match Client.connect_local
-    ~emit:(write_pm_event ~mode ~session_id:startup_session_id ~seen_registry_updates)
-    ~workspace
-    ~load_errors
-    () with
-  | Error (Client.StartupFailed { error }) ->
-      trace_build ("connect_local failed: " ^ Tusk_build.error_message error);
-      let reason = Tusk_build.error_message error in
-      write_command_error
-        ~mode
-        "SessionStartFailed"
-        [ ("reason", Data.Json.String reason) ]
-        reason;
-      exit 1
-  | Error err ->
-      trace_build ("connect_local failed: " ^ Client.error_message err);
-      let reason = Client.error_message err in
-      write_command_error
-        ~mode
-        "SessionStartFailed"
-        [ ("reason", Data.Json.String reason) ]
-        reason;
-      exit 1
-  | Ok client ->
-      trace_build "connected local session";
-      let displayed_packages = HashSet.create () in
-      (* Track build stats as events arrive *)
-      let start_time = Time.Instant.now () in
-      let built_count = ref 0 in
-      let cached_count = ref 0 in
-      let failed_count = ref 0 in
-      let skipped_count = ref 0 in
-      let result =
-        trace_build "starting build_streaming";
-        Client.build_streaming client request
-          ~scope:((
-            match scope with
-            | Runtime -> Client.Runtime
-            | Dev -> Client.Dev
-          ))
-          ?target_arch
-          (fun event ->
-            trace_build ("streaming event: " ^ streaming_event_label event);
-            match mode with
-            | Json -> (
-                match event with
-                | Client.BuildStarted _ ->
-                    ()
-                | Client.BuildEvent event -> (
-                    match telemetry_event_to_json event with
-                    | Data.Json.Null -> ()
-                    | json -> write_json_event json
-                  )
-                | Client.BuildCompleted { session_id; completed_at; stats; results } ->
-                    build_completed_event_to_json session_id completed_at stats results |> write_json_event
-                | Client.BuildFailed {
-                  session_id;
-                  failed_at;
-                  stats=_;
-                  built=_;
-                  errors
-                } ->
-                    build_failed_event_to_json session_id failed_at errors |> write_json_event
-                | Client.PlanningFailed { session_id; failed_at; reason } ->
-                    planning_failed_event_to_json session_id failed_at reason |> write_json_event
-                | Client.CycleDetected { session_id; detected_at; cycle_nodes } ->
-                    cycle_detected_event_to_json session_id detected_at cycle_nodes |> write_json_event
-              )
-            | Human -> (
-                match event with
-                | Client.BuildStarted _ ->
-                    ()
-                | Client.BuildEvent event ->
-                    (
-                      match event with
-                      | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> built_count := !built_count + 1
-                      | Tusk_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> cached_count := !cached_count + 1
-                      | Tusk_executor.Telemetry_events.BuildFailed _ -> failed_count := !failed_count + 1
-                      | Tusk_executor.Telemetry_events.BuildSkipped _ -> skipped_count := !skipped_count + 1
-                      | _ -> ()
-                    );
-                    let msg = Event_formatter.format ~displayed_packages event in
-                    if msg != "" then
-                      out msg
-                | Client.BuildCompleted _ ->
-                    ()
-                | Client.BuildFailed _ ->
-                    ()
-                | Client.PlanningFailed { reason; _ } ->
-                    out "";
-                    out ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
-                    failed_count := !failed_count + 1
-                | Client.CycleDetected { cycle_nodes; _ } ->
-                    out "      \027[1;31mError\027[0m: Cyclic dependency detected:";
-                    out ("         " ^ String.concat " ->\n         " cycle_nodes)
-              ))
-      in
-      let final_event =
-        match result with
-        | Error err ->
-            trace_build ("build_streaming returned Error: " ^ Client.error_message err);
-            Client.close client;
-            (
-              match err with
-              | Client.PackageNotFound { package_name; available_packages } ->
-                  if mode = Json then
-                    write_json_event
-                      (command_error_event_to_json
-                        "PackageNotFound"
-                        [
-                          ("package_name", Data.Json.String package_name);
-                          ("available_packages", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages));
-                        ]);
-                  out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
-                  out "";
-                  out "Available packages:";
-                  List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
-                  exit 1
-              | Client.PackagesNotFound { package_names; available_packages } ->
-                  if mode = Json then
-                    write_json_event
-                      (command_error_event_to_json
-                        "PackagesNotFound"
-                        [
-                          ("package_names", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) package_names));
-                          ("available_packages", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages));
-                        ]);
-                  out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
-                  out "";
-                  out "Available packages:";
-                  List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
-                  exit 1
-              | Client.BuildAlreadyRunning { lock_path } ->
-                  if mode = Json then
-                    write_json_event
-                      (command_error_event_to_json
-                        "BuildAlreadyRunning"
-                        [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]);
-                  out "\027[1;31mError\027[0m: another tusk build is already running";
-                  out ("Lock file: " ^ Path.to_string lock_path);
-                  out "Wait for the current build to finish and try again.";
-                  exit 1
-              | Client.UnexpectedEvent Module.{ reason } ->
-                  if mode = Json then
-                    write_json_event
-                      (command_error_event_to_json
-                        "UnexpectedEvent"
-                        [ ("reason", Data.Json.String reason) ]);
-                  out ("\027[1;31mError\027[0m: " ^ reason);
-                  exit 1
-              | Client.StartupFailed { error } ->
-                  let reason = Tusk_build.error_message error in
-                  if mode = Json then
-                    write_json_event
-                      (command_error_event_to_json
-                        "SessionStartFailed"
-                        [ ("reason", Data.Json.String reason) ]);
-                  out ("\027[1;31mError\027[0m: " ^ reason);
-                  exit 1
-            )
-        | Ok event ->
-            trace_build ("build_streaming returned Ok: " ^ streaming_event_label event);
-            Client.close client;
-            event
-      in
-      if show_finished_summary then
+  let displayed_packages = HashSet.create () in
+  let start_time = Time.Instant.now () in
+  let built_count = ref 0 in
+  let cached_count = ref 0 in
+  let failed_count = ref 0 in
+  let skipped_count = ref 0 in
+  let attempted_build = ref false in
+  let result =
+    Tusk_build.build
+      ~on_event:(function
+        | Tusk_build.Pm kind ->
+            write_pm_event
+              ~mode:request.output_mode
+              ~seen_registry_updates
+              kind
+        | Tusk_build.BuildingTarget { target; host } ->
+            attempted_build := true;
+            write_building_target_event ~mode:request.output_mode ~target ~host
+        | Tusk_build.Streaming event ->
+            attempted_build := true;
+            write_streaming_event
+              ~mode:request.output_mode
+              ~displayed_packages
+              ~built_count
+              ~cached_count
+              ~failed_count
+              ~skipped_count
+              event;
+            if request.output_mode = Json then
+              write_build_event_json (Tusk_build.Streaming event))
+      request.build_request
+  in
+  if request.show_finished_summary && !attempted_build then
         (
-          match mode with
+          match request.output_mode with
           | Json -> ()
           | Human ->
               let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
@@ -480,13 +391,11 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                   ^ Int.to_string !skipped_count
                   ^ " skipped)")
         );
-      match final_event with
-      | Client.BuildCompleted _ -> Ok ()
-      | Client.BuildFailed _ -> Error (Failure "Build failed")
-      | Client.PlanningFailed _ -> Error (Failure "Planning failed")
-      | Client.CycleDetected _ -> Error (Failure "Cyclic dependency detected")
-      | Client.BuildStarted _
-      | Client.BuildEvent _ -> Error (Failure "Unexpected response from server")
+  match result with
+  | Ok () -> Ok ()
+  | Error err ->
+      write_build_error ~mode:request.output_mode err;
+      Error (Failure (Tusk_build.build_error_message err))
 
 let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
   let (workspace, load_errors) =
@@ -496,85 +405,33 @@ let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Huma
         let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
         Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace. Is this a valid tusk project?"
   in
-  let request =
-    match package_opt with
-    | Some pkg -> Client.BuildPackage pkg
-    | None -> Client.BuildAll
-  in
-  run_build_request ~workspace ~load_errors ~scope ~mode ~show_finished_summary request target_arch
+  run_request
+    (make_request
+      ~workspace
+      ~load_errors
+      ~scope
+      ~mode
+      ~show_finished_summary
+      ~packages:(package_opt |> Option.to_list)
+      ~targets:(match target_arch with
+      | Some target -> Tusk_build.Pattern target
+      | None -> Tusk_build.Host)
+      ())
 
 let build_packages_command = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary =
   true) package_names target_arch ->
-  let request =
-    match package_names with
-    | [] -> Client.BuildAll
-    | [ package_name ] -> Client.BuildPackage package_name
-    | packages -> Client.BuildPackages packages
-  in
-  run_build_request ~workspace ~load_errors ~scope ~mode ~show_finished_summary request target_arch
+  run_request
+    (make_request
+      ~workspace
+      ~load_errors
+      ~scope
+      ~mode
+      ~show_finished_summary
+      ~packages:package_names
+      ~targets:(match target_arch with
+      | Some target -> Tusk_build.Pattern target
+      | None -> Tusk_build.Host)
+      ())
 
 let run = fun ~workspace ~load_errors matches ->
-  let open ArgParser in
-    let package_names = get_many matches "package" in
-    let mode =
-      if get_flag matches "json" then
-        Json
-      else
-        Human
-    in
-    (* Resolve target(s) from flags *)
-    let targets =
-      match resolve_targets workspace matches with
-      | Ok targets -> targets
-      | Error msg ->
-          out ("❌ " ^ msg);
-          exit 1
-    in
-    (* For now, only support single target - multi-target requires executor changes *)
-    if List.length targets > 1 then
-      (
-        out "";
-        out "❌ Multiple targets matched. Please specify a single target.";
-        out "";
-        out "Matched targets:";
-        List.iter (fun t -> out ("  • " ^ t)) targets;
-        out "";
-        out "Use one of these flags to build for a specific target:";
-        List.iter (fun t -> out ("  tusk build -x " ^ t)) targets;
-        out "";
-        Error (Failure "Multiple targets matched")
-      )
-    else if List.length targets = 1 then
-      (
-        let target = List.hd targets in
-        let host = Tusk_toolchain.get_host_triple () in
-        (* Ensure toolchain is installed (auto-install if missing) *)
-        ensure_toolchains_for_targets workspace [ target ];
-        (* Validate toolchain for target exists *)
-        let config = Toolchain_config.from_workspace workspace in
-        (
-          match Tusk_toolchain.init_for_target ~config ~target with
-          | Ok _ -> ()
-          | Error msg ->
-              out ("❌ Failed to initialize toolchain for " ^ target);
-              out msg;
-              exit 1
-        );
-        (* Determine if we're cross-compiling *)
-        let target_arch =
-          if target = host then
-            None
-          else
-            Some target
-        in
-        (
-          match target_arch with
-          | Some arch -> out ("🔨 Cross-compiling for " ^ arch)
-          | None -> ()
-        );
-        build_packages_command ~workspace ~load_errors ~mode package_names target_arch
-      )
-    else (
-      out "❌ No targets specified";
-      Error (Failure "No targets")
-    )
+  run_request (request_of_matches ~workspace ~load_errors matches)

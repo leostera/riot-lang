@@ -1,11 +1,13 @@
 open Std
 
-type build_scope =
+type build_scope = Tusk_build.build_scope =
   Runtime
   | Dev
+
 type output_mode =
   | Human
   | Json
+
 val command: Std.ArgParser.command
 
 val format_pm_event:
