@@ -1,5 +1,253 @@
 open Std
 
+type config = {
+  schema_version: int;
+  kind: string;
+  package_path_strategy: string;
+  index_base_url: string;
+  artifact_base_url: string;
+}
+
+type dependency = {
+  name: string;
+  raw: Data.Json.t;
+}
+
+type release = {
+  version: string;
+  published_at: string;
+  canonical_locator: string;
+  repo_url: string;
+  subdir: string;
+  sha: string;
+  description: string option;
+  license: string option;
+  homepage: string option;
+  repository: string option;
+  root_module: string option;
+  categories: string list;
+  keywords: string list;
+  manifest_key: string;
+  source_key: string;
+  dependencies: dependency list;
+}
+
+type package_document = {
+  schema_version: int;
+  name: string;
+  latest: string;
+  updated_at: string;
+  releases: release list;
+}
+
+let object_field = fun ~context ~field fields ->
+  match List.assoc_opt field fields with
+  | Some value -> Ok value
+  | None -> Error (context ^ " is missing required field '" ^ field ^ "'")
+
+let string_field = fun ~context ~field fields ->
+  match object_field ~context ~field fields with
+  | Error _ as err -> err
+  | Ok (Data.Json.String value) -> Ok value
+  | Ok _ -> Error (context ^ "." ^ field ^ " must be a string")
+
+let int_field = fun ~context ~field fields ->
+  match object_field ~context ~field fields with
+  | Error _ as err -> err
+  | Ok (Data.Json.Int value) -> Ok value
+  | Ok _ -> Error (context ^ "." ^ field ^ " must be an integer")
+
+let optional_string_field = fun ~field fields ->
+  match List.assoc_opt field fields with
+  | None
+  | Some Data.Json.Null -> Ok None
+  | Some (Data.Json.String value) -> Ok (Some value)
+  | Some _ -> Error ("field '" ^ field ^ "' must be a string when present")
+
+let optional_string_list_field = fun ~field fields ->
+  match List.assoc_opt field fields with
+  | None
+  | Some Data.Json.Null -> Ok []
+  | Some (Data.Json.Array items) ->
+      let rec loop acc = function
+        | [] -> Ok (List.rev acc)
+        | Data.Json.String value :: rest -> loop (value :: acc) rest
+        | _ :: _ -> Error ("field '" ^ field ^ "' must be an array of strings")
+      in
+      loop [] items
+  | Some _ -> Error ("field '" ^ field ^ "' must be an array of strings")
+
+let dependency_of_json = fun json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match string_field ~context:"dependency" ~field:"name" fields with
+      | Ok name -> Ok { name; raw = json }
+      | Error _ as err -> err
+    )
+  | _ -> Error "dependency entries must be objects"
+
+let dependencies_of_json = fun json ->
+  match json with
+  | Data.Json.Array items ->
+      let rec loop acc = function
+        | [] -> Ok (List.rev acc)
+        | item :: rest -> (
+            match dependency_of_json item with
+            | Ok dependency -> loop (dependency :: acc) rest
+            | Error _ as err -> err
+          )
+      in
+      loop [] items
+  | _ -> Error "release.dependencies must be an array"
+
+let release_of_json = fun json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match int_field ~context:"release" ~field:"schema_version" fields with
+      | Ok _
+      | Error _ -> (
+          match
+            string_field ~context:"release" ~field:"version" fields,
+            string_field ~context:"release" ~field:"published_at" fields,
+            string_field ~context:"release" ~field:"canonical_locator" fields,
+            string_field ~context:"release" ~field:"repo_url" fields,
+            string_field ~context:"release" ~field:"subdir" fields,
+            string_field ~context:"release" ~field:"sha" fields,
+            optional_string_field ~field:"description" fields,
+            optional_string_field ~field:"license" fields,
+            optional_string_field ~field:"homepage" fields,
+            optional_string_field ~field:"repository" fields,
+            optional_string_field ~field:"root_module" fields,
+            optional_string_list_field ~field:"categories" fields,
+            optional_string_list_field ~field:"keywords" fields,
+            string_field ~context:"release" ~field:"manifest_key" fields,
+            string_field ~context:"release" ~field:"source_key" fields,
+            object_field ~context:"release" ~field:"dependencies" fields
+          with
+          | Ok version, Ok published_at, Ok canonical_locator, Ok repo_url, Ok subdir, Ok sha, Ok description, Ok license, Ok homepage, Ok repository, Ok root_module, Ok categories, Ok keywords, Ok manifest_key, Ok source_key, Ok dependency_json -> (
+              match dependencies_of_json dependency_json with
+              | Ok dependencies ->
+                  Ok {
+                    version;
+                    published_at;
+                    canonical_locator;
+                    repo_url;
+                    subdir;
+                    sha;
+                    description;
+                    license;
+                    homepage;
+                    repository;
+                    root_module;
+                    categories;
+                    keywords;
+                    manifest_key;
+                    source_key;
+                    dependencies;
+                  }
+              | Error _ as err -> err
+            )
+          | Error err, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _
+          | _, Error err, _, _, _, _, _, _, _, _, _, _, _, _, _, _
+          | _, _, Error err, _, _, _, _, _, _, _, _, _, _, _, _, _
+          | _, _, _, Error err, _, _, _, _, _, _, _, _, _, _, _, _
+          | _, _, _, _, Error err, _, _, _, _, _, _, _, _, _, _, _
+          | _, _, _, _, _, Error err, _, _, _, _, _, _, _, _, _, _
+          | _, _, _, _, _, _, Error err, _, _, _, _, _, _, _, _, _
+          | _, _, _, _, _, _, _, Error err, _, _, _, _, _, _, _, _
+          | _, _, _, _, _, _, _, _, Error err, _, _, _, _, _, _, _
+          | _, _, _, _, _, _, _, _, _, Error err, _, _, _, _, _, _
+          | _, _, _, _, _, _, _, _, _, _, Error err, _, _, _, _, _
+          | _, _, _, _, _, _, _, _, _, _, _, Error err, _, _, _, _
+          | _, _, _, _, _, _, _, _, _, _, _, _, Error err, _, _, _
+          | _, _, _, _, _, _, _, _, _, _, _, _, _, Error err, _, _
+          | _, _, _, _, _, _, _, _, _, _, _, _, _, _, Error err, _
+          | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, Error err ->
+              Error err
+        )
+    )
+  | _ -> Error "release entries must be objects"
+
+let releases_of_json = fun json ->
+  match json with
+  | Data.Json.Array items ->
+      let rec loop acc = function
+        | [] -> Ok (List.rev acc)
+        | item :: rest -> (
+            match release_of_json item with
+            | Ok release -> loop (release :: acc) rest
+            | Error _ as err -> err
+          )
+      in
+      loop [] items
+  | _ -> Error "package document releases must be an array"
+
+let config_of_json = fun json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match
+        int_field ~context:"config" ~field:"schema_version" fields,
+        string_field ~context:"config" ~field:"kind" fields,
+        string_field ~context:"config" ~field:"package_path_strategy" fields,
+        string_field ~context:"config" ~field:"index_base_url" fields,
+        string_field ~context:"config" ~field:"artifact_base_url" fields
+      with
+      | Ok schema_version, Ok kind, Ok package_path_strategy, Ok index_base_url, Ok artifact_base_url ->
+          Ok {
+            schema_version;
+            kind;
+            package_path_strategy;
+            index_base_url;
+            artifact_base_url;
+          }
+      | Error err, _, _, _, _
+      | _, Error err, _, _, _
+      | _, _, Error err, _, _
+      | _, _, _, Error err, _
+      | _, _, _, _, Error err -> Error err
+    )
+  | _ -> Error "sparse index config must be an object"
+
+let config_of_string = fun source ->
+  match Data.Json.of_string source with
+  | Ok json -> config_of_json json
+  | Error err -> Error ("failed to parse sparse index config JSON: " ^ Data.Json.error_to_string err)
+
+let package_document_of_json = fun json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match
+        int_field ~context:"package document" ~field:"schema_version" fields,
+        string_field ~context:"package document" ~field:"name" fields,
+        string_field ~context:"package document" ~field:"latest" fields,
+        string_field ~context:"package document" ~field:"updated_at" fields,
+        object_field ~context:"package document" ~field:"releases" fields
+      with
+      | Ok schema_version, Ok name, Ok latest, Ok updated_at, Ok releases_json -> (
+          match releases_of_json releases_json with
+          | Ok releases ->
+              Ok {
+                schema_version;
+                name;
+                latest;
+                updated_at;
+                releases;
+              }
+          | Error _ as err -> err
+        )
+      | Error err, _, _, _, _
+      | _, Error err, _, _, _
+      | _, _, Error err, _, _
+      | _, _, _, Error err, _
+      | _, _, _, _, Error err -> Error err
+    )
+  | _ -> Error "package index document must be an object"
+
+let package_document_of_string = fun source ->
+  match Data.Json.of_string source with
+  | Ok json -> package_document_of_json json
+  | Error err -> Error ("failed to parse package index JSON: " ^ Data.Json.error_to_string err)
+
 let normalized_name = fun package_name ->
   String.lowercase_ascii package_name
 
@@ -41,4 +289,83 @@ module Tests = struct
 
   let test_names_are_normalized_to_lowercase () =
     expect_relpath ~package_name:"AbCd" ~expected:"ab/cd/abcd.json" [@test]
+
+  let test_config_of_json () =
+    let source =
+      {|{
+  "schema_version": 1,
+  "kind": "sparse",
+  "package_path_strategy": "cargo-lowercase-v1",
+  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "artifact_base_url": "https://cdn.pkgs.ml"
+}|}
+    in
+    match config_of_string source with
+    | Ok config ->
+        if
+          config.schema_version = 1
+          && String.equal config.kind "sparse"
+          && String.equal config.package_path_strategy "cargo-lowercase-v1"
+          && String.equal config.index_base_url "https://cdn.pkgs.ml/index/v1"
+          && String.equal config.artifact_base_url "https://cdn.pkgs.ml"
+        then
+          Ok ()
+        else
+          Error "unexpected sparse index config contents"
+    | Error err -> Error err
+    [@test]
+
+  let test_package_document_of_json () =
+    let source =
+      {|{
+  "schema_version": 1,
+  "name": "kernel",
+  "latest": "0.0.1",
+  "updated_at": "2026-03-27T15:27:35Z",
+  "releases": [
+    {
+      "version": "0.0.1",
+      "published_at": "2026-03-27T15:27:35Z",
+      "canonical_locator": "github.com/leostera/riot-new/packages/kernel",
+      "repo_url": "https://github.com/leostera/riot-new",
+      "subdir": "packages/kernel",
+      "sha": "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+      "description": "Actor runtime kernel primitives for Riot",
+      "license": "Apache-2.0",
+      "homepage": "https://riot.ml",
+      "repository": "https://github.com/leostera/riot-new",
+      "root_module": "Kernel",
+      "manifest_key": "packages/github.com/leostera/riot-new/packages/kernel/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
+      "source_key": "sources/github.com/leostera/riot-new/2aef0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
+      "dependencies": [
+        {
+          "name": "std",
+          "path": "../std"
+        }
+      ]
+    }
+  ]
+}|}
+    in
+    match package_document_of_string source with
+    | Ok document -> (
+        match document.releases with
+        | [ release ] ->
+            if
+              document.schema_version = 1
+              && String.equal document.name "kernel"
+              && String.equal document.latest "0.0.1"
+              && String.equal release.version "0.0.1"
+              && String.equal release.manifest_key
+                "packages/github.com/leostera/riot-new/packages/kernel/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json"
+              && List.length release.dependencies = 1
+              && String.equal (List.hd release.dependencies).name "std"
+            then
+              Ok ()
+            else
+              Error "unexpected sparse index package document contents"
+        | _ -> Error "expected exactly one indexed release"
+      )
+    | Error err -> Error err
+    [@test]
 end [@test]
