@@ -41,6 +41,7 @@ module Node_id = Node_id
 module Session_id = Session_id
 
 module Toolchain_config = Toolchain_config
+module User_config = User_config
 
 module Worker_id = Worker_id
 

@@ -8,6 +8,8 @@ let dot_tusk =
   in
   Path.(home / Path.v ".tusk")
 
+let config_path = fun () -> Path.(dot_tusk / Path.v "config.toml")
+
 let package_lock_path = fun ~workspace_root -> Path.(workspace_root / Path.v "tusk.lock")
 
 let toolchains_dir = fun toolchain_config ->

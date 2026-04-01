@@ -2,6 +2,8 @@ open Std
 
 val dot_tusk: Path.t
 
+val config_path: unit -> Path.t
+
 val package_lock_path: workspace_root:Path.t -> Path.t
 
 val toolchains_dir: Toolchain_config.t -> Path.t

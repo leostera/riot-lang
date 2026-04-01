@@ -434,6 +434,42 @@ version = "0.1.0"
             Test.assert_equal ~expected:[ "app"; "kernel"; "vendor" ] ~actual:names;
             Ok ())
 
+let test_user_config_parses_registry_api_token = fun () ->
+  let toml =
+    Std.Data.Toml.parse
+      {|
+[registry."pkgs.ml"]
+api_token = "root-secret"
+|}
+    |> Result.expect ~msg:"expected user config TOML to parse"
+  in
+  match Tusk_model.User_config.of_toml toml with
+  | Error err -> Error (Tusk_model.User_config.message err)
+  | Ok config -> (
+      match Tusk_model.User_config.api_token config ~registry_name:"pkgs.ml" with
+      | Some token when String.equal token "root-secret" -> Ok ()
+      | _ -> Error "expected pkgs.ml API token to be parsed from config"
+    )
+
+let test_user_config_load_reads_config_file = fun () ->
+  with_tempdir "tusk_model_user_config"
+    (fun tmpdir ->
+      let config_path = Path.(tmpdir / Path.v "config.toml") in
+      Fs.write
+        {|
+[registry."pkgs.ml"]
+api_token = "publish-token"
+|}
+        config_path
+      |> Result.expect ~msg:"expected config to write";
+      match Tusk_model.User_config.load config_path with
+      | Error err -> Error (Tusk_model.User_config.message err)
+      | Ok config -> (
+          match Tusk_model.User_config.api_token config ~registry_name:"pkgs.ml" with
+          | Some token when String.equal token "publish-token" -> Ok ()
+          | _ -> Error "expected config loader to expose registry token"
+        ))
+
 let tests =
   Test.[
     case "for_scope: build drops commands and runtime outputs" test_build_scope_drops_commands_and_runtime_outputs;
@@ -452,6 +488,8 @@ let tests =
     case "workspace: registry dependency requirement parses structurally" test_workspace_dependency_requirement_parses_structurally;
     case "workspace: star dependency becomes unconstrained registry dependency" test_workspace_star_requirement_becomes_unconstrained_registry_dep;
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
+    case "user config: parses registry API token" test_user_config_parses_registry_api_token;
+    case "user config: loads config file" test_user_config_load_reads_config_file;
   ]
 
 let name = "Tusk Model Tests"
