@@ -16,6 +16,7 @@ members = [
   "packages/minitusk",
   "packages/minttea",
   "packages/postgres",
+  "packages/pkgs-ml",
   "packages/propane",
   "packages/pubgrub",
   "packages/sqlite",

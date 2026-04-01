@@ -38,6 +38,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/sqlx-driver/AGENTS.md`: database driver interface
 - `packages/sqlite/AGENTS.md`: SQLite adapter
 - `packages/postgres/AGENTS.md`: PostgreSQL adapter
+- `packages/pkgs-ml/AGENTS.md`: reusable pkgs.ml registry client and cache layout helpers
 - `packages/pubgrub/AGENTS.md`: version solver
 - `packages/mime/AGENTS.md`: MIME parsing and rendering helpers
 - `packages/propane/AGENTS.md`: property-based testing support
