@@ -22,6 +22,7 @@ type error =
       stderr: string;
     }
   | TarCommandSpawnFailed of { command: string; error: string }
+  | RegistryPublishFailed of { locator: string; error: string }
 
 val message: error -> string
 
@@ -32,3 +33,11 @@ val validate_runtime_dependencies:
 val create_artifact:
   package:Tusk_model.Package.t ->
   (string, error) result
+
+val publish_from_locator:
+  registry:Pkgs_ml.Registry.t ->
+  package:Tusk_model.Package.t ->
+  locator:string ->
+  selector:string ->
+  api_token:string ->
+  (Pkgs_ml.Registry.published_release, error) result

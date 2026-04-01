@@ -117,6 +117,35 @@ let list_tar_entries = fun artifact ->
           Ok (String.split_on_char '\n' output.stdout |> List.filter (fun line -> not (String.equal line "")))
     )
 
+type recorded_request = {
+  method_: string;
+  url: string;
+  headers: (string * string) list;
+  body: string option;
+}
+
+let make_fetch_recorder = fun ?(post_handler = fun _uri ~headers:_ ~body:_ -> Error "unexpected POST") get_handler ->
+  let requests = ref [] in
+  let record = fun ~method_ uri ~headers ~body ->
+    requests := {
+      method_;
+      url = Net.Uri.to_string uri;
+      headers;
+      body;
+    } :: !requests
+  in
+  let fetch =
+    Pkgs_ml.Registry.make_fetch
+      ~get:(fun uri ->
+        record ~method_:"GET" uri ~headers:[] ~body:None;
+        get_handler uri)
+      ~post:(fun uri ~headers ~body ->
+        record ~method_:"POST" uri ~headers ~body:(Some body);
+        post_handler uri ~headers ~body)
+      ()
+  in
+  (fetch, requests)
+
 let test_publisher_rejects_path_only_runtime_dependencies = fun () ->
   let package = make_package
     ~name:"demo"
@@ -208,6 +237,149 @@ public = true
             Error "unexpected symlink rejection path"
       | Error err ->
           Error ("unexpected publish artifact error: " ^ Tusk_pm.Publisher.message err))
+
+let test_publisher_publishes_from_locator = fun () ->
+  with_tempdir "tusk_pm_publish_from_locator"
+    (fun root ->
+      let package_root = Path.(root / Path.v "packages/demo") in
+      write_file Path.(package_root / Path.v "tusk.toml")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+      write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
+      let package = make_package ~name:"demo" ~path:package_root () in
+      let fetch, requests =
+        make_fetch_recorder
+          ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+            Ok {
+              Pkgs_ml.Registry.status_code = 200;
+              body = {|{
+  "package": "github.com/example/demo",
+  "source_url": "https://github.com/example/demo",
+  "package_subdir": ".",
+  "selector": "main",
+  "resolved_sha": "0123456789abcdef0123456789abcdef01234567",
+  "package_name": "demo",
+  "package_version": "0.1.0",
+  "manifest": {
+    "key": "packages/github.com/example/demo/manifest.json",
+    "url": "https://api.pkgs.ml/v1/packages/github.com/example/demo/manifest/main.json",
+    "cdn_url": "https://cdn.pkgs.ml/packages/github.com/example/demo/manifest.json"
+  },
+  "source_archive": {
+    "key": "sources/github.com/example/demo/source.tar.gz",
+    "url": "https://api.pkgs.ml/v1/packages/github.com/example/demo/source/main.tar.gz",
+    "cdn_url": "https://cdn.pkgs.ml/sources/github.com/example/demo/source.tar.gz"
+  },
+  "claim": {
+    "key": "claims/demo.json",
+    "created": true
+  },
+  "release": {
+    "key": "releases/demo/0.1.0.json",
+    "created": true
+  },
+  "materialization": {
+    "manifest": false,
+    "source": false
+  }
+}|};
+            })
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+      in
+      let registry =
+        Pkgs_ml.Registry.filesystem
+          ~fetch
+          (make_registry_cache ())
+      in
+      match
+        Tusk_pm.Publisher.publish_from_locator
+          ~registry
+          ~package
+          ~locator:"github.com/example/demo"
+          ~selector:"main"
+          ~api_token:"root-secret"
+      with
+      | Error err -> Error ("expected publish to succeed: " ^ Tusk_pm.Publisher.message err)
+      | Ok published -> (
+          match List.rev !requests with
+          | [ request ] ->
+              let has_header name value =
+                List.exists
+                  (fun (header_name, header_value) ->
+                    String.equal header_name name && String.equal header_value value)
+                  request.headers
+              in
+              if
+                String.equal request.method_ "POST"
+                && String.equal request.url "https://api.pkgs.ml/v1/packages/github.com/example/demo/publish?ref=main"
+                && has_header "authorization" "Bearer root-secret"
+                && has_header "content-type" "application/gzip"
+                && String.equal published.package_name "demo"
+                && String.equal published.package_version "0.1.0"
+              then
+                Ok ()
+              else
+                Error "unexpected publish request or response"
+          | _ -> Error "expected exactly one publish request"
+        ))
+
+let test_publisher_bubbles_registry_publish_errors = fun () ->
+  with_tempdir "tusk_pm_publish_registry_error"
+    (fun root ->
+      let package_root = Path.(root / Path.v "packages/demo") in
+      write_file Path.(package_root / Path.v "tusk.toml")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+      write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
+      let package = make_package ~name:"demo" ~path:package_root () in
+      let fetch, _requests =
+        make_fetch_recorder
+          ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+            Ok {
+              Pkgs_ml.Registry.status_code = 404;
+              body = {|{
+  "error": "package_not_found",
+  "message": "package `demo` was not found in registry `pkgs.ml`"
+}|};
+            })
+          (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+      in
+      let registry =
+        Pkgs_ml.Registry.filesystem
+          ~fetch
+          (make_registry_cache ())
+      in
+      match
+        Tusk_pm.Publisher.publish_from_locator
+          ~registry
+          ~package
+          ~locator:"github.com/example/demo"
+          ~selector:"main"
+          ~api_token:"root-secret"
+      with
+      | Ok _ -> Error "expected publish to bubble registry error"
+      | Error (Tusk_pm.Publisher.RegistryPublishFailed { locator; error }) ->
+          if
+            String.equal locator "github.com/example/demo"
+            && String.equal error "package `demo` was not found in registry `pkgs.ml`"
+          then
+            Ok ()
+          else
+            Error "unexpected registry publish error payload"
+      | Error err ->
+          Error ("unexpected publish error: " ^ Tusk_pm.Publisher.message err))
 
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
@@ -1367,6 +1539,8 @@ let tests =
     case "publisher: allows path+version runtime dependencies" test_publisher_allows_path_with_version_runtime_dependencies;
     case "publisher: creates package-root tarball" test_publisher_creates_package_root_tarball;
     case "publisher: rejects symlink entries" test_publisher_rejects_symlink_entries;
+    case "publisher: publishes package artifact from locator" test_publisher_publishes_from_locator;
+    case "publisher: bubbles registry publish errors" test_publisher_bubbles_registry_publish_errors;
   ]
 
 let name = "Tusk PM Tests"

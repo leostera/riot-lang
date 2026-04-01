@@ -22,6 +22,7 @@ type error =
       stderr: string;
     }
   | TarCommandSpawnFailed of { command: string; error: string }
+  | RegistryPublishFailed of { locator: string; error: string }
 
 let excluded_entry_names = [
   "_build";
@@ -85,6 +86,8 @@ let message = function
       ^ detail
   | TarCommandSpawnFailed { command; error } ->
       "failed to spawn publish artifact command '" ^ command ^ "': " ^ error
+  | RegistryPublishFailed { locator; error } ->
+      "failed to publish '" ^ locator ^ "': " ^ error
 
 let should_skip_entry = fun path ->
   let name = Path.basename path in
@@ -221,4 +224,14 @@ let create_artifact = fun ~(package:Tusk_model.Package.t) ->
             Error (MissingManifest { package_root = package.path })
           else
             create_archive ~package_root:package.path ~relative_files
+    )
+
+let publish_from_locator = fun ~registry ~(package:Tusk_model.Package.t) ~locator ~selector ~api_token ->
+  match create_artifact ~package with
+  | Error _ as err -> err
+  | Ok artifact -> (
+      match Pkgs_ml.Registry.publish_from_locator registry ~locator ~selector ~api_token ~artifact with
+      | Ok published -> Ok published
+      | Error error ->
+          Error (RegistryPublishFailed { locator; error })
     )
