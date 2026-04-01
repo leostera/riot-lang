@@ -115,6 +115,8 @@ val key_compare: key -> key -> int
 
 val dependencies_for_scope: dependency_scope -> t -> dependency list
 
+val scope_of_binary_name: t -> binary_name:string -> dependency_scope option
+
 val binaries_for_scope: dependency_scope -> t -> binary list
 
 val for_scope: dependency_scope -> t -> t
