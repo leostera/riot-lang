@@ -394,6 +394,41 @@ let test_lock_deps_ignores_builtin_dependencies = fun () ->
       | _ -> Error "expected builtin dependencies to stay out of the lock graph"
     )
 
+let test_lock_deps_ignores_builtin_registry_release_dependencies = fun () ->
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:(Path.v "/workspace/packages/app")
+    ~dependencies:[
+      { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+    ]
+    () in
+  let registry = make_registry
+    [
+      make_registry_document
+        ~name:"std"
+        ~latest:"0.1.0"
+        ~releases:[
+          make_release
+            ~version:"0.1.0"
+            ~dependencies:[ make_registry_dependency "stdlib"; make_registry_dependency "unix" ]
+            ();
+        ]
+        ();
+    ] in
+  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+  | Error err -> Error ("expected builtin registry dependencies to be ignored: " ^ pm_error_message err)
+  | Ok lockfile -> (
+      let std_lock =
+        List.find_opt
+          (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "std" && pkg.id.version = Some "0.1.0")
+          lockfile.packages
+      in
+      match std_lock with
+      | Some pkg when pkg.dependencies = [] && List.length lockfile.packages = 2 -> Ok ()
+      | Some _ -> Error "expected builtin registry release dependencies to stay out of the lock graph"
+      | None -> Error "expected std registry package to be locked"
+    )
+
 let test_lock_deps_handles_cyclic_registry_dependencies = fun () ->
   let app_pkg = make_package
     ~name:"app"
@@ -1191,6 +1226,7 @@ let tests =
     case "dep solver: reports missing registry packages with required-by context" test_lock_deps_reports_missing_registry_package_with_required_by;
     case "dep solver: prefers workspace packages over registry for matching names" test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names;
     case "dep solver: ignores builtin dependencies" test_lock_deps_ignores_builtin_dependencies;
+    case "dep solver: ignores builtin registry release dependencies" test_lock_deps_ignores_builtin_registry_release_dependencies;
     case "dep solver: handles cyclic registry dependencies" test_lock_deps_handles_cyclic_registry_dependencies;
     case "dep solver: refresh preserves existing registry versions" test_lock_refresh_preserves_existing_registry_version;
     case "dep solver: refresh preserves existing external nodes" test_lock_refresh_preserves_existing_external_nodes;

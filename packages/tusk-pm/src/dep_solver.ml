@@ -342,7 +342,10 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by package
                       ) =
                         match release_dependencies with
                         | [] -> Ok (List.rev acc_dependencies, acc_packages, state)
-                        | (dep: Pkgs_ml.Sparse_index.dependency) :: rest -> (
+                        | (dep: Pkgs_ml.Sparse_index.dependency) :: rest ->
+                            if Tusk_model.Package.is_builtin_dependency_name dep.name then
+                              resolve_release_dependencies ~state acc_packages acc_dependencies rest
+                            else (
                             match resolve_registry_dependency
                               ~ctx
                               ~state
