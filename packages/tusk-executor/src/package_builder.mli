@@ -17,6 +17,7 @@ val package_error_to_json: package_error -> Std.Data.Json.t
 type build_status =
   | Cached of Tusk_store.Artifact.t
   | Built of Tusk_store.Artifact.t
+  | Skipped of { reason: string }
   | Failed of package_error
 val build_status_to_json: build_status -> Std.Data.Json.t
 
@@ -25,6 +26,7 @@ type build_result = {
   package_key: Package.key;
   package: Package.t;
   status: build_status;
+  ocamlc_warnings: string list;
   duration: Time.Duration.t;
 }
 val build_result_to_json: build_result -> Std.Data.Json.t

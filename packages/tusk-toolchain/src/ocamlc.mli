@@ -35,8 +35,12 @@ type compiler_flag =
 val flags_to_string: compiler_flag list -> string list
 
 (** Compilation result *)
+type success = {
+  message: string;
+  ocamlc_warnings: string list;
+}
 type result =
-  | Success of string
+  | Success of success
   (** Successful compilation with output *)
   | Failed of string
 (** Compilation failed with error message *)
@@ -131,3 +135,5 @@ val is_success: result -> bool
 (** Check if compilation succeeded *)
 val get_output: result -> string
 (** Get output message from result *)
+val get_ocamlc_warnings: result -> string list
+(** Get warning payloads emitted during successful compilation *)

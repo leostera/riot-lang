@@ -29,6 +29,7 @@ val get: t -> Std.Crypto.hash -> Artifact.t option
     cached, None if not. The artifact contains the list of files. *)
 val save:
   t ->
+  ?ocamlc_warnings:string list ->
   package:string ->
   hash:Std.Crypto.hash ->
   sandbox_dir:Std.Path.t ->

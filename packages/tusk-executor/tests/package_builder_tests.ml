@@ -101,7 +101,7 @@ let test_build_result_status_variants = fun () ->
       fix_providers = [];
     }
   in
-  let artifact = Tusk_store.Artifact.{ hash = Crypto.hash_string "test"; files = [] } in
+  let artifact = Tusk_store.Artifact.{ hash = Crypto.hash_string "test"; files = []; ocamlc_warnings = [] } in
   let result_cached =
     Tusk_executor.Package_builder.{
       package_key = Tusk_planner.Package_graph.package_key
@@ -109,6 +109,7 @@ let test_build_result_status_variants = fun () ->
         Tusk_planner.Package_graph.Runtime;
       package;
       status = Cached artifact;
+      ocamlc_warnings = [];
       duration = Time.Duration.from_millis 5
     } in
   let result_built =
@@ -118,6 +119,7 @@ let test_build_result_status_variants = fun () ->
         Tusk_planner.Package_graph.Runtime;
       package;
       status = Built artifact;
+      ocamlc_warnings = [];
       duration = Time.Duration.from_millis 100
     } in
   let result_failed =
@@ -127,6 +129,7 @@ let test_build_result_status_variants = fun () ->
         Tusk_planner.Package_graph.Runtime;
       package;
       status = Failed (ExecutionFailed { message = "compilation error" });
+      ocamlc_warnings = [];
       duration = Time.Duration.from_millis 50
     } in
   match (result_cached.status, result_built.status, result_failed.status) with

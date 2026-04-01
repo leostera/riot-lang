@@ -190,6 +190,37 @@ let test_package_exports_round_trip = fun () ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_artifact_round_trip_preserves_ocamlc_warnings = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"store_ocamlc_warnings_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        let store = Tusk_store.Store.create ~workspace in
+        let sandbox = Path.(tmpdir / Path.v "sandbox") in
+        let _ = Fs.create_dir_all sandbox in
+        let output = Path.(sandbox / Path.v "lib.cmx") in
+        let _ = Fs.write "compiled" output in
+        let hash = Crypto.hash_string "artifact-with-warnings" in
+        let warnings = [ "File \"lib.ml\", line 1, characters 0-1:\nWarning: example" ] in
+        let _ = Tusk_store.Store.save
+          store
+          ~package:"pkg"
+          ~ocamlc_warnings:warnings
+          ~hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save should succeed" in
+        match Tusk_store.Store.get store hash with
+        | None -> Error "expected saved artifact"
+        | Some artifact ->
+            if artifact.ocamlc_warnings = warnings then
+              Ok ()
+            else
+              Error "expected ocamlc warnings to round-trip through the store")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_find_package_export_path_round_trip = fun () ->
   match
     Fs.with_tempdir ~prefix:"store_find_export_test"
@@ -351,6 +382,9 @@ let tests =
     case "put-if-absent keeps first writer" test_put_if_absent_keeps_first_writer;
     case "plan bundle round trip" test_plan_bundle_round_trip;
     case "package exports round trip" test_package_exports_round_trip;
+    case
+      "artifact round trip preserves ocamlc warnings"
+      test_artifact_round_trip_preserves_ocamlc_warnings;
     case "find package export path round trip" test_find_package_export_path_round_trip;
     case "find package export path rejects absolute paths" test_find_package_export_path_rejects_absolute_export_paths;
     case "find package export path returns none when name missing" test_find_package_export_path_returns_none_when_name_missing;

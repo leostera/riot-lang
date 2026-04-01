@@ -97,7 +97,36 @@ let artifact_from_exports = fun ~package_hash (exports: Tusk_store.Store.export_
   let files =
     List.map (fun (entry: Tusk_store.Store.export_entry) -> Path.v entry.name) exports
   in
-  Tusk_store.Artifact.{ hash = package_hash; files }
+  Tusk_store.Artifact.{ hash = package_hash; files; ocamlc_warnings = [] }
+
+let collect_ocamlc_warnings = fun completed_actions ->
+  let seen = HashSet.create () in
+  HashMap.to_list completed_actions
+  |> List.fold_left
+    (fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
+      List.fold_left
+        (fun acc warning ->
+          if HashSet.contains seen warning then
+            acc
+          else
+            let _ = HashSet.insert seen warning in
+            acc @ [ warning ])
+        acc
+        result.Action_executor.ocamlc_warnings)
+    []
+
+let emit_package_ocamlc_warnings = fun ~session_id ~package ~target ~source ocamlc_warnings ->
+  if List.length ocamlc_warnings > 0 then
+    Telemetry.emit
+      (
+        PackageOcamlcWarnings {
+          session_id;
+          package;
+          target;
+          source;
+          messages = ocamlc_warnings;
+        }
+      )
 
 let summarize_results = fun ~package_graph (results: Package_builder.build_result list) ->
   let cached_count, built_count, failed_count =
@@ -106,6 +135,7 @@ let summarize_results = fun ~package_graph (results: Package_builder.build_resul
         match result.Package_builder.status with
         | Cached _ -> (cached + 1, built, failed)
         | Built _ -> (cached, built + 1, failed)
+        | Skipped _ -> (cached, built, failed)
         | Failed _ -> (cached, built, failed + 1))
       (0, 0, 0)
       results
@@ -123,11 +153,13 @@ let result_is_success = fun (result: Package_builder.build_result) ->
   match result.status with
   | Package_builder.Built _
   | Cached _ -> true
+  | Skipped _
   | Failed _ -> false
 
 let result_is_failed = fun (result: Package_builder.build_result) ->
   match result.status with
-  | Package_builder.Failed _ -> true
+  | Package_builder.Failed _
+  | Skipped _ -> true
   | Cached _
   | Built _ -> false
 
@@ -163,6 +195,7 @@ let mark_package_built_in_graph = fun package_graph ~runtime ~artifact ~status -
       }
 
 let finalize_package_success = fun ~session_id ~store ~runtime ->
+  let ocamlc_warnings = collect_ocamlc_warnings runtime.completed_actions in
   let _ = Tusk_store.Store.save_package_exports
     store
     ~package:runtime.package.name
@@ -183,11 +216,16 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
   let _ = Tusk_store.Store.save
     store
     ~package:runtime.package.name
+    ~ocamlc_warnings
     ~hash:runtime.hash
     ~sandbox_dir:runtime.target_dir
     ~outs:package_outs
   |> Result.expect ~msg:(("Failed to save package hash artifact for " ^ runtime.package.name)) in
-  let artifact = artifact_from_exports ~package_hash:runtime.hash runtime.export_entries in
+  let artifact = Tusk_store.Artifact.{
+    hash = runtime.hash;
+    files = List.map (fun (entry: Tusk_store.Store.export_entry) -> Path.v entry.name) runtime.export_entries;
+    ocamlc_warnings;
+  } in
   let all_cached =
     HashMap.into_iter runtime.completed_actions
     |> Iter.Iterator.to_list
@@ -205,6 +243,12 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     else
       `Fresh
   in
+  emit_package_ocamlc_warnings
+    ~session_id
+    ~package:runtime.package
+    ~target:(Workspace_planner.Package runtime.package.name)
+    ~source:status
+    ocamlc_warnings;
   Telemetry.emit
     (
       BuildCompleted {
@@ -216,8 +260,8 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
       }
     );
   match status with
-  | `Cached -> Package_builder.Cached artifact
-  | `Fresh -> Built artifact
+  | `Cached -> (Package_builder.Cached artifact, ocamlc_warnings)
+  | `Fresh -> (Built artifact, ocamlc_warnings)
 
 let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~package_graph ~target ~build_ctx ~session_id ~nodes ->
   let profile_name = build_ctx.Build_ctx.profile.name in
@@ -242,9 +286,36 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
         Some item
   in
   Telemetry.emit (PlanningWorkspaceStarted { session_id; target; package_count = List.length nodes });
-  let materialize_initial_failure package_key package status =
-    let result = Package_builder.{ package_key; package; status; duration = Time.Duration.zero } in
+  let materialize_initial_result package_key package status =
+    let result = Package_builder.{
+      package_key;
+      package;
+      status;
+      ocamlc_warnings = [];
+      duration = Time.Duration.zero;
+    } in
     let _ = HashMap.insert package_results package_key result in
+    (
+      match status with
+      | Package_builder.Failed err ->
+          Telemetry.emit
+            (BuildFailed {
+              session_id;
+              package;
+              target = Workspace_planner.Package package.name;
+              error = package_error_to_telemetry_error err
+            })
+      | Package_builder.Skipped { reason } ->
+          Telemetry.emit
+            (BuildSkipped {
+              session_id;
+              package;
+              target = Workspace_planner.Package package.name;
+              reason
+            })
+      | Package_builder.Cached _
+      | Package_builder.Built _ -> ()
+    );
     result
   in
   let update_planning_progress package_key status ~duration ~package ~reason =
@@ -299,6 +370,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   package_key;
                   package;
                   status = Cached artifact;
+                  ocamlc_warnings = artifact.ocamlc_warnings;
                   duration = Time.Duration.zero
                 } in
               let _ = HashMap.insert package_results package_key result in
@@ -317,6 +389,12 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                       depset;
                     }
               );
+              emit_package_ocamlc_warnings
+                ~session_id
+                ~package
+                ~target:(Workspace_planner.Package package.name)
+                ~source:`Cached
+                artifact.ocamlc_warnings;
               Telemetry.emit
                 (
                   BuildCompleted {
@@ -409,7 +487,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
                 ~package
                 ~reason:(Some (Planning_error.to_string err));
-              let _ = materialize_initial_failure
+              let _ = materialize_initial_result
                 package_key
                 package
                 (Package_builder.Failed (PlanningFailed err)) in
@@ -511,12 +589,10 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~duration:Time.Duration.zero
                 ~package
                 ~reason:(Some ("Failed dependencies: " ^ String.concat ", " names));
-              let _ = materialize_initial_failure
+              let _ = materialize_initial_result
                 package_key
                 package
-                (Package_builder.Failed (ExecutionFailed {
-                  message = "Failed dependencies: " ^ String.concat ", " names
-                })) in
+                (Package_builder.Skipped { reason = "needs " ^ String.concat ", " names }) in
               let _ = HashMap.remove pending_planning package_key in
               ()
             )
@@ -548,7 +624,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                       (Time.Instant.now ()))
                     ~package
                     ~reason:(Some (Planning_error.to_string err));
-                  let _ = materialize_initial_failure
+                  let _ = materialize_initial_result
                     package_key
                     package
                     (Package_builder.Failed (PlanningFailed err)) in
@@ -578,12 +654,10 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   let names =
                     List.map (fun p -> p.Package.name) failed
                   in
-                  let _ = materialize_initial_failure
+                  let _ = materialize_initial_result
                     package_key
                     package
-                    (Package_builder.Failed (ExecutionFailed {
-                      message = "Failed dependencies: " ^ String.concat ", " names
-                    })) in
+                    (Package_builder.Skipped { reason = "needs " ^ String.concat ", " names }) in
                   let _ = HashMap.remove pending_planning package_key in
                   ()
               | Ok (Planned {
@@ -637,23 +711,10 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
           if deps_failed then
             (
               let reason = "needs failed dependencies" in
-              Telemetry.emit
-                (BuildSkipped {
-                  session_id;
-                  package = runtime.package;
-                  target = Workspace_planner.Package runtime.package.name;
-                  reason
-                });
-              let result =
-                Package_builder.{
-                  package_key;
-                  package = runtime.package;
-                  status = Failed (ExecutionFailed {
-                    message = "Skipped " ^ runtime.package.name ^ " (" ^ reason ^ ")"
-                  });
-                  duration = Time.Duration.zero
-                } in
-              let _ = HashMap.insert package_results package_key result in
+              let _ = materialize_initial_result
+                package_key
+                runtime.package
+                (Package_builder.Skipped { reason }) in
               mark_package_failed_in_graph
                 package_graph
                 ~package:runtime.package
@@ -708,6 +769,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               package_key;
               package = runtime.package;
               status = Failed pkg_err;
+              ocamlc_warnings = [];
               duration = Time.Duration.zero
             } in
           let _ = HashMap.insert package_results package_key result in
@@ -726,7 +788,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
             });
           Sandbox.cleanup runtime.sandbox
       | [] ->
-          let status = finalize_package_success ~session_id ~store ~runtime in
+          let status, ocamlc_warnings = finalize_package_success ~session_id ~store ~runtime in
           let build_status =
             match status with
             | Package_builder.Cached artifact ->
@@ -735,6 +797,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
             | Package_builder.Built artifact ->
                 mark_package_built_in_graph package_graph ~runtime ~artifact ~status:Package_graph.Fresh;
                 Package_builder.Built artifact
+            | Package_builder.Skipped _ ->
+                panic "Unexpected skipped status during success finalization"
             | Package_builder.Failed _ ->
                 panic "Unexpected failed status during success finalization"
           in
@@ -743,6 +807,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               package_key;
               package = runtime.package;
               status = build_status;
+              ocamlc_warnings;
               duration = Time.Duration.zero
             } in
           let _ = HashMap.insert package_results package_key result in
@@ -821,6 +886,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                           package_key;
                           package = pkg_runtime.package;
                           status = Failed (ExecutionFailed { message = error });
+                          ocamlc_warnings = [];
                           duration = Time.Duration.zero
                         } in
                       let _ = HashMap.insert package_results package_key result in

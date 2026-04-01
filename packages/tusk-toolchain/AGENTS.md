@@ -13,6 +13,7 @@
 7. Toolchain cache fingerprints must change when installed compiler artifacts or bundled sysroot markers change, even if the install path stays the same.
 8. Toolchains shipped in release archives should include `manifest.json` with a stable `toolchain_fingerprint`, and toolchain cache hashing should prefer this manifest over probing files on disk.
 9. Prepared compiler invocations should stay opaque to callers; keep execution semantics in `tusk-toolchain` instead of exposing raw process execution to higher layers.
+10. OCaml compiler invocations should set an explicit warning baseline; keep warning 49 (`no-cmi-file`) disabled by default unless a caller intentionally opts into it.
 
 ## Validate
 

@@ -20,6 +20,12 @@ type package_planning_status =
   | `Failed
 ]
 
+type warning_source =
+[
+  | `Fresh
+  | `Cached
+]
+
 type Telemetry.event +=
   | BuildStarted of {
       session_id: Session_id.t;
@@ -51,6 +57,13 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target
+    }
+  | PackageOcamlcWarnings of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      source: warning_source;
+      messages: string list
     }
   | BuildCompleted of {
       session_id: Session_id.t;
@@ -172,6 +185,15 @@ let planning_status_of_json = function
   | Data.Json.String "failed" -> Ok `Failed
   | _ -> Error (Data.Json.String "Invalid planning status")
 
+let warning_source_to_json = function
+  | `Fresh -> Data.Json.String "fresh"
+  | `Cached -> Data.Json.String "cached"
+
+let warning_source_of_json = function
+  | Data.Json.String "fresh" -> Ok `Fresh
+  | Data.Json.String "cached" -> Ok `Cached
+  | _ -> Error (Data.Json.String "Invalid warning source")
+
 let to_json : Telemetry.event -> Data.Json.t option = function
   | BuildStarted { session_id; package; target } ->
       Some (Data.Json.Object [
@@ -235,6 +257,15 @@ let to_json : Telemetry.event -> Data.Json.t option = function
         ("session_id", Data.Json.String (Session_id.to_string session_id));
         ("package", Package.to_json package);
         ("target", target_to_json target);
+      ])
+  | PackageOcamlcWarnings { session_id; package; target; source; messages } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "PackageOcamlcWarnings");
+        ("session_id", Data.Json.String (Session_id.to_string session_id));
+        ("package", Package.to_json package);
+        ("target", target_to_json target);
+        ("source", warning_source_to_json source);
+        ("messages", Data.Json.Array (List.map (fun msg -> Data.Json.String msg) messages));
       ])
   | BuildCompleted {
     session_id;
@@ -518,6 +549,38 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
               | Error e -> Error (Data.Json.String e)
             )
           | _ -> Error (Data.Json.String "Invalid CompilationStarted event")
+        )
+      | Some (Data.Json.String "PackageOcamlcWarnings") -> (
+          match (
+            List.assoc_opt "session_id" fields,
+            List.assoc_opt "package" fields,
+            List.assoc_opt "target" fields,
+            List.assoc_opt "source" fields,
+            List.assoc_opt "messages" fields
+          ) with
+          | Some (Data.Json.String session_id_str), Some package_json, Some target_json, Some source_json, Some (Data.Json.Array messages_json) -> (
+              match Package.from_json package_json with
+              | Ok package -> (
+                  match (target_of_json target_json, warning_source_of_json source_json) with
+                  | Ok target, Ok source ->
+                      let rec collect_messages acc = function
+                        | [] -> Ok (List.rev acc)
+                        | Data.Json.String msg :: rest -> collect_messages (msg :: acc) rest
+                        | _ -> Error (Data.Json.String "Invalid PackageOcamlcWarnings messages")
+                      in
+                      (
+                        match collect_messages [] messages_json with
+                        | Ok messages ->
+                            let session_id = Session_id.of_string session_id_str in
+                            Ok (PackageOcamlcWarnings { session_id; package; target; source; messages })
+                        | Error e -> Error e
+                      )
+                  | Error e, _
+                  | _, Error e -> Error e
+                )
+              | Error e -> Error (Data.Json.String e)
+            )
+          | _ -> Error (Data.Json.String "Invalid PackageOcamlcWarnings event")
         )
       | Some (Data.Json.String "BuildCompleted") -> (
           match (

@@ -72,7 +72,7 @@ let promote = fun store hash ~target_dir ->
       Ok ()
   | Error _ -> Error "Hash not found in store"
 (** Store artifacts from sandbox to content-addressable store *)
-let store_artifacts = fun store ~package hash sandbox_dir declared_outputs ->
+let store_artifacts = fun store ~package ?(ocamlc_warnings = []) hash sandbox_dir declared_outputs ->
   let hash_dir = get_hash_dir store hash in
   let temp_dir =
     let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
@@ -107,6 +107,7 @@ let store_artifacts = fun store ~package hash sandbox_dir declared_outputs ->
   (* Create and save manifest *)
   let manifest = Manifest.create
     ~base_dir:temp_dir
+    ~ocamlc_warnings
     ~package
     ~build_hash:(Std.Crypto.Digest.hex hash)
     ~files:(List.rev stored_files_with_sizes) in
@@ -142,7 +143,7 @@ let store_artifacts = fun store ~package hash sandbox_dir declared_outputs ->
   let stored_files =
     List.map (fun ((path, _)) -> path) stored_files_with_sizes
   in
-  Artifact.{ hash; files = List.rev stored_files }
+  Artifact.{ hash; files = List.rev stored_files; ocamlc_warnings }
 (** Simple interface - check if we have cached artifacts for a hash *)
 let get = fun store hash ->
   if exists store hash then
@@ -151,12 +152,12 @@ let get = fun store hash ->
         let files =
           List.map (fun entry -> entry.Manifest.path) manifest.files
         in
-        Some Artifact.{ hash; files }
+        Some Artifact.{ hash; files; ocamlc_warnings = manifest.ocamlc_warnings }
     | Error _ -> None
   else
     None
 (** Save build outputs to the store *)
-let save = fun store ~package ~hash ~sandbox_dir ~outs ->
+let save = fun store ?(ocamlc_warnings = []) ~package ~hash ~sandbox_dir ~outs ->
   let sandbox_str = Path.to_string sandbox_dir in
   let sandbox_len = String.length sandbox_str in
   let outs_str =
@@ -170,7 +171,7 @@ let save = fun store ~package ~hash ~sandbox_dir ~outs ->
           Path.to_string out_path)
       outs
   in
-  let artifact = store_artifacts store ~package hash sandbox_dir outs_str in
+  let artifact = store_artifacts store ~package ~ocamlc_warnings hash sandbox_dir outs_str in
   Ok artifact
 (** Promote cached artifacts to target directory *)
 let promote_artifact = fun store artifact ~target_dir -> promote store Artifact.(artifact.hash) ~target_dir

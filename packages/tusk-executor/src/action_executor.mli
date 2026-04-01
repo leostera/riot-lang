@@ -19,6 +19,7 @@ type action_status = Action_queue.action_status =
 type execution_result = Action_queue.execution_result = {
   node_id: G.Node_id.t;
   status: action_status;
+  ocamlc_warnings: string list;
   duration: Time.Duration.t;
   started_at: Time.Instant.t;
   completed_at: Time.Instant.t;

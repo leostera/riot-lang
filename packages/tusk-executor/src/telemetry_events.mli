@@ -17,6 +17,11 @@ type package_planning_status =
   | `FailedDependencies
   | `Failed
 ]
+type warning_source =
+[
+  | `Fresh
+  | `Cached
+]
 (** Telemetry events for build system operations.
     
     These events extend the Std.Telemetry.event type and provide
@@ -53,6 +58,13 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target
+    }
+  | PackageOcamlcWarnings of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      source: warning_source;
+      messages: string list
     }
   | BuildCompleted of {
       session_id: Session_id.t;

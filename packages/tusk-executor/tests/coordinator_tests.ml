@@ -136,8 +136,7 @@ let test_failed_dependency_updates_package_graph = fun () ->
                         Error "package graph left dependent package built after \
                            dependency failure"
                     | Tusk_planner.Package_graph.Skipped _ ->
-                        Error "package graph left dependent package skipped after \
-                           dependency failure"
+                        Ok ()
                   )))
   with
   | Ok x -> x

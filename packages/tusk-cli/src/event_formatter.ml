@@ -1,6 +1,20 @@
 open Std
 open Std.Collections
 open Tusk_executor
+
+let format_prefixed_block = fun ~prefix message ->
+  let trimmed = String.trim message in
+  match String.split_on_char '\n' trimmed with
+  | [] -> prefix
+  | first :: rest ->
+      prefix
+      ^ first
+      ^ (
+        match rest with
+        | [] -> ""
+        | _ -> "\n" ^ String.concat "\n" rest
+      )
+
 (** Format a telemetry event for cargo-style output. Uses displayed_packages
     HashSet to track what we've already shown. *)
 let format = fun ~displayed_packages (event: Telemetry.event) ->
@@ -22,6 +36,15 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
       | `Cached -> ""
       | `Fresh -> ""
     )
+  | Telemetry_events.PackageOcamlcWarnings { package; messages; _ } ->
+      String.concat
+        "\n"
+        (List.map
+          (fun message ->
+            format_prefixed_block
+              ~prefix:("      \027[1;33mWarning\027[0m " ^ package.name ^ ": ")
+              message)
+          messages)
   | Telemetry_events.BuildFailed { package; error; _ } ->
       let error_msg =
         match error with
@@ -40,7 +63,10 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
         | Telemetry_events.ActionDependenciesFailed { failed } ->
             "Dependencies failed: " ^ Int.to_string (List.length failed) ^ " actions"
       in
-      "      \027[1;31mFailed\027[0m " ^ package.name ^ "\n" ^ error_msg
+      "      \027[1;31mFailed\027[0m " ^ package.name ^ "\n"
+      ^ format_prefixed_block
+        ~prefix:("      \027[1;31mError\027[0m " ^ package.name ^ ": ")
+        error_msg
   | Telemetry_events.BuildSkipped { package; reason; _ } ->
       "     \027[1;33mSkipped\027[0m " ^ package.name ^ " (" ^ reason ^ ")"
   | Telemetry_events.CacheHit { package; _ } ->

@@ -19,6 +19,7 @@ type action_status =
 type execution_result = {
   node_id: Graph.SimpleGraph.Node_id.t;
   status: action_status;
+  ocamlc_warnings: string list;
   duration: Duration.t;
   started_at: Instant.t;
   completed_at: Instant.t;
@@ -122,6 +123,7 @@ let next = fun t ->
             let skip_result = {
               node_id = node.id;
               status = Skipped;
+              ocamlc_warnings = [];
               duration = Duration.zero;
               started_at = now;
               completed_at = now;
@@ -166,6 +168,7 @@ let mark_failed = fun t ~node_id ~error ->
   let failed_result = {
     node_id;
     status = Failed (ExecutionFailed { message = error });
+    ocamlc_warnings = [];
     duration = Duration.zero;
     started_at = now;
     completed_at = now;

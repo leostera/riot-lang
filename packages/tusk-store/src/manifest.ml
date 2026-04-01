@@ -18,6 +18,7 @@ type t = {
   build_hash: string;  (* The build hash *)
   timestamp: Time.SystemTime.t;
   files: file_entry list;
+  ocamlc_warnings: string list;
 }
 (** Convert manifest to JSON *)
 let to_json manifest : Data.Json.t =
@@ -35,6 +36,7 @@ let to_json manifest : Data.Json.t =
     ("build_hash", Data.Json.String manifest.build_hash);
     ("timestamp", Data.Json.Int (Time.SystemTime.to_unix_timestamp manifest.timestamp));
     ("files", Data.Json.Array (List.map file_entry_to_json manifest.files));
+    ("ocamlc_warnings", Data.Json.Array (List.map (fun msg -> Data.Json.String msg) manifest.ocamlc_warnings));
   ]
 (** Parse manifest from JSON *)
 let of_json = fun json ->
@@ -94,20 +96,37 @@ let of_json = fun json ->
                     entries |> Result.map List.rev
               | _ -> Error "Invalid or missing files"
             in
-            match (version, package, build_hash, timestamp, files) with
-            | Ok v, Ok p, Ok h, Ok t, Ok f ->
+            let ocamlc_warnings =
+              match get_field "ocamlc_warnings" with
+              | None -> Ok []
+              | Some (Array entries) ->
+                  List.fold_left
+                    (fun acc entry ->
+                      match (acc, entry) with
+                      | Ok messages, String msg -> Ok (msg :: messages)
+                      | Ok _, _ -> Error "Invalid ocamlc warning entry"
+                      | Error e, _ -> Error e)
+                    (Ok [])
+                    entries
+                  |> Result.map List.rev
+              | Some _ -> Error "Invalid ocamlc_warnings"
+            in
+            match (version, package, build_hash, timestamp, files, ocamlc_warnings) with
+            | Ok v, Ok p, Ok h, Ok t, Ok f, Ok warnings ->
                 Ok {
                   version = v;
                   package = p;
                   build_hash = h;
                   timestamp = t;
                   files = f;
+                  ocamlc_warnings = warnings;
                 }
-            | (Error e, _, _, _, _)
-            | (_, Error e, _, _, _)
-            | (_, _, Error e, _, _)
-            | (_, _, _, Error e, _)
-            | (_, _, _, _, Error e) -> Error e
+            | (Error e, _, _, _, _, _)
+            | (_, Error e, _, _, _, _)
+            | (_, _, Error e, _, _, _)
+            | (_, _, _, Error e, _, _)
+            | (_, _, _, _, Error e, _)
+            | (_, _, _, _, _, Error e) -> Error e
           )
         | _ -> Error "Manifest must be a JSON object"
       with
@@ -130,7 +149,7 @@ let load = fun ~path ->
     )
   | Error _ -> Error "Failed to read manifest file"
 (** Create a manifest for stored files *)
-let create = fun ?base_dir ~package ~build_hash ~files ->
+let create = fun ?base_dir ?(ocamlc_warnings = []) ~package ~build_hash ~files ->
   let timestamp = Time.SystemTime.now () in
   let file_entries =
     List.filter_map
@@ -157,4 +176,5 @@ let create = fun ?base_dir ~package ~build_hash ~files ->
     build_hash;
     timestamp;
     files = file_entries;
+    ocamlc_warnings;
   }

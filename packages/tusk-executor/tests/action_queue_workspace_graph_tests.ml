@@ -48,6 +48,7 @@ let executed_result = fun node_id ->
   Tusk_executor.Action_queue.{
     node_id;
     status = Executed;
+    ocamlc_warnings = [];
     duration = Time.Duration.zero;
     started_at = now;
     completed_at = now;
@@ -58,6 +59,7 @@ let failed_result = fun node_id ->
   Tusk_executor.Action_queue.{
     node_id;
     status = Failed (ExecutionFailed { message = "boom" });
+    ocamlc_warnings = [];
     duration = Time.Duration.zero;
     started_at = now;
     completed_at = now;

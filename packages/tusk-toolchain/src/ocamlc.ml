@@ -17,8 +17,13 @@ type compiler_flag =
   | Warning of compiler_warning list
   | LinkAll
 
+type success = {
+  message: string;
+  ocamlc_warnings: string list;
+}
+
 type result =
-  Success of string
+  Success of success
   | Failed of string
 
 type mode =
@@ -49,6 +54,8 @@ let run_in_dir = fun ~cwd ~env cmd_str ->
   Command.make ~env ~args:[ "-c"; cmd_with_cd ] "sh"
 
 let base_command = fun t -> Path.to_string t
+
+let default_warning_flags = [ "-w"; "-49" ]
 
 let warning_to_code = function
   | NoCmiFile -> "49"
@@ -130,6 +137,7 @@ let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?
       ocamlc;
       "-g";
       "-bin-annot";
+      String.concat " " default_warning_flags;
       mode_flag;
       flags_str;
       include_flags;
@@ -167,6 +175,7 @@ let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
       flags
   in
   let args = [ "-g"; "-bin-annot"; "-c" ]
+  @ default_warning_flags
   @ flags_to_string flags
   @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
   @ [ "-o"; Path.to_string output ]
@@ -189,6 +198,7 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
       flags
   in
   let args = [ "-g"; "-bin-annot"; "-c" ]
+  @ default_warning_flags
   @ flags_to_string flags
   @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
   @ [ "-o"; Path.to_string output ]
@@ -202,6 +212,7 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
 let generate_interface = fun t ~cwd ~includes ~flags ~output source ->
   let includes_with_dot = Path.v "." :: includes in
   let args = [ "-i" ]
+  @ default_warning_flags
   @ flags_to_string flags
   @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
   @ [ Path.to_string source ] in
@@ -275,16 +286,27 @@ let to_string = fun invocation ->
   in
   "cd " ^ Path.to_string invocation.cwd ^ " && " ^ env_prefix ^ invocation.command_string
 
+let collect_ocamlc_warnings = fun stderr ->
+  let trimmed = String.trim stderr in
+  if String.equal trimmed "" then
+    []
+  else
+    [ trimmed ]
+
 let run = fun invocation ->
   Log.debug ("[OCAMLC] Running command: " ^ to_string invocation);
   let cmd = run_in_dir ~cwd:invocation.cwd ~env:invocation.env invocation.command_string in
   match Command.output cmd with
   | Ok output when output.Command.status = 0 -> (
+      let ocamlc_warnings = collect_ocamlc_warnings output.Command.stderr in
       match invocation.output_mode with
-      | Normal -> Success output.Command.stdout
+      | Normal -> Success { message = output.Command.stdout; ocamlc_warnings }
       | WriteStdoutToFile file -> (
           match Fs.write output.Command.stdout file with
-          | Ok () -> Success ("Generated interface " ^ Path.to_string file)
+          | Ok () -> Success {
+            message = "Generated interface " ^ Path.to_string file;
+            ocamlc_warnings;
+          }
           | Error err -> Failed ("Failed to write " ^ Path.to_string file ^ ": " ^ IO.error_message err)
         )
     )
@@ -307,5 +329,9 @@ let is_success = function
   | Failed _ -> false
 
 let get_output = function
-  | Success msg
-  | Failed msg -> msg
+  | Success { message; _ }
+  | Failed message -> message
+
+let get_ocamlc_warnings = function
+  | Success { ocamlc_warnings; _ } -> ocamlc_warnings
+  | Failed _ -> []

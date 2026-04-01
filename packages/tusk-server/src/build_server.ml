@@ -35,6 +35,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
         | Tusk_executor.Telemetry_events.PlanningWorkspaceStarted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.BuildStarted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.CompilationStarted { session_id; _ } -> Some session_id
+        | Tusk_executor.Telemetry_events.PackageOcamlcWarnings { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.BuildCompleted { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.BuildFailed { session_id; _ } -> Some session_id
         | Tusk_executor.Telemetry_events.BuildSkipped { session_id; _ } -> Some session_id
@@ -170,6 +171,8 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                   Protocol.BuildStats.inc_cache_misses stats
               | Package_builder.Cached _ ->
                   Protocol.BuildStats.inc_cache_hits stats
+              | Package_builder.Skipped _ ->
+                  ()
               | Package_builder.Failed _ ->
                   Protocol.BuildStats.inc_packages_failed stats)
             workspace_result.results;
@@ -181,7 +184,10 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                   (fun (result: Package_builder.build_result) ->
                     match result.status with
                     | Package_builder.Failed _ -> true
-                    | _ -> false)
+                    | Package_builder.Skipped _
+                    | Package_builder.Built _
+                    | Package_builder.Cached _ -> false
+                    )
                   workspace_result.results
               in
               let built =
@@ -189,7 +195,9 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                   (fun (result: Package_builder.build_result) ->
                     match result.status with
                     | Package_builder.Failed _ -> false
-                    | _ -> true)
+                    | Package_builder.Skipped _
+                    | Package_builder.Built _
+                    | Package_builder.Cached _ -> true)
                   workspace_result.results
               in
               send client_pid

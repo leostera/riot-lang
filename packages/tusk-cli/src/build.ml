@@ -147,14 +147,6 @@ let resolve_targets = fun workspace matches ->
         (* Default to host *)
         Ok [ Tusk_toolchain.get_host_triple () ]
 
-let format_execution_error_message = fun package_name message ->
-  if String.starts_with ~prefix:"Skipped (" message then
-    let skipped_len = String.length "Skipped" in
-    let suffix = String.sub message skipped_len (String.length message - skipped_len) in
-    "Skipped " ^ package_name ^ suffix
-  else
-    message
-
 let command =
   let open ArgParser in
     let open Arg in command "build"
@@ -232,51 +224,8 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                   out msg
             | Local_session.BuildCompleted _ ->
                 ()
-            | Local_session.BuildFailed { errors; _ } ->
-                (* Track failed packages *)
-                failed_count := !failed_count + List.length errors;
-                (* Display error details from failed build *)
-                List.iter
-                  (fun (error: Tusk_executor.Package_builder.build_result) ->
-                    match error.status with
-                    | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ExecutionFailed {
-                      message
-                    }) ->
-                        let formatted_message = format_execution_error_message error.package.name message in
-                        out "";
-                        out ("\027[1;31mError\027[0m: " ^ formatted_message)
-                    | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.PlanningFailed planning_error) ->
-                        out "";
-                        out
-                          ("\027[1;31mError\027[0m: "
-                          ^ Tusk_executor.Package_builder.package_error_to_string
-                            (Tusk_executor.Package_builder.PlanningFailed planning_error)
-                          ^ " in package "
-                          ^ error.package.name)
-                    | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionExecutionFailed {
-                      message
-                    }) ->
-                        out "";
-                        out
-                          ("\027[1;31mError\027[0m: Action execution failed for "
-                          ^ error.package.name
-                          ^ ": "
-                          ^ message)
-                    | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionOutputsNotCreated {
-                      missing
-                    }) ->
-                        out "";
-                        out
-                          ("\027[1;31mError\027[0m: Action outputs not created for "
-                          ^ error.package.name)
-                    | Tusk_executor.Package_builder.Failed (Tusk_executor.Package_builder.ActionDependenciesFailed _) ->
-                        out "";
-                        out
-                          ("\027[1;31mError\027[0m: Action dependencies failed for "
-                          ^ error.package.name)
-                    | _ ->
-                        ())
-                  errors
+            | Local_session.BuildFailed _ ->
+                ()
             | Local_session.PlanningFailed { reason; _ } ->
                 (* Planning failed before build started - this is a fatal error *)
                 out "";

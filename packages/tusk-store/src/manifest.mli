@@ -14,8 +14,15 @@ type t = {
   build_hash: string;
   timestamp: Std.Time.SystemTime.t;
   files: file_entry list;
+  ocamlc_warnings: string list;
 }
-val create: ?base_dir:Path.t -> package:string -> build_hash:string -> files:(Path.t * int) list -> t
+val create:
+  ?base_dir:Path.t ->
+  ?ocamlc_warnings:string list ->
+  package:string ->
+  build_hash:string ->
+  files:(Path.t * int) list ->
+  t
 (** Create a manifest for stored files. Takes a list of (file_path, size) pairs
     and calculates hashes. *)
 val save: t -> path:Path.t -> (unit, string) result

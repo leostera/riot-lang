@@ -141,6 +141,7 @@ let test_deps_satisfied_all_built () =
         {
           node_id = node1.id;
           status = Executed;
+          ocamlc_warnings = [];
           duration = Time.Duration.from_millis 10;
           started_at = now;
           completed_at = now;
@@ -152,6 +153,7 @@ let test_deps_satisfied_all_built () =
         {
           node_id = node2.id;
           status = Cached (Crypto.hash_string "cached");
+          ocamlc_warnings = [];
           duration = Time.Duration.zero;
           started_at = now;
           completed_at = now;
@@ -177,6 +179,7 @@ let test_deps_satisfied_missing_dep () =
         {
           node_id = node1.id;
           status = Executed;
+          ocamlc_warnings = [];
           duration = Time.Duration.from_millis 10;
           started_at = now;
           completed_at = now;
@@ -202,6 +205,7 @@ let test_deps_satisfied_failed_dep () =
         {
           node_id = node1.id;
           status = Failed (ExecutionFailed { message = "error" });
+          ocamlc_warnings = [];
           duration = Time.Duration.from_millis 10;
           started_at = now;
           completed_at = now;

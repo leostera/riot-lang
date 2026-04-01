@@ -19,6 +19,7 @@ type action_status = Action_queue.action_status =
 type execution_result = Action_queue.execution_result = {
   node_id: G.Node_id.t;
   status: action_status;
+  ocamlc_warnings: string list;
   duration: Duration.t;
   started_at: Instant.t;
   completed_at: Instant.t;
@@ -55,6 +56,9 @@ let resolve_include_paths = fun sandbox_dir includes ->
 let emit_action_command = fun ~session_id ~package ~node command ->
   Telemetry.emit
     Telemetry_events.(ActionCommandStarted { session_id; package; action = node; command })
+
+let ocamlc_success = fun ?(ocamlc_warnings = []) message ->
+  Tusk_toolchain.Ocamlc.Success { message; ocamlc_warnings }
 
 let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
   match action with
@@ -246,7 +250,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
       in
       let dst_path = Path.join sandbox_dir destination in
       match Fs.copy ~src:src_path ~dst:dst_path with
-      | Ok () -> Tusk_toolchain.Ocamlc.Success "Copied"
+      | Ok () -> ocamlc_success "Copied"
       | Error _ -> Tusk_toolchain.Ocamlc.Failed ("Copy failed: "
       ^ Path.to_string source
       ^ " -> "
@@ -263,7 +267,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
       match Fs.write content dest_path with
       | Ok () ->
           Log.debug ("WriteFile: success - file written to " ^ Path.to_string dest_path);
-          Tusk_toolchain.Ocamlc.Success "Written"
+          ocamlc_success "Written"
       | Error err ->
           let msg = IO.error_message err in
           Log.error ("WriteFile: failed - " ^ msg);
@@ -307,7 +311,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
                 Tusk_toolchain.Ocamlc.Failed ("Foreign build succeeded but outputs not created: "
                 ^ String.concat ", " (List.map Path.to_string missing))
               else
-                Tusk_toolchain.Ocamlc.Success ("Built foreign dependency: " ^ name)
+                ocamlc_success ("Built foreign dependency: " ^ name)
           | Ok output ->
               Log.error
                 ("Foreign build failed: " ^ name ^ " - exit code " ^ Int.to_string output.Command.status);
@@ -325,16 +329,17 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
 let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_dir actions ->
   let ocamlc = Tusk_toolchain.ocamlc toolchain in
   let package = node.value.package in
-  let rec execute_next = function
-    | [] -> Ok ()
+  let rec execute_next ocamlc_warnings = function
+    | [] -> Ok ocamlc_warnings
     | action :: rest -> (
         let result = run_action ~session_id ~package ~node ocamlc sandbox_dir action in
         match result with
-        | Tusk_toolchain.Ocamlc.Success _ -> execute_next rest
+        | Tusk_toolchain.Ocamlc.Success { ocamlc_warnings=action_warnings; _ } ->
+            execute_next (ocamlc_warnings @ action_warnings) rest
         | Tusk_toolchain.Ocamlc.Failed err -> Error err
       )
   in
-  execute_next actions
+  execute_next [] actions
 
 let verify_outputs = fun outputs ->
   let missing =
@@ -417,6 +422,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
       {
         node_id = node.id;
         status = Skipped;
+        ocamlc_warnings = [];
         duration = Instant.duration_since ~earlier:start now;
         started_at = start;
         completed_at = now;
@@ -453,6 +459,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           {
             node_id = node.id;
             status = Cached action_hash;
+            ocamlc_warnings = artifact.Tusk_store.Artifact.ocamlc_warnings;
             duration;
             started_at = start;
             completed_at;
@@ -513,6 +520,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               {
                 node_id = node.id;
                 status = Failed (ExecutionFailed { message = "Failed to copy sources: " ^ msg });
+                ocamlc_warnings = [];
                 duration;
                 started_at = start;
                 completed_at;
@@ -530,11 +538,12 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                   {
                     node_id = node.id;
                     status = Failed (ExecutionFailed { message = msg });
+                    ocamlc_warnings = [];
                     duration;
                     started_at = start;
                     completed_at;
                   }
-              | Ok () ->
+              | Ok ocamlc_warnings ->
                   let needs_output_verification =
                     List.exists
                       (
@@ -548,6 +557,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                     let artifact = Tusk_store.Store.save
                       store
                       ~package:node.value.package.name
+                      ~ocamlc_warnings
                       ~hash:action_hash
                       ~sandbox_dir
                       ~outs:(List.map (Path.join sandbox_dir) outputs)
@@ -567,6 +577,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                     {
                       node_id = node.id;
                       status = Executed;
+                      ocamlc_warnings;
                       duration;
                       started_at = start;
                       completed_at;
@@ -578,6 +589,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                         {
                           node_id = node.id;
                           status = Failed (OutputsNotCreated { missing });
+                          ocamlc_warnings = [];
                           duration;
                           started_at = start;
                           completed_at;
@@ -586,6 +598,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                         let artifact = Tusk_store.Store.save
                           store
                           ~package:node.value.package.name
+                          ~ocamlc_warnings
                           ~hash:action_hash
                           ~sandbox_dir
                           ~outs:abs_outputs
@@ -606,6 +619,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                         {
                           node_id = node.id;
                           status = Executed;
+                          ocamlc_warnings;
                           duration;
                           started_at = start;
                           completed_at;
