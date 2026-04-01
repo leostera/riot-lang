@@ -77,6 +77,15 @@ let run_lock_deps = fun ?(registry = make_registry []) ?(registry_cache = make_r
     ~existing_lock
     packages
 
+let collect_event_names = fun fn ->
+  let names = ref [] in
+  let emit event =
+    names := Tusk_model.Event.name event :: !names
+  in
+  match fn emit with
+  | Ok value -> Ok (value, List.rev !names)
+  | Error err -> Error err
+
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -415,6 +424,94 @@ let test_lockfile_store_bubbles_parse_errors = fun () ->
           else
             Error ("unexpected error: " ^ err))
 
+let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun () ->
+  with_tempdir "tusk_pm_ensure_lock_missing"
+    (fun workspace_root ->
+      let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
+      Fs.write "[workspace]\nmembers = []\n" manifest_path
+      |> Result.expect ~msg:"expected workspace manifest to be written";
+      let std_pkg = make_package ~name:"std" ~path:Path.(workspace_root / Path.v "packages/std") () in
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
+        ()
+      in
+      match collect_event_names
+        (fun emit ->
+          Tusk_pm.ensure_lock
+            ~emit
+            ~mode:Tusk_pm.Dep_solver.Refresh
+            ~registry:(make_registry [])
+            ~registry_cache:(make_registry_cache ())
+            ~registry_name:"pkgs.ml"
+            ~workspace_root
+            ~manifest_paths:[ manifest_path ]
+            ~packages:[ app_pkg; std_pkg ]
+            ())
+      with
+      | Error err -> Error ("expected ensure_lock to refresh missing lock: " ^ err)
+      | Ok ((lockfile, resolved), event_names) ->
+          let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
+          if
+            List.length lockfile.packages = 2
+            && List.length resolved = 2
+            && List.mem "tusk.pm.lockfile.read.started" event_names
+            && List.mem "tusk.pm.lockfile.read.finished" event_names
+            && List.mem "tusk.pm.resolution.started" event_names
+            && List.mem "tusk.pm.resolution.refreshing_lock" event_names
+            && List.mem "tusk.pm.lockfile.write.started" event_names
+            && List.mem "tusk.pm.lockfile.write.finished" event_names
+            && List.mem "tusk.pm.resolution.finished" event_names
+            && Result.unwrap_or ~default:false (Fs.exists lock_path)
+          then
+            Ok ()
+          else
+            Error "expected ensure_lock to write a fresh lockfile and emit PM lifecycle events")
+
+let test_ensure_lock_uses_existing_fresh_lock = fun () ->
+  with_tempdir "tusk_pm_ensure_lock_existing"
+    (fun workspace_root ->
+      let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
+      Fs.write "[workspace]\nmembers = []\n" manifest_path
+      |> Result.expect ~msg:"expected workspace manifest to be written";
+      let std_pkg = make_package ~name:"std" ~path:Path.(workspace_root / Path.v "packages/std") () in
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
+        ()
+      in
+      sleep (Time.Duration.from_millis 20);
+      let existing_lock = run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ]
+      |> Result.expect ~msg:"expected workspace lock projection to succeed" in
+      Tusk_pm.Lockfile_store.write ~workspace_root existing_lock
+      |> Result.expect ~msg:"expected initial lockfile to be written";
+      match collect_event_names
+        (fun emit ->
+          Tusk_pm.ensure_lock
+            ~emit
+            ~mode:Tusk_pm.Dep_solver.Refresh
+            ~registry:(make_registry [])
+            ~registry_cache:(make_registry_cache ())
+            ~registry_name:"pkgs.ml"
+            ~workspace_root
+            ~manifest_paths:[ manifest_path ]
+            ~packages:[ app_pkg; std_pkg ]
+            ())
+      with
+      | Error err -> Error ("expected ensure_lock to use existing lock: " ^ err)
+      | Ok ((lockfile, resolved), event_names) ->
+          if
+            List.length lockfile.packages = 2
+            && List.length resolved = 2
+            && List.mem "tusk.pm.resolution.using_existing_lock" event_names
+            && not (List.mem "tusk.pm.lockfile.write.started" event_names)
+          then
+            Ok ()
+          else
+            Error "expected ensure_lock to reuse a fresh existing lock without rewriting it")
+
 let test_projection_resolves_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -632,6 +729,8 @@ let tests =
     case "lockfile store: roundtrips root lockfile" test_lockfile_store_roundtrips;
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
+    case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
+    case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
     case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;
