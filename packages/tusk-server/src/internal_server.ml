@@ -12,7 +12,38 @@ type server_state = {
   active_target: string;
 }
 
-let build_state = fun ~(workspace:Workspace.t) ~load_errors ~config ->
+let default_registry_name = "pkgs.ml"
+
+let resolve_registry_cache = fun ?registry_cache ~registry_name () ->
+  match registry_cache with
+  | Some registry_cache -> Ok registry_cache
+  | None -> Pkgs_ml.Registry_cache.create ?tusk_home:None ~registry_name
+
+let prepare_workspace = fun
+  ?registry
+  ?registry_cache
+  ?(registry_name = default_registry_name)
+  ~(workspace: Workspace.t)
+  ()
+  ->
+  match resolve_registry_cache ?registry_cache ~registry_name () with
+  | Error err ->
+      Error ("failed to initialize registry cache '" ^ registry_name ^ "': " ^ err)
+  | Ok registry_cache ->
+      let registry =
+        match registry with
+        | Some registry -> registry
+        | None -> Pkgs_ml.Registry.filesystem registry_cache
+      in
+      Tusk_pm.ensure_workspace
+        ~mode:Tusk_pm.Dep_solver.Refresh
+        ~registry
+        ~registry_cache
+        ~registry_name
+        ~workspace
+        ()
+
+let build_state = fun ~(workspace:Workspace.t) ~load_errors ~(config: Server_config.t) ->
   let _ = config in
   if List.length load_errors > 0 then
     (
@@ -478,15 +509,26 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let start_local = fun ~workspace ?(load_errors = []) ~config () ->
+let start_local = fun
+  ?registry
+  ?registry_cache
+  ?(registry_name = default_registry_name)
+  ~workspace
+  ?(load_errors = [])
+  ~(config: Server_config.t)
+  ()
+  ->
   try
-    let state = build_state ~workspace ~load_errors ~config in
-    let server_pid =
-      spawn
-        (fun () ->
-          let _ = loop state in
-          Ok ())
-    in
-    Ok server_pid
+    match prepare_workspace ?registry ?registry_cache ~registry_name ~workspace () with
+    | Error err -> Error (Failure err)
+    | Ok workspace ->
+        let state = build_state ~workspace ~load_errors ~config in
+        let server_pid =
+          spawn
+            (fun () ->
+              let _ = loop state in
+              Ok ())
+        in
+        Ok server_pid
   with
   | exn -> Error exn
