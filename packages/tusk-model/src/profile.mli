@@ -42,7 +42,7 @@ type t = {
   ocamlc_flags: string list;  (** Additional raw ocamlc/ocamlopt flags *)
 }
 
-(** Default debug profile - fast compilation, all checks enabled *)
+(** Default debug profile - native code with debug symbols and minimal optimization *)
 val debug: t
 
 (** Default release profile - optimized, strict *)

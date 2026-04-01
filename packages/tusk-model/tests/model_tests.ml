@@ -17,6 +17,14 @@ let make_command = fun () ->
 
 let make_package = fun () ->
   let command = make_command () in
+  let publish =
+    Tusk_model.Package.{
+      version = Some (Std.Version.make ~major:0 ~minor:1 ~patch:0 ());
+      description = Some "minttea";
+      license = Some "Apache-2.0";
+      is_public = Some true;
+    }
+  in
   Tusk_model.Package.{
     name = "minttea";
     path = Path.v "packages/minttea";
@@ -38,6 +46,7 @@ let make_package = fun () ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [ command ];
     fix_providers = [];
+    publish;
   }
 
 let with_tempdir = fun prefix fn ->
@@ -333,6 +342,7 @@ let test_package_json_roundtrips_registry_requirement = fun () ->
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
+      publish = { version = None; description = None; license = None; is_public = None };
     }
   in
   let decoded = Tusk_model.Package.to_json package
@@ -470,6 +480,23 @@ api_token = "publish-token"
           | _ -> Error "expected config loader to expose registry token"
         ))
 
+let test_debug_profile_defaults_to_native_with_debug_symbols = fun () ->
+  let profile = Tusk_model.Profile.debug in
+  let flags = Tusk_model.Profile.to_compiler_flags profile in
+  if
+    profile.kind = Tusk_model.Ocaml_compiler.Native
+    && List.mem "-O0" flags
+    && List.mem "-g" flags
+  then
+    Ok ()
+  else
+    Error
+      ("expected debug profile to default to native with -O0 -g, got kind="
+      ^ Tusk_model.Ocaml_compiler.compilation_kind_to_string profile.kind
+      ^ " flags=["
+      ^ String.concat ", " flags
+      ^ "]")
+
 let tests =
   Test.[
     case "for_scope: build drops commands and runtime outputs" test_build_scope_drops_commands_and_runtime_outputs;
@@ -490,6 +517,7 @@ let tests =
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
     case "user config: parses registry API token" test_user_config_parses_registry_api_token;
     case "user config: loads config file" test_user_config_load_reads_config_file;
+    case "profile: debug defaults to native with debug symbols" test_debug_profile_defaults_to_native_with_debug_symbols;
   ]
 
 let name = "Tusk Model Tests"

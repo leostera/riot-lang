@@ -44,10 +44,10 @@ type t = {
   ocamlc_flags: string list;  (** Additional raw ocamlc/ocamlopt flags *)
 }
 
-(** Default debug profile - fast compilation, all checks enabled *)
+(** Default debug profile - native code with debug symbols and minimal optimization *)
 let debug = {
   name = "debug";
-  kind = Ocaml_compiler.Bytecode;
+  kind = Ocaml_compiler.Native;
   inline = None;
   no_assert = false;
   compact = false;
@@ -63,7 +63,7 @@ let debug = {
   ];
   cc_flags = [];
   ld_flags = [];
-  ocamlc_flags = [];
+  ocamlc_flags = [ "-O0"; "-g" ];
 }
 
 (** Default release profile - optimized, strict *)
