@@ -532,14 +532,34 @@ api_token = "publish-token"
 let test_debug_profile_defaults_to_native_with_debug_symbols = fun () ->
   let profile = Tusk_model.Profile.debug in
   let flags = Tusk_model.Profile.to_compiler_flags profile in
-  if profile.kind = Tusk_model.Ocaml_compiler.Native && List.mem "-O0" flags && List.mem "-g" flags then
+  if profile.kind = Tusk_model.Ocaml_compiler.Native
+    && List.mem "-inline" flags
+    && List.mem "0" flags
+    && List.mem "-g" flags
+  then
     Ok ()
   else
-    Error ("expected debug profile to default to native with -O0 -g, got kind="
+    Error ("expected debug profile to default to native with -inline 0 -g, got kind="
     ^ Tusk_model.Ocaml_compiler.compilation_kind_to_string profile.kind
     ^ " flags=["
     ^ String.concat ", " flags
     ^ "]")
+
+let test_release_profile_defaults_to_strict_native_optimization = fun () ->
+  let profile = Tusk_model.Profile.release in
+  let flags = Tusk_model.Profile.to_compiler_flags profile in
+  if not (profile.kind = Tusk_model.Ocaml_compiler.Native) then
+    Error "expected release profile to stay native"
+  else if not (List.mem "-noassert" flags) then
+    Error "expected release profile to include -noassert"
+  else if not (List.mem "-compact" flags) then
+    Error "expected release profile to include -compact"
+  else if not (List.mem "-inline" flags && List.mem "100" flags) then
+    Error "expected release profile to include -inline 100"
+  else if not (List.mem "-warn-error" flags && List.mem "+a" flags) then
+    Error "expected release profile to treat all warnings as errors"
+  else
+    Ok ()
 
 let tests =
   Test.[
@@ -562,6 +582,7 @@ let tests =
     case "user config: parses registry API token" test_user_config_parses_registry_api_token;
     case "user config: loads config file" test_user_config_load_reads_config_file;
     case "profile: debug defaults to native with debug symbols" test_debug_profile_defaults_to_native_with_debug_symbols;
+    case "profile: release defaults to strict native optimization" test_release_profile_defaults_to_strict_native_optimization;
   ]
 
 let name = "Tusk Model Tests"

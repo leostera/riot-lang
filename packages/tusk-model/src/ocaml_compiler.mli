@@ -43,10 +43,29 @@ type flag =
   (** -nostdlib: Do not automatically link with stdlib *)
   | NoPervasives
   (** -nopervasives: Do not open Pervasives/Stdlib *)
+  | Inline of int
+  (** -inline <n>: Set inlining threshold *)
+  | NoAssert
+  (** -noassert: remove assertions *)
+  | Compact
+  (** -compact: optimize for code size *)
+  | Unsafe
+  (** -unsafe: disable some safety checks *)
   | Impl of Path.t
   (** -impl <file>: Compile <file> as implementation *)
   | Warning of warning list
-(** -w: Configure warning flags *)
+  (** -w: Configure warning flags *)
+  | WarnError of warning list
+  (** -warn-error: Configure which warnings are treated as errors *)
+  | Raw of string
+  (** Raw ocamlc/ocamlopt argument token *)
+  | LinkAll
+  (** -linkall: Link all modules even if not directly referenced *)
+
+val flags_to_string: flag list -> string list
+
+val flags_of_string: string list -> flag list
+
 (** Compilation kind *)
 type compilation_kind =
   | Bytecode

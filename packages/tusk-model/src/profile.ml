@@ -48,7 +48,7 @@ type t = {
 let debug = {
   name = "debug";
   kind = Ocaml_compiler.Native;
-  inline = None;
+  inline = Some 0;
   no_assert = false;
   compact = false;
   unsafe = false;
@@ -63,7 +63,7 @@ let debug = {
   ];
   cc_flags = [];
   ld_flags = [];
-  ocamlc_flags = [ "-O0"; "-g" ];
+  ocamlc_flags = [ "-g" ];
 }
 
 (** Default release profile - optimized, strict *)
@@ -339,43 +339,52 @@ let from_toml : (string * Std.Data.Toml.value) list -> base:t -> t = fun table_i
 (** Convert profile to OCaml compiler flags *)
 let to_compiler_flags = fun profile ->
   let flags = [] in
-  (* Optimization flags *)
   let flags =
     match profile.inline with
+    | Some n -> Ocaml_compiler.Inline n :: flags
     | None -> flags
-    | Some n -> ("-inline " ^ Int.to_string n) :: flags
   in
   let flags =
     if profile.no_assert then
-      "-noassert" :: flags
+      Ocaml_compiler.NoAssert :: flags
     else
       flags
   in
   let flags =
     if profile.compact then
-      "-compact" :: flags
+      Ocaml_compiler.Compact :: flags
     else
       flags
   in
   let flags =
     if profile.unsafe then
-      "-unsafe" :: flags
+      Ocaml_compiler.Unsafe :: flags
     else
       flags
   in
-  (* Module handling *)
   let flags =
     if profile.no_alias_deps then
-      "-no-alias-deps" :: flags
+      Ocaml_compiler.NoAliasDeps :: flags
     else
       flags
   in
   let flags =
-    List.fold_left (fun acc m -> "-open" :: m :: acc) flags profile.open_modules
+    List.fold_left (fun acc m -> Ocaml_compiler.Open m :: acc) flags profile.open_modules
   in
-  (* Additional raw flags *)
-  let flags = List.rev_append profile.ocamlc_flags flags in
-  List.rev flags
+  let flags =
+    if List.is_empty profile.warnings then
+      flags
+    else
+      Ocaml_compiler.Warning profile.warnings :: flags
+  in
+  let flags =
+    if List.is_empty profile.errors then
+      flags
+    else
+      Ocaml_compiler.WarnError profile.errors :: flags
+  in
+  let flags = List.rev_append (List.map (fun flag -> Ocaml_compiler.Raw flag) profile.ocamlc_flags) flags in
+  Ocaml_compiler.flags_to_string (List.rev flags)
 
 (** Hash profile into a Sha256 hasher state *)
 let hash = fun state profile ->

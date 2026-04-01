@@ -38,6 +38,44 @@ let test_compile_impl_disables_no_cmi_file_by_default = fun () ->
   else
     Error ("expected default warning baseline to disable warning 49, got: " ^ command)
 
+let test_compile_impl_does_not_force_debug_symbols = fun () ->
+  let ocamlc = Tusk_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
+  let invocation = Tusk_toolchain.Ocamlc.compile_impl
+    ocamlc
+    ~cwd:(Path.v "/tmp/work")
+    ~includes:[ Path.v "src" ]
+    ~flags:[]
+    ~output:(Path.v "foo.cmx")
+    (Path.v "src/foo.ml") in
+  let command = Tusk_toolchain.Ocamlc.to_string invocation in
+  if String.contains command " -g " then
+    Error ("expected compile_impl to stop hardcoding -g, got: " ^ command)
+  else
+    Ok ()
+
+let test_compile_impl_renders_warn_error_and_raw_flags = fun () ->
+  let ocamlc = Tusk_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
+  let invocation = Tusk_toolchain.Ocamlc.compile_impl
+    ocamlc
+    ~cwd:(Path.v "/tmp/work")
+    ~includes:[ Path.v "src" ]
+    ~flags:[
+      Tusk_toolchain.Ocamlc.WarnError [ Tusk_toolchain.Ocamlc.All ];
+      Tusk_toolchain.Ocamlc.Raw "-O2";
+      Tusk_toolchain.Ocamlc.Raw "-noassert";
+    ]
+    ~output:(Path.v "foo.cmx")
+    (Path.v "src/foo.ml") in
+  let command = Tusk_toolchain.Ocamlc.to_string invocation in
+  if not (String.contains command "-warn-error +a") then
+    Error ("expected -warn-error +a in command, got: " ^ command)
+  else if not (String.contains command " -O2 ") then
+    Error ("expected raw -O2 flag in command, got: " ^ command)
+  else if not (String.contains command " -noassert ") then
+    Error ("expected raw -noassert flag in command, got: " ^ command)
+  else
+    Ok ()
+
 let test_parse_ocaml_warning_diagnostic = fun () ->
   match Tusk_toolchain.Ocamlc.Diagnostic.parse sample_ocaml_warning with
   | [ diagnostic ] -> (
@@ -115,6 +153,8 @@ let test_parse_colored_ocaml_warning_diagnostic = fun () ->
 let tests =
   Test.[
     case "compile impl disables no-cmi-file by default" test_compile_impl_disables_no_cmi_file_by_default;
+    case "compile impl does not force debug symbols" test_compile_impl_does_not_force_debug_symbols;
+    case "compile impl renders warn-error and raw flags" test_compile_impl_renders_warn_error_and_raw_flags;
     case "parse ocaml warning diagnostic" test_parse_ocaml_warning_diagnostic;
     case "map path rewrites rendered diagnostic" test_map_path_rewrites_rendered_diagnostic;
     case "parse c error diagnostic" test_parse_c_error_diagnostic;

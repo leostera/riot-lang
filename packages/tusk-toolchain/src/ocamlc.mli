@@ -3,6 +3,7 @@
     This module provides a high-level interface for invoking the OCaml compiler
     with proper configuration and error handling. *)
 open Std
+open Tusk_model
 
 type t
 type invocation
@@ -40,29 +41,35 @@ val make: Path.t -> t
 val path: t -> Path.t
 
 (** Compiler warnings that can be suppressed *)
-type compiler_warning =
+type compiler_warning = Ocaml_compiler.warning =
+  | PartialMatch
+  | UnusedVariable
+  | UnusedOpen
+  | UnusedConstructor
+  | UnusedMatch
   | NoCmiFile
-  (** Warning 49: Absent cmi file when looking up module alias *)
   | All
 (** All warnings *)
 (** Compiler flags *)
-type compiler_flag =
+type compiler_flag = Ocaml_compiler.flag =
   | NoAliasDeps
-  (** -no-alias-deps: Do not record dependencies for module aliases *)
   | Open of string
-  (** -open <module>: Opens the module before typing *)
   | NoStdlib
-  (** -nostdlib: Do not automatically link with the standard library *)
   | NoPervasives
-  (** -nopervasives: Do not open the Pervasives module (or Stdlib) *)
+  | Inline of int
+  | NoAssert
+  | Compact
+  | Unsafe
   | Impl of Std.Path.t
-  (** -impl <file>: Compile <file> as an implementation file *)
   | Warning of compiler_warning list
-  (** -w: Configure warning flags *)
+  | WarnError of compiler_warning list
+  | Raw of string
   | LinkAll
 
 (** -linkall: Link all modules even if not directly referenced (prevents dead-code elimination) *)
 val flags_to_string: compiler_flag list -> string list
+
+val flags_of_string: string list -> compiler_flag list
 
 (** Compilation result *)
 type success = {

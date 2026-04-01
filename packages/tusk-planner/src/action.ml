@@ -459,37 +459,8 @@ let from_json = fun json ->
       | _ -> None
     in
     let parse_flags json =
-      let rec go = fun acc ->
-        function
-        | [] ->
-            List.rev acc
-        | "-open" :: mod_name :: rest ->
-            go (Tusk_toolchain.Ocamlc.Open mod_name :: acc) rest
-        | "-no-alias-deps" :: rest ->
-            go (Tusk_toolchain.Ocamlc.NoAliasDeps :: acc) rest
-        | "-nostdlib" :: rest ->
-            go (Tusk_toolchain.Ocamlc.NoStdlib :: acc) rest
-        | "-nopervasives" :: rest ->
-            go (Tusk_toolchain.Ocamlc.NoPervasives :: acc) rest
-        | "-linkall" :: rest ->
-            go (Tusk_toolchain.Ocamlc.LinkAll :: acc) rest
-        | "-impl" :: file :: rest ->
-            go (Tusk_toolchain.Ocamlc.Impl (Path.v file) :: acc) rest
-        | "-w" :: warning :: rest ->
-            let warning_flag =
-              if String.equal warning "-a" then
-                Tusk_toolchain.Ocamlc.Warning [ Tusk_toolchain.Ocamlc.All ]
-              else if String.equal warning "-49" then
-                Tusk_toolchain.Ocamlc.Warning [ Tusk_toolchain.Ocamlc.NoCmiFile ]
-              else
-                Tusk_toolchain.Ocamlc.Warning []
-            in
-            go (warning_flag :: acc) rest
-        | _ :: rest ->
-            go acc rest
-      in
       match parse_string_list "flags" json with
-      | Some raw -> Some (go [] raw)
+      | Some raw -> Some (Tusk_toolchain.Ocamlc.flags_of_string raw)
       | None -> Some []
     in
     match get_field "type" json with

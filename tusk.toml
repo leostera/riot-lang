@@ -64,7 +64,3 @@ rules = [
   "no-stdlib", 
   "-class-case-module-names",
 ]
-
-[profile.debug]
-kind = "native"
-ocamlc_flags = ["-O0", "-g"]

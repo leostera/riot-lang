@@ -5,7 +5,7 @@ module G = Graph.SimpleGraph
 let test_toolchain = Tusk_toolchain.init ~config:Tusk_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v7"
+let planner_artifacts_version = "planner-artifacts:v8"
 
 let make_test_workspace = fun tmpdir packages ->
   Tusk_model.Workspace.{

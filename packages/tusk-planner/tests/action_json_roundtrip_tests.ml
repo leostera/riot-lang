@@ -92,6 +92,21 @@ let compile_implementation_roundtrip_preserves_combined_warning_flags = fun () -
       ]
     })
 
+let compile_implementation_roundtrip_preserves_profile_style_flags = fun () ->
+  assert_roundtrip
+    (Tusk_planner.Action.CompileImplementation {
+      source = Path.v "src/release.ml";
+      outputs = [ Path.v "release.cmx"; Path.v "release.o" ];
+      includes = [ Path.v "src" ];
+      flags = [
+        Tusk_toolchain.Ocamlc.Inline 100;
+        Tusk_toolchain.Ocamlc.NoAssert;
+        Tusk_toolchain.Ocamlc.Compact;
+        Tusk_toolchain.Ocamlc.WarnError [ Tusk_toolchain.Ocamlc.All ];
+        Tusk_toolchain.Ocamlc.Raw "-O2";
+      ]
+    })
+
 let tests =
   Test.[
     case "compile interface json roundtrip" compile_interface_roundtrip_preserves_fields;
@@ -101,6 +116,7 @@ let tests =
     case "create shared library json roundtrip" create_shared_library_roundtrip_preserves_linker_fields;
     case "build foreign dependency json roundtrip" build_foreign_dependency_roundtrip_preserves_env_and_outputs;
     case "compile implementation combined warning flags roundtrip" compile_implementation_roundtrip_preserves_combined_warning_flags;
+    case "compile implementation profile-style flags roundtrip" compile_implementation_roundtrip_preserves_profile_style_flags;
   ]
 
 let name = "tusk-planner:action-json-roundtrip"
