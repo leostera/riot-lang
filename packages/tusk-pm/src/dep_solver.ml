@@ -9,6 +9,11 @@ type resolved_dependency = {
   packages: Tusk_model.Lockfile.package list;
 }
 
+type resolution_state = {
+  resolving: (string * Tusk_model.Lockfile.package_id) list;
+  resolved: (string * Tusk_model.Lockfile.package) list;
+}
+
 let package_id_of_local_package = fun (pkg: Tusk_model.Package.t) ->
   Tusk_model.Lockfile.{ registry = None; name = pkg.name; version = None }
 
@@ -78,6 +83,36 @@ let package_id_key = fun (id: Tusk_model.Lockfile.package_id) ->
   in
   registry ^ ":" ^ id.name ^ ":" ^ version
 
+let registry_resolution_key = fun ~registry_name ~package_name ->
+  registry_name ^ ":" ^ Pkgs_ml.Sparse_index.normalized_name package_name
+
+let empty_resolution_state = {
+  resolving = [];
+  resolved = [];
+}
+
+let find_resolving_package_id = fun ~(state: resolution_state) ~key ->
+  List.assoc_opt key state.resolving
+
+let find_resolved_package = fun ~(state: resolution_state) ~key ->
+  List.assoc_opt key state.resolved
+
+let add_resolving = fun ~(state: resolution_state) ~key ~package_id ->
+  {
+    state with resolving = (key, package_id) :: state.resolving;
+  }
+
+let remove_resolving = fun ~(state: resolution_state) ~key ->
+  {
+    state with resolving = List.filter (fun ((candidate, _)) -> not (String.equal candidate key)) state.resolving;
+  }
+
+let add_resolved = fun ~(state: resolution_state) ~key ~(pkg: Tusk_model.Lockfile.package) ->
+  let state = remove_resolving ~state ~key in
+  {
+    state with resolved = (key, pkg) :: state.resolved;
+  }
+
 let materialized_root_for_registry_package = fun ~registry_cache ~package_name ~version ->
   Pkgs_ml.Registry_cache.package_src_dir registry_cache ~package_name ~version
 
@@ -133,6 +168,7 @@ let rec lock_package_of_local_package = fun
   ~registry_cache
   ~registry_name
   ~existing_lock
+  ~state
   ~provenance
   (pkg: Tusk_model.Package.t)
   ->
@@ -143,13 +179,14 @@ let rec lock_package_of_local_package = fun
       ~registry_cache
       ~registry_name
       ~existing_lock
+      ~state
       ~declared_from:pkg.path
       []
       []
       pkg.dependencies
   with
   | Error _ as err -> err
-  | Ok (dependencies, dependency_packages) -> (
+  | Ok (dependencies, dependency_packages, state) -> (
       match
         resolve_manifest_dependencies
           ~mode
@@ -157,13 +194,14 @@ let rec lock_package_of_local_package = fun
           ~registry_cache
           ~registry_name
           ~existing_lock
+          ~state
           ~declared_from:pkg.path
           []
           []
           pkg.build_dependencies
       with
       | Error _ as err -> err
-      | Ok (build_dependencies, build_packages) -> (
+      | Ok (build_dependencies, build_packages, state) -> (
           match
             resolve_manifest_dependencies
               ~mode
@@ -171,13 +209,14 @@ let rec lock_package_of_local_package = fun
               ~registry_cache
               ~registry_name
               ~existing_lock
+              ~state
               ~declared_from:pkg.path
               []
               []
               pkg.dev_dependencies
           with
           | Error _ as err -> err
-          | Ok (dev_dependencies, dev_packages) ->
+          | Ok (dev_dependencies, dev_packages, state) ->
               Ok
                 ( Tusk_model.Lockfile.{
                     id = package_id_of_local_package pkg;
@@ -188,18 +227,34 @@ let rec lock_package_of_local_package = fun
                     build_dependencies;
                     dev_dependencies;
                   },
-                  dependency_packages @ build_packages @ dev_packages )
+                  dependency_packages @ build_packages @ dev_packages,
+                  state )
         )
     )
 
-and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock package_name ->
+and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock ~state package_name ->
   match mode, find_existing_external_package ~registry_name ~existing_lock ~package_name with
   | Refresh, Some (existing_pkg: Tusk_model.Lockfile.package) ->
-      Ok {
+      Ok ({
         dependency = Tusk_model.Lockfile.{ name = package_name; package = existing_pkg.id };
         packages = [];
-      }
-  | _ ->
+      }, state)
+  | _ -> (
+      let key = registry_resolution_key ~registry_name ~package_name in
+      match find_resolved_package ~state ~key with
+      | Some lock_package ->
+          Ok ({
+            dependency = Tusk_model.Lockfile.{ name = package_name; package = lock_package.id };
+            packages = [];
+          }, state)
+      | None -> (
+          match find_resolving_package_id ~state ~key with
+          | Some package_id ->
+              Ok ({
+                dependency = Tusk_model.Lockfile.{ name = package_name; package = package_id };
+                packages = [];
+              }, state)
+          | None ->
       match Pkgs_ml.Registry.read_package_document registry ~package_name with
       | Error err ->
           Error ("failed to read package document for '" ^ package_name ^ "': " ^ err)
@@ -209,13 +264,22 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
           match latest_release_of_document document with
           | Error _ as err -> err
           | Ok (release: Pkgs_ml.Sparse_index.release) ->
+              let package_id =
+                Tusk_model.Lockfile.{
+                  registry = Some registry_name;
+                  name = document.name;
+                  version = Some release.version;
+                }
+              in
+              let state = add_resolving ~state ~key ~package_id in
               let rec resolve_release_dependencies
+                ~(state: resolution_state)
                 (acc_packages: Tusk_model.Lockfile.package list)
                 (acc_dependencies: Tusk_model.Lockfile.dependency list)
                 (release_dependencies: Pkgs_ml.Sparse_index.dependency list)
               =
                 match release_dependencies with
-                | [] -> Ok (List.rev acc_dependencies, acc_packages)
+                | [] -> Ok (List.rev acc_dependencies, acc_packages, state)
                 | (dep: Pkgs_ml.Sparse_index.dependency) :: rest -> (
                     match
                       resolve_registry_dependency
@@ -224,19 +288,21 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
                         ~registry_cache
                         ~registry_name
                         ~existing_lock
+                        ~state
                         dep.name
                     with
                     | Error _ as err -> err
-                    | Ok resolved ->
+                    | Ok (resolved, state) ->
                         resolve_release_dependencies
+                          ~state
                           (List.rev_append resolved.packages acc_packages)
                           (resolved.dependency :: acc_dependencies)
                           rest
                   )
               in
-              match resolve_release_dependencies [] [] release.dependencies with
+              match resolve_release_dependencies ~state [] [] release.dependencies with
               | Error _ as err -> err
-              | Ok (dependencies, dependency_packages) ->
+              | Ok (dependencies, dependency_packages, state) ->
                   let path =
                     materialized_root_for_registry_package
                       ~registry_cache
@@ -245,11 +311,7 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
                   in
                   let lock_package =
                     Tusk_model.Lockfile.{
-                      id = {
-                        registry = Some registry_name;
-                        name = document.name;
-                        version = Some release.version;
-                      };
+                      id = package_id;
                       path;
                       manifest_path = manifest_path_for_materialized_root path;
                       provenance = Registry { registry = registry_name };
@@ -258,11 +320,14 @@ and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_
                       dev_dependencies = [];
                     }
                   in
-                  Ok {
+                  let state = add_resolved ~state ~key ~pkg:lock_package in
+                  Ok ({
                     dependency = Tusk_model.Lockfile.{ name = package_name; package = lock_package.id };
                     packages = dependency_packages @ [ lock_package ];
-                  }
+                  }, state)
+        ))
         )
+    )
 
 and resolve_path_dependency = fun
   ~mode
@@ -270,6 +335,7 @@ and resolve_path_dependency = fun
   ~registry_cache
   ~registry_name
   ~existing_lock
+  ~state
   ~declared_from
   dependency_name
   dep_path
@@ -284,15 +350,16 @@ and resolve_path_dependency = fun
           ~registry_cache
           ~registry_name
           ~existing_lock
+          ~state
           ~provenance:(Tusk_model.Lockfile.Path dep_path)
           pkg
       with
       | Error _ as err -> err
-      | Ok (lock_package, dependency_packages) ->
-          Ok {
+      | Ok (lock_package, dependency_packages, state) ->
+          Ok ({
             dependency = Tusk_model.Lockfile.{ name = dependency_name; package = lock_package.id };
             packages = dependency_packages @ [ lock_package ];
-          }
+          }, state)
     )
 
 and resolve_manifest_dependencies = fun
@@ -301,13 +368,14 @@ and resolve_manifest_dependencies = fun
   ~registry_cache
   ~registry_name
   ~existing_lock
+  ~state
   ~declared_from
   acc_packages
   acc_dependencies
   deps
   ->
   match deps with
-  | [] -> Ok (List.rev acc_dependencies, List.rev acc_packages)
+  | [] -> Ok (List.rev acc_dependencies, List.rev acc_packages, state)
   | dep :: rest -> (
       match dep.Tusk_model.Package.source with
       | Tusk_model.Package.Workspace ->
@@ -317,6 +385,7 @@ and resolve_manifest_dependencies = fun
             ~registry_cache
             ~registry_name
             ~existing_lock
+            ~state
             ~declared_from
             acc_packages
             (lock_dependency_of_local_dependency dep :: acc_dependencies)
@@ -329,16 +398,18 @@ and resolve_manifest_dependencies = fun
               ~registry_cache
               ~registry_name
               ~existing_lock
+              ~state
               dep.name
           with
           | Error _ as err -> err
-          | Ok resolved ->
+          | Ok (resolved, state) ->
             resolve_manifest_dependencies
                 ~mode
                 ~registry
                 ~registry_cache
                 ~registry_name
                 ~existing_lock
+                ~state
                 ~declared_from
                 (List.rev_append resolved.packages acc_packages)
                 (resolved.dependency :: acc_dependencies)
@@ -352,18 +423,20 @@ and resolve_manifest_dependencies = fun
               ~registry_cache
               ~registry_name
               ~existing_lock
+              ~state
               ~declared_from
               dep.name
               path
           with
           | Error _ as err -> err
-          | Ok resolved ->
+          | Ok (resolved, state) ->
               resolve_manifest_dependencies
                 ~mode
                 ~registry
                 ~registry_cache
                 ~registry_name
                 ~existing_lock
+                ~state
                 ~declared_from
                 (List.rev_append resolved.packages acc_packages)
                 (resolved.dependency :: acc_dependencies)
@@ -371,19 +444,20 @@ and resolve_manifest_dependencies = fun
         )
     )
 
-let lock_package_of_workspace_package = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock (pkg: Tusk_model.Package.t) ->
+let lock_package_of_workspace_package = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock ~state (pkg: Tusk_model.Package.t) ->
   lock_package_of_local_package
     ~mode
     ~registry
     ~registry_cache
     ~registry_name
     ~existing_lock
+    ~state
     ~provenance:Tusk_model.Lockfile.Workspace
     pkg
 
-let rec lock_packages = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock acc_workspace acc_external packages ->
+let rec lock_packages = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock ~state acc_workspace acc_external packages ->
   match packages with
-  | [] -> Ok (List.rev acc_workspace, List.rev acc_external)
+  | [] -> Ok (List.rev acc_workspace, List.rev acc_external, state)
   | pkg :: rest -> (
       match
         lock_package_of_workspace_package
@@ -392,15 +466,17 @@ let rec lock_packages = fun ~mode ~registry ~registry_cache ~registry_name ~exis
           ~registry_cache
           ~registry_name
           ~existing_lock
+          ~state
           pkg
       with
-      | Ok (pkg, external_packages) ->
+      | Ok (pkg, external_packages, state) ->
           lock_packages
             ~mode
             ~registry
             ~registry_cache
             ~registry_name
             ~existing_lock
+            ~state
             (pkg :: acc_workspace)
             (List.rev_append external_packages acc_external)
             rest
@@ -421,11 +497,12 @@ let lock_deps = fun ~mode ~registry ~registry_cache ~registry_name ~existing_loc
       ~registry_cache
       ~registry_name
       ~existing_lock
+      ~state:empty_resolution_state
       []
       []
       packages
   with
-  | Ok (workspace_packages, external_packages) ->
+  | Ok (workspace_packages, external_packages, _state) ->
       let preserved =
         match (mode, existing_lock) with
         | Unlock, _ -> []

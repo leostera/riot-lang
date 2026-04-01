@@ -301,6 +301,78 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
       | _ -> Error "expected workspace and transitive registry lock packages"
     )
 
+let test_lock_deps_handles_cyclic_registry_dependencies = fun () ->
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:(Path.v "/workspace/packages/app")
+    ~dependencies:[ { name = "foo"; source = Tusk_model.Package.Registry { version = Std.Version.any } } ]
+    ()
+  in
+  let registry =
+    make_registry
+      [
+        make_registry_document
+          ~name:"foo"
+          ~latest:"1.0.0"
+          ~releases:[
+            make_release
+              ~version:"1.0.0"
+              ~dependencies:[ make_registry_dependency "bar" ]
+              ();
+          ]
+          ();
+        make_registry_document
+          ~name:"bar"
+          ~latest:"2.0.0"
+          ~releases:[
+            make_release
+              ~version:"2.0.0"
+              ~dependencies:[ make_registry_dependency "foo" ]
+              ();
+          ]
+          ();
+      ]
+  in
+  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+  | Error err -> Error ("expected cyclic registry dependencies to resolve: " ^ err)
+  | Ok lockfile -> (
+      let foo_lock =
+        List.find_opt
+          (fun (pkg: Tusk_model.Lockfile.package) ->
+            pkg.id.name = "foo" && pkg.id.version = Some "1.0.0")
+          lockfile.packages
+      in
+      let bar_lock =
+        List.find_opt
+          (fun (pkg: Tusk_model.Lockfile.package) ->
+            pkg.id.name = "bar" && pkg.id.version = Some "2.0.0")
+          lockfile.packages
+      in
+      match foo_lock, bar_lock with
+      | Some foo_lock, Some bar_lock ->
+          let foo_dep_name, foo_dep_version =
+            match foo_lock.dependencies with
+            | [ dep ] -> (dep.package.name, dep.package.version)
+            | _ -> ("", None)
+          in
+          let bar_dep_name, bar_dep_version =
+            match bar_lock.dependencies with
+            | [ dep ] -> (dep.package.name, dep.package.version)
+            | _ -> ("", None)
+          in
+          if
+            List.length lockfile.packages = 3
+            && foo_dep_name = "bar"
+            && foo_dep_version = Some "2.0.0"
+            && bar_dep_name = "foo"
+            && bar_dep_version = Some "1.0.0"
+          then
+            Ok ()
+          else
+            Error "expected cyclic registry dependencies to terminate with exact cross-links"
+      | _ -> Error "expected foo and bar to appear in the cyclic lockfile"
+    )
+
 let test_lock_refresh_preserves_existing_registry_version = fun () ->
   let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
   let app_pkg = make_package
@@ -1031,6 +1103,7 @@ let tests =
     case "dep solver: resolves path dependencies" test_lock_deps_resolves_path_dependencies;
     case "dep solver: resolves transitive path dependencies" test_lock_deps_resolves_transitive_path_dependencies;
     case "dep solver: resolves registry dependencies to exact versions" test_lock_deps_resolves_registry_dependencies_to_exact_versions;
+    case "dep solver: handles cyclic registry dependencies" test_lock_deps_handles_cyclic_registry_dependencies;
     case "dep solver: refresh preserves existing registry versions" test_lock_refresh_preserves_existing_registry_version;
     case "dep solver: refresh preserves existing external nodes" test_lock_refresh_preserves_existing_external_nodes;
     case "dep solver: unlock discards existing external nodes" test_unlock_discards_existing_external_nodes;
