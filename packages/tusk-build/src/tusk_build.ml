@@ -74,3 +74,53 @@ let start_local = Internal_server.start_local
 let build = Build_runtime.build
 
 let run = Run_runtime.run
+
+type suite_binary = Test_runtime.suite_binary = {
+  package_name: string;
+  suite_name: string;
+}
+
+type test_request = Test_runtime.test_request = {
+  workspace: Tusk_model.Workspace.t;
+  load_errors: Tusk_model.Workspace_manager.load_error list;
+  package_filter: string option;
+  query: string option;
+  extra_args: string list;
+}
+
+type test_event = Test_runtime.test_event =
+  | Build of build_event
+  | NoSuitesFound of { package_name: string option }
+  | RunningSuite of suite_binary
+  | SuiteCompleted of {
+      suite: suite_binary;
+      status: int;
+      stdout: string;
+      stderr: string;
+    }
+  | Summary of {
+      total: int;
+      passed: int;
+      failed: int;
+    }
+
+type test_error = Test_runtime.test_error =
+  | BuildFailed of build_error
+  | ClientError of Client.error
+  | SuiteArtifactNotFound of {
+      suite: suite_binary;
+      reason: string;
+    }
+  | SuiteExecutionError of {
+      suite: suite_binary;
+      reason: string;
+    }
+  | SuitesFailed of int
+
+let collect_test_suites = Test_runtime.collect_suite_binaries
+
+let test_error_message = Test_runtime.test_error_message
+
+let test_event_to_json = Test_runtime.test_event_to_json
+
+let test = Test_runtime.test
