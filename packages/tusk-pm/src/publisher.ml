@@ -332,13 +332,12 @@ let plan_publish = fun ~registry ~publishing_workspace_packages ~(package:Tusk_m
           | Ok () -> (
               match Git_provenance.discover ~package_root:package.path with
               | Error error -> Error (GitProvenanceFailed error)
-              | Ok provenance ->
-                  Ok {
-                    package;
-                    version;
-                    locator = provenance.locator;
-                    selector = provenance.selector;
-                  }
+              | Ok provenance -> Ok {
+                package;
+                version;
+                locator = provenance.locator;
+                selector = provenance.selector
+              }
             )
         )
     )

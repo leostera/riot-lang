@@ -532,7 +532,8 @@ api_token = "publish-token"
 let test_debug_profile_defaults_to_native_with_debug_symbols = fun () ->
   let profile = Tusk_model.Profile.debug in
   let flags = Tusk_model.Profile.to_compiler_flags profile in
-  if profile.kind = Tusk_model.Ocaml_compiler.Native
+  if
+    profile.kind = Tusk_model.Ocaml_compiler.Native
     && List.mem "-inline" flags
     && List.mem "0" flags
     && List.mem "-g" flags

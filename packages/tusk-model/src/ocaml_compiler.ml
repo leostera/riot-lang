@@ -101,16 +101,13 @@ let parse_warning_spec = fun ~sign spec ->
   if String.is_empty spec || not (String.starts_with ~prefix:(String.make 1 sign) spec) then
     None
   else
-    String.split_on_char sign spec
-    |> List.filter (fun token -> token != "")
-    |> List.fold_left
+    String.split_on_char sign spec |> List.filter (fun token -> token != "") |> List.fold_left
       (fun acc token ->
         match (acc, warning_of_code token) with
         | Error _, _ -> acc
         | Ok warnings, Some warning -> Ok (warning :: warnings)
         | Ok _, None -> Error ())
-      (Ok [])
-    |> function
+      (Ok []) |> function
     | Ok warnings -> Some (List.rev warnings)
     | Error () -> None
 
@@ -118,24 +115,15 @@ let flags_to_string = fun flags ->
   List.fold_left
     (fun acc flag ->
       match flag with
-      | Open m ->
-          acc @ [ "-open"; m ]
-      | NoAliasDeps ->
-          acc @ [ "-no-alias-deps" ]
-      | NoStdlib ->
-          acc @ [ "-nostdlib" ]
-      | NoPervasives ->
-          acc @ [ "-nopervasives" ]
-      | Inline threshold ->
-          acc @ [ "-inline"; Int.to_string threshold ]
-      | NoAssert ->
-          acc @ [ "-noassert" ]
-      | Compact ->
-          acc @ [ "-compact" ]
-      | Unsafe ->
-          acc @ [ "-unsafe" ]
-      | Impl file ->
-          acc @ [ "-impl"; Path.to_string file ]
+      | Open m -> acc @ [ "-open"; m ]
+      | NoAliasDeps -> acc @ [ "-no-alias-deps" ]
+      | NoStdlib -> acc @ [ "-nostdlib" ]
+      | NoPervasives -> acc @ [ "-nopervasives" ]
+      | Inline threshold -> acc @ [ "-inline"; Int.to_string threshold ]
+      | NoAssert -> acc @ [ "-noassert" ]
+      | Compact -> acc @ [ "-compact" ]
+      | Unsafe -> acc @ [ "-unsafe" ]
+      | Impl file -> acc @ [ "-impl"; Path.to_string file ]
       | Warning warnings ->
           if List.is_empty warnings then
             acc
@@ -146,16 +134,13 @@ let flags_to_string = fun flags ->
             acc
           else
             acc @ [ "-warn-error"; render_warning_spec ~sign:'+' warnings ]
-      | Raw flag ->
-          acc @ [ flag ]
-      | LinkAll ->
-          acc @ [ "-linkall" ])
+      | Raw flag -> acc @ [ flag ]
+      | LinkAll -> acc @ [ "-linkall" ])
     []
     flags
 
 let flags_of_string = fun raw_flags ->
-  let rec go acc =
-    function
+  let rec go acc = function
     | [] ->
         List.rev acc
     | "-open" :: mod_name :: rest ->
@@ -167,9 +152,7 @@ let flags_of_string = fun raw_flags ->
     | "-nopervasives" :: rest ->
         go (NoPervasives :: acc) rest
     | "-inline" :: threshold :: rest -> (
-        try
-          go (Inline (int_of_string threshold) :: acc) rest
-        with
+        try go (Inline (int_of_string threshold) :: acc) rest with
         | _ -> go (Raw threshold :: Raw "-inline" :: acc) rest
       )
     | "-noassert" :: rest ->

@@ -383,7 +383,9 @@ let to_compiler_flags = fun profile ->
     else
       Ocaml_compiler.WarnError profile.errors :: flags
   in
-  let flags = List.rev_append (List.map (fun flag -> Ocaml_compiler.Raw flag) profile.ocamlc_flags) flags in
+  let flags =
+    List.rev_append (List.map (fun flag -> Ocaml_compiler.Raw flag) profile.ocamlc_flags) flags
+  in
   Ocaml_compiler.flags_to_string (List.rev flags)
 
 (** Hash profile into a Sha256 hasher state *)

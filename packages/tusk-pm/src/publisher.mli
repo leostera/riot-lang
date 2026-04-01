@@ -36,7 +36,6 @@ type prepared_publish = {
   selector: string;
   artifact_path: Path.t;
 }
-
 type publish_plan = {
   package: Tusk_model.Package.t;
   version: Std.Version.t;
@@ -67,10 +66,7 @@ val plan_publish:
   package:Tusk_model.Package.t ->
   (publish_plan, error) result
 
-val prepare_publish_artifact:
-  target_dir_root:Path.t ->
-  publish_plan ->
-  (prepared_publish, error) result
+val prepare_publish_artifact: target_dir_root:Path.t -> publish_plan -> (prepared_publish, error) result
 
 val prepare_publish:
   registry:Pkgs_ml.Registry.t ->

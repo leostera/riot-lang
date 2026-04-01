@@ -60,8 +60,8 @@ type flag =
   | Raw of string
   (** Raw ocamlc/ocamlopt argument token *)
   | LinkAll
-  (** -linkall: Link all modules even if not directly referenced *)
 
+(** -linkall: Link all modules even if not directly referenced *)
 val flags_to_string: flag list -> string list
 
 val flags_of_string: string list -> flag list

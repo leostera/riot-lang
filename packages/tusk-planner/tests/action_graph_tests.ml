@@ -381,9 +381,9 @@ let test_release_profile_flags_flow_into_compile_actions = fun () ->
             let has_flag expected = List.mem expected flags in
             if not (has_flag (Tusk_toolchain.Ocamlc.Inline 100)) then
               Error "expected release compile action to include inline threshold"
-            else if not (has_flag (Tusk_toolchain.Ocamlc.NoAssert)) then
+            else if not (has_flag Tusk_toolchain.Ocamlc.NoAssert) then
               Error "expected release compile action to include -noassert"
-            else if not (has_flag (Tusk_toolchain.Ocamlc.Compact)) then
+            else if not (has_flag Tusk_toolchain.Ocamlc.Compact) then
               Error "expected release compile action to include -compact"
             else if not (has_flag (Tusk_toolchain.Ocamlc.WarnError [ Tusk_toolchain.Ocamlc.All ])) then
               Error "expected release compile action to treat all warnings as errors"
