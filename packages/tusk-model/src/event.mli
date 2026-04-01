@@ -98,6 +98,94 @@ type kind =
   | WorkspaceEmpty
   | WorkspaceScanning
   | WorkspaceScanned of { packages: int; duration_ms: int }
+  | LockfileReadStarted of { path: string }
+  | LockfileReadFinished of { path: string; duration_ms: int }
+  | LockfileReadFailed of { path: string; error: string }
+  | LockfileWriteStarted of { path: string }
+  | LockfileWriteFinished of { path: string; duration_ms: int }
+  | LockfileWriteFailed of { path: string; error: string }
+  | DependencyResolutionStarted of {
+      packages: string list;
+      mode:
+        [
+          | `Refresh
+          | `Unlock
+        ]
+    }
+  | DependencyResolutionUsingExistingLock of { path: string }
+  | DependencyResolutionRefreshingLock of { path: string }
+  | DependencyResolutionUnlocking of { path: string option }
+  | DependencyResolutionFinished of {
+      duration_ms: int;
+      resolved_packages: int;
+      resolved_edges: int
+    }
+  | DependencyResolutionFailed of { error: string }
+  | DependencyUniverseBuilding of { packages: string list }
+  | DependencyUniverseBuilt of {
+      runtime_packages: int;
+      build_packages: int;
+      dev_packages: int;
+      duration_ms: int
+    }
+  | PackageMetadataFetchStarted of { package: string }
+  | PackageMetadataFetchFinished of {
+      package: string;
+      version: string option;
+      duration_ms: int
+    }
+  | PackageMetadataFetchFailed of { package: string; error: string }
+  | PackageManifestFetchStarted of { package: string; version: string }
+  | PackageManifestFetchFinished of {
+      package: string;
+      version: string;
+      duration_ms: int
+    }
+  | PackageManifestFetchFailed of {
+      package: string;
+      version: string option;
+      error: string
+    }
+  | PackageDownloadStarted of { package: string; version: string; path: string }
+  | PackageDownloadFinished of {
+      package: string;
+      version: string;
+      path: string;
+      duration_ms: int
+    }
+  | PackageDownloadFailed of {
+      package: string;
+      version: string;
+      path: string;
+      error: string
+    }
+  | PackageDownloadSkipped of {
+      package: string;
+      version: string;
+      path: string;
+      reason: string
+    }
+  | PackageCacheHit of { package: string; version: string; path: string }
+  | PackageMaterializationStarted of { package: string; version: string; path: string }
+  | PackageMaterializationFinished of {
+      package: string;
+      version: string;
+      path: string;
+      duration_ms: int
+    }
+  | PackageMaterializationFailed of {
+      package: string;
+      version: string;
+      path: string;
+      error: string
+    }
+  | PackageResolvedForBuild of {
+      package: string;
+      version: string option;
+      path: string;
+      workspace: bool
+    }
+  | PackageDownloadQueued of { package: string; version: string; path: string }
   | WritingFile of { path: string }
 (** Create a new event with current timestamp *)
 type t = {
