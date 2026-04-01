@@ -57,9 +57,58 @@ let stdlib_flags = fun (package: Package.t) ->
   else
     [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
 
+let profile_compile_flags = fun (profile: Profile.t) ->
+  let flags = [] in
+  let flags =
+    if profile.no_alias_deps then
+      Tusk_toolchain.Ocamlc.NoAliasDeps :: flags
+    else
+      flags
+  in
+  let flags =
+    match profile.inline with
+    | Some threshold -> flags @ [ Tusk_toolchain.Ocamlc.Inline threshold ]
+    | None -> flags
+  in
+  let flags =
+    if profile.no_assert then
+      flags @ [ Tusk_toolchain.Ocamlc.NoAssert ]
+    else
+      flags
+  in
+  let flags =
+    if profile.compact then
+      flags @ [ Tusk_toolchain.Ocamlc.Compact ]
+    else
+      flags
+  in
+  let flags =
+    if profile.unsafe then
+      flags @ [ Tusk_toolchain.Ocamlc.Unsafe ]
+    else
+      flags
+  in
+  let flags =
+    if List.is_empty profile.warnings then
+      flags
+    else
+      flags @ [ Tusk_toolchain.Ocamlc.Warning profile.warnings ]
+  in
+  let flags =
+    if List.is_empty profile.errors then
+      flags
+    else
+      flags @ [ Tusk_toolchain.Ocamlc.WarnError profile.errors ]
+  in
+  List.unique
+    (flags
+    @ List.map (fun mod_name -> Tusk_toolchain.Ocamlc.Open mod_name) profile.open_modules
+    @ List.map (fun flag -> Tusk_toolchain.Ocamlc.Raw flag) profile.ocamlc_flags)
+
 let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get_dep_kind ~depset ~needs_unix ~needs_dynlink (
   module_node: Module_node.t
 ) (deps: G.Node_id.t list) : Action.t list * Path.t list * Path.t list =
+  let base_compile_flags = stdlib_flags package @ profile_compile_flags profile in
   match module_node with
   | { kind=MLI mod_; file=Concrete path; open_modules; _ } ->
       let cmi_output = Module.cmi mod_ in
@@ -70,7 +119,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         source = path;
         outputs;
         includes = Path.v "." :: dep_includes;
-        flags = stdlib_flags package @ opens open_modules
+        flags = base_compile_flags @ opens open_modules
       } in
       ([ compile ], outputs, sources)
   | { kind=ML mod_; file=Concrete path; open_modules; _ } ->
@@ -84,7 +133,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         source = path;
         outputs;
         includes = Path.v "." :: dep_includes;
-        flags = stdlib_flags package @ opens open_modules
+        flags = base_compile_flags @ opens open_modules
       } in
       ([ compile ], outputs, sources)
   | { kind=ML mod_; file=Generated { path; contents }; open_modules; _ } ->
@@ -98,10 +147,10 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let is_alias_file = String.ends_with ~suffix:"Aliases.ml-gen" (Path.to_string path) in
       let flags =
         if is_alias_file then
-          stdlib_flags package
+          base_compile_flags
           @ (Tusk_toolchain.Ocamlc.Impl path :: Tusk_toolchain.Ocamlc.NoAliasDeps :: opens open_modules)
         else
-          stdlib_flags package @ opens open_modules
+          base_compile_flags @ opens open_modules
       in
       let compile_action = Action.CompileImplementation {
         source = path;
@@ -120,7 +169,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         source = path;
         outputs;
         includes = Path.v "." :: dep_includes;
-        flags = stdlib_flags package @ opens open_modules
+        flags = base_compile_flags @ opens open_modules
       } in
       ([ write_action; compile_action ], outputs, sources)
   | { kind=Native { files }; _ } ->
@@ -155,6 +204,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
           c_files
       in
       (actions, outputs, files)
+  | { kind=C; file=Concrete _; _ }
   | { kind=C; file=Generated _; _ }
   | { kind=H; _ }
   | { kind=Root; _ }
@@ -194,7 +244,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         source;
         outputs = [ binary_cmx ];
         includes = Path.v "." :: dep_includes;
-        flags = stdlib_flags package
+        flags = base_compile_flags
       } in
       (* Collect foreign library outputs for linking *)
       let cclibs =

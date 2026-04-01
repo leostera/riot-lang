@@ -34,6 +34,8 @@ type fix_response =
 let unavailable_build_package = fun ~workspace_root:_ ~package_name:_ ->
   Error (Failure "No build_package callback was provided")
 
+let check_request = Cli.Request.check_request
+
 let fix_request_of_matches = Cli.Request.of_matches
 
 let output_mode_of_request = fun request ->

@@ -61,11 +61,29 @@ let write_install_error = fun err ->
 
 let run = fun ~(workspace:Tusk_model.Workspace.t) matches ->
   let open ArgParser in
+    let seen_registry_updates = Collections.HashSet.create () in
+    let displayed_packages = Collections.HashSet.create () in
+    let progress = Build.{ built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
     let binary_name = get_one matches "package" |> Option.expect ~msg:"binary name required" in
     let local_only = get_flag matches "local" in
-    match Tusk_build.install
-      ~on_event:(write_install_event ~workspace_root:workspace.root)
-      { workspace; binary_name; local_only } with
+    let on_event (event: Tusk_build.install_event) =
+      match event with
+      | Tusk_build.Build build_event -> (
+          match build_event with
+          | Tusk_build.Pm kind -> Build.write_pm_event ~mode:Build.Human ~seen_registry_updates kind
+          | Tusk_build.BuildingTarget { target; host } -> Build.write_building_target_event
+            ~mode:Build.Human
+            ~target
+            ~host
+          | Tusk_build.Streaming streaming_event -> Build.write_streaming_event
+            ~mode:Build.Human
+            ~displayed_packages
+            ~progress
+            streaming_event
+        )
+      | _ -> write_install_event ~workspace_root:workspace.root event
+    in
+    match Tusk_build.install ~on_event { workspace; binary_name; local_only } with
     | Ok () -> Ok ()
     | Error err ->
         write_install_error err;

@@ -52,6 +52,9 @@ let write_run_error = fun (err: Tusk_build.run_error) ->
   | err -> println ("error: " ^ Tusk_build.run_error_message err)
 
 let run = fun ~workspace matches ->
+  let seen_registry_updates = Collections.HashSet.create () in
+  let displayed_packages = Collections.HashSet.create () in
+  let progress = Build.{ built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   match ArgParser.get_one matches "name" with
   | None ->
       println "error: missing binary name";
@@ -63,9 +66,27 @@ let run = fun ~workspace matches ->
       match parse_binary_target ?package_filter:pkg_filter name with
       | Error _ as err -> err
       | Ok (package_name, binary_name) ->
-          match Tusk_build.run
-            ~on_event:write_run_event
-            { workspace; package_name; binary_name; args = extra } with
+          let on_event (event: Tusk_build.run_event) =
+            match event with
+            | Tusk_build.Build build_event -> (
+                match build_event with
+                | Tusk_build.Pm kind -> Build.write_pm_event
+                  ~mode:Build.Human
+                  ~seen_registry_updates
+                  kind
+                | Tusk_build.BuildingTarget { target; host } -> Build.write_building_target_event
+                  ~mode:Build.Human
+                  ~target
+                  ~host
+                | Tusk_build.Streaming streaming_event -> Build.write_streaming_event
+                  ~mode:Build.Human
+                  ~displayed_packages
+                  ~progress
+                  streaming_event
+              )
+            | _ -> write_run_event event
+          in
+          match Tusk_build.run ~on_event { workspace; package_name; binary_name; args = extra } with
           | Ok () -> Ok ()
           | Error err ->
               write_run_error err;

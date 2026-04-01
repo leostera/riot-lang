@@ -61,14 +61,34 @@ let write_bench_event = fun (event: Tusk_build.bench_event) ->
 let write_bench_error = fun err -> println ("error: " ^ Tusk_build.bench_error_message err)
 
 let run = fun ~workspace matches ->
+  let seen_registry_updates = Collections.HashSet.create () in
+  let displayed_packages = Collections.HashSet.create () in
+  let progress = Build.{ built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let extra_args = trailing_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
   let request = Test_selection.parse_request ~pattern ~legacy_package in
+  let on_event (event: Tusk_build.bench_event) =
+    match event with
+    | Tusk_build.Build build_event -> (
+        match build_event with
+        | Tusk_build.Pm kind -> Build.write_pm_event ~mode:Build.Human ~seen_registry_updates kind
+        | Tusk_build.BuildingTarget { target; host } -> Build.write_building_target_event
+          ~mode:Build.Human
+          ~target
+          ~host
+        | Tusk_build.Streaming streaming_event -> Build.write_streaming_event
+          ~mode:Build.Human
+          ~displayed_packages
+          ~progress
+          streaming_event
+      )
+    | _ -> write_bench_event event
+  in
   match Tusk_build.bench
-    ~on_event:write_bench_event
+    ~on_event
     { workspace; package_filter = request.package_filter; query = request.query; extra_args } with
   | Ok () -> Ok ()
   | Error err ->

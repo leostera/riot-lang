@@ -23,7 +23,7 @@ type publish_check_stage = Publish.check_stage
 type publish_event = Publish.event =
   | Pm of Tusk_model.Event.kind
   | Fmt of Krasny.Report.event
-  | Fix of Tusk_fix.Cli.event
+  | Fix of Tusk_fix.Event.t
   | CheckStarted of { package: string; stage: publish_check_stage }
   | CheckFinished of { package: string; stage: publish_check_stage }
   | DryRunPlanned of Publisher.prepared_publish

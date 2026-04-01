@@ -56,6 +56,8 @@ type fix_response = Api.fix_response =
   | Listed_diagnostics of { format: Reporter.format; output: string }
   | Explained_rule of { rule_id: string; output: string }
 
+let check_request = Api.check_request
+
 let fix_request_of_matches = Api.fix_request_of_matches
 
 let output_mode_of_request = Api.output_mode_of_request

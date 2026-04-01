@@ -1,20 +1,32 @@
 open Std
 open Std.Collections
+open Tusk_model
 
 (** OCaml compiler command generation and execution *)
 type t = Path.t
 
-type compiler_warning =
+type compiler_warning = Ocaml_compiler.warning =
+  | PartialMatch
+  | UnusedVariable
+  | UnusedOpen
+  | UnusedConstructor
+  | UnusedMatch
   | NoCmiFile
   | All
 
-type compiler_flag =
+type compiler_flag = Ocaml_compiler.flag =
   | NoAliasDeps
   | Open of string
   | NoStdlib
   | NoPervasives
+  | Inline of int
+  | NoAssert
+  | Compact
+  | Unsafe
   | Impl of Std.Path.t
   | Warning of compiler_warning list
+  | WarnError of compiler_warning list
+  | Raw of string
   | LinkAll
 
 module Diagnostic = struct
@@ -183,14 +195,11 @@ module Diagnostic = struct
 
   let split_c_header = fun line ->
     let line = strip_ansi line in
-    let parts = String.split_on_char ':' line in
-    match parts with
-    | path :: line_no_str :: column_str :: rest ->
+    match String.split_on_char ':' line with
+    | path :: line_no_str :: column_str :: rest when String.length path > 0 ->
         let rest_str = String.concat ":" rest in
         let trimmed_rest = String.trim rest_str in
-        if String.length path = 0 then
-          None
-        else
+        (
           match (parse_int_opt line_no_str, parse_int_opt column_str) with
           | Some line_no, Some column when String.starts_with ~prefix:"warning:" trimmed_rest
           || String.starts_with ~prefix:"error:" trimmed_rest
@@ -210,10 +219,9 @@ module Diagnostic = struct
                 },
                 suffix
               )
-          | Some _, Some _ ->
-              None
-          | _ ->
-              None
+          | _ -> None
+        )
+    | _ -> None
 
   let classify = fun lines ->
     let rec loop = function
@@ -384,32 +392,9 @@ let base_command = fun t -> Path.to_string t
 
 let default_warning_flags = [ "-w"; "-49" ]
 
-let warning_to_code = function
-  | NoCmiFile -> "49"
-  | All -> "a"
+let flags_to_string = Ocaml_compiler.flags_to_string
 
-let flags_to_string = fun flags ->
-  List.fold_left
-    (fun acc flag ->
-      match flag with
-      | Open m ->
-          acc @ [ "-open"; m ]
-      | NoAliasDeps ->
-          acc @ [ "-no-alias-deps" ]
-      | NoStdlib ->
-          acc @ [ "-nostdlib" ]
-      | NoPervasives ->
-          acc @ [ "-nopervasives" ]
-      | LinkAll ->
-          acc @ [ "-linkall" ]
-      | Impl file ->
-          acc @ [ "-impl"; Path.to_string file ]
-      | Warning warnings ->
-          let warning_codes = List.map warning_to_code warnings in
-          let warning_str = "-" ^ String.concat "-" warning_codes in
-          acc @ [ "-w"; warning_str ])
-    []
-    flags
+let flags_of_string = Ocaml_compiler.flags_of_string
 
 let make_include_flags = fun dirs -> dirs |> List.map (fun dir -> "-I " ^ dir) |> String.concat " "
 
@@ -462,7 +447,6 @@ let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?
   let command_string =
     [
       ocamlc;
-      "-g";
       "-bin-annot";
       String.concat " " default_warning_flags;
       mode_flag;
@@ -501,7 +485,7 @@ let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
       )
       flags
   in
-  let args = [ "-g"; "-bin-annot"; "-c" ]
+  let args = [ "-bin-annot"; "-c" ]
   @ default_warning_flags
   @ flags_to_string flags
   @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
@@ -524,7 +508,7 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
       )
       flags
   in
-  let args = [ "-g"; "-bin-annot"; "-c" ]
+  let args = [ "-bin-annot"; "-c" ]
   @ default_warning_flags
   @ flags_to_string flags
   @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot

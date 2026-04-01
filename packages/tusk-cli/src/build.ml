@@ -13,6 +13,13 @@ type output_mode =
   | Human
   | Json
 
+type build_progress = {
+  mutable built_count: int;
+  mutable cached_count: int;
+  mutable failed_count: int;
+  mutable skipped_count: int;
+}
+
 type request = {
   build_request: Tusk_build.build_request;
   output_mode: output_mode;
@@ -193,7 +200,7 @@ let write_building_target_event = fun ~mode ~target ~host ->
       if not host then
         out ("🔨 Cross-compiling for " ^ target)
 
-let write_streaming_event = fun ~mode ~displayed_packages ~built_count ~cached_count ~failed_count ~skipped_count event ->
+let write_streaming_event = fun ~mode ~displayed_packages ~progress event ->
   trace_build ("streaming event: " ^ streaming_event_label event);
   match mode with
   | Json -> ()
@@ -204,12 +211,14 @@ let write_streaming_event = fun ~mode ~displayed_packages ~built_count ~cached_c
       | Client.BuildEvent event ->
           (
             match event with
-            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> built_count := !built_count
+            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> progress.built_count <- progress.built_count
             + 1
-            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> cached_count := !cached_count
+            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> progress.cached_count <- progress.cached_count
             + 1
-            | Tusk_executor.Telemetry_events.BuildFailed _ -> failed_count := !failed_count + 1
-            | Tusk_executor.Telemetry_events.BuildSkipped _ -> skipped_count := !skipped_count + 1
+            | Tusk_executor.Telemetry_events.BuildFailed _ -> progress.failed_count <- progress.failed_count
+            + 1
+            | Tusk_executor.Telemetry_events.BuildSkipped _ -> progress.skipped_count <- progress.skipped_count
+            + 1
             | _ -> ()
           );
           let msg = Event_formatter.format ~displayed_packages event in
@@ -222,7 +231,7 @@ let write_streaming_event = fun ~mode ~displayed_packages ~built_count ~cached_c
       | Client.PlanningFailed { reason; _ } ->
           out "";
           out ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
-          failed_count := !failed_count + 1
+          progress.failed_count <- progress.failed_count + 1
       | Client.CycleDetected { cycle_nodes; _ } ->
           out "      \027[1;31mError\027[0m: Cyclic dependency detected:";
           out ("         " ^ String.concat " ->\n         " cycle_nodes)
@@ -331,6 +340,13 @@ let write_build_error = fun ~mode err ->
           write_command_error ~mode "SessionStartFailed" [ ("reason", Data.Json.String reason) ] reason
     )
 
+let build_error_already_reported = fun (err: Tusk_build.build_error) ->
+  match err with
+  | Tusk_build.ClientError (Client.BuildFailed _)
+  | Tusk_build.ClientError (Client.PlanningFailed _)
+  | Tusk_build.ClientError (Client.CycleDetected _) -> true
+  | _ -> false
+
 let run_request = fun (request: request) ->
   trace_build
     (
@@ -347,10 +363,7 @@ let run_request = fun (request: request) ->
   let seen_registry_updates = HashSet.create () in
   let displayed_packages = HashSet.create () in
   let start_time = Time.Instant.now () in
-  let built_count = ref 0 in
-  let cached_count = ref 0 in
-  let failed_count = ref 0 in
-  let skipped_count = ref 0 in
+  let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let attempted_build = ref false in
   let result =
     Tusk_build.build
@@ -363,14 +376,7 @@ let run_request = fun (request: request) ->
             write_building_target_event ~mode:request.output_mode ~target ~host
         | Tusk_build.Streaming event ->
             attempted_build := true;
-            write_streaming_event
-              ~mode:request.output_mode
-              ~displayed_packages
-              ~built_count
-              ~cached_count
-              ~failed_count
-              ~skipped_count
-              event;
+            write_streaming_event ~mode:request.output_mode ~displayed_packages ~progress event;
             if request.output_mode = Json then
               write_build_event_json (Tusk_build.Streaming event)
       )
@@ -383,24 +389,24 @@ let run_request = fun (request: request) ->
       | Human ->
           let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
           let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
-          let total_count = !built_count + !cached_count in
-          if !failed_count = 0 && !skipped_count = 0 then
+          let total_count = progress.built_count + progress.cached_count in
+          if progress.failed_count = 0 && progress.skipped_count = 0 then
             out
               ("    \027[1;32mFinished\027[0m in "
               ^ formatted_duration
               ^ "s ("
               ^ Int.to_string total_count
               ^ " built)")
-          else if !failed_count > 0 then
+          else if progress.failed_count > 0 then
             out
               ("    \027[1;31mFinished\027[0m in "
               ^ formatted_duration
               ^ "s ("
               ^ Int.to_string total_count
               ^ " built, "
-              ^ Int.to_string !failed_count
+              ^ Int.to_string progress.failed_count
               ^ " failed, "
-              ^ Int.to_string !skipped_count
+              ^ Int.to_string progress.skipped_count
               ^ " skipped)")
           else
             out
@@ -409,13 +415,14 @@ let run_request = fun (request: request) ->
               ^ "s ("
               ^ Int.to_string total_count
               ^ " built, "
-              ^ Int.to_string !skipped_count
+              ^ Int.to_string progress.skipped_count
               ^ " skipped)")
     );
   match result with
   | Ok () -> Ok ()
   | Error err ->
-      write_build_error ~mode:request.output_mode err;
+      if not (build_error_already_reported err) then
+        write_build_error ~mode:request.output_mode err;
       Error (Failure (Tusk_build.build_error_message err))
 
 let print_workspace_load_errors = fun errors ->

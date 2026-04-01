@@ -14,12 +14,13 @@ type check_stage =
   | `Fmt
   | `Fix
   | `Build
+  | `Metadata
 ]
 
 type event =
   | Pm of Tusk_model.Event.kind
   | Fmt of Krasny.Report.event
-  | Fix of Tusk_fix.Cli.event
+  | Fix of Tusk_fix.Event.t
   | CheckStarted of { package: string; stage: check_stage }
   | CheckFinished of { package: string; stage: check_stage }
   | DryRunPlanned of Publisher.prepared_publish
@@ -47,6 +48,8 @@ type error =
 let default_registry_name = "pkgs.ml"
 
 let no_event : event -> unit = fun _ -> ()
+
+let ( let* ) = Result.and_then
 
 let exn_message = function
   | Failure message -> message
@@ -195,29 +198,36 @@ let build_package_in_workspace = fun ~(workspace:Workspace.t) ~package_name ->
 let build_package_in_workspace_root = fun ~registry ~workspace_root ~package_name ->
   match Workspace_manager.scan workspace_root with
   | Error error -> Error (WorkspaceScanFailed { workspace_root; error })
-  | Ok (workspace, _load_errors) -> (
-      match Workspace_resolution.ensure_workspace
-        ~emit:(fun _ -> ())
-        ~mode:Dep_solver.Refresh
-        ~registry
-        ~workspace
-        () with
-      | Error error -> Error (WorkspacePreparationFailed { error })
-      | Ok workspace -> build_package_in_workspace ~workspace ~package_name
-    )
+  | Ok (workspace, load_errors) ->
+      if not (List.is_empty load_errors) then
+        Error (WorkspaceScanFailed {
+          workspace_root;
+          error = load_errors |> List.map Workspace_manager.load_error_to_string |> String.concat "\n"
+        })
+      else
+        (
+          match Workspace_resolution.ensure_workspace
+            ~emit:(fun _ -> ())
+            ~mode:Dep_solver.Refresh
+            ~registry
+            ~workspace
+            () with
+          | Error error -> Error (WorkspacePreparationFailed { error })
+          | Ok workspace -> build_package_in_workspace ~workspace ~package_name
+        )
 
 let run_check = fun ~emit ~package_name ~stage check_fn ->
   emit (CheckStarted { package = package_name; stage });
   match check_fn () with
   | Error _ as err -> err
-  | Ok () ->
+  | Ok value ->
       emit (CheckFinished { package = package_name; stage });
-      Ok ()
+      Ok value
 
-let run_publish_checks = fun ~emit ~registry ~(original_workspace:Workspace.t) ~(resolved_workspace:Workspace.t) (
+let run_publish_checks = fun ~emit ~registry ~(original_workspace:Workspace.t) ~(resolved_workspace:Workspace.t) ~publishing_workspace_packages (
   package: Package.t
 ) ->
-  match run_check
+  let* () = run_check
     ~emit
     ~package_name:package.name
     ~stage:`Fmt
@@ -225,46 +235,51 @@ let run_publish_checks = fun ~emit ~registry ~(original_workspace:Workspace.t) ~
       Tusk_fmt.run_check_paths
         ~workspace:original_workspace
         ~on_event:(fun event -> emit (Fmt event))
-        [ package.path ]) with
-  | Error exn -> Error (FmtCheckFailed { package = package.name; error = exn_message exn })
-  | Ok () -> (
-      match run_check
-        ~emit
-        ~package_name:package.name
-        ~stage:`Fix
-        (fun () ->
-          Tusk_fix.Cli.run_check_paths
-            ~cwd:original_workspace.root
-            ~on_event:(fun event -> emit (Fix event))
-            ~build_package:(fun ~workspace_root ~package_name ->
-              build_package_in_workspace_root ~registry ~workspace_root ~package_name
-              |> Result.map_error (fun err -> Failure (message err)))
-            [ package.path ]) with
-      | Error exn -> Error (FixCheckFailed { package = package.name; error = exn_message exn })
-      | Ok () -> (
-          match run_check
-            ~emit
-            ~package_name:package.name
-            ~stage:`Build
-            (fun () ->
-              build_package_in_workspace ~workspace:resolved_workspace ~package_name:package.name) with
-          | Error _ as err -> err
-          | Ok () -> Ok ()
-        )
-    )
+        [ package.path ])
+  |> Result.map_error (fun exn -> FmtCheckFailed { package = package.name; error = exn_message exn }) in
+  let* () = run_check
+    ~emit
+    ~package_name:package.name
+    ~stage:`Fix
+    (fun () ->
+      Tusk_fix.fix
+        ~on_event:(fun event -> emit (Fix event))
+        ~build_package:(fun ~workspace_root ~package_name ->
+          build_package_in_workspace_root ~registry ~workspace_root ~package_name
+          |> Result.map_error (fun err -> Failure (message err)))
+        (Tusk_fix.check_request ~cwd:original_workspace.root ~target:package.path)
+      |> Result.map (fun _ -> ()))
+  |> Result.map_error (fun exn -> FixCheckFailed { package = package.name; error = exn_message exn }) in
+  let* _ =
+    run_check
+      ~emit
+      ~package_name:package.name
+      ~stage:`Build
+      (fun () -> build_package_in_workspace ~workspace:resolved_workspace ~package_name:package.name)
+  in
+  run_check
+    ~emit
+    ~package_name:package.name
+    ~stage:`Metadata
+    (fun () -> Publisher.plan_publish ~registry ~publishing_workspace_packages ~package)
+  |> Result.map_error (fun err -> PublishPlanFailed err)
 
 let rec run_packages = fun ~emit ~registry ~(original_workspace:Workspace.t) ~(resolved_workspace:Workspace.t) ~publishing_workspace_packages ~api_token_opt ~mode acc packages ->
   match packages with
   | [] -> Ok (List.rev acc)
   | package :: rest -> (
-      match run_publish_checks ~emit ~registry ~original_workspace ~resolved_workspace package with
+      match run_publish_checks
+        ~emit
+        ~registry
+        ~original_workspace
+        ~resolved_workspace
+        ~publishing_workspace_packages
+        package with
       | Error _ as err -> err
-      | Ok () -> (
-          match Publisher.prepare_publish
-            ~registry
+      | Ok plan -> (
+          match Publisher.prepare_publish_artifact
             ~target_dir_root:original_workspace.target_dir_root
-            ~publishing_workspace_packages
-            ~package with
+            plan with
           | Error err -> Error (PublishPlanFailed err)
           | Ok prepared -> (
               match mode, api_token_opt with

@@ -46,6 +46,22 @@ let use_generated_runner = fun scope ->
     | Some scope when List.length (Fix_config.providers (Some scope)) > 0 -> true
     | _ -> false
 
+let check_request = fun ~cwd ~target ->
+  let scope = Fix_config.load_scope ~cwd in
+  {
+    cwd;
+    scope;
+    action =
+      Run {
+        mode = Runner.Check;
+        limit = None;
+        target;
+        forwarded_args = [];
+        output_mode = Types.Silent;
+        use_generated_runner = use_generated_runner scope;
+      };
+  }
+
 let of_matches = fun matches ->
   let cwd = Common.current_dir () in
   let scope = Fix_config.load_scope ~cwd in

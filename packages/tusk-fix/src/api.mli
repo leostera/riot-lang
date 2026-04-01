@@ -28,6 +28,8 @@ type fix_response =
   | Explained_rule of { rule_id: string; output: string }
 val unavailable_build_package: build_package
 
+val check_request: cwd:Path.t -> target:Path.t -> fix_request
+
 val fix_request_of_matches: ArgParser.matches -> (fix_request, exn) result
 
 val output_mode_of_request: fix_request -> fix_output_mode

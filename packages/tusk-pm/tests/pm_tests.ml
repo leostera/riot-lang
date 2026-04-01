@@ -465,6 +465,24 @@ let test_publisher_workspace_publish_order_reports_cycles = fun () ->
   | Error (Tusk_pm.Publisher.CyclicWorkspacePublishOrder _) -> Ok ()
   | Error err -> Error ("unexpected publish order error: " ^ Tusk_pm.Publisher.message err)
 
+let test_publisher_validate_registry_dependencies_skips_workspace_publish_set = fun () ->
+  let core = make_package ~name:"core" ~path:(Path.v "packages/core") () in
+  let app = make_package
+    ~name:"app"
+    ~path:(Path.v "packages/app")
+    ~dependencies:[
+      { name = "core"; source = source ~path:(Path.v "../core") ~version:Std.Version.any () }
+    ]
+    () in
+  let registry = make_registry [] in
+  match Tusk_pm.Publisher.validate_registry_dependencies
+    ~registry
+    ~publishing_workspace_packages:[ core.name; app.name ]
+    ~package:app with
+  | Ok () -> Ok ()
+  | Error err -> Error ("expected workspace publish set to skip registry lookup: "
+  ^ Tusk_pm.Publisher.message err)
+
 let test_git_provenance_discovers_nested_package_locator = fun () ->
   with_tempdir "tusk_pm_git_provenance_nested"
     (fun root ->
@@ -1971,6 +1989,7 @@ let tests =
     case "publisher: workspace publish order uses runtime local dependencies" test_publisher_workspace_publish_order_uses_runtime_local_dependencies;
     case "publisher: workspace publish order ignores dev and build dependencies" test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies;
     case "publisher: workspace publish order reports cycles" test_publisher_workspace_publish_order_reports_cycles;
+    case "publisher: validate registry deps skips workspace publish set" test_publisher_validate_registry_dependencies_skips_workspace_publish_set;
     case "git provenance: discovers nested package locator" test_git_provenance_discovers_nested_package_locator;
     case "git provenance: discovers repo root locator" test_git_provenance_discovers_repo_root_locator;
     case "publisher: prepare_publish discovers git provenance automatically" test_publisher_prepare_publish_discovers_git_provenance_without_registry;

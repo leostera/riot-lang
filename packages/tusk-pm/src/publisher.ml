@@ -38,6 +38,13 @@ type prepared_publish = {
   artifact_path: Path.t;
 }
 
+type publish_plan = {
+  package: Tusk_model.Package.t;
+  version: Std.Version.t;
+  locator: string;
+  selector: string;
+}
+
 let excluded_entry_names = [
   "_build";
   ".git";
@@ -313,7 +320,7 @@ let create_artifact = fun ~target_dir_root ~(package:Tusk_model.Package.t) ~vers
         let artifact_path = publish_artifact_path ~target_dir_root ~package ~version in
         create_archive ~package_root:package.path ~artifact_path ~relative_files
 
-let prepare_publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(package:Tusk_model.Package.t) ->
+let plan_publish = fun ~registry ~publishing_workspace_packages ~(package:Tusk_model.Package.t) ->
   match validate_publish_metadata ~package with
   | Error _ as err -> err
   | Ok version -> (
@@ -323,23 +330,35 @@ let prepare_publish = fun ~registry ~target_dir_root ~publishing_workspace_packa
           match validate_registry_dependencies ~registry ~publishing_workspace_packages ~package with
           | Error _ as err -> err
           | Ok () -> (
-              match create_artifact ~target_dir_root ~package ~version with
-              | Error _ as err -> err
-              | Ok artifact_path -> (
-                  match Git_provenance.discover ~package_root:package.path with
-                  | Error error -> Error (GitProvenanceFailed error)
-                  | Ok provenance ->
-                      Ok {
-                        package;
-                        version;
-                        locator = provenance.locator;
-                        selector = provenance.selector;
-                        artifact_path;
-                      }
-                )
+              match Git_provenance.discover ~package_root:package.path with
+              | Error error -> Error (GitProvenanceFailed error)
+              | Ok provenance ->
+                  Ok {
+                    package;
+                    version;
+                    locator = provenance.locator;
+                    selector = provenance.selector;
+                  }
             )
         )
     )
+
+let prepare_publish_artifact = fun ~target_dir_root (plan: publish_plan) ->
+  match create_artifact ~target_dir_root ~package:plan.package ~version:plan.version with
+  | Error _ as err -> err
+  | Ok artifact_path ->
+      Ok {
+        package = plan.package;
+        version = plan.version;
+        locator = plan.locator;
+        selector = plan.selector;
+        artifact_path;
+      }
+
+let prepare_publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(package:Tusk_model.Package.t) ->
+  match plan_publish ~registry ~publishing_workspace_packages ~package with
+  | Error _ as err -> err
+  | Ok plan -> prepare_publish_artifact ~target_dir_root plan
 
 let publish_prepared = fun ~registry ~api_token (prepared: prepared_publish) ->
   match Fs.read prepared.artifact_path with

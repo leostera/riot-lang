@@ -11,11 +11,12 @@ type check_stage =
   | `Fmt
   | `Fix
   | `Build
+  | `Metadata
 ]
 type event =
   | Pm of Tusk_model.Event.kind
   | Fmt of Krasny.Report.event
-  | Fix of Tusk_fix.Cli.event
+  | Fix of Tusk_fix.Event.t
   | CheckStarted of { package: string; stage: check_stage }
   | CheckFinished of { package: string; stage: check_stage }
   | DryRunPlanned of Publisher.prepared_publish

@@ -10,6 +10,7 @@
 4. Bubble errors up instead of hiding them behind fallback behavior.
 5. Prefer small slices with tests; phase 1 may be naive operationally, but it should stay structurally honest.
 6. Keep the reusable publish command surface at the top level as `Tusk_pm.publish` with `publish_request` / `publish_event` / `publish_error`, even if implementation details live in submodules.
+7. Keep publish preflight ordered as `fmt --check`, `fix --check`, `build`, metadata validation, then artifact creation/upload. Do not create the local release tarball before those checks pass.
 
 ## Validate
 

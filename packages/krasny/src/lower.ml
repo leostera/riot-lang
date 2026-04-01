@@ -714,6 +714,17 @@ and render_attribute = fun attribute -> render_attribute_doc ~floating:false att
 
 and render_floating_attribute = fun attribute -> render_attribute_doc ~floating:true attribute
 
+and doc_of_syntax_node_full_text = fun syntax_node ->
+  let pieces =
+    Ceibo.Red.SyntaxNode.tokens syntax_node
+    |> List.concat_map
+      (fun syntax_token ->
+        let leading = Ceibo.Red.SyntaxToken.leading_trivia syntax_token
+        |> List.map Ceibo.Red.SyntaxTrivia.text in
+        leading @ [ Ceibo.Red.SyntaxToken.text syntax_token ])
+  in
+  Doc.text (String.concat "" pieces)
+
 and render_first_class_module_type_doc = function
   | Syn.Cst.ModuleType.Path path ->
       doc_of_ident path
@@ -728,6 +739,8 @@ and render_first_class_module_type_doc = function
           Doc.space;
           doc_of_ident module_path
         ]
+  | Syn.Cst.ModuleType.Signature { syntax_node; _ } ->
+      doc_of_syntax_node_full_text syntax_node
   | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
       Doc.concat
         [

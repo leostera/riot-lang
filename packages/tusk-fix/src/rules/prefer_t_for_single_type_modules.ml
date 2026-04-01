@@ -80,6 +80,7 @@ let diagnostic_for_module_type_decl = fun decl ->
         )
       | Error _ -> None
     )
+  | None -> None
 
 let diagnostics_for_items = fun source_file ->
   match source_file with

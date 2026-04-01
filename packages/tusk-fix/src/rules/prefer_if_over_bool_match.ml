@@ -75,7 +75,9 @@ let suggestion_for_match = fun (expr: Syn.Cst.match_expression) ->
           else
             "Rewrite this match as `if not <condition> then ... else ...`."
       | (WildcardPattern, TruePattern)
+      | (TruePattern, TruePattern)
       | (WildcardPattern, FalsePattern)
+      | (FalsePattern, FalsePattern)
       | (WildcardPattern, WildcardPattern)
       | (TruePattern, OtherPattern)
       | (FalsePattern, OtherPattern)

@@ -99,6 +99,8 @@ type fix_response = Api.fix_response =
   | Listed_rules of { format: Reporter.format; output: string }
   | Listed_diagnostics of { format: Reporter.format; output: string }
   | Explained_rule of { rule_id: string; output: string }
+val check_request: cwd:Path.t -> target:Path.t -> fix_request
+
 val fix_request_of_matches: ArgParser.matches -> (fix_request, exn) result
 
 val output_mode_of_request: fix_request -> fix_output_mode

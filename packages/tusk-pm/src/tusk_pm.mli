@@ -21,26 +21,21 @@ module Publish = Publish
 type publish_request = Publish.request =
   | Workspace
   | Package of string
-
 type publish_mode = Publish.mode =
   | Dry_run
   | Publish
-
 type publish_check_stage = Publish.check_stage
-
 type publish_event = Publish.event =
   | Pm of Tusk_model.Event.kind
   | Fmt of Krasny.Report.event
-  | Fix of Tusk_fix.Cli.event
+  | Fix of Tusk_fix.Event.t
   | CheckStarted of { package: string; stage: publish_check_stage }
   | CheckFinished of { package: string; stage: publish_check_stage }
   | DryRunPlanned of Publisher.prepared_publish
   | PackagePublished of Pkgs_ml.Registry.published_release
-
 type publish_outcome = Publish.outcome =
   | DryRun of Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release
-
 type publish_error = Publish.error =
   | PackageNotFound of { package: string }
   | NoWorkspacePackages
@@ -55,7 +50,6 @@ type publish_error = Publish.error =
   | BuildCheckFailed of { package: string; error: string }
   | PublishPlanFailed of Publisher.error
   | PublishFailed of { package: string; error: Publisher.error }
-
 val publish_error_message: publish_error -> string
 
 val publish:
