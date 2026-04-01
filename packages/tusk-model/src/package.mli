@@ -2,6 +2,7 @@ open Std
 
 type dependency_source =
   Workspace
+  | Builtin
   | Registry of { version: Std.Version.requirement }
   | Path of Path.t
 type dependency_scope =
@@ -92,6 +93,10 @@ val validate_name: string -> (string, string) result
     - Can only contain lowercase letters, numbers, hyphens, and underscores
     - Cannot start or end with hyphens or underscores
     - Cannot be empty *)
+val is_builtin_dependency_name: string -> bool
+
+val is_builtin_dependency: dependency -> bool
+
 val from_toml:
   Std.Data.Toml.value ->
   workspace_deps:dependency list ->
@@ -125,6 +130,11 @@ val build_graph_dependencies: t -> dependency list
 
 val all_dependencies: t -> dependency list
 
-val resolve: package:t -> lock_package:Lockfile.package -> (resolved, string) result
+val resolve:
+  package:t ->
+  lock_package:Lockfile.package ->
+  manifest_path:Path.t ->
+  materialized_root:Path.t ->
+  (resolved, string) result
 (** Hash package metadata into a Sha256 hasher state *)
 val hash: Crypto.Sha256.state -> t -> unit

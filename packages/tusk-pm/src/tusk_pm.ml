@@ -31,18 +31,11 @@ let root_packages_for_workspace = fun (workspace: Tusk_model.Workspace.t) ->
 let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifest_paths ~packages () ->
   let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
   let lock_path_str = Path.to_string lock_path in
-  emit (Tusk_model.Event.LockfileReadStarted { path = lock_path_str });
-  let read_started = Time.Instant.now () in
   match Lockfile_store.read ~workspace_root with
   | Error err ->
       emit (Tusk_model.Event.LockfileReadFailed { path = lock_path_str; error = err });
       Error err
   | Ok existing_lock ->
-      emit
-        (Tusk_model.Event.LockfileReadFinished {
-          path = lock_path_str;
-          duration_ms = duration_ms_since read_started
-        });
       let solve_started = Time.Instant.now () in
       let lock_result =
         match mode with
@@ -61,7 +54,8 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                     | None -> None;
                 }
               );
-            Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock packages
+            Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace_root packages
+            |> Result.map (fun lockfile -> (lockfile, false))
         | Dep_solver.Refresh -> (
             match existing_lock with
             | Some lockfile -> (
@@ -69,11 +63,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                 | Error err ->
                     Error err
                 | Ok false ->
-                    emit
-                      (Tusk_model.Event.DependencyResolutionUsingExistingLock {
-                        path = lock_path_str
-                      });
-                    Ok lockfile
+                    Ok (lockfile, true)
                 | Ok true ->
                     emit
                       (Tusk_model.Event.DependencyResolutionStarted {
@@ -87,7 +77,9 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                       ~mode
                       ~registry
                       ~existing_lock
+                      ~workspace_root
                       packages
+                    |> Result.map (fun lockfile -> (lockfile, false))
               )
             | None ->
                 emit
@@ -96,14 +88,15 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                     mode = `Refresh
                   });
                 emit (Tusk_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
-                Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock packages
+                Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace_root packages
+                |> Result.map (fun lockfile -> (lockfile, false))
           )
       in
       match lock_result with
       | Error err ->
           emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
           Error err
-      | Ok lockfile ->
+      | Ok (lockfile, used_existing_lock) ->
           let should_write =
             match mode, existing_lock with
             | Dep_solver.Unlock, _ ->
@@ -146,17 +139,24 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                   emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
                   Error err
               | Ok () -> (
-                  match Projection.resolve_packages ~emit ~packages ~lockfile () with
+                  let projection_emit =
+                    if used_existing_lock then
+                      no_emit
+                    else
+                      emit
+                  in
+                  match Projection.resolve_packages ~emit:projection_emit ~registry ~workspace_root ~packages ~lockfile () with
                   | Error err ->
                       emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
                       Error err
                   | Ok resolved ->
-                      emit
-                        (Tusk_model.Event.DependencyResolutionFinished {
-                          duration_ms = duration_ms_since solve_started;
-                          resolved_packages = List.length resolved;
-                          resolved_edges = resolved_edge_count lockfile
-                        });
+                      if not used_existing_lock then
+                        emit
+                          (Tusk_model.Event.DependencyResolutionFinished {
+                            duration_ms = duration_ms_since solve_started;
+                            resolved_packages = List.length resolved;
+                            resolved_edges = resolved_edge_count lockfile
+                          });
                       Ok (lockfile, resolved)
                 )
             )

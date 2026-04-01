@@ -72,8 +72,12 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
                 )
           | None -> ()
         )
-      | Tusk_model.Package.Registry _ -> ()
-      | Tusk_model.Package.Path _ -> ())
+      | Tusk_model.Package.Builtin ->
+          ()
+      | Tusk_model.Package.Registry _ ->
+          ()
+      | Tusk_model.Package.Path _ ->
+          ())
     sorted_deps;
   H.finish state
 

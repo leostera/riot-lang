@@ -42,30 +42,32 @@ let make_workspace = fun binaries ->
       foreign_dependencies = [];
       binaries;
       library = None;
-      sources = { src = []; native = []; tests = []; examples = []; bench = [] };
+      sources =
+        {
+          src = [];
+          native = [];
+          tests = [];
+          examples = [];
+          bench = [];
+        };
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
     }
   in
-  Tusk_model.Workspace.make
-    ~root:(Path.v "/workspace")
-    ~packages:[ package ]
-    ()
+  Tusk_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
 
 let test_run_build_scope_uses_runtime_for_runtime_binaries = fun () ->
-  let workspace =
-    make_workspace [ Tusk_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ]
-  in
+  let workspace = make_workspace
+    [ Tusk_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ] in
   Test.assert_equal
     ~expected:Tusk_cli.Build.Runtime
     ~actual:(Tusk_cli.Run.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"demo");
   Ok ()
 
 let test_run_build_scope_uses_dev_for_test_binaries = fun () ->
-  let workspace =
-    make_workspace [ Tusk_model.Package.{ name = "pm_tests"; path = Path.v "tests/pm_tests.ml" } ]
-  in
+  let workspace = make_workspace
+    [ Tusk_model.Package.{ name = "pm_tests"; path = Path.v "tests/pm_tests.ml" } ] in
   Test.assert_equal
     ~expected:Tusk_cli.Build.Dev
     ~actual:(Tusk_cli.Run.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"pm_tests");

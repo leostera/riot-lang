@@ -250,33 +250,33 @@ let parse_requirement = fun req_string ->
   if String.equal s "*" then
     Ok Any
   else
-  let len = String.length s in
-  if len < 2 then
-    Error (Invalid_format "Requirement too short")
-  else
-    let op, version_start =
-      if String.length s >= 2 && String.sub s 0 2 = "~>" then
-        (ReqTilde, 2)
-      else if String.length s >= 2 && String.sub s 0 2 = "==" then
-        (ReqEq, 2)
-      else if String.length s >= 2 && String.sub s 0 2 = "!=" then
-        (ReqNeq, 2)
-      else if String.length s >= 2 && String.sub s 0 2 = ">=" then
-        (ReqGte, 2)
-      else if String.length s >= 2 && String.sub s 0 2 = "<=" then
-        (ReqLte, 2)
-      else if String.get s 0 = '>' then
-        (ReqGt, 1)
-      else if String.get s 0 = '<' then
-        (ReqLt, 1)
-      else
-        (* Default to equality if no operator *)
-        (ReqEq, 0)
-    in
-    let version_str = String.trim (String.sub s version_start (len - version_start)) in
-    match parse version_str with
-    | Ok version -> Ok (Requirement (op, version))
-    | Error e -> Error e
+    let len = String.length s in
+    if len < 2 then
+      Error (Invalid_format "Requirement too short")
+    else
+      let op, version_start =
+        if String.length s >= 2 && String.sub s 0 2 = "~>" then
+          (ReqTilde, 2)
+        else if String.length s >= 2 && String.sub s 0 2 = "==" then
+          (ReqEq, 2)
+        else if String.length s >= 2 && String.sub s 0 2 = "!=" then
+          (ReqNeq, 2)
+        else if String.length s >= 2 && String.sub s 0 2 = ">=" then
+          (ReqGte, 2)
+        else if String.length s >= 2 && String.sub s 0 2 = "<=" then
+          (ReqLte, 2)
+        else if String.get s 0 = '>' then
+          (ReqGt, 1)
+        else if String.get s 0 = '<' then
+          (ReqLt, 1)
+        else
+          (* Default to equality if no operator *)
+          (ReqEq, 0)
+      in
+      let version_str = String.trim (String.sub s version_start (len - version_start)) in
+      match parse version_str with
+      | Ok version -> Ok (Requirement (op, version))
+      | Error e -> Error e
 
 let any = Any
 
@@ -334,7 +334,10 @@ module Tests = struct
   let test_any_requirement_roundtrip () : (unit, string) result =
     match parse_requirement "*" with
     | Ok requirement ->
-        if requirement_to_string requirement = "*" && matches requirement (make ~major:999 ~minor:0 ~patch:0 ()) then
+        if
+          requirement_to_string requirement = "*"
+          && matches requirement (make ~major:999 ~minor:0 ~patch:0 ())
+        then
           Ok ()
         else
           Error "expected '*' to roundtrip as unconstrained requirement"

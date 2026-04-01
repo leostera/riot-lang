@@ -32,7 +32,14 @@ let test_build_failed_prefixes_package_name = fun () ->
       foreign_dependencies = [];
       binaries = [];
       library = None;
-      sources = { src = []; native = []; tests = []; examples = []; bench = [] };
+      sources =
+        {
+          src = [];
+          native = [];
+          tests = [];
+          examples = [];
+          bench = [];
+        };
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
@@ -42,7 +49,7 @@ let test_build_failed_prefixes_package_name = fun () ->
     session_id = Tusk_model.Session_id.make ();
     package;
     target = Tusk_planner.Workspace_planner.Package package.name;
-    error = Tusk_executor.Telemetry_events.ExecutionFailed { message = "Command failed" };
+    error = Tusk_executor.Telemetry_events.ExecutionFailed { message = "Command failed" }
   } in
   let rendered = Tusk_cli.Event_formatter.format ~displayed_packages event in
   if String.contains rendered "Error syn: Command failed" then
@@ -63,7 +70,14 @@ let test_package_ocamlc_warnings_prefix_package_name = fun () ->
       foreign_dependencies = [];
       binaries = [];
       library = None;
-      sources = { src = []; native = []; tests = []; examples = []; bench = [] };
+      sources =
+        {
+          src = [];
+          native = [];
+          tests = [];
+          examples = [];
+          bench = [];
+        };
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
@@ -75,7 +89,8 @@ let test_package_ocamlc_warnings_prefix_package_name = fun () ->
     target = Tusk_planner.Workspace_planner.Package package.name;
     source = `Cached;
     messages = [ "File \"x.ml\", line 1, characters 0-1:\nWarning: example" ];
-  } in
+  }
+  in
   let rendered = Tusk_cli.Event_formatter.format ~displayed_packages event in
   if String.contains rendered "Warning tusk-eval: File \"x.ml\"" then
     Ok ()
@@ -86,9 +101,7 @@ let tests =
   Test.[
     case "event formatter: workspace completed is silent" test_workspace_completed_is_silent;
     case "event formatter: build failed prefixes package name" test_build_failed_prefixes_package_name;
-    case
-      "event formatter: package ocamlc warnings prefix package name"
-      test_package_ocamlc_warnings_prefix_package_name;
+    case "event formatter: package ocamlc warnings prefix package name" test_package_ocamlc_warnings_prefix_package_name;
   ]
 
 let name = "Tusk CLI Event Formatter Tests"

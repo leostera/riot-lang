@@ -7,6 +7,7 @@ module Protocol = Protocol
 module Server_config = Server_config
 
 val start_local:
+  ?emit:(Tusk_model.Event.kind -> unit) ->
   ?registry:Pkgs_ml.Registry.t ->
   ?registry_name:string ->
   workspace:Tusk_model.Workspace.t ->

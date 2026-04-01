@@ -258,7 +258,13 @@ let to_json : Telemetry.event -> Data.Json.t option = function
         ("package", Package.to_json package);
         ("target", target_to_json target);
       ])
-  | PackageOcamlcWarnings { session_id; package; target; source; messages } ->
+  | PackageOcamlcWarnings {
+    session_id;
+    package;
+    target;
+    source;
+    messages
+  } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "PackageOcamlcWarnings");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -572,11 +578,19 @@ let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json 
                         match collect_messages [] messages_json with
                         | Ok messages ->
                             let session_id = Session_id.of_string session_id_str in
-                            Ok (PackageOcamlcWarnings { session_id; package; target; source; messages })
+                            Ok (
+                              PackageOcamlcWarnings {
+                                session_id;
+                                package;
+                                target;
+                                source;
+                                messages;
+                              }
+                            )
                         | Error e -> Error e
                       )
-                  | Error e, _
-                  | _, Error e -> Error e
+                  | (Error e, _)
+                  | (_, Error e) -> Error e
                 )
               | Error e -> Error (Data.Json.String e)
             )

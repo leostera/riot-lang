@@ -32,7 +32,7 @@ type t = {
 }
 
 let create_filesystem = fun ~registry_name ?tusk_home () ->
-  match Registry_cache.create ?tusk_home ~registry_name with
+  match Registry_cache.create ?tusk_home ~registry_name () with
   | Error _ as err -> err
   | Ok cache -> Ok { cache; source = Filesystem }
 

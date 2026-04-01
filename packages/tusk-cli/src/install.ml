@@ -22,7 +22,6 @@ let build_package = fun package_name ->
     false
   else
     let client = client_result |> Result.expect ~msg:"Operation failed" in
-    let displayed_packages = HashMap.create () in
     let result =
       Local_session.build_streaming client (Local_session.BuildPackage package_name)
         (

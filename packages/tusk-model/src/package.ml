@@ -230,7 +230,7 @@ let resolve_scope = fun ~scope_name ~manifest_dependencies ~lock_dependencies ->
   in
   loop [] manifest_dependencies
 
-let resolve = fun ~(package:t) ~(lock_package:Lockfile.package) ->
+let resolve = fun ~(package:t) ~(lock_package:Lockfile.package) ~manifest_path ~materialized_root ->
   match resolve_scope
     ~scope_name:"runtime"
     ~manifest_dependencies:package.dependencies
@@ -252,8 +252,8 @@ let resolve = fun ~(package:t) ~(lock_package:Lockfile.package) ->
               Ok {
                 package;
                 id = lock_package.id;
-                manifest_path = lock_package.manifest_path;
-                materialized_root = lock_package.path;
+                manifest_path;
+                materialized_root;
                 provenance = lock_package.provenance;
                 runtime_resolved = dependencies;
                 build_resolved = build_dependencies;
@@ -1556,8 +1556,7 @@ ppx = {}
     |> Result.expect ~msg:"expected package manifest" in
     let lock_package : Lockfile.package = {
       id = { registry = None; name = "app"; version = None };
-      path = Path.v "/workspace/packages/app";
-      manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+      root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [
         {
@@ -1574,7 +1573,12 @@ ppx = {}
       dev_dependencies = [];
     }
     in
-    match resolve ~package ~lock_package with
+    match
+      resolve
+        ~package
+        ~lock_package
+        ~manifest_path:Path.(package.path / Path.v "tusk.toml")
+        ~materialized_root:package.path with
     | Ok resolved ->
         if
           List.length resolved.runtime_resolved = 1
@@ -1610,15 +1614,19 @@ std = {}
     |> Result.expect ~msg:"expected package manifest" in
     let lock_package : Lockfile.package = {
       id = { registry = None; name = "app"; version = None };
-      path = Path.v "/workspace/packages/app";
-      manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+      root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [];
       build_dependencies = [];
       dev_dependencies = [];
     }
     in
-    match resolve ~package ~lock_package with
+    match
+      resolve
+        ~package
+        ~lock_package
+        ~manifest_path:Path.(package.path / Path.v "tusk.toml")
+        ~materialized_root:package.path with
     | Ok _ -> Error "expected resolve to fail when a declared dependency is missing from the lockfile"
     | Error _ -> Ok () [@test]
 
@@ -1646,14 +1654,18 @@ std = {}
     } in
     let lock_package : Lockfile.package = {
       id = { registry = None; name = "app"; version = None };
-      path = Path.v "/workspace/packages/app";
-      manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+      root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [];
       build_dependencies = [];
       dev_dependencies = [];
     } in
-    match resolve ~package ~lock_package with
+    match
+      resolve
+        ~package
+        ~lock_package
+        ~manifest_path:Path.(package.path / Path.v "tusk.toml")
+        ~materialized_root:package.path with
     | Ok resolved when resolved.runtime_resolved = [] -> Ok ()
     | Ok _ -> Error "expected builtin dependencies to stay out of the resolved lock graph"
     | Error err -> Error err [@test]

@@ -29,6 +29,7 @@ let make_package = fun ?(dependencies = []) ?(build_dependencies = []) ?(dev_dep
 
 let make_registry_cache = fun () ->
   Pkgs_ml.Registry_cache.create ~tusk_home:(Path.v "/Users/example/.tusk") ~registry_name:"pkgs.ml"
+    ()
   |> Result.expect ~msg:"expected registry cache to initialize"
 
 let make_release = fun ?(dependencies = []) ~version () ->
@@ -78,12 +79,20 @@ let with_tempdir = fun prefix fn ->
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
-let run_lock_deps = fun ?emit ?(registry = make_registry []) ~mode ~existing_lock packages ->
+let run_lock_deps = fun
+  ?emit
+  ?(registry = make_registry [])
+  ?(workspace_root = Path.v "/workspace")
+  ~mode
+  ~existing_lock
+  packages
+  ->
   Tusk_pm.Dep_solver.lock_deps
     ?emit
     ~mode
     ~registry
     ~existing_lock
+    ~workspace_root
     packages
 
 let collect_event_names = fun fn ->
@@ -108,17 +117,17 @@ let test_lock_deps_projects_workspace_packages = fun () ->
   | Ok lockfile ->
       let app_lock = List.hd lockfile.packages in
       let std_lock = List.nth lockfile.packages 1 in
-      let app_manifest = Path.to_string app_lock.manifest_path in
       if
         lockfile.format_version = 1
         && app_lock.id.name = "app"
         && std_lock.id.name = "std"
         && app_lock.provenance = Tusk_model.Lockfile.Workspace
         && std_lock.provenance = Tusk_model.Lockfile.Workspace
+        && app_lock.root = Some (Path.v "packages/app")
+        && std_lock.root = Some (Path.v "packages/std")
         && List.length app_lock.dependencies = 1
         && List.length app_lock.build_dependencies = 1
         && (List.hd app_lock.dependencies).package.name = "std"
-        && String.equal app_manifest "/workspace/packages/app/tusk.toml"
       then
         Ok ()
       else
@@ -141,7 +150,7 @@ version = "1.2.3"
           { name = "foo"; source = Tusk_model.Package.Path (Path.v "../../vendor/foo") }
         ]
         () in
-      match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err -> Error ("expected path dependency locking to succeed: " ^ err)
       | Ok lockfile -> (
           let app_lock =
@@ -152,12 +161,10 @@ version = "1.2.3"
           in
           match app_lock, foo_lock with
           | Some app_lock, Some foo_lock ->
-              let expected_root = Path.normalize
-                Path.(workspace_root / Path.v "packages/app" / Path.v "../../vendor/foo") in
               if
                 List.length lockfile.packages = 2
                 && (List.hd app_lock.dependencies).package.name = "foo"
-                && Path.equal foo_lock.path expected_root
+                && foo_lock.root = Some (Path.v "vendor/foo")
                 && foo_lock.provenance = Tusk_model.Lockfile.Path (Path.v "../../vendor/foo")
               then
                 Ok ()
@@ -193,7 +200,7 @@ version = "2.0.0"
           { name = "foo"; source = Tusk_model.Package.Path (Path.v "../../vendor/foo") }
         ]
         () in
-      match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err -> Error ("expected transitive path dependencies to resolve: " ^ err)
       | Ok lockfile -> (
           let foo_lock =
@@ -204,12 +211,10 @@ version = "2.0.0"
           in
           match foo_lock, bar_lock with
           | Some foo_lock, Some bar_lock ->
-              let expected_bar_root = Path.normalize
-                Path.(workspace_root / Path.v "vendor/foo" / Path.v "../bar") in
               if
                 List.length lockfile.packages = 3
                 && (List.hd foo_lock.dependencies).package.name = "bar"
-                && Path.equal bar_lock.path expected_bar_root
+                && bar_lock.root = Some (Path.v "vendor/bar")
                 && bar_lock.provenance = Tusk_model.Lockfile.Path (Path.v "../bar")
               then
                 Ok ()
@@ -217,6 +222,43 @@ version = "2.0.0"
                 Error "expected nested path dependency roots to resolve from the declaring package"
           | _ -> Error "expected both foo and bar lock packages"
         ))
+
+let test_lock_deps_collapses_workspace_path_dependencies = fun () ->
+  let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:(Path.v "/workspace/packages/app")
+    ~dependencies:[
+      { name = "std"; source = Tusk_model.Package.Path (Path.v "../std") }
+    ]
+    () in
+  match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ] with
+  | Error err ->
+      Error ("expected workspace path dependency to collapse to workspace package: " ^ err)
+  | Ok lockfile -> (
+      let app_lock =
+        List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
+      in
+      let std_lock =
+        List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "std") lockfile.packages
+      in
+      match app_lock, std_lock with
+      | Some app_lock, Some std_lock ->
+          if
+            List.length lockfile.packages = 2
+            && app_lock.dependencies = [
+              Tusk_model.Lockfile.{
+                name = "std";
+                package = { registry = None; name = "std"; version = None }
+              }
+            ]
+            && std_lock.provenance = Tusk_model.Lockfile.Workspace
+          then
+            Ok ()
+          else
+            Error "expected workspace path dependency to reuse the workspace lock package"
+      | _ -> Error "expected app and std workspace packages to appear in the lockfile"
+    )
 
 let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
   let requirement = Std.Version.parse_requirement ">= 1.2.3" |> Result.expect ~msg:"expected requirement to parse" in
@@ -276,7 +318,7 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
             && app_dependency_name = "std"
             && app_dependency_version = Some "0.2.0"
             && std_lock.id.version = Some "0.2.0"
-            && Path.to_string std_lock.path = "/Users/example/.tusk/registry/pkgs.ml/src/std/0.2.0"
+            && std_lock.root = None
             && std_dependency_name = "kernel"
             && kernel_lock.id.version = Some "1.0.0"
           then
@@ -284,6 +326,58 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
           else
             Error "expected registry dependency to resolve to exact external lock packages"
       | _ -> Error "expected workspace and transitive registry lock packages"
+    )
+
+let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names = fun () ->
+  let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:(Path.v "/workspace/packages/app")
+    ~dependencies:[
+      { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+    ]
+    () in
+  match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ] with
+  | Error err ->
+      Error ("expected workspace package to satisfy matching registry requirement locally: " ^ err)
+  | Ok lockfile -> (
+      let app_lock =
+        List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
+      in
+      let std_lock =
+        List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "std") lockfile.packages
+      in
+      match app_lock, std_lock with
+      | Some app_lock, Some std_lock ->
+          if
+            List.length lockfile.packages = 2
+            && app_lock.dependencies = [
+              Tusk_model.Lockfile.{
+                name = "std";
+                package = { registry = None; name = "std"; version = None }
+              }
+            ]
+            && std_lock.id.registry = None
+            && std_lock.id.version = None
+          then
+            Ok ()
+          else
+            Error "expected matching workspace packages to win over registry resolution"
+      | _ -> Error "expected app and std workspace packages to appear in the lockfile"
+    )
+
+let test_lock_deps_ignores_builtin_dependencies = fun () ->
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:(Path.v "/workspace/packages/app")
+    ~dependencies:[ { name = "stdlib"; source = Tusk_model.Package.Builtin } ]
+    () in
+  match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+  | Error err -> Error ("expected builtin dependency locking to succeed: " ^ err)
+  | Ok lockfile -> (
+      match lockfile.packages with
+      | [ app_lock ] when app_lock.id.name = "app" && app_lock.dependencies = [] -> Ok ()
+      | _ -> Error "expected builtin dependencies to stay out of the lock graph"
     )
 
 let test_lock_deps_handles_cyclic_registry_dependencies = fun () ->
@@ -364,8 +458,7 @@ let test_lock_refresh_preserves_existing_registry_version = fun () ->
       packages =
         [ {
             id = { registry = None; name = "app"; version = None };
-            path = Path.v "/workspace/packages/app";
-            manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+            root = Some (Path.v "packages/app");
             provenance = Workspace;
             dependencies = [
               {
@@ -377,8 +470,7 @@ let test_lock_refresh_preserves_existing_registry_version = fun () ->
             dev_dependencies = [];
           }; {
             id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
-            path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0";
-            manifest_path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0/tusk.toml";
+            root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
             build_dependencies = [];
@@ -415,16 +507,14 @@ let test_lock_refresh_preserves_existing_external_nodes = fun () ->
       packages =
         [ {
             id = { registry = None; name = "app"; version = None };
-            path = Path.v "/workspace/packages/app";
-            manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+            root = Some (Path.v "packages/app");
             provenance = Workspace;
             dependencies = [];
             build_dependencies = [];
             dev_dependencies = [];
           }; {
             id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
-            path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0";
-            manifest_path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0/tusk.toml";
+            root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
             build_dependencies = [];
@@ -452,8 +542,7 @@ let test_unlock_discards_existing_external_nodes = fun () ->
       packages =
         [ {
             id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
-            path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0";
-            manifest_path = Path.v "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0/tusk.toml";
+            root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
             build_dependencies = [];
@@ -515,10 +604,7 @@ let test_lockfile_store_roundtrips = fun () ->
           packages =
             [ {
                 id = { registry = None; name = "app"; version = None };
-                path =
-                  Path.(workspace_root / Path.v "packages/app");
-                manifest_path =
-                  Path.(workspace_root / Path.v "packages/app/tusk.toml");
+                root = Some (Path.v "packages/app");
                 provenance = Workspace;
                 dependencies = [];
                 build_dependencies = [];
@@ -593,8 +679,6 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun () ->
           if
             List.length lockfile.packages = 2
             && List.length resolved = 2
-            && List.mem "tusk.pm.lockfile.read.started" event_names
-            && List.mem "tusk.pm.lockfile.read.finished" event_names
             && List.mem "tusk.pm.resolution.started" event_names
             && List.mem "tusk.pm.resolution.refreshing_lock" event_names
             && List.mem "tusk.pm.lockfile.write.started" event_names
@@ -618,7 +702,7 @@ let test_ensure_lock_uses_existing_fresh_lock = fun () ->
         ~dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
         () in
       sleep (Time.Duration.from_millis 20);
-      let existing_lock = run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ]
+      let existing_lock = run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ]
       |> Result.expect ~msg:"expected workspace lock projection to succeed" in
       Tusk_pm.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile to be written";
       match collect_event_names
@@ -636,8 +720,9 @@ let test_ensure_lock_uses_existing_fresh_lock = fun () ->
           if
             List.length lockfile.packages = 2
             && List.length resolved = 2
-            && List.mem "tusk.pm.resolution.using_existing_lock" event_names
+            && not (List.mem "tusk.pm.resolution.using_existing_lock" event_names)
             && not (List.mem "tusk.pm.lockfile.write.started" event_names)
+            && not (List.mem "tusk.pm.resolution.finished" event_names)
           then
             Ok ()
           else
@@ -659,6 +744,7 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun () -
       let registry_cache = Pkgs_ml.Registry_cache.create
         ~tusk_home:Path.(workspace_root / Path.v ".tusk")
         ~registry_name:"pkgs.ml"
+        ()
       |> Result.expect ~msg:"expected registry cache to initialize" in
       let registry = Pkgs_ml.Registry.in_memory
         ~cache:registry_cache
@@ -729,6 +815,7 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
       let registry_cache = Pkgs_ml.Registry_cache.create
         ~tusk_home:Path.(workspace_root / Path.v ".tusk")
         ~registry_name:"pkgs.ml"
+        ()
       |> Result.expect ~msg:"expected registry cache to initialize" in
       let registry = Pkgs_ml.Registry.in_memory
         ~cache:registry_cache
@@ -752,7 +839,9 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
       let existing_lock = Tusk_pm.Dep_solver.lock_deps
         ~mode:Tusk_pm.Dep_solver.Refresh
         ~registry
-        ~existing_lock:None [ app_pkg ]
+        ~existing_lock:None
+        ~workspace_root
+        [ app_pkg ]
       |> Result.expect ~msg:"expected initial lock solve to succeed" in
       Tusk_pm.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
       match collect_event_names
@@ -770,7 +859,7 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
       | Ok ((_, resolved), event_names) ->
           if
             List.length resolved = 2
-            && List.mem "tusk.pm.resolution.using_existing_lock" event_names
+            && not (List.mem "tusk.pm.resolution.using_existing_lock" event_names)
             && List.mem "tusk.pm.package_materialization.finished" event_names
           then
             Ok ()
@@ -786,6 +875,7 @@ let test_ensure_workspace_projects_materialized_registry_packages = fun () ->
       let registry_cache = Pkgs_ml.Registry_cache.create
         ~tusk_home:Path.(workspace_root / Path.v ".tusk")
         ~registry_name:"pkgs.ml"
+        ()
       |> Result.expect ~msg:"expected registry cache to initialize" in
       let app_pkg = make_package
         ~name:"app"
@@ -856,9 +946,17 @@ let test_projection_resolves_workspace_packages = fun () ->
     () in
   let lockfile = run_lock_deps
     ~mode:Tusk_pm.Dep_solver.Refresh
-    ~existing_lock:None [ app_pkg; std_pkg ]
+    ~existing_lock:None
+    [ app_pkg; std_pkg ]
   |> Result.expect ~msg:"expected lock projection to succeed" in
-  match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg; std_pkg ] ~lockfile () with
+  match
+    Tusk_pm.Projection.resolve_packages
+      ~registry:(make_registry [])
+      ~workspace_root:(Path.v "/workspace")
+      ~packages:[ app_pkg; std_pkg ]
+      ~lockfile
+      ()
+  with
   | Error err -> Error ("expected projection to resolve workspace packages: " ^ err)
   | Ok resolved ->
       let app = List.hd resolved in
@@ -911,9 +1009,7 @@ version = "1.0.0"
           packages =
             [ {
                 id = { registry = None; name = "app"; version = None };
-                path = app_pkg.path;
-                manifest_path =
-                  Path.(app_pkg.path / Path.v "tusk.toml");
+                root = Some (Path.v "packages/app");
                 provenance = Workspace;
                 dependencies = [
                   {
@@ -925,8 +1021,7 @@ version = "1.0.0"
                 dev_dependencies = [];
               }; {
                 id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" };
-                path = std_root;
-                manifest_path = std_manifest_path;
+                root = None;
                 provenance = Registry { registry = "pkgs.ml" };
                 dependencies = [
                   {
@@ -938,8 +1033,7 @@ version = "1.0.0"
                 dev_dependencies = [];
               }; {
                 id = { registry = Some "pkgs.ml"; name = "kernel"; version = Some "1.0.0" };
-                path = kernel_root;
-                manifest_path = kernel_manifest_path;
+                root = None;
                 provenance = Registry { registry = "pkgs.ml" };
                 dependencies = [];
                 build_dependencies = [];
@@ -947,10 +1041,18 @@ version = "1.0.0"
               } ];
         }
       in
+      let registry_cache = Pkgs_ml.Registry_cache.create
+        ~tusk_home:Path.(workspace_root / Path.v ".tusk")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to initialize" in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[] () in
       match collect_event_names
         (fun emit ->
           Tusk_pm.Projection.resolve_packages
             ~emit
+            ~registry
+            ~workspace_root
             ~packages:[ app_pkg ]
             ~lockfile
             ()) with
@@ -1014,9 +1116,7 @@ kernel = 123
           packages =
             [ {
                 id = { registry = None; name = "app"; version = None };
-                path = app_pkg.path;
-                manifest_path =
-                  Path.(app_pkg.path / Path.v "tusk.toml");
+                root = Some (Path.v "packages/app");
                 provenance = Workspace;
                 dependencies = [
                   {
@@ -1028,8 +1128,7 @@ kernel = 123
                 dev_dependencies = [];
               }; {
                 id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" };
-                path = std_root;
-                manifest_path = std_manifest_path;
+                root = None;
                 provenance = Registry { registry = "pkgs.ml" };
                 dependencies = [];
                 build_dependencies = [];
@@ -1037,7 +1136,20 @@ kernel = 123
               } ];
         }
       in
-      match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile () with
+      let registry_cache = Pkgs_ml.Registry_cache.create
+        ~tusk_home:Path.(workspace_root / Path.v ".tusk")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to initialize" in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[] () in
+      match
+        Tusk_pm.Projection.resolve_packages
+          ~registry
+          ~workspace_root
+          ~packages:[ app_pkg ]
+          ~lockfile
+          ()
+      with
       | Ok _ -> Error "expected invalid external manifest to fail projection"
       | Error err ->
           if
@@ -1050,7 +1162,14 @@ kernel = 123
 let test_projection_fails_when_lockfile_is_missing_package = fun () ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
   let lockfile = Tusk_model.Lockfile.{ format_version = 1; packages = [] } in
-  match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile () with
+  match
+    Tusk_pm.Projection.resolve_packages
+      ~registry:(make_registry [])
+      ~workspace_root:(Path.v "/workspace")
+      ~packages:[ app_pkg ]
+      ~lockfile
+      ()
+  with
   | Ok _ -> Error "expected projection to fail when lockfile is missing package"
   | Error err ->
       if String.contains err "lockfile is missing package 'app'" then
@@ -1063,7 +1182,10 @@ let tests =
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
     case "dep solver: resolves path dependencies" test_lock_deps_resolves_path_dependencies;
     case "dep solver: resolves transitive path dependencies" test_lock_deps_resolves_transitive_path_dependencies;
+    case "dep solver: collapses workspace path dependencies" test_lock_deps_collapses_workspace_path_dependencies;
     case "dep solver: resolves registry dependencies to exact versions" test_lock_deps_resolves_registry_dependencies_to_exact_versions;
+    case "dep solver: prefers workspace packages over registry for matching names" test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names;
+    case "dep solver: ignores builtin dependencies" test_lock_deps_ignores_builtin_dependencies;
     case "dep solver: handles cyclic registry dependencies" test_lock_deps_handles_cyclic_registry_dependencies;
     case "dep solver: refresh preserves existing registry versions" test_lock_refresh_preserves_existing_registry_version;
     case "dep solver: refresh preserves existing external nodes" test_lock_refresh_preserves_existing_external_nodes;

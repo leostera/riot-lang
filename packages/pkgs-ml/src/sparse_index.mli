@@ -7,12 +7,10 @@ type config = {
   index_base_url: string;
   artifact_base_url: string;
 }
-
 type dependency = {
   name: string;
   raw: Data.Json.t;
 }
-
 type release = {
   version: string;
   published_at: string;
@@ -31,7 +29,6 @@ type release = {
   source_key: string;
   dependencies: dependency list;
 }
-
 type package_document = {
   schema_version: int;
   name: string;
@@ -39,7 +36,6 @@ type package_document = {
   updated_at: string;
   releases: release list;
 }
-
 val normalized_name: string -> string
 
 val package_prefix: string -> Path.t
@@ -61,6 +57,4 @@ val package_document_of_string: string -> (package_document, string) result
 val read_cached_config: Registry_cache.t -> (config option, string) result
 
 val read_cached_package_document:
-  Registry_cache.t ->
-  package_name:string ->
-  (package_document option, string) result
+  Registry_cache.t -> package_name:string -> (package_document option, string) result

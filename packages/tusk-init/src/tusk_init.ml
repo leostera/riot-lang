@@ -161,7 +161,7 @@ version = "0.1.0"
 
 |} ^ lib_or_bin_section ^ {|
 [dependencies]
-std = { path = "../../std" }
+std = "*"
 |}
   in
   let pkg_toml_path = Path.(pkg_dir / Path.v "tusk.toml") in

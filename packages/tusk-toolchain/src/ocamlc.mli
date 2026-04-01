@@ -6,7 +6,7 @@ open Std
 
 type t
 type invocation
-module Diagnostic : sig
+module Diagnostic: sig
   type severity =
     | Warning
     | Error
@@ -34,6 +34,7 @@ module Diagnostic : sig
 
   val is_warning: t -> bool
 end
+
 val make: Path.t -> t
 
 val path: t -> Path.t

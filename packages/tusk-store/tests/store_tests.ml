@@ -382,9 +382,7 @@ let tests =
     case "put-if-absent keeps first writer" test_put_if_absent_keeps_first_writer;
     case "plan bundle round trip" test_plan_bundle_round_trip;
     case "package exports round trip" test_package_exports_round_trip;
-    case
-      "artifact round trip preserves ocamlc warnings"
-      test_artifact_round_trip_preserves_ocamlc_warnings;
+    case "artifact round trip preserves ocamlc warnings" test_artifact_round_trip_preserves_ocamlc_warnings;
     case "find package export path round trip" test_find_package_export_path_round_trip;
     case "find package export path rejects absolute paths" test_find_package_export_path_rejects_absolute_export_paths;
     case "find package export path returns none when name missing" test_find_package_export_path_returns_none_when_name_missing;

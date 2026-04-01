@@ -34,10 +34,7 @@ module Diagnostic = struct
 
   type render_spec =
     | Literal of string
-    | Rewritable of {
-        prefix: string;
-        suffix: string;
-      }
+    | Rewritable of { prefix: string; suffix: string }
 
   type parsed = {
     render_spec: render_spec;
@@ -65,19 +62,17 @@ module Diagnostic = struct
     else if String.equal (String.sub text start needle_len) needle then
       Some start
     else
-      find_substring_from text ~needle ~start:(start + 1)
+      find_substring_from text ~needle ~start:((start + 1))
 
-  let find_substring = fun text needle ->
-    find_substring_from text ~needle ~start:0
+  let find_substring = fun text needle -> find_substring_from text ~needle ~start:0
 
   let parse_bracket_code = fun line ->
     match find_substring line "[" with
     | None -> None
     | Some start -> (
-        match find_substring_from line ~needle:"]" ~start:(start + 1) with
+        match find_substring_from line ~needle:"]" ~start:((start + 1)) with
         | None -> None
-        | Some stop ->
-            Some (String.sub line (start + 1) (stop - start - 1))
+        | Some stop -> Some (String.sub line (start + 1) (stop - start - 1))
       )
 
   let strip_ansi = fun line ->
@@ -121,7 +116,14 @@ module Diagnostic = struct
             let suffix = String.sub line path_end (String.length line - path_end) in
             let location =
               match find_substring suffix "\", line " with
-              | None -> { path; line = None; start_char = None; end_char = None; column = None }
+              | None ->
+                  {
+                    path;
+                    line = None;
+                    start_char = None;
+                    end_char = None;
+                    column = None;
+                  }
               | Some marker ->
                   let line_start = marker + 8 in
                   let line_stop =
@@ -145,12 +147,12 @@ module Diagnostic = struct
                           | Some idx -> idx
                           | None -> String.length suffix
                         in
-                        let start_char =
-                          parse_int_opt (String.sub suffix chars_start (dash_idx - chars_start))
-                        in
+                        let start_char = parse_int_opt
+                          (String.sub suffix chars_start (dash_idx - chars_start)) in
                         let end_char =
                           if dash_idx < chars_end then
-                            parse_int_opt (String.sub suffix (dash_idx + 1) (chars_end - dash_idx - 1))
+                            parse_int_opt
+                              (String.sub suffix (dash_idx + 1) (chars_end - dash_idx - 1))
                           else
                             None
                         in
@@ -172,13 +174,11 @@ module Diagnostic = struct
     let parts = String.split_on_char ':' line in
     match parts with
     | path :: line_no :: column :: rest ->
-        String.length path > 0
-        && (
+        String.length path > 0 && (
           match (parse_int_opt line_no, parse_int_opt column) with
           | Some _, Some _ -> true
           | _ -> false
-        )
-        && List.length rest > 0
+        ) && List.length rest > 0
     | _ -> false
 
   let split_c_header = fun line ->
@@ -192,29 +192,28 @@ module Diagnostic = struct
           None
         else
           match (parse_int_opt line_no_str, parse_int_opt column_str) with
-          | Some line_no, Some column when
-              String.starts_with ~prefix:"warning:" trimmed_rest
-              || String.starts_with ~prefix:"error:" trimmed_rest
-              || String.starts_with ~prefix:"note:" trimmed_rest ->
-              let suffix =
-                String.sub
-                  line
-                  (String.length path)
-                  (String.length line - String.length path)
-              in
-              Some
-                ( "",
-                  {
-                    path;
-                    line = Some line_no;
-                    start_char = None;
-                    end_char = None;
-                    column = Some column;
-                  },
-                  suffix )
-          | Some _, Some _ -> None
-          | _ -> None
-    | _ -> None
+          | Some line_no, Some column when String.starts_with ~prefix:"warning:" trimmed_rest
+          || String.starts_with ~prefix:"error:" trimmed_rest
+          || String.starts_with ~prefix:"note:" trimmed_rest ->
+              let suffix = String.sub
+                line
+                (String.length path)
+                (String.length line - String.length path) in
+              Some (
+                "",
+                {
+                  path;
+                  line = Some line_no;
+                  start_char = None;
+                  end_char = None;
+                  column = Some column;
+                },
+                suffix
+              )
+          | Some _, Some _ ->
+              None
+          | _ ->
+              None
 
   let classify = fun lines ->
     let rec loop = function
@@ -234,8 +233,7 @@ module Diagnostic = struct
     in
     loop lines
 
-  let make_raw = fun lines ->
-    Raw (String.concat "\n" lines)
+  let make_raw = fun lines -> Raw (String.concat "\n" lines)
 
   let parse_block = function
     | [] -> None
@@ -245,29 +243,30 @@ module Diagnostic = struct
           match split_ocaml_header first with
           | Some (prefix, location, suffix) ->
               let severity, code = classify lines in
-              Some
-                (Parsed
-                   {
-                     render_spec = Rewritable { prefix; suffix };
-                     location = Some location;
-                     severity;
-                     code;
-                     body;
-                   })
+              Some (
+                Parsed {
+                  render_spec = Rewritable { prefix; suffix };
+                  location = Some location;
+                  severity;
+                  code;
+                  body;
+                }
+              )
           | None -> (
               match split_c_header first with
               | Some (prefix, location, suffix) ->
                   let severity, code = classify lines in
-                  Some
-                    (Parsed
-                       {
-                         render_spec = Rewritable { prefix; suffix };
-                         location = Some location;
-                         severity;
-                         code;
-                         body;
-                       })
-              | None -> Some (make_raw lines))
+                  Some (
+                    Parsed {
+                      render_spec = Rewritable { prefix; suffix };
+                      location = Some location;
+                      severity;
+                      code;
+                      body;
+                    }
+                  )
+              | None -> Some (make_raw lines)
+            )
         with
         | _ -> Some (make_raw lines)
 
@@ -309,8 +308,7 @@ module Diagnostic = struct
     | Raw raw -> raw
     | Parsed { body; _ } -> String.concat "\n" (render_header diagnostic :: body)
 
-  let render_all = fun diagnostics ->
-    diagnostics |> List.map render |> String.concat "\n"
+  let render_all = fun diagnostics -> diagnostics |> List.map render |> String.concat "\n"
 
   let map_path = fun rewrite diagnostic ->
     match diagnostic with
@@ -322,7 +320,8 @@ module Diagnostic = struct
             match rewrite location.path with
             | None -> diagnostic
             | Some path -> Parsed { parsed with location = Some { location with path } }
-          ))
+          )
+      )
 
   let location = function
     | Raw _ -> None
@@ -624,13 +623,10 @@ let run = fun invocation ->
       | Normal -> Success { message = output.Command.stdout; diagnostics }
       | WriteStdoutToFile file -> (
           match Fs.write output.Command.stdout file with
-          | Ok () -> Success {
-            message = "Generated interface " ^ Path.to_string file;
-            diagnostics;
-          }
+          | Ok () -> Success { message = "Generated interface " ^ Path.to_string file; diagnostics }
           | Error err -> Failed {
             message = "Failed to write " ^ Path.to_string file ^ ": " ^ IO.error_message err;
-            diagnostics = [];
+            diagnostics = []
           }
         )
     )
@@ -639,11 +635,11 @@ let run = fun invocation ->
       match invocation.output_mode with
       | Normal -> Failed {
         message = "Command failed with status " ^ Int.to_string output.Command.status;
-        diagnostics;
+        diagnostics
       }
       | WriteStdoutToFile _ -> Failed {
         message = "ocamlc -i failed with exit code " ^ Int.to_string output.Command.status;
-        diagnostics;
+        diagnostics
       }
     )
   | Error (Command.SystemError msg) ->
@@ -663,8 +659,7 @@ let get_output = function
         message ^ ": " ^ rendered
 
 let get_ocamlc_warnings = function
-  | Success { diagnostics; _ } ->
-      diagnostics
-      |> List.filter Diagnostic.is_warning
-      |> List.map Diagnostic.render
+  | Success { diagnostics; _ } -> diagnostics
+  |> List.filter Diagnostic.is_warning
+  |> List.map Diagnostic.render
   | Failed _ -> []

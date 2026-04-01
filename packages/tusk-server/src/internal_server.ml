@@ -14,14 +14,16 @@ type server_state = {
 }
 
 let default_registry_name = "pkgs.ml"
+let no_emit : Tusk_model.Event.kind -> unit = fun _ -> ()
 
 let resolve_registry = fun ?registry ?(registry_name = default_registry_name) () ->
   match registry with
   | Some registry -> Ok registry
   | None -> Pkgs_ml.Registry.create_filesystem ?tusk_home:None ~registry_name ()
 
-let prepare_workspace = fun ~(registry: Pkgs_ml.Registry.t) ~(workspace: Workspace.t) () ->
+let prepare_workspace = fun ?(emit = no_emit) ~(registry: Pkgs_ml.Registry.t) ~(workspace: Workspace.t) () ->
   Tusk_pm.ensure_workspace
+    ~emit
     ~mode:Tusk_pm.Dep_solver.Refresh
     ~registry
     ~workspace
@@ -514,6 +516,7 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
   loop updated_state
 
 let start_local = fun
+  ?(emit = no_emit)
   ?registry
   ?(registry_name = default_registry_name)
   ~workspace
@@ -528,6 +531,7 @@ let start_local = fun
     | Ok registry ->
         match
           prepare_workspace
+            ~emit
             ~registry
             ~workspace
             ()

@@ -104,22 +104,15 @@ type kind =
   | LockfileWriteStarted of { path: string }
   | LockfileWriteFinished of { path: string; duration_ms: int }
   | LockfileWriteFailed of { path: string; error: string }
-  | DependencyResolutionStarted of {
-      packages: string list;
-      mode:
+  | DependencyResolutionStarted of { packages: string list; mode:
         [
           | `Refresh
           | `Unlock
-        ]
-    }
+        ] }
   | DependencyResolutionUsingExistingLock of { path: string }
   | DependencyResolutionRefreshingLock of { path: string }
   | DependencyResolutionUnlocking of { path: string option }
-  | DependencyResolutionFinished of {
-      duration_ms: int;
-      resolved_packages: int;
-      resolved_edges: int
-    }
+  | DependencyResolutionFinished of { duration_ms: int; resolved_packages: int; resolved_edges: int }
   | DependencyResolutionFailed of { error: string }
   | DependencyUniverseBuilding of { packages: string list }
   | DependencyUniverseBuilt of {
@@ -129,42 +122,15 @@ type kind =
       duration_ms: int
     }
   | PackageMetadataFetchStarted of { package: string }
-  | PackageMetadataFetchFinished of {
-      package: string;
-      version: string option;
-      duration_ms: int
-    }
+  | PackageMetadataFetchFinished of { package: string; version: string option; duration_ms: int }
   | PackageMetadataFetchFailed of { package: string; error: string }
   | PackageManifestFetchStarted of { package: string; version: string }
-  | PackageManifestFetchFinished of {
-      package: string;
-      version: string;
-      duration_ms: int
-    }
-  | PackageManifestFetchFailed of {
-      package: string;
-      version: string option;
-      error: string
-    }
+  | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
+  | PackageManifestFetchFailed of { package: string; version: string option; error: string }
   | PackageDownloadStarted of { package: string; version: string; path: string }
-  | PackageDownloadFinished of {
-      package: string;
-      version: string;
-      path: string;
-      duration_ms: int
-    }
-  | PackageDownloadFailed of {
-      package: string;
-      version: string;
-      path: string;
-      error: string
-    }
-  | PackageDownloadSkipped of {
-      package: string;
-      version: string;
-      path: string;
-      reason: string
-    }
+  | PackageDownloadFinished of { package: string; version: string; path: string; duration_ms: int }
+  | PackageDownloadFailed of { package: string; version: string; path: string; error: string }
+  | PackageDownloadSkipped of { package: string; version: string; path: string; reason: string }
   | PackageCacheHit of { package: string; version: string; path: string }
   | PackageMaterializationStarted of { package: string; version: string; path: string }
   | PackageMaterializationFinished of {
@@ -173,12 +139,7 @@ type kind =
       path: string;
       duration_ms: int
     }
-  | PackageMaterializationFailed of {
-      package: string;
-      version: string;
-      path: string;
-      error: string
-    }
+  | PackageMaterializationFailed of { package: string; version: string; path: string; error: string }
   | PackageResolvedForBuild of {
       package: string;
       version: string option;

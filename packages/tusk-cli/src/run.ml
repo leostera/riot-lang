@@ -30,7 +30,12 @@ let trailing_args = fun matches ->
   | _ -> args
 
 let build_scope_for_binary = fun (workspace: Workspace.t) ~package_name ~binary_name ->
-  match List.find_opt (fun (pkg: Package.t) -> String.equal pkg.name package_name) workspace.packages with
+  match
+    List.find_opt
+      (fun (pkg: Package.t) ->
+        String.equal pkg.name package_name)
+      workspace.packages
+  with
   | None -> Build.Runtime
   | Some pkg -> (
       match Package.scope_of_binary_name pkg ~binary_name with
@@ -93,7 +98,10 @@ let run = fun matches ->
                       ("error: binary '" ^ bin_name ^ "' not found in package '" ^ expected_pkg ^ "'");
                     Error (Failure "binary not found in specified package")
                 | _ -> (
-                    let build_scope = build_scope_for_binary workspace ~package_name:pkg ~binary_name:bin_name in
+                    let build_scope = build_scope_for_binary
+                      workspace
+                      ~package_name:pkg
+                      ~binary_name:bin_name in
                     match Build.build_command ~scope:build_scope (Some pkg) None with
                     | Ok () ->
                         let refreshed_client = reconnect ~workspace in

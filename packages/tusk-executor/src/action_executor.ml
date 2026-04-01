@@ -57,16 +57,13 @@ let emit_action_command = fun ~session_id ~package ~node command ->
   Telemetry.emit
     Telemetry_events.(ActionCommandStarted { session_id; package; action = node; command })
 
-let ocamlc_success = fun message ->
-  Tusk_toolchain.Ocamlc.Success { message; diagnostics = [] }
+let ocamlc_success = fun message -> Tusk_toolchain.Ocamlc.Success { message; diagnostics = [] }
 
-let ocamlc_failed = fun message ->
-  Tusk_toolchain.Ocamlc.Failed { message; diagnostics = [] }
+let ocamlc_failed = fun message -> Tusk_toolchain.Ocamlc.Failed { message; diagnostics = [] }
 
 let run_ocamlc_invocation = fun ~session_id ~package ~node ~sandbox_dir invocation ->
   emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
-  Tusk_toolchain.Ocamlc.run invocation
-  |> Diagnostic_rewrite.rewrite_ocamlc_result ~package ~sandbox_dir
+  Tusk_toolchain.Ocamlc.run invocation |> Diagnostic_rewrite.rewrite_ocamlc_result ~package ~sandbox_dir
 
 let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
   match action with
@@ -252,10 +249,8 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
       let dst_path = Path.join sandbox_dir destination in
       match Fs.copy ~src:src_path ~dst:dst_path with
       | Ok () -> ocamlc_success "Copied"
-      | Error _ -> ocamlc_failed ("Copy failed: "
-      ^ Path.to_string source
-      ^ " -> "
-      ^ Path.to_string destination)
+      | Error _ -> ocamlc_failed
+        ("Copy failed: " ^ Path.to_string source ^ " -> " ^ Path.to_string destination)
     )
   | Action.WriteFile { destination; content } -> (
       let dest_path = Path.join sandbox_dir destination in
@@ -309,8 +304,9 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
                   abs_outputs
               in
               if List.length missing > 0 then
-                ocamlc_failed ("Foreign build succeeded but outputs not created: "
-                ^ String.concat ", " (List.map Path.to_string missing))
+                ocamlc_failed
+                  ("Foreign build succeeded but outputs not created: "
+                  ^ String.concat ", " (List.map Path.to_string missing))
               else
                 ocamlc_success ("Built foreign dependency: " ^ name)
           | Ok output ->
@@ -318,10 +314,8 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
                 ("Foreign build failed: " ^ name ^ " - exit code " ^ Int.to_string output.Command.status);
               if String.length output.Command.stderr > 0 then
                 Log.error ("stderr: " ^ output.Command.stderr);
-              ocamlc_failed ("Foreign build failed: "
-              ^ name
-              ^ " - exit code "
-              ^ Int.to_string output.Command.status)
+              ocamlc_failed
+                ("Foreign build failed: " ^ name ^ " - exit code " ^ Int.to_string output.Command.status)
           | Error (Command.SystemError msg) ->
               Log.error ("Failed to execute foreign build: " ^ msg);
               ocamlc_failed ("Failed to execute foreign build command: " ^ msg)

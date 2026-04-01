@@ -11,10 +11,16 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry (
   pkg: Tusk_model.Lockfile.package
 ) ->
   let package = pkg.id.name in
-  let path = Path.to_string pkg.path in
   match pkg.id.version with
   | None -> Error ("registry lock package '" ^ package ^ "' is missing an exact version")
   | Some version -> (
+      let path =
+        Pkgs_ml.Registry_cache.package_src_dir
+          (Pkgs_ml.Registry.cache registry)
+          ~package_name:package
+          ~version
+        |> Path.to_string
+      in
       let started = Time.Instant.now () in
       emit (Tusk_model.Event.PackageMaterializationStarted { package; version; path });
       match Pkgs_ml.Registry.materialize_release

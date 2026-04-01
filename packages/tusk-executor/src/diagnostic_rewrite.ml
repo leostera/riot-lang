@@ -1,12 +1,11 @@
 open Std
 
-let workspace_relative_path = fun (package:Tusk_model.Package.t) rel ->
+let workspace_relative_path = fun (package: Tusk_model.Package.t) rel ->
   let package_rel = Path.to_string package.relative_path in
   if String.equal package_rel "." || String.equal package_rel "" then
     "./" ^ Path.to_string rel
   else
-    "./"
-    ^ Path.to_string Path.(package.relative_path / rel)
+    "./" ^ Path.to_string Path.(package.relative_path / rel)
 
 let rewrite_path = fun ~(package:Tusk_model.Package.t) ~sandbox_dir path_str ->
   let sandbox_dir = Path.normalize sandbox_dir in
@@ -25,19 +24,15 @@ let rewrite_path = fun ~(package:Tusk_model.Package.t) ~sandbox_dir path_str ->
       | Error _ -> None
 
 let rewrite_diagnostics = fun ~package ~sandbox_dir diagnostics ->
-  List.map
-    (Tusk_toolchain.Ocamlc.Diagnostic.map_path (rewrite_path ~package ~sandbox_dir))
-    diagnostics
+  List.map (Tusk_toolchain.Ocamlc.Diagnostic.map_path (rewrite_path ~package ~sandbox_dir)) diagnostics
 
 let rewrite_ocamlc_result = fun ~package ~sandbox_dir result ->
   match result with
-  | Tusk_toolchain.Ocamlc.Success success ->
-      Tusk_toolchain.Ocamlc.Success {
-        success with
-        diagnostics = rewrite_diagnostics ~package ~sandbox_dir success.diagnostics;
-      }
-  | Tusk_toolchain.Ocamlc.Failed failure ->
-      Tusk_toolchain.Ocamlc.Failed {
-        failure with
-        diagnostics = rewrite_diagnostics ~package ~sandbox_dir failure.diagnostics;
-      }
+  | Tusk_toolchain.Ocamlc.Success success -> Tusk_toolchain.Ocamlc.Success {
+    success
+    with diagnostics = rewrite_diagnostics ~package ~sandbox_dir success.diagnostics
+  }
+  | Tusk_toolchain.Ocamlc.Failed failure -> Tusk_toolchain.Ocamlc.Failed {
+    failure
+    with diagnostics = rewrite_diagnostics ~package ~sandbox_dir failure.diagnostics
+  }

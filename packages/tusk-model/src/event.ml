@@ -127,22 +127,15 @@ type kind =
   | LockfileWriteStarted of { path: string }
   | LockfileWriteFinished of { path: string; duration_ms: int }
   | LockfileWriteFailed of { path: string; error: string }
-  | DependencyResolutionStarted of {
-      packages: string list;
-      mode:
+  | DependencyResolutionStarted of { packages: string list; mode:
         [
           `Refresh
           | `Unlock
-        ]
-    }
+        ] }
   | DependencyResolutionUsingExistingLock of { path: string }
   | DependencyResolutionRefreshingLock of { path: string }
   | DependencyResolutionUnlocking of { path: string option }
-  | DependencyResolutionFinished of {
-      duration_ms: int;
-      resolved_packages: int;
-      resolved_edges: int
-    }
+  | DependencyResolutionFinished of { duration_ms: int; resolved_packages: int; resolved_edges: int }
   | DependencyResolutionFailed of { error: string }
   | DependencyUniverseBuilding of { packages: string list }
   | DependencyUniverseBuilt of {
@@ -152,42 +145,15 @@ type kind =
       duration_ms: int
     }
   | PackageMetadataFetchStarted of { package: string }
-  | PackageMetadataFetchFinished of {
-      package: string;
-      version: string option;
-      duration_ms: int
-    }
+  | PackageMetadataFetchFinished of { package: string; version: string option; duration_ms: int }
   | PackageMetadataFetchFailed of { package: string; error: string }
   | PackageManifestFetchStarted of { package: string; version: string }
-  | PackageManifestFetchFinished of {
-      package: string;
-      version: string;
-      duration_ms: int
-    }
-  | PackageManifestFetchFailed of {
-      package: string;
-      version: string option;
-      error: string
-    }
+  | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
+  | PackageManifestFetchFailed of { package: string; version: string option; error: string }
   | PackageDownloadStarted of { package: string; version: string; path: string }
-  | PackageDownloadFinished of {
-      package: string;
-      version: string;
-      path: string;
-      duration_ms: int
-    }
-  | PackageDownloadFailed of {
-      package: string;
-      version: string;
-      path: string;
-      error: string
-    }
-  | PackageDownloadSkipped of {
-      package: string;
-      version: string;
-      path: string;
-      reason: string
-    }
+  | PackageDownloadFinished of { package: string; version: string; path: string; duration_ms: int }
+  | PackageDownloadFailed of { package: string; version: string; path: string; error: string }
+  | PackageDownloadSkipped of { package: string; version: string; path: string; reason: string }
   | PackageCacheHit of { package: string; version: string; path: string }
   | PackageMaterializationStarted of { package: string; version: string; path: string }
   | PackageMaterializationFinished of {
@@ -196,12 +162,7 @@ type kind =
       path: string;
       duration_ms: int
     }
-  | PackageMaterializationFailed of {
-      package: string;
-      version: string;
-      path: string;
-      error: string
-    }
+  | PackageMaterializationFailed of { package: string; version: string; path: string; error: string }
   | PackageResolvedForBuild of {
       package: string;
       version: string option;
@@ -392,11 +353,7 @@ let display = function
         | `Refresh -> "refresh"
         | `Unlock -> "unlock"
       in
-      "Resolving dependencies ("
-      ^ mode
-      ^ ") for "
-      ^ Int.to_string (List.length packages)
-      ^ " packages"
+      "Resolving dependencies (" ^ mode ^ ") for " ^ Int.to_string (List.length packages) ^ " packages"
   | DependencyResolutionUsingExistingLock { path } ->
       "Using existing lockfile " ^ path
   | DependencyResolutionRefreshingLock { path } ->
@@ -432,33 +389,21 @@ let display = function
       "Fetching package metadata for " ^ package
   | PackageMetadataFetchFinished { package; version; duration_ms } -> (
       match version with
-      | Some version ->
-          "Fetched package metadata for "
-          ^ package
-          ^ "@"
-          ^ version
-          ^ " in "
-          ^ Int.to_string duration_ms
-          ^ "ms"
-      | None ->
-          "Fetched package metadata for "
-          ^ package
-          ^ " in "
-          ^ Int.to_string duration_ms
-          ^ "ms"
-    )
-  | PackageMetadataFetchFailed { package; error } ->
-      "Failed to fetch package metadata for " ^ package ^ ": " ^ error
-  | PackageManifestFetchStarted { package; version } ->
-      "Fetching manifest for " ^ package ^ "@" ^ version
-  | PackageManifestFetchFinished { package; version; duration_ms } ->
-      "Fetched manifest for "
+      | Some version -> "Fetched package metadata for "
       ^ package
       ^ "@"
       ^ version
       ^ " in "
       ^ Int.to_string duration_ms
       ^ "ms"
+      | None -> "Fetched package metadata for " ^ package ^ " in " ^ Int.to_string duration_ms ^ "ms"
+    )
+  | PackageMetadataFetchFailed { package; error } ->
+      "Failed to fetch package metadata for " ^ package ^ ": " ^ error
+  | PackageManifestFetchStarted { package; version } ->
+      "Fetching manifest for " ^ package ^ "@" ^ version
+  | PackageManifestFetchFinished { package; version; duration_ms } ->
+      "Fetched manifest for " ^ package ^ "@" ^ version ^ " in " ^ Int.to_string duration_ms ^ "ms"
   | PackageManifestFetchFailed { package; version; error } -> (
       match version with
       | Some version -> "Failed to fetch manifest for " ^ package ^ "@" ^ version ^ ": " ^ error
@@ -499,19 +444,19 @@ let display = function
   | PackageResolvedForBuild { package; version; path; workspace } -> (
       match version with
       | Some version ->
-          "Resolved "
-          ^ package
-          ^ "@"
-          ^ version
-          ^ " for build at "
-          ^ path
-          ^ (if workspace then " (workspace)" else "")
+          "Resolved " ^ package ^ "@" ^ version ^ " for build at " ^ path ^ (
+            if workspace then
+              " (workspace)"
+            else
+              ""
+          )
       | None ->
-          "Resolved "
-          ^ package
-          ^ " for build at "
-          ^ path
-          ^ (if workspace then " (workspace)" else "")
+          "Resolved " ^ package ^ " for build at " ^ path ^ (
+            if workspace then
+              " (workspace)"
+            else
+              ""
+          )
     )
   | PackageDownloadQueued { package; version; _ } ->
       "Queued download for " ^ package ^ "@" ^ version
@@ -815,7 +760,9 @@ let kind_to_json = function
   | DependencyResolutionFailed { error } ->
       Json.Object [ ("error", Json.String error) ]
   | DependencyUniverseBuilding { packages } ->
-      Json.Object [ ("packages", Json.Array (List.map (fun package -> Json.String package) packages)) ]
+      Json.Object [
+        ("packages", Json.Array (List.map (fun package -> Json.String package) packages))
+      ]
   | DependencyUniverseBuilt { runtime_packages; build_packages; dev_packages; duration_ms } ->
       Json.Object [
         ("runtime_packages", Json.Int runtime_packages);
@@ -1412,8 +1359,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "path" data_fields, List.assoc_opt "duration_ms" data_fields with
-                  | Some (Json.String path), Some (Json.Int duration_ms) ->
-                      Ok (LockfileReadFinished { path; duration_ms })
+                  | Some (Json.String path), Some (Json.Int duration_ms) -> Ok (LockfileReadFinished {
+                    path;
+                    duration_ms
+                  })
                   | _ -> Error "Invalid LockfileReadFinished data"
                 )
               | _ -> Error "Invalid LockfileReadFinished data"
@@ -1422,8 +1371,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "path" data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String path), Some (Json.String error) ->
-                      Ok (LockfileReadFailed { path; error })
+                  | Some (Json.String path), Some (Json.String error) -> Ok (LockfileReadFailed {
+                    path;
+                    error
+                  })
                   | _ -> Error "Invalid LockfileReadFailed data"
                 )
               | _ -> Error "Invalid LockfileReadFailed data"
@@ -1441,8 +1392,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "path" data_fields, List.assoc_opt "duration_ms" data_fields with
-                  | Some (Json.String path), Some (Json.Int duration_ms) ->
-                      Ok (LockfileWriteFinished { path; duration_ms })
+                  | Some (Json.String path), Some (Json.Int duration_ms) -> Ok (LockfileWriteFinished {
+                    path;
+                    duration_ms
+                  })
                   | _ -> Error "Invalid LockfileWriteFinished data"
                 )
               | _ -> Error "Invalid LockfileWriteFinished data"
@@ -1451,8 +1404,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "path" data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String path), Some (Json.String error) ->
-                      Ok (LockfileWriteFailed { path; error })
+                  | Some (Json.String path), Some (Json.String error) -> Ok (LockfileWriteFailed {
+                    path;
+                    error
+                  })
                   | _ -> Error "Invalid LockfileWriteFailed data"
                 )
               | _ -> Error "Invalid LockfileWriteFailed data"
@@ -1464,9 +1419,11 @@ let kind_from_json = fun json ->
                     match List.assoc_opt "packages" data_fields with
                     | Some (Json.Array items) ->
                         List.filter_map
-                          (function
+                          (
+                            function
                             | Json.String package -> Some package
-                            | _ -> None)
+                            | _ -> None
+                          )
                           items
                     | _ -> []
                   in
@@ -1514,13 +1471,14 @@ let kind_from_json = fun json ->
           | "tusk.pm.resolution.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "duration_ms" data_fields,
-                    List.assoc_opt "resolved_packages" data_fields,
-                    List.assoc_opt "resolved_edges" data_fields
-                  with
-                  | Some (Json.Int duration_ms), Some (Json.Int resolved_packages), Some (Json.Int resolved_edges) ->
-                      Ok (DependencyResolutionFinished { duration_ms; resolved_packages; resolved_edges })
+                  match List.assoc_opt "duration_ms" data_fields, List.assoc_opt
+                    "resolved_packages"
+                    data_fields, List.assoc_opt "resolved_edges" data_fields with
+                  | Some (Json.Int duration_ms), Some (Json.Int resolved_packages), Some (Json.Int resolved_edges) -> Ok (DependencyResolutionFinished {
+                    duration_ms;
+                    resolved_packages;
+                    resolved_edges
+                  })
                   | _ -> Error "Invalid DependencyResolutionFinished data"
                 )
               | _ -> Error "Invalid DependencyResolutionFinished data"
@@ -1541,9 +1499,11 @@ let kind_from_json = fun json ->
                     match List.assoc_opt "packages" data_fields with
                     | Some (Json.Array items) ->
                         List.filter_map
-                          (function
+                          (
+                            function
                             | Json.String package -> Some package
-                            | _ -> None)
+                            | _ -> None
+                          )
                           items
                     | _ -> []
                   in
@@ -1553,17 +1513,17 @@ let kind_from_json = fun json ->
           | "tusk.pm.universe.built" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "runtime_packages" data_fields,
-                    List.assoc_opt "build_packages" data_fields,
-                    List.assoc_opt "dev_packages" data_fields,
-                    List.assoc_opt "duration_ms" data_fields
-                  with
-                  | Some (Json.Int runtime_packages),
-                    Some (Json.Int build_packages),
-                    Some (Json.Int dev_packages),
-                    Some (Json.Int duration_ms) ->
-                      Ok (DependencyUniverseBuilt { runtime_packages; build_packages; dev_packages; duration_ms })
+                  match List.assoc_opt "runtime_packages" data_fields, List.assoc_opt
+                    "build_packages"
+                    data_fields, List.assoc_opt "dev_packages" data_fields, List.assoc_opt
+                    "duration_ms"
+                    data_fields with
+                  | Some (Json.Int runtime_packages), Some (Json.Int build_packages), Some (Json.Int dev_packages), Some (Json.Int duration_ms) -> Ok (DependencyUniverseBuilt {
+                    runtime_packages;
+                    build_packages;
+                    dev_packages;
+                    duration_ms
+                  })
                   | _ -> Error "Invalid DependencyUniverseBuilt data"
                 )
               | _ -> Error "Invalid DependencyUniverseBuilt data"
@@ -1596,8 +1556,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "package" data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String package), Some (Json.String error) ->
-                      Ok (PackageMetadataFetchFailed { package; error })
+                  | Some (Json.String package), Some (Json.String error) -> Ok (PackageMetadataFetchFailed {
+                    package;
+                    error
+                  })
                   | _ -> Error "Invalid PackageMetadataFetchFailed data"
                 )
               | _ -> Error "Invalid PackageMetadataFetchFailed data"
@@ -1606,8 +1568,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields with
-                  | Some (Json.String package), Some (Json.String version) ->
-                      Ok (PackageManifestFetchStarted { package; version })
+                  | Some (Json.String package), Some (Json.String version) -> Ok (PackageManifestFetchStarted {
+                    package;
+                    version
+                  })
                   | _ -> Error "Invalid PackageManifestFetchStarted data"
                 )
               | _ -> Error "Invalid PackageManifestFetchStarted data"
@@ -1615,13 +1579,14 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_manifest.fetch.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "duration_ms" data_fields
-                  with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.Int duration_ms) ->
-                      Ok (PackageManifestFetchFinished { package; version; duration_ms })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "duration_ms"
+                    data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.Int duration_ms) -> Ok (PackageManifestFetchFinished {
+                    package;
+                    version;
+                    duration_ms
+                  })
                   | _ -> Error "Invalid PackageManifestFetchFinished data"
                 )
               | _ -> Error "Invalid PackageManifestFetchFinished data"
@@ -1644,13 +1609,14 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_download.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields
-                  with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) ->
-                      Ok (PackageDownloadStarted { package; version; path })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageDownloadStarted {
+                    package;
+                    version;
+                    path
+                  })
                   | _ -> Error "Invalid PackageDownloadStarted data"
                 )
               | _ -> Error "Invalid PackageDownloadStarted data"
@@ -1658,17 +1624,15 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_download.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields,
-                    List.assoc_opt "duration_ms" data_fields
-                  with
-                  | Some (Json.String package),
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some (Json.Int duration_ms) ->
-                      Ok (PackageDownloadFinished { package; version; path; duration_ms })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields, List.assoc_opt "duration_ms" data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms) -> Ok (PackageDownloadFinished {
+                    package;
+                    version;
+                    path;
+                    duration_ms
+                  })
                   | _ -> Error "Invalid PackageDownloadFinished data"
                 )
               | _ -> Error "Invalid PackageDownloadFinished data"
@@ -1676,17 +1640,15 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_download.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields,
-                    List.assoc_opt "error" data_fields
-                  with
-                  | Some (Json.String package),
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some (Json.String error) ->
-                      Ok (PackageDownloadFailed { package; version; path; error })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields, List.assoc_opt "error" data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.String error) -> Ok (PackageDownloadFailed {
+                    package;
+                    version;
+                    path;
+                    error
+                  })
                   | _ -> Error "Invalid PackageDownloadFailed data"
                 )
               | _ -> Error "Invalid PackageDownloadFailed data"
@@ -1694,17 +1656,15 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_download.skipped" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields,
-                    List.assoc_opt "reason" data_fields
-                  with
-                  | Some (Json.String package),
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some (Json.String reason) ->
-                      Ok (PackageDownloadSkipped { package; version; path; reason })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields, List.assoc_opt "reason" data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.String reason) -> Ok (PackageDownloadSkipped {
+                    package;
+                    version;
+                    path;
+                    reason
+                  })
                   | _ -> Error "Invalid PackageDownloadSkipped data"
                 )
               | _ -> Error "Invalid PackageDownloadSkipped data"
@@ -1712,13 +1672,14 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_cache.hit" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields
-                  with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) ->
-                      Ok (PackageCacheHit { package; version; path })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageCacheHit {
+                    package;
+                    version;
+                    path
+                  })
                   | _ -> Error "Invalid PackageCacheHit data"
                 )
               | _ -> Error "Invalid PackageCacheHit data"
@@ -1726,13 +1687,14 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_materialization.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields
-                  with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) ->
-                      Ok (PackageMaterializationStarted { package; version; path })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageMaterializationStarted {
+                    package;
+                    version;
+                    path
+                  })
                   | _ -> Error "Invalid PackageMaterializationStarted data"
                 )
               | _ -> Error "Invalid PackageMaterializationStarted data"
@@ -1740,17 +1702,15 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_materialization.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields,
-                    List.assoc_opt "duration_ms" data_fields
-                  with
-                  | Some (Json.String package),
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some (Json.Int duration_ms) ->
-                      Ok (PackageMaterializationFinished { package; version; path; duration_ms })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields, List.assoc_opt "duration_ms" data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms) -> Ok (PackageMaterializationFinished {
+                    package;
+                    version;
+                    path;
+                    duration_ms
+                  })
                   | _ -> Error "Invalid PackageMaterializationFinished data"
                 )
               | _ -> Error "Invalid PackageMaterializationFinished data"
@@ -1758,17 +1718,15 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_materialization.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields,
-                    List.assoc_opt "error" data_fields
-                  with
-                  | Some (Json.String package),
-                    Some (Json.String version),
-                    Some (Json.String path),
-                    Some (Json.String error) ->
-                      Ok (PackageMaterializationFailed { package; version; path; error })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields, List.assoc_opt "error" data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.String error) -> Ok (PackageMaterializationFailed {
+                    package;
+                    version;
+                    path;
+                    error
+                  })
                   | _ -> Error "Invalid PackageMaterializationFailed data"
                 )
               | _ -> Error "Invalid PackageMaterializationFailed data"
@@ -1776,11 +1734,9 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_resolved_for_build" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "path" data_fields,
-                    List.assoc_opt "workspace" data_fields
-                  with
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "path" data_fields, List.assoc_opt
+                    "workspace"
+                    data_fields with
                   | Some (Json.String package), Some (Json.String path), Some (Json.Bool workspace) ->
                       let version =
                         match List.assoc_opt "version" data_fields with
@@ -1795,13 +1751,14 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_download.queued" -> (
               match data with
               | Json.Object data_fields -> (
-                  match
-                    List.assoc_opt "package" data_fields,
-                    List.assoc_opt "version" data_fields,
-                    List.assoc_opt "path" data_fields
-                  with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) ->
-                      Ok (PackageDownloadQueued { package; version; path })
+                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                    "path"
+                    data_fields with
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageDownloadQueued {
+                    package;
+                    version;
+                    path
+                  })
                   | _ -> Error "Invalid PackageDownloadQueued data"
                 )
               | _ -> Error "Invalid PackageDownloadQueued data"
@@ -1845,56 +1802,42 @@ let from_json = fun json ->
 
 module Tests = struct
   let test_lockfile_event_json_roundtrip () : (unit, string) result =
-    let event =
-      create
-        ~session_id:(Session_id.of_string "test-session")
-        ~level:Info
-        (LockfileReadFinished { path = "/tmp/workspace/tusk.lock"; duration_ms = 12 })
-    in
+    let event = create
+      ~session_id:(Session_id.of_string "test-session")
+      ~level:Info (LockfileReadFinished { path = "/tmp/workspace/tusk.lock"; duration_ms = 12 }) in
     match from_json (to_json event) with
-    | Ok { kind = LockfileReadFinished { path; duration_ms }; _ } ->
+    | Ok { kind=LockfileReadFinished { path; duration_ms }; _ } ->
         if String.equal path "/tmp/workspace/tusk.lock" && duration_ms = 12 then
           Ok ()
         else
           Error "expected lockfile read event to round-trip"
     | Ok _ -> Error "expected LockfileReadFinished after round-trip"
-    | Error err -> Error err
-    [@test]
+    | Error err -> Error err [@test]
 
   let test_resolution_event_json_roundtrip () : (unit, string) result =
-    let event =
-      create
-        ~session_id:(Session_id.of_string "test-session")
-        ~level:Info
-        (DependencyResolutionStarted {
-          packages = [ "app"; "std" ];
-          mode = `Unlock;
-        })
-    in
+    let event = create
+      ~session_id:(Session_id.of_string "test-session")
+      ~level:Info (DependencyResolutionStarted { packages = [ "app"; "std" ]; mode = `Unlock }) in
     match from_json (to_json event) with
-    | Ok { kind = DependencyResolutionStarted { packages; mode = `Unlock }; _ } ->
+    | Ok { kind=DependencyResolutionStarted { packages; mode=`Unlock }; _ } ->
         if packages = [ "app"; "std" ] then
           Ok ()
         else
           Error "expected dependency resolution packages to round-trip"
     | Ok _ -> Error "expected DependencyResolutionStarted unlock event after round-trip"
-    | Error err -> Error err
-    [@test]
+    | Error err -> Error err [@test]
 
   let test_package_resolved_event_json_roundtrip () : (unit, string) result =
-    let event =
-      create
-        ~session_id:(Session_id.of_string "test-session")
-        ~level:Info
-        (PackageResolvedForBuild {
-          package = "std";
-          version = Some "0.1.0";
-          path = "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0";
-          workspace = false;
-        })
-    in
+    let event = create
+      ~session_id:(Session_id.of_string "test-session")
+      ~level:Info (PackageResolvedForBuild {
+        package = "std";
+        version = Some "0.1.0";
+        path = "/Users/example/.tusk/registry/pkgs.ml/src/std/0.1.0";
+        workspace = false
+      }) in
     match from_json (to_json event) with
-    | Ok { kind = PackageResolvedForBuild { package; version; path; workspace }; _ } ->
+    | Ok { kind=PackageResolvedForBuild { package; version; path; workspace }; _ } ->
         if
           String.equal package "std"
           && version = Some "0.1.0"
@@ -1905,6 +1848,5 @@ module Tests = struct
         else
           Error "expected package resolved event to round-trip"
     | Ok _ -> Error "expected PackageResolvedForBuild after round-trip"
-    | Error err -> Error err
-    [@test]
+    | Error err -> Error err [@test]
 end [@test]

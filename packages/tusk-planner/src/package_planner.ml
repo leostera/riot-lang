@@ -368,8 +368,12 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
             )
           | None -> ()
         )
-      | Package.Registry _ -> ()
-      | Package.Path _ -> ())
+      | Package.Builtin ->
+          ()
+      | Package.Registry _ ->
+          ()
+      | Package.Path _ ->
+          ())
     sorted_deps;
   (* Dependency hashes *)
   let dep_hashes = depset

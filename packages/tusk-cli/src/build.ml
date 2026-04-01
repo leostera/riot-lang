@@ -70,6 +70,31 @@ let cycle_detected_event_to_json = fun session_id detected_at cycle_nodes ->
 
 let command_error_event_to_json = fun kind details ->
   Data.Json.Object (("type", Data.Json.String kind) :: details)
+
+let pm_package_source_label = function
+  | Some version -> version
+  | None -> "src"
+
+let format_pm_event = function
+  | Tusk_model.Event.PackageResolvedForBuild { package; version; _ } ->
+      "    \027[1;32mResolved\027[0m " ^ package ^ " (" ^ pm_package_source_label version ^ ")"
+  | Tusk_model.Event.PackageDownloadStarted { package; version; _ } ->
+      " \027[1;32mDownloading\027[0m " ^ package ^ " (" ^ version ^ ")"
+  | Tusk_model.Event.PackageDownloadQueued { package; version; _ } ->
+      "      \027[1;33mQueued\027[0m " ^ package ^ " (" ^ version ^ ")"
+  | Tusk_model.Event.PackageDownloadSkipped { package; version; _ } ->
+      "    \027[1;33mUsing\027[0m " ^ package ^ " (" ^ version ^ ")"
+  | kind ->
+      Tusk_model.Event.display kind
+
+let write_pm_event = fun ~mode ~session_id kind ->
+  match mode with
+  | Json ->
+      Tusk_model.Event.create ~session_id ~level:Tusk_model.Event.Info kind
+      |> Tusk_model.Event.to_json
+      |> write_json_event
+  | Human ->
+      out (format_pm_event kind)
 (** Helper functions for target resolution *)
 let ensure_toolchains_for_targets = fun workspace targets ->
   let config = Toolchain_config.from_workspace workspace in
@@ -160,7 +185,16 @@ let command =
       ]
 
 let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) request target_arch ->
-  let client = Local_session.connect_local ~workspace ~load_errors () |> Result.expect ~msg:"Failed to start local tusk session" in
+  let startup_session_id = Session_id.make () in
+  let client =
+    match Local_session.connect_local
+      ~emit:(write_pm_event ~mode ~session_id:startup_session_id)
+      ~workspace
+      ~load_errors
+      () with
+    | Ok client -> client
+    | Error err -> panic ("Failed to start local tusk session: " ^ err)
+  in
   let displayed_packages = HashSet.create () in
   (* Track build stats as events arrive *)
   let start_time = Time.Instant.now () in

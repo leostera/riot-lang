@@ -114,17 +114,7 @@ let get_planned_data = function
   | Skipped _ -> None
 
 let is_well_known_package = fun name ->
-  (* OCaml standard library packages that are distributed with OCaml *)
-  match name with
-  | "unix"
-  | "stdlib"
-  | "threads"
-  | "str"
-  | "bigarray"
-  | "dynlink"
-  | "compiler-libs"
-  | "graphics" -> true
-  | _ -> false
+  Tusk_model.Package.is_builtin_dependency_name name
 
 let dependencies_for_scope = fun scope (pkg: Package.t) ->
   match scope with

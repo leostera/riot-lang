@@ -258,8 +258,7 @@ let test_library_actions_exclude_ml_object_files = fun () ->
         let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
         let _ = Fs.create_dir_all native_dir |> Result.expect ~msg:"create native dir failed" in
         let _ = Fs.write "let value = 1\n" source_path |> Result.expect ~msg:"write ml source failed" in
-        let _ = Fs.write "int demo_stub(void) { return 1; }\n" native_path
-          |> Result.expect ~msg:"write native source failed" in
+        let _ = Fs.write "int demo_stub(void) { return 1; }\n" native_path |> Result.expect ~msg:"write native source failed" in
         let workspace = Tusk_model.Workspace.make ~root:tmpdir ~packages:[] () in
         let store = Tusk_store.Store.create ~workspace in
         let package = {
@@ -274,14 +273,19 @@ let test_library_actions_exclude_ml_object_files = fun () ->
           ~profile:Tusk_model.Profile.release
           () in
         let module_graph = G.make () in
-        let demo_module =
-          Tusk_model.Module.make ~namespace:Tusk_model.Namespace.empty ~filename:(Path.v "src/demo.ml")
-        in
-        let demo_node = G.add_node module_graph
-          (Tusk_planner.Module_node.make_ml demo_module (Tusk_planner.Module_node.Concrete (Path.v "src/demo.ml"))) in
-        let native_node = G.add_node module_graph
+        let demo_module = Tusk_model.Module.make
+          ~namespace:Tusk_model.Namespace.empty
+          ~filename:(Path.v "src/demo.ml") in
+        let demo_node = G.add_node
+          module_graph
+          (Tusk_planner.Module_node.make_ml
+            demo_module
+            (Tusk_planner.Module_node.Concrete (Path.v "src/demo.ml"))) in
+        let native_node = G.add_node
+          module_graph
           (Tusk_planner.Module_node.make_native ~files:[ Path.v "native/stub.c" ]) in
-        let library_node = G.add_node module_graph
+        let library_node = G.add_node
+          module_graph
           (Tusk_planner.Module_node.make_library ~name:package.name ~includes:[ Path.v "." ]) in
         let _ = G.add_edge library_node ~depends_on:demo_node in
         let _ = G.add_edge library_node ~depends_on:native_node in
@@ -316,8 +320,10 @@ let test_library_actions_exclude_ml_object_files = fun () ->
               Error "expected CreateLibrary to keep stub.o from native C sources"
             else
               Ok ()
-        | Some _ -> Error "expected CreateLibrary action"
-        | None -> Error "missing CreateLibrary action")
+        | Some _ ->
+            Error "expected CreateLibrary action"
+        | None ->
+            Error "missing CreateLibrary action")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)

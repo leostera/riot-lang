@@ -1,43 +1,37 @@
 open Std
 module Test = Std.Test
 
-let sample_ocaml_warning =
-  String.concat
-    "\n"
-    [
-      "File \"/tmp/sandbox/pkg/src/install.ml\", line 25, characters 8-26:";
-      "25 |     let displayed_packages = HashMap.create () in";
-      "             ^^^^^^^^^^^^^^^^^^";
-      "Warning 26 [unused-var]: unused variable displayed_packages.";
-    ]
+let sample_ocaml_warning = String.concat
+  "\n"
+  [
+    "File \"/tmp/sandbox/pkg/src/install.ml\", line 25, characters 8-26:";
+    "25 |     let displayed_packages = HashMap.create () in";
+    "             ^^^^^^^^^^^^^^^^^^";
+    "Warning 26 [unused-var]: unused variable displayed_packages.";
+  ]
 
-let sample_c_error =
-  "/tmp/sandbox/pkg/native/kernel_uuid.c:14:10: error: uuid/uuid.h: No such file or directory"
+let sample_c_error = "/tmp/sandbox/pkg/native/kernel_uuid.c:14:10: error: uuid/uuid.h: No such file or directory"
 
-let sample_unparseable_c_like_line =
-  "/tmp/sandbox/pkg/native/kernel_crypto.c:79:note this is not a structured compiler diagnostic"
+let sample_unparseable_c_like_line = "/tmp/sandbox/pkg/native/kernel_crypto.c:79:note this is not a structured compiler diagnostic"
 
-let sample_colored_ocaml_warning =
-  String.concat
-    "\n"
-    [
-      "\027[1mFile \"/tmp/sandbox/pkg/src/install.ml\", line 25, characters 8-26\027[0m:";
-      "25 |     let displayed_packages = HashMap.create () in";
-      "             \027[1;35m^^^^^^^^^^^^^^^^^^\027[0m";
-      "\027[1;35mWarning\027[0m 26 [unused-var]: unused variable \027[1mdisplayed_packages\027[0m.";
-    ]
+let sample_colored_ocaml_warning = String.concat
+  "\n"
+  [
+    "\027[1mFile \"/tmp/sandbox/pkg/src/install.ml\", line 25, characters 8-26\027[0m:";
+    "25 |     let displayed_packages = HashMap.create () in";
+    "             \027[1;35m^^^^^^^^^^^^^^^^^^\027[0m";
+    "\027[1;35mWarning\027[0m 26 [unused-var]: unused variable \027[1mdisplayed_packages\027[0m.";
+  ]
 
 let test_compile_impl_disables_no_cmi_file_by_default = fun () ->
   let ocamlc = Tusk_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
-  let invocation =
-    Tusk_toolchain.Ocamlc.compile_impl
-      ocamlc
-      ~cwd:(Path.v "/tmp/work")
-      ~includes:[ Path.v "src" ]
-      ~flags:[]
-      ~output:(Path.v "foo.cmx")
-      (Path.v "src/foo.ml")
-  in
+  let invocation = Tusk_toolchain.Ocamlc.compile_impl
+    ocamlc
+    ~cwd:(Path.v "/tmp/work")
+    ~includes:[ Path.v "src" ]
+    ~flags:[]
+    ~output:(Path.v "foo.cmx")
+    (Path.v "src/foo.ml") in
   let command = Tusk_toolchain.Ocamlc.to_string invocation in
   if String.contains command "-w -49" then
     Ok ()
@@ -60,10 +54,8 @@ let test_parse_ocaml_warning_diagnostic = fun () ->
             Ok ()
       | None -> Error "expected parsed warning to include a location"
     )
-  | diagnostics ->
-      Error
-        ("expected exactly one parsed warning block, got "
-        ^ Int.to_string (List.length diagnostics))
+  | diagnostics -> Error ("expected exactly one parsed warning block, got "
+  ^ Int.to_string (List.length diagnostics))
 
 let test_map_path_rewrites_rendered_diagnostic = fun () ->
   match Tusk_toolchain.Ocamlc.Diagnostic.parse sample_ocaml_warning with
@@ -102,10 +94,8 @@ let test_unparseable_c_like_line_falls_back_to_raw = fun () ->
         Ok ()
       else
         Error ("expected raw fallback to preserve the original text, got: " ^ rendered)
-  | diagnostics ->
-      Error
-        ("expected exactly one raw diagnostic block, got "
-        ^ Int.to_string (List.length diagnostics))
+  | diagnostics -> Error ("expected exactly one raw diagnostic block, got "
+  ^ Int.to_string (List.length diagnostics))
 
 let test_parse_colored_ocaml_warning_diagnostic = fun () ->
   match Tusk_toolchain.Ocamlc.Diagnostic.parse sample_colored_ocaml_warning with
@@ -119,31 +109,17 @@ let test_parse_colored_ocaml_warning_diagnostic = fun () ->
       | Some location -> Error ("unexpected colored diagnostic path: " ^ location.path)
       | None -> Error "expected colored diagnostic to include a location"
     )
-  | diagnostics ->
-      Error
-        ("expected exactly one parsed colored warning block, got "
-        ^ Int.to_string (List.length diagnostics))
+  | diagnostics -> Error ("expected exactly one parsed colored warning block, got "
+  ^ Int.to_string (List.length diagnostics))
 
 let tests =
   Test.[
-    case
-      "compile impl disables no-cmi-file by default"
-      test_compile_impl_disables_no_cmi_file_by_default;
-    case
-      "parse ocaml warning diagnostic"
-      test_parse_ocaml_warning_diagnostic;
-    case
-      "map path rewrites rendered diagnostic"
-      test_map_path_rewrites_rendered_diagnostic;
-    case
-      "parse c error diagnostic"
-      test_parse_c_error_diagnostic;
-    case
-      "unparseable c-like line falls back to raw"
-      test_unparseable_c_like_line_falls_back_to_raw;
-    case
-      "parse colored ocaml warning diagnostic"
-      test_parse_colored_ocaml_warning_diagnostic;
+    case "compile impl disables no-cmi-file by default" test_compile_impl_disables_no_cmi_file_by_default;
+    case "parse ocaml warning diagnostic" test_parse_ocaml_warning_diagnostic;
+    case "map path rewrites rendered diagnostic" test_map_path_rewrites_rendered_diagnostic;
+    case "parse c error diagnostic" test_parse_c_error_diagnostic;
+    case "unparseable c-like line falls back to raw" test_unparseable_c_like_line_falls_back_to_raw;
+    case "parse colored ocaml warning diagnostic" test_parse_colored_ocaml_warning_diagnostic;
   ]
 
 let () =

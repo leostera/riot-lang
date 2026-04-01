@@ -101,7 +101,8 @@ let test_build_result_status_variants = fun () ->
       fix_providers = [];
     }
   in
-  let artifact = Tusk_store.Artifact.{ hash = Crypto.hash_string "test"; files = []; ocamlc_warnings = [] } in
+  let artifact =
+    Tusk_store.Artifact.{ hash = Crypto.hash_string "test"; files = []; ocamlc_warnings = [] } in
   let result_cached =
     Tusk_executor.Package_builder.{
       package_key = Tusk_planner.Package_graph.package_key
@@ -110,8 +111,9 @@ let test_build_result_status_variants = fun () ->
       package;
       status = Cached artifact;
       ocamlc_warnings = [];
-      duration = Time.Duration.from_millis 5
-    } in
+      duration = Time.Duration.from_millis 5;
+    }
+  in
   let result_built =
     Tusk_executor.Package_builder.{
       package_key = Tusk_planner.Package_graph.package_key
@@ -120,8 +122,9 @@ let test_build_result_status_variants = fun () ->
       package;
       status = Built artifact;
       ocamlc_warnings = [];
-      duration = Time.Duration.from_millis 100
-    } in
+      duration = Time.Duration.from_millis 100;
+    }
+  in
   let result_failed =
     Tusk_executor.Package_builder.{
       package_key = Tusk_planner.Package_graph.package_key
@@ -130,8 +133,9 @@ let test_build_result_status_variants = fun () ->
       package;
       status = Failed (ExecutionFailed { message = "compilation error" });
       ocamlc_warnings = [];
-      duration = Time.Duration.from_millis 50
-    } in
+      duration = Time.Duration.from_millis 50;
+    }
+  in
   match (result_cached.status, result_built.status, result_failed.status) with
   | Cached _, Built _, Failed _ -> Ok ()
   | _ -> Error "Status variants don't match expected types"

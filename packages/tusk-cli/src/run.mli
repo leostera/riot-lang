@@ -3,9 +3,6 @@ open Std
 val command: Std.ArgParser.command
 
 val build_scope_for_binary:
-  Tusk_model.Workspace.t ->
-  package_name:string ->
-  binary_name:string ->
-  Build.build_scope
+  Tusk_model.Workspace.t -> package_name:string -> binary_name:string -> Build.build_scope
 
 val run: Std.ArgParser.matches -> (unit, exn) result

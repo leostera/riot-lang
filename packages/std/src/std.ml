@@ -68,7 +68,7 @@ let start = fun ~apps ->
           sleep (Time.Duration.from_secs 100_000);
           keep_alive ()
         in
-        keep_alive ();
+        let () = keep_alive () in
         Ok ()
     | Error e -> Error e
   in
