@@ -1,6 +1,5 @@
 (** Tusk Build - Exports the local build session runtime *)
 open Std
-
 module Build_server = Build_server
 module Client = Client
 module Event = Event
@@ -90,29 +89,14 @@ type test_event = Test_runtime.test_event =
   | Build of build_event
   | NoSuitesFound of { package_name: string option }
   | RunningSuite of suite_binary
-  | SuiteCompleted of {
-      suite: suite_binary;
-      status: int;
-      stdout: string;
-      stderr: string;
-    }
-  | Summary of {
-      total: int;
-      passed: int;
-      failed: int;
-    }
+  | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
+  | Summary of { total: int; passed: int; failed: int }
 
 type test_error = Test_runtime.test_error =
   | BuildFailed of build_error
   | ClientError of Client.error
-  | SuiteArtifactNotFound of {
-      suite: suite_binary;
-      reason: string;
-    }
-  | SuiteExecutionError of {
-      suite: suite_binary;
-      reason: string;
-    }
+  | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
+  | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 
 let collect_test_suites = Test_runtime.collect_suite_binaries
@@ -134,29 +118,14 @@ type bench_event = Bench_runtime.bench_event =
   | Build of build_event
   | NoSuitesFound of { package_name: string option }
   | RunningSuite of suite_binary
-  | SuiteCompleted of {
-      suite: suite_binary;
-      status: int;
-      stdout: string;
-      stderr: string;
-    }
-  | Summary of {
-      total: int;
-      passed: int;
-      failed: int;
-    }
+  | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
+  | Summary of { total: int; passed: int; failed: int }
 
 type bench_error = Bench_runtime.bench_error =
   | BuildFailed of build_error
   | ClientError of Client.error
-  | SuiteArtifactNotFound of {
-      suite: suite_binary;
-      reason: string;
-    }
-  | SuiteExecutionError of {
-      suite: suite_binary;
-      reason: string;
-    }
+  | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
+  | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 
 let collect_bench_suites = Bench_runtime.collect_suite_binaries
@@ -175,35 +144,15 @@ type install_request = Install_runtime.install_request = {
 
 type install_event = Install_runtime.install_event =
   | Build of build_event
-  | InstallingBinary of {
-      package: string;
-      binary: string;
-    }
-  | PromotedBinary of {
-      binary: string;
-      destination: Path.t;
-      global: bool;
-    }
-  | PromotionWarning of {
-      binary: string;
-      destination: Path.t;
-      global: bool;
-      reason: string;
-    }
-  | InstalledBinary of {
-      binary: string;
-      duration_ms: int;
-      global_destination: Path.t option;
-    }
+  | InstallingBinary of { package: string; binary: string }
+  | PromotedBinary of { binary: string; destination: Path.t; global: bool }
+  | PromotionWarning of { binary: string; destination: Path.t; global: bool; reason: string }
+  | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
 
 type install_error = Install_runtime.install_error =
   | BinaryNotFound of { binary_name: string }
   | BuildFailed of build_error
-  | ArtifactNotFound of {
-      package_name: string;
-      binary_name: string;
-      reason: string;
-    }
+  | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | ClientError of Client.error
 
 let install_error_message = Install_runtime.install_error_message

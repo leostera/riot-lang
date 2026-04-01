@@ -1,7 +1,6 @@
 open Std
 
-type dependency_source =
-{
+type dependency_source = {
   workspace: bool;
   builtin: bool;
   path: Path.t option;

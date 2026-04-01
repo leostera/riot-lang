@@ -57,26 +57,36 @@ let cycle_detected_event_to_json = fun session_id detected_at cycle_nodes ->
   ]
 
 let to_json = function
-  | Pm event -> Some (Tusk_model.Event.to_json event)
+  | Pm event ->
+      Some (Tusk_model.Event.to_json event)
   | BuildingTarget { target; host } ->
-      Some
-        (Data.Json.Object [
-          ("type", Data.Json.String "BuildingTarget");
-          ("target", Data.Json.String target);
-          ("host", Data.Json.Bool host);
-        ])
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "BuildingTarget");
+        ("target", Data.Json.String target);
+        ("host", Data.Json.Bool host);
+      ])
   | Streaming event -> (
       match event with
-      | Client.BuildStarted _ ->
-          None
-      | Client.BuildEvent event ->
-          telemetry_event_to_json event
-      | Client.BuildCompleted { session_id; completed_at; stats; results } ->
-          Some (build_completed_event_to_json session_id completed_at stats results)
-      | Client.BuildFailed { session_id; failed_at; stats=_; built=_; errors } ->
-          Some (build_failed_event_to_json session_id failed_at errors)
-      | Client.PlanningFailed { session_id; failed_at; reason } ->
-          Some (planning_failed_event_to_json session_id failed_at reason)
-      | Client.CycleDetected { session_id; detected_at; cycle_nodes } ->
-          Some (cycle_detected_event_to_json session_id detected_at cycle_nodes)
+      | Client.BuildStarted _ -> None
+      | Client.BuildEvent event -> telemetry_event_to_json event
+      | Client.BuildCompleted { session_id; completed_at; stats; results } -> Some (build_completed_event_to_json
+        session_id
+        completed_at
+        stats
+        results)
+      | Client.BuildFailed {
+        session_id;
+        failed_at;
+        stats=_;
+        built=_;
+        errors
+      } -> Some (build_failed_event_to_json session_id failed_at errors)
+      | Client.PlanningFailed { session_id; failed_at; reason } -> Some (planning_failed_event_to_json
+        session_id
+        failed_at
+        reason)
+      | Client.CycleDetected { session_id; detected_at; cycle_nodes } -> Some (cycle_detected_event_to_json
+        session_id
+        detected_at
+        cycle_nodes)
     )

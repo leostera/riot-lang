@@ -68,31 +68,25 @@ let relative_path_from = fun ~base path ->
 
 let load_manifest_toml = fun ~manifest_path ->
   match Fs.read_to_string manifest_path with
-  | Error err ->
-      Error (Error.ManifestReadFailed {
-        manifest_path;
-        error = IO.error_message err
-      })
+  | Error err -> Error (Error.ManifestReadFailed { manifest_path; error = IO.error_message err })
   | Ok source -> (
       match Data.Toml.parse source with
       | Ok toml -> Ok toml
-      | Error err ->
-          Error (Error.ManifestParseFailed {
-            manifest_path;
-            error = Data.Toml.error_to_string err
-          })
+      | Error err -> Error (Error.ManifestParseFailed {
+        manifest_path;
+        error = Data.Toml.error_to_string err
+      })
     )
 
 let load_path_dependency_package = fun ~declared_from ~dependency_name dep_path ->
   let package_root = resolve_dependency_root ~declared_from dep_path in
   let manifest_path = Path.(package_root / Path.v "tusk.toml") in
   match load_manifest_toml ~manifest_path with
-  | Error err ->
-      Error (Error.PathDependencyLoadFailed {
-        dependency_name;
-        dependency_path = dep_path;
-        error = err
-      })
+  | Error err -> Error (Error.PathDependencyLoadFailed {
+    dependency_name;
+    dependency_path = dep_path;
+    error = err
+  })
   | Ok toml -> Tusk_model.Package.from_toml
     toml
     ~workspace_deps:[]
@@ -101,12 +95,7 @@ let load_path_dependency_package = fun ~declared_from ~dependency_name dep_path 
     ~path:package_root
     ~relative_path:dep_path
   |> Result.map_error
-    (fun err ->
-      Error.PathDependencyDecodeFailed {
-        dependency_name;
-        manifest_path;
-        error = err
-      })
+    (fun err -> Error.PathDependencyDecodeFailed { dependency_name; manifest_path; error = err })
 
 let package_id_key = fun (id: Tusk_model.Lockfile.package_id) ->
   let registry =
@@ -177,11 +166,10 @@ let latest_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_doc
       document.releases
   with
   | Some release -> Ok release
-  | None ->
-      Error (Error.RegistryLatestReleaseMissing {
-        package = document.name;
-        latest_version = document.latest
-      })
+  | None -> Error (Error.RegistryLatestReleaseMissing {
+    package = document.name;
+    latest_version = document.latest
+  })
 
 let lock_dependency_of_local_dependency = fun (dep: Tusk_model.Package.dependency) ->
   Tusk_model.Lockfile.{
@@ -219,10 +207,24 @@ let rec lock_package_of_local_package = fun ~(ctx:context) ~state ~provenance (
   match resolve_manifest_dependencies ~ctx ~state ~required_by ~declared_from:pkg.path [] [] pkg.dependencies with
   | Error _ as err -> err
   | Ok (dependencies, dependency_packages, state) -> (
-      match resolve_manifest_dependencies ~ctx ~state ~required_by ~declared_from:pkg.path [] [] pkg.build_dependencies with
+      match resolve_manifest_dependencies
+        ~ctx
+        ~state
+        ~required_by
+        ~declared_from:pkg.path
+        []
+        []
+        pkg.build_dependencies with
       | Error _ as err -> err
       | Ok (build_dependencies, build_packages, state) -> (
-          match resolve_manifest_dependencies ~ctx ~state ~required_by ~declared_from:pkg.path [] [] pkg.dev_dependencies with
+          match resolve_manifest_dependencies
+            ~ctx
+            ~state
+            ~required_by
+            ~declared_from:pkg.path
+            []
+            []
+            pkg.dev_dependencies with
           | Error _ as err -> err
           | Ok (dev_dependencies, dev_packages, state) ->
               Ok (
@@ -288,13 +290,11 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by package
                 });
               match Pkgs_ml.Registry.read_package_document ctx.registry ~package_name with
               | Error err ->
-                  let error =
-                    Error.PackageMetadataReadFailed {
-                      package = package_name;
-                      registry = registry_name;
-                      error = err
-                    }
-                  in
+                  let error = Error.PackageMetadataReadFailed {
+                    package = package_name;
+                    registry = registry_name;
+                    error = err
+                  } in
                   ctx.emit
                     (Tusk_model.Event.PackageMetadataFetchFailed {
                       registry = registry_name;
@@ -303,13 +303,11 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by package
                     });
                   Error error
               | Ok None ->
-                  let error =
-                    Error.PackageNotFound {
-                      package = package_name;
-                      registry = registry_name;
-                      required_by
-                    }
-                  in
+                  let error = Error.PackageNotFound {
+                    package = package_name;
+                    registry = registry_name;
+                    required_by
+                  } in
                   ctx.emit
                     (Tusk_model.Event.PackageMetadataFetchFailed {
                       registry = registry_name;
@@ -345,19 +343,23 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by package
                         | (dep: Pkgs_ml.Sparse_index.dependency) :: rest ->
                             if Tusk_model.Package.is_builtin_dependency_name dep.name then
                               resolve_release_dependencies ~state acc_packages acc_dependencies rest
-                            else (
-                            match resolve_registry_dependency
-                              ~ctx
-                              ~state
-                              ~required_by:(Some Tusk_model.Pm_error.{ package = document.name; path = None })
-                              dep.name with
-                            | Error _ as err -> err
-                            | Ok (resolved, state) -> resolve_release_dependencies
-                              ~state
-                              (List.rev_append resolved.packages acc_packages)
-                              (resolved.dependency :: acc_dependencies)
-                              rest
-                          )
+                            else
+                              (
+                                match resolve_registry_dependency
+                                  ~ctx
+                                  ~state
+                                  ~required_by:(Some Tusk_model.Pm_error.{
+                                    package = document.name;
+                                    path = None
+                                  })
+                                  dep.name with
+                                | Error _ as err -> err
+                                | Ok (resolved, state) -> resolve_release_dependencies
+                                  ~state
+                                  (List.rev_append resolved.packages acc_packages)
+                                  (resolved.dependency :: acc_dependencies)
+                                  rest
+                              )
                       in
                       match resolve_release_dependencies ~state [] [] release.dependencies with
                       | Error _ as err -> err
@@ -447,7 +449,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
   | [] -> Ok (List.rev acc_dependencies, List.rev acc_packages, state)
   | dep :: rest -> (
       match dep.Tusk_model.Package.source with
-      | { workspace = true; _ } ->
+      | { workspace=true; _ } ->
           resolve_manifest_dependencies
             ~ctx
             ~state
@@ -456,9 +458,16 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             acc_packages
             (lock_dependency_of_local_dependency dep :: acc_dependencies)
             rest
-      | { builtin = true; _ } ->
-          resolve_manifest_dependencies ~ctx ~state ~required_by ~declared_from acc_packages acc_dependencies rest
-      | { path = None; _ } -> (
+      | { builtin=true; _ } ->
+          resolve_manifest_dependencies
+            ~ctx
+            ~state
+            ~required_by
+            ~declared_from
+            acc_packages
+            acc_dependencies
+            rest
+      | { path=None; _ } -> (
           match find_workspace_package_by_name
             ~workspace_packages:ctx.workspace_packages
             ~package_name:dep.name with
@@ -483,7 +492,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
                 rest
             )
         )
-      | { path = Some path; _ } -> (
+      | { path=Some path; _ } -> (
           match resolve_path_dependency ~ctx ~state ~declared_from dep.name path with
           | Error _ as err -> err
           | Ok (resolved, state) -> resolve_manifest_dependencies

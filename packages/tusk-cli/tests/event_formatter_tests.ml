@@ -43,12 +43,7 @@ let test_build_failed_prefixes_package_name = fun () ->
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
-      publish = {
-        version = None;
-        description = None;
-        license = None;
-        is_public = None;
-      };
+      publish = { version = None; description = None; license = None; is_public = None };
     }
   in
   let event = Tusk_executor.Telemetry_events.BuildFailed {
@@ -87,12 +82,7 @@ let test_package_ocamlc_warnings_prefix_package_name = fun () ->
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
-      publish = {
-        version = None;
-        description = None;
-        license = None;
-        is_public = None;
-      };
+      publish = { version = None; description = None; license = None; is_public = None };
     }
   in
   let event = Tusk_executor.Telemetry_events.PackageOcamlcWarnings {

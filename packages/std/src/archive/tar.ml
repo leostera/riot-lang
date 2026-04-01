@@ -53,19 +53,15 @@ let entry_kind_of_kernel = function
 
 let path_of_string = fun path_str ->
   match Path.of_string path_str with
-  | Ok path ->
-      Ok path
-  | Error _ ->
-      Error (Invalid_path path_str)
+  | Ok path -> Ok path
+  | Error _ -> Error (Invalid_path path_str)
 
 let entry_of_header = fun (header: Kernel.Archive.Tar.header) ->
   let* path = path_of_string header.path in
   let* link_target =
     match header.link_target with
-    | None ->
-        Ok None
-    | Some target ->
-        path_of_string target |> Result.map Option.some
+    | None -> Ok None
+    | Some target -> path_of_string target |> Result.map Option.some
   in
   Ok {
     path;
@@ -81,10 +77,12 @@ let feed_from_source_entries = fun source tar_reader ->
       Ok 0
   | Ok bytes_read ->
       let () = yield () in
-      let* consumed =
-        Kernel.Archive.Tar.feed_reader tar_reader ~src:source.buffer ~src_pos:0 ~src_len:bytes_read
-        |> Result.map_err (fun err -> Entries_error (Kernel_error err))
-      in
+      let* consumed = Kernel.Archive.Tar.feed_reader
+        tar_reader
+        ~src:source.buffer
+        ~src_pos:0
+        ~src_len:bytes_read
+      |> Result.map_err (fun err -> Entries_error (Kernel_error err)) in
       if consumed = bytes_read then
         Ok bytes_read
       else
@@ -98,10 +96,12 @@ let feed_from_source_extract = fun source tar_reader ->
       Ok 0
   | Ok bytes_read ->
       let () = yield () in
-      let* consumed =
-        Kernel.Archive.Tar.feed_reader tar_reader ~src:source.buffer ~src_pos:0 ~src_len:bytes_read
-        |> Result.map_err (fun err -> Extract_error (Kernel_error err))
-      in
+      let* consumed = Kernel.Archive.Tar.feed_reader
+        tar_reader
+        ~src:source.buffer
+        ~src_pos:0
+        ~src_len:bytes_read
+      |> Result.map_err (fun err -> Extract_error (Kernel_error err)) in
       if consumed = bytes_read then
         Ok bytes_read
       else
@@ -116,12 +116,9 @@ let next_entry_entries = fun source tar_reader ->
         Error (Entries_error (Kernel_error err))
     | Ok Kernel.Archive.Tar.Need_input -> (
         match feed_from_source_entries source tar_reader with
-        | Ok 0 ->
-            Error (Entries_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
-        | Ok _ ->
-            loop ()
-        | Error err ->
-            Error err
+        | Ok 0 -> Error (Entries_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
+        | Ok _ -> loop ()
+        | Error err -> Error err
       )
     | Ok next ->
         Ok next
@@ -135,12 +132,9 @@ let next_entry_extract = fun source tar_reader ->
         Error (Extract_error (Kernel_error err))
     | Ok Kernel.Archive.Tar.Need_input -> (
         match feed_from_source_extract source tar_reader with
-        | Ok 0 ->
-            Error (Extract_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
-        | Ok _ ->
-            loop ()
-        | Error err ->
-            Error err
+        | Ok 0 -> Error (Extract_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
+        | Ok _ -> loop ()
+        | Error err -> Error err
       )
     | Ok next ->
         Ok next
@@ -156,12 +150,9 @@ let drain_entry_entries = fun source tar_reader ->
         Ok ()
     | Ok Kernel.Archive.Tar.Need_input -> (
         match feed_from_source_entries source tar_reader with
-        | Ok 0 ->
-            Error (Entries_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
-        | Ok _ ->
-            loop ()
-        | Error err ->
-            Error err
+        | Ok 0 -> Error (Entries_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
+        | Ok _ -> loop ()
+        | Error err -> Error err
       )
   in
   loop ()
@@ -175,23 +166,18 @@ let drain_entry_extract = fun source tar_reader ->
         Ok ()
     | Ok Kernel.Archive.Tar.Need_input -> (
         match feed_from_source_extract source tar_reader with
-        | Ok 0 ->
-            Error (Extract_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
-        | Ok _ ->
-            loop ()
-        | Error err ->
-            Error err
+        | Ok 0 -> Error (Extract_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
+        | Ok _ -> loop ()
+        | Error err -> Error err
       )
   in
   loop ()
 
 let entries = fun reader ->
   match Kernel.Archive.Tar.create_reader () with
-  | Error err ->
-      Error (Entries_error (Kernel_error err))
+  | Error err -> Error (Entries_error (Kernel_error err))
   | Ok tar_reader ->
-      Kernel.Fun.protect
-        ~finally:(fun () -> Kernel.Archive.Tar.close_reader tar_reader)
+      Kernel.Fun.protect ~finally:(fun () -> Kernel.Archive.Tar.close_reader tar_reader)
         (fun () ->
           let source = make_source reader in
           let rec loop acc =
@@ -201,10 +187,7 @@ let entries = fun reader ->
             | Ok Kernel.Archive.Tar.End ->
                 Ok (List.rev acc)
             | Ok (Kernel.Archive.Tar.Entry header) ->
-                let* entry =
-                  entry_of_header header
-                  |> Result.map_err (fun err -> Entries_error err)
-                in
+                let* entry = entry_of_header header |> Result.map_err (fun err -> Entries_error err) in
                 let* () = drain_entry_entries source tar_reader in
                 loop (entry :: acc)
             | Ok Kernel.Archive.Tar.Need_input ->
@@ -220,13 +203,13 @@ let safe_relative_path = fun ~kind path ->
     let path_str = Path.to_string normalized in
     if path_str = "." then
       match kind with
-      | Directory ->
-          Ok None
-      | _ ->
-          Error (Unsafe_path path_str)
+      | Directory -> Ok None
+      | _ -> Error (Unsafe_path path_str)
     else if path_str = "" then
       Error (Unsafe_path path_str)
-    else if List.exists (fun component -> Path.to_string component = "..") (Path.components normalized) then
+    else if
+      List.exists (fun component -> Path.to_string component = "..") (Path.components normalized)
+    then
       Error (Unsafe_path path_str)
     else
       Ok (Some normalized)
@@ -240,15 +223,17 @@ let register_target = fun seen path ->
 
 let set_permissions = fun path permissions ->
   match permissions with
-  | None ->
-      Ok ()
-  | Some perms ->
-      Fs.set_permissions path perms
+  | None -> Ok ()
+  | Some perms -> Fs.set_permissions path perms
 
 let write_entry_file = fun source tar_reader file ->
   let chunk = Bytes.create source_buffer_size in
   let rec loop chunk_count =
-    match Kernel.Archive.Tar.read_entry_data tar_reader ~dst:chunk ~dst_pos:0 ~dst_len:(Bytes.length chunk) with
+    match Kernel.Archive.Tar.read_entry_data
+      tar_reader
+      ~dst:chunk
+      ~dst_pos:0
+      ~dst_len:(Bytes.length chunk) with
     | Error err ->
         Error (Extract_error (Kernel_error err))
     | Ok Kernel.Archive.Tar.End_of_entry ->
@@ -259,30 +244,22 @@ let write_entry_file = fun source tar_reader file ->
             yield ()
         in
         let data = Bytes.sub_string chunk 0 bytes_read in
-        let* () =
-          Fs.File.write_all file data
-          |> Result.map_err (fun err -> Extract_fs_error err)
-        in
+        let* () = Fs.File.write_all file data |> Result.map_err (fun err -> Extract_fs_error err) in
         loop (chunk_count + 1)
     | Ok Kernel.Archive.Tar.Need_input -> (
         match feed_from_source_extract source tar_reader with
-        | Ok 0 ->
-            Error (Extract_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
-        | Ok _ ->
-            loop chunk_count
-        | Error err ->
-            Error err
+        | Ok 0 -> Error (Extract_error (Kernel_error Kernel.Archive.Tar.Unexpected_eof))
+        | Ok _ -> loop chunk_count
+        | Error err -> Error err
       )
   in
   loop 0
 
 let extract = fun reader ~into ->
   match Kernel.Archive.Tar.create_reader () with
-  | Error err ->
-      Error (Extract_error (Kernel_error err))
+  | Error err -> Error (Extract_error (Kernel_error err))
   | Ok tar_reader ->
-      Kernel.Fun.protect
-        ~finally:(fun () -> Kernel.Archive.Tar.close_reader tar_reader)
+      Kernel.Fun.protect ~finally:(fun () -> Kernel.Archive.Tar.close_reader tar_reader)
         (fun () ->
           let source = make_source reader in
           let seen = HashSet.create () in
@@ -293,67 +270,50 @@ let extract = fun reader ~into ->
             | Ok Kernel.Archive.Tar.End ->
                 Ok ()
             | Ok (Kernel.Archive.Tar.Entry header) ->
-                let* entry =
-                  entry_of_header header
-                  |> Result.map_err (fun err -> Extract_error err)
-                in
-                let* relative_path =
-                  safe_relative_path ~kind:entry.kind entry.path
-                  |> Result.map_err (fun err -> Extract_error err)
-                in
+                let* entry = entry_of_header header |> Result.map_err (fun err -> Extract_error err) in
+                let* relative_path = safe_relative_path ~kind:entry.kind entry.path
+                |> Result.map_err (fun err -> Extract_error err) in
                 let* () =
                   match entry.kind, relative_path with
                   | Directory, None ->
-                      let* () =
-                        Fs.create_dir_all into
-                        |> Result.map_err (fun err -> Extract_fs_error err)
-                      in
+                      let* () = Fs.create_dir_all into
+                      |> Result.map_err (fun err -> Extract_fs_error err) in
                       let* () = drain_entry_extract source tar_reader in
                       set_permissions into entry.mode
                       |> Result.map_err (fun err -> Extract_fs_error err)
                   | Directory, Some relative_path ->
                       let target = Path.join into relative_path in
-                      let* () =
-                        register_target seen target
-                        |> Result.map_err (fun err -> Extract_error err)
-                      in
-                      let* () =
-                        Fs.create_dir_all target
-                        |> Result.map_err (fun err -> Extract_fs_error err)
-                      in
+                      let* () = register_target seen target
+                      |> Result.map_err (fun err -> Extract_error err) in
+                      let* () = Fs.create_dir_all target
+                      |> Result.map_err (fun err -> Extract_fs_error err) in
                       let* () = drain_entry_extract source tar_reader in
                       set_permissions target entry.mode
                       |> Result.map_err (fun err -> Extract_fs_error err)
                   | File, Some relative_path ->
                       let target = Path.join into relative_path in
-                      let* () =
-                        register_target seen target
-                        |> Result.map_err (fun err -> Extract_error err)
-                      in
+                      let* () = register_target seen target
+                      |> Result.map_err (fun err -> Extract_error err) in
                       let* () =
                         match Path.parent target with
-                        | None ->
-                            Ok ()
-                        | Some parent ->
-                            Fs.create_dir_all parent
-                            |> Result.map_err (fun err -> Extract_fs_error err)
+                        | None -> Ok ()
+                        | Some parent -> Fs.create_dir_all parent
+                        |> Result.map_err (fun err -> Extract_fs_error err)
                       in
                       begin
                         match Fs.File.create target with
-                        | Error err ->
-                            Error (Extract_fs_error err)
+                        | Error err -> Error (Extract_fs_error err)
                         | Ok file ->
-                            Kernel.Fun.protect
-                              ~finally:(fun () -> ignore (Fs.File.close file))
+                            Kernel.Fun.protect ~finally:(fun () -> ignore (Fs.File.close file))
                               (fun () ->
                                 let* () = write_entry_file source tar_reader file in
                                 set_permissions target entry.mode
                                 |> Result.map_err (fun err -> Extract_fs_error err))
                       end
-                  | File, None
-                  | Symlink, _
-                  | Hardlink, _
-                  | Other _, _ ->
+                  | (File, None)
+                  | (Symlink, _)
+                  | (Hardlink, _)
+                  | (Other _, _) ->
                       Error (Extract_error (Unsupported_entry_kind entry.kind))
                 in
                 loop ()
@@ -364,18 +324,14 @@ let extract = fun reader ~into ->
 
 let entries_file = fun archive ->
   match Fs.File.open_read archive with
-  | Error err ->
-      Error (Entries_source_error err)
-  | Ok file ->
-      Kernel.Fun.protect
-        ~finally:(fun () -> ignore (Fs.File.close file))
-        (fun () -> entries (Fs.File.to_reader file))
+  | Error err -> Error (Entries_source_error err)
+  | Ok file -> Kernel.Fun.protect
+    ~finally:(fun () -> ignore (Fs.File.close file))
+    (fun () -> entries (Fs.File.to_reader file))
 
 let extract_file = fun ~archive ~into ->
   match Fs.File.open_read archive with
-  | Error err ->
-      Error (Extract_source_error err)
-  | Ok file ->
-      Kernel.Fun.protect
-        ~finally:(fun () -> ignore (Fs.File.close file))
-        (fun () -> extract (Fs.File.to_reader file) ~into)
+  | Error err -> Error (Extract_source_error err)
+  | Ok file -> Kernel.Fun.protect
+    ~finally:(fun () -> ignore (Fs.File.close file))
+    (fun () -> extract (Fs.File.to_reader file) ~into)

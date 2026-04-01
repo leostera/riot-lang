@@ -538,7 +538,7 @@ let from_json = fun json ->
                                     version = None;
                                     description = None;
                                     license = None;
-                                    is_public = None;
+                                    is_public = None
                                   };
                                 }
                               in

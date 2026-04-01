@@ -14,18 +14,12 @@ type error =
   | InvalidRepositoryRoot of { path: string; error: string }
   | PackageOutsideRepository of { package_root: Path.t; repository_root: Path.t }
   | UnsupportedRemoteUrl of { url: string }
-  | GitCommandFailed of {
-      command: string;
-      status: int;
-      stdout: string;
-      stderr: string;
-    }
+  | GitCommandFailed of { command: string; status: int; stdout: string; stderr: string }
   | GitCommandSpawnFailed of { command: string; error: string }
 
 let path_error_message = function
   | Path.InvalidUtf8 { path } -> "invalid utf8 path: " ^ path
-  | Path.SystemInvalidUtf8 { syscall; path } ->
-      "invalid utf8 from " ^ syscall ^ ": " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "invalid utf8 from " ^ syscall ^ ": " ^ path
   | Path.SystemError msg -> msg
 
 let message = function
@@ -55,23 +49,20 @@ let message = function
       "failed to spawn git command '" ^ command ^ "': " ^ error
 
 let run_git = fun ~cwd args ->
-  let command =
-    Command.make
-      "env"
-      ~args:
-        ([
-           "-u";
-           "GIT_DIR";
-           "-u";
-           "GIT_WORK_TREE";
-           "-u";
-           "GIT_INDEX_FILE";
-           "git";
-           "-C";
-           Path.to_string cwd;
-         ]
-        @ args)
-  in
+  let command = Command.make
+    "env"
+    ~args:(([
+      "-u";
+      "GIT_DIR";
+      "-u";
+      "GIT_WORK_TREE";
+      "-u";
+      "GIT_INDEX_FILE";
+      "git";
+      "-C";
+      Path.to_string cwd;
+    ]
+    @ args)) in
   match Command.output command with
   | Error (Command.SystemError error) ->
       Error (GitCommandSpawnFailed { command = Command.to_string command; error })
@@ -86,7 +77,7 @@ let run_git = fun ~cwd args ->
           command = Command.to_string command;
           status = output.status;
           stdout = output.stdout;
-          stderr = output.stderr;
+          stderr = output.stderr
         })
   | Ok output ->
       Ok (String.trim output.stdout)
@@ -100,16 +91,14 @@ let strip_git_suffix = fun url ->
 let split_once = fun ~on text ->
   match String.index_opt text on with
   | None -> None
-  | Some idx ->
-      Some
-        (
-          String.sub text 0 idx,
-          String.sub text (idx + 1) (String.length text - idx - 1)
-        )
+  | Some idx -> Some (
+    String.sub text 0 idx,
+    String.sub text (idx + 1) (String.length text - idx - 1)
+  )
 
 let normalize_remote_url = fun raw_url ->
   let url = raw_url |> String.trim |> strip_git_suffix in
-  let mk_locator = fun host path ->
+  let mk_locator host path =
     let path =
       if String.starts_with ~prefix:"/" path then
         String.sub path 1 (String.length path - 1)
@@ -150,8 +139,7 @@ let package_subdir_from_root = fun ~repository_root ~package_root ->
   else
     match Path.strip_prefix package_root ~prefix:repository_root with
     | Ok subdir -> Ok (Some subdir)
-    | Error _ ->
-        Error (PackageOutsideRepository { package_root; repository_root })
+    | Error _ -> Error (PackageOutsideRepository { package_root; repository_root })
 
 let discover = fun ~package_root ->
   let package_root =
@@ -163,8 +151,10 @@ let discover = fun ~package_root ->
   | Error _ as err -> err
   | Ok repository_root_str -> (
       match Path.of_string repository_root_str with
-      | Error err ->
-          Error (InvalidRepositoryRoot { path = repository_root_str; error = path_error_message err })
+      | Error err -> Error (InvalidRepositoryRoot {
+        path = repository_root_str;
+        error = path_error_message err
+      })
       | Ok repository_root -> (
           match package_subdir_from_root ~repository_root ~package_root with
           | Error _ as err -> err

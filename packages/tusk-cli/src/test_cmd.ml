@@ -52,19 +52,18 @@ let print_summary = fun ~label ~total ~passed ~failed ->
 
 let write_test_event = fun (event: Tusk_build.test_event) ->
   match event with
-  | Tusk_build.Build _ ->
-      ()
-  | Tusk_build.NoSuitesFound { package_name } ->
-      print_empty_hint package_name
-  | Tusk_build.RunningSuite suite ->
-      print_run_label suite
-  | Tusk_build.SuiteCompleted { stdout; stderr; _ } ->
-      print_command_output Command.{ stdout; stderr; status = 0 }
-  | Tusk_build.Summary { total; passed; failed } ->
-      print_summary ~label:"Test Summary:" ~total ~passed ~failed
+  | Tusk_build.Build _ -> ()
+  | Tusk_build.NoSuitesFound { package_name } -> print_empty_hint package_name
+  | Tusk_build.RunningSuite suite -> print_run_label suite
+  | Tusk_build.SuiteCompleted { stdout; stderr; _ } -> print_command_output
+    Command.{ stdout; stderr; status = 0 }
+  | Tusk_build.Summary { total; passed; failed } -> print_summary
+    ~label:"Test Summary:"
+    ~total
+    ~passed
+    ~failed
 
-let write_test_error = fun err ->
-  println ("error: " ^ Tusk_build.test_error_message err)
+let write_test_error = fun err -> println ("error: " ^ Tusk_build.test_error_message err)
 
 let run = fun ~workspace matches ->
   let extra_args = trailing_args matches in
@@ -73,18 +72,10 @@ let run = fun ~workspace matches ->
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
   let request = Test_selection.parse_request ~pattern ~legacy_package in
-  match
-    Tusk_build.test
-      ~on_event:write_test_event
-      {
-        workspace;
-        package_filter = request.package_filter;
-        query = request.query;
-        extra_args;
-      }
-  with
-  | Ok () ->
-      Ok ()
+  match Tusk_build.test
+    ~on_event:write_test_event
+    { workspace; package_filter = request.package_filter; query = request.query; extra_args } with
+  | Ok () -> Ok ()
   | Error err ->
       write_test_error err;
       Error (Failure (Tusk_build.test_error_message err))

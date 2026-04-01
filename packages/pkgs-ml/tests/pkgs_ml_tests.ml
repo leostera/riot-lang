@@ -152,22 +152,13 @@ let make_fetch_recorder = fun ?post_handler get_handler ->
   let fetch =
     Pkgs_ml.Registry.make_fetch
       ~get:(fun uri ->
-        requests := {
-          method_ = "GET";
-          url = Net.Uri.to_string uri;
-          headers = [];
-          body = None;
-        } :: !requests;
+        requests := { method_ = "GET"; url = Net.Uri.to_string uri; headers = []; body = None } :: !requests;
         get_handler uri)
       ?post:(Option.map
         (fun post_handler ->
           fun uri ~headers ~body ->
-            requests := {
-              method_ = "POST";
-              url = Net.Uri.to_string uri;
-              headers;
-              body = Some body;
-            } :: !requests;
+            requests := { method_ = "POST"; url = Net.Uri.to_string uri; headers; body = Some body }
+            :: !requests;
             post_handler uri ~headers ~body)
         post_handler)
       ()
@@ -183,19 +174,26 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun () ->
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
-        let fetch, requests = make_fetch_recorder (fun uri ->
-          if String.equal (Net.Uri.to_string uri) "https://cdn.pkgs.ml/index/v1/config.json" then
-            Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
-          else
-            Error ("unexpected fetch url " ^ Net.Uri.to_string uri)) in
+        let fetch, requests =
+          make_fetch_recorder
+            (fun uri ->
+              if String.equal (Net.Uri.to_string uri) "https://cdn.pkgs.ml/index/v1/config.json" then
+                Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
+              else
+                Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
+        in
         let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
         match Pkgs_ml.Registry.read_config registry with
-        | Error err -> Error err
-        | Ok None -> Error "expected filesystem registry to fetch sparse index config"
+        | Error err ->
+            Error err
+        | Ok None ->
+            Error "expected filesystem registry to fetch sparse index config"
         | Ok (Some config) -> (
             match Pkgs_ml.Sparse_index.read_cached_config cache with
-            | Error err -> Error err
-            | Ok None -> Error "expected fetched config to be cached"
+            | Error err ->
+                Error err
+            | Ok None ->
+                Error "expected fetched config to be cached"
             | Ok (Some cached) ->
                 let requested = List.rev !requests |> List.map (fun request -> request.url) in
                 if
@@ -220,32 +218,43 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun () ->
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
-        let fetch, requests = make_fetch_recorder (fun uri ->
-          match Net.Uri.to_string uri with
-          | "https://cdn.pkgs.ml/index/v1/config.json" ->
-              Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
-          | "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" ->
-              Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_kernel_json }
-          | url -> Error ("unexpected fetch url " ^ url)) in
+        let fetch, requests =
+          make_fetch_recorder
+            (fun uri ->
+              match Net.Uri.to_string uri with
+              | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
+                Pkgs_ml.Registry.status_code = 200;
+                body = sparse_index_config_json
+              }
+              | "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" -> Ok {
+                Pkgs_ml.Registry.status_code = 200;
+                body = sparse_index_kernel_json
+              }
+              | url -> Error ("unexpected fetch url " ^ url))
+        in
         let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
         match Pkgs_ml.Registry.read_package_document registry ~package_name:"Kernel" with
-        | Error err -> Error err
-        | Ok None -> Error "expected filesystem registry to fetch package document"
+        | Error err ->
+            Error err
+        | Ok None ->
+            Error "expected filesystem registry to fetch package document"
         | Ok (Some document) -> (
-            match
-              Pkgs_ml.Sparse_index.read_cached_config cache,
-              Pkgs_ml.Sparse_index.read_cached_package_document cache ~package_name:"Kernel"
-            with
-            | Error err, _
-            | _, Error err -> Error err
-            | Ok None, _
-            | _, Ok None -> Error "expected fetched sparse index files to be cached"
+            match Pkgs_ml.Sparse_index.read_cached_config cache, Pkgs_ml.Sparse_index.read_cached_package_document
+              cache
+              ~package_name:"Kernel" with
+            | (Error err, _)
+            | (_, Error err) ->
+                Error err
+            | (Ok None, _)
+            | (_, Ok None) ->
+                Error "expected fetched sparse index files to be cached"
             | Ok (Some _), Ok (Some cached) ->
                 let requested = List.rev !requests |> List.map (fun request -> request.url) in
                 if
                   String.equal document.name "kernel"
                   && String.equal cached.name "kernel"
-                  && requested = [
+                  && requested
+                  = [
                     "https://cdn.pkgs.ml/index/v1/config.json";
                     "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json";
                   ]
@@ -267,25 +276,37 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun () 
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
-        let fetch, requests = make_fetch_recorder (fun uri ->
-          match Net.Uri.to_string uri with
-          | "https://cdn.pkgs.ml/index/v1/config.json" ->
-              Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
-          | "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json" ->
-              Ok { Pkgs_ml.Registry.status_code = 404; body = "" }
-          | url -> Error ("unexpected fetch url " ^ url)) in
+        let fetch, requests =
+          make_fetch_recorder
+            (fun uri ->
+              match Net.Uri.to_string uri with
+              | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
+                Pkgs_ml.Registry.status_code = 200;
+                body = sparse_index_config_json
+              }
+              | "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json" -> Ok {
+                Pkgs_ml.Registry.status_code = 404;
+                body = ""
+              }
+              | url -> Error ("unexpected fetch url " ^ url))
+        in
         let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
         match Pkgs_ml.Registry.read_package_document registry ~package_name:"Missing" with
-        | Error err -> Error err
-        | Ok (Some _) -> Error "expected missing package document lookup to return none"
+        | Error err ->
+            Error err
+        | Ok (Some _) ->
+            Error "expected missing package document lookup to return none"
         | Ok None -> (
             match Pkgs_ml.Sparse_index.read_cached_package_document cache ~package_name:"Missing" with
-            | Error err -> Error err
-            | Ok (Some _) -> Error "expected missing package document lookup to leave cache empty"
+            | Error err ->
+                Error err
+            | Ok (Some _) ->
+                Error "expected missing package document lookup to leave cache empty"
             | Ok None ->
                 let requested = List.rev !requests |> List.map (fun request -> request.url) in
                 if
-                  requested = [
+                  requested
+                  = [
                     "https://cdn.pkgs.ml/index/v1/config.json";
                     "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json";
                   ]
@@ -420,7 +441,7 @@ let tar_zero_pad_left = fun width value ->
 let tar_bytes_set_octal = fun dst ~offset ~width value ->
   let digits_width = max 1 (width - 1) in
   let trimmed = tar_zero_pad_left digits_width (tar_octal_string value) in
-  tar_bytes_set_string dst ~offset ~width:(width - 1) trimmed;
+  tar_bytes_set_string dst ~offset ~width:((width - 1)) trimmed;
   IO.Bytes.set dst (offset + width - 1) '\000'
 
 let tar_compute_checksum = fun header ->
@@ -467,12 +488,12 @@ let create_test_archive = fun ~source_root ~archive_path ->
   | Error err -> Error ("failed to create archive parent directory: " ^ IO.error_message err)
   | Ok () -> (
       match Fs.read manifest_path, Fs.read source_file_path with
-      | Error err, _
-      | _, Error err ->
-          Error ("failed to read source fixture for test archive: " ^ IO.error_message err)
+      | (Error err, _)
+      | (_, Error err) -> Error ("failed to read source fixture for test archive: "
+      ^ IO.error_message err)
       | Ok manifest, Ok source ->
           let buffer = IO.Buffer.create 2_048 in
-          let add_entry = fun ~name ~kind ~mode data ->
+          let add_entry ~name ~kind ~mode data =
             let size = Int64.of_int (String.length data) in
             IO.Buffer.add_bytes buffer (tar_make_header ~name ~kind ~mode ~size);
             IO.Buffer.add_string buffer data;
@@ -494,29 +515,23 @@ let gzip_file = fun ~src ~dst ->
     | None -> Path.v "."
   in
   match Fs.create_dir_all parent with
-  | Error err ->
-      Error ("failed to create gzip output parent directory: " ^ IO.error_message err)
+  | Error err -> Error ("failed to create gzip output parent directory: " ^ IO.error_message err)
   | Ok () ->
-      Compress.Gzip.compress_file ~src ~dst
-      |> Result.map_err
-           (function
-            | Compress.Gzip.File_io_error err ->
-                "failed to gzip test archive: " ^ IO.error_message err
-            | Compress.Gzip.File_gzip_error err -> (
-                match err with
-                | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Invalid_data ->
-                    "failed to gzip test archive: invalid gzip data"
-                | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Need_dictionary ->
-                    "failed to gzip test archive: gzip stream requires a preset dictionary"
-                | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Buffer_error ->
-                    "failed to gzip test archive: gzip encoder buffer error"
-                | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Out_of_memory ->
-                    "failed to gzip test archive: gzip encoder out of memory"
-                | Compress.Gzip.Kernel_error (Kernel.Compress.Gzip.Unknown_error msg) ->
-                    "failed to gzip test archive: " ^ msg
-                | Compress.Gzip.Truncated_input ->
-                    "failed to gzip test archive: truncated gzip input"
-              ))
+      Compress.Gzip.compress_file ~src ~dst |> Result.map_err
+        (
+          function
+          | Compress.Gzip.File_io_error err -> "failed to gzip test archive: " ^ IO.error_message err
+          | Compress.Gzip.File_gzip_error err -> (
+              match err with
+              | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Invalid_data -> "failed to gzip test archive: invalid gzip data"
+              | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Need_dictionary -> "failed to gzip test archive: gzip stream requires a preset dictionary"
+              | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Buffer_error -> "failed to gzip test archive: gzip encoder buffer error"
+              | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Out_of_memory -> "failed to gzip test archive: gzip encoder out of memory"
+              | Compress.Gzip.Kernel_error (Kernel.Compress.Gzip.Unknown_error msg) -> "failed to gzip test archive: "
+              ^ msg
+              | Compress.Gzip.Truncated_input -> "failed to gzip test archive: truncated gzip input"
+            )
+        )
 
 let test_filesystem_registry_materializes_cached_release = fun () ->
   match
@@ -643,22 +658,35 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun () ->
             match Fs.read downloaded_archive with
             | Error err -> Error ("failed to read test archive: " ^ IO.error_message err)
             | Ok archive_body ->
-                let fetch, requests = make_fetch_recorder (fun uri ->
-                  match Net.Uri.to_string uri with
-                  | "https://cdn.pkgs.ml/index/v1/config.json" ->
-                      Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
-                  | "https://cdn.pkgs.ml/index/v1/3/s/std.json" ->
-                      Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_std_release_json }
-                  | "https://cdn.pkgs.ml/sources/std/0.1.0.tar" ->
-                      Ok { Pkgs_ml.Registry.status_code = 200; body = archive_body }
-                  | url -> Error ("unexpected fetch url " ^ url)) in
+                let fetch, requests =
+                  make_fetch_recorder
+                    (fun uri ->
+                      match Net.Uri.to_string uri with
+                      | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
+                        Pkgs_ml.Registry.status_code = 200;
+                        body = sparse_index_config_json
+                      }
+                      | "https://cdn.pkgs.ml/index/v1/3/s/std.json" -> Ok {
+                        Pkgs_ml.Registry.status_code = 200;
+                        body = sparse_index_std_release_json
+                      }
+                      | "https://cdn.pkgs.ml/sources/std/0.1.0.tar" -> Ok {
+                        Pkgs_ml.Registry.status_code = 200;
+                        body = archive_body
+                      }
+                      | url -> Error ("unexpected fetch url " ^ url))
+                in
                 let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
                 match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
-                | Error err -> Error err
+                | Error err ->
+                    Error err
                 | Ok `Already_present ->
                     Error "expected uncached release to download and materialize on first attempt"
                 | Ok `Materialized ->
-                    let archive_path = Pkgs_ml.Registry_cache.archive_path cache ~package_name:"std" ~version:"0.1.0" in
+                    let archive_path = Pkgs_ml.Registry_cache.archive_path
+                      cache
+                      ~package_name:"std"
+                      ~version:"0.1.0" in
                     let manifest_path = Pkgs_ml.Registry_cache.package_src_dir
                       cache
                       ~package_name:"std"
@@ -670,16 +698,19 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun () ->
                       ~version:"0.1.0"
                     |> fun root -> Path.(root / Path.v "src/std.ml") in
                     match Fs.exists archive_path, Fs.read manifest_path, Fs.read materialized_source with
-                    | Error err, _, _
-                    | _, Error err, _
-                    | _, _, Error err -> Error (IO.error_message err)
-                    | Ok false, _, _ -> Error "expected downloaded archive to be cached"
+                    | (Error err, _, _)
+                    | (_, Error err, _)
+                    | (_, _, Error err) ->
+                        Error (IO.error_message err)
+                    | Ok false, _, _ ->
+                        Error "expected downloaded archive to be cached"
                     | Ok true, Ok manifest, Ok source ->
                         let requested = List.rev !requests |> List.map (fun request -> request.url) in
                         if
                           String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
                           && String.equal source "let answer = 42\n"
-                          && requested = [
+                          && requested
+                          = [
                             "https://cdn.pkgs.ml/index/v1/config.json";
                             "https://cdn.pkgs.ml/index/v1/3/s/std.json";
                             "https://cdn.pkgs.ml/sources/std/0.1.0.tar";
@@ -688,7 +719,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun () ->
                           Ok ()
                         else
                           Error "unexpected registry download/materialization state"
-                  ))
+          ))
   with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
@@ -705,7 +736,8 @@ let test_registry_publish_from_locator_posts_tarball_to_publish_route = fun () -
       ~post_handler:(fun _uri ~headers:_ ~body:_ ->
         Ok {
           Pkgs_ml.Registry.status_code = 200;
-          body = {|{
+          body =
+            {|{
   "package": "github.com/leostera/minttea",
   "source_url": "https://github.com/leostera/minttea",
   "package_subdir": ".",
@@ -740,14 +772,12 @@ let test_registry_publish_from_locator_posts_tarball_to_publish_route = fun () -
       (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
   in
   let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
-  match
-    Pkgs_ml.Registry.publish_from_locator
-      registry
-      ~locator:"github.com/leostera/minttea"
-      ~selector:"main"
-      ~api_token:"root-secret"
-      ~artifact
-  with
+  match Pkgs_ml.Registry.publish_from_locator
+    registry
+    ~locator:"github.com/leostera/minttea"
+    ~selector:"main"
+    ~api_token:"root-secret"
+    ~artifact with
   | Error err -> Error err
   | Ok published ->
       let requested = List.rev !requests in
@@ -795,7 +825,8 @@ let test_registry_publish_from_locator_bubbles_registry_error_message = fun () -
       ~post_handler:(fun _uri ~headers:_ ~body:_ ->
         Ok {
           Pkgs_ml.Registry.status_code = 404;
-          body = {|{
+          body =
+            {|{
   "error": "package_not_found",
   "message": "package `std` was not found in registry `pkgs.ml`"
 }|};
@@ -803,14 +834,12 @@ let test_registry_publish_from_locator_bubbles_registry_error_message = fun () -
       (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
   in
   let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
-  match
-    Pkgs_ml.Registry.publish_from_locator
-      registry
-      ~locator:"github.com/leostera/riot/packages/std"
-      ~selector:"main"
-      ~api_token:"root-secret"
-      ~artifact:"tarball"
-  with
+  match Pkgs_ml.Registry.publish_from_locator
+    registry
+    ~locator:"github.com/leostera/riot/packages/std"
+    ~selector:"main"
+    ~api_token:"root-secret"
+    ~artifact:"tarball" with
   | Ok _ -> Error "expected publish artifact to return the registry error"
   | Error err ->
       if String.equal err "package `std` was not found in registry `pkgs.ml`" then
@@ -830,7 +859,8 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
       ~post_handler:(fun _uri ~headers:_ ~body:_ ->
         Ok {
           Pkgs_ml.Registry.status_code = 200;
-          body = {|{
+          body =
+            {|{
   "package_name": "minttea",
   "package_version": "0.4.2",
   "selector": "artifact",

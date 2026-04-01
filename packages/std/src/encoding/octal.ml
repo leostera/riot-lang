@@ -1,6 +1,9 @@
 open Global
 
-type decode_error = [ `Invalid_octal ]
+type decode_error =
+[
+  `Invalid_octal
+]
 
 let digit_char = fun digit -> Char.chr (Char.code '0' + digit)
 
@@ -53,13 +56,21 @@ let classify = fun s ->
       in
       if String.equal digits "" then
         Error `Invalid_octal
-      else if String.for_all (function '0' .. '7' -> true | _ -> false) digits then
+      else if String.for_all
+          (
+            function
+            | '0' .. '7' -> true
+            | _ -> false
+          )
+          digits then
         Ok (sign ^ "0o" ^ digits)
       else
         Error `Invalid_octal
 
 let encode_int = fun value -> encode_signed_int64 (Int64.of_int value)
+
 let encode_int32 = fun value -> encode_signed_int64 (Int64.of_int32 value)
+
 let encode_int64 = encode_signed_int64
 
 let decode_int = fun s ->

@@ -24,12 +24,7 @@ let make_workspace = fun binaries ->
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
-      publish = {
-        version = None;
-        description = None;
-        license = None;
-        is_public = None;
-      };
+      publish = { version = None; description = None; license = None; is_public = None };
     }
   in
   Tusk_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
@@ -43,14 +38,12 @@ let test_build_scope_for_test_binary_uses_dev = fun () ->
   Ok ()
 
 let test_run_event_to_json_serializes_running_binary = fun () ->
-  match
-    Tusk_build.run_event_to_json
-      (Tusk_build.RunningBinary {
-        package = "demo";
-        binary = "pm_tests";
-        args = [ "run-tests"; "query" ];
-      })
-  with
+  match Tusk_build.run_event_to_json
+    (Tusk_build.RunningBinary {
+      package = "demo";
+      binary = "pm_tests";
+      args = [ "run-tests"; "query" ]
+    }) with
   | Some (Data.Json.Object fields) ->
       Test.assert_equal
         ~expected:(Some (Data.Json.String "RunningBinary"))

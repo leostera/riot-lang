@@ -1,18 +1,10 @@
 open Std
 
 type error =
-  | RegistryInitializationFailed of {
-      registry_name: string;
-      error: string
-    }
-  | WorkspacePreparationFailed of {
-      error: Tusk_model.Pm_error.t
-    }
-  | UnexpectedException of {
-      error: string
-    }
-
-val error_message : error -> string
+  | RegistryInitializationFailed of { registry_name: string; error: string }
+  | WorkspacePreparationFailed of { error: Tusk_model.Pm_error.t }
+  | UnexpectedException of { error: string }
+val error_message: error -> string
 
 val start_local:
   ?emit:(Tusk_model.Event.kind -> unit) ->

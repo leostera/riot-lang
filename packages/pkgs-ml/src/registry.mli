@@ -54,7 +54,8 @@ val make_fetch:
   unit ->
   fetch
 
-val create_filesystem: ?fetch:fetch -> registry_name:string -> ?tusk_home:Path.t -> unit -> (t, string) result
+val create_filesystem:
+  ?fetch:fetch -> registry_name:string -> ?tusk_home:Path.t -> unit -> (t, string) result
 
 val filesystem: ?fetch:fetch -> Registry_cache.t -> t
 
@@ -77,11 +78,7 @@ val read_package_document:
 
 val materialize_release: t -> package_name:string -> version:string -> (materialize_result, string) result
 
-val publish_artifact:
-  t ->
-  api_token:string ->
-  artifact:string ->
-  (published_release, string) result
+val publish_artifact: t -> api_token:string -> artifact:string -> (published_release, string) result
 
 val publish_from_locator:
   t ->

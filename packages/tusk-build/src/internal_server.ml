@@ -3,22 +3,16 @@ open Std
 open Tusk_model
 
 type error =
-  | RegistryInitializationFailed of {
-      registry_name: string;
-      error: string
-    }
-  | WorkspacePreparationFailed of {
-      error: Tusk_model.Pm_error.t
-    }
-  | UnexpectedException of {
-      error: string
-    }
+  | RegistryInitializationFailed of { registry_name: string; error: string }
+  | WorkspacePreparationFailed of { error: Tusk_model.Pm_error.t }
+  | UnexpectedException of { error: string }
 
 let error_message = function
-  | RegistryInitializationFailed { registry_name; error } ->
-      "failed to initialize registry '" ^ registry_name ^ "': " ^ error
-  | WorkspacePreparationFailed { error } ->
-      Tusk_model.Pm_error.message error
+  | RegistryInitializationFailed { registry_name; error } -> "failed to initialize registry '"
+  ^ registry_name
+  ^ "': "
+  ^ error
+  | WorkspacePreparationFailed { error } -> Tusk_model.Pm_error.message error
   | UnexpectedException { error } -> error
 
 type server_state = {
@@ -250,7 +244,7 @@ and handle_get_package_info = fun state client_pid package_name ->
                       version = None;
                       description = None;
                       license = None;
-                      is_public = None;
+                      is_public = None
                     };
                   };
                 sources = [];
@@ -509,19 +503,15 @@ and handle_new_package = fun state client_pid path name is_library ->
 (** Handler for build message - spawns worker and continues loop immediately *)
 and handle_build = fun state client_pid target scope target_arch session_id ->
   trace_server
-    ("handle_build session="
-    ^ Session_id.to_string session_id
-    ^ " target="
-    ^
-    match target with
-    | Protocol.All -> "all"
-    | Protocol.Package p -> "package:" ^ p
-    | Protocol.Packages names -> "packages:" ^ String.concat "," names
-    ^ " scope="
-    ^
-    match scope with
-    | Protocol.Runtime -> "runtime"
-    | Protocol.Dev -> "dev");
+    (
+      "handle_build session=" ^ Session_id.to_string session_id ^ " target=" ^ match target with
+      | Protocol.All -> "all"
+      | Protocol.Package p -> "package:" ^ p
+      | Protocol.Packages names ->
+          "packages:" ^ String.concat "," names ^ " scope=" ^ match scope with
+          | Protocol.Runtime -> "runtime"
+          | Protocol.Dev -> "dev"
+    );
   Log.debug
     (
       "Server: handle_build called for target: " ^ (
@@ -547,11 +537,7 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
     | None -> Tusk_model.Tusk_dirs.host_target ()
   in
   let updated_state = { state with active_profile; active_target } in
-  trace_server
-    ("handle_build active_profile="
-    ^ active_profile
-    ^ " active_target="
-    ^ active_target);
+  trace_server ("handle_build active_profile=" ^ active_profile ^ " active_target=" ^ active_target);
   let server_pid = self () in
   Build_server.start
     ~workspace:updated_state.workspace
@@ -588,7 +574,8 @@ let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_regi
             Error (WorkspacePreparationFailed { error = err })
         | Ok workspace ->
             trace_server
-              ("start_local prepared workspace packages=" ^ Int.to_string (List.length workspace.packages));
+              ("start_local prepared workspace packages="
+              ^ Int.to_string (List.length workspace.packages));
             let state = build_state ~workspace ~load_errors:[] ~registry ~config in
             let server_pid =
               spawn

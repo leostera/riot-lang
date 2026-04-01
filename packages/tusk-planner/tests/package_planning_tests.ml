@@ -40,12 +40,7 @@ let make_package = fun tmpdir name ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
-    publish = {
-      version = None;
-      description = None;
-      license = None;
-      is_public = None;
-    };
+    publish = { version = None; description = None; license = None; is_public = None };
   }
 
 let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~package ~workspace ~profile ~build_ctx () ->
@@ -63,7 +58,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
   List.iter
     (fun (dep: Tusk_model.Package.dependency) ->
       match dep.source with
-      | { workspace = true; _ } -> (
+      | { workspace=true; _ } -> (
           match List.find_opt
             (fun (p: Tusk_model.Package.t) -> p.name = dep.name)
             workspace.Tusk_model.Workspace.packages with
@@ -78,7 +73,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
                 )
           | None -> ()
         )
-      | { builtin = true; _ } ->
+      | { builtin=true; _ } ->
           ()
       | _ ->
           ())

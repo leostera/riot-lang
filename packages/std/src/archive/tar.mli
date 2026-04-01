@@ -11,8 +11,7 @@ type entry_kind =
   | Hardlink
   (** Hard link entry. *)
   | Other of string
-  (** Any other tar typeflag not modeled explicitly. *)
-
+(** Any other tar typeflag not modeled explicitly. *)
 (** Metadata for a single tar archive entry. *)
 type entry = {
   (** Archive-relative path for the entry. *)
@@ -26,7 +25,6 @@ type entry = {
   (** Link target for link entries, when present. *)
   link_target: Path.t option;
 }
-
 (** Tar-level failures surfaced by the high-level API. *)
 type error =
   | Kernel_error of Kernel.Archive.Tar.error
@@ -38,15 +36,13 @@ type error =
   | Unsupported_entry_kind of entry_kind
   (** Extraction rejected a non-file, non-directory entry kind. *)
   | Duplicate_entry of Path.t
-  (** Extraction saw the same normalized target path more than once. *)
-
+(** Extraction saw the same normalized target path more than once. *)
 (** Errors raised while reading archive metadata from an [`IO.Reader`]. *)
 type 'read_err read_error =
   | Entries_source_error of 'read_err
   (** The upstream reader failed while feeding tar data. *)
   | Entries_error of error
-  (** The tar archive itself was invalid or unsafe. *)
-
+(** The tar archive itself was invalid or unsafe. *)
 (** Errors raised while extracting archive contents. *)
 type 'read_err extract_error =
   | Extract_source_error of 'read_err
@@ -54,7 +50,8 @@ type 'read_err extract_error =
   | Extract_fs_error of Fs.error
   (** Filesystem I/O failed while creating directories or writing files. *)
   | Extract_error of error
-  (** The archive itself was invalid or contained unsafe entries. *)
+
+(** The archive itself was invalid or contained unsafe entries. *)
 
 (** List entries from a tar archive.
 
@@ -107,10 +104,7 @@ val entries: ('src, 'read_err) IO.Reader.t -> (entry list, 'read_err read_error)
       | Error _ -> Log.error "failed to extract archive"
     ```
 *)
-val extract:
-  ('src, 'read_err) IO.Reader.t ->
-  into:Path.t ->
-  (unit, 'read_err extract_error) result
+val extract: ('src, 'read_err) IO.Reader.t -> into:Path.t -> (unit, 'read_err extract_error) result
 
 (** Open a tar archive from disk and list its entries.
 

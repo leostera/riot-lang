@@ -3,14 +3,6 @@
     128-bit universally unique identifiers implementing UUID versions 3, 4, 5, 
     and 7 according to {{:https://www.rfc-editor.org/rfc/rfc9562}RFC 9562}.
     
-    {b ⚠️  WARNING}: This module currently uses pure OCaml implementations for
-    random number generation and cryptographic hashing. While functionally
-    correct, it is {b not suitable for security-critical applications} that
-    require cryptographically secure randomness or audited hash implementations.
-    
-    Future versions will bind to native C/Rust libraries (libuuid, uuid crate)
-    for production-grade security and performance.
-    
     ## Examples
     
     Generate random UUIDs:

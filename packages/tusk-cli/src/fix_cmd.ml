@@ -21,7 +21,8 @@ let with_current_dir = fun path fn ->
       raise exn
 
 let build_package = fun ~workspace_root ~package_name ->
-  with_current_dir workspace_root (fun () -> Build.build_command (Some package_name) None)
+  with_current_dir workspace_root
+    (fun () ->
+      Build.build_command (Some package_name) None)
 
-let run = fun matches ->
-  Tusk_fix.Cli.run ~build_package matches
+let run = fun matches -> Tusk_fix.Cli.run ~build_package matches

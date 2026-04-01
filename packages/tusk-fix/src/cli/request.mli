@@ -10,13 +10,11 @@ type action =
       target: Path.t;
       forwarded_args: string list;
       output_mode: Types.output_mode;
-      use_generated_runner: bool;
+      use_generated_runner: bool
     }
-
 type t = {
   cwd: Path.t;
   scope: Fix_config.scope option;
   action: action;
 }
-
 val of_matches: ArgParser.matches -> (t, exn) result

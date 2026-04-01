@@ -1,7 +1,6 @@
 open Std
 open Std.Data
 open Std.Collections
-
 module Pm_error = Pm_error
 
 (** Event system for tusk - pure data types for events *)
@@ -149,7 +148,12 @@ type kind =
       duration_ms: int
     }
   | PackageMetadataFetchStarted of { registry: string; package: string }
-  | PackageMetadataFetchFinished of { registry: string; package: string; version: string option; duration_ms: int }
+  | PackageMetadataFetchFinished of {
+      registry: string;
+      package: string;
+      version: string option;
+      duration_ms: int
+    }
   | PackageMetadataFetchFailed of { registry: string; package: string; error: Pm_error.t }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
@@ -166,7 +170,12 @@ type kind =
       path: string;
       duration_ms: int
     }
-  | PackageMaterializationFailed of { package: string; version: string; path: string; error: Pm_error.t }
+  | PackageMaterializationFailed of {
+      package: string;
+      version: string;
+      path: string;
+      error: Pm_error.t
+    }
   | PackageResolvedForBuild of {
       package: string;
       version: string option;
@@ -417,14 +426,24 @@ let display = function
       ^ "ms"
     )
   | PackageMetadataFetchFailed { registry; package; error } ->
-      "Failed to fetch package metadata for " ^ package ^ " from " ^ registry ^ ": " ^ Pm_error.message error
+      "Failed to fetch package metadata for "
+      ^ package
+      ^ " from "
+      ^ registry
+      ^ ": "
+      ^ Pm_error.message error
   | PackageManifestFetchStarted { package; version } ->
       "Fetching manifest for " ^ package ^ "@" ^ version
   | PackageManifestFetchFinished { package; version; duration_ms } ->
       "Fetched manifest for " ^ package ^ "@" ^ version ^ " in " ^ Int.to_string duration_ms ^ "ms"
   | PackageManifestFetchFailed { package; version; error } -> (
       match version with
-      | Some version -> "Failed to fetch manifest for " ^ package ^ "@" ^ version ^ ": " ^ Pm_error.message error
+      | Some version -> "Failed to fetch manifest for "
+      ^ package
+      ^ "@"
+      ^ version
+      ^ ": "
+      ^ Pm_error.message error
       | None -> "Failed to fetch manifest for " ^ package ^ ": " ^ Pm_error.message error
     )
   | PackageDownloadStarted { package; version; _ } ->
@@ -1576,8 +1595,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields with
-                  | Some (Json.String registry), Some (Json.String package) ->
-                      Ok (PackageMetadataFetchStarted { registry; package })
+                  | Some (Json.String registry), Some (Json.String package) -> Ok (PackageMetadataFetchStarted {
+                    registry;
+                    package
+                  })
                   | _ -> Error "Invalid PackageMetadataFetchStarted data"
                 )
               | _ -> Error "Invalid PackageMetadataFetchStarted data"
@@ -1585,7 +1606,9 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_metadata.fetch.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields, List.assoc_opt "duration_ms" data_fields with
+                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields, List.assoc_opt
+                    "duration_ms"
+                    data_fields with
                   | Some (Json.String registry), Some (Json.String package), Some (Json.Int duration_ms) ->
                       let version =
                         match List.assoc_opt "version" data_fields with
@@ -1600,7 +1623,9 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_metadata.fetch.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields, List.assoc_opt "error" data_fields with
+                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields, List.assoc_opt
+                    "error"
+                    data_fields with
                   | Some (Json.String registry), Some (Json.String package), Some error_json -> (
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (PackageMetadataFetchFailed { registry; package; error })
@@ -1771,7 +1796,12 @@ let kind_from_json = fun json ->
                     data_fields, List.assoc_opt "error" data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some error_json -> (
                       match Pm_error.of_json error_json with
-                      | Ok error -> Ok (PackageMaterializationFailed { package; version; path; error })
+                      | Ok error -> Ok (PackageMaterializationFailed {
+                        package;
+                        version;
+                        path;
+                        error
+                      })
                       | Error err -> Error ("Invalid PackageMaterializationFailed data: " ^ err)
                     )
                   | _ -> Error "Invalid PackageMaterializationFailed data"

@@ -131,17 +131,24 @@ let remove_dir_all = fun path ->
         match ReadDir.create path with
         | Error e -> Error e
         | Ok dir ->
-            let rec remove_entries () =
+            let rec collect_entries acc =
               match ReadDir.next dir with
-              | None -> rmdir path
-              | Some entry_path -> (
-                  let full_path = Path.join path entry_path in
-                  match remove_recursive full_path with
-                  | Error e -> Error e
-                  | Ok () -> remove_entries ()
-                )
+              | None -> Ok (List.rev acc)
+              | Some entry_path -> collect_entries (entry_path :: acc)
             in
-            remove_entries ()
+            match collect_entries [] with
+            | Error _ as err -> err
+            | Ok entries ->
+                let rec remove_entries = function
+                  | [] -> rmdir path
+                  | entry_path :: rest -> (
+                      let full_path = Path.join path entry_path in
+                      match remove_recursive full_path with
+                      | Error e -> Error e
+                      | Ok () -> remove_entries rest
+                    )
+                in
+                remove_entries entries
       )
   in
   remove_recursive path

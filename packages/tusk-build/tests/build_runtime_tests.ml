@@ -8,9 +8,7 @@ let make_broken_workspace = fun tmpdir ->
   let ml_file = Path.(src_dir / Path.v "lib.ml") in
   let _ = Fs.write "let broken =" ml_file |> Result.expect ~msg:"Write ml failed" in
   let tusk_file = Path.(pkg_dir / Path.v "tusk.toml") in
-  let tusk_content =
-    "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n"
-  in
+  let tusk_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write tusk_content tusk_file |> Result.expect ~msg:"Write tusk.toml failed" in
   let package =
     Tusk_model.Package.{
@@ -34,12 +32,7 @@ let make_broken_workspace = fun tmpdir ->
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
-      publish = {
-        version = None;
-        description = None;
-        license = None;
-        is_public = None;
-      };
+      publish = { version = None; description = None; license = None; is_public = None };
     }
   in
   Tusk_model.Workspace.make ~root:tmpdir ~packages:[ package ] ()
@@ -64,10 +57,8 @@ let test_build_surfaces_failed_builds = fun () ->
               Ok ()
             else
               Error "expected at least one build error"
-        | Error err ->
-            Error ("expected build failure, got: " ^ Tusk_build.build_error_message err)
-        | Ok () ->
-            Error "expected broken package build to fail")
+        | Error err -> Error ("expected build failure, got: " ^ Tusk_build.build_error_message err)
+        | Ok () -> Error "expected broken package build to fail")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)

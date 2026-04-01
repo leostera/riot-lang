@@ -4,8 +4,7 @@ open Std.Data
 open Std.Collections
 
 (** Types *)
-type dependency_source =
-{
+type dependency_source = {
   workspace: bool;
   builtin: bool;
   path: Path.t option;
@@ -112,13 +111,12 @@ type resolved = {
   dev_resolved: resolved_dependency list;
 }
 
-let default_publish_metadata =
-  {
-    version = None;
-    description = None;
-    license = None;
-    is_public = None;
-  }
+let default_publish_metadata = {
+  version = None;
+  description = None;
+  license = None;
+  is_public = None
+}
 
 let equal = fun a b -> a.name = b.name && a.path = b.path
 
@@ -149,8 +147,7 @@ let is_builtin_dependency_name = function
   | "graphics" -> true
   | _ -> false
 
-let is_builtin_dependency = fun (dep: dependency) ->
-  dep.source.builtin
+let is_builtin_dependency = fun (dep: dependency) -> dep.source.builtin
 
 let binary_scope = fun (bin: binary) ->
   let path_str = Path.to_string bin.path in
@@ -338,13 +335,12 @@ let parse_publish_metadata : (string * Toml.value) list -> (publish_metadata, st
     | Toml.String raw_version -> (
         match Version.parse (String.trim raw_version) with
         | Ok version -> Ok (Some version)
-        | Error err ->
-            Error ("package '"
-            ^ package_name
-            ^ "' has invalid version '"
-            ^ raw_version
-            ^ "': "
-            ^ version_parse_error_to_string err)
+        | Error err -> Error ("package '"
+        ^ package_name
+        ^ "' has invalid version '"
+        ^ raw_version
+        ^ "': "
+        ^ version_parse_error_to_string err)
       )
     | _ -> Error ("package '" ^ package_name ^ "' has non-string version")
   in
@@ -383,15 +379,21 @@ let parse_publish_metadata : (string * Toml.value) list -> (publish_metadata, st
       in
       (
         match version, description, license, is_public with
-        | Ok version, Ok description, Ok license, Ok is_public ->
-            Ok { version; description; license; is_public }
-        | Error err, _, _, _
-        | _, Error err, _, _
-        | _, _, Error err, _
-        | _, _, _, Error err -> Error err
+        | Ok version, Ok description, Ok license, Ok is_public -> Ok {
+          version;
+          description;
+          license;
+          is_public
+        }
+        | (Error err, _, _, _)
+        | (_, Error err, _, _)
+        | (_, _, Error err, _)
+        | (_, _, _, Error err) -> Error err
       )
-  | Some _ -> Error "[package] must be a table"
-  | None -> Ok default_publish_metadata
+  | Some _ ->
+      Error "[package] must be a table"
+  | None ->
+      Ok default_publish_metadata
 
 let resolve_workspace_dependency : string -> dependency list -> dependency = fun name workspace_deps ->
   match List.find_opt (fun (d: dependency) -> d.name = name) workspace_deps with
@@ -417,7 +419,10 @@ let make_source = fun ?(workspace = false) ?(builtin = false) ?path ?version () 
   { workspace; builtin; path; version }
 
 let validate_dependency_source = fun ~dependency_name source ->
-  if source.workspace && (source.builtin || Option.is_some source.path || Option.is_some source.version) then
+  if
+    source.workspace
+    && (source.builtin || Option.is_some source.path || Option.is_some source.version)
+  then
     Error ("dependency '" ^ dependency_name ^ "' cannot combine workspace = true with path or version")
   else if source.builtin && Option.is_some source.path then
     Error ("builtin dependency '" ^ dependency_name ^ "' does not support path overrides")
@@ -425,12 +430,11 @@ let validate_dependency_source = fun ~dependency_name source ->
     match source.version with
     | None -> Ok { source with version = Some Version.any }
     | Some version when requirement_is_any version -> Ok source
-    | Some version ->
-        Error ("builtin dependency '"
-        ^ dependency_name
-        ^ "' does not support version requirement '"
-        ^ Version.requirement_to_string version
-        ^ "'")
+    | Some version -> Error ("builtin dependency '"
+    ^ dependency_name
+    ^ "' does not support version requirement '"
+    ^ Version.requirement_to_string version
+    ^ "'")
   else if source.workspace || Option.is_some source.path || Option.is_some source.version then
     Ok source
   else
@@ -444,11 +448,15 @@ workspace_deps:dependency list ->
   | Toml.Table attrs -> (
       match List.assoc_opt "workspace" attrs with
       | Some (Toml.Bool true) -> (
-          let source = { (resolve_workspace_dependency name workspace_deps).source with workspace = true } in
+          let source = {
+            (resolve_workspace_dependency name workspace_deps).source
+            with workspace = true
+          } in
           validate_dependency_source ~dependency_name:name source
           |> Result.map (fun source -> { name; source })
         )
-      | Some _ -> Error ("dependency '" ^ name ^ "' has non-boolean workspace flag")
+      | Some _ ->
+          Error ("dependency '" ^ name ^ "' has non-boolean workspace flag")
       | _ -> (
           let path =
             match List.assoc_opt "path" attrs with
@@ -458,30 +466,27 @@ workspace_deps:dependency list ->
           in
           let version =
             match List.assoc_opt "version" attrs with
-            | Some (Toml.String requirement) ->
-                validate_requirement ~dependency_name:name requirement
-                |> Result.map (fun version -> Some version)
+            | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
+            |> Result.map (fun version -> Some version)
             | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
             | None -> Ok None
           in
           match path, version with
           | (Error _ as err), _ -> err
           | _, (Error _ as err) -> err
-          | Ok path, Ok version ->
-              validate_dependency_source
-                ~dependency_name:name
-                (make_source ~builtin:(is_builtin_dependency_name name) ?path ?version ())
-              |> Result.map (fun source -> { name; source })
+          | Ok path, Ok version -> validate_dependency_source
+            ~dependency_name:name
+            (make_source ~builtin:(is_builtin_dependency_name name) ?path ?version ())
+          |> Result.map (fun source -> { name; source })
         )
     )
   | Toml.String requirement -> (
       match validate_requirement ~dependency_name:name requirement with
       | Error _ as err -> err
-      | Ok version ->
-          validate_dependency_source
-            ~dependency_name:name
-            (make_source ~builtin:(is_builtin_dependency_name name) ~version ())
-          |> Result.map (fun source -> { name; source })
+      | Ok version -> validate_dependency_source
+        ~dependency_name:name
+        (make_source ~builtin:(is_builtin_dependency_name name) ~version ())
+      |> Result.map (fun source -> { name; source })
     )
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
@@ -554,22 +559,28 @@ let dependency_source_of_json = fun json ->
             match List.assoc_opt "version" fields with
             | Some Json.Null
             | None -> Ok None
-            | Some (Json.String requirement) ->
-                validate_requirement ~dependency_name:"<json>" requirement
-                |> Result.map (fun version -> Some version)
+            | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
+            |> Result.map (fun version -> Some version)
             | _ -> Error "path dependency source has non-string version requirement"
           in
           match path, version with
           | Ok path, Ok version -> Ok { workspace = false; builtin = false; path; version }
-          | Error err, _
-          | _, Error err -> Error err
+          | (Error err, _)
+          | (_, Error err) -> Error err
         )
       | Some (Json.String "registry") -> (
           match List.assoc_opt "version" fields with
           | Some Json.Null
-          | None -> Ok { workspace = false; builtin = false; path = None; version = Some Version.any }
+          | None -> Ok {
+            workspace = false;
+            builtin = false;
+            path = None;
+            version = Some Version.any
+          }
           | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
-          |> Result.map (fun version -> { workspace = false; builtin = false; path = None; version = Some version })
+          |> Result.map
+            (fun version ->
+              { workspace = false; builtin = false; path = None; version = Some version })
           | _ -> Error "registry dependency source has non-string version requirement"
         )
       | Some (Json.String kind) ->
@@ -596,22 +607,20 @@ let dependency_source_of_json = fun json ->
           in
           let version =
             match List.assoc_opt "version" fields with
-            | Some (Json.String requirement) ->
-                validate_requirement ~dependency_name:"<json>" requirement
-                |> Result.map (fun version -> Some version)
+            | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
+            |> Result.map (fun version -> Some version)
             | Some Json.Null -> Ok None
             | Some _ -> Error "dependency source version must be a string"
             | None -> Ok None
           in
           match workspace, builtin, path, version with
-          | Ok workspace, Ok builtin, Ok path, Ok version ->
-              validate_dependency_source
-                ~dependency_name:"<json>"
-                { workspace; builtin; path; version }
-          | Error err, _, _, _
-          | _, Error err, _, _
-          | _, _, Error err, _
-          | _, _, _, Error err -> Error err
+          | Ok workspace, Ok builtin, Ok path, Ok version -> validate_dependency_source
+            ~dependency_name:"<json>"
+            { workspace; builtin; path; version }
+          | (Error err, _, _, _)
+          | (_, Error err, _, _)
+          | (_, _, Error err, _)
+          | (_, _, _, Error err) -> Error err
     )
   | _ ->
       Error "dependency source must be a string or object"
@@ -1087,98 +1096,101 @@ relative_path:Path.t ->
       match parse_publish_metadata items with
       | Error _ as err -> err
       | Ok publish ->
-      match parse_dependency_section "dependencies" items ~workspace_deps with
-      | Error _ as err -> err
-      | Ok dependencies ->
-          match parse_dependency_section "dev-dependencies" items ~workspace_deps:workspace_dev_deps with
+          match parse_dependency_section "dependencies" items ~workspace_deps with
           | Error _ as err -> err
-          | Ok dev_dependencies ->
-              match parse_dependency_section "build-dependencies" items ~workspace_deps:workspace_build_deps with
+          | Ok dependencies ->
+              match parse_dependency_section "dev-dependencies" items ~workspace_deps:workspace_dev_deps with
               | Error _ as err -> err
-              | Ok build_dependencies ->
-                  let binaries =
-                    match parse_binaries items ~package_path:path with
-                    | Ok bins -> bins
-                    | Error msg ->
-                        Log.warn ("[PACKAGE] Failed to parse binaries for " ^ name ^ ": " ^ msg);
-                        []
-                  in
-                  let library =
-                    match parse_library items ~package_path:path ~package_name:name with
-                    | Ok lib -> lib
-                    | Error msg ->
-                        Log.warn ("[PACKAGE] Failed to parse library for " ^ name ^ ": " ^ msg);
-                        None
-                  in
-                  let foreign =
-                    match parse_foreign_dependencies items ~package_path:path with
-                    | Ok deps -> deps
-                    | Error msg ->
-                        Log.warn
-                          ("[PACKAGE] Failed to parse foreign dependencies for " ^ name ^ ": " ^ msg);
-                        []
-                  in
-                  let fix_providers = Fix_provider.parse_from_toml
-                    items
-                    ~package_name:name
-                    ~package_path:path in
-                  let excluded_relpaths = provider_excluded_relpaths ~package_path:path fix_providers in
-                  let sources = scan_sources ~package_path:path ~excluded_relpaths () in
-                  let compiler = parse_compiler_config items in
-                  let test_binaries = autodiscover_test_binaries sources ~package_path:path in
-                  let example_binaries = autodiscover_example_binaries sources ~package_path:path in
-                  let bench_binaries = autodiscover_bench_binaries sources ~package_path:path in
-                  Log.debug
-                    ("[PACKAGE] "
-                    ^ name
-                    ^ ": discovered "
-                    ^ Int.to_string (List.length test_binaries)
-                    ^ " test binaries from "
-                    ^ Int.to_string (List.length sources.tests)
-                    ^ " test files");
-                  Log.debug
-                    ("[PACKAGE] "
-                    ^ name
-                    ^ ": discovered "
-                    ^ Int.to_string (List.length example_binaries)
-                    ^ " example binaries from "
-                    ^ Int.to_string (List.length sources.examples)
-                    ^ " example files");
-                  Log.debug
-                    ("[PACKAGE] "
-                    ^ name
-                    ^ ": discovered "
-                    ^ Int.to_string (List.length bench_binaries)
-                    ^ " benchmark binaries from "
-                    ^ Int.to_string (List.length sources.bench)
-                    ^ " benchmark files");
-                  let all_binaries = merge_binaries
-                    ~declared:binaries
-                    ~autodiscovered:((test_binaries @ example_binaries @ bench_binaries)) in
-                  let commands =
-                    match List.assoc_opt "command" items with
-                    | Some (Toml.Array cmd_entries) -> Package_command.parse_from_toml
-                      cmd_entries
-                      ~package_name:name
-                      ~package_path:path
-                    | _ -> []
-                  in
-                  Ok {
-                    name;
-                    path;
-                    relative_path;
-                    dependencies;
-                    dev_dependencies;
-                    build_dependencies;
-                    foreign_dependencies = foreign;
-                    binaries = all_binaries;
-                    library;
-                    sources;
-                    compiler;
-                    commands;
-                    fix_providers;
-                    publish;
-                  }
+              | Ok dev_dependencies ->
+                  match parse_dependency_section "build-dependencies" items ~workspace_deps:workspace_build_deps with
+                  | Error _ as err -> err
+                  | Ok build_dependencies ->
+                      let binaries =
+                        match parse_binaries items ~package_path:path with
+                        | Ok bins -> bins
+                        | Error msg ->
+                            Log.warn ("[PACKAGE] Failed to parse binaries for " ^ name ^ ": " ^ msg);
+                            []
+                      in
+                      let library =
+                        match parse_library items ~package_path:path ~package_name:name with
+                        | Ok lib -> lib
+                        | Error msg ->
+                            Log.warn ("[PACKAGE] Failed to parse library for " ^ name ^ ": " ^ msg);
+                            None
+                      in
+                      let foreign =
+                        match parse_foreign_dependencies items ~package_path:path with
+                        | Ok deps -> deps
+                        | Error msg ->
+                            Log.warn
+                              ("[PACKAGE] Failed to parse foreign dependencies for "
+                              ^ name
+                              ^ ": "
+                              ^ msg);
+                            []
+                      in
+                      let fix_providers = Fix_provider.parse_from_toml
+                        items
+                        ~package_name:name
+                        ~package_path:path in
+                      let excluded_relpaths = provider_excluded_relpaths ~package_path:path fix_providers in
+                      let sources = scan_sources ~package_path:path ~excluded_relpaths () in
+                      let compiler = parse_compiler_config items in
+                      let test_binaries = autodiscover_test_binaries sources ~package_path:path in
+                      let example_binaries = autodiscover_example_binaries sources ~package_path:path in
+                      let bench_binaries = autodiscover_bench_binaries sources ~package_path:path in
+                      Log.debug
+                        ("[PACKAGE] "
+                        ^ name
+                        ^ ": discovered "
+                        ^ Int.to_string (List.length test_binaries)
+                        ^ " test binaries from "
+                        ^ Int.to_string (List.length sources.tests)
+                        ^ " test files");
+                      Log.debug
+                        ("[PACKAGE] "
+                        ^ name
+                        ^ ": discovered "
+                        ^ Int.to_string (List.length example_binaries)
+                        ^ " example binaries from "
+                        ^ Int.to_string (List.length sources.examples)
+                        ^ " example files");
+                      Log.debug
+                        ("[PACKAGE] "
+                        ^ name
+                        ^ ": discovered "
+                        ^ Int.to_string (List.length bench_binaries)
+                        ^ " benchmark binaries from "
+                        ^ Int.to_string (List.length sources.bench)
+                        ^ " benchmark files");
+                      let all_binaries = merge_binaries
+                        ~declared:binaries
+                        ~autodiscovered:((test_binaries @ example_binaries @ bench_binaries)) in
+                      let commands =
+                        match List.assoc_opt "command" items with
+                        | Some (Toml.Array cmd_entries) -> Package_command.parse_from_toml
+                          cmd_entries
+                          ~package_name:name
+                          ~package_path:path
+                        | _ -> []
+                      in
+                      Ok {
+                        name;
+                        path;
+                        relative_path;
+                        dependencies;
+                        dev_dependencies;
+                        build_dependencies;
+                        foreign_dependencies = foreign;
+                        binaries = all_binaries;
+                        library;
+                        sources;
+                        compiler;
+                        commands;
+                        fix_providers;
+                        publish;
+                      }
     )
   | _ -> Error "TOML is not a table"
 
@@ -1227,26 +1239,24 @@ let to_json : t -> Json.t = fun pkg ->
     ("binaries", binaries_json);
     ("library", library_json);
     ("fix_providers", fix_providers_json);
-    ("publish", Json.Object (
-      []
-      |> (fun fields ->
-        match pkg.publish.version with
-        | Some version -> ("version", Json.String (Version.to_string version)) :: fields
-        | None -> fields)
-      |> (fun fields ->
-        match pkg.publish.description with
-        | Some description -> ("description", Json.String description) :: fields
-        | None -> fields)
-      |> (fun fields ->
-        match pkg.publish.license with
-        | Some license -> ("license", Json.String license) :: fields
-        | None -> fields)
-      |> (fun fields ->
-        match pkg.publish.is_public with
-        | Some is_public -> ("public", Json.Bool is_public) :: fields
-        | None -> fields)
-      |> List.rev
-    ));
+    (
+      "publish",
+      Json.Object (
+        [] |> (fun fields ->
+          match pkg.publish.version with
+          | Some version -> ("version", Json.String (Version.to_string version)) :: fields
+          | None -> fields) |> (fun fields ->
+          match pkg.publish.description with
+          | Some description -> ("description", Json.String description) :: fields
+          | None -> fields) |> (fun fields ->
+          match pkg.publish.license with
+          | Some license -> ("license", Json.String license) :: fields
+          | None -> fields) |> (fun fields ->
+          match pkg.publish.is_public with
+          | Some is_public -> ("public", Json.Bool is_public) :: fields
+          | None -> fields) |> List.rev
+      )
+    );
   ]
 
 let from_json : Json.t -> (t, string) result = fun json ->
@@ -1338,13 +1348,14 @@ let from_json : Json.t -> (t, string) result = fun json ->
                                       | Some (Json.String raw_version) -> (
                                           match Version.parse raw_version with
                                           | Ok version -> Ok (Some version)
-                                          | Error err ->
-                                              Error ("Invalid package publish version in JSON: "
-                                              ^ version_parse_error_to_string err)
+                                          | Error err -> Error ("Invalid package publish version in JSON: "
+                                          ^ version_parse_error_to_string err)
                                         )
                                       | Some Json.Null
-                                      | None -> Ok None
-                                      | Some _ -> Error "Package publish version must be a string"
+                                      | None ->
+                                          Ok None
+                                      | Some _ ->
+                                          Error "Package publish version must be a string"
                                     in
                                     let description =
                                       match List.assoc_opt "description" publish_fields with
@@ -1369,42 +1380,48 @@ let from_json : Json.t -> (t, string) result = fun json ->
                                     in
                                     (
                                       match version, description, license, is_public with
-                                      | Ok version, Ok description, Ok license, Ok is_public ->
-                                          Ok { version; description; license; is_public }
-                                      | Error err, _, _, _
-                                      | _, Error err, _, _
-                                      | _, _, Error err, _
-                                      | _, _, _, Error err -> Error err
+                                      | Ok version, Ok description, Ok license, Ok is_public -> Ok {
+                                        version;
+                                        description;
+                                        license;
+                                        is_public
+                                      }
+                                      | (Error err, _, _, _)
+                                      | (_, Error err, _, _)
+                                      | (_, _, Error err, _)
+                                      | (_, _, _, Error err) -> Error err
                                     )
-                                | Some _ -> Error "Package publish metadata must be an object"
-                                | None -> Ok default_publish_metadata
+                                | Some _ ->
+                                    Error "Package publish metadata must be an object"
+                                | None ->
+                                    Ok default_publish_metadata
                               in
                               match publish with
                               | Error _ as err -> err
                               | Ok publish ->
-                              Ok {
-                                name;
-                                path;
-                                relative_path;
-                                dependencies;
-                                dev_dependencies;
-                                build_dependencies;
-                                foreign_dependencies = [];
-                                binaries;
-                                library;
-                                sources =
-                                  {
-                                    src = [];
-                                    native = [];
-                                    tests = [];
-                                    examples = [];
-                                    bench = [];
-                                  };
-                                compiler = { profile_overrides = []; target_overrides = [] };
-                                commands = [];
-                                fix_providers = [];
-                                publish;
-                              }
+                                  Ok {
+                                    name;
+                                    path;
+                                    relative_path;
+                                    dependencies;
+                                    dev_dependencies;
+                                    build_dependencies;
+                                    foreign_dependencies = [];
+                                    binaries;
+                                    library;
+                                    sources =
+                                      {
+                                        src = [];
+                                        native = [];
+                                        tests = [];
+                                        examples = [];
+                                        bench = [];
+                                      };
+                                    compiler = { profile_overrides = []; target_overrides = [] };
+                                    commands = [];
+                                    fix_providers = [];
+                                    publish;
+                                  }
                         )
                     )
                 )
@@ -1430,12 +1447,16 @@ let hash = fun state (pkg: t) ->
       H.write_string state dep.name;
       H.write_string state (Bool.to_string dep.source.workspace);
       H.write_string state (Bool.to_string dep.source.builtin);
-      (match dep.source.path with
-      | Some path -> H.write_string state (Path.to_string path)
-      | None -> H.write_string state "");
-      (match dep.source.version with
-      | Some version -> H.write_string state (Version.requirement_to_string version)
-      | None -> H.write_string state ""))
+      (
+        match dep.source.path with
+        | Some path -> H.write_string state (Path.to_string path)
+        | None -> H.write_string state ""
+      );
+      (
+        match dep.source.version with
+        | Some version -> H.write_string state (Version.requirement_to_string version)
+        | None -> H.write_string state ""
+      ))
     sorted_deps;
   (
     match pkg.publish.version with
@@ -1714,7 +1735,7 @@ std = ">= 1.2.3"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { source = { workspace = false; builtin = false; path = None; version = Some requirement }; _ } ] ->
+    | [ { source={ workspace=false; builtin=false; path=None; version=Some requirement }; _ } ] ->
         if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
           Ok ()
         else
@@ -1743,8 +1764,8 @@ stdlib = "*"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { name="stdlib"; source = { builtin = true; version = Some requirement; _ } } ]
-      when requirement_is_any requirement -> Ok ()
+    | [ { name="stdlib"; source={ builtin=true; version=Some requirement; _ } } ] when requirement_is_any
+      requirement -> Ok ()
     | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
 
   let test_builtin_dependency_rejects_version_constraints () : (unit, string) result =
@@ -1823,7 +1844,12 @@ std = "definitely-not-semver"
     | Error err -> Error err
     | Ok decoded -> (
         match decoded.dependencies with
-        | [ { source = { workspace = false; builtin = false; path = None; version = Some decoded_requirement }; _ } ] ->
+        | [
+          {
+            source={ workspace=false; builtin=false; path=None; version=Some decoded_requirement };
+            _
+          }
+        ] ->
             if String.equal (Version.requirement_to_string decoded_requirement) ">= 1.2.3" then
               Ok ()
             else

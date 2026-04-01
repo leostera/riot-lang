@@ -1739,8 +1739,7 @@ let literal_tokens_from_node = fun ~context node ->
   let direct_nodes = direct_non_trivia_nodes node in
   let direct_tokens = direct_non_trivia_tokens node in
   let scan_direct_tokens syntax_tokens =
-    let rec loop sign_token literal_token =
-      function
+    let rec loop sign_token literal_token = function
       | [] -> Some (sign_token, literal_token)
       | syntax_token :: rest ->
           let kind = Ceibo.Red.SyntaxToken.kind syntax_token in
@@ -1760,15 +1759,15 @@ let literal_tokens_from_node = fun ~context node ->
   in
   let find_literal_token syntax_tokens = syntax_tokens
   |> List.find_opt
-    (fun syntax_token -> is_literal_token_kind (Ceibo.Red.SyntaxToken.kind syntax_token))
-  in
+    (fun syntax_token -> is_literal_token_kind (Ceibo.Red.SyntaxToken.kind syntax_token)) in
   let from_fallback_tokens syntax_tokens =
     match find_literal_token syntax_tokens with
     | Some literal_syntax_token ->
         let literal_token = token literal_syntax_token in
         let literal_span = Cst.Token.span literal_token in
         let sign_token =
-          syntax_tokens |> List.find_map
+          syntax_tokens
+          |> List.find_map
             (fun syntax_token ->
               let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
               let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
@@ -1789,8 +1788,7 @@ let literal_tokens_from_node = fun ~context node ->
     else
       None
   with
-  | Some (sign_token, Some literal_syntax_token) ->
-      (sign_token, token literal_syntax_token)
+  | Some (sign_token, Some literal_syntax_token) -> (sign_token, token literal_syntax_token)
   | Some (_, None)
   | None -> (
       match from_fallback_tokens direct_tokens with
@@ -1869,7 +1867,8 @@ let constant_from_syntax_token = fun ~syntax_node syntax_token ->
   let literal_token = token syntax_token in
   let literal_span = Cst.Token.span literal_token in
   let sign_token =
-    direct_non_trivia_tokens syntax_node |> List.find_map
+    direct_non_trivia_tokens syntax_node
+    |> List.find_map
       (fun syntax_token ->
         let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
         let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
@@ -7330,10 +7329,13 @@ and let_binding_from_binding_operator_binding = fun
 and match_case_from_node = fun node ->
   let non_trivia_children = direct_non_trivia_nodes node in
   let direct_tokens = direct_non_trivia_tokens node in
-  let direct_token_with_text_in_tokens expected = direct_tokens
-  |> List.find_opt
-    (fun syntax_token ->
-      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) expected) |> Option.map token in
+  let direct_token_with_text_in_tokens expected =
+    direct_tokens
+    |> List.find_opt
+      (fun syntax_token ->
+        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) expected)
+    |> Option.map token
+  in
   let direct_required_token_with_text_in_tokens ~context expected =
     match direct_token_with_text_in_tokens expected with
     | Some token -> token

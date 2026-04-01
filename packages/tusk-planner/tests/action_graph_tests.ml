@@ -27,12 +27,7 @@ let make_package = fun name ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
-    publish = {
-      version = None;
-      description = None;
-      license = None;
-      is_public = None;
-    };
+    publish = { version = None; description = None; license = None; is_public = None };
   }
 
 let make_package_with_paths = fun ~name ~path ~relative_path ->
@@ -57,12 +52,7 @@ let make_package_with_paths = fun ~name ~path ~relative_path ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
-    publish = {
-      version = None;
-      description = None;
-      license = None;
-      is_public = None;
-    };
+    publish = { version = None; description = None; license = None; is_public = None };
   }
 
 let test_action_graph_json_round_trip_preserves_dependencies = fun () ->

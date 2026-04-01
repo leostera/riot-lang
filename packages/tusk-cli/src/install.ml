@@ -39,27 +39,17 @@ let write_install_event = fun ~workspace_root (event: Tusk_build.install_event) 
       out ("  \027[1;32mInstalling\027[0m " ^ binary)
   | Tusk_build.PromotedBinary { binary; destination; _ } ->
       out
-        ("    \027[1;32mPromoted\027[0m "
-        ^ binary
-        ^ " to "
-        ^ display_path ~workspace_root destination)
-  | Tusk_build.PromotionWarning { binary; destination; reason = _; _ } ->
+        ("    \027[1;32mPromoted\027[0m " ^ binary ^ " to " ^ display_path ~workspace_root destination)
+  | Tusk_build.PromotionWarning { binary; destination; reason=_; _ } ->
       out
         ("\027[1;33mWarning\027[0m: failed to promote "
         ^ binary
         ^ " to "
         ^ display_path ~workspace_root destination)
   | Tusk_build.InstalledBinary { binary; duration_ms; global_destination } ->
-      let duration =
-        Time.Duration.from_millis duration_ms
-        |> Time.Duration.to_secs_string ~precision:2
-      in
-      out
-        ("   \027[1;32mInstalled\027[0m "
-        ^ binary
-        ^ " in "
-        ^ duration
-        ^ "s");
+      let duration = Time.Duration.from_millis duration_ms
+      |> Time.Duration.to_secs_string ~precision:2 in
+      out ("   \027[1;32mInstalled\027[0m " ^ binary ^ " in " ^ duration ^ "s");
       (
         match global_destination with
         | Some _ -> print_path_hint ()
@@ -69,21 +59,14 @@ let write_install_event = fun ~workspace_root (event: Tusk_build.install_event) 
 let write_install_error = fun err ->
   out ("\027[1;31mError\027[0m: " ^ Tusk_build.install_error_message err)
 
-let run = fun ~(workspace: Tusk_model.Workspace.t) matches ->
+let run = fun ~(workspace:Tusk_model.Workspace.t) matches ->
   let open ArgParser in
-  let binary_name = get_one matches "package" |> Option.expect ~msg:"binary name required" in
-  let local_only = get_flag matches "local" in
-  match
-    Tusk_build.install
+    let binary_name = get_one matches "package" |> Option.expect ~msg:"binary name required" in
+    let local_only = get_flag matches "local" in
+    match Tusk_build.install
       ~on_event:(write_install_event ~workspace_root:workspace.root)
-      {
-        workspace;
-        binary_name;
-        local_only;
-      }
-  with
-  | Ok () ->
-      Ok ()
-  | Error err ->
-      write_install_error err;
-      Error (Failure (Tusk_build.install_error_message err))
+      { workspace; binary_name; local_only } with
+    | Ok () -> Ok ()
+    | Error err ->
+        write_install_error err;
+        Error (Failure (Tusk_build.install_error_message err))

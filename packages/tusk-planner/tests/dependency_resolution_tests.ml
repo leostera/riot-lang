@@ -24,12 +24,7 @@ let make_package = fun name ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
-    publish = {
-      version = None;
-      description = None;
-      license = None;
-      is_public = None;
-    };
+    publish = { version = None; description = None; license = None; is_public = None };
   }
 
 let test_transitive_closure_dependency_first_order = fun () ->

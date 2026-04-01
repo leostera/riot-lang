@@ -2,30 +2,25 @@ open Global0
 
 type encoder
 type decoder
-
 type error =
   | Invalid_data
   | Need_dictionary
   | Buffer_error
   | Out_of_memory
   | Unknown_error of string
-
 type status =
   | Need_input
   | Need_output
   | Finished
-
 type step = {
   consumed: int;
   produced: int;
   status: status;
 }
-
 type flush =
   | No_flush
   | Sync_flush
   | Finish
-
 val create_encoder: ?level:int -> unit -> (encoder, error) result
 
 val create_decoder: unit -> (decoder, error) result

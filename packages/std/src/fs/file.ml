@@ -292,15 +292,13 @@ let to_reader = fun t ->
 
     type err = error
 
-    let read = fun file ?timeout:_ buf ->
-      read_file file buf ~offset:0 ~len:(IO.Bytes.length buf)
+    let read = fun file ?timeout:_ buf -> read_file file buf ~offset:0 ~len:(IO.Bytes.length buf)
 
     let read_vectored = fun file bufs ->
       let total_len = Iovec.length bufs in
       let scratch = IO.Bytes.create total_len in
       match read_file file scratch ~offset:0 ~len:total_len with
-      | Error err ->
-          Error err
+      | Error err -> Error err
       | Ok read_len ->
           let copied = ref 0 in
           Iovec.iter bufs
@@ -320,11 +318,9 @@ let to_writer = fun t ->
 
     type err = error
 
-    let write = fun file ~buf ->
-      write_file_string file buf
+    let write = fun file ~buf -> write_file_string file buf
 
-    let write_owned_vectored = fun file ~bufs ->
-      write_file_string file (Iovec.into_string bufs)
+    let write_owned_vectored = fun file ~bufs -> write_file_string file (Iovec.into_string bufs)
 
     let flush = fun _file -> Ok ()
   end in

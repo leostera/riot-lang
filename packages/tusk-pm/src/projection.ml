@@ -39,35 +39,31 @@ let materialized_root_of_lock_package = fun ~registry ~workspace_root ~(lock_pac
   | Tusk_model.Lockfile.Workspace -> (
       match lock_package.root with
       | Some root -> Ok Path.(workspace_root / root)
-      | None ->
-          Error (Error.ProjectionFailed {
-            error = "workspace lock package '" ^ lock_package.id.name ^ "' is missing a portable root"
-          })
+      | None -> Error (Error.ProjectionFailed {
+        error = "workspace lock package '" ^ lock_package.id.name ^ "' is missing a portable root"
+      })
     )
   | Tusk_model.Lockfile.Path _ -> (
       match lock_package.root with
       | Some root when Path.is_absolute root -> Ok root
       | Some root -> Ok Path.(workspace_root / root)
-      | None ->
-          Error (Error.ProjectionFailed {
-            error = "path lock package '" ^ lock_package.id.name ^ "' is missing a portable root"
-          })
+      | None -> Error (Error.ProjectionFailed {
+        error = "path lock package '" ^ lock_package.id.name ^ "' is missing a portable root"
+      })
     )
   | Tusk_model.Lockfile.Registry { registry=registry_name } -> (
       match lock_package.id.version with
-      | None ->
-          Error (Error.ProjectionFailed {
-            error = "registry lock package '" ^ lock_package.id.name ^ "' is missing an exact version"
-          })
+      | None -> Error (Error.ProjectionFailed {
+        error = "registry lock package '" ^ lock_package.id.name ^ "' is missing an exact version"
+      })
       | Some version ->
           if not (String.equal registry_name (Pkgs_ml.Registry.name registry)) then
             Error (Error.ProjectionFailed {
-              error =
-                "lockfile references registry '"
-                ^ registry_name
-                ^ "' but active registry is '"
-                ^ Pkgs_ml.Registry.name registry
-                ^ "'"
+              error = "lockfile references registry '"
+              ^ registry_name
+              ^ "' but active registry is '"
+              ^ Pkgs_ml.Registry.name registry
+              ^ "'"
             })
           else
             Ok (Pkgs_ml.Registry_cache.package_src_dir
@@ -80,19 +76,14 @@ let manifest_path_of_root = fun root -> Path.(root / Path.v "tusk.toml")
 
 let load_manifest_toml = fun ~manifest_path ->
   match Fs.read manifest_path with
-  | Error err ->
-      Error (Error.ManifestReadFailed {
-        manifest_path;
-        error = IO.error_message err
-      })
+  | Error err -> Error (Error.ManifestReadFailed { manifest_path; error = IO.error_message err })
   | Ok source -> (
       match Data.Toml.parse source with
       | Ok toml -> Ok toml
-      | Error err ->
-          Error (Error.ManifestParseFailed {
-            manifest_path;
-            error = Data.Toml.error_to_string err
-          })
+      | Error err -> Error (Error.ManifestParseFailed {
+        manifest_path;
+        error = Data.Toml.error_to_string err
+      })
     )
 
 let load_external_package = fun ~emit ~registry ~workspace_root ~(lock_package:Tusk_model.Lockfile.package) ->
@@ -152,10 +143,9 @@ let load_package_for_lock_package = fun ~emit ~registry ~workspace_root ~(packag
   | Tusk_model.Lockfile.Workspace -> (
       match find_workspace_package_by_id ~package_id:lock_package.id ~packages with
       | Some package -> Ok package
-      | None ->
-          Error (Error.ProjectionFailed {
-            error = "workspace package '" ^ lock_package.id.name ^ "' was not provided to projection"
-          })
+      | None -> Error (Error.ProjectionFailed {
+        error = "workspace package '" ^ lock_package.id.name ^ "' was not provided to projection"
+      })
     )
   | Tusk_model.Lockfile.Path _
   | Tusk_model.Lockfile.Registry _ -> load_external_package ~emit ~registry ~workspace_root ~lock_package
@@ -174,10 +164,9 @@ let rec resolve_package_graph = fun ~emit ~registry ~workspace_root ~(packages:T
         resolve_package_graph ~emit ~registry ~workspace_root ~packages ~lockfile seen acc rest
       else
         match find_lock_package_by_id ~package_id ~lockfile with
-        | None ->
-            Error (Error.ProjectionFailed {
-              error = "lockfile is missing package '" ^ package_id.name ^ "'"
-            })
+        | None -> Error (Error.ProjectionFailed {
+          error = "lockfile is missing package '" ^ package_id.name ^ "'"
+        })
         | Some lock_package -> (
             match load_package_for_lock_package ~emit ~registry ~workspace_root ~packages ~lock_package with
             | Error _ as err -> err
@@ -194,8 +183,7 @@ let rec resolve_package_graph = fun ~emit ~registry ~workspace_root ~(packages:T
                 in
                 let manifest_path = manifest_path_of_root materialized_root in
                 match Tusk_model.Package.resolve ~package ~lock_package ~manifest_path ~materialized_root with
-                | Error err ->
-                    Error (Error.ProjectionFailed { error = err })
+                | Error err -> Error (Error.ProjectionFailed { error = err })
                 | Ok resolved ->
                     emit
                       (Tusk_model.Event.PackageResolvedForBuild {

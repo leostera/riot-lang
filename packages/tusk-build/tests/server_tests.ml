@@ -44,12 +44,7 @@ let make_simple_package = fun tmpdir name ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
-    publish = {
-      version = None;
-      description = None;
-      license = None;
-      is_public = None;
-    };
+    publish = { version = None; description = None; license = None; is_public = None };
   }
 
 let test_server_starts_and_shuts_down = fun () -> Ok ()
@@ -315,11 +310,7 @@ version = "0.2.0"
             }; ]
           ()
         in
-        match Tusk_build.start_local
-          ~workspace
-          ~registry
-          ~config:Tusk_build.Server_config.default
-          () with
+        match Tusk_build.start_local ~workspace ~registry ~config:Tusk_build.Server_config.default () with
         | Error err -> Error ("expected local server to start: " ^ Tusk_build.error_message err)
         | Ok server_pid ->
             send

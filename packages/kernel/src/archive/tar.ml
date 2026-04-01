@@ -40,22 +40,16 @@ type skip_result =
   | Need_input
   | Skipped
 
-type raw_header = string * int * string option * int64 * int option * string option
+type raw_header =
+  string * int * string option * int64 * int option * string option
 
 external _create_reader: unit -> reader = "kernel_tar_create_reader"
 
 external _feed_reader_raw: reader -> bytes -> int -> int -> int = "kernel_tar_feed_reader"
 
-external _next_entry_raw:
-  reader ->
-  int * int * raw_header option = "kernel_tar_next_entry"
+external _next_entry_raw: reader -> int * int * raw_header option = "kernel_tar_next_entry"
 
-external _read_entry_data_raw:
-  reader ->
-  bytes ->
-  int ->
-  int ->
-  int * int * int = "kernel_tar_read_entry_data"
+external _read_entry_data_raw: reader -> bytes -> int -> int -> int * int * int = "kernel_tar_read_entry_data"
 
 external _skip_entry_raw: reader -> int * int = "kernel_tar_skip_entry"
 
@@ -84,7 +78,13 @@ let entry_kind_of_raw = fun kind other ->
   | code -> panic ("invalid tar entry kind code " ^ Int.to_string code)
 
 let header_of_raw = fun (path, kind, other, size, mode, link_target) ->
-  { path; kind = entry_kind_of_raw kind other; size; mode; link_target }
+  {
+    path;
+    kind = entry_kind_of_raw kind other;
+    size;
+    mode;
+    link_target;
+  }
 
 let create_reader = fun () ->
   try Ok (_create_reader ()) with
@@ -107,8 +107,7 @@ let next_entry : reader -> (next, error) result = fun reader ->
       | _, _ -> Error (Unknown_error "invalid tar next_entry response")
     )
 
-let read_entry_data : reader -> dst:bytes -> dst_pos:int -> dst_len:int -> (read_result, error) result =
-    fun reader ~dst ~dst_pos ~dst_len ->
+let read_entry_data : reader -> dst:bytes -> dst_pos:int -> dst_len:int -> (read_result, error) result = fun reader ~dst ~dst_pos ~dst_len ->
   check_slice "Kernel.Archive.Tar.read_entry_data" dst ~pos:dst_pos ~len:dst_len;
   let (error_code, status_code, produced) = _read_entry_data_raw reader dst dst_pos dst_len in
   match error_of_code error_code with

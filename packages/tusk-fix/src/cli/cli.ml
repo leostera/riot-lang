@@ -59,7 +59,14 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
           Catalog.list_diagnostics format
       | Request.Explain_rule { rule_id } ->
           Catalog.explain_rule rule_id
-      | Request.Run { mode; limit; target; forwarded_args; use_generated_runner; _ } -> (
+      | Request.Run {
+        mode;
+        limit;
+        target;
+        forwarded_args;
+        use_generated_runner;
+        _
+      } -> (
           match request.scope, use_generated_runner with
           | Some scope, true ->
               let report_output =
@@ -73,18 +80,17 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
                 ~report_output
                 ~args:forwarded_args
                 scope
-          | _ ->
-              Execution.run_with_coordinator
-                ~on_event
-                ~output_mode
-                ~mode
-                ~scope:request.scope
-                ~limit
-                ~roots:[ target ]
-                ())
+          | _ -> Execution.run_with_coordinator
+            ~on_event
+            ~output_mode
+            ~mode
+            ~scope:request.scope
+            ~limit
+            ~roots:[ target ]
+            ()
+        )
 
-let run = fun ?(build_package = unavailable_build_package) matches ->
-  run_matches ~build_package matches
+let run = fun ?(build_package = unavailable_build_package) matches -> run_matches ~build_package matches
 
 let run_args = fun ?cwd ?(on_event = Types.no_event) ?(report_output = true) ~build_package args ->
   Common.with_cwd ?cwd

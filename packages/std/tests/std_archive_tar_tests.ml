@@ -31,7 +31,7 @@ let zero_pad_left = fun width value ->
 let bytes_set_octal = fun dst ~offset ~width value ->
   let digits_width = max 1 (width - 1) in
   let trimmed = zero_pad_left digits_width (octal_string value) in
-  bytes_set_string dst ~offset ~width:(width - 1) trimmed;
+  bytes_set_string dst ~offset ~width:((width - 1)) trimmed;
   IO.Bytes.set dst (offset + width - 1) '\000'
 
 let compute_checksum = fun header ->
@@ -67,7 +67,7 @@ let pad_data = fun data ->
     String.make (tar_block_size - remainder) '\000'
 
 let build_archive = fun entries ->
-  let buffer = IO.Buffer.create 2048 in
+  let buffer = IO.Buffer.create 2_048 in
   List.iter
     (fun (name, kind, mode, data) ->
       let size = Int64.of_int (String.length data) in
@@ -79,94 +79,72 @@ let build_archive = fun entries ->
   IO.Buffer.contents buffer
 
 let test_entries_lists_archive_members = fun () ->
-  let archive =
-    build_archive [
-      ("src/", '5', 0o755L, "");
-      ("src/hello.txt", '0', 0o644L, "hello tar\n");
-    ]
-  in
+  let archive = build_archive
+    [ ("src/", '5', 0o755L, ""); ("src/hello.txt", '0', 0o644L, "hello tar\n"); ] in
   match Tar.entries (IO.Reader.from_string archive) with
-  | Error _ ->
-      Error "failed to list tar entries"
+  | Error _ -> Error "failed to list tar entries"
   | Ok entries ->
-      let paths = List.map (fun (entry: Tar.entry) -> Path.to_string entry.path) entries in
-      if paths = ["src/"; "src/hello.txt"] || paths = ["src"; "src/hello.txt"] then
+      let paths =
+        List.map (fun (entry: Tar.entry) -> Path.to_string entry.path) entries
+      in
+      if paths = [ "src/"; "src/hello.txt" ] || paths = [ "src"; "src/hello.txt" ] then
         Ok ()
       else
         Error ("unexpected tar entries: " ^ String.concat ", " paths)
 
 let with_temp_dir = fun label fn ->
-  let temp_root = Path.join (Path.v "/tmp") (Path.v ("riot_" ^ label ^ "_" ^ UUID.to_string (UUID.v4 ()))) in
+  let temp_root = Path.join
+    (Path.v "/tmp")
+    (Path.v ("riot_" ^ label ^ "_" ^ UUID.to_string (UUID.v4 ()))) in
   match Fs.create_dir_all temp_root with
-  | Error err ->
-      Error ("failed to create temp dir: " ^ Kernel.IO.error_message err)
-  | Ok () ->
-      Kernel.Fun.protect
-        ~finally:(fun () -> ignore (Fs.remove_dir_all temp_root))
-        (fun () -> fn temp_root)
+  | Error err -> Error ("failed to create temp dir: " ^ Kernel.IO.error_message err)
+  | Ok () -> Kernel.Fun.protect
+    ~finally:(fun () -> ignore (Fs.remove_dir_all temp_root))
+    (fun () -> fn temp_root)
 
 let test_extract_writes_regular_files = fun () ->
-  let archive =
-    build_archive [
-      ("pkg/", '5', 0o755L, "");
-      ("pkg/README.md", '0', 0o644L, "Hello from tar\n");
-    ]
-  in
+  let archive = build_archive
+    [ ("pkg/", '5', 0o755L, ""); ("pkg/README.md", '0', 0o644L, "Hello from tar\n"); ] in
   with_temp_dir "tar_extract"
     (fun dir ->
       match Tar.extract (IO.Reader.from_string archive) ~into:dir with
-      | Error _ ->
-          Error "failed to extract tar archive"
+      | Error _ -> Error "failed to extract tar archive"
       | Ok () -> (
           let readme = Path.join (Path.join dir (Path.v "pkg")) (Path.v "README.md") in
           match Fs.read_to_string readme with
-          | Ok content when content = "Hello from tar\n" ->
-              Ok ()
-          | Ok content ->
-              Error ("unexpected extracted content: " ^ content)
-          | Error err ->
-              Error ("failed to read extracted file: " ^ Kernel.IO.error_message err)
+          | Ok content when content = "Hello from tar\n" -> Ok ()
+          | Ok content -> Error ("unexpected extracted content: " ^ content)
+          | Error err -> Error ("failed to read extracted file: " ^ Kernel.IO.error_message err)
         ))
 
 let test_extract_allows_dot_root_directory_entry = fun () ->
-  let archive =
-    build_archive [
+  let archive = build_archive
+    [
       ("./", '5', 0o755L, "");
       ("./src/", '5', 0o755L, "");
       ("./src/std.ml", '0', 0o644L, "let answer = 42\n");
-    ]
-  in
+    ] in
   with_temp_dir "tar_dot_root"
     (fun dir ->
       match Tar.extract (IO.Reader.from_string archive) ~into:dir with
-      | Error _ ->
-          Error "failed to extract tar archive with dot root entry"
+      | Error _ -> Error "failed to extract tar archive with dot root entry"
       | Ok () -> (
           let extracted = Path.join (Path.join dir (Path.v "src")) (Path.v "std.ml") in
           match Fs.read_to_string extracted with
-          | Ok "let answer = 42\n" ->
-              Ok ()
-          | Ok text ->
-              Error ("unexpected extracted dot-root content: " ^ text)
-          | Error err ->
-              Error ("failed to read dot-root extracted file: " ^ Kernel.IO.error_message err)
+          | Ok "let answer = 42\n" -> Ok ()
+          | Ok text -> Error ("unexpected extracted dot-root content: " ^ text)
+          | Error err -> Error ("failed to read dot-root extracted file: "
+          ^ Kernel.IO.error_message err)
         ))
 
 let test_extract_rejects_path_traversal = fun () ->
-  let archive =
-    build_archive [
-      ("../escape.txt", '0', 0o644L, "bad");
-    ]
-  in
+  let archive = build_archive [ ("../escape.txt", '0', 0o644L, "bad"); ] in
   with_temp_dir "tar_traversal"
     (fun dir ->
       match Tar.extract (IO.Reader.from_string archive) ~into:dir with
-      | Error (Tar.Extract_error (Tar.Unsafe_path _)) ->
-          Ok ()
-      | Error _ ->
-          Error "expected unsafe-path rejection"
-      | Ok () ->
-          Error "tar extraction should reject path traversal")
+      | Error (Tar.Extract_error (Tar.Unsafe_path _)) -> Ok ()
+      | Error _ -> Error "expected unsafe-path rejection"
+      | Ok () -> Error "tar extraction should reject path traversal")
 
 let tests =
   Test.[
@@ -177,4 +155,7 @@ let tests =
   ]
 
 let () =
-  Miniriot.run ~main:(fun ~args -> Test.Cli.main ~name:"std_archive_tar" ~tests ~args) ~args:Env.args ()
+  Miniriot.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"std_archive_tar" ~tests ~args)
+    ~args:Env.args
+    ()

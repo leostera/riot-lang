@@ -2,14 +2,8 @@ open Std
 module Test = Std.Test
 
 let test_install_event_to_json_serializes_promoted_binary = fun () ->
-  match
-    Tusk_build.install_event_to_json
-      (Tusk_build.PromotedBinary {
-        binary = "demo";
-        destination = Path.v "/tmp/demo";
-        global = true;
-      })
-  with
+  match Tusk_build.install_event_to_json
+    (Tusk_build.PromotedBinary { binary = "demo"; destination = Path.v "/tmp/demo"; global = true }) with
   | Some (Data.Json.Object fields) ->
       Test.assert_equal
         ~expected:(Some (Data.Json.String "PromotedBinary"))

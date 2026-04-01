@@ -29,34 +29,27 @@ let build_scope_for_binary = Tusk_build.build_scope_for_binary
 
 let parse_binary_target = fun ?package_filter name ->
   match String.split_on_char ':' name with
-  | [ package_name; binary_name ] -> (
+  | [package_name;binary_name] -> (
       match package_filter with
-      | Some expected_package when not (String.equal expected_package package_name) ->
-          Error
-            (Failure
-               ("conflicting package filters: got --package "
-               ^ expected_package
-               ^ " and binary target "
-               ^ name))
-      | _ ->
-          Ok (Some package_name, binary_name)
+      | Some expected_package when not (String.equal expected_package package_name) -> Error (Failure ("conflicting package filters: got --package "
+      ^ expected_package
+      ^ " and binary target "
+      ^ name))
+      | _ -> Ok (Some package_name, binary_name)
     )
-  | _ ->
-      Ok (package_filter, name)
+  | _ -> Ok (package_filter, name)
 
 let write_run_event = fun (event: Tusk_build.run_event) ->
   match event with
-  | Tusk_build.Build _ ->
-      ()
-  | Tusk_build.RunningBinary { package; binary; _ } ->
-      println ("     \027[1;32mRunning\027[0m " ^ package ^ ":" ^ binary)
+  | Tusk_build.Build _ -> ()
+  | Tusk_build.RunningBinary { package; binary; _ } -> println
+    ("     \027[1;32mRunning\027[0m " ^ package ^ ":" ^ binary)
 
 let write_run_error = fun (err: Tusk_build.run_error) ->
   match err with
-  | Tusk_build.BinaryNotFound { binary_name } ->
-      println ("error: binary '" ^ binary_name ^ "' not found")
-  | err ->
-      println ("error: " ^ Tusk_build.run_error_message err)
+  | Tusk_build.BinaryNotFound { binary_name } -> println
+    ("error: binary '" ^ binary_name ^ "' not found")
+  | err -> println ("error: " ^ Tusk_build.run_error_message err)
 
 let run = fun ~workspace matches ->
   match ArgParser.get_one matches "name" with
@@ -68,21 +61,12 @@ let run = fun ~workspace matches ->
       let _verbose = ArgParser.get_count matches "verbose" in
       let pkg_filter = ArgParser.get_one matches "package" in
       match parse_binary_target ?package_filter:pkg_filter name with
-      | Error _ as err ->
-          err
+      | Error _ as err -> err
       | Ok (package_name, binary_name) ->
-          match
-            Tusk_build.run
-              ~on_event:write_run_event
-              {
-                workspace;
-                package_name;
-                binary_name;
-                args = extra;
-              }
-          with
-          | Ok () ->
-              Ok ()
+          match Tusk_build.run
+            ~on_event:write_run_event
+            { workspace; package_name; binary_name; args = extra } with
+          | Ok () -> Ok ()
           | Error err ->
               write_run_error err;
               Error (Failure (Tusk_build.run_error_message err))

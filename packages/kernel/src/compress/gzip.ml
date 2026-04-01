@@ -2,6 +2,7 @@ open Global0
 open IO
 
 type encoder
+
 type decoder
 
 type error =
@@ -32,25 +33,11 @@ external _create_encoder: int -> encoder = "kernel_gzip_create_encoder"
 external _create_decoder: unit -> decoder = "kernel_gzip_create_decoder"
 
 external _encode_raw:
-  encoder ->
-  bytes ->
-  int ->
-  int ->
-  bytes ->
-  int ->
-  int ->
-  int ->
-  int * int * int * int = "kernel_gzip_encode_bytecode" "kernel_gzip_encode"
+  encoder -> bytes -> int -> int -> bytes -> int -> int -> int -> int * int * int * int
+  = "kernel_gzip_encode_bytecode" "kernel_gzip_encode"
 
-external _decode_raw:
-  decoder ->
-  bytes ->
-  int ->
-  int ->
-  bytes ->
-  int ->
-  int ->
-  int * int * int * int = "kernel_gzip_decode_bytecode" "kernel_gzip_decode"
+external _decode_raw: decoder -> bytes -> int -> int -> bytes -> int -> int -> int * int * int * int
+  = "kernel_gzip_decode_bytecode" "kernel_gzip_decode"
 
 external _close_encoder: encoder -> unit = "kernel_gzip_close_encoder"
 
@@ -90,24 +77,33 @@ let create_decoder = fun () ->
 let encode = fun encoder ~src ~src_pos ~src_len ~dst ~dst_pos ~dst_len ~flush ->
   check_slice "Kernel.Compress.Gzip.encode src" src ~pos:src_pos ~len:src_len;
   check_slice "Kernel.Compress.Gzip.encode dst" dst ~pos:dst_pos ~len:dst_len;
-  let (error_code, consumed, produced, status_code) =
-    _encode_raw encoder src src_pos src_len dst dst_pos dst_len (flush_to_code flush)
-  in
+  let (error_code, consumed, produced, status_code) = _encode_raw
+    encoder
+    src
+    src_pos
+    src_len
+    dst
+    dst_pos
+    dst_len
+    (flush_to_code flush) in
   match error_of_code error_code with
   | Some err -> Error err
-  | None ->
-      Ok { consumed; produced; status = status_of_code status_code }
+  | None -> Ok { consumed; produced; status = status_of_code status_code }
 
 let decode = fun decoder ~src ~src_pos ~src_len ~dst ~dst_pos ~dst_len ->
   check_slice "Kernel.Compress.Gzip.decode src" src ~pos:src_pos ~len:src_len;
   check_slice "Kernel.Compress.Gzip.decode dst" dst ~pos:dst_pos ~len:dst_len;
-  let (error_code, consumed, produced, status_code) =
-    _decode_raw decoder src src_pos src_len dst dst_pos dst_len
-  in
+  let (error_code, consumed, produced, status_code) = _decode_raw
+    decoder
+    src
+    src_pos
+    src_len
+    dst
+    dst_pos
+    dst_len in
   match error_of_code error_code with
   | Some err -> Error err
-  | None ->
-      Ok { consumed; produced; status = status_of_code status_code }
+  | None -> Ok { consumed; produced; status = status_of_code status_code }
 
 let close_encoder = fun encoder -> _close_encoder encoder
 

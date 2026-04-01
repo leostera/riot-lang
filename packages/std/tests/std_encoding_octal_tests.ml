@@ -8,7 +8,7 @@ let test_encode_int = fun () ->
     Error "expected 0o755 to encode as 755"
 
 let test_encode_int64 = fun () ->
-  if String.equal (Encoding.Octal.encode_int64 0o1750L) "1750" then
+  if String.equal (Encoding.Octal.encode_int64 0o1_750L) "1750" then
     Ok ()
   else
     Error "expected 0o1750L to encode as 1750"
@@ -33,7 +33,7 @@ let test_decode_prefixed = fun () ->
 
 let test_decode_signed = fun () ->
   match Encoding.Octal.decode_int64 "-10" with
-  | Ok value when value = -8L -> Ok ()
+  | Ok value when value = (-8L) -> Ok ()
   | Ok _ -> Error "expected -10 to decode to -8L"
   | Error _ -> Error "expected signed octal to decode successfully"
 

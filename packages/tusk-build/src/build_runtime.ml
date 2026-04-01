@@ -31,13 +31,18 @@ type build_error =
 let no_event : build_event -> unit = fun _ -> ()
 
 let error_message = function
-  | NoTargetsMatched { pattern; available_targets } ->
-      "No targets match pattern '" ^ pattern ^ "'. Available targets: "
-      ^ String.concat ", " available_targets
-  | ToolchainInstallFailed { target; error } ->
-      "Failed to install toolchain for " ^ target ^ ": " ^ error
-  | ToolchainInitializationFailed { target; error } ->
-      "Failed to initialize toolchain for " ^ target ^ ": " ^ error
+  | NoTargetsMatched { pattern; available_targets } -> "No targets match pattern '"
+  ^ pattern
+  ^ "'. Available targets: "
+  ^ String.concat ", " available_targets
+  | ToolchainInstallFailed { target; error } -> "Failed to install toolchain for "
+  ^ target
+  ^ ": "
+  ^ error
+  | ToolchainInitializationFailed { target; error } -> "Failed to initialize toolchain for "
+  ^ target
+  ^ ": "
+  ^ error
   | ClientError err -> Client.error_message err
 
 let get_configured_targets = fun (workspace: Tusk_model.Workspace.t) ->
@@ -51,13 +56,17 @@ let resolve_target_pattern = fun workspace pattern ->
   let host = Tusk_toolchain.get_host_triple () in
   match String.lowercase_ascii pattern with
   | "host"
-  | "native" -> Ok [ host ]
-  | "all" -> Ok configured
-  | exact when List.mem exact configured -> Ok [ exact ]
+  | "native" ->
+      Ok [ host ]
+  | "all" ->
+      Ok configured
+  | exact when List.mem exact configured ->
+      Ok [ exact ]
   | pattern ->
       let matches =
         List.filter
-          (fun target -> String.contains target pattern)
+          (fun target ->
+            String.contains target pattern)
           configured
       in
       if List.length matches = 0 then
@@ -88,7 +97,8 @@ let ensure_toolchains_for_targets = fun workspace targets ->
     | target :: rest -> (
         match Tusk_toolchain.download_and_install_toolchain config.version ~host ~target with
         | Ok () -> loop rest
-        | Error error -> Error (ToolchainInstallFailed { target; error }))
+        | Error error -> Error (ToolchainInstallFailed { target; error })
+      )
   in
   loop missing
 
@@ -99,7 +109,8 @@ let validate_target_toolchains = fun workspace targets ->
     | target :: rest -> (
         match Tusk_toolchain.init_for_target ~config ~target with
         | Ok _ -> loop rest
-        | Error error -> Error (ToolchainInitializationFailed { target; error }))
+        | Error error -> Error (ToolchainInitializationFailed { target; error })
+      )
   in
   loop targets
 
@@ -127,7 +138,9 @@ let build = fun ?(on_event = no_event) request ->
               match Client.connect_local
                 ~emit:(fun kind ->
                   on_event
-                    (Pm (Tusk_model.Event.create ~session_id:pm_session_id ~level:Tusk_model.Event.Info kind)))
+                    (Pm (Tusk_model.Event.create
+                      ~session_id:pm_session_id
+                      ~level:Tusk_model.Event.Info kind)))
                 ~workspace:request.workspace
                 () with
               | Error err -> Error (ClientError err)
@@ -145,15 +158,13 @@ let build = fun ?(on_event = no_event) request ->
                             else
                               Some target
                           in
-                          match
-                            Client.build_streaming
-                              client
-                              request_target
-                              ~scope:(client_scope request.scope)
-                              ~profile:request.profile
-                              ?target_arch
-                              (fun event -> on_event (Streaming event))
-                          with
+                          match Client.build_streaming
+                            client
+                            request_target
+                            ~scope:(client_scope request.scope)
+                            ~profile:request.profile
+                            ?target_arch
+                            (fun event -> on_event (Streaming event)) with
                           | Ok _ -> loop rest
                           | Error err -> Error (ClientError err)
                     in

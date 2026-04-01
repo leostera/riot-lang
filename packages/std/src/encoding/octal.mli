@@ -26,7 +26,10 @@
 
 open Global
 
-type decode_error = [ `Invalid_octal ]
+type decode_error =
+[
+  `Invalid_octal
+]
 
 (** Encode an [`int`] as octal digits. *)
 val encode_int: int -> string

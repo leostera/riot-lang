@@ -200,7 +200,7 @@ let dependency_entries = fun workspace_root providers ->
     | Ok (workspace, _errors) -> workspace.Tusk_model.Workspace.packages
     | Error _ -> []
   in
-  let resolve_dependency_path = fun ~package_path path ->
+  let resolve_dependency_path ~package_path path =
     if Path.is_absolute path then
       Path.normalize path
     else
@@ -220,23 +220,24 @@ let dependency_entries = fun workspace_root providers ->
         workspace_packages |> List.find_opt
           (fun (pkg: Tusk_model.Package.t) ->
             String.equal pkg.name provider.package_name) |> Option.map
-          (fun (pkg: Tusk_model.Package.t) -> (pkg.path, pkg.Tusk_model.Package.build_dependencies))
-          |> Option.unwrap_or ~default:(provider.package_path, [])
-          |> fun (package_path, build_dependencies) ->
+          (fun (pkg: Tusk_model.Package.t) -> (pkg.path, pkg.Tusk_model.Package.build_dependencies)) |> Option.unwrap_or
+          ~default:(provider.package_path, []) |> fun (package_path, build_dependencies) ->
           build_dependencies |> List.filter_map
-          (fun (dep: Tusk_model.Package.dependency) ->
-            match dep.source with
-            | { workspace = true; _ } -> workspace_package_path dep.name
-            |> Option.map (fun path -> (dep.name, path))
-            | { builtin = true; _ } -> None
-            | { path = Some path; _ } ->
-                let path =
-                  match workspace_package_path dep.name with
-                  | Some workspace_path -> workspace_path
-                  | None -> resolve_dependency_path ~package_path path
-                in
-                Some (dep.name, path)
-            | { path = None; _ } -> None))
+            (fun (dep: Tusk_model.Package.dependency) ->
+              match dep.source with
+              | { workspace=true; _ } ->
+                  workspace_package_path dep.name |> Option.map (fun path -> (dep.name, path))
+              | { builtin=true; _ } ->
+                  None
+              | { path=Some path; _ } ->
+                  let path =
+                    match workspace_package_path dep.name with
+                    | Some workspace_path -> workspace_path
+                    | None -> resolve_dependency_path ~package_path path
+                  in
+                  Some (dep.name, path)
+              | { path=None; _ } ->
+                  None))
   in
   let entries = [
     ("std", Path.(workspace_root / Path.v "packages" / Path.v "std"));

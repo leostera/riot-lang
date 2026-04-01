@@ -1,7 +1,6 @@
 open Std
 
 type event_sink = Tusk_model.Event.kind -> unit
-
 val ensure_lock:
   ?emit:event_sink ->
   mode:Dep_solver.mode ->

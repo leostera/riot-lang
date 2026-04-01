@@ -56,7 +56,8 @@ type build_scope =
 let no_emit : Tusk_model.Event.kind -> unit = fun _ -> ()
 
 let error_message = function
-  | StartupFailed { error } -> Internal_server.error_message error
+  | StartupFailed { error } ->
+      Internal_server.error_message error
   | PackageNotFound { package_name; _ } ->
       "Package '" ^ package_name ^ "' not found"
   | PackagesNotFound { package_names; _ } ->
@@ -64,13 +65,15 @@ let error_message = function
   | BuildFailed { errors } ->
       let render_error (result: Tusk_executor.Package_builder.build_result) =
         match result.status with
-        | Tusk_executor.Package_builder.Failed err ->
-            result.package.name ^ ": " ^ Tusk_executor.Package_builder.package_error_to_string err
-        | Tusk_executor.Package_builder.Skipped { reason } ->
-            result.package.name ^ ": skipped (" ^ reason ^ ")"
+        | Tusk_executor.Package_builder.Failed err -> result.package.name
+        ^ ": "
+        ^ Tusk_executor.Package_builder.package_error_to_string err
+        | Tusk_executor.Package_builder.Skipped { reason } -> result.package.name
+        ^ ": skipped ("
+        ^ reason
+        ^ ")"
         | Tusk_executor.Package_builder.Built _
-        | Tusk_executor.Package_builder.Cached _ ->
-            result.package.name ^ ": build failed"
+        | Tusk_executor.Package_builder.Cached _ -> result.package.name ^ ": build failed"
       in
       (
         match errors with
@@ -84,14 +87,11 @@ let error_message = function
       "cyclic dependency detected: " ^ String.concat " -> " cycle_nodes
   | BuildAlreadyRunning { lock_path } ->
       "another tusk build is already running (" ^ Path.to_string lock_path ^ ")"
-  | UnexpectedEvent { reason } -> reason
+  | UnexpectedEvent { reason } ->
+      reason
 
 let connect_local = fun ?(emit = no_emit) ~workspace () ->
-  match Internal_server.start_local
-    ~emit
-    ~workspace
-    ~config:Server_config.default
-    () with
+  match Internal_server.start_local ~emit ~workspace ~config:Server_config.default () with
   | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
   | Error err -> Error (StartupFailed { error = err })
 
@@ -257,21 +257,21 @@ let rec handle_streaming_events = fun t session_id callback ->
         }
         in
         callback final_event;
-        Error ((BuildFailed { errors }) : error)
+        Error ((BuildFailed { errors }): error)
       else
         handle_streaming_events t session_id callback
   | `PlanningFailed (event_session_id, failed_at, reason) ->
       if same_session session_id event_session_id then
         let final_event = PlanningFailed { session_id = event_session_id; failed_at; reason } in
         callback final_event;
-        Error ((PlanningFailed { reason }) : error)
+        Error ((PlanningFailed { reason }): error)
       else
         handle_streaming_events t session_id callback
   | `CycleDetected (event_session_id, detected_at, cycle_nodes) ->
       if same_session session_id event_session_id then
         let final_event = CycleDetected { session_id = event_session_id; detected_at; cycle_nodes } in
         callback final_event;
-        Error ((CycleDetected { cycle_nodes }) : error)
+        Error ((CycleDetected { cycle_nodes }): error)
       else
         handle_streaming_events t session_id callback
   | `PackageNotFound (event_session_id, package_name, available_packages) ->

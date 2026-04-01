@@ -54,12 +54,7 @@ let make_workspace = fun binaries ->
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
-      publish = {
-        version = None;
-        description = None;
-        license = None;
-        is_public = None;
-      };
+      publish = { version = None; description = None; license = None; is_public = None };
     }
   in
   Tusk_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
@@ -89,60 +84,47 @@ let test_run_build_scope_defaults_to_runtime_when_binary_is_missing = fun () ->
 
 let test_pm_event_hides_workspace_resolved_packages = fun () ->
   let seen_registry_updates = HashSet.create () in
-  let actual =
-    Tusk_cli.Build.format_pm_event
-      ~seen_registry_updates
-      (Tusk_model.Event.PackageResolvedForBuild {
-        package = "create-riot-app";
-        version = None;
-        path = "/workspace";
-        workspace = true;
-      })
-  in
+  let actual = Tusk_cli.Build.format_pm_event
+    ~seen_registry_updates
+    (Tusk_model.Event.PackageResolvedForBuild {
+      package = "create-riot-app";
+      version = None;
+      path = "/workspace";
+      workspace = true
+    }) in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
 let test_pm_event_maps_materialization_to_downloading = fun () ->
   let seen_registry_updates = HashSet.create () in
-  let actual =
-    Tusk_cli.Build.format_pm_event
-      ~seen_registry_updates
-      (Tusk_model.Event.PackageMaterializationStarted {
-        package = "std";
-        version = "0.1.0";
-        path = "/cache/std";
-      })
-  in
-  Test.assert_equal
-    ~expected:(Some "    \027[1;32mDownloading\027[0m std 0.1.0")
-    ~actual;
+  let actual = Tusk_cli.Build.format_pm_event
+    ~seen_registry_updates
+    (Tusk_model.Event.PackageMaterializationStarted {
+      package = "std";
+      version = "0.1.0";
+      path = "/cache/std"
+    }) in
+  Test.assert_equal ~expected:(Some "    \027[1;32mDownloading\027[0m std 0.1.0") ~actual;
   Ok ()
 
 let test_pm_event_hides_manifest_fetch_chatter = fun () ->
   let seen_registry_updates = HashSet.create () in
-  let actual =
-    Tusk_cli.Build.format_pm_event
-      ~seen_registry_updates
-      (Tusk_model.Event.PackageManifestFetchStarted {
-        package = "std";
-        version = "0.1.0";
-      })
-  in
+  let actual = Tusk_cli.Build.format_pm_event
+    ~seen_registry_updates
+    (Tusk_model.Event.PackageManifestFetchStarted { package = "std"; version = "0.1.0" }) in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
 let test_pm_event_hides_download_skipped = fun () ->
   let seen_registry_updates = HashSet.create () in
-  let actual =
-    Tusk_cli.Build.format_pm_event
-      ~seen_registry_updates
-      (Tusk_model.Event.PackageDownloadSkipped {
-        package = "std";
-        version = "0.1.0";
-        path = "/cache/std";
-        reason = "already materialized";
-      })
-  in
+  let actual = Tusk_cli.Build.format_pm_event
+    ~seen_registry_updates
+    (Tusk_model.Event.PackageDownloadSkipped {
+      package = "std";
+      version = "0.1.0";
+      path = "/cache/std";
+      reason = "already materialized"
+    }) in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 

@@ -10,7 +10,7 @@ type action =
       target: Path.t;
       forwarded_args: string list;
       output_mode: Types.output_mode;
-      use_generated_runner: bool;
+      use_generated_runner: bool
     }
 
 type t = {
@@ -51,11 +51,9 @@ let of_matches = fun matches ->
         Error (Failure "cannot use both --apply and --check")
       else
         let action =
-          match
-            ArgParser.get_flag matches "list-rules",
-            ArgParser.get_flag matches "list-diagnostics",
-            ArgParser.get_one matches "explain"
-          with
+          match ArgParser.get_flag matches "list-rules", ArgParser.get_flag matches "list-diagnostics", ArgParser.get_one
+            matches
+            "explain" with
           | true, _, _ ->
               List_rules { format }
           | false, true, _ ->

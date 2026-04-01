@@ -359,7 +359,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
     (fun (dep: Package.dependency) ->
       (* Package.hash already includes dep name and source, we just add workspace-specific details *)
       match dep.source with
-      | { Package.workspace = true; _ } -> (
+      | { Package.workspace=true; _ } -> (
           match List.find_opt (fun (p: Package.t) -> p.name = dep.name) workspace.Workspace.packages with
           | Some dep_pkg -> (
               H.write_string state (Path.to_string dep_pkg.path);
@@ -369,7 +369,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
             )
           | None -> ()
         )
-      | { Package.builtin = true; _ } ->
+      | { Package.builtin=true; _ } ->
           ()
       | _ ->
           ())

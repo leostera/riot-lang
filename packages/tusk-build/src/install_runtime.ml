@@ -8,35 +8,15 @@ type install_request = {
 
 type install_event =
   | Build of Build_runtime.build_event
-  | InstallingBinary of {
-      package: string;
-      binary: string;
-    }
-  | PromotedBinary of {
-      binary: string;
-      destination: Path.t;
-      global: bool;
-    }
-  | PromotionWarning of {
-      binary: string;
-      destination: Path.t;
-      global: bool;
-      reason: string;
-    }
-  | InstalledBinary of {
-      binary: string;
-      duration_ms: int;
-      global_destination: Path.t option;
-    }
+  | InstallingBinary of { package: string; binary: string }
+  | PromotedBinary of { binary: string; destination: Path.t; global: bool }
+  | PromotionWarning of { binary: string; destination: Path.t; global: bool; reason: string }
+  | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
 
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BuildFailed of Build_runtime.build_error
-  | ArtifactNotFound of {
-      package_name: string;
-      binary_name: string;
-      reason: string;
-    }
+  | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | ClientError of Client.error
 
 let no_event : install_event -> unit = fun _ -> ()
@@ -45,56 +25,52 @@ let reconnect = fun ~workspace ->
   Client.connect_local ~workspace () |> Result.map_error (fun err -> ClientError err)
 
 let install_error_message = function
-  | BinaryNotFound { binary_name } ->
-      "binary '" ^ binary_name ^ "' not found in workspace"
-  | BuildFailed err ->
-      Build_runtime.error_message err
-  | ArtifactNotFound { package_name; binary_name; reason } ->
-      "binary '" ^ binary_name ^ "' was not produced by package '" ^ package_name ^ "': " ^ reason
-  | ClientError err ->
-      Client.error_message err
+  | BinaryNotFound { binary_name } -> "binary '" ^ binary_name ^ "' not found in workspace"
+  | BuildFailed err -> Build_runtime.error_message err
+  | ArtifactNotFound { package_name; binary_name; reason } -> "binary '"
+  ^ binary_name
+  ^ "' was not produced by package '"
+  ^ package_name
+  ^ "': "
+  ^ reason
+  | ClientError err -> Client.error_message err
 
-let path_json = fun path ->
-  Data.Json.String (Path.to_string path)
+let path_json = fun path -> Data.Json.String (Path.to_string path)
 
 let install_event_to_json = function
-  | Build event ->
-      Event.to_json event
-  | InstallingBinary { package; binary } ->
-      Some
-        (Data.Json.Object [
-          ("type", Data.Json.String "InstallingBinary");
-          ("package", Data.Json.String package);
-          ("binary", Data.Json.String binary);
-        ])
-  | PromotedBinary { binary; destination; global } ->
-      Some
-        (Data.Json.Object [
-          ("type", Data.Json.String "PromotedBinary");
-          ("binary", Data.Json.String binary);
-          ("destination", path_json destination);
-          ("global", Data.Json.Bool global);
-        ])
-  | PromotionWarning { binary; destination; global; reason } ->
-      Some
-        (Data.Json.Object [
-          ("type", Data.Json.String "PromotionWarning");
-          ("binary", Data.Json.String binary);
-          ("destination", path_json destination);
-          ("global", Data.Json.Bool global);
-          ("reason", Data.Json.String reason);
-        ])
+  | Build event -> Event.to_json event
+  | InstallingBinary { package; binary } -> Some (Data.Json.Object [
+    ("type", Data.Json.String "InstallingBinary");
+    ("package", Data.Json.String package);
+    ("binary", Data.Json.String binary);
+  ])
+  | PromotedBinary { binary; destination; global } -> Some (Data.Json.Object [
+    ("type", Data.Json.String "PromotedBinary");
+    ("binary", Data.Json.String binary);
+    ("destination", path_json destination);
+    ("global", Data.Json.Bool global);
+  ])
+  | PromotionWarning { binary; destination; global; reason } -> Some (Data.Json.Object [
+    ("type", Data.Json.String "PromotionWarning");
+    ("binary", Data.Json.String binary);
+    ("destination", path_json destination);
+    ("global", Data.Json.Bool global);
+    ("reason", Data.Json.String reason);
+  ])
   | InstalledBinary { binary; duration_ms; global_destination } ->
-      Some
-        (Data.Json.Object [
+      Some (
+        Data.Json.Object [
           ("type", Data.Json.String "InstalledBinary");
           ("binary", Data.Json.String binary);
           ("duration_ms", Data.Json.Int duration_ms);
-          ( "global_destination",
+          (
+            "global_destination",
             match global_destination with
             | Some path -> path_json path
-            | None -> Data.Json.Null );
-        ])
+            | None -> Data.Json.Null
+          );
+        ]
+      )
 
 let find_built_binary_path = fun client ~package_name ~binary_name ->
   Client.find_artifact client ~package:package_name ~kind:"binary" ~name:binary_name
@@ -136,19 +112,14 @@ let promote_binary = fun ~on_event ~src ~dst ~binary ~global ->
       on_event (PromotedBinary { binary; destination = dst; global });
       Ok true
   | Error reason ->
-      on_event (PromotionWarning {
-        binary;
-        destination = dst;
-        global;
-        reason = IO.error_message reason;
-      });
+      on_event
+        (PromotionWarning { binary; destination = dst; global; reason = IO.error_message reason });
       Ok false
 
 let install = fun ?(on_event = no_event) (request: install_request) ->
   let started_at = Time.Instant.now () in
   match reconnect ~workspace:request.workspace with
-  | Error _ as err ->
-      err
+  | Error _ as err -> err
   | Ok client ->
       let result =
         match Client.find_executable client request.binary_name with
@@ -159,8 +130,7 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
         | Ok (Some (package_name, _binary)) -> (
             on_event (InstallingBinary { package = package_name; binary = request.binary_name });
             match
-              Build_runtime.build
-                ~on_event:(fun event -> on_event (Build event))
+              Build_runtime.build ~on_event:(fun event -> on_event (Build event))
                 {
                   workspace = request.workspace;
                   packages = [ package_name ];
@@ -169,38 +139,30 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                   profile = "debug";
                 }
             with
-            | Error err ->
-                Error (BuildFailed err)
+            | Error err -> Error (BuildFailed err)
             | Ok () -> (
                 match reconnect ~workspace:request.workspace with
-                | Error _ as err ->
-                    err
+                | Error _ as err -> err
                 | Ok refreshed_client ->
                     let result =
-                      match
-                        find_built_binary_path
-                          refreshed_client
-                          ~package_name
-                          ~binary_name:request.binary_name
-                      with
-                      | Error reason ->
-                          Error
-                            (ArtifactNotFound {
-                              package_name;
-                              binary_name = request.binary_name;
-                              reason;
-                            })
+                      match find_built_binary_path
+                        refreshed_client
+                        ~package_name
+                        ~binary_name:request.binary_name with
+                      | Error reason -> Error (ArtifactNotFound {
+                        package_name;
+                        binary_name = request.binary_name;
+                        reason
+                      })
                       | Ok binary_path ->
                           let workspace_root = request.workspace.root in
                           let project_binary = Path.(workspace_root / Path.v request.binary_name) in
-                          let _ =
-                            promote_binary
-                              ~on_event
-                              ~src:binary_path
-                              ~dst:project_binary
-                              ~binary:request.binary_name
-                              ~global:false
-                          in
+                          let _ = promote_binary
+                            ~on_event
+                            ~src:binary_path
+                            ~dst:project_binary
+                            ~binary:request.binary_name
+                            ~global:false in
                           let global_destination =
                             if request.local_only then
                               None
@@ -209,20 +171,19 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                               let global_path = Path.(tusk_bin_dir / Path.v request.binary_name) in
                               let promoted =
                                 match Fs.create_dir_all tusk_bin_dir with
-                                | Ok () ->
-                                    promote_binary
-                                      ~on_event
-                                      ~src:binary_path
-                                      ~dst:global_path
-                                      ~binary:request.binary_name
-                                      ~global:true
+                                | Ok () -> promote_binary
+                                  ~on_event
+                                  ~src:binary_path
+                                  ~dst:global_path
+                                  ~binary:request.binary_name
+                                  ~global:true
                                 | Error reason ->
                                     on_event
                                       (PromotionWarning {
                                         binary = request.binary_name;
                                         destination = tusk_bin_dir;
                                         global = true;
-                                        reason = IO.error_message reason;
+                                        reason = IO.error_message reason
                                       });
                                     Ok false
                               in
@@ -231,14 +192,14 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                               | Ok false -> None
                               | Error _ -> None
                           in
-                          let duration =
-                            Time.Instant.duration_since ~earlier:started_at (Time.Instant.now ())
-                          in
+                          let duration = Time.Instant.duration_since
+                            ~earlier:started_at
+                            (Time.Instant.now ()) in
                           on_event
                             (InstalledBinary {
                               binary = request.binary_name;
                               duration_ms = Time.Duration.to_millis duration;
-                              global_destination;
+                              global_destination
                             });
                           Ok ()
                     in

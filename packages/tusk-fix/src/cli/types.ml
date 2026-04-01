@@ -1,7 +1,6 @@
 open Std
 
-type build_package =
-  workspace_root:Path.t -> package_name:string -> (unit, exn) result
+type build_package = workspace_root:Path.t -> package_name:string -> (unit, exn) result
 
 type run_outcome = {
   result: Runner.run_result;

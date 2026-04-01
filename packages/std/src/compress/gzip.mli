@@ -5,18 +5,15 @@ type error =
   | Kernel_error of Kernel.Compress.Gzip.error
   (** The underlying incremental gzip engine rejected the stream. *)
   | Truncated_input
-  (** The gzip stream ended before the decoder reached a complete end state. *)
-
+(** The gzip stream ended before the decoder reached a complete end state. *)
 (** Opaque reader state produced by [`to_reader`]. *)
 type ('src, 'read_err) reader
-
 (** Errors returned by the reader produced from a gzip source. *)
 type 'read_err read_error =
   | Source_error of 'read_err
   (** The upstream compressed source reader failed. *)
   | Gzip_error of error
-  (** The gzip payload was malformed or incomplete. *)
-
+(** The gzip payload was malformed or incomplete. *)
 (** Errors returned by streaming decompression into a writer. *)
 type ('read_err, 'write_err) stream_error =
   | Stream_source_error of 'read_err
@@ -24,14 +21,14 @@ type ('read_err, 'write_err) stream_error =
   | Stream_destination_error of 'write_err
   (** The destination writer failed. *)
   | Stream_gzip_error of error
-  (** The gzip engine rejected the payload or output stream. *)
-
+(** The gzip engine rejected the payload or output stream. *)
 (** Errors returned by file-based decompression helpers. *)
 type file_error =
   | File_io_error of Fs.error
   (** Opening, reading, writing, or closing a file failed. *)
   | File_gzip_error of error
-  (** The gzip engine rejected the payload or output stream. *)
+
+(** The gzip engine rejected the payload or output stream. *)
 
 (** Wrap a compressed reader as a decompressed reader.
 
@@ -58,8 +55,7 @@ type file_error =
     ```
 *)
 val to_reader:
-  ('src, 'read_err) IO.Reader.t ->
-  (('src, 'read_err) reader, 'read_err read_error) IO.Reader.t
+  ('src, 'read_err) IO.Reader.t -> (('src, 'read_err) reader, 'read_err read_error) IO.Reader.t
 
 (** Stream-compress data from a reader into a gzip writer.
 

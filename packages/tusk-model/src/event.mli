@@ -127,7 +127,12 @@ type kind =
       duration_ms: int
     }
   | PackageMetadataFetchStarted of { registry: string; package: string }
-  | PackageMetadataFetchFinished of { registry: string; package: string; version: string option; duration_ms: int }
+  | PackageMetadataFetchFinished of {
+      registry: string;
+      package: string;
+      version: string option;
+      duration_ms: int
+    }
   | PackageMetadataFetchFailed of { registry: string; package: string; error: Pm_error.t }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
@@ -144,7 +149,12 @@ type kind =
       path: string;
       duration_ms: int
     }
-  | PackageMaterializationFailed of { package: string; version: string; path: string; error: Pm_error.t }
+  | PackageMaterializationFailed of {
+      package: string;
+      version: string;
+      path: string;
+      error: Pm_error.t
+    }
   | PackageResolvedForBuild of {
       package: string;
       version: string option;

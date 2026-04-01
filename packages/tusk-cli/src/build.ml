@@ -82,19 +82,11 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       if workspace then
         None
       else
-        Some ("    \027[1;32mResolved\027[0m "
-        ^ package
-        ^ " ("
-        ^ pm_package_source_label version
-        ^ ")")
+        Some ("    \027[1;32mResolved\027[0m " ^ package ^ " (" ^ pm_package_source_label version ^ ")")
   | Tusk_model.Event.PackageDownloadStarted { package; version; _ } ->
       Some ("    \027[1;32mDownloading\027[0m " ^ package ^ " " ^ version)
   | Tusk_model.Event.PackageDownloadQueued { package; version; _ } ->
-      Some ("      \027[1;33mQueued\027[0m "
-      ^ package
-      ^ " ("
-      ^ version
-      ^ ")")
+      Some ("      \027[1;33mQueued\027[0m " ^ package ^ " (" ^ version ^ ")")
   | Tusk_model.Event.PackageMaterializationStarted { package; version; _ } ->
       Some ("    \027[1;32mDownloading\027[0m " ^ package ^ " " ^ version)
   | Tusk_model.Event.DependencyResolutionStarted _
@@ -121,7 +113,8 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Tusk_model.Event.PackageMaterializationFinished _
   | Tusk_model.Event.PackageMaterializationFailed _ ->
       None
-  | kind -> Some (Tusk_model.Event.display kind)
+  | kind ->
+      Some (Tusk_model.Event.display kind)
 
 let write_pm_event = fun ~mode ~seen_registry_updates event ->
   match mode with
@@ -163,16 +156,16 @@ let output_mode_of_matches = fun matches ->
   else
     Human
 
-let make_request = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) ~packages
-  ~targets () ->
+let make_request = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
   {
-    build_request = Tusk_build.{
-      workspace;
-      packages;
-      targets;
-      scope;
-      profile = "debug";
-    };
+    build_request =
+      Tusk_build.{
+        workspace;
+        packages;
+        targets;
+        scope;
+        profile = "debug";
+      };
     output_mode = mode;
     show_finished_summary;
   }
@@ -203,8 +196,10 @@ let write_streaming_event = fun ~mode ~displayed_packages ~built_count ~cached_c
       | Client.BuildEvent event ->
           (
             match event with
-            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> built_count := !built_count + 1
-            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> cached_count := !cached_count + 1
+            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> built_count := !built_count
+            + 1
+            | Tusk_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> cached_count := !cached_count
+            + 1
             | Tusk_executor.Telemetry_events.BuildFailed _ -> failed_count := !failed_count + 1
             | Tusk_executor.Telemetry_events.BuildSkipped _ -> skipped_count := !skipped_count + 1
             | _ -> ()
@@ -233,7 +228,10 @@ let write_build_error = fun ~mode err ->
         "NoTargetsMatched"
         [
           ("pattern", Data.Json.String pattern);
-          ("available_targets", Data.Json.Array (List.map (fun target -> Data.Json.String target) available_targets));
+          (
+            "available_targets",
+            Data.Json.Array (List.map (fun target -> Data.Json.String target) available_targets)
+          );
         ]
         (Tusk_build.build_error_message err)
   | Tusk_build.ToolchainInstallFailed { target; error } ->
@@ -257,47 +255,53 @@ let write_build_error = fun ~mode err ->
                 "PackageNotFound"
                 [
                   ("package_name", Data.Json.String package_name);
-                  ("available_packages", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages));
+                  (
+                    "available_packages",
+                    Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages)
+                  );
                 ])
-          else
-            (
-              out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
-              out "";
-              out "Available packages:";
-              List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages
-            )
+          else (
+            out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
+            out "";
+            out "Available packages:";
+            List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages
+          )
       | Client.PackagesNotFound { package_names; available_packages } ->
           if mode = Json then
             write_json_event
               (command_error_event_to_json
                 "PackagesNotFound"
                 [
-                  ("package_names", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) package_names));
-                  ("available_packages", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages));
+                  (
+                    "package_names",
+                    Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) package_names)
+                  );
+                  (
+                    "available_packages",
+                    Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages)
+                  );
                 ])
-          else
-            (
-              out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
-              out "";
-              out "Available packages:";
-              List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages
-            )
+          else (
+            out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
+            out "";
+            out "Available packages:";
+            List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages
+          )
       | Client.BuildAlreadyRunning { lock_path } ->
           write_command_error
             ~mode
             "BuildAlreadyRunning"
             [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
-            ("another tusk build is already running\nLock file: "
-            ^ Path.to_string lock_path
-            ^ "\nWait for the current build to finish and try again.")
+            ("another tusk build is already running\nLock file: " ^ Path.to_string lock_path ^ "\nWait for the current build to finish and try again.")
       | Client.BuildFailed { errors } ->
           write_command_error
             ~mode
             "BuildFailed"
             [
-              ( "errors",
-                Data.Json.Array
-                  (List.map Tusk_executor.Package_builder.build_result_to_json errors) );
+              (
+                "errors",
+                Data.Json.Array (List.map Tusk_executor.Package_builder.build_result_to_json errors)
+              );
             ]
             (Client.error_message client_error)
       | Client.PlanningFailed { reason } ->
@@ -313,34 +317,24 @@ let write_build_error = fun ~mode err ->
             [ ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes)) ]
             (Client.error_message client_error)
       | Client.UnexpectedEvent { reason } ->
-          write_command_error
-            ~mode
-            "UnexpectedEvent"
-            [ ("reason", Data.Json.String reason) ]
-            reason
+          write_command_error ~mode "UnexpectedEvent" [ ("reason", Data.Json.String reason) ] reason
       | Client.StartupFailed { error } ->
           let reason = Tusk_build.error_message error in
-          write_command_error
-            ~mode
-            "SessionStartFailed"
-            [ ("reason", Data.Json.String reason) ]
-            reason
+          write_command_error ~mode "SessionStartFailed" [ ("reason", Data.Json.String reason) ] reason
     )
 
 let run_request = fun (request: request) ->
   trace_build
-    ("run_request request="
-    ^ build_request_label request.build_request
-    ^ " scope="
-    ^
-    match request.build_request.scope with
-    | Runtime -> "runtime"
-    | Dev -> "dev"
-    ^ " mode="
-    ^
-    match request.output_mode with
-    | Human -> "human"
-    | Json -> "json"
+    (
+      "run_request request="
+      ^ build_request_label request.build_request
+      ^ " scope="
+      ^ match request.build_request.scope with
+      | Runtime -> "runtime"
+      | Dev ->
+          "dev" ^ " mode=" ^ match request.output_mode with
+          | Human -> "human"
+          | Json -> "json"
     );
   let seen_registry_updates = HashSet.create () in
   let displayed_packages = HashSet.create () in
@@ -352,12 +346,10 @@ let run_request = fun (request: request) ->
   let attempted_build = ref false in
   let result =
     Tusk_build.build
-      ~on_event:(function
+      ~on_event:(
+        function
         | Tusk_build.Pm kind ->
-            write_pm_event
-              ~mode:request.output_mode
-              ~seen_registry_updates
-              kind
+            write_pm_event ~mode:request.output_mode ~seen_registry_updates kind
         | Tusk_build.BuildingTarget { target; host } ->
             attempted_build := true;
             write_building_target_event ~mode:request.output_mode ~target ~host
@@ -372,45 +364,46 @@ let run_request = fun (request: request) ->
               ~skipped_count
               event;
             if request.output_mode = Json then
-              write_build_event_json (Tusk_build.Streaming event))
+              write_build_event_json (Tusk_build.Streaming event)
+      )
       request.build_request
   in
   if request.show_finished_summary && !attempted_build then
-        (
-          match request.output_mode with
-          | Json -> ()
-          | Human ->
-              let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
-              let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
-              let total_count = !built_count + !cached_count in
-              if !failed_count = 0 && !skipped_count = 0 then
-                out
-                  ("    \027[1;32mFinished\027[0m in "
-                  ^ formatted_duration
-                  ^ "s ("
-                  ^ Int.to_string total_count
-                  ^ " built)")
-              else if !failed_count > 0 then
-                out
-                  ("    \027[1;31mFinished\027[0m in "
-                  ^ formatted_duration
-                  ^ "s ("
-                  ^ Int.to_string total_count
-                  ^ " built, "
-                  ^ Int.to_string !failed_count
-                  ^ " failed, "
-                  ^ Int.to_string !skipped_count
-                  ^ " skipped)")
-              else
-                out
-                  ("    \027[1;33mFinished\027[0m in "
-                  ^ formatted_duration
-                  ^ "s ("
-                  ^ Int.to_string total_count
-                  ^ " built, "
-                  ^ Int.to_string !skipped_count
-                  ^ " skipped)")
-        );
+    (
+      match request.output_mode with
+      | Json -> ()
+      | Human ->
+          let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
+          let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
+          let total_count = !built_count + !cached_count in
+          if !failed_count = 0 && !skipped_count = 0 then
+            out
+              ("    \027[1;32mFinished\027[0m in "
+              ^ formatted_duration
+              ^ "s ("
+              ^ Int.to_string total_count
+              ^ " built)")
+          else if !failed_count > 0 then
+            out
+              ("    \027[1;31mFinished\027[0m in "
+              ^ formatted_duration
+              ^ "s ("
+              ^ Int.to_string total_count
+              ^ " built, "
+              ^ Int.to_string !failed_count
+              ^ " failed, "
+              ^ Int.to_string !skipped_count
+              ^ " skipped)")
+          else
+            out
+              ("    \027[1;33mFinished\027[0m in "
+              ^ formatted_duration
+              ^ "s ("
+              ^ Int.to_string total_count
+              ^ " built, "
+              ^ Int.to_string !skipped_count
+              ^ " skipped)")
+    );
   match result with
   | Ok () -> Ok ()
   | Error err ->
@@ -441,34 +434,30 @@ let build_command = fun ?workspace ?(scope = Runtime) ?(mode = Human) ?(show_fin
         load_workspace_strict cwd
   in
   match workspace with
-  | Error _ as err ->
-      err
+  | Error _ as err -> err
   | Ok workspace ->
-  run_request
-    (make_request
-      ~workspace
-      ~scope
-      ~mode
-      ~show_finished_summary
-      ~packages:(package_opt |> Option.to_list)
-      ~targets:(match target_arch with
-      | Some target -> Tusk_build.Pattern target
-      | None -> Tusk_build.Host)
-      ())
+      run_request
+        (
+          make_request ~workspace ~scope ~mode ~show_finished_summary ~packages:((package_opt
+          |> Option.to_list))
+            ~targets:((
+              match target_arch with
+              | Some target -> Tusk_build.Pattern target
+              | None -> Tusk_build.Host
+            ))
+            ()
+        )
 
-let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary =
-  true) package_names target_arch ->
+let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_names target_arch ->
   run_request
-    (make_request
-      ~workspace
-      ~scope
-      ~mode
-      ~show_finished_summary
-      ~packages:package_names
-      ~targets:(match target_arch with
-      | Some target -> Tusk_build.Pattern target
-      | None -> Tusk_build.Host)
-      ())
+    (
+      make_request ~workspace ~scope ~mode ~show_finished_summary ~packages:package_names
+        ~targets:((
+          match target_arch with
+          | Some target -> Tusk_build.Pattern target
+          | None -> Tusk_build.Host
+        ))
+        ()
+    )
 
-let run = fun ~workspace matches ->
-  run_request (request_of_matches ~workspace matches)
+let run = fun ~workspace matches -> run_request (request_of_matches ~workspace matches)
