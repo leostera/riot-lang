@@ -211,8 +211,10 @@ let test_build_writes_package_export_manifest = fun () ->
           ~package
           ~build_ctx in
         match result.status with
-        | Tusk_executor.Package_builder.Failed err -> Error ("build failed: "
-        ^ Tusk_executor.Package_builder.package_error_to_string err)
+        | Tusk_executor.Package_builder.Failed err ->
+            Error ("build failed: " ^ Tusk_executor.Package_builder.package_error_to_string err)
+        | Tusk_executor.Package_builder.Skipped reason ->
+            Error ("build skipped: " ^ reason)
         | Tusk_executor.Package_builder.Built _
         | Tusk_executor.Package_builder.Cached _ ->
             let target = Kernel.System.Host.to_string (Tusk_model.Build_ctx.target_triplet build_ctx) in

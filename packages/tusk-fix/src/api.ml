@@ -31,7 +31,7 @@ type fix_response =
   | Listed_diagnostics of { format: Reporter.format; output: string }
   | Explained_rule of { rule_id: string; output: string }
 
-let unavailable_build_package = fun ~workspace_root:_ ~package_name:_ ->
+let unavailable_build_package = fun ~workspace_root:_ ~package_name:_ ~profile:_ ->
   Error (Failure "No build_package callback was provided")
 
 let check_request = Cli.Request.check_request

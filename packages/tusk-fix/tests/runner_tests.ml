@@ -1958,8 +1958,8 @@ let render x y z =
         ~target_dir_root:Path.(Path.v "/workspace" / Path.v "_build")
         [ provider ] in
       let binary_path = Path.to_string plan.binary_path in
-      Test.assert_true (String.contains binary_path "/build/debug/");
-      Test.assert_false (String.contains binary_path "/workspace/_build/debug/");
+      Test.assert_true (String.contains binary_path "/build/release/");
+      Test.assert_false (String.contains binary_path "/workspace/_build/release/");
       Ok ());
   Test.case "fixme runner hash changes when provider support sources change"
     (fun () ->

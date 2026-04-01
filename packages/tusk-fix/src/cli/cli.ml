@@ -38,7 +38,7 @@ let list_diagnostics_output = Catalog.list_diagnostics_output
 
 let run_result = Execution.run_result
 
-let unavailable_build_package = fun ~workspace_root:_ ~package_name:_ ->
+let unavailable_build_package = fun ~workspace_root:_ ~package_name:_ ~profile:_ ->
   Error (Failure "No build_package callback was provided")
 
 let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode matches ->

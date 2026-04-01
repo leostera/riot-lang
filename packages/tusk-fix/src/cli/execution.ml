@@ -202,7 +202,7 @@ let run_generated_runner = fun ~cwd ~build_package ~report_output ~args scope ->
     ("materializing generated runner for " ^ Int.to_string (List.length providers) ^ " providers");
   let plan = Fixme_runner.materialize ~workspace_root ~target_dir_root providers in
   trace_fix ("building generated runner package " ^ plan.package_name);
-  match build_package ~workspace_root:plan.workspace_root ~package_name:plan.package_name with
+  match build_package ~workspace_root:plan.workspace_root ~package_name:plan.package_name ~profile:"release" with
   | Error err ->
       trace_fix ("building generated runner failed: " ^ Exception.to_string err);
       Error err

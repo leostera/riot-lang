@@ -137,7 +137,7 @@ let plan = fun ~workspace_root ~target_dir_root providers ->
       Path.(generated_dir / Path.v "fixme_registry.ml");
     binary_path =
       Path.(build_dir_root
-      / Path.v "debug"
+      / Path.v "release"
       / Path.v (Tusk_model.Tusk_dirs.host_target ())
       / Path.v "out"
       / Path.v (package_name ^ "/" ^ binary_name));

@@ -25,8 +25,10 @@ let build_mode_of_output_mode = function
   | Tusk_fix.Report Tusk_fix.Reporter.Text
   | Tusk_fix.Silent -> Build.Human
 
-let build_package = fun ~mode ~workspace_root ~package_name ->
-  with_current_dir workspace_root (fun () -> Build.build_command ~mode (Some package_name) None)
+let build_package = fun ~mode ~workspace_root ~package_name ~profile ->
+  with_current_dir
+    workspace_root
+    (fun () -> Build.build_command ~mode ~profile (Some package_name) None)
 
 let run = fun matches ->
   match Tusk_fix.fix_request_of_matches matches with

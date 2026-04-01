@@ -160,11 +160,17 @@ let plan_error_message = function
   |> List.map Workspace_manager.load_error_to_string
   |> String.concat "\n"
 
-let build_package_in_workspace = fun ~(workspace:Workspace.t) ~package_name ->
+let build_package_in_workspace = fun ~(workspace:Workspace.t) ~package_name ~profile_name ->
   match toolchain_for_workspace ~workspace with
   | Error _ as err -> err
   | Ok toolchain ->
-      let profile = Profile.(apply_overrides debug workspace.profile_overrides) in
+      let base_profile =
+        if String.equal profile_name "release" then
+          Profile.release
+        else
+          Profile.debug
+      in
+      let profile = Profile.(apply_overrides base_profile workspace.profile_overrides) in
       let session_id = Session_id.make () in
       let build_ctx = Build_ctx.make
         ~session_id
@@ -195,7 +201,7 @@ let build_package_in_workspace = fun ~(workspace:Workspace.t) ~package_name ->
               error = Int.to_string result.failed_count ^ " packages failed to build"
             })
 
-let build_package_in_workspace_root = fun ~registry ~workspace_root ~package_name ->
+let build_package_in_workspace_root = fun ~registry ~workspace_root ~package_name ~profile_name ->
   match Workspace_manager.scan workspace_root with
   | Error error -> Error (WorkspaceScanFailed { workspace_root; error })
   | Ok (workspace, load_errors) ->
@@ -213,7 +219,7 @@ let build_package_in_workspace_root = fun ~registry ~workspace_root ~package_nam
             ~workspace
             () with
           | Error error -> Error (WorkspacePreparationFailed { error })
-          | Ok workspace -> build_package_in_workspace ~workspace ~package_name
+          | Ok workspace -> build_package_in_workspace ~workspace ~package_name ~profile_name
         )
 
 let run_check = fun ~emit ~package_name ~stage check_fn ->
@@ -244,8 +250,8 @@ let run_publish_checks = fun ~emit ~registry ~(original_workspace:Workspace.t) ~
     (fun () ->
       Tusk_fix.fix
         ~on_event:(fun event -> emit (Fix event))
-        ~build_package:(fun ~workspace_root ~package_name ->
-          build_package_in_workspace_root ~registry ~workspace_root ~package_name
+        ~build_package:(fun ~workspace_root ~package_name ~profile ->
+          build_package_in_workspace_root ~registry ~workspace_root ~package_name ~profile_name:profile
           |> Result.map_error (fun err -> Failure (message err)))
         (Tusk_fix.check_request ~cwd:original_workspace.root ~target:package.path)
       |> Result.map (fun _ -> ()))
@@ -255,7 +261,11 @@ let run_publish_checks = fun ~emit ~registry ~(original_workspace:Workspace.t) ~
       ~emit
       ~package_name:package.name
       ~stage:`Build
-      (fun () -> build_package_in_workspace ~workspace:resolved_workspace ~package_name:package.name)
+      (fun () ->
+        build_package_in_workspace
+          ~workspace:resolved_workspace
+          ~package_name:package.name
+          ~profile_name:"debug")
   in
   run_check
     ~emit
