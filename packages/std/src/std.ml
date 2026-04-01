@@ -1,6 +1,7 @@
 (** Standard library extensions and utilities *)
 module Agent = Agent
 module Application = Application
+module Archive = Archive
 module ArgParser = Arg_parser
 module Bench = Bench
 module Bool = Bool
@@ -8,6 +9,7 @@ module Calendar = Calendar
 module Char = Char
 module Collections = Collections
 module Command = Command
+module Compress = Compress
 module Config = Config
 module Crypto = Crypto
 module Data = Data

@@ -21,12 +21,13 @@ ld_flags = [
   "-framework", "Security",
   "-L/opt/homebrew/opt/openssl@3/lib", 
   "-lssl", 
-  "-lcrypto"
+  "-lcrypto",
+  "-lz"
 ]
 
 [target.linux]
 cc_flags = []
-ld_flags = ["-lssl", "-lcrypto", "-luuid"]
+ld_flags = ["-lssl", "-lcrypto", "-luuid", "-lz"]
 
 [dependencies]
 stdlib = "*"

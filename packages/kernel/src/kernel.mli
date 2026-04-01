@@ -2,11 +2,15 @@
 
 module Async = Async
 
+module Archive = Archive
+
 module Bool = Bool
 
 module Char = Char
 
 module Collections = Collections
+
+module Compress = Compress
 
 module Crypto = Crypto
 

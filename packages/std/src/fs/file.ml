@@ -282,6 +282,54 @@ let into_fd = fun t -> t.fd
 
 let from_fd = fun fd -> { fd; closed = false }
 
+let read_file = read
+
+let write_file_string = write_string
+
+let to_reader = fun t ->
+  let module Read = struct
+    type nonrec t = t
+
+    type err = error
+
+    let read = fun file ?timeout:_ buf ->
+      read_file file buf ~offset:0 ~len:(IO.Bytes.length buf)
+
+    let read_vectored = fun file bufs ->
+      let total_len = Iovec.length bufs in
+      let scratch = IO.Bytes.create total_len in
+      match read_file file scratch ~offset:0 ~len:total_len with
+      | Error err ->
+          Error err
+      | Ok read_len ->
+          let copied = ref 0 in
+          Iovec.iter bufs
+            (fun { ba; off; len } ->
+              let remaining = read_len - !copied in
+              if remaining > 0 then
+                let chunk_len = min len remaining in
+                IO.Bytes.blit scratch !copied ba off chunk_len;
+                copied := !copied + chunk_len);
+          Ok read_len
+  end in
+  IO.Reader.of_read_src (module Read) t
+
+let to_writer = fun t ->
+  let module Write = struct
+    type nonrec t = t
+
+    type err = error
+
+    let write = fun file ~buf ->
+      write_file_string file buf
+
+    let write_owned_vectored = fun file ~bufs ->
+      write_file_string file (Iovec.into_string bufs)
+
+    let flush = fun _file -> Ok ()
+  end in
+  IO.Writer.of_write_src (module Write) t
+
 (* Closing *)
 
 let close = fun t ->

@@ -183,6 +183,12 @@ val into_fd: t -> Kernel.Fd.t
 val from_fd: Kernel.Fd.t -> t
 
 (** Wrap file descriptor as file handle *)
+val to_reader: t -> (t, error) IO.Reader.t
+
+(** View the file as a generic reader. *)
+val to_writer: t -> (t, error) IO.Writer.t
+
+(** View the file as a generic writer. *)
 (** ## Closing *)
 
 val close: t -> (unit, error) result

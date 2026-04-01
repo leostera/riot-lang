@@ -890,6 +890,8 @@
 (** Module Declarations *)
 module Agent = Agent
 
+module Archive = Archive
+
 (** **When to use:** Simple concurrent state access
 
     Use Agent when you need a lightweight state server accessed from multiple processes.
@@ -951,6 +953,13 @@ module Collections = Collections
     - Double-ended operations → Deque
     - Priority ordering → Heap
     - Functional lists → List *)
+module Compress = Compress
+
+(** **When to use:** Streaming compression/decompression
+
+    Use Compress for codec-style I/O transformations such as gzip streams.
+    
+    **See also:** {!Archive} for tar archives layered on top of readers. *)
 module Command = Command
 
 (** **When to use:** Running external programs
