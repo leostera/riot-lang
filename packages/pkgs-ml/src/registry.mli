@@ -1,6 +1,11 @@
 open Std
 
 type t
+type fetch_response = {
+  status_code: int;
+  body: string;
+}
+type fetch
 type release_file = {
   path: Path.t;
   contents: string;
@@ -16,9 +21,11 @@ type materialize_result =
   `Materialized
   | `Already_present
 ]
-val create_filesystem: registry_name:string -> ?tusk_home:Path.t -> unit -> (t, string) result
+val make_fetch: get:(Net.Uri.t -> (fetch_response, string) result) -> fetch
 
-val filesystem: Registry_cache.t -> t
+val create_filesystem: ?fetch:fetch -> registry_name:string -> ?tusk_home:Path.t -> unit -> (t, string) result
+
+val filesystem: ?fetch:fetch -> Registry_cache.t -> t
 
 val cache: t -> Registry_cache.t
 

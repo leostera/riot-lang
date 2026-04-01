@@ -14,3 +14,4 @@ path = "tests/pkgs_ml_tests.ml"
 
 [dependencies]
 std = { path = "../std" }
+blink = { path = "../blink" }

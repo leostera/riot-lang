@@ -264,6 +264,38 @@ let package_relpath = fun package_name ->
   let name = normalized_name package_name in
   Path.(package_prefix name / Path.v (name ^ ".json"))
 
+let ensure_dir_url = fun url ->
+  if String.length url > 0 && url.[String.length url - 1] = '/' then
+    url
+  else
+    url ^ "/"
+
+let bootstrap_config_url = fun ~registry_name ->
+  let url = "https://cdn." ^ registry_name ^ "/index/v1/config.json" in
+  match Net.Uri.of_string url with
+  | Ok uri -> Ok uri
+  | Error _ -> Error ("failed to build sparse index config url '" ^ url ^ "'")
+
+let package_document_url = fun config ~package_name ->
+  let base_url = ensure_dir_url config.index_base_url in
+  match Net.Uri.of_string base_url with
+  | Error _ ->
+      Error ("failed to parse sparse index base url '" ^ base_url ^ "'")
+  | Ok base ->
+      Net.Uri.join base (Path.to_string (package_relpath package_name))
+      |> Result.map_error (fun _ ->
+        "failed to build sparse index package url for '" ^ package_name ^ "'")
+
+let release_source_url = fun config (release: release) ->
+  let base_url = ensure_dir_url config.artifact_base_url in
+  match Net.Uri.of_string base_url with
+  | Error _ ->
+      Error ("failed to parse sparse index artifact base url '" ^ base_url ^ "'")
+  | Ok base ->
+      Net.Uri.join base release.source_key
+      |> Result.map_error (fun _ ->
+        "failed to build sparse index archive url for '" ^ release.source_key ^ "'")
+
 let package_cache_path = fun cache ~package_name ->
   Path.(Registry_cache.index_dir cache / package_relpath package_name)
 
@@ -292,6 +324,34 @@ let read_cached_package_document = fun cache ~package_name ->
   read_cached_json
     ~path:(package_cache_path cache ~package_name)
     ~decode:package_document_of_string
+
+let write_cached_json = fun ~path ~source ->
+  let ensure_parent =
+    match Path.parent path with
+    | Some parent -> Fs.create_dir_all parent
+    | None -> Ok ()
+  in
+  match ensure_parent with
+  | Error err ->
+      Error ("failed to create sparse index parent directory for '"
+      ^ Path.to_string path
+      ^ "': "
+      ^ IO.error_message err)
+  | Ok () -> (
+      match Fs.write source path with
+      | Ok () -> Ok ()
+      | Error err ->
+          Error ("failed to write sparse index file '"
+          ^ Path.to_string path
+          ^ "': "
+          ^ IO.error_message err)
+    )
+
+let write_cached_config = fun cache ~source ->
+  write_cached_json ~path:(config_cache_path cache) ~source
+
+let write_cached_package_document = fun cache ~package_name ~source ->
+  write_cached_json ~path:(package_cache_path cache ~package_name) ~source
 
 module Tests = struct
   let expect_relpath = fun ~package_name ~expected ->

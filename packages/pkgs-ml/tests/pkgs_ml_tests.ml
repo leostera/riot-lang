@@ -104,6 +104,173 @@ let test_sparse_index_cached_reads = fun () ->
   | (Error err, _)
   | (_, Error err) -> Error err
 
+let sparse_index_config_json = {|{
+  "schema_version": 1,
+  "kind": "sparse",
+  "package_path_strategy": "cargo-lowercase-v1",
+  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "artifact_base_url": "https://cdn.pkgs.ml"
+}|}
+
+let sparse_index_kernel_json = {|{
+  "schema_version": 1,
+  "name": "kernel",
+  "latest": "0.0.1",
+  "updated_at": "2026-03-27T15:27:35Z",
+  "releases": []
+}|}
+
+let sparse_index_std_release_json = {|{
+  "schema_version": 1,
+  "name": "std",
+  "latest": "0.1.0",
+  "updated_at": "2026-03-27T15:27:35Z",
+  "releases": [
+    {
+      "version": "0.1.0",
+      "published_at": "2026-03-27T15:27:35Z",
+      "canonical_locator": "github.com/leostera/riot/packages/std",
+      "repo_url": "https://github.com/leostera/riot",
+      "subdir": "packages/std",
+      "sha": "deadbeef",
+      "manifest_key": "packages/std/0.1.0.manifest.json",
+      "source_key": "sources/std/0.1.0.tar",
+      "dependencies": []
+    }
+  ]
+}|}
+
+let make_fetch_recorder = fun handler ->
+  let requests = ref [] in
+  let fetch = Pkgs_ml.Registry.make_fetch ~get:(fun uri ->
+    requests := Net.Uri.to_string uri :: !requests;
+    handler uri) in
+  (fetch, requests)
+
+let test_filesystem_registry_fetches_config_on_cache_miss = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_fetch_config"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let fetch, requests = make_fetch_recorder (fun uri ->
+          if String.equal (Net.Uri.to_string uri) "https://cdn.pkgs.ml/index/v1/config.json" then
+            Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
+          else
+            Error ("unexpected fetch url " ^ Net.Uri.to_string uri)) in
+        let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+        match Pkgs_ml.Registry.read_config registry with
+        | Error err -> Error err
+        | Ok None -> Error "expected filesystem registry to fetch sparse index config"
+        | Ok (Some config) -> (
+            match Pkgs_ml.Sparse_index.read_cached_config cache with
+            | Error err -> Error err
+            | Ok None -> Error "expected fetched config to be cached"
+            | Ok (Some cached) ->
+                let requested = List.rev !requests in
+                if
+                  String.equal config.kind "sparse"
+                  && String.equal cached.index_base_url "https://cdn.pkgs.ml/index/v1"
+                  && requested = [ "https://cdn.pkgs.ml/index/v1/config.json" ]
+                then
+                  Ok ()
+                else
+                  Error "unexpected fetched sparse index config state"
+          ))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_filesystem_registry_fetches_package_document_on_cache_miss = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_fetch_package"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let fetch, requests = make_fetch_recorder (fun uri ->
+          match Net.Uri.to_string uri with
+          | "https://cdn.pkgs.ml/index/v1/config.json" ->
+              Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
+          | "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" ->
+              Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_kernel_json }
+          | url -> Error ("unexpected fetch url " ^ url)) in
+        let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+        match Pkgs_ml.Registry.read_package_document registry ~package_name:"Kernel" with
+        | Error err -> Error err
+        | Ok None -> Error "expected filesystem registry to fetch package document"
+        | Ok (Some document) -> (
+            match
+              Pkgs_ml.Sparse_index.read_cached_config cache,
+              Pkgs_ml.Sparse_index.read_cached_package_document cache ~package_name:"Kernel"
+            with
+            | Error err, _
+            | _, Error err -> Error err
+            | Ok None, _
+            | _, Ok None -> Error "expected fetched sparse index files to be cached"
+            | Ok (Some _), Ok (Some cached) ->
+                let requested = List.rev !requests in
+                if
+                  String.equal document.name "kernel"
+                  && String.equal cached.name "kernel"
+                  && requested = [
+                    "https://cdn.pkgs.ml/index/v1/config.json";
+                    "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json";
+                  ]
+                then
+                  Ok ()
+                else
+                  Error "unexpected fetched sparse index package document state"
+          ))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_filesystem_registry_returns_none_for_missing_package_document = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_fetch_missing_package"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let fetch, requests = make_fetch_recorder (fun uri ->
+          match Net.Uri.to_string uri with
+          | "https://cdn.pkgs.ml/index/v1/config.json" ->
+              Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
+          | "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json" ->
+              Ok { Pkgs_ml.Registry.status_code = 404; body = "" }
+          | url -> Error ("unexpected fetch url " ^ url)) in
+        let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+        match Pkgs_ml.Registry.read_package_document registry ~package_name:"Missing" with
+        | Error err -> Error err
+        | Ok (Some _) -> Error "expected missing package document lookup to return none"
+        | Ok None -> (
+            match Pkgs_ml.Sparse_index.read_cached_package_document cache ~package_name:"Missing" with
+            | Error err -> Error err
+            | Ok (Some _) -> Error "expected missing package document lookup to leave cache empty"
+            | Ok None ->
+                let requested = List.rev !requests in
+                if
+                  requested = [
+                    "https://cdn.pkgs.ml/index/v1/config.json";
+                    "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json";
+                  ]
+                then
+                  Ok ()
+                else
+                  Error "unexpected sparse index fetch sequence for missing package document"
+          ))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
 let test_registry_materializes_in_memory_release = fun () ->
   match
     Fs.with_tempdir ~prefix:"pkgs_ml_materialize"
@@ -271,23 +438,76 @@ let test_filesystem_registry_materializes_cached_release = fun () ->
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
-let test_filesystem_registry_errors_for_uncached_release = fun () ->
+let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun () ->
   match
-    Fs.with_tempdir ~prefix:"pkgs_ml_filesystem_registry"
+    Fs.with_tempdir ~prefix:"pkgs_ml_filesystem_registry_download"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
           ~tusk_home:Path.(tempdir / Path.v ".tusk")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
-        let registry = Pkgs_ml.Registry.filesystem cache in
-        match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
-        | Ok _ -> Error "expected filesystem registry to fail for uncached releases"
-        | Error err ->
-            if String.contains err "cannot materialize uncached package" then
-              Ok ()
-            else
-              Error ("unexpected error: " ^ err))
+        let source_root = Path.(tempdir / Path.v "source/std-0.1.0") in
+        let source_file = Path.(source_root / Path.v "src/std.ml") in
+        let downloaded_archive = Path.(tempdir / Path.v "downloads/std-0.1.0.tar") in
+        Fs.create_dir_all Path.(source_root / Path.v "src") |> Result.expect ~msg:"expected source directory to be created";
+        Fs.write
+          "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
+          Path.(source_root / Path.v "tusk.toml")
+        |> Result.expect ~msg:"expected manifest to be written";
+        Fs.write "let answer = 42\n" source_file |> Result.expect ~msg:"expected source file to be written";
+        match create_test_archive ~source_root ~archive_path:downloaded_archive with
+        | Error err -> Error err
+        | Ok () -> (
+            match Fs.read downloaded_archive with
+            | Error err -> Error ("failed to read test archive: " ^ IO.error_message err)
+            | Ok archive_body ->
+                let fetch, requests = make_fetch_recorder (fun uri ->
+                  match Net.Uri.to_string uri with
+                  | "https://cdn.pkgs.ml/index/v1/config.json" ->
+                      Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
+                  | "https://cdn.pkgs.ml/index/v1/3/s/std.json" ->
+                      Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_std_release_json }
+                  | "https://cdn.pkgs.ml/sources/std/0.1.0.tar" ->
+                      Ok { Pkgs_ml.Registry.status_code = 200; body = archive_body }
+                  | url -> Error ("unexpected fetch url " ^ url)) in
+                let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+                match Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version:"0.1.0" with
+                | Error err -> Error err
+                | Ok `Already_present ->
+                    Error "expected uncached release to download and materialize on first attempt"
+                | Ok `Materialized ->
+                    let archive_path = Pkgs_ml.Registry_cache.archive_path cache ~package_name:"std" ~version:"0.1.0" in
+                    let manifest_path = Pkgs_ml.Registry_cache.package_src_dir
+                      cache
+                      ~package_name:"std"
+                      ~version:"0.1.0"
+                    |> fun root -> Path.(root / Path.v "tusk.toml") in
+                    let materialized_source = Pkgs_ml.Registry_cache.package_src_dir
+                      cache
+                      ~package_name:"std"
+                      ~version:"0.1.0"
+                    |> fun root -> Path.(root / Path.v "src/std.ml") in
+                    match Fs.exists archive_path, Fs.read manifest_path, Fs.read materialized_source with
+                    | Error err, _, _
+                    | _, Error err, _
+                    | _, _, Error err -> Error (IO.error_message err)
+                    | Ok false, _, _ -> Error "expected downloaded archive to be cached"
+                    | Ok true, Ok manifest, Ok source ->
+                        let requested = List.rev !requests in
+                        if
+                          String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
+                          && String.equal source "let answer = 42\n"
+                          && requested = [
+                            "https://cdn.pkgs.ml/index/v1/config.json";
+                            "https://cdn.pkgs.ml/index/v1/3/s/std.json";
+                            "https://cdn.pkgs.ml/sources/std/0.1.0.tar";
+                          ]
+                        then
+                          Ok ()
+                        else
+                          Error "unexpected registry download/materialization state"
+                  ))
   with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
@@ -298,10 +518,13 @@ let tests =
     case "sparse index: resolves cache path from normalized package name" test_sparse_index_layout;
     case "sparse index: parses package documents" test_sparse_index_document_parsing;
     case "registry: in-memory registry returns config and packages" test_sparse_index_cached_reads;
+    case "registry: filesystem registry fetches config on cache miss" test_filesystem_registry_fetches_config_on_cache_miss;
+    case "registry: filesystem registry fetches package document on cache miss" test_filesystem_registry_fetches_package_document_on_cache_miss;
+    case "registry: filesystem registry returns none for missing package document" test_filesystem_registry_returns_none_for_missing_package_document;
     case "registry: in-memory registry materializes release source trees" test_registry_materializes_in_memory_release;
     case "registry: materialization skips existing release sources" test_registry_materialize_skips_existing_release;
     case "registry: filesystem registry materializes cached release archives" test_filesystem_registry_materializes_cached_release;
-    case "registry: filesystem registry errors for uncached releases" test_filesystem_registry_errors_for_uncached_release;
+    case "registry: filesystem registry downloads release archives on cache miss" test_filesystem_registry_downloads_release_archive_on_cache_miss;
   ]
 
 let name = "pkgs-ml Tests"

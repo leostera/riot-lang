@@ -42,6 +42,12 @@ val package_prefix: string -> Path.t
 
 val package_relpath: string -> Path.t
 
+val bootstrap_config_url: registry_name:string -> (Net.Uri.t, string) result
+
+val package_document_url: config -> package_name:string -> (Net.Uri.t, string) result
+
+val release_source_url: config -> release -> (Net.Uri.t, string) result
+
 val package_cache_path: Registry_cache.t -> package_name:string -> Path.t
 
 val config_cache_path: Registry_cache.t -> Path.t
@@ -58,3 +64,8 @@ val read_cached_config: Registry_cache.t -> (config option, string) result
 
 val read_cached_package_document:
   Registry_cache.t -> package_name:string -> (package_document option, string) result
+
+val write_cached_config: Registry_cache.t -> source:string -> (unit, string) result
+
+val write_cached_package_document:
+  Registry_cache.t -> package_name:string -> source:string -> (unit, string) result
