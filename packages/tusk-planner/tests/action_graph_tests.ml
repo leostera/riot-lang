@@ -246,12 +246,89 @@ let test_library_builds_do_not_emit_shared_library_actions = fun () ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_library_actions_exclude_ml_object_files = fun () ->
+  match
+    Fs.with_tempdir ~prefix:"planner_library_objects"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "packages" / Path.v "demo") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let native_dir = Path.(package_root / Path.v "native") in
+        let source_path = Path.(src_dir / Path.v "demo.ml") in
+        let native_path = Path.(native_dir / Path.v "stub.c") in
+        let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
+        let _ = Fs.create_dir_all native_dir |> Result.expect ~msg:"create native dir failed" in
+        let _ = Fs.write "let value = 1\n" source_path |> Result.expect ~msg:"write ml source failed" in
+        let _ = Fs.write "int demo_stub(void) { return 1; }\n" native_path
+          |> Result.expect ~msg:"write native source failed" in
+        let workspace = Tusk_model.Workspace.make ~root:tmpdir ~packages:[] () in
+        let store = Tusk_store.Store.create ~workspace in
+        let package = {
+          (make_package_with_paths
+            ~name:"demo"
+            ~path:package_root
+            ~relative_path:(Path.v "packages/demo"))
+          with library = Some { path = Path.v "src/demo.ml" }
+        } in
+        let ctx = Tusk_model.Build_ctx.make
+          ~session_id:(Tusk_model.Session_id.of_string "test-session")
+          ~profile:Tusk_model.Profile.release
+          () in
+        let module_graph = G.make () in
+        let demo_module =
+          Tusk_model.Module.make ~namespace:Tusk_model.Namespace.empty ~filename:(Path.v "src/demo.ml")
+        in
+        let demo_node = G.add_node module_graph
+          (Tusk_planner.Module_node.make_ml demo_module (Tusk_planner.Module_node.Concrete (Path.v "src/demo.ml"))) in
+        let native_node = G.add_node module_graph
+          (Tusk_planner.Module_node.make_native ~files:[ Path.v "native/stub.c" ]) in
+        let library_node = G.add_node module_graph
+          (Tusk_planner.Module_node.make_library ~name:package.name ~includes:[ Path.v "." ]) in
+        let _ = G.add_edge library_node ~depends_on:demo_node in
+        let _ = G.add_edge library_node ~depends_on:native_node in
+        let action_graph, _ = Tusk_planner.Action_graph.from_module_graph
+          ~package
+          ~profile:Tusk_model.Profile.release
+          ~ctx
+          ~toolchain:test_toolchain
+          ~store
+          ~depset:[]
+          ~needs_unix:false
+          ~needs_dynlink:false
+          module_graph in
+        match
+          List.find_opt
+            (
+              function
+              | Tusk_planner.Action.CreateLibrary _ -> true
+              | _ -> false
+            )
+            (Tusk_planner.Action_graph.to_action_list action_graph)
+        with
+        | Some (Tusk_planner.Action.CreateLibrary { objects; _ }) ->
+            let has_demo_cmx = List.exists (Path.equal (Path.v "Demo.cmx")) objects in
+            let has_demo_o = List.exists (Path.equal (Path.v "Demo.o")) objects in
+            let has_stub_o = List.exists (Path.equal (Path.v "stub.o")) objects in
+            if not has_demo_cmx then
+              Error "expected CreateLibrary to include Demo.cmx"
+            else if has_demo_o then
+              Error "expected CreateLibrary to exclude Demo.o from ML module outputs"
+            else if not has_stub_o then
+              Error "expected CreateLibrary to keep stub.o from native C sources"
+            else
+              Ok ()
+        | Some _ -> Error "expected CreateLibrary action"
+        | None -> Error "missing CreateLibrary action")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case "action graph json round-trip preserves edges" test_action_graph_json_round_trip_preserves_dependencies;
     case "action graph json round-trip preserves package paths and hashes" test_action_graph_json_round_trip_preserves_package_paths_and_hashes;
     case "action hash tracks package-relative source contents" test_action_hash_tracks_package_relative_source_contents;
     case "library builds skip shared native plugin artifacts by default" test_library_builds_do_not_emit_shared_library_actions;
+    case "library actions exclude ML object files while keeping native stubs" test_library_actions_exclude_ml_object_files;
   ]
 
 let name = "Planner Action Graph Tests"

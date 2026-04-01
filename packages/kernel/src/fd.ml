@@ -39,6 +39,7 @@ let to_unix = fun fd -> fd
 
 let of_unix = fun fd ->
   Unix.set_nonblock fd;
+  Unix.set_close_on_exec fd;
   fd
 
 let make_blocking = fun fd -> fd

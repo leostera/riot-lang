@@ -56,7 +56,7 @@ let stdlib_flags = fun (package: Package.t) ->
   else
     [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
 
-let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink (
+let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get_dep_kind ~depset ~needs_unix ~needs_dynlink (
   module_node: Module_node.t
 ) (deps: G.Node_id.t list) : Action.t list * Path.t list * Path.t list =
   match module_node with
@@ -167,13 +167,15 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         List.concat_map
           (fun dep_id ->
             let dep_outputs = get_dep_outputs dep_id in
-            List.filter
-              (fun output ->
-                match Path.extension output with
-                | Some ".cmx"
-                | Some ".o" -> true
-                | _ -> false)
-              dep_outputs)
+            match get_dep_kind dep_id with
+            | Some (Module_node.Native _) ->
+                List.filter
+                  (fun output -> Path.extension output = Some ".o")
+                  dep_outputs
+            | _ ->
+                List.filter
+                  (fun output -> Path.extension output = Some ".cmx")
+                  dep_outputs)
           deps
       in
       (* Deduplicate objects to avoid linking the same file multiple times *)
@@ -334,6 +336,13 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
     | Some outs -> outs
     | None -> []
   in
+  let module_kinds = HashMap.create () in
+  List.iter
+    (fun (module_node: Module_node.t G.node) ->
+      let _ = HashMap.insert module_kinds module_node.id module_node.value.kind in
+      ())
+    sorted_modules;
+  let get_dep_kind dep_id = HashMap.get module_kinds dep_id in
   List.iter
     (fun (module_node: Module_node.t G.node) ->
       let actions, outputs, sources = module_to_actions
@@ -342,6 +351,7 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
         ~ctx
         ~dep_includes
         ~get_dep_outputs
+        ~get_dep_kind
         ~depset
         ~needs_unix
         ~needs_dynlink

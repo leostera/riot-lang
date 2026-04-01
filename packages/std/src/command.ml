@@ -2,6 +2,16 @@ open Global
 open Collections
 open Kernel.System
 
+type Miniriot.Message.t +=
+  | Reader_finished of {
+      reader: Miniriot.Pid.t;
+      stream: [
+        `stdout
+        | `stderr
+      ];
+      result: (string, IO.error) result;
+    }
+
 module Stdio = struct
   type t =
     Null
@@ -90,6 +100,46 @@ let to_string = fun t ->
   | Some cwd -> "cd " ^ shell_quote cwd ^ " && " ^ command
   | None -> command
 
+let spawn_reader = fun ~parent ~stream file ->
+  spawn (fun () ->
+    let reader = self () in
+    let result = Fs.File.read_to_end file in
+    send parent (Reader_finished { reader; stream; result });
+    Ok ())
+
+let wait_for_reader_output = fun ~stdout_reader ~stderr_reader ->
+  let stdout_result = ref None in
+  let stderr_result = ref None in
+  let rec loop () =
+    if Option.is_some !stdout_result && Option.is_some !stderr_result then
+      (Option.unwrap !stdout_result, Option.unwrap !stderr_result)
+    else
+      (
+        receive
+          ~selector:(
+            function
+            | Reader_finished { reader; stream = `stdout; result } when Miniriot.Pid.equal reader stdout_reader
+              ->
+                stdout_result := Some result;
+                `select ()
+            | Reader_finished { reader; stream = `stderr; result } when Miniriot.Pid.equal reader stderr_reader
+              ->
+                stderr_result := Some result;
+                `select ()
+            | _ -> `skip
+          )
+          ();
+        loop ()
+      )
+  in
+  loop ()
+
+let unwrap_reader_result = fun ~stream ~cmd ->
+  function
+  | Ok output -> output
+  | Error err -> panic
+    ("Failed to read " ^ stream ^ " from command '" ^ cmd ^ "': " ^ IO.error_message err)
+
 let output = fun t ->
   match t.state with
   | Exited out ->
@@ -108,19 +158,12 @@ let output = fun t ->
           let stderr_fd = OsProcess.stderr proc |> Option.unwrap |> Fs.File.from_fd in
           (* Update state to Running *)
           t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
-          (* Read output BEFORE waiting - prevents deadlock if pipes fill up *)
-          let stdout_str =
-            match Fs.File.read_to_end stdout_fd with
-            | Ok s -> s
-            | Error err -> panic
-              ("Failed to read stdout from command '" ^ t.cmd ^ "': " ^ IO.error_message err)
-          in
-          let stderr_str =
-            match Fs.File.read_to_end stderr_fd with
-            | Ok s -> s
-            | Error err -> panic
-              ("Failed to read stderr from command '" ^ t.cmd ^ "': " ^ IO.error_message err)
-          in
+          let parent = self () in
+          let stdout_reader = spawn_reader ~parent ~stream:`stdout stdout_fd in
+          let stderr_reader = spawn_reader ~parent ~stream:`stderr stderr_fd in
+          let stdout_result, stderr_result = wait_for_reader_output ~stdout_reader ~stderr_reader in
+          let stdout_str = unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result in
+          let stderr_str = unwrap_reader_result ~stream:"stderr" ~cmd:t.cmd stderr_result in
           (* Now wait for process to exit *)
           let rec wait_for_exit () =
             match OsProcess.try_wait proc with
