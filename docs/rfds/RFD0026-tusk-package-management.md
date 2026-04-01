@@ -598,8 +598,18 @@ This section records the current implementation plan for the first rollout.
 The package-management implementation should live in:
 
 ```text
+packages/pkgs-ml
 packages/tusk-pm
 ```
+
+`pkgs-ml` owns:
+
+- sparse-index path computation and cache layout helpers
+- registry document parsing
+- registry cache reads and writes
+- reusable registry access APIs that are not Tusk-specific
+- an in-memory registry implementation for tests that should not require
+  network I/O
 
 `tusk-pm` owns:
 
@@ -617,7 +627,8 @@ packages/tusk-pm
 - package-management and download event types
 
 This split keeps package-management policy and network/materialization logic in
-`tusk-pm`, while keeping the durable shared data model in `tusk-model`.
+`tusk-pm`, reusable registry mechanics in `pkgs-ml`, and the durable shared
+data model in `tusk-model`.
 
 ### Phase-1 ownership and responsibilities
 
@@ -634,7 +645,8 @@ In other words, the operational flow should look like:
 
 1. read `tusk.toml` files into `Tusk_model.Package.t`
 2. feed those package roots into `Tusk_pm.Dep_solver`
-3. have `tusk-pm` compute a `tusk.lock` plus resolved package data
+3. have `tusk-pm`, using `pkgs-ml` for registry access, compute a `tusk.lock`
+   plus resolved package data
 4. pass the resolved package data into the builder/planner
 
 For phase 1 there should be no separate solver backend abstraction. A concrete
@@ -667,6 +679,19 @@ its extracted source directory under:
 
 Phase 1 should use the configured registry name directly in the path, not a
 generic placeholder and not a derived URL host.
+
+### `pkgs-ml` testability
+
+`pkgs-ml` should be configurable and usable in tests without network I/O.
+
+That means the library should provide:
+
+- a filesystem-backed registry rooted at the configured cache directories
+- an in-memory registry that can serve sparse-index config and per-package
+  documents directly from test data
+
+`tusk-pm` tests should prefer the in-memory registry whenever they are testing
+solver and lockfile behavior rather than transport or on-disk cache behavior.
 
 ### Manifests stay name-based
 
