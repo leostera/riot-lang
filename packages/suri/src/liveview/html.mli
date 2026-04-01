@@ -55,7 +55,6 @@ type 'msg attr =
 
 (** HTML attribute - either a static attribute or an event handler *)
 val attr: string -> string -> 'msg attr
-
 (** Create a static attribute.
     
     Example:
@@ -65,7 +64,6 @@ val attr: string -> string -> 'msg attr
 val attr_id: string -> [>
     `attr of string * string
   ]
-
 (** Create an id attribute.
     
     Example:
@@ -75,7 +73,6 @@ val attr_id: string -> [>
 val attr_type: string -> [>
     `attr of string * string
   ]
-
 (** Create a type attribute for inputs/buttons.
     
     Example:
@@ -102,7 +99,6 @@ type 'msg t =
 
 (** HTML tree - elements, text nodes, or lists of nodes *)
 val list: 'msg t list -> 'msg t
-
 (** Create a list of elements to render inline (no wrapper element).
     
     Useful for conditionally rendering multiple elements:
@@ -114,7 +110,6 @@ val list: 'msg t list -> 'msg t
     list items
     ```*)
 val button: on_click:'msg attr -> ?children:'msg t list -> unit -> 'msg t
-
 (** Create a button element with click handler.
     
     Example:
@@ -122,13 +117,10 @@ val button: on_click:'msg attr -> ?children:'msg t list -> unit -> 'msg t
     button ~on_click:(fun _ -> Submit) [ string "Submit" ] ()
     ```*)
 val html: ?children:'msg t list -> unit -> 'msg t
-
 (** Create an <html> root element *)
 val body: ?children:'msg t list -> unit -> 'msg t
-
 (** Create a <body> element *)
 val div: ?attrs:(string * string) list -> ?id:string -> ?children:'msg t list -> unit -> 'msg t
-
 (** Create a <div> element.
     
     Example:
@@ -138,31 +130,22 @@ val div: ?attrs:(string * string) list -> ?id:string -> ?children:'msg t list ->
     ] ()
     ```*)
 val h1: ?children:'msg t list -> unit -> 'msg t
-
 (** Create an <h1> heading element *)
 val h2: ?children:'msg t list -> unit -> 'msg t
-
 (** Create an <h2> heading element *)
 val h3: ?children:'msg t list -> unit -> 'msg t
-
 (** Create an <h3> heading element *)
 val h4: ?children:'msg t list -> unit -> 'msg t
-
 (** Create an <h4> heading element *)
 val h5: ?children:'msg t list -> unit -> 'msg t
-
 (** Create an <h5> heading element *)
 val h6: ?children:'msg t list -> unit -> 'msg t
-
 (** Create an <h6> heading element *)
 val span: ?children:'msg t list -> unit -> 'msg t
-
 (** Create a <span> inline element *)
 val p: ?children:'msg t list -> unit -> 'msg t
-
 (** Create a <p> paragraph element *)
 val script: ?src:string -> ?id:string -> ?type_:string -> ?children:'msg t list -> unit -> 'msg t
-
 (** Create a <script> element for JavaScript.
     
     Example:
@@ -170,7 +153,6 @@ val script: ?src:string -> ?id:string -> ?type_:string -> ?children:'msg t list 
     script ~src:"/static/app.js" ~type_:"text/javascript" () ()
     ```*)
 val event: string -> (string -> 'msg) -> 'msg attr
-
 (** Create an event handler attribute.
     
     The string parameter is the event name (e.g., "click", "input", "submit").
@@ -180,7 +162,6 @@ val event: string -> (string -> 'msg) -> 'msg attr
     event "mouseover" (fun _ -> Hover)
     ```*)
 val on_click: (string -> 'msg) -> 'msg attr
-
 (** Create a click event handler.
     
     Shorthand for `event "click" handler`.
@@ -190,7 +171,6 @@ val on_click: (string -> 'msg) -> 'msg attr
     button ~on_click:(fun _ -> Clicked) [ string "Click me" ] ()
     ```*)
 val string: string -> 'msg t
-
 (** Create a text node from a string.
     
     Example:
@@ -198,7 +178,6 @@ val string: string -> 'msg t
     h1 [ string "Hello, world!" ] ()
     ```*)
 val int: int -> 'msg t
-
 (** Create a text node from an integer.
     
     Example:
@@ -206,7 +185,6 @@ val int: int -> 'msg t
     div [ string "Count: "; int 42 ] ()
     ```*)
 val to_string: 'msg t -> string
-
 (** Render an HTML tree to a string.
     
     This converts your HTML tree into an HTML string that can be sent to the client.
@@ -218,17 +196,14 @@ val to_string: 'msg t -> string
     (* "<div><h1>Title</h1></div>" *)
     ```*)
 val attrs_to_string: 'msg attr list -> string
-
 (** Convert attributes to HTML attribute string (internal use).
     
     Example output: {v id="main" class="container" v}*)
 val event_handlers: 'msg attr list -> (string * (string -> 'msg)) list
-
 (** Extract event handlers from attribute list (internal use).
     
     Used by the LiveView runtime to register event handlers. *)
 val map_action: ('msg_a -> 'msg_b) -> 'msg_a t -> 'msg_b t
-
 (** Map event handlers to a different message type.
     
     Useful for composing components with different message types:

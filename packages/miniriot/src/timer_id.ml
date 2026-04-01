@@ -16,7 +16,7 @@ let make () : t =
   try_increment ()
 
 let equal : t -> t -> bool = fun a b ->
-    Int64.equal a b
+  Int64.equal a b
 
 let compare : t -> t -> int = fun a b ->
-    Int64.compare a b
+  Int64.compare a b

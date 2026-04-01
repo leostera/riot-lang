@@ -43,33 +43,24 @@ type t = {
 }
 (** Default debug profile - fast compilation, all checks enabled *)
 val debug: t
-
 (** Default release profile - optimized, strict *)
 val release: t
-
 (** Merge two profiles - override takes precedence per-field
     For booleans and kind: replaced
     For lists: appended (cc_flags, ld_flags, ocamlc_flags) or replaced (warnings, errors, open_modules)
     For optional int: override if Some, keep base if None *)
 val merge: t -> t -> t
-
 (** Apply a profile_override to a base profile *)
 val apply_override: t -> profile_override -> t
-
 (** Apply overrides from a list by looking up the profile's name *)
 val apply_overrides: t -> (string * profile_override) list -> t
-
 (** Parse profile from TOML table, using base as defaults for missing fields *)
 val from_toml: (string * Std.Data.Toml.value) list -> base:t -> t
-
 (** Parse profile_override from TOML table *)
 val override_from_toml: (string * Std.Data.Toml.value) list -> profile_override
-
 (** Convert profile to OCaml compiler flags list *)
 val to_compiler_flags: t -> string list
-
 (** Hash profile into a Sha256 hasher state *)
 val hash: Crypto.Sha256.state -> t -> unit
-
 (** Convert profile to JSON *)
 val to_json: t -> Std.Data.Json.t

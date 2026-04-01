@@ -3,7 +3,6 @@
 type t = Pid.t
 type Message.t +=
   | FileEvents of Event.t list
-
 (** Start file watcher process, sending events to owner_pid
     
     @param latency Polling interval for filesystem events (default: 1ms)

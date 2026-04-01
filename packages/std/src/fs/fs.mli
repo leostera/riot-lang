@@ -61,61 +61,43 @@ open Iter
 type error = Kernel.IO.error
 (** Filesystem error type - preserves structured error info *)
 module Fd = Fd
-
 (** File descriptor module *)
 module Permissions: sig
   type t
   (** Unix file permissions *)
   val of_mode: int -> t
-
   (** Create from Unix mode bits *)
   val to_mode: t -> int
-
   (** Convert to Unix mode bits *)
   val readonly: t -> bool
-
   (** Check if no write bits are set *)
   val set_readonly: t -> bool -> t
-
   (** Set or clear all write permissions *)
   val user_read: t -> bool
-
   (** Check owner read permission *)
   val user_write: t -> bool
-
   (** Check owner write permission *)
   val user_execute: t -> bool
-
   (** Check owner execute permission *)
   val group_read: t -> bool
-
   (** Check group read permission *)
   val group_write: t -> bool
-
   (** Check group write permission *)
   val group_execute: t -> bool
-
   (** Check group execute permission *)
   val other_read: t -> bool
-
   (** Check others read permission *)
   val other_write: t -> bool
-
   (** Check others write permission *)
   val other_execute: t -> bool
-
   (** Check others execute permission *)
   val read_write: t
-
   (** rw-r--r-- (0644) - Owner read/write, group/others read-only *)
   val executable: t
-
   (** rwxr-xr-x (0755) - Owner read/write/execute, group/others read/execute *)
   val private_read_write: t
-
   (** rw------- (0600) - Owner read/write only, no access for others *)
   val private_executable: t
-
   (** rwx------ (0700) - Owner read/write/execute only, no access for others *)
 end
 
@@ -131,52 +113,36 @@ module Metadata: sig
       | `Fifo
       | `Socket
     ]
-
   (** Get the file type *)
   val is_file: t -> bool
-
   (** Check if it's a regular file *)
   val is_dir: t -> bool
-
   (** Check if it's a directory *)
   val is_symlink: t -> bool
-
   (** Check if it's a symbolic link *)
   val len: t -> int
-
   (** Get file size in bytes *)
   val permissions: t -> Permissions.t
-
   (** Get file permissions *)
   val accessed: t -> float
-
   (** Last access time *)
   val modified: t -> float
-
   (** Last modification time *)
   val created: t -> float option
-
   (** Creation time (platform-specific, may be None) *)
   val mode: t -> int
-
   (** Unix mode bits *)
   val uid: t -> int
-
   (** User ID of owner *)
   val gid: t -> int
-
   (** Group ID of owner *)
   val nlink: t -> int
-
   (** Number of hard links *)
   val ino: t -> int
-
   (** Inode number *)
   val dev: t -> int
-
   (** Device number *)
   val rdev: t -> int
-
   (** Device type (if special file) *)
 end
 
@@ -185,10 +151,8 @@ module ReadDir: sig
   type t
   (** Opaque directory handle *)
   val next: t -> Path.t option
-
   (** Get next entry, or None when done. Skips . and .. *)
   val close: t -> (unit, error) Result.t
-
   (** Close the directory handle *)
 end
 
@@ -196,7 +160,6 @@ module File = File
 
 (** # Path Operations *)
 val canonicalize: Path.t -> (Path.t, error) Result.t
-
 (** Returns the canonical, absolute form of a path.
 
     All intermediate components are normalized and symbolic links resolved. The
@@ -212,7 +175,6 @@ val canonicalize: Path.t -> (Path.t, error) Result.t
     "latest.log") (* symlink *) |> Result.unwrap (* real_file might be
     "logs/2024-01-15.log" *) ``` *)
 val copy: src:Path.t -> dst:Path.t -> (unit, error) Result.t
-
 (** Copies file contents and permissions from source to destination.
 
     Overwrites destination if it exists. Creates parent directories if needed.
@@ -231,7 +193,6 @@ val copy: src:Path.t -> dst:Path.t -> (unit, error) Result.t
     - Insufficient permissions
     - Disk full *)
 val create_dir: Path.t -> (unit, error) Result.t
-
 (** Creates a single directory.
 
     Fails if parent doesn't exist or directory already exists.
@@ -245,7 +206,6 @@ val create_dir: Path.t -> (unit, error) Result.t
     Ok () -> println "Created cache directory" | Error _ -> println "Cache
     directory already exists" ``` *)
 val create_dir_all: Path.t -> (unit, error) Result.t
-
 (** Recursively creates directory and all parent directories.
 
     Like `mkdir -p`. Succeeds if directory already exists.
@@ -259,7 +219,6 @@ val create_dir_all: Path.t -> (unit, error) Result.t
     content = Fs.create_dir_all dir |> Result.and_then (fun () -> Fs.write
     content (dir / Path.v filename) ) ``` *)
 val exists: Path.t -> (bool, error) Result.t
-
 (** Returns `Ok true` if the path points at an existing entity.
 
     This function will traverse symbolic links to query the destination. For
@@ -291,7 +250,6 @@ val exists: Path.t -> (bool, error) Result.t
     - [`is_dir`] - Check if path is specifically a directory
     - [`File.create_new`] - Atomically create if doesn't exist *)
 val hard_link: src:Path.t -> dst:Path.t -> (unit, error) Result.t
-
 (** Creates a hard link to an existing file.
 
     Both paths will refer to the same file data. Changes through either path
@@ -303,7 +261,6 @@ val hard_link: src:Path.t -> dst:Path.t -> (unit, error) Result.t
     "data.db") ~dst:(Path.v "data.db.link") |> Result.expect ~msg:"Failed to
     create hard link" ``` *)
 val read: Path.t -> (string, error) Result.t
-
 (** Reads entire file contents as a UTF-8 string.
 
     Best for reasonably-sized text files. For large files, consider streaming
@@ -333,7 +290,6 @@ val read: Path.t -> (string, error) Result.t
     - [`File.open_`] and [`File.read_all`] - For more control
     - [`File.read_lines`] - To read line by line *)
 val read_dir: Path.t -> (Path.t MutIterator.t, error) Result.t
-
 (** Returns an iterator over directory entries.
 
     Automatically skips `.` and `..` entries. The iterator yields full paths
@@ -355,7 +311,6 @@ val read_dir: Path.t -> (Path.t MutIterator.t, error) Result.t
     path |> Result.unwrap_or ~default:false then process_tree path else
     process_file path ) iter | Error _ -> () ``` *)
 val read_link: Path.t -> (Path.t, error) Result.t
-
 (** Reads a symbolic link target.
 
     Returns the path the symlink points to (may be relative). Does not resolve
@@ -367,7 +322,6 @@ val read_link: Path.t -> (Path.t, error) Result.t
     | Ok target -> println "Latest points to: %s" (Path.to_string target) |
     Error _ -> println "Not a symbolic link" ``` *)
 val read_to_string: Path.t -> (string, error) Result.t
-
 (** Reads entire file as string (alias for `read`).
 
     ## Examples
@@ -375,7 +329,6 @@ val read_to_string: Path.t -> (string, error) Result.t
     ```ocaml let content = Fs.read_to_string (Path.v "data.txt") |>
     Result.expect ~msg:"Cannot read file" ``` *)
 val remove_dir: Path.t -> (unit, error) Result.t
-
 (** Removes an empty directory.
 
     Fails if directory is not empty or doesn't exist.
@@ -385,7 +338,6 @@ val remove_dir: Path.t -> (unit, error) Result.t
     ```ocaml (* Remove temporary directory after cleanup *) Fs.remove_dir
     (Path.v "tmp") |> Result.expect ~msg:"Directory not empty" ``` *)
 val remove_dir_all: Path.t -> (unit, error) Result.t
-
 (** Recursively removes directory and all contents.
 
     Like `rm -rf`. **Use with extreme caution!**
@@ -415,7 +367,6 @@ val remove_dir_all: Path.t -> (unit, error) Result.t
     using directory file descriptors. However, concurrent modifications to the
     directory tree may cause partial deletion. *)
 val remove_file: Path.t -> (unit, error) Result.t
-
 (** Removes a file.
 
     Fails if path is a directory or doesn't exist.
@@ -428,7 +379,6 @@ val remove_file: Path.t -> (unit, error) Result.t
     (* Clean up multiple files *) ["a.tmp"; "b.tmp"; "c.tmp"] |> List.iter (fun
     name -> Fs.remove_file (Path.v name) |> ignore ) ``` *)
 val rename: src:Path.t -> dst:Path.t -> (unit, error) Result.t
-
 (** Renames file or directory, replacing destination if it exists.
 
     Can move across directories but not filesystems.
@@ -446,7 +396,6 @@ val rename: src:Path.t -> dst:Path.t -> (unit, error) Result.t
     Path.add_extension path ~ext:"tmp" in Fs.write content tmp |>
     Result.and_then (fun () -> Fs.rename ~src:tmp ~dst:path ) ``` *)
 val set_permissions: Path.t -> Permissions.t -> (unit, error) Result.t
-
 (** Changes file or directory permissions.
 
     ## Examples
@@ -461,7 +410,6 @@ val set_permissions: Path.t -> Permissions.t -> (unit, error) Result.t
     "secrets.txt") Permissions.private_read_write |> Result.expect ~msg:"Cannot
     secure file" ``` *)
 val symlink: src:Path.t -> dst:Path.t -> (unit, error) Result.t
-
 (** Creates a symbolic link.
 
     `dst` is the name of the symlink, `src` is what it points to.
@@ -475,7 +423,6 @@ val symlink: src:Path.t -> dst:Path.t -> (unit, error) Result.t
     (* Link to directory *) Fs.symlink ~src:(Path.v "/usr/local/bin")
     ~dst:(Path.v "bin") |> Result.expect ~msg:"Cannot create symlink" ``` *)
 val write: string -> Path.t -> (unit, error) Result.t
-
 (** Writes string to file, creating or overwriting it.
 
     This function will **overwrite** existing file contents. Parent directories
@@ -513,7 +460,6 @@ val write: string -> Path.t -> (unit, error) Result.t
 (** # Metadata Queries *)
 
 val metadata: Path.t -> (Metadata.t, error) Result.t
-
 (** Gets file metadata, following symbolic links.
 
     Use this for getting size, permissions, timestamps, etc.
@@ -532,7 +478,6 @@ val metadata: Path.t -> (Metadata.t, error) Result.t
     %.0f" (Metadata.modified meta); println "Permissions: %o" (Metadata.mode
     meta) | Error e -> println "Cannot stat file: %s" (show_error e) ``` *)
 val symlink_metadata: Path.t -> (Metadata.t, error) Result.t
-
 (** Gets metadata without following symbolic links.
 
     Use this to get information about the symlink itself.
@@ -545,7 +490,6 @@ val symlink_metadata: Path.t -> (Metadata.t, error) Result.t
 (** # Convenience Queries *)
 
 val is_file: Path.t -> (bool, error) Result.t
-
 (** Checks if path is a regular file (not directory or symlink).
 
     ## Examples
@@ -557,7 +501,6 @@ val is_file: Path.t -> (bool, error) Result.t
     true -> do_processing path | Ok false -> Error "Not a file" | Error e ->
     Error (show_error e) ``` *)
 val is_dir: Path.t -> (bool, error) Result.t
-
 (** Checks if path is a directory.
 
     ## Examples
@@ -574,7 +517,6 @@ val is_dir: Path.t -> (bool, error) Result.t
 (** # Utilities *)
 
 val with_tempdir: ?prefix:string -> (Path.t -> 'a) -> ('a, error) Result.t
-
 (** Creates a temporary directory, runs a function, then cleans up.
 
     The directory is automatically removed even if the function raises an

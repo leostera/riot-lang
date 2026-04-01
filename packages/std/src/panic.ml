@@ -2,5 +2,5 @@
 open Global
 
 let panic = fun msg ->
-    let exception Panic of string in
-    raise (Panic msg)
+  let exception Panic of string in
+  raise (Panic msg)

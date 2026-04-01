@@ -49,7 +49,6 @@
     Unlike [MutIterator], calling [next] returns both the item and a
     new iterator state, allowing backtracking and multiple iterations.
 *)
-
 (** Interface that iterators must implement. *)
 module type Intf = sig
   type state
@@ -57,11 +56,9 @@ module type Intf = sig
   type item
   (** The type of items produced *)
   val next: state -> item option * state
-
   (** Returns the next item and new state. Returns (None, state) when exhausted.
   *)
   val size: state -> int
-
   (** Returns the number of remaining items (may be approximate). *)
 end
 
@@ -70,14 +67,12 @@ type ('item, 'state) iter = (module Intf with type item = 'item and type state =
 type 'item t
 (** An immutable iterator over items of type ['item]. *)
 val make: ('item, 'state) iter -> 'state -> 'item t
-
 (** Creates an iterator from a module and initial state.
 
     ## Examples
 
     ```ocaml let iter = Iterator.make (module MyIter) initial_state ``` *)
 val next: 'item t -> 'item option * 'item t
-
 (** Returns the next item and a new iterator.
 
     ## Examples
@@ -85,7 +80,6 @@ val next: 'item t -> 'item option * 'item t
     ```ocaml let (item, iter') = Iterator.next iter in match item with | Some x
     -> process x | None -> () (* Iterator exhausted *) ``` *)
 val size: 'item t -> int
-
 (** Returns the number of remaining items (may be approximate).
 
     ## Examples
@@ -93,7 +87,6 @@ val size: 'item t -> int
     ```ocaml let remaining = Iterator.size iter in Log.info "Items left: %d"
     remaining ``` *)
 val to_list: 'item t -> 'item list
-
 (** Consumes the iterator and collects all items into a list.
 
     ## Examples
@@ -102,7 +95,6 @@ val to_list: 'item t -> 'item list
 (** {1 Transformation} *)
 
 val map: 'a t -> fn:('a -> 'b) -> 'b t
-
 (** Transforms each element using the provided function.
     
     ## Examples
@@ -115,7 +107,6 @@ val map: 'a t -> fn:('a -> 'b) -> 'b t
     ```
 *)
 val filter: 'a t -> fn:('a -> bool) -> 'a t
-
 (** Keeps only elements that satisfy the predicate.
     
     ## Examples
@@ -128,7 +119,6 @@ val filter: 'a t -> fn:('a -> bool) -> 'a t
     ```
 *)
 val filter_map: 'a t -> fn:('a -> 'b option) -> 'b t
-
 (** Maps and filters in one operation. Elements mapping to None are dropped.
     
     ## Examples
@@ -142,7 +132,6 @@ val filter_map: 'a t -> fn:('a -> 'b option) -> 'b t
 (** {1 Reduction} *)
 
 val fold: 'a t -> init:'acc -> fn:('a -> 'acc -> 'acc) -> 'acc
-
 (** Reduces the iterator to a single value.
     
     ## Examples
@@ -154,7 +143,6 @@ val fold: 'a t -> init:'acc -> fn:('a -> 'acc -> 'acc) -> 'acc
     ```
 *)
 val reduce: 'a t -> fn:('a -> 'a -> 'a) -> 'a option
-
 (** Reduces using the first element as initial value.
     
     ## Examples
@@ -166,7 +154,6 @@ val reduce: 'a t -> fn:('a -> 'a -> 'a) -> 'a option
     ```
 *)
 val count: 'a t -> int
-
 (** Counts the number of elements.
     
     ## Examples
@@ -176,7 +163,6 @@ val count: 'a t -> int
 (** {1 Search} *)
 
 val find: 'a t -> fn:('a -> bool) -> 'a option
-
 (** Returns the first element satisfying the predicate.
     
     ## Examples
@@ -187,7 +173,6 @@ val find: 'a t -> fn:('a -> bool) -> 'a option
     ```
 *)
 val any: 'a t -> fn:('a -> bool) -> bool
-
 (** Returns true if any element satisfies the predicate.
     
     ## Examples
@@ -195,7 +180,6 @@ val any: 'a t -> fn:('a -> bool) -> bool
     ```ocaml iter |> Iterator.any ~fn:(fun x -> x < 0) ```
 *)
 val all: 'a t -> fn:('a -> bool) -> bool
-
 (** Returns true if all elements satisfy the predicate.
     
     ## Examples
@@ -205,7 +189,6 @@ val all: 'a t -> fn:('a -> bool) -> bool
 (** {1 Combinators} *)
 
 val take: 'a t -> int -> 'a t
-
 (** Takes at most n elements.
     
     ## Examples
@@ -216,7 +199,6 @@ val take: 'a t -> int -> 'a t
     ```
 *)
 val drop: 'a t -> int -> 'a t
-
 (** Skips the first n elements.
     
     ## Examples
@@ -227,7 +209,6 @@ val drop: 'a t -> int -> 'a t
     ```
 *)
 val enumerate: 'a t -> (int * 'a) t
-
 (** Adds indices to elements, starting from 0.
     
     ## Examples
@@ -238,7 +219,6 @@ val enumerate: 'a t -> (int * 'a) t
     ```
 *)
 val zip: 'a t -> 'b t -> ('a * 'b) t
-
 (** Combines two iterators into pairs. Stops when either is exhausted.
     
     ## Examples
@@ -249,7 +229,6 @@ val zip: 'a t -> 'b t -> ('a * 'b) t
     ```
 *)
 val chain: 'a t -> 'a t -> 'a t
-
 (** Chains two iterators together.
     
     ## Examples
@@ -262,7 +241,6 @@ val chain: 'a t -> 'a t -> 'a t
 (** {1 Side Effects} *)
 
 val for_each: 'a t -> fn:('a -> unit) -> unit
-
 (** Applies a function to each element for side effects.
     
     ## Examples

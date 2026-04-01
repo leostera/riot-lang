@@ -19,16 +19,12 @@ type event_kind =
   | Renamed
   | Metadata
 val create: unit -> (t, error) result
-
 (** Watch a path for changes *)
 val watch: t -> path:string -> latency:float -> (watch_id, error) result
-
 (** Stop watching a path *)
 val unwatch: t -> watch_id -> (unit, error) result
-
 (** Get the underlying file descriptor for reading events *)
 val get_fd: t -> Fd.t
-
 (** Flag constants *)
 val flag_created: int32
 
@@ -65,10 +61,8 @@ val flag_must_scan_subdirs: int32
 val flag_user_dropped: int32
 
 val flag_kernel_dropped: int32
-
 (** Decode event flags into kind *)
 val decode_event_kind: int32 -> event_kind
-
 (** Stop the watcher and release resources *)
 val stop: t -> (unit, error) result
 

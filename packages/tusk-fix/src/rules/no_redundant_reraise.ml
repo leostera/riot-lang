@@ -31,33 +31,33 @@ let expression_of_apply_argument = function
   | Syn.Cst.Optional { value; _ } -> value
 
 let rec raises_name = fun name expr ->
-    match unwrap_parens expr with
-    | Syn.Cst.Expression.Apply { callee=Syn.Cst.Expression.Path { path; _ }; argument; _;  } -> (
-        let argument_name =
-          match expression_of_apply_argument argument with
-          | Some argument -> path_name (unwrap_parens argument)
-          | None -> None
-        in
-        match Syn.Cst.Ident.name path, argument_name with
-        | Some "raise", Some argument_name -> String.equal name argument_name
-        | _ -> false
-      )
-    | _ -> false
+  match unwrap_parens expr with
+  | Syn.Cst.Expression.Apply { callee=Syn.Cst.Expression.Path { path; _ }; argument; _;  } -> (
+      let argument_name =
+        match expression_of_apply_argument argument with
+        | Some argument -> path_name (unwrap_parens argument)
+        | None -> None
+      in
+      match Syn.Cst.Ident.name path, argument_name with
+      | Some "raise", Some argument_name -> String.equal name argument_name
+      | _ -> false
+    )
+  | _ -> false
 
 let is_redundant_reraise_case = fun ({ pattern; guard; body; _ }: Syn.Cst.match_case) ->
-    match pattern, guard with
-    | Syn.Cst.Pattern.Identifier { name_token; _ }, None -> raises_name
-      (Syn.Cst.Token.text name_token)
-      body
-    | _ -> false
+  match pattern, guard with
+  | Syn.Cst.Pattern.Identifier { name_token; _ }, None -> raises_name
+    (Syn.Cst.Token.text name_token)
+    body
+  | _ -> false
 
 let make_diagnostic = fun ({ syntax_node; _ }: Syn.Cst.try_expression) ->
-    Diagnostic.make
-      ~severity:Warning
-      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-      ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
-      ~suggestion:"Remove this try/with and use the body directly."
-      ()
+  Diagnostic.make
+    ~severity:Warning
+    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span syntax_node)
+    ~suggestion:"Remove this try/with and use the body directly."
+    ()
 
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.Try ({ cases=[ case ]; _ } as try_expr) when is_redundant_reraise_case case -> Some (make_diagnostic
@@ -65,11 +65,11 @@ let diagnostic_for_expression = function
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-    let source_file = ctx.cst in
-    Syn.Cst.SourceFile.structure_items source_file
-    |> Option.unwrap_or ~default:[]
-    |> List.concat_map Traversal.expressions_of_structure_item
-    |> List.filter_map diagnostic_for_expression
+  let source_file = ctx.cst in
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Traversal.expressions_of_structure_item
+  |> List.filter_map diagnostic_for_expression
 
 let make = fun () ->
-    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

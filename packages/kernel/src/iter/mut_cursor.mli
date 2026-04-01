@@ -39,7 +39,6 @@ val advance_by: t -> int -> unit
 val take_while: t -> (char -> bool) -> string
 
 val skip_while: t -> (char -> bool) -> unit
-
 (** Takes characters until predicate returns true, advancing the cursor to the
     matching char. Returns None if predicate never matches.
 
@@ -49,7 +48,6 @@ val skip_while: t -> (char -> bool) -> unit
     token -> (* got token, cursor now at space *) | None -> (* no space found *)
     ``` *)
 val take_until: t -> (char -> bool) -> string option
-
 (** Takes exactly n characters, advancing the cursor. Returns None if fewer than
     n remain. *)
 val take_n: t -> int -> string option

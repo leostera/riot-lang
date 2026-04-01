@@ -113,7 +113,6 @@ let tests = [
   chained_assumptions_prop;
   valid_date_prop;
   precondition_prop;
-
 ]
 
 let () =

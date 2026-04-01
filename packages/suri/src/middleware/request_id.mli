@@ -19,6 +19,5 @@
     ]}
 *)
 val request_id: Pipeline.middleware
-
 (** Middleware that ensures an [x-request-id] header is present in both
     the request and response. *)

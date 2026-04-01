@@ -1,5 +1,4 @@
 open Std
-
 (** Arbitrary module for complete value specifications.
     
     An arbitrary combines a generator, optional shrinker, and optional printer
@@ -26,7 +25,6 @@ val make:
   ?small:('value -> int) ->
   'value Generator.t ->
   'value t
-
 (** [make ~shrink ~print ~small gen] creates an arbitrary from components. *)
 (** {1 Primitive Arbitraries} *)
 
@@ -75,8 +73,6 @@ val result: 'value t -> 'error t -> ('value, 'error) result t
 
 (** {1 Combinators} *)
 val map: ('a -> 'b) -> ('b -> 'a) -> 'a t -> 'b t
-
 (** [map f f_inv arb] transforms an arbitrary. *)
 val map_gen: 'value Generator.t -> 'value t -> 'value t
-
 (** [map_gen gen arb] replaces the generator in an arbitrary. *)

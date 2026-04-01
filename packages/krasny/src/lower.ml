@@ -13,14 +13,14 @@ let star = Doc.text "*"
 let at = Doc.text "@"
 
 let let_binding_group_items = fun (binding: Syn.Cst.let_binding) ->
-    binding :: Syn.Cst.LetBinding.and_bindings binding
+  binding :: Syn.Cst.LetBinding.and_bindings binding
 
 let rec binding_operator_group_items = fun (binding: Syn.Cst.binding_operator_binding) ->
-    binding :: (
-      match binding.and_binding with
-      | Some next -> binding_operator_group_items next
-      | None -> []
-    )
+  binding :: (
+    match binding.and_binding with
+    | Some next -> binding_operator_group_items next
+    | None -> []
+  )
 
 type error_context_entry =
   | Context_label of string
@@ -34,30 +34,30 @@ type error = {
 exception Unsupported of error
 
 let error_to_string = fun err ->
-    let context =
-      err.context
-      |> List.map
-        (
-          function
-          | Context_label label -> label
-          | Context_syntax_kind kind -> Syn.SyntaxKind.to_string kind
-        )
-    in
-    match context with
-    | [] -> err.message
-    | context -> err.message ^ " [" ^ String.concat " > " context ^ "]"
+  let context =
+    err.context
+    |> List.map
+      (
+        function
+        | Context_label label -> label
+        | Context_syntax_kind kind -> Syn.SyntaxKind.to_string kind
+      )
+  in
+  match context with
+  | [] -> err.message
+  | context -> err.message ^ " [" ^ String.concat " > " context ^ "]"
 
 let unsupported_with_context_entries = fun ?(context = []) message ->
-    raise (Unsupported {message; context})
+  raise (Unsupported {message;context;})
 
 let unsupported = fun ?(context = []) message ->
-    unsupported_with_context_entries ~context:(List.map (fun label -> Context_label label) context) message
+  unsupported_with_context_entries ~context:(List.map (fun label -> Context_label label) context) message
 
 let unsupported_syntax = fun ?(context = []) ~syntax_node message ->
-    let kind = Syn.Cst.syntax_kind syntax_node in
-    unsupported_with_context_entries
-      ~context:((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ]))
-      message
+  let kind = Syn.Cst.syntax_kind syntax_node in
+  unsupported_with_context_entries
+    ~context:((List.map (fun label -> Context_label label) context @ [ Context_syntax_kind kind ]))
+    message
 
 let extension_payload_context = [ "extension"; "payload" ]
 
@@ -69,44 +69,44 @@ type pending_trivia_entry =
 let doc_of_token = fun token -> Doc.text (Syn.Cst.Token.text token)
 
 let doc_of_ident = fun ident ->
-    Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
+  Syn.Cst.Ident.segments ident |> List.map doc_of_token |> Doc.join (Doc.text ".")
 
 let token_requires_parenthesized_value_name = fun (token: Syn.Cst.Token.t) ->
-    Syn.Cst.Token.is_operator_like_name token
+  Syn.Cst.Token.is_operator_like_name token
 
 let render_declaration_name = fun name_tokens ->
-    match name_tokens with
-    | [] ->
-        Doc.empty
-    | [ name_token ] ->
-        if token_requires_parenthesized_value_name name_token then
-          Doc.concat [ Doc.lparen; Doc.space; doc_of_token name_token; Doc.space; Doc.rparen ]
-        else
-          doc_of_token name_token
-    | operator_tokens ->
-        let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
-        Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
+  match name_tokens with
+  | [] ->
+      Doc.empty
+  | [ name_token ] ->
+      if token_requires_parenthesized_value_name name_token then
+        Doc.concat [ Doc.lparen; Doc.space; doc_of_token name_token; Doc.space; Doc.rparen ]
+      else
+        doc_of_token name_token
+  | operator_tokens ->
+      let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
+      Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
 
 let render_value_declaration_name = fun (decl: Syn.Cst.value_declaration) ->
-    render_declaration_name decl.name_tokens
+  render_declaration_name decl.name_tokens
 
 let binding_has_explicit_fun_rhs = fun (binding: Syn.Cst.let_binding) ->
-    List.is_empty binding.parameters && match binding.value with
-    | Syn.Cst.Expression.Fun _ -> true
-    | _ -> false
+  List.is_empty binding.parameters && match binding.value with
+  | Syn.Cst.Expression.Fun _ -> true
+  | _ -> false
 
 let phrase_separator_doc_of_tokens = fun tokens ->
-    match tokens with
-    | [] -> None
-    | tokens -> Some (tokens |> List.map doc_of_token |> Doc.concat)
+  match tokens with
+  | [] -> None
+  | tokens -> Some (tokens |> List.map doc_of_token |> Doc.concat)
 
 let is_section_docstring_text = fun comment_text ->
-    let len = String.length comment_text in
-    if len < 5 then
-      false
-    else
-      let body = String.sub comment_text 3 (len - 5) |> String.trim in
-      String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#')
+  let len = String.length comment_text in
+  if len < 5 then
+    false
+  else
+    let body = String.sub comment_text 3 (len - 5) |> String.trim in
+    String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#')
 
 let pending_trivia_position = function
   | TriviaComment (position, _)
@@ -114,205 +114,207 @@ let pending_trivia_position = function
   | TriviaBreak (position, _) -> position
 
 let compare_pending_trivia_by_position = fun left right ->
-    Int.compare (pending_trivia_position left) (pending_trivia_position right)
+  Int.compare (pending_trivia_position left) (pending_trivia_position right)
 
 let render_pending_trivia = fun ?(strip_trailing_breaks = true) pending ->
-    let break_doc break_count = List.init break_count (fun _ -> Doc.line) |> Doc.concat in
-    let rec strip_trailing_blanks = function
-      | [] ->
-          []
-      | [ TriviaBreak _ ] ->
-          []
-      | entry :: rest ->
-          let rest = strip_trailing_blanks rest in
-          (
-            match entry, rest with
-            | TriviaBreak _, [] -> []
-            | _ -> entry :: rest
-          )
-    in
-    let rec loop = fun acc separator ->
-        function
-        | [] ->
-            acc
-        | TriviaBreak (_, break_count) :: rest ->
-            let separator = break_doc break_count in
-            loop acc separator rest
-        | (TriviaComment (_, doc) | TriviaDocstring (_, _, doc)) :: rest ->
-            let acc =
-              match acc with
-              | None -> Some doc
-              | Some current -> Some (Doc.concat [ current; separator; doc ])
-            in
-            loop acc Doc.line rest
-    in
-    let pending = List.sort compare_pending_trivia_by_position pending in
-    let pending =
-      if strip_trailing_breaks then
-        strip_trailing_blanks pending
-      else
-        pending
-    in
-    let trailing_break =
-      if strip_trailing_breaks then
-        None
-      else
-        match List.rev pending with
-        | TriviaBreak (_, break_count) :: _ -> Some (break_doc break_count)
-        | _ -> None
-    in
-    match loop None Doc.line pending, trailing_break with
-    | Some doc, Some trailing_break -> Some (Doc.concat [ doc; trailing_break ])
-    | doc, None -> doc
-    | None, Some _ -> None
+  let break_doc break_count = List.init break_count (fun _ -> Doc.line) |> Doc.concat in
+  let rec strip_trailing_blanks = function
+    | [] ->
+        []
+    | [ TriviaBreak _ ] ->
+        []
+    | entry :: rest ->
+        let rest = strip_trailing_blanks rest in
+        (
+          match entry, rest with
+          | TriviaBreak _, [] -> []
+          | _ -> entry :: rest
+        )
+  in
+  let rec loop = fun acc separator ->
+    function
+    | [] ->
+        acc
+    | TriviaBreak (_, break_count) :: rest ->
+        let separator = break_doc break_count in
+        loop acc separator rest
+    | (TriviaComment (_, doc) | TriviaDocstring (_, _, doc)) :: rest ->
+        let acc =
+          match acc with
+          | None -> Some doc
+          | Some current -> Some (Doc.concat [ current; separator; doc ])
+        in
+        loop acc Doc.line rest
+  in
+  let pending = List.sort compare_pending_trivia_by_position pending in
+  let pending =
+    if strip_trailing_breaks then
+      strip_trailing_blanks pending
+    else
+      pending
+  in
+  let trailing_break =
+    if strip_trailing_breaks then
+      None
+    else
+      match List.rev pending with
+      | TriviaBreak (_, break_count) :: _ -> Some (break_doc break_count)
+      | _ -> None
+  in
+  match loop None Doc.line pending, trailing_break with
+  | Some doc, Some trailing_break -> Some (Doc.concat [ doc; trailing_break ])
+  | doc, None -> doc
+  | None, Some _ -> None
 
 let pending_entry_of_trivia = fun trivia ->
-    let span = Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia) in
-    match trivia with
-    | Syn.Cst.Trivia.Comment comment -> Some (TriviaComment (
-      span.start,
-      Doc.text (Syn.Cst.Comment.text comment)
-    ))
-    | Syn.Cst.Trivia.Docstring docstring -> Some (TriviaDocstring (
-      span.start,
-      Syn.Cst.Docstring.is_section docstring,
-      Doc.text (Syn.Cst.Docstring.text docstring)
-    ))
+  let span = Syn.Cst.Token.span (Syn.Cst.Trivia.token trivia) in
+  match trivia with
+  | Syn.Cst.Trivia.Comment comment -> Some (TriviaComment (
+    span.start,
+    Doc.text (Syn.Cst.Comment.text comment)
+  ))
+  | Syn.Cst.Trivia.Docstring docstring -> Some (TriviaDocstring (
+    span.start,
+    Syn.Cst.Docstring.is_section docstring,
+    Doc.text (Syn.Cst.Docstring.text docstring)
+  ))
 
 let pending_doc_of_trivia = fun trivia -> trivia |> List.filter_map pending_entry_of_trivia |> render_pending_trivia
 
 let pending_doc_of_token_leading_trivia = fun token ->
-    Syn.Cst.Token.leading_trivia token |> List.filter_map Syn.Cst.trivia_of_syntax_trivia |> pending_doc_of_trivia
+  Syn.Cst.Token.leading_trivia token |> List.filter_map Syn.Cst.trivia_of_syntax_trivia |> pending_doc_of_trivia
 
 let pending_doc_of_token_leading_trivia_after_fresh_line = fun ~after token ->
-    let raw_leading_trivia = Ceibo.Red.SyntaxToken.leading_trivia token.Syn.Cst.Token.syntax_token in
-    let rec collect = fun seen_newline acc ->
-        function
-        | [] -> List.rev acc
-        | syntax_trivia :: rest ->
-            let span = Ceibo.Red.SyntaxTrivia.span syntax_trivia in
-            if span.start < after then
+  let raw_leading_trivia = Ceibo.Red.SyntaxToken.leading_trivia token.Syn.Cst.Token.syntax_token in
+  let rec collect = fun seen_newline acc ->
+    function
+    | [] -> List.rev acc
+    | syntax_trivia :: rest ->
+        let span = Ceibo.Red.SyntaxTrivia.span syntax_trivia in
+        if span.start < after then
+          collect seen_newline acc rest
+        else
+          match Syn.Cst.trivia_of_syntax_trivia syntax_trivia with
+          | Some trivia when seen_newline || Int.equal after 0 ->
+              collect false (trivia :: acc) rest
+          | Some _ ->
+              collect false acc rest
+          | None ->
+              let seen_newline =
+                seen_newline
+                || String.exists
+                  (fun ch ->
+                    Char.equal ch '\n')
+                  (Ceibo.Red.SyntaxTrivia.text syntax_trivia)
+              in
               collect seen_newline acc rest
-            else
-              match Syn.Cst.trivia_of_syntax_trivia syntax_trivia with
-              | Some trivia when seen_newline || Int.equal after 0 ->
-                  collect false (trivia :: acc) rest
-              | Some _ ->
-                  collect false acc rest
-              | None ->
-                  let seen_newline =
-                    seen_newline
-                    || String.exists
-                      (fun ch ->
-                        Char.equal ch '\n')
-                      (Ceibo.Red.SyntaxTrivia.text syntax_trivia)
-                  in
-                  collect seen_newline acc rest
-    in
-    raw_leading_trivia |> collect false [] |> pending_doc_of_trivia
+  in
+  raw_leading_trivia |> collect false [] |> pending_doc_of_trivia
 
 let pending_doc_of_trivia_before_node = fun ~after syntax_node ->
-    Syn.Cst.leading_trivia_before_node ~after syntax_node |> pending_doc_of_trivia
+  Syn.Cst.leading_trivia_before_node ~after syntax_node |> pending_doc_of_trivia
 
 let doc_with_leading_trivia = fun trivia doc ->
-    match trivia with
-    | None -> doc
-    | Some trivia -> Doc.concat [ trivia; Doc.line; doc ]
+  match trivia with
+  | None -> doc
+  | Some trivia -> Doc.concat [ trivia; Doc.line; doc ]
 
 let doc_of_token_with_leading_trivia = fun token ->
-    doc_of_token token |> doc_with_leading_trivia (pending_doc_of_token_leading_trivia token)
+  doc_of_token token |> doc_with_leading_trivia (pending_doc_of_token_leading_trivia token)
 
 let doc_of_token_with_filtered_leading_trivia = fun ~after token ->
-    doc_of_token token |> doc_with_leading_trivia
-      (Syn.Cst.leading_trivia_after ~after token |> pending_doc_of_trivia)
+  doc_of_token token |> doc_with_leading_trivia
+    (Syn.Cst.leading_trivia_after ~after token |> pending_doc_of_trivia)
 
 let doc_of_declaration_token_with_filtered_leading_trivia = fun ~after token ->
-    doc_of_token token
-    |> doc_with_leading_trivia (pending_doc_of_token_leading_trivia_after_fresh_line ~after token)
+  doc_of_token token
+  |> doc_with_leading_trivia (pending_doc_of_token_leading_trivia_after_fresh_line ~after token)
 
 let token_has_renderable_leading_trivia = fun token ->
-    match pending_doc_of_token_leading_trivia token with
-    | Some _ -> true
-    | None -> false
+  match pending_doc_of_token_leading_trivia token with
+  | Some _ -> true
+  | None -> false
 
 type boundary_trivia_layout =
   | Inline_trivia of Doc.t
   | Block_trivia of Doc.t
 
 let boundary_trivia_before_node = fun ~after syntax_node ->
-    match Ceibo.Red.SyntaxNode.first_token syntax_node with
-    | None -> None
-    | Some first_token ->
-        let raw_leading_trivia = Ceibo.Red.SyntaxToken.leading_trivia first_token
-        |> List.filter (fun syntax_trivia -> (Ceibo.Red.SyntaxTrivia.span syntax_trivia).start >= after) in
-        let trivia_doc = raw_leading_trivia
-        |> List.filter_map Syn.Cst.trivia_of_syntax_trivia
-        |> pending_doc_of_trivia in
-        let has_newline =
-          raw_leading_trivia |> List.exists
-            (fun syntax_trivia ->
-              String.exists
-                (fun ch -> Char.equal ch '\n')
-                (Ceibo.Red.SyntaxTrivia.text syntax_trivia)) in
-        match trivia_doc with
-        | None -> None
-        | Some doc when has_newline -> Some (Block_trivia doc)
-        | Some doc -> Some (Inline_trivia doc)
+  match Ceibo.Red.SyntaxNode.first_token syntax_node with
+  | None -> None
+  | Some first_token ->
+      let raw_leading_trivia = Ceibo.Red.SyntaxToken.leading_trivia first_token
+      |> List.filter
+        (fun syntax_trivia -> (Ceibo.Red.SyntaxTrivia.span syntax_trivia).start >= after) in
+      let trivia_doc = raw_leading_trivia |> List.filter_map Syn.Cst.trivia_of_syntax_trivia |> pending_doc_of_trivia in
+      let has_newline =
+        raw_leading_trivia
+        |> List.exists
+          (fun syntax_trivia ->
+            String.exists
+              (fun ch ->
+                Char.equal ch '\n')
+              (Ceibo.Red.SyntaxTrivia.text syntax_trivia))
+      in
+      match trivia_doc with
+      | None -> None
+      | Some doc when has_newline -> Some (Block_trivia doc)
+      | Some doc -> Some (Inline_trivia doc)
 
 let doc_with_boundary_trivia = fun trivia doc ->
-    match trivia with
-    | None -> doc
-    | Some (Inline_trivia trivia) -> Doc.concat [ trivia; Doc.space; doc ]
-    | Some (Block_trivia trivia) -> Doc.concat [ trivia; Doc.line; doc ]
+  match trivia with
+  | None -> doc
+  | Some (Inline_trivia trivia) -> Doc.concat [ trivia; Doc.space; doc ]
+  | Some (Block_trivia trivia) -> Doc.concat [ trivia; Doc.line; doc ]
 
 let doc_with_trailing_trivia = fun doc trivia ->
-    match trivia with
-    | None -> doc
-    | Some trivia -> Doc.concat [ doc; Doc.line; trivia ]
+  match trivia with
+  | None -> doc
+  | Some trivia -> Doc.concat [ doc; Doc.line; trivia ]
 
 let separator_before_first_owned_trivia = fun ?(after_rendered_body = false) trivia ->
-    match after_rendered_body with
-    | false -> Doc.empty
-    | true -> (
-        match trivia with
-        | Syn.Cst.Trivia.Comment _ -> Doc.space
-        | Syn.Cst.Trivia.Docstring _ -> Doc.line
-      )
+  match after_rendered_body with
+  | false -> Doc.empty
+  | true -> (
+      match trivia with
+      | Syn.Cst.Trivia.Comment _ -> Doc.space
+      | Syn.Cst.Trivia.Docstring _ -> Doc.line
+    )
 
 let separator_between_owned_trivia = fun _previous _current -> Doc.line
 
 let doc_of_owned_trivia = fun ?(after_rendered_body = false) trivia ->
-    let trivia =
-      trivia
-      |> List.sort
-        (fun left right ->
-          Int.compare
-            ((Syn.Cst.Token.span (Syn.Cst.Trivia.token left)).start)
-            ((Syn.Cst.Token.span (Syn.Cst.Trivia.token right)).start))
-    in
-    let trivia_doc = function
-      | Syn.Cst.Trivia.Comment comment -> Doc.text (Syn.Cst.Comment.text comment)
-      | Syn.Cst.Trivia.Docstring docstring -> Doc.text (Syn.Cst.Docstring.text docstring)
-    in
-    let rec loop = fun acc previous ->
-        function
-        | [] -> acc
-        | trivia :: rest ->
-            let separator =
-              match previous, acc with
-              | _, None -> separator_before_first_owned_trivia ~after_rendered_body trivia
-              | Some previous, Some _ -> separator_between_owned_trivia previous trivia
-              | None, Some _ -> separator_between_owned_trivia trivia trivia
-            in
-            let piece = Doc.concat [ separator; trivia_doc trivia ] in
-            let acc =
-              match acc with
-              | None -> Some piece
-              | Some current -> Some (Doc.concat [ current; piece ])
-            in
-            loop acc (Some trivia) rest
-    in
-    loop None None trivia
+  let trivia =
+    trivia
+    |> List.sort
+      (fun left right ->
+        Int.compare
+          ((Syn.Cst.Token.span (Syn.Cst.Trivia.token left)).start)
+          ((Syn.Cst.Token.span (Syn.Cst.Trivia.token right)).start))
+  in
+  let trivia_doc = function
+    | Syn.Cst.Trivia.Comment comment -> Doc.text (Syn.Cst.Comment.text comment)
+    | Syn.Cst.Trivia.Docstring docstring -> Doc.text (Syn.Cst.Docstring.text docstring)
+  in
+  let rec loop = fun acc previous ->
+    function
+    | [] -> acc
+    | trivia :: rest ->
+        let separator =
+          match previous, acc with
+          | _, None -> separator_before_first_owned_trivia ~after_rendered_body trivia
+          | Some previous, Some _ -> separator_between_owned_trivia previous trivia
+          | None, Some _ -> separator_between_owned_trivia trivia trivia
+        in
+        let piece = Doc.concat [ separator; trivia_doc trivia ] in
+        let acc =
+          match acc with
+          | None -> Some piece
+          | Some current -> Some (Doc.concat [ current; piece ])
+        in
+        loop acc (Some trivia) rest
+  in
+  loop None None trivia
 
 let kw_module = Doc.text "module"
 
@@ -385,100 +387,100 @@ let object_override_open = Doc.text "{<"
 let object_override_close = Doc.text ">}"
 
 let join_map = fun separator f ->
-    function
-    | [] -> Doc.empty
-    | first :: rest -> Doc.concat
-      (f first :: List.map (fun item -> Doc.concat [ separator; f item ]) rest)
+  function
+  | [] -> Doc.empty
+  | first :: rest -> Doc.concat
+    (f first :: List.map (fun item -> Doc.concat [ separator; f item ]) rest)
 
 let group_digits_from_left = fun ~group_size digits ->
-    let digits = String.split_on_char '_' digits |> String.concat "" in
-    let length = String.length digits in
-    if length <= group_size then
-      digits
-    else
-      let buffer = IO.Buffer.create (length + length / group_size) in
-      let rec loop index =
-        if index >= length then
-          IO.Buffer.contents buffer
-        else
-          (
-            if index > 0 then
-              IO.Buffer.add_char buffer '_';
-            let chunk_size = Int.min group_size (length - index) in
-            IO.Buffer.add_string buffer (String.sub digits index chunk_size);
-            loop (index + chunk_size)
-          )
-      in
-      loop 0
+  let digits = String.split_on_char '_' digits |> String.concat "" in
+  let length = String.length digits in
+  if length <= group_size then
+    digits
+  else
+    let buffer = IO.Buffer.create (length + length / group_size) in
+    let rec loop index =
+      if index >= length then
+        IO.Buffer.contents buffer
+      else
+        (
+          if index > 0 then
+            IO.Buffer.add_char buffer '_';
+          let chunk_size = Int.min group_size (length - index) in
+          IO.Buffer.add_string buffer (String.sub digits index chunk_size);
+          loop (index + chunk_size)
+        )
+    in
+    loop 0
 
 let group_digits_from_right = fun ~group_size digits ->
-    let digits = String.split_on_char '_' digits |> String.concat "" in
-    let length = String.length digits in
-    if length <= group_size then
-      digits
-    else
-      let first_group_size =
-        match length mod group_size with
-        | 0 -> group_size
-        | remainder -> remainder
-      in
-      let buffer = IO.Buffer.create (length + length / group_size) in
-      IO.Buffer.add_string buffer (String.sub digits 0 first_group_size);
-      let rec loop index =
-        if index >= length then
-          IO.Buffer.contents buffer
-        else (
-          IO.Buffer.add_char buffer '_';
-          IO.Buffer.add_string buffer (String.sub digits index group_size);
-          loop (index + group_size)
-        )
-      in
-      loop first_group_size
+  let digits = String.split_on_char '_' digits |> String.concat "" in
+  let length = String.length digits in
+  if length <= group_size then
+    digits
+  else
+    let first_group_size =
+      match length mod group_size with
+      | 0 -> group_size
+      | remainder -> remainder
+    in
+    let buffer = IO.Buffer.create (length + length / group_size) in
+    IO.Buffer.add_string buffer (String.sub digits 0 first_group_size);
+    let rec loop index =
+      if index >= length then
+        IO.Buffer.contents buffer
+      else (
+        IO.Buffer.add_char buffer '_';
+        IO.Buffer.add_string buffer (String.sub digits index group_size);
+        loop (index + group_size)
+      )
+    in
+    loop first_group_size
 
 let render_integer_constant = fun (literal: Syn.Cst.integer_constant) ->
-    let prefix =
-      match literal.base with
-      | Syn.Cst.Decimal -> Option.unwrap_or literal.prefix ~default:""
-      | Syn.Cst.Hexadecimal -> "0x"
-      | Syn.Cst.Octal -> "0o"
-      | Syn.Cst.Binary -> "0b"
-    in
-    let digits =
-      match literal.base with
-      | Syn.Cst.Decimal
-      | Syn.Cst.Octal -> group_digits_from_right ~group_size:3 literal.digits
-      | Syn.Cst.Binary -> group_digits_from_right ~group_size:4 literal.digits
-      | Syn.Cst.Hexadecimal -> literal.digits
-      |> String.lowercase_ascii
-      |> group_digits_from_right ~group_size:4
-    in
-    let suffix = Option.unwrap_or literal.suffix ~default:"" in
-    prefix ^ digits ^ suffix
+  let prefix =
+    match literal.base with
+    | Syn.Cst.Decimal -> Option.unwrap_or literal.prefix ~default:""
+    | Syn.Cst.Hexadecimal -> "0x"
+    | Syn.Cst.Octal -> "0o"
+    | Syn.Cst.Binary -> "0b"
+  in
+  let digits =
+    match literal.base with
+    | Syn.Cst.Decimal
+    | Syn.Cst.Octal -> group_digits_from_right ~group_size:3 literal.digits
+    | Syn.Cst.Binary -> group_digits_from_right ~group_size:4 literal.digits
+    | Syn.Cst.Hexadecimal -> literal.digits
+    |> String.lowercase_ascii
+    |> group_digits_from_right ~group_size:4
+  in
+  let suffix = Option.unwrap_or literal.suffix ~default:"" in
+  prefix ^ digits ^ suffix
 
 let render_float_constant = fun (literal: Syn.Cst.float_constant) ->
-    let exponent =
-      match literal.exponent with
-      | None -> ""
-      | Some exponent ->
-          let sign =
-            match exponent.sign with
-            | None -> ""
-            | Some Syn.Cst.Positive -> "+"
-            | Some Syn.Cst.Negative -> "-"
-          in
-          exponent.marker ^ sign ^ exponent.digits
-    in
-    let suffix = Option.unwrap_or literal.suffix ~default:"" in
-    let normalized_integral_digits = String.split_on_char '_' literal.integral_digits
-    |> String.concat "" in
-    let integral_digits =
-      if String.length normalized_integral_digits >= 8 then
-        group_digits_from_right ~group_size:3 normalized_integral_digits
-      else
-        normalized_integral_digits
-    in
-    let fractional_digits = group_digits_from_left ~group_size:3 literal.fractional_digits in
-    integral_digits ^ "." ^ fractional_digits ^ exponent ^ suffix
+  let exponent =
+    match literal.exponent with
+    | None -> ""
+    | Some exponent ->
+        let sign =
+          match exponent.sign with
+          | None -> ""
+          | Some Syn.Cst.Positive -> "+"
+          | Some Syn.Cst.Negative -> "-"
+        in
+        exponent.marker ^ sign ^ exponent.digits
+  in
+  let suffix = Option.unwrap_or literal.suffix ~default:"" in
+  let normalized_integral_digits = String.split_on_char '_' literal.integral_digits
+  |> String.concat "" in
+  let integral_digits =
+    if String.length normalized_integral_digits >= 8 then
+      group_digits_from_right ~group_size:3 normalized_integral_digits
+    else
+      normalized_integral_digits
+  in
+  let fractional_digits = group_digits_from_left ~group_size:3 literal.fractional_digits in
+  integral_digits ^ "." ^ fractional_digits ^ exponent ^ suffix
 
 let render_literal = function
   | Syn.Cst.Literal.Int literal -> Doc.concat
@@ -532,42 +534,42 @@ let rec core_type_needs_parens_in_application = function
   | _ -> false
 
 let render_type_parameter = fun parameter ->
-    let variance =
-      match Syn.Cst.TypeParameter.variance parameter with
-      | None -> Doc.empty
-      | Some (Syn.Cst.TypeParameterVariance.Covariant { marker_token }) -> doc_of_token marker_token
-      | Some (Syn.Cst.TypeParameterVariance.Contravariant { marker_token }) -> doc_of_token marker_token
-    in
-    let injective =
-      match Syn.Cst.TypeParameter.injectivity_token parameter with
-      | Some injectivity_token -> doc_of_token injectivity_token
-      | None -> Doc.empty
-    in
-    let variable =
-      match Syn.Cst.TypeParameter.type_variable parameter with
-      | Some type_variable -> Doc.text (Syn.Cst.TypeVariable.text type_variable)
-      | None -> Doc.text "_"
-    in
-    Doc.concat [ variance; injective; variable ]
+  let variance =
+    match Syn.Cst.TypeParameter.variance parameter with
+    | None -> Doc.empty
+    | Some (Syn.Cst.TypeParameterVariance.Covariant { marker_token }) -> doc_of_token marker_token
+    | Some (Syn.Cst.TypeParameterVariance.Contravariant { marker_token }) -> doc_of_token marker_token
+  in
+  let injective =
+    match Syn.Cst.TypeParameter.injectivity_token parameter with
+    | Some injectivity_token -> doc_of_token injectivity_token
+    | None -> Doc.empty
+  in
+  let variable =
+    match Syn.Cst.TypeParameter.type_variable parameter with
+    | Some type_variable -> Doc.text (Syn.Cst.TypeVariable.text type_variable)
+    | None -> Doc.text "_"
+  in
+  Doc.concat [ variance; injective; variable ]
 
 let render_type_parameters = fun parameters ->
-    match parameters with
-    | [] -> Doc.empty
-    | [ parameter ] -> render_type_parameter parameter
-    | parameters when List.length parameters > 6 -> Doc.concat
-      [
-        Doc.lparen;
-        Doc.line;
-        Doc.indent 2 (join_map (Doc.concat [ Doc.comma; Doc.line ]) render_type_parameter parameters);
-        Doc.line;
-        Doc.rparen
-      ]
-    | parameters -> Doc.concat
-      [
-        Doc.lparen;
-        join_map (Doc.concat [ Doc.comma; Doc.space ]) render_type_parameter parameters;
-        Doc.rparen
-      ]
+  match parameters with
+  | [] -> Doc.empty
+  | [ parameter ] -> render_type_parameter parameter
+  | parameters when List.length parameters > 6 -> Doc.concat
+    [
+      Doc.lparen;
+      Doc.line;
+      Doc.indent 2 (join_map (Doc.concat [ Doc.comma; Doc.line ]) render_type_parameter parameters);
+      Doc.line;
+      Doc.rparen
+    ]
+  | parameters -> Doc.concat
+    [
+      Doc.lparen;
+      join_map (Doc.concat [ Doc.comma; Doc.space ]) render_type_parameter parameters;
+      Doc.rparen
+    ]
 
 let rec core_type_arrow_arity = function
   | Syn.Cst.CoreType.Arrow { result_type; _ } -> 1 + core_type_arrow_arity result_type
@@ -608,114 +610,105 @@ let rec core_type_is_atomic = function
   | _ -> false
 
 let rec render_first_class_module_type_constraint = fun ~keyword (
-    constraint_: Syn.Cst.module_type_constraint
-  ) ->
-    let separator = Doc.concat [ Doc.space; doc_of_token constraint_.separator_token; Doc.space ] in
-    Doc.concat
-      [
-        keyword;
-        Doc.space;
-        kw_type;
-        Doc.space;
-        render_core_type constraint_.constrained_type;
-        separator;
-        render_core_type constraint_.replacement_type;
-
-      ]
+  constraint_: Syn.Cst.module_type_constraint
+) ->
+  let separator = Doc.concat [ Doc.space; doc_of_token constraint_.separator_token; Doc.space ] in
+  Doc.concat
+    [
+      keyword;
+      Doc.space;
+      kw_type;
+      Doc.space;
+      render_core_type constraint_.constrained_type;
+      separator;
+      render_core_type constraint_.replacement_type;
+    ]
 
 and render_first_class_functor_parameter = fun (
-    { name_token; colon_token; module_type; _ }: Syn.Cst.functor_parameter
-  ) ->
-    Doc.concat
-      [
-        Doc.lparen;
-        doc_of_token name_token;
-        Doc.space;
-        doc_of_token colon_token;
-        Doc.space;
-        render_first_class_module_type_doc module_type;
-        Doc.rparen;
-
-      ]
+  { name_token; colon_token; module_type; _ }: Syn.Cst.functor_parameter
+) ->
+  Doc.concat
+    [
+      Doc.lparen;
+      doc_of_token name_token;
+      Doc.space;
+      doc_of_token colon_token;
+      Doc.space;
+      render_first_class_module_type_doc module_type;
+      Doc.rparen;
+    ]
 
 and render_package_type_doc = fun (
-    { module_type_path; constraints; attribute; _ }: Syn.Cst.package_type
-  ) ->
-    let first, rest =
-      match constraints with
-      | [] -> (Doc.empty, [])
-      | first :: rest -> (render_first_class_module_type_constraint ~keyword:kw_with first, rest)
-    in
-    let base =
-      if List.is_empty constraints then
-        doc_of_ident module_type_path
-      else
-        Doc.concat
-          (doc_of_ident module_type_path
-          :: Doc.space
-          :: first
-          :: List.map
-            (fun constraint_ ->
-              Doc.concat
-                [
-                  Doc.space;
-                  render_first_class_module_type_constraint ~keyword:kw_and constraint_;
-
-                ])
-            rest)
-    in
-    match attribute with
-    | Some attribute -> Doc.concat [ base; Doc.space; render_attribute attribute ]
-    | None -> base
+  { module_type_path; constraints; attribute; _ }: Syn.Cst.package_type
+) ->
+  let first, rest =
+    match constraints with
+    | [] -> (Doc.empty, [])
+    | first :: rest -> (render_first_class_module_type_constraint ~keyword:kw_with first, rest)
+  in
+  let base =
+    if List.is_empty constraints then
+      doc_of_ident module_type_path
+    else
+      Doc.concat
+        (doc_of_ident module_type_path
+        :: Doc.space
+        :: first
+        :: List.map
+          (fun constraint_ ->
+            Doc.concat
+              [ Doc.space; render_first_class_module_type_constraint ~keyword:kw_and constraint_; ])
+          rest)
+  in
+  match attribute with
+  | Some attribute -> Doc.concat [ base; Doc.space; render_attribute attribute ]
+  | None -> base
 
 and render_core_type_extension_doc = fun (extension: Syn.Cst.extension) ->
-    let payload_doc =
-      match extension.payload with
-      | None -> Doc.empty
-      | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat (List.map doc_of_token tokens)
-    in
-    Doc.concat
-      [
-        Doc.lbracket;
-        extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
-        doc_of_ident extension.name;
-        payload_doc;
-        Doc.rbracket;
-
-      ]
+  let payload_doc =
+    match extension.payload with
+    | None -> Doc.empty
+    | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat (List.map doc_of_token tokens)
+  in
+  Doc.concat
+    [
+      Doc.lbracket;
+      extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
+      doc_of_ident extension.name;
+      payload_doc;
+      Doc.rbracket;
+    ]
 
 and render_first_class_module_type_extension_doc = fun (extension: Syn.Cst.extension) ->
-    let payload_doc =
-      match extension.payload with
-      | None -> Doc.empty
-      | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat (List.map doc_of_token tokens)
-    in
-    Doc.concat
-      [
-        Doc.lbracket;
-        extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
-        doc_of_ident extension.name;
-        payload_doc;
-        Doc.rbracket;
-
-      ]
+  let payload_doc =
+    match extension.payload with
+    | None -> Doc.empty
+    | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat (List.map doc_of_token tokens)
+  in
+  Doc.concat
+    [
+      Doc.lbracket;
+      extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
+      doc_of_ident extension.name;
+      payload_doc;
+      Doc.rbracket;
+    ]
 
 and render_shared_attribute_payload_doc = fun (attribute: Syn.Cst.attribute) ->
-    match attribute.payload with
-    | None -> Doc.empty
-    | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat
-      (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
+  match attribute.payload with
+  | None -> Doc.empty
+  | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat
+    (List.map (fun token -> Doc.text (Syn.Cst.Token.full_text token)) tokens)
 
 and render_attribute_doc = fun ~floating (attribute: Syn.Cst.attribute) ->
-    Doc.concat
-      [
-        Doc.lbracket;
-        attribute.sigil_tokens |> List.map doc_of_token |> Doc.concat;
-        doc_of_ident attribute.name;
-        render_shared_attribute_payload_doc attribute;
-        Doc.rbracket;
-
-      ]
+  Doc.concat
+    [
+      Doc.lbracket;
+      attribute.sigil_tokens |> List.map doc_of_token |> Doc.concat;
+      doc_of_ident attribute.name;
+      render_shared_attribute_payload_doc attribute;
+      Doc.rbracket;
+    ]
 
 and render_attribute = fun attribute -> render_attribute_doc ~floating:false attribute
 
@@ -745,7 +738,6 @@ and render_first_class_module_type_doc = function
           Doc.arrow;
           Doc.space;
           render_first_class_module_type_doc result;
-
         ]
   | Syn.Cst.ModuleType.With { base; constraints; _ } ->
       let first, rest =
@@ -760,7 +752,7 @@ and render_first_class_module_type_doc = function
         :: List.map
           (fun constraint_ ->
             Doc.concat
-              [ Doc.space; render_first_class_module_type_constraint ~keyword:kw_and constraint_;  ])
+              [ Doc.space; render_first_class_module_type_constraint ~keyword:kw_and constraint_; ])
           rest)
   | Syn.Cst.ModuleType.Parenthesized { opening_token; inner; closing_token; _ } ->
       Doc.concat
@@ -913,7 +905,6 @@ and render_core_type = function
           Doc.space;
           render_package_type_doc package_type;
           doc_of_token closing_token;
-
         ]
   | Syn.Cst.CoreType.Object { opening_token; fields; closing_token; _ } ->
       render_object_type ~opening_token ~closing_token fields
@@ -921,283 +912,271 @@ and render_core_type = function
       render_core_type_extension_doc extension
 
 and render_record_core_type_field = fun (field: Syn.Cst.record_type_field) ->
-    let type_doc = render_core_type field.field_type in
-    let separator =
-      if core_type_prefers_multiline field.field_type then
-        Doc.line
-      else
-        Doc.break ()
-    in
-    let prefix =
-      if Option.is_some field.mutable_token then
-        let mutable_doc =
-          match field.mutable_token with
-          | Some mutable_token -> doc_of_token mutable_token
-          | None -> kw_mutable
-        in
-        Doc.concat [ mutable_doc; Doc.space; doc_of_token field.field_name ]
-      else
-        doc_of_token field.field_name
-    in
-    Doc.group
-      (Doc.concat
-        [ prefix; doc_of_token field.colon_token; Doc.indent 2 (Doc.concat [ separator; type_doc ]) ])
+  let type_doc = render_core_type field.field_type in
+  let separator =
+    if core_type_prefers_multiline field.field_type then
+      Doc.line
+    else
+      Doc.break ()
+  in
+  let prefix =
+    if Option.is_some field.mutable_token then
+      let mutable_doc =
+        match field.mutable_token with
+        | Some mutable_token -> doc_of_token mutable_token
+        | None -> kw_mutable
+      in
+      Doc.concat [ mutable_doc; Doc.space; doc_of_token field.field_name ]
+    else
+      doc_of_token field.field_name
+  in
+  Doc.group
+    (Doc.concat
+      [ prefix; doc_of_token field.colon_token; Doc.indent 2 (Doc.concat [ separator; type_doc ]) ])
 
 and render_tight_token_rhs = fun head token rhs ->
-    Doc.group
-      (Doc.concat [ head; doc_of_token token; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
+  Doc.group
+    (Doc.concat [ head; doc_of_token token; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
 
 and render_tight_doc_rhs = fun head separator rhs ->
-    Doc.group
-      (Doc.concat [ head; separator; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
+  Doc.group (Doc.concat [ head; separator; Doc.indent 2 (Doc.concat [ Doc.break (); rhs ]) ])
 
 and render_tight_colon_rhs = fun head colon_token rhs -> render_tight_token_rhs head colon_token rhs
 
 and render_tight_colon_block_rhs = fun head colon_token rhs ->
-    Doc.concat [ head; doc_of_token colon_token; Doc.space; rhs ]
+  Doc.concat [ head; doc_of_token colon_token; Doc.space; rhs ]
 
 and render_parenthesized_tight_token_rhs = fun head token rhs ->
-    Doc.group
-      (Doc.concat
-        [
-          Doc.lparen;
-          Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); render_tight_token_rhs head token rhs ]);
-          Doc.break ~flat:"" ();
-          Doc.rparen;
-
-        ])
+  Doc.group
+    (Doc.concat
+      [
+        Doc.lparen;
+        Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); render_tight_token_rhs head token rhs ]);
+        Doc.break ~flat:"" ();
+        Doc.rparen;
+      ])
 
 and render_parenthesized_tight_doc_rhs = fun head separator rhs ->
-    Doc.group
-      (Doc.concat
-        [
-          Doc.lparen;
-          Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); render_tight_doc_rhs head separator rhs ]);
-          Doc.break ~flat:"" ();
-          Doc.rparen;
-
-        ])
+  Doc.group
+    (Doc.concat
+      [
+        Doc.lparen;
+        Doc.indent 2 (Doc.concat [ Doc.break ~flat:"" (); render_tight_doc_rhs head separator rhs ]);
+        Doc.break ~flat:"" ();
+        Doc.rparen;
+      ])
 
 and render_member_head = fun keyword modifier_tokens name_token ->
-    Doc.join
-      Doc.space
-      ([ keyword ] @ List.map doc_of_token modifier_tokens @ [ doc_of_token name_token ])
+  Doc.join
+    Doc.space
+    ([ keyword ] @ List.map doc_of_token modifier_tokens @ [ doc_of_token name_token ])
 
 and render_record_type_field_separator = fun (field: Syn.Cst.record_type_field) ->
-    match field.semicolon_token with
-    | Some semicolon_token -> doc_of_token semicolon_token
-    | None -> Doc.semi
+  match field.semicolon_token with
+  | Some semicolon_token -> doc_of_token semicolon_token
+  | None -> Doc.semi
 
 and render_record_type = fun ~opening_token ~closing_token fields ->
-    let rec render_fields = function
-      | [] -> Doc.empty
-      | [ (field: Syn.Cst.record_type_field) ] -> Doc.concat
-        [ render_record_core_type_field field; render_record_type_field_separator field ]
-      | (field: Syn.Cst.record_type_field) :: rest -> Doc.concat
-        [
-          render_record_core_type_field field;
-          render_record_type_field_separator field;
-          Doc.line;
-          render_fields rest;
-
-        ]
-    in
-    Doc.concat
+  let rec render_fields = function
+    | [] -> Doc.empty
+    | [ (field: Syn.Cst.record_type_field) ] -> Doc.concat
+      [ render_record_core_type_field field; render_record_type_field_separator field ]
+    | (field: Syn.Cst.record_type_field) :: rest -> Doc.concat
       [
-        doc_of_token opening_token;
+        render_record_core_type_field field;
+        render_record_type_field_separator field;
         Doc.line;
-        Doc.indent 2 (render_fields fields);
-        Doc.line;
-        doc_of_token closing_token
+        render_fields rest;
       ]
+  in
+  Doc.concat
+    [
+      doc_of_token opening_token;
+      Doc.line;
+      Doc.indent 2 (render_fields fields);
+      Doc.line;
+      doc_of_token closing_token
+    ]
 
 and render_record_definition_field = fun (field: Syn.Cst.RecordField.t) ->
-    let field_type = Syn.Cst.RecordField.field_type field in
-    let type_doc = render_core_type field_type in
-    let separator =
-      if core_type_prefers_multiline field_type then
-        Doc.line
-      else
-        Doc.break ()
-    in
-    let prefix =
-      match Syn.Cst.RecordField.mutable_token field with
-      | Some mutable_token -> Doc.concat
-        [
-          doc_of_token mutable_token;
-          Doc.space;
-          doc_of_token (Syn.Cst.RecordField.field_name_token field)
-        ]
-      | None -> doc_of_token (Syn.Cst.RecordField.field_name_token field)
-    in
+  let field_type = Syn.Cst.RecordField.field_type field in
+  let type_doc = render_core_type field_type in
+  let separator =
+    if core_type_prefers_multiline field_type then
+      Doc.line
+    else
+      Doc.break ()
+  in
+  let prefix =
+    match Syn.Cst.RecordField.mutable_token field with
+    | Some mutable_token -> Doc.concat
+      [
+        doc_of_token mutable_token;
+        Doc.space;
+        doc_of_token (Syn.Cst.RecordField.field_name_token field)
+      ]
+    | None -> doc_of_token (Syn.Cst.RecordField.field_name_token field)
+  in
+  Doc.group
+    (Doc.concat
+      [
+        prefix;
+        doc_of_token (Syn.Cst.RecordField.colon_token field);
+        Doc.indent 2 (Doc.concat [ separator; type_doc ])
+      ])
+
+and render_record_definition_field_separator = fun (field: Syn.Cst.RecordField.t) ->
+  match field.semicolon_token with
+  | Some semicolon_token -> doc_of_token semicolon_token
+  | None -> Doc.semi
+
+and render_record_definition_field_entry = fun ?(include_trailing_semicolon = true) (
+  field: Syn.Cst.RecordField.t
+) ->
+  let body =
+    if include_trailing_semicolon then
+      Doc.concat
+        [ render_record_definition_field field; render_record_definition_field_separator field ]
+    else
+      render_record_definition_field field
+  in
+  body
+
+and render_record_definition_body_item = fun ~remaining ->
+  function
+  | Syn.CstBuilder.RecordField field ->
+      let _ = remaining in
+      render_record_definition_field_entry ~include_trailing_semicolon:true field
+  | Syn.CstBuilder.Comment comment ->
+      Doc.text (Syn.Cst.Comment.text comment)
+  | Syn.CstBuilder.Docstring docstring ->
+      Doc.text (Syn.Cst.Docstring.text docstring)
+  | Syn.CstBuilder.TrailingComment comment ->
+      Doc.text (Syn.Cst.Comment.text comment)
+  | Syn.CstBuilder.TrailingDocstring docstring ->
+      Doc.text (Syn.Cst.Docstring.text docstring)
+
+and render_record_definition_body = fun fields ->
+  let items = Syn.CstBuilder.record_field_items_of_fields fields in
+  let rec attach_to_last last extra =
+    match List.rev last with
+    | [] -> [ extra ]
+    | previous :: rest -> List.rev (Doc.concat [ previous; Doc.space; extra ] :: rest)
+  in
+  let rec render_items = fun rendered ->
+    function
+    | [] ->
+        rendered
+    | Syn.CstBuilder.RecordField field :: rest ->
+        let field_doc = render_record_definition_body_item
+          ~remaining:rest
+          (Syn.CstBuilder.RecordField field) in
+        render_items (rendered @ [ field_doc ]) rest
+    | Syn.CstBuilder.TrailingComment comment :: rest ->
+        let comment_doc = render_record_definition_body_item
+          ~remaining:rest
+          (Syn.CstBuilder.TrailingComment comment) in
+        render_items (attach_to_last rendered (Doc.concat [ Doc.space; comment_doc ])) rest
+    | Syn.CstBuilder.TrailingDocstring docstring :: rest ->
+        let docstring_doc = render_record_definition_body_item
+          ~remaining:rest
+          (Syn.CstBuilder.TrailingDocstring docstring) in
+        render_items (attach_to_last rendered (Doc.concat [ Doc.space; docstring_doc ])) rest
+    | Syn.CstBuilder.Comment comment :: rest ->
+        let comment_doc = render_record_definition_body_item
+          ~remaining:rest
+          (Syn.CstBuilder.Comment comment) in
+        render_items (rendered @ [ comment_doc ]) rest
+    | Syn.CstBuilder.Docstring docstring :: rest ->
+        let docstring_doc = render_record_definition_body_item
+          ~remaining:rest
+          (Syn.CstBuilder.Docstring docstring) in
+        render_items (rendered @ [ docstring_doc ]) rest
+  in
+  items |> render_items [] |> Doc.join Doc.line
+
+and render_record_definition = fun fields ->
+  let body = render_record_definition_body fields in
+  Doc.concat [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
+
+and render_tokenized_record_definition = fun ~opening_token ~closing_token fields ->
+  let body = fields |> render_record_definition_body in
+  Doc.concat
+    [ doc_of_token opening_token; Doc.line; Doc.indent 2 body; Doc.line; doc_of_token closing_token ]
+
+and render_inline_record_definition = fun fields ->
+  let rec render_fields = function
+    | [] -> Doc.empty
+    | [ field ] -> Doc.concat
+      [ render_record_definition_field field; render_record_definition_field_separator field ]
+    | field :: rest -> Doc.concat
+      [
+        render_record_definition_field field;
+        render_record_definition_field_separator field;
+        Doc.break ~flat:" " ();
+        render_fields rest;
+      ]
+  in
+  if List.is_empty fields then
+    Doc.concat [ Doc.lbrace; Doc.rbrace ]
+  else
     Doc.group
       (Doc.concat
         [
-          prefix;
-          doc_of_token (Syn.Cst.RecordField.colon_token field);
-          Doc.indent 2 (Doc.concat [ separator; type_doc ])
+          Doc.lbrace;
+          Doc.indent 2 (Doc.concat [ Doc.break ~flat:" " (); render_fields fields ]);
+          Doc.break ~flat:" " ();
+          Doc.rbrace
         ])
 
-and render_record_definition_field_separator = fun (field: Syn.Cst.RecordField.t) ->
-    match field.semicolon_token with
-    | Some semicolon_token -> doc_of_token semicolon_token
-    | None -> Doc.semi
-
-and render_record_definition_field_entry = fun ?(include_trailing_semicolon = true) (
-    field: Syn.Cst.RecordField.t
-  ) ->
-    let body =
-      if include_trailing_semicolon then
-        Doc.concat
-          [ render_record_definition_field field; render_record_definition_field_separator field ]
-      else
-        render_record_definition_field field
-    in
-    body
-
-and render_record_definition_body_item = fun ~remaining ->
-    function
-    | Syn.CstBuilder.RecordField field ->
-        let _ = remaining in
-        render_record_definition_field_entry ~include_trailing_semicolon:true field
-    | Syn.CstBuilder.Comment comment ->
-        Doc.text (Syn.Cst.Comment.text comment)
-    | Syn.CstBuilder.Docstring docstring ->
-        Doc.text (Syn.Cst.Docstring.text docstring)
-    | Syn.CstBuilder.TrailingComment comment ->
-        Doc.text (Syn.Cst.Comment.text comment)
-    | Syn.CstBuilder.TrailingDocstring docstring ->
-        Doc.text (Syn.Cst.Docstring.text docstring)
-
-and render_record_definition_body = fun fields ->
-    let items = Syn.CstBuilder.record_field_items_of_fields fields in
-    let rec attach_to_last last extra =
-      match List.rev last with
-      | [] -> [ extra ]
-      | previous :: rest -> List.rev (Doc.concat [ previous; Doc.space; extra ] :: rest)
-    in
-    let rec render_items = fun rendered ->
-        function
-        | [] ->
-            rendered
-        | Syn.CstBuilder.RecordField field :: rest ->
-            let field_doc = render_record_definition_body_item
-              ~remaining:rest
-              (Syn.CstBuilder.RecordField field) in
-            render_items (rendered @ [ field_doc ]) rest
-        | Syn.CstBuilder.TrailingComment comment :: rest ->
-            let comment_doc = render_record_definition_body_item
-              ~remaining:rest
-              (Syn.CstBuilder.TrailingComment comment) in
-            render_items (attach_to_last rendered (Doc.concat [ Doc.space; comment_doc ])) rest
-        | Syn.CstBuilder.TrailingDocstring docstring :: rest ->
-            let docstring_doc = render_record_definition_body_item
-              ~remaining:rest
-              (Syn.CstBuilder.TrailingDocstring docstring) in
-            render_items (attach_to_last rendered (Doc.concat [ Doc.space; docstring_doc ])) rest
-        | Syn.CstBuilder.Comment comment :: rest ->
-            let comment_doc = render_record_definition_body_item
-              ~remaining:rest
-              (Syn.CstBuilder.Comment comment) in
-            render_items (rendered @ [ comment_doc ]) rest
-        | Syn.CstBuilder.Docstring docstring :: rest ->
-            let docstring_doc = render_record_definition_body_item
-              ~remaining:rest
-              (Syn.CstBuilder.Docstring docstring) in
-            render_items (rendered @ [ docstring_doc ]) rest
-    in
-    items |> render_items [] |> Doc.join Doc.line
-
-and render_record_definition = fun fields ->
-    let body = render_record_definition_body fields in
-    Doc.concat [ Doc.lbrace; Doc.line; Doc.indent 2 body; Doc.line; Doc.rbrace ]
-
-and render_tokenized_record_definition = fun ~opening_token ~closing_token fields ->
-    let body = fields |> render_record_definition_body in
-    Doc.concat
-      [
-        doc_of_token opening_token;
-        Doc.line;
-        Doc.indent 2 body;
-        Doc.line;
-        doc_of_token closing_token
-      ]
-
-and render_inline_record_definition = fun fields ->
-    let rec render_fields = function
-      | [] -> Doc.empty
-      | [ field ] -> Doc.concat
-        [ render_record_definition_field field; render_record_definition_field_separator field ]
-      | field :: rest -> Doc.concat
-        [
-          render_record_definition_field field;
-          render_record_definition_field_separator field;
-          Doc.break ~flat:" " ();
-          render_fields rest;
-
-        ]
-    in
-    if List.is_empty fields then
-      Doc.concat [ Doc.lbrace; Doc.rbrace ]
-    else
-      Doc.group
-        (Doc.concat
-          [
-            Doc.lbrace;
-            Doc.indent 2 (Doc.concat [ Doc.break ~flat:" " (); render_fields fields ]);
-            Doc.break ~flat:" " ();
-            Doc.rbrace
-          ])
-
 and render_tokenized_inline_record_definition = fun ~opening_token ~closing_token fields ->
-    let rec render_fields = function
-      | [] -> Doc.empty
-      | [ field ] -> Doc.concat
-        [ render_record_definition_field field; render_record_definition_field_separator field ]
-      | field :: rest -> Doc.concat
+  let rec render_fields = function
+    | [] -> Doc.empty
+    | [ field ] -> Doc.concat
+      [ render_record_definition_field field; render_record_definition_field_separator field ]
+    | field :: rest -> Doc.concat
+      [
+        render_record_definition_field field;
+        render_record_definition_field_separator field;
+        Doc.break ~flat:" " ();
+        render_fields rest;
+      ]
+  in
+  if List.is_empty fields then
+    Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
+  else
+    Doc.group
+      (Doc.concat
         [
-          render_record_definition_field field;
-          render_record_definition_field_separator field;
+          doc_of_token opening_token;
+          Doc.indent 2 (Doc.concat [ Doc.break ~flat:" " (); render_fields fields ]);
           Doc.break ~flat:" " ();
-          render_fields rest;
-
-        ]
-    in
-    if List.is_empty fields then
-      Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
-    else
-      Doc.group
-        (Doc.concat
-          [
-            doc_of_token opening_token;
-            Doc.indent 2 (Doc.concat [ Doc.break ~flat:" " (); render_fields fields ]);
-            Doc.break ~flat:" " ();
-            doc_of_token closing_token
-          ])
+          doc_of_token closing_token
+        ])
 
 and render_object_type_field = fun (field: Syn.Cst.object_type_field) ->
-    render_tight_colon_rhs
-      (doc_of_token field.field_name)
-      field.colon_token
-      (render_core_type field.field_type)
+  render_tight_colon_rhs
+    (doc_of_token field.field_name)
+    field.colon_token
+    (render_core_type field.field_type)
 
 and render_object_type_field_entry = fun (field: Syn.Cst.object_type_field) ->
-    Doc.concat
-      [ render_object_type_field field; (
-          match field.semicolon_token with
-          | Some semicolon_token -> doc_of_token semicolon_token
-          | None -> Doc.empty
-        ) ]
+  Doc.concat
+    [ render_object_type_field field; (
+        match field.semicolon_token with
+        | Some semicolon_token -> doc_of_token semicolon_token
+        | None -> Doc.empty
+      ) ]
 
 and render_object_type = fun ~opening_token ~closing_token fields ->
-    Doc.concat
-      [
-        doc_of_token opening_token;
-        Doc.line;
-        Doc.indent 2 (join_map Doc.line render_object_type_field_entry fields);
-        Doc.line;
-        doc_of_token closing_token
-      ]
+  Doc.concat
+    [
+      doc_of_token opening_token;
+      Doc.line;
+      Doc.indent 2 (join_map Doc.line render_object_type_field_entry fields);
+      Doc.line;
+      doc_of_token closing_token
+    ]
 
 and render_poly_variant_field = function
   | Syn.Cst.RowField.Tag tag ->
@@ -1228,13 +1207,12 @@ and render_poly_variant_field = function
                   doc_of_token separator_token;
                   Doc.space;
                   render_core_type payload_type;
-
                 ]
             else
               let separator_doc = doc_of_token separator_token |> doc_with_leading_trivia separator_leading_trivia in
               let payload_doc = render_core_type payload_type |> doc_with_leading_trivia payload_leading_trivia in
               Doc.concat
-                [ head; Doc.line; Doc.indent 2 separator_doc; Doc.line; Doc.indent 2 payload_doc;  ]
+                [ head; Doc.line; Doc.indent 2 separator_doc; Doc.line; Doc.indent 2 payload_doc; ]
       )
   | Syn.Cst.RowField.Inherit { bar_token; type_; _ } -> (
       match bar_token with
@@ -1243,261 +1221,253 @@ and render_poly_variant_field = function
     )
 
 and render_poly_variant_type = fun ?(field_indent = 2) poly_variant ->
-    let open_doc =
-      match Syn.Cst.PolyVariant.kind poly_variant with
-      | Syn.Cst.PolyVariantBound.Exact -> doc_of_token poly_variant.opening_token
-      | Syn.Cst.PolyVariantBound.UpperBound { marker_token } -> Doc.concat
-        [ doc_of_token poly_variant.opening_token; doc_of_token marker_token ]
-      | Syn.Cst.PolyVariantBound.LowerBound { marker_token } -> Doc.concat
-        [ doc_of_token poly_variant.opening_token; doc_of_token marker_token ]
+  let open_doc =
+    match Syn.Cst.PolyVariant.kind poly_variant with
+    | Syn.Cst.PolyVariantBound.Exact -> doc_of_token poly_variant.opening_token
+    | Syn.Cst.PolyVariantBound.UpperBound { marker_token } -> Doc.concat
+      [ doc_of_token poly_variant.opening_token; doc_of_token marker_token ]
+    | Syn.Cst.PolyVariantBound.LowerBound { marker_token } -> Doc.concat
+      [ doc_of_token poly_variant.opening_token; doc_of_token marker_token ]
+  in
+  let fields =
+    let rec render_fields = fun previous_boundary_end ->
+      function
+      | [] -> []
+      | field :: rest ->
+          let leading =
+            match field with
+            | Syn.Cst.RowField.Tag tag -> (
+                match tag.bar_token with
+                | Some bar_token -> Syn.Cst.leading_trivia_after_token_before_node
+                  ~after:previous_boundary_end
+                  bar_token
+                  (Syn.Cst.RowField.syntax_node field)
+                |> pending_doc_of_trivia
+                | None -> None
+              )
+            | Syn.Cst.RowField.Inherit _ -> None
+          in
+          let rendered = render_poly_variant_field field |> doc_with_leading_trivia leading in
+          let next_boundary_end = (Syn.Cst.token_body_span (Syn.Cst.RowField.syntax_node field)).end_ in
+          rendered :: render_fields next_boundary_end rest
     in
-    let fields =
-      let rec render_fields = fun previous_boundary_end ->
-          function
-          | [] -> []
-          | field :: rest ->
-              let leading =
-                match field with
-                | Syn.Cst.RowField.Tag tag -> (
-                    match tag.bar_token with
-                    | Some bar_token -> Syn.Cst.leading_trivia_after_token_before_node
-                      ~after:previous_boundary_end
-                      bar_token
-                      (Syn.Cst.RowField.syntax_node field)
-                    |> pending_doc_of_trivia
-                    | None -> None
-                  )
-                | Syn.Cst.RowField.Inherit _ -> None
-              in
-              let rendered = render_poly_variant_field field |> doc_with_leading_trivia leading in
-              let next_boundary_end = (Syn.Cst.token_body_span (Syn.Cst.RowField.syntax_node field)).end_ in
-              rendered :: render_fields next_boundary_end rest
-      in
-      render_fields
-        (Syn.Cst.token_body_span (Syn.Cst.PolyVariant.syntax_node poly_variant)).start
-        (Syn.Cst.PolyVariant.fields poly_variant)
-    in
-    Doc.concat
-      [
-        open_doc;
-        Doc.line;
-        Doc.indent field_indent (Doc.join Doc.line fields);
-        Doc.line;
-        doc_of_token poly_variant.closing_token
-      ]
+    render_fields
+      (Syn.Cst.token_body_span (Syn.Cst.PolyVariant.syntax_node poly_variant)).start
+      (Syn.Cst.PolyVariant.fields poly_variant)
+  in
+  Doc.concat
+    [
+      open_doc;
+      Doc.line;
+      Doc.indent field_indent (Doc.join Doc.line fields);
+      Doc.line;
+      doc_of_token poly_variant.closing_token
+    ]
 
 let poly_variant_has_inherit_field = fun poly_variant ->
-    Syn.Cst.PolyVariant.fields poly_variant |> List.exists
-      (
-        function
-        | Syn.Cst.RowField.Inherit _ -> true
-        | Syn.Cst.RowField.Tag _ -> false
-      )
+  Syn.Cst.PolyVariant.fields poly_variant |> List.exists
+    (
+      function
+      | Syn.Cst.RowField.Inherit _ -> true
+      | Syn.Cst.RowField.Tag _ -> false
+    )
 
 let render_type_constraint = fun (constraint_: Syn.Cst.type_constraint) ->
-    Doc.concat
-      [
-        kw_constraint;
-        Doc.space;
-        render_core_type constraint_.left;
-        doc_of_token constraint_.equals_token;
-        render_core_type constraint_.right
-      ]
+  Doc.concat
+    [
+      kw_constraint;
+      Doc.space;
+      render_core_type constraint_.left;
+      doc_of_token constraint_.equals_token;
+      render_core_type constraint_.right
+    ]
 
 let render_variant_constructor_arguments = fun ?(prefer_multiline_inline_record = false) ->
-    function
-    | Syn.Cst.ConstructorArguments.Tuple types -> Doc.group
-      (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type types)
-    | Syn.Cst.ConstructorArguments.Record { opening_token; fields; closing_token } ->
-        let field_items = Syn.CstBuilder.record_field_items_of_fields fields in
-        let has_standalone_record_trivia =
-          field_items
-          |> List.exists
-            (
-              function
-              | Syn.CstBuilder.RecordField _ -> false
-              | Syn.CstBuilder.Comment _
-              | Syn.CstBuilder.Docstring _
-              | Syn.CstBuilder.TrailingComment _
-              | Syn.CstBuilder.TrailingDocstring _ -> true
-            )
-        in
-        if List.is_empty fields then
-          Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
-        else if has_standalone_record_trivia then
-          Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
-        else if prefer_multiline_inline_record then
-          Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
-        else
-          Doc.indent
-            2
-            (render_tokenized_inline_record_definition ~opening_token ~closing_token fields)
+  function
+  | Syn.Cst.ConstructorArguments.Tuple types -> Doc.group
+    (join_map (Doc.concat [ Doc.space; star; Doc.break ~flat:" " () ]) render_core_type types)
+  | Syn.Cst.ConstructorArguments.Record { opening_token; fields; closing_token } ->
+      let field_items = Syn.CstBuilder.record_field_items_of_fields fields in
+      let has_standalone_record_trivia =
+        field_items
+        |> List.exists
+          (
+            function
+            | Syn.CstBuilder.RecordField _ -> false
+            | Syn.CstBuilder.Comment _
+            | Syn.CstBuilder.Docstring _
+            | Syn.CstBuilder.TrailingComment _
+            | Syn.CstBuilder.TrailingDocstring _ -> true
+          )
+      in
+      if List.is_empty fields then
+        Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
+      else if has_standalone_record_trivia then
+        Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
+      else if prefer_multiline_inline_record then
+        Doc.indent 2 (render_tokenized_record_definition ~opening_token ~closing_token fields)
+      else
+        Doc.indent 2 (render_tokenized_inline_record_definition ~opening_token ~closing_token fields)
 
 let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) constructor ->
-    let bar_leading_trivia =
-      match Syn.Cst.VariantConstructor.bar_token constructor with
-      | Some bar_token -> pending_doc_of_token_leading_trivia bar_token
+  let bar_leading_trivia =
+    match Syn.Cst.VariantConstructor.bar_token constructor with
+    | Some bar_token -> pending_doc_of_token_leading_trivia bar_token
+    | None -> None
+  in
+  let head =
+    match Syn.Cst.VariantConstructor.bar_token constructor with
+    | Some bar_token -> Doc.concat
+      [
+        doc_of_token bar_token |> doc_with_leading_trivia bar_leading_trivia;
+        Doc.space;
+        doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor);
+      ]
+    | None -> doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor)
+  in
+  let inline_separator_or_multiline_block ~fallback_separator_doc ~separator_token ~next_syntax_node ~render_next =
+    let separator_leading_trivia =
+      match separator_token with
+      | Some separator_token -> pending_doc_of_token_leading_trivia separator_token
       | None -> None
     in
-    let head =
-      match Syn.Cst.VariantConstructor.bar_token constructor with
-      | Some bar_token -> Doc.concat
-        [
-          doc_of_token bar_token |> doc_with_leading_trivia bar_leading_trivia;
-          Doc.space;
-          doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor);
-
-        ]
-      | None -> doc_of_token (Syn.Cst.VariantConstructor.constructor_name_token constructor)
+    let next_leading_trivia =
+      match separator_token, next_syntax_node with
+      | Some separator_token, Some next_syntax_node -> pending_doc_of_trivia_before_node
+        ~after:(Syn.Cst.Token.span separator_token).end_
+        next_syntax_node
+      | _ -> None
     in
-    let inline_separator_or_multiline_block ~fallback_separator_doc ~separator_token ~next_syntax_node ~render_next =
-      let separator_leading_trivia =
-        match separator_token with
-        | Some separator_token -> pending_doc_of_token_leading_trivia separator_token
-        | None -> None
-      in
-      let next_leading_trivia =
-        match separator_token, next_syntax_node with
-        | Some separator_token, Some next_syntax_node -> pending_doc_of_trivia_before_node
-          ~after:(Syn.Cst.Token.span separator_token).end_
-          next_syntax_node
-        | _ -> None
-      in
-      let separator_doc =
-        match separator_token with
-        | Some separator_token -> doc_of_token separator_token
-        | None -> fallback_separator_doc
-      in
-      if separator_leading_trivia = None && next_leading_trivia = None then
-        (Doc.concat [ Doc.space; separator_doc; Doc.space; render_next ], false)
-      else
-        let separator_doc = separator_doc |> doc_with_leading_trivia separator_leading_trivia in
-        let next_doc = render_next |> doc_with_leading_trivia next_leading_trivia in
-        (
-          Doc.concat [ Doc.line; Doc.indent 2 separator_doc; Doc.line; Doc.indent 2 next_doc;  ],
-          true
-        )
+    let separator_doc =
+      match separator_token with
+      | Some separator_token -> doc_of_token separator_token
+      | None -> fallback_separator_doc
     in
-    let body =
-      match Syn.Cst.VariantConstructor.arguments constructor, Syn.Cst.VariantConstructor.result_type
-        constructor with
-      | Some arguments, Some result_type ->
-          let payload = render_variant_constructor_arguments ~prefer_multiline_inline_record arguments in
-          let separator_token =
-            match Syn.Cst.VariantConstructor.separator_token constructor with
-            | Some separator_token -> separator_token
-            | None -> unsupported "variant constructor payload missing separator token"
-          in
-          let payload_doc, payload_multiline = inline_separator_or_multiline_block
-            ~fallback_separator_doc:Doc.empty
-            ~separator_token:(Some separator_token)
-            ~next_syntax_node:((Syn.Cst.VariantConstructor.payload_type constructor
-            |> Option.map Syn.Cst.CoreType.syntax_node))
-            ~render_next:payload in
-          let arrow_token = Syn.Cst.VariantConstructor.arrow_token constructor in
-          let arrow_leading_trivia =
-            match arrow_token with
-            | Some arrow_token -> pending_doc_of_token_leading_trivia arrow_token
-            | None -> None
-          in
-          let result_leading_trivia =
-            match arrow_token with
-            | Some arrow_token -> pending_doc_of_trivia_before_node
-              ~after:(Syn.Cst.Token.span arrow_token).end_
-              (Syn.Cst.CoreType.syntax_node result_type)
-            | None -> None
-          in
-          let result_rhs = Doc.concat
-            [ payload; Doc.space; (
+    if separator_leading_trivia = None && next_leading_trivia = None then
+      (Doc.concat [ Doc.space; separator_doc; Doc.space; render_next ], false)
+    else
+      let separator_doc = separator_doc |> doc_with_leading_trivia separator_leading_trivia in
+      let next_doc = render_next |> doc_with_leading_trivia next_leading_trivia in
+      (Doc.concat [ Doc.line; Doc.indent 2 separator_doc; Doc.line; Doc.indent 2 next_doc; ], true)
+  in
+  let body =
+    match Syn.Cst.VariantConstructor.arguments constructor, Syn.Cst.VariantConstructor.result_type constructor with
+    | Some arguments, Some result_type ->
+        let payload = render_variant_constructor_arguments ~prefer_multiline_inline_record arguments in
+        let separator_token =
+          match Syn.Cst.VariantConstructor.separator_token constructor with
+          | Some separator_token -> separator_token
+          | None -> unsupported "variant constructor payload missing separator token"
+        in
+        let payload_doc, payload_multiline = inline_separator_or_multiline_block
+          ~fallback_separator_doc:Doc.empty
+          ~separator_token:(Some separator_token)
+          ~next_syntax_node:((Syn.Cst.VariantConstructor.payload_type constructor
+          |> Option.map Syn.Cst.CoreType.syntax_node))
+          ~render_next:payload in
+        let arrow_token = Syn.Cst.VariantConstructor.arrow_token constructor in
+        let arrow_leading_trivia =
+          match arrow_token with
+          | Some arrow_token -> pending_doc_of_token_leading_trivia arrow_token
+          | None -> None
+        in
+        let result_leading_trivia =
+          match arrow_token with
+          | Some arrow_token -> pending_doc_of_trivia_before_node
+            ~after:(Syn.Cst.Token.span arrow_token).end_
+            (Syn.Cst.CoreType.syntax_node result_type)
+          | None -> None
+        in
+        let result_rhs = Doc.concat
+          [ payload; Doc.space; (
+              match arrow_token with
+              | Some arrow_token -> doc_of_token arrow_token
+              | None -> arrow
+            ); Doc.space; render_core_type result_type; ]
+        in
+        if
+          Syn.Cst.Token.text separator_token = ":"
+          && arrow_leading_trivia = None
+          && result_leading_trivia = None
+        then
+          render_tight_token_rhs head separator_token result_rhs
+        else if
+          not payload_multiline && arrow_leading_trivia = None && result_leading_trivia = None
+        then
+          Doc.concat
+            [ head; payload_doc; Doc.space; (
                 match arrow_token with
                 | Some arrow_token -> doc_of_token arrow_token
                 | None -> arrow
-              ); Doc.space; render_core_type result_type;  ]
+              ); Doc.space; render_core_type result_type; ]
+        else
+          let arrow_doc =
+            (
+              match arrow_token with
+              | Some arrow_token -> doc_of_token arrow_token
+              | None -> arrow
+            )
+            |> doc_with_leading_trivia arrow_leading_trivia
           in
-          if
-            Syn.Cst.Token.text separator_token = ":"
-            && arrow_leading_trivia = None
-            && result_leading_trivia = None
-          then
-            render_tight_token_rhs head separator_token result_rhs
-          else if
-            not payload_multiline && arrow_leading_trivia = None && result_leading_trivia = None
-          then
-            Doc.concat
-              [ head; payload_doc; Doc.space; (
-                  match arrow_token with
-                  | Some arrow_token -> doc_of_token arrow_token
-                  | None -> arrow
-                ); Doc.space; render_core_type result_type;  ]
-          else
-            let arrow_doc =
-              (
-                match arrow_token with
-                | Some arrow_token -> doc_of_token arrow_token
-                | None -> arrow
-              )
-              |> doc_with_leading_trivia arrow_leading_trivia
-            in
-            let result_doc = render_core_type result_type |> doc_with_leading_trivia result_leading_trivia in
-            Doc.concat
-              [
-                head;
-                payload_doc;
-                Doc.line;
-                Doc.indent 2 arrow_doc;
-                Doc.line;
-                Doc.indent 2 result_doc;
-
-              ]
-      | Some arguments, None ->
-          let payload = render_variant_constructor_arguments ~prefer_multiline_inline_record arguments in
-          let separator_token =
-            match Syn.Cst.VariantConstructor.separator_token constructor with
-            | Some separator_token -> separator_token
-            | None -> unsupported "variant constructor payload missing separator token"
-          in
-          let payload_doc, _payload_multiline = inline_separator_or_multiline_block
+          let result_doc = render_core_type result_type |> doc_with_leading_trivia result_leading_trivia in
+          Doc.concat
+            [
+              head;
+              payload_doc;
+              Doc.line;
+              Doc.indent 2 arrow_doc;
+              Doc.line;
+              Doc.indent 2 result_doc;
+            ]
+    | Some arguments, None ->
+        let payload = render_variant_constructor_arguments ~prefer_multiline_inline_record arguments in
+        let separator_token =
+          match Syn.Cst.VariantConstructor.separator_token constructor with
+          | Some separator_token -> separator_token
+          | None -> unsupported "variant constructor payload missing separator token"
+        in
+        let payload_doc, _payload_multiline = inline_separator_or_multiline_block
+          ~fallback_separator_doc:Doc.empty
+          ~separator_token:(Some separator_token)
+          ~next_syntax_node:((Syn.Cst.VariantConstructor.payload_type constructor
+          |> Option.map Syn.Cst.CoreType.syntax_node))
+          ~render_next:payload in
+        Doc.concat [ head; payload_doc; ]
+    | None, Some result_type ->
+        let separator_token =
+          match Syn.Cst.VariantConstructor.separator_token constructor with
+          | Some separator_token -> separator_token
+          | None -> unsupported "variant constructor result type missing separator token"
+        in
+        if Syn.Cst.Token.text separator_token = ":" then
+          render_tight_token_rhs head separator_token (render_core_type result_type)
+        else
+          let result_doc, _result_multiline = inline_separator_or_multiline_block
             ~fallback_separator_doc:Doc.empty
             ~separator_token:(Some separator_token)
-            ~next_syntax_node:((Syn.Cst.VariantConstructor.payload_type constructor
-            |> Option.map Syn.Cst.CoreType.syntax_node))
-            ~render_next:payload in
-          Doc.concat [ head; payload_doc;  ]
-      | None, Some result_type ->
-          let separator_token =
-            match Syn.Cst.VariantConstructor.separator_token constructor with
-            | Some separator_token -> separator_token
-            | None -> unsupported "variant constructor result type missing separator token"
-          in
-          if Syn.Cst.Token.text separator_token = ":" then
-            render_tight_token_rhs head separator_token (render_core_type result_type)
-          else
-            let result_doc, _result_multiline = inline_separator_or_multiline_block
-              ~fallback_separator_doc:Doc.empty
-              ~separator_token:(Some separator_token)
-              ~next_syntax_node:(Some (Syn.Cst.CoreType.syntax_node result_type))
-              ~render_next:(render_core_type result_type) in
-            Doc.concat [ head; result_doc;  ]
-      | None, None ->
-          head
-    in
-    body
+            ~next_syntax_node:(Some (Syn.Cst.CoreType.syntax_node result_type))
+            ~render_next:(render_core_type result_type) in
+          Doc.concat [ head; result_doc; ]
+    | None, None ->
+        head
+  in
+  body
 
 let render_variant_definition = fun constructors ->
-    let constructors_all_inline_records =
-      not (List.is_empty constructors)
-      && List.for_all
-        (fun constructor ->
-          match Syn.Cst.VariantConstructor.arguments constructor with
-          | Some (Syn.Cst.ConstructorArguments.Record _) -> true
-          | _ -> false)
-        constructors
-    in
-    let constructor_docs = constructors
-    |> List.map
+  let constructors_all_inline_records =
+    not (List.is_empty constructors)
+    && List.for_all
       (fun constructor ->
-        render_variant_constructor ~prefer_multiline_inline_record:constructors_all_inline_records constructor) in
-    constructor_docs |> Doc.join Doc.line
+        match Syn.Cst.VariantConstructor.arguments constructor with
+        | Some (Syn.Cst.ConstructorArguments.Record _) -> true
+        | _ -> false)
+      constructors
+  in
+  let constructor_docs = constructors
+  |> List.map
+    (fun constructor ->
+      render_variant_constructor ~prefer_multiline_inline_record:constructors_all_inline_records constructor) in
+  constructor_docs |> Doc.join Doc.line
 
 let render_type_definition = function
   | Syn.Cst.TypeDefinition.Abstract -> None
@@ -1517,7 +1487,6 @@ let render_type_definition = function
       Doc.space;
       render_package_type_doc package_type;
       doc_of_token closing_token;
-
     ])
   | Syn.Cst.TypeDefinition.Object { opening_token; fields; closing_token; _ } -> Some (render_object_type
     ~opening_token
@@ -1531,346 +1500,306 @@ type type_definition_layout =
   | Broken_definition_no_outer_indent
 
 let type_definition_layout = fun decl ->
-    match Syn.Cst.TypeDeclaration.type_definition decl with
-    | Syn.Cst.TypeDefinition.Record _
-    | Syn.Cst.TypeDefinition.Object _ ->
-        Inline_opening_definition
-    | Syn.Cst.TypeDefinition.PolyVariant poly_variant -> (
-        match Syn.Cst.PolyVariant.kind poly_variant with
-        | Syn.Cst.PolyVariantBound.Exact ->
-            if poly_variant_has_inherit_field poly_variant then
-              Inline_opening_definition
-            else
-              Broken_definition_no_outer_indent
-        | Syn.Cst.PolyVariantBound.UpperBound _
-        | Syn.Cst.PolyVariantBound.LowerBound _ -> Inline_opening_definition
-      )
-    | Syn.Cst.TypeDefinition.Variant _ ->
+  match Syn.Cst.TypeDeclaration.type_definition decl with
+  | Syn.Cst.TypeDefinition.Record _
+  | Syn.Cst.TypeDefinition.Object _ ->
+      Inline_opening_definition
+  | Syn.Cst.TypeDefinition.PolyVariant poly_variant -> (
+      match Syn.Cst.PolyVariant.kind poly_variant with
+      | Syn.Cst.PolyVariantBound.Exact ->
+          if poly_variant_has_inherit_field poly_variant then
+            Inline_opening_definition
+          else
+            Broken_definition_no_outer_indent
+      | Syn.Cst.PolyVariantBound.UpperBound _
+      | Syn.Cst.PolyVariantBound.LowerBound _ -> Inline_opening_definition
+    )
+  | Syn.Cst.TypeDefinition.Variant _ ->
+      Broken_definition
+  | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
+      if core_type_prefers_multiline manifest then
         Broken_definition
-    | Syn.Cst.TypeDefinition.Alias { manifest; _ } ->
-        if core_type_prefers_multiline manifest then
-          Broken_definition
-        else
-          Inline_definition
-    | Syn.Cst.TypeDefinition.FirstClassModule _
-    | Syn.Cst.TypeDefinition.Extensible _ ->
-        Inline_opening_definition
-    | Syn.Cst.TypeDefinition.Abstract ->
+      else
         Inline_definition
+  | Syn.Cst.TypeDefinition.FirstClassModule _
+  | Syn.Cst.TypeDefinition.Extensible _ ->
+      Inline_opening_definition
+  | Syn.Cst.TypeDefinition.Abstract ->
+      Inline_definition
 
 let render_single_type_declaration_with_keyword = fun ~leading_after _keyword decl ->
-    let type_name = Syn.Cst.TypeDeclaration.type_name decl in
-    let type_definition = Syn.Cst.TypeDeclaration.type_definition decl in
-    let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
-    let keyword =
-      let keyword = doc_of_declaration_token_with_filtered_leading_trivia
-        ~after:leading_after
-        (Syn.Cst.TypeDeclaration.keyword_token decl) in
-      match Syn.Cst.TypeDeclaration.nonrec_token decl with
-      | Some nonrec_token -> Doc.concat [ keyword; Doc.space; doc_of_token nonrec_token ]
-      | None -> keyword
-    in
-    let header =
-      if params = Doc.empty then
-        Doc.concat [ keyword; Doc.space; doc_of_ident type_name ]
-      else
-        Doc.concat [ keyword; Doc.space; params; Doc.space; doc_of_ident type_name ]
-    in
-    let header =
-      match (
-        Syn.Cst.TypeDeclaration.manifest_alias decl,
-        Syn.Cst.TypeDeclaration.manifest_equals_token decl
-      ) with
-      | Some manifest_alias, Some manifest_equals_token -> Doc.concat
-        [
-          header;
-          Doc.space;
-          doc_of_token manifest_equals_token;
-          Doc.space;
-          render_core_type manifest_alias;
-
-        ]
-      | Some _, None -> unsupported "type declaration manifest alias missing equals token"
-      | None, _ -> header
-    in
-    let definition =
-      match Syn.Cst.TypeDeclaration.private_flag decl with
-      | Syn.Cst.PrivateFlag.Public -> render_type_definition type_definition
-      | Syn.Cst.PrivateFlag.Private _ -> Option.map
-        (fun definition -> Doc.concat [ kw_private; Doc.space; definition ])
-        (render_type_definition type_definition)
-    in
-    let with_definition =
-      match definition with
-      | None -> header
-      | Some definition -> (
-          let definition_equals_token =
-            match Syn.Cst.TypeDeclaration.definition_equals_token decl with
-            | Some definition_equals_token -> definition_equals_token
-            | None -> unsupported "type declaration definition missing equals token"
-          in
-          match type_definition_layout decl with
-          | Inline_definition -> Doc.concat
-            [ header; Doc.space; doc_of_token definition_equals_token; Doc.space; definition;  ]
-          | Inline_opening_definition -> Doc.concat
-            [ header; Doc.space; doc_of_token definition_equals_token; Doc.space; definition;  ]
-          | Broken_definition -> Doc.concat
-            [
-              header;
-              Doc.space;
-              doc_of_token definition_equals_token;
-              Doc.line;
-              Doc.indent 2 definition;
-
-            ]
-          | Broken_definition_no_outer_indent -> Doc.concat
-            [ header; Doc.space; doc_of_token definition_equals_token; Doc.line; definition;  ]
-        )
-    in
-    let with_constraints = Syn.Cst.TypeDeclaration.constraints decl
-    |> List.fold_left
-      (fun acc constraint_ ->
-        Doc.concat [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ])
-      with_definition in
-    with_constraints
+  let type_name = Syn.Cst.TypeDeclaration.type_name decl in
+  let type_definition = Syn.Cst.TypeDeclaration.type_definition decl in
+  let params = render_type_parameters (Syn.Cst.TypeDeclaration.type_params decl) in
+  let keyword =
+    let keyword = doc_of_declaration_token_with_filtered_leading_trivia
+      ~after:leading_after
+      (Syn.Cst.TypeDeclaration.keyword_token decl) in
+    match Syn.Cst.TypeDeclaration.nonrec_token decl with
+    | Some nonrec_token -> Doc.concat [ keyword; Doc.space; doc_of_token nonrec_token ]
+    | None -> keyword
+  in
+  let header =
+    if params = Doc.empty then
+      Doc.concat [ keyword; Doc.space; doc_of_ident type_name ]
+    else
+      Doc.concat [ keyword; Doc.space; params; Doc.space; doc_of_ident type_name ]
+  in
+  let header =
+    match (
+      Syn.Cst.TypeDeclaration.manifest_alias decl,
+      Syn.Cst.TypeDeclaration.manifest_equals_token decl
+    ) with
+    | Some manifest_alias, Some manifest_equals_token -> Doc.concat
+      [
+        header;
+        Doc.space;
+        doc_of_token manifest_equals_token;
+        Doc.space;
+        render_core_type manifest_alias;
+      ]
+    | Some _, None -> unsupported "type declaration manifest alias missing equals token"
+    | None, _ -> header
+  in
+  let definition =
+    match Syn.Cst.TypeDeclaration.private_flag decl with
+    | Syn.Cst.PrivateFlag.Public -> render_type_definition type_definition
+    | Syn.Cst.PrivateFlag.Private _ -> Option.map
+      (fun definition -> Doc.concat [ kw_private; Doc.space; definition ])
+      (render_type_definition type_definition)
+  in
+  let with_definition =
+    match definition with
+    | None -> header
+    | Some definition -> (
+        let definition_equals_token =
+          match Syn.Cst.TypeDeclaration.definition_equals_token decl with
+          | Some definition_equals_token -> definition_equals_token
+          | None -> unsupported "type declaration definition missing equals token"
+        in
+        match type_definition_layout decl with
+        | Inline_definition -> Doc.concat
+          [ header; Doc.space; doc_of_token definition_equals_token; Doc.space; definition; ]
+        | Inline_opening_definition -> Doc.concat
+          [ header; Doc.space; doc_of_token definition_equals_token; Doc.space; definition; ]
+        | Broken_definition -> Doc.concat
+          [
+            header;
+            Doc.space;
+            doc_of_token definition_equals_token;
+            Doc.line;
+            Doc.indent 2 definition;
+          ]
+        | Broken_definition_no_outer_indent -> Doc.concat
+          [ header; Doc.space; doc_of_token definition_equals_token; Doc.line; definition; ]
+      )
+  in
+  let with_constraints = Syn.Cst.TypeDeclaration.constraints decl
+  |> List.fold_left
+    (fun acc constraint_ ->
+      Doc.concat [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ])
+    with_definition in
+  with_constraints
 
 let render_type_declaration_member_with_keyword = fun ~leading_after keyword decl ->
-    render_single_type_declaration_with_keyword ~leading_after keyword decl
+  render_single_type_declaration_with_keyword ~leading_after keyword decl
 
 let render_type_declaration_with_keyword = fun ?(leading_after = 0) keyword decl ->
-    let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
-    let base =
-      if and_declarations = [] then
-        render_type_declaration_member_with_keyword ~leading_after keyword decl
-      else
-        let rec render_items = fun previous_end ->
-            function
-            | [] -> []
-            | declaration :: rest ->
-                let rendered = render_type_declaration_member_with_keyword ~leading_after:0 kw_and declaration in
-                let next_previous_end =
-                  let span = Syn.Cst.token_body_span declaration.Syn.Cst.TypeDeclaration.syntax_node in
-                  span.end_
-                in
-                rendered :: render_items next_previous_end rest
-        in
-        let first = render_type_declaration_member_with_keyword ~leading_after keyword decl in
-        let first_end =
-          let span = Syn.Cst.token_body_span decl.Syn.Cst.TypeDeclaration.syntax_node in
-          span.end_
-        in
-        Doc.join blank_line (first :: render_items first_end and_declarations)
-    in
-    match Syn.Cst.TypeDeclaration.attributes decl with
-    | [] -> base
-    | attributes -> Doc.concat [ base; Doc.space; join_map Doc.space render_attribute attributes ]
+  let and_declarations = Syn.Cst.TypeDeclaration.and_declarations decl in
+  let base =
+    if and_declarations = [] then
+      render_type_declaration_member_with_keyword ~leading_after keyword decl
+    else
+      let rec render_items = fun previous_end ->
+        function
+        | [] -> []
+        | declaration :: rest ->
+            let rendered = render_type_declaration_member_with_keyword ~leading_after:0 kw_and declaration in
+            let next_previous_end =
+              let span = Syn.Cst.token_body_span declaration.Syn.Cst.TypeDeclaration.syntax_node in
+              span.end_
+            in
+            rendered :: render_items next_previous_end rest
+      in
+      let first = render_type_declaration_member_with_keyword ~leading_after keyword decl in
+      let first_end =
+        let span = Syn.Cst.token_body_span decl.Syn.Cst.TypeDeclaration.syntax_node in
+        span.end_
+      in
+      Doc.join blank_line (first :: render_items first_end and_declarations)
+  in
+  match Syn.Cst.TypeDeclaration.attributes decl with
+  | [] -> base
+  | attributes -> Doc.concat [ base; Doc.space; join_map Doc.space render_attribute attributes ]
 
 let render_type_extension = fun (decl: Syn.Cst.TypeExtension.t) ->
-    let params = render_type_parameters (Syn.Cst.TypeExtension.type_params decl) in
-    let extension_operator = Syn.Cst.TypeExtension.extension_operator_tokens decl
-    |> List.map doc_of_token
-    |> Doc.concat in
-    let header =
-      if params = Doc.empty then
-        Doc.concat
-          [
-            kw_type;
-            Doc.space;
-            doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
-            Doc.space;
-            extension_operator;
-
-          ]
-      else
-        Doc.concat
-          [
-            kw_type;
-            Doc.space;
-            params;
-            Doc.space;
-            doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
-            Doc.space;
-            extension_operator;
-
-          ]
-    in
-    let constructors = render_variant_definition (Syn.Cst.TypeExtension.constructors decl) in
-    Doc.concat [ header; Doc.line; Doc.indent 2 constructors ]
+  let params = render_type_parameters (Syn.Cst.TypeExtension.type_params decl) in
+  let extension_operator = Syn.Cst.TypeExtension.extension_operator_tokens decl
+  |> List.map doc_of_token
+  |> Doc.concat in
+  let header =
+    if params = Doc.empty then
+      Doc.concat
+        [
+          kw_type;
+          Doc.space;
+          doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
+          Doc.space;
+          extension_operator;
+        ]
+    else
+      Doc.concat
+        [
+          kw_type;
+          Doc.space;
+          params;
+          Doc.space;
+          doc_of_ident (Syn.Cst.TypeExtension.type_name decl);
+          Doc.space;
+          extension_operator;
+        ]
+  in
+  let constructors = render_variant_definition (Syn.Cst.TypeExtension.constructors decl) in
+  Doc.concat [ header; Doc.line; Doc.indent 2 constructors ]
 
 let render_external_declaration = fun (decl: Syn.Cst.external_declaration) ->
-    let primitive_names = decl.primitive_name_tokens |> List.map doc_of_token |> Doc.join Doc.space in
-    let attributes =
-      match decl.attributes with
-      | [] -> Doc.empty
-      | attributes -> Doc.concat
-        [ Doc.space; attributes |> List.map render_attribute |> Doc.join Doc.space ]
-    in
-    let head = Doc.concat [ kw_external; Doc.space; render_declaration_name decl.name_tokens ] in
-    let type_doc = render_tight_colon_rhs head decl.colon_token (render_core_type decl.type_) in
-    Doc.group
-      (Doc.concat
-        [
-          type_doc;
-          Doc.indent
-            2
-            (Doc.concat
-              [
-                Doc.break ();
-                doc_of_token_with_leading_trivia decl.equals_token;
-                Doc.space;
-                primitive_names;
-                attributes;
-
-              ]);
-
-        ])
+  let primitive_names = decl.primitive_name_tokens |> List.map doc_of_token |> Doc.join Doc.space in
+  let attributes =
+    match decl.attributes with
+    | [] -> Doc.empty
+    | attributes -> Doc.concat
+      [ Doc.space; attributes |> List.map render_attribute |> Doc.join Doc.space ]
+  in
+  let head = Doc.concat [ kw_external; Doc.space; render_declaration_name decl.name_tokens ] in
+  let type_doc = render_tight_colon_rhs head decl.colon_token (render_core_type decl.type_) in
+  Doc.group
+    (Doc.concat
+      [
+        type_doc;
+        Doc.indent
+          2
+          (Doc.concat
+            [
+              Doc.break ();
+              doc_of_token_with_leading_trivia decl.equals_token;
+              Doc.space;
+              primitive_names;
+              attributes;
+            ]);
+      ])
 
 let doc_with_pattern_attributes = fun pattern doc ->
-    match Syn.Cst.Pattern.attributes pattern with
-    | [] -> doc
-    | attributes -> Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
+  match Syn.Cst.Pattern.attributes pattern with
+  | [] -> doc
+  | attributes -> Doc.concat [ doc; Doc.space; join_map Doc.space render_attribute attributes ]
 
 let rec render_pattern = fun pattern ->
-    let doc =
-      match pattern with
-      | Syn.Cst.Pattern.Identifier { name_token; _ } ->
-          doc_of_token name_token
-      | Syn.Cst.Pattern.Wildcard _ ->
-          Doc.text "_"
-      | Syn.Cst.Pattern.Extension extension ->
-          let extension = extension.extension in
-          let payload_doc =
-            match extension.payload with
-            | None -> Doc.empty
-            | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat (List.map doc_of_token tokens)
-          in
-          Doc.concat
+  let doc =
+    match pattern with
+    | Syn.Cst.Pattern.Identifier { name_token; _ } ->
+        doc_of_token name_token
+    | Syn.Cst.Pattern.Wildcard _ ->
+        Doc.text "_"
+    | Syn.Cst.Pattern.Extension extension ->
+        let extension = extension.extension in
+        let payload_doc =
+          match extension.payload with
+          | None -> Doc.empty
+          | Some (Syn.Cst.Payload.Opaque { tokens }) -> Doc.concat (List.map doc_of_token tokens)
+        in
+        Doc.concat
+          [
+            Doc.lbracket;
+            extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
+            doc_of_ident extension.name;
+            payload_doc;
+            Doc.rbracket;
+          ]
+    | Syn.Cst.Pattern.Literal { literal; _ } ->
+        render_literal literal
+    | Syn.Cst.Pattern.Lazy { pattern; _ } ->
+        Doc.concat [ kw_lazy; Doc.space; render_pattern pattern ]
+    | Syn.Cst.Pattern.Constructor { constructor_path; arguments; _ } ->
+        let head = doc_of_ident constructor_path in
+        (
+          match arguments with
+          | [] -> head
+          | arguments -> Doc.concat
             [
-              Doc.lbracket;
-              extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
-              doc_of_ident extension.name;
-              payload_doc;
-              Doc.rbracket;
-
-            ]
-      | Syn.Cst.Pattern.Literal { literal; _ } ->
-          render_literal literal
-      | Syn.Cst.Pattern.Lazy { pattern; _ } ->
-          Doc.concat [ kw_lazy; Doc.space; render_pattern pattern ]
-      | Syn.Cst.Pattern.Constructor { constructor_path; arguments; _ } ->
-          let head = doc_of_ident constructor_path in
-          (
-            match arguments with
-            | [] -> head
-            | arguments -> Doc.concat
-              [
-                head;
-                Doc.space;
-                join_map (Doc.concat [ Doc.comma; Doc.space ]) render_pattern arguments
-              ]
-          )
-      | Syn.Cst.Pattern.Operator { operator_tokens; _ } ->
-          let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
-          Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
-      | Syn.Cst.Pattern.FirstClassModule {
-        opening_token;
-        binding;
-        colon_token;
-        package_type;
-        closing_token;
-        _
-      } ->
-          let binding_doc =
-            match binding with
-            | Syn.Cst.Named { name_token } -> doc_of_token name_token
-            | Syn.Cst.Anonymous { wildcard_token } -> doc_of_token wildcard_token
-          in
-          let constraint_doc =
-            match package_type with
-            | None -> Doc.empty
-            | Some package_type ->
-                let colon_token =
-                  match colon_token with
-                  | Some colon_token -> colon_token
-                  | None -> unsupported "first-class module pattern package type missing colon token"
-                in
-                Doc.concat
-                  [
-                    Doc.space;
-                    doc_of_token colon_token;
-                    Doc.space;
-                    render_package_type_doc package_type;
-
-                  ]
-          in
-          Doc.concat
-            [
-              doc_of_token opening_token;
-              kw_module;
+              head;
               Doc.space;
-              binding_doc;
-              constraint_doc;
-              doc_of_token closing_token
+              join_map (Doc.concat [ Doc.comma; Doc.space ]) render_pattern arguments
             ]
-      | Syn.Cst.Pattern.PolyVariantInherit { type_path; _ } ->
-          Doc.concat [ hash; doc_of_ident type_path ]
-      | Syn.Cst.Pattern.Tuple { elements; _ } ->
-          Doc.concat
-            [ Doc.lparen; join_map (Doc.concat [ Doc.comma; Doc.space ])
-                (fun (element: Syn.Cst.tuple_pattern_element) ->
-                  match element.label_token with
-                  | None -> render_pattern element.pattern
-                  | Some label_token -> Doc.concat
-                    [ doc_of_token label_token; render_pattern element.pattern ])
-                elements; Doc.rparen ]
-      | Syn.Cst.Pattern.List {
-        opening_token;
-        elements;
-        separator_tokens;
-        closing_token;
-        _
-      } ->
-          if elements = [] then
-            Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
-          else
-            let edge_space =
-              if List.length elements = 1 then
-                " "
-              else
-                ""
-            in
-            let rec render_elements elements separator_tokens =
-              match elements, separator_tokens with
-              | [], [] -> Doc.empty
-              | [ element ], [] -> render_pattern element
-              | element :: rest, separator_token :: rest_separators -> Doc.concat
+        )
+    | Syn.Cst.Pattern.Operator { operator_tokens; _ } ->
+        let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
+        Doc.concat [ Doc.lparen; Doc.space; operator; Doc.space; Doc.rparen ]
+    | Syn.Cst.Pattern.FirstClassModule {
+      opening_token;
+      binding;
+      colon_token;
+      package_type;
+      closing_token;
+      _
+    } ->
+        let binding_doc =
+          match binding with
+          | Syn.Cst.Named { name_token } -> doc_of_token name_token
+          | Syn.Cst.Anonymous { wildcard_token } -> doc_of_token wildcard_token
+        in
+        let constraint_doc =
+          match package_type with
+          | None -> Doc.empty
+          | Some package_type ->
+              let colon_token =
+                match colon_token with
+                | Some colon_token -> colon_token
+                | None -> unsupported "first-class module pattern package type missing colon token"
+              in
+              Doc.concat
                 [
-                  render_pattern element;
-                  doc_of_token separator_token;
-                  Doc.break ~flat:edge_space ();
-                  render_elements rest rest_separators;
-
+                  Doc.space;
+                  doc_of_token colon_token;
+                  Doc.space;
+                  render_package_type_doc package_type;
                 ]
-              | _ -> unsupported "list pattern elements missing separator tokens"
-            in
-            Doc.group
-              (Doc.concat
-                [
-                  doc_of_token opening_token;
-                  Doc.indent
-                    2
-                    (Doc.concat
-                      [ Doc.break ~flat:edge_space (); render_elements elements separator_tokens ]);
-                  Doc.break ~flat:edge_space ();
-                  doc_of_token closing_token
-                ])
-      | Syn.Cst.Pattern.Array {
-        opening_token;
-        elements;
-        separator_tokens;
-        closing_token;
-        _
-      } ->
+        in
+        Doc.concat
+          [
+            doc_of_token opening_token;
+            kw_module;
+            Doc.space;
+            binding_doc;
+            constraint_doc;
+            doc_of_token closing_token
+          ]
+    | Syn.Cst.Pattern.PolyVariantInherit { type_path; _ } ->
+        Doc.concat [ hash; doc_of_ident type_path ]
+    | Syn.Cst.Pattern.Tuple { elements; _ } ->
+        Doc.concat
+          [ Doc.lparen; join_map (Doc.concat [ Doc.comma; Doc.space ])
+              (fun (element: Syn.Cst.tuple_pattern_element) ->
+                match element.label_token with
+                | None -> render_pattern element.pattern
+                | Some label_token -> Doc.concat
+                  [ doc_of_token label_token; render_pattern element.pattern ])
+              elements; Doc.rparen ]
+    | Syn.Cst.Pattern.List {
+      opening_token;
+      elements;
+      separator_tokens;
+      closing_token;
+      _
+    } ->
+        if elements = [] then
+          Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
+        else
+          let edge_space =
+            if List.length elements = 1 then
+              " "
+            else
+              ""
+          in
           let rec render_elements elements separator_tokens =
             match elements, separator_tokens with
             | [], [] -> Doc.empty
@@ -1879,183 +1808,209 @@ let rec render_pattern = fun pattern ->
               [
                 render_pattern element;
                 doc_of_token separator_token;
-                Doc.space;
+                Doc.break ~flat:edge_space ();
                 render_elements rest rest_separators;
-
               ]
-            | _ -> unsupported "array pattern elements missing separator tokens"
+            | _ -> unsupported "list pattern elements missing separator tokens"
           in
+          Doc.group
+            (Doc.concat
+              [
+                doc_of_token opening_token;
+                Doc.indent
+                  2
+                  (Doc.concat
+                    [ Doc.break ~flat:edge_space (); render_elements elements separator_tokens ]);
+                Doc.break ~flat:edge_space ();
+                doc_of_token closing_token
+              ])
+    | Syn.Cst.Pattern.Array {
+      opening_token;
+      elements;
+      separator_tokens;
+      closing_token;
+      _
+    } ->
+        let rec render_elements elements separator_tokens =
+          match elements, separator_tokens with
+          | [], [] -> Doc.empty
+          | [ element ], [] -> render_pattern element
+          | element :: rest, separator_token :: rest_separators -> Doc.concat
+            [
+              render_pattern element;
+              doc_of_token separator_token;
+              Doc.space;
+              render_elements rest rest_separators;
+            ]
+          | _ -> unsupported "array pattern elements missing separator tokens"
+        in
+        Doc.concat
+          [
+            doc_of_token opening_token;
+            render_elements elements separator_tokens;
+            doc_of_token closing_token
+          ]
+    | Syn.Cst.Pattern.Record {
+      opening_token;
+      fields;
+      separator_tokens;
+      closedness;
+      closing_token;
+      _
+    } ->
+        let fields =
+          fields
+          |> List.map
+            (fun (field: Syn.Cst.record_pattern_field) ->
+              match field.pattern with
+              | None -> doc_of_ident field.field_path
+              | Some pattern ->
+                  let equals_token =
+                    match field.equals_token with
+                    | Some equals_token -> equals_token
+                    | None -> unsupported "record pattern field missing equals token"
+                  in
+                  Doc.concat
+                    [
+                      doc_of_ident field.field_path;
+                      doc_of_token equals_token;
+                      render_pattern pattern;
+                    ])
+        in
+        let fields =
+          match closedness with
+          | Syn.Cst.Closed -> fields
+          | Syn.Cst.Open { wildcard_token } -> fields @ [ doc_of_token wildcard_token ]
+        in
+        let rec render_fields fields separator_tokens separator_doc =
+          match fields, separator_tokens with
+          | [], [] -> Doc.empty
+          | [ field ], [] -> field
+          | field :: rest, separator_token :: rest_separators -> Doc.concat
+            [
+              field;
+              doc_of_token separator_token;
+              separator_doc;
+              render_fields rest rest_separators separator_doc;
+            ]
+          | _ -> unsupported "record pattern fields missing separator tokens"
+        in
+        if List.length fields > 4 then
           Doc.concat
             [
               doc_of_token opening_token;
-              render_elements elements separator_tokens;
+              Doc.line;
+              Doc.indent 2 (render_fields fields separator_tokens Doc.line);
+              Doc.line;
               doc_of_token closing_token
             ]
-      | Syn.Cst.Pattern.Record {
-        opening_token;
-        fields;
-        separator_tokens;
-        closedness;
-        closing_token;
-        _
-      } ->
-          let fields =
-            fields
-            |> List.map
-              (fun (field: Syn.Cst.record_pattern_field) ->
-                match field.pattern with
-                | None -> doc_of_ident field.field_path
-                | Some pattern ->
-                    let equals_token =
-                      match field.equals_token with
-                      | Some equals_token -> equals_token
-                      | None -> unsupported "record pattern field missing equals token"
-                    in
-                    Doc.concat
-                      [
-                        doc_of_ident field.field_path;
-                        doc_of_token equals_token;
-                        render_pattern pattern;
-
-                      ])
-          in
-          let fields =
-            match closedness with
-            | Syn.Cst.Closed -> fields
-            | Syn.Cst.Open { wildcard_token } -> fields @ [ doc_of_token wildcard_token ]
-          in
-          let rec render_fields fields separator_tokens separator_doc =
-            match fields, separator_tokens with
-            | [], [] -> Doc.empty
-            | [ field ], [] -> field
-            | field :: rest, separator_token :: rest_separators -> Doc.concat
-              [
-                field;
-                doc_of_token separator_token;
-                separator_doc;
-                render_fields rest rest_separators separator_doc;
-
-              ]
-            | _ -> unsupported "record pattern fields missing separator tokens"
-          in
-          if List.length fields > 4 then
-            Doc.concat
+        else
+          Doc.group
+            (Doc.concat
               [
                 doc_of_token opening_token;
-                Doc.line;
-                Doc.indent 2 (render_fields fields separator_tokens Doc.line);
-                Doc.line;
+                Doc.indent
+                  2
+                  (Doc.concat
+                    [
+                      Doc.break ~flat:" " ();
+                      render_fields fields separator_tokens (Doc.break ~flat:" " ())
+                    ]);
+                Doc.break ~flat:" " ();
                 doc_of_token closing_token
-              ]
-          else
-            Doc.group
-              (Doc.concat
-                [
-                  doc_of_token opening_token;
-                  Doc.indent
-                    2
-                    (Doc.concat
-                      [
-                        Doc.break ~flat:" " ();
-                        render_fields fields separator_tokens (Doc.break ~flat:" " ())
-                      ]);
-                  Doc.break ~flat:" " ();
-                  doc_of_token closing_token
-                ])
-      | Syn.Cst.Pattern.Cons { head; tail; _ } ->
-          Doc.concat
-            [ render_pattern head; Doc.space; Doc.text "::"; Doc.space; render_pattern tail ]
-      | Syn.Cst.Pattern.Or { alternatives; separator_tokens; _ } ->
-          let rec render_alternatives left separators right =
-            match left, separators, right with
-            | [], _, [] -> Doc.empty
-            | [ pattern ], [], [] -> render_pattern pattern
-            | pattern :: remaining_patterns, separator_token :: remaining_separators, [] -> Doc.concat
-              [
-                render_pattern pattern;
-                Doc.space;
-                doc_of_token separator_token;
-                Doc.space;
-                render_alternatives remaining_patterns remaining_separators [];
-
-              ]
-            | _ -> unsupported "or-pattern alternatives missing separator tokens"
-          in
-          render_alternatives alternatives separator_tokens []
-      | Syn.Cst.Pattern.Alias { pattern; name_token; _ } ->
-          Doc.concat
-            [ render_pattern pattern; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
-      | Syn.Cst.Pattern.Typed { pattern; colon_token; type_; _ } ->
-          render_parenthesized_tight_token_rhs
-            (render_pattern pattern)
-            colon_token
-            (render_core_type type_)
-      | Syn.Cst.Pattern.Effect { effect_pattern; continuation; _ } ->
-          Doc.concat
+              ])
+    | Syn.Cst.Pattern.Cons { head; tail; _ } ->
+        Doc.concat [ render_pattern head; Doc.space; Doc.text "::"; Doc.space; render_pattern tail ]
+    | Syn.Cst.Pattern.Or { alternatives; separator_tokens; _ } ->
+        let rec render_alternatives left separators right =
+          match left, separators, right with
+          | [], _, [] -> Doc.empty
+          | [ pattern ], [], [] -> render_pattern pattern
+          | pattern :: remaining_patterns, separator_token :: remaining_separators, [] -> Doc.concat
             [
-              Doc.text "effect";
+              render_pattern pattern;
               Doc.space;
-              render_pattern effect_pattern;
+              doc_of_token separator_token;
               Doc.space;
-              render_pattern continuation;
-
+              render_alternatives remaining_patterns remaining_separators [];
             ]
-      | Syn.Cst.Pattern.LocalOpen {
-        module_path;
-        dot_token;
-        opening_token;
-        pattern;
-        closing_token;
-        _
-      } ->
-          let rendered_pattern =
-            match opening_token, closing_token, pattern with
-            | Some _, Some _, Syn.Cst.Pattern.Tuple { elements; _ } ->
-                Doc.group
-                  (join_map
-                    (Doc.concat [ Doc.comma; Doc.space ])
+          | _ -> unsupported "or-pattern alternatives missing separator tokens"
+        in
+        render_alternatives alternatives separator_tokens []
+    | Syn.Cst.Pattern.Alias { pattern; name_token; _ } ->
+        Doc.concat
+          [ render_pattern pattern; Doc.space; Doc.text "as"; Doc.space; doc_of_token name_token ]
+    | Syn.Cst.Pattern.Typed { pattern; colon_token; type_; _ } ->
+        render_parenthesized_tight_token_rhs
+          (render_pattern pattern)
+          colon_token
+          (render_core_type type_)
+    | Syn.Cst.Pattern.Effect { effect_pattern; continuation; _ } ->
+        Doc.concat
+          [
+            Doc.text "effect";
+            Doc.space;
+            render_pattern effect_pattern;
+            Doc.space;
+            render_pattern continuation;
+          ]
+    | Syn.Cst.Pattern.LocalOpen {
+      module_path;
+      dot_token;
+      opening_token;
+      pattern;
+      closing_token;
+      _
+    } ->
+        let rendered_pattern =
+          match opening_token, closing_token, pattern with
+          | Some _, Some _, Syn.Cst.Pattern.Tuple { elements; _ } ->
+              Doc.group
+                (
+                  join_map (Doc.concat [ Doc.comma; Doc.space ])
                     (fun (element: Syn.Cst.tuple_pattern_element) ->
                       match element.label_token with
                       | None -> render_pattern element.pattern
-                      | Some label_token ->
-                          Doc.concat [ doc_of_token label_token; render_pattern element.pattern ])
-                    elements)
-            | _ -> render_pattern pattern
-          in
-          Doc.concat
-            [ doc_of_ident module_path; doc_of_token dot_token; (
-                match opening_token with
-                | Some opening_token -> doc_of_token opening_token
-                | None -> Doc.empty
-              ); rendered_pattern; (
-                match closing_token with
-                | Some closing_token -> doc_of_token closing_token
-                | None -> Doc.empty
-              );  ]
-      | Syn.Cst.Pattern.Exception { keyword_token; pattern; _ } ->
-          Doc.concat [ doc_of_token keyword_token; Doc.space; render_pattern pattern ]
-      | Syn.Cst.Pattern.Range { lower; upper; _ } ->
-          Doc.concat
-            [ render_literal lower; Doc.space; Doc.text ".."; Doc.space; render_literal upper ]
-      | Syn.Cst.Pattern.Parenthesized { inner; _ } -> (
-          match inner with
-          | Syn.Cst.Pattern.Identifier { name_token; _ } when Syn.Cst.Token.is_operator_like_name name_token -> Doc.concat
-            [ Doc.lparen; Doc.space; doc_of_token name_token; Doc.space; Doc.rparen ]
-          | Syn.Cst.Pattern.Tuple _
-          | Syn.Cst.Pattern.List _
-          | Syn.Cst.Pattern.Array _
-          | Syn.Cst.Pattern.Record _ -> render_pattern inner
-          | _ -> Doc.concat [ Doc.lparen; render_pattern inner; Doc.rparen ]
+                      | Some label_token -> Doc.concat
+                        [ doc_of_token label_token; render_pattern element.pattern ])
+                    elements
+                )
+          | _ -> render_pattern pattern
+        in
+        Doc.concat
+          [ doc_of_ident module_path; doc_of_token dot_token; (
+              match opening_token with
+              | Some opening_token -> doc_of_token opening_token
+              | None -> Doc.empty
+            ); rendered_pattern; (
+              match closing_token with
+              | Some closing_token -> doc_of_token closing_token
+              | None -> Doc.empty
+            ); ]
+    | Syn.Cst.Pattern.Exception { keyword_token; pattern; _ } ->
+        Doc.concat [ doc_of_token keyword_token; Doc.space; render_pattern pattern ]
+    | Syn.Cst.Pattern.Range { lower; upper; _ } ->
+        Doc.concat
+          [ render_literal lower; Doc.space; Doc.text ".."; Doc.space; render_literal upper ]
+    | Syn.Cst.Pattern.Parenthesized { inner; _ } -> (
+        match inner with
+        | Syn.Cst.Pattern.Identifier { name_token; _ } when Syn.Cst.Token.is_operator_like_name name_token -> Doc.concat
+          [ Doc.lparen; Doc.space; doc_of_token name_token; Doc.space; Doc.rparen ]
+        | Syn.Cst.Pattern.Tuple _
+        | Syn.Cst.Pattern.List _
+        | Syn.Cst.Pattern.Array _
+        | Syn.Cst.Pattern.Record _ -> render_pattern inner
+        | _ -> Doc.concat [ Doc.lparen; render_pattern inner; Doc.rparen ]
+      )
+    | Syn.Cst.Pattern.PolyVariant { tag_token; payload; _ } ->
+        let head = Doc.concat [ Doc.text "`"; doc_of_token tag_token ] in
+        (
+          match payload with
+          | None -> head
+          | Some payload -> Doc.concat [ head; Doc.space; render_pattern payload ]
         )
-      | Syn.Cst.Pattern.PolyVariant { tag_token; payload; _ } ->
-          let head = Doc.concat [ Doc.text "`"; doc_of_token tag_token ] in
-          (
-            match payload with
-            | None -> head
-            | Some payload -> Doc.concat [ head; Doc.space; render_pattern payload ]
-          )
-    in
-    doc_with_pattern_attributes pattern doc
+  in
+  doc_with_pattern_attributes pattern doc
 
 let pattern_requires_parens_in_named_parameter = function
   | Syn.Cst.Pattern.Identifier _
@@ -2081,20 +2036,20 @@ let rec pattern_supports_binding_header_parameters = function
   | _ -> false
 
 let parameters_mix_complex_positional_and_named = fun parameters ->
-    let has_named = List.exists Syn.Cst.Parameter.is_named parameters in
-    let has_complex_positional =
-      List.exists
-        (
-          function
-          | Syn.Cst.Parameter.Positional { pattern; _ } -> not
-            (pattern_is_simple_function_parameter pattern)
-          | Syn.Cst.Parameter.Labeled _
-          | Syn.Cst.Parameter.Optional _
-          | Syn.Cst.Parameter.LocallyAbstract _ -> false
-        )
-        parameters
-    in
-    has_named && has_complex_positional
+  let has_named = List.exists Syn.Cst.Parameter.is_named parameters in
+  let has_complex_positional =
+    List.exists
+      (
+        function
+        | Syn.Cst.Parameter.Positional { pattern; _ } -> not
+          (pattern_is_simple_function_parameter pattern)
+        | Syn.Cst.Parameter.Labeled _
+        | Syn.Cst.Parameter.Optional _
+        | Syn.Cst.Parameter.LocallyAbstract _ -> false
+      )
+      parameters
+  in
+  has_named && has_complex_positional
 
 let is_simple_expression = function
   | Syn.Cst.Expression.Path _
@@ -2172,15 +2127,15 @@ let rec expression_prefers_multiline_layout = function
   | _ -> false
 
 and if_prefers_multiline_layout = fun (
-    { condition; then_branch; else_branch; _ }: Syn.Cst.if_expression
-  ) ->
-    let else_prefers_multiline =
-      match else_branch with
-      | Some (Syn.Cst.Expression.If _) -> false
-      | Some else_branch -> branch_prefers_multiline_layout else_branch
-      | None -> false
-    in
-    expression_prefers_multiline_layout condition || branch_prefers_multiline_layout then_branch || else_prefers_multiline
+  { condition; then_branch; else_branch; _ }: Syn.Cst.if_expression
+) ->
+  let else_prefers_multiline =
+    match else_branch with
+    | Some (Syn.Cst.Expression.If _) -> false
+    | Some else_branch -> branch_prefers_multiline_layout else_branch
+    | None -> false
+  in
+  expression_prefers_multiline_layout condition || branch_prefers_multiline_layout then_branch || else_prefers_multiline
 
 and branch_prefers_multiline_layout = function
   | Syn.Cst.Expression.If if_ -> true
@@ -2196,7 +2151,7 @@ and branch_prefers_multiline_layout = function
   | _ -> false
 
 let case_body_prefers_multiline = fun ({ body; _ }: Syn.Cst.match_case) ->
-    expression_prefers_multiline_layout body
+  expression_prefers_multiline_layout body
 
 let rec function_body_prefers_multiline = function
   | Syn.Cst.Expression.If if_ -> if_prefers_multiline_layout if_
@@ -2214,60 +2169,57 @@ let rec function_body_prefers_multiline = function
   | _ -> false
 
 and qualified_multi_argument_apply_prefers_multiline = fun (
-    { callee; argument; _ }: Syn.Cst.apply_expression
-  ) ->
-    let rec argument_count = fun count ->
-        function
-        | Syn.Cst.Expression.Apply { callee; _ } -> argument_count (count + 1) callee
-        | _ -> count
-    in
-    let rec head_is_qualified_path = function
-      | Syn.Cst.Expression.Apply { callee; _ } ->
-          head_is_qualified_path callee
-      | Syn.Cst.Expression.Path { path; _ } ->
-          List.length (Syn.Cst.Ident.segments path) > 1
-      | Syn.Cst.Expression.FieldAccess { receiver; _ } -> (
-          match receiver with
-          | Syn.Cst.Expression.Path _
-          | Syn.Cst.Expression.FieldAccess _ -> true
-          | _ -> false
-        )
-      | _ ->
-          false
-    in
-    let rec has_non_positional_argument = fun acc ->
-        function
-        | Syn.Cst.Expression.Apply { callee; argument; _ } ->
-            let acc =
-              acc
-              || match argument with
-              | Syn.Cst.Positional _ -> false
-              | Syn.Cst.Labeled _
-              | Syn.Cst.Optional _ -> true
-            in
-            has_non_positional_argument acc callee
-        | _ -> acc
-    in
-    let acc =
-      match argument with
-      | Syn.Cst.Positional _ -> false
-      | Syn.Cst.Labeled _
-      | Syn.Cst.Optional _ -> true
-    in
-    argument_count 1 callee > 1
-    && head_is_qualified_path callee
-    && not (has_non_positional_argument acc callee)
+  { callee; argument; _ }: Syn.Cst.apply_expression
+) ->
+  let rec argument_count = fun count ->
+    function
+    | Syn.Cst.Expression.Apply { callee; _ } -> argument_count (count + 1) callee
+    | _ -> count
+  in
+  let rec head_is_qualified_path = function
+    | Syn.Cst.Expression.Apply { callee; _ } ->
+        head_is_qualified_path callee
+    | Syn.Cst.Expression.Path { path; _ } ->
+        List.length (Syn.Cst.Ident.segments path) > 1
+    | Syn.Cst.Expression.FieldAccess { receiver; _ } -> (
+        match receiver with
+        | Syn.Cst.Expression.Path _
+        | Syn.Cst.Expression.FieldAccess _ -> true
+        | _ -> false
+      )
+    | _ ->
+        false
+  in
+  let rec has_non_positional_argument = fun acc ->
+    function
+    | Syn.Cst.Expression.Apply { callee; argument; _ } ->
+        let acc =
+          acc
+          || match argument with
+          | Syn.Cst.Positional _ -> false
+          | Syn.Cst.Labeled _
+          | Syn.Cst.Optional _ -> true
+        in
+        has_non_positional_argument acc callee
+    | _ -> acc
+  in
+  let acc =
+    match argument with
+    | Syn.Cst.Positional _ -> false
+    | Syn.Cst.Labeled _
+    | Syn.Cst.Optional _ -> true
+  in
+  argument_count 1 callee > 1
+  && head_is_qualified_path callee
+  && not (has_non_positional_argument acc callee)
 
 let rec expression_is_pipeline = function
   | Syn.Cst.Expression.Infix { operator_tokens; left; right; _ } ->
       (
         match operator_tokens with
-        | [ operator_token ] ->
-            Syn.Cst.Token.fixed_operator operator_token = Some Syn.Cst.Token.PipeForward
+        | [ operator_token ] -> Syn.Cst.Token.fixed_operator operator_token = Some Syn.Cst.Token.PipeForward
         | _ -> false
-      )
-      || expression_is_pipeline left
-      || expression_is_pipeline right
+      ) || expression_is_pipeline left || expression_is_pipeline right
   | Syn.Cst.Expression.Parenthesized { inner; _ } -> expression_is_pipeline inner
   | _ -> false
 
@@ -2299,7 +2251,7 @@ let rec infix_chain_term_count = function
 let max_inline_infix_terms_after_equals = 8
 
 let infix_expression_is_simple_after_equals = fun (infix: Syn.Cst.infix_expression) ->
-    infix_chain_term_count (Syn.Cst.Expression.Infix infix) <= max_inline_infix_terms_after_equals
+  infix_chain_term_count (Syn.Cst.Expression.Infix infix) <= max_inline_infix_terms_after_equals
 
 let rec expression_is_simple_after_equals = function
   | Syn.Cst.Expression.Infix infix -> infix_expression_is_simple_after_equals infix
@@ -2333,7 +2285,7 @@ and apply_argument_is_simple_after_equals = function
   | Syn.Cst.Optional { value=None; _ } -> true
 
 and apply_expression_is_simple_after_equals = fun ({ callee; argument; _ }: Syn.Cst.apply_expression) ->
-    expression_is_simple_after_equals callee && apply_argument_is_simple_after_equals argument
+  expression_is_simple_after_equals callee && apply_argument_is_simple_after_equals argument
 
 let rec collapse_redundant_parenthesized_value_after_equals = function
   | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.Parens; opening_token; inner; _ } as expression ->
@@ -2388,21 +2340,19 @@ let rec collapse_redundant_parenthesized_expression = function
   | _ -> None
 
 let same_operator_tokens = fun left right ->
-    List.length left = List.length right
-    && List.for_all2 Syn.Cst.Token.same_text left right
+  List.length left = List.length right && List.for_all2 Syn.Cst.Token.same_text left right
 
-let doc_of_operator_tokens = fun operator_tokens ->
-    operator_tokens |> List.map doc_of_token |> Doc.concat
+let doc_of_operator_tokens = fun operator_tokens -> operator_tokens |> List.map doc_of_token |> Doc.concat
 
 let infix_chain = fun operator_tokens expression ->
-    let rec collect = fun acc ->
-        function
-        | Syn.Cst.Expression.Infix { left; operator_tokens=next_operator_tokens; right; _ }
-          when same_operator_tokens next_operator_tokens operator_tokens ->
-            collect (collect acc left) right
-        | expression -> acc @ [ expression ]
-    in
-    collect [] expression
+  let rec collect = fun acc ->
+    function
+    | Syn.Cst.Expression.Infix { left; operator_tokens=next_operator_tokens; right; _ } when same_operator_tokens
+      next_operator_tokens
+      operator_tokens -> collect (collect acc left) right
+    | expression -> acc @ [ expression ]
+  in
+  collect [] expression
 
 let apply_argument_syntax_node = function
   | Syn.Cst.Positional expression -> Syn.Cst.Expression.syntax_node expression
@@ -2479,7 +2429,6 @@ let make_lowerer =
               render_module_expression_doc module_expression;
               constraint_doc;
               doc_of_token closing_token;
-
             ]
       | Syn.Cst.Expression.Assert { asserted; _ } ->
           Doc.concat [ kw_assert; Doc.space; render_expression asserted ]
@@ -2497,7 +2446,6 @@ let make_lowerer =
               Doc.indent 2 (render_block_expression body);
               Doc.line;
               kw_done;
-
             ]
       | Syn.Cst.Expression.For {
         iterator_token;
@@ -2532,7 +2480,6 @@ let make_lowerer =
               Doc.indent 2 (render_block_expression body);
               Doc.line;
               kw_done;
-
             ]
       | Syn.Cst.Expression.Operator { operator_tokens; _ } ->
           let operator = operator_tokens |> List.map doc_of_token |> Doc.concat in
@@ -2542,7 +2489,7 @@ let make_lowerer =
           let prefers_multiline = List.exists Doc.is_multiline rendered_elements in
           if prefers_multiline then
             let lines = join_map (Doc.concat [ Doc.comma; Doc.line ]) render_expression elements in
-            Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 lines; Doc.line; Doc.rparen;  ]
+            Doc.concat [ Doc.lparen; Doc.line; Doc.indent 2 lines; Doc.line; Doc.rparen; ]
           else
             Doc.group
               (Doc.concat
@@ -2554,11 +2501,9 @@ let make_lowerer =
                       [
                         Doc.break ~flat:"" ();
                         join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements;
-
                       ]);
                   Doc.break ~flat:"" ();
                   Doc.rparen;
-
                 ])
       | Syn.Cst.Expression.List {
         syntax_node;
@@ -2585,7 +2530,6 @@ let make_lowerer =
                   doc_of_token separator_token;
                   Doc.break ();
                   render_elements rest rest_separators;
-
                 ]
               | _ -> unsupported "list expression elements missing separator tokens"
             in
@@ -2596,10 +2540,9 @@ let make_lowerer =
                   Doc.indent
                     2
                     (Doc.concat
-                      [ Doc.break ~flat:" " (); render_elements elements separator_tokens;  ]);
+                      [ Doc.break ~flat:" " (); render_elements elements separator_tokens; ]);
                   Doc.break ~flat:" " ();
                   doc_of_token closing_token;
-
                 ])
       | Syn.Cst.Expression.Array {
         opening_token;
@@ -2620,7 +2563,6 @@ let make_lowerer =
                 doc_of_token separator_token;
                 Doc.break ();
                 render_elements rest rest_separators;
-
               ]
             | _ -> unsupported "array expression elements missing separator tokens"
           in
@@ -2630,10 +2572,9 @@ let make_lowerer =
                 doc_of_token opening_token;
                 Doc.indent
                   2
-                  (Doc.concat [ Doc.break ~flat:"" (); render_elements elements separator_tokens;  ]);
+                  (Doc.concat [ Doc.break ~flat:"" (); render_elements elements separator_tokens; ]);
                 Doc.break ~flat:"" ();
                 doc_of_token closing_token;
-
               ])
       | Syn.Cst.Expression.Parenthesized { inner; _ } ->
           render_parenthesized_expression expression
@@ -2662,7 +2603,6 @@ let make_lowerer =
               doc_of_token operator_token;
               Doc.space;
               render_expression value;
-
             ]
       | Syn.Cst.Expression.Assign { target; operator_token; value; _ } ->
           Doc.concat
@@ -2672,7 +2612,6 @@ let make_lowerer =
               doc_of_token operator_token;
               Doc.space;
               render_expression value;
-
             ]
       | Syn.Cst.Expression.Infix infix ->
           render_infix_expression infix
@@ -2737,7 +2676,6 @@ let make_lowerer =
               doc_of_token assign.operator_token;
               Doc.space;
               render_expression assign.value;
-
             ]
       | Syn.Cst.Expression.FieldAccess { receiver; field_name; _ } ->
           let receiver =
@@ -2762,10 +2700,10 @@ let make_lowerer =
             (render_expression expression)
             colon_token
             (render_core_type type_)
-          | Syn.Cst.Coerce { coercion_tokens; type_ } -> render_parenthesized_tight_doc_rhs
-            (render_expression expression)
-            (coercion_tokens |> List.map doc_of_token |> Doc.concat)
-            (render_core_type type_)
+          | Syn.Cst.Coerce { coercion_tokens; type_ } ->
+              render_parenthesized_tight_doc_rhs (render_expression expression)
+                (coercion_tokens |> List.map doc_of_token |> Doc.concat)
+                (render_core_type type_)
           | Syn.Cst.ConstraintCoerce { colon_token; from_type; coercion_tokens; to_type } -> render_parenthesized_tight_token_rhs
             (render_expression expression)
             colon_token
@@ -2776,7 +2714,6 @@ let make_lowerer =
                 coercion_tokens |> List.map doc_of_token |> Doc.concat;
                 Doc.space;
                 render_core_type to_type;
-
               ])
         )
       | Syn.Cst.Expression.Polymorphic { expression; colon_token; type_; _ } ->
@@ -2812,7 +2749,6 @@ let make_lowerer =
       doc_of_ident extension.name;
       render_extension_payload_doc_with_context ~context:extension_payload_context extension;
       Doc.rbracket;
-
     ]
   and render_attribute_payload_doc (attribute: Syn.Cst.attribute) =
     match attribute.payload with
@@ -2826,7 +2762,6 @@ let make_lowerer =
       doc_of_ident attribute.name;
       render_attribute_payload_doc attribute;
       Doc.rbracket;
-
     ]
   and render_attribute attribute = render_attribute_doc ~floating:false attribute
   and render_floating_attribute attribute = render_attribute_doc ~floating:true attribute
@@ -2994,7 +2929,6 @@ let make_lowerer =
           Doc.indent 2 (join_map Doc.line render_object_expression_body_item body_items);
           Doc.line;
           kw_end;
-
         ]
   and render_class_type_field = function
     | Syn.Cst.ClassTypeField.Inherit { class_type; _ } ->
@@ -3026,7 +2960,6 @@ let make_lowerer =
             Doc.space;
             doc_of_token equals_token;
             render_core_type right;
-
           ]
     | Syn.Cst.ClassTypeField.Attribute { field; attribute; _ } ->
         Doc.concat [ render_class_type_field field; Doc.space; render_attribute attribute ]
@@ -3058,7 +2991,6 @@ let make_lowerer =
               Doc.indent 2 (join_map Doc.line render_class_type_body_item body_items);
               Doc.line;
               kw_end;
-
             ]
     | Syn.Cst.ClassType.Arrow { label; parameter_type; result_type; _ } ->
         let render_arrow_parameter label parameter_type =
@@ -3182,7 +3114,6 @@ let make_lowerer =
       Doc.space;
       doc_of_token equals_token;
       render_core_type right;
-
     ]
   and render_class_initializer ({ body; _ }: Syn.Cst.class_initializer) =
     let body_doc =
@@ -3230,11 +3161,11 @@ let make_lowerer =
     | Syn.Cst.ClassExpression.Constraint _ -> true
   and render_class_apply_expression ({ callee; argument; _ }: Syn.Cst.class_apply_expression) =
     let rec collect_arguments = fun acc ->
-        function
-        | Syn.Cst.ClassExpression.Apply { callee; argument; _ } -> collect_arguments
-          (argument :: acc)
-          callee
-        | class_expression -> (class_expression, acc)
+      function
+      | Syn.Cst.ClassExpression.Apply { callee; argument; _ } -> collect_arguments
+        (argument :: acc)
+        callee
+      | class_expression -> (class_expression, acc)
     in
     let head, arguments = collect_arguments [ argument ] callee in
     let rendered_head =
@@ -3258,7 +3189,7 @@ let make_lowerer =
               Doc.empty
             else
               Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
-          ); Doc.space; Doc.arrow; Doc.line; Doc.indent 2 body;  ]
+          ); Doc.space; Doc.arrow; Doc.line; Doc.indent 2 body; ]
     else
       Doc.group
         (Doc.concat
@@ -3269,7 +3200,6 @@ let make_lowerer =
             Doc.space;
             Doc.arrow;
             Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
-
           ])
   and render_class_let_expression ({
       keyword_token;
@@ -3318,9 +3248,9 @@ let make_lowerer =
       (first_binding :: List.map (fun binding -> Doc.concat [ Doc.line; binding ]) and_bindings) in
     let body_doc = render_class_expression body in
     if Doc.is_multiline first_binding then
-      Doc.concat [ bindings; Doc.line; doc_of_token in_token; Doc.line; body_doc;  ]
+      Doc.concat [ bindings; Doc.line; doc_of_token in_token; Doc.line; body_doc; ]
     else
-      Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc;  ]
+      Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc; ]
   and render_class_expression = function
     | Syn.Cst.ClassExpression.Path path ->
         doc_of_ident path
@@ -3342,7 +3272,6 @@ let make_lowerer =
               Doc.indent 2 (join_map Doc.line render_class_expression_body_item body_items);
               Doc.line;
               kw_end;
-
             ]
     | Syn.Cst.ClassExpression.Fun fun_ ->
         render_class_fun_expression fun_
@@ -3358,7 +3287,6 @@ let make_lowerer =
             doc_of_token colon_token;
             render_class_type_doc class_type;
             Doc.rparen;
-
           ]
     | Syn.Cst.ClassExpression.LocalOpen (Syn.Cst.LetOpen {
       let_token;
@@ -3379,7 +3307,6 @@ let make_lowerer =
             doc_of_token in_token;
             Doc.space;
             render_class_expression body;
-
           ]
     | Syn.Cst.ClassExpression.LocalOpen (Syn.Cst.Delimited {
       module_path;
@@ -3397,7 +3324,6 @@ let make_lowerer =
             doc_of_token opening_token;
             render_class_expression body;
             doc_of_token closing_token;
-
           ]
         | None, None -> Doc.concat
           [ doc_of_ident module_path; doc_of_token dot_token; render_class_expression body ]
@@ -3443,7 +3369,6 @@ let make_lowerer =
           doc_of_token separator_token;
           break_doc;
           render_fields rest rest_separators break_doc;
-
         ]
       | _ -> unsupported "object override fields missing separator tokens"
     in
@@ -3457,7 +3382,6 @@ let make_lowerer =
           Doc.indent 2 (render_fields fields separator_tokens Doc.line);
           Doc.line;
           doc_of_token closing_token;
-
         ]
     else
       Doc.group
@@ -3470,11 +3394,9 @@ let make_lowerer =
                 [
                   Doc.break ~flat:" " ();
                   render_fields fields separator_tokens (Doc.break ~flat:" " ());
-
                 ]);
             Doc.break ~flat:" " ();
             doc_of_token closing_token;
-
           ])
   and render_index_expression ({
       collection;
@@ -3502,7 +3424,6 @@ let make_lowerer =
         Doc.concat (List.map doc_of_token opening_tokens);
         render_expression index;
         doc_of_token closing_token;
-
       ]
   and render_record_expression = function
     | Syn.Cst.RecordExpression.Literal {
@@ -3516,8 +3437,7 @@ let make_lowerer =
         let rec render_fields fields separator_tokens break_doc =
           match fields, separator_tokens with
           | [], [] -> Doc.empty
-          | [ field ], [] -> Doc.concat
-            [ field; render_record_expression_field_separator None ]
+          | [ field ], [] -> Doc.concat [ field; render_record_expression_field_separator None ]
           | [ field ], [ separator_token ] -> Doc.concat
             [ field; render_record_expression_field_separator (Some separator_token) ]
           | field :: rest, separator_token :: rest_separators -> Doc.concat
@@ -3548,7 +3468,10 @@ let make_lowerer =
                 Doc.indent
                   2
                   (Doc.concat
-                    [ Doc.break ~flat:"" (); render_fields rendered_fields separator_tokens (Doc.break ~flat:"" ()) ]);
+                    [
+                      Doc.break ~flat:"" ();
+                      render_fields rendered_fields separator_tokens (Doc.break ~flat:"" ())
+                    ]);
                 Doc.break ~flat:"" ();
                 doc_of_token closing_token;
               ])
@@ -3566,8 +3489,7 @@ let make_lowerer =
         let rec render_fields fields separator_tokens break_doc =
           match fields, separator_tokens with
           | [], [] -> Doc.empty
-          | [ field ], [] -> Doc.concat
-            [ field; render_record_expression_field_separator None ]
+          | [ field ], [] -> Doc.concat [ field; render_record_expression_field_separator None ]
           | [ field ], [ separator_token ] -> Doc.concat
             [ field; render_record_expression_field_separator (Some separator_token) ]
           | field :: rest, separator_token :: rest_separators -> Doc.concat
@@ -3579,7 +3501,11 @@ let make_lowerer =
             ]
           | _ -> unsupported "record update fields missing separator tokens"
         in
-        if List.exists Doc.is_multiline rendered_fields || Doc.is_multiline base_doc || List.length fields > 4 then
+        if
+          List.exists Doc.is_multiline rendered_fields
+          || Doc.is_multiline base_doc
+          || List.length fields > 4
+        then
           Doc.concat
             [
               doc_of_token opening_token;
@@ -3654,7 +3580,6 @@ let make_lowerer =
             module_doc;
             Doc.space;
             doc_of_token in_token;
-
           ] in
         if Doc.is_multiline body_doc || expression_requires_break_after_equals body then
           Doc.concat [ head; Doc.line; Doc.indent 2 body_doc ]
@@ -3672,8 +3597,7 @@ let make_lowerer =
         let body_doc = render_expression body in
         (
           match opening_token, closing_token with
-          | None, None ->
-              Doc.concat [ module_doc; doc_of_token dot_token; body_doc ]
+          | None, None -> Doc.concat [ module_doc; doc_of_token dot_token; body_doc ]
           | Some opening_token, Some closing_token ->
               if Doc.is_multiline body_doc then
                 Doc.concat
@@ -3685,7 +3609,6 @@ let make_lowerer =
                     Doc.indent 2 body_doc;
                     Doc.line;
                     doc_of_token closing_token;
-
                   ]
               else if expression_requires_spaced_delimited_local_open body then
                 Doc.concat
@@ -3697,7 +3620,6 @@ let make_lowerer =
                     body_doc;
                     Doc.space;
                     doc_of_token closing_token;
-
                   ]
               else
                 Doc.concat
@@ -3707,7 +3629,6 @@ let make_lowerer =
                     doc_of_token opening_token;
                     body_doc;
                     doc_of_token closing_token;
-
                   ]
           | _ -> panic "render_local_open_expression: mismatched delimited local-open tokens"
         )
@@ -3724,7 +3645,6 @@ let make_lowerer =
           doc_of_token separator_token;
           Doc.line;
           render_body rest rest_separators;
-
         ]
       | _ -> unsupported "list expression elements missing separator tokens"
     in
@@ -3736,7 +3656,6 @@ let make_lowerer =
         Doc.indent 2 body;
         Doc.line;
         doc_of_token closing_token;
-
       ]
   and render_apply_argument = function
     | Syn.Cst.Positional (Syn.Cst.Expression.Function _ as expression) ->
@@ -3747,7 +3666,6 @@ let make_lowerer =
             Doc.indent 2 (render_expression expression);
             Doc.line;
             Doc.rparen;
-
           ]
     | Syn.Cst.Positional (Syn.Cst.Expression.Parenthesized ({
       grouping=Syn.Cst.Parens;
@@ -3780,7 +3698,7 @@ let make_lowerer =
                 [ Doc.lparen; render_expression value; Doc.rparen ]
               | _ -> render_expression value
             in
-            Doc.concat [ doc_of_token sigil_token; doc_of_token label_token; Doc.text ":"; value;  ]
+            Doc.concat [ doc_of_token sigil_token; doc_of_token label_token; Doc.text ":"; value; ]
       )
     | Syn.Cst.Optional { sigil_token; label_token; value; _ } -> (
         match value with
@@ -3801,14 +3719,15 @@ let make_lowerer =
                 [ Doc.lparen; render_expression value; Doc.rparen ]
               | _ -> render_expression value
             in
-            Doc.concat [ doc_of_token sigil_token; doc_of_token label_token; Doc.text ":"; value;  ]
+            Doc.concat [ doc_of_token sigil_token; doc_of_token label_token; Doc.text ":"; value; ]
       )
   and apply_argument_prefers_break = function
     | Syn.Cst.Positional (Syn.Cst.Expression.Parenthesized {
       inner=(Syn.Cst.Expression.If _ | Syn.Cst.Expression.Match _ | Syn.Cst.Expression.Try _ | Syn.Cst.Expression.LetOperator _ | Syn.Cst.Expression.Let _ | Syn.Cst.Expression.Sequence _);
       _;
 
-    }) -> true
+    }) ->
+        true
     | Syn.Cst.Positional (Syn.Cst.Expression.Parenthesized {
       inner=Syn.Cst.Expression.Infix { operator_tokens; _ };
       _
@@ -3817,10 +3736,13 @@ let make_lowerer =
         | [ operator_token ] -> Syn.Cst.Token.fixed_operator operator_token = Some Syn.Cst.Token.PipeForward
         | _ -> false
       )
-    | Syn.Cst.Positional expression -> expression_prefers_multiline_layout expression
+    | Syn.Cst.Positional expression ->
+        expression_prefers_multiline_layout expression
     | Syn.Cst.Labeled { value=Some value; _ }
-    | Syn.Cst.Optional { value=Some value; _ } -> expression_prefers_multiline_layout value
-    | _ -> false
+    | Syn.Cst.Optional { value=Some value; _ } ->
+        expression_prefers_multiline_layout value
+    | _ ->
+        false
   and render_infix_expression ({
       syntax_node;
       left;
@@ -3828,9 +3750,17 @@ let make_lowerer =
       right;
       _
     }: Syn.Cst.infix_expression) =
-    let parts = infix_chain
-      operator_tokens
-      (Syn.Cst.Expression.Infix {syntax_node; left; operator_tokens; right; attributes = []}) in
+    let parts = infix_chain operator_tokens
+      (
+        Syn.Cst.Expression.Infix {
+          syntax_node;
+          left;
+          operator_tokens;
+          right;
+          attributes = [];
+        }
+      )
+    in
     let render_part ~with_leading_trivia expression =
       let rendered = render_expression expression in
       if with_leading_trivia then
@@ -3843,7 +3773,8 @@ let make_lowerer =
     match parts with
     | [] -> Doc.empty
     | first :: rest ->
-        let separator = Doc.concat [ Doc.break (); doc_of_operator_tokens operator_tokens; Doc.space ] in
+        let separator = Doc.concat
+          [ Doc.break (); doc_of_operator_tokens operator_tokens; Doc.space ] in
         Doc.group
           (Doc.concat
             (render_part ~with_leading_trivia:false first
@@ -3852,9 +3783,9 @@ let make_lowerer =
               rest))
   and render_apply_expression ({ syntax_node; callee; argument; _ }: Syn.Cst.apply_expression) =
     let rec collect_arguments = fun acc ->
-        function
-        | Syn.Cst.Expression.Apply { callee; argument; _ } -> collect_arguments (argument :: acc) callee
-        | expression -> (expression, acc)
+      function
+      | Syn.Cst.Expression.Apply { callee; argument; _ } -> collect_arguments (argument :: acc) callee
+      | expression -> (expression, acc)
     in
     let head, arguments = collect_arguments [ argument ] callee in
     let rendered_head =
@@ -3862,7 +3793,8 @@ let make_lowerer =
       | Syn.Cst.Expression.Parenthesized _ as expression -> render_parenthesized_expression expression
       | _ -> render_expression head
     in
-    let rendered_arguments = arguments |> List.map
+    let rendered_arguments = arguments
+    |> List.map
       (fun argument ->
         render_apply_argument argument
         |> doc_with_boundary_trivia
@@ -3874,10 +3806,10 @@ let make_lowerer =
         rendered_argument_pairs
     then
       let rec split_inline_prefix = fun acc ->
-          function
-          | (argument, doc) :: rest when not (apply_argument_prefers_break argument)
-          && not (Doc.is_multiline doc) -> split_inline_prefix (doc :: acc) rest
-          | rest -> (List.rev acc, rest)
+        function
+        | (argument, doc) :: rest when not (apply_argument_prefers_break argument)
+        && not (Doc.is_multiline doc) -> split_inline_prefix (doc :: acc) rest
+        | rest -> (List.rev acc, rest)
       in
       let inline_arguments, multiline_arguments = split_inline_prefix [] rendered_argument_pairs in
       let head_with_inline_arguments = Doc.concat
@@ -3888,7 +3820,7 @@ let make_lowerer =
         | multiline_arguments ->
             Doc.concat
               [ head_with_inline_arguments; Doc.line; Doc.indent 2
-                  (multiline_arguments |> List.map snd |> Doc.join Doc.line);  ]
+                  (multiline_arguments |> List.map snd |> Doc.join Doc.line); ]
       )
     else
       Doc.group
@@ -3899,7 +3831,6 @@ let make_lowerer =
               2
               (Doc.concat
                 (List.map (fun argument -> Doc.concat [ Doc.break (); argument ]) rendered_arguments));
-
           ])
   and render_if_expression ({
       syntax_node;
@@ -3920,7 +3851,6 @@ let make_lowerer =
       then_branch;
       else_branch;
       attributes = [];
-
     }
   and render_case ?(force_multiline_body = false) ?(force_leading_bar = false) (
     case: Syn.Cst.match_case
@@ -3966,7 +3896,6 @@ let make_lowerer =
           doc_of_token case.arrow_token;
           Doc.space;
           Doc.indent 2 body;
-
         ]
       | _ when force_multiline_body
       || Doc.is_multiline body
@@ -3979,7 +3908,6 @@ let make_lowerer =
           doc_of_token case.arrow_token;
           Doc.line;
           Doc.indent 4 body;
-
         ]
       | _ -> Doc.concat
         [ prefix; pattern; guard; Doc.space; doc_of_token case.arrow_token; Doc.space; body ]
@@ -4007,7 +3935,7 @@ let make_lowerer =
       | _ when expression_prefers_multiline_layout scrutinee -> render_block_expression scrutinee
       | _ -> render_expression scrutinee
     in
-    let head = Doc.concat [ doc_of_token keyword_token; Doc.space; scrutinee_doc;  ] in
+    let head = Doc.concat [ doc_of_token keyword_token; Doc.space; scrutinee_doc; ] in
     if expression_prefers_multiline_layout scrutinee || Doc.is_multiline scrutinee_doc then
       Doc.concat
         [
@@ -4021,7 +3949,6 @@ let make_lowerer =
             Doc.line
             (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
             cases;
-
         ]
     else
       Doc.concat
@@ -4034,16 +3961,15 @@ let make_lowerer =
             Doc.line
             (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
             cases;
-
         ]
   and flatten_fun_expression ({ parameters; body; _ }: Syn.Cst.fun_expression) =
     let rec loop = fun acc ->
-        function
-        | Syn.Cst.Cases _ as body -> (List.rev acc, body)
-        | Syn.Cst.Expression (Syn.Cst.Expression.Fun ({ parameters; body; _ } as inner)) -> loop
-          (List.rev_append parameters acc)
-          body
-        | Syn.Cst.Expression expression -> (List.rev acc, Syn.Cst.Expression expression)
+      function
+      | Syn.Cst.Cases _ as body -> (List.rev acc, body)
+      | Syn.Cst.Expression (Syn.Cst.Expression.Fun ({ parameters; body; _ } as inner)) -> loop
+        (List.rev_append parameters acc)
+        body
+      | Syn.Cst.Expression expression -> (List.rev acc, Syn.Cst.Expression expression)
     in
     loop (List.rev parameters) body
   and render_fun_expression ({
@@ -4085,7 +4011,6 @@ let make_lowerer =
             (Doc.concat [ Doc.join Doc.space parameters; Doc.space; doc_of_token arrow_token ]);
           Doc.line;
           Doc.indent 2 body;
-
         ]
     else if body_prefers_multiline || List.length parameters = 0 then
       Doc.concat
@@ -4094,7 +4019,7 @@ let make_lowerer =
               Doc.empty
             else
               Doc.concat [ Doc.space; Doc.join Doc.space parameters ]
-          ); Doc.space; doc_of_token arrow_token; Doc.line; Doc.indent 2 body;  ]
+          ); Doc.space; doc_of_token arrow_token; Doc.line; Doc.indent 2 body; ]
     else
       render_fun_arrow_body
         ~keyword:(doc_of_token keyword_token)
@@ -4111,7 +4036,6 @@ let make_lowerer =
           Doc.line
           (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
           cases;
-
       ]
   and render_function_expression_unindented (
     { keyword_token; cases; _ }: Syn.Cst.function_expression
@@ -4125,7 +4049,6 @@ let make_lowerer =
           Doc.line
           (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
           cases;
-
       ]
   and render_fun_body = function
     | Syn.Cst.Expression (Syn.Cst.Expression.Tuple { elements; _ }) ->
@@ -4146,7 +4069,6 @@ let make_lowerer =
               Doc.line
               (render_case ~force_multiline_body:force_multiline_cases ~force_leading_bar:true)
               cases;
-
           ]
   and render_block_expression = function
     | Syn.Cst.Expression.If if_ -> render_if_expression_block if_
@@ -4204,7 +4126,6 @@ let make_lowerer =
           Doc.indent 2 (Doc.concat [ Doc.break (); condition_doc ]);
           Doc.break ();
           doc_of_token then_token;
-
         ]) in
     match else_branch, else_token with
     | None, _ -> (
@@ -4250,7 +4171,7 @@ let make_lowerer =
               | Some trivia -> Doc.indent
                 2
                 (doc_with_leading_trivia (Some trivia) (render_if_expression_block nested_if))
-            );  ]
+            ); ]
     | Some else_branch, Some else_token ->
         let else_branch_leading_trivia = Syn.Cst.leading_trivia_before_node
           ~after:(Syn.Cst.Token.span else_token).end_
@@ -4274,7 +4195,6 @@ let make_lowerer =
               doc_of_token else_token;
               Doc.space;
               else_doc;
-
             ]
           | _ -> Doc.concat
             [
@@ -4285,7 +4205,6 @@ let make_lowerer =
               doc_of_token else_token;
               Doc.line;
               Doc.indent 2 else_doc;
-
             ]
         )
     | Some else_branch, None ->
@@ -4308,7 +4227,7 @@ let make_lowerer =
               Doc.empty
             else
               Doc.concat [ Doc.space; parameters ]
-          ); Doc.space; doc_of_token arrow_token; Doc.concat [ Doc.break (); Doc.indent 2 body ];  ]
+          ); Doc.space; doc_of_token arrow_token; Doc.concat [ Doc.break (); Doc.indent 2 body ]; ]
     )
   and render_parenthesized_expression = function
     | Syn.Cst.Expression.Parenthesized {
@@ -4337,7 +4256,6 @@ let make_lowerer =
               Doc.indent 2 rendered_inner;
               Doc.line;
               doc_of_token closing_token;
-
             ]
           | Syn.Cst.Parens -> (
               match inner with
@@ -4355,7 +4273,6 @@ let make_lowerer =
                         Doc.indent 2 rendered_inner;
                         Doc.line;
                         doc_of_token closing_token;
-
                       ]
                   else
                     render_expression inner
@@ -4367,7 +4284,6 @@ let make_lowerer =
                       Doc.indent 2 rendered_inner;
                       Doc.line;
                       doc_of_token closing_token;
-
                     ]
               | _ -> (
                   match collapse_redundant_parenthesized_expression inner with
@@ -4380,7 +4296,6 @@ let make_lowerer =
                             Doc.indent 2 rendered_inner;
                             Doc.line;
                             doc_of_token closing_token;
-
                           ]
                       else
                         Doc.concat
@@ -4389,7 +4304,6 @@ let make_lowerer =
                             Doc.text "-";
                             render_literal literal;
                             doc_of_token closing_token;
-
                           ]
                   | Some (`Expression expression) ->
                       if has_inner_leading_trivia then
@@ -4400,7 +4314,6 @@ let make_lowerer =
                             Doc.indent 2 rendered_inner;
                             Doc.line;
                             doc_of_token closing_token;
-
                           ]
                       else
                         render_expression expression
@@ -4416,7 +4329,6 @@ let make_lowerer =
                               doc_of_token opening_token;
                               rendered_inner;
                               doc_of_token closing_token;
-
                             ]
                           | _ -> Doc.concat
                             [
@@ -4425,17 +4337,11 @@ let make_lowerer =
                               Doc.indent 2 rendered_inner;
                               Doc.line;
                               doc_of_token closing_token;
-
                             ]
                         )
                       else
                         Doc.concat
-                          [
-                            doc_of_token opening_token;
-                            rendered_inner;
-                            doc_of_token closing_token;
-
-                          ]
+                          [ doc_of_token opening_token; rendered_inner; doc_of_token closing_token; ]
                 )
             )
         )
@@ -4460,7 +4366,6 @@ let make_lowerer =
         render_module_expression_doc module_expression;
         Doc.space;
         kw_in;
-
       ]
     in
     Doc.concat [ header; Doc.line; render_expression body ]
@@ -4479,7 +4384,7 @@ let make_lowerer =
           else
             let equals_doc = doc_of_token equals_token |> doc_with_leading_trivia leading_equals_trivia in
             let alias_doc = doc_of_ident alias |> doc_with_leading_trivia leading_alias_trivia in
-            Doc.concat [ Doc.line; Doc.indent 2 equals_doc; Doc.line; Doc.indent 2 alias_doc;  ]
+            Doc.concat [ Doc.line; Doc.indent 2 equals_doc; Doc.line; Doc.indent 2 alias_doc; ]
       | Some (Syn.Cst.Payload { of_token; payload_type }) ->
           let leading_of_trivia = pending_doc_of_token_leading_trivia of_token in
           let leading_payload_trivia = pending_doc_of_trivia_before_node
@@ -4490,7 +4395,7 @@ let make_lowerer =
           else
             let of_doc = doc_of_token of_token |> doc_with_leading_trivia leading_of_trivia in
             let payload_doc = render_core_type payload_type |> doc_with_leading_trivia leading_payload_trivia in
-            Doc.concat [ Doc.line; Doc.indent 2 of_doc; Doc.line; Doc.indent 2 payload_doc;  ]
+            Doc.concat [ Doc.line; Doc.indent 2 of_doc; Doc.line; Doc.indent 2 payload_doc; ]
     in
     Doc.concat [ doc_of_token decl.keyword_token; Doc.space; doc_of_token decl.name_token; rhs_doc ]
   and render_let_exception_expression (
@@ -4498,7 +4403,7 @@ let make_lowerer =
   ) =
     let exception_doc = render_exception_declaration exception_declaration in
     Doc.concat
-      [ kw_let; Doc.space; exception_doc; Doc.space; kw_in; Doc.line; render_expression body;  ]
+      [ kw_let; Doc.space; exception_doc; Doc.space; kw_in; Doc.line; render_expression body; ]
   and render_binding_operator_binding ({
       keyword_token;
       operator_token;
@@ -4513,7 +4418,6 @@ let make_lowerer =
         doc_of_token operator_token;
         Doc.space;
         render_pattern binding_pattern;
-
       ] in
     let leading_value_trivia = pending_doc_of_trivia_before_node
       ~after:(Syn.Cst.Token.span equals_token).end_
@@ -4561,31 +4465,31 @@ let make_lowerer =
     let expression_count = List.length expressions in
     let separator_token_at index = List.nth_opt separator_tokens index in
     let rec render_sequence_items = fun previous_expression index ->
-        function
-        | [] -> []
-        | expression :: rest ->
-            let leading_trivia =
-              match previous_expression with
-              | None -> None
-              | Some previous_expression -> (
-                  match separator_token_at (index - 1) with
-                  | Some separator_token -> pending_doc_of_trivia
-                    (Syn.Cst.leading_trivia_after_token_before_node
-                      ~after:((Syn.Cst.token_body_span
-                        (Syn.Cst.Expression.syntax_node previous_expression)).end_)
-                      separator_token
-                      (Syn.Cst.Expression.syntax_node expression))
-                  | None -> None
-                )
-            in
-            let suffix =
-              match separator_token_at index with
-              | Some separator_token -> doc_of_token separator_token
-              | None -> Doc.empty
-            in
-            Doc.concat
-              [ doc_with_leading_trivia leading_trivia (render_expression expression); suffix ]
-            :: render_sequence_items (Some expression) (index + 1) rest
+      function
+      | [] -> []
+      | expression :: rest ->
+          let leading_trivia =
+            match previous_expression with
+            | None -> None
+            | Some previous_expression -> (
+                match separator_token_at (index - 1) with
+                | Some separator_token -> pending_doc_of_trivia
+                  (Syn.Cst.leading_trivia_after_token_before_node
+                    ~after:((Syn.Cst.token_body_span
+                      (Syn.Cst.Expression.syntax_node previous_expression)).end_)
+                    separator_token
+                    (Syn.Cst.Expression.syntax_node expression))
+                | None -> None
+              )
+          in
+          let suffix =
+            match separator_token_at index with
+            | Some separator_token -> doc_of_token separator_token
+            | None -> Doc.empty
+          in
+          Doc.concat
+            [ doc_with_leading_trivia leading_trivia (render_expression expression); suffix ]
+          :: render_sequence_items (Some expression) (index + 1) rest
     in
     render_sequence_items None 0 expressions |> Doc.join Doc.line
   and render_binding_header ~keyword_token ~rec_token pattern =
@@ -4678,7 +4582,6 @@ let make_lowerer =
               Doc.lparen;
               render_named_parameter_binding_pattern pattern;
               Doc.rparen;
-
             ]
           | _ -> Doc.concat [ doc_of_token sigil_token; doc_of_token label_token ]
         )
@@ -4694,7 +4597,6 @@ let make_lowerer =
             doc_of_token label_token;
             doc_of_token colon_token;
             render_named_parameter_binding_pattern_internal ~include_type pattern;
-
           ]
   and render_named_parameter ~sigil_token ~label_token ~colon_token ~binding_name_matches_label ~binding_pattern = render_named_parameter_internal
     ~include_type:true
@@ -4732,7 +4634,6 @@ let make_lowerer =
           Doc.space;
           render_expression default_value;
           Doc.rparen;
-
         ]
     else
       let colon_token =
@@ -4757,7 +4658,6 @@ let make_lowerer =
           Doc.space;
           render_expression default_value;
           Doc.rparen;
-
         ]
   and render_optional_parameter_with_default ~sigil_token ~label_token ~colon_token ~equals_token ~binding_name_matches_label ~binding_pattern ~default_value = render_optional_parameter_with_default_internal
     ~include_type:true
@@ -4797,7 +4697,6 @@ let make_lowerer =
                 doc_of_token label_token;
                 doc_of_token colon_token;
                 render_arrow_parameter_type_doc type_;
-
               ])
             | _, None -> None
           )
@@ -4813,7 +4712,6 @@ let make_lowerer =
                 doc_of_token label_token;
                 doc_of_token colon_token;
                 render_arrow_parameter_type_doc type_;
-
               ])
             | _, None -> None
           )
@@ -4823,20 +4721,20 @@ let make_lowerer =
         None
   and synthesize_binding_type_annotation parameters result_type =
     let rec collect = fun binders remaining_parameters parameter_docs ->
-        function
-        | [] ->
-            Some (binders, List.rev remaining_parameters, List.rev parameter_docs)
-        | Syn.Cst.Parameter.LocallyAbstract { binders=new_binders; _ } :: rest ->
-            collect (binders @ new_binders) remaining_parameters parameter_docs rest
-        | parameter :: rest -> (
-            match render_binding_annotation_parameter parameter with
-            | Some parameter_doc -> collect
-              binders
-              (parameter :: remaining_parameters)
-              (parameter_doc :: parameter_docs)
-              rest
-            | None -> None
-          )
+      function
+      | [] ->
+          Some (binders, List.rev remaining_parameters, List.rev parameter_docs)
+      | Syn.Cst.Parameter.LocallyAbstract { binders=new_binders; _ } :: rest ->
+          collect (binders @ new_binders) remaining_parameters parameter_docs rest
+      | parameter :: rest -> (
+          match render_binding_annotation_parameter parameter with
+          | Some parameter_doc -> collect
+            binders
+            (parameter :: remaining_parameters)
+            (parameter_doc :: parameter_docs)
+            rest
+          | None -> None
+        )
     in
     match collect [] [] [] parameters with
     | None -> None
@@ -4860,7 +4758,6 @@ let make_lowerer =
               Doc.text ".";
               Doc.space;
               type_doc;
-
             ]
         in
         Some (type_doc, remaining_parameters)
@@ -4956,7 +4853,6 @@ let make_lowerer =
             Doc.space;
             join_map (Doc.concat [ Doc.space ]) render_type_binder binders;
             Doc.rparen;
-
           ]
   and render_binding_value ~leading_body_trivia ~force_multiline_body ~parameters ~value =
     match parameters with
@@ -4973,7 +4869,7 @@ let make_lowerer =
                     Doc.empty
                   else
                     Doc.concat [ Doc.space; parameters ]
-                ); Doc.space; doc_of_token arrow_token; Doc.line; Doc.indent 2 body;  ]
+                ); Doc.space; doc_of_token arrow_token; Doc.line; Doc.indent 2 body; ]
         | _ ->
             if expression_requires_break_after_equals value then
               render_block_expression value
@@ -4999,13 +4895,12 @@ let make_lowerer =
               Doc.indent 2 (Doc.concat [ parameters; Doc.space; Doc.arrow ]);
               Doc.line;
               Doc.indent 2 body;
-
             ]
         else if
           force_multiline_body || function_body_prefers_multiline value || Doc.is_multiline body
         then
           Doc.concat
-            [ kw_fun; Doc.space; parameters; Doc.space; Doc.arrow; Doc.line; Doc.indent 2 body;  ]
+            [ kw_fun; Doc.space; parameters; Doc.space; Doc.arrow; Doc.line; Doc.indent 2 body; ]
         else
           Doc.group
             (Doc.concat
@@ -5016,7 +4911,6 @@ let make_lowerer =
                 Doc.space;
                 Doc.arrow;
                 Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
-
               ])
   and render_binding_value_with_parameter_doc ~leading_body_trivia ~force_multiline_body ~parameter_doc ~value =
     let body =
@@ -5027,7 +4921,7 @@ let make_lowerer =
     let body = doc_with_leading_trivia leading_body_trivia body in
     if force_multiline_body || function_body_prefers_multiline value || Doc.is_multiline body then
       Doc.concat
-        [ kw_fun; Doc.space; parameter_doc; Doc.space; Doc.arrow; Doc.line; Doc.indent 2 body;  ]
+        [ kw_fun; Doc.space; parameter_doc; Doc.space; Doc.arrow; Doc.line; Doc.indent 2 body; ]
     else
       Doc.group
         (Doc.concat
@@ -5038,7 +4932,6 @@ let make_lowerer =
             Doc.space;
             Doc.arrow;
             Doc.indent 2 (Doc.concat [ Doc.break (); body ]);
-
           ])
   and local_binding_value_stays_after_equals ~leading_value_trivia ~has_parameters ~keep_header_parameters value =
     if Option.is_some leading_value_trivia && (not has_parameters || keep_header_parameters) then
@@ -5098,10 +4991,12 @@ let make_lowerer =
     in
     let rendered_type_annotation, parameters, synthesized_type_annotation =
       match type_annotation with
-      | None ->
-          (None, parameters, false)
-      | Some (colon_token, type_) ->
-          (Some (Some colon_token, render_core_type type_), parameters, false)
+      | None -> (None, parameters, false)
+      | Some (colon_token, type_) -> (
+        Some (Some colon_token, render_core_type type_),
+        parameters,
+        false
+      )
     in
     let header = render_binding_header ~keyword_token ~rec_token pattern in
     let parameter_doc =
@@ -5179,25 +5074,11 @@ let make_lowerer =
         (
           match value with
           | Syn.Cst.Expression.Fun _ -> Doc.concat
-            [
-              header;
-              Doc.space;
-              doc_of_token equals_token;
-              Doc.space;
-              rendered_value;
-
-            ]
+            [ header; Doc.space; doc_of_token equals_token; Doc.space; rendered_value; ]
           | Syn.Cst.Expression.Function _ -> Doc.concat
-            [
-              header;
-              Doc.space;
-              doc_of_token equals_token;
-              Doc.space;
-              Doc.indent 2 rendered_value;
-
-            ]
+            [ header; Doc.space; doc_of_token equals_token; Doc.space; Doc.indent 2 rendered_value; ]
           | _ -> Doc.concat
-            [ header; Doc.space; doc_of_token equals_token; Doc.space; rendered_value;  ]
+            [ header; Doc.space; doc_of_token equals_token; Doc.space; rendered_value; ]
         )
       else if
         not (expression_is_simple_after_equals value)
@@ -5208,17 +5089,15 @@ let make_lowerer =
           match value with
           | Syn.Cst.Expression.Infix ({ operator_tokens; _ } as infix) when parameters = [] || keep_header_parameters ->
               let parts = infix_chain operator_tokens (Syn.Cst.Expression.Infix infix) in
-              let rendered_value =
-                join_map
-                  (Doc.concat [ Doc.line; doc_of_operator_tokens operator_tokens; Doc.space ])
-                  render_expression
-                  parts
-              in
+              let rendered_value = join_map
+                (Doc.concat [ Doc.line; doc_of_operator_tokens operator_tokens; Doc.space ])
+                render_expression
+                parts in
               doc_with_leading_trivia leading_value_trivia rendered_value
           | _ -> rendered_value
         in
         Doc.concat
-          [ header; Doc.space; doc_of_token equals_token; Doc.line; Doc.indent 2 rendered_value;  ]
+          [ header; Doc.space; doc_of_token equals_token; Doc.line; Doc.indent 2 rendered_value; ]
       else
         Doc.group
           (Doc.concat
@@ -5227,7 +5106,6 @@ let make_lowerer =
               Doc.space;
               doc_of_token equals_token;
               Doc.indent 2 (Doc.concat [ Doc.break (); rendered_value ]);
-
             ])
     in
     doc_with_leading_trivia leading_binding_trivia rendered_binding
@@ -5281,9 +5159,9 @@ let make_lowerer =
       (Syn.Cst.Expression.syntax_node body) in
     let body_doc = render_expression body |> doc_with_leading_trivia body_trivia in
     if Doc.is_multiline first_binding then
-      Doc.concat [ bindings; Doc.line; doc_of_token in_token; Doc.line; body_doc;  ]
+      Doc.concat [ bindings; Doc.line; doc_of_token in_token; Doc.line; body_doc; ]
     else
-      Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc;  ]
+      Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc; ]
   and render_let_binding_group_item ?leading_binding_trivia_override (binding: Syn.Cst.let_binding) =
     let source_has_explicit_fun = binding_has_explicit_fun_rhs binding in
     let leading_binding_trivia =
@@ -5308,7 +5186,7 @@ let make_lowerer =
     let first = render_let_binding_group_item ~leading_binding_trivia_override:None binding in
     let trailing = Syn.Cst.LetBinding.and_bindings binding
     |> List.map
-      (fun and_binding -> Doc.concat [ blank_line; render_let_binding_group_item and_binding;  ]) in
+      (fun and_binding -> Doc.concat [ blank_line; render_let_binding_group_item and_binding; ]) in
     Doc.concat (first :: trailing)
   and nested_signature_items_from_module_type module_type =
     match Syn.CstBuilder.signature_items_of_module_type module_type with
@@ -5337,7 +5215,6 @@ let make_lowerer =
         render_core_type constraint_.constrained_type;
         separator;
         render_core_type constraint_.replacement_type;
-
       ]
   and render_functor_parameter (
     { name_token; colon_token; module_type; _ }: Syn.Cst.functor_parameter
@@ -5350,7 +5227,6 @@ let make_lowerer =
       Doc.space;
       render_module_type_doc module_type;
       Doc.rparen;
-
     ]
   and render_module_type_doc = function
     | Syn.Cst.ModuleType.Path path ->
@@ -5370,7 +5246,7 @@ let make_lowerer =
         let body = render_signature_items
           ~source_node:syntax_node
           (nested_signature_items_from_module_type module_type) in
-        Doc.concat [ Doc.text "sig"; Doc.line; Doc.indent 2 body; Doc.line; Doc.text "end";  ]
+        Doc.concat [ Doc.text "sig"; Doc.line; Doc.indent 2 body; Doc.line; Doc.text "end"; ]
     | Syn.Cst.ModuleType.Functor { parameters; result; _ } ->
         Doc.concat
           [
@@ -5381,7 +5257,6 @@ let make_lowerer =
             Doc.arrow;
             Doc.space;
             render_module_type_doc result;
-
           ]
     | Syn.Cst.ModuleType.With { base; constraints; _ } ->
         let first, rest =
@@ -5395,7 +5270,7 @@ let make_lowerer =
           :: first
           :: List.map
             (fun constraint_ ->
-              Doc.concat [ Doc.space; render_module_type_constraint ~keyword:kw_and constraint_;  ])
+              Doc.concat [ Doc.space; render_module_type_constraint ~keyword:kw_and constraint_; ])
             rest)
     | Syn.Cst.ModuleType.Parenthesized { opening_token; inner; closing_token; _ } ->
         Doc.concat
@@ -5415,7 +5290,7 @@ let make_lowerer =
         let body = render_structure_items
           ~source_node:syntax_node
           (nested_structure_items_from_module_expression module_expression) in
-        Doc.concat [ Doc.text "struct"; Doc.line; Doc.indent 2 body; Doc.line; Doc.text "end";  ]
+        Doc.concat [ Doc.text "struct"; Doc.line; Doc.indent 2 body; Doc.line; Doc.text "end"; ]
     | Syn.Cst.ModuleExpression.Functor { parameters; body; _ } ->
         Doc.concat
           [
@@ -5426,7 +5301,6 @@ let make_lowerer =
             Doc.arrow;
             Doc.space;
             render_module_expression_doc body;
-
           ]
     | Syn.Cst.ModuleExpression.Apply { callee; argument; _ } ->
         Doc.concat
@@ -5434,7 +5308,6 @@ let make_lowerer =
             render_module_expression_doc callee;
             Doc.space;
             render_module_application_argument argument;
-
           ]
     | Syn.Cst.ModuleExpression.ApplyUnit { callee; _ } ->
         Doc.concat [ render_module_expression_doc callee; Doc.space; Doc.lparen; Doc.rparen ]
@@ -5446,7 +5319,6 @@ let make_lowerer =
             doc_of_token colon_token;
             Doc.space;
             render_module_type_doc module_type;
-
           ]
     | Syn.Cst.ModuleExpression.ModuleUnpack {
       opening_token;
@@ -5481,7 +5353,6 @@ let make_lowerer =
             render_expression expression;
             constraint_doc;
             doc_of_token closing_token;
-
           ]
     | Syn.Cst.ModuleExpression.Parenthesized { opening_token; inner; closing_token; _ } ->
         Doc.concat
@@ -5526,9 +5397,8 @@ let make_lowerer =
               [
                 Doc.space;
                 Doc.join Doc.space (List.map render_functor_parameter functor_parameters);
-
               ]
-        );  ]
+        ); ]
     in
     match Syn.Cst.ModuleSignature.definition decl with
     | Syn.Cst.ModuleSignature.Signature module_type ->
@@ -5585,9 +5455,8 @@ let make_lowerer =
               [
                 Doc.space;
                 Doc.join Doc.space (List.map render_functor_parameter functor_parameters);
-
               ]
-        );  ]
+        ); ]
     in
     let header =
       match module_type with
@@ -5633,7 +5502,6 @@ let make_lowerer =
         doc_of_token type_keyword_token;
         Doc.space;
         doc_of_token module_type_name;
-
       ] in
     match module_type with
     | None -> header
@@ -5650,7 +5518,6 @@ let make_lowerer =
             doc_of_token_with_leading_trivia equals_token;
             Doc.space;
             render_module_type_doc module_type;
-
           ]
   and render_open_target = function
     | Syn.Cst.OpenStatement.Path path -> doc_of_ident path
@@ -5791,7 +5658,7 @@ let make_lowerer =
               match open_.bang_token with
               | None -> Doc.empty
               | Some bang_token -> doc_of_token bang_token
-            ); Doc.space; render_open_target open_.target;  ]
+            ); Doc.space; render_open_target open_.target; ]
     | Syn.Cst.StructureItem.Attribute attribute -> render_floating_attribute attribute
     | Syn.Cst.StructureItem.Docstring docstring -> doc_of_token (Syn.Cst.Docstring.token docstring)
     | Syn.Cst.StructureItem.Comment comment -> doc_of_token (Syn.Cst.Comment.token comment)
@@ -5810,7 +5677,6 @@ let make_lowerer =
           (Syn.Cst.ValueDeclaration.keyword_token decl);
         Doc.space;
         render_value_declaration_name decl;
-
       ] in
     let base = render_tight_colon_rhs
       head
@@ -5836,7 +5702,7 @@ let make_lowerer =
               match open_.bang_token with
               | None -> Doc.empty
               | Some bang_token -> doc_of_token bang_token
-            ); Doc.space; render_open_target open_.target;  ]
+            ); Doc.space; render_open_target open_.target; ]
     | Syn.Cst.SignatureItem.Attribute attribute -> render_floating_attribute attribute
     | Syn.Cst.SignatureItem.Docstring docstring -> doc_of_token (Syn.Cst.Docstring.token docstring)
     | Syn.Cst.SignatureItem.Comment comment -> doc_of_token (Syn.Cst.Comment.token comment)
@@ -5865,7 +5731,6 @@ let make_lowerer =
           extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
           doc_of_ident extension.name;
           render_extension_payload_doc_with_context ~context:extension_payload_context extension;
-
         ]
     in
     let head =
@@ -5885,14 +5750,13 @@ let make_lowerer =
                 Doc.empty
               else
                 Doc.space
-            ); params; Doc.space; doc_of_token class_name;  ]
+            ); params; Doc.space; doc_of_token class_name; ]
     in
     Doc.concat
       [
         head;
         doc_of_token (Syn.Cst.ClassDeclaration.colon_token declaration);
         render_class_type_doc (Syn.Cst.ClassDeclaration.class_type declaration);
-
       ]
   and render_class_definition ~leading_after (declaration: Syn.Cst.ClassDefinition.t) =
     let type_params = Syn.Cst.ClassDefinition.type_params declaration in
@@ -5909,7 +5773,6 @@ let make_lowerer =
           extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
           doc_of_ident extension.name;
           render_extension_payload_doc_with_context ~context:extension_payload_context extension;
-
         ]
     in
     let head =
@@ -5929,7 +5792,7 @@ let make_lowerer =
                 Doc.empty
               else
                 Doc.space
-            ); params; Doc.space; doc_of_token class_name;  ]
+            ); params; Doc.space; doc_of_token class_name; ]
     in
     match Syn.Cst.ClassDefinition.class_type declaration with
     | Some class_type ->
@@ -5947,7 +5810,6 @@ let make_lowerer =
             doc_of_token_with_leading_trivia (Syn.Cst.ClassDefinition.equals_token declaration);
             Doc.space;
             render_class_expression (Syn.Cst.ClassDefinition.class_body declaration);
-
           ]
     | None -> Doc.concat
       [
@@ -5956,7 +5818,6 @@ let make_lowerer =
         doc_of_token_with_leading_trivia (Syn.Cst.ClassDefinition.equals_token declaration);
         Doc.space;
         render_class_expression (Syn.Cst.ClassDefinition.class_body declaration);
-
       ]
   and render_class_type_declaration ~leading_after ({
       class_keyword_token;
@@ -5977,7 +5838,6 @@ let make_lowerer =
           doc_of_token_with_filtered_leading_trivia ~after:leading_after class_keyword_token;
           Doc.space;
           doc_of_token type_keyword_token;
-
         ]
       | Some extension -> Doc.concat
         [
@@ -5987,7 +5847,6 @@ let make_lowerer =
           extension.sigil_tokens |> List.map doc_of_token |> Doc.concat;
           doc_of_ident extension.name;
           render_extension_payload_doc_with_context ~context:extension_payload_context extension;
-
         ]
     in
     let head =
@@ -5999,7 +5858,7 @@ let make_lowerer =
                 Doc.empty
               else
                 Doc.space
-            ); doc_of_token class_type_name;  ]
+            ); doc_of_token class_type_name; ]
       else
         Doc.concat
           [ keyword; Doc.space; join_map Doc.space render_attribute declaration_attributes; (
@@ -6007,7 +5866,7 @@ let make_lowerer =
                 Doc.empty
               else
                 Doc.space
-            ); params; Doc.space; doc_of_token class_type_name;  ]
+            ); params; Doc.space; doc_of_token class_type_name; ]
     in
     Doc.concat
       [
@@ -6108,20 +5967,20 @@ let make_lowerer =
     loop [] 0 items
   and render_signature_items ~source_node:_ items = render_signature_top_level_items ~items
   in
-  {render_structure_items; render_signature_items}
+  {render_structure_items;render_signature_items;}
 
 let source_file = fun source_file ->
-    try
-      let lowerer = make_lowerer in
-      Ok (
-        match source_file with
-        | Syn.Cst.Implementation implementation -> lowerer.render_structure_items
-          ~trailing_phrase_separator_tokens:implementation.trailing_phrase_separator_tokens
-          ~source_node:implementation.syntax_node
-          implementation.items
-        | Syn.Cst.Interface interface -> lowerer.render_signature_items
-          ~source_node:(Syn.Cst.SourceFile.syntax_node (Syn.Cst.Interface interface))
-          interface.items
-      )
-    with
-    | Unsupported err -> Error err
+  try
+    let lowerer = make_lowerer in
+    Ok (
+      match source_file with
+      | Syn.Cst.Implementation implementation -> lowerer.render_structure_items
+        ~trailing_phrase_separator_tokens:implementation.trailing_phrase_separator_tokens
+        ~source_node:implementation.syntax_node
+        implementation.items
+      | Syn.Cst.Interface interface -> lowerer.render_signature_items
+        ~source_node:(Syn.Cst.SourceFile.syntax_node (Syn.Cst.Interface interface))
+        interface.items
+    )
+  with
+  | Unsupported err -> Error err

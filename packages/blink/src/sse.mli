@@ -35,7 +35,6 @@ type event = {
   id: string option;  (** Optional event ID field *)
 }
 val await: Connection.t -> event Iter.MutIterator.t
-
 (** Returns a mutable iterator over SSE events from the connection.
     
     The iterator:

@@ -19,7 +19,6 @@ type error =
   | `Detection_error of string
 ]
 val to_string_error: error -> string
-
 (** Create protocol detector
 
     @param config Server configuration

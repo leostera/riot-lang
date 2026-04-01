@@ -4,9 +4,9 @@ open Gooey
 (* Debug program to print layout widths *)
 
 let text_measurer = fun text _style ->
-    let width = float_of_int (String.length text) in
-    let height = 1.0 in
-    Viewport.make ~width ~height
+  let width = float_of_int (String.length text) in
+  let height = 1.0 in
+  Viewport.make ~width ~height
 
 let () =
   (* Create UI: Three columns (Fixed 20, Grow, Fixed 15) *)
@@ -19,7 +19,6 @@ let () =
       Element.container
         ~style:((Style.empty |> Style.width (Style.Fixed 15.0)))
         [ Element.text "Right" ];
-
     ] in
   (* Layout with 80x24 viewport *)
   let viewport = Viewport.make ~width:80.0 ~height:24.0 in

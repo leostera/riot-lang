@@ -4,11 +4,11 @@ open Gooey
 (* Simple text measurer for terminal - measures in character cells *)
 
 let text_measurer = fun text _style ->
-    (* Width is just the string length in characters *)
-    let width = float_of_int (String.length text) in
-    (* Height is 1 line *)
-    let height = 1.0 in
-    Viewport.make ~width ~height
+  (* Width is just the string length in characters *)
+  let width = float_of_int (String.length text) in
+  (* Height is 1 line *)
+  let height = 1.0 in
+  Viewport.make ~width ~height
 
 let () =
   Miniriot.run
@@ -46,7 +46,6 @@ let () =
                 |> Style.height (Style.Fixed 3.0)
                 |> Style.bg (`rgb (100, 100, 255))))
                 [];
-
             ];
           Element.text ~style:((Style.empty |> Style.fg (`rgb (200, 200, 200)))) "This is rendered to your terminal!";
           Element.container
@@ -57,7 +56,6 @@ let () =
             [
               Element.text ~style:((Style.empty |> Style.fg (`rgb (255, 255, 200)))) "Box with border and background"
             ];
-
         ] in
       (* Create config with text measurer *)
       (* Get actual terminal dimensions *)

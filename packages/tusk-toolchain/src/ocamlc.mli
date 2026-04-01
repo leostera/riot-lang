@@ -52,7 +52,6 @@ val compile_interface:
   output:Path.t ->
   Path.t ->
   invocation
-
 (** Compile an interface file (.mli -> .cmi). The current directory is
     automatically included. *)
 val compile_impl:
@@ -63,7 +62,6 @@ val compile_impl:
   output:Path.t ->
   Path.t ->
   invocation
-
 (** Compile an implementation file (.ml -> .cmo). The current directory is
     automatically included. *)
 val generate_interface:
@@ -74,16 +72,13 @@ val generate_interface:
   output:Path.t ->
   Path.t ->
   invocation
-
 (** Generate interface file (.ml -> .mli) using ocamlc -i. Infers the module
     interface from an implementation file and writes it to output. *)
 val compile_c:
   t -> cwd:Std.Path.t -> includes:Path.t list -> ?ccflags:string list -> output:Path.t -> Path.t -> invocation
-
 (** Compile a C file. The optional ccflags parameter specifies additional
     C compiler flags like -I for include directories. *)
 val create_library: t -> cwd:Std.Path.t -> includes:Path.t list -> output:Path.t -> Path.t list -> invocation
-
 (** Create a library (.cma) from object files *)
 val create_executable:
   t ->
@@ -96,7 +91,6 @@ val create_executable:
   ?cclib_flags:string list ->
   Path.t list ->
   invocation
-
 (** Create an executable from object files and libraries. The current directory
     is automatically included. The optional cclibs parameter specifies foreign
     C/Rust libraries to link with -cclib flags. The optional ccopt_flags parameter
@@ -114,7 +108,6 @@ val create_shared_library:
   ?cclib_flags:string list ->
   Path.t list ->
   invocation
-
 (** Create a shared library (.cmxs) from object files and libraries using -shared.
     Parameters are the same as create_executable but produces a plugin loadable with Dynlink. *)
 val create_custom_executable:
@@ -125,21 +118,16 @@ val create_custom_executable:
   libs:Path.t list ->
   Path.t list ->
   invocation
-
 (** Create a custom executable with C stubs. The current directory is
     automatically included. *)
 val to_string: invocation -> string
-
 (** Render the prepared compiler invocation as a shell-style string for logging
     and telemetry. *)
 val run: invocation -> result
-
 (** Execute a prepared compiler invocation. *)
 (** {1 Result Helpers} *)
 
 val is_success: result -> bool
-
 (** Check if compilation succeeded *)
 val get_output: result -> string
-
 (** Get output message from result *)

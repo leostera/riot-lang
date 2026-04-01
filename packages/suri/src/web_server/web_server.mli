@@ -253,10 +253,8 @@ module Http1 = Http1_handler
     See {!Http1} for internals. *)
 
 module Http2 = Http2_handler
-
 (** HTTP/2 protocol handler *)
 module ProtocolDetector = Protocol_detector
-
 (** Auto-detect HTTP/1.1 vs HTTP/2 and switch handlers *)
 val start_link:
   ?host:string ->
@@ -268,7 +266,6 @@ val start_link:
   (Std.Supervisor.Dynamic.t, [>
     `Bind_error
   ]) Std.result
-
 (** Start a supervised HTTP/1.1 server.
 
     This is the main entry point for starting a Suri web server.

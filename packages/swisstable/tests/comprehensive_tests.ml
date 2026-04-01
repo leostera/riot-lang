@@ -3,7 +3,7 @@ open Std
 (* Helper to create pre-allocated keys to avoid hash instability *)
 
 let make_keys = fun n ->
-    Collections.Array.init n (fun i -> "key" ^ string_of_int i)
+  Collections.Array.init n (fun i -> "key" ^ string_of_int i)
 
 let tests = [
   Test.case "zero capacity"
@@ -377,7 +377,6 @@ let tests = [
         map;
       Test.assert_equal ~expected:0 ~actual:(Sync.Cell.get count);
       Ok ());
-
 ]
 
 let () =

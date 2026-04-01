@@ -29,12 +29,10 @@ type error =
   | Closed
   | System_error of IO.error
 val connect: host:string -> port:int -> (t, error) result
-
 (** [send client data] sends the string data to the server. The string should
     include any necessary delimiters (e.g., newlines). The entire string will be
     sent before returning. Returns [Error] if the send fails. *)
 val send: t -> string -> (unit, string) result
-
 (** [receive client] reads from the server until a newline character is found,
     then returns the line (without the newline). If multiple lines were received
     in a single read, the additional data is buffered internally and will be
@@ -44,6 +42,5 @@ val send: t -> string -> (unit, string) result
     It can be called multiple times to handle streaming responses where each
     response is newline-delimited. *)
 val receive: t -> (string, string) result
-
 (** [close client] closes the TCP connection. *)
 val close: t -> unit

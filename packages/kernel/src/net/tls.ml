@@ -34,11 +34,11 @@ type handshake_result =
 external do_handshake_raw: engine -> int = "kernel_tls_do_handshake"
 
 let do_handshake = fun engine ->
-    match do_handshake_raw engine with
-    | 0 -> Handshake_done
-    | -1 -> Need_network_read
-    | -2 -> Need_network_write
-    | _ -> panic "Invalid do_handshake result"
+  match do_handshake_raw engine with
+  | 0 -> Handshake_done
+  | -1 -> Need_network_read
+  | -2 -> Need_network_write
+  | _ -> panic "Invalid do_handshake result"
 
 external handshake_complete: engine -> bool = "kernel_tls_handshake_complete"
 
@@ -60,31 +60,31 @@ type write_result =
 (* Wrapper for read_decrypted *)
 
 let read_decrypted = fun engine buf ~pos ~len ->
-    let n = _read_decrypted engine buf pos len in
-    if n > 0 then
-      Read n
-    else if n = 0 then
-      Eof
-    else if n = (-1) then
-      Need_network_read
-    else if n = (-2) then
-      Need_network_write
-    else
-      Eof
+  let n = _read_decrypted engine buf pos len in
+  if n > 0 then
+    Read n
+  else if n = 0 then
+    Eof
+  else if n = (-1) then
+    Need_network_read
+  else if n = (-2) then
+    Need_network_write
+  else
+    Eof
 
 (* Shouldn't happen, treat as EOF *)
 
 (* Wrapper for write_plaintext *)
 
 let write_plaintext = fun engine buf ~pos ~len ->
-    let n = _write_plaintext engine buf pos len in
-    if n > 0 then
-      Written n
-    else if n = (-1) then
-      Need_network_read
-    else if n = (-2) then
-      Need_network_write
-    else
-      Need_network_write
+  let n = _write_plaintext engine buf pos len in
+  if n > 0 then
+    Written n
+  else if n = (-1) then
+    Need_network_read
+  else if n = (-2) then
+    Need_network_write
+  else
+    Need_network_write
 
 (* Shouldn't happen, retry write *)

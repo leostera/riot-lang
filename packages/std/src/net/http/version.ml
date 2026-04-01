@@ -25,14 +25,14 @@ let to_string = function
   | Http3 -> "HTTP/3"
 
 let compare = fun v1 v2 ->
-    let version_num = function
-      | Http09 -> 0
-      | Http10 -> 1
-      | Http11 -> 2
-      | Http2 -> 3
-      | Http3 -> 4
-    in
-    Int.compare (version_num v1) (version_num v2)
+  let version_num = function
+    | Http09 -> 0
+    | Http10 -> 1
+    | Http11 -> 2
+    | Http2 -> 3
+    | Http3 -> 4
+  in
+  Int.compare (version_num v1) (version_num v2)
 
 let equal = fun v1 v2 -> compare v1 v2 = 0
 

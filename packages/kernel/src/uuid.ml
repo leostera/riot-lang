@@ -21,8 +21,8 @@ external is_nil_native: bytes -> bool = "kernel_uuid_is_nil"
 (** {1 Safe Wrappers} *)
 
 let of_string = fun str ->
-    try Result.Ok (of_string_native str) with
-    | Invalid_argument msg -> Result.Error (`Invalid_uuid msg)
+  try Result.Ok (of_string_native str) with
+  | Invalid_argument msg -> Result.Error (`Invalid_uuid msg)
 
 let is_nil = is_nil_native
 
@@ -45,23 +45,23 @@ let ns_x500 = Stdlib.Bytes.of_string "\x6b\xa7\xb8\x14\x9d\xad\x11\xd1\x80\xb4\x
 (** {1 Helpers} *)
 
 let equal = fun a b ->
-    Stdlib.Bytes.equal a b
+  Stdlib.Bytes.equal a b
 
 let to_bytes = fun uuid -> Stdlib.Bytes.copy uuid
 
 let of_bytes = fun bytes ->
-    if Stdlib.Bytes.length bytes = 16 then
-      Result.Ok (Stdlib.Bytes.copy bytes)
-    else
-      Result.Error (`Invalid_uuid "UUID must be exactly 16 bytes")
+  if Stdlib.Bytes.length bytes = 16 then
+    Result.Ok (Stdlib.Bytes.copy bytes)
+  else
+    Result.Error (`Invalid_uuid "UUID must be exactly 16 bytes")
 
 let version = fun uuid ->
-    if Stdlib.Bytes.length uuid < 7 then
-      None
+  if Stdlib.Bytes.length uuid < 7 then
+    None
+  else
+    let byte6 = Stdlib.Bytes.get uuid 6 |> Stdlib.Char.code in
+    let ver = (byte6 lsr 4) land 0x0f in
+    if ver >= 1 && ver <= 8 then
+      Some ver
     else
-      let byte6 = Stdlib.Bytes.get uuid 6 |> Stdlib.Char.code in
-      let ver = (byte6 lsr 4) land 0x0f in
-      if ver >= 1 && ver <= 8 then
-        Some ver
-      else
-        None
+      None

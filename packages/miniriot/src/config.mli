@@ -16,17 +16,13 @@ type t = {
 val default: t
 
 val default_scheduler_count: int
-
 (** Default number of worker schedulers.
 
     The default is `max 1 (System.available_parallelism - 1)`, reserving one
     core for the dedicated reactor domain that owns timer and I/O polling. *)
 val worker_count: t -> int
-
 (** Get the number of runnable workers configured for this runtime. *)
 val make: ?timer_resolution:timer_resolution -> ?scheduler_count:int -> unit -> t
-
 (** Create a configuration with custom settings *)
 val resolution_to_nanos: timer_resolution -> int64
-
 (** Convert resolution to nanoseconds per tick *)

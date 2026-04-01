@@ -4,9 +4,9 @@ open Gooey
 (* Static layout example: Three columns with different colors *)
 
 let text_measurer = fun text _style ->
-    let width = float_of_int (String.length text) in
-    let height = 1.0 in
-    Viewport.make ~width ~height
+  let width = float_of_int (String.length text) in
+  let height = 1.0 in
+  Viewport.make ~width ~height
 
 let () =
   Miniriot.run
@@ -15,7 +15,7 @@ let () =
       let size =
         match Tty.make () with
         | Ok tty -> Tty.size tty
-        | Error _ -> {Tty.rows = 24; cols = 80}
+        | Error _ -> {Tty.rows = 24;cols = 80;}
       in
       (* Create UI: Three columns (sidebar, content, sidebar) *)
       let ui = Element.row
@@ -40,7 +40,6 @@ let () =
             |> Style.bg (`rgb (255, 0, 0))
             |> Style.padding (Style.Padding.all 1)))
             [ Element.text ~style:((Style.empty |> Style.fg (`rgb (255, 255, 255)))) "RIGHT" ];
-
         ] in
       (* Layout and render *)
       let viewport = Viewport.make ~width:(float_of_int size.cols) ~height:(float_of_int size.rows) in

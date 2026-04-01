@@ -1,7 +1,6 @@
 open Std
 open Http
 open Propane
-
 (** Property tests for HTTP package using Propane *)
 (* ===== HTTP/2 HPACK Property Tests ===== *)
 
@@ -26,7 +25,7 @@ let header_value_gen = Generator.(string_of char_printable)
 
 let header_gen =
   Generator.map
-    (fun ((name, value)) -> Http2.Hpack.{name; value})
+    (fun ((name, value)) -> Http2.Hpack.{name;value;})
     (Generator.pair header_name_gen header_value_gen)
 
 (* Arbitrary for headers *)
@@ -75,17 +74,23 @@ let frame_type_gen = Generator.one_of
     Generator.return Http2.Frame.RstStream;
     Generator.return Http2.Frame.PushPromise;
     Generator.return Http2.Frame.Continuation;
-
   ]
 
 (* Generator for frame flags *)
 
 let frame_flags_gen =
-  let open Generator in map2
-    (fun ((end_stream, end_headers, padded)) ((priority_flag, ack)) ->
-      Http2.Frame.{end_stream; end_headers; padded; priority = priority_flag; ack})
-    (map3 (fun a b c -> (a, b, c)) bool bool bool)
-    (map2 (fun a b -> (a, b)) bool bool)
+  let open Generator in
+    map2
+      (fun ((end_stream, end_headers, padded)) ((priority_flag, ack)) ->
+        Http2.Frame.{
+          end_stream;
+          end_headers;
+          padded;
+          priority = priority_flag;
+          ack;
+        })
+      (map3 (fun a b c -> (a, b, c)) bool bool bool)
+      (map2 (fun a b -> (a, b)) bool bool)
 
 (* Generator for simple DATA frames *)
 
@@ -98,8 +103,7 @@ let data_frame_gen =
         frame_type = Data;
         flags;
         stream_id;
-        payload = DataPayload {data = payload_data; pad_length = None};
-
+        payload = DataPayload {data = payload_data;pad_length = None;};
       })
     Generator.(triple (int_range 1 100) (string_of char_printable) frame_flags_gen)
 
@@ -114,7 +118,6 @@ let settings_frame_gen =
         flags;
         stream_id = 0;
         payload = SettingsPayload [];
-
       })
     frame_flags_gen
 
@@ -174,7 +177,6 @@ let method_gen = Generator.one_of
     Generator.return "HEAD";
     Generator.return "OPTIONS";
     Generator.return "PATCH";
-
   ]
 
 (* Generator for valid URI paths *)
@@ -208,7 +210,6 @@ let tests = [
   frame_length_prop;
   chunk_roundtrip_prop;
   request_parse_prop;
-
 ]
 
 let () =

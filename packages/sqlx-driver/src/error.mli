@@ -24,48 +24,34 @@ type t =
   | Generic_error of string
 (** {1 Constructors} *)
 val of_string: string -> t
-
 (** Create a generic error from a string message *)
 val connection_error: message:string -> ?cause:db_error -> unit -> t
-
 (** Create a connection error *)
 val query_error: sql:string -> db_error -> t
-
 (** Create a query error with the SQL that caused it *)
 val preparation_error: sql:string -> db_error -> t
-
 (** Create a statement preparation error *)
 val execution_error: db_error -> t
-
 (** Create a statement execution error *)
 val transaction_error: message:string -> ?cause:db_error -> unit -> t
-
 (** Create a transaction error *)
 val pool_error: string -> t
-
 (** Create a connection pool error *)
 (** {1 Formatting} *)
 
 val format_db_error: db_error -> string
-
 (** Format a db_error record into a human-readable string *)
 val to_string: t -> string
-
 (** Convert error to a full human-readable string *)
 (** {1 Error Inspection} *)
 
 val get_db_error: t -> db_error option
-
 (** Extract the underlying db_error if available *)
 val is_constraint_violation: name:string -> t -> bool
-
 (** Check if error is a specific constraint violation by name *)
 val is_unique_violation: t -> bool
-
 (** Check if error is a unique constraint violation *)
 val is_foreign_key_violation: t -> bool
-
 (** Check if error is a foreign key constraint violation *)
 val is_not_null_violation: t -> bool
-
 (** Check if error is a not-null constraint violation *)

@@ -71,9 +71,7 @@ type parse_result =
     @return Parse result
 *)
 val parse: state -> ('src, 'err) IO.Reader.t -> parse_result
-
 (** Reset parser state to initial (for connection reuse) *)
 val reset: state -> unit
-
 (** Get bytes buffered in parser state (for debugging) *)
 val buffered_bytes: state -> int

@@ -2,7 +2,6 @@
 open Std
 open Std.Iter
 open Common
-
 (** Parses an HTTP/1.1 request.
 
     @param max_request_line Maximum length of request line (default: 8192)
@@ -17,7 +16,6 @@ val parse:
   ?max_header_length:int ->
   string ->
   Std.Net.Http.Request.t parse_result
-
 (** Parses HTTP headers. Internal function exposed for testing. *)
 val parse_headers:
   ?max_count:int ->

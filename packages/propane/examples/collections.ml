@@ -97,7 +97,6 @@ let tests = [
   deque_lifo_prop;
   array_length_prop;
   vector_sort_prop;
-
 ]
 
 let () =

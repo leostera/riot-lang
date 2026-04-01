@@ -81,308 +81,304 @@ type event =
   | PriorityReceived of { stream_id: int; stream_dependency: int; weight: int; exclusive: bool; }
 
 (** {1 Constants} *)
-
 (** RFC 9113: Connection preface for clients *)
 let client_preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
-
 (** Default settings per RFC 9113 *)
 let default_config = {
   max_frame_size = 16_384;
   initial_window_size = 65_535;
   max_concurrent_streams = 100;
   enable_push = true;
-
 }
 
 let create_settings = fun config ->
-    {
-      header_table_size = Cell.create 4_096;
-      enable_push = Cell.create config.enable_push;
-      max_concurrent_streams = Cell.create (Some config.max_concurrent_streams);
-      initial_window_size = Cell.create config.initial_window_size;
-      max_frame_size = Cell.create config.max_frame_size;
-      max_header_list_size = Cell.create None;
-
-    }
+  {
+    header_table_size = Cell.create 4_096;
+    enable_push = Cell.create config.enable_push;
+    max_concurrent_streams = Cell.create (Some config.max_concurrent_streams);
+    initial_window_size = Cell.create config.initial_window_size;
+    max_frame_size = Cell.create config.max_frame_size;
+    max_header_list_size = Cell.create None;
+  }
 
 (** {1 Connection Lifecycle} *)
 
 let create = fun ~role ?(config = default_config) () ->
-    {
-      role;
-      state = Cell.create Idle;
-      streams = HashMap.with_capacity 16;
-      next_stream_id = Cell.create
+  {
+    role;
+    state = Cell.create Idle;
+    streams = HashMap.with_capacity 16;
+    next_stream_id =
+      Cell.create
         (
           match role with
           | Client -> 1
           | Server -> 2
         );
-      connection_window_size = Cell.create 65_535;
-      local_settings = create_settings config;
-      remote_settings = create_settings config;
-      hpack_encoder = Hpack.create_encoder ~max_dynamic_table_size:4_096 ();
-      hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size:4_096 ();
-      last_stream_id = Cell.create 0;
-      peer_last_stream_id = Cell.create 0;
-
-    }
+    connection_window_size = Cell.create 65_535;
+    local_settings = create_settings config;
+    remote_settings = create_settings config;
+    hpack_encoder = Hpack.create_encoder ~max_dynamic_table_size:4_096 ();
+    hpack_decoder = Hpack.create_decoder ~max_dynamic_table_size:4_096 ();
+    last_stream_id = Cell.create 0;
+    peer_last_stream_id = Cell.create 0;
+  }
 
 let send_preface = fun conn ->
-    (* Create initial SETTINGS frame *)
-    let settings_list = [
-      Frame.HeaderTableSize (Cell.get conn.local_settings.header_table_size);
-      Frame.EnablePush (Cell.get conn.local_settings.enable_push);
-      Frame.MaxConcurrentStreams (Option.unwrap_or
-        ~default:100
-        (Cell.get conn.local_settings.max_concurrent_streams));
-      Frame.InitialWindowSize (Cell.get conn.local_settings.initial_window_size);
-      Frame.MaxFrameSize (Cell.get conn.local_settings.max_frame_size);
-
-    ] in
-    let settings_frame = {
-      Frame.length = 0;
-      frame_type = Frame.Settings;
-      flags = {
+  (* Create initial SETTINGS frame *)
+  let settings_list = [
+    Frame.HeaderTableSize (Cell.get conn.local_settings.header_table_size);
+    Frame.EnablePush (Cell.get conn.local_settings.enable_push);
+    Frame.MaxConcurrentStreams (Option.unwrap_or
+      ~default:100
+      (Cell.get conn.local_settings.max_concurrent_streams));
+    Frame.InitialWindowSize (Cell.get conn.local_settings.initial_window_size);
+    Frame.MaxFrameSize (Cell.get conn.local_settings.max_frame_size);
+  ] in
+  let settings_frame = {
+    Frame.length = 0;
+    frame_type = Frame.Settings;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
-        ack = false
+        ack = false;
       };
-      stream_id = 0;
-      payload = Frame.SettingsPayload settings_list;
-
-    } in
-    let settings_bytes = Serializer.serialize_frame settings_frame in
-    match conn.role with
-    | Client ->
-        (* Client sends preface string + SETTINGS *)
-        Cell.set conn.state Active;
-        client_preface ^ settings_bytes
-    | Server ->
-        (* Server sends only SETTINGS *)
-        Cell.set conn.state Active;
-        settings_bytes
+    stream_id = 0;
+    payload = Frame.SettingsPayload settings_list;
+  }
+  in
+  let settings_bytes = Serializer.serialize_frame settings_frame in
+  match conn.role with
+  | Client ->
+      (* Client sends preface string + SETTINGS *)
+      Cell.set conn.state Active;
+      client_preface ^ settings_bytes
+  | Server ->
+      (* Server sends only SETTINGS *)
+      Cell.set conn.state Active;
+      settings_bytes
 
 (** {1 Stream Management} *)
 
 let is_valid_stream_id = fun ~role stream_id ->
-    match role with
-    | Client -> stream_id mod 2 = 1
-    | Server -> stream_id mod 2 = 0
+  match role with
+  | Client -> stream_id mod 2 = 1
+  | Server -> stream_id mod 2 = 0
 
 (* Server streams are even *)
 
 let create_stream = fun conn ->
-    if Cell.get conn.state != Active then
-      Error "Connection not active"
-    else
-      let stream_id = Cell.get conn.next_stream_id in
-      Cell.set conn.next_stream_id (stream_id + 2);
-      (* Skip to next valid ID *)
-      Cell.set conn.last_stream_id stream_id;
-      let stream = {
-        id = stream_id;
-        state = Cell.create StreamIdle;
-        window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
-        headers = Cell.create [];
-        data_chunks = Cell.create [];
-
-      } in
-      let _ = HashMap.insert conn.streams stream_id stream in
-      Ok stream_id
+  if Cell.get conn.state != Active then
+    Error "Connection not active"
+  else
+    let stream_id = Cell.get conn.next_stream_id in
+    Cell.set conn.next_stream_id (stream_id + 2);
+    (* Skip to next valid ID *)
+    Cell.set conn.last_stream_id stream_id;
+    let stream = {
+      id = stream_id;
+      state = Cell.create StreamIdle;
+      window_size = Cell.create (Cell.get conn.local_settings.initial_window_size);
+      headers = Cell.create [];
+      data_chunks = Cell.create [];
+    }
+    in
+    let _ = HashMap.insert conn.streams stream_id stream in
+    Ok stream_id
 
 let get_stream = fun conn stream_id ->
-    HashMap.get conn.streams stream_id
+  HashMap.get conn.streams stream_id
 
 let send_headers = fun conn ~stream_id ~headers ~end_stream ->
-    match get_stream conn stream_id with
-    | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
-    | Some stream -> (
-        (* Encode headers using HPACK *)
-        let encoded_headers = Hpack.encode conn.hpack_encoder ~headers ~sensitive_headers:[] in
-        (* Create HEADERS frame *)
-        let frame = {
-          Frame.length = Bytes.length encoded_headers;
-          frame_type = Frame.Headers;
-          flags = {
+  match get_stream conn stream_id with
+  | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
+  | Some stream -> (
+      (* Encode headers using HPACK *)
+      let encoded_headers = Hpack.encode conn.hpack_encoder ~headers ~sensitive_headers:[] in
+      (* Create HEADERS frame *)
+      let frame = {
+        Frame.length = Bytes.length encoded_headers;
+        frame_type = Frame.Headers;
+        flags =
+          {
             Frame.end_stream;
             end_headers = true;
             padded = false;
             priority = false;
             ack = false;
-
           };
-          stream_id;
-          payload = Frame.HeadersPayload {
+        stream_id;
+        payload =
+          Frame.HeadersPayload {
             pad_length = None;
             stream_dependency = None;
             weight = None;
             exclusive = false;
             header_block_fragment = Bytes.to_string encoded_headers;
-
           };
-
-        } in
-        (* Update stream state *)
-        if end_stream then
-          Cell.set stream.state StreamHalfClosedLocal;
-        Ok (Serializer.serialize_frame frame)
-      )
+      }
+      in
+      (* Update stream state *)
+      if end_stream then
+        Cell.set stream.state StreamHalfClosedLocal;
+      Ok (Serializer.serialize_frame frame)
+    )
 
 let send_data = fun conn ~stream_id ~data ~end_stream ->
-    match get_stream conn stream_id with
-    | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
-    | Some stream -> (
-        let data_len = Bytes.length data in
-        (* Check flow control window *)
-        let stream_window = Cell.get stream.window_size in
-        let conn_window = Cell.get conn.connection_window_size in
-        if data_len > stream_window then
-          Error ("Data size " ^ Int.to_string data_len ^ " exceeds stream window " ^ Int.to_string stream_window)
-        else if data_len > conn_window then
-          Error ("Data size "
-          ^ Int.to_string data_len
-          ^ " exceeds connection window "
-          ^ Int.to_string conn_window)
-        else
-          (* Create DATA frame *)
-          let frame = {
-            Frame.length = data_len;
-            frame_type = Frame.Data;
-            flags = {
+  match get_stream conn stream_id with
+  | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
+  | Some stream -> (
+      let data_len = Bytes.length data in
+      (* Check flow control window *)
+      let stream_window = Cell.get stream.window_size in
+      let conn_window = Cell.get conn.connection_window_size in
+      if data_len > stream_window then
+        Error ("Data size " ^ Int.to_string data_len ^ " exceeds stream window " ^ Int.to_string stream_window)
+      else if data_len > conn_window then
+        Error ("Data size "
+        ^ Int.to_string data_len
+        ^ " exceeds connection window "
+        ^ Int.to_string conn_window)
+      else
+        (* Create DATA frame *)
+        let frame = {
+          Frame.length = data_len;
+          frame_type = Frame.Data;
+          flags =
+            {
               Frame.end_stream;
               end_headers = false;
               padded = false;
               priority = false;
               ack = false;
-
             };
-            stream_id;
-            payload = Frame.DataPayload {data = Bytes.to_string data; pad_length = None};
-
-          } in
-          (* Update flow control windows *)
-          Cell.set stream.window_size (stream_window - data_len);
-          Cell.set conn.connection_window_size (conn_window - data_len);
-          (* Update stream state *)
-          if end_stream then
-            Cell.set stream.state StreamHalfClosedLocal;
-          Ok (Serializer.serialize_frame frame)
-      )
+          stream_id;
+          payload = Frame.DataPayload {data = Bytes.to_string data;pad_length = None;};
+        }
+        in
+        (* Update flow control windows *)
+        Cell.set stream.window_size (stream_window - data_len);
+        Cell.set conn.connection_window_size (conn_window - data_len);
+        (* Update stream state *)
+        if end_stream then
+          Cell.set stream.state StreamHalfClosedLocal;
+        Ok (Serializer.serialize_frame frame)
+    )
 
 let reset_stream = fun conn ~stream_id ~error_code ->
-    let frame = {
-      Frame.length = 4;
-      frame_type = Frame.RstStream;
-      flags = {
+  let frame = {
+    Frame.length = 4;
+    frame_type = Frame.RstStream;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
         ack = false;
-
       };
-      stream_id;
-      payload = Frame.RstStreamPayload error_code;
-
-    } in
-    (
-      match get_stream conn stream_id with
-      | Some stream -> Cell.set stream.state StreamClosed
-      | None -> ()
-    );
-    Serializer.serialize_frame frame
+    stream_id;
+    payload = Frame.RstStreamPayload error_code;
+  }
+  in
+  (
+    match get_stream conn stream_id with
+    | Some stream -> Cell.set stream.state StreamClosed
+    | None -> ()
+  );
+  Serializer.serialize_frame frame
 
 (** {1 Flow Control} *)
 
 let send_window_update_connection = fun conn ~increment ->
-    let frame = {
-      Frame.length = 4;
-      frame_type = Frame.WindowUpdate;
-      flags = {
+  let frame = {
+    Frame.length = 4;
+    frame_type = Frame.WindowUpdate;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
         ack = false;
-
       };
-      stream_id = 0;
-      payload = Frame.WindowUpdatePayload increment;
-
-    } in
-    Cell.set conn.connection_window_size (Cell.get conn.connection_window_size + increment);
-    Serializer.serialize_frame frame
+    stream_id = 0;
+    payload = Frame.WindowUpdatePayload increment;
+  }
+  in
+  Cell.set conn.connection_window_size (Cell.get conn.connection_window_size + increment);
+  Serializer.serialize_frame frame
 
 let send_window_update_stream = fun conn ~stream_id ~increment ->
-    let frame = {
-      Frame.length = 4;
-      frame_type = Frame.WindowUpdate;
-      flags = {
+  let frame = {
+    Frame.length = 4;
+    frame_type = Frame.WindowUpdate;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
         ack = false;
-
       };
-      stream_id;
-      payload = Frame.WindowUpdatePayload increment;
-
-    } in
-    (
-      match get_stream conn stream_id with
-      | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
-      | None -> ()
-    );
-    Serializer.serialize_frame frame
+    stream_id;
+    payload = Frame.WindowUpdatePayload increment;
+  }
+  in
+  (
+    match get_stream conn stream_id with
+    | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
+    | None -> ()
+  );
+  Serializer.serialize_frame frame
 
 let connection_window_size = fun conn -> Cell.get conn.connection_window_size
 
 let stream_window_size = fun conn ~stream_id ->
-    match get_stream conn stream_id with
-    | Some stream -> Some (Cell.get stream.window_size)
-    | None -> None
+  match get_stream conn stream_id with
+  | Some stream -> Some (Cell.get stream.window_size)
+  | None -> None
 
 (** {1 Settings} *)
 
 let update_settings = fun conn settings ->
-    let frame = {
-      Frame.length = List.length settings * 6;
-      frame_type = Frame.Settings;
-      flags = {
+  let frame = {
+    Frame.length = List.length settings * 6;
+    frame_type = Frame.Settings;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
         ack = false;
-
       };
-      stream_id = 0;
-      payload = Frame.SettingsPayload settings;
-
-    } in
-    Serializer.serialize_frame frame
+    stream_id = 0;
+    payload = Frame.SettingsPayload settings;
+  }
+  in
+  Serializer.serialize_frame frame
 
 let send_settings_ack = fun conn ->
-    let frame = {
-      Frame.length = 0;
-      frame_type = Frame.Settings;
-      flags = {
+  let frame = {
+    Frame.length = 0;
+    frame_type = Frame.Settings;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
         ack = true;
-
       };
-      stream_id = 0;
-      payload = Frame.SettingsPayload [];
-
-    } in
-    Serializer.serialize_frame frame
+    stream_id = 0;
+    payload = Frame.SettingsPayload [];
+  }
+  in
+  Serializer.serialize_frame frame
 
 let local_settings = fun conn -> conn.local_settings
 
@@ -391,227 +387,224 @@ let remote_settings = fun conn -> conn.remote_settings
 (** {1 Connection Control} *)
 
 let send_ping = fun conn ~data ->
-    let frame = {
-      Frame.length = 8;
-      frame_type = Frame.Ping;
-      flags = {
+  let frame = {
+    Frame.length = 8;
+    frame_type = Frame.Ping;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
         ack = false;
-
       };
-      stream_id = 0;
-      payload = Frame.PingPayload data;
-
-    } in
-    Serializer.serialize_frame frame
+    stream_id = 0;
+    payload = Frame.PingPayload data;
+  }
+  in
+  Serializer.serialize_frame frame
 
 let send_ping_ack = fun conn ~data ->
-    let frame = {
-      Frame.length = 8;
-      frame_type = Frame.Ping;
-      flags = {
+  let frame = {
+    Frame.length = 8;
+    frame_type = Frame.Ping;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
         ack = true;
-
       };
-      stream_id = 0;
-      payload = Frame.PingPayload data;
-
-    } in
-    Serializer.serialize_frame frame
+    stream_id = 0;
+    payload = Frame.PingPayload data;
+  }
+  in
+  Serializer.serialize_frame frame
 
 let send_goaway = fun conn ~last_stream_id ~error_code ?(debug_data = "") () ->
-    Cell.set conn.state GoingAway;
-    let frame = {
-      Frame.length = 8 + String.length debug_data;
-      frame_type = Frame.Goaway;
-      flags = {
+  Cell.set conn.state GoingAway;
+  let frame = {
+    Frame.length = 8 + String.length debug_data;
+    frame_type = Frame.Goaway;
+    flags =
+      {
         Frame.end_stream = false;
         end_headers = false;
         padded = false;
         priority = false;
         ack = false;
-
       };
-      stream_id = 0;
-      payload = Frame.GoawayPayload {last_stream_id; error_code; debug_data};
-
-    } in
-    Serializer.serialize_frame frame
+    stream_id = 0;
+    payload = Frame.GoawayPayload {last_stream_id;error_code;debug_data;};
+  }
+  in
+  Serializer.serialize_frame frame
 
 let state = fun conn -> Cell.get conn.state
 
 let close = fun conn ->
-    Cell.set conn.state Closed;
-    HashMap.clear conn.streams
+  Cell.set conn.state Closed;
+  HashMap.clear conn.streams
 
 (** {1 Frame Processing} *)
 
 let process_settings_frame = fun conn settings_list flags ->
-    if flags.Frame.ack then
-      Ok [ SettingsAckReceived ]
-    else (* Apply received settings *)
-    (
-      List.iter
-        (
-          function
-          | Frame.HeaderTableSize size ->
-              Cell.set conn.remote_settings.header_table_size size;
-              Hpack.update_max_table_size conn.hpack_decoder size
-          | Frame.EnablePush enabled ->
-              Cell.set conn.remote_settings.enable_push enabled
-          | Frame.MaxConcurrentStreams max ->
-              Cell.set conn.remote_settings.max_concurrent_streams (Some max)
-          | Frame.InitialWindowSize size ->
-              Cell.set conn.remote_settings.initial_window_size size
-          | Frame.MaxFrameSize size ->
-              Cell.set conn.remote_settings.max_frame_size size
-          | Frame.MaxHeaderListSize size ->
-              Cell.set conn.remote_settings.max_header_list_size (Some size)
-        )
-        settings_list;
-      Ok [ SettingsReceived settings_list ]
-    )
+  if flags.Frame.ack then
+    Ok [ SettingsAckReceived ]
+  else (* Apply received settings *)
+  (
+    List.iter
+      (
+        function
+        | Frame.HeaderTableSize size ->
+            Cell.set conn.remote_settings.header_table_size size;
+            Hpack.update_max_table_size conn.hpack_decoder size
+        | Frame.EnablePush enabled ->
+            Cell.set conn.remote_settings.enable_push enabled
+        | Frame.MaxConcurrentStreams max ->
+            Cell.set conn.remote_settings.max_concurrent_streams (Some max)
+        | Frame.InitialWindowSize size ->
+            Cell.set conn.remote_settings.initial_window_size size
+        | Frame.MaxFrameSize size ->
+            Cell.set conn.remote_settings.max_frame_size size
+        | Frame.MaxHeaderListSize size ->
+            Cell.set conn.remote_settings.max_header_list_size (Some size)
+      )
+      settings_list;
+    Ok [ SettingsReceived settings_list ]
+  )
 
 let process_headers_frame = fun conn stream_id payload flags ->
-    match payload with
-    | Frame.HeadersPayload { header_block_fragment; _ } -> (
-        (* Decode HPACK-encoded headers *)
-        let header_bytes = Bytes.of_string header_block_fragment in
-        match Hpack.decode conn.hpack_decoder header_bytes with
-        | Error e -> Error ("HPACK decode error: " ^ e)
-        | Ok headers ->
-            let end_stream = flags.Frame.end_stream in
-            (* Create or update stream *)
-            let stream =
-              match get_stream conn stream_id with
-              | Some s -> s
-              | None ->
-                  let s = {
-                    id = stream_id;
-                    state = Cell.create StreamOpen;
-                    window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
-                    headers = Cell.create [];
-                    data_chunks = Cell.create [];
-
-                  } in
-                  let _ = HashMap.insert conn.streams stream_id s in
-                  s
-            in
-            Cell.set stream.headers headers;
-            if end_stream then
-              Cell.set stream.state StreamHalfClosedRemote;
-            Ok [ HeadersReceived {stream_id; headers; end_stream} ]
-      )
-    | _ -> Error "Invalid HEADERS payload"
+  match payload with
+  | Frame.HeadersPayload { header_block_fragment; _ } -> (
+      (* Decode HPACK-encoded headers *)
+      let header_bytes = Bytes.of_string header_block_fragment in
+      match Hpack.decode conn.hpack_decoder header_bytes with
+      | Error e -> Error ("HPACK decode error: " ^ e)
+      | Ok headers ->
+          let end_stream = flags.Frame.end_stream in
+          (* Create or update stream *)
+          let stream =
+            match get_stream conn stream_id with
+            | Some s -> s
+            | None ->
+                let s = {
+                  id = stream_id;
+                  state = Cell.create StreamOpen;
+                  window_size = Cell.create (Cell.get conn.remote_settings.initial_window_size);
+                  headers = Cell.create [];
+                  data_chunks = Cell.create [];
+                }
+                in
+                let _ = HashMap.insert conn.streams stream_id s in
+                s
+          in
+          Cell.set stream.headers headers;
+          if end_stream then
+            Cell.set stream.state StreamHalfClosedRemote;
+          Ok [ HeadersReceived {stream_id;headers;end_stream;} ]
+    )
+  | _ -> Error "Invalid HEADERS payload"
 
 let process_data_frame = fun conn stream_id payload flags ->
-    match payload with
-    | Frame.DataPayload { data; _ } ->
-        let data_bytes = Bytes.of_string data in
-        let end_stream = flags.Frame.end_stream in
-        (
-          match get_stream conn stream_id with
-          | Some stream ->
-              let chunks = Cell.get stream.data_chunks in
-              Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
-              if end_stream then
-                Cell.set stream.state StreamHalfClosedRemote
-          | None -> ()
-        );
-        Ok [ DataReceived {stream_id; data = data_bytes; end_stream} ]
-    | _ -> Error "Invalid DATA payload"
+  match payload with
+  | Frame.DataPayload { data; _ } ->
+      let data_bytes = Bytes.of_string data in
+      let end_stream = flags.Frame.end_stream in
+      (
+        match get_stream conn stream_id with
+        | Some stream ->
+            let chunks = Cell.get stream.data_chunks in
+            Cell.set stream.data_chunks (chunks @ [ data_bytes ]);
+            if end_stream then
+              Cell.set stream.state StreamHalfClosedRemote
+        | None -> ()
+      );
+      Ok [ DataReceived {stream_id;data = data_bytes;end_stream;} ]
+  | _ -> Error "Invalid DATA payload"
 
 let process_frame = fun conn frame ->
-    match frame.Frame.frame_type with
-    | Frame.Settings -> (
-        match frame.payload with
-        | Frame.SettingsPayload settings -> process_settings_frame conn settings frame.flags
-        | _ -> Error "Invalid SETTINGS payload"
-      )
-    | Frame.Headers ->
-        process_headers_frame conn frame.stream_id frame.payload frame.flags
-    | Frame.Data ->
-        process_data_frame conn frame.stream_id frame.payload frame.flags
-    | Frame.WindowUpdate -> (
-        match frame.payload with
-        | Frame.WindowUpdatePayload increment ->
-            if frame.stream_id = 0 then
-              Cell.set conn.connection_window_size (Cell.get conn.connection_window_size + increment)
-            else
-              (* Stream-level window update *)
-              (
-                match get_stream conn frame.stream_id with
-                | Some stream -> Cell.set
-                  stream.window_size
-                  (Cell.get stream.window_size + increment)
-                | None -> ()
-              );
-              Ok [ WindowUpdateReceived {stream_id = frame.stream_id; increment} ]
-        | _ -> Error "Invalid WINDOW_UPDATE payload"
-      )
-    | Frame.Ping -> (
-        match frame.payload with
-        | Frame.PingPayload data ->
-            if frame.flags.ack then
-              Ok [ PingAckReceived {data} ]
-            else
-              Ok [ PingReceived {data} ]
-        | _ -> Error "Invalid PING payload"
-      )
-    | Frame.Goaway -> (
-        match frame.payload with
-        | Frame.GoawayPayload { last_stream_id; error_code; debug_data } ->
-            Cell.set conn.state GoingAway;
-            Ok [ GoawayReceived {last_stream_id; error_code; debug_data} ]
-        | _ -> Error "Invalid GOAWAY payload"
-      )
-    | Frame.RstStream -> (
-        match frame.payload with
-        | Frame.RstStreamPayload error_code ->
+  match frame.Frame.frame_type with
+  | Frame.Settings -> (
+      match frame.payload with
+      | Frame.SettingsPayload settings -> process_settings_frame conn settings frame.flags
+      | _ -> Error "Invalid SETTINGS payload"
+    )
+  | Frame.Headers ->
+      process_headers_frame conn frame.stream_id frame.payload frame.flags
+  | Frame.Data ->
+      process_data_frame conn frame.stream_id frame.payload frame.flags
+  | Frame.WindowUpdate -> (
+      match frame.payload with
+      | Frame.WindowUpdatePayload increment ->
+          if frame.stream_id = 0 then
+            Cell.set conn.connection_window_size (Cell.get conn.connection_window_size + increment)
+          else
+            (* Stream-level window update *)
             (
               match get_stream conn frame.stream_id with
-              | Some stream -> Cell.set stream.state StreamClosed
+              | Some stream -> Cell.set stream.window_size (Cell.get stream.window_size + increment)
               | None -> ()
             );
-            Ok [ RstStreamReceived {stream_id = frame.stream_id; error_code} ]
-        | _ -> Error "Invalid RST_STREAM payload"
-      )
-    | Frame.Priority -> (
-        match frame.payload with
-        | Frame.PriorityPayload { stream_dependency; exclusive; weight } -> Ok [
-          PriorityReceived {stream_id = frame.stream_id; stream_dependency; weight; exclusive; };
-
-        ]
-        | _ -> Error "Invalid PRIORITY payload"
-      )
-    | Frame.PushPromise
-    | Frame.Continuation ->
-        (* TODO: Implement these *)
-        Ok []
+            Ok [ WindowUpdateReceived {stream_id = frame.stream_id;increment;} ]
+      | _ -> Error "Invalid WINDOW_UPDATE payload"
+    )
+  | Frame.Ping -> (
+      match frame.payload with
+      | Frame.PingPayload data ->
+          if frame.flags.ack then
+            Ok [ PingAckReceived {data;} ]
+          else
+            Ok [ PingReceived {data;} ]
+      | _ -> Error "Invalid PING payload"
+    )
+  | Frame.Goaway -> (
+      match frame.payload with
+      | Frame.GoawayPayload { last_stream_id; error_code; debug_data } ->
+          Cell.set conn.state GoingAway;
+          Ok [ GoawayReceived {last_stream_id;error_code;debug_data;} ]
+      | _ -> Error "Invalid GOAWAY payload"
+    )
+  | Frame.RstStream -> (
+      match frame.payload with
+      | Frame.RstStreamPayload error_code ->
+          (
+            match get_stream conn frame.stream_id with
+            | Some stream -> Cell.set stream.state StreamClosed
+            | None -> ()
+          );
+          Ok [ RstStreamReceived {stream_id = frame.stream_id;error_code;} ]
+      | _ -> Error "Invalid RST_STREAM payload"
+    )
+  | Frame.Priority -> (
+      match frame.payload with
+      | Frame.PriorityPayload { stream_dependency; exclusive; weight } -> Ok [
+        PriorityReceived {stream_id = frame.stream_id;stream_dependency;weight;exclusive;};
+      ]
+      | _ -> Error "Invalid PRIORITY payload"
+    )
+  | Frame.PushPromise
+  | Frame.Continuation ->
+      (* TODO: Implement these *)
+      Ok []
 
 let process_data = fun conn data ->
-    let rec process_all events remaining =
-      match Parser.parse_frame (Bytes.to_string remaining) with
-      | Parser.Done { value=frame; remaining=rest } -> (
-          match process_frame conn frame with
-          | Error e -> Error e
-          | Ok new_events ->
-              let rest_bytes = Bytes.of_string rest in
-              if Bytes.length rest_bytes > 0 then
-                process_all (events @ new_events) rest_bytes
-              else
-                Ok (events @ new_events)
-        )
-      | Parser.Need_more ->
-          Ok events
-      | Parser.Error e ->
-          Error e
-    in
-    process_all [] data
+  let rec process_all events remaining =
+    match Parser.parse_frame (Bytes.to_string remaining) with
+    | Parser.Done { value=frame; remaining=rest } -> (
+        match process_frame conn frame with
+        | Error e -> Error e
+        | Ok new_events ->
+            let rest_bytes = Bytes.of_string rest in
+            if Bytes.length rest_bytes > 0 then
+              process_all (events @ new_events) rest_bytes
+            else
+              Ok (events @ new_events)
+      )
+    | Parser.Need_more ->
+        Ok events
+    | Parser.Error e ->
+        Error e
+  in
+  process_all [] data

@@ -28,14 +28,12 @@ type build_result = {
   duration: Time.Duration.t;
 }
 val build_result_to_json: build_result -> Std.Data.Json.t
-
 (** Collect all source files (.ml, .mli, .c, .h) from a package's src directory.
     
     @param package The package to scan
     @return List of absolute paths to source files
 *)
 val collect_source_files: Package.t -> Path.t list
-
 (** Build a single package.
 
     Returns a build_result indicating whether the package was cached, built, or failed.

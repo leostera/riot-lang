@@ -148,7 +148,6 @@ val to_string: color -> string
 
 module ANSI: sig
   val to_rgb: ansi -> rgb
-
   (** Convert an ANSI 256-color palette entry to RGB.
 
       Uses a lookup table mapping ANSI color indices to their RGB equivalents.
@@ -160,7 +159,6 @@ end
 
 module White_reference: sig
   val d65: xyz
-
   (** Standard D65 white point (daylight illuminant at 6504K).
 
       This is the default white reference used for most conversions. Corresponds
@@ -183,7 +181,6 @@ module Linear_RGB: sig
       Example: ```ocaml let linear = Linear_RGB.linearize (`rgb (128, 128, 128))
       in (* Returns: `lrgb (0.2158, 0.2158, 0.2158) *) ``` *)
   val linearize: rgb -> lrgb
-
   (** Convert linear RGB back to standard RGB with gamma correction.
 
       Applies sRGB gamma curve:
@@ -194,7 +191,6 @@ module Linear_RGB: sig
   val delinearize: lrgb -> rgb
 
   val to_xyz: lrgb -> xyz
-
   (** Convert linear RGB to CIE XYZ color space.
 
       Uses the sRGB to XYZ transformation matrix (D65 illuminant). XYZ is
@@ -211,7 +207,6 @@ module XYZ: sig
       Note: Some XYZ colors may be outside the RGB gamut, resulting in clamped
       or out-of-range RGB values. *)
   val to_linear_rgb: xyz -> lrgb
-
   (** Convert XYZ to chromaticity coordinates.
 
       Extracts the chromaticity (color information without luminance):
@@ -220,7 +215,6 @@ module XYZ: sig
 
       Returns (0.0, 0.0) if denominator is zero. *)
   val to_uv: xyz -> uv
-
   (** Convert XYZ to LUV using a custom white reference.
 
       The white reference defines what "white" means in the viewing conditions.
@@ -230,7 +224,6 @@ module XYZ: sig
   val to_luv_with_ref: xyz -> wref:xyz -> luv
 
   val to_luv: xyz -> luv
-
   (** Convert XYZ to LUV using the D65 white reference.
 
       This is the most common conversion for typical display conditions.
@@ -243,14 +236,12 @@ module LUV: sig
       The white reference must match the one used in the forward conversion.
       This is the inverse of `XYZ.to_luv_with_ref`. *)
   val to_xyz_with_ref: luv -> wref:xyz -> xyz
-
   (** Convert LUV to XYZ using the D65 white reference.
 
       This is the inverse of `XYZ.to_luv`. *)
   val to_xyz: luv -> xyz
 
   val blend: luv -> luv -> mix:float -> luv
-
   (** Blend two colors in LUV space.
 
       `mix` controls the blend ratio:
@@ -270,7 +261,6 @@ end
 
 module RGB: sig
   val blend: rgb -> rgb -> mix:float -> rgb
-
   (** Blend two RGB colors in perceptually uniform LUV space.
 
       This is the high-level blending function you should use for RGB colors. It

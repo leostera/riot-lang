@@ -1,6 +1,5 @@
 (** Configuration module for Unicode processing *)
 open Global
-
 (** Whether to treat ambiguous-width characters as double-width (for East Asian locales) *)
 let east_asian_width = ref false
 

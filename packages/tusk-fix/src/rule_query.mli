@@ -1,5 +1,4 @@
 open Std
-
 (** Rule-oriented query helpers over the typed CST.
 
     These are intentionally small wrappers around the shared `Syn.Visit`

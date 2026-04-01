@@ -59,17 +59,17 @@ include Global
 (* Application startup *)
 
 let start = fun ~apps ->
-    let config = Miniriot.Config.default in
-    let main ~args:_ =
-      match Application.start_applications apps with
-      | Ok _app_pids ->
-          (* Keep system running indefinitely *)
-          let rec keep_alive () =
-            sleep (Time.Duration.from_secs 100_000);
-            keep_alive ()
-          in
-          keep_alive ();
-          Ok ()
-      | Error e -> Error e
-    in
-    Miniriot.run ~config ~main ~args:[] ()
+  let config = Miniriot.Config.default in
+  let main ~args:_ =
+    match Application.start_applications apps with
+    | Ok _app_pids ->
+        (* Keep system running indefinitely *)
+        let rec keep_alive () =
+          sleep (Time.Duration.from_secs 100_000);
+          keep_alive ()
+        in
+        keep_alive ();
+        Ok ()
+    | Error e -> Error e
+  in
+  Miniriot.run ~config ~main ~args:[] ()

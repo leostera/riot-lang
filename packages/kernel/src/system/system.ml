@@ -1,7 +1,6 @@
 (** System-level operations for Kernel *)
 open Global0
 module Sys = Stdlib.Sys
-
 (** Host triplet module *)
 module Host = struct
   type t = {
@@ -12,20 +11,20 @@ module Host = struct
   }
 
   let to_string = fun t ->
-      let base = t.architecture ^ "-" ^ t.vendor ^ "-" ^ t.os in
-      match t.abi with
-      | Some "" -> base
-      | Some abi -> base ^ "-" ^ abi
-      | None -> base
+    let base = t.architecture ^ "-" ^ t.vendor ^ "-" ^ t.os in
+    match t.abi with
+    | Some "" -> base
+    | Some abi -> base ^ "-" ^ abi
+    | None -> base
 
   let from_string = fun s ->
-      match String.split_on_char '-' s with
-      | [arch;vendor;os] -> Ok {architecture = arch; vendor; os; abi = None}
-      | [arch;vendor;os;abi] -> Ok {architecture = arch; vendor; os; abi = Some abi}
-      | _ -> Error ("Invalid host triplet format: " ^ s)
+    match String.split_on_char '-' s with
+    | [arch;vendor;os] -> Ok {architecture = arch;vendor;os;abi = None;}
+    | [arch;vendor;os;abi] -> Ok {architecture = arch;vendor;os;abi = Some abi;}
+    | _ -> Error ("Invalid host triplet format: " ^ s)
 
   let equal = fun a b ->
-      a.architecture = b.architecture && a.vendor = b.vendor && a.os = b.os && a.abi = b.abi
+    a.architecture = b.architecture && a.vendor = b.vendor && a.os = b.os && a.abi = b.abi
 
   let current =
     let arch = Host_stubs.get_arch () in
@@ -38,9 +37,8 @@ module Host = struct
       else
         Some abi_str
     in
-    {architecture = arch; vendor; os; abi}
+    {architecture = arch;vendor;os;abi;}
 end
-
 (** Get the host triplet from C FFI *)
 let host_triplet = Host.current
 
@@ -71,14 +69,14 @@ let runtime_variant = fun () -> Sys.runtime_variant ()
 let runtime_parameters = fun () -> Sys.runtime_parameters ()
 
 let signal = fun signum handler ->
-    let old_handler = Sys.signal signum (Sys.Signal_handle handler) in
-    match old_handler with
-    | Sys.Signal_default -> fun _ -> ()
-    | Sys.Signal_ignore -> fun _ -> ()
-    | Sys.Signal_handle h -> h
+  let old_handler = Sys.signal signum (Sys.Signal_handle handler) in
+  match old_handler with
+  | Sys.Signal_default -> fun _ -> ()
+  | Sys.Signal_ignore -> fun _ -> ()
+  | Sys.Signal_handle h -> h
 
 let set_signal = fun signum behavior ->
-    Sys.set_signal signum behavior
+  Sys.set_signal signum behavior
 
 let sigabrt = Sys.sigabrt
 

@@ -61,233 +61,233 @@ type pool_state = {
 }
 
 let spawn_connection = fun (Config { driver; driver_config; _ }) ->
-    Connection.create (Connection.Config {driver; config = driver_config})
+  Connection.create (Connection.Config {driver;config = driver_config;})
 
 let find_available = fun connections ->
-    List.find_opt
-      (
-        function
-        | Available _ -> true
-        | _ -> false
-      )
-      (Cell.get connections)
+  List.find_opt
+    (
+      function
+      | Available _ -> true
+      | _ -> false
+    )
+    (Cell.get connections)
 
 let mark_in_use = fun connections conn requester ->
-    Cell.set connections
-      (
-        List.map
-          (
-            function
-            | Available c when Connection.id c = Connection.id conn -> InUse (
-              c,
-              requester,
-              Time.Instant.now ()
-            )
-            | other -> other
-          )
-          (Cell.get connections)
-      )
-
-let mark_available = fun connections conn ->
-    Cell.set connections
-      (
-        List.map
-          (
-            function
-            | InUse (c, _, _) when Connection.id c = Connection.id conn -> Available c
-            | other -> other
-          )
-          (Cell.get connections)
-      )
-
-let handle_acquire = fun state requester ->
-    match find_available state.connections with
-    | Some (Available conn) ->
-        mark_in_use state.connections conn requester;
-        send requester (PoolResponse (ConnectionAcquired conn))
-    | _ ->
-        let total = List.length (Cell.get state.connections) in
-        if total < state.max_connections then
-          match spawn_connection state.config with
-          | Ok conn ->
-              Cell.set
-                state.connections
-                (InUse (conn, requester, Time.Instant.now ()) :: Cell.get state.connections);
-              send requester (PoolResponse (ConnectionAcquired conn))
-          | Error conn_err -> send requester (PoolResponse (AcquireError (ConnectionError conn_err)))
-        else
-          Queue.push state.waiting requester
-
-let handle_release = fun state conn ->
-    mark_available state.connections conn;
-    match Queue.pop state.waiting with
-    | Some requester ->
-        mark_in_use state.connections conn requester;
-        send requester (PoolResponse (ConnectionAcquired conn))
-    | None -> ()
-
-let check_connections = fun state ->
-    let now = Time.Instant.now () in
-    let updated =
-      List.filter_map
+  Cell.set connections
+    (
+      List.map
         (
           function
-          | Available conn ->
-              let age = Time.Instant.duration_since ~earlier:(Connection.created_at conn) now in
-              let idle = Time.Instant.duration_since ~earlier:(Connection.last_used conn) now in
-              if Time.Duration.compare idle state.idle_timeout > 0 then
+          | Available c when Connection.id c = Connection.id conn -> InUse (
+            c,
+            requester,
+            Time.Instant.now ()
+          )
+          | other -> other
+        )
+        (Cell.get connections)
+    )
+
+let mark_available = fun connections conn ->
+  Cell.set connections
+    (
+      List.map
+        (
+          function
+          | InUse (c, _, _) when Connection.id c = Connection.id conn -> Available c
+          | other -> other
+        )
+        (Cell.get connections)
+    )
+
+let handle_acquire = fun state requester ->
+  match find_available state.connections with
+  | Some (Available conn) ->
+      mark_in_use state.connections conn requester;
+      send requester (PoolResponse (ConnectionAcquired conn))
+  | _ ->
+      let total = List.length (Cell.get state.connections) in
+      if total < state.max_connections then
+        match spawn_connection state.config with
+        | Ok conn ->
+            Cell.set
+              state.connections
+              (InUse (conn, requester, Time.Instant.now ()) :: Cell.get state.connections);
+            send requester (PoolResponse (ConnectionAcquired conn))
+        | Error conn_err -> send requester (PoolResponse (AcquireError (ConnectionError conn_err)))
+      else
+        Queue.push state.waiting requester
+
+let handle_release = fun state conn ->
+  mark_available state.connections conn;
+  match Queue.pop state.waiting with
+  | Some requester ->
+      mark_in_use state.connections conn requester;
+      send requester (PoolResponse (ConnectionAcquired conn))
+  | None -> ()
+
+let check_connections = fun state ->
+  let now = Time.Instant.now () in
+  let updated =
+    List.filter_map
+      (
+        function
+        | Available conn ->
+            let age = Time.Instant.duration_since ~earlier:(Connection.created_at conn) now in
+            let idle = Time.Instant.duration_since ~earlier:(Connection.last_used conn) now in
+            if Time.Duration.compare idle state.idle_timeout > 0 then
+              (
+                Connection.close conn;
+                None
+              )
+            else if Option.is_some state.max_lifetime then
+              let max_life = Option.unwrap state.max_lifetime in
+              if Time.Duration.compare age max_life > 0 then
                 (
                   Connection.close conn;
                   None
                 )
-              else if Option.is_some state.max_lifetime then
-                let max_life = Option.unwrap state.max_lifetime in
-                if Time.Duration.compare age max_life > 0 then
-                  (
-                    Connection.close conn;
-                    None
-                  )
-                else
-                  Some (Available conn)
               else
                 Some (Available conn)
-          | InUse _ as conn -> Some conn
-        )
-        (Cell.get state.connections)
-    in
-    Cell.set state.connections updated;
-    let total = List.length (Cell.get state.connections) in
-    if total < state.min_connections then
-      for _ = 1 to state.min_connections - total do
-        match spawn_connection state.config with
-        | Ok conn -> Cell.set state.connections (Available conn :: Cell.get state.connections)
-        | Error _ -> ()
-      done
+            else
+              Some (Available conn)
+        | InUse _ as conn -> Some conn
+      )
+      (Cell.get state.connections)
+  in
+  Cell.set state.connections updated;
+  let total = List.length (Cell.get state.connections) in
+  if total < state.min_connections then
+    for _ = 1 to state.min_connections - total do
+      match spawn_connection state.config with
+      | Ok conn -> Cell.set state.connections (Available conn :: Cell.get state.connections)
+      | Error _ -> ()
+    done
 
 let get_stats = fun state ->
-    let total = List.length (Cell.get state.connections) in
-    let available =
-      List.fold_left
-        (fun acc ->
-          function
-          | Available _ -> acc + 1
-          | _ -> acc)
-        0
-        (Cell.get state.connections)
-    in
-    let in_use = total - available in
-    let waiting = Queue.len state.waiting in
-    [ `Total total; `Available available; `InUse in_use; `Waiting waiting ]
+  let total = List.length (Cell.get state.connections) in
+  let available =
+    List.fold_left
+      (fun acc ->
+        function
+        | Available _ -> acc + 1
+        | _ -> acc)
+      0
+      (Cell.get state.connections)
+  in
+  let in_use = total - available in
+  let waiting = Queue.len state.waiting in
+  [ `Total total; `Available available; `InUse in_use; `Waiting waiting ]
 
 let pool_supervisor = fun
-    (Config {
-      min_connections;
-      max_connections;
-      idle_timeout;
-      max_lifetime;
-      _
-    } as config) ->
-    let state = {
-      connections = Cell.create [];
-      waiting = Queue.create ();
-      config;
-      min_connections;
-      max_connections;
-      idle_timeout;
-      max_lifetime;
-
-    } in
-    for _ = 1 to min_connections do
-      match spawn_connection config with
-      | Ok conn -> Cell.set state.connections (Available conn :: Cell.get state.connections)
-      | Error conn_err ->
-          let (Connection.DriverError { error; to_string; _ }) = conn_err in
-          Log.error ("Failed to create initial connection: " ^ to_string error)
-    done;
-    let rec loop () =
-      let selector msg =
-        match msg with
-        | PoolMsg msg -> `select msg
-        | _ -> `skip
-      in
-      match receive ~selector () with
-      | Acquire requester ->
-          handle_acquire state requester;
-          loop ()
-      | Release (conn, _releaser) ->
-          handle_release state conn;
-          loop ()
-      | HealthCheck ->
-          check_connections state;
-          loop ()
-      | GetStats reply_to ->
-          let stats = get_stats state in
-          send reply_to (PoolResponse (Stats stats));
-          loop ()
-      | Shutdown ->
-          List.iter
-            (
-              function
-              | Available conn
-              | InUse (conn, _, _) -> Connection.close conn
-            )
-            (Cell.get state.connections);
-          ()
-    in
-    loop ()
-
-let create = fun (Config { min_connections; max_connections; _ } as config) ->
-    if min_connections < 0 || max_connections < min_connections then
-      Error (Connection.DriverError {
-        error = "Invalid pool configuration";
-        to_string = (fun s -> s);
-        to_json = (fun s -> Data.Json.string s)
-      })
-    else
-      (* Try to create at least one connection to validate driver config *)
-      match spawn_connection config with
-      | Error conn_err -> Error conn_err
-      | Ok _test_conn ->
-          let supervisor =
-            spawn
-              (fun () ->
-                pool_supervisor config;
-                Ok ())
-          in
-          Ok {config; supervisor}
-
-let acquire = fun t ->
-    send t.supervisor (PoolMsg (Acquire (self ())));
-    (* TODO(@leostera): use receive ?timeout once available *)
+  (Config {
+    min_connections;
+    max_connections;
+    idle_timeout;
+    max_lifetime;
+    _
+  } as config) ->
+  let state = {
+    connections = Cell.create [];
+    waiting = Queue.create ();
+    config;
+    min_connections;
+    max_connections;
+    idle_timeout;
+    max_lifetime;
+  }
+  in
+  for _ = 1 to min_connections do
+    match spawn_connection config with
+    | Ok conn -> Cell.set state.connections (Available conn :: Cell.get state.connections)
+    | Error conn_err ->
+        let (Connection.DriverError { error; to_string; _ }) = conn_err in
+        Log.error ("Failed to create initial connection: " ^ to_string error)
+  done;
+  let rec loop () =
     let selector msg =
       match msg with
-      | PoolResponse (ConnectionAcquired conn) -> `select (Ok conn)
-      | PoolResponse (AcquireError e) -> `select (Error e)
+      | PoolMsg msg -> `select msg
       | _ -> `skip
     in
-    receive ~selector ()
+    match receive ~selector () with
+    | Acquire requester ->
+        handle_acquire state requester;
+        loop ()
+    | Release (conn, _releaser) ->
+        handle_release state conn;
+        loop ()
+    | HealthCheck ->
+        check_connections state;
+        loop ()
+    | GetStats reply_to ->
+        let stats = get_stats state in
+        send reply_to (PoolResponse (Stats stats));
+        loop ()
+    | Shutdown ->
+        List.iter
+          (
+            function
+            | Available conn
+            | InUse (conn, _, _) -> Connection.close conn
+          )
+          (Cell.get state.connections);
+        ()
+  in
+  loop ()
+
+let create = fun (Config { min_connections; max_connections; _ } as config) ->
+  if min_connections < 0 || max_connections < min_connections then
+    Error (Connection.DriverError {
+      error = "Invalid pool configuration";
+      to_string = (fun s -> s);
+      to_json = (fun s -> Data.Json.string s);
+    })
+  else
+    (* Try to create at least one connection to validate driver config *)
+    match spawn_connection config with
+    | Error conn_err -> Error conn_err
+    | Ok _test_conn ->
+        let supervisor =
+          spawn
+            (fun () ->
+              pool_supervisor config;
+              Ok ())
+        in
+        Ok {config;supervisor;}
+
+let acquire = fun t ->
+  send t.supervisor (PoolMsg (Acquire (self ())));
+  (* TODO(@leostera): use receive ?timeout once available *)
+  let selector msg =
+    match msg with
+    | PoolResponse (ConnectionAcquired conn) -> `select (Ok conn)
+    | PoolResponse (AcquireError e) -> `select (Error e)
+    | _ -> `skip
+  in
+  receive ~selector ()
 
 let release = fun t conn -> send t.supervisor (PoolMsg (Release (conn, self ())))
 
 let with_connection = fun t f ->
-    match acquire t with
-    | Error _ as err -> err
-    | Ok conn ->
-        let result =
-          match f conn with
-          | Ok v -> Ok v
-          | Error conn_err -> Error (ConnectionError conn_err)
-        in
-        release t conn;
-        result
+  match acquire t with
+  | Error _ as err -> err
+  | Ok conn ->
+      let result =
+        match f conn with
+        | Ok v -> Ok v
+        | Error conn_err -> Error (ConnectionError conn_err)
+      in
+      release t conn;
+      result
 
 let shutdown = fun t -> send t.supervisor (PoolMsg Shutdown)
 
 let stats = fun t ->
-    send t.supervisor (PoolMsg (GetStats (self ())));
-    let selector msg =
-      match msg with
-      | PoolResponse (Stats s) -> `select s
-      | _ -> `skip
-    in
-    receive ~selector ()
+  send t.supervisor (PoolMsg (GetStats (self ())));
+  let selector msg =
+    match msg with
+    | PoolResponse (Stats s) -> `select s
+    | _ -> `skip
+  in
+  receive ~selector ()

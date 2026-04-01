@@ -1,7 +1,7 @@
 open Std
 
 let make_keys = fun n ->
-    Collections.Array.init n (fun i -> "key" ^ string_of_int i)
+  Collections.Array.init n (fun i -> "key" ^ string_of_int i)
 
 let tests = [
   Test.case "hash collisions"
@@ -274,7 +274,6 @@ let tests = [
       in
       Test.assert_equal ~expected:10 ~actual:count;
       Ok ());
-
 ]
 
 let () =

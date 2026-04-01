@@ -339,7 +339,6 @@ type t =
     Example: ```ocaml Syntax_kind.to_string LET_EXPR = "LET_EXPR"
     Syntax_kind.to_string INT_LITERAL = "INT_LITERAL" ``` *)
 val to_string: t -> string
-
 (** `from_string str` parses a syntax kind from its string representation.
 
     Returns [Some kind] if the string matches a valid syntax kind, [None]

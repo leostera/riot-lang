@@ -21,118 +21,118 @@ module Process = struct
   end
 
   let with_current_relations = fun f ->
-      let t = Scheduler.get_scheduler () in
-      let current = Scheduler.get_current_process () in
-      Scheduler.with_relations_lock t (fun () -> f t current)
+    let t = Scheduler.get_scheduler () in
+    let current = Scheduler.get_current_process () in
+    Scheduler.with_relations_lock t (fun () -> f t current)
 
   let set_flags = fun flags ->
-      let current = Scheduler.get_current_process () in
-      Proc.set_flags current flags
+    let current = Scheduler.get_current_process () in
+    Proc.set_flags current flags
 
   let link = fun pid ->
-      with_current_relations
-        (fun t current ->
-          match Scheduler.get_process t pid with
-          | None -> panic ("Cannot link to non-existent process " ^ Pid.to_string pid)
-          | Some target ->
-              Proc.link current pid;
-              Proc.link target (Proc.pid current))
+    with_current_relations
+      (fun t current ->
+        match Scheduler.get_process t pid with
+        | None -> panic ("Cannot link to non-existent process " ^ Pid.to_string pid)
+        | Some target ->
+            Proc.link current pid;
+            Proc.link target (Proc.pid current))
 
   let unlink = fun pid ->
-      with_current_relations
-        (fun t current ->
-          match Scheduler.get_process t pid with
-          | None -> ()
-          | Some target ->
-              Proc.unlink current pid;
-              Proc.unlink target (Proc.pid current))
+    with_current_relations
+      (fun t current ->
+        match Scheduler.get_process t pid with
+        | None -> ()
+        | Some target ->
+            Proc.unlink current pid;
+            Proc.unlink target (Proc.pid current))
 
   let monitor = fun pid ->
-      with_current_relations
-        (fun t current ->
-          match Scheduler.get_process t pid with
-          | None -> panic ("Cannot monitor non-existent processs " ^ Pid.to_string pid)
-          | Some target ->
-              let ref = Proc.monitor current pid in
-              Proc.add_monitored_by target (Proc.pid current) ref;
-              ref)
+    with_current_relations
+      (fun t current ->
+        match Scheduler.get_process t pid with
+        | None -> panic ("Cannot monitor non-existent processs " ^ Pid.to_string pid)
+        | Some target ->
+            let ref = Proc.monitor current pid in
+            Proc.add_monitored_by target (Proc.pid current) ref;
+            ref)
 
   let demonitor = fun ref ->
-      with_current_relations
-        (fun t current ->
-          let monitored_pid = Proc.monitored_pid_for_ref current ref in
-          Proc.demonitor current ref;
-          match monitored_pid with
-          | None -> ()
-          | Some pid -> (
-              match Scheduler.get_process t pid with
-              | None -> ()
-              | Some target -> Proc.remove_monitored_by target (Proc.pid current) ref
-            ))
+    with_current_relations
+      (fun t current ->
+        let monitored_pid = Proc.monitored_pid_for_ref current ref in
+        Proc.demonitor current ref;
+        match monitored_pid with
+        | None -> ()
+        | Some pid -> (
+            match Scheduler.get_process t pid with
+            | None -> ()
+            | Some target -> Proc.remove_monitored_by target (Proc.pid current) ref
+          ))
 end
 
 let run = fun ~main ~args ?config () ->
-    let config = Option.unwrap_or config ~default:Config.default in
-    Kernel.Exception.record_backtrace true;
-    Scheduler.run ~config ~main:(fun () -> main ~args) |> exit
+  let config = Option.unwrap_or config ~default:Config.default in
+  Kernel.Exception.record_backtrace true;
+  Scheduler.run ~config ~main:(fun () -> main ~args) |> exit
 
 let shutdown = fun ~status -> Scheduler.shutdown (Scheduler.get_scheduler ()) ~status
 
 let spawn = fun fn ->
-    Scheduler.spawn (Scheduler.get_scheduler ()) fn
+  Scheduler.spawn (Scheduler.get_scheduler ()) fn
 
 let spawn_link = fun fn ->
-    let pid = spawn fn in
-    Process.link pid;
-    pid
+  let pid = spawn fn in
+  Process.link pid;
+  pid
 
 let self = fun () -> Scheduler.self ()
 
 let send = fun pid msg ->
-    Scheduler.send pid msg
+  Scheduler.send pid msg
 
 (* Cooperative I/O syscall for actor-aware I/O operations *)
 
 let syscall = fun ~name ~interest ~source ~timeout ->
-    Effect.perform (Proc_effect.Syscall {name; interest; source; timeout})
+  Effect.perform (Proc_effect.Syscall {name;interest;source;timeout;})
 
 module Timer = struct
   type id = Timer_id.t
 
   let send_after = fun target_pid (msg: Message.t) ~after ->
-      let sch = Scheduler.get_scheduler () in
-      let now = Kernel.Time.monotonic_time_nanos () in
-      let duration_nanos = Int64.of_float (after *. 1_000_000_000.0) in
-      Scheduler.add_timer
-        sch
-        ~now
-        ~duration_nanos
-        ~mode:Timer.One_shot
-        ~action:(Timer.Send_message (target_pid, msg))
+    let sch = Scheduler.get_scheduler () in
+    let now = Kernel.Time.monotonic_time_nanos () in
+    let duration_nanos = Int64.of_float (after *. 1_000_000_000.0) in
+    Scheduler.add_timer
+      sch
+      ~now
+      ~duration_nanos
+      ~mode:Timer.One_shot
+      ~action:(Timer.Send_message (target_pid, msg))
 
   let send_interval = fun target_pid (msg: Message.t) ~interval ->
-      let sch = Scheduler.get_scheduler () in
-      let now = Kernel.Time.monotonic_time_nanos () in
-      let duration_nanos = Int64.of_float (interval *. 1_000_000_000.0) in
-      Scheduler.add_timer
-        sch
-        ~now
-        ~duration_nanos
-        ~mode:(Timer.Interval duration_nanos)
-        ~action:(Timer.Send_message (target_pid, msg))
+    let sch = Scheduler.get_scheduler () in
+    let now = Kernel.Time.monotonic_time_nanos () in
+    let duration_nanos = Int64.of_float (interval *. 1_000_000_000.0) in
+    Scheduler.add_timer
+      sch
+      ~now
+      ~duration_nanos
+      ~mode:(Timer.Interval duration_nanos)
+      ~action:(Timer.Send_message (target_pid, msg))
 
   let cancel = fun timer_id ->
-      let sch = Scheduler.get_scheduler () in
-      Scheduler.cancel_timer sch timer_id
+    let sch = Scheduler.get_scheduler () in
+    Scheduler.cancel_timer sch timer_id
 end
 
 include Effects
 
 let yield = fun () ->
-    let current = Scheduler.get_current_process () in
-    match Process.use_reduction current with
-    | Process.Continue -> ()
-    | Process.Yield -> Effects.yield ()
+  let current = Scheduler.get_current_process () in
+  match Process.use_reduction current with
+  | Process.Continue -> ()
+  | Process.Yield -> Effects.yield ()
 
 module Timer_id = Timer_id
 
@@ -148,16 +148,15 @@ type trace_counters = {
 }
 
 let trace_counters = fun () ->
-    let scheduler = Scheduler.get_scheduler () in
-    let counters = Scheduler.trace_counters scheduler in
-    {
-      steals = counters.steals;
-      failed_steals = counters.failed_steals;
-      remote_wakeups = counters.remote_wakeups;
-      duplicate_enqueue_races = counters.duplicate_enqueue_races;
-
-    }
+  let scheduler = Scheduler.get_scheduler () in
+  let counters = Scheduler.trace_counters scheduler in
+  {
+    steals = counters.steals;
+    failed_steals = counters.failed_steals;
+    remote_wakeups = counters.remote_wakeups;
+    duplicate_enqueue_races = counters.duplicate_enqueue_races;
+  }
 
 let reset_trace_counters = fun () ->
-    let scheduler = Scheduler.get_scheduler () in
-    Scheduler.reset_trace_counters scheduler
+  let scheduler = Scheduler.get_scheduler () in
+  Scheduler.reset_trace_counters scheduler

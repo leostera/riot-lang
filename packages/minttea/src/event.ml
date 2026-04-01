@@ -30,24 +30,24 @@ type key =
   | Key of string
 
 let key_to_string = fun key ->
-    match key with
-    | Up -> "up"
-    | Down -> "down"
-    | Left -> "left"
-    | Right -> "right"
-    | Space -> "space"
-    | Escape -> "esc"
-    | Backspace -> "backspace"
-    | Enter -> "enter"
-    | Tab -> "tab"
-    | Delete -> "delete"
-    | Insert -> "insert"
-    | Home -> "home"
-    | End -> "end"
-    | PageUp -> "pgup"
-    | PageDown -> "pgdn"
-    | F n -> "f" ^ Int.to_string n
-    | Key key -> key
+  match key with
+  | Up -> "up"
+  | Down -> "down"
+  | Left -> "left"
+  | Right -> "right"
+  | Space -> "space"
+  | Escape -> "esc"
+  | Backspace -> "backspace"
+  | Enter -> "enter"
+  | Tab -> "tab"
+  | Delete -> "delete"
+  | Insert -> "insert"
+  | Home -> "home"
+  | End -> "end"
+  | PageUp -> "pgup"
+  | PageDown -> "pgdn"
+  | F n -> "f" ^ Int.to_string n
+  | Key key -> key
 
 let modifier_to_string = function
   | NoModifier -> ""

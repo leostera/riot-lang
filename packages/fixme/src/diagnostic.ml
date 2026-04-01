@@ -24,7 +24,14 @@ type t = {
   fix: Fix.fix option;
 }
 
-let make = fun ~severity ~kind ~span ?suggestion ?fix () -> {severity; kind; span; suggestion; fix}
+let make = fun ~severity ~kind ~span ?suggestion ?fix () ->
+  {
+    severity;
+    kind;
+    span;
+    suggestion;
+    fix;
+  }
 
 let kind = fun diag -> diag.kind
 

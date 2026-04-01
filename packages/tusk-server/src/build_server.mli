@@ -13,7 +13,6 @@ val start:
   scope:Protocol.build_scope ->
   target_arch:string option ->
   unit
-
 (** Start a build in a spawned worker process. This function returns immediately
     after spawning the worker. The worker will send results directly to the
     client_pid.

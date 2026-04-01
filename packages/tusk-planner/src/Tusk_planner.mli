@@ -15,7 +15,6 @@ val plan_workspace:
   scope:Package_graph.build_scope ->
   load_errors:Workspace_manager.load_error list ->
   (workspace_plan_result, plan_error) result
-
 (** Plan a single package with dependency-aware hashing. Checks if all
     dependencies are planned first. Returns MissingDependencies if deps not
     ready, or Planned with hash. *)
@@ -36,7 +35,6 @@ val plan_package_with_graph:
   toolchain:Tusk_toolchain.t ->
   package:Package.t ->
   (module_plan_result, Planning_error.t) result *)
-
 (** Plan a single package on-demand - builds module graph and action graph.
     Called by executor when actually building a package (after cache miss). This
     is the old interface without dependency hash tracking. *)

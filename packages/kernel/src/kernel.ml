@@ -67,12 +67,12 @@ let stdout =
       type err = error
 
       let write = fun fd ~buf ->
-          let bytes = Bytes.unsafe_of_string buf in
-          let len = String.length buf in
-          Fs.File.write fd ~pos:0 ~len bytes
+        let bytes = Bytes.unsafe_of_string buf in
+        let len = String.length buf in
+        Fs.File.write fd ~pos:0 ~len bytes
 
       let write_owned_vectored = fun fd ~bufs ->
-          Fs.File.write_vectored fd bufs
+        Fs.File.write_vectored fd bufs
 
       let flush = fun _fd -> Ok ()
     end in

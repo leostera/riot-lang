@@ -59,28 +59,20 @@ type create_error =
       missing: missing_dependency list;
     }
 val create: scope:build_scope -> Workspace.t -> (t, create_error) result
-
 (** Extract the Package.t from a package_node *)
 val get_package: package_node -> Package.t
-
 (** Extract the scope for a package_node *)
 val get_scope: package_node -> package_scope
-
 (** Stable string key for a scoped package node *)
 val package_key: package_name:string -> package_scope -> Package.key
-
 (** Stable string key for a package_node *)
 val get_key: package_node -> Package.key
-
 (** Check if a package node has been planned *)
 val is_planned: package_node -> bool
-
 (** Get the hash of a planned package node, or None if unplanned *)
 val get_hash: package_node -> Std.Crypto.hash option
-
 (** Get all direct dependencies that have not been planned yet *)
 val get_unplanned_dependencies: t -> Package.t -> Package.t list
-
 (** Mark a package as planned with its module graph, action graph, and hash *)
 val mark_planned:
   t ->
@@ -89,46 +81,33 @@ val mark_planned:
   action_graph:Action_graph.t ->
   hash:Std.Crypto.hash ->
   unit
-
 (** Return the number of packages in the graph *)
 val size: t -> int
-
 (** Filter the graph to only include the specified package and its transitive
     dependencies. Returns an empty graph if package not found. *)
 val filter_for_package: t -> string -> t
-
 (** Filter the graph to include the specified packages and all of their
     transitive dependencies. Returns an empty graph if none of the packages
     are found. *)
 val filter_for_packages: t -> string list -> t
-
 (** Return packages in topological order (dependencies before dependents).
     Raises Cycle_detected if there are circular dependencies. *)
 val topological_sort: t -> package_node list
-
 (** Return all packages in the graph in arbitrary order *)
 val packages: t -> Package.t list
-
 (** Find a package by name *)
 val find_package: t -> string -> Package.t option
-
 (** Get the graph node for a package *)
 val get_node: t -> Package.t -> package_node Graph.SimpleGraph.node option
-
 (** Get the graph node for a scoped package key *)
 val get_node_by_key: t -> Package.key -> package_node Graph.SimpleGraph.node option
-
 (** Get the package_node value for a package *)
 val get_package_node: t -> Package.t -> package_node option
-
 (** Get direct dependency package_node values of a package *)
 val get_dependencies: t -> Package.t -> package_node list
-
 (** Get direct dependency package_node values of a specific scoped node *)
 val get_dependencies_for_node: t -> package_node Graph.SimpleGraph.node -> package_node list
-
 (** Lookup a graph node by id *)
 val get_graph_node: t -> Graph.SimpleGraph.Node_id.t -> package_node Graph.SimpleGraph.node option
-
 (** Iterate over all nodes in the graph *)
 val iter_nodes: t -> fn:(package_node Graph.SimpleGraph.node -> unit) -> unit

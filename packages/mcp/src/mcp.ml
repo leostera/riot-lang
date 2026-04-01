@@ -213,7 +213,6 @@ type notification = {
   method_name: string;
   params: notification_params option;
 }
-
 (** Standard JSON-RPC error codes *)
 let parse_error = (-32_700)
 
@@ -224,7 +223,6 @@ let method_not_found = (-32_601)
 let invalid_params = (-32_602)
 
 let internal_error = (-32_603)
-
 (** Helper functions *)
 let method_to_string = function
   | Initialize -> "initialize"
@@ -269,7 +267,6 @@ let string_to_notification_method = function
   | "progress" -> Progress
   | "log_message" -> LogMessage
   | s -> CustomNotification s
-
 (** JSON Serialization *)
 let request_id_to_json = function
   | String s -> Json.String s
@@ -282,103 +279,98 @@ let request_id_of_json = function
   | _ -> Error "Invalid request ID"
 
 let option_to_json = fun f ->
-    function
-    | None -> Json.Null
-    | Some v -> f v
+  function
+  | None -> Json.Null
+  | Some v -> f v
 
 let option_of_json = fun f ->
-    function
-    | Json.Null -> Ok None
-    | j -> (
-        match f j with
-        | Ok v -> Ok (Some v)
-        | Error e -> Error e
-      )
+  function
+  | Json.Null -> Ok None
+  | j -> (
+      match f j with
+      | Ok v -> Ok (Some v)
+      | Error e -> Error e
+    )
 
 let capabilities_to_json = fun (caps: server_capabilities) ->
-    Json.Object [ (
-        "tools",
-        if caps.tools = None then
-          Json.Null
-        else
-          Json.Object []
-      ); (
-        "resources",
-        match caps.resources with
-        | None -> Json.Object []
-        | Some rc ->
-            Json.Object [ (
-                "subscribe",
-                match rc.subscribe with
-                | None -> Json.Bool false
-                | Some b -> Json.Bool b
-              ); (
-                "list_changed",
-                match rc.list_changed with
-                | None -> Json.Bool false
-                | Some b -> Json.Bool b
-              );  ]
-      ); ("prompts", Json.Object []);  ]
+  Json.Object [ (
+      "tools",
+      if caps.tools = None then
+        Json.Null
+      else
+        Json.Object []
+    ); (
+      "resources",
+      match caps.resources with
+      | None -> Json.Object []
+      | Some rc ->
+          Json.Object [ (
+              "subscribe",
+              match rc.subscribe with
+              | None -> Json.Bool false
+              | Some b -> Json.Bool b
+            ); (
+              "list_changed",
+              match rc.list_changed with
+              | None -> Json.Bool false
+              | Some b -> Json.Bool b
+            ); ]
+    ); ("prompts", Json.Object []); ]
 
 let client_capabilities_to_json = fun (caps: client_capabilities) ->
-    Json.Object [ (
-        "tools",
-        if caps.tools = None then
-          Json.Null
-        else
-          Json.Object []
-      ); (
-        "resources",
-        match caps.resources with
-        | None -> Json.Null
-        | Some rc -> Json.Object [
-          ("subscribe", option_to_json (fun b -> Json.Bool b) rc.subscribe);
-          ("list_changed", option_to_json (fun b -> Json.Bool b) rc.list_changed);
-
-        ]
-      ); (
-        "prompts",
-        if caps.prompts = None then
-          Json.Null
-        else
-          Json.Object []
-      ); (
-        "sampling",
-        if caps.sampling = None then
-          Json.Null
-        else
-          Json.Object []
-      );  ]
+  Json.Object [ (
+      "tools",
+      if caps.tools = None then
+        Json.Null
+      else
+        Json.Object []
+    ); (
+      "resources",
+      match caps.resources with
+      | None -> Json.Null
+      | Some rc -> Json.Object [
+        ("subscribe", option_to_json (fun b -> Json.Bool b) rc.subscribe);
+        ("list_changed", option_to_json (fun b -> Json.Bool b) rc.list_changed);
+      ]
+    ); (
+      "prompts",
+      if caps.prompts = None then
+        Json.Null
+      else
+        Json.Object []
+    ); (
+      "sampling",
+      if caps.sampling = None then
+        Json.Null
+      else
+        Json.Object []
+    ); ]
 
 let tool_to_json = fun (t: tool) ->
-    Json.Object [
-      ("name", Json.String t.name);
-      ("description", option_to_json (fun s -> Json.String s) t.description);
-      ("inputSchema", t.input_schema);
-
-    ]
+  Json.Object [
+    ("name", Json.String t.name);
+    ("description", option_to_json (fun s -> Json.String s) t.description);
+    ("inputSchema", t.input_schema);
+  ]
 
 let resource_to_json = fun (r: resource) ->
-    Json.Object [
-      ("uri", Json.String r.uri);
-      ("name", option_to_json (fun s -> Json.String s) r.name);
-      ("description", option_to_json (fun s -> Json.String s) r.description);
-      ("mimeType", option_to_json (fun s -> Json.String s) r.mime_type);
-
-    ]
+  Json.Object [
+    ("uri", Json.String r.uri);
+    ("name", option_to_json (fun s -> Json.String s) r.name);
+    ("description", option_to_json (fun s -> Json.String s) r.description);
+    ("mimeType", option_to_json (fun s -> Json.String s) r.mime_type);
+  ]
 
 let resource_contents_to_json = function
   | TextContent r -> Json.Object [
     ("type", Json.String "text");
     ("text", Json.String r.text);
     ("mimeType", option_to_json (fun s -> Json.String s) r.mime_type);
-
   ]
   | BlobContent b -> Json.Object [
     ("type", Json.String "blob");
     ("data", Json.String b.data);
     ("mimeType", Json.String b.mime_type);
-
   ]
 
 let message_content_to_json = function
@@ -386,26 +378,24 @@ let message_content_to_json = function
   | Resource rc -> resource_contents_to_json rc
 
 let message_to_json = fun (m: message) ->
-    Json.Object [ ("role", Json.String m.role); ("content", message_content_to_json m.content);  ]
+  Json.Object [ ("role", Json.String m.role); ("content", message_content_to_json m.content); ]
 
 let prompt_argument_to_json = fun (arg: prompt_argument) ->
-    Json.Object [
-      ("name", Json.String arg.name);
-      ("description", option_to_json (fun s -> Json.String s) arg.description);
-      ("required", option_to_json (fun b -> Json.Bool b) arg.required);
-
-    ]
+  Json.Object [
+    ("name", Json.String arg.name);
+    ("description", option_to_json (fun s -> Json.String s) arg.description);
+    ("required", option_to_json (fun b -> Json.Bool b) arg.required);
+  ]
 
 let prompt_to_json = fun (p: prompt) ->
-    Json.Object [
-      ("name", Json.String p.name);
-      ("description", option_to_json (fun s -> Json.String s) p.description);
-      (
-        "arguments",
-        option_to_json (fun args -> Json.Array (List.map prompt_argument_to_json args)) p.arguments
-      );
-
-    ]
+  Json.Object [
+    ("name", Json.String p.name);
+    ("description", option_to_json (fun s -> Json.String s) p.description);
+    (
+      "arguments",
+      option_to_json (fun args -> Json.Array (List.map prompt_argument_to_json args)) p.arguments
+    );
+  ]
 
 let request_params_to_json = function
   | InitializeParams { protocol_version; capabilities; client_info } -> Json.Object [
@@ -416,10 +406,8 @@ let request_params_to_json = function
       Json.Object [
         ("name", Json.String client_info.name);
         ("version", Json.String client_info.version);
-
       ]
     );
-
   ]
   | InitializedParams -> Json.Object []
   | ShutdownParams -> Json.Object []
@@ -427,7 +415,6 @@ let request_params_to_json = function
   | CallToolParams { name; arguments } -> Json.Object [
     ("name", Json.String name);
     ("arguments", option_to_json (fun j -> j) arguments);
-
   ]
   | ListResourcesParams -> Json.Object []
   | ReadResourceParams { uri } -> Json.Object [ ("uri", Json.String uri) ]
@@ -438,7 +425,6 @@ let request_params_to_json = function
       "arguments",
       option_to_json (fun args -> Json.Object (List.map (fun ((k, v)) -> (k, Json.String v)) args)) arguments
     );
-
   ]
   | CompleteSamplingParams params -> Json.Object [
     ("messages", Json.Array (List.map message_to_json params.messages));
@@ -452,7 +438,6 @@ let request_params_to_json = function
       option_to_json (fun ss -> Json.Array (List.map (fun s -> Json.String s) ss)) params.stop_sequences
     );
     ("metadata", option_to_json (fun j -> j) params.metadata);
-
   ]
   | PingParams -> Json.Object []
   | CustomParams j -> j
@@ -467,11 +452,9 @@ let response_result_to_json = function
           Json.Object [
             ("name", Json.String server_info.name);
             ("version", Json.String server_info.version);
-
           ]
         );
         ("instructions", option_to_json (fun s -> Json.String s) instructions);
-
       ]
   | InitializedResult ->
       Json.Object []
@@ -502,7 +485,7 @@ let response_result_to_json = function
       in
       Json.Object fields
   | ReadResourceResult { contents } ->
-      Json.Object [ ("contents", Json.Array (List.map resource_contents_to_json contents));  ]
+      Json.Object [ ("contents", Json.Array (List.map resource_contents_to_json contents)); ]
   | ListPromptsResult { prompts; next_cursor } ->
       let fields = [ ("prompts", Json.Array (List.map prompt_to_json prompts)) ] in
       let fields =
@@ -515,14 +498,12 @@ let response_result_to_json = function
       Json.Object [
         ("description", option_to_json (fun s -> Json.String s) description);
         ("messages", Json.Array (List.map message_to_json messages));
-
       ]
   | CompleteSamplingResult { messages; model; stop_reason } ->
       Json.Object [
         ("messages", Json.Array (List.map message_to_json messages));
         ("model", option_to_json (fun s -> Json.String s) model);
         ("stopReason", option_to_json (fun s -> Json.String s) stop_reason);
-
       ]
   | PingResult ->
       Json.Object []
@@ -530,39 +511,35 @@ let response_result_to_json = function
       j
 
 let error_to_json = fun (e: error) ->
-    Json.Object [
-      ("code", Json.Int e.code);
-      ("message", Json.String e.message);
-      ("data", option_to_json (fun j -> j) e.data);
-
-    ]
+  Json.Object [
+    ("code", Json.Int e.code);
+    ("message", Json.String e.message);
+    ("data", option_to_json (fun j -> j) e.data);
+  ]
 
 let request_to_json = fun (req: request) ->
-    let params_field =
-      match req.params with
-      | None -> []
-      | Some p -> [ ("params", request_params_to_json p) ]
-    in
-    Json.Object ([
-      ("jsonrpc", Json.String req.jsonrpc);
-      ("id", request_id_to_json req.id);
-      ("method", Json.String req.method_name);
-
-    ]
-    @ params_field)
+  let params_field =
+    match req.params with
+    | None -> []
+    | Some p -> [ ("params", request_params_to_json p) ]
+  in
+  Json.Object ([
+    ("jsonrpc", Json.String req.jsonrpc);
+    ("id", request_id_to_json req.id);
+    ("method", Json.String req.method_name);
+  ]
+  @ params_field)
 
 let response_to_json = function
   | SuccessResponse { jsonrpc; id; result } -> Json.Object [
     ("jsonrpc", Json.String jsonrpc);
     ("id", request_id_to_json id);
     ("result", response_result_to_json result);
-
   ]
   | ErrorResponse { jsonrpc; id; error } -> Json.Object [
     ("jsonrpc", Json.String jsonrpc);
     ("id", request_id_to_json id);
     ("error", error_to_json error);
-
   ]
 
 let notification_params_to_json = function
@@ -573,48 +550,40 @@ let notification_params_to_json = function
     ("progressToken", Json.String progress_token);
     ("progress", Json.Float progress);
     ("total", option_to_json (fun f -> Json.Float f) total);
-
   ]
   | LogMessageParams { level; logger; data; message } -> Json.Object [
     ("level", Json.String level);
     ("logger", option_to_json (fun s -> Json.String s) logger);
     ("data", option_to_json (fun j -> j) data);
     ("message", Json.String message);
-
   ]
   | CustomNotificationParams j -> j
 
 let notification_to_json = fun (notif: notification) ->
-    let params_field =
-      match notif.params with
-      | None -> []
-      | Some p -> [ ("params", notification_params_to_json p) ]
-    in
-    Json.Object ([
-      ("jsonrpc", Json.String notif.jsonrpc);
-      ("method", Json.String notif.method_name);
-
-    ]
-    @ params_field)
-
+  let params_field =
+    match notif.params with
+    | None -> []
+    | Some p -> [ ("params", notification_params_to_json p) ]
+  in
+  Json.Object ([ ("jsonrpc", Json.String notif.jsonrpc); ("method", Json.String notif.method_name); ]
+  @ params_field)
 (** JSON Deserialization - simplified for now *)
 let request_of_json _json : (request, string) result = Error "Not implemented"
 
 let response_of_json _json : (response, string) result = Error "Not implemented"
 
 let notification_of_json _json : (notification, string) result = Error "Not implemented"
-
 (** Helper functions *)
 let make_request = fun ?params id method_type ->
-    {jsonrpc = "2.0"; id; method_name = method_to_string method_type; params}
+  {jsonrpc = "2.0";id;method_name = method_to_string method_type;params;}
 
-let make_success = fun id result -> SuccessResponse {jsonrpc = "2.0"; id; result}
+let make_success = fun id result -> SuccessResponse {jsonrpc = "2.0";id;result;}
 
 let make_error = fun id code message ->
-    ErrorResponse {jsonrpc = "2.0"; id; error = {code; message; data = None}}
+  ErrorResponse {jsonrpc = "2.0";id;error = {code;message;data = None;};}
 
 let make_notification = fun ?params method_type ->
-    {jsonrpc = "2.0"; method_name = notification_method_to_string method_type; params; }
+  {jsonrpc = "2.0";method_name = notification_method_to_string method_type;params;}
 
 module Protocol: Jsonrpc.ApplicationProtocol with type request = request and type response = response = struct
   type nonrec request = request
@@ -622,28 +591,28 @@ module Protocol: Jsonrpc.ApplicationProtocol with type request = request and typ
   type nonrec response = response
 
   let request_to_params : request -> Jsonrpc.prerequest = fun req ->
-      let params =
-        match req.params with
-        | None -> Jsonrpc.NoParams
-        | Some p ->
-            let json = request_params_to_json p in
-            Jsonrpc.Named [ ("params", json) ]
-      in
-      {Jsonrpc.method_ = req.method_name; params}
+    let params =
+      match req.params with
+      | None -> Jsonrpc.NoParams
+      | Some p ->
+          let json = request_params_to_json p in
+          Jsonrpc.Named [ ("params", json) ]
+    in
+    {Jsonrpc.method_ = req.method_name;params;}
 
   let request_of_params : string -> Jsonrpc.params -> (request, Json.t) result = fun method_ params ->
-      let id = String "0" in
-      Ok {jsonrpc = "2.0"; id; method_name = method_; params = None}
+    let id = String "0" in
+    Ok {jsonrpc = "2.0";id;method_name = method_;params = None;}
 
   let response_to_json : response -> Json.t = fun resp ->
-      match resp with
-      | SuccessResponse { result; _ } -> response_result_to_json result
-      | ErrorResponse { error; _ } -> error_to_json error
+    match resp with
+    | SuccessResponse { result; _ } -> response_result_to_json result
+    | ErrorResponse { error; _ } -> error_to_json error
 
   let response_of_json : Json.t -> (response, Json.t) result = fun json ->
-      match response_of_json json with
-      | Ok r -> Ok r
-      | Error e -> Error (Json.String e)
+    match response_of_json json with
+    | Ok r -> Ok r
+    | Error e -> Error (Json.String e)
 end
 
 module type ToolProtocol = sig
@@ -755,60 +724,59 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
   let request_to_params = function
     | Initialize { protocol_version; capabilities; client_info } -> {
       Jsonrpc.method_ = "initialize";
-      params = Jsonrpc.NoParams
+      params = Jsonrpc.NoParams;
     }
-    | Initialized -> {method_ = "initialized"; params = NoParams}
-    | ListTools -> {method_ = "tools/list"; params = NoParams}
-    | CallTool _ -> {method_ = "tools/call"; params = NoParams}
-    | ListResources -> {method_ = "resources/list"; params = NoParams}
+    | Initialized -> {method_ = "initialized";params = NoParams;}
+    | ListTools -> {method_ = "tools/list";params = NoParams;}
+    | CallTool _ -> {method_ = "tools/call";params = NoParams;}
+    | ListResources -> {method_ = "resources/list";params = NoParams;}
     | ReadResource { uri } -> {
       method_ = "resources/read";
       params = Named [ ("uri", Json.String uri) ];
-
     }
-    | Ping -> {method_ = "ping"; params = NoParams}
-    | Shutdown -> {method_ = "shutdown"; params = NoParams}
+    | Ping -> {method_ = "ping";params = NoParams;}
+    | Shutdown -> {method_ = "shutdown";params = NoParams;}
 
   let request_of_params = fun method_ params ->
-      match method_ with
-      | "initialize" ->
-          Ok Initialized
-      | "initialized" ->
-          Ok Initialized
-      | "tools/list" ->
-          Ok ListTools
-      | "tools/call" -> (
-          match params with
-          | Jsonrpc.Named fields -> (
-              let name =
-                match List.assoc_opt "name" fields with
-                | Some (Json.String s) -> s
-                | _ -> ""
-              in
-              let arguments = List.assoc_opt "arguments" fields in
-              match T.tool_call_to_request name arguments with
-              | Ok req -> Ok (CallTool req)
-              | Error e -> Error (Json.String e)
-            )
-          | _ -> Error (Json.String "tools/call requires named parameters")
-        )
-      | "resources/list" ->
-          Ok ListResources
-      | "resources/read" -> (
-          match params with
-          | Jsonrpc.Named fields -> (
-              match List.assoc_opt "uri" fields with
-              | Some (Json.String uri) -> Ok (ReadResource {uri})
-              | _ -> Error (Json.String "Missing uri parameter")
-            )
-          | _ -> Error (Json.String "resources/read requires named parameters")
-        )
-      | "ping" ->
-          Ok Ping
-      | "shutdown" ->
-          Ok Shutdown
-      | _ ->
-          Error (Json.String ("Unknown method: " ^ method_))
+    match method_ with
+    | "initialize" ->
+        Ok Initialized
+    | "initialized" ->
+        Ok Initialized
+    | "tools/list" ->
+        Ok ListTools
+    | "tools/call" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            let name =
+              match List.assoc_opt "name" fields with
+              | Some (Json.String s) -> s
+              | _ -> ""
+            in
+            let arguments = List.assoc_opt "arguments" fields in
+            match T.tool_call_to_request name arguments with
+            | Ok req -> Ok (CallTool req)
+            | Error e -> Error (Json.String e)
+          )
+        | _ -> Error (Json.String "tools/call requires named parameters")
+      )
+    | "resources/list" ->
+        Ok ListResources
+    | "resources/read" -> (
+        match params with
+        | Jsonrpc.Named fields -> (
+            match List.assoc_opt "uri" fields with
+            | Some (Json.String uri) -> Ok (ReadResource {uri;})
+            | _ -> Error (Json.String "Missing uri parameter")
+          )
+        | _ -> Error (Json.String "resources/read requires named parameters")
+      )
+    | "ping" ->
+        Ok Ping
+    | "shutdown" ->
+        Ok Shutdown
+    | _ ->
+        Error (Json.String ("Unknown method: " ^ method_))
 
   let response_to_json = function
     | InitializeResult { protocol_version; capabilities; server_info; instructions } ->
@@ -819,10 +787,8 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
             Json.Object [
               ("name", Json.String server_info.name);
               ("version", Json.String server_info.version);
-
             ]
           );
-
         ]
     | InitializedResult ->
         Json.Object []
@@ -837,16 +803,15 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
                       match t.description with
                       | Some d -> Json.String d
                       | None -> Json.Null
-                    ); ("inputSchema", t.input_schema);  ])
+                    ); ("inputSchema", t.input_schema); ])
                 tools
             )
-          );  ]
+          ); ]
     | CallToolResult resp ->
         let content, is_error = T.tool_response_to_content resp in
         Json.Object [
           ("content", Json.Array (List.map message_content_to_json content));
           ("isError", Json.Bool is_error);
-
         ]
     | ListResourcesResult { resources } ->
         Json.Object [ (
@@ -864,12 +829,12 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
                       match r.description with
                       | Some d -> Json.String d
                       | None -> Json.Null
-                    );  ])
+                    ); ])
                 resources
             )
-          );  ]
+          ); ]
     | ReadResourceResult { contents } ->
-        Json.Object [ ("contents", Json.Array (List.map resource_contents_to_json contents));  ]
+        Json.Object [ ("contents", Json.Array (List.map resource_contents_to_json contents)); ]
     | PingResult ->
         Json.Object []
     | ShutdownResult ->
@@ -880,17 +845,17 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
   let response_of_json _json : (response, Json.t) result = Error (Json.String "Not implemented")
 
   let make_initialize_result = fun ~protocol_version ~capabilities ~server_info ~instructions ->
-      InitializeResult {protocol_version; capabilities; server_info; instructions}
+    InitializeResult {protocol_version;capabilities;server_info;instructions;}
 
   let make_initialized_result = InitializedResult
 
-  let make_list_tools_result = fun ~tools -> ListToolsResult {tools}
+  let make_list_tools_result = fun ~tools -> ListToolsResult {tools;}
 
   let make_call_tool_result = fun resp -> CallToolResult resp
 
-  let make_list_resources_result = fun ~resources -> ListResourcesResult {resources}
+  let make_list_resources_result = fun ~resources -> ListResourcesResult {resources;}
 
-  let make_read_resource_result = fun ~contents -> ReadResourceResult {contents}
+  let make_read_resource_result = fun ~contents -> ReadResourceResult {contents;}
 
   let make_ping_result = PingResult
 

@@ -19,21 +19,21 @@ unproductive bikeshedding and make signatures mechanically easier to scan.
 |}
 
 let parameter_name = fun parameter ->
-    match Syn.Cst.Parameter.name parameter with
-    | Some name -> name
-    | None -> ""
+  match Syn.Cst.Parameter.name parameter with
+  | Some name -> name
+  | None -> ""
 
 let parameter_span = fun parameter ->
-    Syn.Cst.Parameter.syntax_node parameter |> Syn.Ceibo.Red.SyntaxNode.span
+  Syn.Cst.Parameter.syntax_node parameter |> Syn.Ceibo.Red.SyntaxNode.span
 
 let make_diagnostic = fun ~previous_name parameter ->
-    let current_name = parameter_name parameter in
-    Diagnostic.make
-      ~severity:Warning
-      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-      ~span:(parameter_span parameter)
-      ~suggestion:(("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized"))
-      ()
+  let current_name = parameter_name parameter in
+  Diagnostic.make
+    ~severity:Warning
+    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~span:(parameter_span parameter)
+    ~suggestion:(("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized"))
+    ()
 
 let classify_parameter = function
   | Syn.Cst.Parameter.Labeled _ as parameter -> Some (`Labeled, parameter)
@@ -42,46 +42,46 @@ let classify_parameter = function
   | Syn.Cst.Parameter.LocallyAbstract _ -> None
 
 let first_out_of_order = fun parameters ->
-    let rec go = fun last_name ->
-        function
-        | [] -> None
-        | parameter :: rest ->
-            let name = parameter_name parameter in
-            if String.compare name last_name < 0 then
-              Some (last_name, parameter)
-            else
-              go name rest
-    in
-    match parameters with
+  let rec go = fun last_name ->
+    function
     | [] -> None
-    | parameter :: rest -> go (parameter_name parameter) rest
+    | parameter :: rest ->
+        let name = parameter_name parameter in
+        if String.compare name last_name < 0 then
+          Some (last_name, parameter)
+        else
+          go name rest
+  in
+  match parameters with
+  | [] -> None
+  | parameter :: rest -> go (parameter_name parameter) rest
 
 let diagnostic_for_binding = fun binding ->
-    let labeled_params, optional_params =
-      Syn.Cst.LetBinding.parameters binding
-      |> List.filter_map classify_parameter
-      |> List.fold_left
-        (fun ((labeled, optional)) ((kind, parameter)) ->
-          match kind with
-          | `Labeled -> (labeled @ [ parameter ], optional)
-          | `Optional -> (labeled, optional @ [ parameter ]))
-        ([], [])
-    in
-    match first_out_of_order labeled_params with
-    | Some (previous_name, parameter) -> Some (make_diagnostic ~previous_name parameter)
-    | None -> (
-        match first_out_of_order optional_params with
-        | Some (previous_name, parameter) -> Some (make_diagnostic ~previous_name parameter)
-        | None -> None
-      )
+  let labeled_params, optional_params =
+    Syn.Cst.LetBinding.parameters binding
+    |> List.filter_map classify_parameter
+    |> List.fold_left
+      (fun ((labeled, optional)) ((kind, parameter)) ->
+        match kind with
+        | `Labeled -> (labeled @ [ parameter ], optional)
+        | `Optional -> (labeled, optional @ [ parameter ]))
+      ([], [])
+  in
+  match first_out_of_order labeled_params with
+  | Some (previous_name, parameter) -> Some (make_diagnostic ~previous_name parameter)
+  | None -> (
+      match first_out_of_order optional_params with
+      | Some (previous_name, parameter) -> Some (make_diagnostic ~previous_name parameter)
+      | None -> None
+    )
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-    let source_file = ctx.cst in
-    Syn.Cst.SourceFile.structure_items source_file
-    |> Option.unwrap_or ~default:[]
-    |> List.concat_map Traversal.let_bindings_of_structure_item
-    |> List.filter Syn.Cst.LetBinding.is_function
-    |> List.filter_map diagnostic_for_binding
+  let source_file = ctx.cst in
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Traversal.let_bindings_of_structure_item
+  |> List.filter Syn.Cst.LetBinding.is_function
+  |> List.filter_map diagnostic_for_binding
 
 let make = fun () ->
-    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

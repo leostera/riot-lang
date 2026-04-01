@@ -54,120 +54,118 @@ type Message.t +=
   | AgentResponse of agent_response
 
 let rec loop : type state. state Ref.t -> state -> (unit, exn) result = fun state_ref state ->
-    let selector msg =
-      match msg with
-      | AgentRequest req -> `select req
-      | _ -> `skip
-    in
-    match receive ~selector () with
-    | Get { reply_to; fn; state_ref=sr; reply_ref } -> (
-        match Ref.type_equal state_ref sr with
-        | Some Type.Equal ->
-            let result = fn state in
-            send reply_to (AgentResponse (GetReply (result, reply_ref)));
-            loop state_ref state
-        | None ->
-            (* Message for different agent type, ignore *)
-            loop state_ref state
-      )
-    | Update { reply_to; fn; state_ref=sr } -> (
-        match Ref.type_equal state_ref sr with
-        | Some Type.Equal ->
-            let new_state = fn state in
-            send reply_to (AgentResponse UpdateReply);
-            loop state_ref new_state
-        | None -> loop state_ref state
-      )
-    | GetAndUpdate { reply_to; fn; state_ref=sr; reply_ref } -> (
-        match Ref.type_equal state_ref sr with
-        | Some Type.Equal ->
-            let (result, new_state) = fn state in
-            send reply_to (AgentResponse (GetAndUpdateReply (result, reply_ref)));
-            loop state_ref new_state
-        | None -> loop state_ref state
-      )
-    | Cast { fn; state_ref=sr } -> (
-        match Ref.type_equal state_ref sr with
-        | Some Type.Equal ->
-            let new_state = fn state in
-            loop state_ref new_state
-        | None -> loop state_ref state
-      )
-    | Stop { reply_to } ->
-        send reply_to (AgentResponse StopReply);
-        Ok ()
+  let selector msg =
+    match msg with
+    | AgentRequest req -> `select req
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | Get { reply_to; fn; state_ref=sr; reply_ref } -> (
+      match Ref.type_equal state_ref sr with
+      | Some Type.Equal ->
+          let result = fn state in
+          send reply_to (AgentResponse (GetReply (result, reply_ref)));
+          loop state_ref state
+      | None ->
+          (* Message for different agent type, ignore *)
+          loop state_ref state
+    )
+  | Update { reply_to; fn; state_ref=sr } -> (
+      match Ref.type_equal state_ref sr with
+      | Some Type.Equal ->
+          let new_state = fn state in
+          send reply_to (AgentResponse UpdateReply);
+          loop state_ref new_state
+      | None -> loop state_ref state
+    )
+  | GetAndUpdate { reply_to; fn; state_ref=sr; reply_ref } -> (
+      match Ref.type_equal state_ref sr with
+      | Some Type.Equal ->
+          let (result, new_state) = fn state in
+          send reply_to (AgentResponse (GetAndUpdateReply (result, reply_ref)));
+          loop state_ref new_state
+      | None -> loop state_ref state
+    )
+  | Cast { fn; state_ref=sr } -> (
+      match Ref.type_equal state_ref sr with
+      | Some Type.Equal ->
+          let new_state = fn state in
+          loop state_ref new_state
+      | None -> loop state_ref state
+    )
+  | Stop { reply_to } ->
+      send reply_to (AgentResponse StopReply);
+      Ok ()
 
 let start : type state. (unit -> state) -> state t = fun init ->
-    let state_ref : state Ref.t = Ref.make () in
-    let pid =
-      spawn (fun () -> loop state_ref (init ()))
-    in
-    {pid; state_ref}
+  let state_ref : state Ref.t = Ref.make () in
+  let pid =
+    spawn (fun () -> loop state_ref (init ()))
+  in
+  {pid;state_ref;}
 
 let start_link : type state. (unit -> state) -> state t = fun init ->
-    let state_ref : state Ref.t = Ref.make () in
-    let pid =
-      spawn_link (fun () -> loop state_ref (init ()))
-    in
-    {pid; state_ref}
+  let state_ref : state Ref.t = Ref.make () in
+  let pid =
+    spawn_link (fun () -> loop state_ref (init ()))
+  in
+  {pid;state_ref;}
 
 let get : type state reply. state t -> (state -> reply) -> reply = fun agent fn ->
-    let reply_ref : reply Ref.t = Ref.make () in
-    send
-      agent.pid
-      (AgentRequest (Get {reply_to = self (); fn; state_ref = agent.state_ref; reply_ref}));
-    let selector msg =
-      match msg with
-      | AgentResponse res -> `select res
-      | _ -> `skip
-    in
-    match receive ~selector () with
-    | GetReply (result, rr) when Ref.equal reply_ref rr -> (
-        match Ref.type_equal reply_ref rr with
-        | Some Type.Equal -> result
-        | None -> panic "impossible: reply ref mismatch"
-      )
-    | _ -> panic "unexpected agent response"
+  let reply_ref : reply Ref.t = Ref.make () in
+  send agent.pid (AgentRequest (Get {reply_to = self ();fn;state_ref = agent.state_ref;reply_ref;}));
+  let selector msg =
+    match msg with
+    | AgentResponse res -> `select res
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | GetReply (result, rr) when Ref.equal reply_ref rr -> (
+      match Ref.type_equal reply_ref rr with
+      | Some Type.Equal -> result
+      | None -> panic "impossible: reply ref mismatch"
+    )
+  | _ -> panic "unexpected agent response"
 
 let update : type state. state t -> (state -> state) -> unit = fun agent fn ->
-    send agent.pid (AgentRequest (Update {reply_to = self (); fn; state_ref = agent.state_ref}));
-    let selector msg =
-      match msg with
-      | AgentResponse res -> `select res
-      | _ -> `skip
-    in
-    match receive ~selector () with
-    | UpdateReply -> ()
-    | _ -> panic "unexpected agent response"
+  send agent.pid (AgentRequest (Update {reply_to = self ();fn;state_ref = agent.state_ref;}));
+  let selector msg =
+    match msg with
+    | AgentResponse res -> `select res
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | UpdateReply -> ()
+  | _ -> panic "unexpected agent response"
 
 let get_and_update : type state reply. state t -> (state -> reply * state) -> reply = fun agent fn ->
-    let reply_ref : reply Ref.t = Ref.make () in
-    send
-      agent.pid
-      (AgentRequest (GetAndUpdate {reply_to = self (); fn; state_ref = agent.state_ref; reply_ref}));
-    let selector msg =
-      match msg with
-      | AgentResponse res -> `select res
-      | _ -> `skip
-    in
-    match receive ~selector () with
-    | GetAndUpdateReply (result, rr) when Ref.equal reply_ref rr -> (
-        match Ref.type_equal reply_ref rr with
-        | Some Type.Equal -> result
-        | None -> panic "impossible: reply ref mismatch"
-      )
-    | _ -> panic "unexpected agent response"
+  let reply_ref : reply Ref.t = Ref.make () in
+  send
+    agent.pid
+    (AgentRequest (GetAndUpdate {reply_to = self ();fn;state_ref = agent.state_ref;reply_ref;}));
+  let selector msg =
+    match msg with
+    | AgentResponse res -> `select res
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | GetAndUpdateReply (result, rr) when Ref.equal reply_ref rr -> (
+      match Ref.type_equal reply_ref rr with
+      | Some Type.Equal -> result
+      | None -> panic "impossible: reply ref mismatch"
+    )
+  | _ -> panic "unexpected agent response"
 
 let cast : type state. state t -> (state -> state) -> unit = fun agent fn ->
-    send agent.pid (AgentRequest (Cast {fn; state_ref = agent.state_ref}))
+  send agent.pid (AgentRequest (Cast {fn;state_ref = agent.state_ref;}))
 
 let stop : type state. state t -> unit = fun agent ->
-    send agent.pid (AgentRequest (Stop {reply_to = self ()}));
-    let selector msg =
-      match msg with
-      | AgentResponse res -> `select res
-      | _ -> `skip
-    in
-    match receive ~selector () with
-    | StopReply -> ()
-    | _ -> panic "unexpected agent response"
+  send agent.pid (AgentRequest (Stop {reply_to = self ();}));
+  let selector msg =
+    match msg with
+    | AgentResponse res -> `select res
+    | _ -> `skip
+  in
+  match receive ~selector () with
+  | StopReply -> ()
+  | _ -> panic "unexpected agent response"

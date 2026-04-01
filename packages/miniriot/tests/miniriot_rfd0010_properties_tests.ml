@@ -5,39 +5,38 @@ module Test = Std.Test
 module Result = Std.Result
 
 let assert_ok = fun name check ->
-    match Property.check check with
-    | Property.Success -> Result.Ok ()
-    | Property.Failure { counter_example; shrink_steps } -> Result.Error (Kernel.String.concat
-      ""
-      [
-        name;
-        " failed\nCounter-example: ";
-        counter_example;
-        "\nShrink steps: ";
-        Kernel.Int.to_string shrink_steps;
-
-      ])
-    | Property.Error { exception_; backtrace } -> Result.Error (Kernel.String.concat
-      ""
-      [ name; " raised exception:\n"; Kernel.Exception.to_string exception_; "\n"; backtrace ])
-    | Property.Assumption_violated -> Result.Error (Kernel.String.concat
-      ""
-      [ name; " had no applicable test cases" ])
+  match Property.check check with
+  | Property.Success -> Result.Ok ()
+  | Property.Failure { counter_example; shrink_steps } -> Result.Error (Kernel.String.concat
+    ""
+    [
+      name;
+      " failed\nCounter-example: ";
+      counter_example;
+      "\nShrink steps: ";
+      Kernel.Int.to_string shrink_steps;
+    ])
+  | Property.Error { exception_; backtrace } -> Result.Error (Kernel.String.concat
+    ""
+    [ name; " raised exception:\n"; Kernel.Exception.to_string exception_; "\n"; backtrace ])
+  | Property.Assumption_violated -> Result.Error (Kernel.String.concat
+    ""
+    [ name; " had no applicable test cases" ])
 
 let strictly_increasing_pids = fun pids ->
-    let rec loop prev current =
-      match current with
-      | [] -> true
-      | head :: tail -> (
-          match Pid.compare prev head with
-          | -1 -> loop head tail
-          | _ -> false
-        )
-    in
-    match pids with
-    | []
-    | [ _ ] -> true
-    | head :: tail -> loop head tail
+  let rec loop prev current =
+    match current with
+    | [] -> true
+    | head :: tail -> (
+        match Pid.compare prev head with
+        | -1 -> loop head tail
+        | _ -> false
+      )
+  in
+  match pids with
+  | []
+  | [ _ ] -> true
+  | head :: tail -> loop head tail
 
 let pid_uids_increase =
   Property.for_all Arbitrary.int
@@ -94,7 +93,6 @@ let tests = [
   Test.property "scheduler_count API" ~examples:128 test_config_worker_count;
   Test.property "default scheduler config" ~examples:16 test_default_scheduler_count;
   Test.property "scheduler_id roundtrip" ~examples:128 test_scheduler_id_roundtrip;
-
 ]
 
 let () =

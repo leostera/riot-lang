@@ -338,7 +338,6 @@ let tests = [
   or_insert_equivalence_prop;
   many_ops_equivalence_prop;
   resize_equivalence_prop;
-
 ]
 
 let () =

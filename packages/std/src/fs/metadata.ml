@@ -3,14 +3,14 @@ open Global
 type t = Kernel.Fs.File.Metadata.t
 
 let file_type = fun t ->
-    match Kernel.Fs.File.Metadata.kind t with
-    | Kernel.IO.Regular -> `Regular
-    | Kernel.IO.Directory -> `Directory
-    | Kernel.IO.Symlink -> `Symlink
-    | Kernel.IO.Block -> `Block
-    | Kernel.IO.Character -> `Character
-    | Kernel.IO.Fifo -> `Fifo
-    | Kernel.IO.Socket -> `Socket
+  match Kernel.Fs.File.Metadata.kind t with
+  | Kernel.IO.Regular -> `Regular
+  | Kernel.IO.Directory -> `Directory
+  | Kernel.IO.Symlink -> `Symlink
+  | Kernel.IO.Block -> `Block
+  | Kernel.IO.Character -> `Character
+  | Kernel.IO.Fifo -> `Fifo
+  | Kernel.IO.Socket -> `Socket
 
 let is_file = fun t -> Kernel.Fs.File.Metadata.kind t = Kernel.IO.Regular
 

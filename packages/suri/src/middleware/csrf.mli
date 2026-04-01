@@ -105,7 +105,6 @@ val middleware:
   ?skip:(Conn.t -> bool) ->
   unit ->
   (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
-
 (** CSRF protection middleware.
     
     @param param_name Form parameter name (default: "_csrf_token")
@@ -128,7 +127,6 @@ val middleware:
       ]
     ]} *)
 val get_token: Conn.t -> string
-
 (** Get current CSRF token for this request.
     
     Retrieves token from session, or generates new one if needed.
@@ -140,7 +138,6 @@ val get_token: Conn.t -> string
       (* Use token in custom HTML *)
     ]} *)
 val hidden_field: Conn.t -> 'msg Component.t
-
 (** Generate HTML hidden input field with CSRF token.
     
     Returns Component: {i <input type="hidden" name="_csrf_token" value="...">}
@@ -157,7 +154,6 @@ val hidden_field: Conn.t -> 'msg Component.t
         ]
     ]} *)
 val meta_tag: Conn.t -> 'msg Component.t
-
 (** Generate HTML meta tag for AJAX requests.
     
     Returns Component: {i <meta name="csrf-token" content="...">}

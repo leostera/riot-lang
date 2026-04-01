@@ -1,11 +1,11 @@
 open Std
 
 let rec binding_operator_bindings_of_chain = fun (binding: Cst.binding_operator_binding) ->
-    binding :: (
-      match binding.and_binding with
-      | Some next -> binding_operator_bindings_of_chain next
-      | None -> []
-    )
+  binding :: (
+    match binding.and_binding with
+    | Some next -> binding_operator_bindings_of_chain next
+    | None -> []
+  )
 
 let expressions_of_apply_argument = function
   | Cst.Positional expression -> [ expression ]
@@ -179,30 +179,30 @@ let children_of_expression = function
       [ inner ]
 
 let rec fold_expression = fun f acc expr ->
-    let acc = f acc expr in
-    children_of_expression expr |> List.fold_left (fold_expression f) acc
+  let acc = f acc expr in
+  children_of_expression expr |> List.fold_left (fold_expression f) acc
 
 let iter_expression = fun f expr ->
-    fold_expression
-      (fun () expression ->
-        f expression;
-        ())
-      ()
-      expr
+  fold_expression
+    (fun () expression ->
+      f expression;
+      ())
+    ()
+    expr
 
 let exists_expression = fun predicate expr ->
-    let found = ref false in
-    let rec go expression =
-      if not !found then
-        (
-          if predicate expression then
-            found := true
-          else
-            children_of_expression expression |> List.iter go
-        )
-    in
-    go expr;
-    !found
+  let found = ref false in
+  let rec go expression =
+    if not !found then
+      (
+        if predicate expression then
+          found := true
+        else
+          children_of_expression expression |> List.iter go
+      )
+  in
+  go expr;
+  !found
 
 let children_of_core_type = function
   | Cst.CoreType.Wildcard _
@@ -229,27 +229,27 @@ let children_of_core_type = function
   | Cst.CoreType.Object _ -> []
 
 let rec fold_core_type = fun f acc type_ ->
-    let acc = f acc type_ in
-    children_of_core_type type_ |> List.fold_left (fold_core_type f) acc
+  let acc = f acc type_ in
+  children_of_core_type type_ |> List.fold_left (fold_core_type f) acc
 
 let iter_core_type = fun f type_ ->
-    fold_core_type
-      (fun () core_type ->
-        f core_type;
-        ())
-      ()
-      type_
+  fold_core_type
+    (fun () core_type ->
+      f core_type;
+      ())
+    ()
+    type_
 
 let exists_core_type = fun predicate type_ ->
-    let found = ref false in
-    let rec go core_type =
-      if not !found then
-        (
-          if predicate core_type then
-            found := true
-          else
-            children_of_core_type core_type |> List.iter go
-        )
-    in
-    go type_;
-    !found
+  let found = ref false in
+  let rec go core_type =
+    if not !found then
+      (
+        if predicate core_type then
+          found := true
+        else
+          children_of_core_type core_type |> List.iter go
+      )
+  in
+  go type_;
+  !found

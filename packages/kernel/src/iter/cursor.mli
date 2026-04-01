@@ -39,7 +39,6 @@ val advance_by: t -> int -> t option
 val take_while: t -> (char -> bool) -> string * t
 
 val skip_while: t -> (char -> bool) -> t
-
 (** Takes characters until predicate returns true. Returns (taken_string,
     cursor_at_matching_char) or None if predicate never matches.
 
@@ -54,7 +53,6 @@ val skip_while: t -> (char -> bool) -> t
     Cursor.advance_by cursor 2 |> Option.unwrap in process line cursor | None ->
     Need_more ``` *)
 val take_until: t -> (char -> bool) -> (string * t) option
-
 (** Takes exactly n characters. Returns None if fewer than n remain. *)
 val take_n: t -> int -> (string * t) option
 

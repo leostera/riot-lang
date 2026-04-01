@@ -48,34 +48,25 @@ val spawn:
   (t, [>
     `SpawnFailed of string
   ]) result
-
 (** Spawn a process. All piped file descriptors are set to non-blocking mode.
     Returns a process handle that can be used for I/O and status checking. *)
 val stdin: t -> Fd.t option
-
 (** Get stdin fd if configured as `Pipe. Ready for non-blocking writes. *)
 val stdout: t -> Fd.t option
-
 (** Get stdout fd if configured as `Pipe. Ready for non-blocking reads. *)
 val stderr: t -> Fd.t option
-
 (** Get stderr fd if configured as `Pipe. Ready for non-blocking reads. *)
 val pid: t -> int
-
 (** Get the OS process ID *)
 val try_wait: t -> status option
-
 (** Non-blocking status check using WNOHANG. Returns Some status if process has
     changed state, None if still running. This is the only way to check process
     status at the Kernel level - higher layers can implement async waiting by
     polling this with yields. *)
 val kill: t -> signal:int -> unit
-
 (** Send a signal to the process *)
 val close: t -> unit
-
 (** Close all file descriptors and release resources. Does not wait for process
     termination - call try_wait first if you need the exit status. *)
 val current_pid: unit -> int
-
 (** Get the current process ID *)

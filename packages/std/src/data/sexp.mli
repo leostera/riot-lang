@@ -58,12 +58,10 @@ type t =
           - [Atom]: A simple string value
           - [List]: A nested list of S-expressions *)
 exception Parse_error of string
-
 (** Raised when parsing fails. Contains a description of the error. *)
 (** {1 Parsing} *)
 
 val of_string: string -> (t, string) result
-
 (** Parses a string into an S-expression.
 
     ## Examples
@@ -78,7 +76,6 @@ val of_string: string -> (t, string) result
     - Lists: Enclosed in parentheses [(...]
     - Whitespace: Separates atoms, ignored otherwise *)
 val parse_exn: string -> t
-
 (** Parses a string, raising [Parse_error] on failure.
 
     ## Examples
@@ -90,7 +87,6 @@ val parse_exn: string -> t
 
     [Parse_error] with error message if parsing fails. *)
 val parse_many: string -> (t list, string) result
-
 (** Parses multiple S-expressions from a string.
 
     ## Examples
@@ -100,7 +96,6 @@ val parse_many: string -> (t list, string) result
 (** {1 Printing} *)
 
 val to_string: t -> string
-
 (** Converts an S-expression to a compact string.
 
     ## Examples
@@ -108,7 +103,6 @@ val to_string: t -> string
     ```ocaml let s = Sexp.list [Sexp.atom "a"; Sexp.atom "b"] in Sexp.to_string
     s (* "(a b)" *) ``` *)
 val pretty_print: t -> string
-
 (** Pretty-prints an S-expression with indentation for readability.
 
     ## Examples
@@ -120,14 +114,12 @@ val pretty_print: t -> string
 (** {1 Constructors} *)
 
 val atom: string -> t
-
 (** Creates an atom S-expression.
 
     ## Examples
 
     ```ocaml Sexp.atom "hello" (* Atom "hello" *) ``` *)
 val list: t list -> t
-
 (** Creates a list S-expression.
 
     ## Examples
@@ -137,7 +129,6 @@ val list: t list -> t
 (** {1 Accessors} *)
 
 val is_atom: t -> bool
-
 (** Returns [true] if the S-expression is an atom.
 
     ## Examples
@@ -145,7 +136,6 @@ val is_atom: t -> bool
     ```ocaml Sexp.is_atom (Sexp.atom "foo") (* true *) Sexp.is_atom (Sexp.list
     []) (* false *) ``` *)
 val is_list: t -> bool
-
 (** Returns [true] if the S-expression is a list.
 
     ## Examples
@@ -153,7 +143,6 @@ val is_list: t -> bool
     ```ocaml Sexp.is_list (Sexp.list []) (* true *) Sexp.is_list (Sexp.atom
     "foo") (* false *) ``` *)
 val to_atom: t -> string option
-
 (** Extracts the string value if the S-expression is an atom.
 
     ## Examples
@@ -161,7 +150,6 @@ val to_atom: t -> string option
     ```ocaml Sexp.to_atom (Sexp.atom "hello") (* Some "hello" *) Sexp.to_atom
     (Sexp.list []) (* None *) ``` *)
 val to_list: t -> t list option
-
 (** Extracts the list if the S-expression is a list.
 
     ## Examples
@@ -171,7 +159,6 @@ val to_list: t -> t list option
 
     Sexp.to_list (Sexp.atom "foo") (* None *) ``` *)
 val find_atom: string -> t list -> t option
-
 (** Searches for an atom by name in a nested structure.
 
     ## Examples
@@ -183,7 +170,6 @@ val find_atom: string -> t list -> t option
     Sexp.find_atom "name" data (* Some (List [Atom "name"; Atom "Alice"]) *) ```
 *)
 val assoc: string -> t list -> t option
-
 (** Association list lookup - finds the value for a key in a list of key-value
     pairs.
 
@@ -199,7 +185,6 @@ val assoc: string -> t list -> t option
 
 module Csexp: sig
   val to_string: t -> string
-
   (** Converts to canonical S-expression format - a length-prefixed, unambiguous
       encoding.
 
@@ -210,7 +195,6 @@ module Csexp: sig
       let lst = Sexp.list [Sexp.atom "a"; Sexp.atom "b"] in Csexp.to_string lst
       (* "(1:a1:b)" *) ``` *)
   val of_string: string -> (t, string) result
-
   (** Parses canonical S-expression format.
 
       ## Examples

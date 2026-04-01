@@ -270,7 +270,6 @@ type 'ctx visitor = {
   visit_variant_constructor: 'ctx -> 'ctx walker -> Cst.VariantConstructor.t -> 'ctx;
 }
 val default: 'ctx visitor
-
 (** Build a traversal engine from a visitor. *)
 val walker: 'ctx visitor -> 'ctx walker
 

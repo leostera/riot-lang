@@ -16,12 +16,10 @@ type _ Effect.t +=
         ];
       timeout: timeout;
     } -> 'msg Effect.t
-
 (** Effect for receiving messages with a selector and optional timeout
         *)
 type _ Effect.t +=
   | Yield: unit Effect.t
-
 (** Effect for yielding control to the scheduler *)
 type _ Effect.t +=
   | Syscall: {
@@ -30,5 +28,4 @@ type _ Effect.t +=
       source: Kernel.Async.Source.t;
       timeout: timeout;
     } -> unit Effect.t
-
 (** Effect for system calls with I/O polling *)

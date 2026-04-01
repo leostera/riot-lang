@@ -13,14 +13,14 @@ type t = {
 }
 
 let make = fun ~namespace ~filename ->
-    let mod_name = Module_name.of_filename ~namespace filename in
-    let kind =
-      match Path.extension filename with
-      | Some ".mli" -> `interface
-      | Some ".ml" -> `implementation
-      | _ -> `implementation
-    in
-    {module_name = mod_name; namespace; filename; kind}
+  let mod_name = Module_name.of_filename ~namespace filename in
+  let kind =
+    match Path.extension filename with
+    | Some ".mli" -> `interface
+    | Some ".ml" -> `implementation
+    | _ -> `implementation
+  in
+  {module_name = mod_name;namespace;filename;kind;}
 
 let module_name = fun t -> t.module_name
 

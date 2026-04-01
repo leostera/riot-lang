@@ -11,24 +11,19 @@ type engine
 (** {2 Initialization} *)
 
 val init: unit -> unit
-
 (** Initialize OpenSSL library. Should be called once at startup. *)
 val is_available: unit -> bool
-
 (** Check if TLS is available on this platform. *)
 val version: unit -> string
-
 (** Get OpenSSL version string. *)
 (** {2 Engine Creation} *)
 
 val create_client_engine: hostname:string -> engine
-
 (** Create a TLS client engine.
     
     @param hostname Server hostname for SNI and certificate verification.
     @raise Failure if engine creation fails. *)
 val create_server_engine: cert_file:string -> key_file:string -> engine
-
 (** Create a TLS server engine.
     
     @param cert_file Path to server certificate (PEM format)
@@ -40,7 +35,6 @@ val create_server_engine: cert_file:string -> key_file:string -> engine
     All operations are non-blocking (memory-only). *)
 
 val pump_encrypted_in: engine -> bytes -> pos:int -> len:int -> int
-
 (** [pump_encrypted_in engine buf ~pos ~len] writes encrypted data from network
     into the TLS engine.
     
@@ -49,7 +43,6 @@ val pump_encrypted_in: engine -> bytes -> pos:int -> len:int -> int
     
     @return Number of bytes consumed (always succeeds, never blocks). *)
 val read_encrypted_out: engine -> bytes -> int
-
 (** [read_encrypted_out engine buf] reads encrypted data from the TLS engine
     that needs to be sent to the network.
     
@@ -92,7 +85,6 @@ type write_result =
   | Need_network_write
 (** Engine needs to send encrypted data *)
 val write_plaintext: engine -> bytes -> pos:int -> len:int -> write_result
-
 (** [write_plaintext engine buf ~pos ~len] writes plaintext application data
     to the TLS engine.
     
@@ -112,19 +104,16 @@ type handshake_result =
   | Need_network_read
   | Need_network_write
 val do_handshake: engine -> handshake_result
-
 (** Explicitly trigger the TLS handshake.
     
     For clients, this must be called to initiate the handshake.
     Returns the next action needed to advance the handshake. *)
 val handshake_complete: engine -> bool
-
 (** Check if the TLS handshake is complete.
     
     During handshake, [read_decrypted] and [write_plaintext] will return
     [Need_network_read]/[Need_network_write] to drive the handshake forward. *)
 val alpn_protocol: engine -> string option
-
 (** Get the negotiated ALPN protocol (e.g., "h2", "http/1.1").
     
     Returns [None] if no ALPN was negotiated. *)

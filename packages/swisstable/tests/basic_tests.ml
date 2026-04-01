@@ -224,7 +224,6 @@ let tests = [
       Test.assert_equal ~expected:(Some (10, 20)) ~actual:(Swisstable.get map "point1");
       Test.assert_equal ~expected:(Some (30, 40)) ~actual:(Swisstable.get map "point2");
       Ok ());
-
 ]
 
 let () =

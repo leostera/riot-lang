@@ -1,7 +1,6 @@
 open Std
 
 module Cell = Sync.Cell
-
 (** HTTP/2 Connection Management (RFC 9113)
 
     This module manages HTTP/2 connections, handling:
@@ -89,7 +88,6 @@ type role =
     @return A new connection handle
 *)
 val create: role:role -> ?config:config -> unit -> t
-
 (** Send the connection preface.
 
     For clients: Sends the connection preface string and SETTINGS frame.
@@ -103,7 +101,6 @@ val create: role:role -> ?config:config -> unit -> t
     @return Bytes to send over the wire
 *)
 val send_preface: t -> string
-
 (** Process received data from the wire.
 
     Parses HTTP/2 frames and updates connection state accordingly.
@@ -121,7 +118,6 @@ val process_data: t -> bytes -> (event list, string) Result.t
     @return Result with new stream ID or error
 *)
 val create_stream: t -> (int, string) Result.t
-
 (** Send headers on a stream.
 
     @param conn The connection
@@ -132,7 +128,6 @@ val create_stream: t -> (int, string) Result.t
 *)
 val send_headers:
   t -> stream_id:int -> headers:Hpack.header list -> end_stream:bool -> (string, string) Result.t
-
 (** Send data on a stream.
 
     @param conn The connection
@@ -142,7 +137,6 @@ val send_headers:
     @return Result with bytes to send or error
 *)
 val send_data: t -> stream_id:int -> data:bytes -> end_stream:bool -> (string, string) Result.t
-
 (** Close a stream with error code.
 
     Sends RST_STREAM frame.
@@ -162,7 +156,6 @@ val reset_stream: t -> stream_id:int -> error_code:Frame.error_code -> string
     @return Bytes to send
 *)
 val send_window_update_connection: t -> increment:int -> string
-
 (** Send WINDOW_UPDATE frame for stream-level flow control.
 
     @param conn The connection
@@ -171,10 +164,8 @@ val send_window_update_connection: t -> increment:int -> string
     @return Bytes to send
 *)
 val send_window_update_stream: t -> stream_id:int -> increment:int -> string
-
 (** Get current connection flow control window size. *)
 val connection_window_size: t -> int
-
 (** Get current stream flow control window size. *)
 val stream_window_size: t -> stream_id:int -> int option
 
@@ -188,17 +179,14 @@ val stream_window_size: t -> stream_id:int -> int option
     @return Bytes to send
 *)
 val update_settings: t -> Frame.setting list -> string
-
 (** Send SETTINGS ACK frame.
 
     @param conn The connection
     @return Bytes to send
 *)
 val send_settings_ack: t -> string
-
 (** Get current local settings. *)
 val local_settings: t -> settings
-
 (** Get current remote settings (from peer). *)
 val remote_settings: t -> settings
 
@@ -210,7 +198,6 @@ val remote_settings: t -> settings
     @return Bytes to send
 *)
 val send_ping: t -> data:string -> string
-
 (** Send PING ACK frame.
 
     @param conn The connection
@@ -218,7 +205,6 @@ val send_ping: t -> data:string -> string
     @return Bytes to send
 *)
 val send_ping_ack: t -> data:string -> string
-
 (** Send GOAWAY frame to gracefully close the connection.
 
     @param conn The connection
@@ -229,10 +215,8 @@ val send_ping_ack: t -> data:string -> string
 *)
 val send_goaway:
   t -> last_stream_id:int -> error_code:Frame.error_code -> ?debug_data:string -> unit -> string
-
 (** Get connection state. *)
 val state: t -> state
-
 (** Close the connection immediately. *)
 val close: t -> unit
 
@@ -241,7 +225,6 @@ val close: t -> unit
 (** {1 Utilities} *)
 (** Default connection configuration *)
 val default_config: config
-
 (** Check if stream ID is valid for the given role.
 
     Per RFC 9113: Client-initiated streams are odd, server-initiated are even.

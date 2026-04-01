@@ -137,15 +137,11 @@ type t = {
 }
 (** Mermaid diagram representation. *)
 val create: ?direction:direction -> unit -> t
-
 (** Create a new Mermaid graph with optional direction (default: TD). *)
 val add_node: t -> id:string -> label:string -> ?shape:node_shape -> unit -> t
-
 (** Add a node to the graph. *)
 val add_edge:
   t -> from_node:string -> to_node:string -> ?label:string -> ?style:edge_style -> unit -> t
-
 (** Add an edge between two nodes. *)
 val to_string: t -> string
-
 (** Convert to Mermaid diagram string. *)

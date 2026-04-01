@@ -1,7 +1,6 @@
 open Global0
 
 include module type of Stdlib.List
-
 (** Creates a new list by calling [fn] with indices 0 to [len-1].
 
     ## Examples
@@ -19,7 +18,6 @@ include module type of Stdlib.List
     - Time: O(n) where n is [len]
     - Space: O(n) *)
 val make: len:int -> fn:(int -> 'a) -> 'a list
-
 (** Returns a list with duplicate elements removed, preserving order.
     Keeps the first occurrence of each element.
     Uses structural equality (=) to compare elements.

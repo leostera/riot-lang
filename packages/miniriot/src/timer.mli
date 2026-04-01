@@ -26,17 +26,12 @@ type t = {
 }
 (** A timer *)
 val make: now:int64 -> duration_nanos:int64 -> mode:mode -> action:action -> t
-
 (** Create a new timer *)
 val is_cancelled: t -> bool
-
 (** Check if timer has been cancelled *)
 val cancel: t -> unit
-
 (** Mark timer as cancelled *)
 val should_fire: t -> now:int64 -> bool
-
 (** Check if timer should fire at the given time *)
 val reschedule: t -> now:int64 -> unit
-
 (** Reschedule interval timer for next firing *)

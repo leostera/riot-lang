@@ -18,6 +18,5 @@ val listen:
   Kernel.Net.Addr.stream_addr ->
   handler:handler ->
   (unit, error) result
-
 (** Close the server *)
 val close: t -> unit

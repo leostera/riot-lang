@@ -54,39 +54,39 @@ module Server = struct
       }
 
   let rec loop = fun state ->
-      let selector msg =
-        match msg with
-        | Telemetry msg -> `select msg
-        | _ -> `skip
-      in
-      match receive ~selector () with
-      | AttachHandler handler ->
-          let _ = HashMap.insert state.handlers handler.id handler in
-          loop state
-      | DetachHandler handler_id ->
-          let _ = HashMap.remove state.handlers handler_id in
-          loop state
-      | DetachAll ->
-          HashMap.clear state.handlers;
-          loop state
-      | ListHandlers { reply_to; request_id } ->
-          let handler_ids = HashMap.keys state.handlers in
-          send reply_to (HandlerList {request_id; ids = handler_ids});
-          loop state
-      | Emit event ->
-          HashMap.iter
-            (fun _id handler ->
-              try handler.fn event with
-              | _ -> ())
-            state.handlers;
-          loop state
-      | Stop { reply_to; request_id } ->
-          send reply_to (Stopped {request_id});
-          Ok ()
+    let selector msg =
+      match msg with
+      | Telemetry msg -> `select msg
+      | _ -> `skip
+    in
+    match receive ~selector () with
+    | AttachHandler handler ->
+        let _ = HashMap.insert state.handlers handler.id handler in
+        loop state
+    | DetachHandler handler_id ->
+        let _ = HashMap.remove state.handlers handler_id in
+        loop state
+    | DetachAll ->
+        HashMap.clear state.handlers;
+        loop state
+    | ListHandlers { reply_to; request_id } ->
+        let handler_ids = HashMap.keys state.handlers in
+        send reply_to (HandlerList {request_id;ids = handler_ids;});
+        loop state
+    | Emit event ->
+        HashMap.iter
+          (fun _id handler ->
+            try handler.fn event with
+            | _ -> ())
+          state.handlers;
+        loop state
+    | Stop { reply_to; request_id } ->
+        send reply_to (Stopped {request_id;});
+        Ok ()
 
   let init = fun () ->
-      let state = {handlers = HashMap.create ()} in
-      loop state
+    let state = {handlers = HashMap.create ();} in
+    loop state
 
   let start = fun () -> spawn init
 end
@@ -98,94 +98,94 @@ let lock = Mutex.create ()
 let request_counter = Atomic.make 0
 
 let with_lock = fun f ->
-    Mutex.lock lock;
-    try
-      let result = f () in
+  Mutex.lock lock;
+  try
+    let result = f () in
+    Mutex.unlock lock;
+    result
+  with
+  | exn ->
       Mutex.unlock lock;
-      result
-    with
-    | exn ->
-        Mutex.unlock lock;
-        raise exn
+      raise exn
 
 let read_pid = fun () -> with_lock (fun () -> !pid)
 
 let clear_pid_if_matches = fun candidate ->
-    with_lock
-      (fun () ->
-        match !pid with
-        | Some current when Pid.equal current candidate -> pid := None
-        | _ -> ())
+  with_lock
+    (fun () ->
+      match !pid with
+      | Some current when Pid.equal current candidate -> pid := None
+      | _ -> ())
 
 let next_request_id = fun () -> Atomic.fetch_and_add request_counter 1 + 1
 
 let start = fun () ->
-    with_lock
-      (fun () ->
-        match !pid with
-        | None ->
-            let server_pid = Server.start () in
-            pid := Some server_pid;
-            server_pid
-        | Some pid -> pid)
+  with_lock
+    (fun () ->
+      match !pid with
+      | None ->
+          let server_pid = Server.start () in
+          pid := Some server_pid;
+          server_pid
+      | Some pid -> pid)
 
 let emit = fun event ->
-    match read_pid () with
-    | None -> ()
-    | Some pid -> send pid Server.(Telemetry (Emit event))
+  match read_pid () with
+  | None -> ()
+  | Some pid -> send pid Server.(Telemetry (Emit event))
 
 let attach = fun id fn ->
-    match read_pid () with
-    | None -> ()
-    | Some pid -> send pid Server.(Telemetry (AttachHandler {id; fn}))
+  match read_pid () with
+  | None -> ()
+  | Some pid -> send pid Server.(Telemetry (AttachHandler {id;fn;}))
 
 let detach = fun id ->
-    match read_pid () with
-    | None -> ()
-    | Some pid -> send pid Server.(Telemetry (DetachHandler id))
+  match read_pid () with
+  | None -> ()
+  | Some pid -> send pid Server.(Telemetry (DetachHandler id))
 
 let detach_all = fun () ->
-    match read_pid () with
-    | None -> ()
-    | Some pid -> send pid Server.(Telemetry DetachAll)
+  match read_pid () with
+  | None -> ()
+  | Some pid -> send pid Server.(Telemetry DetachAll)
 
 let list_handlers = fun () ->
-    match read_pid () with
-    | None -> []
-    | Some pid ->
-        let request_id = next_request_id () in
-        send pid Server.(Telemetry (ListHandlers {reply_to = self (); request_id}));
-        let selector msg =
-          match msg with
-          | Server.HandlerList { request_id=got; ids } when Kernel.Int.equal got request_id -> `select ids
-          | _ -> `skip
-        in
-        (
-          try receive ~selector ~timeout:(Time.Duration.from_millis 100) () with
-          | Receive_timeout ->
-              clear_pid_if_matches pid;
-              []
-        )
+  match read_pid () with
+  | None -> []
+  | Some pid ->
+      let request_id = next_request_id () in
+      send pid Server.(Telemetry (ListHandlers {reply_to = self ();request_id;}));
+      let selector msg =
+        match msg with
+        | Server.HandlerList { request_id=got; ids } when Kernel.Int.equal got request_id -> `select ids
+        | _ -> `skip
+      in
+      (
+        try receive ~selector ~timeout:(Time.Duration.from_millis 100) () with
+        | Receive_timeout ->
+            clear_pid_if_matches pid;
+            []
+      )
 
 let stop = fun () ->
-    let current_pid =
-      with_lock
-        (fun () ->
-          let current = !pid in
-          pid := None;
-          current)
-    in
-    match current_pid with
-    | None -> ()
-    | Some pid ->
-        let request_id = next_request_id () in
-        send pid Server.(Telemetry (Stop {reply_to = self (); request_id}));
-        let selector msg =
-          match msg with
-          | Server.Stopped { request_id=got } when Kernel.Int.equal got request_id -> `select ()
-          | _ -> `skip
-        in
-        (
-          try receive ~selector ~timeout:(Time.Duration.from_millis 200) () with
-          | Receive_timeout -> ()
-        )
+  let current_pid =
+    with_lock
+      (fun () ->
+        let current = !pid in
+        pid := None;
+        current)
+  in
+  match current_pid with
+  | None -> ()
+  | Some pid ->
+      let request_id = next_request_id () in
+      send pid Server.(Telemetry (Stop {reply_to = self ();request_id;}));
+      let selector msg =
+        match msg with
+        | Server.Stopped { request_id=got } when Kernel.Int.equal got request_id -> `select ()
+        | _ -> `skip
+      in
+      (
+        try receive ~selector ~timeout:(Time.Duration.from_millis 200) () with
+        | Receive_timeout -> ()
+      )

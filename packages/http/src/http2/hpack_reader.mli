@@ -58,12 +58,9 @@ type decode_result =
     @return Decode result
 *)
 val decode: decoder -> ('src, 'err) IO.Reader.t -> decode_result
-
 (** Update maximum dynamic table size (from SETTINGS frame) *)
 val update_max_table_size: decoder -> int -> unit
-
 (** Reset decoder state for new connection *)
 val reset: decoder -> unit
-
 (** Get dynamic table size *)
 val dynamic_table_size: decoder -> int

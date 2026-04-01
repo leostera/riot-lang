@@ -3,58 +3,58 @@ open Std.Data
 open Std.IO
 
 let test_encode_simple = fun () ->
-    let encoded = Base64.encode "Hello" in
-    if encoded = "SGVsbG8=" then
-      Ok ()
-    else
-      Error ("Expected 'SGVsbG8=', got '" ^ encoded ^ "'")
+  let encoded = Base64.encode "Hello" in
+  if encoded = "SGVsbG8=" then
+    Ok ()
+  else
+    Error ("Expected 'SGVsbG8=', got '" ^ encoded ^ "'")
 
 let test_encode_empty = fun () ->
-    let encoded = Base64.encode "" in
-    if encoded = "" then
-      Ok ()
-    else
-      Error "Empty string should encode to empty string"
+  let encoded = Base64.encode "" in
+  if encoded = "" then
+    Ok ()
+  else
+    Error "Empty string should encode to empty string"
 
 let test_encode_bytes = fun () ->
-    let bytes = Bytes.of_string "test" in
-    let encoded = Base64.encode_bytes bytes in
-    if encoded = "dGVzdA==" then
-      Ok ()
-    else
-      Error ("Expected 'dGVzdA==', got '" ^ encoded ^ "'")
+  let bytes = Bytes.of_string "test" in
+  let encoded = Base64.encode_bytes bytes in
+  if encoded = "dGVzdA==" then
+    Ok ()
+  else
+    Error ("Expected 'dGVzdA==', got '" ^ encoded ^ "'")
 
 let test_decode_simple = fun () ->
-    match Base64.decode "SGVsbG8=" with
-    | Ok "Hello" -> Ok ()
-    | Ok s -> Error ("Expected 'Hello', got '" ^ s ^ "'")
-    | Error _ -> Error "Decode failed"
+  match Base64.decode "SGVsbG8=" with
+  | Ok "Hello" -> Ok ()
+  | Ok s -> Error ("Expected 'Hello', got '" ^ s ^ "'")
+  | Error _ -> Error "Decode failed"
 
 let test_decode_invalid_char = fun () ->
-    match Base64.decode "SGVsbG8!" with
-    | Error `Invalid_base64 -> Ok ()
-    | Ok _ -> Error "Should reject invalid Base64 character"
+  match Base64.decode "SGVsbG8!" with
+  | Error `Invalid_base64 -> Ok ()
+  | Ok _ -> Error "Should reject invalid Base64 character"
 
 let test_roundtrip = fun () ->
-    let original = "Hello, World!" in
-    let encoded = Base64.encode original in
-    match Base64.decode encoded with
-    | Ok decoded when decoded = original -> Ok ()
-    | _ -> Error "Roundtrip failed"
+  let original = "Hello, World!" in
+  let encoded = Base64.encode original in
+  match Base64.decode encoded with
+  | Ok decoded when decoded = original -> Ok ()
+  | _ -> Error "Roundtrip failed"
 
 let test_roundtrip_binary = fun () ->
-    let original = "\x00\x01\x02\xFF\xFE\xFD" in
-    let encoded = Base64.encode original in
-    match Base64.decode encoded with
-    | Ok decoded when decoded = original -> Ok ()
-    | _ -> Error "Binary roundtrip failed"
+  let original = "\x00\x01\x02\xFF\xFE\xFD" in
+  let encoded = Base64.encode original in
+  match Base64.decode encoded with
+  | Ok decoded when decoded = original -> Ok ()
+  | _ -> Error "Binary roundtrip failed"
 
 let test_padding = fun () ->
-    let encoded = Base64.encode "f" in
-    if encoded = "Zg==" then
-      Ok ()
-    else
-      Error ("Expected 'Zg==', got '" ^ encoded ^ "'")
+  let encoded = Base64.encode "f" in
+  if encoded = "Zg==" then
+    Ok ()
+  else
+    Error ("Expected 'Zg==', got '" ^ encoded ^ "'")
 
 let tests =
   Test.[
@@ -66,7 +66,6 @@ let tests =
     case "roundtrip" test_roundtrip;
     case "binary roundtrip" test_roundtrip_binary;
     case "padding" test_padding;
-
   ]
 
 let () =

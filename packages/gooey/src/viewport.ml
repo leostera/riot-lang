@@ -5,4 +5,4 @@ type t = {
   height: float;
 }
 
-let make = fun ~width ~height -> {width; height}
+let make = fun ~width ~height -> {width;height;}

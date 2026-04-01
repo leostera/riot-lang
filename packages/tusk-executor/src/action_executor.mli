@@ -52,7 +52,6 @@ val execute_node:
   Path.t ->
   Action_node.t ->
   execution_result
-
 (** Execute an action graph with dependency-aware parallelism.
 
     Passing `concurrency = 1` uses the same code path with serialized

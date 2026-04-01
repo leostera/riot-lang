@@ -6,7 +6,6 @@ open Tusk_planner
 type t
 (** Create a sandbox directory for a package build. *)
 val create: workspace:Workspace.t -> ?profile:string -> ?target:string -> package_name:string -> t
-
 (** Prepare an existing sandbox by copying package inputs and dependency object
     files required by the current execution model. *)
 val prepare:
@@ -16,13 +15,10 @@ val prepare:
   depset:Dependency.t list ->
   store:Tusk_store.Store.t ->
   unit
-
 (** Get the directory path of the sandbox *)
 val get_dir: t -> Path.t
-
 (** Remove sandbox files from disk. *)
 val cleanup: t -> unit
-
 (** Execute a function with a prepared sandbox.
     
     Creates a sandbox, copies inputs and object files, executes the function,

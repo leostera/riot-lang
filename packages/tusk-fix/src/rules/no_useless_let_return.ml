@@ -43,12 +43,12 @@ let body_name = function
   | _ -> None
 
 let make_diagnostic = fun (expr: Syn.Cst.let_expression) ->
-    Diagnostic.make
-      ~severity:Warning
-      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-      ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
-      ~suggestion:"Replace this let-binding with its bound expression."
-      ()
+  Diagnostic.make
+    ~severity:Warning
+    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
+    ~suggestion:"Replace this let-binding with its bound expression."
+    ()
 
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.Let expr -> (
@@ -59,11 +59,11 @@ let diagnostic_for_expression = function
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-    let source_file = ctx.cst in
-    Syn.Cst.SourceFile.structure_items source_file
-    |> Option.unwrap_or ~default:[]
-    |> List.concat_map Traversal.expressions_of_structure_item
-    |> List.filter_map diagnostic_for_expression
+  let source_file = ctx.cst in
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Traversal.expressions_of_structure_item
+  |> List.filter_map diagnostic_for_expression
 
 let make = fun () ->
-    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

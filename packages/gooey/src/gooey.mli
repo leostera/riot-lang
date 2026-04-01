@@ -38,25 +38,18 @@
     ]}
 *)
 open Std
-
 (** Geometric primitives (Point, Rect) *)
 module Geometry = Geometry
-
 (** Viewport dimensions *)
 module Viewport = Viewport
-
 (** Style configuration and builder API *)
 module Style = Style
-
 (** UI element tree *)
 module Element = Element
-
 (** Render commands *)
 module Render = Render
-
 (** ANSI terminal formatting *)
 module Ansi_formatter = Ansi_formatter
-
 (** Terminal renderer *)
 module Terminal_renderer_fullscreen = Terminal_renderer_fullscreen
 
@@ -71,7 +64,6 @@ module Config: sig
   type t
   (** Create a layout configuration *)
   val make: viewport:Viewport.t -> text_measurer:text_measurer -> unit -> t
-
   (** Simple terminal-based text measurement:
       width = character count * 8.0, height = font size *)
   val default_text_measurer: text_measurer

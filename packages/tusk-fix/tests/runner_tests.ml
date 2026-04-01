@@ -5,43 +5,43 @@ let write_file = fun path content -> Fs.write content path |> Result.expect ~msg
 let read_file = fun path -> Fs.read path |> Result.expect ~msg:"failed to read test fixture"
 
 let run_cli = fun argv ->
-    match ArgParser.get_matches Tusk_fix.Cli.command ("fix" :: argv) with
-    | Error err -> Error (Failure (ArgParser.error_message err))
-    | Ok matches -> Tusk_fix.Cli.run matches
+  match ArgParser.get_matches Tusk_fix.Cli.command ("fix" :: argv) with
+  | Error err -> Error (Failure (ArgParser.error_message err))
+  | Ok matches -> Tusk_fix.Cli.run matches
 
 let with_cwd = fun path fn ->
-    let original = Env.current_dir () |> Result.expect ~msg:"failed to get cwd" in
-    Env.set_current_dir path |> Result.expect ~msg:"failed to chdir into test dir";
-    try
-      let result = fn () in
-      Env.set_current_dir original |> Result.expect ~msg:"failed to restore cwd";
-      result
-    with
-    | exn ->
-        Env.set_current_dir original |> Result.expect ~msg:"failed to restore cwd after exception";
-        raise exn
+  let original = Env.current_dir () |> Result.expect ~msg:"failed to get cwd" in
+  Env.set_current_dir path |> Result.expect ~msg:"failed to chdir into test dir";
+  try
+    let result = fn () in
+    Env.set_current_dir original |> Result.expect ~msg:"failed to restore cwd";
+    result
+  with
+  | exn ->
+      Env.set_current_dir original |> Result.expect ~msg:"failed to restore cwd after exception";
+      raise exn
 
 let with_tempdir = fun prefix fn ->
-    match Fs.with_tempdir ~prefix fn with
-    | Ok result -> result
-    | Error err -> Error (IO.error_message err)
+  match Fs.with_tempdir ~prefix fn with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
 
 let diagnostic_rule_ids = fun diagnostics ->
-    diagnostics |> List.map Tusk_fix.Diagnostic.rule_id |> List.sort String.compare
+  diagnostics |> List.map Tusk_fix.Diagnostic.rule_id |> List.sort String.compare
 
 let assert_explanation_contains = fun ~rule_id ~snippet ->
-    match Tusk_fix.Explanations.explain rule_id with
-    | None -> Error ("Expected explanation for " ^ rule_id)
-    | Some entry ->
-        Test.assert_equal ~expected:rule_id ~actual:entry.Tusk_fix.Explanation.rule_id;
-        let body = String.trim entry.Tusk_fix.Explanation.body in
-        Test.assert_true (String.length body > 80);
-        Test.assert_true (not (String.contains body "Avoid:"));
-        Test.assert_true (not (String.contains body "Better:"));
-        Test.assert_true (not (String.contains body "Why this rule exists"));
-        Test.assert_true (not (String.contains body "What to do instead"));
-        ignore snippet;
-        Ok ()
+  match Tusk_fix.Explanations.explain rule_id with
+  | None -> Error ("Expected explanation for " ^ rule_id)
+  | Some entry ->
+      Test.assert_equal ~expected:rule_id ~actual:entry.Tusk_fix.Explanation.rule_id;
+      let body = String.trim entry.Tusk_fix.Explanation.body in
+      Test.assert_true (String.length body > 80);
+      Test.assert_true (not (String.contains body "Avoid:"));
+      Test.assert_true (not (String.contains body "Better:"));
+      Test.assert_true (not (String.contains body "Why this rule exists"));
+      Test.assert_true (not (String.contains body "What to do instead"));
+      ignore snippet;
+      Ok ()
 
 let tests = [
   Test.case "snake-case-type-names exposes safe fixes"
@@ -1906,17 +1906,15 @@ let render x y z =
           write_file Path.(helper_dir / Path.v "tusk.toml") "[package]\nname = \"helper\"\nversion = \"0.1.0\"\n\n[lib]\npath = \"src/helper.ml\"\n";
           write_file Path.(helper_src_dir / Path.v "helper.ml") "let value = 1\n";
           write_file Path.(fix_dir / Path.v "tusk_fix_rules.ml") "let name = \"demo\"\nlet rules () = []\nlet explanations () = []\n";
-          let providers = [
-            Tusk_model.Fix_provider.{
+          let providers = [ Tusk_model.Fix_provider.{
               name = "demo";
               package_name = "demo";
               package_path = provider_dir;
-              source_path = Path.(fix_dir / Path.v "tusk_fix_rules.ml");
+              source_path =
+                Path.(fix_dir / Path.v "tusk_fix_rules.ml");
               rules = [ "demo:demo-rule" ];
-
-            };
-
-          ] in
+            }; ]
+          in
           let plan = Tusk_fix.Fixme_runner.materialize
             ~workspace_root:tmpdir
             ~target_dir_root:Path.(tmpdir / Path.v "_build")
@@ -1926,25 +1924,20 @@ let render x y z =
           Ok ()));
   Test.case "fixme runner registry source lists discovered providers"
     (fun () ->
-      let providers = [
-        Tusk_model.Fix_provider.{
+      let providers = [ Tusk_model.Fix_provider.{
           name = "std";
           package_name = "std";
           package_path = Path.v "packages/std";
           source_path = Path.v "/workspace/packages/std/fix/no_stdlib_provider.ml";
           rules = [ "std:no-stdlib" ];
-
-        };
-        Tusk_model.Fix_provider.{
+        }; Tusk_model.Fix_provider.{
           name = "suri";
           package_name = "suri";
           package_path = Path.v "packages/suri";
           source_path = Path.v "/workspace/packages/suri/fix/route_style_provider.ml";
           rules = [ "suri:route-style" ];
-
-        };
-
-      ] in
+        }; ]
+      in
       let source = Tusk_fix.Fixme_runner.registry_source providers in
       Test.assert_true (String.contains source "Provider_std_std");
       Test.assert_true (String.contains source "Provider_suri_suri");
@@ -1958,8 +1951,8 @@ let render x y z =
           package_path = Path.v "packages/std";
           source_path = Path.v "/workspace/packages/std/fix/tusk_fix_rules.ml";
           rules = [ "std:no-stdlib" ];
-
-        } in
+        }
+      in
       let plan = Tusk_fix.Fixme_runner.plan
         ~workspace_root:(Path.v "/workspace")
         ~target_dir_root:Path.(Path.v "/workspace" / Path.v "_build")
@@ -1972,15 +1965,14 @@ let render x y z =
     (fun () ->
       let result = Syn.parse_implementation "let render x = let y = x + 1 in y; y\n" in
       let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
-      let expressions = Tusk_fix.Rule_query.expressions
-        Tusk_fix.Rule.{file_path = "sample.ml"; cst; } in
+      let expressions = Tusk_fix.Rule_query.expressions Tusk_fix.Rule.{file_path = "sample.ml";cst;} in
       Test.assert_true (List.length expressions >= 5);
       Ok ());
   Test.case "rule query collects let bindings from the typed CST"
     (fun () ->
       let result = Syn.parse_implementation "let render x = x\nlet other y = let z = y in z\n" in
       let cst = Syn.build_cst result |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
-      let bindings = Tusk_fix.Rule_query.let_bindings Tusk_fix.Rule.{file_path = "sample.ml"; cst; } in
+      let bindings = Tusk_fix.Rule_query.let_bindings Tusk_fix.Rule.{file_path = "sample.ml";cst;} in
       Test.assert_equal
         ~expected:[ "render"; "other" ]
         ~actual:((bindings |> List.map Syn.Cst.LetBinding.name));
@@ -1992,11 +1984,11 @@ let render x y z =
       let implementation_cst = Syn.build_cst implementation |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
       let interface_cst = Syn.build_cst interface |> Result.expect ~msg:"expected typed CST for diagnostics-free parse" in
       let implementation_types = Tusk_fix.Rule_query.type_declarations
-        Tusk_fix.Rule.{file_path = "sample.ml"; cst = implementation_cst; }
+        Tusk_fix.Rule.{file_path = "sample.ml";cst = implementation_cst;}
       |> List.map
         (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
       let interface_types = Tusk_fix.Rule_query.type_declarations
-        Tusk_fix.Rule.{file_path = "sample.mli"; cst = interface_cst; }
+        Tusk_fix.Rule.{file_path = "sample.mli";cst = interface_cst;}
       |> List.map
         (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
       Test.assert_equal ~expected:[ "user" ] ~actual:implementation_types;
@@ -2062,7 +2054,6 @@ let render x y z =
     (fun () ->
       assert_explanation_contains ~rule_id:"std:prefer-list-is-empty" ~snippet:"List.is_empty";
       Ok ());
-
 ]
 
 let () =

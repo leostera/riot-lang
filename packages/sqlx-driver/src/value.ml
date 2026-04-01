@@ -149,130 +149,130 @@ let to_string = function
       s
 
 let equal = fun a b ->
-    match (a, b) with
-    | Null, Null -> true
-    | Int x, Int y -> x = y
-    | Int64 x, Int64 y -> Int64.equal x y
-    | Int16 x, Int16 y -> x = y
-    | Float x, Float y -> x = y
-    | String x, String y -> x = y
-    | Bool x, Bool y -> x = y
-    | Bytes x, Bytes y -> Bytes.equal x y
-    | Timestamp x, Timestamp y -> Datetime.equal x y
-    | TimestampWithTimezone x, TimestampWithTimezone y -> Datetime.equal x y
-    | Date (y1, m1, d1), Date (y2, m2, d2) -> y1 = y2 && m1 = m2 && d1 = d2
-    | Time (h1, min1, s1, us1), Time (h2, min2, s2, us2) -> h1 = h2
-    && min1 = min2
-    && s1 = s2
-    && us1 = us2
-    | Uuid x, Uuid y -> x = y
-    | Json x, Json y -> x = y
-    | Numeric x, Numeric y -> x = y
-    | _ -> false
+  match (a, b) with
+  | Null, Null -> true
+  | Int x, Int y -> x = y
+  | Int64 x, Int64 y -> Int64.equal x y
+  | Int16 x, Int16 y -> x = y
+  | Float x, Float y -> x = y
+  | String x, String y -> x = y
+  | Bool x, Bool y -> x = y
+  | Bytes x, Bytes y -> Bytes.equal x y
+  | Timestamp x, Timestamp y -> Datetime.equal x y
+  | TimestampWithTimezone x, TimestampWithTimezone y -> Datetime.equal x y
+  | Date (y1, m1, d1), Date (y2, m2, d2) -> y1 = y2 && m1 = m2 && d1 = d2
+  | Time (h1, min1, s1, us1), Time (h2, min2, s2, us2) -> h1 = h2
+  && min1 = min2
+  && s1 = s2
+  && us1 = us2
+  | Uuid x, Uuid y -> x = y
+  | Json x, Json y -> x = y
+  | Numeric x, Numeric y -> x = y
+  | _ -> false
 
 let compare = fun a b ->
-    match (a, b) with
-    | Null, Null ->
-        0
-    | Null, _ ->
-        (-1)
-    | _, Null ->
-        1
-    | Int x, Int y ->
-        Int.compare x y
-    | Int64 x, Int64 y ->
-        Int64.compare x y
-    | Int16 x, Int16 y ->
-        Int.compare x y
-    | Float x, Float y ->
-        Float.compare x y
-    | String x, String y ->
-        String.compare x y
-    | Bool x, Bool y ->
-        Bool.compare x y
-    | Bytes x, Bytes y ->
-        Bytes.compare x y
-    | Timestamp x, Timestamp y ->
-        Time.SystemTime.compare (Datetime.to_system_time x) (Datetime.to_system_time y)
-    | TimestampWithTimezone x, TimestampWithTimezone y ->
-        Time.SystemTime.compare (Datetime.to_system_time x) (Datetime.to_system_time y)
-    | Date (y1, m1, d1), Date (y2, m2, d2) -> (
-        match Int.compare y1 y2 with
-        | 0 -> (
-            match Int.compare m1 m2 with
-            | 0 -> Int.compare d1 d2
-            | c -> c
-          )
-        | c -> c
-      )
-    | Time (h1, min1, s1, us1), Time (h2, min2, s2, us2) -> (
-        match Int.compare h1 h2 with
-        | 0 -> (
-            match Int.compare min1 min2 with
-            | 0 -> (
-                match Int.compare s1 s2 with
-                | 0 -> Int.compare us1 us2
-                | c -> c
-              )
-            | c -> c
-          )
-        | c -> c
-      )
-    | Uuid x, Uuid y ->
-        String.compare x y
-    | Json x, Json y ->
-        String.compare x y
-    | Numeric x, Numeric y ->
-        String.compare x y
-    | Int _, _ ->
-        (-1)
-    | _, Int _ ->
-        1
-    | Int64 _, _ ->
-        (-1)
-    | _, Int64 _ ->
-        1
-    | Int16 _, _ ->
-        (-1)
-    | _, Int16 _ ->
-        1
-    | Float _, _ ->
-        (-1)
-    | _, Float _ ->
-        1
-    | String _, _ ->
-        (-1)
-    | _, String _ ->
-        1
-    | Bool _, _ ->
-        (-1)
-    | _, Bool _ ->
-        1
-    | Bytes _, _ ->
-        (-1)
-    | _, Bytes _ ->
-        1
-    | Timestamp _, _ ->
-        (-1)
-    | _, Timestamp _ ->
-        1
-    | TimestampWithTimezone _, _ ->
-        (-1)
-    | _, TimestampWithTimezone _ ->
-        1
-    | Date _, _ ->
-        (-1)
-    | _, Date _ ->
-        1
-    | Time _, _ ->
-        (-1)
-    | _, Time _ ->
-        1
-    | Uuid _, _ ->
-        (-1)
-    | _, Uuid _ ->
-        1
-    | Json _, _ ->
-        (-1)
-    | _, Json _ ->
-        1
+  match (a, b) with
+  | Null, Null ->
+      0
+  | Null, _ ->
+      (-1)
+  | _, Null ->
+      1
+  | Int x, Int y ->
+      Int.compare x y
+  | Int64 x, Int64 y ->
+      Int64.compare x y
+  | Int16 x, Int16 y ->
+      Int.compare x y
+  | Float x, Float y ->
+      Float.compare x y
+  | String x, String y ->
+      String.compare x y
+  | Bool x, Bool y ->
+      Bool.compare x y
+  | Bytes x, Bytes y ->
+      Bytes.compare x y
+  | Timestamp x, Timestamp y ->
+      Time.SystemTime.compare (Datetime.to_system_time x) (Datetime.to_system_time y)
+  | TimestampWithTimezone x, TimestampWithTimezone y ->
+      Time.SystemTime.compare (Datetime.to_system_time x) (Datetime.to_system_time y)
+  | Date (y1, m1, d1), Date (y2, m2, d2) -> (
+      match Int.compare y1 y2 with
+      | 0 -> (
+          match Int.compare m1 m2 with
+          | 0 -> Int.compare d1 d2
+          | c -> c
+        )
+      | c -> c
+    )
+  | Time (h1, min1, s1, us1), Time (h2, min2, s2, us2) -> (
+      match Int.compare h1 h2 with
+      | 0 -> (
+          match Int.compare min1 min2 with
+          | 0 -> (
+              match Int.compare s1 s2 with
+              | 0 -> Int.compare us1 us2
+              | c -> c
+            )
+          | c -> c
+        )
+      | c -> c
+    )
+  | Uuid x, Uuid y ->
+      String.compare x y
+  | Json x, Json y ->
+      String.compare x y
+  | Numeric x, Numeric y ->
+      String.compare x y
+  | Int _, _ ->
+      (-1)
+  | _, Int _ ->
+      1
+  | Int64 _, _ ->
+      (-1)
+  | _, Int64 _ ->
+      1
+  | Int16 _, _ ->
+      (-1)
+  | _, Int16 _ ->
+      1
+  | Float _, _ ->
+      (-1)
+  | _, Float _ ->
+      1
+  | String _, _ ->
+      (-1)
+  | _, String _ ->
+      1
+  | Bool _, _ ->
+      (-1)
+  | _, Bool _ ->
+      1
+  | Bytes _, _ ->
+      (-1)
+  | _, Bytes _ ->
+      1
+  | Timestamp _, _ ->
+      (-1)
+  | _, Timestamp _ ->
+      1
+  | TimestampWithTimezone _, _ ->
+      (-1)
+  | _, TimestampWithTimezone _ ->
+      1
+  | Date _, _ ->
+      (-1)
+  | _, Date _ ->
+      1
+  | Time _, _ ->
+      (-1)
+  | _, Time _ ->
+      1
+  | Uuid _, _ ->
+      (-1)
+  | _, Uuid _ ->
+      1
+  | Json _, _ ->
+      (-1)
+  | _, Json _ ->
+      1

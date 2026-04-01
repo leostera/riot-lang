@@ -128,11 +128,10 @@ let ignore = Stdlib.ignore
 let fst = Stdlib.fst
 
 let snd = Stdlib.snd
-
 (** Panic with a message and backtrace *)
 let panic = fun msg ->
-    let exception Panic of string in
-    Stdlib.raise (Panic msg)
+  let exception Panic of string in
+  Stdlib.raise (Panic msg)
 
 (* Array operations - flattened from Stdlib.Array *)
 

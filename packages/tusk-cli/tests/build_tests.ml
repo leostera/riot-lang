@@ -2,40 +2,39 @@ open Std
 module Test = Std.Test
 
 let parse_build = fun args ->
-    match ArgParser.get_matches Tusk_cli.Build.command args with
-    | Ok matches -> Ok matches
-    | Error err -> Error (ArgParser.error_message err)
+  match ArgParser.get_matches Tusk_cli.Build.command args with
+  | Ok matches -> Ok matches
+  | Error err -> Error (ArgParser.error_message err)
 
 let test_build_accepts_multiple_packages = fun () ->
-    match parse_build [ "build"; "syn"; "krasny"; "tusk-cli" ] with
-    | Error err -> Error ("expected build args to parse: " ^ err)
-    | Ok matches ->
-        let actual = ArgParser.get_many matches "package" in
-        Test.assert_equal ~expected:[ "syn"; "krasny"; "tusk-cli" ] ~actual;
-        Ok ()
+  match parse_build [ "build"; "syn"; "krasny"; "tusk-cli" ] with
+  | Error err -> Error ("expected build args to parse: " ^ err)
+  | Ok matches ->
+      let actual = ArgParser.get_many matches "package" in
+      Test.assert_equal ~expected:[ "syn"; "krasny"; "tusk-cli" ] ~actual;
+      Ok ()
 
 let test_build_usage_shows_variadic_packages = fun () ->
-    let usage = ArgParser.usage_string Tusk_cli.Build.command in
-    if String.contains usage "package..." then
-      Ok ()
-    else
-      Error ("expected variadic package usage, got: " ^ usage)
+  let usage = ArgParser.usage_string Tusk_cli.Build.command in
+  if String.contains usage "package..." then
+    Ok ()
+  else
+    Error ("expected variadic package usage, got: " ^ usage)
 
 let test_build_accepts_json_flag = fun () ->
-    match parse_build [ "build"; "--json"; "syn" ] with
-    | Error err -> Error ("expected build args to parse: " ^ err)
-    | Ok matches ->
-        if ArgParser.get_flag matches "json" then
-          Ok ()
-        else
-          Error "expected --json flag to be parsed"
+  match parse_build [ "build"; "--json"; "syn" ] with
+  | Error err -> Error ("expected build args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "json" then
+        Ok ()
+      else
+        Error "expected --json flag to be parsed"
 
 let tests =
   Test.[
     case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
     case "build: usage shows variadic packages" test_build_usage_shows_variadic_packages;
     case "build: parse --json flag" test_build_accepts_json_flag;
-
   ]
 
 let name = "Tusk CLI Build Tests"

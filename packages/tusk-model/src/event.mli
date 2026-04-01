@@ -1,7 +1,6 @@
 (** Event system for tusk - pure data types for events *)
 open Std
 open Std.Data
-
 (** Strip ANSI escape codes from a string *)
 val strip_ansi_codes: string -> string
 
@@ -108,18 +107,13 @@ type t = {
   kind: kind;
 }
 val create: session_id:Session_id.t -> level:level -> kind -> t
-
 (** Get the machine-readable event name *)
 val name: kind -> string
-
 (** Get human-readable display message *)
 val display: kind -> string
-
 (** Convert to human-readable string with timestamp *)
 val to_string: t -> string
-
 (** Convert event to JSON representation *)
 val to_json: t -> Json.t
-
 (** Convert from JSON representation *)
 val from_json: Json.t -> (t, string) result

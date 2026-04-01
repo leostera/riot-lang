@@ -175,7 +175,6 @@ type t =
   | Extension of int
 (** Custom/non-standard status codes *)
 val of_int: int -> t
-
 (** Creates status code from integer value.
 
     ## Examples
@@ -183,7 +182,6 @@ val of_int: int -> t
     ```ocaml Status.of_int 200 (* Ok *) Status.of_int 404 (* NotFound *)
     Status.of_int 999 (* Extension 999 *) ``` *)
 val to_int: t -> int
-
 (** Converts status code to integer value.
 
     ## Examples
@@ -193,7 +191,6 @@ val to_int: t -> int
 val of_string: string -> (t, [
     `InvalidStatus
   ]) result
-
 (** Parses status code from string representation.
 
     ## Examples
@@ -201,7 +198,6 @@ val of_string: string -> (t, [
     ```ocaml Status.of_string "200" (* Ok (Ok) *) Status.of_string "404" (* Ok
     (NotFound) *) Status.of_string "abc" (* Error `InvalidStatus *) ``` *)
 val to_string: t -> string
-
 (** Converts status code to string representation of the integer.
 
     ## Examples
@@ -209,7 +205,6 @@ val to_string: t -> string
     ```ocaml Status.to_string Status.Ok (* "200" *) Status.to_string
     Status.NotFound (* "404" *) ``` *)
 val reason_phrase: t -> string
-
 (** Returns the standard reason phrase for a status code.
 
     ## Examples
@@ -218,7 +213,6 @@ val reason_phrase: t -> string
     Status.NotFound (* "Not Found" *) Status.reason_phrase
     Status.InternalServerError (* "Internal Server Error" *) ``` *)
 val is_informational: t -> bool
-
 (** Returns [true] if status code is in 1xx range (informational).
 
     ## Examples
@@ -226,7 +220,6 @@ val is_informational: t -> bool
     ```ocaml Status.is_informational Status.Continue (* true *)
     Status.is_informational Status.Ok (* false *) ``` *)
 val is_success: t -> bool
-
 (** Returns [true] if status code is in 2xx range (success).
 
     ## Examples
@@ -235,7 +228,6 @@ val is_success: t -> bool
     Status.Created (* true *) Status.is_success Status.NotFound (* false *) ```
 *)
 val is_redirection: t -> bool
-
 (** Returns [true] if status code is in 3xx range (redirection).
 
     ## Examples
@@ -244,7 +236,6 @@ val is_redirection: t -> bool
     Status.is_redirection Status.Found (* true *) Status.is_redirection
     Status.Ok (* false *) ``` *)
 val is_client_error: t -> bool
-
 (** Returns [true] if status code is in 4xx range (client error).
 
     ## Examples
@@ -253,7 +244,6 @@ val is_client_error: t -> bool
     Status.is_client_error Status.NotFound (* true *) Status.is_client_error
     Status.InternalServerError (* false *) ``` *)
 val is_server_error: t -> bool
-
 (** Returns [true] if status code is in 5xx range (server error).
 
     ## Examples
@@ -262,7 +252,6 @@ val is_server_error: t -> bool
     Status.is_server_error Status.NotImplemented (* true *)
     Status.is_server_error Status.NotFound (* false *) ``` *)
 val compare: t -> t -> int
-
 (** Compares two status codes by their integer values.
 
     ## Examples
@@ -270,7 +259,6 @@ val compare: t -> t -> int
     ```ocaml Status.compare Status.Ok Status.NotFound (* < 0, since 200 < 404 *)
     ``` *)
 val equal: t -> t -> bool
-
 (** Checks if two status codes are equal.
 
     ## Examples

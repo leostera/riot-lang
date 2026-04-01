@@ -64,7 +64,6 @@ type 'a t
 
     ```ocaml let deque = Deque.create () in assert (Deque.is_empty deque) ``` *)
 val create: unit -> 'a t
-
 (** Creates a new empty deque with specified initial capacity.
 
     Pre-allocating capacity improves performance when the approximate size is
@@ -75,7 +74,6 @@ val create: unit -> 'a t
     ```ocaml let deque = Deque.with_capacity 1000 in (* Can push ~1000 elements
     without reallocation *) ``` *)
 val with_capacity: int -> 'a t
-
 (** Creates a deque from a list. The first list element becomes the front of the
     deque.
 
@@ -102,7 +100,6 @@ val of_list: 'a list -> 'a t
 
     - Time: O(1) amortized *)
 val push_front: 'a t -> 'a -> unit
-
 (** Adds an element to the back of the deque.
 
     ## Examples
@@ -114,7 +111,6 @@ val push_front: 'a t -> 'a -> unit
 
     - Time: O(1) amortized *)
 val push_back: 'a t -> 'a -> unit
-
 (** Inserts an element at the given index. Existing elements at and after this
     index are shifted back.
 
@@ -141,7 +137,6 @@ val insert: 'a t -> int -> 'a -> unit
 
     - Time: O(1) *)
 val pop_front: 'a t -> 'a option
-
 (** Removes and returns the back element. Returns [Some element] if the deque is
     not empty, [None] otherwise.
 
@@ -154,7 +149,6 @@ val pop_front: 'a t -> 'a option
 
     - Time: O(1) *)
 val pop_back: 'a t -> 'a option
-
 (** Removes and returns the element at the given index. Returns [Some element]
     if the index is valid, [None] otherwise.
 
@@ -167,7 +161,6 @@ val pop_back: 'a t -> 'a option
 
     - Time: O(n) where n is distance from nearest end *)
 val remove: 'a t -> int -> 'a option
-
 (** Removes all elements from the deque.
 
     ## Examples
@@ -193,7 +186,6 @@ val clear: 'a t -> unit
 
     - Time: O(1) *)
 val front: 'a t -> 'a option
-
 (** Returns the back element without removing it.
 
     ## Examples
@@ -205,7 +197,6 @@ val front: 'a t -> 'a option
 
     - Time: O(1) *)
 val back: 'a t -> 'a option
-
 (** Returns the element at the given index without removing it.
 
     ## Examples
@@ -230,7 +221,6 @@ val get: 'a t -> int -> 'a option
 
     - Time: O(1) *)
 val len: 'a t -> int
-
 (** Returns [true] if the deque contains no elements.
 
     ## Examples
@@ -255,7 +245,6 @@ val is_empty: 'a t -> bool
 
     - Time: O(n) *)
 val iter: ('a -> unit) -> 'a t -> unit
-
 (** Folds over all elements from front to back.
 
     ## Examples
@@ -294,7 +283,6 @@ val to_list: 'a t -> 'a list
 
     - Time: O(n) *)
 val contains: 'a t -> 'a -> bool
-
 (** Moves all elements from [deque2] to the back of [deque1]. After this
     operation, [deque2] is empty.
 
@@ -308,7 +296,6 @@ val contains: 'a t -> 'a -> bool
 
     - Time: O(m) where m = len(deque2) *)
 val append: 'a t -> 'a t -> unit
-
 (** Splits the deque at the given index. Elements from [index] onwards are moved
     to a new deque and returned.
 
@@ -323,7 +310,6 @@ val append: 'a t -> 'a t -> unit
     - Time: O(n) where n = len - index
     - Space: O(n) *)
 val split_off: 'a t -> int -> 'a t
-
 (** Converts this deque into an immutable iterator over its elements from front to back.
 
     ## Examples
@@ -343,7 +329,6 @@ val split_off: 'a t -> int -> 'a t
     - Time: O(1) to create iterator
     - Space: O(1) *)
 val into_iter: 'a t -> 'a Iter.Iterator.t
-
 (** Returns a mutable iterator over the deque's elements from front to back.
 
     ## Examples

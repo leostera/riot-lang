@@ -29,23 +29,23 @@ let of_string = fun msg -> Generic_error msg
 
 (* Create connection error *)
 
-let connection_error = fun ~message ?cause () -> Connection_error {message; cause}
+let connection_error = fun ~message ?cause () -> Connection_error {message;cause;}
 
 (* Create query error *)
 
-let query_error = fun ~sql cause -> Query_error {sql = Some sql; cause}
+let query_error = fun ~sql cause -> Query_error {sql = Some sql;cause;}
 
 (* Create preparation error *)
 
-let preparation_error = fun ~sql cause -> Preparation_error {sql; cause}
+let preparation_error = fun ~sql cause -> Preparation_error {sql;cause;}
 
 (* Create execution error *)
 
-let execution_error = fun cause -> Execution_error {cause}
+let execution_error = fun cause -> Execution_error {cause;}
 
 (* Create transaction error *)
 
-let transaction_error = fun ~message ?cause () -> Transaction_error {message; cause}
+let transaction_error = fun ~message ?cause () -> Transaction_error {message;cause;}
 
 (* Create pool error *)
 
@@ -54,45 +54,45 @@ let pool_error = fun msg -> Pool_error msg
 (* Format db_error for display *)
 
 let format_db_error = fun err ->
-    let parts = [ "Database error: " ^ err.message ] in
-    let parts =
-      match err.code with
-      | Some code -> parts @ [ "Error code: " ^ code ]
-      | None -> parts
-    in
-    let parts =
-      match err.detail with
-      | Some d -> parts @ [ "Detail: " ^ d ]
-      | None -> parts
-    in
-    let parts =
-      match err.hint with
-      | Some h -> parts @ [ "Hint: " ^ h ]
-      | None -> parts
-    in
-    let parts =
-      match err.constraint_name with
-      | Some n -> parts @ [ "Constraint: " ^ n ]
-      | None -> parts
-    in
-    let parts =
-      match (err.table_name, err.column_name) with
-      | Some t, Some c -> parts @ [ "Location: table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
-      | Some t, None -> parts @ [ "Table: \"" ^ t ^ "\"" ]
-      | None, Some c -> parts @ [ "Column: \"" ^ c ^ "\"" ]
-      | None, None -> parts
-    in
-    let parts =
-      match err.position with
-      | Some p -> parts @ [ "Position: " ^ string_of_int p ]
-      | None -> parts
-    in
-    let parts =
-      match err.context with
-      | Some ctx -> parts @ [ "Context: " ^ ctx ]
-      | None -> parts
-    in
-    String.concat "\n" parts
+  let parts = [ "Database error: " ^ err.message ] in
+  let parts =
+    match err.code with
+    | Some code -> parts @ [ "Error code: " ^ code ]
+    | None -> parts
+  in
+  let parts =
+    match err.detail with
+    | Some d -> parts @ [ "Detail: " ^ d ]
+    | None -> parts
+  in
+  let parts =
+    match err.hint with
+    | Some h -> parts @ [ "Hint: " ^ h ]
+    | None -> parts
+  in
+  let parts =
+    match err.constraint_name with
+    | Some n -> parts @ [ "Constraint: " ^ n ]
+    | None -> parts
+  in
+  let parts =
+    match (err.table_name, err.column_name) with
+    | Some t, Some c -> parts @ [ "Location: table \"" ^ t ^ "\", column \"" ^ c ^ "\"" ]
+    | Some t, None -> parts @ [ "Table: \"" ^ t ^ "\"" ]
+    | None, Some c -> parts @ [ "Column: \"" ^ c ^ "\"" ]
+    | None, None -> parts
+  in
+  let parts =
+    match err.position with
+    | Some p -> parts @ [ "Position: " ^ string_of_int p ]
+    | None -> parts
+  in
+  let parts =
+    match err.context with
+    | Some ctx -> parts @ [ "Context: " ^ ctx ]
+    | None -> parts
+  in
+  String.concat "\n" parts
 
 (* Format full error for display *)
 
@@ -130,45 +130,45 @@ let get_db_error = function
 (* Check if error is a specific constraint violation by name *)
 
 let is_constraint_violation = fun ~name ->
-    function
-    | Query_error { cause; _ }
-    | Execution_error { cause }
-    | Preparation_error { cause; _ } -> (
-        match cause.constraint_name with
-        | Some n -> n = name
-        | None -> false
-      )
-    | _ -> false
+  function
+  | Query_error { cause; _ }
+  | Execution_error { cause }
+  | Preparation_error { cause; _ } -> (
+      match cause.constraint_name with
+      | Some n -> n = name
+      | None -> false
+    )
+  | _ -> false
 
 (* Check if error is a unique violation *)
 
 let is_unique_violation = fun err ->
-    match get_db_error err with
-    | Some cause -> (
-        match cause.code with
-        | Some "23505" -> true
-        | _ -> false
-      )
-    | None -> false
+  match get_db_error err with
+  | Some cause -> (
+      match cause.code with
+      | Some "23505" -> true
+      | _ -> false
+    )
+  | None -> false
 
 (* Check if error is a foreign key violation *)
 
 let is_foreign_key_violation = fun err ->
-    match get_db_error err with
-    | Some cause -> (
-        match cause.code with
-        | Some "23503" -> true
-        | _ -> false
-      )
-    | None -> false
+  match get_db_error err with
+  | Some cause -> (
+      match cause.code with
+      | Some "23503" -> true
+      | _ -> false
+    )
+  | None -> false
 
 (* Check if error is a not null violation *)
 
 let is_not_null_violation = fun err ->
-    match get_db_error err with
-    | Some cause -> (
-        match cause.code with
-        | Some "23502" -> true
-        | _ -> false
-      )
-    | None -> false
+  match get_db_error err with
+  | Some cause -> (
+      match cause.code with
+      | Some "23502" -> true
+      | _ -> false
+    )
+  | None -> false

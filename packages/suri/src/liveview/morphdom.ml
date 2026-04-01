@@ -1,5 +1,4 @@
 open Std
-
 (** morphdom - Efficient DOM diffing and patching library
     
     Vendored from: https://github.com/patrick-steele-idem/morphdom

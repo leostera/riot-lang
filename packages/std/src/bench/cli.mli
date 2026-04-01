@@ -1,6 +1,5 @@
 (** CLI interface for benchmark runners *)
 open Global
-
 (** Main entry point for benchmark binaries with CLI support.
     
     Accepts subcommands:

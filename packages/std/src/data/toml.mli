@@ -95,7 +95,6 @@ type error =
     }
 (** TOML parsing errors with position information for debugging. *)
 (** {1 Parsing} *)
-
 (** Parses a string into TOML and returns the root table.
     
     ## Examples
@@ -122,7 +121,6 @@ type error =
     - Unexpected characters
 *)
 val parse: string -> (value, error) result
-
 (** Converts a TOML parse error to a human-readable error message.
 
     ## Examples
@@ -142,7 +140,6 @@ val error_to_string: error -> string
     (* Or using extractor: *) Toml.get_string value |> Option.iter
     (Printf.printf "Got: %s\n") ``` *)
 val get_string: value -> string option
-
 (** Extracts an integer value. Returns [None] if not an integer.
 
     ## Examples
@@ -153,7 +150,6 @@ val get_string: value -> string option
     (* Or using extractor: *) Toml.get_int value |> Option.iter
     (Printf.printf "Port: %d\n") ``` *)
 val get_int: value -> int option
-
 (** Extracts an array value. Returns [None] if not an array.
 
     ## Examples
@@ -162,7 +158,6 @@ val get_int: value -> int option
     -> match Toml.get_string item with | Some s -> Printf.printf "Item: %s\n" s
     | None -> () ) items | None -> () ``` *)
 val get_array: value -> value list option
-
 (** Extracts a table (section) as a list of key-value pairs. Returns [None] if
     not a table.
 
@@ -173,7 +168,6 @@ val get_array: value -> value list option
     server_table -> (* process server config *) | None -> Log.warn "No server
     config") | None -> () ``` *)
 val get_table: value -> (string * value) list option
-
 (** Converts a TOML value to a string representation for debugging.
 
     ## Examples

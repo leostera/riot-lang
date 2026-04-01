@@ -44,6 +44,5 @@ val plan_workspace:
   scope:Package_graph.build_scope ->
   load_errors:Workspace_manager.load_error list ->
   (package_plan, plan_error) result
-
 (** Get the list of packages in the plan (topologically sorted) *)
 val packages_in_plan: package_plan -> Package.t list

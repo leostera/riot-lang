@@ -1,56 +1,56 @@
 open Std
 
 let synthetic_token = fun ~span ~text ->
-    let green = Syn.Ceibo.Green.make_token
-      ~leading_trivia:[]
-      ~kind:Syn.SyntaxKind.WHITESPACE
-      ~text
-      ~width:(String.length text) in
-    Syn.Ceibo.Red.new_token green span
+  let green = Syn.Ceibo.Green.make_token
+    ~leading_trivia:[]
+    ~kind:Syn.SyntaxKind.WHITESPACE
+    ~text
+    ~width:(String.length text) in
+  Syn.Ceibo.Red.new_token green span
 
 let find_token_by_text = fun red_root text ->
-    Syn.Ceibo.Red.SyntaxNode.tokens red_root |> List.find_opt
-      (fun token ->
-        String.equal (Syn.Ceibo.Red.SyntaxToken.text token) text)
+  Syn.Ceibo.Red.SyntaxNode.tokens red_root |> List.find_opt
+    (fun token ->
+      String.equal (Syn.Ceibo.Red.SyntaxToken.text token) text)
 
 let warning_diagnostic = fun ~rule_id ~message ~token ~fix ->
-    Tusk_fix.Diagnostic.make
-      ~severity:Warning
-      ~kind:(Tusk_fix.Diagnostic.Known {rule_id; message})
-      ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-      ~fix
-      ()
+  Tusk_fix.Diagnostic.make
+    ~severity:Warning
+    ~kind:(Tusk_fix.Diagnostic.Known {rule_id;message;})
+    ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
+    ~fix
+    ()
 
 let replace_token_rule = fun ~rule_id ~needle ~replacement ->
-    let message = "Replace " ^ needle ^ " with " ^ replacement in
-    Tusk_fix.Rule.make ~id:rule_id ~description:message ~explain:message
-      ~run:(fun _ctx red_root ->
-        match find_token_by_text red_root needle with
-        | None -> []
-        | Some token ->
-            let fix = Tusk_fix.Fix.make
-              ~title:message
-              ~operations:[ Tusk_fix.Fix.replace_token_with_text ~target:token ~text:replacement ] in
-            [ warning_diagnostic ~rule_id ~message ~token ~fix ])
-      ()
+  let message = "Replace " ^ needle ^ " with " ^ replacement in
+  Tusk_fix.Rule.make ~id:rule_id ~description:message ~explain:message
+    ~run:(fun _ctx red_root ->
+      match find_token_by_text red_root needle with
+      | None -> []
+      | Some token ->
+          let fix = Tusk_fix.Fix.make
+            ~title:message
+            ~operations:[ Tusk_fix.Fix.replace_token_with_text ~target:token ~text:replacement ] in
+          [ warning_diagnostic ~rule_id ~message ~token ~fix ])
+    ()
 
 let overlapping_replace_rule = fun ~rule_id ~needle ~replacement ~overlap_text ->
-    let message = "Apply an overlapping replacement to " ^ needle in
-    Tusk_fix.Rule.make ~id:rule_id ~description:message ~explain:message
-      ~run:(fun _ctx red_root ->
-        match find_token_by_text red_root needle with
-        | None -> []
-        | Some token ->
-            let span = Syn.Ceibo.Red.SyntaxToken.span token in
-            let overlap_span = Syn.Ceibo.Span.make ~start:((span.start + 1)) ~end_:span.end_ in
-            let overlap_token = synthetic_token ~span:overlap_span ~text:overlap_text in
-            let fix = Tusk_fix.Fix.make
-              ~title:message
-              ~operations:[
-                Tusk_fix.Fix.replace_token_with_text ~target:overlap_token ~text:replacement
-              ] in
-            [ warning_diagnostic ~rule_id ~message ~token:overlap_token ~fix ])
-      ()
+  let message = "Apply an overlapping replacement to " ^ needle in
+  Tusk_fix.Rule.make ~id:rule_id ~description:message ~explain:message
+    ~run:(fun _ctx red_root ->
+      match find_token_by_text red_root needle with
+      | None -> []
+      | Some token ->
+          let span = Syn.Ceibo.Red.SyntaxToken.span token in
+          let overlap_span = Syn.Ceibo.Span.make ~start:((span.start + 1)) ~end_:span.end_ in
+          let overlap_token = synthetic_token ~span:overlap_span ~text:overlap_text in
+          let fix = Tusk_fix.Fix.make
+            ~title:message
+            ~operations:[
+              Tusk_fix.Fix.replace_token_with_text ~target:overlap_token ~text:replacement
+            ] in
+          [ warning_diagnostic ~rule_id ~message ~token:overlap_token ~fix ])
+    ()
 
 let tests = [ Test.case "apply single operation"
     (fun () ->

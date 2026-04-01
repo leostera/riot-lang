@@ -82,147 +82,149 @@ let default_flags = {
   padded = false;
   priority = false;
   ack = false;
-
 }
 
 let data = fun ~stream_id ?(end_stream = false) ?pad_length data ->
-    let flags = {default_flags with end_stream; padded = Option.is_some pad_length} in
-    let payload_len = String.length data + match pad_length with
-    | Some n -> n + 1
-    | None -> 0
-    in
-    {
-      length = payload_len;
-      frame_type = Data;
-      flags;
-      stream_id;
-      payload = DataPayload {data; pad_length};
-
-    }
+  let flags = {default_flags with end_stream;padded = Option.is_some pad_length;} in
+  let payload_len = String.length data + match pad_length with
+  | Some n -> n + 1
+  | None -> 0
+  in
+  {
+    length = payload_len;
+    frame_type = Data;
+    flags;
+    stream_id;
+    payload = DataPayload {data;pad_length;};
+  }
 
 let headers = fun ~stream_id ?(end_stream = false) ?(end_headers = false) ?pad_length ?priority header_block_fragment ->
-    let has_priority = Option.is_some priority in
-    let flags = {
-      default_flags
-      with end_stream;
-      end_headers;
-      padded = Option.is_some pad_length;
-      priority = has_priority;
-
-    } in
-    let stream_dependency, weight, exclusive =
-      match priority with
-      | Some (dep, excl, w) -> (Some dep, Some w, excl)
-      | None -> (None, None, false)
-    in
-    let payload_len = String.length header_block_fragment + (
-      match pad_length with
-      | Some n -> n + 1
-      | None -> 0
-    ) + if has_priority then
-      5
-    else
-      0
-    in
-    {
-      length = payload_len;
-      frame_type = Headers;
-      flags;
-      stream_id;
-      payload = HeadersPayload {
+  let has_priority = Option.is_some priority in
+  let flags = {
+    default_flags
+    with end_stream;
+    end_headers;
+    padded = Option.is_some pad_length;
+    priority = has_priority;
+  } in
+  let stream_dependency, weight, exclusive =
+    match priority with
+    | Some (dep, excl, w) -> (Some dep, Some w, excl)
+    | None -> (None, None, false)
+  in
+  let payload_len = String.length header_block_fragment + (
+    match pad_length with
+    | Some n -> n + 1
+    | None -> 0
+  ) + if has_priority then
+    5
+  else
+    0
+  in
+  {
+    length = payload_len;
+    frame_type = Headers;
+    flags;
+    stream_id;
+    payload =
+      HeadersPayload {
         pad_length;
         stream_dependency;
         weight;
         exclusive;
         header_block_fragment;
-
       };
-
-    }
+  }
 
 let priority = fun ~stream_id ~stream_dependency ~exclusive ~weight ->
-    {
-      length = 5;
-      frame_type = Priority;
-      flags = default_flags;
-      stream_id;
-      payload = PriorityPayload {stream_dependency; exclusive; weight};
-
-    }
+  {
+    length = 5;
+    frame_type = Priority;
+    flags = default_flags;
+    stream_id;
+    payload = PriorityPayload {stream_dependency;exclusive;weight;};
+  }
 
 let rst_stream = fun ~stream_id error_code ->
-    {
-      length = 4;
-      frame_type = RstStream;
-      flags = default_flags;
-      stream_id;
-      payload = RstStreamPayload error_code;
-
-    }
+  {
+    length = 4;
+    frame_type = RstStream;
+    flags = default_flags;
+    stream_id;
+    payload = RstStreamPayload error_code;
+  }
 
 let settings = fun ?(ack = false) settings_list ->
-    let flags = {default_flags with ack} in
-    let length =
-      if ack then
-        0
-      else
-        List.length settings_list * 6
-    in
-    {length; frame_type = Settings; flags; stream_id = 0; payload = SettingsPayload settings_list; }
+  let flags = {default_flags with ack;} in
+  let length =
+    if ack then
+      0
+    else
+      List.length settings_list * 6
+  in
+  {
+    length;
+    frame_type = Settings;
+    flags;
+    stream_id = 0;
+    payload = SettingsPayload settings_list;
+  }
 
 let push_promise = fun ~stream_id ~promised_stream_id ?pad_length header_block_fragment ->
-    let flags = {default_flags with padded = Option.is_some pad_length} in
-    let payload_len = 4 + String.length header_block_fragment + match pad_length with
-    | Some n -> n + 1
-    | None -> 0
-    in
-    {
-      length = payload_len;
-      frame_type = PushPromise;
-      flags;
-      stream_id;
-      payload = PushPromisePayload {pad_length; promised_stream_id; header_block_fragment};
-
-    }
+  let flags = {default_flags with padded = Option.is_some pad_length;} in
+  let payload_len = 4 + String.length header_block_fragment + match pad_length with
+  | Some n -> n + 1
+  | None -> 0
+  in
+  {
+    length = payload_len;
+    frame_type = PushPromise;
+    flags;
+    stream_id;
+    payload = PushPromisePayload {pad_length;promised_stream_id;header_block_fragment;};
+  }
 
 let ping = fun ?(ack = false) opaque_data ->
-    if String.length opaque_data != 8 then
-      panic "ping: opaque_data must be exactly 8 bytes";
-    let flags = {default_flags with ack} in
-    {length = 8; frame_type = Ping; flags; stream_id = 0; payload = PingPayload opaque_data; }
+  if String.length opaque_data != 8 then
+    panic "ping: opaque_data must be exactly 8 bytes";
+  let flags = {default_flags with ack;} in
+  {
+    length = 8;
+    frame_type = Ping;
+    flags;
+    stream_id = 0;
+    payload = PingPayload opaque_data;
+  }
 
 let goaway = fun ~last_stream_id ~error_code ?(debug_data = "") () ->
-    {
-      length = 8 + String.length debug_data;
-      frame_type = Goaway;
-      flags = default_flags;
-      stream_id = 0;
-      payload = GoawayPayload {last_stream_id; error_code; debug_data};
-
-    }
+  {
+    length = 8 + String.length debug_data;
+    frame_type = Goaway;
+    flags = default_flags;
+    stream_id = 0;
+    payload = GoawayPayload {last_stream_id;error_code;debug_data;};
+  }
 
 let window_update = fun ~stream_id increment ->
-    if increment <= 0 || increment > 0x7fff_ffff then
-      panic "window_update: increment must be 1 to 2^31-1";
-    {
-      length = 4;
-      frame_type = WindowUpdate;
-      flags = default_flags;
-      stream_id;
-      payload = WindowUpdatePayload increment;
-
-    }
+  if increment <= 0 || increment > 0x7fff_ffff then
+    panic "window_update: increment must be 1 to 2^31-1";
+  {
+    length = 4;
+    frame_type = WindowUpdate;
+    flags = default_flags;
+    stream_id;
+    payload = WindowUpdatePayload increment;
+  }
 
 let continuation = fun ~stream_id ?(end_headers = false) header_block_fragment ->
-    let flags = {default_flags with end_headers} in
-    {
-      length = String.length header_block_fragment;
-      frame_type = Continuation;
-      flags;
-      stream_id;
-      payload = ContinuationPayload header_block_fragment;
-
-    }
+  let flags = {default_flags with end_headers;} in
+  {
+    length = String.length header_block_fragment;
+    frame_type = Continuation;
+    flags;
+    stream_id;
+    payload = ContinuationPayload header_block_fragment;
+  }
 
 let error_code_to_int = function
   | NoError -> 0x0

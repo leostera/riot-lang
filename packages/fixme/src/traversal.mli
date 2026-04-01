@@ -20,7 +20,6 @@ type red_element = (Syn.SyntaxKind.t, string) Syn.Ceibo.Red.syntax_element
     ]}
 *)
 val find_nodes: (red_node -> bool) -> red_tree -> red_node list
-
 (** [find_by_kind kind tree] returns all nodes of the given [kind].
     
     Example:
@@ -30,7 +29,6 @@ val find_nodes: (red_node -> bool) -> red_tree -> red_node list
     ]}
 *)
 val find_by_kind: Syn.SyntaxKind.t -> red_tree -> red_node list
-
 (** [find_by_kinds kinds tree] returns all nodes matching any of the given [kinds].
     
     Example:
@@ -51,14 +49,12 @@ val find_by_kinds: Syn.SyntaxKind.t list -> red_tree -> red_node list
     ]}
 *)
 val find_tokens: (red_token -> bool) -> red_tree -> red_token list
-
 (** [first_non_trivia_child node] returns the first child that is not whitespace,
     comment, or docstring.
     
     Useful for extracting meaningful tokens from nodes.
 *)
 val first_non_trivia_child: red_node -> red_element option
-
 (** [first_non_trivia_token node] returns the first non-trivia token child.
     
     Returns [None] if the first non-trivia child is a node or doesn't exist.
@@ -105,7 +101,6 @@ val is_trivia: Syn.SyntaxKind.t -> bool
     results when they need recursive expression access.
 *)
 val expressions_of_structure_item: Syn.Cst.StructureItem.t -> Syn.Cst.Expression.t list
-
 (** [let_bindings_of_structure_item item] returns the already-lifted
     [LetBinding.t] values reachable from [item], preserving item-local order.
 

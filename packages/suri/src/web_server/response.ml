@@ -8,7 +8,7 @@ type t = {
 }
 
 let make = fun status ?(headers = []) ?(version = Net.Http.Version.Http11) ?(body = "") () ->
-    {status; version; headers = Net.Http.Header.of_list headers; body}
+  {status;version;headers = Net.Http.Header.of_list headers;body;}
 
 type response = ?headers:(string * string) list ->
 ?version:Net.Http.Version.t ->

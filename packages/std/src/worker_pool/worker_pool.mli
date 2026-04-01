@@ -79,14 +79,12 @@ module DynamicWorkerPool: sig
   val get_worker_task_ref: 'task worker -> 'task Ref.t
 
   (** {1 Advanced Mode - Dynamic Task Assignment} *)
-
   (** Message sent to owner when a worker becomes ready for work. The
               owner must respond by calling [send_task] with a task for this
               worker. The worker is parameterized by task type for type safety.
           *)
   type Message.t +=
     | WorkerReady: 'task worker -> Message.t
-
   (** [start ~concurrency ~owner ~worker_fn ()] creates a worker pool with no
       pre-queued tasks. The owner will receive [WorkerReady worker] messages and
       must call [send_task pool worker task] to assign work.
@@ -103,7 +101,6 @@ module DynamicWorkerPool: sig
     'task t
 
   val send_task: 'task t -> 'task worker -> 'task -> unit
-
   (** [send_task pool worker task] assigns a task to a specific worker.
 
       Only call this after receiving [WorkerReady worker] from the pool. Sending
@@ -117,7 +114,6 @@ module SimpleWorkerPool: sig
   (** {1 Simple Mode - Parallel Map} *)
 
   val run: ?concurrency:int -> tasks:'task list -> fn:('task -> 'result) -> unit -> (int * 'result) list
-
   (** [run ~concurrency ~tasks ~fn ()] executes [fn] on each task in parallel
       using a pool of worker processes, collecting results in order.
 

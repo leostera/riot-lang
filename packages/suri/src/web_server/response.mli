@@ -131,10 +131,8 @@ t
     Example:
     {[ ok ~body:"Success" () ]} *)
 val ok: response
-
 (** `200 OK` *)
 val ok: response
-
 (** [201 Created] - Resource successfully created.
 
     Use for POST requests that create new resources.
@@ -149,7 +147,6 @@ val ok: response
           ())
     ]} *)
 val created: response
-
 (** [202 Accepted] - Request accepted for processing (async).
 
     Use when processing will happen asynchronously.
@@ -157,10 +154,8 @@ val created: response
     Example:
     {[ accepted ~body:"Processing started" () ]} *)
 val accepted: response
-
 (** `203 Non-Authoritative Information` *)
 val non_authoritative_information: response
-
 (** [204 No Content] - Success with no response body.
 
     Common for DELETE requests or updates without return data.
@@ -172,19 +167,14 @@ val non_authoritative_information: response
         no_content ())
     ]} *)
 val no_content: response
-
 (** `205 Reset Content` *)
 val reset_content: response
-
 (** `206 Partial Content` *)
 val partial_content: response
-
 (** `207 Multi-Status` (WebDAV) *)
 val multi_status: response
-
 (** `208 Already Reported` (WebDAV) *)
 val already_reported: response
-
 (** `226 IM Used` *)
 val im_used: response
 
@@ -193,7 +183,6 @@ val im_used: response
     Redirects indicating the client should take additional action. *)
 (** [300 Multiple Choices] - Multiple redirect options available. *)
 val multiple_choices: response
-
 (** [301 Moved Permanently] - Resource permanently moved.
 
     Search engines update their indexes.
@@ -205,7 +194,6 @@ val multiple_choices: response
         ()
     ]} *)
 val moved_permanently: response
-
 (** [302 Found] - Temporary redirect.
 
     Most common redirect status. Also see {!see_other}.
@@ -215,7 +203,6 @@ val moved_permanently: response
       found ~headers:[("Location", "/login")] ()
     ]} *)
 val found: response
-
 (** [303 See Other] - Redirect after POST.
 
     Use after successful POST to redirect to GET.
@@ -229,19 +216,14 @@ val found: response
           ())
     ]} *)
 val see_other: response
-
 (** `304 Not Modified` *)
 val not_modified: response
-
 (** `305 Use Proxy` *)
 val use_proxy: response
-
 (** `306 Switch Proxy` *)
 val switch_proxy: response
-
 (** `307 Temporary Redirect` *)
 val temporary_redirect: response
-
 (** `308 Permanent Redirect` *)
 val permanent_redirect: response
 
@@ -259,7 +241,6 @@ val permanent_redirect: response
       | Error msg -> bad_request ~body:("Invalid: " ^ msg) ()
     ]} *)
 val bad_request: response
-
 (** [401 Unauthorized] - Authentication required.
 
     Use when user must log in.
@@ -275,10 +256,8 @@ val bad_request: response
       | Some token -> (* ... *)
     ]} *)
 val unauthorized: response
-
 (** [402 Payment Required] - Reserved for future use. *)
 val payment_required: response
-
 (** [403 Forbidden] - Authenticated but not authorized.
 
     User is logged in but doesn't have permission.
@@ -291,7 +270,6 @@ val payment_required: response
         ok ~body:resource ()
     ]} *)
 val forbidden: response
-
 (** [404 Not Found] - Resource doesn't exist.
 
     Most common error response.
@@ -303,7 +281,6 @@ val forbidden: response
       | None -> not_found ~body:"User not found" ()
     ]} *)
 val not_found: response
-
 (** [405 Method Not Allowed] - HTTP method not supported.
 
     Include [Allow] header with supported methods.
@@ -316,73 +293,50 @@ val not_found: response
         ()
     ]} *)
 val method_not_allowed: response
-
 (** `406 Not Acceptable` *)
 val not_acceptable: response
-
 (** `407 Proxy Authentication Required` *)
 val proxy_authentication_required: response
-
 (** `408 Request Timeout` *)
 val request_timeout: response
-
 (** `409 Conflict` *)
 val conflict: response
-
 (** `410 Gone` *)
 val gone: response
-
 (** `411 Length Required` *)
 val length_required: response
-
 (** `412 Precondition Failed` *)
 val precondition_failed: response
-
 (** `413 Request Entity Too Large` *)
 val request_entity_too_large: response
-
 (** `414 Request-URI Too Long` *)
 val request_uri_too_long: response
-
 (** `415 Unsupported Media Type` *)
 val unsupported_media_type: response
-
 (** `416 Requested Range Not Satisfiable` *)
 val requested_range_not_satisfiable: response
-
 (** `417 Expectation Failed` *)
 val expectation_failed: response
-
 (** `418 I'm a teapot` *)
 val im_a_teapot: response
-
 (** `420 Enhance Your Calm` (Twitter) *)
 val enhance_your_calm: response
-
 (** `422 Unprocessable Entity` (WebDAV) *)
 val unprocessable_entity: response
-
 (** `423 Locked` (WebDAV) *)
 val locked: response
-
 (** `424 Failed Dependency` (WebDAV) *)
 val failed_dependency: response
-
 (** `426 Upgrade Required` *)
 val upgrade_required: response
-
 (** `428 Precondition Required` *)
 val precondition_required: response
-
 (** `429 Too Many Requests` *)
 val too_many_requests: response
-
 (** `431 Request Header Fields Too Large` *)
 val request_header_fields_too_large: response
-
 (** `450 Blocked by Windows Parental Controls` *)
 val blocked_by_windows_parental_controls: response
-
 (** `499 Client Closed Request` (nginx) *)
 val client_closed_request: response
 
@@ -402,7 +356,6 @@ val client_closed_request: response
         internal_server_error ~body:"Internal server error" ()
     ]} *)
 val internal_server_error: response
-
 (** [501 Not Implemented] - Feature not implemented.
 
     Example:
@@ -410,10 +363,8 @@ val internal_server_error: response
       not_implemented ~body:"This feature is coming soon" ()
     ]} *)
 val not_implemented: response
-
 (** [502 Bad Gateway] - Invalid response from upstream server. *)
 val bad_gateway: response
-
 (** [503 Service Unavailable] - Server temporarily unavailable.
 
     Use during maintenance or when overloaded.
@@ -429,55 +380,39 @@ val bad_gateway: response
         process_request req
     ]} *)
 val service_unavailable: response
-
 (** `504 Gateway Timeout` *)
 val gateway_timeout: response
-
 (** `505 HTTP Version Not Supported` *)
 val http_version_not_supported: response
-
 (** `506 Variant Also Negotiates` *)
 val variant_also_negotiates: response
-
 (** `507 Insufficient Storage` (WebDAV) *)
 val insufficient_storage: response
-
 (** `508 Loop Detected` (WebDAV) *)
 val loop_detected: response
-
 (** `509 Bandwidth Limit Exceeded` *)
 val bandwidth_limit_exceeded: response
-
 (** `510 Not Extended` *)
 val not_extended: response
-
 (** `511 Network Authentication Required` *)
 val network_authentication_required: response
 
 (** ## Unofficial Status Codes *)
 (** `103 Checkpoint` *)
 val checkpoint: response
-
 (** `102 Processing` *)
 val processing: response
-
 (** `100 Continue` *)
 val continue: response
-
 (** `101 Switching Protocols` *)
 val switching_protocols: response
-
 (** `444 No Response` (nginx) *)
 val no_response: response
-
 (** `449 Retry With` (Microsoft) *)
 val retry_with: response
-
 (** `451 Unavailable For Legal Reasons` *)
 val wrong_exchange_server: response
-
 (** `598 Network read timeout error` *)
 val network_read_timeout_error: response
-
 (** `599 Network connect timeout error` *)
 val network_connect_timeout_error: response

@@ -73,20 +73,20 @@ let is_cacheable = function
   | Extension _ -> false
 
 let compare = fun m1 m2 ->
-    let method_priority = function
-      | Get -> 0
-      | Head -> 1
-      | Post -> 2
-      | Put -> 3
-      | Delete -> 4
-      | Connect -> 5
-      | Options -> 6
-      | Trace -> 7
-      | Patch -> 8
-      | Extension _ -> 9
-    in
-    match (m1, m2) with
-    | Extension s1, Extension s2 -> String.compare s1 s2
-    | _ -> Int.compare (method_priority m1) (method_priority m2)
+  let method_priority = function
+    | Get -> 0
+    | Head -> 1
+    | Post -> 2
+    | Put -> 3
+    | Delete -> 4
+    | Connect -> 5
+    | Options -> 6
+    | Trace -> 7
+    | Patch -> 8
+    | Extension _ -> 9
+  in
+  match (m1, m2) with
+  | Extension s1, Extension s2 -> String.compare s1 s2
+  | _ -> Int.compare (method_priority m1) (method_priority m2)
 
 let equal = fun m1 m2 -> compare m1 m2 = 0

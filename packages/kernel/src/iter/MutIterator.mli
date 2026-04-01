@@ -73,7 +73,6 @@
     - Interfacing with imperative code
     - Memory-constrained scenarios
 *)
-
 (** Interface that mutable iterators must implement. *)
 module type Intf = sig
   type state
@@ -81,14 +80,11 @@ module type Intf = sig
   type item
   (** The type of items produced *)
   val next: state -> item option
-
   (** Returns the next item, mutating internal state. Returns None when
       exhausted. *)
   val size: state -> int
-
   (** Returns the number of remaining items (may be approximate). *)
   val clone: state -> state
-
   (** Creates an independent copy of the iterator state. *)
 end
 
@@ -97,20 +93,16 @@ type ('item, 'state) iter = (module Intf with type item = 'item and type state =
 type 'item t
 (** A mutable iterator over items of type ['item]. *)
 val empty: unit -> 'item t
-
 (** Creates an empty iterator. *)
 val singleton: 'item -> 'item t
-
 (** Creates an iterator with a single element. *)
 val make: ('item, 'state) iter -> 'state -> 'item t
-
 (** Creates a mutable iterator from a module and initial state.
 
     ## Examples
 
     ```ocaml let iter = MutIterator.make (module MyIter) initial_state ``` *)
 val next: 'item t -> 'item option
-
 (** Returns the next item, mutating the iterator's internal state.
 
     ## Examples
@@ -118,14 +110,12 @@ val next: 'item t -> 'item option
     ```ocaml match MutIterator.next iter with | Some x -> process x | None -> ()
     (* Iterator exhausted *) ``` *)
 val size: 'item t -> int
-
 (** Returns the number of remaining items (may be approximate).
 
     ## Examples
 
     ```ocaml let remaining = MutIterator.size iter in ``` *)
 val clone: 'item t -> 'item t
-
 (** Creates an independent copy of the iterator.
 
     ## Examples
@@ -133,14 +123,12 @@ val clone: 'item t -> 'item t
     ```ocaml let iter2 = MutIterator.clone iter in (* iter and iter2 can now be
     advanced independently *) ``` *)
 val collect: 'item t -> 'item list -> 'item list
-
 (** Collects remaining items, prepending to the given list.
 
     ## Examples
 
     ```ocaml let items = MutIterator.collect iter [] ``` *)
 val to_list: 'item t -> 'item list
-
 (** Consumes the iterator and collects all items into a list.
 
     ## Examples
@@ -149,58 +137,42 @@ val to_list: 'item t -> 'item list
 (** {1 Transformation} *)
 
 val map: 'a t -> fn:('a -> 'b) -> 'b t
-
 (** Transforms each element using the provided function. *)
 val filter: 'a t -> fn:('a -> bool) -> 'a t
-
 (** Keeps only elements that satisfy the predicate. *)
 val filter_map: 'a t -> fn:('a -> 'b option) -> 'b t
-
 (** Maps and filters in one operation. *)
 val flat_map: 'a t -> fn:('a -> 'b t) -> 'b t
-
 (** Maps each element to an iterator and flattens the results (streaming). *)
 (** {1 Reduction} *)
 
 val fold: 'a t -> init:'acc -> fn:('a -> 'acc -> 'acc) -> 'acc
-
 (** Reduces the iterator to a single value. *)
 val reduce: 'a t -> fn:('a -> 'a -> 'a) -> 'a option
-
 (** Reduces using the first element as initial value. *)
 val count: 'a t -> int
-
 (** Counts the number of elements. *)
 (** {1 Search} *)
 
 val find: 'a t -> fn:('a -> bool) -> 'a option
-
 (** Returns the first element satisfying the predicate. *)
 val any: 'a t -> fn:('a -> bool) -> bool
-
 (** Returns true if any element satisfies the predicate. *)
 val all: 'a t -> fn:('a -> bool) -> bool
-
 (** Returns true if all elements satisfy the predicate. *)
 (** {1 Combinators} *)
 
 val take: 'a t -> int -> 'a t
-
 (** Takes at most n elements. *)
 val drop: 'a t -> int -> 'a t
-
 (** Skips the first n elements. *)
 val enumerate: 'a t -> (int * 'a) t
-
 (** Adds indices to elements, starting from 0. *)
 val zip: 'a t -> 'b t -> ('a * 'b) t
-
 (** Combines two iterators into pairs. *)
 val chain: 'a t -> 'a t -> 'a t
-
 (** Chains two iterators together. *)
 (** {1 Side Effects} *)
 
 val for_each: 'a t -> fn:('a -> unit) -> unit
-
 (** Applies a function to each element for side effects. *)

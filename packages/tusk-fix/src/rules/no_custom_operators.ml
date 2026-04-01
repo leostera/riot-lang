@@ -47,28 +47,28 @@ let allowed_infix_operators = [
   "^";
   "|>";
   "@@";
-
 ]
 
 let should_flag_operator = fun operator -> not (List.mem operator allowed_infix_operators)
 
 let make_diagnostic = fun expr ->
-    let operator = Syn.Cst.InfixExpression.operator expr in
-    let span =
-      match Syn.Cst.InfixExpression.operator_tokens expr with
-      | first :: rest ->
-          List.fold_left
-            (fun span token -> Ceibo.Span.union span (Syn.Cst.Token.span token))
-            (Syn.Cst.Token.span first)
-            rest
-      | [] -> Syn.Cst.Expression.syntax_node (Syn.Cst.Expression.Infix expr) |> Syn.Cst.token_body_span
-    in
-    Diagnostic.make
-      ~severity:Warning
-      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-      ~span
-      ~suggestion:(("Replace " ^ operator ^ " with a named function"))
-      ()
+  let operator = Syn.Cst.InfixExpression.operator expr in
+  let span =
+    match Syn.Cst.InfixExpression.operator_tokens expr with
+    | first :: rest ->
+        List.fold_left
+          (fun span token ->
+            Ceibo.Span.union span (Syn.Cst.Token.span token))
+          (Syn.Cst.Token.span first)
+          rest
+    | [] -> Syn.Cst.Expression.syntax_node (Syn.Cst.Expression.Infix expr) |> Syn.Cst.token_body_span
+  in
+  Diagnostic.make
+    ~severity:Warning
+    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~span
+    ~suggestion:(("Replace " ^ operator ^ " with a named function"))
+    ()
 
 let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.Path _
@@ -90,7 +90,7 @@ let rec diagnostics_for_expression = function
   | Syn.Cst.Expression.Fun expr ->
       diagnostics_for_function_body expr.body
   | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
-      diagnostics_for_function_body (Syn.Cst.Cases {syntax_node; cases})
+      diagnostics_for_function_body (Syn.Cst.Cases {syntax_node;cases;})
   | Syn.Cst.Expression.Parenthesized expr ->
       diagnostics_for_expression expr.inner
   | Syn.Cst.Expression.Let expr ->
@@ -136,18 +136,18 @@ and diagnostics_for_function_body = function
   | Syn.Cst.Cases { cases; _ } -> cases |> List.concat_map diagnostics_for_match_case
 
 and diagnostics_for_match_case = fun (case: Syn.Cst.match_case) ->
-    (
-      match case.guard with
-      | Some guard -> diagnostics_for_expression guard
-      | None -> []
-    ) @ diagnostics_for_expression case.body
+  (
+    match case.guard with
+    | Some guard -> diagnostics_for_expression guard
+    | None -> []
+  ) @ diagnostics_for_expression case.body
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-    let source_file = ctx.cst in
-    Syn.Cst.SourceFile.structure_items source_file
-    |> Option.unwrap_or ~default:[]
-    |> List.concat_map Traversal.let_bindings_of_structure_item
-    |> List.concat_map (fun binding -> diagnostics_for_expression (Syn.Cst.LetBinding.value binding))
+  let source_file = ctx.cst in
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Traversal.let_bindings_of_structure_item
+  |> List.concat_map (fun binding -> diagnostics_for_expression (Syn.Cst.LetBinding.value binding))
 
 let make = fun () ->
-    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

@@ -110,7 +110,6 @@ type config = {
           Default: returns simple 406/415 with plain text body. *)
 }
 val default_config: config
-
 (** Default configuration:
     - types: [["*/*"]] (accept all)
     - check_accept: true
@@ -119,7 +118,6 @@ val default_config: config
 (** {1 Middleware} *)
 
 val middleware: ?config:config -> string list -> Pipeline.middleware
-
 (** Create content negotiation middleware.
 
     {[
@@ -165,7 +163,6 @@ val middleware: ?config:config -> string list -> Pipeline.middleware
       ]
     ]} *)
 val make: config -> Pipeline.middleware
-
 (** Create middleware with full configuration.
 
     {[
@@ -221,7 +218,6 @@ type accept_entry = {
     - media_type: MIME type (e.g., "application/json")
     - quality: Quality value from 0.0 to 1.0 (default: 1.0) *)
 val parse_accept: string -> accept_entry list
-
 (** Parse Accept header with quality values.
 
     Returns list sorted by quality (highest first).
@@ -238,7 +234,6 @@ val parse_accept: string -> accept_entry list
       ] *)
     ]} *)
 val get_base_content_type: string -> string option
-
 (** Extract base content type from Content-Type header.
 
     Strips parameters like charset, boundary, etc.

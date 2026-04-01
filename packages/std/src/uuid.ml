@@ -5,27 +5,24 @@ open IO
 (** {1 Type} *)
 
 type t = Kernel.UUID.t
-
 (** UUID represented as 16 bytes *)
 (** {1 Creation - Using Native Platform APIs} *)
 
 let v4 = fun () -> Kernel.UUID.v4 ()
-
 (** Generate random UUID v4 using platform's cryptographic RNG *)
 let v7 = fun () -> Kernel.UUID.v7 ()
-
 (** Generate timestamp-ordered UUID v7 (RFC 9562) - sortable by creation time *)
 let v5 = fun ~namespace:_ ~name:_ -> raise (Invalid_argument "UUID.v5 not yet implemented")
 
 let v3 = fun ~namespace:_ ~name:_ -> raise (Invalid_argument "UUID.v3 not yet implemented")
 
 let v4_from_bytes = fun bytes ->
-    match Kernel.UUID.of_bytes bytes with
-    | Ok uuid -> uuid
-    | Error _ -> raise (Invalid_argument "UUID.v4_from_bytes: invalid bytes")
+  match Kernel.UUID.of_bytes bytes with
+  | Ok uuid -> uuid
+  | Error _ -> raise (Invalid_argument "UUID.v4_from_bytes: invalid bytes")
 
 let v7_from_parts = fun ~time_ms:_ ~rand_a:_ ~rand_b:_ ->
-    raise (Invalid_argument "UUID.v7_from_parts not yet implemented")
+  raise (Invalid_argument "UUID.v7_from_parts not yet implemented")
 
 (** {1 Constants} *)
 
@@ -50,19 +47,19 @@ let of_bytes = Kernel.UUID.of_bytes
 (** {1 Serialization} *)
 
 let to_string = fun ?(upper = false) uuid ->
-    let str = Kernel.UUID.to_string uuid in
-    if upper then
-      String.uppercase_ascii str
-    else
-      str
+  let str = Kernel.UUID.to_string uuid in
+  if upper then
+    String.uppercase_ascii str
+  else
+    str
 
 let to_string_nodash = fun ?(upper = false) uuid ->
-    let str = to_string ~upper:false uuid in
-    let result = String.concat "" (String.split_on_char '-' str) in
-    if upper then
-      String.uppercase_ascii result
-    else
-      result
+  let str = to_string ~upper:false uuid in
+  let result = String.concat "" (String.split_on_char '-' str) in
+  if upper then
+    String.uppercase_ascii result
+  else
+    result
 
 let to_bytes = Kernel.UUID.to_bytes
 
@@ -87,7 +84,6 @@ let time = fun _uuid -> None
 (* TODO: extract from v7 *)
 
 (** {1 Monotonic UUIDv7 for Transaction IDs} *)
-
 (** Monotonic UUIDv7 state to prevent time regressions.
     
     This ensures that even if the system clock jumps backwards (NTP adjustment,
@@ -101,58 +97,54 @@ module Monotonic = struct
     last_timestamp_ms: int64 Cell.t;
   }
 
-  let create = fun () -> {last_timestamp_ms = cell 0L; }
-
+  let create = fun () -> {last_timestamp_ms = cell 0L;}
   (** Extract timestamp (ms since epoch) from UUIDv7 bytes.
       UUIDv7 format: [timestamp_ms(48 bits) | ver(4) | rand_a(12) | var(2) | rand_b(62)]
   *)
   let extract_timestamp_ms = fun uuid ->
-      let open Bytes in
-        let b0 = Int64.of_int (Char.code (get uuid 0)) in
-        let b1 = Int64.of_int (Char.code (get uuid 1)) in
-        let b2 = Int64.of_int (Char.code (get uuid 2)) in
-        let b3 = Int64.of_int (Char.code (get uuid 3)) in
-        let b4 = Int64.of_int (Char.code (get uuid 4)) in
-        let b5 = Int64.of_int (Char.code (get uuid 5)) in
-        Int64.(logor
-          (shift_left b0 40)
-          (logor
-            (shift_left b1 32)
-            (logor (shift_left b2 24) (logor (shift_left b3 16) (logor (shift_left b4 8) b5)))))
-
+    let open Bytes in
+      let b0 = Int64.of_int (Char.code (get uuid 0)) in
+      let b1 = Int64.of_int (Char.code (get uuid 1)) in
+      let b2 = Int64.of_int (Char.code (get uuid 2)) in
+      let b3 = Int64.of_int (Char.code (get uuid 3)) in
+      let b4 = Int64.of_int (Char.code (get uuid 4)) in
+      let b5 = Int64.of_int (Char.code (get uuid 5)) in
+      Int64.(logor
+        (shift_left b0 40)
+        (logor
+          (shift_left b1 32)
+          (logor (shift_left b2 24) (logor (shift_left b3 16) (logor (shift_left b4 8) b5)))))
   (** Generate monotonic UUIDv7.
       If the current timestamp is less than the last seen timestamp,
       we clamp to last_timestamp + 1ms to preserve monotonicity.
   *)
   let v7 = fun state ->
-      let uuid = Kernel.UUID.v7 () in
-      let time_ms = extract_timestamp_ms uuid in
-      let last_ms = Cell.get state.last_timestamp_ms in
-      if time_ms < last_ms then
-        begin
-          (* Clock went backwards - need to clamp *)
-          let clamped_ms = Int64.add last_ms 1L in
-          Cell.set state.last_timestamp_ms clamped_ms;
-          (* Generate new UUID with clamped timestamp *)
-          (* For MVP, we'll just generate a new one and hope it's >= clamped_ms
+    let uuid = Kernel.UUID.v7 () in
+    let time_ms = extract_timestamp_ms uuid in
+    let last_ms = Cell.get state.last_timestamp_ms in
+    if time_ms < last_ms then
+      begin
+        (* Clock went backwards - need to clamp *)
+        let clamped_ms = Int64.add last_ms 1L in
+        Cell.set state.last_timestamp_ms clamped_ms;
+        (* Generate new UUID with clamped timestamp *)
+        (* For MVP, we'll just generate a new one and hope it's >= clamped_ms
          A full implementation would rebuild the UUID with exact timestamp *)
-          let new_uuid = Kernel.UUID.v7 () in
-          Cell.set state.last_timestamp_ms (extract_timestamp_ms new_uuid);
-          new_uuid
-        end
-      else begin
-        Cell.set state.last_timestamp_ms time_ms;
-        uuid
+        let new_uuid = Kernel.UUID.v7 () in
+        Cell.set state.last_timestamp_ms (extract_timestamp_ms new_uuid);
+        new_uuid
       end
+    else begin
+      Cell.set state.last_timestamp_ms time_ms;
+      uuid
+    end
 end
-
 (** Global monotonic state for transaction IDs.
     Use {!v7_monotonic} for generating transaction UUIDs.
 *)
 let _global_monotonic_state = Monotonic.create ()
 
 let v7_monotonic = fun () -> Monotonic.v7 _global_monotonic_state
-
 (** Generate monotonic UUIDv7 safe for transaction IDs.
     
     This variant ensures that UUIDs are strictly monotonically increasing

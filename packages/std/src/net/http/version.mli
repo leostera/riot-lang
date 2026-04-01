@@ -36,7 +36,6 @@ type t =
 val of_string: string -> (t, [
     `InvalidVersion
   ]) result
-
 (** Parses an HTTP version string.
 
     ## Examples
@@ -49,7 +48,6 @@ val of_string: string -> (t, [
     - "HTTP/0.9", "HTTP/1.0", "HTTP/1.1"
     - "HTTP/2", "HTTP/3" *)
 val to_string: t -> string
-
 (** Converts HTTP version to standard string representation.
 
     ## Examples
@@ -57,7 +55,6 @@ val to_string: t -> string
     ```ocaml Version.to_string Version.Http11 (* "HTTP/1.1" *) Version.to_string
     Version.Http2 (* "HTTP/2" *) ``` *)
 val compare: t -> t -> int
-
 (** Compares two HTTP versions by their version number.
 
     ## Examples
@@ -65,14 +62,12 @@ val compare: t -> t -> int
     ```ocaml Version.compare Version.Http10 Version.Http11 (* < 0 *)
     Version.compare Version.Http2 Version.Http11 (* > 0 *) ``` *)
 val equal: t -> t -> bool
-
 (** Checks if two HTTP versions are equal.
 
     ## Examples
 
     ```ocaml Version.equal Version.Http11 Version.Http11 (* true *) ``` *)
 val is_supported: t -> bool
-
 (** Checks if the HTTP version is supported by this implementation.
 
     ## Examples

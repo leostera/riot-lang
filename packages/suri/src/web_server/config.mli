@@ -16,7 +16,6 @@ val make:
   ?buffer_size:int ->
   unit ->
   t
-
 (** [make ()] creates a new configuration with optional overrides.
 
     Defaults:
@@ -25,5 +24,4 @@ val make:
     - [max_header_length] = 8192 bytes
     - [buffer_size] = 4096 bytes *)
 val default: t
-
 (** Default configuration with standard limits *)

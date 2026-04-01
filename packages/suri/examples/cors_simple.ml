@@ -1,6 +1,5 @@
 open Std
 open Suri
-
 (** Simple API with CORS enabled for cross-origin requests *)
 let routes = Middleware.Router.[get
   "/api/hello"
@@ -23,7 +22,7 @@ let () =
   Miniriot.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       (* Development mode - allow all origins *)
-      let app = Middleware.[ request_id; logger; cors ~origins:[ "*" ] (); router routes;  ] in
+      let app = Middleware.[ request_id; logger; cors ~origins:[ "*" ] (); router routes; ] in
       let config = Suri.config ~port:4_000 () in
       match Suri.start_link ~config app with
       | Ok _supervisor ->

@@ -46,7 +46,6 @@ type error =
   | SystemError of string
 (** Other system-level error *)
 (** # Construction and Conversion *)
-
 (** Creates a path from a string, validating UTF-8 encoding.
     
     ## Examples
@@ -64,7 +63,6 @@ type error =
     ```
 *)
 val of_string: string -> (t, error) Result.t
-
 (** Creates a path from a string literal.
 
     ## Panics
@@ -80,7 +78,6 @@ val of_string: string -> (t, error) Result.t
     (* Building paths *) let full_path = home / config (* full_path =
     "/home/user/config.toml" *) ``` *)
 val v: string -> t
-
 (** Converts a path to a UTF-8 string.
 
     The returned string is always valid UTF-8 since paths are validated at
@@ -107,7 +104,6 @@ val to_string: t -> string
     "/home/user" in let path2 = Path.v "/etc" in let result = Path.join path1
     path2 in (* result = "/etc" *) ``` *)
 val join: t -> t -> t
-
 (** Infix operator for joining paths.
 
     Allows natural path construction with chaining.
@@ -121,7 +117,6 @@ val join: t -> t -> t
     config = home / Path.v ".config" / Path.v "myapp" in let settings = config /
     Path.v "settings.json" ``` *)
 val ( / ): t -> t -> t
-
 (** Returns the parent directory, if any.
 
     Returns [`None`] for root paths or single components.
@@ -136,7 +131,6 @@ val ( / ): t -> t -> t
     let relative = Path.v "file.txt" in assert (Path.parent relative = None) ```
 *)
 val parent: t -> t option
-
 (** Returns the final component of a path as a string.
 
     Returns empty string for root paths.
@@ -148,7 +142,6 @@ val parent: t -> t option
     (Path.basename (Path.v "/") = ""); assert (Path.basename (Path.v "file.txt")
     = "file.txt") ``` *)
 val basename: t -> string
-
 (** Returns the directory portion of a path.
 
     Similar to [`parent`] but returns the path itself if no parent.
@@ -177,7 +170,6 @@ val dirname: t -> t
     ".gitignore") = None); assert (Path.extension (Path.v "file.") = Some "")
     ``` *)
 val extension: t -> string option
-
 (** Removes the file extension, if present.
 
     ## Examples
@@ -191,7 +183,6 @@ val extension: t -> string option
     (* Only removes last extension *) let archive = Path.v "file.tar.gz" in
     assert (Path.remove_extension archive = Path.v "file.tar") ``` *)
 val remove_extension: t -> t
-
 (** Adds or replaces the file extension.
 
     If the path already has an extension, it's replaced. The extension should
@@ -208,7 +199,6 @@ val remove_extension: t -> t
     (* Create backup files *) let backup path = Path.add_extension path
     ~ext:"bak" ``` *)
 val add_extension: t -> ext:string -> t
-
 (** Returns `true` if the path is absolute.
 
     Absolute paths start from the root of the filesystem.
@@ -222,7 +212,6 @@ val add_extension: t -> ext:string -> t
     (* Platform-specific on Windows *) (* Path.is_absolute (Path.v
     "C:\\Windows") = true on Windows *) ``` *)
 val is_absolute: t -> bool
-
 (** Returns `true` if the path is relative.
 
     Relative paths are interpreted from the current directory.
@@ -251,7 +240,6 @@ val is_relative: t -> bool
     (Path.v "a/./b/../c") in (* with_dots =
     [Path.v "a"; Path.v "."; Path.v "b"; Path.v ".."; Path.v "c"] *) ``` *)
 val components: t -> t list
-
 (** Normalizes a path by resolving `.` and `..` components.
 
     Does not access the filesystem or resolve symbolic links.
@@ -284,7 +272,6 @@ val normalize: t -> t
     Subject to TOCTOU race conditions. The file may be created or deleted
     between this check and subsequent operations. *)
 val exists: t -> bool
-
 (** Returns `true` if the path exists and is a directory.
 
     ## Examples
@@ -296,7 +283,6 @@ val exists: t -> bool
     (* Returns false if path doesn't exist *) let missing = Path.v
     "/does/not/exist" in assert (not (Path.is_directory missing)) ``` *)
 val is_directory: t -> bool
-
 (** Returns `true` if the path exists and is a regular file.
 
     ## Examples
@@ -326,7 +312,6 @@ val is_file: t -> bool
     (* Normalize first for semantic equality *) assert (Path.equal
     (Path.normalize p1) (Path.normalize p3)) ``` *)
 val equal: t -> t -> bool
-
 (** Removes a prefix from a path if it matches.
 
     Returns the remaining path after removing the prefix.

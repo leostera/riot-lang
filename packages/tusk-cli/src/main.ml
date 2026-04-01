@@ -1,5 +1,4 @@
 open Std
-
 (** Main entry point for tusk *)
 let () =
   Std.Log.(set_level Info);

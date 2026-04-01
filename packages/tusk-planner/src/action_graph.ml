@@ -9,53 +9,52 @@ type t = {
   graph: Action_node.action_spec G.t;
 }
 
-let create = fun () -> {graph = G.make ()}
+let create = fun () -> {graph = G.make ();}
 
 let add_node = fun t node_value ->
-    G.add_node t.graph node_value
+  G.add_node t.graph node_value
 
 let add_dependency = fun t node ~depends_on -> G.add_edge node ~depends_on
 
 let topo_sort = fun t ->
-    match G.topo_sort t.graph with
-    | Ok sorted -> sorted
-    | Error _cycle_ids ->
-        (* Should never happen - cycles caught in module planning *)
-        panic "Unexpected cycle in action graph"
+  match G.topo_sort t.graph with
+  | Ok sorted -> sorted
+  | Error _cycle_ids ->
+      (* Should never happen - cycles caught in module planning *)
+      panic "Unexpected cycle in action graph"
 
 let nodes = fun t -> topo_sort t
 
 let graph = fun t -> t.graph
 
 let to_action_list = fun t ->
-    let sorted = topo_sort t in
-    List.concat_map (fun (node: Action_node.t) -> node.value.actions) sorted
+  let sorted = topo_sort t in
+  List.concat_map (fun (node: Action_node.t) -> node.value.actions) sorted
 
 let hash_action_node = fun _t (node: Action_node.t) -> node.value.hash
 
 let opens = fun mods ->
-    List.filter_map
-      (fun (node: Module_node.t G.node) ->
-        match node.value.kind with
-        | ML mod_
-        | MLI mod_ -> Some (Tusk_toolchain.Ocamlc.Open (Module.namespaced_name mod_))
-        | _ -> None)
-      mods
-
+  List.filter_map
+    (fun (node: Module_node.t G.node) ->
+      match node.value.kind with
+      | ML mod_
+      | MLI mod_ -> Some (Tusk_toolchain.Ocamlc.Open (Module.namespaced_name mod_))
+      | _ -> None)
+    mods
 (** Determine compiler flags for stdlib handling based on package dependencies *)
 let stdlib_flags = fun (package: Package.t) ->
-    (* Check if this package has stdlib as a dependency *)
-    let has_stdlib_dep =
-      List.exists
-        (fun (dep: Package.dependency) -> dep.name = "stdlib")
-        (Package.build_graph_dependencies package)
-    in
-    (* Always add -nopervasives to prevent automatic opening of Stdlib *)
-    (* Add -nostdlib only if package doesn't depend on stdlib *)
-    if has_stdlib_dep then
-      [ Tusk_toolchain.Ocamlc.NoPervasives ]
-    else
-      [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
+  (* Check if this package has stdlib as a dependency *)
+  let has_stdlib_dep =
+    List.exists
+      (fun (dep: Package.dependency) -> dep.name = "stdlib")
+      (Package.build_graph_dependencies package)
+  in
+  (* Always add -nopervasives to prevent automatic opening of Stdlib *)
+  (* Add -nostdlib only if package doesn't depend on stdlib *)
+  if has_stdlib_dep then
+    [ Tusk_toolchain.Ocamlc.NoPervasives ]
+  else
+    [ Tusk_toolchain.Ocamlc.NoPervasives; Tusk_toolchain.Ocamlc.NoStdlib ]
 
 let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~depset ~needs_unix ~needs_dynlink (
   module_node: Module_node.t
@@ -71,7 +70,6 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         outputs;
         includes = Path.v "." :: dep_includes;
         flags = stdlib_flags package @ opens open_modules;
-
       } in
       ([ compile ], outputs, sources)
   | { kind=ML mod_; file=Concrete path; open_modules; _ } ->
@@ -86,11 +84,10 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         outputs;
         includes = Path.v "." :: dep_includes;
         flags = stdlib_flags package @ opens open_modules;
-
       } in
       ([ compile ], outputs, sources)
   | { kind=ML mod_; file=Generated { path; contents }; open_modules; _ } ->
-      let write_action = Action.WriteFile {destination = path; content = contents} in
+      let write_action = Action.WriteFile {destination = path;content = contents;} in
       let native_object_output = Module.o mod_ in
       let cmx_output = Module.cmx mod_ in
       let cmi_output = Module.cmi mod_ in
@@ -110,11 +107,10 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         outputs;
         includes = Path.v "." :: dep_includes;
         flags;
-
       } in
       ([ write_action; compile_action ], outputs, sources)
   | { kind=MLI mod_; file=Generated { path; contents }; open_modules; _ } ->
-      let write_action = Action.WriteFile {destination = path; content = contents} in
+      let write_action = Action.WriteFile {destination = path;content = contents;} in
       let cmi_output = Module.cmi mod_ in
       let cmti_output = Module.cmti mod_ in
       let outputs = [ cmti_output; cmi_output ] in
@@ -124,7 +120,6 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         outputs;
         includes = Path.v "." :: dep_includes;
         flags = stdlib_flags package @ opens open_modules;
-
       } in
       ([ write_action; compile_action ], outputs, sources)
   | { kind=Native { files }; _ } ->
@@ -148,7 +143,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
           (fun c_file ->
             let obj_file = Path.remove_extension c_file |> Path.add_extension ~ext:"o" in
             let output_name = Path.basename obj_file |> Path.v in
-            Action.CompileC {source = c_file; outputs = [ output_name ]; ccflags})
+            Action.CompileC {source = c_file;outputs = [ output_name ];ccflags;})
           c_files
       in
       let outputs =
@@ -188,7 +183,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
       let create_lib = Action.CreateLibrary {
         outputs = [ library_name; archive_name ];
         objects;
-        includes
+        includes;
       } in
       let all_outputs = [ library_name; archive_name ] in
       ([ create_lib ], all_outputs, sources)
@@ -201,7 +196,6 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         outputs = [ binary_cmx ];
         includes = Path.v "." :: dep_includes;
         flags = stdlib_flags package;
-
       } in
       (* Collect foreign library outputs for linking *)
       let cclibs =
@@ -288,8 +282,8 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~dep
         cclibs;
         ccopt_flags;
         cclib_flags;
-
-      } in
+      }
+      in
       ([ compile_action; link_action ], [ binary_output ], sources)
 
 let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (
@@ -382,205 +376,206 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
   (action_graph, Cell.get all_outputs)
 
 let to_json = fun t ->
-    let open Data.Json in
-      let all_nodes = nodes t in
-      let sorted_nodes =
-        List.sort
-          (fun (a: Action_node.t) (b: Action_node.t) -> G.Node_id.to_int a.id - G.Node_id.to_int b.id)
-          all_nodes
-      in
-      obj [ ("nodes", array (List.map Action_node.to_json sorted_nodes)) ]
+  let open Data.Json in
+    let all_nodes = nodes t in
+    let sorted_nodes =
+      List.sort
+        (fun (a: Action_node.t) (b: Action_node.t) -> G.Node_id.to_int a.id - G.Node_id.to_int b.id)
+        all_nodes
+    in
+    obj [ ("nodes", array (List.map Action_node.to_json sorted_nodes)) ]
 
 let from_json = fun json ->
-    let open Data.Json in
-      let parse_hash hash_json =
-        let module Byte_buf = IO.Bytes in
-        let hex_value c =
-          if c >= '0' && c <= '9' then
-            Some (Char.code c - Char.code '0')
-          else if c >= 'a' && c <= 'f' then
-            Some (10 + Char.code c - Char.code 'a')
-          else if c >= 'A' && c <= 'F' then
-            Some (10 + Char.code c - Char.code 'A')
-          else
-            None
-        in
-        match hash_json with
-        | String hex ->
-            let len = String.length hex in
-            if not (len mod 2 = 0) then
-              Error "hash must have even-length hex"
-            else
-              let out = Byte_buf.create (len / 2) in
-              let rec fill i =
-                if i >= len then
-                  Ok (Crypto.Hash.of_bytes out)
-                else
-                  match (hex_value hex.[i], hex_value hex.[i + 1]) with
-                  | Some hi, Some lo ->
-                      let byte = Char.chr ((hi lsl 4) lor lo) in
-                      Byte_buf.set out (i / 2) byte;
-                      fill (i + 2)
-                  | _ -> Error "hash contains non-hex characters"
-              in
-              fill 0
-        | _ -> Error "hash must be string"
+  let open Data.Json in
+    let parse_hash hash_json =
+      let module Byte_buf = IO.Bytes in
+      let hex_value c =
+        if c >= '0' && c <= '9' then
+          Some (Char.code c - Char.code '0')
+        else if c >= 'a' && c <= 'f' then
+          Some (10 + Char.code c - Char.code 'a')
+        else if c >= 'A' && c <= 'F' then
+          Some (10 + Char.code c - Char.code 'A')
+        else
+          None
       in
-      match get_field "nodes" json with
-      | None ->
-          Error "Missing 'nodes' field"
-      | Some (Array node_jsons) -> (
-          let graph = create () in
-          let id_to_node : (int, Action_node.t) HashMap.t = HashMap.create () in
-          let dependencies_to_wire : (Action_node.t * int list) vec = vec [] in
-          let parse_actions actions_json =
-            match actions_json with
-            | Array action_jsons ->
-                List.fold_left
-                  (fun acc action_json ->
-                    match acc with
-                    | Error _ -> acc
-                    | Ok actions -> (
-                        match Action.from_json action_json with
-                        | Ok action -> Ok (action :: actions)
-                        | Error err -> Error err
-                      ))
-                  (Ok [])
-                  action_jsons |> Result.map List.rev
-            | _ -> Error "actions must be array"
-          in
-          let parse_paths paths_json =
-            match paths_json with
-            | Array path_jsons ->
-                Ok (
-                  List.filter_map
-                    (
-                      function
-                      | String s -> Some (Path.v s)
-                      | _ -> None
-                    )
-                    path_jsons
-                )
-            | _ -> Error "paths must be array"
-          in
-          let parse_dependencies deps_json =
-            match deps_json with
-            | Array dep_jsons ->
-                List.fold_left
-                  (fun acc dep_json ->
-                    match (acc, dep_json) with
-                    | Error e, _ -> Error e
-                    | Ok deps, Int dep_id -> Ok (dep_id :: deps)
-                    | Ok _, _ -> Error "dependencies must be int array")
-                  (Ok [])
-                  dep_jsons |> Result.map List.rev
-            | _ -> Error "dependencies must be array"
-          in
-          match
-            List.fold_left
-              (fun acc node_json ->
-                match acc with
-                | Error _ -> acc
-                | Ok () -> (
-                    match (
-                      get_field "package" node_json,
-                      get_field "package_path" node_json,
-                      get_field "package_relative_path" node_json,
-                      get_field "actions" node_json,
-                      get_field "outputs" node_json,
-                      get_field "sources" node_json,
-                      get_field "hash" node_json,
-                      get_field "id" node_json,
-                      get_field "dependencies" node_json
-                    ) with
-                    | (Some (String pkg_name), pkg_path_json, pkg_rel_path_json, Some actions_json, Some outputs_json, Some sources_json, Some hash_json, Some (Int legacy_id), Some deps_json) -> (
-                        match parse_actions actions_json with
-                        | Error err -> Error err
-                        | Ok actions -> (
-                            match (
-                              parse_hash hash_json,
-                              parse_paths outputs_json,
-                              parse_paths sources_json,
-                              parse_dependencies deps_json
-                            ) with
-                            | Ok hash, Ok outputs, Ok sources, Ok dependency_ids ->
-                                let package_path =
-                                  match pkg_path_json with
-                                  | Some (String p) -> Path.v p
-                                  | _ -> Path.v "."
-                                in
-                                let package_relative_path =
-                                  match pkg_rel_path_json with
-                                  | Some (String p) -> Path.v p
-                                  | _ -> package_path
-                                in
-                                let package =
-                                  Package.{
-                                    name = pkg_name;
-                                    path = package_path;
-                                    relative_path = package_relative_path;
-                                    dependencies = [];
-                                    dev_dependencies = [];
-                                    build_dependencies = [];
-                                    foreign_dependencies = [];
-                                    binaries = [];
-                                    library = None;
-                                    sources = {
+      match hash_json with
+      | String hex ->
+          let len = String.length hex in
+          if not (len mod 2 = 0) then
+            Error "hash must have even-length hex"
+          else
+            let out = Byte_buf.create (len / 2) in
+            let rec fill i =
+              if i >= len then
+                Ok (Crypto.Hash.of_bytes out)
+              else
+                match (hex_value hex.[i], hex_value hex.[i + 1]) with
+                | Some hi, Some lo ->
+                    let byte = Char.chr ((hi lsl 4) lor lo) in
+                    Byte_buf.set out (i / 2) byte;
+                    fill (i + 2)
+                | _ -> Error "hash contains non-hex characters"
+            in
+            fill 0
+      | _ -> Error "hash must be string"
+    in
+    match get_field "nodes" json with
+    | None ->
+        Error "Missing 'nodes' field"
+    | Some (Array node_jsons) -> (
+        let graph = create () in
+        let id_to_node : (int, Action_node.t) HashMap.t = HashMap.create () in
+        let dependencies_to_wire : (Action_node.t * int list) vec = vec [] in
+        let parse_actions actions_json =
+          match actions_json with
+          | Array action_jsons ->
+              List.fold_left
+                (fun acc action_json ->
+                  match acc with
+                  | Error _ -> acc
+                  | Ok actions -> (
+                      match Action.from_json action_json with
+                      | Ok action -> Ok (action :: actions)
+                      | Error err -> Error err
+                    ))
+                (Ok [])
+                action_jsons |> Result.map List.rev
+          | _ -> Error "actions must be array"
+        in
+        let parse_paths paths_json =
+          match paths_json with
+          | Array path_jsons ->
+              Ok (
+                List.filter_map
+                  (
+                    function
+                    | String s -> Some (Path.v s)
+                    | _ -> None
+                  )
+                  path_jsons
+              )
+          | _ -> Error "paths must be array"
+        in
+        let parse_dependencies deps_json =
+          match deps_json with
+          | Array dep_jsons ->
+              List.fold_left
+                (fun acc dep_json ->
+                  match (acc, dep_json) with
+                  | Error e, _ -> Error e
+                  | Ok deps, Int dep_id -> Ok (dep_id :: deps)
+                  | Ok _, _ -> Error "dependencies must be int array")
+                (Ok [])
+                dep_jsons |> Result.map List.rev
+          | _ -> Error "dependencies must be array"
+        in
+        match
+          List.fold_left
+            (fun acc node_json ->
+              match acc with
+              | Error _ -> acc
+              | Ok () -> (
+                  match (
+                    get_field "package" node_json,
+                    get_field "package_path" node_json,
+                    get_field "package_relative_path" node_json,
+                    get_field "actions" node_json,
+                    get_field "outputs" node_json,
+                    get_field "sources" node_json,
+                    get_field "hash" node_json,
+                    get_field "id" node_json,
+                    get_field "dependencies" node_json
+                  ) with
+                  | (Some (String pkg_name), pkg_path_json, pkg_rel_path_json, Some actions_json, Some outputs_json, Some sources_json, Some hash_json, Some (Int legacy_id), Some deps_json) -> (
+                      match parse_actions actions_json with
+                      | Error err -> Error err
+                      | Ok actions -> (
+                          match (
+                            parse_hash hash_json,
+                            parse_paths outputs_json,
+                            parse_paths sources_json,
+                            parse_dependencies deps_json
+                          ) with
+                          | Ok hash, Ok outputs, Ok sources, Ok dependency_ids ->
+                              let package_path =
+                                match pkg_path_json with
+                                | Some (String p) -> Path.v p
+                                | _ -> Path.v "."
+                              in
+                              let package_relative_path =
+                                match pkg_rel_path_json with
+                                | Some (String p) -> Path.v p
+                                | _ -> package_path
+                              in
+                              let package =
+                                Package.{
+                                  name = pkg_name;
+                                  path = package_path;
+                                  relative_path = package_relative_path;
+                                  dependencies = [];
+                                  dev_dependencies = [];
+                                  build_dependencies = [];
+                                  foreign_dependencies = [];
+                                  binaries = [];
+                                  library = None;
+                                  sources =
+                                    {
                                       src = [];
                                       native = [];
                                       tests = [];
                                       examples = [];
-                                      bench = []
+                                      bench = [];
                                     };
-                                    compiler = {profile_overrides = []; target_overrides = []};
-                                    commands = [];
-                                    fix_providers = [];
-
-                                  } in
-                                let toolchain = Tusk_toolchain.init
-                                  ~config:Tusk_model.Toolchain_config.default
-                                |> Result.expect ~msg:"Failed to initialize toolchain" in
-                                let action_spec : Action_node.action_spec = {
-                                  actions;
-                                  outs = outputs;
-                                  srcs = sources;
-                                  package;
-                                  toolchain;
-                                  hash;
-
-                                } in
-                                let node = add_node graph action_spec in
-                                let _ = HashMap.insert id_to_node legacy_id node in
-                                Vector.push dependencies_to_wire (node, dependency_ids);
-                                Ok ()
-                            | (Error err, _, _, _)
-                            | (_, Error err, _, _)
-                            | (_, _, Error err, _)
-                            | (_, _, _, Error err) -> Error err
-                          )
-                      )
-                    | _ -> Error "Missing required node fields"
-                  ))
-              (Ok ())
-              node_jsons
-          with
-          | Error err -> Error err
-          | Ok () ->
-              Vector.into_iter dependencies_to_wire |> Iterator.to_list |> List.iter
-                (fun ((node, dependency_ids)) ->
-                  List.iter
-                    (fun dep_id ->
-                      match HashMap.get id_to_node dep_id with
-                      | Some dep_node -> add_dependency graph node ~depends_on:dep_node
-                      | None -> ())
-                    dependency_ids);
-              Ok graph
-        )
-      | Some _ ->
-          Error "nodes must be array"
+                                  compiler = {profile_overrides = [];target_overrides = [];};
+                                  commands = [];
+                                  fix_providers = [];
+                                }
+                              in
+                              let toolchain = Tusk_toolchain.init
+                                ~config:Tusk_model.Toolchain_config.default
+                              |> Result.expect ~msg:"Failed to initialize toolchain" in
+                              let action_spec : Action_node.action_spec = {
+                                actions;
+                                outs = outputs;
+                                srcs = sources;
+                                package;
+                                toolchain;
+                                hash;
+                              }
+                              in
+                              let node = add_node graph action_spec in
+                              let _ = HashMap.insert id_to_node legacy_id node in
+                              Vector.push dependencies_to_wire (node, dependency_ids);
+                              Ok ()
+                          | (Error err, _, _, _)
+                          | (_, Error err, _, _)
+                          | (_, _, Error err, _)
+                          | (_, _, _, Error err) -> Error err
+                        )
+                    )
+                  | _ -> Error "Missing required node fields"
+                ))
+            (Ok ())
+            node_jsons
+        with
+        | Error err -> Error err
+        | Ok () ->
+            Vector.into_iter dependencies_to_wire |> Iterator.to_list |> List.iter
+              (fun ((node, dependency_ids)) ->
+                List.iter
+                  (fun dep_id ->
+                    match HashMap.get id_to_node dep_id with
+                    | Some dep_node -> add_dependency graph node ~depends_on:dep_node
+                    | None -> ())
+                  dependency_ids);
+            Ok graph
+      )
+    | Some _ ->
+        Error "nodes must be array"
 
 let equal = fun g1 g2 ->
-    let nodes1 = topo_sort g1 in
-    let nodes2 = topo_sort g2 in
-    try List.for_all2 Action_node.equal nodes1 nodes2 with
-    | _ -> false
+  let nodes1 = topo_sort g1 in
+  let nodes2 = topo_sort g2 in
+  try List.for_all2 Action_node.equal nodes1 nodes2 with
+  | _ -> false

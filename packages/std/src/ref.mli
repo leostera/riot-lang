@@ -83,7 +83,6 @@ open Global
     runtime. *)
 type 'a t
 val make: unit -> 'a t
-
 (** Checks if two references are the same, regardless of their type parameters.
     Returns [true] only if they were created by the same [make] call.
 
@@ -93,7 +92,6 @@ val make: unit -> 'a t
 
     Ref.equal ref1 ref1 (* true *) Ref.equal ref1 ref2 (* false *) ``` *)
 val equal: 'a t -> 'b t -> bool
-
 (** Checks if two references are equal and, if so, returns a type equality
     witness proving that ['a] and ['b] are the same type.
 
@@ -111,7 +109,6 @@ val equal: 'a t -> 'b t -> bool
     ```
 *)
 val type_equal: 'a t -> 'b t -> ('a, 'b) Kernel.Type.eq option
-
 (** Attempts to cast a value from type ['a] to type ['b] if the references are
     equal. Returns [Some value] if the cast succeeds, [None] otherwise.
 
@@ -127,7 +124,6 @@ val type_equal: 'a t -> 'b t -> ('a, 'b) Kernel.Type.eq option
     (* Cast fails - different references *) Ref.cast string_ref int_ref "hello"
     (* None *) ``` *)
 val cast: 'a t -> 'b t -> 'a -> 'b option
-
 (** Returns [true] if the first reference was created after the second.
 
     References have a creation order based on when [make] was called.
@@ -139,7 +135,6 @@ val cast: 'a t -> 'b t -> 'a -> 'b option
     Ref.is_newer new_ref old_ref (* true *) Ref.is_newer old_ref new_ref (*
     false *) ``` *)
 val is_newer: 'a t -> 'b t -> bool
-
 (** Returns a hash value for the reference.
 
     References with the same identity hash to the same value. Useful for using

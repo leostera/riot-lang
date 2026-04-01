@@ -117,19 +117,14 @@ type year_and_week = {
 (** {1 Constants} *)
 (** 60 seconds per minute *)
 val seconds_per_minute: int
-
 (** 3600 seconds per hour *)
 val seconds_per_hour: int
-
 (** 86400 seconds per day *)
 val seconds_per_day: int
-
 (** 365 days per ordinary year *)
 val days_per_year: int
-
 (** 366 days per leap year *)
 val days_per_leap_year: int
-
 (** 719528 days from year 0 to Unix epoch (1970-01-01) *)
 val days_from_0_to_1970: int
 
@@ -150,7 +145,6 @@ val days_from_0_to_1970: int
     ```
 *)
 val is_leap_year: year -> bool
-
 (** Returns the last day of the month (28, 29, 30, or 31).
 
     Accounts for leap years when computing February's last day.
@@ -204,7 +198,6 @@ val is_valid_date: date -> bool
     @raise Invalid_argument if the date is invalid
 *)
 val date_to_gregorian_days: date -> int
-
 (** Converts gregorian days back to a date.
 
     Inverse of {!date_to_gregorian_days}.
@@ -245,7 +238,6 @@ val gregorian_days_to_date: int -> date
     ```
 *)
 val naive_to_gregorian_seconds: date -> time -> int
-
 (** Converts gregorian seconds to a date and time.
 
     Inverse of {!naive_to_gregorian_seconds}.
@@ -315,7 +307,6 @@ val iso_week_number: date -> year_and_week
     ```
 *)
 val time_to_seconds: time -> int
-
 (** Converts seconds since midnight to time.
 
     Seconds must be in range 0-86399.
@@ -330,7 +321,6 @@ val time_to_seconds: time -> int
     @raise Invalid_argument if seconds is not in range 0-86399
 *)
 val seconds_to_time: int -> time
-
 (** Converts any number of seconds to [(days, time)].
 
     Handles negative seconds correctly. Time is always non-negative.

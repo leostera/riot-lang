@@ -22,5 +22,5 @@ type t =
   | SetTimer of { ref: Timer.id Ref.t; duration: Time.Duration.t; }
 
 let timer = fun ~after ->
-    let ref = Ref.make () in
-    (ref, SetTimer {ref; duration = after})
+  let ref = Ref.make () in
+  (ref, SetTimer {ref;duration = after;})

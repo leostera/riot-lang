@@ -49,7 +49,7 @@ type subscription_options = {
   partition: string option;
 }
 
-let default_subscription_options = {min_demand = 5; max_demand = 1_000; partition = None; }
+let default_subscription_options = {min_demand = 5;max_demand = 1_000;partition = None;}
 
 (** {1 GenStage Protocol Messages} *)
 

@@ -1,5 +1,4 @@
 open Std
-
 (** Printer module for pretty-printing values in counter-examples.
     
     Printers convert values to human-readable strings for displaying

@@ -103,7 +103,6 @@ val of_client_io: reader:(Tcp_stream.t, error) IO.Reader.t ->
   hostname:string ->
   unit ->
   (Tcp_stream.t t, error) result
-
 (** Create TLS server from any reader/writer pair.
     
     @param cert_file Path to server certificate (PEM format)
@@ -128,12 +127,10 @@ val of_tcp_socket: mode:[
     | `Client of string
     | `Server of string * string
   ] -> Tcp_stream.t -> (Tcp_stream.t t, error) result
-
 (** Create TLS client from TCP stream.
     
     Convenience wrapper around [of_client_io] for TCP sockets. *)
 val of_tcp_client: hostname:string -> Tcp_stream.t -> (Tcp_stream.t t, error) result
-
 (** Create TLS server from TCP stream.
     
     Convenience wrapper around [of_server_io] for TCP sockets. *)
@@ -158,7 +155,6 @@ val of_tcp_server: cert_file:string -> key_file:string -> Tcp_stream.t -> (Tcp_s
       | Error e -> handle_error e
     ]} *)
 val to_reader: 'src t -> ('src t, error) IO.Reader.t
-
 (** Convert TLS stream to a generic Writer.
     
     Writes encrypt plaintext and send it to the underlying stream.
@@ -180,7 +176,6 @@ val to_writer: 'src t -> ('src t, error) IO.Writer.t
     
     Returns [None] if no ALPN was negotiated. *)
 val alpn_protocol: 'src t -> string option
-
 (** Close the TLS stream.
     
     Note: This does not close the underlying transport - that's the

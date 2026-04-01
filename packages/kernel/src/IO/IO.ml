@@ -76,74 +76,73 @@ type error =
   | Unknown_error of string
 
 let error_of_unix = fun e ->
-    match e with
-    | Unix.EACCES -> Permission_denied
-    | Unix.ENOENT -> No_such_file_or_directory
-    | Unix.EINTR -> Interrupted_system_call
-    | Unix.EIO -> Input_output_error
-    | Unix.EBADF -> Bad_file_descriptor
-    | Unix.EAGAIN -> Resource_unavailable_try_again
-    | Unix.ENOMEM -> Out_of_memory
-    | Unix.EPERM -> Permission_denied_on_file
-    | Unix.EFAULT -> Bad_address
-    | Unix.EBUSY -> Resource_busy
-    | Unix.EEXIST -> File_exists
-    | Unix.EXDEV -> Cross_device_link
-    | Unix.EINVAL -> Invalid_argument
-    | Unix.ENFILE -> Too_many_open_files_in_system
-    | Unix.EMFILE -> Too_many_open_files
-    | Unix.ENOTTY -> Invalid_operation_on_device
-    | Unix.EFBIG -> File_too_large
-    | Unix.ENOSPC -> No_space_left_on_device
-    | Unix.ESPIPE -> Illegal_seek
-    | Unix.EROFS -> Read_only_filesystem
-    | Unix.EMLINK -> Too_many_links
-    | Unix.EPIPE -> Broken_pipe
-    | Unix.EDOM -> Numerical_argument_out_of_domain
-    | Unix.ERANGE -> Numerical_result_out_of_range
-    | Unix.EDEADLK -> Resource_deadlock_would_occur
-    | Unix.ENAMETOOLONG -> Filename_too_long
-    | Unix.ENOLCK -> No_locks_available
-    | Unix.ENOSYS -> Function_not_implemented
-    | Unix.ENOTEMPTY -> Directory_not_empty
-    | Unix.ELOOP -> Too_many_symbolic_links
-    | Unix.EWOULDBLOCK -> Operation_would_block
-    | Unix.ENOTSOCK -> Socket_operation_on_non_socket
-    | Unix.EDESTADDRREQ -> Destination_address_required
-    | Unix.EMSGSIZE -> Message_too_long
-    | Unix.EPROTOTYPE -> Protocol_wrong_type_for_socket
-    | Unix.ENOPROTOOPT -> Protocol_not_available
-    | Unix.EPROTONOSUPPORT -> Protocol_not_supported
-    | Unix.ESOCKTNOSUPPORT -> Socket_type_not_supported
-    | Unix.EOPNOTSUPP -> Operation_not_supported
-    | Unix.EPFNOSUPPORT -> Protocol_family_not_supported
-    | Unix.EAFNOSUPPORT -> Address_family_not_supported
-    | Unix.EADDRINUSE -> Address_already_in_use
-    | Unix.EADDRNOTAVAIL -> Cannot_assign_requested_address
-    | Unix.ENETDOWN -> Network_is_down
-    | Unix.ENETUNREACH -> Network_is_unreachable
-    | Unix.ENETRESET -> Network_dropped_connection_on_reset
-    | Unix.ECONNABORTED -> Software_caused_connection_abort
-    | Unix.ECONNRESET -> Connection_reset_by_peer
-    | Unix.ENOBUFS -> No_buffer_space_available
-    | Unix.EISCONN -> Transport_endpoint_already_connected
-    | Unix.ENOTCONN -> Transport_endpoint_not_connected
-    | Unix.ESHUTDOWN -> Cannot_send_after_transport_endpoint_shutdown
-    | Unix.ETOOMANYREFS -> Too_many_references
-    | Unix.ETIMEDOUT -> Connection_timed_out
-    | Unix.ECONNREFUSED -> Connection_refused
-    | Unix.EHOSTDOWN -> Host_is_down
-    | Unix.EHOSTUNREACH -> No_route_to_host
-    | Unix.EALREADY -> Operation_already_in_progress
-    | Unix.EINPROGRESS -> Operation_now_in_progress
-    | _ -> Unknown_error (Unix.error_message e)
-
+  match e with
+  | Unix.EACCES -> Permission_denied
+  | Unix.ENOENT -> No_such_file_or_directory
+  | Unix.EINTR -> Interrupted_system_call
+  | Unix.EIO -> Input_output_error
+  | Unix.EBADF -> Bad_file_descriptor
+  | Unix.EAGAIN -> Resource_unavailable_try_again
+  | Unix.ENOMEM -> Out_of_memory
+  | Unix.EPERM -> Permission_denied_on_file
+  | Unix.EFAULT -> Bad_address
+  | Unix.EBUSY -> Resource_busy
+  | Unix.EEXIST -> File_exists
+  | Unix.EXDEV -> Cross_device_link
+  | Unix.EINVAL -> Invalid_argument
+  | Unix.ENFILE -> Too_many_open_files_in_system
+  | Unix.EMFILE -> Too_many_open_files
+  | Unix.ENOTTY -> Invalid_operation_on_device
+  | Unix.EFBIG -> File_too_large
+  | Unix.ENOSPC -> No_space_left_on_device
+  | Unix.ESPIPE -> Illegal_seek
+  | Unix.EROFS -> Read_only_filesystem
+  | Unix.EMLINK -> Too_many_links
+  | Unix.EPIPE -> Broken_pipe
+  | Unix.EDOM -> Numerical_argument_out_of_domain
+  | Unix.ERANGE -> Numerical_result_out_of_range
+  | Unix.EDEADLK -> Resource_deadlock_would_occur
+  | Unix.ENAMETOOLONG -> Filename_too_long
+  | Unix.ENOLCK -> No_locks_available
+  | Unix.ENOSYS -> Function_not_implemented
+  | Unix.ENOTEMPTY -> Directory_not_empty
+  | Unix.ELOOP -> Too_many_symbolic_links
+  | Unix.EWOULDBLOCK -> Operation_would_block
+  | Unix.ENOTSOCK -> Socket_operation_on_non_socket
+  | Unix.EDESTADDRREQ -> Destination_address_required
+  | Unix.EMSGSIZE -> Message_too_long
+  | Unix.EPROTOTYPE -> Protocol_wrong_type_for_socket
+  | Unix.ENOPROTOOPT -> Protocol_not_available
+  | Unix.EPROTONOSUPPORT -> Protocol_not_supported
+  | Unix.ESOCKTNOSUPPORT -> Socket_type_not_supported
+  | Unix.EOPNOTSUPP -> Operation_not_supported
+  | Unix.EPFNOSUPPORT -> Protocol_family_not_supported
+  | Unix.EAFNOSUPPORT -> Address_family_not_supported
+  | Unix.EADDRINUSE -> Address_already_in_use
+  | Unix.EADDRNOTAVAIL -> Cannot_assign_requested_address
+  | Unix.ENETDOWN -> Network_is_down
+  | Unix.ENETUNREACH -> Network_is_unreachable
+  | Unix.ENETRESET -> Network_dropped_connection_on_reset
+  | Unix.ECONNABORTED -> Software_caused_connection_abort
+  | Unix.ECONNRESET -> Connection_reset_by_peer
+  | Unix.ENOBUFS -> No_buffer_space_available
+  | Unix.EISCONN -> Transport_endpoint_already_connected
+  | Unix.ENOTCONN -> Transport_endpoint_not_connected
+  | Unix.ESHUTDOWN -> Cannot_send_after_transport_endpoint_shutdown
+  | Unix.ETOOMANYREFS -> Too_many_references
+  | Unix.ETIMEDOUT -> Connection_timed_out
+  | Unix.ECONNREFUSED -> Connection_refused
+  | Unix.EHOSTDOWN -> Host_is_down
+  | Unix.EHOSTUNREACH -> No_route_to_host
+  | Unix.EALREADY -> Operation_already_in_progress
+  | Unix.EINPROGRESS -> Operation_now_in_progress
+  | _ -> Unknown_error (Unix.error_message e)
 (** Retry helper for Unix syscalls that handles EINTR.
     EAGAIN/EWOULDBLOCK are returned as Operation_would_block for async handling at Std level. *)
 let rec unix_syscall = fun fn ->
-    try Ok (fn ()) with
-    | Unix.Unix_error (Unix.EINTR, _, _) -> unix_syscall fn
-    | Unix.Unix_error (err, _, _) -> Error (error_of_unix err)
+  try Ok (fn ()) with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> unix_syscall fn
+  | Unix.Unix_error (err, _, _) -> Error (error_of_unix err)
 
 let error_to_unix = function
   | End_of_file -> Unix.EINVAL

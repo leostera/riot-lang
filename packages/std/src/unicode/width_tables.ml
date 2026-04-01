@@ -9,7 +9,6 @@ open Collections
 *)
 (** A table is an array of (start, end) ranges *)
 type table = (int * int) array
-
 (** Combining characters - display width 0 *)
 let combining = [|
   (0x0300, 0x036f);
@@ -59,9 +58,7 @@ let combining = [|
   (0x1_e026, 0x1_e02a);
   (0x1_e08f, 0x1_e08f);
   (0x1_e8d0, 0x1_e8d6);
-
 |]
-
 (** Double-width characters - display width 2 *)
 let doublewidth = [|
   (0x1100, 0x115f);
@@ -184,9 +181,7 @@ let doublewidth = [|
   (0x1_faf0, 0x1_faf8);
   (0x2_0000, 0x2_fffd);
   (0x3_0000, 0x3_fffd);
-
 |]
-
 (** Ambiguous-width characters - width depends on locale (1 or 2) *)
 let ambiguous = [|
   (0x00a1, 0x00a1);
@@ -368,9 +363,7 @@ let ambiguous = [|
   (0xe_0100, 0xe_01ef);
   (0xf_0000, 0xf_fffd);
   (0x10_0000, 0x10_fffd);
-
 |]
-
 (** Narrow characters - display width 1 (explicitly narrow) *)
 let narrow = [|
   (0x0020, 0x007e);
@@ -380,9 +373,7 @@ let narrow = [|
   (0x00af, 0x00af);
   (0x27e6, 0x27ed);
   (0x2985, 0x2986);
-
 |]
-
 (** Emoji characters *)
 let emoji = [|
   (0x203c, 0x203c);
@@ -461,22 +452,20 @@ let emoji = [|
   (0x1_f93c, 0x1_f945);
   (0x1_f947, 0x1_faff);
   (0x1_fc00, 0x1_fffd);
-
 |]
-
 (** Binary search in a sorted table of ranges *)
 let in_table : table -> int -> bool = fun tbl c ->
-    let rec search low high =
-      if low > high then
-        false
+  let rec search low high =
+    if low > high then
+      false
+    else
+      let mid = (low + high) / 2 in
+      let (range_start, range_end) = array__unsafe_get tbl mid in
+      if c < range_start then
+        search low (mid - 1)
+      else if c > range_end then
+        search (mid + 1) high
       else
-        let mid = (low + high) / 2 in
-        let (range_start, range_end) = array__unsafe_get tbl mid in
-        if c < range_start then
-          search low (mid - 1)
-        else if c > range_end then
-          search (mid + 1) high
-        else
-          true
-    in
-    search 0 (Array.length tbl - 1)
+        true
+  in
+  search 0 (Array.length tbl - 1)

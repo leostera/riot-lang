@@ -4,9 +4,9 @@ open Gooey
 (* Static layout example: Blue box with white text and padding *)
 
 let text_measurer = fun text _style ->
-    let width = float_of_int (String.length text) in
-    let height = 1.0 in
-    Viewport.make ~width ~height
+  let width = float_of_int (String.length text) in
+  let height = 1.0 in
+  Viewport.make ~width ~height
 
 let () =
   Miniriot.run

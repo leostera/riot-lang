@@ -62,7 +62,6 @@ module Tz: sig
             - [Etc_UTC]: UTC/GMT timezone
             - [Local]: System's local timezone *)
   val to_string: t -> string
-
   (** Converts timezone to string representation.
 
       ## Examples
@@ -111,7 +110,6 @@ type naive = {
 (** {1 Creation} *)
 
 val epoch: t
-
 (** The Unix epoch: January 1, 1970 00:00:00 UTC.
     
     ## Examples
@@ -122,7 +120,6 @@ val epoch: t
     (* epoch.hour = 0, epoch.minute = 0, epoch.second = 0 *)
     ``` *)
 val now: unit -> t
-
 (** Returns the current date and time in the system's local timezone.
 
     ## Examples
@@ -131,7 +128,6 @@ val now: unit -> t
     %02d:%02d:%02d\n" now.year now.month now.day now.hour now.minute now.second
     (* "2025-08-27 14:07:31" *) ``` *)
 val now_utc: unit -> t
-
 (** Returns the current date and time in UTC.
 
     ## Examples
@@ -139,7 +135,6 @@ val now_utc: unit -> t
     ```ocaml let utc = DateTime.now_utc () in assert (utc.time_zone =
     Tz.Etc_UTC); assert (utc.utc_offset = 0) ``` *)
 val now_naive: unit -> naive
-
 (** Returns the current date and time as a naive datetime (no timezone).
     
     This is equivalent to [to_naive (now ())] but more convenient.
@@ -161,7 +156,6 @@ val now_naive: unit -> naive
     - Storing local times in databases
     - Display times that don't need timezone conversion *)
 val from_system_time: Time.SystemTime.t -> t
-
 (** Creates a datetime from a system time.
 
     ## Examples
@@ -183,7 +177,6 @@ val from_system_time: Time.SystemTime.t -> t
 (** {1 Conversion} *)
 
 val to_system_time: t -> Time.SystemTime.t
-
 (** Converts datetime to system time.
 
     ## Examples
@@ -198,7 +191,6 @@ val to_system_time: t -> Time.SystemTime.t
     
     Timezone information is preserved during conversion. *)
 val to_naive: t -> naive
-
 (** Converts a timezone-aware datetime to a naive datetime by dropping timezone information.
     
     The resulting naive datetime represents the same calendar date and time,
@@ -219,7 +211,6 @@ val to_naive: t -> naive
     - Calendar computations that don't depend on timezone
     - Displaying times without timezone context *)
 val from_naive: naive -> tz:Tz.t -> t
-
 (** Converts a naive datetime to a timezone-aware datetime.
     
     Interprets the naive datetime in the specified timezone. The calendar
@@ -248,7 +239,6 @@ val from_naive: naive -> tz:Tz.t -> t
     When using [Tz.Local], the UTC offset is determined by the system's
     current timezone setting at the time of conversion. *)
 val to_iso8601: t -> string
-
 (** Converts to ISO 8601 format string with microsecond precision.
 
     ## Examples
@@ -275,7 +265,6 @@ val to_iso8601: t -> string
 (** {1 Comparison} *)
 
 val equal: t -> t -> bool
-
 (** Tests equality of two datetimes.
     
     Two datetimes are equal if they represent the same point in time,
@@ -309,7 +298,6 @@ type error =
 
 (** Errors that can occur when parsing datetime strings. *)
 val parse: string -> (t, error) result
-
 (** Parses an ISO 8601 datetime string into a DateTime.
 
     This function has full parity with Elixir's DateTime.from_iso8601/2 parser.

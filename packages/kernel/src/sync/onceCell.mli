@@ -23,24 +23,19 @@ open Global0
 (** Create an empty OnceCell *)
 type 'a t
 val create: unit -> 'a t
-
 (** Get the value if initialized *)
 val get: 'a t -> 'a option
-
 (** Get the value, initializing it if necessary *)
 
 (** Try to get the value, initializing it if necessary, propagating errors *)
 val get_or_init: 'a t -> (unit -> 'a) -> 'a
 
 val get_or_try_init: 'a t -> (unit -> ('a, 'e) result) -> ('a, 'e) result
-
 (** Set the value if not already set, returns error if already initialized *)
 val set: 'a t -> 'a -> (unit, [
     | `AlreadyInitialized
   ]) result
-
 (** Check if the cell has been initialized *)
 val is_initialized: 'a t -> bool
-
 (** Take the value out of the cell, leaving it uninitialized *)
 val take: 'a t -> 'a option

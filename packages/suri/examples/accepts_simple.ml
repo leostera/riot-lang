@@ -1,6 +1,5 @@
 open Std
 open Suri
-
 (** Content negotiation example - JSON-only API *)
 let routes = Middleware.Router.[get "/"
   (fun conn _req ->
@@ -69,11 +68,9 @@ let () =
               check_accept = true;
               check_content_type = true;
               on_reject = None;
-
             }
             [];
           router routes;
-
         ] in
       let config = Suri.config ~port:3_001 () in
       match Suri.start_link ~config app with

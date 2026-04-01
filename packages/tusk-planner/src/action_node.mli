@@ -30,7 +30,6 @@ val make:
   dependency_hashes:(G.Node_id.t -> Crypto.hash) ->
   deps:G.Node_id.t list ->
   action_spec
-
 (** Get the pre-computed hash of an action node.
 
     The hash is computed when the node is created via `make` and includes: 1.
@@ -43,9 +42,7 @@ val make:
     toolchain changes, the hash changes, invalidating the cache for this node
     and all downstream nodes. *)
 val get_hash: t -> Crypto.hash
-
 (** Convert an action node to JSON, including all fields and hash *)
 val to_json: t -> Data.Json.t
-
 (** Compare two action nodes structurally (ignoring node IDs) *)
 val equal: t -> t -> bool

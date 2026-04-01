@@ -9,20 +9,19 @@ let dot_tusk =
   Path.(home / Path.v ".tusk")
 
 let toolchains_dir = fun toolchain_config ->
-    let version = toolchain_config.Toolchain_config.version in
-    Path.(dot_tusk / Path.v "toolchains" / Path.v version)
+  let version = toolchain_config.Toolchain_config.version in
+  Path.(dot_tusk / Path.v "toolchains" / Path.v version)
 
 let project_dir = fun workspace ->
-    let project_id = Workspace.project_id workspace in
-    Path.(dot_tusk / Path.v "projects" / Path.v project_id)
+  let project_id = Workspace.project_id workspace in
+  Path.(dot_tusk / Path.v "projects" / Path.v project_id)
 
 let ensure_created = fun () ->
-    let _ = Fs.create_dir_all dot_tusk in
-    let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "projects") in
-    let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "toolchains") in
-    let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "bin") in
-    Ok ()
-
+  let _ = Fs.create_dir_all dot_tusk in
+  let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "projects") in
+  let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "toolchains") in
+  let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "bin") in
+  Ok ()
 (** Build directory configuration - single source of truth *)
 let build_dir_name = "_build"
 
@@ -30,63 +29,60 @@ let build_dir_name = "_build"
    They use the workspace root path directly. *)
 
 let resolve_build_dir_root = fun ~workspace_root target_dir ->
-    let target_dir_path = Path.v target_dir in
-    if Path.is_absolute target_dir_path then
-      target_dir_path
-    else
-      Path.(workspace_root / target_dir_path)
+  let target_dir_path = Path.v target_dir in
+  if Path.is_absolute target_dir_path then
+    target_dir_path
+  else
+    Path.(workspace_root / target_dir_path)
 
 let workspace_build_dir_name = fun ~workspace_root ->
-    let toml_path = Path.(workspace_root / Path.v "tusk.toml") in
-    match Fs.read_to_string toml_path with
-    | Error _ -> build_dir_name
-    | Ok content -> (
-        match Data.Toml.parse content with
-        | Error _ -> build_dir_name
-        | Ok toml -> (
-            match Workspace.of_toml toml with
-            | Ok manifest -> (
-                match manifest.target_dir with
-                | Some target_dir -> target_dir
-                | None -> build_dir_name
-              )
-            | Error _ -> build_dir_name
-          )
-      )
+  let toml_path = Path.(workspace_root / Path.v "tusk.toml") in
+  match Fs.read_to_string toml_path with
+  | Error _ -> build_dir_name
+  | Ok content -> (
+      match Data.Toml.parse content with
+      | Error _ -> build_dir_name
+      | Ok toml -> (
+          match Workspace.of_toml toml with
+          | Ok manifest -> (
+              match manifest.target_dir with
+              | Some target_dir -> target_dir
+              | None -> build_dir_name
+            )
+          | Error _ -> build_dir_name
+        )
+    )
 
 let build_dir_root = fun ~workspace_root ->
-    resolve_build_dir_root ~workspace_root (workspace_build_dir_name ~workspace_root)
-
+  resolve_build_dir_root ~workspace_root (workspace_build_dir_name ~workspace_root)
 (** Get current host triple *)
 let host_target = fun () -> System.Host.to_string System.host_triplet
-
 (** New target-aware path functions *)
 let profile_dir = fun ~workspace_root ~profile ->
-    Path.(build_dir_root ~workspace_root / Path.v profile)
+  Path.(build_dir_root ~workspace_root / Path.v profile)
 
 let target_dir = fun ~workspace_root ~profile ~target ->
-    Path.(profile_dir ~workspace_root ~profile / Path.v target)
+  Path.(profile_dir ~workspace_root ~profile / Path.v target)
 
 let out_dir_with_target = fun ~workspace_root ~profile ~target ->
-    Path.(target_dir ~workspace_root ~profile ~target / Path.v "out")
+  Path.(target_dir ~workspace_root ~profile ~target / Path.v "out")
 
 let sandbox_dir_with_target = fun ~workspace_root ~profile ~target ->
-    Path.(target_dir ~workspace_root ~profile ~target / Path.v "sandbox")
+  Path.(target_dir ~workspace_root ~profile ~target / Path.v "sandbox")
 
 let cache_dir_with_target = fun ~workspace_root ~profile ~target ->
-    Path.(target_dir ~workspace_root ~profile ~target / Path.v "cache")
+  Path.(target_dir ~workspace_root ~profile ~target / Path.v "cache")
 
 let build_lock_path_with_target = fun ~workspace_root ~profile ~target ->
-    Path.(target_dir ~workspace_root ~profile ~target / Path.v "tusk.lock")
-
+  Path.(target_dir ~workspace_root ~profile ~target / Path.v "tusk.lock")
 (** Backward compatible functions - default to debug profile + host target *)
 let debug_dir = fun ~workspace_root -> profile_dir ~workspace_root ~profile:"debug"
 
 let cache_dir = fun ~workspace_root ->
-    cache_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+  cache_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
 
 let out_dir = fun ~workspace_root ->
-    out_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+  out_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
 
 let sandbox_dir = fun ~workspace_root ->
-    sandbox_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
+  sandbox_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())

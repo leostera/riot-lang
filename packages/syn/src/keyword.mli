@@ -77,7 +77,6 @@ type t =
   | While
   | With
 val of_string: string -> t option
-
 (** `to_string kw` converts a keyword to its string representation.
 
     This is the inverse of `of_string` for valid keywords.
@@ -85,7 +84,6 @@ val of_string: string -> t option
     Example: ```ocaml Keyword.to_string Let = "let" Keyword.to_string If = "if"
     Keyword.to_string True = "true" ``` *)
 val to_string: t -> string
-
 (** `is_opening kw` checks if a keyword opens a block.
 
     Opening keywords are: `begin`, `struct`, `sig`, `object`
@@ -95,7 +93,6 @@ val to_string: t -> string
     Example: ```ocaml Keyword.is_opening Begin = true Keyword.is_opening Struct
     = true Keyword.is_opening Let = false ``` *)
 val is_opening: t -> bool
-
 (** `is_closing kw` checks if a keyword closes a block.
 
     The only closing keyword is `end`, which matches `begin`, `struct`, `sig`,

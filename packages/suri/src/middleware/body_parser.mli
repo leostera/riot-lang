@@ -54,10 +54,8 @@ type config = {
           not parsed. *)
 }
 val default_config: unit -> config
-
 (** Default configuration: urlencoded and JSON parsing, 10MB limit *)
 val make: ?config:config -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
-
 (** Create body parser middleware.
 
     The middleware reads [Content-Type] header and parses the body accordingly:

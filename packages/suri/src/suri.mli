@@ -306,7 +306,6 @@ module Config: sig
     (** Secret key for signing LiveView session tokens (min 32 characters) *)
   }
   val default: t
-
   (** Default configuration:
       - host: "0.0.0.0" (all interfaces)
       - port: 4000
@@ -334,7 +333,6 @@ val config:
   ?liveview_secret:string ->
   unit ->
   Config.t
-
 (** Create server configuration with optional parameters. *)
 (** {2 Core Types} *)
 
@@ -347,7 +345,6 @@ type handler = Middleware.Pipeline.t
 val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [>
     `Bind_error
   ]) result
-
 (** Start a Suri web server with a middleware pipeline.
     
     Your application is simply a list of [Conn.t -> Conn.t] functions.
@@ -382,7 +379,6 @@ val start_link: ?config:Config.t -> handler -> (Supervisor.Dynamic.t, [>
 (** {2 User-Facing Modules} *)
 
 module Conn = Middleware.Conn
-
 (** Connection type and transformations.
     
     This is your primary API for handling requests in middleware.
@@ -397,7 +393,6 @@ module Conn = Middleware.Conn
     
     See {!Middleware.Conn} for full API. *)
 module Response = Web_server.Response
-
 (** HTTP Response builders.
     
     Most users should use [Conn.respond] in middleware, but [Response]
@@ -405,7 +400,6 @@ module Response = Web_server.Response
     
     See {!Web_server.Response} for full documentation. *)
 module Request = Web_server.Request
-
 (** HTTP Request accessors.
     
     Most users should use [Conn] methods in middleware, but [Request]
@@ -415,7 +409,6 @@ module Request = Web_server.Request
 (** {2 Framework Modules} *)
 
 module Middleware = Middleware
-
 (** Composable middleware framework.
     
     Includes:
@@ -425,7 +418,6 @@ module Middleware = Middleware
     
     See {!Middleware} for complete documentation. *)
 module Component = Component
-
 (** Type-safe HTML component system.
     
     Build UIs with React-style components that work with both
@@ -439,7 +431,6 @@ module Component = Component
     
     See {!Component} for complete documentation. *)
 module LiveView = Liveview
-
 (** Server-rendered components with live updates.
     
     Phoenix LiveView-style interactive UIs where events are

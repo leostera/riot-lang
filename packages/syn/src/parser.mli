@@ -1,5 +1,4 @@
 open Std
-
 (** OCaml Parser - Token Stream to Syntax Tree
 
     This module implements a recursive descent parser that converts a flat token
@@ -108,6 +107,5 @@ type parse_result = {
 (** # Parsing *)
 (** Parse an interface file (.mli) *)
 val parse_interface: source:string -> Token.t list -> parse_result
-
 (** Parse an implementation file (.ml) *)
 val parse_implementation: source:string -> Token.t list -> parse_result

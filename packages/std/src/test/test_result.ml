@@ -22,16 +22,22 @@ type summary = {
 }
 
 let make_summary = fun results ->
-    let total = List.length results in
-    let passed = List.filter (fun r -> r.result = Passed) results |> List.length in
-    let failed =
-      List.filter
-        (fun r ->
-          match r.result with
-          | Failed _ -> true
-          | _ -> false)
-        results
-      |> List.length
-    in
-    let skipped = List.filter (fun r -> r.result = Skipped) results |> List.length in
-    {total; passed; failed; skipped; results}
+  let total = List.length results in
+  let passed = List.filter (fun r -> r.result = Passed) results |> List.length in
+  let failed =
+    List.filter
+      (fun r ->
+        match r.result with
+        | Failed _ -> true
+        | _ -> false)
+      results
+    |> List.length
+  in
+  let skipped = List.filter (fun r -> r.result = Skipped) results |> List.length in
+  {
+    total;
+    passed;
+    failed;
+    skipped;
+    results;
+  }

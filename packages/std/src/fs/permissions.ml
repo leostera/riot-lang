@@ -13,11 +13,11 @@ let has_write_bit = fun mode -> mode land 0o222 != 0
 let readonly = fun t -> not (has_write_bit t)
 
 let set_readonly = fun t readonly ->
-    if readonly then
-      t land lnot 0o222
-    else
-      (* Set all write bits (world-writable!) *)
-      t lor 0o222
+  if readonly then
+    t land lnot 0o222
+  else
+    (* Set all write bits (world-writable!) *)
+    t lor 0o222
 
 (* User permissions *)
 

@@ -18,7 +18,13 @@ type t = {
 }
 
 let make = fun ~id ~description ~explain ?(enabled = true) ~run () ->
-    {id; description; explain; enabled; run}
+  {
+    id;
+    description;
+    explain;
+    enabled;
+    run;
+  }
 
 let id = fun rule -> rule.id
 
@@ -29,10 +35,10 @@ let description = fun rule -> rule.description
 let enabled = fun rule -> rule.enabled
 
 let run = fun rule ctx tree ->
-    if rule.enabled then
-      rule.run ctx tree
-    else
-      []
+  if rule.enabled then
+    rule.run ctx tree
+  else
+    []
 
 let explanation = fun rule ->
-    Explanation.{rule_id = rule.id; body = rule.explain; message = rule.description; }
+  Explanation.{rule_id = rule.id;body = rule.explain;message = rule.description;}

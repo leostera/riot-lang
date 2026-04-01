@@ -15,38 +15,38 @@ type Message.t +=
   AcceptorMsg of internal_msg
 
 let rec loop = fun state ->
-    let selector msg =
-      match msg with
-      | AcceptorMsg msg -> `select msg
-      | _ -> `skip
-    in
-    match receive ~selector ~timeout:(Time.Duration.from_millis 5) () with
-    | Shutdown -> ()
-    | exception Receive_timeout ->
-        accept_connection state;
-        loop state
+  let selector msg =
+    match msg with
+    | AcceptorMsg msg -> `select msg
+    | _ -> `skip
+  in
+  match receive ~selector ~timeout:(Time.Duration.from_millis 5) () with
+  | Shutdown -> ()
+  | exception Receive_timeout ->
+      accept_connection state;
+      loop state
 
 and accept_connection = fun state ->
-    match Net.TcpListener.accept state.listener with
-    | Ok (stream, peer) ->
-        let accepted_at = Time.Instant.now () in
-        let conn_state =
-          Connector.{
-            transport = state.transport;
-            stream;
-            buffer_size = state.buffer_size;
-            handler = state.handler;
-            peer;
-            accepted_at;
-            ctx = state.initial_ctx;
-
-          } in
-        let _pid = Connector.spawn conn_state in
-        ()
-    | Error _err -> ()
+  match Net.TcpListener.accept state.listener with
+  | Ok (stream, peer) ->
+      let accepted_at = Time.Instant.now () in
+      let conn_state =
+        Connector.{
+          transport = state.transport;
+          stream;
+          buffer_size = state.buffer_size;
+          handler = state.handler;
+          peer;
+          accepted_at;
+          ctx = state.initial_ctx;
+        }
+      in
+      let _pid = Connector.spawn conn_state in
+      ()
+  | Error _err -> ()
 
 let init = fun state ->
-    loop state;
-    Ok ()
+  loop state;
+  Ok ()
 
 let spawn = fun state -> spawn (fun () -> init state)

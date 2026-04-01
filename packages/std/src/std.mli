@@ -886,10 +886,8 @@
         )
     ```
 *)
-
 (** Module Declarations *)
 module Agent = Agent
-
 (** **When to use:** Simple concurrent state access
 
     Use Agent when you need a lightweight state server accessed from multiple processes.
@@ -903,7 +901,6 @@ module Agent = Agent
     - Request counter / rate limiter
     - User session storage *)
 module ArgParser = Arg_parser
-
 (** **When to use:** Parsing command-line arguments
     
     Use ArgParser for building CLI tools with flags, options, and subcommands.
@@ -913,7 +910,6 @@ module ArgParser = Arg_parser
     - Developer utilities
     - System administration scripts *)
 module Bench = Bench
-
 (** **When to use:** Microbenchmarking performance
     
     Use Bench for measuring and comparing performance of code.
@@ -926,19 +922,16 @@ module Bench = Bench
     
     **See also:** {!Test} for unit testing *)
 module Bool = Bool
-
 (** **When to use:** Boolean operations
     
     Extended bool operations with parsing, formatting, and utilities. *)
 module Char = Char
-
 (** **When to use:** Character classification and conversion
     
     Extended character operations beyond stdlib.
     
     **See also:** {!Unicode.Rune} for Unicode code points *)
 module Collections = Collections
-
 (** **When to use:** Working with data structures
     
     Parent module containing Vector, HashMap, HashSet, Queue, Deque, Heap, and List.
@@ -952,7 +945,6 @@ module Collections = Collections
     - Priority ordering → Heap
     - Functional lists → List *)
 module Command = Command
-
 (** **When to use:** Running external programs
     
     Use Command when you need to execute shell commands or external tools.
@@ -965,7 +957,6 @@ module Command = Command
     
     **See also:** {!System} for system information *)
 module Config = Config
-
 (** **When to use:** Application configuration management
     
     Use Config for type-safe, environment-aware configuration loading.
@@ -982,7 +973,6 @@ module Config = Config
     - Environment detection
     - Deep merging *)
 module Crypto = Crypto
-
 (** **When to use:** Cryptographic hashing
     
     Use Crypto for content-addressable storage, integrity verification, checksums.
@@ -997,7 +987,6 @@ module Crypto = Crypto
     
     **Algorithms:** SHA-256 (recommended), SHA-512, MD5 (legacy only) *)
 module Data = Data
-
 (** **When to use:** Parsing/generating data formats
     
     Parent module for JSON, TOML, CSV, XML, Sexp, and encoding formats.
@@ -1012,7 +1001,6 @@ module Data = Data
 module Calendar = Calendar
 
 module Datetime = Datetime
-
 (** **When to use:** Calendar dates and times
     
     Use Datetime for human-readable dates, date arithmetic, formatting.
@@ -1025,7 +1013,6 @@ module Datetime = Datetime
     
     **See also:** {!Time.SystemTime} for timestamps, {!Time.Instant} for elapsed time *)
 module Diff = Diff
-
 (** **When to use:** Computing differences between data structures
     
     Use Diff for change detection, audit logs, version control.
@@ -1036,7 +1023,6 @@ module Diff = Diff
     - API response comparison
     - Undo/redo systems *)
 module Env = Env
-
 (** **When to use:** Environment variables and system info
     
     Use Env for reading configuration from environment, detecting OS/arch.
@@ -1047,7 +1033,6 @@ module Env = Env
     - Platform-specific behavior
     - Container orchestration config *)
 module Exception = Exception
-
 (** **When to use:** Exception handling utilities
     
     Use Exception for programmatic exception handling and custom exceptions.
@@ -1055,12 +1040,10 @@ module Exception = Exception
     **Prefer:** Result type for expected errors
     **Use exceptions for:** Unexpected/unrecoverable errors *)
 module Float = Float
-
 (** **When to use:** Floating-point operations
     
     Extended float operations with parsing and formatting. *)
 module Fs = Fs
-
 (** **When to use:** Filesystem operations
     
     Use Fs for all file and directory operations with Result-based error handling.
@@ -1074,7 +1057,6 @@ module Fs = Fs
     
     **See also:** {!Path} for path manipulation, {!Fs.File} for streaming *)
 module Graph = Graph
-
 (** **When to use:** Graph data structures and visualization
     
     Use Graph for dependency graphs, build systems, workflow diagrams.
@@ -1084,27 +1066,22 @@ module Graph = Graph
     - Dot → Graphviz visualization
     - Mermaid → Markdown-friendly diagrams *)
 module IO = IO
-
 (** **When to use:** Generic I/O abstractions
     
     Use IO for Reader/Writer traits and vectored I/O operations.
     
     **Most users should use:** {!Fs} or {!Net} instead *)
 module Int = Int
-
 (** **When to use:** Integer operations
     
     Extended int operations with parsing, formatting, and utilities. *)
 module Int32 = Int32
-
 (** **When to use:** 32-bit integer operations *)
 module Int64 = Int64
-
 (** **When to use:** 64-bit integer operations
     
     Use Int64 for timestamps, large numbers, file sizes. *)
 module Iter = Iter
-
 (** **When to use:** Iteration and parsing utilities
     
     Parent module for Iterator, MutIterator, Cursor, and MutCursor.
@@ -1114,14 +1091,12 @@ module Iter = Iter
     **Use Cursor when:** You're parsing strings with backtracking
     **Use MutCursor when:** You need fast, single-pass string parsing *)
 module List = Collections.List
-
 (** **When to use:** Immutable linked lists
     
     Use List for functional programming, pattern matching, recursive algorithms.
     
     **Prefer Vector when:** You need random access or frequent appends *)
 module Log = Log
-
 (** **When to use:** Structured logging
     
     Use Log for application logging with levels (Debug, Info, Warn, Error).
@@ -1132,12 +1107,10 @@ module Log = Log
     - Debugging
     - Audit trails *)
 module Message = Message
-
 (** **When to use:** Defining extensible message types
     
     Use Message for building type-safe actor communication protocols. *)
 module Net = Net
-
 (** **When to use:** Network I/O
     
     Parent module for TCP, HTTP, TLS, URI, and network addresses.
@@ -1149,7 +1122,6 @@ module Net = Net
     - TLS/SSL → TlsStream
     - URLs → Uri *)
 module Option = Option
-
 (** **When to use:** A value might not exist
     
     Use Option when absence is normal and not an error condition.
@@ -1162,7 +1134,6 @@ module Option = Option
     
     **Prefer Result when:** Absence indicates an error you want to handle *)
 module Path = Path
-
 (** **When to use:** Working with filesystem paths
     
     Use Path for type-safe, UTF-8 validated, cross-platform path operations.
@@ -1171,12 +1142,10 @@ module Path = Path
     
     **See also:** {!Fs} for filesystem operations *)
 module Pid = Pid
-
 (** **When to use:** Process identifiers
     
     Use Pid for actor/process identification and messaging. *)
 module Process = Process
-
 (** **When to use:** Process lifecycle and monitoring
     
     Use Process for monitoring, linking, and managing actor processes.
@@ -1187,12 +1156,10 @@ module Process = Process
     - Checking if process is alive
     - Getting process info *)
 module Ptr = Ptr
-
 (** **When to use:** Physical equality and pointer operations
     
     Rarely needed in normal application code. *)
 module Random = Random
-
 (** **When to use:** Random value generation
     
     Use Random for generating random integers, floats, selecting from lists.
@@ -1203,12 +1170,10 @@ module Random = Random
     - Load balancing
     - Sampling *)
 module Ref = Ref
-
 (** **When to use:** Unique, opaque, type-witnessing references
     
     Use Ref for ensuring type safety across module boundaries. *)
 module Result = Result
-
 (** **When to use:** Explicit error handling
     
     Use Result for operations that can fail in expected, recoverable ways.
@@ -1223,14 +1188,12 @@ module Result = Result
     
     **See also:** {!Option} for missing values without error context *)
 module String = String
-
 (** **When to use:** UTF-8 string processing
     
     Use String for text manipulation with proper UTF-8 iteration support.
     
     **See also:** {!Unicode} for advanced text processing *)
 module Supervisor = Supervisor
-
 (** **When to use:** Building fault-tolerant process trees
     
     Use Supervisor for applications that must automatically recover from crashes.
@@ -1249,7 +1212,6 @@ module Supervisor = Supervisor
     - Worker pools
     - Per-user sessions *)
 module Sync = Sync
-
 (** **When to use:** Synchronization primitives
     
     Use Sync for mutable cells, mutexes, condition variables.
@@ -1258,12 +1220,10 @@ module Sync = Sync
     
     **See also:** {!Agent} for concurrent state with actor patterns *)
 module System = System
-
 (** **When to use:** System information queries
     
     Use System for OS detection, resource limits, system paths. *)
 module Task = Task
-
 (** **When to use:** Asynchronous task execution
     
     Use Task for fire-and-forget or awaitable async operations.
@@ -1275,7 +1235,6 @@ module Task = Task
     
     **See also:** {!WorkerPool} for distributing work across workers *)
 module Telemetry = Telemetry
-
 (** **When to use:** Instrumentation and metrics
     
     Use Telemetry for adding observability to your application.
@@ -1286,14 +1245,12 @@ module Telemetry = Telemetry
     - Custom events
     - Performance monitoring *)
 module Test = Test
-
 (** **When to use:** Writing unit tests
     
     Use Test for building test suites with assertions and reporters.
     
     **Reporters:** TAP, JUnit XML, JSON, Pretty print *)
 module Time = Time
-
 (** **When to use:** Time measurement
     
     Parent module for Duration, Instant, and SystemTime.
@@ -1302,7 +1259,6 @@ module Time = Time
     **Use Instant for:** Elapsed time, benchmarking
     **Use SystemTime for:** Wall-clock time, timestamps *)
 module Timer = Timer
-
 (** **When to use:** Timed events in actor systems
     
     Use Timer for scheduling delayed or periodic messages to processes.
@@ -1350,10 +1306,8 @@ module Timer = Timer
     
     **See also:** {!Time.Duration} for creating time spans *)
 module Type = Type
-
 (** **When to use:** Type-level programming utilities *)
 module Unicode = Unicode
-
 (** **When to use:** Unicode text processing
     
     Use Unicode for proper handling of international text, emoji, terminal width.
@@ -1364,7 +1318,6 @@ module Unicode = Unicode
     - Utf8 → UTF-8 encoding/decoding
     - Segmentation → Word/sentence/line breaking *)
 module UUID = Uuid
-
 (** **When to use:** Globally unique identifiers
     
     Use UUID for entity IDs, request tracking, distributed coordination.
@@ -1375,7 +1328,6 @@ module UUID = Uuid
     - Session tokens
     - Distributed system coordination *)
 module Version = Version
-
 (** **When to use:** Semantic versioning
     
     Use Version for parsing, comparing, and managing semantic versions.
@@ -1386,7 +1338,6 @@ module Version = Version
     - Feature flags based on version
     - Migration scripts *)
 module WorkerPool = Worker_pool
-
 (** **When to use:** Parallel work distribution
     
     Use WorkerPool for CPU-bound parallel processing or batch jobs.
@@ -1399,10 +1350,8 @@ module WorkerPool = Worker_pool
 
 (** Re-exported from Global *)
 include module type of Global
-
 (** Application Management *)
 module Application = Application
-
 (** **When to use:** Multi-application systems with dependencies
     
     Use Application for composing multiple OTP-style applications with
@@ -1413,7 +1362,6 @@ module Application = Application
     - Microservices with shared infrastructure
     - Plugin systems *)
 val start: apps:Application.t list -> unit
-
 (** Start the runtime with applications.
     
     Applications are started in dependency order.
@@ -1426,30 +1374,23 @@ val start: apps:Application.t list -> unit
 
 (** Helper Functions from Global *)
 val panic: string -> 'a
-
 (** Panic with a message - raises an uncatchable exception.
     
     **When to use:** Unrecoverable errors, invariant violations.
     **Don't use for:** Expected errors → use Result instead *)
 val cell: 'a -> 'a Sync.Cell.t
-
 (** Create a mutable cell with the given value.
     
     **Example:** `let counter = cell 0 in Cell.update counter (fun n -> n + 1)` *)
 val print: string -> unit
-
 (** Print to stdout with immediate flush (no newline) *)
 val println: string -> unit
-
 (** Print to stdout with newline and immediate flush *)
 val eprint: string -> unit
-
 (** Print to stderr with immediate flush (no newline) *)
 val eprintln: string -> unit
-
 (** Print to stderr with newline and immediate flush *)
 val todo: string -> 'a
-
 (** Mark code as TODO with a message - panics when called.
     
     **Use for:** Placeholder implementations during development *)
@@ -1466,29 +1407,24 @@ type 'a set = 'a Collections.HashSet.t
 type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
 (** Map type alias - hash-based map *)
 val vec: 'a list -> 'a vec
-
 (** Create a vector from a list.
     
     **Example:** `let v = vec [1; 2; 3] in Vector.push v 4` *)
 val queue: 'a list -> 'a queue
-
 (** Create a queue from a list.
     
     **Example:** `let q = queue [1; 2; 3] in Queue.dequeue q` *)
 val set: 'a list -> 'a set
-
 (** Create a set from a list.
     
     **Example:** `let s = set [1; 2; 3; 2; 1] in HashSet.len s (* 3 *)` *)
 val map: ('k * 'v) list -> ('k, 'v) map
-
 (** Create a map from a list of key-value pairs.
     
     **Example:** `let m = map [("a", 1); ("b", 2)] in HashMap.get m "a"` *)
 
 (** Process Management *)
 exception Receive_timeout
-
 (** Raised when a receive operation times out *)
 exception Syscall_timeout
 
@@ -1496,33 +1432,23 @@ exception Syscall_timeout
 type 'msg selector = 'msg Miniriot.selector
 (** Message selector type *)
 val self: unit -> Pid.t
-
 (** Get the PID of the currently running process *)
 val spawn: (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
-
 (** Spawn a new process *)
 val spawn_link: (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
-
 (** Spawn a new process linked to the current process *)
 val send: Pid.t -> Message.t -> unit
-
 (** Send a message to a process *)
 val receive: selector:'value selector -> ?timeout:Time.Duration.t -> unit -> 'value
-
 (** Receive a message using a selector *)
 val receive_any: ?timeout:Time.Duration.t -> unit -> Message.t
-
 (** Receive any message *)
 val sleep: Time.Duration.t -> unit
-
 (** Sleeps the current process for at least the specified duration *)
 val yield: unit -> unit
-
 (** Yield control to the scheduler *)
 val shutdown: status:int -> unit
-
 (** Shutdown the runtime with the given exit status *)
 module Dynlink = Kernel.Dynlink
-
 (** Dynamically link libraries *)
 module Ops = Kernel.Ops

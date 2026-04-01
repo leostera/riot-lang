@@ -12,73 +12,71 @@ type article = {
 (* Mock database *)
 
 let articles = [
-  {id = 1; title = "First Post"; content = "Hello, World!"};
-  {id = 2; title = "Second Post"; content = "More content here..."};
-  {id = 3; title = "Third Post"; content = "Even more content!"};
-
+  {id = 1;title = "First Post";content = "Hello, World!";};
+  {id = 2;title = "Second Post";content = "More content here...";};
+  {id = 3;title = "Third Post";content = "Even more content!";};
 ]
 
 (* Route handlers that use params *)
 
 let article_handler = fun conn req ->
-    let params = Conn.params conn in
-    match List.assoc_opt "id" params with
-    | Some id_str -> (
-        try
-          let id = Int.of_string id_str in
-          match List.find_opt (fun a -> a.id = id) articles with
-          | Some article ->
-              let json = Data.Json.obj
-                [
-                  ("id", Data.Json.int article.id);
-                  ("title", Data.Json.string article.title);
-                  ("content", Data.Json.string article.content);
-
-                ] in
-              conn
-              |> Conn.with_status Ok
-              |> Conn.with_header "Content-Type" "application/json"
-              |> Conn.with_body (Data.Json.to_string json)
-              |> Conn.send
-          | None ->
-              let error = Data.Json.obj [ ("error", Data.Json.string "Article not found") ] in
-              conn
-              |> Conn.with_status NotFound
-              |> Conn.with_header "Content-Type" "application/json"
-              |> Conn.with_body (Data.Json.to_string error)
-              |> Conn.send
-        with
-        | Failure _ ->
-            let error = Data.Json.obj [ ("error", Data.Json.string "Invalid article ID") ] in
+  let params = Conn.params conn in
+  match List.assoc_opt "id" params with
+  | Some id_str -> (
+      try
+        let id = Int.of_string id_str in
+        match List.find_opt (fun a -> a.id = id) articles with
+        | Some article ->
+            let json = Data.Json.obj
+              [
+                ("id", Data.Json.int article.id);
+                ("title", Data.Json.string article.title);
+                ("content", Data.Json.string article.content);
+              ] in
             conn
-            |> Conn.with_status BadRequest
+            |> Conn.with_status Ok
+            |> Conn.with_header "Content-Type" "application/json"
+            |> Conn.with_body (Data.Json.to_string json)
+            |> Conn.send
+        | None ->
+            let error = Data.Json.obj [ ("error", Data.Json.string "Article not found") ] in
+            conn
+            |> Conn.with_status NotFound
             |> Conn.with_header "Content-Type" "application/json"
             |> Conn.with_body (Data.Json.to_string error)
             |> Conn.send
-      )
-    | None ->
-        let error = Data.Json.obj [ ("error", Data.Json.string "Missing article ID") ] in
-        conn
-        |> Conn.with_status BadRequest
-        |> Conn.with_header "Content-Type" "application/json"
-        |> Conn.with_body (Data.Json.to_string error)
-        |> Conn.send
+      with
+      | Failure _ ->
+          let error = Data.Json.obj [ ("error", Data.Json.string "Invalid article ID") ] in
+          conn
+          |> Conn.with_status BadRequest
+          |> Conn.with_header "Content-Type" "application/json"
+          |> Conn.with_body (Data.Json.to_string error)
+          |> Conn.send
+    )
+  | None ->
+      let error = Data.Json.obj [ ("error", Data.Json.string "Missing article ID") ] in
+      conn
+      |> Conn.with_status BadRequest
+      |> Conn.with_header "Content-Type" "application/json"
+      |> Conn.with_body (Data.Json.to_string error)
+      |> Conn.send
 
 let articles_list_handler = fun conn req ->
-    let articles_json =
-      List.map
-        (fun a -> Data.Json.obj [ ("id", Data.Json.int a.id); ("title", Data.Json.string a.title);  ])
-        articles
-    in
-    let json = Data.Json.array articles_json in
-    conn
-    |> Conn.with_status Ok
-    |> Conn.with_header "Content-Type" "application/json"
-    |> Conn.with_body (Data.Json.to_string json)
-    |> Conn.send
+  let articles_json =
+    List.map
+      (fun a -> Data.Json.obj [ ("id", Data.Json.int a.id); ("title", Data.Json.string a.title); ])
+      articles
+  in
+  let json = Data.Json.array articles_json in
+  conn
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "application/json"
+  |> Conn.with_body (Data.Json.to_string json)
+  |> Conn.send
 
 let home_handler = fun conn req ->
-    let html = {|
+  let html = {|
 <!DOCTYPE html>
 <html>
   <head><title>Router Params Example</title></head>
@@ -94,12 +92,12 @@ let home_handler = fun conn req ->
   </body>
 </html>
   |}
-    in
-    conn
-    |> Conn.with_status Ok
-    |> Conn.with_header "Content-Type" "text/html"
-    |> Conn.with_body html
-    |> Conn.send
+  in
+  conn
+  |> Conn.with_status Ok
+  |> Conn.with_header "Content-Type" "text/html"
+  |> Conn.with_body html
+  |> Conn.send
 
 (* Routes with parameter patterns *)
 
@@ -109,7 +107,7 @@ get "/articles/:id" article_handler;]
 
 (* Middleware is just a list! *)
 
-let app = [ Middleware.router routes;  ]
+let app = [ Middleware.router routes; ]
 
 let () =
   Miniriot.run ~args:Env.args ()

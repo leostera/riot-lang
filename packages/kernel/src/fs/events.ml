@@ -75,60 +75,60 @@ let flag_user_dropped = 0x0000_0002l
 let flag_kernel_dropped = 0x0000_0004l
 
 let decode_event_kind = fun flags ->
-    let has_flag flag = Int32.logand flags flag != Int32.zero in
-    if has_flag flag_created then
-      Created
-    else if has_flag flag_removed then
-      Deleted
-    else if has_flag flag_modified then
-      Modified
-    else if has_flag flag_renamed then
-      Renamed
-    else
-      Metadata
+  let has_flag flag = Int32.logand flags flag != Int32.zero in
+  if has_flag flag_created then
+    Created
+  else if has_flag flag_removed then
+    Deleted
+  else if has_flag flag_modified then
+    Modified
+  else if has_flag flag_renamed then
+    Renamed
+  else
+    Metadata
 
 let create = fun () ->
-    try
-      let (ctx_ptr, read_fd) = fsevents_create () in
-      Ok (ctx_ptr, read_fd)
-    with
-    | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  try
+    let (ctx_ptr, read_fd) = fsevents_create () in
+    Ok (ctx_ptr, read_fd)
+  with
+  | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let watch = fun t ~path ~latency ->
-    try
-      let (ctx_ptr, _read_fd) = t in
-      fsevents_watch ctx_ptr path latency;
-      Ok 0
-    with
-    | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  try
+    let (ctx_ptr, _read_fd) = t in
+    fsevents_watch ctx_ptr path latency;
+    Ok 0
+  with
+  | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let unwatch = fun _t _watch_id ->
-    (* FSEvents watches are stopped when context is destroyed *)
-    Ok ()
+  (* FSEvents watches are stopped when context is destroyed *)
+  Ok ()
 
 let get_fd = fun t ->
-    let (_ctx_ptr, read_fd) = t in
-    read_fd
+  let (_ctx_ptr, read_fd) = t in
+  read_fd
 
 let stop = fun t ->
-    try
-      let (ctx_ptr, read_fd) = t in
-      fsevents_stop ctx_ptr;
-      File.close_fd read_fd;
-      Ok ()
-    with
-    | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
+  try
+    let (ctx_ptr, read_fd) = t in
+    fsevents_stop ctx_ptr;
+    File.close_fd read_fd;
+    Ok ()
+  with
+  | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)
 
 let to_source = fun t ->
-    let module Src = struct
-      type nonrec t = t
+  let module Src = struct
+    type nonrec t = t
 
-      let register = fun ((_ctx_ptr, fd)) selector token interest ->
-          Adapter.Selector.register selector ~fd ~token ~interest
+    let register = fun ((_ctx_ptr, fd)) selector token interest ->
+      Adapter.Selector.register selector ~fd ~token ~interest
 
-      let reregister = fun ((_ctx_ptr, fd)) selector token interest ->
-          Adapter.Selector.reregister selector ~fd ~token ~interest
+    let reregister = fun ((_ctx_ptr, fd)) selector token interest ->
+      Adapter.Selector.reregister selector ~fd ~token ~interest
 
-      let deregister = fun ((_ctx_ptr, fd)) selector -> Adapter.Selector.deregister selector ~fd
-    end in
-    Source.make (module Src) t
+    let deregister = fun ((_ctx_ptr, fd)) selector -> Adapter.Selector.deregister selector ~fd
+  end in
+  Source.make (module Src) t

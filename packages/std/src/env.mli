@@ -27,7 +27,6 @@
 (** # Command Line *)
 
 val args: string list
-
 (** Command-line arguments passed to the program.
 
     The first element is typically the program name, followed by user-provided
@@ -46,7 +45,6 @@ val args: string list
 (** # Working Directory *)
 
 val current_dir: unit -> (Path.t, Path.error) Result.t
-
 (** Returns the current working directory.
 
     ## Examples
@@ -59,7 +57,6 @@ val current_dir: unit -> (Path.t, Path.error) Result.t
     Result.map (fun cwd -> cwd / Path.v "config.toml") |> Result.expect
     ~msg:"Cannot determine config path" ``` *)
 val set_current_dir: Path.t -> (unit, Path.error) Result.t
-
 (** Changes the current working directory.
 
     ## Examples
@@ -79,7 +76,6 @@ val set_current_dir: Path.t -> (unit, Path.error) Result.t
     - Permission denied
     - Path is not a directory *)
 val home_dir: unit -> Path.t option
-
 (** Returns the user's home directory.
 
     ## Examples
@@ -112,7 +108,6 @@ type 't var_type =
   | Char: char var_type
 (** Single character values *)
 val var: 't var_type -> name:string -> 't option
-
 (** Reads and parses a typed environment variable.
     
     Returns [`None`] if the variable is not set or parsing fails.
@@ -159,7 +154,6 @@ val var: 't var_type -> name:string -> 't option
     - `String`: Returns value as-is
 *)
 val set_var: name:string -> value:string -> 't option
-
 (** Sets an environment variable.
 
     Returns the previous value if it existed.
@@ -173,7 +167,6 @@ val set_var: name:string -> value:string -> 't option
     ~value:new_path in (* ... do work ... *) Option.iter (fun p -> Env.set_var
     ~name:"PATH" ~value:p |> ignore ) old_path ``` *)
 val vars: unit -> (string * string) list
-
 (** Returns all environment variables as key-value pairs.
 
     ## Examples

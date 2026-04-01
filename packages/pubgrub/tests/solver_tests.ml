@@ -3,23 +3,23 @@ open Std
 let v = fun major minor patch -> Pubgrub.make_version ~major ~minor ~patch
 
 let assert_solution = fun expected_count result ->
-    match result with
-    | Ok (Pubgrub.Solver.Success solution) ->
-        if List.length solution = expected_count then
-          Ok ()
-        else
-          Error ("Wrong number of packages: got "
-          ^ (Int.to_string (List.length solution))
-          ^ ", expected "
-          ^ (Int.to_string expected_count))
-    | Ok (Pubgrub.Solver.Failure _) -> Error "Unexpected conflict"
-    | Error err -> Error ("Error: " ^ err)
+  match result with
+  | Ok (Pubgrub.Solver.Success solution) ->
+      if List.length solution = expected_count then
+        Ok ()
+      else
+        Error ("Wrong number of packages: got "
+        ^ (Int.to_string (List.length solution))
+        ^ ", expected "
+        ^ (Int.to_string expected_count))
+  | Ok (Pubgrub.Solver.Failure _) -> Error "Unexpected conflict"
+  | Error err -> Error ("Error: " ^ err)
 
 let assert_conflict = fun result ->
-    match result with
-    | Ok (Pubgrub.Solver.Failure _) -> Ok ()
-    | Ok (Pubgrub.Solver.Success _) -> Error "Expected conflict but found solution"
-    | Error err -> Error ("Error: " ^ err)
+  match result with
+  | Ok (Pubgrub.Solver.Failure _) -> Ok ()
+  | Ok (Pubgrub.Solver.Success _) -> Error "Expected conflict but found solution"
+  | Error err -> Error ("Error: " ^ err)
 
 let test_debug_derivations =
   Test.case "DEBUG: Test derivations are created"
@@ -145,7 +145,6 @@ let test_wide_tree =
           ("c", Pubgrub.full);
           ("d", Pubgrub.full);
           ("e", Pubgrub.full);
-
         ];
       Pubgrub.add_package provider "a" (v 1 0 0) [];
       Pubgrub.add_package provider "b" (v 1 0 0) [];
@@ -285,7 +284,6 @@ let test_very_wide_tree =
           ("h", Pubgrub.full);
           ("i", Pubgrub.full);
           ("j", Pubgrub.full);
-
         ];
       Pubgrub.add_package provider "a" (v 1 0 0) [];
       Pubgrub.add_package provider "b" (v 1 0 0) [];
@@ -379,7 +377,7 @@ let test_deep_and_wide =
         provider
         "root"
         (v 1 0 0)
-        [ ("a", Pubgrub.full); ("b", Pubgrub.full); ("c", Pubgrub.full); ("d", Pubgrub.full);  ];
+        [ ("a", Pubgrub.full); ("b", Pubgrub.full); ("c", Pubgrub.full); ("d", Pubgrub.full); ];
       Pubgrub.add_package provider "a" (v 1 0 0) [ ("e", Pubgrub.full); ("f", Pubgrub.full) ];
       Pubgrub.add_package provider "b" (v 1 0 0) [ ("g", Pubgrub.full); ("h", Pubgrub.full) ];
       Pubgrub.add_package provider "c" (v 1 0 0) [ ("i", Pubgrub.full); ("j", Pubgrub.full) ];
@@ -403,95 +401,94 @@ let test_deep_and_wide =
       assert_solution 21 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
 
 let generate_web_framework_tests = fun () ->
-    let tests = [] in
-    let tests = ref tests in
-    for i = 1 to 25 do
-      let test =
-        Test.case ("Web framework scenario " ^ (Int.to_string i))
-          (fun () ->
-            let provider = Pubgrub.create_offline () in
-            Pubgrub.add_package
-              provider
-              "root"
-              (v 1 0 0)
-              [ ("http", Pubgrub.full); ("router", Pubgrub.full); ("middleware", Pubgrub.full);  ];
-            Pubgrub.add_package provider "http" (v (1 + (i mod 3)) 0 0) [ ("sockets", Pubgrub.full) ];
-            Pubgrub.add_package provider "router" (v 1 (i mod 5) 0) [ ("path-parser", Pubgrub.full) ];
-            Pubgrub.add_package provider "middleware" (v 2 0 0) [ ("logger", Pubgrub.full) ];
-            Pubgrub.add_package provider "sockets" (v 1 0 0) [];
-            Pubgrub.add_package provider "path-parser" (v 1 0 0) [];
-            Pubgrub.add_package provider "logger" (v 1 0 0) [];
-            assert_solution 7 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
-      in
-      tests := test :: !tests
-    done;
-    List.rev !tests
+  let tests = [] in
+  let tests = ref tests in
+  for i = 1 to 25 do
+    let test =
+      Test.case ("Web framework scenario " ^ (Int.to_string i))
+        (fun () ->
+          let provider = Pubgrub.create_offline () in
+          Pubgrub.add_package
+            provider
+            "root"
+            (v 1 0 0)
+            [ ("http", Pubgrub.full); ("router", Pubgrub.full); ("middleware", Pubgrub.full); ];
+          Pubgrub.add_package provider "http" (v (1 + (i mod 3)) 0 0) [ ("sockets", Pubgrub.full) ];
+          Pubgrub.add_package provider "router" (v 1 (i mod 5) 0) [ ("path-parser", Pubgrub.full) ];
+          Pubgrub.add_package provider "middleware" (v 2 0 0) [ ("logger", Pubgrub.full) ];
+          Pubgrub.add_package provider "sockets" (v 1 0 0) [];
+          Pubgrub.add_package provider "path-parser" (v 1 0 0) [];
+          Pubgrub.add_package provider "logger" (v 1 0 0) [];
+          assert_solution 7 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+    in
+    tests := test :: !tests
+  done;
+  List.rev !tests
 
 let generate_database_tests = fun () ->
-    let tests = [] in
-    let tests = ref tests in
-    for i = 1 to 25 do
-      let test =
-        Test.case ("Database scenario " ^ (Int.to_string i))
-          (fun () ->
-            let provider = Pubgrub.create_offline () in
-            Pubgrub.add_package
-              provider
-              "root"
-              (v 1 0 0)
-              [ ("db-driver", Pubgrub.full); ("migrations", Pubgrub.full); ("orm", Pubgrub.full);  ];
-            Pubgrub.add_package
-              provider
-              "db-driver"
-              (v (1 + (i mod 4)) 0 0)
-              [ ("connection-pool", Pubgrub.full) ];
-            Pubgrub.add_package
-              provider
-              "migrations"
-              (v 1 (i mod 6) 0)
-              [ ("sql-parser", Pubgrub.full) ];
-            Pubgrub.add_package provider "orm" (v 2 0 0) [ ("query-builder", Pubgrub.full) ];
-            Pubgrub.add_package provider "connection-pool" (v 1 0 0) [];
-            Pubgrub.add_package provider "sql-parser" (v 1 0 0) [];
-            Pubgrub.add_package provider "query-builder" (v 1 0 0) [];
-            assert_solution 7 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
-      in
-      tests := test :: !tests
-    done;
-    List.rev !tests
+  let tests = [] in
+  let tests = ref tests in
+  for i = 1 to 25 do
+    let test =
+      Test.case ("Database scenario " ^ (Int.to_string i))
+        (fun () ->
+          let provider = Pubgrub.create_offline () in
+          Pubgrub.add_package
+            provider
+            "root"
+            (v 1 0 0)
+            [ ("db-driver", Pubgrub.full); ("migrations", Pubgrub.full); ("orm", Pubgrub.full); ];
+          Pubgrub.add_package
+            provider
+            "db-driver"
+            (v (1 + (i mod 4)) 0 0)
+            [ ("connection-pool", Pubgrub.full) ];
+          Pubgrub.add_package
+            provider
+            "migrations"
+            (v 1 (i mod 6) 0)
+            [ ("sql-parser", Pubgrub.full) ];
+          Pubgrub.add_package provider "orm" (v 2 0 0) [ ("query-builder", Pubgrub.full) ];
+          Pubgrub.add_package provider "connection-pool" (v 1 0 0) [];
+          Pubgrub.add_package provider "sql-parser" (v 1 0 0) [];
+          Pubgrub.add_package provider "query-builder" (v 1 0 0) [];
+          assert_solution 7 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+    in
+    tests := test :: !tests
+  done;
+  List.rev !tests
 
 let generate_compiler_tests = fun () ->
-    let tests = [] in
-    let tests = ref tests in
-    for i = 1 to 22 do
-      let test =
-        Test.case ("Compiler toolchain scenario " ^ (Int.to_string i))
-          (fun () ->
-            let provider = Pubgrub.create_offline () in
-            Pubgrub.add_package
-              provider
-              "root"
-              (v 1 0 0)
-              [
-                ("lexer", Pubgrub.full);
-                ("parser", Pubgrub.full);
-                ("codegen", Pubgrub.full);
-                ("optimizer", Pubgrub.full);
-
-              ];
-            Pubgrub.add_package provider "lexer" (v (1 + (i mod 3)) 0 0) [ ("regex", Pubgrub.full) ];
-            Pubgrub.add_package provider "parser" (v 1 (i mod 4) 0) [ ("ast", Pubgrub.full) ];
-            Pubgrub.add_package provider "codegen" (v 2 0 0) [ ("llvm-bindings", Pubgrub.full) ];
-            Pubgrub.add_package provider "optimizer" (v 1 0 0) [ ("analysis", Pubgrub.full) ];
-            Pubgrub.add_package provider "regex" (v 1 0 0) [];
-            Pubgrub.add_package provider "ast" (v 1 0 0) [];
-            Pubgrub.add_package provider "llvm-bindings" (v 1 0 0) [];
-            Pubgrub.add_package provider "analysis" (v 1 0 0) [];
-            assert_solution 9 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
-      in
-      tests := test :: !tests
-    done;
-    List.rev !tests
+  let tests = [] in
+  let tests = ref tests in
+  for i = 1 to 22 do
+    let test =
+      Test.case ("Compiler toolchain scenario " ^ (Int.to_string i))
+        (fun () ->
+          let provider = Pubgrub.create_offline () in
+          Pubgrub.add_package
+            provider
+            "root"
+            (v 1 0 0)
+            [
+              ("lexer", Pubgrub.full);
+              ("parser", Pubgrub.full);
+              ("codegen", Pubgrub.full);
+              ("optimizer", Pubgrub.full);
+            ];
+          Pubgrub.add_package provider "lexer" (v (1 + (i mod 3)) 0 0) [ ("regex", Pubgrub.full) ];
+          Pubgrub.add_package provider "parser" (v 1 (i mod 4) 0) [ ("ast", Pubgrub.full) ];
+          Pubgrub.add_package provider "codegen" (v 2 0 0) [ ("llvm-bindings", Pubgrub.full) ];
+          Pubgrub.add_package provider "optimizer" (v 1 0 0) [ ("analysis", Pubgrub.full) ];
+          Pubgrub.add_package provider "regex" (v 1 0 0) [];
+          Pubgrub.add_package provider "ast" (v 1 0 0) [];
+          Pubgrub.add_package provider "llvm-bindings" (v 1 0 0) [];
+          Pubgrub.add_package provider "analysis" (v 1 0 0) [];
+          assert_solution 9 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+    in
+    tests := test :: !tests
+  done;
+  List.rev !tests
 
 let test_large_graph_30_packages =
   Test.case "Large graph: 30 packages with mixed dependencies"
@@ -551,7 +548,6 @@ let test_large_graph_30_packages =
           "m2";
           "n2";
           "o2";
-
         ];
       assert_solution 22 (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
 
@@ -615,7 +611,7 @@ let test_monorepo_structure =
         provider
         "root"
         (v 1 0 0)
-        [ ("pkg-a", Pubgrub.full); ("pkg-b", Pubgrub.full); ("pkg-c", Pubgrub.full);  ];
+        [ ("pkg-a", Pubgrub.full); ("pkg-b", Pubgrub.full); ("pkg-c", Pubgrub.full); ];
       Pubgrub.add_package
         provider
         "pkg-a"
@@ -685,14 +681,13 @@ let test_complex_constraint_web =
           ("http-server", Pubgrub.between (v 2 0 0) (v 3 0 0));
           ("database", Pubgrub.higher_than (v 1 5 0));
           ("cache", Pubgrub.full);
-
         ];
       for i = 0 to 5 do
         Pubgrub.add_package
           provider
           "http-server"
           (v 2 i 0)
-          [ ("router", Pubgrub.between (v 1 0 0) (v 2 0 0)); ("middleware", Pubgrub.full);  ]
+          [ ("router", Pubgrub.between (v 1 0 0) (v 2 0 0)); ("middleware", Pubgrub.full); ]
       done;
       for i = 0 to 10 do
         Pubgrub.add_package provider "database" (v 1 i 0) [ ("connection-pool", Pubgrub.full) ]
@@ -716,17 +711,17 @@ let test_deep_shared_dependency =
         provider
         "root"
         (v 1 0 0)
-        [ ("frontend", Pubgrub.full); ("backend", Pubgrub.full); ("shared", Pubgrub.full);  ];
+        [ ("frontend", Pubgrub.full); ("backend", Pubgrub.full); ("shared", Pubgrub.full); ];
       Pubgrub.add_package
         provider
         "frontend"
         (v 1 0 0)
-        [ ("ui-lib", Pubgrub.full); ("state", Pubgrub.full); ("shared-utils", Pubgrub.full);  ];
+        [ ("ui-lib", Pubgrub.full); ("state", Pubgrub.full); ("shared-utils", Pubgrub.full); ];
       Pubgrub.add_package
         provider
         "backend"
         (v 1 0 0)
-        [ ("api", Pubgrub.full); ("auth", Pubgrub.full); ("shared-utils", Pubgrub.full);  ];
+        [ ("api", Pubgrub.full); ("auth", Pubgrub.full); ("shared-utils", Pubgrub.full); ];
       Pubgrub.add_package
         provider
         "shared"
@@ -763,7 +758,6 @@ let test_plugin_system =
           ("plugin-a", Pubgrub.full);
           ("plugin-b", Pubgrub.full);
           ("plugin-c", Pubgrub.full);
-
         ];
       Pubgrub.add_package
         provider
@@ -901,7 +895,6 @@ let test_ref_avoiding_conflict =
         [
           ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
           ("bar", Pubgrub.between (v 1 0 0) (v 2 0 0));
-
         ];
       Pubgrub.add_package provider "foo" (v 1 1 0) [ ("bar", Pubgrub.between (v 2 0 0) (v 3 0 0)) ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
@@ -944,7 +937,6 @@ let test_debug_conflict_partial_satisfier =
         [
           ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
           ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
-
         ];
       Pubgrub.add_package
         provider
@@ -953,7 +945,6 @@ let test_debug_conflict_partial_satisfier =
         [
           ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
           ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
-
         ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
       Pubgrub.add_package provider "left" (v 1 0 0) [ ("shared", Pubgrub.higher_than (v 1 0 0)) ];
@@ -998,7 +989,6 @@ let test_ref_conflict_partial_satisfier =
         [
           ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
           ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
-
         ];
       Pubgrub.add_package
         provider
@@ -1007,7 +997,6 @@ let test_ref_conflict_partial_satisfier =
         [
           ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
           ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
-
         ];
       Pubgrub.add_package provider "foo" (v 1 0 0) [];
       Pubgrub.add_package provider "left" (v 1 0 0) [ ("shared", Pubgrub.higher_than (v 1 0 0)) ];
@@ -1122,7 +1111,6 @@ let all_tests =
     test_deep_shared_dependency;
     test_plugin_system;
     test_multi_level_constraints;
-
   ]
   in
   let web_tests = generate_web_framework_tests () in
@@ -1140,7 +1128,6 @@ let all_tests =
     test_ref_conflict_partial_satisfier;
     test_ref_double_choices;
     test_ref_confusing_with_holes;
-
   ]
   in
   base_tests @ web_tests @ db_tests @ compiler_tests @ reference_tests

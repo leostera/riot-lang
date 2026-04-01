@@ -30,7 +30,6 @@ let color_gen = Generator.one_of
     Generator.return Yellow;
     Generator.return Black;
     Generator.return White;
-
   ]
 
 (* Custom printer for colors *)
@@ -52,22 +51,22 @@ type point = {
 
 let point_gen =
   Generator.map
-    (fun ((x, y)) -> {x; y})
+    (fun ((x, y)) -> {x;y;})
     (Generator.pair (Generator.int_range (-100) 100) (Generator.int_range (-100) 100))
 
 (* Custom shrinker for points - shrink towards origin *)
 
 let point_shrinker = fun point ->
-    let x_shrunk = Shrinker.shrink (Shrinker.towards 0) point.x in
-    let y_shrunk = Shrinker.shrink (Shrinker.towards 0) point.y in
-    (* Combine shrinking on both axes *)
-    let x_only =
-      List.map (fun x -> {x; y = point.y}) x_shrunk
-    in
-    let y_only =
-      List.map (fun y -> {x = point.x; y}) y_shrunk
-    in
-    x_only @ y_only
+  let x_shrunk = Shrinker.shrink (Shrinker.towards 0) point.x in
+  let y_shrunk = Shrinker.shrink (Shrinker.towards 0) point.y in
+  (* Combine shrinking on both axes *)
+  let x_only =
+    List.map (fun x -> {x;y = point.y;}) x_shrunk
+  in
+  let y_only =
+    List.map (fun y -> {x = point.x;y;}) y_shrunk
+  in
+  x_only @ y_only
 
 let point_printer = fun p -> "(" ^ Int.to_string p.x ^ ", " ^ Int.to_string p.y ^ ")"
 
@@ -103,7 +102,7 @@ let point_distance_positive_prop =
 let point_translation_prop =
   property "translating by zero preserves point" point_arb
     (fun p ->
-      let translated = {x = p.x + 0; y = p.y + 0} in
+      let translated = {x = p.x + 0;y = p.y + 0;} in
       translated.x = p.x && translated.y = p.y)
 
 (* === Generator Combinators === *)
@@ -135,7 +134,7 @@ let mostly_small_ints_prop =
             -x
           else
             x)
-        (Generator.frequency [ (9, Generator.int_range 0 10); (1, Generator.int_range 100 1_000);  ])
+        (Generator.frequency [ (9, Generator.int_range 0 10); (1, Generator.int_range 100 1_000); ])
     )
     (fun n -> n >= 0)
 
@@ -148,7 +147,6 @@ let tests = [
   non_empty_list_prop;
   fixed_size_list_prop;
   mostly_small_ints_prop;
-
 ]
 
 let () =

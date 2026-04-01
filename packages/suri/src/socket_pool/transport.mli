@@ -8,7 +8,6 @@ open Std
 (** [tcp ()] creates a plain TCP transport *)
 type t
 val tcp: unit -> t
-
 (** [handshake transport ~accepted_at ~stream ~peer ~buffer_size] performs
     transport-specific handshake and returns a connection.
 

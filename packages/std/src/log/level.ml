@@ -23,4 +23,4 @@ let to_string = function
   | Error -> "ERROR"
 
 let compare = fun l1 l2 ->
-    Int.compare (to_int l1) (to_int l2)
+  Int.compare (to_int l1) (to_int l2)

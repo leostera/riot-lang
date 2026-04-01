@@ -39,6 +39,5 @@ type t = {
 }
 (** Config spec for log configuration *)
 val spec: Config.Spec.t
-
 (** Parse configuration from validated config *)
 val get: Config.Spec.value -> (t, Config.error) result

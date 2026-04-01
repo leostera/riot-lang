@@ -35,14 +35,12 @@ val structure_items_from_syntax_node_with_source:
   source:string -> Cst.syntax_node -> (Cst.StructureItem.t list, error) result
 
 val structure_items_from_syntax_nodes: Cst.syntax_node list -> (Cst.StructureItem.t list, error) result
-
 (** Ordered record-body helper stream.
 
     This keeps `RecordField` items in source order and surfaces any remaining
     standalone `}`-owned comments/docstrings after field-owned trivia has been
     excluded. *)
 val record_field_items_of_fields: Cst.RecordField.t list -> record_field_item list
-
 (** Ordered object-body helper stream.
 
     This keeps `ObjectMember` items in source order and surfaces any
@@ -51,7 +49,6 @@ val record_field_items_of_fields: Cst.RecordField.t list -> record_field_item li
 *)
 val object_member_items_of_members:
   ?source_node:Cst.syntax_node -> Cst.ObjectMember.t list -> object_member_item list
-
 (** Ordered class-structure helper stream.
 
     This keeps `ClassField` items in source order and surfaces any standalone
@@ -60,7 +57,6 @@ val object_member_items_of_members:
 *)
 val class_field_items_of_fields:
   ?source_node:Cst.syntax_node -> Cst.ClassField.t list -> class_field_item list
-
 (** Ordered class-type signature helper stream.
 
     This keeps `ClassTypeField` items in source order and surfaces any

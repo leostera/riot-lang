@@ -1,5 +1,4 @@
 open Std
-
 (** Main module for Propane property testing library *)
 module Generator = Generator
 module Shrinker = Shrinker

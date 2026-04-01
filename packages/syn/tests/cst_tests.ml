@@ -3,9 +3,9 @@ open Std.Collections
 open Syn
 
 let expect_some = fun value ~msg ->
-    match value with
-    | Some value -> Ok value
-    | None -> Error msg
+  match value with
+  | Some value -> Ok value
+  | None -> Error msg
 
 let declaration_name_text = fun tokens -> tokens |> List.map Syn.Cst.Token.text |> String.concat ""
 
@@ -27,17 +27,17 @@ type parsed = {
 }
 
 let with_optional_cst = fun result ->
-    let cst =
-      match Syn.build_cst result with
-      | Ok cst -> Some cst
-      | Error _ -> None
-    in
-    {
-      tokens = result.Syn.Parser.tokens;
-      tree = result.Syn.Parser.tree;
-      diagnostics = result.Syn.Parser.diagnostics;
-      cst
-    }
+  let cst =
+    match Syn.build_cst result with
+    | Ok cst -> Some cst
+    | Error _ -> None
+  in
+  {
+    tokens = result.Syn.Parser.tokens;
+    tree = result.Syn.Parser.tree;
+    diagnostics = result.Syn.Parser.diagnostics;
+    cst;
+  }
 
 let parse_ml = fun source -> Syn.parse ~filename:sample_ml source |> with_optional_cst
 
@@ -50,7 +50,7 @@ let structure_items = function
   | Syn.Cst.Interface _ -> []
 
 let ident_text = fun ident ->
-    Syn.Cst.Ident.last_segment ident |> Option.map Syn.Cst.Token.text |> Option.unwrap_or ~default:""
+  Syn.Cst.Ident.last_segment ident |> Option.map Syn.Cst.Token.text |> Option.unwrap_or ~default:""
 
 let signature_items = function
   | Syn.Cst.Interface { items; _ } -> items
@@ -59,29 +59,27 @@ let signature_items = function
 let node_leading_trivia = fun syntax_node -> Syn.Cst.leading_trivia_before_node ~after:0 syntax_node
 
 let node_leading_trivia_texts = fun syntax_node ->
-    node_leading_trivia syntax_node |> List.map Syn.Cst.Trivia.text
+  node_leading_trivia syntax_node |> List.map Syn.Cst.Trivia.text
 
 let top_level_let_bindings = fun cst ->
-    structure_items cst |> List.filter_map
-      (
-        function
-        | Syn.Cst.StructureItem.LetBinding binding -> Some binding
-        | _ -> None
-      )
+  structure_items cst |> List.filter_map
+    (
+      function
+      | Syn.Cst.StructureItem.LetBinding binding -> Some binding
+      | _ -> None
+    )
 
 let token_trivia_kinds = fun token ->
-    token.Syn.Token.leading_trivia
-    |> List.map (fun (trivia: Syn.Token.trivia) -> trivia.Syn.Token.kind)
+  token.Syn.Token.leading_trivia
+  |> List.map (fun (trivia: Syn.Token.trivia) -> trivia.Syn.Token.kind)
 
 let green_token_kinds = fun node ->
-    let rec loop = fun acc ->
-        function
-        | Ceibo.Green.Token token -> token.kind :: acc
-        | Ceibo.Green.Node node -> Ceibo.Green.children node
-        |> Array.to_list
-        |> List.fold_left loop acc
-    in
-    loop [] (Ceibo.Green.Node node) |> List.rev
+  let rec loop = fun acc ->
+    function
+    | Ceibo.Green.Token token -> token.kind :: acc
+    | Ceibo.Green.Node node -> Ceibo.Green.children node |> Array.to_list |> List.fold_left loop acc
+  in
+  loop [] (Ceibo.Green.Node node) |> List.rev
 
 let tests = [
   Test.case "ceibo tokens preserve leading trivia separately from token body width"
@@ -1600,13 +1598,11 @@ let tests = [
 
       } :: _ -> (
           match Syn.CstBuilder.signature_items_of_module_type module_type with
-          | Ok [
-            Syn.Cst.SignatureItem.ValueDeclaration decl;
-            Syn.Cst.SignatureItem.Comment comment;
-
-          ] ->
+          | Ok [Syn.Cst.SignatureItem.ValueDeclaration decl;Syn.Cst.SignatureItem.Comment comment;] ->
               Test.assert_equal ~expected:"x" ~actual:(declaration_name_text decl.name_tokens);
-              Test.assert_equal ~expected:None ~actual:(Syn.Cst.ValueDeclaration.trailing_comment decl);
+              Test.assert_equal
+                ~expected:None
+                ~actual:(Syn.Cst.ValueDeclaration.trailing_comment decl);
               Test.assert_equal ~expected:"(* keep me *)" ~actual:(Syn.Cst.Comment.text comment);
               Ok ()
           | Ok _ ->
@@ -2324,9 +2320,7 @@ end
           Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text run_attribute);
           Test.assert_equal ~expected:(Some "t") ~actual:(Syn.Cst.Ident.name left_type);
           Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name right_type);
-          Test.assert_equal
-            ~expected:"@@"
-            ~actual:(attribute_sigil_text constraint_attribute);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text constraint_attribute);
           Test.assert_equal ~expected:(Some "ignore") ~actual:(Syn.Cst.Ident.name init_callee);
           Test.assert_equal ~expected:(Some "state") ~actual:(Syn.Cst.Ident.name init_arg);
           Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text init_attribute);
@@ -2773,9 +2767,7 @@ class type generated = ([%ct])
           Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text method_attribute);
           Test.assert_equal ~expected:(Some "t") ~actual:(Syn.Cst.Ident.name left_type);
           Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name right_type);
-          Test.assert_equal
-            ~expected:"@@"
-            ~actual:(attribute_sigil_text constraint_attribute);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text constraint_attribute);
           Ok ()
       | _ -> Error "expected structured class type signature");
   Test.case "cst class type signatures preserve extension fields"
@@ -3574,7 +3566,7 @@ val decode : Outer.Inner (* c *).(request -> response)
             ~expected:"(** JSON-RPC 2.0 Protocol Implementation *)"
             ~actual:(Syn.Cst.Docstring.text overview);
           Test.assert_equal
-            ~expected:[ "(** Request/response ID type. *)"; "(** Request identifiers. *)";  ]
+            ~expected:[ "(** Request/response ID type. *)"; "(** Request identifiers. *)"; ]
             ~actual:((node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node id_decl)
             |> List.map Syn.Cst.Trivia.text));
           Ok ()
@@ -6487,7 +6479,6 @@ let x =
           "string";
           "whitespace";
           "end of file";
-
         ]
         ~actual:kinds;
       Ok ());
@@ -7582,7 +7573,6 @@ let lifted =
           Test.assert_equal ~expected:"ClassDefinition" ~actual:(Syn.Cst.Token.text name_token);
           Ok ()
       | _ -> Error "expected polymorphic variant payload to lift as local-open expression");
-
 ]
 
 let () =

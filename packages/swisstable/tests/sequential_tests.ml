@@ -35,7 +35,6 @@ let operation_gen = Generator.frequency
     (3, Generator.map (fun k -> ContainsKey k) (Generator.int_range 0 50));
     (1, Generator.return Len);
     (1, Generator.return IsEmpty);
-
   ]
 
 let operation_arb =
@@ -57,43 +56,42 @@ let operation_arb =
 (* Apply an operation to both Swisstable and HashMap, verify they match *)
 
 let apply_operation = fun op swiss hash ->
-    match op with
-    | Insert (k, v) ->
-        let r1 = Swisstable.insert swiss k v in
-        let r2 = Collections.HashMap.insert hash k v in
-        if not (r1 = r2) then
-          fail ("Insert(" ^ Int.to_string k ^ "," ^ Int.to_string v ^ "): results differ")
-    | Get k ->
-        let r1 = Swisstable.get swiss k in
-        let r2 = Collections.HashMap.get hash k in
-        if not (r1 = r2) then
-          fail ("Get(" ^ Int.to_string k ^ "): results differ")
-    | Remove k ->
-        let r1 = Swisstable.remove swiss k in
-        let r2 = Collections.HashMap.remove hash k in
-        if not (r1 = r2) then
-          fail ("Remove(" ^ Int.to_string k ^ "): results differ")
-    | Clear ->
-        Swisstable.clear swiss;
-        Collections.HashMap.clear hash;
-        if not (Swisstable.len swiss = 0) || not (Collections.HashMap.len hash = 0) then
-          fail "Clear: maps not empty after clear"
-    | ContainsKey k ->
-        let r1 = Swisstable.contains_key swiss k in
-        let r2 = Collections.HashMap.contains_key hash k in
-        if not (r1 = r2) then
-          fail ("ContainsKey(" ^ Int.to_string k ^ "): results differ")
-    | Len ->
-        let l1 = Swisstable.len swiss in
-        let l2 = Collections.HashMap.len hash in
-        if not (l1 = l2) then
-          fail
-            ("Len: lengths differ (swiss=" ^ Int.to_string l1 ^ ", hash=" ^ Int.to_string l2 ^ ")")
-    | IsEmpty ->
-        let e1 = Swisstable.is_empty swiss in
-        let e2 = Collections.HashMap.is_empty hash in
-        if not (e1 = e2) then
-          fail "IsEmpty: results differ"
+  match op with
+  | Insert (k, v) ->
+      let r1 = Swisstable.insert swiss k v in
+      let r2 = Collections.HashMap.insert hash k v in
+      if not (r1 = r2) then
+        fail ("Insert(" ^ Int.to_string k ^ "," ^ Int.to_string v ^ "): results differ")
+  | Get k ->
+      let r1 = Swisstable.get swiss k in
+      let r2 = Collections.HashMap.get hash k in
+      if not (r1 = r2) then
+        fail ("Get(" ^ Int.to_string k ^ "): results differ")
+  | Remove k ->
+      let r1 = Swisstable.remove swiss k in
+      let r2 = Collections.HashMap.remove hash k in
+      if not (r1 = r2) then
+        fail ("Remove(" ^ Int.to_string k ^ "): results differ")
+  | Clear ->
+      Swisstable.clear swiss;
+      Collections.HashMap.clear hash;
+      if not (Swisstable.len swiss = 0) || not (Collections.HashMap.len hash = 0) then
+        fail "Clear: maps not empty after clear"
+  | ContainsKey k ->
+      let r1 = Swisstable.contains_key swiss k in
+      let r2 = Collections.HashMap.contains_key hash k in
+      if not (r1 = r2) then
+        fail ("ContainsKey(" ^ Int.to_string k ^ "): results differ")
+  | Len ->
+      let l1 = Swisstable.len swiss in
+      let l2 = Collections.HashMap.len hash in
+      if not (l1 = l2) then
+        fail ("Len: lengths differ (swiss=" ^ Int.to_string l1 ^ ", hash=" ^ Int.to_string l2 ^ ")")
+  | IsEmpty ->
+      let e1 = Swisstable.is_empty swiss in
+      let e2 = Collections.HashMap.is_empty hash in
+      if not (e1 = e2) then
+        fail "IsEmpty: results differ"
 
 (** {1 Sequential Properties} *)
 
@@ -347,7 +345,6 @@ let tests = [
   overwrite_sequence_prop;
   empty_invariant_prop;
   long_sequence_prop;
-
 ]
 
 let () =

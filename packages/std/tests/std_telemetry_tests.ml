@@ -20,8 +20,8 @@ let test_emit_and_receive = Test.case "telemetry: emit and receive" @@ fun () ->
       match event with
       | TestEvent { value } -> received := value :: !received
       | _ -> ());
-  Telemetry.emit (TestEvent {value = 42});
-  Telemetry.emit (TestEvent {value = 99});
+  Telemetry.emit (TestEvent {value = 42;});
+  Telemetry.emit (TestEvent {value = 99;});
   Telemetry.stop ();
   match !received with
   | [99;42] -> Ok ()
@@ -42,7 +42,7 @@ let test_multiple_handlers = Test.case "telemetry: multiple handlers" @@ fun () 
       match event with
       | TestEvent _ -> handler2_called := true
       | _ -> ());
-  Telemetry.emit (TestEvent {value = 1});
+  Telemetry.emit (TestEvent {value = 1;});
   Telemetry.stop ();
   if !handler1_called && !handler2_called then
     Ok ()
@@ -56,7 +56,7 @@ let test_handler_replacement = Test.case "telemetry: handler replacement" @@ fun
   let second_called = ref false in
   Telemetry.attach "my-handler" (fun _ -> first_called := true);
   Telemetry.attach "my-handler" (fun _ -> second_called := true);
-  Telemetry.emit (TestEvent {value = 1});
+  Telemetry.emit (TestEvent {value = 1;});
   Telemetry.stop ();
   if (not !first_called) && !second_called then
     Ok ()
@@ -69,7 +69,7 @@ let test_detach = Test.case "telemetry: detach handler" @@ fun () ->
   let called = ref false in
   Telemetry.attach "test-handler" (fun _ -> called := true);
   Telemetry.detach "test-handler";
-  Telemetry.emit (TestEvent {value = 1});
+  Telemetry.emit (TestEvent {value = 1;});
   if not !called then
     Ok ()
   else
@@ -86,9 +86,9 @@ let test_pattern_matching = Test.case "telemetry: pattern matching" @@ fun () ->
       | TestEvent _ -> test_count := !test_count + 1
       | AnotherEvent _ -> another_count := !another_count + 1
       | _ -> ());
-  Telemetry.emit (TestEvent {value = 1});
-  Telemetry.emit (TestEvent {value = 2});
-  Telemetry.emit (AnotherEvent {name = "test"});
+  Telemetry.emit (TestEvent {value = 1;});
+  Telemetry.emit (TestEvent {value = 2;});
+  Telemetry.emit (AnotherEvent {name = "test";});
   Telemetry.stop ();
   if !test_count = 2 && !another_count = 1 then
     Ok ()
@@ -104,7 +104,7 @@ let test_handler_exception_isolation = Test.case "telemetry: exception isolation
   let good_handler_called = ref false in
   Telemetry.attach "bad-handler" (fun _ -> panic "boom");
   Telemetry.attach "good-handler" (fun _ -> good_handler_called := true);
-  Telemetry.emit (TestEvent {value = 1});
+  Telemetry.emit (TestEvent {value = 1;});
   Telemetry.stop ();
   if !good_handler_called then
     Ok ()
@@ -116,13 +116,13 @@ let test_restart_after_stop = Test.case "telemetry: restart after stop" @@ fun (
   Telemetry.detach_all ();
   let first_called = ref 0 in
   Telemetry.attach "first" (fun _ -> first_called := !first_called + 1);
-  Telemetry.emit (TestEvent {value = 1});
+  Telemetry.emit (TestEvent {value = 1;});
   Telemetry.stop ();
   let _pid = Telemetry.start () in
   Telemetry.detach_all ();
   let second_called = ref 0 in
   Telemetry.attach "second" (fun _ -> second_called := !second_called + 1);
-  Telemetry.emit (TestEvent {value = 2});
+  Telemetry.emit (TestEvent {value = 2;});
   Telemetry.stop ();
   if !first_called = 1 && !second_called = 1 then
     Ok ()
@@ -155,7 +155,6 @@ let tests = [
   test_handler_exception_isolation;
   test_restart_after_stop;
   test_stop_idempotent;
-
 ]
 
 let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

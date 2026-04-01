@@ -10,15 +10,11 @@ type t = {
   fn: Event.t -> unit;
 }
 val emit: Event.t -> unit
-
 (** Attach a handler with the given ID and callback function *)
 val attach: id -> (Event.t -> unit) -> unit
-
 (** Detach a handler by ID *)
 val detach: id -> unit
-
 (** Detach all handlers *)
 val detach_all: unit -> unit
-
 (** List all registered handler IDs *)
 val list: unit -> id list

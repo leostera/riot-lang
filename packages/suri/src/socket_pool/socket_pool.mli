@@ -1,5 +1,4 @@
 open Std
-
 (** TCP connection pool with concurrent acceptors and handlers.
 
     SocketPool provides a high-performance TCP server architecture with:
@@ -76,13 +75,10 @@ open Std
     ```
 *)
 module Connection: module type of Connection
-
 (** Connection management - see {!Connection} *)
 module Handler: module type of Handler
-
 (** Handler abstraction - see {!Handler} *)
 module Transport: module type of Transport
-
 (** Transport layer - see {!Transport} *)
 val start_link:
   host:string ->
@@ -95,7 +91,6 @@ val start_link:
   (Supervisor.Dynamic.t, [>
     `Bind_error
   ]) result
-
 (** [start_link ~host ~port handler initial_state] starts a supervised TCP server.
     
     - [host] - Host to bind to (e.g., "0.0.0.0" or "127.0.0.1")

@@ -1,11 +1,11 @@
 open Std
 
 let rec binding_operator_group_items = fun (binding: Syn.Cst.binding_operator_binding) ->
-    binding :: (
-      match binding.and_binding with
-      | Some next -> binding_operator_group_items next
-      | None -> []
-    )
+  binding :: (
+    match binding.and_binding with
+    | Some next -> binding_operator_group_items next
+    | None -> []
+  )
 
 let rule_id = "prefer-record-destructuring-parameters"
 
@@ -32,10 +32,10 @@ let positional_parameter_name_token = function
   | _ -> None
 
 let single_positional_parameter_name = fun binding ->
-    let positional_names = Syn.Cst.LetBinding.parameters binding |> List.filter_map positional_parameter_name_token in
-    match positional_names with
-    | [ token ] -> Some token
-    | _ -> None
+  let positional_names = Syn.Cst.LetBinding.parameters binding |> List.filter_map positional_parameter_name_token in
+  match positional_names with
+  | [ token ] -> Some token
+  | _ -> None
 
 let rec unwrap_record_pattern = function
   | Syn.Cst.Pattern.Record pattern -> Some pattern
@@ -45,263 +45,257 @@ let rec unwrap_record_pattern = function
   | _ -> None
 
 let bound_value_is_parameter_name = fun expected_name ->
-    function
-    | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.Ident.name path
-    |> Option.map (String.equal expected_name)
-    |> Option.unwrap_or ~default:false
-    | _ -> false
+  function
+  | Syn.Cst.Expression.Path { path; _ } -> Syn.Cst.Ident.name path
+  |> Option.map (String.equal expected_name)
+  |> Option.unwrap_or ~default:false
+  | _ -> false
 
 type parameter_usage = {
   field_names: string list;
   has_whole_value_use: bool;
 }
 
-let empty_usage = {field_names = []; has_whole_value_use = false}
+let empty_usage = {field_names = [];has_whole_value_use = false;}
 
 let merge_usage = fun left right ->
-    {
-      field_names = left.field_names @ right.field_names;
-      has_whole_value_use = left.has_whole_value_use || right.has_whole_value_use;
-
-    }
+  {
+    field_names = left.field_names @ right.field_names;
+    has_whole_value_use = left.has_whole_value_use || right.has_whole_value_use;
+  }
 
 let merge_all = fun usages ->
-    List.fold_left merge_usage empty_usage usages
+  List.fold_left merge_usage empty_usage usages
 
 let whole_value_use = fun expected_name ->
-    function
-    | Syn.Cst.Expression.Path { path; _ } -> {
-      field_names = [];
-      has_whole_value_use = (Syn.Cst.Ident.name path
-      |> Option.map (String.equal expected_name)
-      |> Option.unwrap_or ~default:false);
-
-    }
-    | _ -> empty_usage
+  function
+  | Syn.Cst.Expression.Path { path; _ } -> {
+    field_names = [];
+    has_whole_value_use = (Syn.Cst.Ident.name path
+    |> Option.map (String.equal expected_name)
+    |> Option.unwrap_or ~default:false);
+  }
+  | _ -> empty_usage
 
 let direct_field_access_name = fun expected_name ->
-    function
-    | Syn.Cst.Expression.FieldAccess { receiver=Syn.Cst.Expression.Path { path; _ }; field_name; _ } ->
-        if
-          Syn.Cst.Ident.name path
-          |> Option.map (String.equal expected_name)
-          |> Option.unwrap_or ~default:false
-        then
-          Some (Syn.Cst.Token.text field_name)
-        else
-          None
-    | _ -> None
+  function
+  | Syn.Cst.Expression.FieldAccess { receiver=Syn.Cst.Expression.Path { path; _ }; field_name; _ } ->
+      if
+        Syn.Cst.Ident.name path
+        |> Option.map (String.equal expected_name)
+        |> Option.unwrap_or ~default:false
+      then
+        Some (Syn.Cst.Token.text field_name)
+      else
+        None
+  | _ -> None
 
 let rec usage_in_function_body = fun expected_name ->
-    function
-    | Syn.Cst.Expression expression -> usage_in_expression expected_name expression
-    | Syn.Cst.Cases { cases; _ } -> cases |> List.map (usage_in_match_case expected_name) |> merge_all
+  function
+  | Syn.Cst.Expression expression -> usage_in_expression expected_name expression
+  | Syn.Cst.Cases { cases; _ } -> cases |> List.map (usage_in_match_case expected_name) |> merge_all
 
 and usage_in_apply_argument = fun expected_name ->
-    function
-    | Syn.Cst.Positional argument -> usage_in_expression expected_name argument
-    | Syn.Cst.Labeled { value; _ }
-    | Syn.Cst.Optional { value; _ } -> Option.to_list value
-    |> List.map (usage_in_expression expected_name)
-    |> merge_all
+  function
+  | Syn.Cst.Positional argument -> usage_in_expression expected_name argument
+  | Syn.Cst.Labeled { value; _ }
+  | Syn.Cst.Optional { value; _ } -> Option.to_list value
+  |> List.map (usage_in_expression expected_name)
+  |> merge_all
 
 and usage_in_match_case = fun expected_name ({ guard; body; _ }: Syn.Cst.match_case) ->
-    merge_all
-      ((Option.to_list guard |> List.map (usage_in_expression expected_name))
-      @ [ usage_in_expression expected_name body ])
+  merge_all
+    ((Option.to_list guard |> List.map (usage_in_expression expected_name))
+    @ [ usage_in_expression expected_name body ])
 
 and usage_in_object_member = fun expected_name ->
-    function
-    | Syn.Cst.ObjectMember.Method { body; _ } -> usage_in_expression expected_name body
-    | Syn.Cst.ObjectMember.Value { value; _ } -> usage_in_expression expected_name value
-    | Syn.Cst.ObjectMember.Inherit { expression; _ } -> usage_in_expression expected_name expression
-    | Syn.Cst.ObjectMember.Extension _ -> empty_usage
-    | Syn.Cst.ObjectMember.Initializer { body; _ } -> usage_in_expression expected_name body
+  function
+  | Syn.Cst.ObjectMember.Method { body; _ } -> usage_in_expression expected_name body
+  | Syn.Cst.ObjectMember.Value { value; _ } -> usage_in_expression expected_name value
+  | Syn.Cst.ObjectMember.Inherit { expression; _ } -> usage_in_expression expected_name expression
+  | Syn.Cst.ObjectMember.Extension _ -> empty_usage
+  | Syn.Cst.ObjectMember.Initializer { body; _ } -> usage_in_expression expected_name body
 
 and usage_in_expression = fun expected_name expr ->
-    match expr with
-    | Syn.Cst.Expression.Path _ ->
-        whole_value_use expected_name expr
-    | Syn.Cst.Expression.Operator _
-    | Syn.Cst.Expression.Literal _
-    | Syn.Cst.Expression.Unreachable _
-    | Syn.Cst.Expression.Extension _
-    | Syn.Cst.Expression.New _ ->
-        empty_usage
-    | Syn.Cst.Expression.Constructor { payload; _ } ->
-        Option.to_list payload |> List.map (usage_in_expression expected_name) |> merge_all
-    | Syn.Cst.Expression.Object { members; _ } ->
-        members |> List.map (usage_in_object_member expected_name) |> merge_all
-    | Syn.Cst.Expression.PolyVariant { payload; _ } ->
-        Option.to_list payload |> List.map (usage_in_expression expected_name) |> merge_all
-    | Syn.Cst.Expression.ModulePack _ ->
-        empty_usage
-    | Syn.Cst.Expression.LetModule { body; _ } ->
-        usage_in_expression expected_name body
-    | Syn.Cst.Expression.LetException { body; _ } ->
-        usage_in_expression expected_name body
-    | Syn.Cst.Expression.Assert { asserted; _ } ->
-        usage_in_expression expected_name asserted
-    | Syn.Cst.Expression.Lazy { body; _ } ->
-        usage_in_expression expected_name body
-    | Syn.Cst.Expression.While { condition; body; _ } ->
-        merge_usage
-          (usage_in_expression expected_name condition)
-          (usage_in_expression expected_name body)
-    | Syn.Cst.Expression.For { start_expr; end_expr; body; _ } ->
-        merge_all
-          [
-            usage_in_expression expected_name start_expr;
-            usage_in_expression expected_name end_expr;
-            usage_in_expression expected_name body;
-
-          ]
-    | Syn.Cst.Expression.Apply { callee; argument; _ } ->
-        merge_usage
-          (usage_in_expression expected_name callee)
-          (usage_in_apply_argument expected_name argument)
-    | Syn.Cst.Expression.MethodCall { receiver; _ } ->
-        usage_in_expression expected_name receiver
-    | Syn.Cst.Expression.Prefix { operand; _ } ->
-        usage_in_expression expected_name operand
-    | Syn.Cst.Expression.FieldAccess ({ receiver; _ } as field_access) -> (
-        match direct_field_access_name expected_name (Syn.Cst.Expression.FieldAccess field_access) with
-        | Some field_name -> {field_names = [ field_name ]; has_whole_value_use = false}
-        | None -> usage_in_expression expected_name receiver
-      )
-    | Syn.Cst.Expression.Index { collection; index; _ } ->
-        merge_usage
-          (usage_in_expression expected_name collection)
-          (usage_in_expression expected_name index)
-    | Syn.Cst.Expression.ObjectOverride { fields; _ } ->
-        fields
-        |> List.filter_map (fun (field: Syn.Cst.object_override_field) -> field.value)
-        |> List.map (usage_in_expression expected_name)
-        |> merge_all
-    | Syn.Cst.Expression.InstanceVariableAssign { value; _ } ->
-        usage_in_expression expected_name value
-    | Syn.Cst.Expression.FieldAssign { target; value; _ } ->
-        merge_usage
-          (usage_in_expression expected_name (Syn.Cst.Expression.FieldAccess target))
-          (usage_in_expression expected_name value)
-    | Syn.Cst.Expression.Assign { target; value; _ } ->
-        merge_usage
-          (usage_in_expression expected_name target)
-          (usage_in_expression expected_name value)
-    | Syn.Cst.Expression.Infix { left; right; _ } ->
-        merge_usage
-          (usage_in_expression expected_name left)
-          (usage_in_expression expected_name right)
-    | Syn.Cst.Expression.TypeAscription { expression; _ }
-    | Syn.Cst.Expression.Polymorphic { expression; _ } ->
-        usage_in_expression expected_name expression
-    | Syn.Cst.Expression.Sequence { expressions; _ } ->
-        expressions |> List.map (usage_in_expression expected_name) |> merge_all
-    | Syn.Cst.Expression.Tuple { elements; _ }
-    | Syn.Cst.Expression.List { elements; _ }
-    | Syn.Cst.Expression.Array { elements; _ } ->
-        elements |> List.map (usage_in_expression expected_name) |> merge_all
-    | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) ->
-        fields
-        |> List.map
+  match expr with
+  | Syn.Cst.Expression.Path _ ->
+      whole_value_use expected_name expr
+  | Syn.Cst.Expression.Operator _
+  | Syn.Cst.Expression.Literal _
+  | Syn.Cst.Expression.Unreachable _
+  | Syn.Cst.Expression.Extension _
+  | Syn.Cst.Expression.New _ ->
+      empty_usage
+  | Syn.Cst.Expression.Constructor { payload; _ } ->
+      Option.to_list payload |> List.map (usage_in_expression expected_name) |> merge_all
+  | Syn.Cst.Expression.Object { members; _ } ->
+      members |> List.map (usage_in_object_member expected_name) |> merge_all
+  | Syn.Cst.Expression.PolyVariant { payload; _ } ->
+      Option.to_list payload |> List.map (usage_in_expression expected_name) |> merge_all
+  | Syn.Cst.Expression.ModulePack _ ->
+      empty_usage
+  | Syn.Cst.Expression.LetModule { body; _ } ->
+      usage_in_expression expected_name body
+  | Syn.Cst.Expression.LetException { body; _ } ->
+      usage_in_expression expected_name body
+  | Syn.Cst.Expression.Assert { asserted; _ } ->
+      usage_in_expression expected_name asserted
+  | Syn.Cst.Expression.Lazy { body; _ } ->
+      usage_in_expression expected_name body
+  | Syn.Cst.Expression.While { condition; body; _ } ->
+      merge_usage
+        (usage_in_expression expected_name condition)
+        (usage_in_expression expected_name body)
+  | Syn.Cst.Expression.For { start_expr; end_expr; body; _ } ->
+      merge_all
+        [
+          usage_in_expression expected_name start_expr;
+          usage_in_expression expected_name end_expr;
+          usage_in_expression expected_name body;
+        ]
+  | Syn.Cst.Expression.Apply { callee; argument; _ } ->
+      merge_usage
+        (usage_in_expression expected_name callee)
+        (usage_in_apply_argument expected_name argument)
+  | Syn.Cst.Expression.MethodCall { receiver; _ } ->
+      usage_in_expression expected_name receiver
+  | Syn.Cst.Expression.Prefix { operand; _ } ->
+      usage_in_expression expected_name operand
+  | Syn.Cst.Expression.FieldAccess ({ receiver; _ } as field_access) -> (
+      match direct_field_access_name expected_name (Syn.Cst.Expression.FieldAccess field_access) with
+      | Some field_name -> {field_names = [ field_name ];has_whole_value_use = false;}
+      | None -> usage_in_expression expected_name receiver
+    )
+  | Syn.Cst.Expression.Index { collection; index; _ } ->
+      merge_usage
+        (usage_in_expression expected_name collection)
+        (usage_in_expression expected_name index)
+  | Syn.Cst.Expression.ObjectOverride { fields; _ } ->
+      fields
+      |> List.filter_map (fun (field: Syn.Cst.object_override_field) -> field.value)
+      |> List.map (usage_in_expression expected_name)
+      |> merge_all
+  | Syn.Cst.Expression.InstanceVariableAssign { value; _ } ->
+      usage_in_expression expected_name value
+  | Syn.Cst.Expression.FieldAssign { target; value; _ } ->
+      merge_usage
+        (usage_in_expression expected_name (Syn.Cst.Expression.FieldAccess target))
+        (usage_in_expression expected_name value)
+  | Syn.Cst.Expression.Assign { target; value; _ } ->
+      merge_usage
+        (usage_in_expression expected_name target)
+        (usage_in_expression expected_name value)
+  | Syn.Cst.Expression.Infix { left; right; _ } ->
+      merge_usage (usage_in_expression expected_name left) (usage_in_expression expected_name right)
+  | Syn.Cst.Expression.TypeAscription { expression; _ }
+  | Syn.Cst.Expression.Polymorphic { expression; _ } ->
+      usage_in_expression expected_name expression
+  | Syn.Cst.Expression.Sequence { expressions; _ } ->
+      expressions |> List.map (usage_in_expression expected_name) |> merge_all
+  | Syn.Cst.Expression.Tuple { elements; _ }
+  | Syn.Cst.Expression.List { elements; _ }
+  | Syn.Cst.Expression.Array { elements; _ } ->
+      elements |> List.map (usage_in_expression expected_name) |> merge_all
+  | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) ->
+      fields
+      |> List.map
+        (fun (field: Syn.Cst.record_expression_field) -> usage_in_expression expected_name field.value)
+      |> merge_all
+  | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) ->
+      merge_all
+        (usage_in_expression expected_name base
+        :: List.map
           (fun (field: Syn.Cst.record_expression_field) -> usage_in_expression expected_name field.value)
-        |> merge_all
-    | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) ->
-        merge_all
-          (usage_in_expression expected_name base
-          :: List.map
-            (fun (field: Syn.Cst.record_expression_field) ->
-              usage_in_expression expected_name field.value)
-            fields)
-    | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
-    | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) ->
-        usage_in_expression expected_name body
-    | Syn.Cst.Expression.Fun { body; _ } ->
-        usage_in_function_body expected_name body
-    | Syn.Cst.Expression.Function { cases; _ } ->
-        cases |> List.map (usage_in_match_case expected_name) |> merge_all
-    | Syn.Cst.Expression.LetOperator { binding; body; _ } ->
-        merge_all
-          (List.map
-            (fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) ->
-              usage_in_expression expected_name bound_value)
-            (binding_operator_group_items binding)
-          @ [ usage_in_expression expected_name body ])
-    | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } ->
-        merge_all
-          (
-            usage_in_expression expected_name bound_value
-            :: usage_in_expression expected_name body
-            :: List.map (fun (binding: Syn.Cst.let_binding) ->
-              usage_in_expression expected_name binding.value)
-              (Option.to_list and_binding
-              |> List.concat_map (fun binding -> binding :: Syn.Cst.LetBinding.and_bindings binding))
-          )
-    | Syn.Cst.Expression.Match { scrutinee; cases; _ } ->
-        merge_all
-          (usage_in_expression expected_name scrutinee
-          :: List.map (usage_in_match_case expected_name) cases)
-    | Syn.Cst.Expression.Try { body; cases; _ } ->
-        merge_all
-          (usage_in_expression expected_name body :: List.map (usage_in_match_case expected_name) cases)
-    | Syn.Cst.Expression.If { condition; then_branch; else_branch; _ } ->
-        merge_all
-          ((usage_in_expression expected_name condition)
-          :: (usage_in_expression expected_name then_branch)
-          :: (Option.to_list else_branch |> List.map (usage_in_expression expected_name)))
-    | Syn.Cst.Expression.Parenthesized { inner; _ } ->
-        usage_in_expression expected_name inner
+          fields)
+  | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
+  | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) ->
+      usage_in_expression expected_name body
+  | Syn.Cst.Expression.Fun { body; _ } ->
+      usage_in_function_body expected_name body
+  | Syn.Cst.Expression.Function { cases; _ } ->
+      cases |> List.map (usage_in_match_case expected_name) |> merge_all
+  | Syn.Cst.Expression.LetOperator { binding; body; _ } ->
+      merge_all
+        (List.map
+          (fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) ->
+            usage_in_expression expected_name bound_value)
+          (binding_operator_group_items binding)
+        @ [ usage_in_expression expected_name body ])
+  | Syn.Cst.Expression.Let { bound_value; and_binding; body; _ } ->
+      merge_all
+        (
+          usage_in_expression expected_name bound_value
+          :: usage_in_expression expected_name body
+          :: List.map (fun (binding: Syn.Cst.let_binding) ->
+            usage_in_expression expected_name binding.value)
+            (Option.to_list and_binding
+            |> List.concat_map (fun binding -> binding :: Syn.Cst.LetBinding.and_bindings binding))
+        )
+  | Syn.Cst.Expression.Match { scrutinee; cases; _ } ->
+      merge_all
+        (usage_in_expression expected_name scrutinee
+        :: List.map (usage_in_match_case expected_name) cases)
+  | Syn.Cst.Expression.Try { body; cases; _ } ->
+      merge_all
+        (usage_in_expression expected_name body :: List.map (usage_in_match_case expected_name) cases)
+  | Syn.Cst.Expression.If { condition; then_branch; else_branch; _ } ->
+      merge_all
+        ((usage_in_expression expected_name condition)
+        :: (usage_in_expression expected_name then_branch)
+        :: (Option.to_list else_branch |> List.map (usage_in_expression expected_name)))
+  | Syn.Cst.Expression.Parenthesized { inner; _ } ->
+      usage_in_expression expected_name inner
 
 let should_prefer_destructuring = fun expected_name expr ->
-    let usage = usage_in_expression expected_name expr in
-    let distinct_fields = List.sort_uniq String.compare usage.field_names in
-    List.length distinct_fields >= 2 && not usage.has_whole_value_use
+  let usage = usage_in_expression expected_name expr in
+  let distinct_fields = List.sort_uniq String.compare usage.field_names in
+  List.length distinct_fields >= 2 && not usage.has_whole_value_use
 
 let is_immediate_record_destructure = fun expected_name ->
-    function
-    | Syn.Cst.Expression.Let {
-      binding_pattern;
-      bound_value;
-      and_binding=None;
-      rec_token=None;
-      _;
+  function
+  | Syn.Cst.Expression.Let {
+    binding_pattern;
+    bound_value;
+    and_binding=None;
+    rec_token=None;
+    _;
 
-    } -> (
-        match unwrap_record_pattern binding_pattern with
-        | Some { fields; _ } -> List.length fields >= 2
-        && bound_value_is_parameter_name expected_name bound_value
-        | None -> false
-      )
-    | _ -> false
+  } -> (
+      match unwrap_record_pattern binding_pattern with
+      | Some { fields; _ } -> List.length fields >= 2
+      && bound_value_is_parameter_name expected_name bound_value
+      | None -> false
+    )
+  | _ -> false
 
 let diagnostic_for_binding = fun binding ->
-    match single_positional_parameter_name binding with
-    | None -> None
-    | Some parameter_token ->
-        let parameter_name = Syn.Cst.Token.text parameter_token in
-        let value = Syn.Cst.LetBinding.value binding in
-        if
-          is_immediate_record_destructure parameter_name value
-          || should_prefer_destructuring parameter_name value
-        then
-          Some (Diagnostic.make
-            ~severity:Warning
-            ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-            ~span:(Syn.Cst.Token.span parameter_token)
-            ~suggestion:(("Destructure this record in the parameter list instead of binding "
-            ^ parameter_name
-            ^ " and immediately unpacking it in the function body"))
-            ())
-        else
-          None
+  match single_positional_parameter_name binding with
+  | None -> None
+  | Some parameter_token ->
+      let parameter_name = Syn.Cst.Token.text parameter_token in
+      let value = Syn.Cst.LetBinding.value binding in
+      if
+        is_immediate_record_destructure parameter_name value
+        || should_prefer_destructuring parameter_name value
+      then
+        Some (Diagnostic.make
+          ~severity:Warning
+          ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+          ~span:(Syn.Cst.Token.span parameter_token)
+          ~suggestion:(("Destructure this record in the parameter list instead of binding "
+          ^ parameter_name
+          ^ " and immediately unpacking it in the function body"))
+          ())
+      else
+        None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-    let source_file = ctx.cst in
-    Syn.Cst.SourceFile.structure_items source_file
-    |> Option.unwrap_or ~default:[]
-    |> List.concat_map Traversal.let_bindings_of_structure_item
-    |> List.filter Syn.Cst.LetBinding.is_function
-    |> List.filter_map diagnostic_for_binding
+  let source_file = ctx.cst in
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Traversal.let_bindings_of_structure_item
+  |> List.filter Syn.Cst.LetBinding.is_function
+  |> List.filter_map diagnostic_for_binding
 
 let make = fun () ->
-    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

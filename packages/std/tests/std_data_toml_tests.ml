@@ -753,7 +753,6 @@ let () =
         test_unterminated_inline_table;
         test_missing_equals;
         test_duplicate_keys_in_section;
-
       ]
       in
       Test.Cli.main ~name:"toml" ~tests:all_tests ~args)

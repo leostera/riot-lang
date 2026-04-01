@@ -7,7 +7,6 @@ let () =
         "https://api.ipify.org?format=json";
         "https://leostera.com";
         "https://httpbin.org/get";
-
       ] in
       List.iter
         (fun uri_str ->

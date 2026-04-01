@@ -30,5 +30,5 @@ let default = {
   handle_data = (fun _data _sock state -> Continue state);
   handle_error = (fun err _sock state -> Error (state, err));
   handle_shutdown = (fun _sock _state -> Ok);
-  handle_message = (fun _msg _conn state -> Continue state)
+  handle_message = (fun _msg _conn state -> Continue state);
 }

@@ -8,8 +8,7 @@ type t = {
 }
 
 let to_json = fun artifact ->
-    Json.Object [
-      ("hash", Json.String (Crypto.Digest.hex artifact.hash));
-      ("files", Json.Array (List.map (fun p -> Json.String (Path.to_string p)) artifact.files));
-
-    ]
+  Json.Object [
+    ("hash", Json.String (Crypto.Digest.hex artifact.hash));
+    ("files", Json.Array (List.map (fun p -> Json.String (Path.to_string p)) artifact.files));
+  ]

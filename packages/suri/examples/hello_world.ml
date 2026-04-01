@@ -1,6 +1,5 @@
 open Std
 open Suri
-
 (** Simple Hello World Example
     
     Demonstrates the minimal Suri API - just a list of middleware!

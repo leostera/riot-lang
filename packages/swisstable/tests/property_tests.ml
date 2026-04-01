@@ -19,44 +19,44 @@ let kv_pair = Generator.pair small_int small_int
 (* Generate a populated SwissTable *)
 
 let swisstable_gen = fun key_gen value_gen ->
-    Generator.map
-      (fun pairs ->
-        let map = Swisstable.create () in
-        List.iter
-          (fun ((k, v)) ->
-            let _ = Swisstable.insert map k v in
-            ())
-          pairs;
-        map)
-      (Generator.list (Generator.pair key_gen value_gen))
+  Generator.map
+    (fun pairs ->
+      let map = Swisstable.create () in
+      List.iter
+        (fun ((k, v)) ->
+          let _ = Swisstable.insert map k v in
+          ())
+        pairs;
+      map)
+    (Generator.list (Generator.pair key_gen value_gen))
 
 (* Arbitrary for populated SwissTable maps *)
 
 let swisstable = fun key_arb value_arb ->
-    Arbitrary.make
-      ~print:(fun map ->
-        let entries = Swisstable.to_list map in
-        let pairs_str =
-          String.concat ", "
-            (
-              List.map
-                (fun ((k, v)) ->
-                  let k_str =
-                    match key_arb.Arbitrary.print with
-                    | Some p -> p k
-                    | None -> "?"
-                  in
-                  let v_str =
-                    match value_arb.Arbitrary.print with
-                    | Some p -> p v
-                    | None -> "?"
-                  in
-                  k_str ^ " -> " ^ v_str)
-                entries
-            )
-        in
-        "{" ^ pairs_str ^ "}")
-      (swisstable_gen key_arb.Arbitrary.gen value_arb.Arbitrary.gen)
+  Arbitrary.make
+    ~print:(fun map ->
+      let entries = Swisstable.to_list map in
+      let pairs_str =
+        String.concat ", "
+          (
+            List.map
+              (fun ((k, v)) ->
+                let k_str =
+                  match key_arb.Arbitrary.print with
+                  | Some p -> p k
+                  | None -> "?"
+                in
+                let v_str =
+                  match value_arb.Arbitrary.print with
+                  | Some p -> p v
+                  | None -> "?"
+                in
+                k_str ^ " -> " ^ v_str)
+              entries
+          )
+      in
+      "{" ^ pairs_str ^ "}")
+    (swisstable_gen key_arb.Arbitrary.gen value_arb.Arbitrary.gen)
 
 (* Convenience: populated map with int keys and values *)
 
@@ -361,7 +361,6 @@ let tests = [
   remove_returns_value_prop;
   empty_map_length_prop;
   empty_map_get_prop;
-
 ]
 
 let () =

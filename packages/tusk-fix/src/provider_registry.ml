@@ -9,8 +9,8 @@ let providers = fun () -> List.rev !registered_providers
 let register_provider = fun provider -> registered_providers := provider :: !registered_providers
 
 let register_providers = fun providers ->
-    clear ();
-    List.iter register_provider providers
+  clear ();
+  List.iter register_provider providers
 
 let rules = fun () -> providers () |> List.concat_map Provider.rules
 

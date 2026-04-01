@@ -24,18 +24,17 @@ module BuildStats = struct
   }
 
   let make = fun () ->
-      {
-        start_time = None;
-        end_time = None;
-        packages_built = 0;
-        packages_failed = 0;
-        total_modules = 0;
-        cache_hits = 0;
-        cache_misses = 0;
-        action_cache_hits = 0;
-        action_cache_misses = 0;
-
-      }
+    {
+      start_time = None;
+      end_time = None;
+      packages_built = 0;
+      packages_failed = 0;
+      total_modules = 0;
+      cache_hits = 0;
+      cache_misses = 0;
+      action_cache_hits = 0;
+      action_cache_misses = 0;
+    }
 
   let mark_started = fun t -> t.start_time <- Some (Time.Instant.now ())
 
@@ -56,10 +55,10 @@ module BuildStats = struct
   let set_total_modules = fun t n -> t.total_modules <- n
 
   let get_build_duration = fun t ->
-      match (t.start_time, t.end_time) with
-      | Some start, Some end_ -> Time.Duration.to_secs_float
-        (Time.Instant.duration_since ~earlier:start end_)
-      | _ -> 0.0
+    match (t.start_time, t.end_time) with
+    | Some start, Some end_ -> Time.Duration.to_secs_float
+      (Time.Instant.duration_since ~earlier:start end_)
+    | _ -> 0.0
 
   let get_packages_built = fun t -> t.packages_built
 
@@ -184,7 +183,6 @@ type response =
       package_names: string list;
       available_packages: string list;
     }
-
 (** Message types for server communication *)
 type Message.t +=
   | ServerRequest of request

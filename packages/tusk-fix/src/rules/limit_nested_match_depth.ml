@@ -48,7 +48,7 @@ and child_expressions = function
   | Syn.Cst.Expression.Fun expr ->
       child_expressions_of_function_body expr.body
   | Syn.Cst.Expression.Function { syntax_node; cases; _ } ->
-      child_expressions_of_function_body (Syn.Cst.Cases {syntax_node; cases})
+      child_expressions_of_function_body (Syn.Cst.Cases {syntax_node;cases;})
   | Syn.Cst.Expression.Let expr ->
       [ expr.bound_value; expr.body ]
   | Syn.Cst.Expression.Match expr ->
@@ -93,36 +93,35 @@ let rec match_chain_depth = function
   | expr -> child_expressions expr |> List.map match_chain_depth |> max_list
 
 let make_diagnostic = fun (expr: Syn.Cst.match_expression) depth ->
-    Diagnostic.make
-      ~severity:Warning
-      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-      ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
-      ~suggestion:(("Reduce nested match depth from " ^ Int.to_string depth ^ " by extracting a helper or flattening the control flow."))
-      ()
+  Diagnostic.make
+    ~severity:Warning
+    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~span:((expr.syntax_node |> Syn.Ceibo.Red.SyntaxNode.span))
+    ~suggestion:(("Reduce nested match depth from " ^ Int.to_string depth ^ " by extracting a helper or flattening the control flow."))
+    ()
 
 let rec diagnostics_for_expression = fun ~inside_match ->
-    function
-    | Syn.Cst.Expression.Match expr ->
-        let nested = child_expressions (Syn.Cst.Expression.Match expr)
-        |> List.concat_map (diagnostics_for_expression ~inside_match:true) in
-        if inside_match then
-          nested
+  function
+  | Syn.Cst.Expression.Match expr ->
+      let nested = child_expressions (Syn.Cst.Expression.Match expr)
+      |> List.concat_map (diagnostics_for_expression ~inside_match:true) in
+      if inside_match then
+        nested
+      else
+        let depth = match_chain_depth (Syn.Cst.Expression.Match expr) in
+        if depth >= max_nested_match_depth then
+          make_diagnostic expr depth :: nested
         else
-          let depth = match_chain_depth (Syn.Cst.Expression.Match expr) in
-          if depth >= max_nested_match_depth then
-            make_diagnostic expr depth :: nested
-          else
-            nested
-    | expr -> child_expressions expr |> List.concat_map (diagnostics_for_expression ~inside_match)
+          nested
+  | expr -> child_expressions expr |> List.concat_map (diagnostics_for_expression ~inside_match)
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-    let source_file = ctx.cst in
-    Syn.Cst.SourceFile.structure_items source_file
-    |> Option.unwrap_or ~default:[]
-    |> List.concat_map Traversal.let_bindings_of_structure_item
-    |> List.concat_map
-      (fun binding ->
-        diagnostics_for_expression ~inside_match:false (Syn.Cst.LetBinding.value binding))
+  let source_file = ctx.cst in
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Traversal.let_bindings_of_structure_item
+  |> List.concat_map
+    (fun binding -> diagnostics_for_expression ~inside_match:false (Syn.Cst.LetBinding.value binding))
 
 let make = fun () ->
-    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

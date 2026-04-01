@@ -129,7 +129,6 @@ let tests = [
   int_commutative_property;
   int_associative_property;
   assume_property;
-
 ]
 
 let () =

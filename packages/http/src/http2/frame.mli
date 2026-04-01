@@ -81,10 +81,8 @@ type t = {
 }
 (** HTTP/2 Frame *)
 val default_flags: flags
-
 (** Default flags (all false) *)
 val data: stream_id:stream_id -> ?end_stream:bool -> ?pad_length:int -> string -> t
-
 (** Create specific frame types *)
 val headers:
   stream_id:stream_id ->
@@ -112,8 +110,6 @@ val window_update: stream_id:stream_id -> int -> t
 val continuation: stream_id:stream_id -> ?end_headers:bool -> string -> t
 
 val error_code_to_int: error_code -> int
-
 (** Convert error code to integer *)
 val int_to_error_code: int -> error_code option
-
 (** Convert integer to error code *)

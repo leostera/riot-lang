@@ -1,6 +1,5 @@
 open Std
 open Suri
-
 (** LiveView Counter Example
     
     A simple interactive counter demonstrating LiveView capabilities:
@@ -34,67 +33,58 @@ module Counter = struct
   let deserialize_args = fun _ -> Ok ()
 
   let init = fun _conn () ->
-      Log.info "Counter initialized";
-      {count = 0}
+    Log.info "Counter initialized";
+    {count = 0;}
 
   let update = fun event state ->
-      let new_state =
-        match event with
-        | App Increment -> {count = state.count + 1}
-        | App Decrement -> {count = state.count - 1}
-        | App Reset -> {count = 0}
-        | _ -> state
-      in
-      Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
-      new_state
+    let new_state =
+      match event with
+      | App Increment -> {count = state.count + 1;}
+      | App Decrement -> {count = state.count - 1;}
+      | App Reset -> {count = 0;}
+      | _ -> state
+    in
+    Log.info ("Counter: " ^ Int.to_string state.count ^ " -> " ^ Int.to_string new_state.count);
+    new_state
 
   let render = fun ~state () ->
-      div
-        ~attrs:[ class_ "counter-app" ]
-        [
-          header
-            ~attrs:[ class_ "header" ]
-            [
-              h1 [ text "LiveView Counter" ];
-              p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
-
-            ];
-          div
-            ~attrs:[ class_ "counter-display" ]
-            [
-              div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
-              div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
-
-            ];
-          div
-            ~attrs:[ class_ "controls" ]
-            [
-              button
-                ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement);  ]
-                [ text "−" ];
-              button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset);  ] [ text "Reset" ];
-              button
-                ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment);  ]
-                [ text "+" ];
-
-            ];
-          footer
-            ~attrs:[ class_ "info" ]
-            [
-              p
-                [
-                  strong [ text "How it works: " ];
-                  text "Clicks are sent to the server over WebSocket. ";
-                  text "The server updates state and sends back only the HTML changes. ";
-                  text "No client-side framework needed!";
-
-                ];
-
-            ];
-
-        ]
+    div
+      ~attrs:[ class_ "counter-app" ]
+      [
+        header
+          ~attrs:[ class_ "header" ]
+          [
+            h1 [ text "LiveView Counter" ];
+            p ~attrs:[ class_ "subtitle" ] [ text "Server-side rendering with real-time updates" ];
+          ];
+        div
+          ~attrs:[ class_ "counter-display" ]
+          [
+            div ~attrs:[ class_ "count-label" ] [ text "Current Count:" ];
+            div ~attrs:[ class_ "count-value" ] [ text (Int.to_string state.count) ];
+          ];
+        div
+          ~attrs:[ class_ "controls" ]
+          [
+            button
+              ~attrs:[ class_ "btn btn-decrement"; on_click (fun _ -> Decrement); ]
+              [ text "−" ];
+            button ~attrs:[ class_ "btn btn-reset"; on_click (fun _ -> Reset); ] [ text "Reset" ];
+            button ~attrs:[ class_ "btn btn-increment"; on_click (fun _ -> Increment); ] [ text "+" ];
+          ];
+        footer
+          ~attrs:[ class_ "info" ]
+          [
+            p
+              [
+                strong [ text "How it works: " ];
+                text "Clicks are sent to the server over WebSocket. ";
+                text "The server updates state and sends back only the HTML changes. ";
+                text "No client-side framework needed!";
+              ];
+          ];
+      ]
 end
-
 (** Page styles *)
 let page_styles = {|
   * {
@@ -237,25 +227,22 @@ let page_styles = {|
     font-size: 1.2em;
   }
 |}
-
 (** Home page handler with embedded LiveView *)
 let home_page = fun conn _req ->
-    let open Component in
-      let page = html
-        [
-          head
-            [
-              meta ~attrs:[ attr "charset" "UTF-8" ] ();
-              meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
-              title [ text "LiveView Counter" ];
-              LiveView.client_script;
-              style page_styles;
-
-            ];
-          body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) ();  ];  ];
-
-        ] in
-      conn |> Conn.render_component Net.Http.Status.Ok page
+  let open Component in
+    let page = html
+      [
+        head
+          [
+            meta ~attrs:[ attr "charset" "UTF-8" ] ();
+            meta ~attrs:[ attr "viewport" "width=device-width, initial-scale=1.0" ] ();
+            title [ text "LiveView Counter" ];
+            LiveView.client_script;
+            style page_styles;
+          ];
+        body [ div ~attrs:[ id "app" ] [ LiveView.embed (module Counter) (); ]; ];
+      ] in
+    conn |> Conn.render_component Net.Http.Status.Ok page
 
 (* Define routes *)
 
@@ -265,7 +252,7 @@ LiveView.live (module Counter);]
 
 (* App is just a list of middleware! *)
 
-let app = [ Middleware.router routes;  ]
+let app = [ Middleware.router routes; ]
 
 let () =
   Miniriot.run ~args:Env.args ()

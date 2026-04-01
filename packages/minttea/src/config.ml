@@ -12,4 +12,4 @@ type t = {
   output: output_target;
 }
 
-let make = fun ?(render_mode = Clear) ?(fps = 60) ?(output = Stdout) () -> {render_mode; fps; output}
+let make = fun ?(render_mode = Clear) ?(fps = 60) ?(output = Stdout) () -> {render_mode;fps;output;}

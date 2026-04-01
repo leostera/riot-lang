@@ -90,7 +90,7 @@ let sqrt_with_assume_prop =
   - minimal_failure_prop: shrinks to `(-1, 0)` or `(0, -1)` or similar
 *)
 
-let tests = [ passing_with_assume_prop; sqrt_with_assume_prop;  ]
+let tests = [ passing_with_assume_prop; sqrt_with_assume_prop; ]
 
 let () =
   Miniriot.run

@@ -59,70 +59,70 @@ let rec case_pattern_kind = function
   | Syn.Cst.Pattern.LocalOpen _ -> OtherPattern
 
 let suggestion_for_match = fun (expr: Syn.Cst.match_expression) ->
-    match expr.cases with
-    | [first_case;second_case] -> (
-        match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
-        | TruePattern, FalsePattern -> "Rewrite this match as `if <condition> then ... else ...`."
-        | FalsePattern, TruePattern -> "Rewrite this match as `if not <condition> then ... else ...`."
-        | TruePattern, WildcardPattern ->
-            if is_unit_expression second_case.body then
-              "Rewrite this match as `if <condition> then ...`."
-            else
-              "Rewrite this match as `if <condition> then ... else ...`."
-        | FalsePattern, WildcardPattern ->
-            if is_unit_expression second_case.body then
-              "Rewrite this match as `if not <condition> then ...`."
-            else
-              "Rewrite this match as `if not <condition> then ... else ...`."
-        | (WildcardPattern, TruePattern)
-        | (WildcardPattern, FalsePattern)
-        | (WildcardPattern, WildcardPattern)
-        | (TruePattern, OtherPattern)
-        | (FalsePattern, OtherPattern)
-        | (WildcardPattern, OtherPattern)
-        | (OtherPattern, _) -> "Rewrite this boolean match as an `if` expression."
-      )
-    | _ -> "Rewrite this boolean match as an `if` expression."
+  match expr.cases with
+  | [first_case;second_case] -> (
+      match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
+      | TruePattern, FalsePattern -> "Rewrite this match as `if <condition> then ... else ...`."
+      | FalsePattern, TruePattern -> "Rewrite this match as `if not <condition> then ... else ...`."
+      | TruePattern, WildcardPattern ->
+          if is_unit_expression second_case.body then
+            "Rewrite this match as `if <condition> then ...`."
+          else
+            "Rewrite this match as `if <condition> then ... else ...`."
+      | FalsePattern, WildcardPattern ->
+          if is_unit_expression second_case.body then
+            "Rewrite this match as `if not <condition> then ...`."
+          else
+            "Rewrite this match as `if not <condition> then ... else ...`."
+      | (WildcardPattern, TruePattern)
+      | (WildcardPattern, FalsePattern)
+      | (WildcardPattern, WildcardPattern)
+      | (TruePattern, OtherPattern)
+      | (FalsePattern, OtherPattern)
+      | (WildcardPattern, OtherPattern)
+      | (OtherPattern, _) -> "Rewrite this boolean match as an `if` expression."
+    )
+  | _ -> "Rewrite this boolean match as an `if` expression."
 
 let should_flag_match = fun (expr: Syn.Cst.match_expression) ->
-    match expr.cases with
-    | [first_case;second_case] ->
-        first_case.guard = None
-        && second_case.guard = None
-        && match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
-        | (TruePattern, FalsePattern)
-        | (FalsePattern, TruePattern)
-        | (TruePattern, WildcardPattern)
-        | (FalsePattern, WildcardPattern) -> true
-        | (WildcardPattern, _)
-        | (OtherPattern, _)
-        | (_, OtherPattern)
-        | (WildcardPattern, WildcardPattern) -> false
-        | _ -> false
-        | _ -> false
+  match expr.cases with
+  | [first_case;second_case] ->
+      first_case.guard = None
+      && second_case.guard = None
+      && match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
+      | (TruePattern, FalsePattern)
+      | (FalsePattern, TruePattern)
+      | (TruePattern, WildcardPattern)
+      | (FalsePattern, WildcardPattern) -> true
+      | (WildcardPattern, _)
+      | (OtherPattern, _)
+      | (_, OtherPattern)
+      | (WildcardPattern, WildcardPattern) -> false
+      | _ -> false
+      | _ -> false
 
 let make_diagnostic = fun (expr: Syn.Cst.match_expression) ->
-    Diagnostic.make
-      ~severity:Warning
-      ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-      ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
-      ~suggestion:(suggestion_for_match expr)
-      ()
+  Diagnostic.make
+    ~severity:Warning
+    ~kind:(Diagnostic.Known {rule_id;message = rule_description;})
+    ~span:(Syn.Ceibo.Red.SyntaxNode.span expr.syntax_node)
+    ~suggestion:(suggestion_for_match expr)
+    ()
 
 let safe_should_flag_match = fun expr ->
-    try should_flag_match expr with
-    | Match_failure _ -> false
+  try should_flag_match expr with
+  | Match_failure _ -> false
 
 let diagnostic_for_expression = function
   | Syn.Cst.Expression.Match expr when safe_should_flag_match expr -> Some (make_diagnostic expr)
   | _ -> None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
-    let source_file = ctx.cst in
-    Syn.Cst.SourceFile.structure_items source_file
-    |> Option.unwrap_or ~default:[]
-    |> List.concat_map Traversal.expressions_of_structure_item
-    |> List.filter_map diagnostic_for_expression
+  let source_file = ctx.cst in
+  Syn.Cst.SourceFile.structure_items source_file
+  |> Option.unwrap_or ~default:[]
+  |> List.concat_map Traversal.expressions_of_structure_item
+  |> List.filter_map diagnostic_for_expression
 
 let make = fun () ->
-    Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()
+  Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

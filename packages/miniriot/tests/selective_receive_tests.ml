@@ -9,70 +9,70 @@ type Message.t +=
   | C
 
 let sender = fun parent ->
-    send parent A;
-    send parent B;
-    send parent C;
-    Result.Ok ()
+  send parent A;
+  send parent B;
+  send parent C;
+  Result.Ok ()
 
 let expect_message = fun ~name ~expected actual ->
-    if expected actual then
-      Result.Ok ()
-    else
-      Result.Error (Kernel.String.concat "" [ "unexpected message for "; name ])
+  if expected actual then
+    Result.Ok ()
+  else
+    Result.Error (Kernel.String.concat "" [ "unexpected message for "; name ])
 
 let test_selective_receive_preserves_skipped_messages = fun () ->
-    let parent = self () in
-    let _ =
-      spawn (fun () -> sender parent)
-    in
-    let selected =
-      receive
-        ~selector:(
-          function
-          | B -> `select B
-          | _ -> `skip
-        )
-        ~timeout:2.0
-        ()
-    in
-    match
-      expect_message ~name:"selected"
-        ~expected:(
-          function
-          | B -> true
-          | _ -> false
-        )
-        selected
-    with
-    | Result.Error _ as err -> err
-    | Result.Ok () ->
-        let first = receive_any ~timeout:2.0 () in
-        (
-          match
-            expect_message ~name:"first"
+  let parent = self () in
+  let _ =
+    spawn (fun () -> sender parent)
+  in
+  let selected =
+    receive
+      ~selector:(
+        function
+        | B -> `select B
+        | _ -> `skip
+      )
+      ~timeout:2.0
+      ()
+  in
+  match
+    expect_message ~name:"selected"
+      ~expected:(
+        function
+        | B -> true
+        | _ -> false
+      )
+      selected
+  with
+  | Result.Error _ as err -> err
+  | Result.Ok () ->
+      let first = receive_any ~timeout:2.0 () in
+      (
+        match
+          expect_message ~name:"first"
+            ~expected:(
+              function
+              | A -> true
+              | _ -> false
+            )
+            first
+        with
+        | Result.Error _ as err -> err
+        | Result.Ok () ->
+            let second = receive_any ~timeout:2.0 () in
+            expect_message ~name:"second"
               ~expected:(
                 function
-                | A -> true
+                | C -> true
                 | _ -> false
               )
-              first
-          with
-          | Result.Error _ as err -> err
-          | Result.Ok () ->
-              let second = receive_any ~timeout:2.0 () in
-              expect_message ~name:"second"
-                ~expected:(
-                  function
-                  | C -> true
-                  | _ -> false
-                )
-                second
-        )
+              second
+      )
 
 let test_case = fun () ->
-    try test_selective_receive_preserves_skipped_messages () with
-    | Receive_timeout -> Result.Error "timed out waiting for expected message"
-    | exn -> Result.Error (Kernel.Exception.to_string exn)
+  try test_selective_receive_preserves_skipped_messages () with
+  | Receive_timeout -> Result.Error "timed out waiting for expected message"
+  | exn -> Result.Error (Kernel.Exception.to_string exn)
 
 let () =
   let tests = [ Test.case "selective receive drains saved messages first" test_case ] in
