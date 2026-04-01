@@ -41,6 +41,7 @@ let test_collect_source_files = fun () ->
             compiler = { profile_overrides = []; target_overrides = [] };
             commands = [];
             fix_providers = [];
+            publish = { version = None; description = None; license = None; is_public = None };
           }
         in
         let files = Tusk_executor.Package_builder.collect_source_files package in
@@ -99,6 +100,7 @@ let test_build_result_status_variants = fun () ->
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
+      publish = { version = None; description = None; license = None; is_public = None };
     }
   in
   let artifact =
@@ -178,6 +180,7 @@ let test_build_writes_package_export_manifest = fun () ->
             compiler = { profile_overrides = []; target_overrides = [] };
             commands = [];
             fix_providers = [];
+            publish = { version = None; description = None; license = None; is_public = None };
           }
         in
         let workspace =

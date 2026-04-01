@@ -20,6 +20,12 @@ type resolved_dependency = {
   requirement: dependency;
   resolved_id: Lockfile.package_id;
 }
+type publish_metadata = {
+  version: Std.Version.t option;
+  description: string option;
+  license: string option;
+  is_public: bool option;
+}
 type binary = {
   name: string;
   path: Path.t;
@@ -72,6 +78,7 @@ type t = {
   compiler: compiler_config;
   commands: Package_command.t list;
   fix_providers: Fix_provider.t list;
+  publish: publish_metadata;
 }
 type resolved = {
   package: t;

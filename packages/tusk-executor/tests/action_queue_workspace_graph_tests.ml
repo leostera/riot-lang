@@ -27,6 +27,12 @@ let make_test_package = fun name ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
+    publish = {
+      version = None;
+      description = None;
+      license = None;
+      is_public = None;
+    };
   }
 
 let make_action_node = fun ?(deps = []) ?(outs = []) ?(actions = []) package_name ->

@@ -30,6 +30,13 @@ type resolved_dependency = {
   resolved_id: Lockfile.package_id;
 }
 
+type publish_metadata = {
+  version: Std.Version.t option;
+  description: string option;
+  license: string option;
+  is_public: bool option;
+}
+
 type binary = {
   name: string;
   path: Path.t;
@@ -91,6 +98,7 @@ type t = {
   compiler: compiler_config;
   commands: Package_command.t list;
   fix_providers: Fix_provider.t list;
+  publish: publish_metadata;
 }
 
 type resolved = {
@@ -103,6 +111,14 @@ type resolved = {
   build_resolved: resolved_dependency list;
   dev_resolved: resolved_dependency list;
 }
+
+let default_publish_metadata =
+  {
+    version = None;
+    description = None;
+    license = None;
+    is_public = None;
+  }
 
 let equal = fun a b -> a.name = b.name && a.path = b.path
 
@@ -301,6 +317,11 @@ let validate_name = fun name ->
     else
       Ok name
 
+let version_parse_error_to_string = function
+  | Version.Invalid_format msg -> msg
+  | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
+  | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
+
 (** Package TOML parsing *)
 let parse_name : (string * Toml.value) list -> string -> string = fun items fallback ->
   match List.assoc_opt "package" items with
@@ -311,16 +332,72 @@ let parse_name : (string * Toml.value) list -> string -> string = fun items fall
     )
   | _ -> fallback
 
+let parse_publish_metadata : (string * Toml.value) list -> (publish_metadata, string) result = fun items ->
+  let parse_version = fun ~package_name ->
+    function
+    | Toml.String raw_version -> (
+        match Version.parse (String.trim raw_version) with
+        | Ok version -> Ok (Some version)
+        | Error err ->
+            Error ("package '"
+            ^ package_name
+            ^ "' has invalid version '"
+            ^ raw_version
+            ^ "': "
+            ^ version_parse_error_to_string err)
+      )
+    | _ -> Error ("package '" ^ package_name ^ "' has non-string version")
+  in
+  let parse_optional_string = fun ~package_name ~field ->
+    function
+    | Toml.String value -> Ok (Some value)
+    | _ -> Error ("package '" ^ package_name ^ "' has non-string " ^ field)
+  in
+  let parse_public = fun ~package_name ->
+    function
+    | Toml.Bool value -> Ok (Some value)
+    | _ -> Error ("package '" ^ package_name ^ "' has non-boolean public flag")
+  in
+  match List.assoc_opt "package" items with
+  | Some (Toml.Table pkg_items) ->
+      let package_name = parse_name items "<package>" in
+      let version =
+        match List.assoc_opt "version" pkg_items with
+        | Some value -> parse_version ~package_name value
+        | None -> Ok None
+      in
+      let description =
+        match List.assoc_opt "description" pkg_items with
+        | Some value -> parse_optional_string ~package_name ~field:"description" value
+        | None -> Ok None
+      in
+      let license =
+        match List.assoc_opt "license" pkg_items with
+        | Some value -> parse_optional_string ~package_name ~field:"license" value
+        | None -> Ok None
+      in
+      let is_public =
+        match List.assoc_opt "public" pkg_items with
+        | Some value -> parse_public ~package_name value
+        | None -> Ok None
+      in
+      (
+        match version, description, license, is_public with
+        | Ok version, Ok description, Ok license, Ok is_public ->
+            Ok { version; description; license; is_public }
+        | Error err, _, _, _
+        | _, Error err, _, _
+        | _, _, Error err, _
+        | _, _, _, Error err -> Error err
+      )
+  | Some _ -> Error "[package] must be a table"
+  | None -> Ok default_publish_metadata
+
 let resolve_workspace_dependency : string -> dependency list -> dependency = fun name workspace_deps ->
   match List.find_opt (fun (d: dependency) -> d.name = name) workspace_deps with
   | Some dep -> dep
   | None -> panic
     ("Dependency '" ^ name ^ "' with { workspace = true } not found in workspace dependencies")
-
-let version_parse_error_to_string = function
-  | Version.Invalid_format msg -> msg
-  | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
-  | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
 let validate_requirement = fun ~dependency_name requirement ->
   let trimmed = String.trim requirement in
@@ -1007,6 +1084,9 @@ relative_path:Path.t ->
   | Toml.Table items -> (
       let fallback_name = Path.basename path in
       let name = parse_name items fallback_name in
+      match parse_publish_metadata items with
+      | Error _ as err -> err
+      | Ok publish ->
       match parse_dependency_section "dependencies" items ~workspace_deps with
       | Error _ as err -> err
       | Ok dependencies ->
@@ -1097,6 +1177,7 @@ relative_path:Path.t ->
                     compiler;
                     commands;
                     fix_providers;
+                    publish;
                   }
     )
   | _ -> Error "TOML is not a table"
@@ -1146,6 +1227,26 @@ let to_json : t -> Json.t = fun pkg ->
     ("binaries", binaries_json);
     ("library", library_json);
     ("fix_providers", fix_providers_json);
+    ("publish", Json.Object (
+      []
+      |> (fun fields ->
+        match pkg.publish.version with
+        | Some version -> ("version", Json.String (Version.to_string version)) :: fields
+        | None -> fields)
+      |> (fun fields ->
+        match pkg.publish.description with
+        | Some description -> ("description", Json.String description) :: fields
+        | None -> fields)
+      |> (fun fields ->
+        match pkg.publish.license with
+        | Some license -> ("license", Json.String license) :: fields
+        | None -> fields)
+      |> (fun fields ->
+        match pkg.publish.is_public with
+        | Some is_public -> ("public", Json.Bool is_public) :: fields
+        | None -> fields)
+      |> List.rev
+    ));
   ]
 
 let from_json : Json.t -> (t, string) result = fun json ->
@@ -1229,6 +1330,58 @@ let from_json : Json.t -> (t, string) result = fun json ->
                                   )
                                 | _ -> None
                               in
+                              let publish =
+                                match List.assoc_opt "publish" fields with
+                                | Some (Json.Object publish_fields) ->
+                                    let version =
+                                      match List.assoc_opt "version" publish_fields with
+                                      | Some (Json.String raw_version) -> (
+                                          match Version.parse raw_version with
+                                          | Ok version -> Ok (Some version)
+                                          | Error err ->
+                                              Error ("Invalid package publish version in JSON: "
+                                              ^ version_parse_error_to_string err)
+                                        )
+                                      | Some Json.Null
+                                      | None -> Ok None
+                                      | Some _ -> Error "Package publish version must be a string"
+                                    in
+                                    let description =
+                                      match List.assoc_opt "description" publish_fields with
+                                      | Some (Json.String description) -> Ok (Some description)
+                                      | Some Json.Null
+                                      | None -> Ok None
+                                      | Some _ -> Error "Package publish description must be a string"
+                                    in
+                                    let license =
+                                      match List.assoc_opt "license" publish_fields with
+                                      | Some (Json.String license) -> Ok (Some license)
+                                      | Some Json.Null
+                                      | None -> Ok None
+                                      | Some _ -> Error "Package publish license must be a string"
+                                    in
+                                    let is_public =
+                                      match List.assoc_opt "public" publish_fields with
+                                      | Some (Json.Bool value) -> Ok (Some value)
+                                      | Some Json.Null
+                                      | None -> Ok None
+                                      | Some _ -> Error "Package publish public flag must be a boolean"
+                                    in
+                                    (
+                                      match version, description, license, is_public with
+                                      | Ok version, Ok description, Ok license, Ok is_public ->
+                                          Ok { version; description; license; is_public }
+                                      | Error err, _, _, _
+                                      | _, Error err, _, _
+                                      | _, _, Error err, _
+                                      | _, _, _, Error err -> Error err
+                                    )
+                                | Some _ -> Error "Package publish metadata must be an object"
+                                | None -> Ok default_publish_metadata
+                              in
+                              match publish with
+                              | Error _ as err -> err
+                              | Ok publish ->
                               Ok {
                                 name;
                                 path;
@@ -1250,6 +1403,7 @@ let from_json : Json.t -> (t, string) result = fun json ->
                                 compiler = { profile_overrides = []; target_overrides = [] };
                                 commands = [];
                                 fix_providers = [];
+                                publish;
                               }
                         )
                     )
@@ -1283,6 +1437,34 @@ let hash = fun state (pkg: t) ->
       | Some version -> H.write_string state (Version.requirement_to_string version)
       | None -> H.write_string state ""))
     sorted_deps;
+  (
+    match pkg.publish.version with
+    | Some version ->
+        H.write_string state "publish-version";
+        H.write_string state (Version.to_string version)
+    | None -> H.write_string state "publish-version:none"
+  );
+  (
+    match pkg.publish.description with
+    | Some description ->
+        H.write_string state "publish-description";
+        H.write_string state description
+    | None -> H.write_string state "publish-description:none"
+  );
+  (
+    match pkg.publish.license with
+    | Some license ->
+        H.write_string state "publish-license";
+        H.write_string state license
+    | None -> H.write_string state "publish-license:none"
+  );
+  (
+    match pkg.publish.is_public with
+    | Some is_public ->
+        H.write_string state "publish-public";
+        H.write_string state (Bool.to_string is_public)
+    | None -> H.write_string state "publish-public:none"
+  );
   (* Binaries metadata *)
   let sorted_bins =
     List.sort
@@ -1471,6 +1653,8 @@ module Tests = struct
   let source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
     { workspace; builtin; path; version }
 
+  let publish = default_publish_metadata
+
   let test_parse_dependency_classes () : (unit, string) result =
     let toml =
       Std.Data.Toml.parse
@@ -1632,6 +1816,7 @@ std = "definitely-not-semver"
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
+      publish;
     }
     in
     match from_json (to_json package) with
@@ -1766,6 +1951,7 @@ std = {}
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
+      publish;
     }
     in
     let lock_package : Lockfile.package = {
@@ -1808,6 +1994,7 @@ std = {}
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
+      publish;
     }
     in
     let build_graph = build_graph_dependencies pkg |> List.map (fun (dep: dependency) -> dep.name) in

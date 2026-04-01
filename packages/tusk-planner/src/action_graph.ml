@@ -534,6 +534,12 @@ let from_json = fun json ->
                                   compiler = { profile_overrides = []; target_overrides = [] };
                                   commands = [];
                                   fix_providers = [];
+                                  publish = {
+                                    version = None;
+                                    description = None;
+                                    license = None;
+                                    is_public = None;
+                                  };
                                 }
                               in
                               let toolchain = Tusk_toolchain.init
