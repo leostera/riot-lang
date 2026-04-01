@@ -7,6 +7,38 @@ type fetch_response = {
 
 type fetch = {
   get: Net.Uri.t -> (fetch_response, string) result;
+  post: Net.Uri.t -> headers:(string * string) list -> body:string -> (fetch_response, string) result;
+}
+
+type published_artifact_location = {
+  key: string;
+  url: string option;
+  cdn_url: string;
+}
+
+type published_record = {
+  key: string;
+  created: bool;
+}
+
+type published_materialization = {
+  manifest_cached: bool;
+  source_cached: bool;
+}
+
+type published_release = {
+  package_locator: string option;
+  source_url: string option;
+  package_subdir: string option;
+  selector: string;
+  resolved_sha: string;
+  package_name: string;
+  package_version: string;
+  manifest: published_artifact_location;
+  source_archive: published_artifact_location;
+  claim: published_record;
+  release: published_record;
+  materialization: published_materialization;
 }
 
 type release_file = {
@@ -41,7 +73,13 @@ type t = {
   source: source;
 }
 
-let make_fetch = fun ~get -> { get }
+let make_fetch = fun ~get ?post () ->
+  let post =
+    match post with
+    | Some post -> post
+    | None -> fun _ ~headers:_ ~body:_ -> Error "POST fetch is not configured"
+  in
+  { get; post }
 
 let tcp_stream_error_message = function
   | Net.TcpStream.Connection_refused -> "connection refused"
@@ -67,27 +105,39 @@ let blink_error_message = function
   | Blink.Error.Closed -> "connection closed"
 
 let default_fetch =
-  make_fetch ~get:(fun uri ->
+  let run = fun method_ uri ~headers ?body () ->
     match Blink.connect uri with
     | Error err -> Error (blink_error_message err)
     | Ok conn ->
-        let request = Net.Http.Request.create Net.Http.Method.Get uri in
-        let finish result =
+        let request =
+          List.fold_left
+            (fun request (name, value) -> Net.Http.Request.add_header request name value)
+            (Net.Http.Request.create method_ uri)
+            headers
+        in
+        let finish = fun result ->
           Blink.close conn;
           result
         in
-        match Blink.request conn request () with
-        | Error err -> finish (Error (blink_error_message err))
-        | Ok () -> (
-            match Blink.await conn with
-            | Error err -> finish (Error (blink_error_message err))
-            | Ok (response, body) ->
-                finish
-                  (Ok {
+        let response =
+          match Blink.request conn request ?body () with
+          | Error err -> Error (blink_error_message err)
+          | Ok () -> (
+              match Blink.await conn with
+              | Error err -> Error (blink_error_message err)
+              | Ok (response, body) ->
+                  Ok {
                     status_code = Net.Http.Status.to_int (Net.Http.Response.status response);
                     body;
-                  })
-          ))
+                  }
+            )
+        in
+        finish response
+  in
+  make_fetch
+    ~get:(fun uri -> run Net.Http.Method.Get uri ~headers:[] ())
+    ~post:(fun uri ~headers ~body -> run Net.Http.Method.Post uri ~headers ~body ())
+    ()
 
 let create_filesystem = fun ?(fetch = default_fetch) ~registry_name ?tusk_home () ->
   match Registry_cache.create ?tusk_home ~registry_name () with
@@ -137,6 +187,162 @@ let fetch_optional = fun registry uri ->
       Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed with " ^ http_status_message status_code)
   | Error err ->
       Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed: " ^ err)
+
+let post_required = fun registry uri ~headers ~body ->
+  match registry.fetch.post uri ~headers ~body with
+  | Ok { status_code = 200; body } -> Ok body
+  | Ok { status_code; body } -> (
+      match Data.Json.of_string body with
+      | Ok (Data.Json.Object fields) -> (
+          match List.assoc_opt "message" fields with
+          | Some (Data.Json.String message) -> Error message
+          | _ ->
+              Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed with " ^ http_status_message status_code)
+        )
+      | Ok _
+      | Error _ ->
+          Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed with " ^ http_status_message status_code)
+    )
+  | Error err ->
+      Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed: " ^ err)
+
+let object_field = fun ~context ~field fields ->
+  match List.assoc_opt field fields with
+  | Some value -> Ok value
+  | None -> Error (context ^ " is missing required field '" ^ field ^ "'")
+
+let string_field = fun ~context ~field fields ->
+  match object_field ~context ~field fields with
+  | Error _ as err -> err
+  | Ok (Data.Json.String value) -> Ok value
+  | Ok _ -> Error (context ^ "." ^ field ^ " must be a string")
+
+let optional_string_field = fun ~context ~field fields ->
+  match List.assoc_opt field fields with
+  | None -> Ok None
+  | Some (Data.Json.String value) -> Ok (Some value)
+  | Some _ -> Error (context ^ "." ^ field ^ " must be a string")
+
+let bool_field = fun ~context ~field fields ->
+  match object_field ~context ~field fields with
+  | Error _ as err -> err
+  | Ok (Data.Json.Bool value) -> Ok value
+  | Ok _ -> Error (context ^ "." ^ field ^ " must be a boolean")
+
+let published_artifact_location_of_json = fun ~context json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match
+        string_field ~context ~field:"key" fields,
+        optional_string_field ~context ~field:"url" fields,
+        string_field ~context ~field:"cdn_url" fields
+      with
+      | Ok key, Ok url, Ok cdn_url -> Ok { key; url; cdn_url }
+      | Error err, _, _
+      | _, Error err, _
+      | _, _, Error err -> Error err
+    )
+  | _ -> Error (context ^ " must be an object")
+
+let published_record_of_json = fun ~context json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match
+        string_field ~context ~field:"key" fields,
+        bool_field ~context ~field:"created" fields
+      with
+      | Ok key, Ok created -> Ok { key; created }
+      | Error err, _
+      | _, Error err -> Error err
+    )
+  | _ -> Error (context ^ " must be an object")
+
+let published_materialization_of_json = fun ~context json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match
+        bool_field ~context ~field:"manifest" fields,
+        bool_field ~context ~field:"source" fields
+      with
+      | Ok manifest_cached, Ok source_cached -> Ok { manifest_cached; source_cached }
+      | Error err, _
+      | _, Error err -> Error err
+    )
+  | _ -> Error (context ^ " must be an object")
+
+let published_release_of_json = fun json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match
+        optional_string_field ~context:"publish response" ~field:"package" fields,
+        optional_string_field ~context:"publish response" ~field:"source_url" fields,
+        optional_string_field ~context:"publish response" ~field:"package_subdir" fields,
+        string_field ~context:"publish response" ~field:"selector" fields,
+        string_field ~context:"publish response" ~field:"resolved_sha" fields,
+        string_field ~context:"publish response" ~field:"package_name" fields,
+        string_field ~context:"publish response" ~field:"package_version" fields,
+        object_field ~context:"publish response" ~field:"manifest" fields,
+        object_field ~context:"publish response" ~field:"source_archive" fields,
+        object_field ~context:"publish response" ~field:"claim" fields,
+        object_field ~context:"publish response" ~field:"release" fields,
+        object_field ~context:"publish response" ~field:"materialization" fields
+      with
+      | Ok package_locator, Ok source_url, Ok package_subdir, Ok selector, Ok resolved_sha, Ok package_name, Ok package_version, Ok manifest_json, Ok source_archive_json, Ok claim_json, Ok release_json, Ok materialization_json -> (
+          match
+            published_artifact_location_of_json ~context:"publish response.manifest" manifest_json,
+            published_artifact_location_of_json ~context:"publish response.source_archive" source_archive_json,
+            published_record_of_json ~context:"publish response.claim" claim_json,
+            published_record_of_json ~context:"publish response.release" release_json,
+            published_materialization_of_json ~context:"publish response.materialization" materialization_json
+          with
+          | Ok manifest, Ok source_archive, Ok claim, Ok release, Ok materialization ->
+              Ok {
+                package_locator;
+                source_url;
+                package_subdir;
+                selector;
+                resolved_sha;
+                package_name;
+                package_version;
+                manifest;
+                source_archive;
+                claim;
+                release;
+                materialization;
+              }
+          | Error err, _, _, _, _
+          | _, Error err, _, _, _
+          | _, _, Error err, _, _
+          | _, _, _, Error err, _
+          | _, _, _, _, Error err -> Error err
+        )
+      | Error err, _, _, _, _, _, _, _, _, _, _, _
+      | _, Error err, _, _, _, _, _, _, _, _, _, _
+      | _, _, Error err, _, _, _, _, _, _, _, _, _
+      | _, _, _, Error err, _, _, _, _, _, _, _, _
+      | _, _, _, _, Error err, _, _, _, _, _, _, _
+      | _, _, _, _, _, Error err, _, _, _, _, _, _
+      | _, _, _, _, _, _, Error err, _, _, _, _, _
+      | _, _, _, _, _, _, _, Error err, _, _, _, _
+      | _, _, _, _, _, _, _, _, Error err, _, _, _
+      | _, _, _, _, _, _, _, _, _, Error err, _, _
+      | _, _, _, _, _, _, _, _, _, _, Error err, _
+      | _, _, _, _, _, _, _, _, _, _, _, Error err -> Error err
+    )
+  | _ -> Error "publish response must be an object"
+
+let publish_from_locator_url = fun ~registry_name ~locator ~selector ->
+  let query = Net.Uri.Query.to_string [ ("ref", selector) ] in
+  let url = "https://api." ^ registry_name ^ "/v1/packages/" ^ locator ^ "/publish?" ^ query in
+  match Net.Uri.of_string url with
+  | Ok uri -> Ok uri
+  | Error _ -> Error ("failed to build publish url '" ^ url ^ "'")
+
+let publish_artifact_url = fun ~registry_name ->
+  let url = "https://api." ^ registry_name ^ "/v1/publish" in
+  match Net.Uri.of_string url with
+  | Ok uri -> Ok uri
+  | Error _ -> Error ("failed to build publish url '" ^ url ^ "'")
 
 let read_config = fun registry ->
   match registry.source with
@@ -272,6 +478,18 @@ let extract_cached_archive = fun ~archive_path ~root ->
           Ok ()
     )
 
+let find_release = fun registry ~package_name ~version ->
+  match read_package_document registry ~package_name with
+  | Error _ as err -> err
+  | Ok None ->
+      Error ("package '" ^ package_name ^ "' was not found in registry '" ^ name registry ^ "'")
+  | Ok (Some document) -> (
+      match List.find_opt (fun (release: Sparse_index.release) -> String.equal release.version version) document.releases with
+      | Some release -> Ok release
+      | None ->
+          Error ("package '" ^ package_name ^ "' does not have release '" ^ version ^ "' in registry '" ^ name registry ^ "'")
+    )
+
 let write_cached_archive = fun ~archive_path ~contents ->
   let archive_parent =
     match Path.parent archive_path with
@@ -295,28 +513,21 @@ let write_cached_archive = fun ~archive_path ~contents ->
     )
 
 let fetch_release_archive = fun registry ~package_name ~version ~archive_path ->
-  match read_package_document registry ~package_name with
+  match find_release registry ~package_name ~version with
   | Error _ as err -> err
-  | Ok None ->
-      Error ("package '" ^ package_name ^ "' was not found in registry '" ^ name registry ^ "'")
-  | Ok (Some document) -> (
-      match List.find_opt (fun (release: Sparse_index.release) -> String.equal release.version version) document.releases with
-      | None ->
-          Error ("package '" ^ package_name ^ "' does not have release '" ^ version ^ "' in registry '" ^ name registry ^ "'")
-      | Some release -> (
-          match read_config registry with
+  | Ok release -> (
+      match read_config registry with
+      | Error _ as err -> err
+      | Ok None ->
+          Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
+      | Ok (Some config) -> (
+          match Sparse_index.release_source_url config release with
           | Error _ as err -> err
-          | Ok None ->
-              Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
-          | Ok (Some config) -> (
-              match Sparse_index.release_source_url config release with
+          | Ok uri -> (
+              match fetch_required registry uri with
               | Error _ as err -> err
-              | Ok uri -> (
-                  match fetch_required registry uri with
-                  | Error _ as err -> err
-                  | Ok archive ->
-                      write_cached_archive ~archive_path ~contents:archive
-                )
+              | Ok archive ->
+                  write_cached_archive ~archive_path ~contents:archive
             )
         )
     )
@@ -324,6 +535,7 @@ let fetch_release_archive = fun registry ~package_name ~version ~archive_path ->
 let materialize_release = fun registry ~package_name ~version ->
   let root = Registry_cache.package_src_dir registry.cache ~package_name ~version in
   let manifest_path = Path.(root / Path.v "tusk.toml") in
+  let archive_path = Registry_cache.archive_path registry.cache ~package_name ~version in
   match Fs.exists manifest_path with
   | Error err ->
       Error ("failed to check package manifest '"
@@ -335,7 +547,6 @@ let materialize_release = fun registry ~package_name ~version ->
   | Ok false -> (
       match registry.source with
       | Filesystem -> (
-          let archive_path = Registry_cache.archive_path registry.cache ~package_name ~version in
           match Fs.exists archive_path with
           | Error err ->
               Error ("failed to check cached package archive '"
@@ -369,3 +580,32 @@ let materialize_release = fun registry ~package_name ~version ->
               | Error _ as err -> err
         )
     )
+
+let publish_response = fun registry uri ~api_token ~artifact ->
+  match
+    post_required
+      registry
+      uri
+      ~headers:[
+        ("authorization", "Bearer " ^ api_token);
+        ("content-type", "application/gzip");
+      ]
+      ~body:artifact
+  with
+  | Error _ as err -> err
+  | Ok body -> (
+      match Data.Json.of_string body with
+      | Error err ->
+          Error ("failed to parse publish response JSON: " ^ Data.Json.error_to_string err)
+      | Ok json -> published_release_of_json json
+    )
+
+let publish_artifact = fun registry ~api_token ~artifact ->
+  match publish_artifact_url ~registry_name:(name registry) with
+  | Error _ as err -> err
+  | Ok uri -> publish_response registry uri ~api_token ~artifact
+
+let publish_from_locator = fun registry ~locator ~selector ~api_token ~artifact ->
+  match publish_from_locator_url ~registry_name:(name registry) ~locator ~selector with
+  | Error _ as err -> err
+  | Ok uri -> publish_response registry uri ~api_token ~artifact

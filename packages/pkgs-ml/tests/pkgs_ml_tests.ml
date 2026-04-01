@@ -140,11 +140,38 @@ let sparse_index_std_release_json = {|{
   ]
 }|}
 
-let make_fetch_recorder = fun handler ->
+type recorded_request = {
+  method_: string;
+  url: string;
+  headers: (string * string) list;
+  body: string option;
+}
+
+let make_fetch_recorder = fun ?post_handler get_handler ->
   let requests = ref [] in
-  let fetch = Pkgs_ml.Registry.make_fetch ~get:(fun uri ->
-    requests := Net.Uri.to_string uri :: !requests;
-    handler uri) in
+  let fetch =
+    Pkgs_ml.Registry.make_fetch
+      ~get:(fun uri ->
+        requests := {
+          method_ = "GET";
+          url = Net.Uri.to_string uri;
+          headers = [];
+          body = None;
+        } :: !requests;
+        get_handler uri)
+      ?post:(Option.map
+        (fun post_handler ->
+          fun uri ~headers ~body ->
+            requests := {
+              method_ = "POST";
+              url = Net.Uri.to_string uri;
+              headers;
+              body = Some body;
+            } :: !requests;
+            post_handler uri ~headers ~body)
+        post_handler)
+      ()
+  in
   (fetch, requests)
 
 let test_filesystem_registry_fetches_config_on_cache_miss = fun () ->
@@ -170,7 +197,7 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun () ->
             | Error err -> Error err
             | Ok None -> Error "expected fetched config to be cached"
             | Ok (Some cached) ->
-                let requested = List.rev !requests in
+                let requested = List.rev !requests |> List.map (fun request -> request.url) in
                 if
                   String.equal config.kind "sparse"
                   && String.equal cached.index_base_url "https://cdn.pkgs.ml/index/v1"
@@ -214,7 +241,7 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun () ->
             | Ok None, _
             | _, Ok None -> Error "expected fetched sparse index files to be cached"
             | Ok (Some _), Ok (Some cached) ->
-                let requested = List.rev !requests in
+                let requested = List.rev !requests |> List.map (fun request -> request.url) in
                 if
                   String.equal document.name "kernel"
                   && String.equal cached.name "kernel"
@@ -256,7 +283,7 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun () 
             | Error err -> Error err
             | Ok (Some _) -> Error "expected missing package document lookup to leave cache empty"
             | Ok None ->
-                let requested = List.rev !requests in
+                let requested = List.rev !requests |> List.map (fun request -> request.url) in
                 if
                   requested = [
                     "https://cdn.pkgs.ml/index/v1/config.json";
@@ -494,7 +521,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun () ->
                     | _, _, Error err -> Error (IO.error_message err)
                     | Ok false, _, _ -> Error "expected downloaded archive to be cached"
                     | Ok true, Ok manifest, Ok source ->
-                        let requested = List.rev !requests in
+                        let requested = List.rev !requests |> List.map (fun request -> request.url) in
                         if
                           String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
                           && String.equal source "let answer = 42\n"
@@ -512,6 +539,204 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun () ->
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
+let test_registry_publish_from_locator_posts_tarball_to_publish_route = fun () ->
+  let cache = Pkgs_ml.Registry_cache.create
+    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~registry_name:"pkgs.ml"
+    ()
+  |> Result.expect ~msg:"expected registry cache to be created" in
+  let artifact = "fake-tarball-bytes" in
+  let fetch, requests =
+    make_fetch_recorder
+      ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+        Ok {
+          Pkgs_ml.Registry.status_code = 200;
+          body = {|{
+  "package": "github.com/leostera/minttea",
+  "source_url": "https://github.com/leostera/minttea",
+  "package_subdir": ".",
+  "selector": "main",
+  "resolved_sha": "0123456789abcdef0123456789abcdef01234567",
+  "package_name": "minttea",
+  "package_version": "0.4.2",
+  "manifest": {
+    "key": "packages/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.manifest.json",
+    "url": "https://api.pkgs.ml/v1/packages/github.com/leostera/minttea/manifest/0123456789abcdef0123456789abcdef01234567.json",
+    "cdn_url": "https://cdn.pkgs.ml/packages/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.manifest.json"
+  },
+  "source_archive": {
+    "key": "sources/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.tar.gz",
+    "url": "https://api.pkgs.ml/v1/packages/github.com/leostera/minttea/source/0123456789abcdef0123456789abcdef01234567.tar.gz",
+    "cdn_url": "https://cdn.pkgs.ml/sources/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.tar.gz"
+  },
+  "claim": {
+    "key": "claims/minttea.json",
+    "created": true
+  },
+  "release": {
+    "key": "releases/minttea/0.4.2.json",
+    "created": true
+  },
+  "materialization": {
+    "manifest": false,
+    "source": false
+  }
+}|};
+        })
+      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+  in
+  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+  match
+    Pkgs_ml.Registry.publish_from_locator
+      registry
+      ~locator:"github.com/leostera/minttea"
+      ~selector:"main"
+      ~api_token:"root-secret"
+      ~artifact
+  with
+  | Error err -> Error err
+  | Ok published ->
+      let requested = List.rev !requests in
+      match requested with
+      | [ request ] ->
+          let has_header name value =
+            List.exists
+              (fun (header_name, header_value) ->
+                String.equal header_name name && String.equal header_value value)
+              request.headers
+          in
+          if
+            String.equal request.method_ "POST"
+            && String.equal request.url "https://api.pkgs.ml/v1/packages/github.com/leostera/minttea/publish?ref=main"
+            && request.body = Some artifact
+            && has_header "authorization" "Bearer root-secret"
+            && has_header "content-type" "application/gzip"
+            && published.package_locator = Some "github.com/leostera/minttea"
+            && published.source_url = Some "https://github.com/leostera/minttea"
+            && published.package_subdir = Some "."
+            && String.equal published.package_name "minttea"
+            && String.equal published.package_version "0.4.2"
+            && String.equal published.manifest.key "packages/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.manifest.json"
+            && published.manifest.url = Some "https://api.pkgs.ml/v1/packages/github.com/leostera/minttea/manifest/0123456789abcdef0123456789abcdef01234567.json"
+            && String.equal published.source_archive.key "sources/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.tar.gz"
+            && published.source_archive.url = Some "https://api.pkgs.ml/v1/packages/github.com/leostera/minttea/source/0123456789abcdef0123456789abcdef01234567.tar.gz"
+            && published.claim.created
+            && published.release.created
+            && not published.materialization.manifest_cached
+            && not published.materialization.source_cached
+          then
+            Ok ()
+          else
+            Error "unexpected publish-from-locator request or response"
+      | _ -> Error "expected exactly one publish request"
+
+let test_registry_publish_from_locator_bubbles_registry_error_message = fun () ->
+  let cache = Pkgs_ml.Registry_cache.create
+    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~registry_name:"pkgs.ml"
+    ()
+  |> Result.expect ~msg:"expected registry cache to be created" in
+  let fetch, _requests =
+    make_fetch_recorder
+      ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+        Ok {
+          Pkgs_ml.Registry.status_code = 404;
+          body = {|{
+  "error": "package_not_found",
+  "message": "package `std` was not found in registry `pkgs.ml`"
+}|};
+        })
+      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+  in
+  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+  match
+    Pkgs_ml.Registry.publish_from_locator
+      registry
+      ~locator:"github.com/leostera/riot/packages/std"
+      ~selector:"main"
+      ~api_token:"root-secret"
+      ~artifact:"tarball"
+  with
+  | Ok _ -> Error "expected publish artifact to return the registry error"
+  | Error err ->
+      if String.equal err "package `std` was not found in registry `pkgs.ml`" then
+        Ok ()
+      else
+        Error ("unexpected publish artifact error: " ^ err)
+
+let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun () ->
+  let cache = Pkgs_ml.Registry_cache.create
+    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~registry_name:"pkgs.ml"
+    ()
+  |> Result.expect ~msg:"expected registry cache to be created" in
+  let artifact = "fake-tarball-bytes" in
+  let fetch, requests =
+    make_fetch_recorder
+      ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+        Ok {
+          Pkgs_ml.Registry.status_code = 200;
+          body = {|{
+  "package_name": "minttea",
+  "package_version": "0.4.2",
+  "selector": "artifact",
+  "resolved_sha": "0123456789abcdef0123456789abcdef01234567",
+  "manifest": {
+    "key": "packages/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.manifest.json",
+    "cdn_url": "https://cdn.pkgs.ml/packages/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.manifest.json"
+  },
+  "source_archive": {
+    "key": "sources/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.tar.gz",
+    "cdn_url": "https://cdn.pkgs.ml/sources/github.com/leostera/minttea/0123456789abcdef0123456789abcdef01234567.tar.gz"
+  },
+  "claim": {
+    "key": "claims/minttea.json",
+    "created": true
+  },
+  "release": {
+    "key": "releases/minttea/0.4.2.json",
+    "created": true
+  },
+  "materialization": {
+    "manifest": false,
+    "source": false
+  }
+}|};
+        })
+      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+  in
+  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+  match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
+  | Error err -> Error err
+  | Ok published ->
+      let requested = List.rev !requests in
+      match requested with
+      | [ request ] ->
+          let has_header name value =
+            List.exists
+              (fun (header_name, header_value) ->
+                String.equal header_name name && String.equal header_value value)
+              request.headers
+          in
+          if
+            String.equal request.method_ "POST"
+            && String.equal request.url "https://api.pkgs.ml/v1/publish"
+            && request.body = Some artifact
+            && has_header "authorization" "Bearer root-secret"
+            && has_header "content-type" "application/gzip"
+            && published.package_locator = None
+            && published.source_url = None
+            && published.package_subdir = None
+            && String.equal published.package_name "minttea"
+            && String.equal published.package_version "0.4.2"
+            && published.manifest.url = None
+            && published.source_archive.url = None
+          then
+            Ok ()
+          else
+            Error "unexpected artifact publish request or response"
+      | _ -> Error "expected exactly one publish request"
+
 let tests =
   Test.[
     case "registry cache: uses cargo-style split layout" test_registry_split_layout;
@@ -525,6 +750,9 @@ let tests =
     case "registry: materialization skips existing release sources" test_registry_materialize_skips_existing_release;
     case "registry: filesystem registry materializes cached release archives" test_filesystem_registry_materializes_cached_release;
     case "registry: filesystem registry downloads release archives on cache miss" test_filesystem_registry_downloads_release_archive_on_cache_miss;
+    case "registry: publish from locator posts tarball to publish route" test_registry_publish_from_locator_posts_tarball_to_publish_route;
+    case "registry: publish from locator bubbles registry error message" test_registry_publish_from_locator_bubbles_registry_error_message;
+    case "registry: publish artifact posts tarball to artifact publish route" test_registry_publish_artifact_posts_tarball_to_artifact_publish_route;
   ]
 
 let name = "pkgs-ml Tests"
