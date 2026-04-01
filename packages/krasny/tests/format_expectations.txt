@@ -163,6 +163,8 @@
 0980_fun_breaks_after_arrow.ml
 0981_top_level_letrec_blank_line.ml
 0982_inline_fun_head_with_multiline_body.ml
+0983_record_expression_final_nested_record_separator.ml
+0984_record_expression_final_if_separator.ml
 
 # 91xx copied real-file regressions
 9101_real_krasny_doc.ml

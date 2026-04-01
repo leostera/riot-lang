@@ -2883,6 +2883,35 @@ let direct_required_tokens_with_text_between_offsets = fun ~context ~after_offse
         ~syntax_node:node
         ~context
 
+let separator_tokens_between_record_fields = fun ~closing_token (fields: Cst.record_expression_field list) node ->
+    let separator_tokens_between_offsets = fun ~after_offset ~before_offset ->
+      direct_tokens_between_offsets ~after_offset ~before_offset node
+      |> List.filter
+        (fun token -> String.equal (Cst.Token.text token) semicolon_text)
+    in
+    let closing_span = Cst.Token.span closing_token in
+    let rec loop acc = function
+      | [] -> List.rev acc
+      | [ (field: Cst.record_expression_field) ] ->
+          let field_span = span_of_syntax_node_nontrivia_bounds field.Cst.syntax_node in
+          let trailing =
+            separator_tokens_between_offsets
+              ~after_offset:field_span.end_
+              ~before_offset:closing_span.start
+          in
+          List.rev_append trailing acc |> List.rev
+      | (field: Cst.record_expression_field) :: (((next_field: Cst.record_expression_field) :: _) as rest) ->
+          let field_span = span_of_syntax_node_nontrivia_bounds field.Cst.syntax_node in
+          let next_span = span_of_syntax_node_nontrivia_bounds next_field.Cst.syntax_node in
+          let separators =
+            separator_tokens_between_offsets
+              ~after_offset:field_span.end_
+              ~before_offset:next_span.start
+          in
+          loop (List.rev_append separators acc) rest
+    in
+    loop [] fields
+
 let trailing_module_path_tokens = fun syntax_tokens ->
     let is_ident_text text =
       let len = String.length text in
@@ -6053,9 +6082,14 @@ and record_literal_expression_from_node = fun node ->
     |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
     |> List.filter_map record_expression_field_from_node in
     Some (
-      ({syntax_node = node; opening_token; fields; separator_tokens = direct_tokens |> List.filter
-            (fun syntax_token ->
-              String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text) |> List.map token; closing_token; attributes = []}: Cst.record_literal_expression)
+      ({
+        syntax_node = node;
+        opening_token;
+        fields;
+        separator_tokens = separator_tokens_between_record_fields ~closing_token fields node;
+        closing_token;
+        attributes = []
+      }: Cst.record_literal_expression)
     )
 
 and record_update_expression_from_node = fun node ->
@@ -6072,6 +6106,10 @@ and record_update_expression_from_node = fun node ->
     in
     match direct_non_trivia_nodes node with
     | base_node :: rest -> (
+        let fields = rest
+        |> List.filter
+          (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
+        |> List.filter_map record_expression_field_from_node in
         let lifted_base =
           match Ceibo.Red.SyntaxNode.kind base_node with
           | Syntax_kind.RECORD_FIELD -> (
@@ -6101,14 +6139,8 @@ and record_update_expression_from_node = fun node ->
                     ~context:[ "expression"; "record_update" ]
                     node
                     "with";
-                  fields = rest
-                  |> List.filter
-                    (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.RECORD_FIELD)
-                  |> List.filter_map record_expression_field_from_node;
-                  separator_tokens = direct_tokens |> List.filter
-                    (fun syntax_token ->
-                      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) semicolon_text) |> List.map
-                    token;
+                  fields;
+                  separator_tokens = separator_tokens_between_record_fields ~closing_token fields node;
                   closing_token;
                   attributes = []
                 }:

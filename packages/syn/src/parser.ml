@@ -28,6 +28,7 @@ type parser = {
   diagnostics: Diagnostic.t list Cell.t;
   mutable object_update_depth: int;
   mutable case_expr_depth: int;
+  mutable record_field_depth: int;
 }
 
 let create = fun ~source tokens ->
@@ -35,7 +36,8 @@ let create = fun ~source tokens ->
       cursor = Token_cursor.create ~source tokens;
       diagnostics = Cell.create [];
       object_update_depth = 0;
-      case_expr_depth = 0
+      case_expr_depth = 0;
+      record_field_depth = 0
     }
 
 let position = fun parser -> Token_cursor.position parser.cursor
@@ -206,6 +208,33 @@ let has_dot_ident_continuation = fun parser ->
     peek_kind parser = Token.Dot && match (peek_n parser 1).Token.kind with
     | Token.Ident _ -> true
     | _ -> false
+
+let looks_like_record_field_after_offset = fun parser offset ->
+    let rec loop index =
+      match (peek_n parser index).Token.kind with
+      | Token.Ident _ -> (
+          match (peek_n parser (index + 1)).Token.kind with
+          | Token.Dot -> (
+              match (peek_n parser (index + 2)).Token.kind with
+              | Token.Ident _ -> loop (index + 2)
+              | _ -> false
+            )
+          | Token.Eq
+          | Token.Semi
+          | Token.CloseDelim Token.Brace -> true
+          | _ -> false
+        )
+      | _ -> false
+    in
+    loop offset
+
+let semicolon_belongs_to_record_field = fun parser ->
+    peek_kind parser = Token.Semi
+    && (
+      match (peek_n parser 1).Token.kind with
+      | Token.CloseDelim Token.Brace -> true
+      | _ -> looks_like_record_field_after_offset parser 1
+    )
 
 let has_dot_open_paren_continuation = fun parser ->
     peek_kind parser = Token.Dot && match (peek_n parser 1).Token.kind with
@@ -5232,7 +5261,9 @@ and parse_assign_expr = fun parser ->
 and parse_sequence_expr = fun parser ->
     let first = parse_assign_expr parser in
     (* Check if we have semicolons to make a sequence *)
-    if peek_kind parser = Token.Semi then
+    if peek_kind parser = Token.Semi && not
+      (parser.record_field_depth > 0 && semicolon_belongs_to_record_field parser)
+    then
       (
         let trivia_before_first_semi = consume_trivia parser in
         let parts = ref
@@ -5945,7 +5976,10 @@ and parse_record_field = fun parser ->
     if peek_kind parser = Token.Eq then
       let eq = consume parser in
       let trivia_after_eq = consume_trivia parser in
+      let previous_record_field_depth = parser.record_field_depth in
+      parser.record_field_depth <- previous_record_field_depth + 1;
       let value_expr = parse_assign_expr parser in
+      parser.record_field_depth <- previous_record_field_depth;
       make_node
         Syntax_kind.RECORD_FIELD
         (field_name_parts

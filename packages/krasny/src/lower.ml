@@ -2850,15 +2850,30 @@ let make_lowerer =
           | Some equals_token -> equals_token
           | None -> unsupported "record expression field missing equals token"
         in
-        Doc.concat
-          [
-            doc_of_ident field.field_path;
-            Doc.space;
-            doc_of_token equals_token;
-            Doc.space;
-            render_expression field.value;
-
-          ]
+        let body_doc =
+          if expression_requires_break_after_equals field.value then
+            render_block_expression field.value
+          else
+            render_expression field.value
+        in
+        if Doc.is_multiline body_doc || expression_requires_break_after_equals field.value then
+          Doc.concat
+            [
+              doc_of_ident field.field_path;
+              Doc.space;
+              doc_of_token equals_token;
+              Doc.line;
+              Doc.indent 2 body_doc;
+            ]
+        else
+          Doc.concat
+            [
+              doc_of_ident field.field_path;
+              Doc.space;
+              doc_of_token equals_token;
+              Doc.space;
+              body_doc;
+            ]
   and render_record_expression_field_separator = function
     | Some separator_token -> doc_of_token separator_token
     | None -> Doc.semi
@@ -3497,34 +3512,46 @@ let make_lowerer =
       closing_token;
       _
     } ->
-        let rec render_fields fields separator_tokens =
+        let rendered_fields = List.map render_record_field fields in
+        let rec render_fields fields separator_tokens break_doc =
           match fields, separator_tokens with
           | [], [] -> Doc.empty
           | [ field ], [] -> Doc.concat
-            [ render_record_field field; render_record_expression_field_separator None ]
+            [ field; render_record_expression_field_separator None ]
           | [ field ], [ separator_token ] -> Doc.concat
-            [ render_record_field field; render_record_expression_field_separator (Some separator_token) ]
+            [ field; render_record_expression_field_separator (Some separator_token) ]
           | field :: rest, separator_token :: rest_separators -> Doc.concat
             [
-              render_record_field field;
+              field;
               doc_of_token separator_token;
-              Doc.break ();
-              render_fields rest rest_separators;
-
+              break_doc;
+              render_fields rest rest_separators break_doc;
             ]
           | _ -> unsupported "record literal fields missing separator tokens"
         in
-        Doc.group
-          (Doc.concat
+        if fields = [] then
+          Doc.concat [ doc_of_token opening_token; doc_of_token closing_token ]
+        else if List.exists Doc.is_multiline rendered_fields || List.length fields > 4 then
+          Doc.concat
             [
               doc_of_token opening_token;
-              Doc.indent
-                2
-                (Doc.concat [ Doc.break ~flat:"" (); render_fields fields separator_tokens;  ]);
-              Doc.break ~flat:"" ();
+              Doc.line;
+              Doc.indent 2 (render_fields rendered_fields separator_tokens Doc.line);
+              Doc.line;
               doc_of_token closing_token;
-
-            ])
+            ]
+        else
+          Doc.group
+            (Doc.concat
+              [
+                doc_of_token opening_token;
+                Doc.indent
+                  2
+                  (Doc.concat
+                    [ Doc.break ~flat:"" (); render_fields rendered_fields separator_tokens (Doc.break ~flat:"" ()) ]);
+                Doc.break ~flat:"" ();
+                doc_of_token closing_token;
+              ])
     | Syn.Cst.RecordExpression.Update {
       opening_token;
       base;
@@ -3534,43 +3561,61 @@ let make_lowerer =
       closing_token;
       _
     } ->
-        let rec render_fields fields separator_tokens =
+        let base_doc = render_expression base in
+        let rendered_fields = List.map render_record_field fields in
+        let rec render_fields fields separator_tokens break_doc =
           match fields, separator_tokens with
           | [], [] -> Doc.empty
           | [ field ], [] -> Doc.concat
-            [ render_record_field field; render_record_expression_field_separator None ]
+            [ field; render_record_expression_field_separator None ]
           | [ field ], [ separator_token ] -> Doc.concat
-            [ render_record_field field; render_record_expression_field_separator (Some separator_token) ]
+            [ field; render_record_expression_field_separator (Some separator_token) ]
           | field :: rest, separator_token :: rest_separators -> Doc.concat
             [
-              render_record_field field;
+              field;
               doc_of_token separator_token;
-              Doc.break ();
-              render_fields rest rest_separators;
-
+              break_doc;
+              render_fields rest rest_separators break_doc;
             ]
           | _ -> unsupported "record update fields missing separator tokens"
         in
-        Doc.group
-          (Doc.concat
+        if List.exists Doc.is_multiline rendered_fields || Doc.is_multiline base_doc || List.length fields > 4 then
+          Doc.concat
             [
               doc_of_token opening_token;
+              Doc.line;
               Doc.indent
                 2
                 (Doc.concat
                   [
-                    Doc.break ~flat:"" ();
-                    render_expression base;
-                    Doc.break ();
+                    base_doc;
+                    Doc.line;
                     doc_of_token with_token;
                     Doc.space;
-                    render_fields fields separator_tokens;
-
+                    render_fields rendered_fields separator_tokens Doc.line;
                   ]);
-              Doc.break ~flat:"" ();
+              Doc.line;
               doc_of_token closing_token;
-
-            ])
+            ]
+        else
+          Doc.group
+            (Doc.concat
+              [
+                doc_of_token opening_token;
+                Doc.indent
+                  2
+                  (Doc.concat
+                    [
+                      Doc.break ~flat:"" ();
+                      base_doc;
+                      Doc.break ();
+                      doc_of_token with_token;
+                      Doc.space;
+                      render_fields rendered_fields separator_tokens (Doc.break ~flat:"" ());
+                    ]);
+                Doc.break ~flat:"" ();
+                doc_of_token closing_token;
+              ])
   and render_tuple_expression_bare elements = Doc.group
     (join_map (Doc.concat [ Doc.comma; Doc.break () ]) render_expression elements)
   and render_parenthesized_apply_payload (

@@ -1,0 +1,10 @@
+let from_flag flag =
+  {
+    file_type = if flag then
+      `File
+    else
+      `Unknown;
+    system = {
+      own_event = true;
+    };
+  }
