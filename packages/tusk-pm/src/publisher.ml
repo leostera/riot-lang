@@ -23,6 +23,7 @@ type error =
     }
   | TarCommandSpawnFailed of { command: string; error: string }
   | RegistryPublishFailed of { locator: string; error: string }
+  | CyclicWorkspacePublishOrder of { cycle: string list }
 
 let excluded_entry_names = [
   "_build";
@@ -88,6 +89,8 @@ let message = function
       "failed to spawn publish artifact command '" ^ command ^ "': " ^ error
   | RegistryPublishFailed { locator; error } ->
       "failed to publish '" ^ locator ^ "': " ^ error
+  | CyclicWorkspacePublishOrder { cycle } ->
+      "workspace publish order contains a cycle: " ^ String.concat " -> " cycle
 
 let should_skip_entry = fun path ->
   let name = Path.basename path in
@@ -235,3 +238,64 @@ let publish_from_locator = fun ~registry ~(package:Tusk_model.Package.t) ~locato
       | Error error ->
           Error (RegistryPublishFailed { locator; error })
     )
+
+let assoc_package = fun packages name ->
+  List.find_opt
+    (fun (pkg_name, _pkg) -> String.equal pkg_name name)
+    packages
+  |> Option.map snd
+
+let workspace_runtime_dependency_names = fun ~workspace_packages (pkg: Tusk_model.Package.t) ->
+  let is_workspace_dependency = fun (dep: Tusk_model.Package.dependency) ->
+    if dep.source.workspace then
+      Option.is_some (assoc_package workspace_packages dep.name)
+    else
+      match dep.source.path with
+      | Some _ -> Option.is_some (assoc_package workspace_packages dep.name)
+      | None -> false
+  in
+  pkg.dependencies
+  |> List.filter is_workspace_dependency
+  |> List.map (fun (dep: Tusk_model.Package.dependency) -> dep.name)
+
+let workspace_publish_order = fun ~packages ->
+  let workspace_packages =
+    packages
+    |> List.filter Tusk_model.Package.is_workspace_member
+    |> List.map (fun (pkg: Tusk_model.Package.t) -> (pkg.name, pkg))
+  in
+  let rec visit ~visiting ~visited ordered name =
+    if List.exists (String.equal name) visited then
+      Ok (visited, ordered)
+    else if List.exists (String.equal name) visiting then
+      Error (CyclicWorkspacePublishOrder { cycle = List.rev (name :: visiting) })
+    else
+      match assoc_package workspace_packages name with
+      | None ->
+          Ok (visited, ordered)
+      | Some pkg ->
+          let visiting = name :: visiting in
+          let dependency_names = workspace_runtime_dependency_names ~workspace_packages pkg in
+          let rec visit_dependencies visited ordered = function
+            | [] ->
+                let visited = name :: visited in
+                Ok (visited, pkg :: ordered)
+            | dep_name :: rest -> (
+                match visit ~visiting ~visited ordered dep_name with
+                | Error _ as err -> err
+                | Ok (visited, ordered) ->
+                    visit_dependencies visited ordered rest
+              )
+          in
+          visit_dependencies visited ordered dependency_names
+  in
+  let rec walk_names visited ordered = function
+    | [] -> Ok (List.rev ordered)
+    | name :: rest -> (
+        match visit ~visiting:[] ~visited ordered name with
+        | Error _ as err -> err
+        | Ok (visited, ordered) ->
+            walk_names visited ordered rest
+      )
+  in
+  walk_names [] [] (List.map fst workspace_packages)

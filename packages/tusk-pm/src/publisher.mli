@@ -23,6 +23,7 @@ type error =
     }
   | TarCommandSpawnFailed of { command: string; error: string }
   | RegistryPublishFailed of { locator: string; error: string }
+  | CyclicWorkspacePublishOrder of { cycle: string list }
 
 val message: error -> string
 
@@ -41,3 +42,7 @@ val publish_from_locator:
   selector:string ->
   api_token:string ->
   (Pkgs_ml.Registry.published_release, error) result
+
+val workspace_publish_order:
+  packages:Tusk_model.Package.t list ->
+  (Tusk_model.Package.t list, error) result

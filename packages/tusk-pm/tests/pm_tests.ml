@@ -381,6 +381,60 @@ public = true
       | Error err ->
           Error ("unexpected publish error: " ^ Tusk_pm.Publisher.message err))
 
+let test_publisher_workspace_publish_order_uses_runtime_local_dependencies = fun () ->
+  let core = make_package ~name:"core" ~path:(Path.v "packages/core") () in
+  let util = make_package
+    ~name:"util"
+    ~path:(Path.v "packages/util")
+    ~dependencies:[ { name = "core"; source = source ~workspace:true () } ]
+    () in
+  let app = make_package
+    ~name:"app"
+    ~path:(Path.v "packages/app")
+    ~dependencies:[ { name = "util"; source = source ~path:(Path.v "../util") ~version:Std.Version.any () } ]
+    () in
+  match Tusk_pm.Publisher.workspace_publish_order ~packages:[ app; util; core ] with
+  | Error err -> Error ("expected publish order to succeed: " ^ Tusk_pm.Publisher.message err)
+  | Ok ordered ->
+      if List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) ordered = [ "core"; "util"; "app" ] then
+        Ok ()
+      else
+        Error "unexpected workspace publish order"
+
+let test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies = fun () ->
+  let core = make_package ~name:"core" ~path:(Path.v "packages/core") () in
+  let app = make_package
+    ~name:"app"
+    ~path:(Path.v "packages/app")
+    ~build_dependencies:[ { name = "core"; source = source ~workspace:true () } ]
+    ~dev_dependencies:[ { name = "core"; source = source ~workspace:true () } ]
+    () in
+  match Tusk_pm.Publisher.workspace_publish_order ~packages:[ app; core ] with
+  | Error err -> Error ("expected publish order to succeed: " ^ Tusk_pm.Publisher.message err)
+  | Ok ordered ->
+      if List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) ordered = [ "app"; "core" ] then
+        Ok ()
+      else
+        Error "expected workspace publish order to ignore dev/build edges"
+
+let test_publisher_workspace_publish_order_reports_cycles = fun () ->
+  let a = make_package
+    ~name:"a"
+    ~path:(Path.v "packages/a")
+    ~dependencies:[ { name = "b"; source = source ~workspace:true () } ]
+    () in
+  let b = make_package
+    ~name:"b"
+    ~path:(Path.v "packages/b")
+    ~dependencies:[ { name = "a"; source = source ~workspace:true () } ]
+    () in
+  match Tusk_pm.Publisher.workspace_publish_order ~packages:[ a; b ] with
+  | Ok _ -> Error "expected cyclic workspace publish order to fail"
+  | Error (Tusk_pm.Publisher.CyclicWorkspacePublishOrder _) ->
+      Ok ()
+  | Error err ->
+      Error ("unexpected publish order error: " ^ Tusk_pm.Publisher.message err)
+
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -1541,6 +1595,9 @@ let tests =
     case "publisher: rejects symlink entries" test_publisher_rejects_symlink_entries;
     case "publisher: publishes package artifact from locator" test_publisher_publishes_from_locator;
     case "publisher: bubbles registry publish errors" test_publisher_bubbles_registry_publish_errors;
+    case "publisher: workspace publish order uses runtime local dependencies" test_publisher_workspace_publish_order_uses_runtime_local_dependencies;
+    case "publisher: workspace publish order ignores dev and build dependencies" test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies;
+    case "publisher: workspace publish order reports cycles" test_publisher_workspace_publish_order_reports_cycles;
   ]
 
 let name = "Tusk PM Tests"
