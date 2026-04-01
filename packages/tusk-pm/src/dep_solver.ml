@@ -9,11 +9,61 @@ type resolved_dependency = {
   packages: Tusk_model.Lockfile.package list;
 }
 
-let package_id_of_workspace_package = fun (pkg: Tusk_model.Package.t) ->
+let package_id_of_local_package = fun (pkg: Tusk_model.Package.t) ->
   Tusk_model.Lockfile.{ registry = None; name = pkg.name; version = None }
 
 let manifest_path_for_package = fun (pkg: Tusk_model.Package.t) ->
   Path.(pkg.path / Path.v "tusk.toml")
+
+let resolve_dependency_root = fun ~declared_from dep_path ->
+  if Path.is_absolute dep_path then
+    Path.normalize dep_path
+  else
+    Path.normalize Path.(declared_from / dep_path)
+
+let load_manifest_toml = fun ~manifest_path ->
+  match Fs.read_to_string manifest_path with
+  | Error err ->
+      Error ("failed to read manifest '"
+      ^ Path.to_string manifest_path
+      ^ "': "
+      ^ IO.error_message err)
+  | Ok source -> (
+      match Data.Toml.parse source with
+      | Ok toml -> Ok toml
+      | Error err ->
+          Error ("failed to parse manifest '"
+          ^ Path.to_string manifest_path
+          ^ "': "
+          ^ Data.Toml.error_to_string err)
+    )
+
+let load_path_dependency_package = fun ~declared_from ~dependency_name dep_path ->
+  let package_root = resolve_dependency_root ~declared_from dep_path in
+  let manifest_path = Path.(package_root / Path.v "tusk.toml") in
+  match load_manifest_toml ~manifest_path with
+  | Error err ->
+      Error ("failed to load path dependency '"
+      ^ dependency_name
+      ^ "' from "
+      ^ Path.to_string dep_path
+      ^ ": "
+      ^ err)
+  | Ok toml ->
+      Tusk_model.Package.from_toml
+        toml
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:package_root
+        ~relative_path:dep_path
+      |> Result.map_error (fun err ->
+        "failed to decode path dependency '"
+        ^ dependency_name
+        ^ "' from "
+        ^ Path.to_string manifest_path
+        ^ ": "
+        ^ err)
 
 let package_id_key = fun (id: Tusk_model.Lockfile.package_id) ->
   let registry =
@@ -59,7 +109,7 @@ let latest_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_doc
       ^ document.latest
       ^ "' but that release is missing from the sparse index document")
 
-let lock_dependency_of_workspace_dependency = fun (dep: Tusk_model.Package.dependency) ->
+let lock_dependency_of_local_dependency = fun (dep: Tusk_model.Package.dependency) ->
   Tusk_model.Lockfile.{
     name = dep.name;
     package = { registry = None; name = dep.name; version = None }
@@ -77,7 +127,72 @@ let merge_lock_packages = fun packages ->
   in
   loop [] [] packages
 
-let rec resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock package_name ->
+let rec lock_package_of_local_package = fun
+  ~mode
+  ~registry
+  ~registry_cache
+  ~registry_name
+  ~existing_lock
+  ~provenance
+  (pkg: Tusk_model.Package.t)
+  ->
+  match
+    resolve_manifest_dependencies
+      ~mode
+      ~registry
+      ~registry_cache
+      ~registry_name
+      ~existing_lock
+      ~declared_from:pkg.path
+      []
+      []
+      pkg.dependencies
+  with
+  | Error _ as err -> err
+  | Ok (dependencies, dependency_packages) -> (
+      match
+        resolve_manifest_dependencies
+          ~mode
+          ~registry
+          ~registry_cache
+          ~registry_name
+          ~existing_lock
+          ~declared_from:pkg.path
+          []
+          []
+          pkg.build_dependencies
+      with
+      | Error _ as err -> err
+      | Ok (build_dependencies, build_packages) -> (
+          match
+            resolve_manifest_dependencies
+              ~mode
+              ~registry
+              ~registry_cache
+              ~registry_name
+              ~existing_lock
+              ~declared_from:pkg.path
+              []
+              []
+              pkg.dev_dependencies
+          with
+          | Error _ as err -> err
+          | Ok (dev_dependencies, dev_packages) ->
+              Ok
+                ( Tusk_model.Lockfile.{
+                    id = package_id_of_local_package pkg;
+                    path = pkg.path;
+                    manifest_path = manifest_path_for_package pkg;
+                    provenance;
+                    dependencies;
+                    build_dependencies;
+                    dev_dependencies;
+                  },
+                  dependency_packages @ build_packages @ dev_packages )
+        )
+    )
+
+and resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock package_name ->
   match mode, find_existing_external_package ~registry_name ~existing_lock ~package_name with
   | Refresh, Some (existing_pkg: Tusk_model.Lockfile.package) ->
       Ok {
@@ -149,7 +264,48 @@ let rec resolve_registry_dependency = fun ~mode ~registry ~registry_cache ~regis
                   }
         )
 
-let rec resolve_manifest_dependencies = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock acc_packages acc_dependencies deps ->
+and resolve_path_dependency = fun
+  ~mode
+  ~registry
+  ~registry_cache
+  ~registry_name
+  ~existing_lock
+  ~declared_from
+  dependency_name
+  dep_path
+  ->
+  match load_path_dependency_package ~declared_from ~dependency_name dep_path with
+  | Error _ as err -> err
+  | Ok pkg -> (
+      match
+        lock_package_of_local_package
+          ~mode
+          ~registry
+          ~registry_cache
+          ~registry_name
+          ~existing_lock
+          ~provenance:(Tusk_model.Lockfile.Path dep_path)
+          pkg
+      with
+      | Error _ as err -> err
+      | Ok (lock_package, dependency_packages) ->
+          Ok {
+            dependency = Tusk_model.Lockfile.{ name = dependency_name; package = lock_package.id };
+            packages = dependency_packages @ [ lock_package ];
+          }
+    )
+
+and resolve_manifest_dependencies = fun
+  ~mode
+  ~registry
+  ~registry_cache
+  ~registry_name
+  ~existing_lock
+  ~declared_from
+  acc_packages
+  acc_dependencies
+  deps
+  ->
   match deps with
   | [] -> Ok (List.rev acc_dependencies, List.rev acc_packages)
   | dep :: rest -> (
@@ -161,8 +317,9 @@ let rec resolve_manifest_dependencies = fun ~mode ~registry ~registry_cache ~reg
             ~registry_cache
             ~registry_name
             ~existing_lock
+            ~declared_from
             acc_packages
-            (lock_dependency_of_workspace_dependency dep :: acc_dependencies)
+            (lock_dependency_of_local_dependency dep :: acc_dependencies)
             rest
       | Tusk_model.Package.Registry _ -> (
           match
@@ -176,76 +333,53 @@ let rec resolve_manifest_dependencies = fun ~mode ~registry ~registry_cache ~reg
           with
           | Error _ as err -> err
           | Ok resolved ->
+            resolve_manifest_dependencies
+                ~mode
+                ~registry
+                ~registry_cache
+                ~registry_name
+                ~existing_lock
+                ~declared_from
+                (List.rev_append resolved.packages acc_packages)
+                (resolved.dependency :: acc_dependencies)
+                rest
+        )
+      | Tusk_model.Package.Path path -> (
+          match
+            resolve_path_dependency
+              ~mode
+              ~registry
+              ~registry_cache
+              ~registry_name
+              ~existing_lock
+              ~declared_from
+              dep.name
+              path
+          with
+          | Error _ as err -> err
+          | Ok resolved ->
               resolve_manifest_dependencies
                 ~mode
                 ~registry
                 ~registry_cache
                 ~registry_name
                 ~existing_lock
+                ~declared_from
                 (List.rev_append resolved.packages acc_packages)
                 (resolved.dependency :: acc_dependencies)
                 rest
         )
-      | Tusk_model.Package.Path path ->
-          Error ("path dependencies are not implemented in tusk-pm yet: '"
-          ^ dep.name
-          ^ "' -> "
-          ^ Path.to_string path)
     )
 
 let lock_package_of_workspace_package = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock (pkg: Tusk_model.Package.t) ->
-  match
-    resolve_manifest_dependencies
-      ~mode
-      ~registry
-      ~registry_cache
-      ~registry_name
-      ~existing_lock
-      []
-      []
-      pkg.dependencies
-  with
-  | Error _ as err -> err
-  | Ok (dependencies, dependency_packages) -> (
-      match
-        resolve_manifest_dependencies
-          ~mode
-          ~registry
-          ~registry_cache
-          ~registry_name
-          ~existing_lock
-          []
-          []
-          pkg.build_dependencies
-      with
-      | Error _ as err -> err
-      | Ok (build_dependencies, build_packages) -> (
-          match
-            resolve_manifest_dependencies
-              ~mode
-              ~registry
-              ~registry_cache
-              ~registry_name
-              ~existing_lock
-              []
-              []
-              pkg.dev_dependencies
-          with
-          | Error _ as err -> err
-          | Ok (dev_dependencies, dev_packages) ->
-              Ok
-                ( Tusk_model.Lockfile.{
-                    id = package_id_of_workspace_package pkg;
-                    path = pkg.path;
-                    manifest_path = manifest_path_for_package pkg;
-                    provenance = Workspace;
-                    dependencies;
-                    build_dependencies;
-                    dev_dependencies;
-                  },
-                  dependency_packages @ build_packages @ dev_packages )
-        )
-    )
+  lock_package_of_local_package
+    ~mode
+    ~registry
+    ~registry_cache
+    ~registry_name
+    ~existing_lock
+    ~provenance:Tusk_model.Lockfile.Workspace
+    pkg
 
 let rec lock_packages = fun ~mode ~registry ~registry_cache ~registry_name ~existing_lock acc_workspace acc_external packages ->
   match packages with

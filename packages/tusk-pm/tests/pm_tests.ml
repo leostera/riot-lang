@@ -71,6 +71,16 @@ let make_registry = fun packages ->
 let make_registry_with_releases = fun ~packages ~releases ->
   Pkgs_ml.Registry.in_memory ~packages ~releases ()
 
+let write_package_manifest = fun ~root contents ->
+  Fs.create_dir_all root |> Result.expect ~msg:"expected package root to be created";
+  Fs.write contents Path.(root / Path.v "tusk.toml")
+  |> Result.expect ~msg:"expected package manifest to be written"
+
+let with_tempdir = fun prefix fn ->
+  match Fs.with_tempdir ~prefix fn with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
 let run_lock_deps = fun ?(registry = make_registry []) ?(registry_cache = make_registry_cache ()) ~mode ~existing_lock packages ->
   Tusk_pm.Dep_solver.lock_deps
     ~mode
@@ -118,19 +128,104 @@ let test_lock_deps_projects_workspace_packages = fun () ->
       else
         Error "expected workspace packages to be projected into the lockfile"
 
-let test_lock_deps_rejects_path_dependencies_for_now = fun () ->
-  let vendor_pkg = make_package
-    ~name:"vendor-consumer"
-    ~path:(Path.v "/workspace/packages/vendor-consumer")
-    ~dependencies:[ { name = "foo"; source = Tusk_model.Package.Path (Path.v "../vendor/foo") } ]
-    () in
-  match run_lock_deps ~mode:Refresh ~existing_lock:None [ vendor_pkg ] with
-  | Ok _ -> Error "expected path dependencies to fail until materialization exists"
-  | Error err ->
-      if String.contains err "path dependencies are not implemented in tusk-pm yet" then
-        Ok ()
-      else
-        Error ("unexpected error: " ^ err)
+let test_lock_deps_resolves_path_dependencies = fun () ->
+  with_tempdir "tusk_pm_path_dep"
+    (fun workspace_root ->
+      let foo_root = Path.(workspace_root / Path.v "vendor/foo") in
+      write_package_manifest
+        ~root:foo_root
+        {|
+[package]
+name = "foo"
+version = "1.2.3"
+|};
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "foo"; source = Tusk_model.Package.Path (Path.v "../../vendor/foo") } ]
+        ()
+      in
+      match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err -> Error ("expected path dependency locking to succeed: " ^ err)
+      | Ok lockfile -> (
+          let app_lock =
+            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
+          in
+          let foo_lock =
+            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "foo") lockfile.packages
+          in
+          match app_lock, foo_lock with
+          | Some app_lock, Some foo_lock ->
+              let expected_root =
+                Path.normalize Path.(workspace_root / Path.v "packages/app" / Path.v "../../vendor/foo")
+              in
+              if
+                List.length lockfile.packages = 2
+                && (List.hd app_lock.dependencies).package.name = "foo"
+                && Path.equal foo_lock.path expected_root
+                && foo_lock.provenance = Tusk_model.Lockfile.Path (Path.v "../../vendor/foo")
+              then
+                Ok ()
+              else
+                Error "expected path dependency to resolve to an exact local lock package"
+          | _ ->
+              Error "expected app and foo to appear in the lockfile"
+        ))
+
+let test_lock_deps_resolves_transitive_path_dependencies = fun () ->
+  with_tempdir "tusk_pm_transitive_path_dep"
+    (fun workspace_root ->
+      let foo_root = Path.(workspace_root / Path.v "vendor/foo") in
+      let bar_root = Path.(workspace_root / Path.v "vendor/bar") in
+      write_package_manifest
+        ~root:foo_root
+        {|
+[package]
+name = "foo"
+version = "1.2.3"
+
+[dependencies]
+bar = { path = "../bar" }
+|};
+      write_package_manifest
+        ~root:bar_root
+        {|
+[package]
+name = "bar"
+version = "2.0.0"
+|};
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "foo"; source = Tusk_model.Package.Path (Path.v "../../vendor/foo") } ]
+        ()
+      in
+      match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err -> Error ("expected transitive path dependencies to resolve: " ^ err)
+      | Ok lockfile -> (
+          let foo_lock =
+            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "foo") lockfile.packages
+          in
+          let bar_lock =
+            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "bar") lockfile.packages
+          in
+          match foo_lock, bar_lock with
+          | Some foo_lock, Some bar_lock ->
+              let expected_bar_root =
+                Path.normalize Path.(workspace_root / Path.v "vendor/foo" / Path.v "../bar")
+              in
+              if
+                List.length lockfile.packages = 3
+                && (List.hd foo_lock.dependencies).package.name = "bar"
+                && Path.equal bar_lock.path expected_bar_root
+                && bar_lock.provenance = Tusk_model.Lockfile.Path (Path.v "../bar")
+              then
+                Ok ()
+              else
+                Error "expected nested path dependency roots to resolve from the declaring package"
+          | _ ->
+              Error "expected both foo and bar lock packages"
+        ))
 
 let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
   let requirement = Std.Version.parse_requirement ">= 1.2.3" |> Result.expect ~msg:"expected requirement to parse" in
@@ -324,11 +419,6 @@ let test_unlock_discards_existing_external_nodes = fun () ->
         Ok ()
       else
         Error "expected unlock to discard preserved external lock nodes"
-
-let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix fn with
-  | Ok result -> result
-  | Error err -> Error (IO.error_message err)
 
 let test_lock_refresh_requires_lock_when_missing = fun () ->
   with_tempdir "tusk_pm_missing_lock"
@@ -860,7 +950,8 @@ let test_projection_fails_when_lockfile_is_missing_package = fun () ->
 let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
-    case "dep solver: rejects path dependencies for now" test_lock_deps_rejects_path_dependencies_for_now;
+    case "dep solver: resolves path dependencies" test_lock_deps_resolves_path_dependencies;
+    case "dep solver: resolves transitive path dependencies" test_lock_deps_resolves_transitive_path_dependencies;
     case "dep solver: resolves registry dependencies to exact versions" test_lock_deps_resolves_registry_dependencies_to_exact_versions;
     case "dep solver: refresh preserves existing registry versions" test_lock_refresh_preserves_existing_registry_version;
     case "dep solver: refresh preserves existing external nodes" test_lock_refresh_preserves_existing_external_nodes;
