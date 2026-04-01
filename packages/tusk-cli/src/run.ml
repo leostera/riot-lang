@@ -1,9 +1,10 @@
 open Std
 open Tusk_model
 open Tusk_model
+open Tusk_build
 open ArgParser
 
-let reconnect = fun ~workspace -> Local_session.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session"
+let reconnect = fun ~workspace -> Client.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session"
 
 let command =
   let open ArgParser in
@@ -87,10 +88,10 @@ let run = fun matches ->
         (
           let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
           let (workspace, _load_errors) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
-          let client = Local_session.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session" in
-          let _ = Local_session.scan_workspace client ~current_dir:cwd |> Result.expect ~msg:"Failed to scan workspace" in
+          let client = Client.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session" in
+          let _ = Client.scan_workspace client ~current_dir:cwd |> Result.expect ~msg:"Failed to scan workspace" in
           let result =
-            match Local_session.find_executable client bin_name with
+            match Client.find_executable client bin_name with
             | Ok (Some (pkg, _binary)) -> (
                 match pkg_filter with
                 | Some expected_pkg when expected_pkg != pkg ->
@@ -105,7 +106,7 @@ let run = fun matches ->
                     match Build.build_command ~scope:build_scope (Some pkg) None with
                     | Ok () ->
                         let refreshed_client = reconnect ~workspace in
-                        let artifact_result = Local_session.find_artifact
+                        let artifact_result = Client.find_artifact
                           refreshed_client
                           ~package:pkg
                           ~kind:"binary"
@@ -130,7 +131,7 @@ let run = fun matches ->
                               println ("error: " ^ msg);
                               Error (Failure msg)
                         in
-                        Local_session.close refreshed_client;
+                        Client.close refreshed_client;
                         result
                     | Error _ ->
                         println ("error: build failed for package '" ^ pkg ^ "'");
@@ -144,7 +145,7 @@ let run = fun matches ->
                 println ("error: " ^ msg);
                 Error (Failure msg)
           in
-          Local_session.close client;
+          Client.close client;
           result
         )
     )

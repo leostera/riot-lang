@@ -38,6 +38,7 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
+    publish = { version = None; description = None; license = None; is_public = None };
   }
 
 let make_workspace = fun packages ->
@@ -63,7 +64,7 @@ let plan_all_runtime_returns_workspace_like_order = fun () ->
       make_package ~dependencies:[ "std"; "miniriot" ] "tusk-model";
       make_package ~dependencies:[ "std"; "tusk-model" ] "tusk-planner";
       make_package ~dependencies:[ "std"; "tusk-model"; "tusk-planner" ] "tusk-store";
-      make_package ~dependencies:[ "std"; "tusk-model"; "tusk-planner"; "tusk-store" ] "tusk-server";
+      make_package ~dependencies:[ "std"; "tusk-model"; "tusk-planner"; "tusk-store" ] "tusk-build";
     ] in
   match plan_workspace workspace All Runtime with
   | Error _ -> Error "expected successful workspace plan"
@@ -76,7 +77,7 @@ let plan_all_runtime_returns_workspace_like_order = fun () ->
       Test.assert_true (position "miniriot" < position "tusk-model");
       Test.assert_true (position "tusk-model" < position "tusk-planner");
       Test.assert_true (position "tusk-planner" < position "tusk-store");
-      Test.assert_true (position "tusk-store" < position "tusk-server");
+      Test.assert_true (position "tusk-store" < position "tusk-build");
       Ok ()
 
 let plan_single_package_includes_only_transitive_closure = fun () ->

@@ -24,7 +24,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/tusk-executor/AGENTS.md`: build execution and result aggregation
 - `packages/tusk-store/AGENTS.md`: artifact store and cache layout
 - `packages/tusk-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers
-- `packages/tusk-server/AGENTS.md`: in-process build session/runtime entrypoints
+- `packages/tusk-build/AGENTS.md`: in-process build session/runtime entrypoints
 - `packages/tusk-cli/AGENTS.md`: CLI commands and user-facing flows
 - `packages/tusk-fmt/AGENTS.md`: `tusk fmt` wrapper around krasny-based formatting checks
 - `packages/tusk-init/AGENTS.md`: workspace/package scaffolding

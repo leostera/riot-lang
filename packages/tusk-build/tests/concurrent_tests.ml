@@ -35,6 +35,12 @@ let make_package = fun tmpdir name content ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
+    publish = {
+      version = None;
+      description = None;
+      license = None;
+      is_public = None;
+    };
   }
 
 type Message.t +=

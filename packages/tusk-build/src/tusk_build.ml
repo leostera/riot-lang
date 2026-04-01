@@ -1,5 +1,6 @@
-(** Tusk Server - Exports the local build session runtime *)
+(** Tusk Build - Exports the local build session runtime *)
 module Build_server = Build_server
+module Client = Client
 module Internal_server = Internal_server
 module Protocol = Protocol
 module Server_config = Server_config

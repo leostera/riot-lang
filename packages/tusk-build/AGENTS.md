@@ -1,6 +1,6 @@
-# tusk-server AGENTS
+# tusk-build AGENTS
 
-`tusk-server` is no longer a daemon boundary. It is the in-process build session and orchestration layer used by `tusk-cli`.
+`tusk-build` is no longer a daemon boundary. It is the in-process build session and orchestration layer used by `tusk-cli`.
 
 ## Rules
 
@@ -12,4 +12,4 @@
 
 ## Validate
 
-`timeout 30 tusk build tusk-server`
+`timeout 30 tusk build tusk-build`

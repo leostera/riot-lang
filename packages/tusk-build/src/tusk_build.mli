@@ -1,5 +1,7 @@
 open Std
 
+module Client = Client
+
 module Internal_server = Internal_server
 
 module Protocol = Protocol

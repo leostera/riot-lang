@@ -132,7 +132,7 @@ dev_dependencies = []
 name = "pkgs-ml"
 root = "packages/pkgs-ml"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }]
+dependencies = [{ name = "std", package = { name = "std" } }, { name = "blink", package = { name = "blink" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -220,7 +220,7 @@ dev_dependencies = []
 name = "tusk-cli"
 root = "packages/tusk-cli"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }, { name = "tusk-init", package = { name = "tusk-init" } }, { name = "tusk-executor", package = { name = "tusk-executor" } }, { name = "tusk-model", package = { name = "tusk-model" } }, { name = "tusk-planner", package = { name = "tusk-planner" } }, { name = "tusk-server", package = { name = "tusk-server" } }, { name = "tusk-store", package = { name = "tusk-store" } }, { name = "tusk-toolchain", package = { name = "tusk-toolchain" } }, { name = "tusk-fix", package = { name = "tusk-fix" } }, { name = "tusk-fmt", package = { name = "tusk-fmt" } }]
+dependencies = [{ name = "std", package = { name = "std" } }, { name = "tusk-init", package = { name = "tusk-init" } }, { name = "tusk-executor", package = { name = "tusk-executor" } }, { name = "tusk-model", package = { name = "tusk-model" } }, { name = "tusk-planner", package = { name = "tusk-planner" } }, { name = "tusk-build", package = { name = "tusk-build" } }, { name = "tusk-store", package = { name = "tusk-store" } }, { name = "tusk-toolchain", package = { name = "tusk-toolchain" } }, { name = "tusk-fix", package = { name = "tusk-fix" } }, { name = "tusk-fmt", package = { name = "tusk-fmt" } }, { name = "tusk-pm", package = { name = "tusk-pm" } }, { name = "pkgs-ml", package = { name = "pkgs-ml" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -284,7 +284,7 @@ dev_dependencies = []
 name = "tusk-pm"
 root = "packages/tusk-pm"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }, { name = "tusk-model", package = { name = "tusk-model" } }, { name = "pkgs-ml", package = { name = "pkgs-ml" } }]
+dependencies = [{ name = "std", package = { name = "std" } }, { name = "tusk-model", package = { name = "tusk-model" } }, { name = "pkgs-ml", package = { name = "pkgs-ml" } }, { name = "tusk-fmt", package = { name = "tusk-fmt" } }, { name = "tusk-fix", package = { name = "tusk-fix" } }, { name = "tusk-planner", package = { name = "tusk-planner" } }, { name = "tusk-executor", package = { name = "tusk-executor" } }, { name = "tusk-store", package = { name = "tusk-store" } }, { name = "tusk-toolchain", package = { name = "tusk-toolchain" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -305,8 +305,8 @@ build_dependencies = []
 dev_dependencies = []
 
 [[packages]]
-name = "tusk-server"
-root = "packages/tusk-server"
+name = "tusk-build"
+root = "packages/tusk-build"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "std", package = { name = "std" } }, { name = "tusk-model", package = { name = "tusk-model" } }, { name = "tusk-pm", package = { name = "tusk-pm" } }, { name = "pkgs-ml", package = { name = "pkgs-ml" } }, { name = "tusk-executor", package = { name = "tusk-executor" } }, { name = "tusk-planner", package = { name = "tusk-planner" } }, { name = "tusk-store", package = { name = "tusk-store" } }, { name = "tusk-toolchain", package = { name = "tusk-toolchain" } }]
 build_dependencies = []

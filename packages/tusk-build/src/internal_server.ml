@@ -36,12 +36,33 @@ let default_registry_name = "pkgs.ml"
 
 let no_emit : Tusk_model.Event.kind -> unit = fun _ -> ()
 
+let server_trace_enabled = fun () ->
+  match Env.var String ~name:"TUSK_SERVER_TRACE" with
+  | Some ("1" | "true" | "yes") -> true
+  | _ -> false
+
+let trace_server = fun message ->
+  if server_trace_enabled () then
+    eprintln ("[tusk-build] " ^ message)
+  else
+    ()
+
 let resolve_registry = fun ?registry ?(registry_name = default_registry_name) () ->
+  trace_server ("resolve_registry name=" ^ registry_name);
   match registry with
-  | Some registry -> Ok registry
-  | None -> Pkgs_ml.Registry.create_filesystem ?tusk_home:None ~registry_name ()
+  | Some registry ->
+      trace_server "resolve_registry using provided registry";
+      Ok registry
+  | None ->
+      trace_server "resolve_registry creating filesystem registry";
+      Pkgs_ml.Registry.create_filesystem ?tusk_home:None ~registry_name ()
 
 let prepare_workspace = fun ?(emit = no_emit) ~(registry:Pkgs_ml.Registry.t) ~(workspace:Workspace.t) () ->
+  trace_server
+    ("prepare_workspace root="
+    ^ Path.to_string workspace.root
+    ^ " packages="
+    ^ Int.to_string (List.length workspace.packages));
   Tusk_pm.ensure_workspace ~emit ~mode:Tusk_pm.Dep_solver.Refresh ~registry ~workspace ()
 
 let build_state = fun ~(workspace:Workspace.t) ~load_errors ~(registry:Pkgs_ml.Registry.t) ~(config:Server_config.t) ->
@@ -159,8 +180,9 @@ and handle_ping = fun state client_pid ->
 
 (** Handler for scan workspace message *)
 and handle_scan_workspace = fun state client_pid current_dir ->
-  let (workspace, load_errors) = Workspace_manager.scan current_dir |> Result.expect ~msg:"tusk_server: workspace scan failed" in
-  let workspace = prepare_workspace ~registry:state.registry ~workspace () |> Result.expect ~msg:"tusk_server: workspace pm preparation failed" in
+  trace_server ("handle_scan_workspace cwd=" ^ Path.to_string current_dir);
+  let (workspace, load_errors) = Workspace_manager.scan current_dir |> Result.expect ~msg:"tusk_build: workspace scan failed" in
+  let workspace = prepare_workspace ~registry:state.registry ~workspace () |> Result.expect ~msg:"tusk_build: workspace pm preparation failed" in
   let package_graph =
     match Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace with
     | Ok graph -> graph
@@ -171,6 +193,8 @@ and handle_scan_workspace = fun state client_pid current_dir ->
         |> Result.expect ~msg:"Failed to create empty package graph"
   in
   let new_state = { state with workspace; package_graph; load_errors } in
+  trace_server
+    ("handle_scan_workspace done packages=" ^ Int.to_string (List.length workspace.packages));
   send client_pid (Protocol.ServerResponse Protocol.WorkspaceScanned);
   loop new_state
 
@@ -222,6 +246,12 @@ and handle_get_package_info = fun state client_pid package_name ->
                     compiler = { profile_overrides = []; target_overrides = [] };
                     commands = [];
                     fix_providers = [];
+                    publish = {
+                      version = None;
+                      description = None;
+                      license = None;
+                      is_public = None;
+                    };
                   };
                 sources = [];
                 dependencies = [];
@@ -478,6 +508,20 @@ and handle_new_package = fun state client_pid path name is_library ->
 
 (** Handler for build message - spawns worker and continues loop immediately *)
 and handle_build = fun state client_pid target scope target_arch session_id ->
+  trace_server
+    ("handle_build session="
+    ^ Session_id.to_string session_id
+    ^ " target="
+    ^
+    match target with
+    | Protocol.All -> "all"
+    | Protocol.Package p -> "package:" ^ p
+    | Protocol.Packages names -> "packages:" ^ String.concat "," names
+    ^ " scope="
+    ^
+    match scope with
+    | Protocol.Runtime -> "runtime"
+    | Protocol.Dev -> "dev");
   Log.debug
     (
       "Server: handle_build called for target: " ^ (
@@ -503,6 +547,11 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
     | None -> Tusk_model.Tusk_dirs.host_target ()
   in
   let updated_state = { state with active_profile; active_target } in
+  trace_server
+    ("handle_build active_profile="
+    ^ active_profile
+    ^ " active_target="
+    ^ active_target);
   let server_pid = self () in
   Build_server.start
     ~workspace:updated_state.workspace
@@ -515,26 +564,43 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
     ~target
     ~scope
     ~target_arch;
+  trace_server "handle_build spawned build worker";
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_registry_name) ~workspace ?(load_errors = []) ~(config:Server_config.t) () ->
+let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ?(load_errors = []) ~(config:Server_config.t) () ->
   try
+    trace_server
+      ("start_local workspace_root="
+      ^ Path.to_string workspace.root
+      ^ " packages="
+      ^ Int.to_string (List.length workspace.packages)
+      ^ " load_errors="
+      ^ Int.to_string (List.length load_errors));
     match resolve_registry ?registry ~registry_name () with
     | Error err ->
+        trace_server ("start_local resolve_registry failed: " ^ err);
         Error (RegistryInitializationFailed { registry_name; error = err })
     | Ok registry ->
+        trace_server "start_local resolved registry";
         match prepare_workspace ~emit ~registry ~workspace () with
-        | Error err -> Error (WorkspacePreparationFailed { error = err })
+        | Error err ->
+            trace_server ("start_local prepare_workspace failed: " ^ Tusk_model.Pm_error.message err);
+            Error (WorkspacePreparationFailed { error = err })
         | Ok workspace ->
+            trace_server
+              ("start_local prepared workspace packages=" ^ Int.to_string (List.length workspace.packages));
             let state = build_state ~workspace ~load_errors ~registry ~config in
             let server_pid =
               spawn
                 (fun () ->
+                  trace_server "server loop spawned";
                   let _ = loop state in
                   Ok ())
             in
+            trace_server ("start_local returning server pid=" ^ Pid.to_string server_pid);
             Ok server_pid
   with
   | exn ->
+      trace_server ("start_local exception: " ^ Exception.to_string exn);
       Error (UnexpectedException { error = Exception.to_string exn })

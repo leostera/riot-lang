@@ -73,7 +73,7 @@ let () =
   build_package ~build_results "tusk-toolchain" "packages/tusk-toolchain";
   build_package ~build_results "tusk-planner" "packages/tusk-planner";
   build_package ~build_results "tusk-executor" "packages/tusk-executor";
-  build_package ~build_results "tusk-server" "packages/tusk-server";
+  build_package ~build_results "tusk-build" "packages/tusk-build";
   build_package ~build_results "tusk-init" "packages/tusk-init";
   build_package ~build_results "fixme" "packages/fixme";
   build_package ~build_results "tusk-fix" "packages/tusk-fix";

@@ -338,7 +338,7 @@ name = "tusk"
 path = "src/main.ml"
 
 [[bin]]
-name = "tusk-server"
+name = "tusk-build"
 path = "src/server.ml"
 |}
   in

@@ -36,7 +36,7 @@ This package depends on:
 - `miniriot` - Actor runtime
 - `tusk-model` - Core data models
 - `tusk-fmt` - Formatting command wrapper
-- `tusk-server` - Local build session runtime
+- `tusk-build` - Local build session runtime
 - `tusk-planner` - Build planning
 - `tusk-executor` - Build execution
 - `tusk-store` - Artifact storage

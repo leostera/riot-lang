@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 open Tusk_model
-open Tusk_server
+open Tusk_build
 
 type build_scope =
   Runtime
@@ -13,6 +13,30 @@ type output_mode =
   | Human
   | Json
 
+let build_trace_enabled = fun () ->
+  match Env.var String ~name:"TUSK_BUILD_TRACE" with
+  | Some ("1" | "true" | "yes") -> true
+  | _ -> false
+
+let trace_build = fun message ->
+  if build_trace_enabled () then
+    eprintln ("[tusk-build] " ^ message)
+  else
+    ()
+
+let request_label = function
+  | Client.BuildPackage package -> "BuildPackage(" ^ package ^ ")"
+  | Client.BuildPackages packages -> "BuildPackages(" ^ String.concat "," packages ^ ")"
+  | Client.BuildAll -> "BuildAll"
+
+let streaming_event_label = function
+  | Client.BuildStarted _ -> "BuildStarted"
+  | Client.BuildEvent _ -> "BuildEvent"
+  | Client.BuildCompleted _ -> "BuildCompleted"
+  | Client.BuildFailed _ -> "BuildFailed"
+  | Client.PlanningFailed _ -> "PlanningFailed"
+  | Client.CycleDetected _ -> "CycleDetected"
+
 let write_json_event = fun (json: Data.Json.t) ->
   print (Data.Json.to_string json);
   print "\n"
@@ -22,7 +46,7 @@ let telemetry_event_to_json = fun event ->
   | Some json -> json
   | None -> Data.Json.Null
 
-let build_stats_to_json = fun (stats: Local_session.build_stats) ->
+let build_stats_to_json = fun (stats: Client.build_stats) ->
   Data.Json.Object [
     ("duration_ms", Data.Json.Int stats.duration_ms);
     ("packages_built", Data.Json.Int stats.packages_built);
@@ -237,15 +261,32 @@ let command =
 
 let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary =
   true) request target_arch ->
+  trace_build
+    ("run_build_request request="
+    ^ request_label request
+    ^ " scope="
+    ^
+    match scope with
+    | Runtime -> "runtime"
+    | Dev -> "dev"
+    ^ " mode="
+    ^
+    match mode with
+    | Human -> "human"
+    | Json -> "json"
+    ^ " target="
+    ^ (target_arch |> Option.unwrap_or ~default:"host"));
   let startup_session_id = Session_id.make () in
   let seen_registry_updates = HashSet.create () in
-  match Local_session.connect_local
+  trace_build "connecting local session";
+  match Client.connect_local
     ~emit:(write_pm_event ~mode ~session_id:startup_session_id ~seen_registry_updates)
     ~workspace
     ~load_errors
     () with
-  | Error (Local_session.StartupFailed { error }) ->
-      let reason = Tusk_server.error_message error in
+  | Error (Client.StartupFailed { error }) ->
+      trace_build ("connect_local failed: " ^ Tusk_build.error_message error);
+      let reason = Tusk_build.error_message error in
       write_command_error
         ~mode
         "SessionStartFailed"
@@ -253,7 +294,8 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
         reason;
       exit 1
   | Error err ->
-      let reason = Local_session.error_message err in
+      trace_build ("connect_local failed: " ^ Client.error_message err);
+      let reason = Client.error_message err in
       write_command_error
         ~mode
         "SessionStartFailed"
@@ -261,6 +303,7 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
         reason;
       exit 1
   | Ok client ->
+      trace_build "connected local session";
       let displayed_packages = HashSet.create () in
       (* Track build stats as events arrive *)
       let start_time = Time.Instant.now () in
@@ -269,27 +312,29 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
       let failed_count = ref 0 in
       let skipped_count = ref 0 in
       let result =
-        Local_session.build_streaming client request
+        trace_build "starting build_streaming";
+        Client.build_streaming client request
           ~scope:((
             match scope with
-            | Runtime -> Local_session.Runtime
-            | Dev -> Local_session.Dev
+            | Runtime -> Client.Runtime
+            | Dev -> Client.Dev
           ))
           ?target_arch
           (fun event ->
+            trace_build ("streaming event: " ^ streaming_event_label event);
             match mode with
             | Json -> (
                 match event with
-                | Local_session.BuildStarted _ ->
+                | Client.BuildStarted _ ->
                     ()
-                | Local_session.BuildEvent event -> (
+                | Client.BuildEvent event -> (
                     match telemetry_event_to_json event with
                     | Data.Json.Null -> ()
                     | json -> write_json_event json
                   )
-                | Local_session.BuildCompleted { session_id; completed_at; stats; results } ->
+                | Client.BuildCompleted { session_id; completed_at; stats; results } ->
                     build_completed_event_to_json session_id completed_at stats results |> write_json_event
-                | Local_session.BuildFailed {
+                | Client.BuildFailed {
                   session_id;
                   failed_at;
                   stats=_;
@@ -297,16 +342,16 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                   errors
                 } ->
                     build_failed_event_to_json session_id failed_at errors |> write_json_event
-                | Local_session.PlanningFailed { session_id; failed_at; reason } ->
+                | Client.PlanningFailed { session_id; failed_at; reason } ->
                     planning_failed_event_to_json session_id failed_at reason |> write_json_event
-                | Local_session.CycleDetected { session_id; detected_at; cycle_nodes } ->
+                | Client.CycleDetected { session_id; detected_at; cycle_nodes } ->
                     cycle_detected_event_to_json session_id detected_at cycle_nodes |> write_json_event
               )
             | Human -> (
                 match event with
-                | Local_session.BuildStarted _ ->
+                | Client.BuildStarted _ ->
                     ()
-                | Local_session.BuildEvent event ->
+                | Client.BuildEvent event ->
                     (
                       match event with
                       | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> built_count := !built_count + 1
@@ -318,15 +363,15 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                     let msg = Event_formatter.format ~displayed_packages event in
                     if msg != "" then
                       out msg
-                | Local_session.BuildCompleted _ ->
+                | Client.BuildCompleted _ ->
                     ()
-                | Local_session.BuildFailed _ ->
+                | Client.BuildFailed _ ->
                     ()
-                | Local_session.PlanningFailed { reason; _ } ->
+                | Client.PlanningFailed { reason; _ } ->
                     out "";
                     out ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
                     failed_count := !failed_count + 1
-                | Local_session.CycleDetected { cycle_nodes; _ } ->
+                | Client.CycleDetected { cycle_nodes; _ } ->
                     out "      \027[1;31mError\027[0m: Cyclic dependency detected:";
                     out ("         " ^ String.concat " ->\n         " cycle_nodes)
               ))
@@ -334,10 +379,11 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
       let final_event =
         match result with
         | Error err ->
-            Local_session.close client;
+            trace_build ("build_streaming returned Error: " ^ Client.error_message err);
+            Client.close client;
             (
               match err with
-              | Local_session.PackageNotFound { package_name; available_packages } ->
+              | Client.PackageNotFound { package_name; available_packages } ->
                   if mode = Json then
                     write_json_event
                       (command_error_event_to_json
@@ -351,7 +397,7 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                   out "Available packages:";
                   List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
                   exit 1
-              | Local_session.PackagesNotFound { package_names; available_packages } ->
+              | Client.PackagesNotFound { package_names; available_packages } ->
                   if mode = Json then
                     write_json_event
                       (command_error_event_to_json
@@ -365,7 +411,7 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                   out "Available packages:";
                   List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
                   exit 1
-              | Local_session.BuildAlreadyRunning { lock_path } ->
+              | Client.BuildAlreadyRunning { lock_path } ->
                   if mode = Json then
                     write_json_event
                       (command_error_event_to_json
@@ -375,7 +421,7 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                   out ("Lock file: " ^ Path.to_string lock_path);
                   out "Wait for the current build to finish and try again.";
                   exit 1
-              | Local_session.UnexpectedEvent Module.{ reason } ->
+              | Client.UnexpectedEvent Module.{ reason } ->
                   if mode = Json then
                     write_json_event
                       (command_error_event_to_json
@@ -383,8 +429,8 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                         [ ("reason", Data.Json.String reason) ]);
                   out ("\027[1;31mError\027[0m: " ^ reason);
                   exit 1
-              | Local_session.StartupFailed { error } ->
-                  let reason = Tusk_server.error_message error in
+              | Client.StartupFailed { error } ->
+                  let reason = Tusk_build.error_message error in
                   if mode = Json then
                     write_json_event
                       (command_error_event_to_json
@@ -394,7 +440,8 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                   exit 1
             )
         | Ok event ->
-            Local_session.close client;
+            trace_build ("build_streaming returned Ok: " ^ streaming_event_label event);
+            Client.close client;
             event
       in
       if show_finished_summary then
@@ -434,12 +481,12 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
                   ^ " skipped)")
         );
       match final_event with
-      | Local_session.BuildCompleted _ -> Ok ()
-      | Local_session.BuildFailed _ -> Error (Failure "Build failed")
-      | Local_session.PlanningFailed _ -> Error (Failure "Planning failed")
-      | Local_session.CycleDetected _ -> Error (Failure "Cyclic dependency detected")
-      | Local_session.BuildStarted _
-      | Local_session.BuildEvent _ -> Error (Failure "Unexpected response from server")
+      | Client.BuildCompleted _ -> Ok ()
+      | Client.BuildFailed _ -> Error (Failure "Build failed")
+      | Client.PlanningFailed _ -> Error (Failure "Planning failed")
+      | Client.CycleDetected _ -> Error (Failure "Cyclic dependency detected")
+      | Client.BuildStarted _
+      | Client.BuildEvent _ -> Error (Failure "Unexpected response from server")
 
 let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
   let (workspace, load_errors) =
@@ -451,8 +498,8 @@ let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Huma
   in
   let request =
     match package_opt with
-    | Some pkg -> Local_session.BuildPackage pkg
-    | None -> Local_session.BuildAll
+    | Some pkg -> Client.BuildPackage pkg
+    | None -> Client.BuildAll
   in
   run_build_request ~workspace ~load_errors ~scope ~mode ~show_finished_summary request target_arch
 
@@ -460,9 +507,9 @@ let build_packages_command = fun ~workspace ~load_errors ?(scope = Runtime) ?(mo
   true) package_names target_arch ->
   let request =
     match package_names with
-    | [] -> Local_session.BuildAll
-    | [ package_name ] -> Local_session.BuildPackage package_name
-    | packages -> Local_session.BuildPackages packages
+    | [] -> Client.BuildAll
+    | [ package_name ] -> Client.BuildPackage package_name
+    | packages -> Client.BuildPackages packages
   in
   run_build_request ~workspace ~load_errors ~scope ~mode ~show_finished_summary request target_arch
 

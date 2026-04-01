@@ -18,7 +18,7 @@ tusk-init = { path = "../tusk-init" }
 tusk-executor = { path = "../tusk-executor" }
 tusk-model = { path = "../tusk-model" }
 tusk-planner = { path = "../tusk-planner" }
-tusk-server = { path = "../tusk-server" }
+tusk-build = { path = "../tusk-build" }
 tusk-store = { path = "../tusk-store" }
 tusk-toolchain = { path = "../tusk-toolchain" }
 tusk-fix = { path = "../tusk-fix" }

@@ -38,7 +38,7 @@ members = [
   "packages/tusk-pm",
   "packages/tusk-planner",
   "packages/tusk-repl",
-  "packages/tusk-server",
+  "packages/tusk-build",
   "packages/tusk-store",
   "packages/tusk-toolchain",
   "services/registry",
@@ -66,4 +66,5 @@ rules = [
 ]
 
 [profile.debug]
-ocamlc_flags = ["-O0"]
+kind = "native"
+ocamlc_flags = ["-O0", "-g"]

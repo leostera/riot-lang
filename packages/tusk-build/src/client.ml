@@ -1,6 +1,5 @@
 open Std
 open Tusk_model
-open Tusk_server
 
 type t = {
   server_pid: Pid.t;
@@ -17,7 +16,7 @@ type build_stats = {
 }
 
 type error =
-  | StartupFailed of { error: Tusk_server.error }
+  | StartupFailed of { error: Internal_server.error }
   | PackageNotFound of { package_name: string; available_packages: string list }
   | PackagesNotFound of { package_names: string list; available_packages: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
@@ -54,7 +53,7 @@ type build_scope =
 let no_emit : Tusk_model.Event.kind -> unit = fun _ -> ()
 
 let error_message = function
-  | StartupFailed { error } -> Tusk_server.error_message error
+  | StartupFailed { error } -> Internal_server.error_message error
   | PackageNotFound { package_name; _ } ->
       "Package '" ^ package_name ^ "' not found"
   | PackagesNotFound { package_names; _ } ->
@@ -64,11 +63,11 @@ let error_message = function
   | UnexpectedEvent { reason } -> reason
 
 let connect_local = fun ?(emit = no_emit) ?(load_errors = []) ~workspace () ->
-  match Tusk_server.start_local
+  match Internal_server.start_local
     ~emit
     ~workspace
     ~load_errors
-    ~config:Tusk_server.Server_config.default
+    ~config:Server_config.default
     () with
   | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
   | Error err -> Error (StartupFailed { error = err })

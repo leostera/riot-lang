@@ -44,6 +44,12 @@ let make_simple_package = fun tmpdir name ->
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
+    publish = {
+      version = None;
+      description = None;
+      license = None;
+      is_public = None;
+    };
   }
 
 let test_server_starts_and_shuts_down = fun () -> Ok ()
@@ -208,13 +214,13 @@ let test_cache_invalidation_on_source_change = fun () ->
 let test_telemetry_events_during_build = fun () -> Ok ()
 
 let test_build_stats_action_cache_counters = fun () ->
-  let stats = Tusk_server.Protocol.BuildStats.make () in
-  Tusk_server.Protocol.BuildStats.inc_action_cache_hits stats;
-  Tusk_server.Protocol.BuildStats.inc_action_cache_hits stats;
-  Tusk_server.Protocol.BuildStats.inc_action_cache_misses stats;
+  let stats = Tusk_build.Protocol.BuildStats.make () in
+  Tusk_build.Protocol.BuildStats.inc_action_cache_hits stats;
+  Tusk_build.Protocol.BuildStats.inc_action_cache_hits stats;
+  Tusk_build.Protocol.BuildStats.inc_action_cache_misses stats;
   if
-    Tusk_server.Protocol.BuildStats.get_action_cache_hits stats = 2
-    && Tusk_server.Protocol.BuildStats.get_action_cache_misses stats = 1
+    Tusk_build.Protocol.BuildStats.get_action_cache_hits stats = 2
+    && Tusk_build.Protocol.BuildStats.get_action_cache_misses stats = 1
   then
     Ok ()
   else
@@ -309,21 +315,21 @@ version = "0.2.0"
             }; ]
           ()
         in
-        match Tusk_server.start_local
+        match Tusk_build.start_local
           ~workspace
           ~registry
-          ~config:Tusk_server.Server_config.default
+          ~config:Tusk_build.Server_config.default
           () with
-        | Error err -> Error ("expected local server to start: " ^ Tusk_server.error_message err)
+        | Error err -> Error ("expected local server to start: " ^ Tusk_build.error_message err)
         | Ok server_pid ->
             send
               server_pid
-              (Tusk_server.Protocol.ServerRequest (Tusk_server.Protocol.GetWorkspaceConfig {
+              (Tusk_build.Protocol.ServerRequest (Tusk_build.Protocol.GetWorkspaceConfig {
                 client_pid = self ()
               }));
             let selector msg =
               match msg with
-              | Tusk_server.Protocol.ServerResponse (Tusk_server.Protocol.WorkspaceConfig {
+              | Tusk_build.Protocol.ServerResponse (Tusk_build.Protocol.WorkspaceConfig {
                 workspace;
                 toolchain=_
               }) -> `select workspace
@@ -441,13 +447,13 @@ version = "0.2.0"
           ()
         in
         let seen = ref [] in
-        match Tusk_server.start_local
+        match Tusk_build.start_local
           ~emit:(fun kind -> seen := kind :: !seen)
           ~workspace
           ~registry
-          ~config:Tusk_server.Server_config.default
+          ~config:Tusk_build.Server_config.default
           () with
-        | Error err -> Error ("expected local server to start: " ^ Tusk_server.error_message err)
+        | Error err -> Error ("expected local server to start: " ^ Tusk_build.error_message err)
         | Ok _ ->
             if List.exists
                 (

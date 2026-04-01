@@ -1,12 +1,12 @@
 [package]
-name = "tusk-server"
+name = "tusk-build"
 version = "0.0.1"
 description = "In-process build session runtime for the Tusk server."
 license = "Apache-2.0"
 public = true
 
 [lib]
-path = "src/tusk_server.ml"
+path = "src/tusk_build.ml"
 
 [dependencies]
 std = { path = "../std" }

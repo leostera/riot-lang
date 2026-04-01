@@ -38,6 +38,7 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
+    publish = { version = None; description = None; license = None; is_public = None };
   }
 
 let make_workspace = fun packages ->
@@ -79,12 +80,12 @@ let runtime_scope_wires_workspace_like_graph = fun () ->
     make_package ~dependencies:[ "std"; "tusk-model"; "tusk-planner" ] "tusk-store";
     make_package
       ~dependencies:[ "std"; "tusk-model"; "tusk-planner"; "tusk-executor"; "tusk-store" ]
-      "tusk-server";
+      "tusk-build";
   ] in
   let workspace = make_workspace packages in
   let graph = Package_graph.create ~scope:Runtime workspace |> Result.expect ~msg:"expected runtime graph" in
   Test.assert_equal ~expected:(List.length packages) ~actual:(Package_graph.size graph);
-  let server_runtime = node_for graph "tusk-server" Runtime in
+  let server_runtime = node_for graph "tusk-build" Runtime in
   assert_same_keys
     ~expected:(package_keys_for_scope
       Runtime

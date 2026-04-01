@@ -1,5 +1,5 @@
 open Std
-open Tusk_server
+open Tusk_build
 
 let command =
   let open ArgParser in
@@ -29,7 +29,7 @@ let run = fun matches ->
     let name = Path.basename path_obj in
     let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
     let (workspace, _load_errors) = Tusk_model.Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
-    match Local_session.connect_local ~workspace () with
+    match Client.connect_local ~workspace () with
     | Ok client -> (
         let package_kind =
           if is_library then
@@ -38,7 +38,7 @@ let run = fun matches ->
             "binary"
         in
         println ("Creating new " ^ package_kind ^ " '" ^ name ^ "' in '" ^ path ^ "'");
-        match Local_session.new_package client ~path ~name ~is_library with
+        match Client.new_package client ~path ~name ~is_library with
         | Ok (created_path, created_name) ->
             println
               (String.capitalize_ascii package_kind

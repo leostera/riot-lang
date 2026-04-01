@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module BuildLock = Tusk_cli.Local_session.BuildLock
+module BuildLock = Tusk_build.Client.BuildLock
 
 type Message.t +=
   | BuildLockAcquired of Time.Duration.t

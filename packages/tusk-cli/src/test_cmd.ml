@@ -1,5 +1,6 @@
 open Std
 open Tusk_model
+open Tusk_build
 open ArgParser
 
 type suite_binary = {
@@ -7,7 +8,7 @@ type suite_binary = {
   suite_name: string;
 }
 
-let reconnect = fun ~workspace -> Local_session.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session"
+let reconnect = fun ~workspace -> Client.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session"
 
 let command =
   let open ArgParser in
@@ -57,7 +58,7 @@ let collect_suite_binaries = fun (workspace: Workspace.t) ?package_filter () ->
         pkg.binaries) |> List.sort compare_suite_binary
 
 let find_suite_binary_path = fun client (suite: suite_binary) ->
-  Local_session.find_artifact client ~package:suite.package_name ~kind:"binary" ~name:suite.suite_name
+  Client.find_artifact client ~package:suite.package_name ~kind:"binary" ~name:suite.suite_name
 
 let run_suite_binary_capture = fun ~extra_args binary_path ->
   let cmd = Command.make binary_path ~args:(("run-tests" :: extra_args)) in
@@ -138,7 +139,7 @@ let run_all_suites = fun ~workspace ~extra_args ~package_filter ~query ->
           else
             Ok ()
         in
-        Local_session.close client;
+        Client.close client;
         result
 
 let run = fun matches ->

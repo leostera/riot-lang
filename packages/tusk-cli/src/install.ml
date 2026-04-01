@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 open Tusk_model
-open Tusk_server
+open Tusk_build
 
 let out = eprintln
 
@@ -38,13 +38,13 @@ let build_binary = fun ~workspace ~load_errors package_name ->
     None
 
 let find_built_binary_path = fun ~workspace ~package_name ~binary_name ->
-  let client = Local_session.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session" in
+  let client = Client.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session" in
   let result =
-    match Local_session.find_artifact client ~package:package_name ~kind:"binary" ~name:binary_name with
+    match Client.find_artifact client ~package:package_name ~kind:"binary" ~name:binary_name with
     | Ok path -> Ok (Path.v path)
     | Error err -> Error err
   in
-  Local_session.close client;
+  Client.close client;
   result
 
 let install_temp_path = fun dst ->
@@ -86,10 +86,10 @@ let run = fun matches ->
     (* First, find which package contains this binary *)
     let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
     let (workspace, load_errors) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
-    let client = Local_session.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session" in
-    match Local_session.find_executable client binary_name with
+    let client = Client.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session" in
+    match Client.find_executable client binary_name with
     | Ok (Some (package_name, _binary)) -> (
-        Local_session.close client;
+        Client.close client;
         match build_binary ~workspace ~load_errors package_name with
         | Error err -> Error err
         | Ok () ->
@@ -156,11 +156,11 @@ let run = fun matches ->
               Ok ()
       )
     | Ok None ->
-        Local_session.close client;
+        Client.close client;
         out ("\027[1;31mError\027[0m: binary '" ^ binary_name ^ "' not found in workspace");
         out "Note: Make sure the binary is declared in a [[bin]] section";
         Error (Failure ("Binary not found: " ^ binary_name))
     | Error msg ->
-        Local_session.close client;
+        Client.close client;
         out ("\027[1;31mError\027[0m: " ^ msg);
         Error (Failure msg)
