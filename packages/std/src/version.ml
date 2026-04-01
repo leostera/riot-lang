@@ -27,7 +27,9 @@ type requirement_op =
   | ReqLte
   | ReqTilde
 
-type requirement = requirement_op * t
+type requirement =
+  | Any
+  | Requirement of requirement_op * t
 
 type parse_error =
   | Invalid_format of string
@@ -245,6 +247,9 @@ let gte = fun v1 v2 ->
 
 let parse_requirement = fun req_string ->
   let s = String.trim req_string in
+  if String.equal s "*" then
+    Ok Any
+  else
   let len = String.length s in
   if len < 2 then
     Error (Invalid_format "Requirement too short")
@@ -270,37 +275,40 @@ let parse_requirement = fun req_string ->
     in
     let version_str = String.trim (String.sub s version_start (len - version_start)) in
     match parse version_str with
-    | Ok version -> Ok (op, version)
+    | Ok version -> Ok (Requirement (op, version))
     | Error e -> Error e
 
-let requirement_to_string = fun ((op, version): requirement) ->
-  requirement_op_to_string op ^ " " ^ to_string version
+let any = Any
 
-let matches = fun ((op, req_version)) test_version ->
-  let cmp = compare test_version req_version in
-  match op with
-  | ReqEq ->
-      cmp = Eq
-  | ReqNeq ->
-      cmp != Eq
-  | ReqGt ->
-      cmp = Gt
-  | ReqGte ->
-      cmp = Gt || cmp = Eq
-  | ReqLt ->
-      cmp = Lt
-  | ReqLte ->
-      cmp = Lt || cmp = Eq
-  | ReqTilde ->
-      (* ~> allows changes at the most specific level provided *)
-      (* If patch is specified: >= version and < next minor *)
-      (* If only major.minor: >= version and < next major *)
-      let at_least = gte test_version req_version in
-      let below_next =
-        let next_minor = { req_version with minor = req_version.minor + 1; patch = 0; pre = [] } in
-        lt test_version next_minor
-      in
-      at_least && below_next
+let requirement_to_string = function
+  | Any -> "*"
+  | Requirement (op, version) -> requirement_op_to_string op ^ " " ^ to_string version
+
+let matches = fun requirement test_version ->
+  match requirement with
+  | Any -> true
+  | Requirement (op, req_version) ->
+      let cmp = compare test_version req_version in
+      match op with
+      | ReqEq ->
+          cmp = Eq
+      | ReqNeq ->
+          cmp != Eq
+      | ReqGt ->
+          cmp = Gt
+      | ReqGte ->
+          cmp = Gt || cmp = Eq
+      | ReqLt ->
+          cmp = Lt
+      | ReqLte ->
+          cmp = Lt || cmp = Eq
+      | ReqTilde ->
+          let at_least = gte test_version req_version in
+          let below_next =
+            let next_minor = { req_version with minor = req_version.minor + 1; patch = 0; pre = [] } in
+            lt test_version next_minor
+          in
+          at_least && below_next
 
 (* Constructors *)
 
@@ -322,4 +330,13 @@ module Tests = struct
         else
           Error "expected requirement_to_string to preserve operator and version"
     | Error _ -> Error "expected requirement to parse" [@test]
+
+  let test_any_requirement_roundtrip () : (unit, string) result =
+    match parse_requirement "*" with
+    | Ok requirement ->
+        if requirement_to_string requirement = "*" && matches requirement (make ~major:999 ~minor:0 ~patch:0 ()) then
+          Ok ()
+        else
+          Error "expected '*' to roundtrip as unconstrained requirement"
+    | Error _ -> Error "expected '*' requirement to parse" [@test]
 end

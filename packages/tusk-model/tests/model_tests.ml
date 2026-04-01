@@ -204,7 +204,7 @@ std = ">= 1.2.3"
     |> Result.expect ~msg:"expected package manifest to parse"
   in
   match pkg.dependencies with
-  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = Some requirement }; _ } ] ->
+  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = requirement }; _ } ] ->
       Test.assert_equal
         ~expected:">= 1.2.3"
         ~actual:(Std.Version.requirement_to_string requirement);
@@ -236,6 +236,35 @@ std = "not-a-semver-range"
   | Ok _ -> Error "expected invalid package semver requirement to fail"
   | Error _ -> Ok ()
 
+let test_package_star_requirement_becomes_unconstrained_registry_dep = fun () ->
+  let manifest =
+    Std.Data.Toml.parse
+      {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[dependencies]
+std = "*"
+|}
+    |> Result.expect ~msg:"expected package TOML to parse"
+  in
+  let pkg =
+    Tusk_model.Package.from_toml
+      manifest
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:(Path.v "/tmp/demo")
+      ~relative_path:(Path.v "packages/demo")
+    |> Result.expect ~msg:"expected package manifest to parse"
+  in
+  match pkg.dependencies with
+  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = requirement }; _ } ] ->
+      Test.assert_equal ~expected:"*" ~actual:(Std.Version.requirement_to_string requirement);
+      Ok ()
+  | _ -> Error "expected '*' package dependency to become an unconstrained registry dependency"
+
 let test_package_json_roundtrips_registry_requirement = fun () ->
   let requirement =
     Std.Version.parse_requirement ">= 1.2.3"
@@ -246,7 +275,7 @@ let test_package_json_roundtrips_registry_requirement = fun () ->
       name = "demo";
       path = Path.v "/tmp/demo";
       relative_path = Path.v "packages/demo";
-      dependencies = [ { name = "std"; source = Registry { version = Some requirement } } ];
+      dependencies = [ { name = "std"; source = Registry { version = requirement } } ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];
@@ -264,7 +293,7 @@ let test_package_json_roundtrips_registry_requirement = fun () ->
     |> Result.expect ~msg:"expected package JSON to roundtrip"
   in
   match decoded.dependencies with
-  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = Some requirement }; _ } ] ->
+  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = requirement }; _ } ] ->
       Test.assert_equal
         ~expected:">= 1.2.3"
         ~actual:(Std.Version.requirement_to_string requirement);
@@ -288,12 +317,87 @@ std = ">= 1.2.3"
     |> Result.expect ~msg:"expected workspace manifest to parse"
   in
   match workspace_manifest.dependencies with
-  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = Some requirement }; _ } ] ->
+  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = requirement }; _ } ] ->
       Test.assert_equal
         ~expected:">= 1.2.3"
         ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected a parsed workspace registry dependency requirement"
+
+let test_workspace_star_requirement_becomes_unconstrained_registry_dep = fun () ->
+  let manifest =
+    Std.Data.Toml.parse
+      {|
+[workspace]
+members = []
+
+[dependencies]
+std = "*"
+|}
+    |> Result.expect ~msg:"expected workspace TOML to parse"
+  in
+  let workspace_manifest =
+    Tusk_model.Workspace.of_toml manifest
+    |> Result.expect ~msg:"expected workspace manifest to parse"
+  in
+  match workspace_manifest.dependencies with
+  | [ { Tusk_model.Package.source = Tusk_model.Package.Registry { version = requirement }; _ } ] ->
+      Test.assert_equal ~expected:"*" ~actual:(Std.Version.requirement_to_string requirement);
+      Ok ()
+  | _ -> Error "expected '*' workspace dependency to become an unconstrained registry dependency"
+
+let test_workspace_manager_resolves_member_path_dependencies_relative_to_package = fun () ->
+  with_tempdir "tusk_model_workspace_paths"
+    (fun root ->
+      let write path content =
+        Fs.write content path |> Result.expect ~msg:("expected write to succeed: " ^ Path.to_string path)
+      in
+      let mkdir path =
+        Fs.create_dir_all path |> Result.expect ~msg:("expected mkdir to succeed: " ^ Path.to_string path)
+      in
+      mkdir Path.(root / Path.v "packages/app/src");
+      mkdir Path.(root / Path.v "packages/vendor/src");
+      mkdir Path.(root / Path.v "packages/kernel/src");
+      write Path.(root / Path.v "tusk.toml")
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write Path.(root / Path.v "packages/app/tusk.toml")
+        {|
+[package]
+name = "app"
+version = "0.1.0"
+
+[dependencies]
+vendor = { path = "../vendor" }
+|};
+      write Path.(root / Path.v "packages/vendor/tusk.toml")
+        {|
+[package]
+name = "vendor"
+version = "0.1.0"
+
+[dependencies]
+kernel = { path = "../kernel" }
+|};
+      write Path.(root / Path.v "packages/kernel/tusk.toml")
+        {|
+[package]
+name = "kernel"
+version = "0.1.0"
+|};
+      match Tusk_model.Workspace_manager.scan root with
+      | Error err -> Error err
+      | Ok (workspace, errors) ->
+          if errors != [] then
+            Error
+              ("expected no workspace loading errors, got: "
+              ^ String.concat "; " (List.map Tusk_model.Workspace_manager.load_error_to_string errors))
+          else
+            let names = workspace.Tusk_model.Workspace.packages |> List.map (fun p -> p.Tusk_model.Package.name) |> List.sort String.compare in
+            Test.assert_equal ~expected:[ "app"; "kernel"; "vendor" ] ~actual:names;
+            Ok ())
 
 let tests =
   Test.[
@@ -306,8 +410,11 @@ let tests =
     case "fmt config: legacy top-level fmt still loads" test_legacy_fmt_ignore_still_loads;
     case "package: registry dependency requirement parses structurally" test_package_dependency_requirement_parses_structurally;
     case "package: invalid dependency requirement fails" test_package_dependency_invalid_requirement_fails;
+    case "package: star dependency becomes unconstrained registry dependency" test_package_star_requirement_becomes_unconstrained_registry_dep;
     case "package: registry dependency JSON roundtrips" test_package_json_roundtrips_registry_requirement;
     case "workspace: registry dependency requirement parses structurally" test_workspace_dependency_requirement_parses_structurally;
+    case "workspace: star dependency becomes unconstrained registry dependency" test_workspace_star_requirement_becomes_unconstrained_registry_dep;
+    case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
   ]
 
 let name = "Tusk Model Tests"

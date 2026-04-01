@@ -121,7 +121,8 @@ type requirement_op =
   | ReqTilde
 (** Tilde operator: ~> (allows patch-level changes) *)
 type requirement
-(** Version requirement specification (opaque) *)
+(** Version requirement specification (opaque). Includes the unconstrained
+    ["*"] requirement. *)
 type parse_error =
   | Invalid_format of string
   | Invalid_version_segment of string
@@ -164,6 +165,7 @@ val parse_requirement: string -> (requirement, parse_error) result
 (** Parse a version requirement string.
 
     Supported operators:
+    - "*" - any version
     - "== 1.2.3" - exact match
     - "!= 1.2.3" - not equal
     - "> 1.2.3" - greater than
@@ -172,6 +174,8 @@ val parse_requirement: string -> (requirement, parse_error) result
     - "<= 1.2.3" - less than or equal
     - "~> 1.2.3" - allows patch-level changes (>= 1.2.3 and < 1.3.0)
     - "~> 1.2" - allows minor-level changes (>= 1.2.0 and < 2.0.0) *)
+val any: requirement
+(** Unconstrained requirement: ["*"] *)
 val requirement_to_string: requirement -> string
 (** Convert a requirement to its canonical string representation *)
 val matches: requirement -> t -> bool

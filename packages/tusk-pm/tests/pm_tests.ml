@@ -95,7 +95,7 @@ let test_lock_deps_projects_registry_dependencies_with_registry_name = fun () ->
     make_package
       ~name:"app"
       ~path:(Path.v "/workspace/packages/app")
-      ~dependencies:[ { name = "std"; source = Tusk_model.Package.Registry { version = Some requirement } } ]
+      ~dependencies:[ { name = "std"; source = Tusk_model.Package.Registry { version = requirement } } ]
       ()
   in
   match

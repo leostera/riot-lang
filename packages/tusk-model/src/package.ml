@@ -6,7 +6,7 @@ open Std.Collections
 (** Types *)
 type dependency_source =
   Workspace
-  | Registry of { version: Std.Version.requirement option }
+  | Registry of { version: Std.Version.requirement }
   | Path of Path.t
 
 type dependency_scope =
@@ -297,7 +297,8 @@ let version_parse_error_to_string = function
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
 let validate_requirement = fun ~dependency_name requirement ->
-  match Version.parse_requirement requirement with
+  let trimmed = String.trim requirement in
+  match Version.parse_requirement trimmed with
   | Ok requirement -> Ok requirement
   | Error err ->
       Error
@@ -320,17 +321,17 @@ let parse_dependency : string -> Toml.value -> workspace_deps:dependency list ->
               match List.assoc_opt "version" attrs with
               | Some (Toml.String requirement) ->
                   validate_requirement ~dependency_name:name requirement
-                  |> Result.map (fun version -> { name; source = Registry { version = Some version } })
+                  |> Result.map (fun version -> { name; source = Registry { version } })
               | Some _ ->
                   Error ("dependency '" ^ name ^ "' has non-string version requirement")
               | None ->
-                  Ok { name; source = Registry { version = None } }
+                  Ok { name; source = Registry { version = Version.any } }
             )
         )
     )
   | Toml.String requirement ->
       validate_requirement ~dependency_name:name requirement
-      |> Result.map (fun version -> { name; source = Registry { version = Some version } })
+      |> Result.map (fun version -> { name; source = Registry { version } })
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
 
@@ -359,12 +360,7 @@ let dependency_source_to_json = fun source ->
   | Registry { version } ->
       Json.Object [
         ("kind", Json.String "registry");
-        (
-          "version",
-          match version with
-          | Some requirement -> Json.String (Version.requirement_to_string requirement)
-          | None -> Json.Null
-        );
+        ("version", Json.String (Version.requirement_to_string version));
       ]
   | Path p ->
       Json.Object [
@@ -390,10 +386,10 @@ let dependency_source_of_json = fun json ->
       | Some (Json.String "registry") -> (
           match List.assoc_opt "version" fields with
           | Some Json.Null
-          | None -> Ok (Registry { version = None })
+          | None -> Ok (Registry { version = Version.any })
           | Some (Json.String requirement) ->
               validate_requirement ~dependency_name:"<json>" requirement
-              |> Result.map (fun requirement -> Registry { version = Some requirement })
+              |> Result.map (fun version -> Registry { version })
           | _ -> Error "registry dependency source has non-string version requirement"
         )
       | Some (Json.String kind) ->
@@ -1148,11 +1144,7 @@ let hash = fun state (pkg: t) ->
       | Workspace -> H.write_string state "workspace"
       | Registry { version } ->
           H.write_string state "registry";
-          (
-            match version with
-            | Some requirement -> H.write_string state (Version.requirement_to_string requirement)
-            | None -> H.write_string state "none"
-          )
+          H.write_string state (Version.requirement_to_string version)
       | Path path -> H.write_string state (Path.to_string path))
     sorted_deps;
   (* Binaries metadata *)
@@ -1399,7 +1391,7 @@ std = ">= 1.2.3"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { source = Registry { version = Some requirement }; _ } ] ->
+    | [ { source = Registry { version = requirement }; _ } ] ->
         if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
           Ok ()
         else
@@ -1441,7 +1433,7 @@ std = "definitely-not-semver"
       name = "example";
       path = Path.v "/tmp/example";
       relative_path = Path.v "packages/example";
-      dependencies = [ { name = "std"; source = Registry { version = Some requirement } } ];
+      dependencies = [ { name = "std"; source = Registry { version = requirement } } ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];
@@ -1464,7 +1456,7 @@ std = "definitely-not-semver"
     | Error err -> Error err
     | Ok decoded -> (
         match decoded.dependencies with
-        | [ { source = Registry { version = Some decoded_requirement }; _ } ] ->
+        | [ { source = Registry { version = decoded_requirement }; _ } ] ->
             if String.equal (Version.requirement_to_string decoded_requirement) ">= 1.2.3" then
               Ok ()
             else

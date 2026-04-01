@@ -28,7 +28,8 @@ let version_parse_error_to_string = function
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
 let validate_requirement = fun ~dependency_name requirement ->
-  match Version.parse_requirement requirement with
+  let trimmed = String.trim requirement in
+  match Version.parse_requirement trimmed with
   | Ok requirement -> Ok requirement
   | Error err ->
       Error
@@ -49,15 +50,15 @@ let parse_dependency : string -> Toml.value -> (Package.dependency, string) resu
           match List.assoc_opt "version" attrs with
           | Some (Toml.String requirement) ->
               validate_requirement ~dependency_name:name requirement
-              |> Result.map (fun version -> make_dependency (Package.Registry { version = Some version }))
+              |> Result.map (fun version -> make_dependency (Package.Registry { version }))
           | Some _ ->
               Error ("dependency '" ^ name ^ "' has non-string version requirement")
-          | None -> Ok (make_dependency (Package.Registry { version = None }))
+          | None -> Ok (make_dependency (Package.Registry { version = Version.any }))
         )
     )
   | Toml.String requirement ->
       validate_requirement ~dependency_name:name requirement
-      |> Result.map (fun version -> make_dependency (Package.Registry { version = Some version }))
+      |> Result.map (fun version -> make_dependency (Package.Registry { version }))
   | _ -> Error ("dependency '" ^ name ^ "' must be a string or table")
 
 let parse_dependencies : (string * Toml.value) list -> (Package.dependency list, string) result = fun items ->
@@ -280,7 +281,7 @@ std = ">= 1.2.3"
     | Error err -> Error err
     | Ok manifest -> (
         match manifest.dependencies with
-        | [ { Package.source = Package.Registry { version = Some requirement }; _ } ] ->
+        | [ { Package.source = Package.Registry { version = requirement }; _ } ] ->
             if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
               Ok ()
             else

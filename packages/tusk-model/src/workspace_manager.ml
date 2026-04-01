@@ -73,14 +73,21 @@ Package.t option = fun workspace_root member ~workspace_deps ~workspace_dev_deps
     )
   | _ -> None
 
+let resolve_dependency_root = fun ~declared_from dep_path ->
+  if Path.is_absolute dep_path then
+    dep_path
+  else
+    Path.(declared_from / dep_path)
+
 let rec load_external_package : Path.t ->
+declared_from:Path.t ->
 Package.dependency ->
 seen:string list Cell.t ->
 workspace_deps:Package.dependency list ->
 workspace_dev_deps:Package.dependency list ->
 workspace_build_deps:Package.dependency list ->
 dependant:string option ->
-(Package.t list * load_error list) = fun workspace_root dep ~seen ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~dependant ->
+(Package.t list * load_error list) = fun workspace_root ~declared_from dep ~seen ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~dependant ->
   match dep.source with
   | Package.Workspace -> ([], [])
   | Package.Registry _ -> ([], [])
@@ -89,7 +96,7 @@ dependant:string option ->
         ([], [])
       else (
         seen := dep.name :: !seen;
-        let abs_path = Path.(workspace_root / dep_path) in
+        let abs_path = resolve_dependency_root ~declared_from dep_path in
         let toml_path = Path.(abs_path / tusk_toml) in
         let path_str = Path.to_string dep_path in
         match Fs.exists toml_path with
@@ -120,26 +127,16 @@ dependant:string option ->
                       ~path:abs_path
                       ~relative_path with
                     | Ok pkg ->
-                        let transitive_deps =
-                          List.map
-                            (fun (dep: Package.dependency) ->
-                              match dep.source with
-                              | Package.Workspace -> dep
-                              | Package.Registry _ -> dep
-                              | Package.Path rel_path ->
-                                  let resolved_path = Path.(abs_path / rel_path) in
-                                  { dep with source = Package.Path resolved_path })
-                            (Package.all_dependencies pkg)
-                        in
                         let transitive_results = List.map
                           (load_external_package
                             workspace_root
+                            ~declared_from:abs_path
                             ~seen
                             ~workspace_deps
                             ~workspace_dev_deps
                             ~workspace_build_deps
                             ~dependant:(Some pkg.name))
-                          transitive_deps in
+                          (Package.all_dependencies pkg) in
                         let transitive_pkgs = List.concat_map fst transitive_results in
                         let transitive_errs = List.concat_map snd transitive_results in
                         (pkg :: transitive_pkgs, transitive_errs)
@@ -172,6 +169,7 @@ let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error 
   let workspace_results = List.map
     (load_external_package
       workspace_root
+      ~declared_from:workspace_root
       ~seen
       ~workspace_deps:workspace_manifest.dependencies
       ~workspace_dev_deps:workspace_manifest.dev_dependencies
@@ -187,6 +185,7 @@ let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error 
         List.map
           (load_external_package
             workspace_root
+            ~declared_from:pkg.path
             ~seen
             ~workspace_deps:workspace_manifest.dependencies
             ~workspace_dev_deps:workspace_manifest.dev_dependencies
