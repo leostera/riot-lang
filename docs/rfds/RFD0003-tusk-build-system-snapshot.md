@@ -11,7 +11,7 @@
 
 This RFD documents the steady-state architecture of `tusk` once a working
 `tusk` binary already exists. It captures the current one-shot local build flow
-across `tusk-cli`, `tusk-server`, `tusk-planner`, `tusk-executor`,
+across `tusk-cli`, `tusk-build`, `tusk-planner`, `tusk-executor`,
 `tusk-store`, and `tusk-toolchain`.
 
 ## Motivation
@@ -37,7 +37,7 @@ The system currently operates as a one-shot local build tool with a few clear la
 
 1. `tusk-cli` parses the command and decides what the user is asking for.
 2. `tusk-cli` opens a local session through `Local_session`.
-3. `tusk-server` starts an in-process actor that owns workspace, toolchain, store, and package graph state for that command invocation.
+3. `tusk-build` starts an in-process actor that owns workspace, toolchain, store, and package graph state for that command invocation.
 4. a build worker plans the requested packages and executes them.
 5. build events stream back to the CLI while the command is running.
 6. the process exits when the command is done.
@@ -51,7 +51,7 @@ The main package responsibilities are:
 - `tusk-store`: content-addressed artifact cache
 - `tusk-planner`: package graph, module graph, and action graph planning
 - `tusk-executor`: per-package build execution and workspace coordination
-- `tusk-server`: local orchestration and request handling
+- `tusk-build`: local orchestration and request handling
 - `tusk-cli`: user-facing commands and output
 
 ### End-to-end build flow
@@ -60,7 +60,7 @@ The main package responsibilities are:
 flowchart TD
   A[tusk build] --> B[tusk-cli Build.run]
   B --> C[Local_session.connect_local]
-  C --> D[tusk-server Internal_server.start_local]
+  C --> D[tusk-build Internal_server.start_local]
   D --> E[Build_server worker]
   E --> F[tusk-planner plan workspace and packages]
   F --> G[tusk-executor build packages]
@@ -102,7 +102,7 @@ That module is responsible for:
 
 This module:
 
-- calls `Tusk_server.start_local`
+- calls `Tusk_build.start_local`
 - sends requests with `Protocol.ServerRequest`
 - receives responses with `Protocol.ServerResponse`
 - exposes build operations as streaming event flows
@@ -135,7 +135,7 @@ sequenceDiagram
 
 ## 3. Internal server state
 
-`packages/tusk-server/src/internal_server.ml` builds the state for a single command invocation.
+`packages/tusk-build/src/internal_server.ml` builds the state for a single command invocation.
 
 The state contains:
 
@@ -167,7 +167,7 @@ flowchart TD
 
 ## 4. Build protocol and session messages
 
-`packages/tusk-server/src/protocol.ml` defines the request and response messages used inside the local session.
+`packages/tusk-build/src/protocol.ml` defines the request and response messages used inside the local session.
 
 The build request is:
 
@@ -421,7 +421,7 @@ The build worker then:
 [drawbacks]: #drawbacks
 
 - some package names do not match their current responsibilities exactly
-- `tusk-server` is a local session runtime and is named as a server
+- `tusk-build` is a local session runtime and is named as a server
 - toolchain setup logic exists in both CLI and runtime paths
 
 ## Rationale and alternatives
@@ -442,7 +442,7 @@ This RFD focuses only on the steady-state `tusk` system once a working `tusk` bi
 The main prior art for this RFD is the current implementation across:
 
 - `tusk-cli`
-- `tusk-server`
+- `tusk-build`
 - `tusk-planner`
 - `tusk-executor`
 - `tusk-store`
@@ -453,7 +453,7 @@ The specific combination here is Riot-specific: actor-based orchestration, packa
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- Should `tusk-server` be renamed to reflect its current responsibility?
+- Should `tusk-build` be renamed to reflect its current responsibility?
 - How much of the current toolchain setup duplication should remain?
 
 ## Future possibilities

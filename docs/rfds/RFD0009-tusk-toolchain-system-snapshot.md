@@ -47,7 +47,7 @@ At a high level:
 2. `tusk-toolchain` resolves the requested version and target to a directory
    under `~/.tusk/toolchains/<version>/<target>`.
 3. The CLI ensures required toolchains are present before a build starts.
-4. `tusk-server` holds a host toolchain in its local-session state.
+4. `tusk-build` holds a host toolchain in its local-session state.
 5. A build worker may replace that host toolchain with a target-specific one
    for an explicit `-x` build.
 6. `Build_ctx` carries host-vs-target information through planning.
@@ -63,7 +63,7 @@ The main packages involved are:
 - `tusk-toolchain`: toolchain discovery, provisioning, validation, and command
   wrappers
 - `tusk-cli`: user-facing target selection and install/list commands
-- `tusk-server`: local-session toolchain ownership and per-build target
+- `tusk-build`: local-session toolchain ownership and per-build target
   selection
 - `tusk-planner`: target-aware planning and compiler/link flag construction
 - `tusk-executor`: sandboxed action execution
@@ -90,7 +90,7 @@ flowchart TD
   A[ocaml-toolchain.toml] --> B[Toolchain_config.from_workspace]
   B --> C[tusk-cli target resolution]
   C --> D[ensure toolchain present]
-  D --> E[Local_session / tusk-server]
+  D --> E[Local_session / tusk-build]
   E --> F[Build_ctx target selection]
   F --> G[tusk-planner profile and target overrides]
   G --> H[action graph with includes and flags]
@@ -397,7 +397,7 @@ inside the build worker.
 
 ## 7. Local session and build worker behavior
 
-`packages/tusk-server/src/internal_server.ml` creates server state for a single
+`packages/tusk-build/src/internal_server.ml` creates server state for a single
 command invocation.
 
 That state includes:
@@ -419,7 +419,7 @@ The build request protocol then carries:
 - `session_id`
 
 The actual target-aware selection happens in
-`packages/tusk-server/src/build_server.ml`.
+`packages/tusk-build/src/build_server.ml`.
 
 The build worker:
 
@@ -611,7 +611,7 @@ The toolchain package also owns `ocamlformat`.
 - formatting files in place or in check mode
 - formatting ad hoc code snippets
 
-`tusk-server` exposes format requests over the same local-session protocol used
+`tusk-build` exposes format requests over the same local-session protocol used
 for builds, and `tusk-cli` performs the same host-toolchain preflight before
 reaching that path.
 
@@ -719,7 +719,7 @@ The main prior art for this RFD is the current implementation across:
 - `tusk-model`
 - `tusk-toolchain`
 - `tusk-cli`
-- `tusk-server`
+- `tusk-build`
 - `tusk-planner`
 - `tusk-executor`
 - `tusk-store`

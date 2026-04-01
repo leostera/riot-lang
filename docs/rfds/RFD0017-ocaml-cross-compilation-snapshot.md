@@ -309,7 +309,7 @@ The current pieces are:
 - `packages/tusk-toolchain/src/tusk_toolchain.ml`
 - `packages/tusk-toolchain/src/cross_compiling_toolchain.ml`
 - `packages/tusk-cli/src/build.ml`
-- `packages/tusk-server/src/build_server.ml`
+- `packages/tusk-build/src/build_server.ml`
 - `packages/tusk-model/src/target.ml`
 - `packages/tusk-model/src/build_ctx.ml`
 - `packages/tusk-planner/src/action_graph.ml`
@@ -372,7 +372,7 @@ configured CDN bucket while the automated publishing workflow remains disabled.
 
 When `tusk build` selects a non-host target:
 
-- `packages/tusk-server/src/build_server.ml` parses the target triple
+- `packages/tusk-build/src/build_server.ml` parses the target triple
 - it constructs `Tusk_model.Target.Cross`
 - it asks `CrossCompilingToolchain.detect` to discover:
   - `sysroot`

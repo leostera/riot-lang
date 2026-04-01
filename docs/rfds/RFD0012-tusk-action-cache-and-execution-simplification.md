@@ -629,7 +629,7 @@ they own full parallelism.
 
 The transport shape can stay as it is.
 
-`tusk-cli`, `local_session.ml`, `tusk-server`, and the one-shot local session
+`tusk-cli`, `local_session.ml`, `tusk-build`, and the one-shot local session
 model remain valid.
 
 The required changes are:
@@ -651,7 +651,7 @@ require noisy per-action printing in the common path.
 sequenceDiagram
   participant CLI as tusk-cli
   participant Session as Local_session
-  participant Runtime as tusk-server
+  participant Runtime as tusk-build
   participant Planner as tusk-planner
   participant Exec as workspace executor
   participant Store as tusk-store

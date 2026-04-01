@@ -18,7 +18,7 @@ The current `tusk` architecture has accumulated multiple layers between a contri
 
 - `tusk-cli` parses commands.
 - `tusk-client` connects to a background server.
-- `tusk-server` manages daemon state and exposes JSON-RPC over TCP.
+- `tusk-build` manages daemon state and exposes JSON-RPC over TCP.
 - `tusk-mcp` wraps that again for agent-facing integration.
 
 This layering makes the system harder to understand, test, and maintain.
@@ -111,7 +111,7 @@ The proposed implementation has three major parts.
 
 ### 1. Replace daemon management with one-shot local sessions
 
-`tusk-server` currently combines two responsibilities:
+`tusk-build` currently combines two responsibilities:
 
 - command-local build/query execution
 - daemon/process lifecycle management
@@ -227,7 +227,7 @@ The current `tusk` architecture itself is also prior art in what to avoid here. 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- Should `tusk-server` keep a debug-only foreground mode after the primary transport is collapsed?
+- Should `tusk-build` keep a debug-only foreground mode after the primary transport is collapsed?
 - Are there any external consumers of the current JSON-RPC server that need a compatibility shim before transport code is removed entirely?
 
 ## Future possibilities
@@ -235,7 +235,7 @@ The current `tusk` architecture itself is also prior art in what to avoid here. 
 
 Once the daemon and MCP layers are removed, follow-up simplifications become easier:
 
-- collapse `tusk-server` into a smaller local execution library
+- collapse `tusk-build` into a smaller local execution library
 - separate read-only query/session logic from build execution logic
 - expose a cleaner external integration surface for agents that is maintained independently from the core build tool
 
