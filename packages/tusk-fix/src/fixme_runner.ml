@@ -67,13 +67,26 @@ let support_module_sources = fun (provider: Tusk_model.Fix_provider.t) ->
           | 0 -> String.compare (Path.to_string left_path) (Path.to_string right_path)
           | cmp -> cmp)
 
+let file_content_hash = fun path ->
+  match Fs.read path with
+  | Ok source -> Crypto.hash_string source |> Crypto.Digest.hex
+  | Error _ -> "missing"
+
 let provider_fingerprint = fun (provider: Tusk_model.Fix_provider.t) ->
+  let support_hashes =
+    support_module_sources provider
+    |> List.map
+      (fun (module_name, source_path) ->
+        module_name ^ ":" ^ Path.to_string source_path ^ ":" ^ file_content_hash source_path)
+    |> String.concat "," in
   String.concat
     ":"
     [
       provider.package_name;
       provider.name;
       Path.to_string provider.source_path;
+      file_content_hash provider.source_path;
+      support_hashes;
       String.concat "," provider.rules;
     ]
 

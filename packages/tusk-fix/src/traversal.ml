@@ -353,5 +353,7 @@ let binding_sites_of_structure_item = function
   | Syn.Cst.StructureItem.ClassTypeDeclaration _
   | Syn.Cst.StructureItem.ModuleTypeDeclaration _
   | Syn.Cst.StructureItem.ExternalDeclaration _
-  | Syn.Cst.StructureItem.ExceptionDeclaration _ ->
+  | Syn.Cst.StructureItem.ExceptionDeclaration _
+  | Syn.Cst.StructureItem.Docstring _
+  | Syn.Cst.StructureItem.Comment _ ->
       []

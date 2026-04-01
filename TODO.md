@@ -81,13 +81,24 @@
 1. Fix `tusk fix` for the new CST.
    - Generated `fixme-runner` now builds against the current CST again.
    - `timeout 180 tusk test tusk-fix:runner_tests` is green.
-   - Current blocker: `timeout 120 tusk fix --check` now scans until timeout instead of failing at compile time.
+   - Package-scoped health checks are now working without runtime crashes:
+     - `timeout 60 tusk fix --check --json packages/std`
+     - `timeout 60 tusk fix --check --json packages/krasny`
+   - Recent root fixes:
+     - provider hashes now include provider/support source contents, so generated runners rebuild when rules change
+     - stale traversal matches for standalone top-level docstrings/comments were fixed in both `fixme` and `tusk-fix`
+   - Next blocker:
+     - run the broader `timeout 120 tusk fix --check`
+     - confirm ignore patterns from `tusk.toml` are being honored during scanning
+     - only after that should we re-enable pre-commit
    - Once `tusk fix` is healthy again, re-enable the `scripts/git-hooks/pre-commit` check so every commit runs:
      - `tusk fix --check`
    - Loop:
      - `timeout 120 tusk build syn fixme tusk-fix`
-      - `timeout 120 tusk fix --check`
+     - `timeout 60 tusk fix --check --json <package-or-path>`
+     - `timeout 120 tusk fix --check`
      - fix one root CST consumer at a time
+     - prefer fixing crashes/stalls in `fixme` or generated-runner inputs before patching downstream wrappers
      - re-run `timeout 180 tusk test syn:cst_tests`
      - re-run `timeout 30 tusk test krasny:format_tests` when formatter-facing CST APIs change
 

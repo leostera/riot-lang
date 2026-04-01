@@ -431,7 +431,9 @@ let expressions_of_structure_item = function
   | Syn.Cst.StructureItem.ExceptionDeclaration _
   | Syn.Cst.StructureItem.ClassTypeDeclaration _
   | Syn.Cst.StructureItem.Attribute _
-  | Syn.Cst.StructureItem.Extension _ -> []
+  | Syn.Cst.StructureItem.Extension _
+  | Syn.Cst.StructureItem.Docstring _
+  | Syn.Cst.StructureItem.Comment _ -> []
   | Syn.Cst.StructureItem.LetBinding binding -> expressions_of_let_binding binding
   | Syn.Cst.StructureItem.Expression expr -> expressions_of_expression expr
   | Syn.Cst.StructureItem.ClassDeclaration { class_body; _ } -> [ class_body ] |> List.concat_map expressions_of_class_expression

@@ -1961,6 +1961,39 @@ let render x y z =
       Test.assert_true (String.contains binary_path "/build/debug/");
       Test.assert_false (String.contains binary_path "/workspace/_build/debug/");
       Ok ());
+  Test.case "fixme runner hash changes when provider support sources change"
+    (fun () ->
+      with_tempdir "tusk_fix_runner_hash"
+        (fun tmpdir ->
+          let workspace_root = tmpdir in
+          let target_dir_root = Path.(workspace_root / Path.v "_build") in
+          let package_path = Path.(workspace_root / Path.v "packages" / Path.v "std") in
+          let fix_dir = Path.(package_path / Path.v "fix") in
+          Fs.create_dir_all fix_dir |> Result.expect ~msg:"failed to create fix dir";
+          let provider_source = Path.(fix_dir / Path.v "tusk_fix_rules.ml") in
+          let support_source = Path.(fix_dir / Path.v "prefer_result_map_over_manual_match.ml") in
+          write_file
+            provider_source
+            "let rules () = []\nlet explanations () = []\n";
+          write_file
+            support_source
+            "let explanation = \"old\"\n";
+          let provider =
+            Tusk_model.Fix_provider.{
+              name = "std";
+              package_name = "std";
+              package_path;
+              source_path = provider_source;
+              rules = [ "std:no-stdlib" ];
+            }
+          in
+          let first_plan = Tusk_fix.Fixme_runner.plan ~workspace_root ~target_dir_root [ provider ] in
+          write_file
+            support_source
+            "let explanation = \"new\"\n";
+          let second_plan = Tusk_fix.Fixme_runner.plan ~workspace_root ~target_dir_root [ provider ] in
+          Test.assert_false (String.equal first_plan.provider_hash second_plan.provider_hash);
+          Ok ()));
   Test.case "rule query collects expressions from the typed CST"
     (fun () ->
       let result = Syn.parse_implementation "let render x = let y = x + 1 in y; y\n" in
@@ -2042,6 +2075,29 @@ let render x y z =
         () in
       let result = Tusk_fix.Pipeline.run pipeline source in
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
+      Ok ());
+  Test.case "prefer-result-map-over-manual-match ignores rebuilt error payloads without crashing"
+    (fun () ->
+      let source = "let map_result value = match value with | Ok x -> Ok (x + 1) | Error e -> Error (wrap e)\n" in
+      let rules = Tusk_fix.Pipeline.default_rules ()
+      |> List.filter
+        (fun rule ->
+          String.equal (Tusk_fix.Rule.id rule) "std:prefer-result-map-over-manual-match") in
+      let pipeline = Tusk_fix.Pipeline.make ~rules () in
+      let result = Tusk_fix.Pipeline.run pipeline source in
+      Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
+      Test.assert_equal ~expected:0 ~actual:(List.length result.parse_diagnostics);
+      Ok ());
+  Test.case "default pipeline tolerates standalone top-level docs and comments"
+    (fun () ->
+      let source =
+        "(** Module doc *)\n\
+         (* explanatory comment *)\n\
+         let value = 1\n\
+        " in
+      let pipeline = Tusk_fix.Pipeline.make ~rules:(Tusk_fix.Pipeline.default_rules ()) () in
+      let result = Tusk_fix.Pipeline.run pipeline source in
+      Test.assert_equal ~expected:0 ~actual:(List.length result.parse_diagnostics);
       Ok ());
   Test.case "rule explanations explain record-destructuring parameters"
     (fun () ->
