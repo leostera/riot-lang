@@ -34,6 +34,7 @@ members = [
   "packages/tusk-fmt",
   "packages/tusk-init",
   "packages/tusk-model",
+  "packages/tusk-pm",
   "packages/tusk-planner",
   "packages/tusk-repl",
   "packages/tusk-server",
