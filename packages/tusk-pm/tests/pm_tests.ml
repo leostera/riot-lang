@@ -74,10 +74,61 @@ let test_lock_deps_rejects_path_dependencies_for_now = fun () ->
       else
         Error ("unexpected error: " ^ err)
 
+let with_tempdir = fun prefix fn ->
+  match Fs.with_tempdir ~prefix fn with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
+let test_lock_refresh_requires_lock_when_missing = fun () ->
+  with_tempdir "tusk_pm_missing_lock"
+    (fun workspace_root ->
+      let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
+      Fs.write "[workspace]\nmembers = []\n" manifest_path
+      |> Result.expect ~msg:"expected manifest write to succeed";
+      match Tusk_pm.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      | Ok true -> Ok ()
+      | Ok false -> Error "expected missing lockfile to require refresh"
+      | Error err -> Error err)
+
+let test_lock_refresh_false_when_lock_is_newer = fun () ->
+  with_tempdir "tusk_pm_fresh_lock"
+    (fun workspace_root ->
+      let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
+      let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
+      Fs.write "[workspace]\nmembers = []\n" manifest_path
+      |> Result.expect ~msg:"expected manifest write to succeed";
+      sleep (Time.Duration.from_millis 20);
+      Fs.write "format_version = 1\npackages = []\n" lock_path
+      |> Result.expect ~msg:"expected lockfile write to succeed";
+      match Tusk_pm.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      | Ok false -> Ok ()
+      | Ok true -> Error "expected newer lockfile to avoid refresh"
+      | Error err -> Error err)
+
+let test_lock_refresh_true_when_manifest_is_newer = fun () ->
+  with_tempdir "tusk_pm_stale_lock"
+    (fun workspace_root ->
+      let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
+      let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
+      Fs.write "[workspace]\nmembers = []\n" manifest_path
+      |> Result.expect ~msg:"expected manifest write to succeed";
+      Fs.write "format_version = 1\npackages = []\n" lock_path
+      |> Result.expect ~msg:"expected lockfile write to succeed";
+      sleep (Time.Duration.from_millis 20);
+      Fs.write "[workspace]\nmembers = [\"packages/demo\"]\n" manifest_path
+      |> Result.expect ~msg:"expected manifest rewrite to succeed";
+      match Tusk_pm.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      | Ok true -> Ok ()
+      | Ok false -> Error "expected newer manifest to require refresh"
+      | Error err -> Error err)
+
 let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
     case "dep solver: rejects path dependencies for now" test_lock_deps_rejects_path_dependencies_for_now;
+    case "lock refresh: missing lock requires refresh" test_lock_refresh_requires_lock_when_missing;
+    case "lock refresh: newer lock avoids refresh" test_lock_refresh_false_when_lock_is_newer;
+    case "lock refresh: newer manifest requires refresh" test_lock_refresh_true_when_manifest_is_newer;
   ]
 
 let name = "Tusk PM Tests"
