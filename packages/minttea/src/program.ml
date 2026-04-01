@@ -130,7 +130,8 @@ let run = fun ~app ~config ~initial_model ->
     | Error NoTtyConnected ->
         Log.error "[PROGRAM] Failed to create TTY: Not a TTY";
         panic "Not a TTY"
-    | Error (SystemError (IO.Unknown_error msg)) ->
+    | Error (SystemError err) ->
+        let msg = IO.error_message err in
         Log.error ("[PROGRAM] Failed to create TTY: " ^ msg);
         panic msg
   in
