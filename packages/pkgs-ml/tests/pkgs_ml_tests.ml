@@ -82,11 +82,53 @@ let test_sparse_index_document_parsing = fun () ->
         Error "unexpected sparse index document contents"
   | Error err -> Error err
 
+let test_sparse_index_cached_reads = fun () ->
+  let config =
+    Pkgs_ml.Sparse_index.config_of_string
+      {|{
+  "schema_version": 1,
+  "kind": "sparse",
+  "package_path_strategy": "cargo-lowercase-v1",
+  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "artifact_base_url": "https://cdn.pkgs.ml"
+}|}
+    |> Result.expect ~msg:"expected sparse index config to parse"
+  in
+  let package =
+    Pkgs_ml.Sparse_index.package_document_of_string
+      {|{
+  "schema_version": 1,
+  "name": "kernel",
+  "latest": "0.0.1",
+  "updated_at": "2026-03-27T15:27:35Z",
+  "releases": []
+}|}
+    |> Result.expect ~msg:"expected sparse index package to parse"
+  in
+  let registry =
+    Pkgs_ml.Registry.in_memory
+      ~config
+      ~packages:[ package ]
+      ()
+  in
+  match
+    Pkgs_ml.Registry.read_config registry,
+    Pkgs_ml.Registry.read_package_document registry ~package_name:"Kernel"
+  with
+  | Ok (Some actual_config), Ok (Some actual_package)
+    when
+      String.equal actual_config.kind "sparse"
+      && String.equal actual_package.name "kernel" -> Ok ()
+  | Ok _, Ok _ -> Error "expected in-memory registry to return config and normalized package lookup"
+  | Error err, _
+  | _, Error err -> Error err
+
 let tests =
   Test.[
     case "registry cache: uses cargo-style split layout" test_registry_split_layout;
     case "sparse index: resolves cache path from normalized package name" test_sparse_index_layout;
     case "sparse index: parses package documents" test_sparse_index_document_parsing;
+    case "registry: in-memory registry returns config and packages" test_sparse_index_cached_reads;
   ]
 
 let name = "pkgs-ml Tests"

@@ -267,6 +267,32 @@ let package_relpath = fun package_name ->
 let package_cache_path = fun cache ~package_name ->
   Path.(Registry_cache.index_dir cache / package_relpath package_name)
 
+let config_cache_path = fun cache ->
+  Path.(Registry_cache.index_dir cache / Path.v "config.json")
+
+let read_cached_json = fun ~path ~decode ->
+  match Fs.exists path with
+  | Error err -> Error ("failed to check sparse index file '" ^ Path.to_string path ^ "': " ^ IO.error_message err)
+  | Ok false -> Ok None
+  | Ok true -> (
+      match Fs.read path with
+      | Error err ->
+          Error ("failed to read sparse index file '" ^ Path.to_string path ^ "': " ^ IO.error_message err)
+      | Ok source -> (
+          match decode source with
+          | Ok document -> Ok (Some document)
+          | Error err -> Error ("failed to decode sparse index file '" ^ Path.to_string path ^ "': " ^ err)
+        )
+    )
+
+let read_cached_config = fun cache ->
+  read_cached_json ~path:(config_cache_path cache) ~decode:config_of_string
+
+let read_cached_package_document = fun cache ~package_name ->
+  read_cached_json
+    ~path:(package_cache_path cache ~package_name)
+    ~decode:package_document_of_string
+
 module Tests = struct
   let expect_relpath = fun ~package_name ~expected ->
     let actual = package_relpath package_name |> Path.to_string in
