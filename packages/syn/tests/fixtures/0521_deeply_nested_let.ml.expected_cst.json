@@ -295,14 +295,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "+",
-                    "span": {
-                      "start": 41,
-                      "end": 42
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "+",
+                      "span": {
+                        "start": 41,
+                        "end": 42
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "path",
                     "syntax_node": {
@@ -332,14 +334,16 @@
                     }
                   }
                 },
-                "operator_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "+",
-                  "span": {
-                    "start": 45,
-                    "end": 46
+                "operator_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "+",
+                    "span": {
+                      "start": 45,
+                      "end": 46
+                    }
                   }
-                },
+                ],
                 "right": {
                   "tag": "path",
                   "syntax_node": {

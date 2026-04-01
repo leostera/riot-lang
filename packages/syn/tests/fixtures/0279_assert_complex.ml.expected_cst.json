@@ -188,14 +188,16 @@
                     }
                   }
                 },
-                "operator_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": ">",
-                  "span": {
-                    "start": 30,
-                    "end": 31
+                "operator_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": ">",
+                    "span": {
+                      "start": 30,
+                      "end": 31
+                    }
                   }
-                },
+                ],
                 "right": {
                   "tag": "literal",
                   "literal": {

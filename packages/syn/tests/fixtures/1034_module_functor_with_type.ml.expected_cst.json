@@ -151,7 +151,14 @@
                       },
                       "arguments": []
                     },
-                    "is_destructive": false
+                    "separator_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "=",
+                      "span": {
+                        "start": 28,
+                        "end": 29
+                      }
+                    }
                   }
                 ]
               }

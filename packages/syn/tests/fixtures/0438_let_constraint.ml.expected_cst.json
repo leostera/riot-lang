@@ -171,6 +171,14 @@
                 }
               },
               "type_keyword_token": null,
+              "dot_token": {
+                "kind": "IDENT_EXPR",
+                "text": ".",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
+              },
               "binders": [
                 {
                   "tag": "quoted",

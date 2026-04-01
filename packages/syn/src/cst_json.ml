@@ -793,7 +793,7 @@ and literal_to_json = fun literal -> constant_to_json literal
 and attribute_to_json = fun (attr: Cst.attribute) ->
     Json.Object [
       ("syntax_node", syntax_node_to_json attr.syntax_node);
-      ("sigil_token", token_to_json attr.sigil_token);
+      ("sigil_tokens", Json.Array (List.map token_to_json attr.sigil_tokens));
       ("name", ident_to_json attr.name);
       ("payload", option_to_json payload_to_json attr.payload)
     ]
@@ -808,7 +808,7 @@ and payload_to_json = function
 and extension_to_json = fun (ext: Cst.extension) ->
     Json.Object [
       ("syntax_node", syntax_node_to_json ext.syntax_node);
-      ("sigil_token", token_to_json ext.sigil_token);
+      ("sigil_tokens", Json.Array (List.map token_to_json ext.sigil_tokens));
       ("name", ident_to_json ext.name);
       ("payload", option_to_json payload_to_json ext.payload)
     ]
@@ -946,17 +946,17 @@ and type_ascription_kind_to_json = function
     ("type", core_type_to_json type_);
 
   ]
-  | Cst.Coerce { coercion_token; type_ } -> Json.Object [
+  | Cst.Coerce { coercion_tokens; type_ } -> Json.Object [
     ("tag", Json.String "coerce");
-    ("coercion_token", token_to_json coercion_token);
+    ("coercion_tokens", Json.Array (List.map token_to_json coercion_tokens));
     ("type", core_type_to_json type_);
 
   ]
-  | Cst.ConstraintCoerce { colon_token; from_type; coercion_token; to_type } -> Json.Object [
+  | Cst.ConstraintCoerce { colon_token; from_type; coercion_tokens; to_type } -> Json.Object [
     ("tag", Json.String "constraint_coerce");
     ("colon_token", token_to_json colon_token);
     ("from_type", core_type_to_json from_type);
-    ("coercion_token", token_to_json coercion_token);
+    ("coercion_tokens", Json.Array (List.map token_to_json coercion_tokens));
     ("to_type", core_type_to_json to_type);
 
   ]
@@ -1093,10 +1093,11 @@ and expression_to_json = fun expression ->
       ("argument", apply_argument_to_json argument)
     ]
     @ expression_attribute_fields expression)
-    | Cst.Expression.MethodCall { syntax_node; receiver; method_name; _ } -> Json.Object ([
+    | Cst.Expression.MethodCall { syntax_node; receiver; hash_token; method_name; _ } -> Json.Object ([
       ("tag", Json.String "method_call");
       ("syntax_node", syntax_node_to_json syntax_node);
       ("receiver", expression_to_json receiver);
+      ("hash_token", token_to_json hash_token);
       ("method_name", token_to_json method_name)
     ]
     @ expression_attribute_fields expression)
@@ -1187,14 +1188,14 @@ and expression_to_json = fun expression ->
     | Cst.Expression.Infix {
       syntax_node;
       left;
-      operator_token;
+      operator_tokens;
       right;
       _
     } -> Json.Object ([
       ("tag", Json.String "infix");
       ("syntax_node", syntax_node_to_json syntax_node);
       ("left", expression_to_json left);
-      ("operator_token", token_to_json operator_token);
+      ("operator_tokens", Json.Array (List.map token_to_json operator_tokens));
       ("right", expression_to_json right)
     ]
     @ expression_attribute_fields expression)

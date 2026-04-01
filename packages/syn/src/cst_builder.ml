@@ -242,23 +242,34 @@ let rec syntax_node_root = fun node ->
     | None -> node
 
 let source_text_from_syntax_tokens = fun syntax_tokens ->
+    let pieces =
+      syntax_tokens
+      |> List.concat_map
+        (fun syntax_token ->
+          let trivia_pieces =
+            Ceibo.Red.SyntaxToken.leading_trivia syntax_token
+            |> List.map
+              (fun syntax_trivia ->
+                (Ceibo.Red.SyntaxTrivia.span syntax_trivia, Ceibo.Red.SyntaxTrivia.text syntax_trivia))
+          in
+          let token_piece = (Ceibo.Red.SyntaxToken.span syntax_token, Ceibo.Red.SyntaxToken.text syntax_token) in
+          trivia_pieces @ [ token_piece ])
+    in
     let source_length =
-      match List.rev syntax_tokens with
-      | last :: _ -> (Ceibo.Red.SyntaxToken.span last).end_
-      | [] -> 0
+      pieces |> List.fold_left
+        (fun acc ((span: Ceibo.Span.t), _text) -> Int.max acc span.end_)
+        0
     in
     let buffer = IO.Buffer.create source_length in
     let next_offset = ref 0 in
-    syntax_tokens |> List.iter
-      (fun syntax_token ->
-        let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
-        let { Ceibo.Span.start; end_ } = Ceibo.Red.SyntaxToken.span syntax_token in
-        let token_length = Int.min (String.length token_text) (Int.max 0 (end_ - start)) in
+    pieces |> List.iter
+      (fun (({ Ceibo.Span.start; end_ } as _span), piece_text) ->
+        let piece_length = Int.min (String.length piece_text) (Int.max 0 (end_ - start)) in
         let gap_length = Int.max 0 (start - !next_offset) in
         if gap_length > 0 then
           IO.Buffer.add_string buffer (String.make gap_length ' ');
-        if token_length > 0 then
-          IO.Buffer.add_substring buffer token_text 0 token_length;
+        if piece_length > 0 then
+          IO.Buffer.add_substring buffer piece_text 0 piece_length;
         next_offset := Int.max !next_offset end_);
     IO.Buffer.contents buffer
 
@@ -925,6 +936,11 @@ let is_section_docstring_trivia = function
 
 let normalize_value_declaration_owned_trivia = fun decl -> decl
 
+let value_declaration_nontrivia_end = fun (decl: Cst.value_declaration) ->
+    match List.rev (Ceibo.Red.SyntaxNode.tokens (Cst.CoreType.syntax_node decl.type_)) with
+    | token :: _ -> (Ceibo.Red.SyntaxToken.span token).end_
+    | [] -> span_of_syntax_node_nontrivia_bounds (Cst.CoreType.syntax_node decl.type_) |> fun span -> span.end_
+
 let split_member_trailing_trivia = fun ~source:_ ~member_indent:_ owned -> (owned, [])
 
 let has_blank_line_between_offsets = fun ~source ~start ~end_ ->
@@ -1531,11 +1547,28 @@ let normalize_signature_items_owned_trivia = fun ~source items ->
         normalize_value_declaration = normalize_value_declaration_owned_trivia;
         append_value_declaration_leading_trivia = append_value_declaration_leading_trivia;
         append_value_declaration_trailing_comment = append_value_declaration_trailing_comment;
-        value_declaration_nontrivia_end = (fun decl ->
-          span_of_syntax_node_nontrivia_bounds decl.syntax_node |> fun span -> span.end_);
+        value_declaration_nontrivia_end = value_declaration_nontrivia_end;
 
       }
       items
+
+let rec detach_multiline_signature_value_trailing_comments = fun ~source ->
+    function
+    | [] -> []
+    | Cst.SignatureItem.ValueDeclaration decl :: rest -> (
+        match decl.trailing_comment with
+        | Some comment when has_newline_between_offsets
+          ~source
+          ~start:(value_declaration_nontrivia_end decl)
+          ~end_:(Ceibo.Red.SyntaxNode.span (Cst.Comment.syntax_node comment)).start ->
+            Cst.SignatureItem.ValueDeclaration {decl with trailing_comment = None}
+            :: Cst.SignatureItem.Comment comment
+            :: detach_multiline_signature_value_trailing_comments ~source rest
+        | _ ->
+            Cst.SignatureItem.ValueDeclaration decl
+            :: detach_multiline_signature_value_trailing_comments ~source rest
+      )
+    | item :: rest -> item :: detach_multiline_signature_value_trailing_comments ~source rest
 
 let expression_grouping_from_node = fun node ->
     match direct_non_trivia_tokens node with
@@ -1666,13 +1699,19 @@ let find_declaration_name_tokens = fun ~skip_keywords tokens ->
 
 let declaration_name_tokens_from_node = fun ~skip_keywords node ->
     let operator_tokens_from_node node =
-      direct_non_trivia_tokens node
-      |> List.filter
-        (fun syntax_token ->
-          let text = Ceibo.Red.SyntaxToken.text syntax_token in
-          not (String.equal text "(" || String.equal text ")"))
-      |> List.map token
-      |> function
+      let tokens = direct_non_trivia_tokens node in
+      let text = Ceibo.Red.SyntaxToken.text in
+      let tokens =
+        match tokens with
+        | opening_syntax_token :: rest when String.equal (text opening_syntax_token) "(" -> (
+            match List.rev rest with
+            | closing_syntax_token :: inner_rev when String.equal (text closing_syntax_token) ")" ->
+                List.rev inner_rev
+            | _ -> tokens
+          )
+        | _ -> tokens
+      in
+      match List.map token tokens with
       | [] -> None
       | lifted -> Some lifted
     in
@@ -2071,21 +2110,21 @@ let attribute_from_node node : Cst.attribute =
     ~sigils:[ at_text; double_at_text; triple_at_text ]
     node in
   let shell_tokens = direct_non_trivia_tokens shell_node in
-  let sigil_syntax_token =
+  let sigil_syntax_tokens =
     shell_tokens
-    |> List.find_opt
+    |> List.filter
       (fun syntax_token ->
         let text = Ceibo.Red.SyntaxToken.text syntax_token in
         String.equal text at_text || String.equal text double_at_text || String.equal text triple_at_text)
   in
-  match sigil_syntax_token with
-  | Some sigil_syntax_token -> {
+  match sigil_syntax_tokens with
+  | _ :: _ -> {
     Cst.syntax_node = node;
-    sigil_token = token sigil_syntax_token;
+    sigil_tokens = List.map token sigil_syntax_tokens;
     name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:attribute_sigil_texts shell_tokens;
     payload = attribute_payload_from_shell shell_node
   }
-  | None -> bail
+  | [] -> bail
     ~message:"expected attribute sigil during Ceibo -> CST lifting"
     ~syntax_node:node
     ~context:[ "attribute" ]
@@ -2096,24 +2135,24 @@ let extension_from_node node : Cst.extension =
     ~sigils:[ percent_text; double_percent_text; triple_percent_text ]
     node in
   let shell_tokens = direct_non_trivia_tokens shell_node in
-  let sigil_syntax_token =
+  let sigil_syntax_tokens =
     shell_tokens
-    |> List.find_opt
+    |> List.filter
       (fun syntax_token ->
         let text = Ceibo.Red.SyntaxToken.text syntax_token in
         String.equal text percent_text
         || String.equal text double_percent_text
         || String.equal text triple_percent_text)
   in
-  match sigil_syntax_token with
-  | Some sigil_syntax_token -> {
+  match sigil_syntax_tokens with
+  | _ :: _ -> {
     Cst.syntax_node = node;
-    sigil_token = token sigil_syntax_token;
+    sigil_tokens = List.map token sigil_syntax_tokens;
     name = annotation_name_from_tokens ~syntax_node:shell_node ~sigils:extension_sigil_texts shell_tokens;
     payload = extension_payload_from_shell shell_node;
     attributes = []
   }
-  | None -> bail
+  | [] -> bail
     ~message:"expected extension sigil during Ceibo -> CST lifting"
     ~syntax_node:node
     ~context:[ "extension" ]
@@ -2829,6 +2868,21 @@ let direct_syntax_tokens_between_offsets = fun ~after_offset ~before_offset node
         let span = Ceibo.Red.SyntaxToken.span syntax_token in
         span.start >= after_offset && span.end_ <= before_offset)
 
+let direct_required_tokens_with_text_between_offsets = fun ~context ~after_offset ~before_offset ~expected_texts node ->
+    let lifted_tokens =
+      direct_syntax_tokens_between_offsets ~after_offset ~before_offset node |> List.map token
+    in
+    let actual_texts = lifted_tokens |> List.map Cst.Token.text in
+    if List.equal String.equal actual_texts expected_texts then
+      lifted_tokens
+    else
+      bail
+        ~message:("expected token sequence ["
+          ^ (expected_texts |> String.concat ", ")
+          ^ "] during Ceibo -> CST lifting")
+        ~syntax_node:node
+        ~context
+
 let trailing_module_path_tokens = fun syntax_tokens ->
     let is_ident_text text =
       let len = String.length text in
@@ -2866,10 +2920,24 @@ let rec take_tokens_until_equals = fun acc ->
           take_tokens_until_equals (syntax_token :: acc) rest
 
 let operator_tokens_from_node = fun node ->
-    direct_non_trivia_tokens node |> List.filter
-      (fun syntax_token ->
-        let text = Ceibo.Red.SyntaxToken.text syntax_token in
-        not (String.equal text "(" || String.equal text ")" || String.equal text " ")) |> List.map token
+    let tokens = direct_non_trivia_tokens node in
+    let text = Ceibo.Red.SyntaxToken.text in
+    let tokens =
+      match tokens with
+      | opening_syntax_token :: rest when String.equal (text opening_syntax_token) "(" -> (
+          match List.rev rest with
+          | closing_syntax_token :: inner_rev when String.equal (text closing_syntax_token) ")" ->
+              List.rev inner_rev
+          | _ -> tokens
+        )
+      | _ -> tokens
+    in
+    tokens
+    |> List.filter
+         (fun syntax_token ->
+           let text = Ceibo.Red.SyntaxToken.text syntax_token in
+           not (String.equal text " "))
+    |> List.map token
 
 let arrow_label_from_node = fun node ->
     let text syntax_token = Ceibo.Red.SyntaxToken.text syntax_token in
@@ -4503,17 +4571,17 @@ and rebuild_apply_chain = fun ~syntax_node callee ->
 
 and split_greedy_argument_value = fun value ->
     match value with
-    | Cst.Expression.Infix { left; operator_token; right; _ } ->
+    | Cst.Expression.Infix { left; operator_tokens; right; _ } ->
         let head, extra_arguments, tail = split_greedy_argument_value left in
         let tail =
           match tail with
-          | None -> Some (operator_token, right)
-          | Some (tail_operator, tail_right) -> Some (
-            tail_operator,
+          | None -> Some (operator_tokens, right)
+          | Some (tail_operator_tokens, tail_right) -> Some (
+            tail_operator_tokens,
             Cst.Expression.Infix {
               syntax_node = Cst.Expression.syntax_node value;
               left = tail_right;
-              operator_token;
+              operator_tokens;
               right;
               attributes = []
             }
@@ -4560,10 +4628,10 @@ and normalize_greedy_labeled_argument = fun ~syntax_node ~callee argument ->
     in
     let wrap_infix_tail = fun left ->
         function
-        | Some (operator_token, right) -> Cst.Expression.Infix {
+        | Some (operator_tokens, right) -> Cst.Expression.Infix {
           syntax_node;
           left;
-          operator_token;
+          operator_tokens;
           right;
           attributes = []
         }
@@ -5353,14 +5421,15 @@ and expression_from_node = fun node ->
               Cst.Expression.TypeAscription {
                 syntax_node = node;
                 expression = expression_from_node expr_node;
-                kind = Cst.Coerce {coercion_token = (
-                    match direct_token_with_text node ":>" with
-                    | Some coercion_token -> coercion_token
-                    | None -> bail
-                      ~message:"expected expression coercion token during Ceibo -> CST lifting"
-                      ~syntax_node:node
-                      ~context:[ "expression.type_ascription"; "coercion_token" ]
-                  ); type_ = core_type_from_node to_type_node; };
+                kind = Cst.Coerce {
+                  coercion_tokens = direct_required_tokens_with_text_between_offsets
+                    ~context:[ "expression.type_ascription"; "coercion_tokens" ]
+                    ~after_offset:(Ceibo.Red.SyntaxNode.span expr_node).end_
+                    ~before_offset:(Ceibo.Red.SyntaxNode.span to_type_node).start
+                    ~expected_texts:[ ":"; ">" ]
+                    node;
+                  type_ = core_type_from_node to_type_node;
+                };
                 attributes = []
               }
           | expr_node :: from_type_node :: to_type_node :: _ ->
@@ -5374,13 +5443,13 @@ and expression_from_node = fun node ->
                       ~message:"expected expression constraint-coercion colon token during Ceibo -> CST lifting"
                       ~syntax_node:node
                       ~context:[ "expression.type_ascription"; "colon_token" ]
-                  ); from_type = core_type_from_node from_type_node; coercion_token = (
-                    match direct_token_with_text node ":>" with
-                    | Some coercion_token -> coercion_token
-                    | None -> bail
-                      ~message:"expected expression constraint-coercion coercion token during Ceibo -> CST lifting"
-                      ~syntax_node:node
-                      ~context:[ "expression.type_ascription"; "coercion_token" ]
+                  ); from_type = core_type_from_node from_type_node; coercion_tokens = (
+                    direct_required_tokens_with_text_between_offsets
+                      ~context:[ "expression.type_ascription"; "coercion_tokens" ]
+                      ~after_offset:(Ceibo.Red.SyntaxNode.span from_type_node).end_
+                      ~before_offset:(Ceibo.Red.SyntaxNode.span to_type_node).start
+                      ~expected_texts:[ ":"; ">" ]
+                      node
                   ); to_type = core_type_from_node to_type_node; };
                 attributes = []
               }
@@ -5393,10 +5462,10 @@ and expression_from_node = fun node ->
         )
       | Syntax_kind.INFIX_EXPR -> (
           match direct_non_trivia_nodes node, direct_non_trivia_tokens node with
-          | left_node :: right_node :: _, operator_syntax_token :: _ -> Cst.Expression.Infix {
+          | left_node :: right_node :: _, operator_syntax_tokens -> Cst.Expression.Infix {
             syntax_node = node;
             left = expression_from_node left_node;
-            operator_token = token operator_syntax_token;
+            operator_tokens = List.map token operator_syntax_tokens;
             right = expression_from_node right_node;
             attributes = []
           }
@@ -5743,12 +5812,27 @@ and object_expression_from_node = fun node ->
 
 and method_call_expression_from_node = fun node ->
     match direct_non_trivia_nodes node, List.rev (direct_non_trivia_tokens node) with
-    | receiver_node :: _, method_name_tok :: _ -> Some {
-      Cst.syntax_node = node;
-      receiver = expression_from_node receiver_node;
-      method_name = token method_name_tok;
-      attributes = []
-    }
+    | receiver_node :: _, method_name_tok :: _ ->
+        let direct_tokens = direct_non_trivia_tokens node in
+        let hash_token =
+          match
+            direct_tokens
+            |> List.find_opt (fun syntax_token -> String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "#")
+          with
+          | Some syntax_token -> token syntax_token
+          | None ->
+              bail
+                ~message:"expected method call hash token during Ceibo -> CST lifting"
+                ~syntax_node:node
+                ~context:[ "expression"; "method_call"; "hash_token" ]
+        in
+        Some {
+          Cst.syntax_node = node;
+          receiver = expression_from_node receiver_node;
+          hash_token;
+          method_name = token method_name_tok;
+          attributes = []
+        }
     | _ -> None
 
 and new_expression_from_node = fun node ->
@@ -10254,6 +10338,7 @@ let normalize_signature_items = fun ~source items ->
     |> coalesce_signature_type_declaration_groups
     |> attach_signature_type_declaration_attributes
     |> normalize_signature_items_owned_trivia ~source
+    |> detach_multiline_signature_value_trailing_comments ~source
 
 let lift = fun ~kind ~source ~tokens tree ->
     let cst =

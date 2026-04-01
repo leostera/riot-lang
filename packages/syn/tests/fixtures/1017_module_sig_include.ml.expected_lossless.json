@@ -234,7 +234,7 @@
           },
           {
             "type": "node",
-            "kind": "IDENT_EXPR",
+            "kind": "SIG_EXPR",
             "width": 24,
             "children": [
               {

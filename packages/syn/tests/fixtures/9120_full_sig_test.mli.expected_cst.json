@@ -80,6 +80,14 @@
               "end": 16
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 10,
+              "end": 14
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -102,7 +110,7 @@
           "type_definition": {
             "tag": "abstract"
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -113,6 +121,14 @@
             "span": {
               "start": 16,
               "end": 87
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "val",
+            "span": {
+              "start": 18,
+              "end": 21
             }
           },
           "name_tokens": [
@@ -263,7 +279,8 @@
                 "arguments": []
               }
             }
-          }
+          },
+          "trailing_comment": null
         }
       }
     ]

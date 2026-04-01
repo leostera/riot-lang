@@ -96,6 +96,24 @@
             },
             "kind": {
               "tag": "coerce",
+              "coercion_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ">",
+                  "span": {
+                    "start": 14,
+                    "end": 15
+                  }
+                }
+              ],
               "type": {
                 "tag": "constr",
                 "syntax_node": {

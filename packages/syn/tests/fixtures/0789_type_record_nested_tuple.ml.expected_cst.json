@@ -20,6 +20,14 @@
               "end": 46
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 0,
+              "end": 4
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -65,6 +73,7 @@
                     "end": 14
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -134,8 +143,7 @@
                       "arguments": []
                     }
                   ]
-                },
-                "is_mutable": false
+                }
               },
               {
                 "syntax_node": {
@@ -153,6 +161,7 @@
                     "end": 32
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "tuple",
                   "syntax_node": {
@@ -222,12 +231,11 @@
                       "arguments": []
                     }
                   ]
-                },
-                "is_mutable": false
+                }
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

@@ -1432,7 +1432,7 @@
           {
             "type": "node",
             "kind": "LABELED_PARAM",
-            "width": 8,
+            "width": 4,
             "children": [
               {
                 "type": "token",
@@ -1455,24 +1455,31 @@
                 "width": 2,
                 "full_width": 2,
                 "leading_trivia": []
-              },
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "width": 1,
+            "full_width": 2,
+            "leading_trivia": [
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": ":",
-                "width": 1,
-                "full_width": 2,
-                "leading_trivia": [
-                  {
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  }
-                ]
-              },
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_CONSTR",
+            "width": 4,
+            "children": [
               {
                 "type": "node",
-                "kind": "IDENT_PATTERN",
+                "kind": "TYPE_CONSTR",
                 "width": 2,
                 "children": [
                   {
@@ -1490,14 +1497,7 @@
                     ]
                   }
                 ]
-              }
-            ]
-          },
-          {
-            "type": "node",
-            "kind": "IDENT_PATTERN",
-            "width": 2,
-            "children": [
+              },
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",
@@ -2344,7 +2344,7 @@
           {
             "type": "node",
             "kind": "LABELED_PARAM",
-            "width": 8,
+            "width": 4,
             "children": [
               {
                 "type": "token",
@@ -2367,24 +2367,31 @@
                 "width": 2,
                 "full_width": 2,
                 "leading_trivia": []
-              },
+              }
+            ]
+          },
+          {
+            "type": "token",
+            "kind": "IDENT_EXPR",
+            "text": ":",
+            "width": 1,
+            "full_width": 2,
+            "leading_trivia": [
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": ":",
-                "width": 1,
-                "full_width": 2,
-                "leading_trivia": [
-                  {
-                    "kind": "WHITESPACE",
-                    "text": " ",
-                    "width": 1
-                  }
-                ]
-              },
+                "kind": "WHITESPACE",
+                "text": " ",
+                "width": 1
+              }
+            ]
+          },
+          {
+            "type": "node",
+            "kind": "TYPE_CONSTR",
+            "width": 4,
+            "children": [
               {
                 "type": "node",
-                "kind": "IDENT_PATTERN",
+                "kind": "TYPE_CONSTR",
                 "width": 2,
                 "children": [
                   {
@@ -2402,14 +2409,7 @@
                     ]
                   }
                 ]
-              }
-            ]
-          },
-          {
-            "type": "node",
-            "kind": "IDENT_PATTERN",
-            "width": 2,
-            "children": [
+              },
               {
                 "type": "token",
                 "kind": "IDENT_EXPR",

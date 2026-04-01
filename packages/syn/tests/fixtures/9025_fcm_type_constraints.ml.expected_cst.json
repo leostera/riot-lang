@@ -40,6 +40,14 @@
               "end": 143
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 53,
+              "end": 57
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -68,7 +76,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -96,7 +104,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -215,7 +223,14 @@
                       }
                     }
                   },
-                  "is_destructive": false
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 111,
+                      "end": 112
+                    }
+                  }
                 },
                 {
                   "syntax_node": {
@@ -280,13 +295,20 @@
                       }
                     }
                   },
-                  "is_destructive": false
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 134,
+                      "end": 135
+                    }
+                  }
                 }
               ],
               "attribute": null
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -297,6 +319,14 @@
             "span": {
               "start": 143,
               "end": 194
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 145,
+              "end": 149
             }
           },
           "type_name": {
@@ -420,13 +450,20 @@
                     },
                     "arguments": []
                   },
-                  "is_destructive": false
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 188,
+                      "end": 189
+                    }
+                  }
                 }
               ],
               "attribute": null
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

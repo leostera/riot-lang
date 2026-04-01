@@ -49,7 +49,7 @@ let let_and_bindings =
   left + right
 
 let let_rec_in =
-  let rec loop = fun n ->
+  let rec loop n =
     if n <= 0 then
       0
     else
@@ -58,7 +58,7 @@ let let_rec_in =
   loop count
 
 let parameterized_local_let_rec =
-  let rec push_many = fun indent docs rest ->
+  let rec push_many indent docs rest =
     match List.rev docs with
     | [] -> rest
     | docs -> docs |> List.fold_left (fun acc doc -> (indent, doc) :: acc) rest

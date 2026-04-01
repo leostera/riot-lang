@@ -250,14 +250,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "+",
-                    "span": {
-                      "start": 40,
-                      "end": 41
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "+",
+                      "span": {
+                        "start": 40,
+                        "end": 41
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "path",
                     "syntax_node": {

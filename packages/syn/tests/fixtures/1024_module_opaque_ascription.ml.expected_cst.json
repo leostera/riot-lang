@@ -135,7 +135,14 @@
                   },
                   "arguments": []
                 },
-                "is_destructive": false
+                "separator_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 25,
+                    "end": 26
+                  }
+                }
               }
             ]
           },
@@ -264,7 +271,14 @@
                     },
                     "arguments": []
                   },
-                  "is_destructive": false
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 25,
+                      "end": 26
+                    }
+                  }
                 }
               ]
             }

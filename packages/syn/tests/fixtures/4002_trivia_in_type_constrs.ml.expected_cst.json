@@ -60,6 +60,14 @@
               "end": 102
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 88,
+              "end": 92
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -118,7 +126,7 @@
               "arguments": []
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -149,6 +157,14 @@
             "span": {
               "start": 102,
               "end": 193
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 156,
+              "end": 160
             }
           },
           "type_name": {
@@ -239,7 +255,7 @@
               ]
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -270,6 +286,14 @@
             "span": {
               "start": 193,
               "end": 270
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 237,
+              "end": 241
             }
           },
           "type_name": {
@@ -427,7 +451,7 @@
               ]
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -458,6 +482,14 @@
             "span": {
               "start": 270,
               "end": 348
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 329,
+              "end": 333
             }
           },
           "type_name": {
@@ -570,7 +602,7 @@
               "arguments": []
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -683,6 +715,14 @@
               "end": 479
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 459,
+              "end": 463
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -711,7 +751,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -797,7 +837,7 @@
               ]
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -830,6 +870,14 @@
               "end": 579
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 520,
+              "end": 524
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -858,7 +906,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -886,7 +934,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -1010,7 +1058,7 @@
               ]
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

@@ -91,14 +91,16 @@
                 "suffix": null
               }
             },
-            "operator_token": {
-              "kind": "IDENT_EXPR",
-              "text": "+",
-              "span": {
-                "start": 10,
-                "end": 11
+            "operator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "+",
+                "span": {
+                  "start": 10,
+                  "end": 11
+                }
               }
-            },
+            ],
             "right": {
               "tag": "parenthesized",
               "syntax_node": {
@@ -159,14 +161,16 @@
                     "suffix": null
                   }
                 },
-                "operator_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "*",
-                  "span": {
-                    "start": 15,
-                    "end": 16
+                "operator_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "*",
+                    "span": {
+                      "start": 15,
+                      "end": 16
+                    }
                   }
-                },
+                ],
                 "right": {
                   "tag": "literal",
                   "literal": {

@@ -16,9 +16,9 @@ let fun_nested = fun x y -> x + y
 let fun_inline_pattern = fun (x, y) -> x + y
 
 let fun_body_match = fun value ->
-    match value with
-    | Some x -> x
-    | None -> 0
+  match value with
+  | Some x -> x
+  | None -> 0
 
 let match_simple =
   match value with
@@ -112,9 +112,9 @@ let classify_letter = function
 let make_adder = fun x -> fun y -> x + y
 
 let make_handler = fun x ->
-    match x with
-    | Some base -> fun y -> base + y
-    | None -> fun y -> y
+  match x with
+  | Some base -> fun y -> base + y
+  | None -> fun y -> y
 
 let describe mode value =
   match mode, value with

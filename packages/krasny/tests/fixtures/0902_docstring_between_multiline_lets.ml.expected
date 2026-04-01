@@ -1,3 +1,4 @@
-let add_edge = fun node ~depends_on -> node.deps <- depends_on.id :: node.deps
+let add_edge node ~depends_on =
+  node.deps <- depends_on.id :: node.deps
 (** Generate DOT format output for visualization *)
-let to_dot = fun graph -> graph
+let to_dot graph = graph

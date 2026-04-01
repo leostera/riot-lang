@@ -163,6 +163,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 20,
+                  "end": 21
+                }
+              },
               "type": {
                 "tag": "arrow",
                 "syntax_node": {

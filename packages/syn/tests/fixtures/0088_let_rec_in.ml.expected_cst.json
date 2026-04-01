@@ -224,14 +224,16 @@
                     }
                   }
                 },
-                "operator_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "=",
-                  "span": {
-                    "start": 29,
-                    "end": 30
+                "operator_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 29,
+                      "end": 30
+                    }
                   }
-                },
+                ],
                 "right": {
                   "tag": "literal",
                   "literal": {
@@ -320,14 +322,16 @@
                     }
                   }
                 },
-                "operator_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "*",
-                  "span": {
-                    "start": 47,
-                    "end": 48
+                "operator_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "*",
+                    "span": {
+                      "start": 47,
+                      "end": 48
+                    }
                   }
-                },
+                ],
                 "right": {
                   "tag": "apply",
                   "syntax_node": {
@@ -430,14 +434,16 @@
                             }
                           }
                         },
-                        "operator_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "-",
-                          "span": {
-                            "start": 54,
-                            "end": 55
+                        "operator_tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "-",
+                            "span": {
+                              "start": 54,
+                              "end": 55
+                            }
                           }
-                        },
+                        ],
                         "right": {
                           "tag": "literal",
                           "literal": {

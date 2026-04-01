@@ -20,6 +20,14 @@
               "end": 12
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 0,
+              "end": 4
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -78,7 +86,7 @@
               "arguments": []
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

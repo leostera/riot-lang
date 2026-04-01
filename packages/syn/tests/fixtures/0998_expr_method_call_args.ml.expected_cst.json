@@ -112,6 +112,14 @@
                     }
                   }
                 },
+                "hash_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "#",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                },
                 "method_name": {
                   "kind": "IDENT_EXPR",
                   "text": "method_name",

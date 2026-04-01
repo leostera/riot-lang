@@ -121,14 +121,16 @@
                   }
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": "&&",
-                "span": {
-                  "start": 26,
-                  "end": 28
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "&&",
+                  "span": {
+                    "start": 26,
+                    "end": 28
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "infix",
                 "syntax_node": {
@@ -184,14 +186,16 @@
                     }
                   }
                 },
-                "operator_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "<",
-                  "span": {
-                    "start": 32,
-                    "end": 33
+                "operator_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "<",
+                    "span": {
+                      "start": 32,
+                      "end": 33
+                    }
                   }
-                },
+                ],
                 "right": {
                   "tag": "literal",
                   "literal": {
@@ -319,14 +323,16 @@
                     }
                   }
                 },
-                "operator_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "+",
-                  "span": {
-                    "start": 52,
-                    "end": 53
+                "operator_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "+",
+                    "span": {
+                      "start": 52,
+                      "end": 53
+                    }
                   }
-                },
+                ],
                 "right": {
                   "tag": "literal",
                   "literal": {

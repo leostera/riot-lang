@@ -1,15 +1,16 @@
-(** TLS stream wrapping a reader/writer pair. *)
 type 'src t
-(** TLS-specific errors *)
+(** TLS stream wrapping a reader/writer pair. *)
 type error =
   | Closed
   | Handshake_failed of string
   | Unsupported_vectored_operation
+(** TLS-specific errors *)
 (** {2 Create TLS Streams} *)
 
+val of_client_io:
+  reader:(Tcp_stream.t, error) IO.Reader.t ->
+  writer:(Tcp_stream.t, error) IO.Writer.t ->
+  hostname:string ->
+  unit ->
+  ('src t, error) result
 (** Create TLS client from any reader/writer pair. *)
-val of_client_io : reader:(Tcp_stream.t, error) IO.Reader.t ->
-writer:(Tcp_stream.t, error) IO.Writer.t ->
-hostname:string ->
-unit ->
-('src t, error) result

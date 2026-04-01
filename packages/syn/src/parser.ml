@@ -553,6 +553,7 @@ let operator_info = function
   | Token.BangEq -> Some (3, false)
   | Token.LtPercent -> Some (3, false)
   | Token.At
+  | Token.Hash
   | Token.Caret
   | Token.AtAt -> Some (4, true)
   | Token.ColonColon -> Some (5, true)
@@ -4719,43 +4720,34 @@ and parse_postfix_expr = fun parser ->
     let rec parse_postfix expr =
       match peek_kind parser with
       | Token.Hash ->
-          let hash = consume parser in
-          let trivia_after_hash = consume_trivia parser in
-          let method_name =
-            match peek_kind parser with
+          let next_kind = (peek_n parser 1).Token.kind in
+          (
+            match next_kind with
             | Token.Ident _ ->
-                [ make_token parser (consume parser) ]
+                let hash = consume parser in
+                let trivia_after_hash = consume_trivia parser in
+                let method_name = [ make_token parser (consume parser) ] in
+                let trivia_after_method = consume_trivia parser in
+                let method_call = make_node
+                  Syntax_kind.METHOD_CALL_EXPR
+                  ([ Ceibo.Green.Node expr ]
+                  @ [ make_token parser hash ]
+                  @ tokens_to_green parser trivia_after_hash
+                  @ method_name
+                  @ tokens_to_green parser trivia_after_method) in
+                parse_postfix method_call
             | tok when is_operator_token tok ->
-                let rec collect acc =
-                  match peek_kind parser with
-                  | Token.Ident _ ->
-                      let ident = consume parser in
-                      List.rev ([ make_token parser ident ] @ acc)
-                  | tok when is_operator_token tok ->
-                      let op = consume parser in
-                      collect (make_token parser op :: acc)
-                  | _ ->
-                      List.rev acc
-                in
-                collect []
+                expr
             | _ ->
+                let hash = consume parser in
                 let found = peek parser in
                 let diagnostic = Diagnostic.invalid_expression
                   ~found
                   ~text:(token_text parser found)
-                  ~span:(expected_span parser) in
+                  ~span:hash.Token.span in
                 report_diagnostic parser diagnostic;
-                [ make_token parser found ]
-          in
-          let trivia_after_method = consume_trivia parser in
-          let method_call = make_node
-            Syntax_kind.METHOD_CALL_EXPR
-            ([ Ceibo.Green.Node expr ]
-            @ [ make_token parser hash ]
-            @ tokens_to_green parser trivia_after_hash
-            @ method_name
-            @ tokens_to_green parser trivia_after_method) in
-          parse_postfix method_call
+                expr
+          )
       | Token.OpenDelim Token.Bracket ->
           (* Check if this is an attribute [@...] or array/string indexing with dot *)
           let next_kind = (peek_n parser 1).Token.kind in
@@ -5068,7 +5060,22 @@ and parse_binary_expr = fun parser min_prec ->
       | Some (prec, is_right_assoc) when prec >= min_prec ->
           let left_trivia = consume_trivia parser in
           let op = consume parser in
-          let op_text = token_text parser op in
+          let operator_children = ref [ make_token parser op ] in
+          let operator_text_parts = ref [ token_text parser op ] in
+          let rec collect_operator_suffix = fun () ->
+              match op.Token.kind, peek_kind parser with
+              | Token.Hash, tok when is_operator_token tok ->
+                  let trivia = consume_trivia parser in
+                  let next_op = consume parser in
+                  operator_children := !operator_children
+                    @ tokens_to_green parser trivia
+                    @ [ make_token parser next_op ];
+                  operator_text_parts := !operator_text_parts @ [ token_text parser next_op ];
+                  collect_operator_suffix ()
+              | _ -> ()
+          in
+          collect_operator_suffix ();
+          let op_text = String.concat "" !operator_text_parts in
           let trivia_after_op = consume_trivia parser in
           (* Check for consecutive operators or missing right operand *)
           let next_token_kind = peek_kind parser in
@@ -5100,7 +5107,7 @@ and parse_binary_expr = fun parser min_prec ->
               Syntax_kind.INFIX_EXPR
               ([ Ceibo.Green.Node left ]
               @ tokens_to_green parser left_trivia
-              @ [ make_token parser op ]
+              @ !operator_children
               @ tokens_to_green parser trivia_after_op
               @ [ Ceibo.Green.Node error_node ]) in
             bin_expr
@@ -5117,7 +5124,7 @@ and parse_binary_expr = fun parser min_prec ->
               Syntax_kind.INFIX_EXPR
               ([ Ceibo.Green.Node left ]
               @ tokens_to_green parser left_trivia
-              @ [ make_token parser op ]
+              @ !operator_children
               @ tokens_to_green parser trivia_after_op
               @ [ Ceibo.Green.Node error_node ]) in
             bin_expr
@@ -5135,7 +5142,7 @@ and parse_binary_expr = fun parser min_prec ->
               Syntax_kind.INFIX_EXPR
               ([ Ceibo.Green.Node left ]
               @ tokens_to_green parser left_trivia
-              @ [ make_token parser op ]
+              @ !operator_children
               @ tokens_to_green parser trivia_after_op
               @ [ Ceibo.Green.Node right ]) in
             (* Continue climbing with the new left side *)

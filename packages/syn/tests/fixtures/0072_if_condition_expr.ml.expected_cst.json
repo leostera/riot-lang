@@ -124,14 +124,16 @@
                   "suffix": null
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": "<",
-                "span": {
-                  "start": 13,
-                  "end": 14
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "<",
+                  "span": {
+                    "start": 13,
+                    "end": 14
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "literal",
                 "literal": {

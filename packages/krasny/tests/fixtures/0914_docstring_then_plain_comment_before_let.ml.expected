@@ -1,7 +1,6 @@
-let slot = fun ?(attrs=[]) children -> El {tag = "slot"; attrs; children}
+let slot = fun ?(attrs = []) children -> El {tag = "slot"; attrs; children;}
 
-let template = fun ?(attrs=[]) children -> El {tag = "template"; attrs; children}
-
+let template ?(attrs = []) children = El {tag = "template"; attrs; children;}
 (** Rendering *)
 (* Self-closing tags per HTML5 spec *)
 

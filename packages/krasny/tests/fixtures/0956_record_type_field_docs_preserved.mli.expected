@@ -1,8 +1,8 @@
 type event = {
   (** Event payload *)
-  mutable data : string;
+  mutable data: string;
   (** Optional event type field *)
-  event_type : string option;
+  event_type: string option;
   (** Optional event ID field *)
-  id : string;
+  id: string;
 }

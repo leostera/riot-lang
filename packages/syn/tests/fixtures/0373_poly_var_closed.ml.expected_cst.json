@@ -96,6 +96,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 11,
+                  "end": 12
+                }
+              },
               "type": {
                 "tag": "poly_variant",
                 "syntax_node": {

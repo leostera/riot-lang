@@ -1209,7 +1209,7 @@
           },
           {
             "type": "node",
-            "kind": "IDENT_EXPR",
+            "kind": "SIG_EXPR",
             "width": 529,
             "children": [
               {
@@ -1773,7 +1773,7 @@
                   },
                   {
                     "type": "node",
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "width": 45,
                     "children": [
                       {
@@ -1926,7 +1926,7 @@
                   },
                   {
                     "type": "node",
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "width": 53,
                     "children": [
                       {

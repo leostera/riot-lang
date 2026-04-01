@@ -80,14 +80,24 @@
                     "end": 193
                   }
                 },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 171,
-                    "end": 172
+                "sigil_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 171,
+                      "end": 172
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 172,
+                      "end": 173
+                    }
                   }
-                },
+                ],
                 "name": {
                   "tag": "qualified",
                   "syntax_node": {
@@ -147,14 +157,24 @@
                       "end": 217
                     }
                   },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 195,
-                      "end": 196
+                  "sigil_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 195,
+                        "end": 196
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 196,
+                        "end": 197
+                      }
                     }
-                  },
+                  ],
                   "name": {
                     "tag": "qualified",
                     "syntax_node": {
@@ -216,14 +236,24 @@
                     "end": 250
                   }
                 },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 219,
-                    "end": 220
+                "sigil_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 219,
+                      "end": 220
+                    }
+                  },
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 220,
+                      "end": 221
+                    }
                   }
-                },
+                ],
                 "name": {
                   "tag": "qualified",
                   "syntax_node": {
@@ -404,14 +434,16 @@
                   "end": 413
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 392,
-                  "end": 393
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 392,
+                    "end": 393
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "qualified",
                 "syntax_node": {
@@ -479,14 +511,16 @@
                     "end": 463
                   }
                 },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 442,
-                    "end": 443
+                "sigil_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 442,
+                      "end": 443
+                    }
                   }
-                },
+                ],
                 "name": {
                   "tag": "qualified",
                   "syntax_node": {
@@ -536,6 +570,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 414,
+                  "end": 415
+                }
+              },
               "type": {
                 "tag": "extension",
                 "extension": {
@@ -546,14 +588,16 @@
                       "end": 438
                     }
                   },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 417,
-                      "end": 418
+                  "sigil_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 417,
+                        "end": 418
+                      }
                     }
-                  },
+                  ],
                   "name": {
                     "tag": "qualified",
                     "syntax_node": {
@@ -652,14 +696,16 @@
                   "end": 500
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 470,
-                  "end": 471
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 470,
+                    "end": 471
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "qualified",
                 "syntax_node": {
@@ -727,14 +773,16 @@
                     "end": 570
                   }
                 },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 540,
-                    "end": 541
+                "sigil_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 540,
+                      "end": 541
+                    }
                   }
-                },
+                ],
                 "name": {
                   "tag": "qualified",
                   "syntax_node": {
@@ -784,6 +832,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 501,
+                  "end": 502
+                }
+              },
               "type": {
                 "tag": "extension",
                 "extension": {
@@ -794,14 +850,16 @@
                       "end": 534
                     }
                   },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 504,
-                      "end": 505
+                  "sigil_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 504,
+                        "end": 505
+                      }
                     }
-                  },
+                  ],
                   "name": {
                     "tag": "qualified",
                     "syntax_node": {
@@ -900,14 +958,16 @@
                   "end": 602
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 577,
-                  "end": 578
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 577,
+                    "end": 578
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "qualified",
                 "syntax_node": {
@@ -984,14 +1044,16 @@
                       "end": 662
                     }
                   },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 637,
-                      "end": 638
+                  "sigil_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 637,
+                        "end": 638
+                      }
                     }
-                  },
+                  ],
                   "name": {
                     "tag": "qualified",
                     "syntax_node": {
@@ -1051,14 +1113,24 @@
                         "end": 718
                       }
                     },
-                    "sigil_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 681,
-                        "end": 682
+                    "sigil_tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 681,
+                          "end": 682
+                        }
+                      },
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 682,
+                          "end": 683
+                        }
                       }
-                    },
+                    ],
                     "name": {
                       "tag": "qualified",
                       "syntax_node": {
@@ -1110,6 +1182,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 603,
+                  "end": 604
+                }
+              },
               "type": {
                 "tag": "extension",
                 "extension": {
@@ -1120,14 +1200,16 @@
                       "end": 631
                     }
                   },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 606,
-                      "end": 607
+                  "sigil_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 606,
+                        "end": 607
+                      }
                     }
-                  },
+                  ],
                   "name": {
                     "tag": "qualified",
                     "syntax_node": {

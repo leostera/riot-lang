@@ -20,6 +20,14 @@
               "end": 96
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 0,
+              "end": 4
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -75,6 +83,14 @@
                 },
                 "arguments": {
                   "tag": "record",
+                  "opening_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "{",
+                    "span": {
+                      "start": 27,
+                      "end": 28
+                    }
+                  },
                   "fields": [
                     {
                       "syntax_node": {
@@ -92,6 +108,7 @@
                           "end": 35
                         }
                       },
+                      "mutable_token": null,
                       "field_type": {
                         "tag": "constr",
                         "syntax_node": {
@@ -120,10 +137,17 @@
                           }
                         },
                         "arguments": []
-                      },
-                      "is_mutable": false
+                      }
                     }
-                  ]
+                  ],
+                  "closing_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "}",
+                    "span": {
+                      "start": 44,
+                      "end": 45
+                    }
+                  }
                 },
                 "separator_token": {
                   "kind": "IDENT_EXPR",
@@ -159,6 +183,7 @@
                           "end": 35
                         }
                       },
+                      "mutable_token": null,
                       "field_type": {
                         "tag": "constr",
                         "syntax_node": {
@@ -188,7 +213,7 @@
                         },
                         "arguments": []
                       },
-                      "is_mutable": false
+                      "semicolon_token": null
                     }
                   ]
                 },
@@ -220,6 +245,14 @@
                 },
                 "arguments": {
                   "tag": "record",
+                  "opening_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "{",
+                    "span": {
+                      "start": 63,
+                      "end": 64
+                    }
+                  },
                   "fields": [
                     {
                       "syntax_node": {
@@ -237,6 +270,7 @@
                           "end": 70
                         }
                       },
+                      "mutable_token": null,
                       "field_type": {
                         "tag": "constr",
                         "syntax_node": {
@@ -265,8 +299,7 @@
                           }
                         },
                         "arguments": []
-                      },
-                      "is_mutable": false
+                      }
                     },
                     {
                       "syntax_node": {
@@ -284,6 +317,7 @@
                           "end": 86
                         }
                       },
+                      "mutable_token": null,
                       "field_type": {
                         "tag": "constr",
                         "syntax_node": {
@@ -312,10 +346,17 @@
                           }
                         },
                         "arguments": []
-                      },
-                      "is_mutable": false
+                      }
                     }
-                  ]
+                  ],
+                  "closing_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "}",
+                    "span": {
+                      "start": 95,
+                      "end": 96
+                    }
+                  }
                 },
                 "separator_token": {
                   "kind": "IDENT_EXPR",
@@ -351,6 +392,7 @@
                           "end": 70
                         }
                       },
+                      "mutable_token": null,
                       "field_type": {
                         "tag": "constr",
                         "syntax_node": {
@@ -380,7 +422,7 @@
                         },
                         "arguments": []
                       },
-                      "is_mutable": false
+                      "semicolon_token": null
                     },
                     {
                       "syntax_node": {
@@ -398,6 +440,7 @@
                           "end": 86
                         }
                       },
+                      "mutable_token": null,
                       "field_type": {
                         "tag": "constr",
                         "syntax_node": {
@@ -427,7 +470,7 @@
                         },
                         "arguments": []
                       },
-                      "is_mutable": false
+                      "semicolon_token": null
                     }
                   ]
                 },
@@ -435,7 +478,7 @@
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

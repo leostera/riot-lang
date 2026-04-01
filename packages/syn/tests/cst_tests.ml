@@ -9,6 +9,12 @@ let expect_some = fun value ~msg ->
 
 let declaration_name_text = fun tokens -> tokens |> List.map Syn.Cst.Token.text |> String.concat ""
 
+let token_sequence_text = fun tokens -> tokens |> List.map Syn.Cst.Token.text |> String.concat ""
+
+let attribute_sigil_text = fun (attribute: Syn.Cst.attribute) -> token_sequence_text attribute.sigil_tokens
+
+let extension_sigil_text = fun (extension: Syn.Cst.extension) -> token_sequence_text extension.sigil_tokens
+
 let sample_ml = Path.v "sample.ml"
 
 let sample_mli = Path.v "sample.mli"
@@ -1355,7 +1361,7 @@ let tests = [
         _;
 
       } :: _ ->
-          Test.assert_equal ~expected:"%" ~actual:(Syn.Cst.Token.text extension.sigil_token);
+          Test.assert_equal ~expected:"%" ~actual:(extension_sigil_text extension);
           Test.assert_equal ~expected:(Some "driver") ~actual:(Syn.Cst.Ident.name extension.name);
           Ok ()
       | _ -> Error "expected module declaration with extension module expression");
@@ -1575,6 +1581,38 @@ let tests = [
               Error "expected nested signature terminal docstring to stay standalone"
           | Error _ ->
               Error "expected nested signature terminal docstring to reify successfully"
+        )
+      | _ -> Error "expected module type declaration with signature body");
+  Test.case "cst builder keeps terminal nested signature comments standalone before end"
+    (fun () ->
+      let result = parse_ml
+        "module type S = sig\n\
+             \  val x : int\n\
+             \  (* keep me *)\n\
+             end\n"
+      in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.ModuleTypeDeclaration {
+        module_type=Some ((Syn.Cst.ModuleType.Signature _) as module_type);
+        _;
+
+      } :: _ -> (
+          match Syn.CstBuilder.signature_items_of_module_type module_type with
+          | Ok [
+            Syn.Cst.SignatureItem.ValueDeclaration decl;
+            Syn.Cst.SignatureItem.Comment comment;
+
+          ] ->
+              Test.assert_equal ~expected:"x" ~actual:(declaration_name_text decl.name_tokens);
+              Test.assert_equal ~expected:None ~actual:(Syn.Cst.ValueDeclaration.trailing_comment decl);
+              Test.assert_equal ~expected:"(* keep me *)" ~actual:(Syn.Cst.Comment.text comment);
+              Ok ()
+          | Ok _ ->
+              Error "expected nested signature terminal comment to stay standalone"
+          | Error _ ->
+              Error "expected nested signature terminal comment to reify successfully"
         )
       | _ -> Error "expected module type declaration with signature body");
   Test.case "cst builder normalizes nested signature grouped type docs and headings"
@@ -1963,7 +2001,7 @@ end
         _;
 
       } :: _ ->
-          Test.assert_equal ~expected:"%" ~actual:(Syn.Cst.Token.text extension.sigil_token);
+          Test.assert_equal ~expected:"%" ~actual:(extension_sigil_text extension);
           Test.assert_equal ~expected:(Some "sig_ext") ~actual:(Syn.Cst.Ident.name extension.name);
           Ok ()
       | _ -> Error "expected module type declaration with extension body");
@@ -2277,21 +2315,21 @@ end
 
       } :: _ ->
           Test.assert_equal ~expected:(Some "builder") ~actual:(Syn.Cst.Ident.name inherited_class);
-          Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text inherit_attribute.sigil_token);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text inherit_attribute);
           Test.assert_equal ~expected:"state" ~actual:(Syn.Cst.Token.text state_name);
           Test.assert_equal ~expected:(Some "seed") ~actual:(Syn.Cst.Ident.name state_value);
-          Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text state_attribute.sigil_token);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text state_attribute);
           Test.assert_equal ~expected:"run" ~actual:(Syn.Cst.Token.text run_name);
           Test.assert_equal ~expected:(Some "state") ~actual:(Syn.Cst.Ident.name run_body);
-          Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text run_attribute.sigil_token);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text run_attribute);
           Test.assert_equal ~expected:(Some "t") ~actual:(Syn.Cst.Ident.name left_type);
           Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name right_type);
           Test.assert_equal
             ~expected:"@@"
-            ~actual:(Syn.Cst.Token.text constraint_attribute.sigil_token);
+            ~actual:(attribute_sigil_text constraint_attribute);
           Test.assert_equal ~expected:(Some "ignore") ~actual:(Syn.Cst.Ident.name init_callee);
           Test.assert_equal ~expected:(Some "state") ~actual:(Syn.Cst.Ident.name init_arg);
-          Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text init_attribute.sigil_token);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text init_attribute);
           Ok ()
       | _ -> Error "expected class fields wrapped with attributes");
   Test.case "cst class structures preserve class fields, constraints, and extensions"
@@ -2724,20 +2762,20 @@ class type generated = ([%ct])
 
       } :: _ ->
           Test.assert_equal ~expected:(Some "base") ~actual:(Syn.Cst.Ident.name inherited_class);
-          Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text inherit_attribute.sigil_token);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text inherit_attribute);
           Test.assert_equal ~expected:"state" ~actual:(Syn.Cst.Token.text state_name);
           Test.assert_equal ~expected:"mutable" ~actual:(Syn.Cst.Token.text state_mutable_token);
           Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name state_type);
-          Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text state_attribute.sigil_token);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text state_attribute);
           Test.assert_equal ~expected:"close" ~actual:(Syn.Cst.Token.text close_name);
           Test.assert_equal ~expected:"private" ~actual:(Syn.Cst.Token.text close_private_token);
           Test.assert_equal ~expected:(Some "string") ~actual:(Syn.Cst.Ident.name close_type);
-          Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text method_attribute.sigil_token);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text method_attribute);
           Test.assert_equal ~expected:(Some "t") ~actual:(Syn.Cst.Ident.name left_type);
           Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name right_type);
           Test.assert_equal
             ~expected:"@@"
-            ~actual:(Syn.Cst.Token.text constraint_attribute.sigil_token);
+            ~actual:(attribute_sigil_text constraint_attribute);
           Ok ()
       | _ -> Error "expected structured class type signature");
   Test.case "cst class type signatures preserve extension fields"
@@ -2769,7 +2807,7 @@ class type generated = ([%ct])
         _;
 
       } :: _ ->
-          Test.assert_equal ~expected:"%" ~actual:(Syn.Cst.Token.text extension.sigil_token);
+          Test.assert_equal ~expected:"%" ~actual:(extension_sigil_text extension);
           Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name extension.name);
           Test.assert_equal ~expected:"run" ~actual:(Syn.Cst.Token.text name_token);
           Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name constructor_path);
@@ -3158,7 +3196,7 @@ val decode : Outer.Inner (* c *).(request -> response)
           Test.assert_equal
             ~expected:"ATTRIBUTE_EXPR"
             ~actual:(SyntaxKind.to_string (Ceibo.Red.SyntaxNode.kind attribute.syntax_node));
-          Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text attribute.sigil_token);
+          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text attribute);
           Test.assert_equal ~expected:(Some "attr") ~actual:(Syn.Cst.Ident.name attribute.name);
           Ok ()
       | _ -> Error "expected first item to be an attribute item");
@@ -3172,7 +3210,7 @@ val decode : Outer.Inner (* c *).(request -> response)
           Test.assert_equal
             ~expected:"EXTENSION_EXPR"
             ~actual:(SyntaxKind.to_string (Ceibo.Red.SyntaxNode.kind extension.syntax_node));
-          Test.assert_equal ~expected:"%" ~actual:(Syn.Cst.Token.text extension.sigil_token);
+          Test.assert_equal ~expected:"%" ~actual:(extension_sigil_text extension);
           Test.assert_equal
             ~expected:(Some "toplevel_eval")
             ~actual:(Syn.Cst.Ident.name extension.name);
@@ -3243,7 +3281,7 @@ val decode : Outer.Inner (* c *).(request -> response)
         _;
 
       } :: _ ->
-          Test.assert_equal ~expected:"@" ~actual:(Syn.Cst.Token.text attribute.sigil_token);
+          Test.assert_equal ~expected:"@" ~actual:(attribute_sigil_text attribute);
           Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name attribute.name);
           Test.assert_equal ~expected:None ~actual:attribute.payload;
           Ok ()
@@ -4824,7 +4862,7 @@ and second x = x
       | [ Syn.Cst.StructureItem.TypeDeclaration decl ] -> (
           match Syn.Cst.TypeDeclaration.attributes decl with
           | [ attribute ] ->
-              Test.assert_equal ~expected:"@@" ~actual:(Syn.Cst.Token.text attribute.sigil_token);
+              Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text attribute);
               Test.assert_equal
                 ~expected:(Some "unboxed")
                 ~actual:(Syn.Cst.Ident.name attribute.name);
@@ -6810,7 +6848,7 @@ let x =
         _;
 
       } :: _ ->
-          Test.assert_equal ~expected:"%" ~actual:(Syn.Cst.Token.text extension.sigil_token);
+          Test.assert_equal ~expected:"%" ~actual:(extension_sigil_text extension);
           Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name extension.name);
           Test.assert_equal ~expected:"run" ~actual:(Syn.Cst.Token.text name_token);
           Test.assert_equal ~expected:"1" ~actual:(Syn.Cst.Token.text literal_token);

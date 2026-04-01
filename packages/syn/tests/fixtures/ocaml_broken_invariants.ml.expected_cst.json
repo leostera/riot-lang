@@ -87,14 +87,16 @@
                   "end": 103
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 96,
-                  "end": 97
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 96,
+                    "end": 97
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "ident",
                 "syntax_node": {
@@ -177,14 +179,16 @@
                   "end": 132
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 124,
-                  "end": 125
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 124,
+                    "end": 125
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "ident",
                 "syntax_node": {
@@ -267,14 +271,16 @@
                   "end": 163
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 152,
-                  "end": 153
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 152,
+                    "end": 153
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "ident",
                 "syntax_node": {
@@ -412,14 +418,16 @@
                         "end": 210
                       }
                     },
-                    "sigil_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 182,
-                        "end": 183
+                    "sigil_tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 182,
+                          "end": 183
+                        }
                       }
-                    },
+                    ],
                     "name": {
                       "tag": "ident",
                       "syntax_node": {
@@ -485,14 +493,24 @@
                               "end": 231
                             }
                           },
-                          "sigil_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "%",
-                            "span": {
-                              "start": 219,
-                              "end": 220
+                          "sigil_tokens": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "%",
+                              "span": {
+                                "start": 219,
+                                "end": 220
+                              }
+                            },
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "%",
+                              "span": {
+                                "start": 220,
+                                "end": 221
+                              }
                             }
-                          },
+                          ],
                           "name": {
                             "tag": "ident",
                             "syntax_node": {
@@ -528,14 +546,24 @@
                             "end": 246
                           }
                         },
-                        "sigil_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "%",
-                          "span": {
-                            "start": 233,
-                            "end": 234
+                        "sigil_tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "%",
+                            "span": {
+                              "start": 233,
+                              "end": 234
+                            }
+                          },
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "%",
+                            "span": {
+                              "start": 234,
+                              "end": 235
+                            }
                           }
-                        },
+                        ],
                         "name": {
                           "tag": "ident",
                           "syntax_node": {
@@ -694,6 +722,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 297,
+                  "end": 298
+                }
+              },
               "type": {
                 "tag": "extension",
                 "extension": {
@@ -704,14 +740,16 @@
                       "end": 319
                     }
                   },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 300,
-                      "end": 301
+                  "sigil_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 300,
+                        "end": 301
+                      }
                     }
-                  },
+                  ],
                   "name": {
                     "tag": "ident",
                     "syntax_node": {
@@ -832,14 +870,16 @@
                         "end": 355
                       }
                     },
-                    "sigil_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 336,
-                        "end": 337
+                    "sigil_tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 336,
+                          "end": 337
+                        }
                       }
-                    },
+                    ],
                     "name": {
                       "tag": "ident",
                       "syntax_node": {
@@ -1024,6 +1064,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 374,
+                  "end": 375
+                }
+              },
               "type": {
                 "tag": "extension",
                 "extension": {
@@ -1034,14 +1082,16 @@
                       "end": 396
                     }
                   },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 377,
-                      "end": 378
+                  "sigil_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 377,
+                        "end": 378
+                      }
                     }
-                  },
+                  ],
                   "name": {
                     "tag": "ident",
                     "syntax_node": {
@@ -1258,6 +1308,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 404,
+                  "end": 405
+                }
+              },
               "type": {
                 "tag": "arrow",
                 "syntax_node": {
@@ -1307,14 +1365,16 @@
                         "end": 433
                       }
                     },
-                    "sigil_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "%",
-                      "span": {
-                        "start": 414,
-                        "end": 415
+                    "sigil_tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "%",
+                        "span": {
+                          "start": 414,
+                          "end": 415
+                        }
                       }
-                    },
+                    ],
                     "name": {
                       "tag": "ident",
                       "syntax_node": {

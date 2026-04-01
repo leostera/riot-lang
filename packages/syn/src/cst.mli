@@ -168,7 +168,7 @@ end
 
 type attribute = {
   syntax_node: syntax_node;
-  sigil_token: Token.t;
+  sigil_tokens: Token.t list;
   name: Ident.t;
   payload: payload option;
 }
@@ -187,7 +187,7 @@ type attribute = {
 *)
 and extension = {
   syntax_node: syntax_node;
-  sigil_token: Token.t;
+  sigil_tokens: Token.t list;
   name: Ident.t;
   payload: payload option;
   attributes: attribute list;
@@ -2308,6 +2308,7 @@ and apply_expression = {
 and method_call_expression = {
   syntax_node: syntax_node;
   receiver: expression;
+  hash_token: Token.t;
   method_name: Token.t;
   attributes: attribute list;
 }
@@ -2428,7 +2429,7 @@ and assign_expression = {
 and infix_expression = {
   syntax_node: syntax_node;
   left: expression;
-  operator_token: Token.t;
+  operator_tokens: Token.t list;
   right: expression;
   attributes: attribute list;
 }
@@ -2451,13 +2452,13 @@ and type_ascription_kind =
       type_: core_type;
     }
   | Coerce of {
-      coercion_token: Token.t;
+      coercion_tokens: Token.t list;
       type_: core_type;
     }
   | ConstraintCoerce of {
       colon_token: Token.t;
       from_type: core_type;
-      coercion_token: Token.t;
+      coercion_tokens: Token.t list;
       to_type: core_type;
     }
 
@@ -3398,7 +3399,7 @@ module InfixExpression: sig
   type t = infix_expression = {
     syntax_node: syntax_node;
     left: expression;
-    operator_token: Token.t;
+    operator_tokens: Token.t list;
     right: expression;
     attributes: attribute list;
   }
@@ -3406,7 +3407,7 @@ module InfixExpression: sig
 
   val left: t -> Expression.t
 
-  val operator_token: t -> Token.t
+  val operator_tokens: t -> Token.t list
 
   val operator: t -> string
 

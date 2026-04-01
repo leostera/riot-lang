@@ -285,6 +285,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 90,
+                  "end": 91
+                }
+              },
               "type": {
                 "tag": "constr",
                 "syntax_node": {

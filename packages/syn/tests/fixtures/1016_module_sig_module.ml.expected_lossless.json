@@ -342,7 +342,7 @@
           },
           {
             "type": "node",
-            "kind": "IDENT_EXPR",
+            "kind": "SIG_EXPR",
             "width": 47,
             "children": [
               {
@@ -408,7 +408,7 @@
                   },
                   {
                     "type": "node",
-                    "kind": "IDENT_EXPR",
+                    "kind": "SIG_EXPR",
                     "width": 26,
                     "children": [
                       {

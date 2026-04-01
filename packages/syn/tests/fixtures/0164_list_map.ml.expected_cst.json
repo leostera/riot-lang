@@ -411,14 +411,16 @@
                           }
                         }
                       },
-                      "operator_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "::",
-                        "span": {
-                          "start": 69,
-                          "end": 71
+                      "operator_tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "::",
+                          "span": {
+                            "start": 69,
+                            "end": 71
+                          }
                         }
-                      },
+                      ],
                       "right": {
                         "tag": "apply",
                         "syntax_node": {

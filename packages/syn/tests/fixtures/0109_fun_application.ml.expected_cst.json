@@ -194,14 +194,16 @@
                         }
                       }
                     },
-                    "operator_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "+",
-                      "span": {
-                        "start": 20,
-                        "end": 21
+                    "operator_tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "+",
+                        "span": {
+                          "start": 20,
+                          "end": 21
+                        }
                       }
-                    },
+                    ],
                     "right": {
                       "tag": "literal",
                       "literal": {

@@ -455,14 +455,16 @@
                 }
               }
             },
-            "operator_token": {
-              "kind": "IDENT_EXPR",
-              "text": "+",
-              "span": {
-                "start": 273,
-                "end": 274
+            "operator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "+",
+                "span": {
+                  "start": 273,
+                  "end": 274
+                }
               }
-            },
+            ],
             "right": {
               "tag": "literal",
               "literal": {
@@ -816,14 +818,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "+",
-                    "span": {
-                      "start": 468,
-                      "end": 469
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "+",
+                      "span": {
+                        "start": 468,
+                        "end": 469
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "literal",
                     "literal": {
@@ -1031,14 +1035,16 @@
                   }
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": ">",
-                "span": {
-                  "start": 530,
-                  "end": 531
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ">",
+                  "span": {
+                    "start": 530,
+                    "end": 531
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "literal",
                 "literal": {

@@ -215,6 +215,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 59,
+                  "end": 60
+                }
+              },
               "type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -453,6 +461,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 124,
+                  "end": 125
+                }
+              },
               "type": {
                 "tag": "constr",
                 "syntax_node": {

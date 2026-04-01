@@ -1,25 +1,25 @@
 type ansi =
-  [
-  | `ansi of int
+[
+  `ansi of int
 ]
 type rgb =
-  [
-  | `rgb of int * int * int
+[
+  `rgb of int * int * int
 ]
 type xyz =
-  [
-  | `xyz of float * float * float
+[
+  `xyz of float * float * float
 ]
 type luv =
-  [
-  | `luv of float * float * float
+[
+  `luv of float * float * float
 ]
 type uv =
-  [
-  | `uv of float * float
+[
+  `uv of float * float
 ]
 type color = [
-  | ansi
+  ansi
   | rgb
   | xyz
   | luv

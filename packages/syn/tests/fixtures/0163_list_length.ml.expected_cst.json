@@ -236,14 +236,16 @@
                       "suffix": null
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "+",
-                    "span": {
-                      "start": 49,
-                      "end": 50
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "+",
+                      "span": {
+                        "start": 49,
+                        "end": 50
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "apply",
                     "syntax_node": {

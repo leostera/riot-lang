@@ -175,14 +175,14 @@ end
 
 type attribute = {
   syntax_node: syntax_node;
-  sigil_token: Token.t;
+  sigil_tokens: Token.t list;
   name: Ident.t;
   payload: payload option;
 }
 
 and extension = {
   syntax_node: syntax_node;
-  sigil_token: Token.t;
+  sigil_tokens: Token.t list;
   name: Ident.t;
   payload: payload option;
   attributes: attribute list;
@@ -1291,6 +1291,7 @@ and apply_expression = {
 and method_call_expression = {
   syntax_node: syntax_node;
   receiver: expression;
+  hash_token: Token.t;
   method_name: Token.t;
   attributes: attribute list;
 }
@@ -1360,7 +1361,7 @@ and assign_expression = {
 and infix_expression = {
   syntax_node: syntax_node;
   left: expression;
-  operator_token: Token.t;
+  operator_tokens: Token.t list;
   right: expression;
   attributes: attribute list;
 }
@@ -1378,13 +1379,13 @@ and type_ascription_kind =
       type_: core_type;
     }
   | Coerce of {
-      coercion_token: Token.t;
+      coercion_tokens: Token.t list;
       type_: core_type;
     }
   | ConstraintCoerce of {
       colon_token: Token.t;
       from_type: core_type;
-      coercion_token: Token.t;
+      coercion_tokens: Token.t list;
       to_type: core_type;
     }
 
@@ -2268,7 +2269,7 @@ module InfixExpression = struct
   type t = infix_expression = {
     syntax_node: syntax_node;
     left: expression;
-    operator_token: Token.t;
+    operator_tokens: Token.t list;
     right: expression;
     attributes: attribute list;
   }
@@ -2277,9 +2278,9 @@ module InfixExpression = struct
 
   let left = fun expr -> expr.left
 
-  let operator_token = fun expr -> expr.operator_token
+  let operator_tokens = fun expr -> expr.operator_tokens
 
-  let operator = fun expr -> Token.text expr.operator_token
+  let operator = fun expr -> expr.operator_tokens |> List.map Token.text |> String.concat ""
 
   let right = fun expr -> expr.right
 

@@ -11,21 +11,33 @@
    - `timeout 120 tusk build krasny`
    - or, when `syn`/shared fallout is possible:
      `timeout 120 tusk build syn krasny fixme tusk-fix`
-4. Re-run the focused fixture after the build completes.
-5. If the new output matches the agreed policy and the fixture was stale, refresh it:
+4. If the fix changes `syn` parser/CST behavior, also run the focused `syn` fixture coverage:
+   - `timeout 900 python3 packages/syn/tests/test_runner.py fixtures --filter <pattern>`
+   - `timeout 900 python3 packages/syn/tests/test_runner.py cst --filter <pattern>`
+   - use `--refresh-clean` when the new parse/CST output is correct and stale expectations are the only failure
+5. Re-run the focused `krasny` fixture after the build completes.
+6. If the new output matches the agreed policy and the fixture was stale, refresh it:
    - `timeout 900 python3 packages/krasny/tests/test_runner.py --filter <fixture_id> --refresh`
-6. After a small batch, run broader verification:
+7. After a small batch, run broader verification:
    - `timeout 30 tusk test krasny:format_tests`
-7. Periodically re-run the whole fixture suite:
+8. Periodically re-run the whole fixture suite:
    - `timeout 900 python3 packages/krasny/tests/test_runner.py`
-8. Commit each coherent slice with a conventional commit.
+9. Commit each coherent slice with a conventional commit.
 
 ### Current State
 
+- Syntax/layout stabilization is green:
+  - `timeout 900 python3 packages/krasny/tests/test_runner.py`
+  - `timeout 900 python3 packages/syn/tests/test_runner.py fixtures`
+  - `timeout 900 python3 packages/syn/tests/test_runner.py cst`
+  - `timeout 30 tusk test krasny:format_tests`
+  - `timeout 180 tusk test syn:cst_tests`
 - Structural token cleanup in `syn` is in much better shape now:
   - declaration boundary tokens preserved
   - quantified and mutable tokens preserved
   - recursion booleans moved toward helpers over tokens
+  - `#` method calls only lift as method calls when followed by identifier-like tokens
+  - coercions now preserve the original `:>` token sequence instead of looking for a fake combined token
 - `krasny` has already landed:
   - tighter `:` layout for signatures / annotations / module heads / record type fields
   - typed pattern and expression-ascription layout cleanup
@@ -33,6 +45,7 @@
   - broken apply arguments indented one level deeper than the callee
   - top-level `let rec ... and ...` separated by a blank line
   - better preservation of binding headers
+  - full fixture suite currently green
 
 ### Layout Policy We Agreed On
 
@@ -69,12 +82,23 @@
    - Lints still need to be updated to the current CST shape.
    - Once `tusk fix` is healthy again, re-enable the `scripts/git-hooks/pre-commit` check so every commit runs:
      - `tusk fix --check`
+   - Loop:
+     - `timeout 120 tusk build syn fixme tusk-fix`
+     - `timeout 120 tusk fix --check`
+     - fix one root CST consumer at a time
+     - re-run `timeout 180 tusk test syn:cst_tests`
+     - re-run `timeout 30 tusk test krasny:format_tests` when formatter-facing CST APIs change
 
 2. Investigate `tusk fmt` startup latency.
    - It sometimes takes about a second before printing results.
    - Run:
      - `tusk fmt --json`
    - Inspect where the startup time is going and reduce time-to-first-result.
+   - Verification loop:
+     - capture baseline `tusk fmt --json`
+     - make one startup-path change
+     - rerun `tusk fmt --json`
+     - compare time-to-first-result and total runtime
 
 3. Start a new repo-health loop for failing tests.
    - Run `tusk test`
@@ -85,42 +109,3 @@
 
 4. After all of the above is done and committed:
    - start exploring an implementation of `RFD0026`
-
-### Remaining Real Formatter Bugs
-
-- `0343_let_parameter_with_comment_pipeline`
-  - inline comment disappears
-- `0422_top_level_expression_double_semicolon_before_floating_attribute`
-  - `[@@@attr]` downgraded to `[@@attr]`
-- `0423_extended_index_operators`
-  - index operator declarations/usages mangled
-- `0429_qualified_local_open_record_literal`
-  - bad terminal `;` / blank line in qualified local-open record literal
-- `0430_signature_last_docstring`
-  - formatting exits nonzero
-- `0431_type_mutual_docstring_between_members`
-  - doc ownership still wrong for `type ... and ...`
-- `0434_poly_variant_local_open_pattern_payload`
-  - extra parens around local-open tuple payload
-- `0101_apply_list_trailing_separator`
-  - extra space before `]`
-
-### Fixture / Expectation Work
-
-- Full suite status during last pass:
-  - `65` passed
-  - `98` failed
-- After the real bugs above are fixed:
-  - refresh stale expectations for the new binding-header / tight-colon / layout policy
-  - re-run:
-    - `timeout 900 python3 packages/krasny/tests/test_runner.py`
-    - `timeout 120 tusk build syn krasny fixme tusk-fix`
-
-### Next Suggested Order
-
-1. Fix `0422` and `0423`
-2. Fix `0430` and `0431`
-3. Fix `0429` and `0101`
-4. Fix `0434`
-5. Fix `0343`
-6. Refresh stale fixture expectations in controlled batches

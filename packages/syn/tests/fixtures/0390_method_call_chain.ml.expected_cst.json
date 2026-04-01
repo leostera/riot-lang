@@ -112,6 +112,14 @@
                     }
                   }
                 },
+                "hash_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "#",
+                  "span": {
+                    "start": 11,
+                    "end": 12
+                  }
+                },
                 "method_name": {
                   "kind": "IDENT_EXPR",
                   "text": "m1",
@@ -121,6 +129,14 @@
                   }
                 }
               },
+              "hash_token": {
+                "kind": "IDENT_EXPR",
+                "text": "#",
+                "span": {
+                  "start": 14,
+                  "end": 15
+                }
+              },
               "method_name": {
                 "kind": "IDENT_EXPR",
                 "text": "m2",
@@ -128,6 +144,14 @@
                   "start": 15,
                   "end": 17
                 }
+              }
+            },
+            "hash_token": {
+              "kind": "IDENT_EXPR",
+              "text": "#",
+              "span": {
+                "start": 17,
+                "end": 18
               }
             },
             "method_name": {

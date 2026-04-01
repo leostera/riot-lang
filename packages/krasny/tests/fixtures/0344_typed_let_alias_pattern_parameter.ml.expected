@@ -1,7 +1,6 @@
 type ('a, 'b) t =
-  | Client : {
-    x : int
-  } -> ('a, 'b) t
+  | Client: {
+      x: int;
+    } -> ('a, 'b) t
 
-let send_request : type req res. (req, res) t -> req -> (unit, string) result = fun (Client c as client) request ->
-  body
+let send_request (type req res) (Client c as client: (req, res) t) (request: req) : (unit, string) result = body

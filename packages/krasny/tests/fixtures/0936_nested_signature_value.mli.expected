@@ -1,3 +1,3 @@
-module S : sig
-  val x : int
+module S: sig
+  val x: int
 end

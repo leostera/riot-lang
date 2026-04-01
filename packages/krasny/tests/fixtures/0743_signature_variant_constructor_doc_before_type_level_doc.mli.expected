@@ -1,13 +1,13 @@
 type error =
   | ParseError of {
-      raw_input : string;
-      parse_error : string;
+      raw_input: string;
+      parse_error: string;
     }
   (** Client failed to parse JSON or JSON-RPC structure *)
   | UnknownServerError of {
-      code : int;
-      message : string;
-      data : Json.t option;
+      code: int;
+      message: string;
+      data: Json.t option;
     }
 (** Server returned a JSON-RPC error object that couldn't be parsed into a
           typed response variant *)

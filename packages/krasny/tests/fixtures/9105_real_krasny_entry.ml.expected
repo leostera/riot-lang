@@ -10,7 +10,7 @@ module Printer = Printer
 module Source = Source
 module Lower = Lower
 
-let format = fun (result: Syn.Parser.parse_result) ->
+let format (result: Syn.Parser.parse_result) =
   match Syn.build_cst result with
   | Error err -> Error (Cannot_build_cst err)
   | Ok source_file ->
@@ -20,8 +20,7 @@ let format = fun (result: Syn.Parser.parse_result) ->
         | Some rendered ->
             let rendered = Solver.solve ~width:100 rendered |> Printer.to_string in
             if
-              String.ends_with ~suffix:"\n" original_source
-              &&  String.ends_with ~suffix:"\n" rendered
+              String.ends_with ~suffix:"\n" original_source && String.ends_with ~suffix:"\n" rendered
             then
               rendered
             else if String.ends_with ~suffix:"\n" original_source then
@@ -33,10 +32,9 @@ let format = fun (result: Syn.Parser.parse_result) ->
 
 (* TODO(@leostera): rewrite this hasher to use Crypto.Sha521.create () *)
 
-let syntax_hash = fun (result: Syn.Parser.parse_result) ->
+let syntax_hash (result: Syn.Parser.parse_result) =
   let buffer = IO.Buffer.create 1_024 in
-  let rec write_element =
-    function
+  let rec write_element = function
     | Syn.Ceibo.Green.Token _ as element -> (
         match Syn.Ceibo.Green.kind element with
         | Syn.SyntaxKind.WHITESPACE -> ()
@@ -58,7 +56,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
   write_element (Syn.Ceibo.Green.Node result.tree);
   IO.Buffer.contents buffer |> Crypto.hash_string |> Crypto.Digest.hex
 
-let write = fun ~writer result ->
+let write ~writer result =
   match format result with
   | Error err -> Error (`Format err)
   | Ok formatted -> IO.write_all writer ~buf:formatted |> Result.map_error (fun err -> `Write err)

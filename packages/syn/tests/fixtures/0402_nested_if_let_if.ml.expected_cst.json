@@ -127,14 +127,16 @@
                   }
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": ">",
-                "span": {
-                  "start": 15,
-                  "end": 16
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ">",
+                  "span": {
+                    "start": 15,
+                    "end": 16
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "literal",
                 "literal": {
@@ -284,14 +286,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": ">",
-                    "span": {
-                      "start": 41,
-                      "end": 42
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ">",
+                      "span": {
+                        "start": 41,
+                        "end": 42
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "literal",
                     "literal": {

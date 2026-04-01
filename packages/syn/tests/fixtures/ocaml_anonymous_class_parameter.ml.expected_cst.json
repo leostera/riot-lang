@@ -71,7 +71,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -99,7 +99,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -156,6 +156,14 @@
                   "span": {
                     "start": 368,
                     "end": 371
+                  }
+                },
+                "virtual_colon_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 372,
+                    "end": 373
                   }
                 },
                 "definition": {
@@ -253,6 +261,14 @@
                           }
                         }
                       }
+                    }
+                  },
+                  "colon_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": ":",
+                    "span": {
+                      "start": 372,
+                      "end": 373
                     }
                   },
                   "type": {

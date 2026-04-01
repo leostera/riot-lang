@@ -171,14 +171,16 @@
                   }
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": "=",
-                "span": {
-                  "start": 19,
-                  "end": 20
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "literal",
                 "literal": {
@@ -267,14 +269,16 @@
                   }
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": "*",
-                "span": {
-                  "start": 37,
-                  "end": 38
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "*",
+                  "span": {
+                    "start": 37,
+                    "end": 38
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "apply",
                 "syntax_node": {
@@ -377,14 +381,16 @@
                           }
                         }
                       },
-                      "operator_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "-",
-                        "span": {
-                          "start": 44,
-                          "end": 45
+                      "operator_tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "-",
+                          "span": {
+                            "start": 44,
+                            "end": 45
+                          }
                         }
-                      },
+                      ],
                       "right": {
                         "tag": "literal",
                         "literal": {

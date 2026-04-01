@@ -54,10 +54,19 @@ let should_flag_operator = fun operator -> not (List.mem operator allowed_infix_
 
 let make_diagnostic = fun expr ->
     let operator = Syn.Cst.InfixExpression.operator expr in
+    let span =
+      match Syn.Cst.InfixExpression.operator_tokens expr with
+      | first :: rest ->
+          List.fold_left
+            (fun span token -> Ceibo.Span.union span (Syn.Cst.Token.span token))
+            (Syn.Cst.Token.span first)
+            rest
+      | [] -> Syn.Cst.Expression.syntax_node (Syn.Cst.Expression.Infix expr) |> Syn.Cst.token_body_span
+    in
     Diagnostic.make
       ~severity:Warning
       ~kind:(Diagnostic.Known {rule_id; message = rule_description})
-      ~span:((Syn.Cst.InfixExpression.operator_token expr |> Syn.Cst.Token.span))
+      ~span
       ~suggestion:(("Replace " ^ operator ^ " with a named function"))
       ()
 

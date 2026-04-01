@@ -192,14 +192,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": ">",
-                    "span": {
-                      "start": 22,
-                      "end": 23
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ">",
+                      "span": {
+                        "start": 22,
+                        "end": 23
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "literal",
                     "literal": {
@@ -263,14 +265,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "*",
-                    "span": {
-                      "start": 33,
-                      "end": 34
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "*",
+                      "span": {
+                        "start": 33,
+                        "end": 34
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "literal",
                     "literal": {
@@ -334,14 +338,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "*",
-                    "span": {
-                      "start": 44,
-                      "end": 45
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "*",
+                      "span": {
+                        "start": 44,
+                        "end": 45
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "literal",
                     "literal": {

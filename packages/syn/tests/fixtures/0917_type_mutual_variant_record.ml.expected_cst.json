@@ -20,6 +20,14 @@
               "end": 105
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 0,
+              "end": 4
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -246,6 +254,14 @@
                 "end": 105
               }
             },
+            "keyword_token": {
+              "kind": "IDENT_EXPR",
+              "text": "and",
+              "span": {
+                "start": 46,
+                "end": 49
+              }
+            },
             "type_name": {
               "tag": "ident",
               "syntax_node": {
@@ -291,6 +307,7 @@
                       "end": 68
                     }
                   },
+                  "mutable_token": null,
                   "field_type": {
                     "tag": "constr",
                     "syntax_node": {
@@ -319,8 +336,7 @@
                       }
                     },
                     "arguments": []
-                  },
-                  "is_mutable": false
+                  }
                 },
                 {
                   "syntax_node": {
@@ -338,6 +354,7 @@
                       "end": 82
                     }
                   },
+                  "mutable_token": null,
                   "field_type": {
                     "tag": "constr",
                     "syntax_node": {
@@ -366,8 +383,7 @@
                       }
                     },
                     "arguments": []
-                  },
-                  "is_mutable": false
+                  }
                 },
                 {
                   "syntax_node": {
@@ -385,6 +401,7 @@
                       "end": 97
                     }
                   },
+                  "mutable_token": null,
                   "field_type": {
                     "tag": "constr",
                     "syntax_node": {
@@ -413,14 +430,13 @@
                       }
                     },
                     "arguments": []
-                  },
-                  "is_mutable": false
+                  }
                 }
               ]
             },
-            "is_destructive_substitution": false
+            "destructive_substitution_token": null
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

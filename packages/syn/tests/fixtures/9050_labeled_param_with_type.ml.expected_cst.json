@@ -1208,6 +1208,14 @@
               "end": 339
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 308,
+              "end": 312
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -1367,7 +1375,7 @@
               }
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

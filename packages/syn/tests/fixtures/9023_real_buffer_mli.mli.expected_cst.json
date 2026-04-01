@@ -20,6 +20,14 @@
               "end": 21
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "val",
+            "span": {
+              "start": 0,
+              "end": 3
+            }
+          },
           "name_tokens": [
             {
               "kind": "IDENT_EXPR",
@@ -106,7 +114,8 @@
               },
               "arguments": []
             }
-          }
+          },
+          "trailing_comment": null
         }
       },
       {
@@ -117,6 +126,14 @@
             "span": {
               "start": 21,
               "end": 48
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "val",
+            "span": {
+              "start": 22,
+              "end": 25
             }
           },
           "name_tokens": [
@@ -205,7 +222,8 @@
               },
               "arguments": []
             }
-          }
+          },
+          "trailing_comment": null
         }
       },
       {
@@ -216,6 +234,14 @@
             "span": {
               "start": 48,
               "end": 70
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "val",
+            "span": {
+              "start": 49,
+              "end": 52
             }
           },
           "name_tokens": [
@@ -304,7 +330,8 @@
               },
               "arguments": []
             }
-          }
+          },
+          "trailing_comment": null
         }
       },
       {
@@ -315,6 +342,14 @@
             "span": {
               "start": 70,
               "end": 92
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "val",
+            "span": {
+              "start": 71,
+              "end": 74
             }
           },
           "name_tokens": [
@@ -403,7 +438,8 @@
               },
               "arguments": []
             }
-          }
+          },
+          "trailing_comment": null
         }
       },
       {
@@ -414,6 +450,14 @@
             "span": {
               "start": 92,
               "end": 129
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "val",
+            "span": {
+              "start": 93,
+              "end": 96
             }
           },
           "name_tokens": [
@@ -542,7 +586,8 @@
                 "arguments": []
               }
             }
-          }
+          },
+          "trailing_comment": null
         }
       }
     ]

@@ -1,5 +1,5 @@
 type node = {
-  value : int;
+  value: int;
 }
 
 (** Element doc *)

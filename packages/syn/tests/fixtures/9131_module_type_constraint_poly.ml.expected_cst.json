@@ -205,7 +205,14 @@
                         }
                       ]
                     },
-                    "is_destructive": false
+                    "separator_token": {
+                      "kind": "IDENT_EXPR",
+                      "text": "=",
+                      "span": {
+                        "start": 31,
+                        "end": 32
+                      }
+                    }
                   }
                 ]
               }

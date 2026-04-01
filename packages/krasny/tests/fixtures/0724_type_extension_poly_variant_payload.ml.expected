@@ -1,4 +1,7 @@
 type message = ..
 
 type message +=
-  | SetCursorVisibility of [ `hidden | `visible ]
+  | SetCursorVisibility of [
+    `hidden
+    | `visible
+  ]

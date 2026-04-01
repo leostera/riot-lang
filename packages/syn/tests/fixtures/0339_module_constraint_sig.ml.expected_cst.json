@@ -180,7 +180,14 @@
                     },
                     "arguments": []
                   },
-                  "is_destructive": false
+                  "separator_token": {
+                    "kind": "IDENT_EXPR",
+                    "text": "=",
+                    "span": {
+                      "start": 34,
+                      "end": 35
+                    }
+                  }
                 }
               ],
               "attribute": null

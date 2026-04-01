@@ -40,6 +40,14 @@
               "end": 69
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 32,
+              "end": 36
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -85,6 +93,7 @@
                     "end": 52
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -113,8 +122,7 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false
+                }
               },
               {
                 "syntax_node": {
@@ -132,6 +140,7 @@
                     "end": 61
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -160,8 +169,7 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false
+                }
               }
             ]
           },
@@ -176,7 +184,7 @@
               }
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -207,6 +215,14 @@
             "span": {
               "start": 69,
               "end": 119
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 99,
+              "end": 103
             }
           },
           "type_name": {
@@ -242,7 +258,7 @@
               }
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -273,6 +289,14 @@
             "span": {
               "start": 119,
               "end": 182
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 143,
+              "end": 147
             }
           },
           "type_name": {
@@ -394,7 +418,7 @@
               }
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -425,6 +449,14 @@
             "span": {
               "start": 182,
               "end": 230
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 209,
+              "end": 213
             }
           },
           "type_name": {
@@ -496,7 +528,7 @@
               }
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

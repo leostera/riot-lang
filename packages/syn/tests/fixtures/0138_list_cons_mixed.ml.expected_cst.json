@@ -91,14 +91,16 @@
                 "suffix": null
               }
             },
-            "operator_token": {
-              "kind": "IDENT_EXPR",
-              "text": "::",
-              "span": {
-                "start": 10,
-                "end": 12
+            "operator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "::",
+                "span": {
+                  "start": 10,
+                  "end": 12
+                }
               }
-            },
+            ],
             "right": {
               "tag": "list",
               "syntax_node": {

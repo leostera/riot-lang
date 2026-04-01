@@ -74,7 +74,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -148,6 +148,7 @@
                             "end": 49
                           }
                         },
+                        "mutable_token": null,
                         "field_type": {
                           "tag": "arrow",
                           "syntax_node": {
@@ -314,7 +315,7 @@
                             ]
                           }
                         },
-                        "is_mutable": false
+                        "semicolon_token": null
                       }
                     ]
                   }
@@ -364,6 +365,7 @@
                           "end": 49
                         }
                       },
+                      "mutable_token": null,
                       "field_type": {
                         "tag": "arrow",
                         "syntax_node": {
@@ -530,7 +532,7 @@
                           ]
                         }
                       },
-                      "is_mutable": false
+                      "semicolon_token": null
                     }
                   ]
                 },
@@ -775,7 +777,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",

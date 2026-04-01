@@ -1,9 +1,9 @@
 module BitMask = struct
-  let lowest_set_bit_index = fun mask ->
+  let lowest_set_bit_index mask =
     if mask = 0 then
       None
     else
       Some mask [@inline always]
 
-  let remove_lowest_bit = fun mask -> mask land (mask - 1)
+  let remove_lowest_bit mask = mask land (mask - 1)
 end

@@ -103,14 +103,16 @@
                 }
               ]
             },
-            "operator_token": {
-              "kind": "IDENT_EXPR",
-              "text": "@",
-              "span": {
-                "start": 14,
-                "end": 15
+            "operator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "@",
+                "span": {
+                  "start": 14,
+                  "end": 15
+                }
               }
-            },
+            ],
             "right": {
               "tag": "infix",
               "syntax_node": {
@@ -157,14 +159,16 @@
                   }
                 ]
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": "@",
-                "span": {
-                  "start": 22,
-                  "end": 23
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "@",
+                  "span": {
+                    "start": 22,
+                    "end": 23
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "list",
                 "syntax_node": {

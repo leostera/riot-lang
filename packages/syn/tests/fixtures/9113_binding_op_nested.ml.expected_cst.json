@@ -994,14 +994,16 @@
                               }
                             }
                           },
-                          "operator_token": {
-                            "kind": "IDENT_EXPR",
-                            "text": "+",
-                            "span": {
-                              "start": 197,
-                              "end": 198
+                          "operator_tokens": [
+                            {
+                              "kind": "IDENT_EXPR",
+                              "text": "+",
+                              "span": {
+                                "start": 197,
+                                "end": 198
+                              }
                             }
-                          },
+                          ],
                           "right": {
                             "tag": "path",
                             "syntax_node": {
@@ -1031,14 +1033,16 @@
                             }
                           }
                         },
-                        "operator_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "+",
-                          "span": {
-                            "start": 201,
-                            "end": 202
+                        "operator_tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "+",
+                            "span": {
+                              "start": 201,
+                              "end": 202
+                            }
                           }
-                        },
+                        ],
                         "right": {
                           "tag": "path",
                           "syntax_node": {
@@ -1117,14 +1121,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "*",
-                    "span": {
-                      "start": 218,
-                      "end": 219
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "*",
+                      "span": {
+                        "start": 218,
+                        "end": 219
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "literal",
                     "literal": {

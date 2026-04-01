@@ -120,6 +120,7 @@
                       "suffix": null
                     }
                   },
+                  "colon_token": null,
                   "type": null,
                   "modifier_tokens": []
                 }
@@ -127,6 +128,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 47,
+                  "end": 48
+                }
+              },
               "type": {
                 "tag": "object",
                 "syntax_node": {

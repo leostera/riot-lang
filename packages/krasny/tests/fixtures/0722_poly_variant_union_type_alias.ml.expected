@@ -1,5 +1,5 @@
 type cursor_visibility =
-  [
-  | `hidden
+[
+  `hidden
   | `visible
 ]

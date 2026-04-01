@@ -1,4 +1,4 @@
-let format_float = fun f ->
+let format_float f =
   (* Handle special float values *)
   if Float.is_nan f then
     "null"

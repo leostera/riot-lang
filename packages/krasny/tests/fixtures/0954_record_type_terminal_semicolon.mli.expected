@@ -1,4 +1,4 @@
 type t = {
-  a : bool;
-  b : string;
+  a: bool;
+  b: string;
 }

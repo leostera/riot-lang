@@ -191,7 +191,14 @@
                         },
                         "arguments": []
                       },
-                      "is_destructive": false
+                      "separator_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": "=",
+                        "span": {
+                          "start": 49,
+                          "end": 50
+                        }
+                      }
                     }
                   ],
                   "attribute": null

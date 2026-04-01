@@ -103,14 +103,16 @@
                   }
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": "=",
-                "span": {
-                  "start": 10,
-                  "end": 11
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 10,
+                    "end": 11
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "path",
                 "syntax_node": {
@@ -140,14 +142,16 @@
                 }
               }
             },
-            "operator_token": {
-              "kind": "IDENT_EXPR",
-              "text": "&&",
-              "span": {
-                "start": 14,
-                "end": 16
+            "operator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "&&",
+                "span": {
+                  "start": 14,
+                  "end": 16
+                }
               }
-            },
+            ],
             "right": {
               "tag": "infix",
               "syntax_node": {
@@ -185,14 +189,16 @@
                   }
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": "=",
-                "span": {
-                  "start": 19,
-                  "end": 20
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "=",
+                  "span": {
+                    "start": 19,
+                    "end": 20
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "path",
                 "syntax_node": {

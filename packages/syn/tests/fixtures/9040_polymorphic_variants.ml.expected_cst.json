@@ -40,6 +40,14 @@
               "end": 81
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 43,
+              "end": 47
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -157,7 +165,7 @@
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -168,6 +176,14 @@
             "span": {
               "start": 81,
               "end": 133
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 82,
+              "end": 86
             }
           },
           "type_name": {
@@ -204,6 +220,7 @@
             "fields": [
               {
                 "tag": "inherit",
+                "bar_token": null,
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
@@ -303,7 +320,7 @@
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -334,6 +351,14 @@
             "span": {
               "start": 133,
               "end": 222
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 166,
+              "end": 170
             }
           },
           "type_name": {
@@ -453,7 +478,7 @@
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -464,6 +489,14 @@
             "span": {
               "start": 222,
               "end": 289
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 223,
+              "end": 227
             }
           },
           "type_name": {
@@ -494,7 +527,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -522,7 +555,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -656,6 +689,7 @@
                           "fields": [
                             {
                               "tag": "inherit",
+                              "bar_token": null,
                               "syntax_node": {
                                 "kind": "TYPE_CONSTR",
                                 "span": {
@@ -718,7 +752,7 @@
               ]
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {

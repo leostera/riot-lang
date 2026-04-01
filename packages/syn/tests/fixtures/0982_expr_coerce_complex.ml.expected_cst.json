@@ -122,6 +122,14 @@
             },
             "kind": {
               "tag": "constraint_coerce",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 20,
+                  "end": 21
+                }
+              },
               "from_type": {
                 "tag": "constr",
                 "syntax_node": {
@@ -151,6 +159,24 @@
                 },
                 "arguments": []
               },
+              "coercion_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 31,
+                    "end": 32
+                  }
+                },
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": ">",
+                  "span": {
+                    "start": 32,
+                    "end": 33
+                  }
+                }
+              ],
               "to_type": {
                 "tag": "constr",
                 "syntax_node": {

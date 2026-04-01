@@ -199,14 +199,16 @@
                 }
               }
             },
-            "operator_token": {
-              "kind": "IDENT_EXPR",
-              "text": "+",
-              "span": {
-                "start": 62,
-                "end": 63
+            "operator_tokens": [
+              {
+                "kind": "IDENT_EXPR",
+                "text": "+",
+                "span": {
+                  "start": 62,
+                  "end": 63
+                }
               }
-            },
+            ],
             "right": {
               "tag": "literal",
               "literal": {
@@ -393,14 +395,16 @@
                   }
                 }
               },
-              "operator_token": {
-                "kind": "IDENT_EXPR",
-                "text": "*",
-                "span": {
-                  "start": 80,
-                  "end": 81
+              "operator_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "*",
+                  "span": {
+                    "start": 80,
+                    "end": 81
+                  }
                 }
-              },
+              ],
               "right": {
                 "tag": "literal",
                 "literal": {
@@ -579,14 +583,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": ">",
-                    "span": {
-                      "start": 99,
-                      "end": 100
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": ">",
+                      "span": {
+                        "start": 99,
+                        "end": 100
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "literal",
                     "literal": {
@@ -715,14 +721,16 @@
                             }
                           }
                         },
-                        "operator_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "-",
-                          "span": {
-                            "start": 113,
-                            "end": 114
+                        "operator_tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "-",
+                            "span": {
+                              "start": 113,
+                              "end": 114
+                            }
                           }
-                        },
+                        ],
                         "right": {
                           "tag": "literal",
                           "literal": {
@@ -779,9 +787,9 @@
                 }
               },
               "and_binding": null,
-              "is_recursive": true
+              "is_recursive": false
             },
-            "is_recursive": true
+            "is_recursive": false
           },
           "is_recursive": true
         }

@@ -38,11 +38,10 @@ let () =
         [
           command "format"
           |> about "Format an OCaml source file"
-          |> args [ positional "FILE" |> help "OCaml source file to format" |> required true;  ];
+          |> args [ positional "FILE" |> help "OCaml source file to format" |> required true; ];
           command "syntax-hash"
           |> about "Compute a whitespace-insensitive concrete syntax hash"
-          |> args [ positional "FILE" |> help "OCaml source file to hash" |> required true;  ];
-
+          |> args [ positional "FILE" |> help "OCaml source file to hash" |> required true; ];
         ]
   in
   match ArgParser.get_matches cmd Env.args with

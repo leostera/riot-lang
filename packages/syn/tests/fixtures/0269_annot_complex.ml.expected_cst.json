@@ -179,6 +179,14 @@
                     },
                     "kind": {
                       "tag": "type",
+                      "colon_token": {
+                        "kind": "IDENT_EXPR",
+                        "text": ":",
+                        "span": {
+                          "start": 21,
+                          "end": 22
+                        }
+                      },
                       "type": {
                         "tag": "constr",
                         "syntax_node": {
@@ -210,14 +218,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "+",
-                    "span": {
-                      "start": 28,
-                      "end": 29
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "+",
+                      "span": {
+                        "start": 28,
+                        "end": 29
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "literal",
                     "literal": {
@@ -248,6 +258,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 32,
+                  "end": 33
+                }
+              },
               "type": {
                 "tag": "arrow",
                 "syntax_node": {

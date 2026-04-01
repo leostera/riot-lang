@@ -60,6 +60,14 @@
               "end": 106
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 73,
+              "end": 77
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -105,6 +113,7 @@
                     "end": 86
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -133,8 +142,7 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false
+                }
               },
               {
                 "syntax_node": {
@@ -152,6 +160,7 @@
                     "end": 95
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -180,12 +189,11 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false
+                }
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -216,6 +224,14 @@
             "span": {
               "start": 106,
               "end": 233
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 145,
+              "end": 149
             }
           },
           "type_name": {
@@ -263,6 +279,7 @@
                     "end": 185
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -291,30 +308,7 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false,
-                "trailing_trivia": [
-                  {
-                    "tag": "comment",
-                    "value": {
-                      "syntax_node": {
-                        "kind": "COMMENT",
-                        "span": {
-                          "start": 195,
-                          "end": 217
-                        }
-                      },
-                      "comment_token": {
-                        "kind": "COMMENT",
-                        "text": "(* The y coordinate *)",
-                        "span": {
-                          "start": 195,
-                          "end": 217
-                        }
-                      }
-                    }
-                  }
-                ]
+                }
               },
               {
                 "syntax_node": {
@@ -332,6 +326,7 @@
                     "end": 221
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -360,12 +355,11 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false
+                }
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -396,6 +390,14 @@
             "span": {
               "start": 233,
               "end": 341
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 269,
+              "end": 273
             }
           },
           "type_name": {
@@ -443,6 +445,7 @@
                     "end": 282
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -471,30 +474,7 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false,
-                "trailing_trivia": [
-                  {
-                    "tag": "comment",
-                    "value": {
-                      "syntax_node": {
-                        "kind": "COMMENT",
-                        "span": {
-                          "start": 313,
-                          "end": 328
-                        }
-                      },
-                      "comment_token": {
-                        "kind": "COMMENT",
-                        "text": "(* semicolon *)",
-                        "span": {
-                          "start": 313,
-                          "end": 328
-                        }
-                      }
-                    }
-                  }
-                ]
+                }
               },
               {
                 "syntax_node": {
@@ -512,6 +492,7 @@
                     "end": 330
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -540,12 +521,11 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false
+                }
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -576,6 +556,14 @@
             "span": {
               "start": 341,
               "end": 447
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 376,
+              "end": 380
             }
           },
           "type_name": {
@@ -623,6 +611,14 @@
                     "end": 424
                   }
                 },
+                "mutable_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": "mutable",
+                  "span": {
+                    "start": 388,
+                    "end": 395
+                  }
+                },
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -651,8 +647,7 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": true
+                }
               },
               {
                 "syntax_node": {
@@ -670,6 +665,7 @@
                     "end": 436
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -698,12 +694,11 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false
+                }
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -736,6 +731,14 @@
               "end": 572
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 494,
+              "end": 498
+            }
+          },
           "type_name": {
             "tag": "ident",
             "syntax_node": {
@@ -764,7 +767,7 @@
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
@@ -810,6 +813,7 @@
                     "end": 514
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "var",
                   "syntax_node": {
@@ -835,8 +839,7 @@
                       "end": 551
                     }
                   }
-                },
-                "is_mutable": false
+                }
               },
               {
                 "syntax_node": {
@@ -854,6 +857,7 @@
                     "end": 561
                   }
                 },
+                "mutable_token": null,
                 "field_type": {
                   "tag": "constr",
                   "syntax_node": {
@@ -882,12 +886,11 @@
                     }
                   },
                   "arguments": []
-                },
-                "is_mutable": false
+                }
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       }
     ]

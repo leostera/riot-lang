@@ -87,14 +87,16 @@
                   "end": 46
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 37,
-                  "end": 38
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 37,
+                    "end": 38
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "ident",
                 "syntax_node": {
@@ -189,14 +191,16 @@
                   "end": 73
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 56,
-                  "end": 57
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 56,
+                    "end": 57
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "ident",
                 "syntax_node": {
@@ -316,14 +320,16 @@
                     "end": 109
                   }
                 },
-                "sigil_token": {
-                  "kind": "IDENT_EXPR",
-                  "text": "%",
-                  "span": {
-                    "start": 83,
-                    "end": 84
+                "sigil_tokens": [
+                  {
+                    "kind": "IDENT_EXPR",
+                    "text": "%",
+                    "span": {
+                      "start": 83,
+                      "end": 84
+                    }
                   }
-                },
+                ],
                 "name": {
                   "tag": "ident",
                   "syntax_node": {
@@ -369,14 +375,24 @@
                       "end": 152
                     }
                   },
-                  "sigil_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "%",
-                    "span": {
-                      "start": 112,
-                      "end": 113
+                  "sigil_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 112,
+                        "end": 113
+                      }
+                    },
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "%",
+                      "span": {
+                        "start": 113,
+                        "end": 114
+                      }
                     }
-                  },
+                  ],
                   "name": {
                     "tag": "ident",
                     "syntax_node": {

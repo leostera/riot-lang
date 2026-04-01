@@ -1,17 +1,17 @@
-(** A token with syntax kind, text content, and character width *)
 type ('kind, 'text) token = {
-  kind : 'kind;
-  text : 'text;
-  width : int;
+  kind: 'kind;
+  text: 'text;
+  width: int;
 }
-(** A node with syntax kind, computed width, and child elements *)
+(** A token with syntax kind, text content, and character width *)
 type ('kind, 'text) node = {
-  kind : 'kind;
-  width : int;
-  children : ('kind, 'text) element array;
+  kind: 'kind;
+  width: int;
+  children: ('kind, 'text) element array;
 }
 
-(** An element is either a token or a node *)
+(** A node with syntax kind, computed width, and child elements *)
 and ('kind, 'text) element =
   | Token of ('kind, 'text) token
   | Node of ('kind, 'text) node
+(** An element is either a token or a node *)

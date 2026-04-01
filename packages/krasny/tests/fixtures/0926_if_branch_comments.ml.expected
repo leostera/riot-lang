@@ -1,4 +1,4 @@
-let classify = fun remaining available ->
+let classify remaining available =
   if remaining <= 0 then
     (
       (* Body complete but buffer empty *)

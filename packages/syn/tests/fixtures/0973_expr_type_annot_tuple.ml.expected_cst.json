@@ -158,6 +158,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 18,
+                  "end": 19
+                }
+              },
               "type": {
                 "tag": "tuple",
                 "syntax_node": {

@@ -183,6 +183,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 58,
+                  "end": 59
+                }
+              },
               "type": {
                 "tag": "poly",
                 "syntax_node": {
@@ -198,6 +206,14 @@
                   "span": {
                     "start": 60,
                     "end": 64
+                  }
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 66,
+                    "end": 67
                   }
                 },
                 "binders": [
@@ -463,6 +479,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 97,
+                  "end": 98
+                }
+              },
               "type": {
                 "tag": "poly",
                 "syntax_node": {
@@ -478,6 +502,14 @@
                   "span": {
                     "start": 99,
                     "end": 103
+                  }
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 114,
+                    "end": 115
                   }
                 },
                 "binders": [
@@ -757,14 +789,16 @@
                   "end": 182
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "@",
-                "span": {
-                  "start": 174,
-                  "end": 175
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "@",
+                  "span": {
+                    "start": 174,
+                    "end": 175
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "ident",
                 "syntax_node": {
@@ -988,6 +1022,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 191,
+                  "end": 192
+                }
+              },
               "type": {
                 "tag": "poly",
                 "syntax_node": {
@@ -1003,6 +1045,14 @@
                   "span": {
                     "start": 193,
                     "end": 197
+                  }
+                },
+                "dot_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ".",
+                  "span": {
+                    "start": 201,
+                    "end": 202
                   }
                 },
                 "binders": [

@@ -6,7 +6,7 @@
       "kind": "SOURCE_FILE",
       "span": {
         "start": 0,
-        "end": 17694
+        "end": 17692
       }
     },
     "items": [
@@ -77,7 +77,7 @@
             "kind": "MODULE_DECL",
             "span": {
               "start": 0,
-              "end": 5363
+              "end": 5361
             }
           },
           "keyword_token": {
@@ -121,7 +121,7 @@
               "kind": "MODULE_DECL",
               "span": {
                 "start": 0,
-                "end": 5363
+                "end": 5361
               }
             },
             "module_expression": {
@@ -130,7 +130,7 @@
                 "kind": "STRUCT_EXPR",
                 "span": {
                   "start": 3577,
-                  "end": 5363
+                  "end": 5361
                 }
               },
               "item_syntax_nodes": [
@@ -180,14 +180,14 @@
                   "kind": "MODULE_DECL",
                   "span": {
                     "start": 5059,
-                    "end": 5202
+                    "end": 5200
                   }
                 },
                 {
                   "kind": "MODULE_TYPE_DECL",
                   "span": {
-                    "start": 5202,
-                    "end": 5358
+                    "start": 5200,
+                    "end": 5356
                   }
                 }
               ]
@@ -220,33 +220,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 5365,
-              "end": 12093
+              "start": 5363,
+              "end": 12091
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 5367,
-              "end": 5368
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 5365,
+                "end": 5366
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 5366,
+                "end": 5367
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 5365,
-                "end": 12093
+                "start": 5363,
+                "end": 12091
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 5369,
-                "end": 5375
+                "start": 5367,
+                "end": 5373
               }
             }
           },
@@ -257,8 +267,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule Manual :\n  sig\n    [@@@ocaml.text\n      \" Special comments can be placed between elements and are kept\\n      by the OCamldoc tool, but are not associated to any element.\\n      @-tags in these comments are ignored.\"]\n    [@@@ocaml.text\n      \" Comments like the one above, with more than two asterisks,\\n      are ignored. \"]\n    val f : int -> int -> int[@@ocaml.doc \" The comment for function f. \"]\n    [@@ocaml.doc \" The continuation of the comment for function f. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type weather2 =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather2  \"]\n    [@@ocaml.doc\n      \" I can continue the comment for type weather2 here\\n      because there is already a comment associated to the last constructor.\"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    [@@ocaml.doc \" Continuation of comment for type my_record \"]\n    val foo : string[@@ocaml.doc \" Comment for foo \"][@@ocaml.doc\n                                                       \" This comment is ambiguous and associated to both foo and bar. \"]\n    val bar : string[@@ocaml.doc\n                      \" This comment is ambiguous and associated to both foo and bar. \"]\n    [@@ocaml.doc \" This comment is associated to bar. \"]\n    class my_class :\n      object\n        inherit cl[@@ocaml.doc \" A comment to describe inheritance from cl \"]\n        val  mutable tutu : string[@@ocaml.doc\n                                    \" The comment for attribute tutu \"]\n        val  toto : int[@@ocaml.doc \" The comment for attribute toto. \"]\n        [@@@ocaml.text\n          \" This comment is not attached to titi since\\n        there is a blank line before titi, but is kept\\n        as a comment in the class. \"]\n        val  titi : string\n        method  toto : string[@@ocaml.doc \" Comment for method toto \"]\n        method  m : float -> int[@@ocaml.doc \" Comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 drops.\\n        For some reason, when a class type begins with two docstrings,\\n        it keeps only the second one.\\n        This is fixed by GPR#2151. \"]\n        val  mutable x : int[@@ocaml.doc \" The comment for variable x. \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n        [@@@ocaml.text\n          \" This is a docstring that OCaml <= 4.07.1 misplaces.\\n        For some reason, when a class type ends with two docstrings,\\n        it keeps both of them, but exchanges their order.\\n        This is again fixed by GPR#2151. \"]\n        [@@@ocaml.text \" Another docstring that OCaml <= 4.07.1 misplaces. \"]\n      end[@@ocaml.doc \" The comment for the class type my_class_type \"]\n    module Foo :\n    sig\n      val x : int[@@ocaml.doc \" The comment for x \"]\n      [@@@ocaml.text\n        \" A special comment that is kept but not associated to any element \"]\n    end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  =\n      sig\n        val x : int[@@ocaml.doc \" The comment for value x. \"]\n        module M :\n        sig val y : int[@@ocaml.doc \" The comment for value y. \"] end\n        [@@ocaml.doc \" The comment for module M. \"]\n      end[@@ocaml.doc \" The comment for module type my_module_type. \"]\n  end =\n  struct\n    let f x y = x + y[@@ocaml.doc \" The comment for function f \"]\n    [@@@ocaml.text\n      \" This comment is not attached to any element since there is another\\n      special comment just before the next element. \"]\n    exception My_exception of (int -> int) * int\n      [@ocaml.doc\n        \" Comment for exception My_exception, even with a simple comment\\n      between the special comment and the exception.\"]\n    type weather =\n      | Rain of int [@ocaml.doc \" The comment for constructor Rain \"]\n      | Sun [@ocaml.doc \" The comment for constructor Sun \"][@@ocaml.doc\n                                                              \" Comment for type weather  \"]\n    type my_record =\n      {\n      foo: int [@ocaml.doc \" Comment for field foo \"];\n      bar: string [@ocaml.doc \" Comment for field bar \"]}[@@ocaml.doc\n                                                           \" The comment for type my_record \"]\n    class my_class =\n      object\n        inherit  cl[@@ocaml.doc\n                     \" A comment to describe inheritance from cl \"]\n        val mutable tutu = \"tutu\"[@@ocaml.doc\n                                   \" The comment for the instance variable tutu \"]\n        val toto = 1[@@ocaml.doc \" The comment for toto \"]\n        val titi = \"titi\"[@@ocaml.doc\n                           \" Ambiguous comment on both titi and toto \"]\n        method toto = tutu ^ \"!\"[@@ocaml.doc\n                                  \" Ambiguous comment on both titi and toto \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method m (f : float) = 1[@@ocaml.doc \" The comment for method m \"]\n      end[@@ocaml.doc \" The comment for class my_class \"]\n    class type my_class_type =\n      object\n        val  mutable x : int[@@ocaml.doc\n                              \" The comment for the instance variable x. \"]\n        [@@@ocaml.text \" floating 1 \"]\n        [@@@ocaml.text \" floating 2 \"]\n        method  m : int -> int[@@ocaml.doc \" The comment for method m. \"]\n      end[@@ocaml.doc \" The comment for class type my_class_type \"]\n    module Foo =\n      struct\n        external x : int[@@ocaml.doc \" The comment for x \"][@@ocaml.doc\n                                                             \" Another comment for x \"]\n      end[@@ocaml.doc \" The comment for module Foo \"]\n    module type my_module_type  = sig val x : int end[@@ocaml.doc\n                                                       \" The comment for module type my_module_type. \"]\n  end ;;\nLine 141, characters 12-14:\n141 |     inherit cl\n                  ^^\nError: Unbound class \"cl\"\n|}",
                 "span": {
-                  "start": 5376,
-                  "end": 12092
+                  "start": 5374,
+                  "end": 12090
                 }
               }
             ]
@@ -271,16 +281,16 @@
           "syntax_node": {
             "kind": "COMMENT",
             "span": {
-              "start": 12095,
-              "end": 12168
+              "start": 12093,
+              "end": 12166
             }
           },
           "comment_token": {
             "kind": "COMMENT",
             "text": "(***********************************************************************)",
             "span": {
-              "start": 12095,
-              "end": 12168
+              "start": 12093,
+              "end": 12166
             }
           }
         }
@@ -291,16 +301,16 @@
           "syntax_node": {
             "kind": "COMMENT",
             "span": {
-              "start": 12169,
-              "end": 12203
+              "start": 12167,
+              "end": 12201
             }
           },
           "comment_token": {
             "kind": "COMMENT",
             "text": "(* Empty doc comments (GPR#548) *)",
             "span": {
-              "start": 12169,
-              "end": 12203
+              "start": 12167,
+              "end": 12201
             }
           }
         }
@@ -311,16 +321,16 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 12093,
-              "end": 12360
+              "start": 12091,
+              "end": 12358
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 12205,
-              "end": 12211
+              "start": 12203,
+              "end": 12209
             }
           },
           "rec_token": null,
@@ -328,8 +338,8 @@
             "kind": "IDENT_EXPR",
             "text": "M",
             "span": {
-              "start": 12212,
-              "end": 12213
+              "start": 12210,
+              "end": 12211
             }
           },
           "functor_parameters": [],
@@ -339,23 +349,23 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 12215,
-                "end": 12360
+                "start": 12213,
+                "end": 12358
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 12222,
-                  "end": 12239
+                  "start": 12220,
+                  "end": 12237
                 }
               },
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 12239,
-                  "end": 12351
+                  "start": 12237,
+                  "end": 12349
                 }
               }
             ]
@@ -370,33 +380,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 12362,
-              "end": 12605
+              "start": 12360,
+              "end": 12603
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 12364,
-              "end": 12365
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12362,
+                "end": 12363
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12363,
+                "end": 12364
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 12362,
-                "end": 12605
+                "start": 12360,
+                "end": 12603
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 12366,
-                "end": 12372
+                "start": 12364,
+                "end": 12370
               }
             }
           },
@@ -407,8 +427,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M =\n  struct\n    type t =\n      | Label [@@ocaml.doc \" attached to t \"]\n    [@@@ocaml.text\n      \" Empty docstring comments should not generate attributes \"]\n    type w\n  end;;\nmodule M : sig type t = Label type w end\n|}",
                 "span": {
-                  "start": 12373,
-                  "end": 12604
+                  "start": 12371,
+                  "end": 12602
                 }
               }
             ]
@@ -421,16 +441,16 @@
           "syntax_node": {
             "kind": "COMMENT",
             "span": {
-              "start": 12607,
-              "end": 12680
+              "start": 12605,
+              "end": 12678
             }
           },
           "comment_token": {
             "kind": "COMMENT",
             "text": "(***********************************************************************)",
             "span": {
-              "start": 12607,
-              "end": 12680
+              "start": 12605,
+              "end": 12678
             }
           }
         }
@@ -441,16 +461,16 @@
           "syntax_node": {
             "kind": "COMMENT",
             "span": {
-              "start": 12681,
-              "end": 12745
+              "start": 12679,
+              "end": 12743
             }
           },
           "comment_token": {
             "kind": "COMMENT",
             "text": "(* Comments at the beginning and end of structures (MPR#7701) *)",
             "span": {
-              "start": 12681,
-              "end": 12745
+              "start": 12679,
+              "end": 12743
             }
           }
         }
@@ -461,27 +481,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 12605,
-              "end": 12813
+              "start": 12603,
+              "end": 12811
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 12747,
+              "start": 12745,
+              "end": 12751
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 12752,
               "end": 12753
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 12754,
-              "end": 12755
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -489,23 +509,23 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 12757,
-                "end": 12813
+                "start": 12755,
+                "end": 12811
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 12764,
-                  "end": 12786
+                  "start": 12762,
+                  "end": 12784
                 }
               },
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 12786,
-                  "end": 12796
+                  "start": 12784,
+                  "end": 12794
                 }
               }
             ]
@@ -520,33 +540,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 12815,
-              "end": 12964
+              "start": 12813,
+              "end": 12962
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 12817,
-              "end": 12818
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12815,
+                "end": 12816
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 12816,
+                "end": 12817
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 12815,
-                "end": 12964
+                "start": 12813,
+                "end": 12962
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 12819,
-                "end": 12825
+                "start": 12817,
+                "end": 12823
               }
             }
           },
@@ -557,8 +587,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 12826,
-                  "end": 12963
+                  "start": 12824,
+                  "end": 12961
                 }
               }
             ]
@@ -571,27 +601,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 12964,
-              "end": 13034
+              "start": 12962,
+              "end": 13032
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 12966,
+              "start": 12964,
+              "end": 12970
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 12971,
               "end": 12972
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 12973,
-              "end": 12974
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -599,23 +629,23 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 12976,
-                "end": 13034
+                "start": 12974,
+                "end": 13032
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 12983,
-                  "end": 13006
+                  "start": 12981,
+                  "end": 13004
                 }
               },
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 13006,
-                  "end": 13016
+                  "start": 13004,
+                  "end": 13014
                 }
               }
             ]
@@ -630,33 +660,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 13036,
-              "end": 13185
+              "start": 13034,
+              "end": 13183
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 13038,
-              "end": 13039
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13036,
+                "end": 13037
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13037,
+                "end": 13038
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 13036,
-                "end": 13185
+                "start": 13034,
+                "end": 13183
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 13040,
-                "end": 13046
+                "start": 13038,
+                "end": 13044
               }
             }
           },
@@ -667,8 +707,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"]\n                  type s[@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 13047,
-                  "end": 13184
+                  "start": 13045,
+                  "end": 13182
                 }
               }
             ]
@@ -681,27 +721,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 13185,
-              "end": 13255
+              "start": 13183,
+              "end": 13253
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 13187,
+              "start": 13185,
+              "end": 13191
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 13192,
               "end": 13193
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 13194,
-              "end": 13195
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -709,23 +749,23 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 13197,
-                "end": 13255
+                "start": 13195,
+                "end": 13253
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 13204,
-                  "end": 13227
+                  "start": 13202,
+                  "end": 13225
                 }
               },
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 13227,
-                  "end": 13237
+                  "start": 13225,
+                  "end": 13235
                 }
               }
             ]
@@ -740,33 +780,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 13257,
-              "end": 13423
+              "start": 13255,
+              "end": 13421
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 13259,
-              "end": 13260
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13257,
+                "end": 13258
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13258,
+                "end": 13259
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 13257,
-                "end": 13423
+                "start": 13255,
+                "end": 13421
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 13261,
-                "end": 13267
+                "start": 13259,
+                "end": 13265
               }
             }
           },
@@ -777,8 +827,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 13268,
-                  "end": 13422
+                  "start": 13266,
+                  "end": 13420
                 }
               }
             ]
@@ -791,27 +841,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 13423,
-              "end": 13495
+              "start": 13421,
+              "end": 13493
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 13425,
+              "start": 13423,
+              "end": 13429
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 13430,
               "end": 13431
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 13432,
-              "end": 13433
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -819,23 +869,23 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 13435,
-                "end": 13495
+                "start": 13433,
+                "end": 13493
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 13442,
-                  "end": 13466
+                  "start": 13440,
+                  "end": 13464
                 }
               },
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 13466,
-                  "end": 13476
+                  "start": 13464,
+                  "end": 13474
                 }
               }
             ]
@@ -850,33 +900,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 13497,
-              "end": 13663
+              "start": 13495,
+              "end": 13661
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 13499,
-              "end": 13500
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13497,
+                "end": 13498
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13498,
+                "end": 13499
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 13497,
-                "end": 13663
+                "start": 13495,
+                "end": 13661
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 13501,
-                "end": 13507
+                "start": 13499,
+                "end": 13505
               }
             }
           },
@@ -887,8 +947,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M =\n  struct [@@@ocaml.text \" foo \"]\n         type t\n         type s\n         [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 13508,
-                  "end": 13662
+                  "start": 13506,
+                  "end": 13660
                 }
               }
             ]
@@ -901,16 +961,16 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 13663,
-              "end": 13819
+              "start": 13661,
+              "end": 13817
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 13665,
-              "end": 13671
+              "start": 13663,
+              "end": 13669
             }
           },
           "rec_token": null,
@@ -918,8 +978,8 @@
             "kind": "IDENT_EXPR",
             "text": "M",
             "span": {
-              "start": 13672,
-              "end": 13673
+              "start": 13670,
+              "end": 13671
             }
           },
           "functor_parameters": [],
@@ -929,23 +989,23 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 13675,
-                "end": 13819
+                "start": 13673,
+                "end": 13817
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 13682,
-                  "end": 13748
+                  "start": 13680,
+                  "end": 13746
                 }
               },
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 13748,
-                  "end": 13758
+                  "start": 13746,
+                  "end": 13756
                 }
               }
             ]
@@ -960,33 +1020,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 13821,
-              "end": 13965
+              "start": 13819,
+              "end": 13963
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 13823,
-              "end": 13824
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13821,
+                "end": 13822
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 13822,
+                "end": 13823
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 13821,
-                "end": 13965
+                "start": 13819,
+                "end": 13963
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 13825,
-                "end": 13831
+                "start": 13823,
+                "end": 13829
               }
             }
           },
@@ -997,8 +1067,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M =\n  struct type t[@@ocaml.doc \" foo2 \"]\n         type s[@@ocaml.doc \" bar1 \"] end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 13832,
-                  "end": 13964
+                  "start": 13830,
+                  "end": 13962
                 }
               }
             ]
@@ -1011,27 +1081,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 13965,
-              "end": 14067
+              "start": 13963,
+              "end": 14065
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 13967,
+              "start": 13965,
+              "end": 13971
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 13972,
               "end": 13973
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 13974,
-              "end": 13975
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -1039,23 +1109,23 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 13977,
-                "end": 14067
+                "start": 13975,
+                "end": 14065
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 13984,
-                  "end": 14023
+                  "start": 13982,
+                  "end": 14021
                 }
               },
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 14023,
-                  "end": 14033
+                  "start": 14021,
+                  "end": 14031
                 }
               }
             ]
@@ -1070,33 +1140,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 14069,
-              "end": 14286
+              "start": 14067,
+              "end": 14284
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 14071,
-              "end": 14072
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14069,
+                "end": 14070
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14070,
+                "end": 14071
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 14069,
-                "end": 14286
+                "start": 14067,
+                "end": 14284
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 14073,
-                "end": 14079
+                "start": 14071,
+                "end": 14077
               }
             }
           },
@@ -1107,8 +1187,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 14080,
-                  "end": 14285
+                  "start": 14078,
+                  "end": 14283
                 }
               }
             ]
@@ -1121,27 +1201,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 14286,
-              "end": 14390
+              "start": 14284,
+              "end": 14388
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 14288,
+              "start": 14286,
+              "end": 14292
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 14293,
               "end": 14294
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 14295,
-              "end": 14296
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -1149,23 +1229,23 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 14298,
-                "end": 14390
+                "start": 14296,
+                "end": 14388
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 14305,
-                  "end": 14345
+                  "start": 14303,
+                  "end": 14343
                 }
               },
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 14345,
-                  "end": 14355
+                  "start": 14343,
+                  "end": 14353
                 }
               }
             ]
@@ -1180,33 +1260,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 14392,
-              "end": 14609
+              "start": 14390,
+              "end": 14607
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 14394,
-              "end": 14395
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14392,
+                "end": 14393
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14393,
+                "end": 14394
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 14392,
-                "end": 14609
+                "start": 14390,
+                "end": 14607
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 14396,
-                "end": 14402
+                "start": 14394,
+                "end": 14400
               }
             }
           },
@@ -1217,8 +1307,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M =\n  struct\n    [@@@ocaml.text \" foo1 \"]\n    [@@@ocaml.text \" foo2 \"]\n    type t\n    type s\n    [@@@ocaml.text \" bar1 \"]\n    [@@@ocaml.text \" bar2 \"]\n  end;;\nmodule M : sig type t type s end\n|}",
                 "span": {
-                  "start": 14403,
-                  "end": 14608
+                  "start": 14401,
+                  "end": 14606
                 }
               }
             ]
@@ -1231,16 +1321,16 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 14609,
-              "end": 14661
+              "start": 14607,
+              "end": 14659
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 14611,
-              "end": 14617
+              "start": 14609,
+              "end": 14615
             }
           },
           "rec_token": null,
@@ -1248,8 +1338,8 @@
             "kind": "IDENT_EXPR",
             "text": "M",
             "span": {
-              "start": 14618,
-              "end": 14619
+              "start": 14616,
+              "end": 14617
             }
           },
           "functor_parameters": [],
@@ -1259,16 +1349,16 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 14621,
-                "end": 14661
+                "start": 14619,
+                "end": 14659
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 14628,
-                  "end": 14646
+                  "start": 14626,
+                  "end": 14644
                 }
               }
             ]
@@ -1283,33 +1373,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 14663,
-              "end": 14780
+              "start": 14661,
+              "end": 14778
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 14665,
-              "end": 14666
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14663,
+                "end": 14664
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14664,
+                "end": 14665
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 14663,
-                "end": 14780
+                "start": 14661,
+                "end": 14778
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 14667,
-                "end": 14673
+                "start": 14665,
+                "end": 14671
               }
             }
           },
@@ -1320,8 +1420,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct type t[@@ocaml.doc \" foo \"][@@ocaml.doc \" bar \"] end;;\nmodule M : sig type t end\n|}",
                 "span": {
-                  "start": 14674,
-                  "end": 14779
+                  "start": 14672,
+                  "end": 14777
                 }
               }
             ]
@@ -1334,16 +1434,16 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 14780,
-              "end": 14834
+              "start": 14778,
+              "end": 14832
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 14782,
-              "end": 14788
+              "start": 14780,
+              "end": 14786
             }
           },
           "rec_token": null,
@@ -1351,8 +1451,8 @@
             "kind": "IDENT_EXPR",
             "text": "M",
             "span": {
-              "start": 14789,
-              "end": 14790
+              "start": 14787,
+              "end": 14788
             }
           },
           "functor_parameters": [],
@@ -1362,16 +1462,16 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 14792,
-                "end": 14834
+                "start": 14790,
+                "end": 14832
               }
             },
             "item_syntax_nodes": [
               {
                 "kind": "TYPE_DECL",
                 "span": {
-                  "start": 14799,
-                  "end": 14818
+                  "start": 14797,
+                  "end": 14816
                 }
               }
             ]
@@ -1386,33 +1486,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 14836,
-              "end": 14995
+              "start": 14834,
+              "end": 14993
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 14838,
-              "end": 14839
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14836,
+                "end": 14837
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 14837,
+                "end": 14838
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 14836,
-                "end": 14995
+                "start": 14834,
+                "end": 14993
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 14840,
-                "end": 14846
+                "start": 14838,
+                "end": 14844
               }
             }
           },
@@ -1423,8 +1533,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  type t\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig type t end\n|}",
                 "span": {
-                  "start": 14847,
-                  "end": 14994
+                  "start": 14845,
+                  "end": 14992
                 }
               }
             ]
@@ -1437,27 +1547,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 14995,
-              "end": 15029
+              "start": 14993,
+              "end": 15027
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 14997,
+              "start": 14995,
+              "end": 15001
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15002,
               "end": 15003
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 15004,
-              "end": 15005
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -1465,8 +1575,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 15007,
-                "end": 15029
+                "start": 15005,
+                "end": 15027
               }
             },
             "item_syntax_nodes": []
@@ -1481,33 +1591,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 15031,
-              "end": 15116
+              "start": 15029,
+              "end": 15114
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 15033,
-              "end": 15034
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15031,
+                "end": 15032
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15032,
+                "end": 15033
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 15031,
-                "end": 15116
+                "start": 15029,
+                "end": 15114
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 15035,
-                "end": 15041
+                "start": 15033,
+                "end": 15039
               }
             }
           },
@@ -1518,8 +1638,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 15042,
-                  "end": 15115
+                  "start": 15040,
+                  "end": 15113
                 }
               }
             ]
@@ -1532,27 +1652,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 15116,
-              "end": 15151
+              "start": 15114,
+              "end": 15149
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 15118,
+              "start": 15116,
+              "end": 15122
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15123,
               "end": 15124
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 15125,
-              "end": 15126
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -1560,8 +1680,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 15128,
-                "end": 15151
+                "start": 15126,
+                "end": 15149
               }
             },
             "item_syntax_nodes": []
@@ -1576,33 +1696,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 15153,
-              "end": 15238
+              "start": 15151,
+              "end": 15236
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 15155,
-              "end": 15156
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15153,
+                "end": 15154
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15154,
+                "end": 15155
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 15153,
-                "end": 15238
+                "start": 15151,
+                "end": 15236
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 15157,
-                "end": 15163
+                "start": 15155,
+                "end": 15161
               }
             }
           },
@@ -1613,8 +1743,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 15164,
-                  "end": 15237
+                  "start": 15162,
+                  "end": 15235
                 }
               }
             ]
@@ -1627,27 +1757,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 15238,
-              "end": 15273
+              "start": 15236,
+              "end": 15271
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 15240,
+              "start": 15238,
+              "end": 15244
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15245,
               "end": 15246
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 15247,
-              "end": 15248
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -1655,8 +1785,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 15250,
-                "end": 15273
+                "start": 15248,
+                "end": 15271
               }
             },
             "item_syntax_nodes": []
@@ -1671,33 +1801,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 15275,
-              "end": 15360
+              "start": 15273,
+              "end": 15358
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 15277,
-              "end": 15278
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15275,
+                "end": 15276
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15276,
+                "end": 15277
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 15275,
-                "end": 15360
+                "start": 15273,
+                "end": 15358
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 15279,
-                "end": 15285
+                "start": 15277,
+                "end": 15283
               }
             }
           },
@@ -1708,8 +1848,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 15286,
-                  "end": 15359
+                  "start": 15284,
+                  "end": 15357
                 }
               }
             ]
@@ -1722,27 +1862,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 15360,
-              "end": 15394
+              "start": 15358,
+              "end": 15392
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 15362,
+              "start": 15360,
+              "end": 15366
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15367,
               "end": 15368
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 15369,
-              "end": 15370
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -1750,8 +1890,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 15372,
-                "end": 15394
+                "start": 15370,
+                "end": 15392
               }
             },
             "item_syntax_nodes": []
@@ -1766,33 +1906,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 15396,
-              "end": 15481
+              "start": 15394,
+              "end": 15479
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 15398,
-              "end": 15399
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15396,
+                "end": 15397
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15397,
+                "end": 15398
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 15396,
-                "end": 15481
+                "start": 15394,
+                "end": 15479
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 15400,
-                "end": 15406
+                "start": 15398,
+                "end": 15404
               }
             }
           },
@@ -1803,8 +1953,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 15407,
-                  "end": 15480
+                  "start": 15405,
+                  "end": 15478
                 }
               }
             ]
@@ -1817,27 +1967,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 15481,
-              "end": 15516
+              "start": 15479,
+              "end": 15514
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 15483,
+              "start": 15481,
+              "end": 15487
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15488,
               "end": 15489
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 15490,
-              "end": 15491
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -1845,8 +1995,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 15493,
-                "end": 15516
+                "start": 15491,
+                "end": 15514
               }
             },
             "item_syntax_nodes": []
@@ -1861,33 +2011,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 15518,
-              "end": 15603
+              "start": 15516,
+              "end": 15601
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 15520,
-              "end": 15521
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15518,
+                "end": 15519
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15519,
+                "end": 15520
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 15518,
-                "end": 15603
+                "start": 15516,
+                "end": 15601
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 15522,
-                "end": 15528
+                "start": 15520,
+                "end": 15526
               }
             }
           },
@@ -1898,8 +2058,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 15529,
-                  "end": 15602
+                  "start": 15527,
+                  "end": 15600
                 }
               }
             ]
@@ -1912,27 +2072,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 15603,
-              "end": 15638
+              "start": 15601,
+              "end": 15636
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 15605,
+              "start": 15603,
+              "end": 15609
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15610,
               "end": 15611
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 15612,
-              "end": 15613
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -1940,8 +2100,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 15615,
-                "end": 15638
+                "start": 15613,
+                "end": 15636
               }
             },
             "item_syntax_nodes": []
@@ -1956,33 +2116,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 15640,
-              "end": 15725
+              "start": 15638,
+              "end": 15723
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 15642,
-              "end": 15643
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15640,
+                "end": 15641
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15641,
+                "end": 15642
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 15640,
-                "end": 15725
+                "start": 15638,
+                "end": 15723
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 15644,
-                "end": 15650
+                "start": 15642,
+                "end": 15648
               }
             }
           },
@@ -1993,8 +2163,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 15651,
-                  "end": 15724
+                  "start": 15649,
+                  "end": 15722
                 }
               }
             ]
@@ -2007,27 +2177,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 15725,
-              "end": 15761
+              "start": 15723,
+              "end": 15759
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 15727,
+              "start": 15725,
+              "end": 15731
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15732,
               "end": 15733
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 15734,
-              "end": 15735
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -2035,8 +2205,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 15737,
-                "end": 15761
+                "start": 15735,
+                "end": 15759
               }
             },
             "item_syntax_nodes": []
@@ -2051,33 +2221,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 15763,
-              "end": 15848
+              "start": 15761,
+              "end": 15846
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 15765,
-              "end": 15766
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15763,
+                "end": 15764
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15764,
+                "end": 15765
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 15763,
-                "end": 15848
+                "start": 15761,
+                "end": 15846
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 15767,
-                "end": 15773
+                "start": 15765,
+                "end": 15771
               }
             }
           },
@@ -2088,8 +2268,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 15774,
-                  "end": 15847
+                  "start": 15772,
+                  "end": 15845
                 }
               }
             ]
@@ -2102,27 +2282,27 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 15848,
-              "end": 15896
+              "start": 15846,
+              "end": 15894
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 15850,
+              "start": 15848,
+              "end": 15854
+            }
+          },
+          "rec_token": null,
+          "module_name": {
+            "kind": "IDENT_EXPR",
+            "text": "M",
+            "span": {
+              "start": 15855,
               "end": 15856
             }
           },
-          "rec_token": null,
-          "module_name": {
-            "kind": "IDENT_EXPR",
-            "text": "M",
-            "span": {
-              "start": 15857,
-              "end": 15858
-            }
-          },
           "functor_parameters": [],
           "module_type": null,
           "module_expression": {
@@ -2130,8 +2310,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 15860,
-                "end": 15896
+                "start": 15858,
+                "end": 15894
               }
             },
             "item_syntax_nodes": []
@@ -2146,33 +2326,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 15898,
-              "end": 16025
+              "start": 15896,
+              "end": 16023
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 15900,
-              "end": 15901
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15898,
+                "end": 15899
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 15899,
+                "end": 15900
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 15898,
-                "end": 16025
+                "start": 15896,
+                "end": 16023
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 15902,
-                "end": 15908
+                "start": 15900,
+                "end": 15906
               }
             }
           },
@@ -2183,8 +2373,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 15909,
-                  "end": 16024
+                  "start": 15907,
+                  "end": 16022
                 }
               }
             ]
@@ -2197,16 +2387,16 @@
           "syntax_node": {
             "kind": "MODULE_DECL",
             "span": {
-              "start": 16025,
-              "end": 16071
+              "start": 16023,
+              "end": 16069
             }
           },
           "keyword_token": {
             "kind": "IDENT_EXPR",
             "text": "module",
             "span": {
-              "start": 16027,
-              "end": 16033
+              "start": 16025,
+              "end": 16031
             }
           },
           "rec_token": null,
@@ -2214,8 +2404,8 @@
             "kind": "IDENT_EXPR",
             "text": "M",
             "span": {
-              "start": 16034,
-              "end": 16035
+              "start": 16032,
+              "end": 16033
             }
           },
           "functor_parameters": [],
@@ -2225,8 +2415,8 @@
             "syntax_node": {
               "kind": "STRUCT_EXPR",
               "span": {
-                "start": 16037,
-                "end": 16071
+                "start": 16035,
+                "end": 16069
               }
             },
             "item_syntax_nodes": []
@@ -2241,33 +2431,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 16073,
-              "end": 16200
+              "start": 16071,
+              "end": 16198
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 16075,
-              "end": 16076
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16073,
+                "end": 16074
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16074,
+                "end": 16075
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 16073,
-                "end": 16200
+                "start": 16071,
+                "end": 16198
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 16077,
-                "end": 16083
+                "start": 16075,
+                "end": 16081
               }
             }
           },
@@ -2278,8 +2478,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule M = struct [@@@ocaml.text \" foo \"]\n                  [@@@ocaml.text \" bar \"] end;;\nmodule M : sig end\n|}",
                 "span": {
-                  "start": 16084,
-                  "end": 16199
+                  "start": 16082,
+                  "end": 16197
                 }
               }
             ]
@@ -2292,16 +2492,16 @@
           "syntax_node": {
             "kind": "COMMENT",
             "span": {
-              "start": 16203,
-              "end": 16282
+              "start": 16201,
+              "end": 16280
             }
           },
           "comment_token": {
             "kind": "COMMENT",
             "text": "(*****************************************************************************)",
             "span": {
-              "start": 16203,
-              "end": 16282
+              "start": 16201,
+              "end": 16280
             }
           }
         }
@@ -2312,16 +2512,16 @@
           "syntax_node": {
             "kind": "COMMENT",
             "span": {
-              "start": 16283,
-              "end": 16362
+              "start": 16281,
+              "end": 16360
             }
           },
           "comment_token": {
             "kind": "COMMENT",
             "text": "(* Comments on parameters, variant constructors and object methods (GPR#477) *)",
             "span": {
-              "start": 16283,
-              "end": 16362
+              "start": 16281,
+              "end": 16360
             }
           }
         }
@@ -2332,8 +2532,16 @@
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
-              "start": 16200,
-              "end": 16476
+              "start": 16198,
+              "end": 16474
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
+              "start": 16362,
+              "end": 16366
             }
           },
           "type_name": {
@@ -2341,16 +2549,16 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 16371,
-                "end": 16384
+                "start": 16369,
+                "end": 16382
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "with_default",
               "span": {
-                "start": 16372,
-                "end": 16384
+                "start": 16370,
+                "end": 16382
               }
             }
           },
@@ -2359,26 +2567,26 @@
               "syntax_node": {
                 "kind": "TYPE_PARAM",
                 "span": {
-                  "start": 16368,
-                  "end": 16371
+                  "start": 16366,
+                  "end": 16369
                 }
               },
               "variance": null,
-              "is_injective": false,
+              "injectivity_token": null,
               "type_variable": {
                 "syntax_node": {
                   "kind": "TYPE_VAR",
                   "span": {
-                    "start": 16368,
-                    "end": 16371
+                    "start": 16366,
+                    "end": 16369
                   }
                 },
                 "name_token": {
                   "kind": "IDENT_EXPR",
                   "text": "a",
                   "span": {
-                    "start": 16370,
-                    "end": 16371
+                    "start": 16368,
+                    "end": 16369
                   }
                 }
               }
@@ -2389,8 +2597,8 @@
             "syntax_node": {
               "kind": "TYPE_ARROW",
               "span": {
-                "start": 16388,
-                "end": 16476
+                "start": 16386,
+                "end": 16474
               }
             },
             "manifest": {
@@ -2398,8 +2606,8 @@
               "syntax_node": {
                 "kind": "TYPE_ARROW",
                 "span": {
-                  "start": 16388,
-                  "end": 16476
+                  "start": 16386,
+                  "end": 16474
                 }
               },
               "label": {
@@ -2408,16 +2616,16 @@
                   "kind": "IDENT_EXPR",
                   "text": "?",
                   "span": {
-                    "start": 16390,
-                    "end": 16391
+                    "start": 16388,
+                    "end": 16389
                   }
                 },
                 "label_token": {
                   "kind": "IDENT_EXPR",
                   "text": "size",
                   "span": {
-                    "start": 16391,
-                    "end": 16395
+                    "start": 16389,
+                    "end": 16393
                   }
                 }
               },
@@ -2426,8 +2634,8 @@
                 "syntax_node": {
                   "kind": "TYPE_CONSTR",
                   "span": {
-                    "start": 16396,
-                    "end": 16399
+                    "start": 16394,
+                    "end": 16397
                   }
                 },
                 "constructor_path": {
@@ -2435,16 +2643,16 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 16396,
-                      "end": 16399
+                      "start": 16394,
+                      "end": 16397
                     }
                   },
                   "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "int",
                     "span": {
-                      "start": 16396,
-                      "end": 16399
+                      "start": 16394,
+                      "end": 16397
                     }
                   }
                 },
@@ -2455,8 +2663,8 @@
                 "syntax_node": {
                   "kind": "TYPE_ARROW",
                   "span": {
-                    "start": 16430,
-                    "end": 16476
+                    "start": 16428,
+                    "end": 16474
                   }
                 },
                 "label": {
@@ -2465,16 +2673,16 @@
                     "kind": "IDENT_EXPR",
                     "text": "?",
                     "span": {
-                      "start": 16431,
-                      "end": 16432
+                      "start": 16429,
+                      "end": 16430
                     }
                   },
                   "label_token": {
                     "kind": "IDENT_EXPR",
                     "text": "resizable",
                     "span": {
-                      "start": 16432,
-                      "end": 16441
+                      "start": 16430,
+                      "end": 16439
                     }
                   }
                 },
@@ -2483,8 +2691,8 @@
                   "syntax_node": {
                     "kind": "TYPE_CONSTR",
                     "span": {
-                      "start": 16442,
-                      "end": 16446
+                      "start": 16440,
+                      "end": 16444
                     }
                   },
                   "constructor_path": {
@@ -2492,16 +2700,16 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 16442,
-                        "end": 16446
+                        "start": 16440,
+                        "end": 16444
                       }
                     },
                     "name_token": {
                       "kind": "IDENT_EXPR",
                       "text": "bool",
                       "span": {
-                        "start": 16442,
-                        "end": 16446
+                        "start": 16440,
+                        "end": 16444
                       }
                     }
                   },
@@ -2512,31 +2720,31 @@
                   "syntax_node": {
                     "kind": "TYPE_VAR",
                     "span": {
-                      "start": 16473,
-                      "end": 16476
+                      "start": 16471,
+                      "end": 16474
                     }
                   },
                   "sigil_token": {
                     "kind": "IDENT_EXPR",
                     "text": "'",
                     "span": {
-                      "start": 16474,
-                      "end": 16475
+                      "start": 16472,
+                      "end": 16473
                     }
                   },
                   "name_token": {
                     "kind": "IDENT_EXPR",
                     "text": "a",
                     "span": {
-                      "start": 16475,
-                      "end": 16476
+                      "start": 16473,
+                      "end": 16474
                     }
                   }
                 }
               }
             }
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -2545,33 +2753,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 16478,
-              "end": 16688
+              "start": 16476,
+              "end": 16686
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 16480,
-              "end": 16481
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16478,
+                "end": 16479
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16479,
+                "end": 16480
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 16478,
-                "end": 16688
+                "start": 16476,
+                "end": 16686
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 16482,
-                "end": 16488
+                "start": 16480,
+                "end": 16486
               }
             }
           },
@@ -2582,8 +2800,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\ntype 'a with_default =\n  ?size:((int)[@ocaml.doc \" default [42] \"]) ->\n    ?resizable:((bool)[@ocaml.doc \" default [true] \"]) -> 'a;;\ntype 'a with_default = ?size:int -> ?resizable:bool -> 'a\n|}",
                 "span": {
-                  "start": 16489,
-                  "end": 16687
+                  "start": 16487,
+                  "end": 16685
                 }
               }
             ]
@@ -2596,8 +2814,16 @@
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
+              "start": 16686,
+              "end": 16783
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
               "start": 16688,
-              "end": 16785
+              "end": 16692
             }
           },
           "type_name": {
@@ -2605,16 +2831,16 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 16694,
-                "end": 16698
+                "start": 16692,
+                "end": 16696
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "obj",
               "span": {
-                "start": 16695,
-                "end": 16698
+                "start": 16693,
+                "end": 16696
               }
             }
           },
@@ -2624,8 +2850,8 @@
             "syntax_node": {
               "kind": "OBJECT_TYPE",
               "span": {
-                "start": 16700,
-                "end": 16785
+                "start": 16698,
+                "end": 16783
               }
             },
             "fields": [
@@ -2633,16 +2859,16 @@
                 "syntax_node": {
                   "kind": "OBJECT_TYPE_FIELD",
                   "span": {
-                    "start": 16702,
-                    "end": 16723
+                    "start": 16700,
+                    "end": 16721
                   }
                 },
                 "field_name": {
                   "kind": "IDENT_EXPR",
                   "text": "meth1",
                   "span": {
-                    "start": 16705,
-                    "end": 16710
+                    "start": 16703,
+                    "end": 16708
                   }
                 },
                 "field_type": {
@@ -2650,8 +2876,8 @@
                   "syntax_node": {
                     "kind": "TYPE_ARROW",
                     "span": {
-                      "start": 16712,
-                      "end": 16723
+                      "start": 16710,
+                      "end": 16721
                     }
                   },
                   "label": null,
@@ -2660,8 +2886,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 16712,
-                        "end": 16716
+                        "start": 16710,
+                        "end": 16714
                       }
                     },
                     "constructor_path": {
@@ -2669,16 +2895,16 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 16712,
-                          "end": 16716
+                          "start": 16710,
+                          "end": 16714
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "int",
                         "span": {
-                          "start": 16713,
-                          "end": 16716
+                          "start": 16711,
+                          "end": 16714
                         }
                       }
                     },
@@ -2689,8 +2915,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 16719,
-                        "end": 16723
+                        "start": 16717,
+                        "end": 16721
                       }
                     },
                     "constructor_path": {
@@ -2698,16 +2924,16 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 16719,
-                          "end": 16723
+                          "start": 16717,
+                          "end": 16721
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "int",
                         "span": {
-                          "start": 16720,
-                          "end": 16723
+                          "start": 16718,
+                          "end": 16721
                         }
                       }
                     },
@@ -2719,16 +2945,16 @@
                 "syntax_node": {
                   "kind": "OBJECT_TYPE_FIELD",
                   "span": {
-                    "start": 16724,
-                    "end": 16766
+                    "start": 16722,
+                    "end": 16764
                   }
                 },
                 "field_name": {
                   "kind": "IDENT_EXPR",
                   "text": "meth2",
                   "span": {
-                    "start": 16746,
-                    "end": 16751
+                    "start": 16744,
+                    "end": 16749
                   }
                 },
                 "field_type": {
@@ -2736,8 +2962,8 @@
                   "syntax_node": {
                     "kind": "TYPE_ARROW",
                     "span": {
-                      "start": 16752,
-                      "end": 16766
+                      "start": 16750,
+                      "end": 16764
                     }
                   },
                   "label": null,
@@ -2746,8 +2972,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 16752,
-                        "end": 16757
+                        "start": 16750,
+                        "end": 16755
                       }
                     },
                     "constructor_path": {
@@ -2755,16 +2981,16 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 16752,
-                          "end": 16757
+                          "start": 16750,
+                          "end": 16755
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "unit",
                         "span": {
-                          "start": 16753,
-                          "end": 16757
+                          "start": 16751,
+                          "end": 16755
                         }
                       }
                     },
@@ -2775,8 +3001,8 @@
                     "syntax_node": {
                       "kind": "TYPE_CONSTR",
                       "span": {
-                        "start": 16760,
-                        "end": 16766
+                        "start": 16758,
+                        "end": 16764
                       }
                     },
                     "constructor_path": {
@@ -2784,16 +3010,16 @@
                       "syntax_node": {
                         "kind": "TYPE_CONSTR",
                         "span": {
-                          "start": 16760,
-                          "end": 16766
+                          "start": 16758,
+                          "end": 16764
                         }
                       },
                       "name_token": {
                         "kind": "IDENT_EXPR",
                         "text": "float",
                         "span": {
-                          "start": 16761,
-                          "end": 16766
+                          "start": 16759,
+                          "end": 16764
                         }
                       }
                     },
@@ -2803,7 +3029,7 @@
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -2812,33 +3038,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 16787,
-              "end": 17033
+              "start": 16785,
+              "end": 17031
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 16789,
-              "end": 16790
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16787,
+                "end": 16788
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 16788,
+                "end": 16789
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 16787,
-                "end": 17033
+                "start": 16785,
+                "end": 17031
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 16791,
-                "end": 16797
+                "start": 16789,
+                "end": 16795
               }
             }
           },
@@ -2849,8 +3085,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\ntype obj =\n  <\n    meth1: int -> int [@ocaml.doc \" method 1 \"] ;meth2: unit -> float\n                                                   [@ocaml.doc \" method 2 \"]\n    > ;;\ntype obj = < meth1 : int -> int; meth2 : unit -> float >\n|}",
                 "span": {
-                  "start": 16798,
-                  "end": 17032
+                  "start": 16796,
+                  "end": 17030
                 }
               }
             ]
@@ -2863,8 +3099,16 @@
           "syntax_node": {
             "kind": "TYPE_DECL",
             "span": {
+              "start": 17031,
+              "end": 17103
+            }
+          },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "type",
+            "span": {
               "start": 17033,
-              "end": 17105
+              "end": 17037
             }
           },
           "type_name": {
@@ -2872,16 +3116,16 @@
             "syntax_node": {
               "kind": "IDENT_EXPR",
               "span": {
-                "start": 17039,
-                "end": 17043
+                "start": 17037,
+                "end": 17041
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "var",
               "span": {
-                "start": 17040,
-                "end": 17043
+                "start": 17038,
+                "end": 17041
               }
             }
           },
@@ -2891,8 +3135,8 @@
             "syntax_node": {
               "kind": "TYPE_POLY_VARIANT",
               "span": {
-                "start": 17045,
-                "end": 17105
+                "start": 17043,
+                "end": 17103
               }
             },
             "kind": {
@@ -2905,24 +3149,24 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 17051,
-                      "end": 17056
+                      "start": 17049,
+                      "end": 17054
                     }
                   },
                   "bar_token": {
                     "kind": "IDENT_EXPR",
                     "text": "|",
                     "span": {
-                      "start": 17050,
-                      "end": 17051
+                      "start": 17048,
+                      "end": 17049
                     }
                   },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Foo",
                     "span": {
-                      "start": 17053,
-                      "end": 17056
+                      "start": 17051,
+                      "end": 17054
                     }
                   },
                   "separator_token": null,
@@ -2935,32 +3179,32 @@
                   "syntax_node": {
                     "kind": "POLY_VARIANT_TAG",
                     "span": {
-                      "start": 17071,
-                      "end": 17092
+                      "start": 17069,
+                      "end": 17090
                     }
                   },
                   "bar_token": {
                     "kind": "IDENT_EXPR",
                     "text": "|",
                     "span": {
-                      "start": 17070,
-                      "end": 17071
+                      "start": 17068,
+                      "end": 17069
                     }
                   },
                   "tag_name": {
                     "kind": "IDENT_EXPR",
                     "text": "Bar",
                     "span": {
-                      "start": 17073,
-                      "end": 17076
+                      "start": 17071,
+                      "end": 17074
                     }
                   },
                   "separator_token": {
                     "kind": "IDENT_EXPR",
                     "text": "of",
                     "span": {
-                      "start": 17077,
-                      "end": 17079
+                      "start": 17075,
+                      "end": 17077
                     }
                   },
                   "payload_type": {
@@ -2968,8 +3212,8 @@
                     "syntax_node": {
                       "kind": "TYPE_TUPLE",
                       "span": {
-                        "start": 17079,
-                        "end": 17092
+                        "start": 17077,
+                        "end": 17090
                       }
                     },
                     "elements": [
@@ -2978,8 +3222,8 @@
                         "syntax_node": {
                           "kind": "TYPE_CONSTR",
                           "span": {
-                            "start": 17079,
-                            "end": 17083
+                            "start": 17077,
+                            "end": 17081
                           }
                         },
                         "constructor_path": {
@@ -2987,16 +3231,16 @@
                           "syntax_node": {
                             "kind": "TYPE_CONSTR",
                             "span": {
-                              "start": 17079,
-                              "end": 17083
+                              "start": 17077,
+                              "end": 17081
                             }
                           },
                           "name_token": {
                             "kind": "IDENT_EXPR",
                             "text": "int",
                             "span": {
-                              "start": 17080,
-                              "end": 17083
+                              "start": 17078,
+                              "end": 17081
                             }
                           }
                         },
@@ -3007,8 +3251,8 @@
                         "syntax_node": {
                           "kind": "TYPE_CONSTR",
                           "span": {
-                            "start": 17085,
-                            "end": 17092
+                            "start": 17083,
+                            "end": 17090
                           }
                         },
                         "constructor_path": {
@@ -3016,16 +3260,16 @@
                           "syntax_node": {
                             "kind": "TYPE_CONSTR",
                             "span": {
-                              "start": 17085,
-                              "end": 17092
+                              "start": 17083,
+                              "end": 17090
                             }
                           },
                           "name_token": {
                             "kind": "IDENT_EXPR",
                             "text": "string",
                             "span": {
-                              "start": 17086,
-                              "end": 17092
+                              "start": 17084,
+                              "end": 17090
                             }
                           }
                         },
@@ -3037,7 +3281,7 @@
               }
             ]
           },
-          "is_destructive_substitution": false
+          "destructive_substitution_token": null
         }
       },
       {
@@ -3046,33 +3290,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 17107,
-              "end": 17258
+              "start": 17105,
+              "end": 17256
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 17109,
-              "end": 17110
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17107,
+                "end": 17108
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17108,
+                "end": 17109
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 17107,
-                "end": 17258
+                "start": 17105,
+                "end": 17256
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 17111,
-                "end": 17117
+                "start": 17109,
+                "end": 17115
               }
             }
           },
@@ -3083,8 +3337,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\ntype var =\n  [ `Foo [@ocaml.doc \" foo \"] | `Bar of (int * string) [@ocaml.doc \" bar \"]];;\ntype var = [ `Bar of int * string | `Foo ]\n|}",
                 "span": {
-                  "start": 17118,
-                  "end": 17257
+                  "start": 17116,
+                  "end": 17255
                 }
               }
             ]
@@ -3097,24 +3351,24 @@
           "syntax_node": {
             "kind": "MODULE_TYPE_DECL",
             "span": {
-              "start": 17258,
-              "end": 17414
+              "start": 17256,
+              "end": 17412
             }
           },
           "module_type_name": {
             "kind": "IDENT_EXPR",
             "text": "S",
             "span": {
-              "start": 17272,
-              "end": 17273
+              "start": 17270,
+              "end": 17271
             }
           },
           "equals_token": {
             "kind": "IDENT_EXPR",
             "text": "=",
             "span": {
-              "start": 17274,
-              "end": 17275
+              "start": 17272,
+              "end": 17273
             }
           },
           "module_type": {
@@ -3122,15 +3376,15 @@
             "syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "start": 17275,
-                "end": 17414
+                "start": 17273,
+                "end": 17412
               }
             },
             "signature_syntax_node": {
               "kind": "SIG_EXPR",
               "span": {
-                "start": 17275,
-                "end": 17414
+                "start": 17273,
+                "end": 17412
               }
             }
           }
@@ -3142,33 +3396,43 @@
           "syntax_node": {
             "kind": "EXTENSION_EXPR",
             "span": {
-              "start": 17416,
-              "end": 17694
+              "start": 17414,
+              "end": 17692
             }
           },
-          "sigil_token": {
-            "kind": "IDENT_EXPR",
-            "text": "%",
-            "span": {
-              "start": 17418,
-              "end": 17419
+          "sigil_tokens": [
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17416,
+                "end": 17417
+              }
+            },
+            {
+              "kind": "IDENT_EXPR",
+              "text": "%",
+              "span": {
+                "start": 17417,
+                "end": 17418
+              }
             }
-          },
+          ],
           "name": {
             "tag": "ident",
             "syntax_node": {
               "kind": "EXTENSION_EXPR",
               "span": {
-                "start": 17416,
-                "end": 17694
+                "start": 17414,
+                "end": 17692
               }
             },
             "name_token": {
               "kind": "IDENT_EXPR",
               "text": "expect",
               "span": {
-                "start": 17420,
-                "end": 17426
+                "start": 17418,
+                "end": 17424
               }
             }
           },
@@ -3179,8 +3443,8 @@
                 "kind": "STRING_LITERAL",
                 "text": "{|\n\nmodule type S  =\n  sig\n    val before : unit -> unit[@@ocaml.doc \" docstring before \"]\n    [@@@foo ]\n    [@@@foo ]\n    val after : unit -> unit[@@ocaml.doc \" docstring after \"]\n  end;;\nmodule type S = sig val before : unit -> unit val after : unit -> unit end\n|}",
                 "span": {
-                  "start": 17427,
-                  "end": 17693
+                  "start": 17425,
+                  "end": 17691
                 }
               }
             ]

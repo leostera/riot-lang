@@ -40,6 +40,14 @@
               "end": 126
             }
           },
+          "keyword_token": {
+            "kind": "IDENT_EXPR",
+            "text": "val",
+            "span": {
+              "start": 52,
+              "end": 55
+            }
+          },
           "name_tokens": [
             {
               "kind": "IDENT_EXPR",
@@ -214,7 +222,8 @@
                 "arguments": []
               }
             }
-          }
+          },
+          "trailing_comment": null
         }
       }
     ]

@@ -4,8 +4,7 @@ type params =
   | Named of (string * Json.t) list
   (** Named parameters as JSON object *)
   | NoParams
-(** No parameters *)
 (** Next declaration doc *)
 type prerequest = {
-  method_ : string;
+  method_: string;
 }

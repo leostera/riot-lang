@@ -1,6 +1,6 @@
 type command =
   | SetCursorVisibility of [
-    | `hidden
+    `hidden
     | `visible
   ]
   | Tick

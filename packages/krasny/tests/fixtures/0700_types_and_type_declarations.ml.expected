@@ -43,50 +43,47 @@ type (
   's,
   't
 ) twenty_params = {
-  first : 'a;
-  second : 'b;
-  third : 'c;
-  fourth : 'd;
-  fifth : 'e;
-  sixth : 'f;
-  seventh : 'g;
-  eighth : 'h;
-  ninth : 'i;
-  tenth : 'j;
-  eleventh : 'k;
-  twelfth : 'l;
-  thirteenth : 'm;
-  fourteenth : 'n;
-  fifteenth : 'o;
-  sixteenth : 'p;
-  seventeenth : 'q;
-  eighteenth : 'r;
-  nineteenth : 's;
-  twentieth : 't;
+  first: 'a;
+  second: 'b;
+  third: 'c;
+  fourth: 'd;
+  fifth: 'e;
+  sixth: 'f;
+  seventh: 'g;
+  eighth: 'h;
+  ninth: 'i;
+  tenth: 'j;
+  eleventh: 'k;
+  twelfth: 'l;
+  thirteenth: 'm;
+  fourteenth: 'n;
+  fifteenth: 'o;
+  sixteenth: 'p;
+  seventeenth: 'q;
+  eighteenth: 'r;
+  nineteenth: 's;
+  twentieth: 't;
 }
 
 type point = {
-  x : int;
-  y : int;
+  x: int;
+  y: int;
 }
 
 type record = {
-  first_name : string;
-  last_name : string;
-  age : int;
-  city : string;
-  country : string;
-  postal_code : string;
+  first_name: string;
+  last_name: string;
+  age: int;
+  city: string;
+  country: string;
+  postal_code: string;
 }
 
 type configuration_snapshot = {
-  request_correlation_identifier_for_observability_pipeline : string;
-  decoded_response_payloads_grouped_by_endpoint_name :
-    (string * (int * string option) list) list;
-  retry_schedule_overrides_by_http_status_code :
-    (int * (float * bool) list) list option;
-  transform_domain_events_into_renderable_view_models :
-    (message list -> (string * int) list) option;
+  request_correlation_identifier_for_observability_pipeline: string;
+  decoded_response_payloads_grouped_by_endpoint_name: (string * (int * string option) list) list;
+  retry_schedule_overrides_by_http_status_code: (int * (float * bool) list) list option;
+  transform_domain_events_into_renderable_view_models: (message list -> (string * int) list) option;
 }
 
 type fpclass = Stdlib.fpclass =
@@ -103,8 +100,8 @@ type ('a, 'e) std_result = ('a, 'e) Stdlib.result =
   | Error of 'e
 
 type point_alias = Base.point = private {
-  x : int;
-  y : int;
+  x: int;
+  y: int;
 }
 
 type color_alias = Tty.Color.t =
@@ -126,8 +123,8 @@ type 'a tree =
   | Node of 'a tree * 'a tree
 
 type chain = {
-  value : int;
-  next : chain option;
+  value: int;
+  next: chain option;
 }
 
 type ('ok, 'err) result_like =
@@ -136,42 +133,42 @@ type ('ok, 'err) result_like =
 
 type message =
   | Ping of {
-      id : int;
-      sent_at : float;
+      id: int;
+      sent_at: float;
     }
   | Pong of {
-      id : int;
-      ok : bool;
+      id: int;
+      ok: bool;
     }
 
 type opaque
 
 type mapper = {
-  run : 'a. 'a list -> 'a list;
+  run: 'a. 'a list -> 'a list;
 }
 
 type 'a constrained = 'a
-  constraint 'a = int
+  constraint 'a=int
 
 type closed_poly =
-  [
-  | `A
+[
+  `A
   | `B of int
 ]
 
 type open_poly = [>
-  | `A
+  `A
   | `B of string
 ]
 
 type limited_poly = [<
-  | `A
+  `A
   | `B
   | `C
 ]
 
 type extended_poly = [
-  | closed_poly
+  closed_poly
   | `D of string
 ]
 
@@ -194,14 +191,14 @@ type request_handler =
 type 'a decoder = string -> ('a, string) result
 
 type response = {
-  status : (int, string) result;
-  body : string option;
+  status: (int, string) result;
+  body: string option;
 }
 
 type _ expr =
-  | Int : int -> int expr
-  | Bool : bool -> bool expr
-  | Pair : 'a expr * 'b expr -> ('a * 'b) expr
+  | Int: int -> int expr
+  | Bool: bool -> bool expr
+  | Pair: 'a expr * 'b expr -> ('a * 'b) expr
 
 type node =
   | File of string
@@ -209,6 +206,6 @@ type node =
 
 and forest = node list
 
-external unsafe_string_get : string -> int -> char = "%string_safe_get"
+external unsafe_string_get: string -> int -> char = "%string_safe_get"
 
-external int64_of_nativeint : nativeint -> int64 = "%nativeint_to_int64"
+external int64_of_nativeint: nativeint -> int64 = "%nativeint_to_int64"

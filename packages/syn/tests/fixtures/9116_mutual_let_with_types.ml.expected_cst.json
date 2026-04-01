@@ -447,14 +447,16 @@
                             }
                           }
                         },
-                        "operator_token": {
-                          "kind": "IDENT_EXPR",
-                          "text": "::",
-                          "span": {
-                            "start": 169,
-                            "end": 171
+                        "operator_tokens": [
+                          {
+                            "kind": "IDENT_EXPR",
+                            "text": "::",
+                            "span": {
+                              "start": 169,
+                              "end": 171
+                            }
                           }
-                        },
+                        ],
                         "right": {
                           "tag": "apply",
                           "syntax_node": {
@@ -573,6 +575,14 @@
             },
             "kind": {
               "tag": "type",
+              "colon_token": {
+                "kind": "IDENT_EXPR",
+                "text": ":",
+                "span": {
+                  "start": 72,
+                  "end": 73
+                }
+              },
               "type": {
                 "tag": "arrow",
                 "syntax_node": {
@@ -1432,6 +1442,14 @@
               },
               "kind": {
                 "tag": "type",
+                "colon_token": {
+                  "kind": "IDENT_EXPR",
+                  "text": ":",
+                  "span": {
+                    "start": 195,
+                    "end": 196
+                  }
+                },
                 "type": {
                   "tag": "arrow",
                   "syntax_node": {
@@ -1686,7 +1704,7 @@
               }
             },
             "and_binding": null,
-            "is_recursive": true
+            "is_recursive": false
           },
           "is_recursive": true
         }

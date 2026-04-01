@@ -10,35 +10,34 @@
 
 module type SHOW = sig
   type t
-  val show : t -> string
+  val show: t -> string
 end
 
 module type EQ = sig
   type t
-  val equal : t -> t -> bool
+  val equal: t -> t -> bool
 end
 
-module Int_show : SHOW with type t = int = struct
+module Int_show: SHOW with type t = int = struct
   type t = int
 
   let show = Int.to_string
 end
 
-module Int_eq : EQ with type t = int = struct
+module Int_eq: EQ with type t = int = struct
   type t = int
 
-  let equal = fun left right -> left = right
+  let equal left right = left = right
 end
 
-module Make (Item : SHOW) : sig
-  val show_all : Item.t list -> string list
+module Make (Item : SHOW): sig
+  val show_all: Item.t list -> string list
 end = struct
-  let show_all = fun items ->
-    List.map Item.show items
+  let show_all items = List.map Item.show items
 end
 
 module Make_pair (Left : SHOW) (Right : SHOW) = struct
-  let show_pair = fun (left, right) -> Left.show left, Right.show right
+  let show_pair (left, right) = (Left.show left, Right.show right)
 end
 
 module Int_list_show = Make (Int_show)
@@ -53,29 +52,29 @@ module Nested = struct
   end
 end
 
-module Inline : sig
+module Inline: sig
   type t
-  val make : int -> t
+  val make: int -> t
 
-  val show : t -> string
+  val show: t -> string
 end = struct
   type t = int
 
-  let make = fun value -> value
+  let make value = value
 
   let show = Int.to_string
 end
 
-module rec Even : sig
-  val check : int -> bool
+module rec Even: sig
+  val check: int -> bool
 end = struct
-  let check = fun n -> n = 0 || Odd.check (n - 1)
+  let check n = n = 0 || Odd.check (n - 1)
 end
 
-and Odd : sig
-  val check : int -> bool
+and Odd: sig
+  val check: int -> bool
 end = struct
-  let check = fun n -> n <> 0 && Even.check (n - 1)
+  let check n = n <> 0 && Even.check (n - 1)
 end
 
 include Nested

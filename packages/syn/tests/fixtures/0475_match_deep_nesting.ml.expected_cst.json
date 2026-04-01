@@ -535,14 +535,16 @@
                           }
                         }
                       },
-                      "operator_token": {
-                        "kind": "IDENT_EXPR",
-                        "text": "+",
-                        "span": {
-                          "start": 56,
-                          "end": 57
+                      "operator_tokens": [
+                        {
+                          "kind": "IDENT_EXPR",
+                          "text": "+",
+                          "span": {
+                            "start": 56,
+                            "end": 57
+                          }
                         }
-                      },
+                      ],
                       "right": {
                         "tag": "path",
                         "syntax_node": {
@@ -572,14 +574,16 @@
                         }
                       }
                     },
-                    "operator_token": {
-                      "kind": "IDENT_EXPR",
-                      "text": "+",
-                      "span": {
-                        "start": 60,
-                        "end": 61
+                    "operator_tokens": [
+                      {
+                        "kind": "IDENT_EXPR",
+                        "text": "+",
+                        "span": {
+                          "start": 60,
+                          "end": 61
+                        }
                       }
-                    },
+                    ],
                     "right": {
                       "tag": "path",
                       "syntax_node": {
@@ -609,14 +613,16 @@
                       }
                     }
                   },
-                  "operator_token": {
-                    "kind": "IDENT_EXPR",
-                    "text": "+",
-                    "span": {
-                      "start": 64,
-                      "end": 65
+                  "operator_tokens": [
+                    {
+                      "kind": "IDENT_EXPR",
+                      "text": "+",
+                      "span": {
+                        "start": 64,
+                        "end": 65
+                      }
                     }
-                  },
+                  ],
                   "right": {
                     "tag": "path",
                     "syntax_node": {

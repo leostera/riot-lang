@@ -67,14 +67,16 @@
                   "end": 19
                 }
               },
-              "sigil_token": {
-                "kind": "IDENT_EXPR",
-                "text": "%",
-                "span": {
-                  "start": 9,
-                  "end": 10
+              "sigil_tokens": [
+                {
+                  "kind": "IDENT_EXPR",
+                  "text": "%",
+                  "span": {
+                    "start": 9,
+                    "end": 10
+                  }
                 }
-              },
+              ],
               "name": {
                 "tag": "ident",
                 "syntax_node": {
