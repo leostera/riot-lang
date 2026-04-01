@@ -23,6 +23,16 @@ let resolved_edge_count = fun (lockfile: Tusk_model.Lockfile.t) ->
     0
     lockfile.packages
 
+let manifest_path_for_package = fun (pkg: Tusk_model.Package.t) ->
+  Path.(pkg.path / Path.v "tusk.toml")
+
+let workspace_manifest_paths = fun (workspace: Tusk_model.Workspace.t) ->
+  Path.(workspace.root / Path.v "tusk.toml")
+  :: List.map manifest_path_for_package workspace.packages
+
+let root_packages_for_workspace = fun (workspace: Tusk_model.Workspace.t) ->
+  List.filter Tusk_model.Package.is_workspace_member workspace.packages
+
 let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~registry_cache ~registry_name ~workspace_root ~manifest_paths ~packages () ->
   let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
   let lock_path_str = Path.to_string lock_path in
@@ -152,3 +162,20 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~registry_cache ~registr
                       Ok (lockfile, resolved)
                 )
             )
+
+let ensure_workspace = fun ?(emit = no_emit) ~mode ~registry ~registry_cache ~registry_name ~(workspace: Tusk_model.Workspace.t) () ->
+  match
+    ensure_lock
+      ~emit
+      ~mode
+      ~registry
+      ~registry_cache
+      ~registry_name
+      ~workspace_root:workspace.root
+      ~manifest_paths:(workspace_manifest_paths workspace)
+      ~packages:(root_packages_for_workspace workspace)
+      ()
+  with
+  | Error _ as err -> err
+  | Ok (_lockfile, resolved_packages) ->
+      Ok { workspace with packages = List.map (fun (pkg: Tusk_model.Package.resolved) -> pkg.package) resolved_packages }

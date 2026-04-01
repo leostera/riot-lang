@@ -23,3 +23,13 @@ val ensure_lock:
   packages:Tusk_model.Package.t list ->
   unit ->
   ((Tusk_model.Lockfile.t * Tusk_model.Package.resolved list), string) result
+
+val ensure_workspace:
+  ?emit:event_sink ->
+  mode:Dep_solver.mode ->
+  registry:Pkgs_ml.Registry.t ->
+  registry_cache:Pkgs_ml.Registry_cache.t ->
+  registry_name:string ->
+  workspace:Tusk_model.Workspace.t ->
+  unit ->
+  (Tusk_model.Workspace.t, string) result

@@ -744,6 +744,84 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
           else
             Error "expected ensure_lock to reuse the lock while still materializing missing registry packages")
 
+let test_ensure_workspace_projects_materialized_registry_packages = fun () ->
+  with_tempdir "tusk_pm_ensure_workspace"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "tusk.toml") in
+      Fs.write "[workspace]\nmembers = [\"packages/app\"]\n" workspace_manifest
+      |> Result.expect ~msg:"expected workspace manifest to be written";
+      let registry_cache =
+        Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(workspace_root / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+        |> Result.expect ~msg:"expected registry cache to initialize"
+      in
+      let app_pkg =
+        make_package
+          ~name:"app"
+          ~path:Path.(workspace_root / Path.v "packages/app")
+          ~dependencies:[ { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } } ]
+          ()
+      in
+      let app_pkg = { app_pkg with relative_path = Path.v "packages/app" } in
+      let workspace =
+        Tusk_model.Workspace.make ~root:workspace_root ~packages:[ app_pkg ] ()
+      in
+      let registry =
+        make_registry_with_releases
+          ~packages:[
+            make_registry_document
+              ~name:"std"
+              ~latest:"0.2.0"
+              ~releases:[ make_release ~version:"0.2.0" () ]
+              ();
+          ]
+          ~releases:[
+            {
+              Pkgs_ml.Registry.package_name = "std";
+              version = "0.2.0";
+              manifest_toml =
+                {|
+[package]
+name = "std"
+version = "0.2.0"
+|};
+              files = [];
+            };
+          ]
+      in
+      match
+        Tusk_pm.ensure_workspace
+          ~mode:Tusk_pm.Dep_solver.Refresh
+          ~registry
+          ~registry_cache
+          ~registry_name:"pkgs.ml"
+          ~workspace
+          ()
+      with
+      | Error err -> Error ("expected ensure_workspace to succeed: " ^ err)
+      | Ok resolved_workspace ->
+          let std_pkg =
+            List.find_opt
+              (fun (pkg: Tusk_model.Package.t) -> String.equal pkg.name "std")
+              resolved_workspace.packages
+          in
+          let expected_std_root =
+            Pkgs_ml.Registry_cache.package_src_dir registry_cache ~package_name:"std" ~version:"0.2.0"
+          in
+          match std_pkg with
+          | Some std_pkg ->
+              if
+                List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) resolved_workspace.packages
+                = [ "app"; "std" ]
+                && Path.equal std_pkg.path expected_std_root
+              then
+                Ok ()
+              else
+                Error "expected ensure_workspace to return a build-ready workspace with registry packages"
+          | None ->
+              Error "expected ensure_workspace to project std into the workspace")
+
 let test_projection_resolves_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -966,6 +1044,7 @@ let tests =
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
     case "ensure lock: materializes registry packages before projection" test_ensure_lock_materializes_registry_packages_before_projection;
     case "ensure lock: reuses existing lock and materializes missing registry packages" test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_packages;
+    case "ensure workspace: projects materialized registry packages" test_ensure_workspace_projects_materialized_registry_packages;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
     case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;
