@@ -163,12 +163,11 @@ let output_mode_of_matches = fun matches ->
   else
     Human
 
-let make_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) ~packages
+let make_request = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) ~packages
   ~targets () ->
   {
     build_request = Tusk_build.{
       workspace;
-      load_errors;
       packages;
       targets;
       scope;
@@ -178,10 +177,9 @@ let make_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human
     show_finished_summary;
   }
 
-let request_of_matches = fun ~workspace ~load_errors matches ->
+let request_of_matches = fun ~workspace matches ->
   make_request
     ~workspace
-    ~load_errors
     ~mode:(output_mode_of_matches matches)
     ~packages:(ArgParser.get_many matches "package")
     ~targets:(target_request_of_matches matches)
@@ -397,18 +395,36 @@ let run_request = fun (request: request) ->
       write_build_error ~mode:request.output_mode err;
       Error (Failure (Tusk_build.build_error_message err))
 
-let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
-  let (workspace, load_errors) =
-    match (workspace, load_errors) with
-    | Some workspace, Some load_errors -> (workspace, load_errors)
-    | _ ->
+let print_workspace_load_errors = fun errors ->
+  List.iter
+    (fun err -> out ("\027[1;31mError\027[0m: " ^ Workspace_manager.load_error_to_string err))
+    errors
+
+let load_workspace_strict = fun cwd ->
+  match Workspace_manager.scan cwd with
+  | Error err ->
+      Error (Failure err)
+  | Ok (_workspace, load_errors) when List.length load_errors > 0 ->
+      print_workspace_load_errors load_errors;
+      Error (Failure "Workspace load failed")
+  | Ok (workspace, _) ->
+      Ok workspace
+
+let build_command = fun ?workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
+  let workspace =
+    match workspace with
+    | Some workspace -> Ok workspace
+    | None ->
         let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-        Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace. Is this a valid tusk project?"
+        load_workspace_strict cwd
   in
+  match workspace with
+  | Error _ as err ->
+      err
+  | Ok workspace ->
   run_request
     (make_request
       ~workspace
-      ~load_errors
       ~scope
       ~mode
       ~show_finished_summary
@@ -418,12 +434,11 @@ let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Huma
       | None -> Tusk_build.Host)
       ())
 
-let build_packages_command = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary =
+let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary =
   true) package_names target_arch ->
   run_request
     (make_request
       ~workspace
-      ~load_errors
       ~scope
       ~mode
       ~show_finished_summary
@@ -433,5 +448,5 @@ let build_packages_command = fun ~workspace ~load_errors ?(scope = Runtime) ?(mo
       | None -> Tusk_build.Host)
       ())
 
-let run = fun ~workspace ~load_errors matches ->
-  run_request (request_of_matches ~workspace ~load_errors matches)
+let run = fun ~workspace matches ->
+  run_request (request_of_matches ~workspace matches)

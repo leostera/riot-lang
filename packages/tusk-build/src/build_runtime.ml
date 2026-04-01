@@ -11,7 +11,6 @@ type target_request =
 
 type build_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
   packages: string list;
   targets: target_request;
   scope: build_scope;
@@ -130,7 +129,6 @@ let build = fun ?(on_event = no_event) request ->
                   on_event
                     (Pm (Tusk_model.Event.create ~session_id:pm_session_id ~level:Tusk_model.Event.Info kind)))
                 ~workspace:request.workspace
-                ~load_errors:request.load_errors
                 () with
               | Error err -> Error (ClientError err)
               | Ok client ->

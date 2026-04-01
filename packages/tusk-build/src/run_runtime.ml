@@ -2,8 +2,6 @@ open Std
 
 type run_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
-  current_dir: Path.t;
   package_name: string option;
   binary_name: string;
   args: string list;
@@ -76,81 +74,75 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
   | Error _ as err -> err
   | Ok client ->
       let result =
-        match Client.scan_workspace client ~current_dir:request.current_dir with
+        match Client.find_executable client request.binary_name with
         | Error reason ->
             Error (SystemError reason)
-        | Ok () -> (
-            match Client.find_executable client request.binary_name with
-            | Error reason ->
-                Error (SystemError reason)
-            | Ok None ->
-                Error (BinaryNotFound { binary_name = request.binary_name })
-            | Ok (Some (package_name, _binary)) -> (
-                match request.package_name with
-                | Some expected_package when not (String.equal expected_package package_name) ->
-                    Error
-                      (BinaryNotFoundInPackage {
-                        package_name = expected_package;
-                        binary_name = request.binary_name;
-                      })
-                | _ -> (
-                    let scope =
-                      build_scope_for_binary
-                        request.workspace
-                        ~package_name
-                        ~binary_name:request.binary_name
-                    in
-                    match
-                      Build_runtime.build
-                        ~on_event:(fun event -> on_event (Build event))
-                        {
-                          workspace = request.workspace;
-                          load_errors = request.load_errors;
-                          packages = [ package_name ];
-                          targets = Build_runtime.Host;
-                          scope;
-                          profile = "debug";
-                        }
-                    with
-                    | Error err ->
-                        Error (BuildFailed err)
-                    | Ok () -> (
-                        match reconnect ~workspace:request.workspace with
-                        | Error _ as err -> err
-                        | Ok refreshed_client ->
-                            let result =
-                              match
-                                Client.find_artifact
-                                  refreshed_client
-                                  ~package:package_name
-                                  ~kind:"binary"
-                                  ~name:request.binary_name
-                              with
-                              | Error reason ->
-                                  Error
-                                    (ArtifactNotFound {
-                                      package_name;
-                                      binary_name = request.binary_name;
-                                      reason;
-                                    })
-                              | Ok path ->
-                                  on_event
-                                    (RunningBinary {
-                                      package = package_name;
-                                      binary = request.binary_name;
-                                      args = request.args;
-                                    });
-                                  let cmd = Command.make path ~args:request.args in
-                                  (
-                                    match Command.status cmd with
-                                    | Ok 0 -> Ok ()
-                                    | Ok code -> Error (ProcessExited code)
-                                    | Error (Command.SystemError msg) -> Error (SystemError msg)
-                                  )
-                            in
-                            Client.close refreshed_client;
-                            result
-                      )
+        | Ok None ->
+            Error (BinaryNotFound { binary_name = request.binary_name })
+        | Ok (Some (package_name, _binary)) -> (
+            match request.package_name with
+            | Some expected_package when not (String.equal expected_package package_name) ->
+                Error
+                  (BinaryNotFoundInPackage {
+                    package_name = expected_package;
+                    binary_name = request.binary_name;
+                  })
+            | _ -> (
+                let scope =
+                  build_scope_for_binary
+                    request.workspace
+                    ~package_name
+                    ~binary_name:request.binary_name
+                in
+                match
+                  Build_runtime.build
+                    ~on_event:(fun event -> on_event (Build event))
+                    {
+                      workspace = request.workspace;
+                      packages = [ package_name ];
+                      targets = Build_runtime.Host;
+                      scope;
+                      profile = "debug";
+                    }
+                with
+                | Error err ->
+                    Error (BuildFailed err)
+                | Ok () -> (
+                    match reconnect ~workspace:request.workspace with
+                    | Error _ as err -> err
+                    | Ok refreshed_client ->
+                        let result =
+                          match
+                            Client.find_artifact
+                              refreshed_client
+                              ~package:package_name
+                              ~kind:"binary"
+                              ~name:request.binary_name
+                          with
+                          | Error reason ->
+                              Error
+                                (ArtifactNotFound {
+                                  package_name;
+                                  binary_name = request.binary_name;
+                                  reason;
+                                })
+                          | Ok path ->
+                              on_event
+                                (RunningBinary {
+                                  package = package_name;
+                                  binary = request.binary_name;
+                                  args = request.args;
+                                });
+                              let cmd = Command.make path ~args:request.args in
+                              (
+                                match Command.status cmd with
+                                | Ok 0 -> Ok ()
+                                | Ok code -> Error (ProcessExited code)
+                                | Error (Command.SystemError msg) -> Error (SystemError msg)
+                              )
+                        in
+                        Client.close refreshed_client;
+                        result
                   )
               )
           )

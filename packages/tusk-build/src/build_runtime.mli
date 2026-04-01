@@ -11,7 +11,6 @@ type target_request =
 
 type build_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
   packages: string list;
   targets: target_request;
   scope: build_scope;

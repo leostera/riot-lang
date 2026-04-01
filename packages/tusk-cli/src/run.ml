@@ -19,8 +19,6 @@ let command =
           |> help "Enable verbose output for run"
           |> count; ]
 
-let pick_name = fun matches -> get_one matches "name"
-
 let trailing_args = fun matches ->
   let args = ArgParser.trailing_args matches in
   match args with
@@ -29,7 +27,25 @@ let trailing_args = fun matches ->
 
 let build_scope_for_binary = Tusk_build.build_scope_for_binary
 
-let write_run_event = function
+let parse_binary_target = fun ?package_filter name ->
+  match String.split_on_char ':' name with
+  | [ package_name; binary_name ] -> (
+      match package_filter with
+      | Some expected_package when not (String.equal expected_package package_name) ->
+          Error
+            (Failure
+               ("conflicting package filters: got --package "
+               ^ expected_package
+               ^ " and binary target "
+               ^ name))
+      | _ ->
+          Ok (Some package_name, binary_name)
+    )
+  | _ ->
+      Ok (package_filter, name)
+
+let write_run_event = fun (event: Tusk_build.run_event) ->
+  match event with
   | Tusk_build.Build _ ->
       ()
   | Tusk_build.RunningBinary { package; binary; _ } ->
@@ -41,57 +57,26 @@ let write_run_error = function
   | err ->
       println ("error: " ^ Tusk_build.run_error_message err)
 
-let run = fun matches ->
-  match pick_name matches with
+let run = fun ~workspace matches ->
+  match ArgParser.get_one matches "name" with
   | None ->
       println "error: missing binary name";
       Error (Failure "missing binary name")
   | Some name -> (
       let extra = trailing_args matches in
-      let verbose = ArgParser.get_count matches "verbose" in
-      let _ = verbose in
-      let explicit_package = ArgParser.get_one matches "package" in
-      let (legacy_package, bin_name) =
-        match String.split_on_char ':' name with
-        | [pkg;bin] -> (Some pkg, bin)
-        | _ -> (None, name)
-      in
-      let pkg_filter =
-        match (explicit_package, legacy_package) with
-        | (Some explicit_package, Some legacy_package) when not
-          (String.equal explicit_package legacy_package) -> None
-        | (Some explicit_package, _) -> Some explicit_package
-        | (None, legacy_package) -> legacy_package
-      in
-      let has_conflicting_package_filters =
-        match (explicit_package, legacy_package) with
-        | (Some explicit_package, Some legacy_package) -> not
-          (String.equal explicit_package legacy_package)
-        | _ -> false
-      in
-      if has_conflicting_package_filters then
-        (
-          println
-            ("error: conflicting package filters '"
-            ^ (explicit_package |> Option.unwrap_or ~default:"")
-            ^ "' and '"
-            ^ (legacy_package |> Option.unwrap_or ~default:"")
-            ^ "'");
-          Error (Failure "conflicting package filters")
-        )
-      else
-        (
-          let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-          let (workspace, load_errors) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
+      let _verbose = ArgParser.get_count matches "verbose" in
+      let pkg_filter = ArgParser.get_one matches "package" in
+      match parse_binary_target ?package_filter:pkg_filter name with
+      | Error _ as err ->
+          err
+      | Ok (package_name, binary_name) ->
           match
             Tusk_build.run
               ~on_event:write_run_event
               {
                 workspace;
-                load_errors;
-                current_dir = cwd;
-                package_name = pkg_filter;
-                binary_name = bin_name;
+                package_name;
+                binary_name;
                 args = extra;
               }
           with
@@ -100,5 +85,4 @@ let run = fun matches ->
           | Error err ->
               write_run_error err;
               Error (Failure (Tusk_build.run_error_message err))
-        )
     )

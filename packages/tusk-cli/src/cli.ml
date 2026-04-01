@@ -70,6 +70,23 @@ let get_workspace_scan = fun () ->
 let get_workspace = fun () ->
   Option.map fst (get_workspace_scan ())
 
+let report_workspace_load_errors = fun load_errors ->
+  List.iter
+    (fun err ->
+      eprintln ("\027[1;31mError\027[0m: " ^ Tusk_model.Workspace_manager.load_error_to_string err))
+    load_errors
+
+let require_clean_workspace = fun workspace_scan_opt ->
+  match workspace_scan_opt with
+  | None ->
+      eprintln "❌ Not in a tusk workspace";
+      Error (Failure "Not in a tusk workspace")
+  | Some (_workspace, load_errors) when List.length load_errors > 0 ->
+      report_workspace_load_errors load_errors;
+      Error (Failure "Workspace load failed")
+  | Some (workspace, _) ->
+      Ok workspace
+
 (** Try to execute a package command if it exists *)
 let try_command = fun ?workspace_scan cmd_name remaining_args ->
   let workspace_scan =
@@ -79,7 +96,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
   in
   match workspace_scan with
   | None -> None
-  | Some (workspace, load_errors) -> (
+  | Some (workspace, _load_errors) -> (
       (* Parse package:command format *)
       match String.split_on_char ':' cmd_name with
       | [package_name;command_name] -> (
@@ -96,7 +113,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
               (* Build the package first to ensure command is up to date *)
               Log.info ("Building package: " ^ cmd.package_name);
               (
-                match Build.build_command ~workspace ~load_errors (Some cmd.package_name) None with
+                match Build.build_command ~workspace (Some cmd.package_name) None with
                 | Error err ->
                     Log.error ("Failed to build package: " ^ Exception.to_string err);
                     Some (Error err)
@@ -171,42 +188,40 @@ format = "full"
           set_verbosity verbose;
           match ArgParser.get_subcommand matches with
           | Some ("build", build_matches) -> (
-              match workspace_scan_opt with
-              | Some (workspace, load_errors) -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> (
                   match ensure_toolchain workspace with
-                  | Ok () -> Build.run ~workspace ~load_errors build_matches
+                  | Ok () -> Build.run ~workspace build_matches
                   | Error _ as e -> e
                 )
-              | None ->
-                  eprintln "❌ Not in a tusk workspace";
-                  Error (Failure "Not in a tusk workspace")
+              | Error _ as e -> e
             )
           | Some ("run", run_matches) -> (
-              match workspace_opt with
-              | Some workspace -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> (
                   match ensure_toolchain workspace with
-                  | Ok () -> Run.run run_matches
+                  | Ok () -> Run.run ~workspace run_matches
                   | Error _ as e -> e
                 )
-              | None -> Run.run run_matches
+              | Error _ as e -> e
             )
           | Some ("test", test_matches) -> (
-              match workspace_opt with
-              | Some workspace -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> (
                   match ensure_toolchain workspace with
-                  | Ok () -> Test_cmd.run test_matches
+                  | Ok () -> Test_cmd.run ~workspace test_matches
                   | Error _ as e -> e
                 )
-              | None -> Test_cmd.run test_matches
+              | Error _ as e -> e
             )
           | Some ("bench", bench_matches) -> (
-              match workspace_opt with
-              | Some workspace -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> (
                   match ensure_toolchain workspace with
-                  | Ok () -> Bench_cmd.run bench_matches
+                  | Ok () -> Bench_cmd.run ~workspace bench_matches
                   | Error _ as e -> e
                 )
-              | None -> Bench_cmd.run bench_matches
+              | Error _ as e -> e
             )
           | Some ("fmt", fmt_matches) ->
               Tusk_fmt.run ?workspace:workspace_opt fmt_matches
@@ -221,14 +236,15 @@ format = "full"
           | Some ("new", new_matches) ->
               New.run new_matches
           | Some ("publish", publish_matches) -> (
-              match workspace_opt with
-              | Some workspace -> Publish.run workspace publish_matches
-              | None ->
-                  eprintln "❌ Not in a tusk workspace";
-                  Error (Failure "Not in a tusk workspace")
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> Publish.run workspace publish_matches
+              | Error _ as e -> e
             )
-          | Some ("install", install_matches) ->
-              Install.run install_matches
+          | Some ("install", install_matches) -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> Install.run ~workspace install_matches
+              | Error _ as e -> e
+            )
           | Some ("toolchain", toolchain_matches) ->
               Toolchain_cmd.run toolchain_matches
           | Some ("version", _) ->

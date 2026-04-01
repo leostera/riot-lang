@@ -54,7 +54,6 @@ val error_message : error -> string
 
 val connect_local:
   ?emit:(Tusk_model.Event.kind -> unit) ->
-  ?load_errors:Tusk_model.Workspace_manager.load_error list ->
   workspace:Tusk_model.Workspace.t ->
   unit ->
   (t, error) result

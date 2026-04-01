@@ -65,21 +65,18 @@ let write_test_event = function
 let write_test_error = fun err ->
   println ("error: " ^ Tusk_build.test_error_message err)
 
-let run = fun matches ->
+let run = fun ~workspace matches ->
   let extra_args = trailing_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
-  let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-  let (workspace, load_errors) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
   let request = Test_selection.parse_request ~pattern ~legacy_package in
   match
     Tusk_build.test
       ~on_event:write_test_event
       {
         workspace;
-        load_errors;
         package_filter = request.package_filter;
         query = request.query;
         extra_args;

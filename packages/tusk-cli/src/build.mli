@@ -17,13 +17,11 @@ val format_pm_event:
 
 val run:
   workspace:Tusk_model.Workspace.t ->
-  load_errors:Tusk_model.Workspace_manager.load_error list ->
   Std.ArgParser.matches ->
   (unit, exn) result
 
 val build_command:
   ?workspace:Tusk_model.Workspace.t ->
-  ?load_errors:Tusk_model.Workspace_manager.load_error list ->
   ?scope:build_scope ->
   ?mode:output_mode ->
   ?show_finished_summary:bool ->

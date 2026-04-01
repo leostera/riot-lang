@@ -7,7 +7,6 @@ type suite_binary = {
 
 type test_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
   package_filter: string option;
   query: string option;
   extra_args: string list;

@@ -2,8 +2,6 @@ open Std
 
 type run_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
-  current_dir: Path.t;
   package_name: string option;
   binary_name: string;
   args: string list;

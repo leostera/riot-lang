@@ -28,10 +28,9 @@ let display_path = fun ~workspace_root path ->
       | None -> Path.to_string path
     )
 
-let build_binary = fun ~workspace ~load_errors package_name ->
+let build_binary = fun ~workspace package_name ->
   Build.build_command
     ~workspace
-    ~load_errors
     ~mode:Build.Human
     ~show_finished_summary:false
     (Some package_name)
@@ -77,20 +76,18 @@ let install_binary_atomically = fun ~src ~dst ~permissions ->
         )
     )
 
-let run = fun matches ->
+let run = fun ~workspace matches ->
   let open ArgParser in
     let started_at = Time.Instant.now () in
     let binary_name = get_one matches "package" |> Option.expect ~msg:"binary name required" in
     let local_only = get_flag matches "local" in
     out ("  \027[1;32mInstalling\027[0m " ^ binary_name);
     (* First, find which package contains this binary *)
-    let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
-    let (workspace, load_errors) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
     let client = Client.connect_local ~workspace () |> Result.expect ~msg:"Failed to start local tusk session" in
     match Client.find_executable client binary_name with
     | Ok (Some (package_name, _binary)) -> (
         Client.close client;
-        match build_binary ~workspace ~load_errors package_name with
+        match build_binary ~workspace package_name with
         | Error err -> Error err
         | Ok () ->
           let workspace_root = workspace.root in

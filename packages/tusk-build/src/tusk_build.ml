@@ -19,7 +19,6 @@ type target_request = Build_runtime.target_request =
 
 type build_request = Build_runtime.build_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
   packages: string list;
   targets: target_request;
   scope: build_scope;
@@ -39,8 +38,6 @@ type build_error = Build_runtime.build_error =
 
 type run_request = Run_runtime.run_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
-  current_dir: Std.Path.t;
   package_name: string option;
   binary_name: string;
   args: string list;
@@ -82,7 +79,6 @@ type suite_binary = Test_runtime.suite_binary = {
 
 type test_request = Test_runtime.test_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
   package_filter: string option;
   query: string option;
   extra_args: string list;

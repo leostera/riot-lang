@@ -7,7 +7,6 @@ type suite_binary = {
 
 type test_request = {
   workspace: Tusk_model.Workspace.t;
-  load_errors: Tusk_model.Workspace_manager.load_error list;
   package_filter: string option;
   query: string option;
   extra_args: string list;
@@ -141,7 +140,6 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
         ~on_event:(fun event -> on_event (Build event))
         {
           workspace = request.workspace;
-          load_errors = request.load_errors;
           packages = [];
           targets = Build_runtime.Host;
           scope = Build_runtime.Dev;

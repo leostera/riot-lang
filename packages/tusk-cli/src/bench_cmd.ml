@@ -117,7 +117,7 @@ let run_all_suites = fun ~workspace ~extra_args ~package_filter ~query ->
       Ok ()
     )
   else
-    match Build.build_command ~scope:Build.Dev None None with
+    match Build.build_command ~workspace ~scope:Build.Dev None None with
     | Error _ -> Error (Failure "Build failed")
     | Ok () ->
         let client = reconnect ~workspace in
@@ -141,13 +141,15 @@ let run_all_suites = fun ~workspace ~extra_args ~package_filter ~query ->
         Client.close client;
         result
 
-let run = fun matches ->
+let run = fun ~workspace matches ->
   let extra_args = trailing_args matches in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
   let pattern = ArgParser.get_one matches "pattern" in
   let legacy_package = ArgParser.get_one matches "package" in
-  let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-  let (workspace, _load_errors) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
   let request = Test_selection.parse_request ~pattern ~legacy_package in
-  run_all_suites ~workspace ~extra_args ~package_filter:request.package_filter ~query:request.query
+  run_all_suites
+    ~workspace
+    ~extra_args
+    ~package_filter:request.package_filter
+    ~query:request.query

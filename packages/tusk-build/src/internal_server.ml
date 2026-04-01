@@ -568,15 +568,14 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ?(load_errors = []) ~(config:Server_config.t) () ->
+let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ~(config:Server_config.t) () ->
   try
     trace_server
       ("start_local workspace_root="
       ^ Path.to_string workspace.root
       ^ " packages="
       ^ Int.to_string (List.length workspace.packages)
-      ^ " load_errors="
-      ^ Int.to_string (List.length load_errors));
+      ^ " load_errors=0");
     match resolve_registry ?registry ~registry_name () with
     | Error err ->
         trace_server ("start_local resolve_registry failed: " ^ err);
@@ -590,7 +589,7 @@ let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_regi
         | Ok workspace ->
             trace_server
               ("start_local prepared workspace packages=" ^ Int.to_string (List.length workspace.packages));
-            let state = build_state ~workspace ~load_errors ~registry ~config in
+            let state = build_state ~workspace ~load_errors:[] ~registry ~config in
             let server_pid =
               spawn
                 (fun () ->

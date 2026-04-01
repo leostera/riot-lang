@@ -62,11 +62,10 @@ let error_message = function
       "another tusk build is already running (" ^ Path.to_string lock_path ^ ")"
   | UnexpectedEvent { reason } -> reason
 
-let connect_local = fun ?(emit = no_emit) ?(load_errors = []) ~workspace () ->
+let connect_local = fun ?(emit = no_emit) ~workspace () ->
   match Internal_server.start_local
     ~emit
     ~workspace
-    ~load_errors
     ~config:Server_config.default
     () with
   | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
