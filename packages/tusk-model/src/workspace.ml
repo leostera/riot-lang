@@ -38,39 +38,64 @@ let validate_requirement = fun ~dependency_name requirement ->
   ^ "': "
   ^ version_parse_error_to_string err)
 
+let requirement_is_any = fun requirement ->
+  String.equal (Version.requirement_to_string requirement) "*"
+
+let validate_dependency_source = fun ~dependency_name (source: Package.dependency_source) ->
+  if source.workspace then
+    Error ("workspace dependency '" ^ dependency_name ^ "' cannot use workspace = true")
+  else if source.builtin && Option.is_some source.path then
+    Error ("builtin dependency '" ^ dependency_name ^ "' does not support path overrides")
+  else if source.builtin then
+    match source.version with
+    | None -> Ok { source with version = Some Version.any }
+    | Some version when requirement_is_any version -> Ok source
+    | Some version ->
+        Error ("builtin dependency '"
+        ^ dependency_name
+        ^ "' does not support version requirement '"
+        ^ Version.requirement_to_string version
+        ^ "'")
+  else if Option.is_some source.path || Option.is_some source.version then
+    Ok source
+  else
+    Ok { source with version = Some Version.any }
+
 let parse_dependency : string -> Toml.value -> (Package.dependency, string) result = fun name value ->
   let make_dependency source : Package.dependency = { name; source } in
   match value with
   | Toml.Table attrs -> (
-      match List.assoc_opt "path" attrs with
-      | Some (Toml.String path_str) -> Ok (make_dependency (Path (Path.v path_str)))
-      | _ -> (
-          match List.assoc_opt "version" attrs with
-          | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
-          |> Result.map (fun version -> make_dependency (Package.Registry { version }))
-          | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
-          | None ->
-              if Package.is_builtin_dependency_name name then
-                Ok (make_dependency Package.Builtin)
-              else
-                Ok (make_dependency (Package.Registry { version = Version.any }))
-        )
+      let path =
+        match List.assoc_opt "path" attrs with
+        | Some (Toml.String path_str) -> Ok (Some (Path.v path_str))
+        | Some _ -> Error ("dependency '" ^ name ^ "' has non-string path")
+        | None -> Ok None
+      in
+      let version =
+        match List.assoc_opt "version" attrs with
+        | Some (Toml.String requirement) ->
+            validate_requirement ~dependency_name:name requirement
+            |> Result.map (fun version -> Some version)
+        | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
+        | None -> Ok None
+      in
+      match path, version with
+      | (Error _ as err), _ -> err
+      | _, (Error _ as err) -> err
+      | Ok path, Ok version ->
+          validate_dependency_source
+            ~dependency_name:name
+            { workspace = false; builtin = Package.is_builtin_dependency_name name; path; version }
+          |> Result.map make_dependency
     )
   | Toml.String requirement -> (
       match validate_requirement ~dependency_name:name requirement with
       | Error _ as err -> err
       | Ok version ->
-          if Package.is_builtin_dependency_name name then
-            if String.equal (Version.requirement_to_string version) "*" then
-              Ok (make_dependency Package.Builtin)
-            else
-              Error ("builtin dependency '"
-              ^ name
-              ^ "' does not support version requirement '"
-              ^ Version.requirement_to_string version
-              ^ "'")
-          else
-            Ok (make_dependency (Package.Registry { version }))
+          validate_dependency_source
+            ~dependency_name:name
+            { workspace = false; builtin = Package.is_builtin_dependency_name name; path = None; version = Some version }
+          |> Result.map make_dependency
     )
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
@@ -294,7 +319,7 @@ std = ">= 1.2.3"
     | Error err -> Error err
     | Ok manifest -> (
         match manifest.dependencies with
-        | [ { Package.source=Package.Registry { version=requirement }; _ } ] ->
+        | [ { Package.source = { workspace = false; builtin = false; path = None; version = Some requirement }; _ } ] ->
             if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
               Ok ()
             else

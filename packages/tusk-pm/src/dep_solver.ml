@@ -447,7 +447,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
   | [] -> Ok (List.rev acc_dependencies, List.rev acc_packages, state)
   | dep :: rest -> (
       match dep.Tusk_model.Package.source with
-      | Tusk_model.Package.Workspace ->
+      | { workspace = true; _ } ->
           resolve_manifest_dependencies
             ~ctx
             ~state
@@ -456,9 +456,9 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             acc_packages
             (lock_dependency_of_local_dependency dep :: acc_dependencies)
             rest
-      | Tusk_model.Package.Builtin ->
+      | { builtin = true; _ } ->
           resolve_manifest_dependencies ~ctx ~state ~required_by ~declared_from acc_packages acc_dependencies rest
-      | Tusk_model.Package.Registry _ -> (
+      | { path = None; _ } -> (
           match find_workspace_package_by_name
             ~workspace_packages:ctx.workspace_packages
             ~package_name:dep.name with
@@ -483,7 +483,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
                 rest
             )
         )
-      | Tusk_model.Package.Path path -> (
+      | { path = Some path; _ } -> (
           match resolve_path_dependency ~ctx ~state ~declared_from dep.name path with
           | Error _ as err -> err
           | Ok (resolved, state) -> resolve_manifest_dependencies

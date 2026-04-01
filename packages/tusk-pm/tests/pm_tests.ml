@@ -1,6 +1,9 @@
 open Std
 module Test = Std.Test
 
+let source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
+  Tusk_model.Package.{ workspace; builtin; path; version }
+
 let make_sources = fun () ->
   Tusk_model.Package.{
     src = [];
@@ -97,8 +100,8 @@ let test_lock_deps_projects_workspace_packages = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
-    ~build_dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
+    ~dependencies:[ { name = "std"; source = source ~workspace:true () } ]
+    ~build_dependencies:[ { name = "std"; source = source ~workspace:true () } ]
     () in
   match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ] with
   | Error err -> Error ("expected workspace lock projection to succeed: " ^ pm_error_message err)
@@ -135,7 +138,7 @@ version = "1.2.3"
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[
-          { name = "foo"; source = Tusk_model.Package.Path (Path.v "../../vendor/foo") }
+          { name = "foo"; source = source ~path:(Path.v "../../vendor/foo") () }
         ]
         () in
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
@@ -185,7 +188,7 @@ version = "2.0.0"
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[
-          { name = "foo"; source = Tusk_model.Package.Path (Path.v "../../vendor/foo") }
+          { name = "foo"; source = source ~path:(Path.v "../../vendor/foo") () }
         ]
         () in
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
@@ -216,7 +219,7 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ { name = "std"; source = Tusk_model.Package.Path (Path.v "../std") } ]
+    ~dependencies:[ { name = "std"; source = source ~path:(Path.v "../std") () } ]
     () in
   match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ] with
   | Error err -> Error ("expected workspace path dependency to collapse to workspace package: " ^ pm_error_message err)
@@ -252,7 +255,7 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
     ~dependencies:[
-      { name = "std"; source = Tusk_model.Package.Registry { version = requirement } }
+      { name = "std"; source = source ~version:requirement () }
     ]
     () in
   let registry = make_registry
@@ -320,7 +323,7 @@ let test_lock_deps_reports_missing_registry_package_with_required_by = fun () ->
     ~name:"app"
     ~path:app_root
     ~dependencies:[
-      { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+      { name = "std"; source = source ~version:Std.Version.any () }
     ]
     () in
   match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
@@ -344,7 +347,7 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
     ~dependencies:[
-      { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+      { name = "std"; source = source ~version:Std.Version.any () }
     ]
     () in
   match run_lock_deps
@@ -384,7 +387,7 @@ let test_lock_deps_ignores_builtin_dependencies = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ { name = "stdlib"; source = Tusk_model.Package.Builtin } ]
+    ~dependencies:[ { name = "stdlib"; source = source ~builtin:true ~version:Std.Version.any () } ]
     () in
   match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected builtin dependency locking to succeed: " ^ pm_error_message err)
@@ -399,7 +402,7 @@ let test_lock_deps_ignores_builtin_registry_release_dependencies = fun () ->
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
     ~dependencies:[
-      { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+      { name = "std"; source = source ~version:Std.Version.any () }
     ]
     () in
   let registry = make_registry
@@ -434,7 +437,7 @@ let test_lock_deps_handles_cyclic_registry_dependencies = fun () ->
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
     ~dependencies:[
-      { name = "foo"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+      { name = "foo"; source = source ~version:Std.Version.any () }
     ]
     () in
   let registry = make_registry
@@ -498,7 +501,7 @@ let test_lock_refresh_preserves_existing_registry_version = fun () ->
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
     ~dependencies:[
-      { name = "std"; source = Tusk_model.Package.Registry { version = requirement } }
+      { name = "std"; source = source ~version:requirement () }
     ]
     () in
   let existing_lock =
@@ -710,7 +713,7 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun () ->
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
+        ~dependencies:[ { name = "std"; source = source ~workspace:true () } ]
         () in
       match collect_event_names
         (fun emit ->
@@ -748,7 +751,7 @@ let test_ensure_lock_uses_existing_fresh_lock = fun () ->
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
+        ~dependencies:[ { name = "std"; source = source ~workspace:true () } ]
         () in
       sleep (Time.Duration.from_millis 20);
       let existing_lock = run_lock_deps
@@ -790,7 +793,7 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun () -
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[
-          { name = "std"; source = Tusk_model.Package.Registry { version = requirement } }
+          { name = "std"; source = source ~version:requirement () }
         ]
         () in
       let registry_cache = Pkgs_ml.Registry_cache.create
@@ -860,7 +863,7 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[
-          { name = "std"; source = Tusk_model.Package.Registry { version = requirement } }
+          { name = "std"; source = source ~version:requirement () }
         ]
         () in
       let registry_cache = Pkgs_ml.Registry_cache.create
@@ -931,7 +934,7 @@ let test_ensure_workspace_projects_materialized_registry_packages = fun () ->
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[
-          { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+          { name = "std"; source = source ~version:Std.Version.any () }
         ]
         () in
       let app_pkg = { app_pkg with relative_path = Path.v "packages/app" } in
@@ -986,7 +989,7 @@ let test_projection_resolves_workspace_packages = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
+    ~dependencies:[ { name = "std"; source = source ~workspace:true () } ]
     () in
   let lockfile = run_lock_deps
     ~mode:Tusk_pm.Dep_solver.Refresh
@@ -1018,7 +1021,7 @@ let test_projection_loads_external_manifests_from_lockfile = fun () ->
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[
-          { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+          { name = "std"; source = source ~version:Std.Version.any () }
         ]
         () in
       let std_root = Path.(workspace_root / Path.v ".tusk/registry/pkgs.ml/src/std/0.2.0") in
@@ -1135,7 +1138,7 @@ let test_projection_bubbles_external_manifest_errors = fun () ->
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[
-          { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+          { name = "std"; source = source ~version:Std.Version.any () }
         ]
         () in
       let std_root = Path.(workspace_root / Path.v ".tusk/registry/pkgs.ml/src/std/0.2.0") in

@@ -1,10 +1,12 @@
 open Std
 
 type dependency_source =
-  Workspace
-  | Builtin
-  | Registry of { version: Std.Version.requirement }
-  | Path of Path.t
+{
+  workspace: bool;
+  builtin: bool;
+  path: Path.t option;
+  version: Std.Version.requirement option;
+}
 type dependency_scope =
   Normal
   | Dev

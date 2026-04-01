@@ -1,6 +1,9 @@
 open Std
 module Test = Std.Test
 
+let source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
+  Tusk_model.Package.{ workspace; builtin; path; version }
+
 let make_command = fun () ->
   Tusk_model.Package_command.{
     name = "demo";
@@ -18,9 +21,9 @@ let make_package = fun () ->
     name = "minttea";
     path = Path.v "packages/minttea";
     relative_path = Path.v "packages/minttea";
-    dependencies = [ { name = "std"; source = Tusk_model.Package.Workspace } ];
-    dev_dependencies = [ { name = "propane"; source = Tusk_model.Package.Workspace } ];
-    build_dependencies = [ { name = "std"; source = Tusk_model.Package.Workspace } ];
+    dependencies = [ { name = "std"; source = source ~workspace:true () } ];
+    dev_dependencies = [ { name = "propane"; source = source ~workspace:true () } ];
+    build_dependencies = [ { name = "std"; source = source ~workspace:true () } ];
     foreign_dependencies = [];
     binaries = [ { name = "demo-bin"; path = Path.v "src/demo_bin.ml" } ];
     library = Some { path = Path.v "src/minttea.ml" };
@@ -202,7 +205,7 @@ std = ">= 1.2.3"
     ~relative_path:(Path.v "packages/demo")
   |> Result.expect ~msg:"expected package manifest to parse" in
   match pkg.dependencies with
-  | [ { Tusk_model.Package.source=Tusk_model.Package.Registry { version=requirement }; _ } ] ->
+  | [ { Tusk_model.Package.source = { workspace = false; builtin = false; path = None; version = Some requirement }; _ } ] ->
       Test.assert_equal ~expected:">= 1.2.3" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected a parsed registry dependency requirement"
@@ -252,7 +255,7 @@ std = "*"
     ~relative_path:(Path.v "packages/demo")
   |> Result.expect ~msg:"expected package manifest to parse" in
   match pkg.dependencies with
-  | [ { Tusk_model.Package.source=Tusk_model.Package.Registry { version=requirement }; _ } ] ->
+  | [ { Tusk_model.Package.source = { workspace = false; builtin = false; path = None; version = Some requirement }; _ } ] ->
       Test.assert_equal ~expected:"*" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected '*' package dependency to become an unconstrained registry dependency"
@@ -279,7 +282,8 @@ stdlib = "*"
     ~relative_path:(Path.v "packages/demo")
   |> Result.expect ~msg:"expected package manifest to parse" in
   match pkg.dependencies with
-  | [ { Tusk_model.Package.name="stdlib"; source=Tusk_model.Package.Builtin } ] -> Ok ()
+  | [ { Tusk_model.Package.name="stdlib"; source = { builtin = true; version = Some requirement; _ } } ]
+    when String.equal (Std.Version.requirement_to_string requirement) "*" -> Ok ()
   | _ -> Error "expected stdlib '*' to parse as a builtin dependency"
 
 let test_package_builtin_dependency_rejects_version_constraints = fun () ->
@@ -312,7 +316,7 @@ let test_package_json_roundtrips_registry_requirement = fun () ->
       name = "demo";
       path = Path.v "/tmp/demo";
       relative_path = Path.v "packages/demo";
-      dependencies = [ { name = "std"; source = Registry { version = requirement } } ];
+      dependencies = [ { name = "std"; source = source ~version:requirement () } ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];
@@ -335,7 +339,7 @@ let test_package_json_roundtrips_registry_requirement = fun () ->
   |> Tusk_model.Package.from_json
   |> Result.expect ~msg:"expected package JSON to roundtrip" in
   match decoded.dependencies with
-  | [ { Tusk_model.Package.source=Tusk_model.Package.Registry { version=requirement }; _ } ] ->
+  | [ { Tusk_model.Package.source = { workspace = false; builtin = false; path = None; version = Some requirement }; _ } ] ->
       Test.assert_equal ~expected:">= 1.2.3" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected registry dependency after JSON roundtrip"
@@ -354,7 +358,7 @@ std = ">= 1.2.3"
   in
   let workspace_manifest = Tusk_model.Workspace.of_toml manifest |> Result.expect ~msg:"expected workspace manifest to parse" in
   match workspace_manifest.dependencies with
-  | [ { Tusk_model.Package.source=Tusk_model.Package.Registry { version=requirement }; _ } ] ->
+  | [ { Tusk_model.Package.source = { workspace = false; builtin = false; path = None; version = Some requirement }; _ } ] ->
       Test.assert_equal ~expected:">= 1.2.3" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected a parsed workspace registry dependency requirement"
@@ -373,7 +377,7 @@ std = "*"
   in
   let workspace_manifest = Tusk_model.Workspace.of_toml manifest |> Result.expect ~msg:"expected workspace manifest to parse" in
   match workspace_manifest.dependencies with
-  | [ { Tusk_model.Package.source=Tusk_model.Package.Registry { version=requirement }; _ } ] ->
+  | [ { Tusk_model.Package.source = { workspace = false; builtin = false; path = None; version = Some requirement }; _ } ] ->
       Test.assert_equal ~expected:"*" ~actual:(Std.Version.requirement_to_string requirement);
       Ok ()
   | _ -> Error "expected '*' workspace dependency to become an unconstrained registry dependency"

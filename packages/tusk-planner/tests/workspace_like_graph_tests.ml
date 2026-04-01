@@ -4,7 +4,17 @@ module Package_graph = Tusk_planner.Package_graph
 module Package = Tusk_model.Package
 module Workspace = Tusk_model.Workspace
 
-let dependency = fun name -> Package.{ name; source = Workspace }
+let dependency = fun name ->
+  Package.{
+    name;
+    source =
+      {
+        workspace = true;
+        builtin = false;
+        path = None;
+        version = None;
+      };
+  }
 
 let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name ->
   Package.{

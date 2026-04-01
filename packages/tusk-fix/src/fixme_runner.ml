@@ -217,11 +217,11 @@ let dependency_entries = fun workspace_root providers ->
           (fun pkg -> pkg.Tusk_model.Package.build_dependencies) |> Option.unwrap_or ~default:[] |> List.filter_map
           (fun (dep: Tusk_model.Package.dependency) ->
             match dep.source with
-            | Tusk_model.Package.Workspace -> workspace_package_path dep.name
+            | { workspace = true; _ } -> workspace_package_path dep.name
             |> Option.map (fun path -> (dep.name, path))
-            | Tusk_model.Package.Builtin -> None
-            | Tusk_model.Package.Registry _ -> None
-            | Tusk_model.Package.Path path -> Some (dep.name, path)))
+            | { builtin = true; _ } -> None
+            | { path = Some path; _ } -> Some (dep.name, path)
+            | { path = None; _ } -> None))
   in
   let entries = [
     ("std", Path.(workspace_root / Path.v "packages" / Path.v "std"));

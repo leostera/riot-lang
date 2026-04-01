@@ -89,13 +89,13 @@ workspace_build_deps:Package.dependency list ->
 dependant:string option ->
 (Package.t list * load_error list) = fun workspace_root ~declared_from dep ~seen ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~dependant ->
   match dep.source with
-  | Package.Workspace ->
+  | { workspace = true; _ } ->
       ([], [])
-  | Package.Builtin ->
+  | { builtin = true; _ } ->
       ([], [])
-  | Package.Registry _ ->
+  | { path = None; _ } ->
       ([], [])
-  | Package.Path dep_path ->
+  | { path = Some dep_path; _ } ->
       if List.mem dep.name !seen then
         ([], [])
       else (

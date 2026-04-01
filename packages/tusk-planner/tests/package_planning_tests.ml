@@ -57,7 +57,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
   List.iter
     (fun (dep: Tusk_model.Package.dependency) ->
       match dep.source with
-      | Tusk_model.Package.Workspace -> (
+      | { workspace = true; _ } -> (
           match List.find_opt
             (fun (p: Tusk_model.Package.t) -> p.name = dep.name)
             workspace.Tusk_model.Workspace.packages with
@@ -72,11 +72,9 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
                 )
           | None -> ()
         )
-      | Tusk_model.Package.Builtin ->
+      | { builtin = true; _ } ->
           ()
-      | Tusk_model.Package.Registry _ ->
-          ()
-      | Tusk_model.Package.Path _ ->
+      | _ ->
           ())
     sorted_deps;
   H.finish state

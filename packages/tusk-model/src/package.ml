@@ -5,10 +5,12 @@ open Std.Collections
 
 (** Types *)
 type dependency_source =
-  Workspace
-  | Builtin
-  | Registry of { version: Std.Version.requirement }
-  | Path of Path.t
+{
+  workspace: bool;
+  builtin: bool;
+  path: Path.t option;
+  version: Std.Version.requirement option;
+}
 
 type dependency_scope =
   Normal
@@ -132,9 +134,7 @@ let is_builtin_dependency_name = function
   | _ -> false
 
 let is_builtin_dependency = fun (dep: dependency) ->
-  match dep.source with
-  | Builtin -> true
-  | _ -> false
+  dep.source.builtin
 
 let binary_scope = fun (bin: binary) ->
   let path_str = Path.to_string bin.path in
@@ -336,6 +336,29 @@ let validate_requirement = fun ~dependency_name requirement ->
 let requirement_is_any = fun requirement ->
   String.equal (Version.requirement_to_string requirement) "*"
 
+let make_source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
+  { workspace; builtin; path; version }
+
+let validate_dependency_source = fun ~dependency_name source ->
+  if source.workspace && (source.builtin || Option.is_some source.path || Option.is_some source.version) then
+    Error ("dependency '" ^ dependency_name ^ "' cannot combine workspace = true with path or version")
+  else if source.builtin && Option.is_some source.path then
+    Error ("builtin dependency '" ^ dependency_name ^ "' does not support path overrides")
+  else if source.builtin then
+    match source.version with
+    | None -> Ok { source with version = Some Version.any }
+    | Some version when requirement_is_any version -> Ok source
+    | Some version ->
+        Error ("builtin dependency '"
+        ^ dependency_name
+        ^ "' does not support version requirement '"
+        ^ Version.requirement_to_string version
+        ^ "'")
+  else if source.workspace || Option.is_some source.path || Option.is_some source.version then
+    Ok source
+  else
+    Ok { source with version = Some Version.any }
+
 let parse_dependency : string ->
 Toml.value ->
 workspace_deps:dependency list ->
@@ -343,38 +366,45 @@ workspace_deps:dependency list ->
   match value with
   | Toml.Table attrs -> (
       match List.assoc_opt "workspace" attrs with
-      | Some (Toml.Bool true) -> Ok (resolve_workspace_dependency name workspace_deps)
+      | Some (Toml.Bool true) -> (
+          let source = { (resolve_workspace_dependency name workspace_deps).source with workspace = true } in
+          validate_dependency_source ~dependency_name:name source
+          |> Result.map (fun source -> { name; source })
+        )
+      | Some _ -> Error ("dependency '" ^ name ^ "' has non-boolean workspace flag")
       | _ -> (
-          match List.assoc_opt "path" attrs with
-          | Some (Toml.String path_str) -> Ok { name; source = Path (Path.v path_str) }
-          | _ -> (
-              match List.assoc_opt "version" attrs with
-              | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
-              |> Result.map (fun version -> { name; source = Registry { version } })
-              | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
-              | None ->
-                  if is_builtin_dependency_name name then
-                    Ok { name; source = Builtin }
-                  else
-                    Ok { name; source = Registry { version = Version.any } }
-            )
+          let path =
+            match List.assoc_opt "path" attrs with
+            | Some (Toml.String path_str) -> Ok (Some (Path.v path_str))
+            | Some _ -> Error ("dependency '" ^ name ^ "' has non-string path")
+            | None -> Ok None
+          in
+          let version =
+            match List.assoc_opt "version" attrs with
+            | Some (Toml.String requirement) ->
+                validate_requirement ~dependency_name:name requirement
+                |> Result.map (fun version -> Some version)
+            | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
+            | None -> Ok None
+          in
+          match path, version with
+          | (Error _ as err), _ -> err
+          | _, (Error _ as err) -> err
+          | Ok path, Ok version ->
+              validate_dependency_source
+                ~dependency_name:name
+                (make_source ~builtin:(is_builtin_dependency_name name) ?path ?version ())
+              |> Result.map (fun source -> { name; source })
         )
     )
   | Toml.String requirement -> (
       match validate_requirement ~dependency_name:name requirement with
       | Error _ as err -> err
       | Ok version ->
-          if is_builtin_dependency_name name then
-            if requirement_is_any version then
-              Ok { name; source = Builtin }
-            else
-              Error ("builtin dependency '"
-              ^ name
-              ^ "' does not support version requirement '"
-              ^ Version.requirement_to_string version
-              ^ "'")
-          else
-            Ok { name; source = Registry { version } }
+          validate_dependency_source
+            ~dependency_name:name
+            (make_source ~builtin:(is_builtin_dependency_name name) ~version ())
+          |> Result.map (fun source -> { name; source })
     )
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
@@ -400,44 +430,111 @@ let parse_dependency_section = fun section_name items ~(workspace_deps:dependenc
   | None -> Ok []
 
 let dependency_source_to_json = fun source ->
-  match source with
-  | Workspace -> Json.Object [ ("kind", Json.String "workspace") ]
-  | Builtin -> Json.Object [ ("kind", Json.String "builtin") ]
-  | Registry { version } -> Json.Object [
-    ("kind", Json.String "registry");
-    ("version", Json.String (Version.requirement_to_string version));
-  ]
-  | Path p -> Json.Object [ ("kind", Json.String "path"); ("path", Json.String (Path.to_string p)); ]
+  let fields = [] in
+  let fields =
+    if source.workspace then
+      ("workspace", Json.Bool true) :: fields
+    else
+      fields
+  in
+  let fields =
+    if source.builtin then
+      ("builtin", Json.Bool true) :: fields
+    else
+      fields
+  in
+  let fields =
+    match source.path with
+    | Some path -> ("path", Json.String (Path.to_string path)) :: fields
+    | None -> fields
+  in
+  let fields =
+    match source.version with
+    | Some version -> ("version", Json.String (Version.requirement_to_string version)) :: fields
+    | None -> fields
+  in
+  Json.Object (List.rev fields)
 
 let dependency_source_of_json = fun json ->
   match json with
   | Json.String "workspace" ->
-      Ok Workspace
+      Ok { workspace = true; builtin = false; path = None; version = None }
   | Json.String source_path ->
-      Ok (Path (Path.v source_path))
+      Ok { workspace = false; builtin = false; path = Some (Path.v source_path); version = None }
   | Json.Object fields -> (
       match List.assoc_opt "kind" fields with
       | Some (Json.String "workspace") ->
-          Ok Workspace
+          Ok { workspace = true; builtin = false; path = None; version = None }
       | Some (Json.String "builtin") ->
-          Ok Builtin
+          Ok { workspace = false; builtin = true; path = None; version = Some Version.any }
       | Some (Json.String "path") -> (
-          match List.assoc_opt "path" fields with
-          | Some (Json.String path) -> Ok (Path (Path.v path))
-          | _ -> Error "path dependency source is missing a string path"
+          let path =
+            match List.assoc_opt "path" fields with
+            | Some (Json.String path) -> Ok (Some (Path.v path))
+            | _ -> Error "path dependency source is missing a string path"
+          in
+          let version =
+            match List.assoc_opt "version" fields with
+            | Some Json.Null
+            | None -> Ok None
+            | Some (Json.String requirement) ->
+                validate_requirement ~dependency_name:"<json>" requirement
+                |> Result.map (fun version -> Some version)
+            | _ -> Error "path dependency source has non-string version requirement"
+          in
+          match path, version with
+          | Ok path, Ok version -> Ok { workspace = false; builtin = false; path; version }
+          | Error err, _
+          | _, Error err -> Error err
         )
       | Some (Json.String "registry") -> (
           match List.assoc_opt "version" fields with
           | Some Json.Null
-          | None -> Ok (Registry { version = Version.any })
+          | None -> Ok { workspace = false; builtin = false; path = None; version = Some Version.any }
           | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
-          |> Result.map (fun version -> Registry { version })
+          |> Result.map (fun version -> { workspace = false; builtin = false; path = None; version = Some version })
           | _ -> Error "registry dependency source has non-string version requirement"
         )
       | Some (Json.String kind) ->
           Error ("unknown dependency source kind: " ^ kind)
       | _ ->
-          Error "dependency source is missing kind"
+          let workspace =
+            match List.assoc_opt "workspace" fields with
+            | Some (Json.Bool value) -> Ok value
+            | Some _ -> Error "dependency source workspace flag must be boolean"
+            | None -> Ok false
+          in
+          let builtin =
+            match List.assoc_opt "builtin" fields with
+            | Some (Json.Bool value) -> Ok value
+            | Some _ -> Error "dependency source builtin flag must be boolean"
+            | None -> Ok false
+          in
+          let path =
+            match List.assoc_opt "path" fields with
+            | Some (Json.String path) -> Ok (Some (Path.v path))
+            | Some Json.Null -> Ok None
+            | Some _ -> Error "dependency source path must be a string"
+            | None -> Ok None
+          in
+          let version =
+            match List.assoc_opt "version" fields with
+            | Some (Json.String requirement) ->
+                validate_requirement ~dependency_name:"<json>" requirement
+                |> Result.map (fun version -> Some version)
+            | Some Json.Null -> Ok None
+            | Some _ -> Error "dependency source version must be a string"
+            | None -> Ok None
+          in
+          match workspace, builtin, path, version with
+          | Ok workspace, Ok builtin, Ok path, Ok version ->
+              validate_dependency_source
+                ~dependency_name:"<json>"
+                { workspace; builtin; path; version }
+          | Error err, _, _, _
+          | _, Error err, _, _
+          | _, _, Error err, _
+          | _, _, _, Error err -> Error err
     )
   | _ ->
       Error "dependency source must be a string or object"
@@ -1177,16 +1274,14 @@ let hash = fun state (pkg: t) ->
   List.iter
     (fun (dep: dependency) ->
       H.write_string state dep.name;
-      match dep.source with
-      | Workspace ->
-          H.write_string state "workspace"
-      | Builtin ->
-          H.write_string state "builtin"
-      | Registry { version } ->
-          H.write_string state "registry";
-          H.write_string state (Version.requirement_to_string version)
-      | Path path ->
-          H.write_string state (Path.to_string path))
+      H.write_string state (Bool.to_string dep.source.workspace);
+      H.write_string state (Bool.to_string dep.source.builtin);
+      (match dep.source.path with
+      | Some path -> H.write_string state (Path.to_string path)
+      | None -> H.write_string state "");
+      (match dep.source.version with
+      | Some version -> H.write_string state (Version.requirement_to_string version)
+      | None -> H.write_string state ""))
     sorted_deps;
   (* Binaries metadata *)
   let sorted_bins =
@@ -1373,6 +1468,9 @@ let hash = fun state (pkg: t) ->
     sorted_foreign_deps
 
 module Tests = struct
+  let source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
+    { workspace; builtin; path; version }
+
   let test_parse_dependency_classes () : (unit, string) result =
     let toml =
       Std.Data.Toml.parse
@@ -1392,7 +1490,7 @@ fixme = { path = "../fixme" }
 |}
       |> Result.expect ~msg:"expected package toml to parse"
     in
-    let workspace_dep name = { name; source = Workspace } in
+    let workspace_dep name = { name; source = source ~workspace:true () } in
     let pkg = from_toml
       toml
       ~workspace_deps:[ workspace_dep "std" ]
@@ -1432,7 +1530,7 @@ std = ">= 1.2.3"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { source=Registry { version=requirement }; _ } ] ->
+    | [ { source = { workspace = false; builtin = false; path = None; version = Some requirement }; _ } ] ->
         if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
           Ok ()
         else
@@ -1461,7 +1559,8 @@ stdlib = "*"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { name="stdlib"; source=Builtin } ] -> Ok ()
+    | [ { name="stdlib"; source = { builtin = true; version = Some requirement; _ } } ]
+      when requirement_is_any requirement -> Ok ()
     | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
 
   let test_builtin_dependency_rejects_version_constraints () : (unit, string) result =
@@ -1516,7 +1615,7 @@ std = "definitely-not-semver"
       name = "example";
       path = Path.v "/tmp/example";
       relative_path = Path.v "packages/example";
-      dependencies = [ { name = "std"; source = Registry { version = requirement } } ];
+      dependencies = [ { name = "std"; source = source ~version:requirement () } ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];
@@ -1539,7 +1638,7 @@ std = "definitely-not-semver"
     | Error err -> Error err
     | Ok decoded -> (
         match decoded.dependencies with
-        | [ { source=Registry { version=decoded_requirement }; _ } ] ->
+        | [ { source = { workspace = false; builtin = false; path = None; version = Some decoded_requirement }; _ } ] ->
             if String.equal (Version.requirement_to_string decoded_requirement) ">= 1.2.3" then
               Ok ()
             else
@@ -1650,7 +1749,7 @@ std = {}
       name = "app";
       path = Path.v "/workspace/packages/app";
       relative_path = Path.v "packages/app";
-      dependencies = [ { name = "stdlib"; source = Builtin } ];
+      dependencies = [ { name = "stdlib"; source = source ~builtin:true ~version:Version.any () } ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];
@@ -1692,9 +1791,9 @@ std = {}
       name = "example";
       path = Path.v "/tmp/example";
       relative_path = Path.v "packages/example";
-      dependencies = [ { name = "std"; source = Workspace } ];
-      dev_dependencies = [ { name = "propane"; source = Workspace } ];
-      build_dependencies = [ { name = "fixme"; source = Workspace } ];
+      dependencies = [ { name = "std"; source = source ~workspace:true () } ];
+      dev_dependencies = [ { name = "propane"; source = source ~workspace:true () } ];
+      build_dependencies = [ { name = "fixme"; source = source ~workspace:true () } ];
       foreign_dependencies = [];
       binaries = [];
       library = None;
