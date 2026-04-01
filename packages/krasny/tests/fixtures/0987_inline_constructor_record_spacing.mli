@@ -1,0 +1,1 @@
+type t=Foo of {foo:int;bar:string;}

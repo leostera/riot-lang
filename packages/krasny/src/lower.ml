@@ -1107,8 +1107,7 @@ and render_tokenized_record_definition = fun ~opening_token ~closing_token field
 and render_inline_record_definition = fun fields ->
   let rec render_fields = function
     | [] -> Doc.empty
-    | [ field ] -> Doc.concat
-      [ render_record_definition_field field; render_record_definition_field_separator field ]
+    | [ field ] -> render_record_definition_field field
     | field :: rest -> Doc.concat
       [
         render_record_definition_field field;
@@ -1132,8 +1131,7 @@ and render_inline_record_definition = fun fields ->
 and render_tokenized_inline_record_definition = fun ~opening_token ~closing_token fields ->
   let rec render_fields = function
     | [] -> Doc.empty
-    | [ field ] -> Doc.concat
-      [ render_record_definition_field field; render_record_definition_field_separator field ]
+    | [ field ] -> render_record_definition_field field
     | field :: rest -> Doc.concat
       [
         render_record_definition_field field;
@@ -1454,19 +1452,9 @@ let render_variant_constructor = fun ?(prefer_multiline_inline_record = false) c
   body
 
 let render_variant_definition = fun constructors ->
-  let constructors_all_inline_records =
-    not (List.is_empty constructors)
-    && List.for_all
-      (fun constructor ->
-        match Syn.Cst.VariantConstructor.arguments constructor with
-        | Some (Syn.Cst.ConstructorArguments.Record _) -> true
-        | _ -> false)
-      constructors
-  in
   let constructor_docs = constructors
   |> List.map
-    (fun constructor ->
-      render_variant_constructor ~prefer_multiline_inline_record:constructors_all_inline_records constructor) in
+    (fun constructor -> render_variant_constructor constructor) in
   constructor_docs |> Doc.join Doc.line
 
 let render_type_definition = function
@@ -3434,18 +3422,25 @@ let make_lowerer =
       _
     } ->
         let rendered_fields = List.map render_record_field fields in
-        let rec render_fields fields separator_tokens break_doc =
+        let rec render_fields ~include_trailing_separator fields separator_tokens break_doc =
           match fields, separator_tokens with
           | [], [] -> Doc.empty
-          | [ field ], [] -> Doc.concat [ field; render_record_expression_field_separator None ]
-          | [ field ], [ separator_token ] -> Doc.concat
-            [ field; render_record_expression_field_separator (Some separator_token) ]
+          | [ field ], [] ->
+              if include_trailing_separator then
+                Doc.concat [ field; render_record_expression_field_separator None ]
+              else
+                field
+          | [ field ], [ separator_token ] ->
+              if include_trailing_separator then
+                Doc.concat [ field; render_record_expression_field_separator (Some separator_token) ]
+              else
+                field
           | field :: rest, separator_token :: rest_separators -> Doc.concat
             [
               field;
               doc_of_token separator_token;
               break_doc;
-              render_fields rest rest_separators break_doc;
+              render_fields ~include_trailing_separator rest rest_separators break_doc;
             ]
           | _ -> unsupported "record literal fields missing separator tokens"
         in
@@ -3456,7 +3451,7 @@ let make_lowerer =
             [
               doc_of_token opening_token;
               Doc.line;
-              Doc.indent 2 (render_fields rendered_fields separator_tokens Doc.line);
+              Doc.indent 2 (render_fields ~include_trailing_separator:true rendered_fields separator_tokens Doc.line);
               Doc.line;
               doc_of_token closing_token;
             ]
@@ -3469,10 +3464,14 @@ let make_lowerer =
                   2
                   (Doc.concat
                     [
-                      Doc.break ~flat:"" ();
-                      render_fields rendered_fields separator_tokens (Doc.break ~flat:"" ())
+                      Doc.break ~flat:" " ();
+                      render_fields
+                        ~include_trailing_separator:false
+                        rendered_fields
+                        separator_tokens
+                        (Doc.break ~flat:" " ())
                     ]);
-                Doc.break ~flat:"" ();
+                Doc.break ~flat:" " ();
                 doc_of_token closing_token;
               ])
     | Syn.Cst.RecordExpression.Update {
@@ -3486,18 +3485,25 @@ let make_lowerer =
     } ->
         let base_doc = render_expression base in
         let rendered_fields = List.map render_record_field fields in
-        let rec render_fields fields separator_tokens break_doc =
+        let rec render_fields ~include_trailing_separator fields separator_tokens break_doc =
           match fields, separator_tokens with
           | [], [] -> Doc.empty
-          | [ field ], [] -> Doc.concat [ field; render_record_expression_field_separator None ]
-          | [ field ], [ separator_token ] -> Doc.concat
-            [ field; render_record_expression_field_separator (Some separator_token) ]
+          | [ field ], [] ->
+              if include_trailing_separator then
+                Doc.concat [ field; render_record_expression_field_separator None ]
+              else
+                field
+          | [ field ], [ separator_token ] ->
+              if include_trailing_separator then
+                Doc.concat [ field; render_record_expression_field_separator (Some separator_token) ]
+              else
+                field
           | field :: rest, separator_token :: rest_separators -> Doc.concat
             [
               field;
               doc_of_token separator_token;
               break_doc;
-              render_fields rest rest_separators break_doc;
+              render_fields ~include_trailing_separator rest rest_separators break_doc;
             ]
           | _ -> unsupported "record update fields missing separator tokens"
         in
@@ -3518,7 +3524,7 @@ let make_lowerer =
                     Doc.line;
                     doc_of_token with_token;
                     Doc.space;
-                    render_fields rendered_fields separator_tokens Doc.line;
+                    render_fields ~include_trailing_separator:true rendered_fields separator_tokens Doc.line;
                   ]);
               Doc.line;
               doc_of_token closing_token;
@@ -3532,14 +3538,18 @@ let make_lowerer =
                   2
                   (Doc.concat
                     [
-                      Doc.break ~flat:"" ();
+                      Doc.break ~flat:" " ();
                       base_doc;
                       Doc.break ();
                       doc_of_token with_token;
                       Doc.space;
-                      render_fields rendered_fields separator_tokens (Doc.break ~flat:"" ());
+                      render_fields
+                        ~include_trailing_separator:false
+                        rendered_fields
+                        separator_tokens
+                        (Doc.break ~flat:" " ());
                     ]);
-                Doc.break ~flat:"" ();
+                Doc.break ~flat:" " ();
                 doc_of_token closing_token;
               ])
   and render_tuple_expression_bare elements = Doc.group

@@ -4,5 +4,5 @@ let from_flag flag = {
       `File
     else
       `Unknown;
-  system = {own_event = true;};
+  system = { own_event = true };
 }
