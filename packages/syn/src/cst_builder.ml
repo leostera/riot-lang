@@ -3526,11 +3526,6 @@ and core_type_from_node = fun node ->
       | name_token :: _ -> Some (token name_token)
       | [] -> None
     in
-    let mutable_field =
-      match direct_non_trivia_tokens node with
-      | first :: _ -> String.equal (Ceibo.Red.SyntaxToken.text first) "mutable"
-      | [] -> false
-    in
     let field_type_node = direct_non_trivia_nodes node |> List.find_opt can_lift_core_type_node in
     match field_name, field_type_node with
     | Some field_name, Some field_type_node ->
@@ -5876,7 +5871,6 @@ and object_expression_from_node = fun node ->
   in
   match lift_members [] member_children with
   | Some members ->
-      let child_owned_spans = members |> List.concat_map object_member_owned_trivia_spans in
       Some (({ syntax_node = node; self_pattern; members; attributes = [] }: Cst.object_expression))
   | None -> None
 
@@ -7425,11 +7419,6 @@ let private_flag_from_type_declaration_node = fun node ->
 let record_field_from_node = fun node ->
   record_field_name_token node |> Option.map
     (fun field_name ->
-      let mutable_field =
-        match direct_non_trivia_tokens node with
-        | first :: _ -> String.equal (Ceibo.Red.SyntaxToken.text first) "mutable"
-        | [] -> false
-      in
       let field_type_node = direct_non_trivia_nodes node |> List.find_opt can_lift_core_type_node in
       let lifted_field_type, lifted_attributes =
         match field_type_node with
@@ -7563,14 +7552,6 @@ let variant_constructor_from_node = fun node ->
             else
               None
           in
-          let leading_trivia =
-            match Ceibo.Red.SyntaxNode.first_token node with
-            | Some first_token -> Ceibo.Red.SyntaxToken.leading_trivia first_token
-            |> List.filter_map trivia_from_syntax_trivia
-            | None -> []
-          in
-          let constructor_owned_trivia = owned_trivia_from_node node
-          |> fun owned -> owned_trivia_with_leading owned leading_trivia in
           Some Cst.VariantConstructor.{
             syntax_node = node;
             attributes = lifted_attributes;
@@ -7910,12 +7891,6 @@ let type_declaration_from_node = fun ?keyword_token node ->
   let lifted_constraints = direct_non_trivia_nodes node
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.TYPE_CONSTRAINT)
   |> List.filter_map type_constraint_from_node in
-  let has_destructive_substitution =
-    direct_non_trivia_tokens node
-    |> List.exists
-      (fun syntax_token ->
-        String.equal (Ceibo.Red.SyntaxToken.text syntax_token) ":=")
-  in
   let manifest_alias_opt = type_manifest_alias_from_node node in
   let definition = type_definition_from_node node in
   let nonrec_token_opt = direct_token_with_text node "nonrec" in
@@ -8083,7 +8058,6 @@ let let_binding_from_node_with_keyword = fun ~keyword_token ~is_recursive_bindin
       ~syntax_node:node
       ~context:[ "let_binding" ]
   in
-  let is_recursive_binding = is_recursive_binding || Option.is_some binding_rec_token in
   let direct_children = direct_non_trivia_nodes node in
   let binding_attributes = direct_children |> List.filter is_attribute_node |> List.map attribute_from_node in
   let binding_children = direct_children |> List.filter (fun child -> not (is_attribute_node child)) in

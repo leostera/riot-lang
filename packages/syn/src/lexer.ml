@@ -456,7 +456,6 @@ let lex_number = fun cursor token_start ->
       let num_str_raw = Cursor.take_while cursor is_digit_or_underscore in
       (* Remove underscores for parsing *)
       let num_str = remove_underscores num_str_raw in
-      let end_ = Cursor.position cursor in
       let kind =
         match Cursor.peek cursor with
         | Some c when is_alpha c ->

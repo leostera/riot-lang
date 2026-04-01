@@ -69,6 +69,10 @@ CAMLprim value kernel_crypto_sha512(value data) {
 }
 
 /* MD5 implementation using macOS CommonCrypto */
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
 CAMLprim value kernel_crypto_md5(value data) {
     CAMLparam1(data);
     CAMLlocal1(result);
@@ -85,6 +89,9 @@ CAMLprim value kernel_crypto_md5(value data) {
 
     CAMLreturn(result);
 }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 #else
 /* Linux/other platforms - use OpenSSL */

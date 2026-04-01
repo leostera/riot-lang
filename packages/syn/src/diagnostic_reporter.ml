@@ -66,7 +66,6 @@ let format_hint = fun text -> text
 let format_diagnostic = fun ~layout diag ->
   let fix = Diagnostic.fix_message diag in
   let error_id = diag |> Diagnostic.error_id |> Error.id_to_string in
-  let bold_style = Style.default |> Style.bold in
   let error_color = Color.make "#E06C75" in
   let error_style = Style.default |> Style.fg error_color |> Style.bold in
   let fix_style = Style.default |> Style.fg (Color.make "#98C379") |> Style.bold in

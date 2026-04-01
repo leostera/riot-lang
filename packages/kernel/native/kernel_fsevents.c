@@ -8,7 +8,7 @@
 #include <caml/mlvalues.h>
 #include <caml/threads.h>
 #include <caml/unixsupport.h>
-#include <pthread.h>
+#include <dispatch/dispatch.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -23,8 +23,7 @@
 typedef struct {
     int fd;  // Write end of pipe for sending events to OCaml
     FSEventStreamRef stream;
-    CFRunLoopRef run_loop;
-    pthread_t thread;
+    dispatch_queue_t queue;
 } fsevents_context_t;
 
 void fsevents_callback(
@@ -58,24 +57,6 @@ void fsevents_callback(
     }
 }
 
-void* run_loop_thread(void *arg) {
-    fsevents_context_t *ctx = (fsevents_context_t *)arg;
-    
-    // Get the current run loop (must be done in this thread)
-    CFRunLoopRef rl = CFRunLoopGetCurrent();
-    ctx->run_loop = rl;
-    
-    // Schedule and start the stream in THIS thread (not the main thread)
-    // This ensures run_loop is valid when we use it
-    FSEventStreamScheduleWithRunLoop(ctx->stream, rl, kCFRunLoopDefaultMode);
-    FSEventStreamStart(ctx->stream);
-    
-    // Run the loop (blocks until CFRunLoopStop is called)
-    CFRunLoopRun();
-    
-    return NULL;
-}
-
 CAMLprim value kernel_fsevents_create(value unit) {
     CAMLparam1(unit);
     CAMLlocal1(result);
@@ -99,7 +80,7 @@ CAMLprim value kernel_fsevents_create(value unit) {
     
     ctx->fd = pipe_fds[1];  // Write end
     ctx->stream = NULL;
-    ctx->run_loop = NULL;
+    ctx->queue = NULL;
     
     // Return tuple: (context_ptr, read_fd)
     result = caml_alloc_tuple(2);
@@ -134,10 +115,16 @@ CAMLprim value kernel_fsevents_watch(value ctx_val, value path_val, value latenc
     CFRelease(path_str);
     
     if (!ctx->stream) caml_failwith("Failed to create FSEventStream");
-    
-    // Start thread - scheduling/starting happens INSIDE the thread (see run_loop_thread)
-    // This fixes the race condition where ctx->run_loop could be NULL
-    pthread_create(&ctx->thread, NULL, run_loop_thread, ctx);
+
+    ctx->queue = dispatch_queue_create("riot.kernel.fsevents", DISPATCH_QUEUE_SERIAL);
+    if (!ctx->queue) {
+        FSEventStreamRelease(ctx->stream);
+        ctx->stream = NULL;
+        caml_failwith("Failed to create fsevents dispatch queue");
+    }
+
+    FSEventStreamSetDispatchQueue(ctx->stream, ctx->queue);
+    FSEventStreamStart(ctx->stream);
     
     CAMLreturn(Val_unit);
 }
@@ -150,9 +137,11 @@ CAMLprim value kernel_fsevents_stop(value ctx_val) {
     if (ctx->stream) {
         FSEventStreamStop(ctx->stream);
         FSEventStreamInvalidate(ctx->stream);
-        CFRunLoopStop(ctx->run_loop);
-        pthread_join(ctx->thread, NULL);
         FSEventStreamRelease(ctx->stream);
+    }
+
+    if (ctx->queue) {
+        dispatch_release(ctx->queue);
     }
     
     close(ctx->fd);

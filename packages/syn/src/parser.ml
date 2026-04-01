@@ -3311,7 +3311,6 @@ and parse_char_literal = fun parser ->
           make_error_node parser ~diagnostic ~consumed_tokens:[ quote ]
       | _ ->
           (* Some other token - unexpected *)
-          let found = peek parser in
           let diagnostic = Diagnostic.unclosed_char_literal ~text:"'" ~span:(current_span parser) in
           make_error_node parser ~diagnostic ~consumed_tokens:[ quote ]
     )

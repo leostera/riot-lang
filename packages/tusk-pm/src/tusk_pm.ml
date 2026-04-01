@@ -61,7 +61,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                     | None -> None;
                 }
               );
-            Dep_solver.lock_deps ~mode ~registry ~existing_lock packages
+            Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock packages
         | Dep_solver.Refresh -> (
             match existing_lock with
             | Some lockfile -> (
@@ -83,6 +83,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                     emit
                       (Tusk_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
                     Dep_solver.lock_deps
+                      ~emit
                       ~mode
                       ~registry
                       ~existing_lock
@@ -95,7 +96,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                     mode = `Refresh
                   });
                 emit (Tusk_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
-                Dep_solver.lock_deps ~mode ~registry ~existing_lock packages
+                Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock packages
           )
       in
       match lock_result with
@@ -145,7 +146,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                   emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
                   Error err
               | Ok () -> (
-                  match Projection.resolve_packages ~packages ~lockfile with
+                  match Projection.resolve_packages ~emit ~packages ~lockfile () with
                   | Error err ->
                       emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
                       Error err

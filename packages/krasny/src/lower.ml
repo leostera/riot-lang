@@ -2126,6 +2126,7 @@ and if_prefers_multiline_layout = fun (
 
 and branch_prefers_multiline_layout = function
   | Syn.Cst.Expression.If if_ -> true
+  | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.BeginEnd; _ } -> true
   | Syn.Cst.Expression.Parenthesized { inner; _ } -> expression_prefers_multiline_layout inner
   | Syn.Cst.Expression.Match _
   | Syn.Cst.Expression.Try _
@@ -2134,7 +2135,6 @@ and branch_prefers_multiline_layout = function
   | Syn.Cst.Expression.LetOperator _
   | Syn.Cst.Expression.Let _
   | Syn.Cst.Expression.Sequence _
-  | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.BeginEnd; _ } -> true
   | _ -> false
 
 let case_body_prefers_multiline = fun ({ body; _ }: Syn.Cst.match_case) ->
@@ -2888,12 +2888,6 @@ let make_lowerer =
     | Syn.Cst.ObjectMember.Inherit inherit_ -> render_object_inherit inherit_
     | Syn.Cst.ObjectMember.Extension extension -> render_extension_doc extension
     | Syn.Cst.ObjectMember.Initializer initializer_ -> render_object_initializer initializer_
-  and object_member_owned_trivia = function
-    | Syn.Cst.ObjectMember.Method _
-    | Syn.Cst.ObjectMember.Value _
-    | Syn.Cst.ObjectMember.Inherit _
-    | Syn.Cst.ObjectMember.Initializer _
-    | Syn.Cst.ObjectMember.Extension _ -> []
   and render_object_expression_body_item = function
     | Syn.CstBuilder.ObjectMember member -> render_object_member member
     | Syn.CstBuilder.Comment comment -> Doc.text (Syn.Cst.Comment.text comment)
@@ -2952,13 +2946,6 @@ let make_lowerer =
         Doc.concat [ render_class_type_field field; Doc.space; render_attribute attribute ]
     | Syn.Cst.ClassTypeField.Extension extension ->
         render_extension_doc extension
-  and class_type_field_owned_trivia = function
-    | Syn.Cst.ClassTypeField.Inherit _
-    | Syn.Cst.ClassTypeField.Value _
-    | Syn.Cst.ClassTypeField.Method _
-    | Syn.Cst.ClassTypeField.Constraint _ -> []
-    | Syn.Cst.ClassTypeField.Attribute { field; _ } -> class_type_field_owned_trivia field
-    | Syn.Cst.ClassTypeField.Extension _ -> []
   and render_class_type_body_item = function
     | Syn.CstBuilder.ClassTypeField field -> render_class_type_field field
     | Syn.CstBuilder.Comment comment -> Doc.text (Syn.Cst.Comment.text comment)
@@ -3122,14 +3109,6 @@ let make_lowerer =
     | Syn.Cst.ClassField.Attribute { field; attribute; _ } -> Doc.concat
       [ render_class_field field; Doc.space; render_attribute attribute ]
     | Syn.Cst.ClassField.Extension extension -> render_extension_doc extension
-  and class_field_owned_trivia = function
-    | Syn.Cst.ClassField.Method _
-    | Syn.Cst.ClassField.Value _
-    | Syn.Cst.ClassField.Inherit _
-    | Syn.Cst.ClassField.Constraint _
-    | Syn.Cst.ClassField.Initializer _ -> []
-    | Syn.Cst.ClassField.Attribute { field; _ } -> class_field_owned_trivia field
-    | Syn.Cst.ClassField.Extension _ -> []
   and render_class_expression_body_item = function
     | Syn.CstBuilder.ClassField field -> render_class_field field
     | Syn.CstBuilder.Comment comment -> Doc.text (Syn.Cst.Comment.text comment)
@@ -3985,7 +3964,7 @@ let make_lowerer =
     let rec loop = fun acc ->
       function
       | Syn.Cst.Cases _ as body -> (List.rev acc, body)
-      | Syn.Cst.Expression (Syn.Cst.Expression.Fun ({ parameters; body; _ } as inner)) -> loop
+      | Syn.Cst.Expression (Syn.Cst.Expression.Fun { parameters; body; _ }) -> loop
         (List.rev_append parameters acc)
         body
       | Syn.Cst.Expression expression -> (List.rev acc, Syn.Cst.Expression expression)
@@ -4467,11 +4446,6 @@ let make_lowerer =
       :: List.map
         (fun binding -> Doc.concat [ Doc.line; binding ])
         (List.map render_binding_operator_binding and_bindings)) in
-    let last_bound_value =
-      match List.rev and_bindings with
-      | { bound_value; _ } :: _ -> bound_value
-      | [] -> binding.bound_value
-    in
     let body_trivia = pending_doc_of_trivia_before_node
       ~after:(Syn.Cst.Token.span in_token).end_
       (Syn.Cst.Expression.syntax_node body) in
@@ -4481,7 +4455,6 @@ let make_lowerer =
     else
       Doc.concat [ bindings; Doc.space; doc_of_token in_token; Doc.line; body_doc ]
   and render_sequence_expression ({ separator_tokens; expressions; _ }: Syn.Cst.sequence_expression) =
-    let expression_count = List.length expressions in
     let separator_token_at index = List.nth_opt separator_tokens index in
     let rec render_sequence_items = fun previous_expression index ->
       function
@@ -4696,90 +4669,6 @@ let make_lowerer =
     ~binding_name_matches_label
     ~binding_pattern
     ~default_value
-  and render_arrow_parameter_type_doc parameter_type =
-    match parameter_type with
-    | Syn.Cst.CoreType.Arrow _ -> Doc.concat
-      [ Doc.lparen; render_core_type parameter_type; Doc.rparen ]
-    | _ -> render_core_type parameter_type
-  and render_binding_annotation_parameter = function
-    | Syn.Cst.Parameter.Positional { pattern; _ } -> (
-        match split_typed_binding_pattern pattern with
-        | _, Some (_, type_) -> Some (render_arrow_parameter_type_doc type_)
-        | _, None -> None
-      )
-    | Syn.Cst.Parameter.Labeled { sigil_token; label_token; binding_pattern; _ } -> (
-        match binding_pattern with
-        | Some pattern -> (
-            match split_typed_binding_pattern pattern with
-            | _, Some (colon_token, type_) -> Some (Doc.concat
-              [
-                doc_of_token label_token;
-                doc_of_token colon_token;
-                render_arrow_parameter_type_doc type_;
-              ])
-            | _, None -> None
-          )
-        | None -> None
-      )
-    | Syn.Cst.Parameter.Optional { sigil_token; label_token; binding_pattern; _ } -> (
-        match binding_pattern with
-        | Some pattern -> (
-            match split_typed_binding_pattern pattern with
-            | _, Some (colon_token, type_) -> Some (Doc.concat
-              [
-                doc_of_token sigil_token;
-                doc_of_token label_token;
-                doc_of_token colon_token;
-                render_arrow_parameter_type_doc type_;
-              ])
-            | _, None -> None
-          )
-        | None -> None
-      )
-    | Syn.Cst.Parameter.LocallyAbstract _ ->
-        None
-  and synthesize_binding_type_annotation parameters result_type =
-    let rec collect = fun binders remaining_parameters parameter_docs ->
-      function
-      | [] ->
-          Some (binders, List.rev remaining_parameters, List.rev parameter_docs)
-      | Syn.Cst.Parameter.LocallyAbstract { binders=new_binders; _ } :: rest ->
-          collect (binders @ new_binders) remaining_parameters parameter_docs rest
-      | parameter :: rest -> (
-          match render_binding_annotation_parameter parameter with
-          | Some parameter_doc -> collect
-            binders
-            (parameter :: remaining_parameters)
-            (parameter_doc :: parameter_docs)
-            rest
-          | None -> None
-        )
-    in
-    match collect [] [] [] parameters with
-    | None -> None
-    | Some (binders, remaining_parameters, parameter_docs) ->
-        let result_doc = render_core_type result_type in
-        let type_doc =
-          Doc.group
-            (join_map
-              (Doc.concat [ Doc.space; Doc.arrow; Doc.break () ])
-              (fun doc -> doc)
-              (parameter_docs @ [ result_doc ]))
-        in
-        let type_doc =
-          match binders with
-          | [] -> type_doc
-          | binders -> Doc.concat
-            [
-              kw_type;
-              Doc.space;
-              join_map (Doc.concat [ Doc.space ]) render_type_binder binders;
-              Doc.text ".";
-              Doc.space;
-              type_doc;
-            ]
-        in
-        Some (type_doc, remaining_parameters)
   and render_unsugared_binding_parameter = function
     | Syn.Cst.Parameter.Positional { pattern; _ } ->
         let pattern, _ = split_typed_binding_pattern pattern in

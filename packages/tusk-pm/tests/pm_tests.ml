@@ -78,8 +78,9 @@ let with_tempdir = fun prefix fn ->
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
-let run_lock_deps = fun ?(registry = make_registry []) ~mode ~existing_lock packages ->
+let run_lock_deps = fun ?emit ?(registry = make_registry []) ~mode ~existing_lock packages ->
   Tusk_pm.Dep_solver.lock_deps
+    ?emit
     ~mode
     ~registry
     ~existing_lock
@@ -698,8 +699,15 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun () -
           if
             List.length resolved = 2
             && Result.unwrap_or ~default:false (Fs.exists manifest_path)
+            && List.mem "tusk.pm.universe.building" event_names
+            && List.mem "tusk.pm.universe.built" event_names
+            && List.mem "tusk.pm.package_metadata.fetch.started" event_names
+            && List.mem "tusk.pm.package_metadata.fetch.finished" event_names
             && List.mem "tusk.pm.package_materialization.started" event_names
             && List.mem "tusk.pm.package_materialization.finished" event_names
+            && List.mem "tusk.pm.package_manifest.fetch.started" event_names
+            && List.mem "tusk.pm.package_manifest.fetch.finished" event_names
+            && List.mem "tusk.pm.package_resolved_for_build" event_names
           then
             Ok ()
           else
@@ -850,7 +858,7 @@ let test_projection_resolves_workspace_packages = fun () ->
     ~mode:Tusk_pm.Dep_solver.Refresh
     ~existing_lock:None [ app_pkg; std_pkg ]
   |> Result.expect ~msg:"expected lock projection to succeed" in
-  match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg; std_pkg ] ~lockfile with
+  match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg; std_pkg ] ~lockfile () with
   | Error err -> Error ("expected projection to resolve workspace packages: " ^ err)
   | Ok resolved ->
       let app = List.hd resolved in
@@ -939,9 +947,15 @@ version = "1.0.0"
               } ];
         }
       in
-      match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile with
+      match collect_event_names
+        (fun emit ->
+          Tusk_pm.Projection.resolve_packages
+            ~emit
+            ~packages:[ app_pkg ]
+            ~lockfile
+            ()) with
       | Error err -> Error ("expected projection to load external manifests: " ^ err)
-      | Ok resolved ->
+      | Ok (resolved, event_names) ->
           let std_resolved =
             List.find_opt
               (fun (pkg: Tusk_model.Package.resolved) ->
@@ -958,6 +972,9 @@ version = "1.0.0"
           | Some std_resolved, Some kernel_resolved ->
               if
                 List.length resolved = 3
+                && List.mem "tusk.pm.package_manifest.fetch.started" event_names
+                && List.mem "tusk.pm.package_manifest.fetch.finished" event_names
+                && List.mem "tusk.pm.package_resolved_for_build" event_names
                 && Path.to_string std_resolved.materialized_root = Path.to_string std_root
                 && List.length std_resolved.runtime_resolved = 1
                 && (List.hd std_resolved.runtime_resolved).resolved_id.name = "kernel"
@@ -1020,7 +1037,7 @@ kernel = 123
               } ];
         }
       in
-      match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile with
+      match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile () with
       | Ok _ -> Error "expected invalid external manifest to fail projection"
       | Error err ->
           if
@@ -1033,7 +1050,7 @@ kernel = 123
 let test_projection_fails_when_lockfile_is_missing_package = fun () ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
   let lockfile = Tusk_model.Lockfile.{ format_version = 1; packages = [] } in
-  match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile with
+  match Tusk_pm.Projection.resolve_packages ~packages:[ app_pkg ] ~lockfile () with
   | Ok _ -> Error "expected projection to fail when lockfile is missing package"
   | Error err ->
       if String.contains err "lockfile is missing package 'app'" then

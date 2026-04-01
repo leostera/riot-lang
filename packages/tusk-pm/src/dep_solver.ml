@@ -4,6 +4,13 @@ type mode =
   | Refresh
   | Unlock
 
+type event_sink = Tusk_model.Event.kind -> unit
+
+let no_emit : event_sink = fun _ -> ()
+
+let duration_ms_since = fun started ->
+  Time.Instant.duration_since ~earlier:started (Time.Instant.now ()) |> Time.Duration.to_millis
+
 type resolved_dependency = {
   dependency: Tusk_model.Lockfile.dependency;
   packages: Tusk_model.Lockfile.package list;
@@ -162,7 +169,17 @@ let merge_lock_packages = fun packages ->
   in
   loop [] [] packages
 
+let dependency_counts = fun (packages: Tusk_model.Lockfile.package list) ->
+  List.fold_left
+    (fun (runtime, build, dev) (pkg: Tusk_model.Lockfile.package) ->
+      ( runtime + List.length pkg.dependencies,
+        build + List.length pkg.build_dependencies,
+        dev + List.length pkg.dev_dependencies ))
+    (0, 0, 0)
+    packages
+
 let rec lock_package_of_local_package = fun
+  ~emit
   ~mode
   ~registry
   ~existing_lock
@@ -172,6 +189,7 @@ let rec lock_package_of_local_package = fun
   ->
   match
     resolve_manifest_dependencies
+      ~emit
       ~mode
       ~registry
       ~existing_lock
@@ -185,6 +203,7 @@ let rec lock_package_of_local_package = fun
   | Ok (dependencies, dependency_packages, state) -> (
       match
         resolve_manifest_dependencies
+          ~emit
           ~mode
           ~registry
           ~existing_lock
@@ -198,6 +217,7 @@ let rec lock_package_of_local_package = fun
       | Ok (build_dependencies, build_packages, state) -> (
           match
             resolve_manifest_dependencies
+              ~emit
               ~mode
               ~registry
               ~existing_lock
@@ -224,7 +244,7 @@ let rec lock_package_of_local_package = fun
         )
     )
 
-and resolve_registry_dependency = fun ~mode ~registry ~existing_lock ~state package_name ->
+and resolve_registry_dependency = fun ~emit ~mode ~registry ~existing_lock ~state package_name ->
   let registry_name = Pkgs_ml.Registry.name registry in
   match mode, find_existing_external_package ~registry_name ~existing_lock ~package_name with
   | Refresh, Some (existing_pkg: Tusk_model.Lockfile.package) ->
@@ -248,12 +268,26 @@ and resolve_registry_dependency = fun ~mode ~registry ~existing_lock ~state pack
                 packages = [];
               }, state)
           | None -> (
+              let metadata_started = Time.Instant.now () in
+              emit (Tusk_model.Event.PackageMetadataFetchStarted { package = package_name });
               match Pkgs_ml.Registry.read_package_document registry ~package_name with
               | Error err ->
+                  emit (Tusk_model.Event.PackageMetadataFetchFailed { package = package_name; error = err });
                   Error ("failed to read package document for '" ^ package_name ^ "': " ^ err)
               | Ok None ->
+                  emit
+                    (Tusk_model.Event.PackageMetadataFetchFailed {
+                      package = package_name;
+                      error = "package not found in registry"
+                    });
                   Error ("package '" ^ package_name ^ "' was not found in registry '" ^ registry_name ^ "'")
               | Ok (Some document) -> (
+                  emit
+                    (Tusk_model.Event.PackageMetadataFetchFinished {
+                      package = document.name;
+                      version = Some document.latest;
+                      duration_ms = duration_ms_since metadata_started
+                    });
                   match latest_release_of_document document with
                   | Error _ as err -> err
                   | Ok (release: Pkgs_ml.Sparse_index.release) ->
@@ -276,6 +310,7 @@ and resolve_registry_dependency = fun ~mode ~registry ~existing_lock ~state pack
                         | (dep: Pkgs_ml.Sparse_index.dependency) :: rest -> (
                             match
                               resolve_registry_dependency
+                                ~emit
                                 ~mode
                                 ~registry
                                 ~existing_lock
@@ -321,6 +356,7 @@ and resolve_registry_dependency = fun ~mode ~registry ~existing_lock ~state pack
         )
 
 and resolve_path_dependency = fun
+  ~emit
   ~mode
   ~registry
   ~existing_lock
@@ -334,6 +370,7 @@ and resolve_path_dependency = fun
   | Ok pkg -> (
       match
         lock_package_of_local_package
+          ~emit
           ~mode
           ~registry
           ~existing_lock
@@ -350,6 +387,7 @@ and resolve_path_dependency = fun
     )
 
 and resolve_manifest_dependencies = fun
+  ~emit
   ~mode
   ~registry
   ~existing_lock
@@ -365,6 +403,7 @@ and resolve_manifest_dependencies = fun
       match dep.Tusk_model.Package.source with
       | Tusk_model.Package.Workspace ->
           resolve_manifest_dependencies
+            ~emit
             ~mode
             ~registry
             ~existing_lock
@@ -376,6 +415,7 @@ and resolve_manifest_dependencies = fun
       | Tusk_model.Package.Registry _ -> (
           match
             resolve_registry_dependency
+              ~emit
               ~mode
               ~registry
               ~existing_lock
@@ -385,6 +425,7 @@ and resolve_manifest_dependencies = fun
           | Error _ as err -> err
           | Ok (resolved, state) ->
             resolve_manifest_dependencies
+                ~emit
                 ~mode
                 ~registry
                 ~existing_lock
@@ -397,6 +438,7 @@ and resolve_manifest_dependencies = fun
       | Tusk_model.Package.Path path -> (
           match
             resolve_path_dependency
+              ~emit
               ~mode
               ~registry
               ~existing_lock
@@ -408,6 +450,7 @@ and resolve_manifest_dependencies = fun
           | Error _ as err -> err
           | Ok (resolved, state) ->
               resolve_manifest_dependencies
+                ~emit
                 ~mode
                 ~registry
                 ~existing_lock
@@ -419,8 +462,9 @@ and resolve_manifest_dependencies = fun
         )
     )
 
-let lock_package_of_workspace_package = fun ~mode ~registry ~existing_lock ~state (pkg: Tusk_model.Package.t) ->
+let lock_package_of_workspace_package = fun ~emit ~mode ~registry ~existing_lock ~state (pkg: Tusk_model.Package.t) ->
   lock_package_of_local_package
+    ~emit
     ~mode
     ~registry
     ~existing_lock
@@ -428,12 +472,13 @@ let lock_package_of_workspace_package = fun ~mode ~registry ~existing_lock ~stat
     ~provenance:Tusk_model.Lockfile.Workspace
     pkg
 
-let rec lock_packages = fun ~mode ~registry ~existing_lock ~state acc_workspace acc_external packages ->
+let rec lock_packages = fun ~emit ~mode ~registry ~existing_lock ~state acc_workspace acc_external packages ->
   match packages with
   | [] -> Ok (List.rev acc_workspace, List.rev acc_external, state)
   | pkg :: rest -> (
       match
         lock_package_of_workspace_package
+          ~emit
           ~mode
           ~registry
           ~existing_lock
@@ -442,6 +487,7 @@ let rec lock_packages = fun ~mode ~registry ~existing_lock ~state acc_workspace 
       with
       | Ok (pkg, external_packages, state) ->
           lock_packages
+            ~emit
             ~mode
             ~registry
             ~existing_lock
@@ -458,9 +504,15 @@ let keep_existing_package = fun workspace_packages (pkg: Tusk_model.Lockfile.pac
   in
   not (List.mem pkg.id.name workspace_names)
 
-let lock_deps = fun ~mode ~registry ~existing_lock packages ->
+let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock packages ->
+  let started = Time.Instant.now () in
+  emit
+    (Tusk_model.Event.DependencyUniverseBuilding {
+      packages = List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) packages
+    });
   match
     lock_packages
+      ~emit
       ~mode
       ~registry
       ~existing_lock
@@ -478,5 +530,13 @@ let lock_deps = fun ~mode ~registry ~existing_lock packages ->
         | Refresh, None -> []
       in
       let packages = merge_lock_packages (workspace_packages @ external_packages @ preserved) in
+      let runtime_packages, build_packages, dev_packages = dependency_counts packages in
+      emit
+        (Tusk_model.Event.DependencyUniverseBuilt {
+          runtime_packages;
+          build_packages;
+          dev_packages;
+          duration_ms = duration_ms_since started
+        });
       Ok Tusk_model.Lockfile.{ format_version = 1; packages }
   | Error _ as err -> err
