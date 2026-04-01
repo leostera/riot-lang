@@ -135,17 +135,108 @@ let write_json_summary = fun ~root (summary: Krasny.Runner.summary) ->
 let write_text_summary = fun ~mode (summary: Krasny.Runner.summary) ->
   Krasny.Report.write_text_summary ~writer:output_writer ~mode summary |> Result.expect ~msg:"failed to write fmt summary"
 
-let stream_result_writer = fun ~json ~root ~mode ~concurrency ->
-  if json then
-    write_json_start ~root ~mode ~concurrency;
-  fun file_result ->
-    if json then
-      write_json_file ~root file_result
-    else
-      write_text_file ~root file_result
+type output_mode =
+  | Silent
+  | Text
+  | Json
 
 let explicit_targets = fun matches ->
   ArgParser.get_many matches "path" |> List.map Path.v |> List.sort_uniq compare_paths
+
+let no_event = fun (_: Krasny.Report.event) -> ()
+
+let run_mode = fun ?workspace ?(on_event = no_event) ~mode ~output_mode ~explicit_targets () ->
+  let root = resolve_root workspace in
+  let concurrency = default_concurrency () in
+  let fmt_scope = load_fmt_scope workspace in
+  on_event (Krasny.Report.Start { mode; concurrency });
+  (
+    match output_mode with
+    | Json -> write_json_start ~root ~mode ~concurrency
+    | Text
+    | Silent -> ()
+  );
+  let on_result file_result =
+    on_event (Krasny.Report.File file_result);
+    match output_mode with
+    | Json -> write_json_file ~root file_result
+    | Text -> write_text_file ~root file_result
+    | Silent -> ()
+  in
+  let result : Krasny.Runner.run_result =
+    if List.is_empty explicit_targets then
+      match mode with
+      | Krasny.Runner.Check -> Krasny.Runner.run_checks_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:(resolve_search_roots workspace)
+        ~on_result
+        ()
+      | Krasny.Runner.Verify -> Krasny.Runner.run_verify_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:(resolve_search_roots workspace)
+        ~on_result
+        ()
+      | Krasny.Runner.Format -> Krasny.Runner.run_format_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:(resolve_search_roots workspace)
+        ~on_result
+        ()
+    else
+      match mode with
+      | Krasny.Runner.Check -> Krasny.Runner.run_checks_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:explicit_targets
+        ~on_result
+        ()
+      | Krasny.Runner.Verify -> Krasny.Runner.run_verify_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:explicit_targets
+        ~on_result
+        ()
+      | Krasny.Runner.Format -> Krasny.Runner.run_format_streaming
+        ~concurrency
+        ~should_ignore:(should_ignore_file fmt_scope)
+        ~roots:explicit_targets
+        ~on_result
+        ()
+  in
+  on_event (Krasny.Report.Summary result.summary);
+  (
+    match output_mode with
+    | Json -> write_json_summary ~root result.summary
+    | Text -> write_text_summary ~mode result.summary
+    | Silent -> ()
+  );
+  match mode with
+  | Krasny.Runner.Check ->
+      if result.summary.needs_formatting = 0 && result.summary.failed_files = 0 then
+        Ok ()
+      else
+        Error (Failure "Formatting check failed")
+  | Krasny.Runner.Verify ->
+      if result.summary.unsafe_to_format = 0 && result.summary.failed_files = 0 then
+        Ok ()
+      else
+        Error (Failure "Formatting verification failed")
+  | Krasny.Runner.Format ->
+      if result.summary.failed_files = 0 then
+        Ok ()
+      else
+        Error (Failure "Formatting failed")
+
+let run_check_paths = fun ?workspace ?(on_event = no_event) paths ->
+  run_mode
+    ?workspace
+    ~on_event
+    ~mode:Krasny.Runner.Check
+    ~output_mode:Silent
+    ~explicit_targets:(List.sort_uniq compare_paths paths)
+    ()
 
 let run = fun ?workspace fmt_matches ->
   let check = get_flag fmt_matches "check" in
@@ -163,71 +254,10 @@ let run = fun ?workspace fmt_matches ->
         else
           Krasny.Runner.Format
       in
-      let root = resolve_root workspace in
-      let json = get_flag fmt_matches "json" in
-      let concurrency = default_concurrency () in
-      let fmt_scope = load_fmt_scope workspace in
-      let on_result = stream_result_writer ~json ~root ~mode ~concurrency in
-      let explicit_targets = explicit_targets fmt_matches in
-      let result : Krasny.Runner.run_result =
-        if List.is_empty explicit_targets then
-          match mode with
-          | Krasny.Runner.Check -> Krasny.Runner.run_checks_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:(resolve_search_roots workspace)
-            ~on_result
-            ()
-          | Krasny.Runner.Verify -> Krasny.Runner.run_verify_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:(resolve_search_roots workspace)
-            ~on_result
-            ()
-          | Krasny.Runner.Format -> Krasny.Runner.run_format_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:(resolve_search_roots workspace)
-            ~on_result
-            ()
+      let output_mode =
+        if get_flag fmt_matches "json" then
+          Json
         else
-          match mode with
-          | Krasny.Runner.Check -> Krasny.Runner.run_checks_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:explicit_targets
-            ~on_result
-            ()
-          | Krasny.Runner.Verify -> Krasny.Runner.run_verify_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:explicit_targets
-            ~on_result
-            ()
-          | Krasny.Runner.Format -> Krasny.Runner.run_format_streaming
-            ~concurrency
-            ~should_ignore:(should_ignore_file fmt_scope)
-            ~roots:explicit_targets
-            ~on_result
-            ()
+          Text
       in
-      if json then
-        write_json_summary ~root result.summary
-      else
-        write_text_summary ~mode result.summary;
-        match mode with
-        | Krasny.Runner.Check ->
-            if result.summary.needs_formatting = 0 && result.summary.failed_files = 0 then
-              Ok ()
-            else
-              Error (Failure "Formatting check failed")
-        | Krasny.Runner.Verify ->
-            if result.summary.unsafe_to_format = 0 && result.summary.failed_files = 0 then
-              Ok ()
-            else
-              Error (Failure "Formatting verification failed")
-        | Krasny.Runner.Format ->
-            if result.summary.failed_files = 0 then
-              Ok ()
-            else
-              Error (Failure "Formatting failed")
+      run_mode ?workspace ~mode ~output_mode ~explicit_targets:(explicit_targets fmt_matches) ()

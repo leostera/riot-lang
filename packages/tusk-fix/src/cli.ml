@@ -5,6 +5,13 @@ type run_outcome = {
   limit_reached: bool;
 }
 
+type event =
+  | Start of { mode: Runner.mode; concurrency: int }
+  | FileStarted of { file: Path.t }
+  | FileProgress of { file: Path.t; progress: Fixme.Source_runner.progress_event }
+  | FileResult of Runner.file_result
+  | Summary of { summary: Runner.summary; limit_reached: bool }
+
 let command =
   let open ArgParser in
     let open Arg in command "fix"
@@ -20,6 +27,27 @@ let command =
         flag "json" |> long "json" |> help "Emit machine-readable JSON output";
         positional "path" |> required false |> help "OCaml file or directory to scan (default: workspace packages or current directory)";
       ]
+
+let current_dir = fun () -> Env.current_dir () |> Result.expect ~msg:"Failed to get current directory"
+
+let set_current_dir = fun path ->
+  Env.set_current_dir path
+  |> Result.expect ~msg:(("Failed to change directory to " ^ Path.to_string path))
+
+let with_cwd = fun ?cwd fn ->
+  match cwd with
+  | None -> fn ()
+  | Some cwd ->
+      let original = current_dir () in
+      set_current_dir cwd;
+      try
+        let result = fn () in
+        set_current_dir original;
+        result
+      with
+      | exn ->
+          set_current_dir original;
+          raise exn
 
 let default_path = fun () ->
   let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
@@ -221,6 +249,12 @@ let summary_event_to_json = fun ~limit_reached summary ->
 let print_json_event = fun json ->
   print (Data.Json.to_string json);
   print "\n"
+
+let no_event = fun (_: event) -> ()
+
+type output_mode =
+  | Silent
+  | Report of Reporter.format
 
 let explain_rule = fun rule_id ->
   match Explanations.explain rule_id with
@@ -441,12 +475,14 @@ let run_result_with = fun ~on_result ~mode ~scope ~limit ~files ->
 let run_result = fun ~mode ~scope ~limit ~files ->
   run_result_with ~mode ~scope ~limit ~files ~on_result:(fun _ -> ())
 
-let run_with_coordinator = fun ~format ~mode ~scope ~limit ~roots () ->
+let run_with_coordinator = fun ?(on_event = no_event) ~output_mode ~mode ~scope ~limit ~roots () ->
   let concurrency = recommended_concurrency ~limit in
+  on_event (Start { mode; concurrency });
   (
-    match format with
-    | Reporter.Text -> eprintln ("Scanning with " ^ Int.to_string concurrency ^ " workers...")
-    | Reporter.Json -> print_json_event (start_event_to_json ~mode ~concurrency)
+    match output_mode with
+    | Silent -> ()
+    | Report Reporter.Text -> eprintln ("Scanning with " ^ Int.to_string concurrency ^ " workers...")
+    | Report Reporter.Json -> print_json_event (start_event_to_json ~mode ~concurrency)
   );
   let outcome =
     let owner = self () in
@@ -470,17 +506,26 @@ let run_with_coordinator = fun ~format ~mode ~scope ~limit ~roots () ->
       in
       match receive ~selector () with
       | `FileStarted file ->
+          on_event (FileStarted { file });
           (
-            match format with
-            | Reporter.Text ->
+            match output_mode with
+            | Silent ->
+                ()
+            | Report Reporter.Text ->
                 let _ = file in
                 ()
-            | Reporter.Json -> print_json_event (file_started_event_to_json file)
+            | Report Reporter.Json ->
+                print_json_event (file_started_event_to_json file)
           );
           loop results_rev diagnostics_seen limit_reached
       | `FileProgress { Messages.file; event; _ } ->
-          if format = Reporter.Json then
-            print_json_event (progress_event_to_json file event);
+          on_event (FileProgress { file; progress = event });
+          (
+            match output_mode with
+            | Report Reporter.Json -> print_json_event (progress_event_to_json file event)
+            | Silent
+            | Report Reporter.Text -> ()
+          );
           loop results_rev diagnostics_seen limit_reached
       | `FileResult { Messages.result; _ } ->
           let remaining_budget =
@@ -499,10 +544,12 @@ let run_with_coordinator = fun ~format ~mode ~scope ~limit ~roots () ->
             | Some max_diagnostics when diagnostics_seen >= max_diagnostics -> true
             | _ -> false
           in
+          on_event (FileResult result);
           (
-            match format with
-            | Reporter.Json -> print_json_event (file_event_to_json result)
-            | Reporter.Text -> print_text_result mode result
+            match output_mode with
+            | Silent -> ()
+            | Report Reporter.Json -> print_json_event (file_event_to_json result)
+            | Report Reporter.Text -> print_text_result mode result
           );
           loop (result :: results_rev) diagnostics_seen (limit_reached || limit_reached_now)
       | `AllComplete _summary ->
@@ -517,10 +564,12 @@ let run_with_coordinator = fun ~format ~mode ~scope ~limit ~roots () ->
     loop [] 0 false
   in
   (
-    match format with
-    | Reporter.Json -> print_json_event
+    on_event (Summary { summary = outcome.result.summary; limit_reached = outcome.limit_reached });
+    match output_mode with
+    | Silent -> ()
+    | Report Reporter.Json -> print_json_event
       (summary_event_to_json ~limit_reached:outcome.limit_reached outcome.result.summary)
-    | Reporter.Text ->
+    | Report Reporter.Text ->
         if outcome.result.summary.total_files = 0 then
           println "No OCaml files found."
         else
@@ -541,7 +590,7 @@ let run_with_coordinator = fun ~format ~mode ~scope ~limit ~roots () ->
   else
     Ok ()
 
-let run = fun matches ->
+let run_matches = fun ?(on_event = no_event) ?output_mode matches ->
   let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
   let scope = Fix_config.load_scope ~cwd in
   let apply = ArgParser.get_flag matches "apply" in
@@ -565,6 +614,11 @@ let run = fun matches ->
         Error (Failure "cannot use both --apply and --check")
       else
         (
+          let output_mode =
+            match output_mode with
+            | Some output_mode -> output_mode
+            | None -> Report format
+          in
           let mode =
             if apply then
               Runner.Apply
@@ -582,8 +636,68 @@ let run = fun matches ->
               explain_rule code
           | false, false, None ->
               let target = resolve_target matches in
-              run_with_coordinator ~format ~mode ~scope ~limit ~roots:[ target ] ()
+              run_with_coordinator ~on_event ~output_mode ~mode ~scope ~limit ~roots:[ target ] ()
         )
+
+let run = fun matches -> run_matches matches
+
+let run_generated_runner = fun ~cwd ~build_package ~report_output args scope ->
+  let workspace_root = Fix_config.workspace_root scope in
+  let target_dir_root = Fix_config.target_dir_root scope in
+  let providers = Fix_config.providers (Some scope) in
+  let plan = Fixme_runner.materialize ~workspace_root ~target_dir_root providers in
+  match build_package ~workspace_root:plan.workspace_root ~package_name:plan.package_name with
+  | Error _ as err -> err
+  | Ok () ->
+      let command = Command.make (Path.to_string plan.binary_path) ~cwd:(Path.to_string cwd) ~args in
+      match Command.output command with
+      | Ok output when Int.equal output.status 0 ->
+          if report_output then
+            (
+              if not (String.equal output.stdout "") then
+                print output.stdout;
+              if not (String.equal output.stderr "") then
+                eprint output.stderr
+            );
+          Ok ()
+      | Ok output ->
+          if report_output then
+            (
+              if not (String.equal output.stdout "") then
+                print output.stdout;
+              if not (String.equal output.stderr "") then
+                eprint output.stderr
+            );
+          Error (Failure "Issues remain after tusk fix")
+      | Error (Command.SystemError error) -> Error (Failure error)
+
+let run_args = fun ?cwd ?(on_event = no_event) ?(report_output = true) ~build_package args ->
+  with_cwd ?cwd
+    (fun () ->
+      let cwd = current_dir () in
+      match Fix_config.load_scope ~cwd with
+      | Some scope when List.length (Fix_config.providers (Some scope)) > 0 ->
+          let _ = on_event in
+          run_generated_runner ~cwd ~build_package ~report_output args scope
+      | _ -> (
+          match ArgParser.get_matches command ("fix" :: args) with
+          | Error err ->
+              ArgParser.print_error err;
+              ArgParser.print_help command;
+              Error (Failure "Argument parsing failed")
+          | Ok matches ->
+              let output_mode =
+                if report_output then
+                  None
+                else
+                  Some Silent
+              in
+              run_matches ~on_event ?output_mode matches
+        ))
+
+let run_check_paths = fun ?cwd ?(on_event = no_event) ?(report_output = false) ~build_package paths ->
+  let args = "--check" :: List.map Path.to_string paths in
+  run_args ?cwd ~on_event ~report_output ~build_package args
 
 let main = fun ~args ->
   match ArgParser.get_matches command args with

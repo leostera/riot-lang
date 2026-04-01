@@ -54,6 +54,12 @@ let make_workspace = fun binaries ->
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
+      publish = {
+        version = None;
+        description = None;
+        license = None;
+        is_public = None;
+      };
     }
   in
   Tusk_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()

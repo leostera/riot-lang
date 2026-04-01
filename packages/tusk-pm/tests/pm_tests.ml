@@ -14,6 +14,13 @@ let make_sources = fun () ->
   }
 
 let make_package = fun ?(dependencies = []) ?(build_dependencies = []) ?(dev_dependencies = []) ~name ~path () ->
+  let publish =
+    Tusk_model.Package.{
+      version = Some (Std.Version.make ~major:0 ~minor:1 ~patch:0 ());
+      description = Some ("Package " ^ name);
+      license = Some "Apache-2.0";
+      is_public = Some true
+    } in
   Tusk_model.Package.{
     name;
     path;
@@ -28,6 +35,7 @@ let make_package = fun ?(dependencies = []) ?(build_dependencies = []) ?(dev_dep
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
+    publish;
   }
 
 let make_registry_cache = fun () ->
@@ -104,37 +112,29 @@ let write_file = fun path contents ->
   Fs.create_dir_all parent |> Result.expect ~msg:"expected parent directory to be created";
   Fs.write contents path |> Result.expect ~msg:"expected file to be written"
 
-let list_tar_entries = fun artifact ->
-  with_tempdir "tusk_pm_publish_artifact"
-    (fun tempdir ->
-      let artifact_path = Path.(tempdir / Path.v "artifact.tar.gz") in
-      write_file artifact_path artifact;
-      match Command.make "tar" ~args:[ "-tzf"; Path.to_string artifact_path ] |> Command.output with
-      | Error (Command.SystemError err) -> Error ("failed to spawn tar: " ^ err)
-      | Ok output when not (Int.equal output.status 0) ->
-          Error ("failed to list artifact entries: " ^ output.stderr)
-      | Ok output ->
-          Ok (String.split_on_char '\n' output.stdout |> List.filter (fun line -> not (String.equal line "")))
-    )
+let list_tar_entries = fun artifact_path ->
+  match Command.make "tar" ~args:[ "-tzf"; Path.to_string artifact_path ] |> Command.output with
+  | Error (Command.SystemError err) -> Error ("failed to spawn tar: " ^ err)
+  | Ok output when not (Int.equal output.status 0) -> Error ("failed to list artifact entries: "
+  ^ output.stderr)
+  | Ok output -> Ok (String.split_on_char '\n' output.stdout
+  |> List.filter (fun line -> not (String.equal line "")))
 
 let run_git = fun ~cwd args ->
-  let command =
-    Command.make
-      "env"
-      ~args:
-        ([
-           "-u";
-           "GIT_DIR";
-           "-u";
-           "GIT_WORK_TREE";
-           "-u";
-           "GIT_INDEX_FILE";
-           "git";
-           "-C";
-           Path.to_string cwd;
-         ]
-        @ args)
-  in
+  let command = Command.make
+    "env"
+    ~args:(([
+      "-u";
+      "GIT_DIR";
+      "-u";
+      "GIT_WORK_TREE";
+      "-u";
+      "GIT_INDEX_FILE";
+      "git";
+      "-C";
+      Path.to_string cwd;
+    ]
+    @ args)) in
   match Command.output command with
   | Error (Command.SystemError err) ->
       Error ("failed to spawn git: " ^ err)
@@ -149,6 +149,17 @@ let run_git = fun ~cwd args ->
   | Ok output ->
       Ok (String.trim output.stdout)
 
+let run_git_steps = fun ~cwd commands ->
+  let rec loop outputs = function
+    | [] -> Ok (List.rev outputs)
+    | args :: rest -> (
+        match run_git ~cwd args with
+        | Ok output -> loop (output :: outputs) rest
+        | Error _ as err -> err
+      )
+  in
+  loop [] commands
+
 type recorded_request = {
   method_: string;
   url: string;
@@ -158,13 +169,8 @@ type recorded_request = {
 
 let make_fetch_recorder = fun ?(post_handler = fun _uri ~headers:_ ~body:_ -> Error "unexpected POST") get_handler ->
   let requests = ref [] in
-  let record = fun ~method_ uri ~headers ~body ->
-    requests := {
-      method_;
-      url = Net.Uri.to_string uri;
-      headers;
-      body;
-    } :: !requests
+  let record ~method_ uri ~headers ~body =
+    requests := { method_; url = Net.Uri.to_string uri; headers; body } :: !requests
   in
   let fetch =
     Pkgs_ml.Registry.make_fetch
@@ -182,19 +188,16 @@ let test_publisher_rejects_path_only_runtime_dependencies = fun () ->
   let package = make_package
     ~name:"demo"
     ~path:(Path.v "/workspace/packages/demo")
-    ~dependencies:[
-      { name = "std"; source = source ~path:(Path.v "../std") () }
-    ]
+    ~dependencies:[ { name = "std"; source = source ~path:(Path.v "../std") () } ]
     () in
   match Tusk_pm.Publisher.validate_runtime_dependencies ~package with
   | Ok () -> Error "expected path-only runtime dependency to be rejected for publish"
-  | Error (Tusk_pm.Publisher.RuntimeDependencyNotPublishable { dependency; reason = `PathOnly path; _ }) ->
+  | Error (Tusk_pm.Publisher.RuntimeDependencyNotPublishable { dependency; reason=`PathOnly path; _ }) ->
       if String.equal dependency "std" && Path.equal path (Path.v "../std") then
         Ok ()
       else
         Error "unexpected path-only runtime dependency payload"
-  | Error err ->
-      Error ("unexpected publish validation error: " ^ Tusk_pm.Publisher.message err)
+  | Error err -> Error ("unexpected publish validation error: " ^ Tusk_pm.Publisher.message err)
 
 let test_publisher_allows_path_with_version_runtime_dependencies = fun () ->
   let package = make_package
@@ -206,8 +209,8 @@ let test_publisher_allows_path_with_version_runtime_dependencies = fun () ->
     () in
   match Tusk_pm.Publisher.validate_runtime_dependencies ~package with
   | Ok () -> Ok ()
-  | Error err ->
-      Error ("expected path+version runtime dependency to be publishable: " ^ Tusk_pm.Publisher.message err)
+  | Error err -> Error ("expected path+version runtime dependency to be publishable: "
+  ^ Tusk_pm.Publisher.message err)
 
 let test_publisher_creates_package_root_tarball = fun () ->
   with_tempdir "tusk_pm_publish_tarball"
@@ -229,7 +232,10 @@ public = true
       write_file Path.(package_root / Path.v "node_modules/left-pad.js") "ignore\n";
       write_file Path.(package_root / Path.v ".DS_Store") "ignore\n";
       let package = make_package ~name:"demo" ~path:package_root () in
-      match Tusk_pm.Publisher.create_artifact ~package with
+      match Tusk_pm.Publisher.create_artifact
+        ~target_dir_root:root
+        ~package
+        ~version:(Std.Version.make ~major:0 ~minor:1 ~patch:0 ()) with
       | Error err -> Error ("expected artifact creation to succeed: " ^ Tusk_pm.Publisher.message err)
       | Ok artifact -> (
           match list_tar_entries artifact with
@@ -260,15 +266,17 @@ public = true
       let link = Path.(package_root / Path.v "README.md") in
       Fs.symlink ~src:(Path.v "src/demo.ml") ~dst:link |> Result.expect ~msg:"expected symlink to be created";
       let package = make_package ~name:"demo" ~path:package_root () in
-      match Tusk_pm.Publisher.create_artifact ~package with
+      match Tusk_pm.Publisher.create_artifact
+        ~target_dir_root:root
+        ~package
+        ~version:(Std.Version.make ~major:0 ~minor:1 ~patch:0 ()) with
       | Ok _ -> Error "expected publisher to reject symlink entries"
       | Error (Tusk_pm.Publisher.SymlinkNotAllowed { path }) ->
           if Path.equal path link then
             Ok ()
           else
             Error "unexpected symlink rejection path"
-      | Error err ->
-          Error ("unexpected publish artifact error: " ^ Tusk_pm.Publisher.message err))
+      | Error err -> Error ("unexpected publish artifact error: " ^ Tusk_pm.Publisher.message err))
 
 let test_publisher_publishes_from_locator = fun () ->
   with_tempdir "tusk_pm_publish_from_locator"
@@ -290,7 +298,8 @@ public = true
           ~post_handler:(fun _uri ~headers:_ ~body:_ ->
             Ok {
               Pkgs_ml.Registry.status_code = 200;
-              body = {|{
+              body =
+                {|{
   "package": "github.com/example/demo",
   "source_url": "https://github.com/example/demo",
   "package_subdir": ".",
@@ -324,19 +333,14 @@ public = true
             })
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
-      let registry =
-        Pkgs_ml.Registry.filesystem
-          ~fetch
-          (make_registry_cache ())
-      in
-      match
-        Tusk_pm.Publisher.publish_from_locator
-          ~registry
-          ~package
-          ~locator:"github.com/example/demo"
-          ~selector:"main"
-          ~api_token:"root-secret"
-      with
+      let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
+      match Tusk_pm.Publisher.publish_from_locator
+        ~registry
+        ~target_dir_root:root
+        ~package
+        ~locator:"github.com/example/demo"
+        ~selector:"main"
+        ~api_token:"root-secret" with
       | Error err -> Error ("expected publish to succeed: " ^ Tusk_pm.Publisher.message err)
       | Ok published -> (
           match List.rev !requests with
@@ -381,37 +385,31 @@ public = true
           ~post_handler:(fun _uri ~headers:_ ~body:_ ->
             Ok {
               Pkgs_ml.Registry.status_code = 404;
-              body = {|{
+              body =
+                {|{
   "error": "package_not_found",
   "message": "package `demo` was not found in registry `pkgs.ml`"
 }|};
             })
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
-      let registry =
-        Pkgs_ml.Registry.filesystem
-          ~fetch
-          (make_registry_cache ())
-      in
-      match
-        Tusk_pm.Publisher.publish_from_locator
-          ~registry
-          ~package
-          ~locator:"github.com/example/demo"
-          ~selector:"main"
-          ~api_token:"root-secret"
-      with
+      let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
+      match Tusk_pm.Publisher.publish_from_locator
+        ~registry
+        ~target_dir_root:root
+        ~package
+        ~locator:"github.com/example/demo"
+        ~selector:"main"
+        ~api_token:"root-secret" with
       | Ok _ -> Error "expected publish to bubble registry error"
       | Error (Tusk_pm.Publisher.RegistryPublishFailed { locator; error }) ->
           if
-            String.equal locator "github.com/example/demo"
-            && String.equal error "package `demo` was not found in registry `pkgs.ml`"
+            String.equal locator "github.com/example/demo" && String.equal error "package `demo` was not found in registry `pkgs.ml`"
           then
             Ok ()
           else
             Error "unexpected registry publish error payload"
-      | Error err ->
-          Error ("unexpected publish error: " ^ Tusk_pm.Publisher.message err))
+      | Error err -> Error ("unexpected publish error: " ^ Tusk_pm.Publisher.message err))
 
 let test_publisher_workspace_publish_order_uses_runtime_local_dependencies = fun () ->
   let core = make_package ~name:"core" ~path:(Path.v "packages/core") () in
@@ -423,7 +421,9 @@ let test_publisher_workspace_publish_order_uses_runtime_local_dependencies = fun
   let app = make_package
     ~name:"app"
     ~path:(Path.v "packages/app")
-    ~dependencies:[ { name = "util"; source = source ~path:(Path.v "../util") ~version:Std.Version.any () } ]
+    ~dependencies:[
+      { name = "util"; source = source ~path:(Path.v "../util") ~version:Std.Version.any () }
+    ]
     () in
   match Tusk_pm.Publisher.workspace_publish_order ~packages:[ app; util; core ] with
   | Error err -> Error ("expected publish order to succeed: " ^ Tusk_pm.Publisher.message err)
@@ -462,10 +462,8 @@ let test_publisher_workspace_publish_order_reports_cycles = fun () ->
     () in
   match Tusk_pm.Publisher.workspace_publish_order ~packages:[ a; b ] with
   | Ok _ -> Error "expected cyclic workspace publish order to fail"
-  | Error (Tusk_pm.Publisher.CyclicWorkspacePublishOrder _) ->
-      Ok ()
-  | Error err ->
-      Error ("unexpected publish order error: " ^ Tusk_pm.Publisher.message err)
+  | Error (Tusk_pm.Publisher.CyclicWorkspacePublishOrder _) -> Ok ()
+  | Error err -> Error ("unexpected publish order error: " ^ Tusk_pm.Publisher.message err)
 
 let test_git_provenance_discovers_nested_package_locator = fun () ->
   with_tempdir "tusk_pm_git_provenance_nested"
@@ -481,21 +479,21 @@ license = "Apache-2.0"
 public = true
 |};
       write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
-      match
-        run_git ~cwd:root [ "init"; "-q" ],
-        run_git ~cwd:root [ "config"; "user.email"; "demo@example.com" ],
-        run_git ~cwd:root [ "config"; "user.name"; "Demo" ],
-        run_git ~cwd:root [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ],
-        run_git ~cwd:root [ "add"; "." ],
-        run_git ~cwd:root [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ]
-      with
-      | Ok _, Ok _, Ok _, Ok _, Ok _, Ok _ -> (
-          let canonical_root =
-            Fs.canonicalize root
-            |> Result.expect ~msg:"expected temp repo root to canonicalize"
-          in
+      match run_git_steps
+        ~cwd:root
+        [
+          [ "init"; "-q" ];
+          [ "config"; "user.email"; "demo@example.com" ];
+          [ "config"; "user.name"; "Demo" ];
+          [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ];
+          [ "add"; "." ];
+          [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ];
+        ] with
+      | Ok _ -> (
+          let canonical_root = Fs.canonicalize root |> Result.expect ~msg:"expected temp repo root to canonicalize" in
           match Tusk_pm.Git_provenance.discover ~package_root with
-          | Error err -> Error ("expected git provenance discovery to succeed: " ^ Tusk_pm.Git_provenance.message err)
+          | Error err -> Error ("expected git provenance discovery to succeed: "
+          ^ Tusk_pm.Git_provenance.message err)
           | Ok provenance ->
               if
                 String.equal provenance.locator "github.com/example/riot/packages/demo"
@@ -508,12 +506,7 @@ public = true
               else
                 Error "unexpected nested git provenance"
         )
-      | Error err, _, _, _, _, _
-      | _, Error err, _, _, _, _
-      | _, _, Error err, _, _, _
-      | _, _, _, Error err, _, _
-      | _, _, _, _, Error err, _
-      | _, _, _, _, _, Error err -> Error err)
+      | Error err -> Error err)
 
 let test_git_provenance_discovers_repo_root_locator = fun () ->
   with_tempdir "tusk_pm_git_provenance_root"
@@ -528,21 +521,21 @@ license = "Apache-2.0"
 public = true
 |};
       write_file Path.(root / Path.v "src/demo.ml") "let answer = 42\n";
-      match
-        run_git ~cwd:root [ "init"; "-q" ],
-        run_git ~cwd:root [ "config"; "user.email"; "demo@example.com" ],
-        run_git ~cwd:root [ "config"; "user.name"; "Demo" ],
-        run_git ~cwd:root [ "remote"; "add"; "origin"; "git@github.com:example/demo.git" ],
-        run_git ~cwd:root [ "add"; "." ],
-        run_git ~cwd:root [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ]
-      with
-      | Ok _, Ok _, Ok _, Ok _, Ok _, Ok _ -> (
-          let canonical_root =
-            Fs.canonicalize root
-            |> Result.expect ~msg:"expected temp repo root to canonicalize"
-          in
+      match run_git_steps
+        ~cwd:root
+        [
+          [ "init"; "-q" ];
+          [ "config"; "user.email"; "demo@example.com" ];
+          [ "config"; "user.name"; "Demo" ];
+          [ "remote"; "add"; "origin"; "git@github.com:example/demo.git" ];
+          [ "add"; "." ];
+          [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ];
+        ] with
+      | Ok _ -> (
+          let canonical_root = Fs.canonicalize root |> Result.expect ~msg:"expected temp repo root to canonicalize" in
           match Tusk_pm.Git_provenance.discover ~package_root:root with
-          | Error err -> Error ("expected git provenance discovery to succeed: " ^ Tusk_pm.Git_provenance.message err)
+          | Error err -> Error ("expected git provenance discovery to succeed: "
+          ^ Tusk_pm.Git_provenance.message err)
           | Ok provenance ->
               if
                 String.equal provenance.locator "github.com/example/demo"
@@ -555,12 +548,7 @@ public = true
               else
                 Error "unexpected root git provenance"
         )
-      | Error err, _, _, _, _, _
-      | _, Error err, _, _, _, _
-      | _, _, Error err, _, _, _
-      | _, _, _, Error err, _, _
-      | _, _, _, _, Error err, _
-      | _, _, _, _, _, Error err -> Error err)
+      | Error err -> Error err)
 
 let test_publisher_publish_discovers_git_provenance = fun () ->
   with_tempdir "tusk_pm_publish_with_git_provenance"
@@ -576,23 +564,28 @@ license = "Apache-2.0"
 public = true
 |};
       write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
-      match
-        run_git ~cwd:root [ "init"; "-q" ],
-        run_git ~cwd:root [ "config"; "user.email"; "demo@example.com" ],
-        run_git ~cwd:root [ "config"; "user.name"; "Demo" ],
-        run_git ~cwd:root [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ],
-        run_git ~cwd:root [ "add"; "." ],
-        run_git ~cwd:root [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ],
-        run_git ~cwd:package_root [ "rev-parse"; "HEAD" ]
-      with
-      | Ok _, Ok _, Ok _, Ok _, Ok _, Ok _, Ok selector -> (
-          let package = make_package ~name:"demo" ~path:package_root () in
-          let fetch, requests =
-            make_fetch_recorder
-              ~post_handler:(fun _uri ~headers:_ ~body:_ ->
-                Ok {
-                  Pkgs_ml.Registry.status_code = 200;
-                  body = {|{
+      match run_git_steps
+        ~cwd:root
+        [
+          [ "init"; "-q" ];
+          [ "config"; "user.email"; "demo@example.com" ];
+          [ "config"; "user.name"; "Demo" ];
+          [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ];
+          [ "add"; "." ];
+          [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ];
+        ] with
+      | Ok _ -> (
+          match run_git ~cwd:package_root [ "rev-parse"; "HEAD" ] with
+          | Error err -> Error err
+          | Ok selector -> (
+              let package = make_package ~name:"demo" ~path:package_root () in
+              let fetch, requests =
+                make_fetch_recorder
+                  ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+                    Ok {
+                      Pkgs_ml.Registry.status_code = 200;
+                      body =
+                        {|{
   "package": "github.com/example/riot/packages/demo",
   "source_url": "https://github.com/example/riot",
   "package_subdir": "packages/demo",
@@ -623,39 +616,36 @@ public = true
     "source": false
   }
 }|};
-                })
-              (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
-          in
-          let registry =
-            Pkgs_ml.Registry.filesystem
-              ~fetch
-              (make_registry_cache ())
-          in
-          match Tusk_pm.Publisher.publish ~registry ~package ~api_token:"root-secret" with
-          | Error err -> Error ("expected publish to succeed: " ^ Tusk_pm.Publisher.message err)
-          | Ok published -> (
-              match List.rev !requests with
-              | [ request ] ->
-                  if
-                    String.equal request.method_ "POST"
-                    && String.equal request.url
-                      ("https://api.pkgs.ml/v1/packages/github.com/example/riot/packages/demo/publish?ref="
-                      ^ selector)
-                    && String.equal published.package_name "demo"
-                  then
-                    Ok ()
-                  else
-                    Error "unexpected publish request discovered from git provenance"
-              | _ -> Error "expected exactly one publish request"
+                    })
+                  (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+              in
+              let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
+              match Tusk_pm.Publisher.publish
+                ~registry
+                ~target_dir_root:root
+                ~publishing_workspace_packages:[]
+                ~package
+                ~api_token:"root-secret" with
+              | Error err -> Error ("expected publish to succeed: " ^ Tusk_pm.Publisher.message err)
+              | Ok published -> (
+                  match List.rev !requests with
+                  | [ request ] ->
+                      if
+                        String.equal request.method_ "POST"
+                        && String.equal
+                          request.url
+                          ("https://api.pkgs.ml/v1/packages/github.com/example/riot/packages/demo/publish?ref="
+                          ^ selector)
+                        && String.equal published.package_name "demo"
+                      then
+                        Ok ()
+                      else
+                        Error "unexpected publish request discovered from git provenance"
+                  | _ -> Error "expected exactly one publish request"
+                )
             )
         )
-      | Error err, _, _, _, _, _, _
-      | _, Error err, _, _, _, _, _
-      | _, _, Error err, _, _, _, _
-      | _, _, _, Error err, _, _, _
-      | _, _, _, _, Error err, _, _
-      | _, _, _, _, _, Error err, _
-      | _, _, _, _, _, _, Error err -> Error err)
+      | Error err -> Error err)
 
 let test_publisher_prepare_publish_discovers_git_provenance_without_registry = fun () ->
   with_tempdir "tusk_pm_prepare_publish"
@@ -671,37 +661,42 @@ license = "Apache-2.0"
 public = true
 |};
       write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
-      match
-        run_git ~cwd:root [ "init"; "-q" ],
-        run_git ~cwd:root [ "config"; "user.email"; "demo@example.com" ],
-        run_git ~cwd:root [ "config"; "user.name"; "Demo" ],
-        run_git ~cwd:root [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ],
-        run_git ~cwd:root [ "add"; "." ],
-        run_git ~cwd:root [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ],
-        run_git ~cwd:package_root [ "rev-parse"; "HEAD" ]
-      with
-      | Ok _, Ok _, Ok _, Ok _, Ok _, Ok _, Ok selector -> (
-          let package = make_package ~name:"demo" ~path:package_root () in
-          match Tusk_pm.Publisher.prepare_publish ~package with
-          | Error err ->
-              Error ("expected prepare_publish to succeed: " ^ Tusk_pm.Publisher.message err)
-          | Ok prepared ->
-              if
-                String.equal prepared.package.name "demo"
-                && String.equal prepared.locator "github.com/example/riot/packages/demo"
-                && String.equal prepared.selector selector
-                && String.length prepared.artifact > 0
-              then
-                Ok ()
-              else
-                Error "unexpected prepared publish payload")
-      | Error err, _, _, _, _, _, _
-      | _, Error err, _, _, _, _, _
-      | _, _, Error err, _, _, _, _
-      | _, _, _, Error err, _, _, _
-      | _, _, _, _, Error err, _, _
-      | _, _, _, _, _, Error err, _
-      | _, _, _, _, _, _, Error err -> Error err)
+      match run_git_steps
+        ~cwd:root
+        [
+          [ "init"; "-q" ];
+          [ "config"; "user.email"; "demo@example.com" ];
+          [ "config"; "user.name"; "Demo" ];
+          [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ];
+          [ "add"; "." ];
+          [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ];
+        ] with
+      | Ok _ -> (
+          match run_git ~cwd:package_root [ "rev-parse"; "HEAD" ] with
+          | Error err -> Error err
+          | Ok selector -> (
+              let package = make_package ~name:"demo" ~path:package_root () in
+              let registry = Pkgs_ml.Registry.filesystem (make_registry_cache ()) in
+              match Tusk_pm.Publisher.prepare_publish
+                ~registry
+                ~target_dir_root:root
+                ~publishing_workspace_packages:[]
+                ~package with
+              | Error err -> Error ("expected prepare_publish to succeed: "
+              ^ Tusk_pm.Publisher.message err)
+              | Ok prepared ->
+                  if
+                    String.equal prepared.package.name "demo"
+                    && String.equal prepared.locator "github.com/example/riot/packages/demo"
+                    && String.equal prepared.selector selector
+                    && String.length (Path.to_string prepared.artifact_path) > 0
+                  then
+                    Ok ()
+                  else
+                    Error "unexpected prepared publish payload"
+            )
+        )
+      | Error err -> Error err)
 
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
@@ -745,9 +740,7 @@ version = "1.2.3"
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[
-          { name = "foo"; source = source ~path:(Path.v "../../vendor/foo") () }
-        ]
+        ~dependencies:[ { name = "foo"; source = source ~path:(Path.v "../../vendor/foo") () } ]
         () in
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err -> Error ("expected path dependency locking to succeed: " ^ pm_error_message err)
@@ -795,9 +788,7 @@ version = "2.0.0"
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[
-          { name = "foo"; source = source ~path:(Path.v "../../vendor/foo") () }
-        ]
+        ~dependencies:[ { name = "foo"; source = source ~path:(Path.v "../../vendor/foo") () } ]
         () in
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err -> Error ("expected transitive path dependencies to resolve: " ^ pm_error_message err)
@@ -830,7 +821,8 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun () ->
     ~dependencies:[ { name = "std"; source = source ~path:(Path.v "../std") () } ]
     () in
   match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ] with
-  | Error err -> Error ("expected workspace path dependency to collapse to workspace package: " ^ pm_error_message err)
+  | Error err -> Error ("expected workspace path dependency to collapse to workspace package: "
+  ^ pm_error_message err)
   | Ok lockfile -> (
       let app_lock =
         List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
@@ -862,9 +854,7 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[
-      { name = "std"; source = source ~version:requirement () }
-    ]
+    ~dependencies:[ { name = "std"; source = source ~version:requirement () } ]
     () in
   let registry = make_registry
     [
@@ -930,13 +920,11 @@ let test_lock_deps_reports_missing_registry_package_with_required_by = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:app_root
-    ~dependencies:[
-      { name = "std"; source = source ~version:Std.Version.any () }
-    ]
+    ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
     () in
   match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Ok _ -> Error "expected missing registry package to fail"
-  | Error (Tusk_pm.Error.PackageNotFound { package; registry; required_by = Some required_by }) ->
+  | Error (Tusk_pm.Error.PackageNotFound { package; registry; required_by=Some required_by }) ->
       if
         String.equal package "std"
         && String.equal registry "pkgs.ml"
@@ -946,17 +934,14 @@ let test_lock_deps_reports_missing_registry_package_with_required_by = fun () ->
         Ok ()
       else
         Error "expected missing registry package error to include the requiring workspace package"
-  | Error err ->
-      Error ("expected missing registry package error, got: " ^ pm_error_message err)
+  | Error err -> Error ("expected missing registry package error, got: " ^ pm_error_message err)
 
 let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[
-      { name = "std"; source = source ~version:Std.Version.any () }
-    ]
+    ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
     () in
   match run_lock_deps
     ~registry:(make_registry [])
@@ -1009,9 +994,7 @@ let test_lock_deps_ignores_builtin_registry_release_dependencies = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[
-      { name = "std"; source = source ~version:Std.Version.any () }
-    ]
+    ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
     () in
   let registry = make_registry
     [
@@ -1044,9 +1027,7 @@ let test_lock_deps_handles_cyclic_registry_dependencies = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[
-      { name = "foo"; source = source ~version:Std.Version.any () }
-    ]
+    ~dependencies:[ { name = "foo"; source = source ~version:Std.Version.any () } ]
     () in
   let registry = make_registry
     [
@@ -1108,9 +1089,7 @@ let test_lock_refresh_preserves_existing_registry_version = fun () ->
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[
-      { name = "std"; source = source ~version:requirement () }
-    ]
+    ~dependencies:[ { name = "std"; source = source ~version:requirement () } ]
     () in
   let existing_lock =
     Tusk_model.Lockfile.{
@@ -1400,9 +1379,7 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun () -
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[
-          { name = "std"; source = source ~version:requirement () }
-        ]
+        ~dependencies:[ { name = "std"; source = source ~version:requirement () } ]
         () in
       let registry_cache = Pkgs_ml.Registry_cache.create
         ~tusk_home:Path.(workspace_root / Path.v ".tusk")
@@ -1437,7 +1414,8 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun () -
             ~manifest_paths:[ manifest_path ]
             ~packages:[ app_pkg ]
             ()) with
-      | Error err -> Error ("expected ensure_lock to materialize registry packages: " ^ pm_error_message err)
+      | Error err -> Error ("expected ensure_lock to materialize registry packages: "
+      ^ pm_error_message err)
       | Ok ((_, resolved), event_names) ->
           let manifest_path = Pkgs_ml.Registry_cache.package_src_dir
             registry_cache
@@ -1470,9 +1448,7 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[
-          { name = "std"; source = source ~version:requirement () }
-        ]
+        ~dependencies:[ { name = "std"; source = source ~version:requirement () } ]
         () in
       let registry_cache = Pkgs_ml.Registry_cache.create
         ~tusk_home:Path.(workspace_root / Path.v ".tusk")
@@ -1541,9 +1517,7 @@ let test_ensure_workspace_projects_materialized_registry_packages = fun () ->
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[
-          { name = "std"; source = source ~version:Std.Version.any () }
-        ]
+        ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
         () in
       let app_pkg = { app_pkg with relative_path = Path.v "packages/app" } in
       let workspace = Tusk_model.Workspace.make ~root:workspace_root ~packages:[ app_pkg ] () in
@@ -1628,9 +1602,7 @@ let test_projection_loads_external_manifests_from_lockfile = fun () ->
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[
-          { name = "std"; source = source ~version:Std.Version.any () }
-        ]
+        ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
         () in
       let std_root = Path.(workspace_root / Path.v ".tusk/registry/pkgs.ml/src/std/0.2.0") in
       let kernel_root = Path.(workspace_root / Path.v ".tusk/registry/pkgs.ml/src/kernel/1.0.0") in
@@ -1745,9 +1717,7 @@ let test_projection_bubbles_external_manifest_errors = fun () ->
       let app_pkg = make_package
         ~name:"app"
         ~path:Path.(workspace_root / Path.v "packages/app")
-        ~dependencies:[
-          { name = "std"; source = source ~version:Std.Version.any () }
-        ]
+        ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
         () in
       let std_root = Path.(workspace_root / Path.v ".tusk/registry/pkgs.ml/src/std/0.2.0") in
       let std_manifest_path = Path.(std_root / Path.v "tusk.toml") in
@@ -1804,8 +1774,7 @@ kernel = 123
       | Error err ->
           let message = pm_error_message err in
           if
-            String.contains message "must be a string or table"
-            || String.contains message "failed to decode package manifest"
+            String.contains message "must be a string or table" || String.contains message "failed to decode package manifest"
           then
             Ok ()
           else

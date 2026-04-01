@@ -20,31 +20,20 @@ let with_current_dir = fun path fn ->
       set_current_dir original;
       raise exn
 
+let build_package = fun ~workspace_root ~package_name ->
+  with_current_dir workspace_root (fun () -> Build.build_command (Some package_name) None)
+
 let raw_fix_args = fun () ->
   match Env.args with
   | _binary :: "fix" :: rest -> rest
   | _binary :: rest -> rest
   | [] -> []
 
-let build_fixme_runner = fun scope ->
-  let workspace_root = Tusk_fix.Config.workspace_root scope in
-  let target_dir_root = Tusk_fix.Config.target_dir_root scope in
-  let providers = Tusk_fix.Config.providers (Some scope) in
-  let plan = Tusk_fix.Fixme_runner.materialize ~workspace_root ~target_dir_root providers in
-  let result =
-    with_current_dir plan.workspace_root
-      (fun () ->
-        Build.build_command (Some plan.package_name) None)
-  in
-  match result with
-  | Ok () -> Ok plan.binary_path
-  | Error _ as err -> err
+let run_args = fun ?cwd args ->
+  Tusk_fix.Cli.run_args ?cwd ~build_package args
 
-let run = fun matches ->
-  let cwd = current_dir () in
-  match Tusk_fix.Config.load_scope ~cwd with
-  | Some scope when List.length (Tusk_fix.Config.providers (Some scope)) > 0 ->
-      let args = raw_fix_args () in
-      let command_binary = build_fixme_runner scope |> Result.expect ~msg:"Failed to build fixme runner" in
-      Command_executor.execute ~command_binary ~args
-  | _ -> Tusk_fix.Cli.run matches
+let run_check_paths = fun ?cwd paths ->
+  Tusk_fix.Cli.run_check_paths ?cwd ~build_package paths
+
+let run = fun _matches ->
+  run_args (raw_fix_args ())

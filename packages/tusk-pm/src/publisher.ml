@@ -1,6 +1,10 @@
 open Std
 
 type error =
+  | MissingPublishVersion of { package: string }
+  | MissingPublishDescription of { package: string }
+  | MissingPublishLicense of { package: string }
+  | PackageNotPublic of { package: string }
   | MissingManifest of { package_root: Path.t }
   | RuntimeDependencyNotPublishable of {
       package: string;
@@ -8,7 +12,19 @@ type error =
       reason: [
         | `PathOnly of Path.t
         | `WorkspaceOnly
+        | `MissingVersionOrPath
       ];
+    }
+  | RuntimeDependencyRegistryLookupFailed of {
+      package: string;
+      dependency: string;
+      registry: string;
+      error: string;
+    }
+  | RuntimeDependencyNotFoundInRegistry of {
+      package: string;
+      dependency: string;
+      registry: string;
     }
   | SymlinkNotAllowed of { path: Path.t }
   | UnsupportedEntry of { path: Path.t; kind: string }
@@ -28,9 +44,10 @@ type error =
 
 type prepared_publish = {
   package: Tusk_model.Package.t;
+  version: Std.Version.t;
   locator: string;
   selector: string;
-  artifact: string;
+  artifact_path: Path.t;
 }
 
 let excluded_entry_names = [
@@ -49,6 +66,14 @@ let excluded_entry_names = [
 ]
 
 let message = function
+  | MissingPublishVersion { package } ->
+      "package '" ^ package ^ "' is missing [package].version"
+  | MissingPublishDescription { package } ->
+      "package '" ^ package ^ "' is missing [package].description"
+  | MissingPublishLicense { package } ->
+      "package '" ^ package ^ "' is missing [package].license"
+  | PackageNotPublic { package } ->
+      "package '" ^ package ^ "' must set [package].public = true to be published"
   | MissingManifest { package_root } ->
       "package root '"
       ^ Path.to_string package_root
@@ -67,6 +92,29 @@ let message = function
       ^ "' in package '"
       ^ package
       ^ "' is workspace-only and cannot be published"
+  | RuntimeDependencyNotPublishable { package; dependency; reason = `MissingVersionOrPath } ->
+      "runtime dependency '"
+      ^ dependency
+      ^ "' in package '"
+      ^ package
+      ^ "' must declare a version or publishable source"
+  | RuntimeDependencyRegistryLookupFailed { package; dependency; registry; error } ->
+      "failed to verify runtime dependency '"
+      ^ dependency
+      ^ "' for package '"
+      ^ package
+      ^ "' in registry '"
+      ^ registry
+      ^ "': "
+      ^ error
+  | RuntimeDependencyNotFoundInRegistry { package; dependency; registry } ->
+      "runtime dependency '"
+      ^ dependency
+      ^ "' for package '"
+      ^ package
+      ^ "' was not found in registry '"
+      ^ registry
+      ^ "'"
   | SymlinkNotAllowed { path } ->
       "publish artifacts do not support symlinks: " ^ Path.to_string path
   | UnsupportedEntry { path; kind } ->
@@ -121,6 +169,27 @@ let path_error_message = function
       "invalid utf8 from " ^ syscall ^ ": " ^ path
   | Path.SystemError msg -> msg
 
+let validate_publish_metadata = fun ~(package:Tusk_model.Package.t) ->
+  match package.publish.version with
+  | None ->
+      Error (MissingPublishVersion { package = package.name })
+  | Some version -> (
+      match package.publish.description with
+      | None ->
+          Error (MissingPublishDescription { package = package.name })
+      | Some _ -> (
+          match package.publish.license with
+          | None ->
+              Error (MissingPublishLicense { package = package.name })
+          | Some _ -> (
+              match package.publish.is_public with
+              | Some true -> Ok version
+              | Some false
+              | None -> Error (PackageNotPublic { package = package.name })
+            )
+        )
+    )
+
 let validate_runtime_dependency = fun ~(package:Tusk_model.Package.t) (dep: Tusk_model.Package.dependency) ->
   match dep.source with
   | { builtin = true; _ } ->
@@ -137,6 +206,12 @@ let validate_runtime_dependency = fun ~(package:Tusk_model.Package.t) (dep: Tusk
         dependency = dep.name;
         reason = `PathOnly path;
       })
+  | { path = None; version = None; _ } ->
+      Error (RuntimeDependencyNotPublishable {
+        package = package.name;
+        dependency = dep.name;
+        reason = `MissingVersionOrPath;
+      })
   | _ ->
       Ok ()
 
@@ -147,6 +222,35 @@ let validate_runtime_dependencies = fun ~(package:Tusk_model.Package.t) ->
         match validate_runtime_dependency ~package dep with
         | Ok () -> loop rest
         | Error _ as err -> err
+      )
+  in
+  loop package.dependencies
+
+let validate_registry_dependencies = fun ~registry ~publishing_workspace_packages ~(package:Tusk_model.Package.t) ->
+  let rec loop = function
+    | [] -> Ok ()
+    | dep :: rest -> (
+        if Tusk_model.Package.is_builtin_dependency dep then
+          loop rest
+        else if List.exists (String.equal dep.name) publishing_workspace_packages then
+          loop rest
+        else
+          match Pkgs_ml.Registry.read_package_document registry ~package_name:dep.name with
+          | Error error ->
+              Error (RuntimeDependencyRegistryLookupFailed {
+                package = package.name;
+                dependency = dep.name;
+                registry = Pkgs_ml.Registry.name registry;
+                error;
+              })
+          | Ok None ->
+              Error (RuntimeDependencyNotFoundInRegistry {
+                package = package.name;
+                dependency = dep.name;
+                registry = Pkgs_ml.Registry.name registry;
+              })
+          | Ok (Some _) ->
+              loop rest
       )
   in
   loop package.dependencies
@@ -194,89 +298,108 @@ let collect_relative_files = fun ~package_root ->
   in
   walk_dir [] package_root
 
-let create_archive = fun ~package_root ~relative_files ->
-  match Fs.with_tempdir ~prefix:"tusk_publish_artifact" (fun tempdir ->
-    let artifact_path = Path.(tempdir / Path.v "package.tar.gz") in
-    let args =
-      [ "-czf"; Path.to_string artifact_path; "-C"; Path.to_string package_root ]
-      @ List.rev_map Path.to_string relative_files
-    in
-    let command = Command.make "tar" ~args in
-    match Command.output command with
-    | Error (Command.SystemError error) ->
-        Error (TarCommandSpawnFailed { command = Command.to_string command; error })
-    | Ok output when not (Int.equal output.status 0) ->
-        Error (TarCommandFailed {
-          command = Command.to_string command;
-          status = output.status;
-          stdout = output.stdout;
-          stderr = output.stderr;
-        })
-    | Ok _ -> (
-        match Fs.read artifact_path with
-        | Ok artifact -> Ok artifact
-        | Error err ->
-            Error (ArtifactReadFailed { path = artifact_path; error = IO.error_message err })
-      )) with
+let publish_artifact_path = fun ~target_dir_root ~(package:Tusk_model.Package.t) ~version ->
+  Path.(
+    target_dir_root
+    / Path.v "release"
+    / Path.v "publish"
+    / Path.v package.name
+    / Path.v (Std.Version.to_string version)
+    / Path.v "package.tar.gz"
+  )
+
+let create_archive = fun ~package_root ~artifact_path ~relative_files ->
+  let parent =
+    match Path.parent artifact_path with
+    | Some parent -> parent
+    | None -> Path.v "."
+  in
+  match Fs.create_dir_all parent with
   | Error err ->
       Error (ArtifactReadFailed {
-        path = package_root;
+        path = artifact_path;
         error = IO.error_message err;
       })
-  | Ok result ->
-      result
+  | Ok () ->
+      let args =
+        [ "-czf"; Path.to_string artifact_path; "-C"; Path.to_string package_root ]
+        @ List.map Path.to_string relative_files
+      in
+      let command = Command.make "tar" ~args in
+      match Command.output command with
+      | Error (Command.SystemError error) ->
+          Error (TarCommandSpawnFailed { command = Command.to_string command; error })
+      | Ok output when not (Int.equal output.status 0) ->
+          Error (TarCommandFailed {
+            command = Command.to_string command;
+            status = output.status;
+            stdout = output.stdout;
+            stderr = output.stderr;
+          })
+      | Ok _ ->
+          Ok artifact_path
 
-let create_artifact = fun ~(package:Tusk_model.Package.t) ->
-  match validate_runtime_dependencies ~package with
+let create_artifact = fun ~target_dir_root ~(package:Tusk_model.Package.t) ~version ->
+  match collect_relative_files ~package_root:package.path with
   | Error _ as err -> err
-  | Ok () -> (
-      match collect_relative_files ~package_root:package.path with
-      | Error _ as err -> err
-      | Ok relative_files ->
-          if not (List.exists (Path.equal (Path.v "tusk.toml")) relative_files) then
-            Error (MissingManifest { package_root = package.path })
-          else
-            create_archive ~package_root:package.path ~relative_files
-    )
+  | Ok relative_files ->
+      let relative_files = List.sort
+        (fun left right ->
+          String.compare (Path.to_string left) (Path.to_string right))
+        relative_files in
+      if not (List.exists (Path.equal (Path.v "tusk.toml")) relative_files) then
+        Error (MissingManifest { package_root = package.path })
+      else
+        let artifact_path = publish_artifact_path ~target_dir_root ~package ~version in
+        create_archive ~package_root:package.path ~artifact_path ~relative_files
 
-let prepare_publish = fun ~(package:Tusk_model.Package.t) ->
-  match create_artifact ~package with
+let prepare_publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(package:Tusk_model.Package.t) ->
+  match validate_publish_metadata ~package with
   | Error _ as err ->
       err
-  | Ok artifact -> (
-      match Git_provenance.discover ~package_root:package.path with
-      | Error error ->
-          Error (GitProvenanceFailed error)
-      | Ok provenance ->
-          Ok {
-            package;
-            locator = provenance.locator;
-            selector = provenance.selector;
-            artifact;
-          }
+  | Ok version -> (
+      match validate_runtime_dependencies ~package with
+      | Error _ as err ->
+          err
+      | Ok () -> (
+          match validate_registry_dependencies ~registry ~publishing_workspace_packages ~package with
+          | Error _ as err ->
+              err
+          | Ok () -> (
+              match create_artifact ~target_dir_root ~package ~version with
+              | Error _ as err ->
+                  err
+              | Ok artifact_path -> (
+                  match Git_provenance.discover ~package_root:package.path with
+                  | Error error ->
+                      Error (GitProvenanceFailed error)
+                  | Ok provenance ->
+                      Ok {
+                        package;
+                        version;
+                        locator = provenance.locator;
+                        selector = provenance.selector;
+                        artifact_path;
+                      }
+                )
+            )
+        )
     )
 
-let publish_from_locator = fun ~registry ~(package:Tusk_model.Package.t) ~locator ~selector ~api_token ->
-  match create_artifact ~package with
-  | Error _ as err -> err
+let publish_prepared = fun ~registry ~api_token (prepared: prepared_publish) ->
+  match Fs.read prepared.artifact_path with
+  | Error err ->
+      Error (ArtifactReadFailed {
+        path = prepared.artifact_path;
+        error = IO.error_message err;
+      })
   | Ok artifact -> (
-      match Pkgs_ml.Registry.publish_from_locator registry ~locator ~selector ~api_token ~artifact with
-      | Ok published -> Ok published
-      | Error error ->
-          Error (RegistryPublishFailed { locator; error })
-    )
-
-let publish = fun ~registry ~(package:Tusk_model.Package.t) ~api_token ->
-  match prepare_publish ~package with
-  | Error _ as err ->
-      err
-  | Ok prepared -> (
       match Pkgs_ml.Registry.publish_from_locator
         registry
         ~locator:prepared.locator
         ~selector:prepared.selector
         ~api_token
-        ~artifact:prepared.artifact with
+        ~artifact with
       | Ok published ->
           Ok published
       | Error error ->
@@ -285,6 +408,40 @@ let publish = fun ~registry ~(package:Tusk_model.Package.t) ~api_token ->
             error;
           })
     )
+
+let publish_from_locator = fun ~registry ~target_dir_root ~(package:Tusk_model.Package.t) ~locator ~selector ~api_token ->
+  match validate_publish_metadata ~package with
+  | Error _ as err -> err
+  | Ok version -> (
+      match validate_runtime_dependencies ~package with
+      | Error _ as err -> err
+      | Ok () -> (
+          match validate_registry_dependencies ~registry ~publishing_workspace_packages:[] ~package with
+          | Error _ as err -> err
+          | Ok () -> (
+              match create_artifact ~target_dir_root ~package ~version with
+              | Error _ as err -> err
+              | Ok artifact_path -> (
+                  match Fs.read artifact_path with
+                  | Error err ->
+                      Error (ArtifactReadFailed { path = artifact_path; error = IO.error_message err })
+                  | Ok artifact -> (
+                      match Pkgs_ml.Registry.publish_from_locator registry ~locator ~selector ~api_token ~artifact with
+                      | Ok published -> Ok published
+                      | Error error ->
+                          Error (RegistryPublishFailed { locator; error })
+                    )
+                )
+            )
+        )
+    )
+
+let publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(package:Tusk_model.Package.t) ~api_token ->
+  match prepare_publish ~registry ~target_dir_root ~publishing_workspace_packages ~package with
+  | Error _ as err ->
+      err
+  | Ok prepared ->
+      publish_prepared ~registry ~api_token prepared
 
 let assoc_package = fun packages name ->
   List.find_opt

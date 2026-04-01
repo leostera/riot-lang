@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Tusk_model
 
 type request =
@@ -7,15 +8,7 @@ type request =
 
 type error =
   | ConflictingSelection
-  | PackageNotFound of { package: string }
-  | NoWorkspacePackages
-  | PublishConfigLoadFailed of Tusk_model.User_config.error
-  | MissingApiToken of { registry_name: string; path: Path.t }
-  | RegistryInitializationFailed of { registry_name: string; error: string }
-  | PublishPlanFailed of Tusk_pm.Publisher.error
-  | PublishFailed of { package: string; error: Tusk_pm.Publisher.error }
-
-let default_registry_name = "pkgs.ml"
+  | PublishFailed of Tusk_pm.Publish.error
 
 let out = eprintln
 
@@ -31,28 +24,8 @@ let command =
       ]
 
 let message = function
-  | ConflictingSelection ->
-      "cannot combine --package with --workspace"
-  | PackageNotFound { package } ->
-      "package '" ^ package ^ "' was not found in this workspace"
-  | NoWorkspacePackages ->
-      "no workspace packages were found to publish"
-  | PublishConfigLoadFailed err ->
-      Tusk_model.User_config.message err
-  | MissingApiToken { registry_name; path } ->
-      "missing API token for registry '"
-      ^ registry_name
-      ^ "' in "
-      ^ Path.to_string path
-      ^ " (expected [registry.\""
-      ^ registry_name
-      ^ "\"].api_token)"
-  | RegistryInitializationFailed { registry_name; error } ->
-      "failed to initialize registry '" ^ registry_name ^ "': " ^ error
-  | PublishPlanFailed err ->
-      Tusk_pm.Publisher.message err
-  | PublishFailed { error; _ } ->
-      Tusk_pm.Publisher.message error
+  | ConflictingSelection -> "cannot combine --package with --workspace"
+  | PublishFailed error -> Tusk_pm.Publish.message error
 
 let fail = fun err ->
   out ("\027[1;31mError\027[0m: " ^ message err);
@@ -60,68 +33,25 @@ let fail = fun err ->
 
 let resolve_request = fun ~package_name ~workspace_mode ->
   match package_name, workspace_mode with
-  | Some _, true ->
-      Error ConflictingSelection
-  | Some package, false ->
-      Ok (Package package)
-  | None, _ ->
-      Ok Workspace
+  | Some _, true -> Error ConflictingSelection
+  | Some package, false -> Ok (Package package)
+  | None, _ -> Ok Workspace
 
-let workspace_packages = fun (workspace: Workspace.t) ->
-  workspace.packages |> List.filter Package.is_workspace_member
+let publish_request = function
+  | Workspace -> Tusk_pm.Publish.Workspace
+  | Package package -> Tusk_pm.Publish.Package package
 
-let select_packages = fun ~workspace request ->
-  let packages = workspace_packages workspace in
-  match request with
-  | Package package_name -> (
-      match List.find_opt (fun (pkg: Package.t) -> String.equal pkg.name package_name) packages with
-      | Some pkg ->
-          Ok [ pkg ]
-      | None ->
-          Error (PackageNotFound { package = package_name })
-    )
-  | Workspace ->
-      if packages = [] then
-        Error NoWorkspacePackages
+let format_pm_event = fun ~seen_registry_updates kind ->
+  match kind with
+  | Tusk_model.Event.RegistryIndexUpdating { registry } ->
+      if HashSet.contains seen_registry_updates registry then
+        None
       else
-        Tusk_pm.Publisher.workspace_publish_order ~packages
-        |> Result.map_error (fun err -> PublishPlanFailed err)
-
-let load_api_token = fun ~registry_name ->
-  let config_path = Tusk_model.Tusk_dirs.config_path () in
-  match Fs.exists config_path with
-  | Error io_error ->
-      Error (PublishConfigLoadFailed (Tusk_model.User_config.ReadFailed {
-        path = config_path;
-        error = IO.error_message io_error;
-      }))
-  | Ok false ->
-      Error (MissingApiToken { registry_name; path = config_path })
-  | Ok true -> (
-      match Tusk_model.User_config.load config_path with
-      | Error err ->
-          Error (PublishConfigLoadFailed err)
-      | Ok config -> (
-          match Tusk_model.User_config.api_token config ~registry_name with
-          | Some token ->
-              Ok token
-          | None ->
-              Error (MissingApiToken { registry_name; path = config_path })
+        (
+          let _ = HashSet.insert seen_registry_updates registry in
+          Some ("    \027[1;32mUpdating\027[0m " ^ registry ^ " index")
         )
-    )
-
-let registry = fun ~registry_name ->
-  Pkgs_ml.Registry.create_filesystem ~registry_name ()
-  |> Result.map_error (fun error -> RegistryInitializationFailed { registry_name; error })
-
-let render_publishing = fun package_name ->
-  "    \027[1;32mPublishing\027[0m " ^ package_name
-
-let render_published = fun (published: Pkgs_ml.Registry.published_release) ->
-  "    \027[1;32mPublished\027[0m "
-  ^ published.package_name
-  ^ " "
-  ^ published.package_version
+  | _ -> None
 
 let render_dry_run = fun (prepared: Tusk_pm.Publisher.prepared_publish) ->
   "    \027[1;32mWouldPublish\027[0m "
@@ -131,80 +61,42 @@ let render_dry_run = fun (prepared: Tusk_pm.Publisher.prepared_publish) ->
   ^ "@"
   ^ prepared.selector
 
-let dry_run_one = fun (package: Package.t) ->
-  match Tusk_pm.Publisher.prepare_publish ~package with
-  | Error error ->
-      Error (PublishFailed { package = package.name; error })
-  | Ok prepared ->
-      out (render_dry_run prepared);
-      Ok ()
+let render_published = fun (published: Pkgs_ml.Registry.published_release) ->
+  "    \027[1;32mPublished\027[0m " ^ published.package_name ^ " " ^ published.package_version
 
-let rec dry_run_all = fun packages ->
-  match packages with
-  | [] ->
-      Ok ()
-  | package :: rest -> (
-      match dry_run_one package with
-      | Ok () ->
-          dry_run_all rest
-      | Error _ as err ->
-          err
-    )
+let format_publish_event = fun ~seen_registry_updates event ->
+  match event with
+  | Tusk_pm.Publish.Pm kind -> format_pm_event ~seen_registry_updates kind
+  | Tusk_pm.Publish.DryRunPlanned prepared -> Some (render_dry_run prepared)
+  | Tusk_pm.Publish.PackagePublished published -> Some (render_published published)
+  | Tusk_pm.Publish.Fmt _
+  | Tusk_pm.Publish.Fix _
+  | Tusk_pm.Publish.CheckStarted _
+  | Tusk_pm.Publish.CheckFinished _ -> None
 
-let publish_one = fun ~registry ~api_token (package: Package.t) ->
-  out (render_publishing package.name);
-  Tusk_pm.Publisher.publish ~registry ~package ~api_token
-  |> Result.map_error (fun error -> PublishFailed { package = package.name; error })
-  |> Result.map (fun published ->
-    out (render_published published);
-    published)
-
-let rec publish_all = fun ~registry ~api_token packages ->
-  match packages with
-  | [] ->
-      Ok ()
-  | package :: rest -> (
-      match publish_one ~registry ~api_token package with
-      | Ok _ ->
-          publish_all ~registry ~api_token rest
-      | Error _ as err ->
-          err
-    )
+let write_publish_event = fun ~seen_registry_updates event ->
+  match format_publish_event ~seen_registry_updates event with
+  | Some message -> out message
+  | None -> ()
 
 let run = fun (workspace: Workspace.t) matches ->
-  let package_name = ArgParser.get_one matches "package" in
-  let workspace_mode = ArgParser.get_flag matches "workspace" in
-  let dry_run = ArgParser.get_flag matches "dry-run" in
-  match resolve_request ~package_name ~workspace_mode with
-  | Error err ->
-      fail err
-  | Ok request -> (
-      match select_packages ~workspace request with
-      | Error err ->
-          fail err
-      | Ok packages ->
-          if dry_run then
-            match dry_run_all packages with
-            | Ok () ->
-                Ok ()
-            | Error err ->
-                fail err
-          else
-            (
-          match load_api_token ~registry_name:default_registry_name with
-          | Error err ->
-              fail err
-          | Ok api_token -> (
-              match registry ~registry_name:default_registry_name with
-              | Error err ->
-                  fail err
-              | Ok registry -> (
-                  match publish_all ~registry ~api_token packages with
-                  | Ok () ->
-                      Ok ()
-                  | Error err ->
-                      fail err
-                )
-            )
-            )
-    )
+  match resolve_request
+    ~package_name:(ArgParser.get_one matches "package")
+    ~workspace_mode:(ArgParser.get_flag matches "workspace") with
+  | Error err -> fail err
+  | Ok request ->
+      let mode =
+        if ArgParser.get_flag matches "dry-run" then
+          Tusk_pm.Publish.Dry_run
+        else
+          Tusk_pm.Publish.Publish
+      in
+      let seen_registry_updates = HashSet.create () in
+      match Tusk_pm.Publish.run
+        ~on_event:(write_publish_event ~seen_registry_updates)
+        ~workspace
+        ~request:(publish_request request)
+        ~mode
+        () with
+      | Error err -> fail (PublishFailed err)
+      | Ok _results -> Ok ()
