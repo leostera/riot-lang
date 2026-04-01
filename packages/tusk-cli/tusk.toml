@@ -23,3 +23,5 @@ tusk-store = { path = "../tusk-store" }
 tusk-toolchain = { path = "../tusk-toolchain" }
 tusk-fix = { path = "../tusk-fix" }
 tusk-fmt = { path = "../tusk-fmt" }
+tusk-pm = { path = "../tusk-pm" }
+pkgs-ml = { path = "../pkgs-ml" }

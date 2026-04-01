@@ -13,6 +13,7 @@ let build_cli = fun workspace_opt ->
         Tusk_init.command;
         Install.command;
         New.command;
+        Publish.command;
         Run.command;
         Test_cmd.command;
         Bench_cmd.command;
@@ -219,6 +220,13 @@ format = "full"
               Tusk_init.run init_matches
           | Some ("new", new_matches) ->
               New.run new_matches
+          | Some ("publish", publish_matches) -> (
+              match workspace_opt with
+              | Some workspace -> Publish.run workspace publish_matches
+              | None ->
+                  eprintln "❌ Not in a tusk workspace";
+                  Error (Failure "Not in a tusk workspace")
+            )
           | Some ("install", install_matches) ->
               Install.run install_matches
           | Some ("toolchain", toolchain_matches) ->

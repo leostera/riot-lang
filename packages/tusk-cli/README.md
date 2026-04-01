@@ -24,6 +24,8 @@ The Tusk CLI provides a one-shot interface to the Tusk build system. Each comman
 ### Project Management
 
 - `tusk new <name>` - Create a new package
+- `tusk publish` - Publish workspace packages in dependency order
+- `tusk publish -p <name>` - Publish a specific workspace package
 - `tusk fmt --check` - Check OCaml formatting with krasny
 - `tusk fmt --check --json` - Emit JSONL formatting events
 
