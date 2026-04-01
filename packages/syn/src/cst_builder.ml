@@ -1735,40 +1735,78 @@ let is_literal_token_kind = function
   | Syntax_kind.BOOL_LITERAL -> true
   | _ -> false
 
-let literal_token_from_node = fun ~context node ->
+let literal_tokens_from_node = fun ~context node ->
+  let direct_nodes = direct_non_trivia_nodes node in
   let direct_tokens = direct_non_trivia_tokens node in
+  let scan_direct_tokens syntax_tokens =
+    let rec loop sign_token literal_token =
+      function
+      | [] -> Some (sign_token, literal_token)
+      | syntax_token :: rest ->
+          let kind = Ceibo.Red.SyntaxToken.kind syntax_token in
+          if is_literal_token_kind kind then
+            loop sign_token (Some syntax_token) rest
+          else
+            let text = Ceibo.Red.SyntaxToken.text syntax_token in
+            let sign_token =
+              if literal_token = None && (String.equal text "-" || String.equal text "+") then
+                Some (token syntax_token)
+              else
+                sign_token
+            in
+            loop sign_token literal_token rest
+    in
+    loop None None syntax_tokens
+  in
   let find_literal_token syntax_tokens = syntax_tokens
   |> List.find_opt
-    (fun syntax_token -> is_literal_token_kind (Ceibo.Red.SyntaxToken.kind syntax_token)) in
-  match find_literal_token direct_tokens with
-  | Some literal_syntax_token -> token literal_syntax_token
+    (fun syntax_token -> is_literal_token_kind (Ceibo.Red.SyntaxToken.kind syntax_token))
+  in
+  let from_fallback_tokens syntax_tokens =
+    match find_literal_token syntax_tokens with
+    | Some literal_syntax_token ->
+        let literal_token = token literal_syntax_token in
+        let literal_span = Cst.Token.span literal_token in
+        let sign_token =
+          syntax_tokens |> List.find_map
+            (fun syntax_token ->
+              let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+              let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
+              if
+                token_span.end_ <= literal_span.start
+                && (String.equal token_text "-" || String.equal token_text "+")
+              then
+                Some (token syntax_token)
+              else
+                None)
+        in
+        Some (sign_token, literal_token)
+    | None -> None
+  in
+  match
+    if List.is_empty direct_nodes then
+      scan_direct_tokens direct_tokens
+    else
+      None
+  with
+  | Some (sign_token, Some literal_syntax_token) ->
+      (sign_token, token literal_syntax_token)
+  | Some (_, None)
   | None -> (
-      match find_literal_token (subtree_non_trivia_tokens node) with
-      | Some literal_syntax_token -> token literal_syntax_token
-      | None -> bail
-        ~message:"expected literal token during Ceibo -> CST lifting"
-        ~syntax_node:node
-        ~context
+      match from_fallback_tokens direct_tokens with
+      | Some (sign_token, literal_token) -> (sign_token, literal_token)
+      | None -> (
+          match from_fallback_tokens (subtree_non_trivia_tokens node) with
+          | Some (sign_token, literal_token) -> (sign_token, literal_token)
+          | None -> bail
+            ~message:"expected literal token during Ceibo -> CST lifting"
+            ~syntax_node:node
+            ~context
+        )
     )
 
-let literal_sign_token_from_node = fun ~literal_token syntax_node ->
-  let literal_span = Cst.Token.span literal_token in
-  direct_non_trivia_tokens syntax_node |> List.find_map
-    (fun syntax_token ->
-      let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
-      let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
-      if
-        token_span.end_ <= literal_span.start
-        && (String.equal token_text "-" || String.equal token_text "+")
-      then
-        Some (token syntax_token)
-      else
-        None)
-
-let constant_from_syntax_token = fun ~syntax_node syntax_token ->
-  let literal_token = token syntax_token in
-  let sign_token = literal_sign_token_from_node ~literal_token syntax_node in
-  match Ceibo.Red.SyntaxToken.kind syntax_token with
+let constant_from_parts = fun ~syntax_node ~literal_token ~sign_token ->
+  match Ceibo.Red.SyntaxToken.kind (Cst.Token.syntax_token literal_token) with
   | Syntax_kind.STRING_LITERAL ->
       let delimiter, contents, terminated = string_delimiter_and_contents
         (Cst.Token.text literal_token) in
@@ -1827,12 +1865,30 @@ let constant_from_syntax_token = fun ~syntax_node syntax_token ->
         ~syntax_node
         ~context:[ "constant" ]
 
+let constant_from_syntax_token = fun ~syntax_node syntax_token ->
+  let literal_token = token syntax_token in
+  let literal_span = Cst.Token.span literal_token in
+  let sign_token =
+    direct_non_trivia_tokens syntax_node |> List.find_map
+      (fun syntax_token ->
+        let token_span = Ceibo.Red.SyntaxToken.span syntax_token in
+        let token_text = Ceibo.Red.SyntaxToken.text syntax_token in
+        if
+          token_span.end_ <= literal_span.start
+          && (String.equal token_text "-" || String.equal token_text "+")
+        then
+          Some (token syntax_token)
+        else
+          None)
+  in
+  constant_from_parts ~syntax_node ~literal_token ~sign_token
+
 let constant_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.UNIT_LITERAL -> Cst.Constant.Unit { syntax_node = node; attributes = [] }
   | _ ->
-      let literal_token = literal_token_from_node ~context:[ "constant" ] node in
-      constant_from_syntax_token ~syntax_node:node (Cst.Token.syntax_token literal_token)
+      let sign_token, literal_token = literal_tokens_from_node ~context:[ "constant" ] node in
+      constant_from_parts ~syntax_node:node ~literal_token ~sign_token
 
 let module_path_from_tokens = fun ~syntax_node syntax_tokens ->
   let rec skip_to_name = function
@@ -2839,6 +2895,14 @@ let constructor_pattern_existentials_from_children = fun node ->
       else
         None)
 
+let constructor_pattern_existentials_from_nodes = fun nodes ->
+  nodes |> List.find_map
+    (fun child ->
+      if Ceibo.Red.SyntaxNode.kind child = Syntax_kind.LOCALLY_ABSTRACT_TYPE_PARAM then
+        Some (constructor_pattern_existentials_from_node child)
+      else
+        None)
+
 let token_with_text = fun node expected ->
   subtree_non_trivia_tokens node |> List.find_opt
     (fun syntax_token ->
@@ -3643,15 +3707,15 @@ and core_type_from_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.TYPE_VAR -> (
       match direct_non_trivia_tokens node with
-      | syntax_tokens when not (List.is_empty syntax_tokens) ->
+      | first_token :: _ as syntax_tokens ->
           let syntax_token = List.hd (List.rev syntax_tokens) in
           let lifted = token syntax_token in
           if String.equal (Cst.Token.text lifted) "_" then
             Cst.CoreType.Wildcard { syntax_node = node; wildcard_token = lifted }
           else
             let sigil_token =
-              match syntax_tokens with
-              | first :: _ when String.equal (Ceibo.Red.SyntaxToken.text first) "'" -> Some (token first)
+              match first_token with
+              | first when String.equal (Ceibo.Red.SyntaxToken.text first) "'" -> Some (token first)
               | _ -> None
             in
             Cst.CoreType.Var { syntax_node = node; sigil_token; name_token = lifted }
@@ -4130,11 +4194,15 @@ let rec pattern_from_node = fun node ->
           attributes = []
         }
     | Syntax_kind.CONSTRUCTOR_PATTERN ->
+        let direct_nodes = direct_non_trivia_nodes node in
+        let arguments = direct_nodes
+        |> List.filter (fun child -> is_pattern_syntax_kind (Ceibo.Red.SyntaxNode.kind child))
+        |> List.map pattern_from_node in
         Cst.Pattern.Constructor {
           syntax_node = node;
           constructor_path = module_path_from_node node;
-          existentials = constructor_pattern_existentials_from_children node;
-          arguments = pattern_children node;
+          existentials = constructor_pattern_existentials_from_nodes direct_nodes;
+          arguments;
           attributes = [];
         }
     | Syntax_kind.TUPLE_PATTERN ->
@@ -7261,8 +7329,21 @@ and let_binding_from_binding_operator_binding = fun
 
 and match_case_from_node = fun node ->
   let non_trivia_children = direct_non_trivia_nodes node in
+  let direct_tokens = direct_non_trivia_tokens node in
+  let direct_token_with_text_in_tokens expected = direct_tokens
+  |> List.find_opt
+    (fun syntax_token ->
+      String.equal (Ceibo.Red.SyntaxToken.text syntax_token) expected) |> Option.map token in
+  let direct_required_token_with_text_in_tokens ~context expected =
+    match direct_token_with_text_in_tokens expected with
+    | Some token -> token
+    | None -> bail
+      ~message:(("expected '" ^ expected ^ "' token during Ceibo -> CST lifting"))
+      ~syntax_node:node
+      ~context
+  in
   let has_guard =
-    direct_non_trivia_tokens node
+    direct_tokens
     |> List.exists
       (fun syntax_token ->
         String.equal (Ceibo.Red.SyntaxToken.text syntax_token) "when")
@@ -7276,10 +7357,10 @@ and match_case_from_node = fun node ->
       | body_exprs, false -> (
           match List.rev body_exprs with
           | body_expr :: _ ->
-              let arrow_token = direct_required_token_with_text ~context:[ "match_case" ] node "->" in
+              let arrow_token = direct_required_token_with_text_in_tokens ~context:[ "match_case" ] "->" in
               Some {
                 syntax_node = node;
-                bar_token = direct_token_with_text node "|";
+                bar_token = direct_token_with_text_in_tokens "|";
                 when_token = None;
                 arrow_token;
                 pattern = pattern_from_node pattern_node;
@@ -7289,22 +7370,22 @@ and match_case_from_node = fun node ->
           | [] -> None
         )
       | guard_expr :: body_expr :: _, true ->
-          let arrow_token = direct_required_token_with_text ~context:[ "match_case" ] node "->" in
+          let arrow_token = direct_required_token_with_text_in_tokens ~context:[ "match_case" ] "->" in
           Some {
             syntax_node = node;
-            bar_token = direct_token_with_text node "|";
-            when_token = direct_token_with_text node "when";
+            bar_token = direct_token_with_text_in_tokens "|";
+            when_token = direct_token_with_text_in_tokens "when";
             arrow_token;
             pattern = pattern_from_node pattern_node;
             guard = Some guard_expr;
             body = body_expr;
           }
       | body_expr :: _, true ->
-          let arrow_token = direct_required_token_with_text ~context:[ "match_case" ] node "->" in
+          let arrow_token = direct_required_token_with_text_in_tokens ~context:[ "match_case" ] "->" in
           Some {
             syntax_node = node;
-            bar_token = direct_token_with_text node "|";
-            when_token = direct_token_with_text node "when";
+            bar_token = direct_token_with_text_in_tokens "|";
+            when_token = direct_token_with_text_in_tokens "when";
             arrow_token;
             pattern = pattern_from_node pattern_node;
             guard = None;

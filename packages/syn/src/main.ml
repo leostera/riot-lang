@@ -1,6 +1,17 @@
 open Syn
 open Std
 
+let now_nanos = fun () -> Time.SystemTime.now () |> Time.SystemTime.nanos
+
+let duration_ms = fun ~start ~finish ->
+  Int64.sub finish start |> Int64.to_float |> fun nanos -> nanos /. 1_000_000.0
+
+let trace_cst_timings_enabled = fun () ->
+  Env.var Env.Bool ~name:"SYN_TRACE_CST_TIMINGS" |> Option.unwrap_or ~default:false
+
+let trace_cst_timing = fun label duration ->
+  eprintln ("[syn] " ^ label ^ ": " ^ Float.to_string duration ^ "ms")
+
 let parse_file = fun ~file ~source ->
   let tokens = Lexer.tokenize source in
   if String.ends_with ~suffix:".mli" file then
@@ -122,26 +133,49 @@ let handle_print_cst = fun sub_matches ->
       Log.error ("Error reading file " ^ file);
       exit 1
   | Ok source ->
+      let trace_timings = trace_cst_timings_enabled () in
+      let parse_started = now_nanos () in
       let result = parse_file ~file ~source in
+      let parse_finished = now_nanos () in
       let json =
         if result.diagnostics != [] then
           Data.Json.Object [
             ("status", Data.Json.String "parse_error");
             ("diagnostics", Data.Json.Array (List.map Diagnostic.to_json result.diagnostics))
           ]
-        else
-          CstBuilder.create_from_ceibo
-            ~kind:((
-              if String.ends_with ~suffix:".mli" file then
-                `Interface
-              else
-                `Implementation
-            ))
-            ~source
-            ~tokens:result.tokens
-            result.tree |> CstJson.of_result
+        else (
+          let build_started = now_nanos () in
+          let cst_result =
+            CstBuilder.create_from_ceibo
+              ~kind:((
+                if String.ends_with ~suffix:".mli" file then
+                  `Interface
+                else
+                  `Implementation
+              ))
+              ~source
+              ~tokens:result.tokens
+              result.tree
+          in
+          let build_finished = now_nanos () in
+          let json_started = now_nanos () in
+          let json = CstJson.of_result cst_result in
+          let json_finished = now_nanos () in
+          if trace_timings then
+            (
+              trace_cst_timing "parse_file" (duration_ms ~start:parse_started ~finish:parse_finished);
+              trace_cst_timing "build_cst" (duration_ms ~start:build_started ~finish:build_finished);
+              trace_cst_timing "cst_json" (duration_ms ~start:json_started ~finish:json_finished)
+            );
+          json
+        )
       in
-      println (Data.Json.to_string json)
+      let stringify_started = now_nanos () in
+      let output = Data.Json.to_string json in
+      let stringify_finished = now_nanos () in
+      if trace_timings then
+        trace_cst_timing "json_to_string" (duration_ms ~start:stringify_started ~finish:stringify_finished);
+      println output
 
 let handle_explain = fun sub_matches ->
   let error_code = ArgParser.get_one sub_matches "ERROR_CODE" |> Option.expect ~msg:"ERROR_CODE required" in
