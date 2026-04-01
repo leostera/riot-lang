@@ -28,8 +28,8 @@ val get: t -> Std.Crypto.hash -> Artifact.t option
 (** Check if we have cached artifacts for this hash. Returns Some artifact if
     cached, None if not. The artifact contains the list of files. *)
 val save:
-  t ->
   ?ocamlc_warnings:string list ->
+  t ->
   package:string ->
   hash:Std.Crypto.hash ->
   sandbox_dir:Std.Path.t ->

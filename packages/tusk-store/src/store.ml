@@ -157,7 +157,7 @@ let get = fun store hash ->
   else
     None
 (** Save build outputs to the store *)
-let save = fun store ?(ocamlc_warnings = []) ~package ~hash ~sandbox_dir ~outs ->
+let save = fun ?(ocamlc_warnings = []) store ~package ~hash ~sandbox_dir ~outs ->
   let sandbox_str = Path.to_string sandbox_dir in
   let sandbox_len = String.length sandbox_str in
   let outs_str =

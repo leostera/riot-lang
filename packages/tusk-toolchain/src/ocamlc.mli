@@ -6,6 +6,34 @@ open Std
 
 type t
 type invocation
+module Diagnostic : sig
+  type severity =
+    | Warning
+    | Error
+    | Note
+    | Unknown
+  type location = {
+    path: string;
+    line: int option;
+    start_char: int option;
+    end_char: int option;
+    column: int option;
+  }
+  type t
+  val parse: string -> t list
+
+  val render: t -> string
+
+  val render_all: t list -> string
+
+  val map_path: (string -> string option) -> t -> t
+
+  val location: t -> location option
+
+  val severity: t -> severity
+
+  val is_warning: t -> bool
+end
 val make: Path.t -> t
 
 val path: t -> Path.t
@@ -37,12 +65,16 @@ val flags_to_string: compiler_flag list -> string list
 (** Compilation result *)
 type success = {
   message: string;
-  ocamlc_warnings: string list;
+  diagnostics: Diagnostic.t list;
+}
+type failure = {
+  message: string;
+  diagnostics: Diagnostic.t list;
 }
 type result =
   | Success of success
   (** Successful compilation with output *)
-  | Failed of string
+  | Failed of failure
 (** Compilation failed with error message *)
 (** {1 Compilation} *)
 

@@ -17,14 +17,342 @@ type compiler_flag =
   | Warning of compiler_warning list
   | LinkAll
 
+module Diagnostic = struct
+  type severity =
+    | Warning
+    | Error
+    | Note
+    | Unknown
+
+  type location = {
+    path: string;
+    line: int option;
+    start_char: int option;
+    end_char: int option;
+    column: int option;
+  }
+
+  type render_spec =
+    | Literal of string
+    | Rewritable of {
+        prefix: string;
+        suffix: string;
+      }
+
+  type parsed = {
+    render_spec: render_spec;
+    location: location option;
+    severity: severity;
+    code: string option;
+    body: string list;
+  }
+
+  type t =
+    | Parsed of parsed
+    | Raw of string
+
+  let parse_int_opt = fun value ->
+    try Some (int_of_string value) with
+    | _ -> None
+
+  let rec find_substring_from = fun text ~needle ~start ->
+    let text_len = String.length text in
+    let needle_len = String.length needle in
+    if needle_len = 0 then
+      Some start
+    else if start + needle_len > text_len then
+      None
+    else if String.equal (String.sub text start needle_len) needle then
+      Some start
+    else
+      find_substring_from text ~needle ~start:(start + 1)
+
+  let find_substring = fun text needle ->
+    find_substring_from text ~needle ~start:0
+
+  let parse_bracket_code = fun line ->
+    match find_substring line "[" with
+    | None -> None
+    | Some start -> (
+        match find_substring_from line ~needle:"]" ~start:(start + 1) with
+        | None -> None
+        | Some stop ->
+            Some (String.sub line (start + 1) (stop - start - 1))
+      )
+
+  let strip_ansi = fun line ->
+    let rec loop acc idx =
+      if idx >= String.length line then
+        acc |> List.rev |> List.to_seq |> String.of_seq
+      else
+        let ch = String.get line idx in
+        if ch = '\027' then
+          let rec skip_escape j =
+            if j >= String.length line then
+              j
+            else
+              let escape_ch = String.get line j in
+              if (escape_ch >= 'A' && escape_ch <= 'Z') || (escape_ch >= 'a' && escape_ch <= 'z') then
+                j + 1
+              else
+                skip_escape (j + 1)
+          in
+          loop acc (skip_escape (idx + 1))
+        else
+          loop (ch :: acc) (idx + 1)
+    in
+    loop [] 0
+
+  let starts_with_ocaml_header = fun line ->
+    let line = strip_ansi line in
+    String.starts_with ~prefix:"File \"" line && String.contains line "\", line "
+
+  let split_ocaml_header = fun line ->
+    let line = strip_ansi line in
+    match find_substring line "File \"" with
+    | None -> None
+    | Some marker -> (
+        let path_start = marker + 6 in
+        match find_substring_from line ~needle:"\", line " ~start:path_start with
+        | None -> None
+        | Some path_end ->
+            let prefix = String.sub line 0 path_start in
+            let path = String.sub line path_start (path_end - path_start) in
+            let suffix = String.sub line path_end (String.length line - path_end) in
+            let location =
+              match find_substring suffix "\", line " with
+              | None -> { path; line = None; start_char = None; end_char = None; column = None }
+              | Some marker ->
+                  let line_start = marker + 8 in
+                  let line_stop =
+                    match find_substring_from suffix ~needle:"," ~start:line_start with
+                    | Some idx -> idx
+                    | None -> String.length suffix
+                  in
+                  let line_no = parse_int_opt (String.sub suffix line_start (line_stop - line_start)) in
+                  let start_char, end_char =
+                    match find_substring suffix ", characters " with
+                    | None -> (None, None)
+                    | Some chars_idx ->
+                        let chars_start = chars_idx + 13 in
+                        let dash_idx =
+                          match find_substring_from suffix ~needle:"-" ~start:chars_start with
+                          | Some idx -> idx
+                          | None -> String.length suffix
+                        in
+                        let chars_end =
+                          match find_substring_from suffix ~needle:":" ~start:dash_idx with
+                          | Some idx -> idx
+                          | None -> String.length suffix
+                        in
+                        let start_char =
+                          parse_int_opt (String.sub suffix chars_start (dash_idx - chars_start))
+                        in
+                        let end_char =
+                          if dash_idx < chars_end then
+                            parse_int_opt (String.sub suffix (dash_idx + 1) (chars_end - dash_idx - 1))
+                          else
+                            None
+                        in
+                        (start_char, end_char)
+                  in
+                  {
+                    path;
+                    line = line_no;
+                    start_char;
+                    end_char;
+                    column = None;
+                  }
+            in
+            Some (prefix, location, suffix)
+      )
+
+  let starts_with_c_header = fun line ->
+    let line = strip_ansi line in
+    let parts = String.split_on_char ':' line in
+    match parts with
+    | path :: line_no :: column :: rest ->
+        String.length path > 0
+        && (
+          match (parse_int_opt line_no, parse_int_opt column) with
+          | Some _, Some _ -> true
+          | _ -> false
+        )
+        && List.length rest > 0
+    | _ -> false
+
+  let split_c_header = fun line ->
+    let line = strip_ansi line in
+    let parts = String.split_on_char ':' line in
+    match parts with
+    | path :: line_no_str :: column_str :: rest ->
+        let rest_str = String.concat ":" rest in
+        let trimmed_rest = String.trim rest_str in
+        if String.length path = 0 then
+          None
+        else
+          match (parse_int_opt line_no_str, parse_int_opt column_str) with
+          | Some line_no, Some column when
+              String.starts_with ~prefix:"warning:" trimmed_rest
+              || String.starts_with ~prefix:"error:" trimmed_rest
+              || String.starts_with ~prefix:"note:" trimmed_rest ->
+              let suffix =
+                String.sub
+                  line
+                  (String.length path)
+                  (String.length line - String.length path)
+              in
+              Some
+                ( "",
+                  {
+                    path;
+                    line = Some line_no;
+                    start_char = None;
+                    end_char = None;
+                    column = Some column;
+                  },
+                  suffix )
+          | Some _, Some _ -> None
+          | _ -> None
+    | _ -> None
+
+  let classify = fun lines ->
+    let rec loop = function
+      | [] -> (Unknown, None)
+      | line :: rest ->
+          let trimmed = line |> strip_ansi |> String.trim in
+          if String.starts_with ~prefix:"Warning " trimmed then
+            (Warning, parse_bracket_code trimmed)
+          else if String.contains trimmed ": warning:" then
+            (Warning, parse_bracket_code trimmed)
+          else if String.starts_with ~prefix:"Error:" trimmed || String.contains trimmed ": error:" then
+            (Error, parse_bracket_code trimmed)
+          else if String.starts_with ~prefix:"Note:" trimmed || String.contains trimmed ": note:" then
+            (Note, parse_bracket_code trimmed)
+          else
+            loop rest
+    in
+    loop lines
+
+  let make_raw = fun lines ->
+    Raw (String.concat "\n" lines)
+
+  let parse_block = function
+    | [] -> None
+    | first :: body ->
+        let lines = first :: body in
+        try
+          match split_ocaml_header first with
+          | Some (prefix, location, suffix) ->
+              let severity, code = classify lines in
+              Some
+                (Parsed
+                   {
+                     render_spec = Rewritable { prefix; suffix };
+                     location = Some location;
+                     severity;
+                     code;
+                     body;
+                   })
+          | None -> (
+              match split_c_header first with
+              | Some (prefix, location, suffix) ->
+                  let severity, code = classify lines in
+                  Some
+                    (Parsed
+                       {
+                         render_spec = Rewritable { prefix; suffix };
+                         location = Some location;
+                         severity;
+                         code;
+                         body;
+                       })
+              | None -> Some (make_raw lines))
+        with
+        | _ -> Some (make_raw lines)
+
+  let parse = fun text ->
+    let trimmed = String.trim text in
+    if String.equal trimmed "" then
+      []
+    else
+      let lines = String.split_on_char '\n' trimmed in
+      let flush_block acc current =
+        match parse_block (List.rev current) with
+        | Some diag -> acc @ [ diag ]
+        | None -> acc
+      in
+      let rec loop acc current = function
+        | [] -> flush_block acc current
+        | line :: rest ->
+            if starts_with_ocaml_header line || starts_with_c_header line then
+              match current with
+              | [] -> loop acc [ line ] rest
+              | _ -> loop (flush_block acc current) [ line ] rest
+            else
+              loop acc (line :: current) rest
+      in
+      loop [] [] lines
+
+  let render_header = fun diagnostic ->
+    match diagnostic with
+    | Raw raw -> raw
+    | Parsed { render_spec; location; _ } -> (
+        match (render_spec, location) with
+        | Literal line, _ -> line
+        | Rewritable { prefix; suffix }, Some location -> prefix ^ location.path ^ suffix
+        | Rewritable { prefix; suffix }, None -> prefix ^ suffix
+      )
+
+  let render = fun diagnostic ->
+    match diagnostic with
+    | Raw raw -> raw
+    | Parsed { body; _ } -> String.concat "\n" (render_header diagnostic :: body)
+
+  let render_all = fun diagnostics ->
+    diagnostics |> List.map render |> String.concat "\n"
+
+  let map_path = fun rewrite diagnostic ->
+    match diagnostic with
+    | Raw _ -> diagnostic
+    | Parsed parsed -> (
+        match parsed.location with
+        | None -> diagnostic
+        | Some location -> (
+            match rewrite location.path with
+            | None -> diagnostic
+            | Some path -> Parsed { parsed with location = Some { location with path } }
+          ))
+
+  let location = function
+    | Raw _ -> None
+    | Parsed parsed -> parsed.location
+
+  let severity = function
+    | Raw _ -> Unknown
+    | Parsed parsed -> parsed.severity
+
+  let is_warning = fun diagnostic ->
+    match severity diagnostic with
+    | Warning -> true
+    | Error
+    | Note
+    | Unknown -> false
+end
+
 type success = {
   message: string;
-  ocamlc_warnings: string list;
+  diagnostics: Diagnostic.t list;
+}
+
+type failure = {
+  message: string;
+  diagnostics: Diagnostic.t list;
 }
 
 type result =
   Success of success
-  | Failed of string
+  | Failed of failure
 
 type mode =
   | Compile
@@ -286,52 +614,57 @@ let to_string = fun invocation ->
   in
   "cd " ^ Path.to_string invocation.cwd ^ " && " ^ env_prefix ^ invocation.command_string
 
-let collect_ocamlc_warnings = fun stderr ->
-  let trimmed = String.trim stderr in
-  if String.equal trimmed "" then
-    []
-  else
-    [ trimmed ]
-
 let run = fun invocation ->
   Log.debug ("[OCAMLC] Running command: " ^ to_string invocation);
   let cmd = run_in_dir ~cwd:invocation.cwd ~env:invocation.env invocation.command_string in
   match Command.output cmd with
   | Ok output when output.Command.status = 0 -> (
-      let ocamlc_warnings = collect_ocamlc_warnings output.Command.stderr in
+      let diagnostics = Diagnostic.parse output.Command.stderr in
       match invocation.output_mode with
-      | Normal -> Success { message = output.Command.stdout; ocamlc_warnings }
+      | Normal -> Success { message = output.Command.stdout; diagnostics }
       | WriteStdoutToFile file -> (
           match Fs.write output.Command.stdout file with
           | Ok () -> Success {
             message = "Generated interface " ^ Path.to_string file;
-            ocamlc_warnings;
+            diagnostics;
           }
-          | Error err -> Failed ("Failed to write " ^ Path.to_string file ^ ": " ^ IO.error_message err)
+          | Error err -> Failed {
+            message = "Failed to write " ^ Path.to_string file ^ ": " ^ IO.error_message err;
+            diagnostics = [];
+          }
         )
     )
   | Ok output -> (
+      let diagnostics = Diagnostic.parse output.Command.stderr in
       match invocation.output_mode with
-      | Normal -> Failed ("Command failed with status "
-      ^ Int.to_string output.Command.status
-      ^ ": "
-      ^ output.Command.stderr)
-      | WriteStdoutToFile _ -> Failed ("ocamlc -i failed with exit code "
-      ^ Int.to_string output.Command.status
-      ^ ": "
-      ^ output.Command.stderr)
+      | Normal -> Failed {
+        message = "Command failed with status " ^ Int.to_string output.Command.status;
+        diagnostics;
+      }
+      | WriteStdoutToFile _ -> Failed {
+        message = "ocamlc -i failed with exit code " ^ Int.to_string output.Command.status;
+        diagnostics;
+      }
     )
   | Error (Command.SystemError msg) ->
-      Failed msg
+      Failed { message = msg; diagnostics = [] }
 
 let is_success = function
   | Success _ -> true
   | Failed _ -> false
 
 let get_output = function
-  | Success { message; _ }
-  | Failed message -> message
+  | Success { message; _ } -> message
+  | Failed { message; diagnostics } ->
+      let rendered = Diagnostic.render_all diagnostics in
+      if String.equal rendered "" then
+        message
+      else
+        message ^ ": " ^ rendered
 
 let get_ocamlc_warnings = function
-  | Success { ocamlc_warnings; _ } -> ocamlc_warnings
+  | Success { diagnostics; _ } ->
+      diagnostics
+      |> List.filter Diagnostic.is_warning
+      |> List.map Diagnostic.render
   | Failed _ -> []

@@ -57,8 +57,16 @@ let emit_action_command = fun ~session_id ~package ~node command ->
   Telemetry.emit
     Telemetry_events.(ActionCommandStarted { session_id; package; action = node; command })
 
-let ocamlc_success = fun ?(ocamlc_warnings = []) message ->
-  Tusk_toolchain.Ocamlc.Success { message; ocamlc_warnings }
+let ocamlc_success = fun message ->
+  Tusk_toolchain.Ocamlc.Success { message; diagnostics = [] }
+
+let ocamlc_failed = fun message ->
+  Tusk_toolchain.Ocamlc.Failed { message; diagnostics = [] }
+
+let run_ocamlc_invocation = fun ~session_id ~package ~node ~sandbox_dir invocation ->
+  emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
+  Tusk_toolchain.Ocamlc.run invocation
+  |> Diagnostic_rewrite.rewrite_ocamlc_result ~package ~sandbox_dir
 
 let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
   match action with
@@ -74,8 +82,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~flags:abs_flags
         ~output:abs_output
         abs_source in
-      emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
-      Tusk_toolchain.Ocamlc.run invocation
+      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
   | Action.CompileImplementation { source; outputs=output :: _; includes; flags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
@@ -88,8 +95,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~flags:abs_flags
         ~output:abs_output
         abs_source in
-      emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
-      Tusk_toolchain.Ocamlc.run invocation
+      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
   | Action.GenerateInterface { source; outputs=output :: _; includes; flags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
@@ -102,8 +108,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~flags:abs_flags
         ~output:abs_output
         abs_source in
-      emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
-      Tusk_toolchain.Ocamlc.run invocation
+      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
   | Action.CompileC { source; outputs=output :: _; ccflags } ->
       let abs_source = Path.join sandbox_dir source in
       let abs_output = Path.join sandbox_dir output in
@@ -120,8 +125,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~ccflags
         ~output:abs_output
         abs_source in
-      emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
-      Tusk_toolchain.Ocamlc.run invocation
+      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
   | Action.CreateLibrary { outputs=output :: _; objects; includes } ->
       let abs_output = Path.join sandbox_dir output in
       let rel_objects = objects in
@@ -132,8 +136,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~includes:abs_includes
         ~output:abs_output
         rel_objects in
-      emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
-      Tusk_toolchain.Ocamlc.run invocation
+      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
   | Action.CreateExecutable {
     outputs=output :: _;
     objects;
@@ -174,8 +177,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~cclib_flags
         ~output:abs_output
         abs_objects in
-      emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
-      let result = Tusk_toolchain.Ocamlc.run invocation in
+      let result = run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation in
       match result with
       | Tusk_toolchain.Ocamlc.Success _ -> (
           match Fs.set_permissions abs_output (Fs.Permissions.of_mode 0o755) with
@@ -230,8 +232,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ~cclib_flags
         ~output:abs_output
         abs_objects in
-      emit_action_command ~session_id ~package ~node (Tusk_toolchain.Ocamlc.to_string invocation);
-      Tusk_toolchain.Ocamlc.run invocation
+      run_ocamlc_invocation ~session_id ~package ~node ~sandbox_dir invocation
     )
   | Action.CompileInterface { outputs=[]; _ }
   | Action.CompileImplementation { outputs=[]; _ }
@@ -240,7 +241,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
   | Action.CreateLibrary { outputs=[]; _ }
   | Action.CreateExecutable { outputs=[]; _ }
   | Action.CreateSharedLibrary { outputs=[]; _ } ->
-      Tusk_toolchain.Ocamlc.Failed "Action has no outputs"
+      ocamlc_failed "Action has no outputs"
   | Action.CopyFile { source; destination } -> (
       let src_path =
         if Path.is_absolute source then
@@ -251,7 +252,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
       let dst_path = Path.join sandbox_dir destination in
       match Fs.copy ~src:src_path ~dst:dst_path with
       | Ok () -> ocamlc_success "Copied"
-      | Error _ -> Tusk_toolchain.Ocamlc.Failed ("Copy failed: "
+      | Error _ -> ocamlc_failed ("Copy failed: "
       ^ Path.to_string source
       ^ " -> "
       ^ Path.to_string destination)
@@ -271,7 +272,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
       | Error err ->
           let msg = IO.error_message err in
           Log.error ("WriteFile: failed - " ^ msg);
-          Tusk_toolchain.Ocamlc.Failed ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg)
+          ocamlc_failed ("Write failed: " ^ Path.to_string destination ^ " - " ^ msg)
     )
   | Action.BuildForeignDependency {
     name;
@@ -283,7 +284,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
       let build_cmd_str = String.concat " " build_cmd in
       Log.info ("   \027[1;32mCompiling\027[0m " ^ name ^ " (" ^ build_cmd_str ^ ")");
       match build_cmd with
-      | [] -> Tusk_toolchain.Ocamlc.Failed "BuildForeignDependency: empty build_cmd"
+      | [] -> ocamlc_failed "BuildForeignDependency: empty build_cmd"
       | cmd_name :: cmd_args ->
           let normalized_path = Path.normalize path in
           let cmd = Command.make ~cwd:(Path.to_string normalized_path) ~env ~args:cmd_args cmd_name in
@@ -308,7 +309,7 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
                   abs_outputs
               in
               if List.length missing > 0 then
-                Tusk_toolchain.Ocamlc.Failed ("Foreign build succeeded but outputs not created: "
+                ocamlc_failed ("Foreign build succeeded but outputs not created: "
                 ^ String.concat ", " (List.map Path.to_string missing))
               else
                 ocamlc_success ("Built foreign dependency: " ^ name)
@@ -317,13 +318,13 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
                 ("Foreign build failed: " ^ name ^ " - exit code " ^ Int.to_string output.Command.status);
               if String.length output.Command.stderr > 0 then
                 Log.error ("stderr: " ^ output.Command.stderr);
-              Tusk_toolchain.Ocamlc.Failed ("Foreign build failed: "
+              ocamlc_failed ("Foreign build failed: "
               ^ name
               ^ " - exit code "
               ^ Int.to_string output.Command.status)
           | Error (Command.SystemError msg) ->
               Log.error ("Failed to execute foreign build: " ^ msg);
-              Tusk_toolchain.Ocamlc.Failed ("Failed to execute foreign build command: " ^ msg)
+              ocamlc_failed ("Failed to execute foreign build command: " ^ msg)
     )
 
 let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_dir actions ->
@@ -334,9 +335,10 @@ let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_di
     | action :: rest -> (
         let result = run_action ~session_id ~package ~node ocamlc sandbox_dir action in
         match result with
-        | Tusk_toolchain.Ocamlc.Success { ocamlc_warnings=action_warnings; _ } ->
+        | Tusk_toolchain.Ocamlc.Success _ ->
+            let action_warnings = Tusk_toolchain.Ocamlc.get_ocamlc_warnings result in
             execute_next (ocamlc_warnings @ action_warnings) rest
-        | Tusk_toolchain.Ocamlc.Failed err -> Error err
+        | Tusk_toolchain.Ocamlc.Failed _ -> Error (Tusk_toolchain.Ocamlc.get_output result)
       )
   in
   execute_next [] actions
