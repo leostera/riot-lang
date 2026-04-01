@@ -234,7 +234,8 @@ let command =
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
       ]
 
-let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) request target_arch ->
+let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary =
+  true) request target_arch ->
   let startup_session_id = Session_id.make () in
   let seen_registry_updates = HashSet.create () in
   match Local_session.connect_local
@@ -395,41 +396,42 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
             Local_session.close client;
             event
       in
-      (
-        match mode with
-        | Json -> ()
-        | Human ->
-            let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
-            let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
-            let total_count = !built_count + !cached_count in
-            if !failed_count = 0 && !skipped_count = 0 then
-              out
-                ("    \027[1;32mFinished\027[0m in "
-                ^ formatted_duration
-                ^ "s ("
-                ^ Int.to_string total_count
-                ^ " built)")
-            else if !failed_count > 0 then
-              out
-                ("    \027[1;31mFinished\027[0m in "
-                ^ formatted_duration
-                ^ "s ("
-                ^ Int.to_string total_count
-                ^ " built, "
-                ^ Int.to_string !failed_count
-                ^ " failed, "
-                ^ Int.to_string !skipped_count
-                ^ " skipped)")
-            else
-              out
-                ("    \027[1;33mFinished\027[0m in "
-                ^ formatted_duration
-                ^ "s ("
-                ^ Int.to_string total_count
-                ^ " built, "
-                ^ Int.to_string !skipped_count
-                ^ " skipped)")
-      );
+      if show_finished_summary then
+        (
+          match mode with
+          | Json -> ()
+          | Human ->
+              let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
+              let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
+              let total_count = !built_count + !cached_count in
+              if !failed_count = 0 && !skipped_count = 0 then
+                out
+                  ("    \027[1;32mFinished\027[0m in "
+                  ^ formatted_duration
+                  ^ "s ("
+                  ^ Int.to_string total_count
+                  ^ " built)")
+              else if !failed_count > 0 then
+                out
+                  ("    \027[1;31mFinished\027[0m in "
+                  ^ formatted_duration
+                  ^ "s ("
+                  ^ Int.to_string total_count
+                  ^ " built, "
+                  ^ Int.to_string !failed_count
+                  ^ " failed, "
+                  ^ Int.to_string !skipped_count
+                  ^ " skipped)")
+              else
+                out
+                  ("    \027[1;33mFinished\027[0m in "
+                  ^ formatted_duration
+                  ^ "s ("
+                  ^ Int.to_string total_count
+                  ^ " built, "
+                  ^ Int.to_string !skipped_count
+                  ^ " skipped)")
+        );
       match final_event with
       | Local_session.BuildCompleted _ -> Ok ()
       | Local_session.BuildFailed _ -> Error (Failure "Build failed")
@@ -438,7 +440,7 @@ let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = 
       | Local_session.BuildStarted _
       | Local_session.BuildEvent _ -> Error (Failure "Unexpected response from server")
 
-let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Human) package_opt target_arch ->
+let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
   let (workspace, load_errors) =
     match (workspace, load_errors) with
     | Some workspace, Some load_errors -> (workspace, load_errors)
@@ -451,16 +453,17 @@ let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Huma
     | Some pkg -> Local_session.BuildPackage pkg
     | None -> Local_session.BuildAll
   in
-  run_build_request ~workspace ~load_errors ~scope ~mode request target_arch
+  run_build_request ~workspace ~load_errors ~scope ~mode ~show_finished_summary request target_arch
 
-let build_packages_command = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) package_names target_arch ->
+let build_packages_command = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary =
+  true) package_names target_arch ->
   let request =
     match package_names with
     | [] -> Local_session.BuildAll
     | [ package_name ] -> Local_session.BuildPackage package_name
     | packages -> Local_session.BuildPackages packages
   in
-  run_build_request ~workspace ~load_errors ~scope ~mode request target_arch
+  run_build_request ~workspace ~load_errors ~scope ~mode ~show_finished_summary request target_arch
 
 let run = fun ~workspace ~load_errors matches ->
   let open ArgParser in

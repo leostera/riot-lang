@@ -19,6 +19,7 @@ val build_command:
   ?load_errors:Tusk_model.Workspace_manager.load_error list ->
   ?scope:build_scope ->
   ?mode:output_mode ->
+  ?show_finished_summary:bool ->
   string option ->
   string option ->
   (unit, exn) result
