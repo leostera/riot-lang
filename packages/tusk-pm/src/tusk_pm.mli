@@ -8,6 +8,8 @@ module Lock_refresh = Lock_refresh
 
 module Projection = Projection
 
+module Materializer = Materializer
+
 type event_sink = Tusk_model.Event.kind -> unit
 
 val ensure_lock:

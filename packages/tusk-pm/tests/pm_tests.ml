@@ -68,6 +68,9 @@ let make_registry_document = fun ?(releases = []) ~name ~latest () ->
 let make_registry = fun packages ->
   Pkgs_ml.Registry.in_memory ~packages ()
 
+let make_registry_with_releases = fun ~packages ~releases ->
+  Pkgs_ml.Registry.in_memory ~packages ~releases ()
+
 let run_lock_deps = fun ?(registry = make_registry []) ?(registry_cache = make_registry_cache ()) ~mode ~existing_lock packages ->
   Tusk_pm.Dep_solver.lock_deps
     ~mode
@@ -512,6 +515,145 @@ let test_ensure_lock_uses_existing_fresh_lock = fun () ->
           else
             Error "expected ensure_lock to reuse a fresh existing lock without rewriting it")
 
+let test_ensure_lock_materializes_registry_packages_before_projection = fun () ->
+  with_tempdir "tusk_pm_ensure_lock_materializes"
+    (fun workspace_root ->
+      let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
+      Fs.write "[workspace]\nmembers = []\n" manifest_path
+      |> Result.expect ~msg:"expected workspace manifest to be written";
+      let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "std"; source = Tusk_model.Package.Registry { version = requirement } } ]
+        ()
+      in
+      let registry_cache =
+        Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(workspace_root / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+        |> Result.expect ~msg:"expected registry cache to initialize"
+      in
+      let registry =
+        make_registry_with_releases
+          ~packages:[
+            make_registry_document
+              ~name:"std"
+              ~latest:"0.2.0"
+              ~releases:[ make_release ~version:"0.2.0" () ]
+              ();
+          ]
+          ~releases:[
+            {
+              Pkgs_ml.Registry.package_name = "std";
+              version = "0.2.0";
+              manifest_toml = "[package]\nname = \"std\"\n";
+              files = [ { path = Path.v "src/std.ml"; contents = "let answer = 42\n" } ];
+            };
+          ]
+      in
+      match collect_event_names
+        (fun emit ->
+          Tusk_pm.ensure_lock
+            ~emit
+            ~mode:Tusk_pm.Dep_solver.Refresh
+            ~registry
+            ~registry_cache
+            ~registry_name:"pkgs.ml"
+            ~workspace_root
+            ~manifest_paths:[ manifest_path ]
+            ~packages:[ app_pkg ]
+            ())
+      with
+      | Error err -> Error ("expected ensure_lock to materialize registry packages: " ^ err)
+      | Ok ((_, resolved), event_names) ->
+          let manifest_path =
+            Pkgs_ml.Registry_cache.package_src_dir registry_cache ~package_name:"std" ~version:"0.2.0"
+            |> fun root -> Path.(root / Path.v "tusk.toml")
+          in
+          if
+            List.length resolved = 2
+            && Result.unwrap_or ~default:false (Fs.exists manifest_path)
+            && List.mem "tusk.pm.package_materialization.started" event_names
+            && List.mem "tusk.pm.package_materialization.finished" event_names
+          then
+            Ok ()
+          else
+            Error "expected ensure_lock to materialize external package manifests before projection")
+
+let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_packages = fun () ->
+  with_tempdir "tusk_pm_ensure_lock_materializes_existing"
+    (fun workspace_root ->
+      let manifest_path = Path.(workspace_root / Path.v "tusk.toml") in
+      Fs.write "[workspace]\nmembers = []\n" manifest_path
+      |> Result.expect ~msg:"expected workspace manifest to be written";
+      let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "std"; source = Tusk_model.Package.Registry { version = requirement } } ]
+        ()
+      in
+      let registry_cache =
+        Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(workspace_root / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+        |> Result.expect ~msg:"expected registry cache to initialize"
+      in
+      let registry =
+        make_registry_with_releases
+          ~packages:[
+            make_registry_document
+              ~name:"std"
+              ~latest:"0.2.0"
+              ~releases:[ make_release ~version:"0.2.0" () ]
+              ();
+          ]
+          ~releases:[
+            {
+              Pkgs_ml.Registry.package_name = "std";
+              version = "0.2.0";
+              manifest_toml = "[package]\nname = \"std\"\n";
+              files = [];
+            };
+          ]
+      in
+      let existing_lock =
+        Tusk_pm.Dep_solver.lock_deps
+          ~mode:Tusk_pm.Dep_solver.Refresh
+          ~registry
+          ~registry_cache
+          ~registry_name:"pkgs.ml"
+          ~existing_lock:None
+          [ app_pkg ]
+        |> Result.expect ~msg:"expected initial lock solve to succeed"
+      in
+      Tusk_pm.Lockfile_store.write ~workspace_root existing_lock
+      |> Result.expect ~msg:"expected initial lockfile write to succeed";
+      match collect_event_names
+        (fun emit ->
+          Tusk_pm.ensure_lock
+            ~emit
+            ~mode:Tusk_pm.Dep_solver.Refresh
+            ~registry
+            ~registry_cache
+            ~registry_name:"pkgs.ml"
+            ~workspace_root
+            ~manifest_paths:[ manifest_path ]
+            ~packages:[ app_pkg ]
+            ())
+      with
+      | Error err -> Error ("expected ensure_lock to reuse lock and materialize missing packages: " ^ err)
+      | Ok ((_, resolved), event_names) ->
+          if
+            List.length resolved = 2
+            && List.mem "tusk.pm.resolution.using_existing_lock" event_names
+            && List.mem "tusk.pm.package_materialization.finished" event_names
+          then
+            Ok ()
+          else
+            Error "expected ensure_lock to reuse the lock while still materializing missing registry packages")
+
 let test_projection_resolves_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -731,6 +873,8 @@ let tests =
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
+    case "ensure lock: materializes registry packages before projection" test_ensure_lock_materializes_registry_packages_before_projection;
+    case "ensure lock: reuses existing lock and materializes missing registry packages" test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_packages;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
     case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;

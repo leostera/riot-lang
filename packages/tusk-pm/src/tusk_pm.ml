@@ -3,6 +3,7 @@ module Dep_solver = Dep_solver
 module Lockfile_store = Lockfile_store
 module Lock_refresh = Lock_refresh
 module Projection = Projection
+module Materializer = Materializer
 
 type event_sink = Tusk_model.Event.kind -> unit
 
@@ -133,15 +134,21 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~registry_cache ~registr
               emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
               Error err
           | Ok () -> (
-              match Projection.resolve_packages ~packages ~lockfile with
+              match Materializer.ensure_packages ~emit ~registry ~registry_cache ~lockfile () with
               | Error err ->
                   emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
                   Error err
-              | Ok resolved ->
-                  emit (Tusk_model.Event.DependencyResolutionFinished {
-                    duration_ms = duration_ms_since solve_started;
-                    resolved_packages = List.length resolved;
-                    resolved_edges = resolved_edge_count lockfile;
-                  });
-                  Ok (lockfile, resolved)
+              | Ok () -> (
+                  match Projection.resolve_packages ~packages ~lockfile with
+                  | Error err ->
+                      emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
+                      Error err
+                  | Ok resolved ->
+                      emit (Tusk_model.Event.DependencyResolutionFinished {
+                        duration_ms = duration_ms_since solve_started;
+                        resolved_packages = List.length resolved;
+                        resolved_edges = resolved_edge_count lockfile;
+                      });
+                      Ok (lockfile, resolved)
+                )
             )
