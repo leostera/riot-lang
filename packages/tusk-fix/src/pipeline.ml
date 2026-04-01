@@ -249,7 +249,8 @@ let filtered_builtin_rules = fun package_rules ->
 
 let builtin_rules = fun () -> builtin_rule_factories () |> List.map (fun factory -> factory.make ())
 
-let run = fun pipeline ?filename source -> Fixme.Source_runner.run ~rules:pipeline.rules ?filename source
+let run = fun pipeline ?filename ?on_progress source ->
+  Fixme.Source_runner.run ~rules:pipeline.rules ?filename ?on_progress source
 
 let default_rules = fun () ->
   let package_rules = package_rules () in

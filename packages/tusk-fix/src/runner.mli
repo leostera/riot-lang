@@ -24,7 +24,12 @@ type run_result = {
   summary: summary;
 }
 val run_file:
-  ?pipeline:Pipeline.t -> ?pipeline_for_file:(Path.t -> Pipeline.t) -> mode:mode -> Path.t -> file_result
+  ?pipeline:Pipeline.t ->
+  ?pipeline_for_file:(Path.t -> Pipeline.t) ->
+  ?on_progress:(Fixme.Source_runner.progress_event -> unit) ->
+  mode:mode ->
+  Path.t ->
+  file_result
 
 val run_files:
   ?pipeline:Pipeline.t -> ?pipeline_for_file:(Path.t -> Pipeline.t) -> mode:mode -> Path.t list -> run_result

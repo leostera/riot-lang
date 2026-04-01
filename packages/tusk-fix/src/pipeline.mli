@@ -8,7 +8,8 @@ type result = Fixme.Source_runner.result = {
 }
 val make: rules:Rule.t list -> unit -> t
 
-val run: t -> ?filename:Path.t -> string -> result
+val run:
+  t -> ?filename:Path.t -> ?on_progress:(Fixme.Source_runner.progress_event -> unit) -> string -> result
 
 val builtin_rules: unit -> Rule.t list
 

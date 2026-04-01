@@ -38,19 +38,20 @@ let empty_result = fun file error ->
     error;
   }
 
-let run_pipeline = fun pipeline file source -> Pipeline.run pipeline ~filename:file source
+let run_pipeline = fun ?on_progress pipeline file source ->
+  Pipeline.run pipeline ~filename:file ?on_progress source
 
 let resolve_pipeline = fun ?pipeline ?pipeline_for_file file ->
   match pipeline_for_file with
   | Some resolve -> resolve file
   | None -> Option.unwrap_or ~default:(Pipeline.default ()) pipeline
 
-let run_file = fun ?pipeline ?pipeline_for_file ~mode file ->
+let run_file = fun ?pipeline ?pipeline_for_file ?on_progress ~mode file ->
   let pipeline = resolve_pipeline ?pipeline ?pipeline_for_file file in
   match Fs.read file with
   | Error _ -> empty_result file (Some ("Failed to read " ^ Path.to_string file))
   | Ok source -> (
-      let initial = run_pipeline pipeline file source in
+      let initial = run_pipeline ?on_progress pipeline file source in
       match mode with
       | Check ->
           {
@@ -82,7 +83,7 @@ let run_file = fun ?pipeline ?pipeline_for_file ~mode file ->
               match Fs.write updated_source file with
               | Error _ -> empty_result file (Some ("Failed to write " ^ Path.to_string file))
               | Ok () ->
-                  let final = run_pipeline pipeline file updated_source in
+                  let final = run_pipeline ?on_progress pipeline file updated_source in
                   {
                     file;
                     final_source = updated_source;

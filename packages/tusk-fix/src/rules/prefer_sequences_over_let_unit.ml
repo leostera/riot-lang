@@ -37,7 +37,21 @@ let diagnostic_for_expression = function
   | Syn.Cst.Expression.Let expr when is_unit_pattern expr.binding_pattern -> Some (make_diagnostic expr)
   | _ -> None
 
-let check_tree = fun (ctx: Rule.context) _red_root -> Rule_query.expressions ctx |> List.filter_map diagnostic_for_expression
+let check_tree = fun (ctx: Rule.context) _red_root ->
+  Syn.Visit.source_file
+    {
+      Syn.Visit.default
+      with visit_expression =
+        (fun diagnostics walk expression ->
+          let diagnostics =
+            match diagnostic_for_expression expression with
+            | Some diagnostic -> diagnostic :: diagnostics
+            | None -> diagnostics
+          in
+          walk.descend_expression diagnostics expression);
+    }
+    []
+    ctx.cst |> List.rev
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

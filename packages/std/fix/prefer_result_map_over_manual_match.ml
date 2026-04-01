@@ -60,8 +60,7 @@ let is_constructor_with_path_name = fun expected name expr ->
   | Syn.Cst.Expression.Constructor { constructor_path; payload=Some payload; _;  } -> (
       match constructor_name_of_ident constructor_path, unwrap_expression payload with
       | Some ctor_name, Syn.Cst.Expression.Path { path; _ } ->
-          String.equal ctor_name expected
-          && (
+          String.equal ctor_name expected && (
             match Syn.Cst.Ident.name path with
             | Some path_name -> String.equal path_name name
             | None -> false

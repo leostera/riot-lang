@@ -52,6 +52,7 @@ let rec dispatch_ready_workers = fun state ->
   | Some worker -> (
       match Queue.pop state.file_queue with
       | Some file_path ->
+          send state.owner (Messages.FileStarted file_path);
           send worker (Messages.RunTask file_path);
           let _ = HashMap.insert state.busy_workers worker file_path in
           dispatch_ready_workers state
@@ -81,6 +82,7 @@ let rec loop = fun state ->
     | Messages.ScannerComplete -> `select `ScannerComplete
     | Messages.WorkerReady worker -> `select (`WorkerReady worker)
     | Messages.StopRequested -> `select `StopRequested
+    | Messages.FileProgress progress -> `select (`FileProgress progress)
     | Messages.FileResult r -> `select (`FileResult r)
     | _ -> `skip
   in
@@ -92,6 +94,7 @@ let rec loop = fun state ->
     | `ScannerComplete -> handle_scanner_complete state
     | `WorkerReady worker -> handle_worker_ready state worker
     | `StopRequested -> handle_stop_requested state
+    | `FileProgress progress -> handle_file_progress state progress
     | `FileResult r -> handle_file_result state r
 
 and handle_scanner_discovered = fun state file ->
@@ -122,6 +125,7 @@ and handle_worker_ready = fun state worker ->
   else
     match Queue.pop state.file_queue with
     | Some file_path ->
+        send state.owner (Messages.FileStarted file_path);
         send worker (Messages.RunTask file_path);
         let _ = HashMap.insert state.busy_workers worker file_path in
         loop state
@@ -155,6 +159,10 @@ and handle_file_result = fun state r ->
     handle_complete state
   else
     loop state
+
+and handle_file_progress = fun state progress ->
+  send state.owner (Messages.FileProgress progress);
+  loop state
 
 and handle_stop_requested = fun state ->
   state.stop_requested <- true;

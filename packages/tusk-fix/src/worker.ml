@@ -9,6 +9,8 @@ type config = {
 let run_file = fun config file_path ->
   try Runner.run_file
     ~pipeline_for_file:(Fix_config.pipeline_for_file config.scope)
+    ~on_progress:(fun event ->
+      send config.coordinator (Messages.FileProgress { worker = self (); file = file_path; event }))
     ~mode:config.mode
     file_path with
   | exn ->

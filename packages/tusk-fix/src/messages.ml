@@ -5,9 +5,17 @@ type file_result = {
   result: Runner.file_result;
 }
 
+type file_progress = {
+  worker: Pid.t;
+  file: Path.t;
+  event: Fixme.Source_runner.progress_event;
+}
+
 type Message.t +=
   | ScannerDiscovered of Path.t
   | ScannerComplete
+  | FileStarted of Path.t
+  | FileProgress of file_progress
   | WorkerReady of Pid.t
   | RunTask of Path.t
   | Stop

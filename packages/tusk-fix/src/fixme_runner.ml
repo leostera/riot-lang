@@ -73,12 +73,11 @@ let file_content_hash = fun path ->
   | Error _ -> "missing"
 
 let provider_fingerprint = fun (provider: Tusk_model.Fix_provider.t) ->
-  let support_hashes =
-    support_module_sources provider
-    |> List.map
-      (fun (module_name, source_path) ->
-        module_name ^ ":" ^ Path.to_string source_path ^ ":" ^ file_content_hash source_path)
-    |> String.concat "," in
+  let support_hashes = support_module_sources provider
+  |> List.map
+    (fun (module_name, source_path) ->
+      module_name ^ ":" ^ Path.to_string source_path ^ ":" ^ file_content_hash source_path)
+  |> String.concat "," in
   String.concat
     ":"
     [

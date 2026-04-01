@@ -125,12 +125,6 @@ let print_text_result = fun mode result ->
           print_diagnostics result
         )
 
-let sort_file_results = fun results ->
-  List.sort
-    (fun left right ->
-      String.compare (Path.to_string left.Runner.file) (Path.to_string right.Runner.file))
-    results
-
 let print_text_summary = fun mode summary ->
   println "";
   match mode with
@@ -169,6 +163,9 @@ let json_object_with_type = fun type_name json ->
     | Object fields -> Object (("type", String type_name) :: fields)
     | _ -> panic "expected JSON object"
 
+let timestamp_ms = fun () ->
+  Time.SystemTime.now () |> Time.SystemTime.nanos |> Int64.div 1_000_000L |> Int64.to_int
+
 let start_event_to_json = fun ~mode ~concurrency ->
   let open Data.Json in
     Object [ ("type", String "start"); (
@@ -179,6 +176,36 @@ let start_event_to_json = fun ~mode ~concurrency ->
           | Runner.Apply -> "apply"
         )
       ); ("concurrency", Int concurrency); ]
+
+let file_started_event_to_json = fun file ->
+  let open Data.Json in Object [
+    ("type", String "file_started");
+    ("file", String (Path.to_string file));
+    ("timestamp_ms", Int (timestamp_ms ()));
+  ]
+
+let progress_event_to_json = fun file (event: Fixme.Source_runner.progress_event) ->
+  let open Data.Json in
+    let phase_fields =
+      match event.phase with
+      | Parsed { parse_diagnostics } -> [
+        ("stage", String "parsed");
+        ("parse_diagnostics", Int parse_diagnostics)
+      ]
+      | CstBuilt -> [ ("stage", String "cst_built") ]
+      | RuleStarted { rule_id } -> [ ("stage", String "rule_started"); ("rule_id", String rule_id) ]
+      | RuleFinished { rule_id; diagnostics } -> [
+        ("stage", String "rule_finished");
+        ("rule_id", String rule_id);
+        ("diagnostics", Int diagnostics)
+      ]
+    in
+    Object ([
+      ("type", String "progress");
+      ("file", String (Path.to_string file));
+      ("timestamp_ms", Int event.timestamp_ms);
+    ]
+    @ phase_fields)
 
 let file_event_to_json = fun result ->
   json_object_with_type "file" (Runner.file_result_to_json result)
@@ -416,84 +443,100 @@ let run_result = fun ~mode ~scope ~limit ~files ->
 
 let run_with_coordinator = fun ~format ~mode ~scope ~limit ~roots () ->
   let concurrency = recommended_concurrency ~limit in
-  if format = Reporter.Text then
-    println ("Scanning with " ^ Int.to_string concurrency ^ " workers...")
-  else
-    print_json_event (start_event_to_json ~mode ~concurrency);
-    let outcome =
-      let owner = self () in
-      let _coordinator = Coordinator.start
-        {
-          input = Coordinator.Roots roots;
-          concurrency;
-          limit;
-          mode;
-          scope;
-          owner;
-        }
-      in
-      let rec loop results_rev diagnostics_seen limit_reached =
-        let selector = function
-          | Messages.FileResult result -> `select (`FileResult result)
-          | Messages.AllComplete summary -> `select (`AllComplete summary)
-          | _ -> `skip
-        in
-        match receive ~selector () with
-        | `FileResult { Messages.result; _ } ->
-            let remaining_budget =
-              match limit with
-              | None -> None
-              | Some max_diagnostics -> Some (max_diagnostics - diagnostics_seen)
-            in
-            let result =
-              match remaining_budget with
-              | None -> result
-              | Some remaining -> clip_result_to_limit remaining result
-            in
-            let diagnostics_seen = diagnostics_seen + diagnostic_count result in
-            let limit_reached_now =
-              match limit with
-              | Some max_diagnostics when diagnostics_seen >= max_diagnostics -> true
-              | _ -> false
-            in
-            if format = Reporter.Json then
-              print_json_event (file_event_to_json result);
-            loop (result :: results_rev) diagnostics_seen (limit_reached || limit_reached_now)
-        | `AllComplete _summary ->
-            let files = List.rev results_rev in
-            let summary = Runner.summarize files in
-            {
-              result =
-                Runner.{ files; summary };
-              limit_reached;
-            }
-      in
-      loop [] 0 false
+  (
+    match format with
+    | Reporter.Text -> eprintln ("Scanning with " ^ Int.to_string concurrency ^ " workers...")
+    | Reporter.Json -> print_json_event (start_event_to_json ~mode ~concurrency)
+  );
+  let outcome =
+    let owner = self () in
+    let _coordinator = Coordinator.start
+      {
+        input = Coordinator.Roots roots;
+        concurrency;
+        limit;
+        mode;
+        scope;
+        owner;
+      }
     in
-    (
-      match format with
-      | Reporter.Json -> print_json_event
-        (summary_event_to_json ~limit_reached:outcome.limit_reached outcome.result.summary)
-      | Reporter.Text ->
-          if outcome.result.summary.total_files = 0 then
-            println "No OCaml files found."
-          else (
-            sort_file_results outcome.result.files |> List.iter (print_text_result mode);
-            if outcome.limit_reached then
-              (
-                println "";
-                println
-                  ("\027[1;33m!\027[0m Reached diagnostic limit "
-                  ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
-                  ^ "; stopped early")
-              );
-            print_text_summary mode outcome.result.summary
-          )
-    );
-    if outcome.result.summary.failed_files > 0 || outcome.result.summary.remaining_diagnostics > 0 then
-      Error (Failure "Issues remain after tusk fix")
-    else
-      Ok ()
+    let rec loop results_rev diagnostics_seen limit_reached =
+      let selector = function
+        | Messages.FileStarted file -> `select (`FileStarted file)
+        | Messages.FileProgress progress -> `select (`FileProgress progress)
+        | Messages.FileResult result -> `select (`FileResult result)
+        | Messages.AllComplete summary -> `select (`AllComplete summary)
+        | _ -> `skip
+      in
+      match receive ~selector () with
+      | `FileStarted file ->
+          (
+            match format with
+            | Reporter.Text -> let _ = file in ()
+            | Reporter.Json -> print_json_event (file_started_event_to_json file)
+          );
+          loop results_rev diagnostics_seen limit_reached
+      | `FileProgress { Messages.file; event; _ } ->
+          if format = Reporter.Json then
+            print_json_event (progress_event_to_json file event);
+          loop results_rev diagnostics_seen limit_reached
+      | `FileResult { Messages.result; _ } ->
+          let remaining_budget =
+            match limit with
+            | None -> None
+            | Some max_diagnostics -> Some (max_diagnostics - diagnostics_seen)
+          in
+          let result =
+            match remaining_budget with
+            | None -> result
+            | Some remaining -> clip_result_to_limit remaining result
+          in
+          let diagnostics_seen = diagnostics_seen + diagnostic_count result in
+          let limit_reached_now =
+            match limit with
+            | Some max_diagnostics when diagnostics_seen >= max_diagnostics -> true
+            | _ -> false
+          in
+          (
+            match format with
+            | Reporter.Json -> print_json_event (file_event_to_json result)
+            | Reporter.Text -> print_text_result mode result
+          );
+          loop (result :: results_rev) diagnostics_seen (limit_reached || limit_reached_now)
+      | `AllComplete _summary ->
+          let files = List.rev results_rev in
+          let summary = Runner.summarize files in
+          {
+            result =
+              Runner.{ files; summary };
+            limit_reached;
+          }
+    in
+    loop [] 0 false
+  in
+  (
+    match format with
+    | Reporter.Json -> print_json_event
+      (summary_event_to_json ~limit_reached:outcome.limit_reached outcome.result.summary)
+    | Reporter.Text ->
+        if outcome.result.summary.total_files = 0 then
+          println "No OCaml files found."
+        else (
+          if outcome.limit_reached then
+            (
+              println "";
+              println
+                ("\027[1;33m!\027[0m Reached diagnostic limit "
+                ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
+                ^ "; stopped early")
+            );
+          print_text_summary mode outcome.result.summary
+        )
+  );
+  if outcome.result.summary.failed_files > 0 || outcome.result.summary.remaining_diagnostics > 0 then
+    Error (Failure "Issues remain after tusk fix")
+  else
+    Ok ()
 
 let run = fun matches ->
   let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in

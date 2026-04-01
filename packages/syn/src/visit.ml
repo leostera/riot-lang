@@ -448,7 +448,9 @@ and descend_type_declaration = fun walk ctx (declaration: Cst.TypeDeclaration.t)
   in
   let ctx = walk.type_definition ctx (Cst.TypeDeclaration.type_definition declaration) in
   let ctx = List.fold_left walk.type_constraint ctx (Cst.TypeDeclaration.constraints declaration) in
-  List.fold_left walk.type_declaration ctx (Cst.TypeDeclaration.and_declarations declaration)
+  match Cst.TypeDeclaration.next_and_declaration declaration with
+  | Some next -> walk.type_declaration ctx next
+  | None -> ctx
 
 and descend_type_extension = fun walk ctx (declaration: Cst.TypeExtension.t) ->
   let ctx = List.fold_left walk.type_parameter ctx (Cst.TypeExtension.type_params declaration) in
@@ -767,7 +769,9 @@ and descend_let_binding = fun walk ctx binding ->
   let ctx = walk.pattern ctx (Cst.LetBinding.binding_pattern binding) in
   let ctx = List.fold_left walk.parameter ctx (Cst.LetBinding.parameters binding) in
   let ctx = walk.expression ctx (Cst.LetBinding.value binding) in
-  List.fold_left walk.let_binding ctx (Cst.LetBinding.and_bindings binding)
+  match Cst.LetBinding.and_binding binding with
+  | Some next -> walk.let_binding ctx next
+  | None -> ctx
 
 and descend_class_field = fun walk ctx (field: Cst.class_field) ->
   match field with
@@ -887,7 +891,9 @@ and descend_module_signature = fun walk ctx (declaration: Cst.ModuleSignature.t)
     | Cst.ModuleSignature.Signature module_type -> walk.module_type ctx module_type
     | Cst.ModuleSignature.Alias module_expression -> walk.module_expression ctx module_expression
   in
-  List.fold_left walk.module_signature ctx (Cst.ModuleSignature.and_declarations declaration)
+  match Cst.ModuleSignature.next_and_declaration declaration with
+  | Some next -> walk.module_signature ctx next
+  | None -> ctx
 
 and descend_module_structure = fun walk ctx (declaration: Cst.ModuleStructure.t) ->
   let ctx = List.fold_left
@@ -900,7 +906,9 @@ and descend_module_structure = fun walk ctx (declaration: Cst.ModuleStructure.t)
     | None -> ctx
   in
   let ctx = walk.module_expression ctx (Cst.ModuleStructure.module_expression declaration) in
-  List.fold_left walk.module_structure ctx (Cst.ModuleStructure.and_declarations declaration)
+  match Cst.ModuleStructure.next_and_declaration declaration with
+  | Some next -> walk.module_structure ctx next
+  | None -> ctx
 
 and descend_module_type_declaration = fun walk ctx (declaration: Cst.ModuleTypeDeclaration.t) ->
   match Cst.ModuleTypeDeclaration.module_type declaration with

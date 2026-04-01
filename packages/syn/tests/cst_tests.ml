@@ -210,6 +210,37 @@ let tests = [
           Test.assert_equal ~expected:"(** tail doc *)" ~actual:(Syn.Cst.Docstring.text docstring);
           Ok ()
       | _ -> Error "expected trailing file docstring after let binding");
+  Test.case "visit traverses recursive declaration chains once"
+    (fun () ->
+      let result = parse_ml
+        "let rec a = 1 and b = 2 and c = 3\n\
+         type a = A and b = B and c = C\n"
+      in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      let let_binding_count = Syn.Visit.source_file
+        {
+          Syn.Visit.default
+          with visit_let_binding =
+            (fun count walk binding ->
+              walk.descend_let_binding (count + 1) binding);
+        }
+        0
+        cst
+      in
+      let type_declaration_count = Syn.Visit.source_file
+        {
+          Syn.Visit.default
+          with visit_type_declaration =
+            (fun count walk declaration ->
+              walk.descend_type_declaration (count + 1) declaration);
+        }
+        0
+        cst
+      in
+      Test.assert_equal ~expected:3 ~actual:let_binding_count;
+      Test.assert_equal ~expected:3 ~actual:type_declaration_count;
+      Ok ());
   Test.case "parse results retain original tokens with EOF-owned trailing trivia"
     (fun () ->
       let result = parse_ml "let x = 1\n(* tail *)\n" in
