@@ -105,20 +105,16 @@ let test_build_release_uses_release_lane = fun () ->
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
         let host_target = Tusk_model.Tusk_dirs.host_target () in
-        let release_package_dir =
-          Tusk_model.Tusk_dirs.out_dir_with_target
-            ~workspace_root:workspace.root
-            ~profile:"release"
-            ~target:host_target
-          |> fun out_dir -> Path.(out_dir / Path.v "demo")
-        in
-        let debug_package_dir =
-          Tusk_model.Tusk_dirs.out_dir_with_target
-            ~workspace_root:workspace.root
-            ~profile:"debug"
-            ~target:host_target
-          |> fun out_dir -> Path.(out_dir / Path.v "demo")
-        in
+        let release_package_dir = Tusk_model.Tusk_dirs.out_dir_with_target
+          ~workspace_root:workspace.root
+          ~profile:"release"
+          ~target:host_target
+        |> fun out_dir -> Path.(out_dir / Path.v "demo") in
+        let debug_package_dir = Tusk_model.Tusk_dirs.out_dir_with_target
+          ~workspace_root:workspace.root
+          ~profile:"debug"
+          ~target:host_target
+        |> fun out_dir -> Path.(out_dir / Path.v "demo") in
         match
           Tusk_build.build
             {
@@ -129,9 +125,11 @@ let test_build_release_uses_release_lane = fun () ->
               profile = "release";
             }
         with
-        | Error err -> Error ("expected release build to succeed, got: " ^ Tusk_build.build_error_message err)
+        | Error err -> Error ("expected release build to succeed, got: "
+        ^ Tusk_build.build_error_message err)
         | Ok () ->
-            if not (Fs.exists release_package_dir |> Result.unwrap_or ~default:false) then
+            if not
+                (Fs.exists release_package_dir |> Result.unwrap_or ~default:false) then
               Error ("expected release output under " ^ Path.to_string release_package_dir)
             else if Fs.exists debug_package_dir |> Result.unwrap_or ~default:false then
               Error ("did not expect debug output under " ^ Path.to_string debug_package_dir)

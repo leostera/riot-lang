@@ -43,8 +43,8 @@ let use_generated_runner = fun scope ->
     false
   else
     match scope with
-  | Some scope when List.length (Fix_config.providers (Some scope)) > 0 -> true
-  | _ -> false
+    | Some scope when List.length (Fix_config.providers (Some scope)) > 0 -> true
+    | _ -> false
 
 let of_matches = fun matches ->
   let cwd = Common.current_dir () in

@@ -113,8 +113,7 @@ let package_id_key = fun (id: Tusk_model.Lockfile.package_id) ->
 let registry_resolution_key = fun ~registry_name ~package_name ->
   registry_name ^ ":" ^ Pkgs_ml.Sparse_index.normalized_name package_name
 
-let path_resolution_key = fun ~package_root ->
-  "path:" ^ Path.to_string (Path.normalize package_root)
+let path_resolution_key = fun ~package_root -> "path:" ^ Path.to_string (Path.normalize package_root)
 
 let find_workspace_package_by_name = fun ~(workspace_packages:Tusk_model.Package.t list) ~package_name ->
   List.find_opt
@@ -138,19 +137,16 @@ let find_resolved_package = fun ~(state:resolution_state) ~key ->
   List.assoc_opt key state.resolved
 
 let find_local_package_id_in_state = fun ~(state:resolution_state) ~package_name ->
-  match
-    List.find_opt
-      (fun (_, (pkg: Tusk_model.Lockfile.package)) ->
-        pkg.id.registry = None && String.equal pkg.id.name package_name)
-      state.resolved
-  with
+  match List.find_opt
+    (fun (_, (pkg: Tusk_model.Lockfile.package)) ->
+      pkg.id.registry = None && String.equal pkg.id.name package_name)
+    state.resolved with
   | Some (_, pkg) -> Some pkg.id
-  | None ->
-      List.find_opt
-        (fun (_, (package_id: Tusk_model.Lockfile.package_id)) ->
-          package_id.registry = None && String.equal package_id.name package_name)
-        state.resolving
-      |> Option.map snd
+  | None -> List.find_opt
+    (fun (_, (package_id: Tusk_model.Lockfile.package_id)) ->
+      package_id.registry = None && String.equal package_id.name package_name)
+    state.resolving
+  |> Option.map snd
 
 let add_resolving = fun ~(state:resolution_state) ~key ~package_id ->
   { state with resolving = (key, package_id) :: state.resolving }
@@ -479,7 +475,10 @@ and resolve_path_dependency = fun ~(ctx:context) ~state ~declared_from dependenc
                           Ok (
                             {
                               dependency =
-                                Tusk_model.Lockfile.{ name = dependency_name; package = lock_package.id };
+                                Tusk_model.Lockfile.{
+                                  name = dependency_name;
+                                  package = lock_package.id
+                                };
                               packages = dependency_packages @ [ lock_package ];
                             },
                             state
@@ -526,15 +525,14 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             rest
           | None -> (
               match find_local_package_id_in_state ~state ~package_name:dep.name with
-              | Some package_id ->
-                  resolve_manifest_dependencies
-                    ~ctx
-                    ~state
-                    ~required_by
-                    ~declared_from
-                    acc_packages
-                    (Tusk_model.Lockfile.{ name = dep.name; package = package_id } :: acc_dependencies)
-                    rest
+              | Some package_id -> resolve_manifest_dependencies
+                ~ctx
+                ~state
+                ~required_by
+                ~declared_from
+                acc_packages
+                (Tusk_model.Lockfile.{ name = dep.name; package = package_id } :: acc_dependencies)
+                rest
               | None -> (
                   match resolve_registry_dependency ~ctx ~state ~required_by dep.name with
                   | Error _ as err -> err

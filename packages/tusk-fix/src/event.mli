@@ -6,5 +6,4 @@ type t =
   | FileProgress of { file: Path.t; progress: Fixme.Source_runner.progress_event }
   | FileResult of Runner.file_result
   | Summary of { summary: Runner.summary; limit_reached: bool }
-
 val to_json: t -> Data.Json.t

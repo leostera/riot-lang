@@ -1023,8 +1023,8 @@ std = "*"
             ();
         ] in
       match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-      | Error err ->
-          Error ("expected local path package to beat registry dependency: " ^ pm_error_message err)
+      | Error err -> Error ("expected local path package to beat registry dependency: "
+      ^ pm_error_message err)
       | Ok lockfile -> (
           let local_std =
             List.find_opt
@@ -1038,7 +1038,9 @@ std = "*"
               lockfile.packages
           in
           let model_lock =
-            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "model") lockfile.packages
+            List.find_opt
+              (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "model")
+              lockfile.packages
           in
           match local_std, registry_std, model_lock with
           | Some local_std, None, Some model_lock ->
@@ -1190,13 +1192,16 @@ std = { path = "../std" }
         ~dependencies:[ { name = "std"; source = source ~path:(Path.v "../../vendor/std") () } ]
         () in
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-      | Error err -> Error ("expected cyclic local path dependencies to resolve: " ^ pm_error_message err)
+      | Error err -> Error ("expected cyclic local path dependencies to resolve: "
+      ^ pm_error_message err)
       | Ok lockfile -> (
           let std_lock =
             List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "std") lockfile.packages
           in
           let fixme_lock =
-            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "fixme") lockfile.packages
+            List.find_opt
+              (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "fixme")
+              lockfile.packages
           in
           match std_lock, fixme_lock with
           | Some std_lock, Some fixme_lock ->

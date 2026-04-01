@@ -172,8 +172,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
     | Types.Silent -> ()
     | Types.Report Reporter.Json -> Reporting.print_json_event
       (Event.to_json
-        (Types.Summary
-          { summary = outcome.result.summary; limit_reached = outcome.limit_reached }))
+        (Types.Summary { summary = outcome.result.summary; limit_reached = outcome.limit_reached }))
     | Types.Report Reporter.Text ->
         if outcome.result.summary.total_files = 0 then
           println "No OCaml files found."

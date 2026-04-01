@@ -26,9 +26,11 @@ module Explanations = Explanations
 module Fixme_runner = Fixme_runner
 
 type build_package = Api.build_package
+
 type fix_output_mode = Api.fix_output_mode =
   | Silent
   | Report of Reporter.format
+
 type fix_action = Api.fix_action =
   | List_rules of { format: Reporter.format }
   | List_diagnostics of { format: Reporter.format }
@@ -39,13 +41,15 @@ type fix_action = Api.fix_action =
       target: Path.t;
       forwarded_args: string list;
       output_mode: fix_output_mode;
-      use_generated_runner: bool;
+      use_generated_runner: bool
     }
+
 type fix_request = Api.fix_request = {
   cwd: Path.t;
   scope: Fix_config.scope option;
   action: fix_action;
 }
+
 type fix_response = Api.fix_response =
   | Completed
   | Listed_rules of { format: Reporter.format; output: string }
@@ -53,6 +57,9 @@ type fix_response = Api.fix_response =
   | Explained_rule of { rule_id: string; output: string }
 
 let fix_request_of_matches = Api.fix_request_of_matches
+
 let output_mode_of_request = Api.output_mode_of_request
+
 let fix = Api.fix
+
 let response_output = Api.response_output

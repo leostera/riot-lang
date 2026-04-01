@@ -1,7 +1,10 @@
 open Std
 
 type build_package = Cli.Types.build_package
-type fix_output_mode = Cli.Types.output_mode = Silent | Report of Reporter.format
+
+type fix_output_mode = Cli.Types.output_mode =
+  Silent
+  | Report of Reporter.format
 
 type fix_action = Cli.Request.action =
   | List_rules of { format: Reporter.format }
@@ -13,7 +16,7 @@ type fix_action = Cli.Request.action =
       target: Path.t;
       forwarded_args: string list;
       output_mode: fix_output_mode;
-      use_generated_runner: bool;
+      use_generated_runner: bool
     }
 
 type fix_request = Cli.Request.t = {
@@ -60,13 +63,24 @@ let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event
     | None -> output_mode_of_request request
   in
   match request.action with
-  | List_rules { format } ->
-      Ok (Listed_rules { format; output = Cli.Catalog.list_rules_output ~format })
-  | List_diagnostics { format } ->
-      Ok (Listed_diagnostics { format; output = Cli.Catalog.list_diagnostics_output ~format })
-  | Explain_rule { rule_id } ->
-      explain_rule_output rule_id |> Result.map (fun output -> Explained_rule { rule_id; output })
-  | Run { mode; limit; target; forwarded_args; use_generated_runner; _ } ->
+  | List_rules { format } -> Ok (Listed_rules {
+    format;
+    output = Cli.Catalog.list_rules_output ~format
+  })
+  | List_diagnostics { format } -> Ok (Listed_diagnostics {
+    format;
+    output = Cli.Catalog.list_diagnostics_output ~format
+  })
+  | Explain_rule { rule_id } -> explain_rule_output rule_id
+  |> Result.map (fun output -> Explained_rule { rule_id; output })
+  | Run {
+    mode;
+    limit;
+    target;
+    forwarded_args;
+    use_generated_runner;
+    _
+  } ->
       (
         match request.scope, use_generated_runner with
         | Some scope, true ->
@@ -81,14 +95,12 @@ let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event
               ~report_output
               ~args:forwarded_args
               scope
-        | _ ->
-            Cli.Execution.run_with_coordinator
-              ~on_event
-              ~output_mode
-              ~mode
-              ~scope:request.scope
-              ~limit
-              ~roots:[ target ]
-              ()
-      )
-      |> Result.map (fun () -> Completed)
+        | _ -> Cli.Execution.run_with_coordinator
+          ~on_event
+          ~output_mode
+          ~mode
+          ~scope:request.scope
+          ~limit
+          ~roots:[ target ]
+          ()
+      ) |> Result.map (fun () -> Completed)

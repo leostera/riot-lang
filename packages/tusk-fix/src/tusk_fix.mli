@@ -73,10 +73,10 @@ module Explanations: module type of Explanations
 module Fixme_runner: module type of Fixme_runner
 
 (** Build-time fixme runner planning for package-provided rules *)
-
 type build_package = Api.build_package
-type fix_output_mode = Api.fix_output_mode = Silent | Report of Reporter.format
-
+type fix_output_mode = Api.fix_output_mode =
+  Silent
+  | Report of Reporter.format
 type fix_action = Api.fix_action =
   | List_rules of { format: Reporter.format }
   | List_diagnostics of { format: Reporter.format }
@@ -87,22 +87,20 @@ type fix_action = Api.fix_action =
       target: Path.t;
       forwarded_args: string list;
       output_mode: fix_output_mode;
-      use_generated_runner: bool;
+      use_generated_runner: bool
     }
-
 type fix_request = Api.fix_request = {
   cwd: Path.t;
   scope: Fix_config.scope option;
   action: fix_action;
 }
-
 type fix_response = Api.fix_response =
   | Completed
   | Listed_rules of { format: Reporter.format; output: string }
   | Listed_diagnostics of { format: Reporter.format; output: string }
   | Explained_rule of { rule_id: string; output: string }
-
 val fix_request_of_matches: ArgParser.matches -> (fix_request, exn) result
+
 val output_mode_of_request: fix_request -> fix_output_mode
 
 val fix:
