@@ -90,6 +90,8 @@ let collect_event_names = fun fn ->
   | Ok value -> Ok (value, List.rev !names)
   | Error err -> Error err
 
+let pm_error_message = Tusk_model.Pm_error.message
+
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -99,7 +101,7 @@ let test_lock_deps_projects_workspace_packages = fun () ->
     ~build_dependencies:[ { name = "std"; source = Tusk_model.Package.Workspace } ]
     () in
   match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ] with
-  | Error err -> Error ("expected workspace lock projection to succeed: " ^ err)
+  | Error err -> Error ("expected workspace lock projection to succeed: " ^ pm_error_message err)
   | Ok lockfile ->
       let app_lock = List.hd lockfile.packages in
       let std_lock = List.nth lockfile.packages 1 in
@@ -137,7 +139,7 @@ version = "1.2.3"
         ]
         () in
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-      | Error err -> Error ("expected path dependency locking to succeed: " ^ err)
+      | Error err -> Error ("expected path dependency locking to succeed: " ^ pm_error_message err)
       | Ok lockfile -> (
           let app_lock =
             List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
@@ -187,7 +189,7 @@ version = "2.0.0"
         ]
         () in
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-      | Error err -> Error ("expected transitive path dependencies to resolve: " ^ err)
+      | Error err -> Error ("expected transitive path dependencies to resolve: " ^ pm_error_message err)
       | Ok lockfile -> (
           let foo_lock =
             List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "foo") lockfile.packages
@@ -217,7 +219,7 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun () ->
     ~dependencies:[ { name = "std"; source = Tusk_model.Package.Path (Path.v "../std") } ]
     () in
   match run_lock_deps ~mode:Refresh ~existing_lock:None [ app_pkg; std_pkg ] with
-  | Error err -> Error ("expected workspace path dependency to collapse to workspace package: " ^ err)
+  | Error err -> Error ("expected workspace path dependency to collapse to workspace package: " ^ pm_error_message err)
   | Ok lockfile -> (
       let app_lock =
         List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
@@ -269,7 +271,7 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
         ();
     ] in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-  | Error err -> Error ("expected registry dependency locking to succeed: " ^ err)
+  | Error err -> Error ("expected registry dependency locking to succeed: " ^ pm_error_message err)
   | Ok lockfile -> (
       let app_lock =
         List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
@@ -312,6 +314,30 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun () ->
       | _ -> Error "expected workspace and transitive registry lock packages"
     )
 
+let test_lock_deps_reports_missing_registry_package_with_required_by = fun () ->
+  let app_root = Path.v "/workspace/packages/app" in
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:app_root
+    ~dependencies:[
+      { name = "std"; source = Tusk_model.Package.Registry { version = Std.Version.any } }
+    ]
+    () in
+  match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+  | Ok _ -> Error "expected missing registry package to fail"
+  | Error (Tusk_pm.Error.PackageNotFound { package; registry; required_by = Some required_by }) ->
+      if
+        String.equal package "std"
+        && String.equal registry "pkgs.ml"
+        && String.equal required_by.package "app"
+        && required_by.path = Some app_root
+      then
+        Ok ()
+      else
+        Error "expected missing registry package error to include the requiring workspace package"
+  | Error err ->
+      Error ("expected missing registry package error, got: " ^ pm_error_message err)
+
 let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -326,7 +352,7 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
     ~mode:Refresh
     ~existing_lock:None [ app_pkg; std_pkg ] with
   | Error err -> Error ("expected workspace package to satisfy matching registry requirement locally: "
-  ^ err)
+  ^ pm_error_message err)
   | Ok lockfile -> (
       let app_lock =
         List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "app") lockfile.packages
@@ -361,7 +387,7 @@ let test_lock_deps_ignores_builtin_dependencies = fun () ->
     ~dependencies:[ { name = "stdlib"; source = Tusk_model.Package.Builtin } ]
     () in
   match run_lock_deps ~registry:(make_registry []) ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-  | Error err -> Error ("expected builtin dependency locking to succeed: " ^ err)
+  | Error err -> Error ("expected builtin dependency locking to succeed: " ^ pm_error_message err)
   | Ok lockfile -> (
       match lockfile.packages with
       | [ app_lock ] when app_lock.id.name = "app" && app_lock.dependencies = [] -> Ok ()
@@ -394,7 +420,7 @@ let test_lock_deps_handles_cyclic_registry_dependencies = fun () ->
         ();
     ] in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-  | Error err -> Error ("expected cyclic registry dependencies to resolve: " ^ err)
+  | Error err -> Error ("expected cyclic registry dependencies to resolve: " ^ pm_error_message err)
   | Ok lockfile -> (
       let foo_lock =
         List.find_opt
@@ -475,7 +501,7 @@ let test_lock_refresh_preserves_existing_registry_version = fun () ->
         ();
     ] in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:(Some existing_lock) [ app_pkg ] with
-  | Error err -> Error ("expected refresh lock to preserve registry version: " ^ err)
+  | Error err -> Error ("expected refresh lock to preserve registry version: " ^ pm_error_message err)
   | Ok lockfile ->
       let app_lock = List.hd lockfile.packages in
       if
@@ -511,7 +537,7 @@ let test_lock_refresh_preserves_existing_external_nodes = fun () ->
     }
   in
   match run_lock_deps ~mode:Refresh ~existing_lock:(Some existing_lock) [ app_pkg ] with
-  | Error err -> Error ("expected refresh lock to preserve existing nodes: " ^ err)
+  | Error err -> Error ("expected refresh lock to preserve existing nodes: " ^ pm_error_message err)
   | Ok lockfile ->
       if
         List.length lockfile.packages = 2
@@ -539,7 +565,7 @@ let test_unlock_discards_existing_external_nodes = fun () ->
     }
   in
   match run_lock_deps ~mode:Unlock ~existing_lock:(Some existing_lock) [ app_pkg ] with
-  | Error err -> Error ("expected unlock to rebuild workspace nodes: " ^ err)
+  | Error err -> Error ("expected unlock to rebuild workspace nodes: " ^ pm_error_message err)
   | Ok lockfile ->
       if List.length lockfile.packages = 1 && (List.hd lockfile.packages).id.name = "app" then
         Ok ()
@@ -661,7 +687,7 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun () ->
             ~manifest_paths:[ manifest_path ]
             ~packages:[ app_pkg; std_pkg ]
             ()) with
-      | Error err -> Error ("expected ensure_lock to refresh missing lock: " ^ err)
+      | Error err -> Error ("expected ensure_lock to refresh missing lock: " ^ pm_error_message err)
       | Ok ((lockfile, resolved), event_names) ->
           let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
           if
@@ -706,7 +732,7 @@ let test_ensure_lock_uses_existing_fresh_lock = fun () ->
             ~manifest_paths:[ manifest_path ]
             ~packages:[ app_pkg; std_pkg ]
             ()) with
-      | Error err -> Error ("expected ensure_lock to use existing lock: " ^ err)
+      | Error err -> Error ("expected ensure_lock to use existing lock: " ^ pm_error_message err)
       | Ok ((lockfile, resolved), event_names) ->
           if
             List.length lockfile.packages = 2
@@ -765,7 +791,7 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun () -
             ~manifest_paths:[ manifest_path ]
             ~packages:[ app_pkg ]
             ()) with
-      | Error err -> Error ("expected ensure_lock to materialize registry packages: " ^ err)
+      | Error err -> Error ("expected ensure_lock to materialize registry packages: " ^ pm_error_message err)
       | Ok ((_, resolved), event_names) ->
           let manifest_path = Pkgs_ml.Registry_cache.package_src_dir
             registry_cache
@@ -844,7 +870,7 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
             ~packages:[ app_pkg ]
             ()) with
       | Error err -> Error ("expected ensure_lock to reuse lock and materialize missing packages: "
-      ^ err)
+      ^ pm_error_message err)
       | Ok ((_, resolved), event_names) ->
           if
             List.length resolved = 2
@@ -896,7 +922,7 @@ version = "0.2.0"
         ()
       in
       match Tusk_pm.ensure_workspace ~mode:Tusk_pm.Dep_solver.Refresh ~registry ~workspace () with
-      | Error err -> Error ("expected ensure_workspace to succeed: " ^ err)
+      | Error err -> Error ("expected ensure_workspace to succeed: " ^ pm_error_message err)
       | Ok resolved_workspace ->
           let std_pkg =
             List.find_opt
@@ -937,7 +963,7 @@ let test_projection_resolves_workspace_packages = fun () ->
     ~packages:[ app_pkg; std_pkg ]
     ~lockfile
     () with
-  | Error err -> Error ("expected projection to resolve workspace packages: " ^ err)
+  | Error err -> Error ("expected projection to resolve workspace packages: " ^ pm_error_message err)
   | Ok resolved ->
       let app = List.hd resolved in
       if
@@ -1036,7 +1062,7 @@ version = "1.0.0"
             ~packages:[ app_pkg ]
             ~lockfile
             ()) with
-      | Error err -> Error ("expected projection to load external manifests: " ^ err)
+      | Error err -> Error ("expected projection to load external manifests: " ^ pm_error_message err)
       | Ok (resolved, event_names) ->
           let std_resolved =
             List.find_opt
@@ -1130,12 +1156,14 @@ kernel = 123
         () with
       | Ok _ -> Error "expected invalid external manifest to fail projection"
       | Error err ->
+          let message = pm_error_message err in
           if
-            String.contains err "must be a string or table" || String.contains err "failed to decode package manifest"
+            String.contains message "must be a string or table"
+            || String.contains message "failed to decode package manifest"
           then
             Ok ()
           else
-            Error ("unexpected projection error: " ^ err))
+            Error ("unexpected projection error: " ^ pm_error_message err))
 
 let test_projection_fails_when_lockfile_is_missing_package = fun () ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
@@ -1148,10 +1176,10 @@ let test_projection_fails_when_lockfile_is_missing_package = fun () ->
     () with
   | Ok _ -> Error "expected projection to fail when lockfile is missing package"
   | Error err ->
-      if String.contains err "lockfile is missing package 'app'" then
+      if String.contains (pm_error_message err) "lockfile is missing package 'app'" then
         Ok ()
       else
-        Error ("unexpected error: " ^ err)
+        Error ("unexpected error: " ^ pm_error_message err)
 
 let tests =
   Test.[
@@ -1160,6 +1188,7 @@ let tests =
     case "dep solver: resolves transitive path dependencies" test_lock_deps_resolves_transitive_path_dependencies;
     case "dep solver: collapses workspace path dependencies" test_lock_deps_collapses_workspace_path_dependencies;
     case "dep solver: resolves registry dependencies to exact versions" test_lock_deps_resolves_registry_dependencies_to_exact_versions;
+    case "dep solver: reports missing registry packages with required-by context" test_lock_deps_reports_missing_registry_package_with_required_by;
     case "dep solver: prefers workspace packages over registry for matching names" test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names;
     case "dep solver: ignores builtin dependencies" test_lock_deps_ignores_builtin_dependencies;
     case "dep solver: handles cyclic registry dependencies" test_lock_deps_handles_cyclic_registry_dependencies;

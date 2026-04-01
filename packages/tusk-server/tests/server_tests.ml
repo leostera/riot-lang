@@ -314,7 +314,7 @@ version = "0.2.0"
           ~registry
           ~config:Tusk_server.Server_config.default
           () with
-        | Error exn -> Error ("expected local server to start: " ^ Exception.to_string exn)
+        | Error err -> Error ("expected local server to start: " ^ Tusk_server.error_message err)
         | Ok server_pid ->
             send
               server_pid
@@ -447,7 +447,7 @@ version = "0.2.0"
           ~registry
           ~config:Tusk_server.Server_config.default
           () with
-        | Error exn -> Error ("expected local server to start: " ^ Exception.to_string exn)
+        | Error err -> Error ("expected local server to start: " ^ Tusk_server.error_message err)
         | Ok _ ->
             if List.exists
                 (

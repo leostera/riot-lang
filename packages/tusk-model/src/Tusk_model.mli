@@ -6,6 +6,8 @@ module Error = Error
 
 module Event = Event
 
+module Pm_error = Pm_error
+
 module Fix_provider = Fix_provider
 
 module Fmt_config = Fmt_config

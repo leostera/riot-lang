@@ -17,6 +17,7 @@ type build_stats = {
 }
 
 type error =
+  | StartupFailed of { error: Tusk_server.error }
   | PackageNotFound of { package_name: string; available_packages: string list }
   | PackagesNotFound of { package_names: string list; available_packages: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
@@ -52,6 +53,16 @@ type build_scope =
 
 let no_emit : Tusk_model.Event.kind -> unit = fun _ -> ()
 
+let error_message = function
+  | StartupFailed { error } -> Tusk_server.error_message error
+  | PackageNotFound { package_name; _ } ->
+      "Package '" ^ package_name ^ "' not found"
+  | PackagesNotFound { package_names; _ } ->
+      "Packages not found: " ^ String.concat ", " package_names
+  | BuildAlreadyRunning { lock_path } ->
+      "another tusk build is already running (" ^ Path.to_string lock_path ^ ")"
+  | UnexpectedEvent { reason } -> reason
+
 let connect_local = fun ?(emit = no_emit) ?(load_errors = []) ~workspace () ->
   match Tusk_server.start_local
     ~emit
@@ -60,7 +71,7 @@ let connect_local = fun ?(emit = no_emit) ?(load_errors = []) ~workspace () ->
     ~config:Tusk_server.Server_config.default
     () with
   | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
-  | Error exn -> Error (Exception.to_string exn)
+  | Error err -> Error (StartupFailed { error = err })
 
 let close = fun _t -> ()
 

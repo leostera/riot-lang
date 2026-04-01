@@ -2,6 +2,8 @@ open Std
 open Std.Data
 open Std.Collections
 
+module Pm_error = Pm_error
+
 (** Event system for tusk - pure data types for events *)
 
 (** Strip ANSI escape codes from a string *)
@@ -124,10 +126,10 @@ type kind =
   | WorkspaceScanned of { packages: int; duration_ms: int }
   | LockfileReadStarted of { path: string }
   | LockfileReadFinished of { path: string; duration_ms: int }
-  | LockfileReadFailed of { path: string; error: string }
+  | LockfileReadFailed of { path: string; error: Pm_error.t }
   | LockfileWriteStarted of { path: string }
   | LockfileWriteFinished of { path: string; duration_ms: int }
-  | LockfileWriteFailed of { path: string; error: string }
+  | LockfileWriteFailed of { path: string; error: Pm_error.t }
   | DependencyResolutionStarted of { packages: string list; mode:
         [
           `Refresh
@@ -137,7 +139,8 @@ type kind =
   | DependencyResolutionRefreshingLock of { path: string }
   | DependencyResolutionUnlocking of { path: string option }
   | DependencyResolutionFinished of { duration_ms: int; resolved_packages: int; resolved_edges: int }
-  | DependencyResolutionFailed of { error: string }
+  | DependencyResolutionFailed of { error: Pm_error.t }
+  | RegistryIndexUpdating of { registry: string }
   | DependencyUniverseBuilding of { packages: string list }
   | DependencyUniverseBuilt of {
       runtime_packages: int;
@@ -145,15 +148,15 @@ type kind =
       dev_packages: int;
       duration_ms: int
     }
-  | PackageMetadataFetchStarted of { package: string }
-  | PackageMetadataFetchFinished of { package: string; version: string option; duration_ms: int }
-  | PackageMetadataFetchFailed of { package: string; error: string }
+  | PackageMetadataFetchStarted of { registry: string; package: string }
+  | PackageMetadataFetchFinished of { registry: string; package: string; version: string option; duration_ms: int }
+  | PackageMetadataFetchFailed of { registry: string; package: string; error: Pm_error.t }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
-  | PackageManifestFetchFailed of { package: string; version: string option; error: string }
+  | PackageManifestFetchFailed of { package: string; version: string option; error: Pm_error.t }
   | PackageDownloadStarted of { package: string; version: string; path: string }
   | PackageDownloadFinished of { package: string; version: string; path: string; duration_ms: int }
-  | PackageDownloadFailed of { package: string; version: string; path: string; error: string }
+  | PackageDownloadFailed of { package: string; version: string; path: string; error: Pm_error.t }
   | PackageDownloadSkipped of { package: string; version: string; path: string; reason: string }
   | PackageCacheHit of { package: string; version: string; path: string }
   | PackageMaterializationStarted of { package: string; version: string; path: string }
@@ -163,7 +166,7 @@ type kind =
       path: string;
       duration_ms: int
     }
-  | PackageMaterializationFailed of { package: string; version: string; path: string; error: string }
+  | PackageMaterializationFailed of { package: string; version: string; path: string; error: Pm_error.t }
   | PackageResolvedForBuild of {
       package: string;
       version: string option;
@@ -237,6 +240,7 @@ let name = function
   | DependencyResolutionUnlocking _ -> "tusk.pm.resolution.unlocking"
   | DependencyResolutionFinished _ -> "tusk.pm.resolution.finished"
   | DependencyResolutionFailed _ -> "tusk.pm.resolution.failed"
+  | RegistryIndexUpdating _ -> "tusk.pm.registry.index.updating"
   | DependencyUniverseBuilding _ -> "tusk.pm.universe.building"
   | DependencyUniverseBuilt _ -> "tusk.pm.universe.built"
   | PackageMetadataFetchStarted _ -> "tusk.pm.package_metadata.fetch.started"
@@ -344,13 +348,13 @@ let display = function
   | LockfileReadFinished { path; duration_ms } ->
       "Read lockfile " ^ path ^ " in " ^ Int.to_string duration_ms ^ "ms"
   | LockfileReadFailed { path; error } ->
-      "Failed to read lockfile " ^ path ^ ": " ^ error
+      "Failed to read lockfile " ^ path ^ ": " ^ Pm_error.message error
   | LockfileWriteStarted { path } ->
       "Writing lockfile " ^ path
   | LockfileWriteFinished { path; duration_ms } ->
       "Wrote lockfile " ^ path ^ " in " ^ Int.to_string duration_ms ^ "ms"
   | LockfileWriteFailed { path; error } ->
-      "Failed to write lockfile " ^ path ^ ": " ^ error
+      "Failed to write lockfile " ^ path ^ ": " ^ Pm_error.message error
   | DependencyResolutionStarted { packages; mode } ->
       let mode =
         match mode with
@@ -376,7 +380,9 @@ let display = function
       ^ Int.to_string duration_ms
       ^ "ms"
   | DependencyResolutionFailed { error } ->
-      "Dependency resolution failed: " ^ error
+      "Dependency resolution failed: " ^ Pm_error.message error
+  | RegistryIndexUpdating { registry } ->
+      "Updating " ^ registry ^ " index"
   | DependencyUniverseBuilding { packages } ->
       "Building dependency universe for " ^ Int.to_string (List.length packages) ^ " packages"
   | DependencyUniverseBuilt { runtime_packages; build_packages; dev_packages; duration_ms } ->
@@ -389,29 +395,37 @@ let display = function
       ^ ", dev="
       ^ Int.to_string dev_packages
       ^ ")"
-  | PackageMetadataFetchStarted { package } ->
-      "Fetching package metadata for " ^ package
-  | PackageMetadataFetchFinished { package; version; duration_ms } -> (
+  | PackageMetadataFetchStarted { registry; package } ->
+      "Fetching package metadata for " ^ package ^ " from " ^ registry
+  | PackageMetadataFetchFinished { registry; package; version; duration_ms } -> (
       match version with
       | Some version -> "Fetched package metadata for "
       ^ package
       ^ "@"
       ^ version
+      ^ " from "
+      ^ registry
       ^ " in "
       ^ Int.to_string duration_ms
       ^ "ms"
-      | None -> "Fetched package metadata for " ^ package ^ " in " ^ Int.to_string duration_ms ^ "ms"
+      | None -> "Fetched package metadata for "
+      ^ package
+      ^ " from "
+      ^ registry
+      ^ " in "
+      ^ Int.to_string duration_ms
+      ^ "ms"
     )
-  | PackageMetadataFetchFailed { package; error } ->
-      "Failed to fetch package metadata for " ^ package ^ ": " ^ error
+  | PackageMetadataFetchFailed { registry; package; error } ->
+      "Failed to fetch package metadata for " ^ package ^ " from " ^ registry ^ ": " ^ Pm_error.message error
   | PackageManifestFetchStarted { package; version } ->
       "Fetching manifest for " ^ package ^ "@" ^ version
   | PackageManifestFetchFinished { package; version; duration_ms } ->
       "Fetched manifest for " ^ package ^ "@" ^ version ^ " in " ^ Int.to_string duration_ms ^ "ms"
   | PackageManifestFetchFailed { package; version; error } -> (
       match version with
-      | Some version -> "Failed to fetch manifest for " ^ package ^ "@" ^ version ^ ": " ^ error
-      | None -> "Failed to fetch manifest for " ^ package ^ ": " ^ error
+      | Some version -> "Failed to fetch manifest for " ^ package ^ "@" ^ version ^ ": " ^ Pm_error.message error
+      | None -> "Failed to fetch manifest for " ^ package ^ ": " ^ Pm_error.message error
     )
   | PackageDownloadStarted { package; version; _ } ->
       "Downloading " ^ package ^ "@" ^ version
@@ -426,7 +440,7 @@ let display = function
       ^ Int.to_string duration_ms
       ^ "ms"
   | PackageDownloadFailed { package; version; error; _ } ->
-      "Failed to download " ^ package ^ "@" ^ version ^ ": " ^ error
+      "Failed to download " ^ package ^ "@" ^ version ^ ": " ^ Pm_error.message error
   | PackageDownloadSkipped { package; version; reason; _ } ->
       "Skipped download for " ^ package ^ "@" ^ version ^ " (" ^ reason ^ ")"
   | PackageCacheHit { package; version; path } ->
@@ -444,7 +458,7 @@ let display = function
       ^ Int.to_string duration_ms
       ^ "ms"
   | PackageMaterializationFailed { package; version; error; _ } ->
-      "Failed to materialize " ^ package ^ "@" ^ version ^ ": " ^ error
+      "Failed to materialize " ^ package ^ "@" ^ version ^ ": " ^ Pm_error.message error
   | PackageResolvedForBuild { package; version; path; workspace } -> (
       match version with
       | Some version ->
@@ -739,13 +753,13 @@ let kind_to_json = function
   | LockfileReadFinished { path; duration_ms } ->
       Json.Object [ ("path", Json.String path); ("duration_ms", Json.Int duration_ms) ]
   | LockfileReadFailed { path; error } ->
-      Json.Object [ ("path", Json.String path); ("error", Json.String error) ]
+      Json.Object [ ("path", Json.String path); ("error", Pm_error.to_json error) ]
   | LockfileWriteStarted { path } ->
       Json.Object [ ("path", Json.String path) ]
   | LockfileWriteFinished { path; duration_ms } ->
       Json.Object [ ("path", Json.String path); ("duration_ms", Json.Int duration_ms) ]
   | LockfileWriteFailed { path; error } ->
-      Json.Object [ ("path", Json.String path); ("error", Json.String error) ]
+      Json.Object [ ("path", Json.String path); ("error", Pm_error.to_json error) ]
   | DependencyResolutionStarted { packages; mode } ->
       Json.Object [
         ("packages", Json.Array (List.map (fun package -> Json.String package) packages));
@@ -764,7 +778,9 @@ let kind_to_json = function
         ("resolved_edges", Json.Int resolved_edges);
       ]
   | DependencyResolutionFailed { error } ->
-      Json.Object [ ("error", Json.String error) ]
+      Json.Object [ ("error", Pm_error.to_json error) ]
+  | RegistryIndexUpdating { registry } ->
+      Json.Object [ ("registry", Json.String registry) ]
   | DependencyUniverseBuilding { packages } ->
       Json.Object [
         ("packages", Json.Array (List.map (fun package -> Json.String package) packages))
@@ -776,16 +792,21 @@ let kind_to_json = function
         ("dev_packages", Json.Int dev_packages);
         ("duration_ms", Json.Int duration_ms);
       ]
-  | PackageMetadataFetchStarted { package } ->
-      Json.Object [ ("package", Json.String package) ]
-  | PackageMetadataFetchFinished { package; version; duration_ms } ->
+  | PackageMetadataFetchStarted { registry; package } ->
+      Json.Object [ ("registry", Json.String registry); ("package", Json.String package) ]
+  | PackageMetadataFetchFinished { registry; package; version; duration_ms } ->
       Json.Object [
+        ("registry", Json.String registry);
         ("package", Json.String package);
         ("version", json_of_string_option version);
         ("duration_ms", Json.Int duration_ms);
       ]
-  | PackageMetadataFetchFailed { package; error } ->
-      Json.Object [ ("package", Json.String package); ("error", Json.String error) ]
+  | PackageMetadataFetchFailed { registry; package; error } ->
+      Json.Object [
+        ("registry", Json.String registry);
+        ("package", Json.String package);
+        ("error", Pm_error.to_json error);
+      ]
   | PackageManifestFetchStarted { package; version } ->
       Json.Object [ ("package", Json.String package); ("version", Json.String version) ]
   | PackageManifestFetchFinished { package; version; duration_ms } ->
@@ -798,7 +819,7 @@ let kind_to_json = function
       Json.Object [
         ("package", Json.String package);
         ("version", json_of_string_option version);
-        ("error", Json.String error);
+        ("error", Pm_error.to_json error);
       ]
   | PackageDownloadStarted { package; version; path } ->
       Json.Object [
@@ -818,7 +839,7 @@ let kind_to_json = function
         ("package", Json.String package);
         ("version", Json.String version);
         ("path", Json.String path);
-        ("error", Json.String error);
+        ("error", Pm_error.to_json error);
       ]
   | PackageDownloadSkipped { package; version; path; reason } ->
       Json.Object [
@@ -851,7 +872,7 @@ let kind_to_json = function
         ("package", Json.String package);
         ("version", Json.String version);
         ("path", Json.String path);
-        ("error", Json.String error);
+        ("error", Pm_error.to_json error);
       ]
   | PackageResolvedForBuild { package; version; path; workspace } ->
       Json.Object [
@@ -1379,10 +1400,11 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "path" data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String path), Some (Json.String error) -> Ok (LockfileReadFailed {
-                    path;
-                    error
-                  })
+                  | Some (Json.String path), Some error_json -> (
+                      match Pm_error.of_json error_json with
+                      | Ok error -> Ok (LockfileReadFailed { path; error })
+                      | Error err -> Error ("Invalid LockfileReadFailed data: " ^ err)
+                    )
                   | _ -> Error "Invalid LockfileReadFailed data"
                 )
               | _ -> Error "Invalid LockfileReadFailed data"
@@ -1412,10 +1434,11 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "path" data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String path), Some (Json.String error) -> Ok (LockfileWriteFailed {
-                    path;
-                    error
-                  })
+                  | Some (Json.String path), Some error_json -> (
+                      match Pm_error.of_json error_json with
+                      | Ok error -> Ok (LockfileWriteFailed { path; error })
+                      | Error err -> Error ("Invalid LockfileWriteFailed data: " ^ err)
+                    )
                   | _ -> Error "Invalid LockfileWriteFailed data"
                 )
               | _ -> Error "Invalid LockfileWriteFailed data"
@@ -1495,10 +1518,23 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "error" data_fields with
-                  | Some (Json.String error) -> Ok (DependencyResolutionFailed { error })
+                  | Some error_json -> (
+                      match Pm_error.of_json error_json with
+                      | Ok error -> Ok (DependencyResolutionFailed { error })
+                      | Error err -> Error ("Invalid DependencyResolutionFailed data: " ^ err)
+                    )
                   | _ -> Error "Invalid DependencyResolutionFailed data"
                 )
               | _ -> Error "Invalid DependencyResolutionFailed data"
+            )
+          | "tusk.pm.registry.index.updating" -> (
+              match data with
+              | Json.Object data_fields -> (
+                  match List.assoc_opt "registry" data_fields with
+                  | Some (Json.String registry) -> Ok (RegistryIndexUpdating { registry })
+                  | _ -> Error "Invalid RegistryIndexUpdating data"
+                )
+              | _ -> Error "Invalid RegistryIndexUpdating data"
             )
           | "tusk.pm.universe.building" -> (
               match data with
@@ -1539,8 +1575,9 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_metadata.fetch.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields with
-                  | Some (Json.String package) -> Ok (PackageMetadataFetchStarted { package })
+                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields with
+                  | Some (Json.String registry), Some (Json.String package) ->
+                      Ok (PackageMetadataFetchStarted { registry; package })
                   | _ -> Error "Invalid PackageMetadataFetchStarted data"
                 )
               | _ -> Error "Invalid PackageMetadataFetchStarted data"
@@ -1548,14 +1585,14 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_metadata.fetch.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "duration_ms" data_fields with
-                  | Some (Json.String package), Some (Json.Int duration_ms) ->
+                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields, List.assoc_opt "duration_ms" data_fields with
+                  | Some (Json.String registry), Some (Json.String package), Some (Json.Int duration_ms) ->
                       let version =
                         match List.assoc_opt "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
-                      Ok (PackageMetadataFetchFinished { package; version; duration_ms })
+                      Ok (PackageMetadataFetchFinished { registry; package; version; duration_ms })
                   | _ -> Error "Invalid PackageMetadataFetchFinished data"
                 )
               | _ -> Error "Invalid PackageMetadataFetchFinished data"
@@ -1563,11 +1600,12 @@ let kind_from_json = fun json ->
           | "tusk.pm.package_metadata.fetch.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String package), Some (Json.String error) -> Ok (PackageMetadataFetchFailed {
-                    package;
-                    error
-                  })
+                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields, List.assoc_opt "error" data_fields with
+                  | Some (Json.String registry), Some (Json.String package), Some error_json -> (
+                      match Pm_error.of_json error_json with
+                      | Ok error -> Ok (PackageMetadataFetchFailed { registry; package; error })
+                      | Error err -> Error ("Invalid PackageMetadataFetchFailed data: " ^ err)
+                    )
                   | _ -> Error "Invalid PackageMetadataFetchFailed data"
                 )
               | _ -> Error "Invalid PackageMetadataFetchFailed data"
@@ -1603,13 +1641,16 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match List.assoc_opt "package" data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String package), Some (Json.String error) ->
+                  | Some (Json.String package), Some error_json -> (
                       let version =
                         match List.assoc_opt "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
-                      Ok (PackageManifestFetchFailed { package; version; error })
+                      match Pm_error.of_json error_json with
+                      | Ok error -> Ok (PackageManifestFetchFailed { package; version; error })
+                      | Error err -> Error ("Invalid PackageManifestFetchFailed data: " ^ err)
+                    )
                   | _ -> Error "Invalid PackageManifestFetchFailed data"
                 )
               | _ -> Error "Invalid PackageManifestFetchFailed data"
@@ -1651,12 +1692,11 @@ let kind_from_json = fun json ->
                   match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
                     "path"
                     data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.String error) -> Ok (PackageDownloadFailed {
-                    package;
-                    version;
-                    path;
-                    error
-                  })
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some error_json -> (
+                      match Pm_error.of_json error_json with
+                      | Ok error -> Ok (PackageDownloadFailed { package; version; path; error })
+                      | Error err -> Error ("Invalid PackageDownloadFailed data: " ^ err)
+                    )
                   | _ -> Error "Invalid PackageDownloadFailed data"
                 )
               | _ -> Error "Invalid PackageDownloadFailed data"
@@ -1729,12 +1769,11 @@ let kind_from_json = fun json ->
                   match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
                     "path"
                     data_fields, List.assoc_opt "error" data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.String error) -> Ok (PackageMaterializationFailed {
-                    package;
-                    version;
-                    path;
-                    error
-                  })
+                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some error_json -> (
+                      match Pm_error.of_json error_json with
+                      | Ok error -> Ok (PackageMaterializationFailed { package; version; path; error })
+                      | Error err -> Error ("Invalid PackageMaterializationFailed data: " ^ err)
+                    )
                   | _ -> Error "Invalid PackageMaterializationFailed data"
                 )
               | _ -> Error "Invalid PackageMaterializationFailed data"

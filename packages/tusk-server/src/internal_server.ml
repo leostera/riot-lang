@@ -2,6 +2,25 @@
 open Std
 open Tusk_model
 
+type error =
+  | RegistryInitializationFailed of {
+      registry_name: string;
+      error: string
+    }
+  | WorkspacePreparationFailed of {
+      error: Tusk_model.Pm_error.t
+    }
+  | UnexpectedException of {
+      error: string
+    }
+
+let error_message = function
+  | RegistryInitializationFailed { registry_name; error } ->
+      "failed to initialize registry '" ^ registry_name ^ "': " ^ error
+  | WorkspacePreparationFailed { error } ->
+      Tusk_model.Pm_error.message error
+  | UnexpectedException { error } -> error
+
 type server_state = {
   workspace: Workspace.t;
   toolchain: Tusk_toolchain.t;
@@ -502,10 +521,11 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
 let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_registry_name) ~workspace ?(load_errors = []) ~(config:Server_config.t) () ->
   try
     match resolve_registry ?registry ~registry_name () with
-    | Error err -> Error (Failure ("failed to initialize registry '" ^ registry_name ^ "': " ^ err))
+    | Error err ->
+        Error (RegistryInitializationFailed { registry_name; error = err })
     | Ok registry ->
         match prepare_workspace ~emit ~registry ~workspace () with
-        | Error err -> Error (Failure err)
+        | Error err -> Error (WorkspacePreparationFailed { error = err })
         | Ok workspace ->
             let state = build_state ~workspace ~load_errors ~registry ~config in
             let server_pid =
@@ -516,4 +536,5 @@ let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_regi
             in
             Ok server_pid
   with
-  | exn -> Error exn
+  | exn ->
+      Error (UnexpectedException { error = Exception.to_string exn })

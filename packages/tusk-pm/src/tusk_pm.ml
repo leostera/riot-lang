@@ -1,4 +1,5 @@
 open Std
+module Error = Error
 module Dep_solver = Dep_solver
 module Lockfile_store = Lockfile_store
 module Lock_refresh = Lock_refresh
@@ -33,6 +34,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
   let lock_path_str = Path.to_string lock_path in
   match Lockfile_store.read ~workspace_root with
   | Error err ->
+      let err = Error.LockfileReadFailed { path = lock_path; error = err } in
       emit (Tusk_model.Event.LockfileReadFailed { path = lock_path_str; error = err });
       Error err
   | Ok existing_lock ->
@@ -61,7 +63,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
             | Some lockfile -> (
                 match Lock_refresh.needs_refresh ~workspace_root ~manifest_paths with
                 | Error err ->
-                    Error err
+                    Error (Error.LockRefreshCheckFailed { workspace_root; error = err })
                 | Ok false ->
                     Ok (lockfile, true)
                 | Ok true ->
@@ -117,6 +119,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                       });
                     Ok ()
                 | Error err ->
+                    let err = Error.LockfileWriteFailed { path = lock_path; error = err } in
                     emit (Tusk_model.Event.LockfileWriteFailed { path = lock_path_str; error = err });
                     Error err
               )

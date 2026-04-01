@@ -75,35 +75,75 @@ let pm_package_source_label = function
   | Some version -> version
   | None -> "src"
 
-let format_pm_event = function
-  | Tusk_model.Event.PackageResolvedForBuild { package; version; _ } -> "    \027[1;32mResolved\027[0m "
-  ^ package
-  ^ " ("
-  ^ pm_package_source_label version
-  ^ ")"
-  | Tusk_model.Event.PackageDownloadStarted { package; version; _ } -> " \027[1;32mDownloading\027[0m "
-  ^ package
-  ^ " ("
-  ^ version
-  ^ ")"
-  | Tusk_model.Event.PackageDownloadQueued { package; version; _ } -> "      \027[1;33mQueued\027[0m "
-  ^ package
-  ^ " ("
-  ^ version
-  ^ ")"
-  | Tusk_model.Event.PackageDownloadSkipped { package; version; _ } -> "    \027[1;33mUsing\027[0m "
-  ^ package
-  ^ " ("
-  ^ version
-  ^ ")"
-  | kind -> Tusk_model.Event.display kind
+let format_pm_event = fun ~seen_registry_updates kind ->
+  match kind with
+  | Tusk_model.Event.RegistryIndexUpdating { registry } ->
+      if HashSet.contains seen_registry_updates registry then
+        None
+      else
+        (
+          let _ = HashSet.insert seen_registry_updates registry in
+          Some ("    \027[1;32mUpdating\027[0m " ^ registry ^ " index")
+        )
+  | Tusk_model.Event.PackageResolvedForBuild { package; version; _ } ->
+      Some ("    \027[1;32mResolved\027[0m "
+      ^ package
+      ^ " ("
+      ^ pm_package_source_label version
+      ^ ")")
+  | Tusk_model.Event.PackageDownloadStarted { package; version; _ } ->
+      Some (" \027[1;32mDownloading\027[0m "
+      ^ package
+      ^ " ("
+      ^ version
+      ^ ")")
+  | Tusk_model.Event.PackageDownloadQueued { package; version; _ } ->
+      Some ("      \027[1;33mQueued\027[0m "
+      ^ package
+      ^ " ("
+      ^ version
+      ^ ")")
+  | Tusk_model.Event.PackageDownloadSkipped { package; version; _ } ->
+      Some ("    \027[1;33mUsing\027[0m "
+      ^ package
+      ^ " ("
+      ^ version
+      ^ ")")
+  | Tusk_model.Event.DependencyResolutionStarted _
+  | Tusk_model.Event.DependencyResolutionRefreshingLock _
+  | Tusk_model.Event.DependencyResolutionFailed _
+  | Tusk_model.Event.DependencyUniverseBuilding _
+  | Tusk_model.Event.DependencyUniverseBuilt _
+  | Tusk_model.Event.PackageMetadataFetchStarted _
+  | Tusk_model.Event.PackageMetadataFetchFinished _
+  | Tusk_model.Event.PackageMetadataFetchFailed _
+  | Tusk_model.Event.LockfileReadStarted _
+  | Tusk_model.Event.LockfileReadFinished _
+  | Tusk_model.Event.LockfileReadFailed _
+  | Tusk_model.Event.LockfileWriteStarted _
+  | Tusk_model.Event.LockfileWriteFinished _
+  | Tusk_model.Event.LockfileWriteFailed _
+  | Tusk_model.Event.DependencyResolutionFinished _
+  | Tusk_model.Event.DependencyResolutionUsingExistingLock _
+  | Tusk_model.Event.DependencyResolutionUnlocking _ ->
+      None
+  | kind -> Some (Tusk_model.Event.display kind)
 
-let write_pm_event = fun ~mode ~session_id kind ->
+let write_pm_event = fun ~mode ~session_id ~seen_registry_updates kind ->
   match mode with
   | Json -> Tusk_model.Event.create ~session_id ~level:Tusk_model.Event.Info kind
   |> Tusk_model.Event.to_json
   |> write_json_event
-  | Human -> out (format_pm_event kind)
+  | Human -> (
+      match format_pm_event ~seen_registry_updates kind with
+      | Some message -> out message
+      | None -> ()
+    )
+
+let write_command_error = fun ~mode kind details human_message ->
+  match mode with
+  | Json -> write_json_event (command_error_event_to_json kind details)
+  | Human -> out ("\027[1;31mError\027[0m: " ^ human_message)
 
 (** Helper functions for target resolution *)
 let ensure_toolchains_for_targets = fun workspace targets ->
@@ -196,199 +236,207 @@ let command =
 
 let run_build_request = fun ~workspace ~load_errors ?(scope = Runtime) ?(mode = Human) request target_arch ->
   let startup_session_id = Session_id.make () in
-  let client =
-    match Local_session.connect_local
-      ~emit:(write_pm_event ~mode ~session_id:startup_session_id)
-      ~workspace
-      ~load_errors
-      () with
-    | Ok client -> client
-    | Error err -> panic ("Failed to start local tusk session: " ^ err)
-  in
-  let displayed_packages = HashSet.create () in
-  (* Track build stats as events arrive *)
-  let start_time = Time.Instant.now () in
-  let built_count = ref 0 in
-  let cached_count = ref 0 in
-  let failed_count = ref 0 in
-  let skipped_count = ref 0 in
-  let result =
-    Local_session.build_streaming client request
-      ~scope:((
-        match scope with
-        | Runtime -> Local_session.Runtime
-        | Dev -> Local_session.Dev
-      ))
-      ?target_arch
-      (fun event ->
-        match mode with
-        | Json -> (
-            match event with
-            | Local_session.BuildStarted _ ->
-                ()
-            | Local_session.BuildEvent event -> (
-                match telemetry_event_to_json event with
-                | Data.Json.Null -> ()
-                | json -> write_json_event json
-              )
-            | Local_session.BuildCompleted { session_id; completed_at; stats; results } ->
-                build_completed_event_to_json session_id completed_at stats results |> write_json_event
-            | Local_session.BuildFailed {
-              session_id;
-              failed_at;
-              stats=_;
-              built=_;
-              errors
-            } ->
-                build_failed_event_to_json session_id failed_at errors |> write_json_event
-            | Local_session.PlanningFailed { session_id; failed_at; reason } ->
-                planning_failed_event_to_json session_id failed_at reason |> write_json_event
-            | Local_session.CycleDetected { session_id; detected_at; cycle_nodes } ->
-                cycle_detected_event_to_json session_id detected_at cycle_nodes |> write_json_event
-          )
-        | Human -> (
-            match event with
-            | Local_session.BuildStarted _ ->
-                ()
-            | Local_session.BuildEvent event ->
-                (* Track stats from events *)
-                (
-                  match event with
-                  | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> built_count := !built_count
-                  + 1
-                  | Tusk_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> cached_count := !cached_count
-                  + 1
-                  | Tusk_executor.Telemetry_events.BuildFailed _ -> failed_count := !failed_count + 1
-                  | Tusk_executor.Telemetry_events.BuildSkipped _ -> skipped_count := !skipped_count
-                  + 1
-                  | _ -> ()
-                );
-                let msg = Event_formatter.format ~displayed_packages event in
-                if msg != "" then
-                  out msg
-            | Local_session.BuildCompleted _ ->
-                ()
-            | Local_session.BuildFailed _ ->
-                ()
-            | Local_session.PlanningFailed { reason; _ } ->
-                (* Planning failed before build started - this is a fatal error *)
-                out "";
-                out ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
-                failed_count := !failed_count + 1
-            | Local_session.CycleDetected { cycle_nodes; _ } ->
-                out "      \027[1;31mError\027[0m: Cyclic dependency detected:";
-                out ("         " ^ String.concat " ->\n         " cycle_nodes)
+  let seen_registry_updates = HashSet.create () in
+  match Local_session.connect_local
+    ~emit:(write_pm_event ~mode ~session_id:startup_session_id ~seen_registry_updates)
+    ~workspace
+    ~load_errors
+    () with
+  | Error (Local_session.StartupFailed { error }) ->
+      let reason = Tusk_server.error_message error in
+      write_command_error
+        ~mode
+        "SessionStartFailed"
+        [ ("reason", Data.Json.String reason) ]
+        reason;
+      exit 1
+  | Error err ->
+      let reason = Local_session.error_message err in
+      write_command_error
+        ~mode
+        "SessionStartFailed"
+        [ ("reason", Data.Json.String reason) ]
+        reason;
+      exit 1
+  | Ok client ->
+      let displayed_packages = HashSet.create () in
+      (* Track build stats as events arrive *)
+      let start_time = Time.Instant.now () in
+      let built_count = ref 0 in
+      let cached_count = ref 0 in
+      let failed_count = ref 0 in
+      let skipped_count = ref 0 in
+      let result =
+        Local_session.build_streaming client request
+          ~scope:((
+            match scope with
+            | Runtime -> Local_session.Runtime
+            | Dev -> Local_session.Dev
           ))
-  in
-  let final_event =
-    match result with
-    | Error err ->
-        Local_session.close client;
-        (
-          match err with
-          | Local_session.PackageNotFound { package_name; available_packages } ->
-              if mode = Json then
-                write_json_event
-                  (command_error_event_to_json
-                    "PackageNotFound"
-                    [
-                      ("package_name", Data.Json.String package_name);
-                      (
-                        "available_packages",
-                        Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages)
-                      );
-                    ]);
-              out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
-              out "";
-              out "Available packages:";
-              List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
-              exit 1
-          | Local_session.PackagesNotFound { package_names; available_packages } ->
-              if mode = Json then
-                write_json_event
-                  (command_error_event_to_json
-                    "PackagesNotFound"
-                    [
-                      (
-                        "package_names",
-                        Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) package_names)
-                      );
-                      (
-                        "available_packages",
-                        Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages)
-                      );
-                    ]);
-              out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
-              out "";
-              out "Available packages:";
-              List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
-              exit 1
-          | Local_session.BuildAlreadyRunning { lock_path } ->
-              if mode = Json then
-                write_json_event
-                  (command_error_event_to_json
-                    "BuildAlreadyRunning"
-                    [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]);
-              out "\027[1;31mError\027[0m: another tusk build is already running";
-              out ("Lock file: " ^ Path.to_string lock_path);
-              out "Wait for the current build to finish and try again.";
-              exit 1
-          | Local_session.UnexpectedEvent Module.{ reason } ->
-              if mode = Json then
-                write_json_event
-                  (command_error_event_to_json
-                    "UnexpectedEvent"
-                    [ ("reason", Data.Json.String reason) ]);
-              out ("\027[1;31mError\027[0m: " ^ reason);
-              exit 1
-        )
-    | Ok event ->
-        Local_session.close client;
-        event
-  in
-  (
-    match mode with
-    | Json -> ()
-    | Human ->
-        (* Print final summary line *)
-        let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
-        let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
-        let total_count = !built_count + !cached_count in
-        if !failed_count = 0 && !skipped_count = 0 then
-          out
-            ("    \027[1;32mFinished\027[0m in "
-            ^ formatted_duration
-            ^ "s ("
-            ^ Int.to_string total_count
-            ^ " built)")
-        else if !failed_count > 0 then
-          out
-            ("    \027[1;31mFinished\027[0m in "
-            ^ formatted_duration
-            ^ "s ("
-            ^ Int.to_string total_count
-            ^ " built, "
-            ^ Int.to_string !failed_count
-            ^ " failed, "
-            ^ Int.to_string !skipped_count
-            ^ " skipped)")
-        else
-          out
-            ("    \027[1;33mFinished\027[0m in "
-            ^ formatted_duration
-            ^ "s ("
-            ^ Int.to_string total_count
-            ^ " built, "
-            ^ Int.to_string !skipped_count
-            ^ " skipped)")
-  );
-  match final_event with
-  | Local_session.BuildCompleted _ -> Ok ()
-  | Local_session.BuildFailed _ -> Error (Failure "Build failed")
-  | Local_session.PlanningFailed _ -> Error (Failure "Planning failed")
-  | Local_session.CycleDetected _ -> Error (Failure "Cyclic dependency detected")
-  | Local_session.BuildStarted _
-  | Local_session.BuildEvent _ -> Error (Failure "Unexpected response from server")
+          ?target_arch
+          (fun event ->
+            match mode with
+            | Json -> (
+                match event with
+                | Local_session.BuildStarted _ ->
+                    ()
+                | Local_session.BuildEvent event -> (
+                    match telemetry_event_to_json event with
+                    | Data.Json.Null -> ()
+                    | json -> write_json_event json
+                  )
+                | Local_session.BuildCompleted { session_id; completed_at; stats; results } ->
+                    build_completed_event_to_json session_id completed_at stats results |> write_json_event
+                | Local_session.BuildFailed {
+                  session_id;
+                  failed_at;
+                  stats=_;
+                  built=_;
+                  errors
+                } ->
+                    build_failed_event_to_json session_id failed_at errors |> write_json_event
+                | Local_session.PlanningFailed { session_id; failed_at; reason } ->
+                    planning_failed_event_to_json session_id failed_at reason |> write_json_event
+                | Local_session.CycleDetected { session_id; detected_at; cycle_nodes } ->
+                    cycle_detected_event_to_json session_id detected_at cycle_nodes |> write_json_event
+              )
+            | Human -> (
+                match event with
+                | Local_session.BuildStarted _ ->
+                    ()
+                | Local_session.BuildEvent event ->
+                    (
+                      match event with
+                      | Tusk_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> built_count := !built_count + 1
+                      | Tusk_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> cached_count := !cached_count + 1
+                      | Tusk_executor.Telemetry_events.BuildFailed _ -> failed_count := !failed_count + 1
+                      | Tusk_executor.Telemetry_events.BuildSkipped _ -> skipped_count := !skipped_count + 1
+                      | _ -> ()
+                    );
+                    let msg = Event_formatter.format ~displayed_packages event in
+                    if msg != "" then
+                      out msg
+                | Local_session.BuildCompleted _ ->
+                    ()
+                | Local_session.BuildFailed _ ->
+                    ()
+                | Local_session.PlanningFailed { reason; _ } ->
+                    out "";
+                    out ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
+                    failed_count := !failed_count + 1
+                | Local_session.CycleDetected { cycle_nodes; _ } ->
+                    out "      \027[1;31mError\027[0m: Cyclic dependency detected:";
+                    out ("         " ^ String.concat " ->\n         " cycle_nodes)
+              ))
+      in
+      let final_event =
+        match result with
+        | Error err ->
+            Local_session.close client;
+            (
+              match err with
+              | Local_session.PackageNotFound { package_name; available_packages } ->
+                  if mode = Json then
+                    write_json_event
+                      (command_error_event_to_json
+                        "PackageNotFound"
+                        [
+                          ("package_name", Data.Json.String package_name);
+                          ("available_packages", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages));
+                        ]);
+                  out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
+                  out "";
+                  out "Available packages:";
+                  List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
+                  exit 1
+              | Local_session.PackagesNotFound { package_names; available_packages } ->
+                  if mode = Json then
+                    write_json_event
+                      (command_error_event_to_json
+                        "PackagesNotFound"
+                        [
+                          ("package_names", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) package_names));
+                          ("available_packages", Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages));
+                        ]);
+                  out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
+                  out "";
+                  out "Available packages:";
+                  List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages;
+                  exit 1
+              | Local_session.BuildAlreadyRunning { lock_path } ->
+                  if mode = Json then
+                    write_json_event
+                      (command_error_event_to_json
+                        "BuildAlreadyRunning"
+                        [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]);
+                  out "\027[1;31mError\027[0m: another tusk build is already running";
+                  out ("Lock file: " ^ Path.to_string lock_path);
+                  out "Wait for the current build to finish and try again.";
+                  exit 1
+              | Local_session.UnexpectedEvent Module.{ reason } ->
+                  if mode = Json then
+                    write_json_event
+                      (command_error_event_to_json
+                        "UnexpectedEvent"
+                        [ ("reason", Data.Json.String reason) ]);
+                  out ("\027[1;31mError\027[0m: " ^ reason);
+                  exit 1
+              | Local_session.StartupFailed { error } ->
+                  let reason = Tusk_server.error_message error in
+                  if mode = Json then
+                    write_json_event
+                      (command_error_event_to_json
+                        "SessionStartFailed"
+                        [ ("reason", Data.Json.String reason) ]);
+                  out ("\027[1;31mError\027[0m: " ^ reason);
+                  exit 1
+            )
+        | Ok event ->
+            Local_session.close client;
+            event
+      in
+      (
+        match mode with
+        | Json -> ()
+        | Human ->
+            let duration = Time.Instant.duration_since ~earlier:start_time (Time.Instant.now ()) in
+            let formatted_duration = Time.Duration.to_secs_string ~precision:2 duration in
+            let total_count = !built_count + !cached_count in
+            if !failed_count = 0 && !skipped_count = 0 then
+              out
+                ("    \027[1;32mFinished\027[0m in "
+                ^ formatted_duration
+                ^ "s ("
+                ^ Int.to_string total_count
+                ^ " built)")
+            else if !failed_count > 0 then
+              out
+                ("    \027[1;31mFinished\027[0m in "
+                ^ formatted_duration
+                ^ "s ("
+                ^ Int.to_string total_count
+                ^ " built, "
+                ^ Int.to_string !failed_count
+                ^ " failed, "
+                ^ Int.to_string !skipped_count
+                ^ " skipped)")
+            else
+              out
+                ("    \027[1;33mFinished\027[0m in "
+                ^ formatted_duration
+                ^ "s ("
+                ^ Int.to_string total_count
+                ^ " built, "
+                ^ Int.to_string !skipped_count
+                ^ " skipped)")
+      );
+      match final_event with
+      | Local_session.BuildCompleted _ -> Ok ()
+      | Local_session.BuildFailed _ -> Error (Failure "Build failed")
+      | Local_session.PlanningFailed _ -> Error (Failure "Planning failed")
+      | Local_session.CycleDetected _ -> Error (Failure "Cyclic dependency detected")
+      | Local_session.BuildStarted _
+      | Local_session.BuildEvent _ -> Error (Failure "Unexpected response from server")
 
 let build_command = fun ?workspace ?load_errors ?(scope = Runtime) ?(mode = Human) package_opt target_arch ->
   let (workspace, load_errors) =

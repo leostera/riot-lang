@@ -1,5 +1,7 @@
 open Std
 
+module Error = Error
+
 type event_sink = Tusk_model.Event.kind -> unit
 val resolve_packages:
   ?emit:event_sink ->
@@ -8,4 +10,4 @@ val resolve_packages:
   packages:Tusk_model.Package.t list ->
   lockfile:Tusk_model.Lockfile.t ->
   unit ->
-  (Tusk_model.Package.resolved list, string) result
+  (Tusk_model.Package.resolved list, Error.t) result

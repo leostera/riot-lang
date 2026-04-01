@@ -2,6 +2,8 @@
 open Std
 open Std.Data
 
+module Pm_error = Pm_error
+
 (** Strip ANSI escape codes from a string *)
 val strip_ansi_codes: string -> string
 
@@ -102,10 +104,10 @@ type kind =
   | WorkspaceScanned of { packages: int; duration_ms: int }
   | LockfileReadStarted of { path: string }
   | LockfileReadFinished of { path: string; duration_ms: int }
-  | LockfileReadFailed of { path: string; error: string }
+  | LockfileReadFailed of { path: string; error: Pm_error.t }
   | LockfileWriteStarted of { path: string }
   | LockfileWriteFinished of { path: string; duration_ms: int }
-  | LockfileWriteFailed of { path: string; error: string }
+  | LockfileWriteFailed of { path: string; error: Pm_error.t }
   | DependencyResolutionStarted of { packages: string list; mode:
         [
           | `Refresh
@@ -115,7 +117,8 @@ type kind =
   | DependencyResolutionRefreshingLock of { path: string }
   | DependencyResolutionUnlocking of { path: string option }
   | DependencyResolutionFinished of { duration_ms: int; resolved_packages: int; resolved_edges: int }
-  | DependencyResolutionFailed of { error: string }
+  | DependencyResolutionFailed of { error: Pm_error.t }
+  | RegistryIndexUpdating of { registry: string }
   | DependencyUniverseBuilding of { packages: string list }
   | DependencyUniverseBuilt of {
       runtime_packages: int;
@@ -123,15 +126,15 @@ type kind =
       dev_packages: int;
       duration_ms: int
     }
-  | PackageMetadataFetchStarted of { package: string }
-  | PackageMetadataFetchFinished of { package: string; version: string option; duration_ms: int }
-  | PackageMetadataFetchFailed of { package: string; error: string }
+  | PackageMetadataFetchStarted of { registry: string; package: string }
+  | PackageMetadataFetchFinished of { registry: string; package: string; version: string option; duration_ms: int }
+  | PackageMetadataFetchFailed of { registry: string; package: string; error: Pm_error.t }
   | PackageManifestFetchStarted of { package: string; version: string }
   | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
-  | PackageManifestFetchFailed of { package: string; version: string option; error: string }
+  | PackageManifestFetchFailed of { package: string; version: string option; error: Pm_error.t }
   | PackageDownloadStarted of { package: string; version: string; path: string }
   | PackageDownloadFinished of { package: string; version: string; path: string; duration_ms: int }
-  | PackageDownloadFailed of { package: string; version: string; path: string; error: string }
+  | PackageDownloadFailed of { package: string; version: string; path: string; error: Pm_error.t }
   | PackageDownloadSkipped of { package: string; version: string; path: string; reason: string }
   | PackageCacheHit of { package: string; version: string; path: string }
   | PackageMaterializationStarted of { package: string; version: string; path: string }
@@ -141,7 +144,7 @@ type kind =
       path: string;
       duration_ms: int
     }
-  | PackageMaterializationFailed of { package: string; version: string; path: string; error: string }
+  | PackageMaterializationFailed of { package: string; version: string; path: string; error: Pm_error.t }
   | PackageResolvedForBuild of {
       package: string;
       version: string option;

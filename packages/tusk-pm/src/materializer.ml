@@ -1,4 +1,5 @@
 open Std
+module Error = Error
 
 type event_sink = Tusk_model.Event.kind -> unit
 
@@ -10,7 +11,10 @@ let duration_ms_since = fun started ->
 let ensure_registry_package = fun ?(emit = no_emit) ~registry (pkg: Tusk_model.Lockfile.package) ->
   let package = pkg.id.name in
   match pkg.id.version with
-  | None -> Error ("registry lock package '" ^ package ^ "' is missing an exact version")
+  | None ->
+      Error (Error.MaterializationFailed {
+        error = "registry lock package '" ^ package ^ "' is missing an exact version"
+      })
   | Some version -> (
       let path = Pkgs_ml.Registry_cache.package_src_dir
         (Pkgs_ml.Registry.cache registry)
@@ -39,9 +43,10 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry (pkg: Tusk_model.L
             });
           Ok ()
       | Error err ->
+          let error = Error.MaterializationFailed { error = err } in
           emit
-            (Tusk_model.Event.PackageMaterializationFailed { package; version; path; error = err });
-          Error err
+            (Tusk_model.Event.PackageMaterializationFailed { package; version; path; error });
+          Error error
     )
 
 let ensure_packages = fun ?(emit = no_emit) ~registry ~(lockfile:Tusk_model.Lockfile.t) () ->

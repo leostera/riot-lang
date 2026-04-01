@@ -52,7 +52,7 @@ let test_build_failed_prefixes_package_name = fun () ->
     error = Tusk_executor.Telemetry_events.ExecutionFailed { message = "Command failed" }
   } in
   let rendered = Tusk_cli.Event_formatter.format ~displayed_packages event in
-  if String.contains rendered "Error syn: Command failed" then
+  if String.contains rendered "syn: Execution failed: Command failed" then
     Ok ()
   else
     Error ("expected package-prefixed error, got: " ^ rendered)
@@ -92,7 +92,7 @@ let test_package_ocamlc_warnings_prefix_package_name = fun () ->
   }
   in
   let rendered = Tusk_cli.Event_formatter.format ~displayed_packages event in
-  if String.contains rendered "Warning tusk-eval: File \"x.ml\"" then
+  if String.contains rendered "tusk-eval: File \"x.ml\"" then
     Ok ()
   else
     Error ("expected package-prefixed warning, got: " ^ rendered)

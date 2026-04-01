@@ -1,5 +1,19 @@
 open Std
 
+type error =
+  | RegistryInitializationFailed of {
+      registry_name: string;
+      error: string
+    }
+  | WorkspacePreparationFailed of {
+      error: Tusk_model.Pm_error.t
+    }
+  | UnexpectedException of {
+      error: string
+    }
+
+val error_message : error -> string
+
 val start_local:
   ?emit:(Tusk_model.Event.kind -> unit) ->
   ?registry:Pkgs_ml.Registry.t ->
@@ -8,4 +22,4 @@ val start_local:
   ?load_errors:Tusk_model.Workspace_manager.load_error list ->
   config:Server_config.t ->
   unit ->
-  (Pid.t, exn) result
+  (Pid.t, error) result

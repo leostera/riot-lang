@@ -6,6 +6,7 @@ module Lockfile = Lockfile
 module Package_command = Package_command
 module Error = Error
 module Event = Event
+module Pm_error = Pm_error
 module Module_name = Module_name
 module Module = Module
 module Namespace = Namespace

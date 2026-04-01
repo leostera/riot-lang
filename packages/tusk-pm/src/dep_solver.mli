@@ -1,5 +1,7 @@
 open Std
 
+module Error = Error
+
 type mode =
   | Refresh
   | Unlock
@@ -19,4 +21,4 @@ val lock_deps:
   existing_lock:Tusk_model.Lockfile.t option ->
   workspace_root:Path.t ->
   Tusk_model.Package.t list ->
-  (Tusk_model.Lockfile.t, string) result
+  (Tusk_model.Lockfile.t, Error.t) result
