@@ -8,6 +8,11 @@ type output_mode =
   | Json
 val command: Std.ArgParser.command
 
+val format_pm_event:
+  seen_registry_updates:string Std.Collections.HashSet.t ->
+  Tusk_model.Event.kind ->
+  string option
+
 val run:
   workspace:Tusk_model.Workspace.t ->
   load_errors:Tusk_model.Workspace_manager.load_error list ->

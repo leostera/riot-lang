@@ -85,30 +85,25 @@ let format_pm_event = fun ~seen_registry_updates kind ->
           let _ = HashSet.insert seen_registry_updates registry in
           Some ("    \027[1;32mUpdating\027[0m " ^ registry ^ " index")
         )
-  | Tusk_model.Event.PackageResolvedForBuild { package; version; _ } ->
-      Some ("    \027[1;32mResolved\027[0m "
-      ^ package
-      ^ " ("
-      ^ pm_package_source_label version
-      ^ ")")
+  | Tusk_model.Event.PackageResolvedForBuild { package; version; workspace; _ } ->
+      if workspace then
+        None
+      else
+        Some ("    \027[1;32mResolved\027[0m "
+        ^ package
+        ^ " ("
+        ^ pm_package_source_label version
+        ^ ")")
   | Tusk_model.Event.PackageDownloadStarted { package; version; _ } ->
-      Some (" \027[1;32mDownloading\027[0m "
-      ^ package
-      ^ " ("
-      ^ version
-      ^ ")")
+      Some ("    \027[1;32mDownloading\027[0m " ^ package ^ " " ^ version)
   | Tusk_model.Event.PackageDownloadQueued { package; version; _ } ->
       Some ("      \027[1;33mQueued\027[0m "
       ^ package
       ^ " ("
       ^ version
       ^ ")")
-  | Tusk_model.Event.PackageDownloadSkipped { package; version; _ } ->
-      Some ("    \027[1;33mUsing\027[0m "
-      ^ package
-      ^ " ("
-      ^ version
-      ^ ")")
+  | Tusk_model.Event.PackageMaterializationStarted { package; version; _ } ->
+      Some ("    \027[1;32mDownloading\027[0m " ^ package ^ " " ^ version)
   | Tusk_model.Event.DependencyResolutionStarted _
   | Tusk_model.Event.DependencyResolutionRefreshingLock _
   | Tusk_model.Event.DependencyResolutionFailed _
@@ -125,7 +120,13 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Tusk_model.Event.LockfileWriteFailed _
   | Tusk_model.Event.DependencyResolutionFinished _
   | Tusk_model.Event.DependencyResolutionUsingExistingLock _
-  | Tusk_model.Event.DependencyResolutionUnlocking _ ->
+  | Tusk_model.Event.DependencyResolutionUnlocking _
+  | Tusk_model.Event.PackageManifestFetchStarted _
+  | Tusk_model.Event.PackageManifestFetchFinished _
+  | Tusk_model.Event.PackageManifestFetchFailed _
+  | Tusk_model.Event.PackageDownloadSkipped _
+  | Tusk_model.Event.PackageMaterializationFinished _
+  | Tusk_model.Event.PackageMaterializationFailed _ ->
       None
   | kind -> Some (Tusk_model.Event.display kind)
 

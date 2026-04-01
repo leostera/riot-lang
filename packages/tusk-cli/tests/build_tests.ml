@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+module HashSet = Std.Collections.HashSet
 
 let parse_build = fun args ->
   match ArgParser.get_matches Tusk_cli.Build.command args with
@@ -80,6 +81,65 @@ let test_run_build_scope_defaults_to_runtime_when_binary_is_missing = fun () ->
     ~actual:(Tusk_cli.Run.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"missing");
   Ok ()
 
+let test_pm_event_hides_workspace_resolved_packages = fun () ->
+  let seen_registry_updates = HashSet.create () in
+  let actual =
+    Tusk_cli.Build.format_pm_event
+      ~seen_registry_updates
+      (Tusk_model.Event.PackageResolvedForBuild {
+        package = "create-riot-app";
+        version = None;
+        path = "/workspace";
+        workspace = true;
+      })
+  in
+  Test.assert_equal ~expected:None ~actual;
+  Ok ()
+
+let test_pm_event_maps_materialization_to_downloading = fun () ->
+  let seen_registry_updates = HashSet.create () in
+  let actual =
+    Tusk_cli.Build.format_pm_event
+      ~seen_registry_updates
+      (Tusk_model.Event.PackageMaterializationStarted {
+        package = "std";
+        version = "0.1.0";
+        path = "/cache/std";
+      })
+  in
+  Test.assert_equal
+    ~expected:(Some "    \027[1;32mDownloading\027[0m std 0.1.0")
+    ~actual;
+  Ok ()
+
+let test_pm_event_hides_manifest_fetch_chatter = fun () ->
+  let seen_registry_updates = HashSet.create () in
+  let actual =
+    Tusk_cli.Build.format_pm_event
+      ~seen_registry_updates
+      (Tusk_model.Event.PackageManifestFetchStarted {
+        package = "std";
+        version = "0.1.0";
+      })
+  in
+  Test.assert_equal ~expected:None ~actual;
+  Ok ()
+
+let test_pm_event_hides_download_skipped = fun () ->
+  let seen_registry_updates = HashSet.create () in
+  let actual =
+    Tusk_cli.Build.format_pm_event
+      ~seen_registry_updates
+      (Tusk_model.Event.PackageDownloadSkipped {
+        package = "std";
+        version = "0.1.0";
+        path = "/cache/std";
+        reason = "already materialized";
+      })
+  in
+  Test.assert_equal ~expected:None ~actual;
+  Ok ()
+
 let tests =
   Test.[
     case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
@@ -88,6 +148,10 @@ let tests =
     case "run: runtime binaries use runtime scope" test_run_build_scope_uses_runtime_for_runtime_binaries;
     case "run: test binaries use dev scope" test_run_build_scope_uses_dev_for_test_binaries;
     case "run: missing binaries default to runtime scope" test_run_build_scope_defaults_to_runtime_when_binary_is_missing;
+    case "build: pm events hide workspace resolved packages" test_pm_event_hides_workspace_resolved_packages;
+    case "build: pm materialization renders as downloading" test_pm_event_maps_materialization_to_downloading;
+    case "build: pm manifest fetch chatter is hidden" test_pm_event_hides_manifest_fetch_chatter;
+    case "build: pm download skipped is hidden" test_pm_event_hides_download_skipped;
   ]
 
 let name = "Tusk CLI Build Tests"
