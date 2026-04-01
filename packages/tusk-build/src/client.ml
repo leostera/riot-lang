@@ -311,6 +311,7 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
                 | Runtime -> Protocol.Runtime
                 | Dev -> Protocol.Dev
               );
+            profile;
             target_arch;
             session_id;
           }

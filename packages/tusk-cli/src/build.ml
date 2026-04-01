@@ -84,11 +84,11 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       else
         Some ("    \027[1;32mResolved\027[0m " ^ package ^ " (" ^ pm_package_source_label version ^ ")")
   | Tusk_model.Event.PackageDownloadStarted { package; version; _ } ->
-      Some ("    \027[1;32mDownloading\027[0m " ^ package ^ " " ^ version)
+      Some ("    \027[1;32mFetching\027[0m " ^ package ^ " " ^ version)
   | Tusk_model.Event.PackageDownloadQueued { package; version; _ } ->
       Some ("      \027[1;33mQueued\027[0m " ^ package ^ " (" ^ version ^ ")")
   | Tusk_model.Event.PackageMaterializationStarted { package; version; _ } ->
-      Some ("    \027[1;32mDownloading\027[0m " ^ package ^ " " ^ version)
+      Some ("    \027[1;32mFetching\027[0m " ^ package ^ " " ^ version)
   | Tusk_model.Event.DependencyResolutionStarted _
   | Tusk_model.Event.DependencyResolutionRefreshingLock _
   | Tusk_model.Event.DependencyResolutionFailed _
@@ -139,6 +139,7 @@ let command =
         positional "package" |> required false |> multiple |> help "Packages to build (or omit to build all packages)";
         option "target" |> short 'x' |> long "target" |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
         flag "all-targets" |> help "Build for all configured targets";
+        flag "release" |> long "release" |> help "Use the release build profile";
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
       ]
 
@@ -156,7 +157,13 @@ let output_mode_of_matches = fun matches ->
   else
     Human
 
-let make_request = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
+let profile_of_matches = fun matches ->
+  if ArgParser.get_flag matches "release" then
+    "release"
+  else
+    "debug"
+
+let make_request = fun ~workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
   {
     build_request =
       Tusk_build.{
@@ -164,7 +171,7 @@ let make_request = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_fini
         packages;
         targets;
         scope;
-        profile = "debug";
+        profile;
       };
     output_mode = mode;
     show_finished_summary;
@@ -173,6 +180,7 @@ let make_request = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_fini
 let request_of_matches = fun ~workspace matches ->
   make_request
     ~workspace
+    ~profile:(profile_of_matches matches)
     ~mode:(output_mode_of_matches matches)
     ~packages:(ArgParser.get_many matches "package")
     ~targets:(target_request_of_matches matches)
@@ -425,7 +433,7 @@ let load_workspace_strict = fun cwd ->
   | Ok (workspace, _) ->
       Ok workspace
 
-let build_command = fun ?workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
+let build_command = fun ?workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
   let workspace =
     match workspace with
     | Some workspace -> Ok workspace
@@ -438,7 +446,7 @@ let build_command = fun ?workspace ?(scope = Runtime) ?(mode = Human) ?(show_fin
   | Ok workspace ->
       run_request
         (
-          make_request ~workspace ~scope ~mode ~show_finished_summary ~packages:((package_opt
+          make_request ~workspace ~scope ~profile ~mode ~show_finished_summary ~packages:((package_opt
           |> Option.to_list))
             ~targets:((
               match target_arch with

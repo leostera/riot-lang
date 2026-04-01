@@ -122,11 +122,12 @@ let rec loop = fun state ->
     client_pid;
     target;
     scope;
+    profile;
     target_arch;
     session_id
   }) ->
       Log.debug "Server loop received: Build";
-      handle_build state client_pid target scope target_arch session_id
+      handle_build state client_pid target scope profile target_arch session_id
   | `Request (Protocol.ScanWorkspace { client_pid; current_dir }) ->
       Log.debug "Server loop received: ScanWorkspace";
       handle_scan_workspace state client_pid current_dir
@@ -501,7 +502,7 @@ and handle_new_package = fun state client_pid path name is_library ->
     )
 
 (** Handler for build message - spawns worker and continues loop immediately *)
-and handle_build = fun state client_pid target scope target_arch session_id ->
+and handle_build = fun state client_pid target scope profile target_arch session_id ->
   trace_server
     (
       "handle_build session=" ^ Session_id.to_string session_id ^ " target=" ^ match target with
@@ -525,8 +526,7 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
         | None -> ""
       )
     );
-  let active_profile = Tusk_model.Profile.(apply_overrides debug state.workspace.profile_overrides
-  |> fun p -> p.name) in
+  let active_profile = profile in
   let active_target =
     match target_arch with
     | Some arch -> (
@@ -549,6 +549,7 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
     ~server_pid
     ~target
     ~scope
+    ~profile:active_profile
     ~target_arch;
   trace_server "handle_build spawned build worker";
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";

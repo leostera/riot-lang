@@ -53,6 +53,7 @@ type request =
       client_pid: Pid.t;
       target: target;
       scope: build_scope;
+      profile: string;
       target_arch: string option;
       session_id: Session_id.t
     }

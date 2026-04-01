@@ -16,6 +16,7 @@ val run: workspace:Tusk_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn
 val build_command:
   ?workspace:Tusk_model.Workspace.t ->
   ?scope:build_scope ->
+  ?profile:string ->
   ?mode:output_mode ->
   ?show_finished_summary:bool ->
   string option ->

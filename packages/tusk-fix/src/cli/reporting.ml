@@ -87,67 +87,6 @@ let print_text_summary = fun mode summary ->
           ^ Int.to_string summary.remaining_diagnostics
           ^ " issues remain")
 
-let json_object_with_type = fun type_name json ->
-  let open Data.Json in
-    match json with
-    | Object fields -> Object (("type", String type_name) :: fields)
-    | _ -> panic "expected JSON object"
-
-let timestamp_ms = fun () ->
-  Time.SystemTime.now () |> Time.SystemTime.nanos |> Int64.div 1_000_000L |> Int64.to_int
-
-let start_event_to_json = fun ~mode ~concurrency ->
-  let open Data.Json in
-    Object [ ("type", String "start"); (
-        "mode",
-        String (
-          match mode with
-          | Runner.Check -> "check"
-          | Runner.Apply -> "apply"
-        )
-      ); ("concurrency", Int concurrency); ]
-
-let file_started_event_to_json = fun file ->
-  let open Data.Json in Object [
-    ("type", String "file_started");
-    ("file", String (Path.to_string file));
-    ("timestamp_ms", Int (timestamp_ms ()));
-  ]
-
-let progress_event_to_json = fun file (event: Fixme.Source_runner.progress_event) ->
-  let open Data.Json in
-    let phase_fields =
-      match event.phase with
-      | Parsed { parse_diagnostics } -> [
-        ("stage", String "parsed");
-        ("parse_diagnostics", Int parse_diagnostics)
-      ]
-      | CstBuilt -> [ ("stage", String "cst_built") ]
-      | RuleStarted { rule_id } -> [ ("stage", String "rule_started"); ("rule_id", String rule_id) ]
-      | RuleFinished { rule_id; diagnostics } -> [
-        ("stage", String "rule_finished");
-        ("rule_id", String rule_id);
-        ("diagnostics", Int diagnostics)
-      ]
-    in
-    Object ([
-      ("type", String "progress");
-      ("file", String (Path.to_string file));
-      ("timestamp_ms", Int event.timestamp_ms);
-    ]
-    @ phase_fields)
-
-let file_event_to_json = fun result ->
-  json_object_with_type "file" (Runner.file_result_to_json result)
-
-let summary_event_to_json = fun ~limit_reached summary ->
-  let open Data.Json in
-    match Runner.summary_to_json summary with
-    | Object fields -> Object (("type", String "summary")
-    :: ("limit_reached", Bool limit_reached)
-    :: fields)
-    | _ -> panic "expected summary JSON object"
-
 let print_json_event = fun json ->
   print (Data.Json.to_string json);
   print "\n"

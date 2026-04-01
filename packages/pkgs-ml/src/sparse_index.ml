@@ -165,31 +165,23 @@ let releases_of_json = fun json ->
 
 let config_of_json = fun json ->
   match json with
-  | Data.Json.Object fields -> (
-      match int_field ~context:"config" ~field:"schema_version" fields, (
-        string_field ~context:"config" ~field:"kind" fields,
-        (
-          string_field ~context:"config" ~field:"package_path_strategy" fields,
-          (
-            string_field ~context:"config" ~field:"index_base_url" fields,
-            string_field ~context:"config" ~field:"artifact_base_url" fields
-          )
-        )
-      ) with
-      | Ok schema_version, Ok kind, Ok package_path_strategy, Ok index_base_url, Ok artifact_base_url ->
-          Ok {
-            schema_version;
-            kind;
-            package_path_strategy;
-            index_base_url;
-            artifact_base_url;
-          }
-      | (Error err, _, _, _, _)
-      | (_, Error err, _, _, _)
-      | (_, _, Error err, _, _)
-      | (_, _, _, Error err, _)
-      | (_, _, _, _, Error err) -> Error err
-    )
+  | Data.Json.Object fields ->
+      let* schema_version = int_field ~context:"config" ~field:"schema_version" fields in
+      let* kind = string_field ~context:"config" ~field:"kind" fields in
+      let* package_path_strategy =
+        string_field ~context:"config" ~field:"package_path_strategy" fields
+      in
+      let* index_base_url = string_field ~context:"config" ~field:"index_base_url" fields in
+      let* artifact_base_url =
+        string_field ~context:"config" ~field:"artifact_base_url" fields
+      in
+      Ok {
+        schema_version;
+        kind;
+        package_path_strategy;
+        index_base_url;
+        artifact_base_url;
+      }
   | _ -> Error "sparse index config must be an object"
 
 let config_of_string = fun source ->
@@ -199,35 +191,20 @@ let config_of_string = fun source ->
 
 let package_document_of_json = fun json ->
   match json with
-  | Data.Json.Object fields -> (
-      match int_field ~context:"package document" ~field:"schema_version" fields, (
-        string_field ~context:"package document" ~field:"name" fields,
-        (
-          string_field ~context:"package document" ~field:"latest" fields,
-          (
-            string_field ~context:"package document" ~field:"updated_at" fields,
-            object_field ~context:"package document" ~field:"releases" fields
-          )
-        )
-      ) with
-      | Ok schema_version, Ok name, Ok latest, Ok updated_at, Ok releases_json -> (
-          match releases_of_json releases_json with
-          | Ok releases ->
-              Ok {
-                schema_version;
-                name;
-                latest;
-                updated_at;
-                releases;
-              }
-          | Error _ as err -> err
-        )
-      | (Error err, _, _, _, _)
-      | (_, Error err, _, _, _)
-      | (_, _, Error err, _, _)
-      | (_, _, _, Error err, _)
-      | (_, _, _, _, Error err) -> Error err
-    )
+  | Data.Json.Object fields ->
+      let* schema_version = int_field ~context:"package document" ~field:"schema_version" fields in
+      let* name = string_field ~context:"package document" ~field:"name" fields in
+      let* latest = string_field ~context:"package document" ~field:"latest" fields in
+      let* updated_at = string_field ~context:"package document" ~field:"updated_at" fields in
+      let* releases_json = object_field ~context:"package document" ~field:"releases" fields in
+      let* releases = releases_of_json releases_json in
+      Ok {
+        schema_version;
+        name;
+        latest;
+        updated_at;
+        releases;
+      }
   | _ -> Error "package index document must be an object"
 
 let package_document_of_string = fun source ->

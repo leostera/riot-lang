@@ -261,7 +261,13 @@ let dependency_entries = fun workspace_root providers ->
 
 let package_toml_source = fun workspace_root plan ->
   let dependency_lines = dependency_entries workspace_root plan.providers
-  |> List.map (fun ((name, path)) -> name ^ " = { path = " ^ "\"" ^ Path.to_string path ^ "\" }") in
+  |> List.map
+    (fun ((name, path)) ->
+      name
+      ^ " = { path = "
+      ^ "\""
+      ^ Path.to_string path
+      ^ "\", version = \"*\" }") in
   String.concat "\n"
     [
       "[package]";

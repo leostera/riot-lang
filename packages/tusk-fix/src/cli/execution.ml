@@ -85,7 +85,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
     | Types.Report Reporter.Text -> eprintln
       ("Scanning with " ^ Int.to_string concurrency ^ " workers...")
     | Types.Report Reporter.Json -> Reporting.print_json_event
-      (Reporting.start_event_to_json ~mode ~concurrency)
+      (Event.to_json (Types.Start { mode; concurrency }))
   );
   let outcome =
     let owner = self () in
@@ -115,7 +115,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
             | Types.Silent -> ()
             | Types.Report Reporter.Text -> ()
             | Types.Report Reporter.Json -> Reporting.print_json_event
-              (Reporting.file_started_event_to_json file)
+              (Event.to_json (Types.FileStarted { file }))
           );
           loop results_rev diagnostics_seen limit_reached
       | `FileProgress { Messages.file; event; _ } ->
@@ -123,7 +123,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
           (
             match output_mode with
             | Types.Report Reporter.Json -> Reporting.print_json_event
-              (Reporting.progress_event_to_json file event)
+              (Event.to_json (Types.FileProgress { file; progress = event }))
             | Types.Silent
             | Types.Report Reporter.Text -> ()
           );
@@ -150,7 +150,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
             match output_mode with
             | Types.Silent -> ()
             | Types.Report Reporter.Json -> Reporting.print_json_event
-              (Reporting.file_event_to_json result)
+              (Event.to_json (Types.FileResult result))
             | Types.Report Reporter.Text -> Reporting.print_text_result mode result
           );
           loop (result :: results_rev) diagnostics_seen (limit_reached || limit_reached_now)
@@ -171,7 +171,9 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
     match output_mode with
     | Types.Silent -> ()
     | Types.Report Reporter.Json -> Reporting.print_json_event
-      (Reporting.summary_event_to_json ~limit_reached:outcome.limit_reached outcome.result.summary)
+      (Event.to_json
+        (Types.Summary
+          { summary = outcome.result.summary; limit_reached = outcome.limit_reached }))
     | Types.Report Reporter.Text ->
         if outcome.result.summary.total_files = 0 then
           println "No OCaml files found."
@@ -206,7 +208,11 @@ let run_generated_runner = fun ~cwd ~build_package ~report_output ~args scope ->
       trace_fix ("building generated runner failed: " ^ Exception.to_string err);
       Error err
   | Ok () ->
-      let command = Command.make (Path.to_string plan.binary_path) ~cwd:(Path.to_string cwd) ~args in
+      let command = Command.make
+        (Path.to_string plan.binary_path)
+        ~cwd:(Path.to_string cwd)
+        ~env:[ ("TUSK_FIX_DISABLE_GENERATED_RUNNER", "1") ]
+        ~args in
       trace_fix ("running generated runner " ^ Path.to_string plan.binary_path);
       if report_output then
         match Command.status command with

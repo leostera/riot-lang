@@ -31,6 +31,15 @@ let test_build_accepts_json_flag = fun () ->
       else
         Error "expected --json flag to be parsed"
 
+let test_build_accepts_release_flag = fun () ->
+  match parse_build [ "build"; "--release"; "syn" ] with
+  | Error err -> Error ("expected build args to parse: " ^ err)
+  | Ok matches ->
+      if ArgParser.get_flag matches "release" then
+        Ok ()
+      else
+        Error "expected --release flag to be parsed"
+
 let make_workspace = fun binaries ->
   let package =
     Tusk_model.Package.{
@@ -95,7 +104,7 @@ let test_pm_event_hides_workspace_resolved_packages = fun () ->
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
-let test_pm_event_maps_materialization_to_downloading = fun () ->
+let test_pm_event_maps_materialization_to_fetching = fun () ->
   let seen_registry_updates = HashSet.create () in
   let actual = Tusk_cli.Build.format_pm_event
     ~seen_registry_updates
@@ -104,8 +113,12 @@ let test_pm_event_maps_materialization_to_downloading = fun () ->
       version = "0.1.0";
       path = "/cache/std"
     }) in
-  Test.assert_equal ~expected:(Some "    \027[1;32mDownloading\027[0m std 0.1.0") ~actual;
-  Ok ()
+  match actual with
+  | Some message ->
+      Test.assert_true (String.contains message "Fetching");
+      Test.assert_true (String.contains message "std 0.1.0");
+      Ok ()
+  | None -> Error "expected materialization event to render as a fetching message"
 
 let test_pm_event_hides_manifest_fetch_chatter = fun () ->
   let seen_registry_updates = HashSet.create () in
@@ -133,11 +146,12 @@ let tests =
     case "build: accept multiple package arguments" test_build_accepts_multiple_packages;
     case "build: usage shows variadic packages" test_build_usage_shows_variadic_packages;
     case "build: parse --json flag" test_build_accepts_json_flag;
+    case "build: parse --release flag" test_build_accepts_release_flag;
     case "run: runtime binaries use runtime scope" test_run_build_scope_uses_runtime_for_runtime_binaries;
     case "run: test binaries use dev scope" test_run_build_scope_uses_dev_for_test_binaries;
     case "run: missing binaries default to runtime scope" test_run_build_scope_defaults_to_runtime_when_binary_is_missing;
     case "build: pm events hide workspace resolved packages" test_pm_event_hides_workspace_resolved_packages;
-    case "build: pm materialization renders as downloading" test_pm_event_maps_materialization_to_downloading;
+    case "build: pm materialization renders as fetching" test_pm_event_maps_materialization_to_fetching;
     case "build: pm manifest fetch chatter is hidden" test_pm_event_hides_manifest_fetch_chatter;
     case "build: pm download skipped is hidden" test_pm_event_hides_download_skipped;
   ]

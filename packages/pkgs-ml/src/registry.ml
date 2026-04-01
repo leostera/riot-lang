@@ -166,7 +166,7 @@ let in_memory = fun ?config ~cache ?(releases = []) ~packages () ->
   let releases =
     List.map
       (fun (release: release_source) ->
-        (release_key ~package_name:release.package_name ~version:(release.version, release)))
+        (release_key ~package_name:release.package_name ~version:release.version, release))
       releases
   in
   { cache; fetch = default_fetch; source = In_memory { config; packages; releases } }
@@ -242,16 +242,11 @@ let bool_field = fun ~context ~field fields ->
 
 let published_artifact_location_of_json = fun ~context json ->
   match json with
-  | Data.Json.Object fields -> (
-      match string_field ~context ~field:"key" fields, (
-        optional_string_field ~context ~field:"url" fields,
-        string_field ~context ~field:"cdn_url" fields
-      ) with
-      | Ok key, Ok url, Ok cdn_url -> Ok { key; url; cdn_url }
-      | (Error err, _, _)
-      | (_, Error err, _)
-      | (_, _, Error err) -> Error err
-    )
+  | Data.Json.Object fields ->
+      let* key = string_field ~context ~field:"key" fields in
+      let* url = optional_string_field ~context ~field:"url" fields in
+      let* cdn_url = string_field ~context ~field:"cdn_url" fields in
+      Ok { key; url; cdn_url }
   | _ -> Error (context ^ " must be an object")
 
 let published_record_of_json = fun ~context json ->

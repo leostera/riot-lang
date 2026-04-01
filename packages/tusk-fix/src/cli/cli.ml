@@ -1,5 +1,10 @@
 open Std
 
+module Types = Types
+module Request = Request
+module Catalog = Catalog
+module Execution = Execution
+
 type run_outcome = Types.run_outcome = {
   result: Runner.run_result;
   limit_reached: bool;

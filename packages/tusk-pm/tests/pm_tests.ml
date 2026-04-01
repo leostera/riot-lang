@@ -976,6 +976,83 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
       | _ -> Error "expected app and std workspace packages to appear in the lockfile"
     )
 
+let test_lock_deps_prefers_available_local_packages_over_registry_dependencies = fun () ->
+  with_tempdir "tusk_pm_local_beats_registry"
+    (fun workspace_root ->
+      let std_root = Path.(workspace_root / Path.v "vendor/std") in
+      let fixme_root = Path.(workspace_root / Path.v "vendor/fixme") in
+      let model_root = Path.(workspace_root / Path.v "vendor/model") in
+      write_package_manifest ~root:std_root
+        {|
+[package]
+name = "std"
+version = "0.1.0"
+
+[build-dependencies]
+fixme = { path = "../fixme" }
+|};
+      write_package_manifest ~root:fixme_root
+        {|
+[package]
+name = "fixme"
+version = "0.1.0"
+|};
+      write_package_manifest ~root:model_root
+        {|
+[package]
+name = "model"
+version = "0.1.0"
+
+[dependencies]
+std = "*"
+|};
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[
+          { name = "std"; source = source ~path:(Path.v "../../vendor/std") () };
+          { name = "model"; source = source ~path:(Path.v "../../vendor/model") () };
+        ]
+        () in
+      let registry = make_registry
+        [
+          make_registry_document
+            ~name:"std"
+            ~latest:"9.9.9"
+            ~releases:[ make_release ~version:"9.9.9" () ]
+            ();
+        ] in
+      match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err ->
+          Error ("expected local path package to beat registry dependency: " ^ pm_error_message err)
+      | Ok lockfile -> (
+          let local_std =
+            List.find_opt
+              (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "std" && pkg.id.registry = None)
+              lockfile.packages
+          in
+          let registry_std =
+            List.find_opt
+              (fun (pkg: Tusk_model.Lockfile.package) ->
+                pkg.id.name = "std" && pkg.id.registry = Some "pkgs.ml")
+              lockfile.packages
+          in
+          let model_lock =
+            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "model") lockfile.packages
+          in
+          match local_std, registry_std, model_lock with
+          | Some local_std, None, Some model_lock ->
+              if
+                List.length model_lock.dependencies = 1
+                && (List.hd model_lock.dependencies).package = local_std.id
+              then
+                Ok ()
+              else
+                Error "expected version-only dependency to reuse the available local path package"
+          | Some _, Some _, _ -> Error "expected registry std to stay out of the lock graph"
+          | _ -> Error "expected local std and model lock packages"
+        ))
+
 let test_lock_deps_ignores_builtin_dependencies = fun () ->
   let app_pkg = make_package
     ~name:"app"
@@ -1083,6 +1160,58 @@ let test_lock_deps_handles_cyclic_registry_dependencies = fun () ->
             Error "expected cyclic registry dependencies to terminate with exact cross-links"
       | _ -> Error "expected foo and bar to appear in the cyclic lockfile"
     )
+
+let test_lock_deps_handles_cyclic_local_path_dependencies = fun () ->
+  with_tempdir "tusk_pm_cyclic_local_path_dep"
+    (fun workspace_root ->
+      let std_root = Path.(workspace_root / Path.v "vendor/std") in
+      let fixme_root = Path.(workspace_root / Path.v "vendor/fixme") in
+      write_package_manifest ~root:std_root
+        {|
+[package]
+name = "std"
+version = "0.1.0"
+
+[build-dependencies]
+fixme = { path = "../fixme" }
+|};
+      write_package_manifest ~root:fixme_root
+        {|
+[package]
+name = "fixme"
+version = "0.1.0"
+
+[dependencies]
+std = { path = "../std" }
+|};
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "std"; source = source ~path:(Path.v "../../vendor/std") () } ]
+        () in
+      match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err -> Error ("expected cyclic local path dependencies to resolve: " ^ pm_error_message err)
+      | Ok lockfile -> (
+          let std_lock =
+            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "std") lockfile.packages
+          in
+          let fixme_lock =
+            List.find_opt (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id.name = "fixme") lockfile.packages
+          in
+          match std_lock, fixme_lock with
+          | Some std_lock, Some fixme_lock ->
+              if
+                List.length lockfile.packages = 3
+                && List.length std_lock.build_dependencies = 1
+                && (List.hd std_lock.build_dependencies).package.name = "fixme"
+                && List.length fixme_lock.dependencies = 1
+                && (List.hd fixme_lock.dependencies).package.name = "std"
+              then
+                Ok ()
+              else
+                Error "expected local path dependency cycle to reuse in-flight lock nodes"
+          | _ -> Error "expected std and fixme to appear in the local cyclic lockfile"
+        ))
 
 let test_lock_refresh_preserves_existing_registry_version = fun () ->
   let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
@@ -1805,9 +1934,11 @@ let tests =
     case "dep solver: resolves registry dependencies to exact versions" test_lock_deps_resolves_registry_dependencies_to_exact_versions;
     case "dep solver: reports missing registry packages with required-by context" test_lock_deps_reports_missing_registry_package_with_required_by;
     case "dep solver: prefers workspace packages over registry for matching names" test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names;
+    case "dep solver: prefers available local packages over registry dependencies" test_lock_deps_prefers_available_local_packages_over_registry_dependencies;
     case "dep solver: ignores builtin dependencies" test_lock_deps_ignores_builtin_dependencies;
     case "dep solver: ignores builtin registry release dependencies" test_lock_deps_ignores_builtin_registry_release_dependencies;
     case "dep solver: handles cyclic registry dependencies" test_lock_deps_handles_cyclic_registry_dependencies;
+    case "dep solver: handles cyclic local path dependencies" test_lock_deps_handles_cyclic_local_path_dependencies;
     case "dep solver: refresh preserves existing registry versions" test_lock_refresh_preserves_existing_registry_version;
     case "dep solver: refresh preserves existing external nodes" test_lock_refresh_preserves_existing_external_nodes;
     case "dep solver: unlock discards existing external nodes" test_unlock_discards_existing_external_nodes;

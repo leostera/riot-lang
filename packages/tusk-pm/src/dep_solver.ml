@@ -113,6 +113,9 @@ let package_id_key = fun (id: Tusk_model.Lockfile.package_id) ->
 let registry_resolution_key = fun ~registry_name ~package_name ->
   registry_name ^ ":" ^ Pkgs_ml.Sparse_index.normalized_name package_name
 
+let path_resolution_key = fun ~package_root ->
+  "path:" ^ Path.to_string (Path.normalize package_root)
+
 let find_workspace_package_by_name = fun ~(workspace_packages:Tusk_model.Package.t list) ~package_name ->
   List.find_opt
     (fun (pkg: Tusk_model.Package.t) ->
@@ -133,6 +136,21 @@ let find_resolving_package_id = fun ~(state:resolution_state) ~key ->
 
 let find_resolved_package = fun ~(state:resolution_state) ~key ->
   List.assoc_opt key state.resolved
+
+let find_local_package_id_in_state = fun ~(state:resolution_state) ~package_name ->
+  match
+    List.find_opt
+      (fun (_, (pkg: Tusk_model.Lockfile.package)) ->
+        pkg.id.registry = None && String.equal pkg.id.name package_name)
+      state.resolved
+  with
+  | Some (_, pkg) -> Some pkg.id
+  | None ->
+      List.find_opt
+        (fun (_, (package_id: Tusk_model.Lockfile.package_id)) ->
+          package_id.registry = None && String.equal package_id.name package_name)
+        state.resolving
+      |> Option.map snd
 
 let add_resolving = fun ~(state:resolution_state) ~key ~package_id ->
   { state with resolving = (key, package_id) :: state.resolving }
@@ -392,6 +410,7 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by package
 
 and resolve_path_dependency = fun ~(ctx:context) ~state ~declared_from dependency_name dep_path ->
   let package_root = resolve_dependency_root ~declared_from dep_path in
+  let key = path_resolution_key ~package_root in
   match find_workspace_package_by_root ~workspace_packages:ctx.workspace_packages ~package_root with
   | Some workspace_pkg ->
       Ok (
@@ -406,40 +425,66 @@ and resolve_path_dependency = fun ~(ctx:context) ~state ~declared_from dependenc
         state
       )
   | None -> (
-      match load_path_dependency_package ~declared_from ~dependency_name dep_path with
-      | Error _ as err -> err
-      | Ok pkg -> (
-          match find_workspace_package_by_name
-            ~workspace_packages:ctx.workspace_packages
-            ~package_name:pkg.name with
-          | Some workspace_pkg ->
+      match find_resolved_package ~state ~key with
+      | Some lock_package ->
+          Ok (
+            {
+              dependency =
+                Tusk_model.Lockfile.{ name = dependency_name; package = lock_package.id };
+              packages = [];
+            },
+            state
+          )
+      | None -> (
+          match find_resolving_package_id ~state ~key with
+          | Some package_id ->
               Ok (
                 {
                   dependency =
-                    Tusk_model.Lockfile.{
-                      name = dependency_name;
-                      package = package_id_of_local_package workspace_pkg
-                    };
+                    Tusk_model.Lockfile.{ name = dependency_name; package = package_id };
                   packages = [];
                 },
                 state
               )
           | None -> (
-              match lock_package_of_local_package
-                ~ctx
-                ~state
-                ~provenance:(Tusk_model.Lockfile.Path dep_path)
-                pkg with
+              match load_path_dependency_package ~declared_from ~dependency_name dep_path with
               | Error _ as err -> err
-              | Ok (lock_package, dependency_packages, state) ->
-                  Ok (
-                    {
-                      dependency =
-                        Tusk_model.Lockfile.{ name = dependency_name; package = lock_package.id };
-                      packages = dependency_packages @ [ lock_package ];
-                    },
-                    state
-                  )
+              | Ok pkg -> (
+                  match find_workspace_package_by_name
+                    ~workspace_packages:ctx.workspace_packages
+                    ~package_name:pkg.name with
+                  | Some workspace_pkg ->
+                      Ok (
+                        {
+                          dependency =
+                            Tusk_model.Lockfile.{
+                              name = dependency_name;
+                              package = package_id_of_local_package workspace_pkg
+                            };
+                          packages = [];
+                        },
+                        state
+                      )
+                  | None ->
+                      let package_id = package_id_of_local_package pkg in
+                      let state = add_resolving ~state ~key ~package_id in
+                      match lock_package_of_local_package
+                        ~ctx
+                        ~state
+                        ~provenance:(Tusk_model.Lockfile.Path dep_path)
+                        pkg with
+                      | Error _ as err -> err
+                      | Ok (lock_package, dependency_packages, state) ->
+                          let state = add_resolved ~state ~key ~pkg:lock_package in
+                          Ok (
+                            {
+                              dependency =
+                                Tusk_model.Lockfile.{ name = dependency_name; package = lock_package.id };
+                              packages = dependency_packages @ [ lock_package ];
+                            },
+                            state
+                          )
+                )
             )
         )
     )
@@ -480,16 +525,28 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             (lock_dependency_of_local_dependency dep :: acc_dependencies)
             rest
           | None -> (
-              match resolve_registry_dependency ~ctx ~state ~required_by dep.name with
-              | Error _ as err -> err
-              | Ok (resolved, state) -> resolve_manifest_dependencies
-                ~ctx
-                ~state
-                ~required_by
-                ~declared_from
-                (List.rev_append resolved.packages acc_packages)
-                (resolved.dependency :: acc_dependencies)
-                rest
+              match find_local_package_id_in_state ~state ~package_name:dep.name with
+              | Some package_id ->
+                  resolve_manifest_dependencies
+                    ~ctx
+                    ~state
+                    ~required_by
+                    ~declared_from
+                    acc_packages
+                    (Tusk_model.Lockfile.{ name = dep.name; package = package_id } :: acc_dependencies)
+                    rest
+              | None -> (
+                  match resolve_registry_dependency ~ctx ~state ~required_by dep.name with
+                  | Error _ as err -> err
+                  | Ok (resolved, state) -> resolve_manifest_dependencies
+                    ~ctx
+                    ~state
+                    ~required_by
+                    ~declared_from
+                    (List.rev_append resolved.packages acc_packages)
+                    (resolved.dependency :: acc_dependencies)
+                    rest
+                )
             )
         )
       | { path=Some path; _ } -> (

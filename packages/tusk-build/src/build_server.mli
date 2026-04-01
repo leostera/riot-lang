@@ -11,6 +11,7 @@ val start:
   server_pid:Std.Pid.t ->
   target:Protocol.target ->
   scope:Protocol.build_scope ->
+  profile:string ->
   target_arch:string option ->
   unit
 

@@ -43,7 +43,7 @@ let write_run_event = fun (event: Tusk_build.run_event) ->
   match event with
   | Tusk_build.Build _ -> ()
   | Tusk_build.RunningBinary { package; binary; _ } -> println
-    ("     \027[1;32mRunning\027[0m " ^ package ^ ":" ^ binary)
+    ("    \027[1;32mBuilding\027[0m " ^ package ^ ":" ^ binary)
 
 let write_run_error = fun (err: Tusk_build.run_error) ->
   match err with

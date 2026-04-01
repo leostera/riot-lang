@@ -17,6 +17,7 @@
 11. Package-scoped warnings and failures should be labeled with the package name exactly once; when replaying multiline compiler payloads, preserve the payload text after the first prefixed line instead of reindenting it.
 12. `tusk install` must reuse the normal streamed build path. Do not keep a silent private build loop in `install.ml`.
 13. CLI workspace commands should reject workspace load errors at the boundary instead of threading partial-workspace state through downstream request APIs.
+14. `fix_cmd.ml` should parse `matches`, build a `Tusk_fix.fix_request`, call `Tusk_fix.fix`, and render the returned output/events. Do not delegate raw `matches` into `Tusk_fix.Cli.run`.
 
 ## Validate
 

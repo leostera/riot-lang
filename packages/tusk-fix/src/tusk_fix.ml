@@ -9,6 +9,7 @@ module Provider_registry = Provider_registry
 module Reporter = Reporter
 module Rule = Rule
 module Runner = Runner
+module Event = Event
 module Cli = Cli
 module Rules = Rules
 module Traversal = Traversal
@@ -23,3 +24,35 @@ module Config = Fix_config
 module Explanation = Explanation
 module Explanations = Explanations
 module Fixme_runner = Fixme_runner
+
+type build_package = Api.build_package
+type fix_output_mode = Api.fix_output_mode =
+  | Silent
+  | Report of Reporter.format
+type fix_action = Api.fix_action =
+  | List_rules of { format: Reporter.format }
+  | List_diagnostics of { format: Reporter.format }
+  | Explain_rule of { rule_id: string }
+  | Run of {
+      mode: Runner.mode;
+      limit: int option;
+      target: Path.t;
+      forwarded_args: string list;
+      output_mode: fix_output_mode;
+      use_generated_runner: bool;
+    }
+type fix_request = Api.fix_request = {
+  cwd: Path.t;
+  scope: Fix_config.scope option;
+  action: fix_action;
+}
+type fix_response = Api.fix_response =
+  | Completed
+  | Listed_rules of { format: Reporter.format; output: string }
+  | Listed_diagnostics of { format: Reporter.format; output: string }
+  | Explained_rule of { rule_id: string; output: string }
+
+let fix_request_of_matches = Api.fix_request_of_matches
+let output_mode_of_request = Api.output_mode_of_request
+let fix = Api.fix
+let response_output = Api.response_output

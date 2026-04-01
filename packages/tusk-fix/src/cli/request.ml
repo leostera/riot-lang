@@ -33,8 +33,16 @@ let reporter_format = fun matches ->
 
 let output_mode = fun format -> Types.Report format
 
+let generated_runner_disabled = fun () ->
+  match Env.var String ~name:"TUSK_FIX_DISABLE_GENERATED_RUNNER" with
+  | Some ("1" | "true" | "yes") -> true
+  | _ -> false
+
 let use_generated_runner = fun scope ->
-  match scope with
+  if generated_runner_disabled () then
+    false
+  else
+    match scope with
   | Some scope when List.length (Fix_config.providers (Some scope)) > 0 -> true
   | _ -> false
 

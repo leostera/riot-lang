@@ -7,7 +7,7 @@ type run_outcome = {
   limit_reached: bool;
 }
 
-type event =
+type event = Event.t =
   | Start of { mode: Runner.mode; concurrency: int }
   | FileStarted of { file: Path.t }
   | FileProgress of { file: Path.t; progress: Fixme.Source_runner.progress_event }

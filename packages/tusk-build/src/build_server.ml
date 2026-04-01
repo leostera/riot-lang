@@ -6,7 +6,16 @@ open Tusk_executor
 (* Build workers only report build progress and results back to the local
    session. *)
 
-let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~server_pid ~target ~scope ~target_arch ->
+let resolve_profile = fun ~(workspace:Workspace.t) profile_name ->
+  let base_profile =
+    match profile_name with
+    | "release" -> Profile.release
+    | "debug" -> Profile.debug
+    | name -> { Profile.debug with name }
+  in
+  Profile.apply_overrides base_profile workspace.profile_overrides
+
+let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~server_pid ~target ~scope ~profile_name ~target_arch ->
   Log.debug
     (
       "Build worker started for session " ^ Session_id.to_string session_id ^ (
@@ -81,8 +90,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
   else
     (
       Log.debug "Build worker calling Coordinator.build_workspace";
-      (* Create build context: start with debug profile, apply workspace overrides *)
-      let profile = Profile.(apply_overrides debug workspace.profile_overrides) in
+      let profile = resolve_profile ~workspace profile_name in
       Log.debug ("Build started with profile " ^ (Data.Json.to_string (Profile.to_json profile)));
       let config = Tusk_model.Toolchain_config.from_workspace workspace in
       let toolchain, target =
@@ -315,7 +323,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     Ok ()
 
 (** Start a build in a spawned worker process *)
-let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~server_pid ~target ~scope ~target_arch ->
+let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~server_pid ~target ~scope ~profile ~target_arch ->
   let _ =
     spawn
       (fun () ->
@@ -329,6 +337,7 @@ let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~cli
           ~server_pid
           ~target
           ~scope
+          ~profile_name:profile
           ~target_arch)
   in
   ()

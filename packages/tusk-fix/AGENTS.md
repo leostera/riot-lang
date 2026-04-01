@@ -17,6 +17,7 @@
 11. Do not run rules on parse results alone; build a typed CST first and skip lint execution when `Syn.build_cst` fails.
 12. `tusk fix --json` owns the machine-readable contract. Keep it as JSONL events on stdout, and send human-oriented control output anywhere else.
 13. Apply `tusk.fix.ignore` during discovery, not after collection. Ignored subtrees should be pruned before they ever reach the worker queue.
+14. Keep `Tusk_fix` as the reusable library boundary. The top-level package should own `fix_request`, `fix`, and `Event.to_json`; `Cli` is the standalone adapter layered on top.
 
 ## Validate
 
