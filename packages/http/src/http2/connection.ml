@@ -197,7 +197,7 @@ let send_headers = fun conn ~stream_id ~headers ~end_stream ->
   | None -> Error ("Stream " ^ Int.to_string stream_id ^ " not found")
   | Some stream -> (
       (* Encode headers using HPACK *)
-      let encoded_headers = Hpack.encode conn.hpack_encoder ~headers ~sensitive_headers:[] in
+      let encoded_headers = Hpack.encode conn.hpack_encoder ~sensitive_headers:[] () ~headers in
       (* Create HEADERS frame *)
       let frame = {
         Frame.length = Bytes.length encoded_headers;

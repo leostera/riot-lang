@@ -36,7 +36,10 @@ let to_json manifest : Data.Json.t =
     ("build_hash", Data.Json.String manifest.build_hash);
     ("timestamp", Data.Json.Int (Time.SystemTime.to_unix_timestamp manifest.timestamp));
     ("files", Data.Json.Array (List.map file_entry_to_json manifest.files));
-    ("ocamlc_warnings", Data.Json.Array (List.map (fun msg -> Data.Json.String msg) manifest.ocamlc_warnings));
+    (
+      "ocamlc_warnings",
+      Data.Json.Array (List.map (fun msg -> Data.Json.String msg) manifest.ocamlc_warnings)
+    );
   ]
 (** Parse manifest from JSON *)
 let of_json = fun json ->
@@ -107,8 +110,7 @@ let of_json = fun json ->
                       | Ok _, _ -> Error "Invalid ocamlc warning entry"
                       | Error e, _ -> Error e)
                     (Ok [])
-                    entries
-                  |> Result.map List.rev
+                    entries |> Result.map List.rev
               | Some _ -> Error "Invalid ocamlc_warnings"
             in
             match (version, package, build_hash, timestamp, files, ocamlc_warnings) with
@@ -149,7 +151,7 @@ let load = fun ~path ->
     )
   | Error _ -> Error "Failed to read manifest file"
 (** Create a manifest for stored files *)
-let create = fun ?base_dir ?(ocamlc_warnings = []) ~package ~build_hash ~files ->
+let create = fun ?base_dir ?(ocamlc_warnings = []) () ~package ~build_hash ~files ->
   let timestamp = Time.SystemTime.now () in
   let file_entries =
     List.filter_map

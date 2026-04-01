@@ -78,4 +78,4 @@ open Std
     - Skips if ETag already set
 
     {b Note}: Use with conditional_get middleware for automatic 304 responses. *)
-val middleware: ?weak:bool -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+val middleware: ?weak:bool -> unit -> conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t

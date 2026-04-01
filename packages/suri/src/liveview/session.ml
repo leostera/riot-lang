@@ -51,11 +51,13 @@ let decode = fun ~secret ~token ->
         Error "Invalid signature (token may have been tampered with)"
       else
         (* 3. Base64-decode the payload *)
-        match Data.Base64.decode payload with
-        | Error _ -> Error "Invalid base64 encoding in payload"
-        | Ok json_str ->
-            (* 4. Parse JSON *)
-            match Data.Json.of_string json_str with
-            | Error err -> Error ("Failed to parse JSON: " ^ Data.Json.error_to_string err)
-            | Ok json -> Ok json
-            | _ -> Error "Invalid token format (expected '<payload>.<signature>')"
+        (
+          match Data.Base64.decode payload with
+          | Error _ -> Error "Invalid base64 encoding in payload"
+          | Ok json_str ->
+              (* 4. Parse JSON *)
+              match Data.Json.of_string json_str with
+              | Error err -> Error ("Failed to parse JSON: " ^ Data.Json.error_to_string err)
+              | Ok json -> Ok json
+        )
+  | _ -> Error "Invalid token format (expected '<payload>.<signature>')"

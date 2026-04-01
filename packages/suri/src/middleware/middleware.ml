@@ -54,7 +54,7 @@ let runtime = Runtime.middleware
 (** Convenience alias for Method_override.middleware with default param *)
 module Method_override = Method_override
 
-let method_override = fun ~conn ~next -> Method_override.middleware ?param:None ~conn ~next
+let method_override = fun ~conn ~next -> Method_override.middleware () ~conn ~next
 
 module Remote_ip = Remote_ip
 
@@ -62,7 +62,7 @@ module Remote_ip = Remote_ip
 (** Convenience alias for Etag.middleware with default param *)
 module Etag = Etag
 
-let etag = fun ~conn ~next -> Etag.middleware ?weak:None ~conn ~next
+let etag = fun ~conn ~next -> Etag.middleware () ~conn ~next
 (** Convenience alias for Conditional_get.middleware *)
 module Conditional_get = Conditional_get
 

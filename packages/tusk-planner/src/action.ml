@@ -672,9 +672,9 @@ let from_json = fun json ->
             )
         | _ -> Error "Invalid BuildForeignDependency"
       )
-    | Some _ ->
+    | Some (String _) ->
         Error "Unknown action type"
-    | None ->
+    | _ ->
         Error "type must be string"
 
 let equal = fun a1 a2 ->

@@ -147,18 +147,6 @@ let plan_node = fun input ->
           ~libraries:binary_libraries
           ~includes:binary_includes)
       input.package.commands;
-    let main_library_node_id : G.Node_id.t option =
-      match input.package.library with
-      | Some _lib ->
-          let result = ref None in
-          G.iter (Module_graph.graph graph_builder)
-            ~fn:(fun node_id node ->
-              match node.value.Module_node.kind with
-              | Module_node.Library _ when !result = None -> result := Some node_id
-              | _ -> ());
-          !result
-      | None -> None
-    in
     let module_graph = Module_graph.graph graph_builder in
     (
       match G.topo_sort module_graph with

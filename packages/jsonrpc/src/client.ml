@@ -213,75 +213,75 @@ let call_batch : type req res. (req, res) t -> req list -> (res Common.response 
       match receive_raw_response client with
       | Error e -> Error (Common.InternalError { context = "call_batch_receive"; details = e })
       | Ok str -> (
-          match Json.of_string str with
-          | Error e ->
-              Error (Common.ParseError { raw_input = str; parse_error = Json.error_to_string e })
-          | Ok (Json.Array responses) -> (
-              let parsed_responses =
-                List.fold_left
-                  (fun acc json_resp ->
-                    match acc with
-                    | Error e -> Error e
-                    | Ok responses -> (
-                        match json_resp with
-                        | Json.Object fields -> (
-                            match (List.assoc_opt "jsonrpc" fields, List.assoc_opt "id" fields) with
-                            | Some (Json.String "2.0"), Some id_json -> (
-                                match Common.id_of_json id_json with
-                                | Ok id -> (
-                                    match List.assoc_opt "result" fields with
-                                    | Some result_json -> (
-                                        match P.response_of_json result_json with
-                                        | Ok parsed_result -> Ok ({
-                                          Common.jsonrpc = "2.0";
-                                          result = parsed_result;
-                                          id
-                                        }
-                                        :: responses)
-                                        | Error err_json ->
-                                            Error (
-                                              Common.InternalError {
-                                                context = "call_batch_parse_result";
-                                                details =
-                                                  "Failed to parse \
-                                                       result: " ^ Json.to_string err_json;
-                                              }
-                                            )
-                                      )
-                                    | None -> Error (Common.InvalidRequest {
-                                      request_json = json_resp;
-                                      reason = "Response missing result"
-                                    })
-                                  )
-                                | Error e -> Error (Common.InvalidRequest {
-                                  request_json = json_resp;
-                                  reason = "Invalid ID: " ^ e
-                                })
-                              )
-                            | _ -> Error (Common.InvalidRequest {
-                              request_json = json_resp;
-                              reason = "Invalid response in batch"
-                            })
-                          )
-                        | _ -> Error (Common.InvalidRequest {
-                          request_json = json_resp;
-                          reason = "Batch response item must be an object"
-                        })
-                      ))
-                  (Ok [])
-                  responses
-              in
-              match parsed_responses with
-              | Ok responses -> Ok (List.rev responses)
-              | Error e -> Error e
-            )
-          | Ok json ->
-              Error (Common.InvalidRequest {
-                request_json = json;
-                reason = "Batch response must be an array"
-              })
-          | Error e ->
-              Error (Common.ParseError { raw_input = str; parse_error = Json.error_to_string e })
+          let parsed_json =
+            Json.of_string str
+            |> Result.map_error
+              (fun e ->
+                Common.ParseError { raw_input = str; parse_error = Json.error_to_string e })
+          in
+          Result.and_then parsed_json
+            (function
+            | Json.Array responses ->
+                let parsed_responses =
+                  List.fold_left
+                    (fun acc json_resp ->
+                      match acc with
+                      | Error e -> Error e
+                      | Ok responses -> (
+                          match json_resp with
+                          | Json.Object fields -> (
+                              match (List.assoc_opt "jsonrpc" fields, List.assoc_opt "id" fields) with
+                              | Some (Json.String "2.0"), Some id_json -> (
+                                  match Common.id_of_json id_json with
+                                  | Ok id -> (
+                                      match List.assoc_opt "result" fields with
+                                      | Some result_json -> (
+                                          match P.response_of_json result_json with
+                                          | Ok parsed_result -> Ok ({
+                                            Common.jsonrpc = "2.0";
+                                            result = parsed_result;
+                                            id
+                                          }
+                                          :: responses)
+                                          | Error err_json ->
+                                              Error (
+                                                Common.InternalError {
+                                                  context = "call_batch_parse_result";
+                                                  details =
+                                                    "Failed to parse \
+                                                         result: " ^ Json.to_string err_json;
+                                                }
+                                              )
+                                        )
+                                      | None -> Error (Common.InvalidRequest {
+                                        request_json = json_resp;
+                                        reason = "Response missing result"
+                                      })
+                                    )
+                                  | Error e -> Error (Common.InvalidRequest {
+                                    request_json = json_resp;
+                                    reason = "Invalid ID: " ^ e
+                                  })
+                                )
+                              | _ -> Error (Common.InvalidRequest {
+                                request_json = json_resp;
+                                reason = "Invalid response in batch"
+                              })
+                            )
+                          | _ -> Error (Common.InvalidRequest {
+                            request_json = json_resp;
+                            reason = "Batch response item must be an object"
+                          })
+                        ))
+                    (Ok [])
+                    responses
+                in
+                Result.map List.rev parsed_responses
+            | json ->
+                Error (Common.InvalidRequest {
+                  request_json = json;
+                  reason = "Batch response must be an array"
+                }))
         )
     )
 

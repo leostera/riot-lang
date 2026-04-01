@@ -10,7 +10,7 @@ let parse_override_method = fun str ->
 
 (* Only allow PUT, PATCH, DELETE *)
 (** Method override middleware *)
-let middleware = fun ?(param = "_method") ~conn ~next ->
+let middleware = fun ?(param = "_method") () ~conn ~next ->
   (* Only override POST requests *)
   match Conn.method_ conn with
   | Net.Http.Method.Post -> (

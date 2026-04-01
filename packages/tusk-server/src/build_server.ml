@@ -119,7 +119,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                     / Path.v "toolchains"
                     / Path.v config.version
                     / Path.v arch_str) in
-                  let detection = Tusk_toolchain.CrossCompilingToolchain.detect ~toolchain_root ~target_triplet in
+                  let detection = Tusk_toolchain.CrossCompilingToolchain.detect ~toolchain_root () ~target_triplet in
                   (
                     resolved_toolchain,
                     Some (Tusk_model.Target.make_cross_with_config
@@ -186,8 +186,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                     | Package_builder.Failed _ -> true
                     | Package_builder.Skipped _
                     | Package_builder.Built _
-                    | Package_builder.Cached _ -> false
-                    )
+                    | Package_builder.Cached _ -> false)
                   workspace_result.results
               in
               let built =

@@ -6,6 +6,7 @@ open Std.Collections
 (** Types *)
 type dependency_source =
   Workspace
+  | Builtin
   | Registry of { version: Std.Version.requirement }
   | Path of Path.t
 
@@ -119,6 +120,22 @@ let dependencies_for_scope = fun scope (pkg: t) ->
   | Dev -> pkg.dev_dependencies
   | Build -> pkg.build_dependencies
 
+let is_builtin_dependency_name = function
+  | "unix"
+  | "stdlib"
+  | "threads"
+  | "str"
+  | "bigarray"
+  | "dynlink"
+  | "compiler-libs"
+  | "graphics" -> true
+  | _ -> false
+
+let is_builtin_dependency = fun (dep: dependency) ->
+  match dep.source with
+  | Builtin -> true
+  | _ -> false
+
 let binary_scope = fun (bin: binary) ->
   let path_str = Path.to_string bin.path in
   if
@@ -157,14 +174,7 @@ let sources_for_scope = fun scope (pkg: t) ->
   | Normal -> { pkg.sources with tests = []; examples = []; bench = [] }
   | Dev -> { pkg.sources with src = []; native = [] }
   | Build ->
-      {
-        pkg.sources
-        with src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      }
+      { src = []; native = []; tests = []; examples = []; bench = [] }
 
 let for_scope = fun scope (pkg: t) ->
   match scope with
@@ -205,7 +215,10 @@ let resolve_scope = fun ~scope_name ~manifest_dependencies ~lock_dependencies ->
   let rec loop (acc: resolved_dependency list) (requirements: dependency list) =
     match requirements with
     | [] -> Ok (List.rev acc)
-    | (requirement: dependency) :: rest -> (
+    | (requirement: dependency) :: rest ->
+        if is_builtin_dependency requirement then
+          loop acc rest
+        else (
         match List.find_opt (fun (dep: Lockfile.dependency) -> dep.name = requirement.name) lock_dependencies with
         | Some resolved -> loop ({ requirement; resolved_id = resolved.package } :: acc) rest
         | None -> Error ("lockfile is missing resolved "
@@ -310,6 +323,9 @@ let validate_requirement = fun ~dependency_name requirement ->
   ^ "': "
   ^ version_parse_error_to_string err)
 
+let requirement_is_any = fun requirement ->
+  String.equal (Version.requirement_to_string requirement) "*"
+
 let parse_dependency : string ->
 Toml.value ->
 workspace_deps:dependency list ->
@@ -326,13 +342,27 @@ workspace_deps:dependency list ->
               | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
               |> Result.map (fun version -> { name; source = Registry { version } })
               | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
-              | None -> Ok { name; source = Registry { version = Version.any } }
+              | None ->
+                  if is_builtin_dependency_name name then
+                    Ok { name; source = Builtin }
+                  else
+                    Ok { name; source = Registry { version = Version.any } }
             )
         )
     )
   | Toml.String requirement ->
-      validate_requirement ~dependency_name:name requirement
-      |> Result.map (fun version -> { name; source = Registry { version } })
+      (match validate_requirement ~dependency_name:name requirement with
+      | Error _ as err -> err
+      | Ok version ->
+          if is_builtin_dependency_name name then
+            if requirement_is_any version then
+              Ok { name; source = Builtin }
+            else
+              Error ("builtin dependency '" ^ name ^ "' does not support version requirement '"
+              ^ Version.requirement_to_string version
+              ^ "'")
+          else
+            Ok { name; source = Registry { version } })
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
 
@@ -359,6 +389,7 @@ let parse_dependency_section = fun section_name items ~(workspace_deps:dependenc
 let dependency_source_to_json = fun source ->
   match source with
   | Workspace -> Json.Object [ ("kind", Json.String "workspace") ]
+  | Builtin -> Json.Object [ ("kind", Json.String "builtin") ]
   | Registry { version } -> Json.Object [
     ("kind", Json.String "registry");
     ("version", Json.String (Version.requirement_to_string version));
@@ -375,6 +406,8 @@ let dependency_source_of_json = fun json ->
       match List.assoc_opt "kind" fields with
       | Some (Json.String "workspace") ->
           Ok Workspace
+      | Some (Json.String "builtin") ->
+          Ok Builtin
       | Some (Json.String "path") -> (
           match List.assoc_opt "path" fields with
           | Some (Json.String path) -> Ok (Path (Path.v path))
@@ -1130,6 +1163,8 @@ let hash = fun state (pkg: t) ->
       match dep.source with
       | Workspace ->
           H.write_string state "workspace"
+      | Builtin ->
+          H.write_string state "builtin"
       | Registry { version } ->
           H.write_string state "registry";
           H.write_string state (Version.requirement_to_string version)
@@ -1387,6 +1422,54 @@ std = ">= 1.2.3"
           Error "expected parsed dependency requirement to be preserved structurally"
     | _ -> Error "expected a registry dependency with a parsed requirement" [@test]
 
+  let test_parse_builtin_dependency () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "example"
+version = "0.1.0"
+
+[dependencies]
+stdlib = "*"
+|}
+      |> Result.expect ~msg:"expected package toml to parse"
+    in
+    let pkg = from_toml
+      toml
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:(Path.v "/tmp/example")
+      ~relative_path:(Path.v "packages/example")
+    |> Result.expect ~msg:"expected package manifest" in
+    match pkg.dependencies with
+    | [ { name = "stdlib"; source = Builtin } ] -> Ok ()
+    | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
+
+  let test_builtin_dependency_rejects_version_constraints () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "example"
+version = "0.1.0"
+
+[dependencies]
+stdlib = ">= 1.0.0"
+|}
+      |> Result.expect ~msg:"expected package toml to parse"
+    in
+    match from_toml
+      toml
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:(Path.v "/tmp/example")
+      ~relative_path:(Path.v "packages/example") with
+    | Ok _ -> Error "expected builtin dependency version constraints to fail"
+    | Error _ -> Ok () [@test]
+
   let test_invalid_registry_requirement_fails_manifest_parse () : (unit, string) result =
     let toml =
       Std.Data.Toml.parse
@@ -1538,6 +1621,42 @@ std = {}
     match resolve ~package ~lock_package with
     | Ok _ -> Error "expected resolve to fail when a declared dependency is missing from the lockfile"
     | Error _ -> Ok () [@test]
+
+  let test_resolve_ignores_builtin_dependencies () : (unit, string) result =
+    let package = {
+      name = "app";
+      path = Path.v "/workspace/packages/app";
+      relative_path = Path.v "packages/app";
+      dependencies = [ { name = "stdlib"; source = Builtin } ];
+      dev_dependencies = [];
+      build_dependencies = [];
+      foreign_dependencies = [];
+      binaries = [];
+      library = None;
+      sources = {
+        src = [];
+        native = [];
+        tests = [];
+        examples = [];
+        bench = [];
+      };
+      compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
+      fix_providers = [];
+    } in
+    let lock_package : Lockfile.package = {
+      id = { registry = None; name = "app"; version = None };
+      path = Path.v "/workspace/packages/app";
+      manifest_path = Path.v "/workspace/packages/app/tusk.toml";
+      provenance = Lockfile.Workspace;
+      dependencies = [];
+      build_dependencies = [];
+      dev_dependencies = [];
+    } in
+    match resolve ~package ~lock_package with
+    | Ok resolved when resolved.runtime_resolved = [] -> Ok ()
+    | Ok _ -> Error "expected builtin dependencies to stay out of the resolved lock graph"
+    | Error err -> Error err [@test]
 
   let test_build_graph_dependencies_exclude_build_only_deps () : (unit, string) result =
     let pkg = {

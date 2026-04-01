@@ -49,12 +49,26 @@ let parse_dependency : string -> Toml.value -> (Package.dependency, string) resu
           | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
           |> Result.map (fun version -> make_dependency (Package.Registry { version }))
           | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
-          | None -> Ok (make_dependency (Package.Registry { version = Version.any }))
+          | None ->
+              if Package.is_builtin_dependency_name name then
+                Ok (make_dependency Package.Builtin)
+              else
+                Ok (make_dependency (Package.Registry { version = Version.any }))
         )
     )
   | Toml.String requirement ->
-      validate_requirement ~dependency_name:name requirement
-      |> Result.map (fun version -> make_dependency (Package.Registry { version }))
+      (match validate_requirement ~dependency_name:name requirement with
+      | Error _ as err -> err
+      | Ok version ->
+          if Package.is_builtin_dependency_name name then
+            if String.equal (Version.requirement_to_string version) "*" then
+              Ok (make_dependency Package.Builtin)
+            else
+              Error ("builtin dependency '" ^ name ^ "' does not support version requirement '"
+              ^ Version.requirement_to_string version
+              ^ "'")
+          else
+            Ok (make_dependency (Package.Registry { version })))
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
 

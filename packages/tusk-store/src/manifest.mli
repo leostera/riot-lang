@@ -19,6 +19,7 @@ type t = {
 val create:
   ?base_dir:Path.t ->
   ?ocamlc_warnings:string list ->
+  unit ->
   package:string ->
   build_hash:string ->
   files:(Path.t * int) list ->

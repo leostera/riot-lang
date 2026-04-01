@@ -46,7 +46,7 @@ val create_encoder: ?max_dynamic_table_size:int -> unit -> encoder
     @param sensitive_headers Optional set of header names that should never be indexed
     @return Encoded bytes
 *)
-val encode: encoder -> headers:header list -> ?sensitive_headers:string list -> bytes
+val encode: encoder -> ?sensitive_headers:string list -> unit -> headers:header list -> bytes
 (** Encode a single header field *)
 val encode_header: encoder -> header -> encoding_type:encoding_type -> bytes
 (** Update the dynamic table size limit.

@@ -168,14 +168,10 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
           (fun dep_id ->
             let dep_outputs = get_dep_outputs dep_id in
             match get_dep_kind dep_id with
-            | Some (Module_node.Native _) ->
-                List.filter
-                  (fun output -> Path.extension output = Some ".o")
-                  dep_outputs
-            | _ ->
-                List.filter
-                  (fun output -> Path.extension output = Some ".cmx")
-                  dep_outputs)
+            | Some (Module_node.Native _) -> List.filter
+              (fun output -> Path.extension output = Some ".o")
+              dep_outputs
+            | _ -> List.filter (fun output -> Path.extension output = Some ".cmx") dep_outputs)
           deps
       in
       (* Deduplicate objects to avoid linking the same file multiple times *)
@@ -327,9 +323,9 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
     | Some h -> h
     | None ->
         panic
-          "Dependency hash not found for node %s. Graph not in topological \
-           order!"
-          (G.Node_id.to_string dep_id)
+          ("Dependency hash not found for node "
+          ^ G.Node_id.to_string dep_id
+          ^ ". Graph not in topological order!")
   in
   let get_dep_outputs dep_id =
     match HashMap.get node_outputs dep_id with

@@ -79,9 +79,9 @@ module Tag = struct
 end
 (** BitMask module - wraps an int representing a bitmask of matching positions *)
 module BitMask = struct
-  type t = int [@inline always]
+  type t = int
 
-  let lowest_set_bit_index = fun mask ->
+  let[@inline always] lowest_set_bit_index = fun mask ->
     if mask = 0 then
       None
     else
@@ -92,9 +92,9 @@ module BitMask = struct
         else
           count_trailing_zeros (n lsr 1) (acc + 1)
       in
-      Some (count_trailing_zeros mask 0) [@inline always]
+      Some (count_trailing_zeros mask 0)
 
-  let remove_lowest_bit = fun mask -> mask land (mask - 1) [@inline always]
+  let[@inline always] remove_lowest_bit = fun mask -> mask land (mask - 1)
 
   let is_empty = fun mask -> mask = 0
 end
@@ -112,11 +112,11 @@ module Group = struct
 
   (* Helper: replicate a byte across all 8 bytes of int64 *)
 
-  let repeat = fun byte ->
+  let[@inline always] repeat = fun byte ->
     let b = I64.of_int byte in
     let b = I64.logor b (I64.shift_left b 8) in
     let b = I64.logor b (I64.shift_left b 16) in
-    I64.logor b (I64.shift_left b 32) [@inline always]
+    I64.logor b (I64.shift_left b 32)
 
   let load = fun ctrl idx ->
     (* Use SIMD-optimized C function *)
@@ -126,7 +126,7 @@ module Group = struct
      The result from match operations has the high bit (0x80) set for matching bytes.
      We need to extract bit 7 from each byte position and pack them into an int. *)
 
-  let bitmask_to_int = fun bits ->
+  let[@inline always] bitmask_to_int = fun bits ->
     let extract_bit byte_pos = I64.to_int
       (I64.shift_right_logical
         (I64.logand bits (I64.shift_left 0x80L (byte_pos * 8)))
@@ -146,7 +146,7 @@ module Group = struct
       lor
       (extract_bit 6 lsl 6)
       lor
-      (extract_bit 7 lsl 7) [@inline always]
+      (extract_bit 7 lsl 7)
 
   let match_tag_impl = fun ctrl idx tag ->
     (* Use SIMD-optimized C function - directly returns bitmask *)
@@ -154,14 +154,14 @@ module Group = struct
 
   (* Keep this version for backwards compatibility if needed *)
 
-  let match_tag = fun group tag ->
+  let[@inline always] match_tag = fun group tag ->
     let tag_repeated = repeat tag in
     let cmp = I64.logxor group tag_repeated in
     let ones = repeat 0x01 in
     let deleted_marker = repeat Tag.deleted in
     (* Find bytes that match: (cmp - 0x01...) & ~cmp & 0x80... *)
     let result = I64.logand (I64.logand (I64.sub cmp ones) (I64.lognot cmp)) deleted_marker in
-    bitmask_to_int result [@inline always]
+    bitmask_to_int result
 
   let match_empty_impl = fun ctrl idx ->
     (* Use SIMD-optimized C function *)
@@ -169,11 +169,11 @@ module Group = struct
 
   (* Keep this version for backwards compatibility *)
 
-  let match_empty = fun group ->
+  let[@inline always] match_empty = fun group ->
     let deleted_marker = repeat Tag.deleted in
     (* If top two bits are both 1, it's EMPTY (0xFF) *)
     let result = I64.logand (I64.logand group (I64.shift_left group 1)) deleted_marker in
-    bitmask_to_int result [@inline always]
+    bitmask_to_int result
 
   let match_empty_or_deleted_impl = fun ctrl idx ->
     (* Use SIMD-optimized C function - this is the critical fast path! *)
@@ -242,11 +242,11 @@ module RawTable = struct
 
   (* Calculate maximum load for given bucket count *)
 
-  let bucket_mask_to_capacity = fun bucket_mask ->
+  let[@inline always] bucket_mask_to_capacity = fun bucket_mask ->
     if bucket_mask < 8 then
       bucket_mask
     else
-      ((bucket_mask + 1) / 8) * 7 [@inline always]
+      ((bucket_mask + 1) / 8) * 7
 
   let set_ctrl = fun table idx tag ->
     Bytes.unsafe_set table.ctrl idx (Kernel.Char.chr tag);

@@ -15,7 +15,7 @@ let sandbox_id = fun ~package_name ->
   let id = package_name ^ "-" ^ truncated_hash in
   Path.v id
 
-let create = fun ~workspace ?(profile = "debug") ?(target = Tusk_model.Tusk_dirs.host_target ()) ~package_name ->
+let create = fun ~workspace ?(profile = "debug") ?(target = Tusk_model.Tusk_dirs.host_target ()) () ~package_name ->
   let sandbox_dir =
     Path.(Tusk_model.Tusk_dirs.sandbox_dir_with_target
       ~workspace_root:workspace.Workspace.root
@@ -80,7 +80,7 @@ let cleanup = fun sandbox ->
   ()
 
 let with_sandbox = fun ~workspace ?(profile = "debug") ?(target = Tusk_model.Tusk_dirs.host_target ()) ~package ~inputs ~depset ~store ~expected_outputs f ->
-  let sandbox = create ~workspace ~profile ~target ~package_name:package.Package.name in
+  let sandbox = create ~workspace ~profile ~target () ~package_name:package.Package.name in
   let _ = expected_outputs in
   prepare ~sandbox ~package ~inputs ~depset ~store;
   let result = f sandbox in

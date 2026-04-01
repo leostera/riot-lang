@@ -157,6 +157,7 @@ open Std
       ]
     ]} *)
 val middleware: ?header:string ->
+  unit ->
   proxies:string list ->
   conn:Conn.t ->
   next:(Conn.t -> Conn.t) ->

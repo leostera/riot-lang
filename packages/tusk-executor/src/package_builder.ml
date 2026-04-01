@@ -152,8 +152,7 @@ let summarize_package_names = fun names ->
 
 let collect_ocamlc_warnings = fun completed_actions ->
   let seen = HashSet.create () in
-  HashMap.to_list completed_actions
-  |> List.fold_left
+  HashMap.to_list completed_actions |> List.fold_left
     (fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
       List.fold_left
         (fun acc warning ->
@@ -240,7 +239,13 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           target = Workspace_planner.Package package.name;
           error = PlanningFailed err
         });
-      { package_key; package; status = Failed (PlanningFailed err); ocamlc_warnings = []; duration }
+      {
+        package_key;
+        package;
+        status = Failed (PlanningFailed err);
+        ocamlc_warnings = [];
+        duration;
+      }
   | Ok (MissingDependencies { missing; _ }) ->
       let missing_names =
         List.map (fun p -> p.Package.name) missing
@@ -256,7 +261,13 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           target = Workspace_planner.Package package.name;
           error = error_variant
         });
-      { package_key; package; status = Failed error_variant; ocamlc_warnings = []; duration }
+      {
+        package_key;
+        package;
+        status = Failed error_variant;
+        ocamlc_warnings = [];
+        duration;
+      }
   | Ok (FailedDependencies { failed; _ }) ->
       let failed_names =
         List.map (fun p -> p.Package.name) failed
@@ -286,7 +297,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         package;
         status = Skipped { reason };
         ocamlc_warnings = [];
-        duration
+        duration;
       }
   | Ok (Planned {
     package_key=planned_key;
@@ -333,7 +344,6 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           (Action_graph.nodes action_graph)
       in
       let do_build sandbox =
-        let sandbox_dir = Sandbox.get_dir sandbox in
         let exec_result = Action_executor.execute
           ~action_graph
           ~sandbox
@@ -390,7 +400,13 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               target = Workspace_planner.Package package.name;
               error
             });
-          { package_key = planned_key; package; status = Failed error; ocamlc_warnings = []; duration }
+          {
+            package_key = planned_key;
+            package;
+            status = Failed error;
+            ocamlc_warnings = [];
+            duration;
+          }
       | Ok (artifact, export_entries, ocamlc_warnings) ->
           let _ = Tusk_store.Store.save_package_exports
             store
@@ -416,14 +432,15 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           |> Result.expect ~msg:(("Failed to save package hash artifact for " ^ package.name)) in
           if emit_visible_progress && List.length ocamlc_warnings > 0 then
             Telemetry.emit
-              (PackageOcamlcWarnings {
-                session_id;
-                package;
-                target = Workspace_planner.Package package.name;
-                source = `Fresh;
-                messages = ocamlc_warnings;
-              });
-          (* Mark as Built with Fresh status *)
+              (
+                PackageOcamlcWarnings {
+                  session_id;
+                  package;
+                  target = Workspace_planner.Package package.name;
+                  source = `Fresh;
+                  messages = ocamlc_warnings;
+                }
+              );
           (
             match Tusk_planner.Package_graph.get_node_by_key package_graph planned_key with
             | Some node ->
@@ -451,7 +468,13 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
                   duration;
                 }
               );
-          { package_key = planned_key; package; status = Built artifact; ocamlc_warnings; duration }
+          {
+            package_key = planned_key;
+            package;
+            status = Built artifact;
+            ocamlc_warnings;
+            duration;
+          }
       | Error err ->
           let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
           let error_str = package_error_to_string err in
@@ -473,5 +496,11 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               target = Workspace_planner.Package package.name;
               error = err
             });
-          { package_key = planned_key; package; status = Failed err; ocamlc_warnings = []; duration }
+          {
+            package_key = planned_key;
+            package;
+            status = Failed err;
+            ocamlc_warnings = [];
+            duration;
+          }
     )

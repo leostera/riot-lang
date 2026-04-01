@@ -435,7 +435,7 @@ let encode_header = fun encoder header ~encoding_type ->
       | LiteralNeverIndexed ->
           encode_literal_never_indexed ~name_index ~value
 
-let encode = fun encoder ~headers ?(sensitive_headers = []) ->
+let encode = fun encoder ?(sensitive_headers = []) () ~headers ->
   let buf = Buffer.create 256 in
   List.iter
     (fun header ->

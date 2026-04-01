@@ -22,7 +22,7 @@ let find_real_ip = fun proxies forwarded_ips ->
   in
   walk_chain (List.rev forwarded_ips)
 (** Remote IP middleware *)
-let middleware = fun ?(header = "x-forwarded-for") ~proxies ~conn ~next ->
+let middleware = fun ?(header = "x-forwarded-for") () ~proxies ~conn ~next ->
   (* If no proxies configured, pass through unchanged (safe default) *)
   if List.length proxies = 0 then
     next conn

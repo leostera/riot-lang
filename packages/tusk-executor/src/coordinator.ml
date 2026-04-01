@@ -101,8 +101,7 @@ let artifact_from_exports = fun ~package_hash (exports: Tusk_store.Store.export_
 
 let collect_ocamlc_warnings = fun completed_actions ->
   let seen = HashSet.create () in
-  HashMap.to_list completed_actions
-  |> List.fold_left
+  HashMap.to_list completed_actions |> List.fold_left
     (fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
       List.fold_left
         (fun acc warning ->
@@ -221,11 +220,12 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     ~sandbox_dir:runtime.target_dir
     ~outs:package_outs
   |> Result.expect ~msg:(("Failed to save package hash artifact for " ^ runtime.package.name)) in
-  let artifact = Tusk_store.Artifact.{
-    hash = runtime.hash;
-    files = List.map (fun (entry: Tusk_store.Store.export_entry) -> Path.v entry.name) runtime.export_entries;
-    ocamlc_warnings;
-  } in
+  let artifact =
+    Tusk_store.Artifact.{
+      hash = runtime.hash;
+      files = List.map (fun (entry: Tusk_store.Store.export_entry) -> Path.v entry.name) runtime.export_entries;
+      ocamlc_warnings
+    } in
   let all_cached =
     HashMap.into_iter runtime.completed_actions
     |> Iter.Iterator.to_list
@@ -287,32 +287,32 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
   in
   Telemetry.emit (PlanningWorkspaceStarted { session_id; target; package_count = List.length nodes });
   let materialize_initial_result package_key package status =
-    let result = Package_builder.{
-      package_key;
-      package;
-      status;
-      ocamlc_warnings = [];
-      duration = Time.Duration.zero;
-    } in
+    let result =
+      Package_builder.{
+        package_key;
+        package;
+        status;
+        ocamlc_warnings = [];
+        duration = Time.Duration.zero;
+      }
+    in
     let _ = HashMap.insert package_results package_key result in
     (
       match status with
-      | Package_builder.Failed err ->
-          Telemetry.emit
-            (BuildFailed {
-              session_id;
-              package;
-              target = Workspace_planner.Package package.name;
-              error = package_error_to_telemetry_error err
-            })
-      | Package_builder.Skipped { reason } ->
-          Telemetry.emit
-            (BuildSkipped {
-              session_id;
-              package;
-              target = Workspace_planner.Package package.name;
-              reason
-            })
+      | Package_builder.Failed err -> Telemetry.emit
+        (BuildFailed {
+          session_id;
+          package;
+          target = Workspace_planner.Package package.name;
+          error = package_error_to_telemetry_error err
+        })
+      | Package_builder.Skipped { reason } -> Telemetry.emit
+        (BuildSkipped {
+          session_id;
+          package;
+          target = Workspace_planner.Package package.name;
+          reason
+        })
       | Package_builder.Cached _
       | Package_builder.Built _ -> ()
     );
@@ -371,8 +371,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   package;
                   status = Cached artifact;
                   ocamlc_warnings = artifact.ocamlc_warnings;
-                  duration = Time.Duration.zero
-                } in
+                  duration = Time.Duration.zero;
+                }
+              in
               let _ = HashMap.insert package_results package_key result in
               (
                 match Package_graph.get_node_by_key package_graph package_key with
@@ -393,8 +394,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~session_id
                 ~package
                 ~target:(Workspace_planner.Package package.name)
-                ~source:`Cached
-                artifact.ocamlc_warnings;
+                ~source:`Cached artifact.ocamlc_warnings;
               Telemetry.emit
                 (
                   BuildCompleted {
@@ -415,6 +415,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       ~workspace
       ~profile:profile_name
       ~target:target_triple_str
+      ()
       ~package_name:package.name in
     Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
     let action_queue = Action_queue.create () in
@@ -522,7 +523,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               update_planning_progress
                 package_key
                 `Planned
-                ~duration:(Time.Instant.duration_since planning_start (Time.Instant.now ()))
+                ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
                 ~package
                 ~reason:None;
               progressed := true;
@@ -672,7 +673,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   update_planning_progress
                     package_key
                     `Planned
-                    ~duration:(Time.Instant.duration_since planning_start (Time.Instant.now ()))
+                    ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
                     ~package
                     ~reason:None;
                   if
@@ -770,8 +771,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               package = runtime.package;
               status = Failed pkg_err;
               ocamlc_warnings = [];
-              duration = Time.Duration.zero
-            } in
+              duration = Time.Duration.zero;
+            }
+          in
           let _ = HashMap.insert package_results package_key result in
           mark_package_failed_in_graph
             package_graph
@@ -808,8 +810,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               package = runtime.package;
               status = build_status;
               ocamlc_warnings;
-              duration = Time.Duration.zero
-            } in
+              duration = Time.Duration.zero;
+            }
+          in
           let _ = HashMap.insert package_results package_key result in
           Sandbox.cleanup runtime.sandbox
   in
@@ -887,8 +890,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                           package = pkg_runtime.package;
                           status = Failed (ExecutionFailed { message = error });
                           ocamlc_warnings = [];
-                          duration = Time.Duration.zero
-                        } in
+                          duration = Time.Duration.zero;
+                        }
+                      in
                       let _ = HashMap.insert package_results package_key result in
                       mark_package_failed_in_graph
                         package_graph

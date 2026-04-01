@@ -18,7 +18,7 @@ let generate_etag = fun ?(weak = false) body ->
     in
     Some etag
 (** ETag middleware - optional param first to avoid type issues *)
-let middleware = fun ?(weak = false) ~conn ~next ->
+let middleware = fun ?(weak = false) () ~conn ~next ->
   (* Process request *)
   let conn' = next conn in
   (* Check if ETag already set *)

@@ -108,6 +108,7 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) hash sandbox_di
   let manifest = Manifest.create
     ~base_dir:temp_dir
     ~ocamlc_warnings
+    ()
     ~package
     ~build_hash:(Std.Crypto.Digest.hex hash)
     ~files:(List.rev stored_files_with_sizes) in

@@ -40,7 +40,6 @@ let is_snake_case = fun name ->
 let split_source_path = fun path ->
   let path_str = Path.to_string path in
   let rec after_src = function
-    | []
     | [] -> []
     | "src" :: rest -> rest
     | _ :: rest -> after_src rest

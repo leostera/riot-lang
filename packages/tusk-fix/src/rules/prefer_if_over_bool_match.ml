@@ -89,17 +89,19 @@ let should_flag_match = fun (expr: Syn.Cst.match_expression) ->
   | [first_case;second_case] ->
       first_case.guard = None
       && second_case.guard = None
-      && match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
-      | (TruePattern, FalsePattern)
-      | (FalsePattern, TruePattern)
-      | (TruePattern, WildcardPattern)
-      | (FalsePattern, WildcardPattern) -> true
-      | (WildcardPattern, _)
-      | (OtherPattern, _)
-      | (_, OtherPattern)
-      | (WildcardPattern, WildcardPattern) -> false
-      | _ -> false
-      | _ -> false
+      &&
+      (
+        match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
+        | (TruePattern, FalsePattern)
+        | (FalsePattern, TruePattern)
+        | (TruePattern, WildcardPattern)
+        | (FalsePattern, WildcardPattern) -> true
+        | (WildcardPattern, _)
+        | (OtherPattern, _)
+        | (_, OtherPattern)
+        | _ -> false
+      )
+  | _ -> false
 
 let make_diagnostic = fun (expr: Syn.Cst.match_expression) ->
   Diagnostic.make

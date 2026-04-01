@@ -76,7 +76,7 @@ let bundled_sysroot = fun ~toolchain_root ~target_triplet ->
       Path.(toolchain_root / v "gcc" / v target / v "sysroot");
     ]
 (** Detect cross-compilation toolchain for target *)
-let detect = fun ?toolchain_root ~target_triplet ->
+let detect = fun ?toolchain_root () ~target_triplet ->
   let bin_prefix = bin_prefix_of_triplet target_triplet in
   let bundled_cc =
     match toolchain_root with
