@@ -200,6 +200,12 @@ let dependency_entries = fun workspace_root providers ->
     | Ok (workspace, _errors) -> workspace.Tusk_model.Workspace.packages
     | Error _ -> []
   in
+  let resolve_dependency_path = fun ~package_path path ->
+    if Path.is_absolute path then
+      Path.normalize path
+    else
+      Path.normalize Path.(package_path / path)
+  in
   let workspace_package_path name =
     workspace_packages
     |> List.find_opt
@@ -214,13 +220,22 @@ let dependency_entries = fun workspace_root providers ->
         workspace_packages |> List.find_opt
           (fun (pkg: Tusk_model.Package.t) ->
             String.equal pkg.name provider.package_name) |> Option.map
-          (fun pkg -> pkg.Tusk_model.Package.build_dependencies) |> Option.unwrap_or ~default:[] |> List.filter_map
+          (fun (pkg: Tusk_model.Package.t) -> (pkg.path, pkg.Tusk_model.Package.build_dependencies))
+          |> Option.unwrap_or ~default:(provider.package_path, [])
+          |> fun (package_path, build_dependencies) ->
+          build_dependencies |> List.filter_map
           (fun (dep: Tusk_model.Package.dependency) ->
             match dep.source with
             | { workspace = true; _ } -> workspace_package_path dep.name
             |> Option.map (fun path -> (dep.name, path))
             | { builtin = true; _ } -> None
-            | { path = Some path; _ } -> Some (dep.name, path)
+            | { path = Some path; _ } ->
+                let path =
+                  match workspace_package_path dep.name with
+                  | Some workspace_path -> workspace_path
+                  | None -> resolve_dependency_path ~package_path path
+                in
+                Some (dep.name, path)
             | { path = None; _ } -> None))
   in
   let entries = [
@@ -233,12 +248,15 @@ let dependency_entries = fun workspace_root providers ->
   @ List.map
     (fun ({ provider; _ }: generated_provider) -> (provider.package_name, provider.package_path))
     providers in
-  List.sort_uniq
-    (fun ((left_name, left_path)) ((right_name, right_path)) ->
-      match String.compare left_name right_name with
-      | 0 -> String.compare (Path.to_string left_path) (Path.to_string right_path)
-      | cmp -> cmp)
-    entries
+  let rec dedupe_by_name seen acc = function
+    | [] -> List.rev acc
+    | (name, path) :: rest ->
+        if List.mem name seen then
+          dedupe_by_name seen acc rest
+        else
+          dedupe_by_name (name :: seen) ((name, path) :: acc) rest
+  in
+  dedupe_by_name [] [] entries
 
 let package_toml_source = fun workspace_root plan ->
   let dependency_lines = dependency_entries workspace_root plan.providers
@@ -272,7 +290,7 @@ let library_source = fun plan ->
       "    [";
       String.concat "\n" (List.map provider_module_line plan.providers);
       "    ];";
-      "  Tusk_fix.Cli.main ~args";
+      "  Tusk_fix.Cli.main ~args ()";
       "";
     ]
 

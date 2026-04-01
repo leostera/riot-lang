@@ -50,7 +50,8 @@ let print_summary = fun ~label ~total ~passed ~failed ->
   println ("  Passed: " ^ Int.to_string passed);
   println ("  Failed: " ^ Int.to_string failed)
 
-let write_test_event = function
+let write_test_event = fun (event: Tusk_build.test_event) ->
+  match event with
   | Tusk_build.Build _ ->
       ()
   | Tusk_build.NoSuitesFound { package_name } ->

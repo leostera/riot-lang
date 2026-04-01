@@ -23,17 +23,5 @@ let with_current_dir = fun path fn ->
 let build_package = fun ~workspace_root ~package_name ->
   with_current_dir workspace_root (fun () -> Build.build_command (Some package_name) None)
 
-let raw_fix_args = fun () ->
-  match Env.args with
-  | _binary :: "fix" :: rest -> rest
-  | _binary :: rest -> rest
-  | [] -> []
-
-let run_args = fun ?cwd args ->
-  Tusk_fix.Cli.run_args ?cwd ~build_package args
-
-let run_check_paths = fun ?cwd paths ->
-  Tusk_fix.Cli.run_check_paths ?cwd ~build_package paths
-
-let run = fun _matches ->
-  run_args (raw_fix_args ())
+let run = fun matches ->
+  Tusk_fix.Cli.run ~build_package matches
