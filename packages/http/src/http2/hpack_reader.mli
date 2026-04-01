@@ -10,6 +10,7 @@ open Std
 *)
 (** Decoder state *)
 type decoder
+
 (** Create a new decoder with optional dynamic table size *)
 val create: ?max_dynamic_table_size:int -> unit -> decoder
 
@@ -32,6 +33,7 @@ type decode_result =
   | Need_more
   (** Need more data - call again with more bytes *)
   | Error of decode_error
+
 (** Decode error *)
 
 (** Decode headers from reader.
@@ -58,9 +60,12 @@ type decode_result =
     @return Decode result
 *)
 val decode: decoder -> ('src, 'err) IO.Reader.t -> decode_result
+
 (** Update maximum dynamic table size (from SETTINGS frame) *)
 val update_max_table_size: decoder -> int -> unit
+
 (** Reset decoder state for new connection *)
 val reset: decoder -> unit
+
 (** Get dynamic table size *)
 val dynamic_table_size: decoder -> int

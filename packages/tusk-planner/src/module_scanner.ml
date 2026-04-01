@@ -18,6 +18,7 @@ type entry =
   | H of string * Path.t
   | Other of string * Path.t * string
   | Dir of string * Path.t * entry list
+
 (** Compare entries for sorting.
 
     Sort order: 1. MLI files first (must compile interfaces before
@@ -46,6 +47,7 @@ let compare_entries = fun e1 e2 ->
   match (get_priority e1, get_priority e2) with
   | p1, p2 when p1 != p2 -> Int.compare p1 p2
   | _ -> String.compare (get_name e1) (get_name e2)
+
 (** Recursively scan a directory and build a hierarchical entry list.
 
     Parameters:
@@ -87,6 +89,7 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
           entries
       in
       List.sort compare_entries scanned
+
 (** Scan a source directory relative to project root.
 
     Example: root = /home/user/project source_dir = src

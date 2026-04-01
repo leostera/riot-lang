@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+
 (** Tests for ANSI escape sequences from the Escape_seq module *)
 
 (** Test cursor operations *)
@@ -51,6 +52,7 @@ let test_cursor_back = fun () ->
     Ok ()
   else
     Error ("Expected '\\x1b[4D', got '" ^ output)
+
 (** Test screen operations *)
 let test_erase_display = fun () ->
   let output = Tty.Escape_seq.erase_display_seq 2 in
@@ -79,6 +81,7 @@ let test_erase_to_start_of_line = fun () ->
     Ok ()
   else
     Error ("Expected '\\x1b[1K', got '" ^ output)
+
 (** Test alt screen *)
 let test_enter_alt_screen = fun () ->
   let output = Tty.Escape_seq.alt_screen_seq in
@@ -93,6 +96,7 @@ let test_exit_alt_screen = fun () ->
     Ok ()
   else
     Error ("Expected '\\x1b[?1049l', got '" ^ output)
+
 (** Test mouse operations *)
 let test_enable_mouse_all_motion = fun () ->
   let output = Tty.Escape_seq.enable_mouse_all_motion_seq in
@@ -107,6 +111,7 @@ let test_disable_mouse = fun () ->
     Ok ()
   else
     Error ("Expected '\\x1b[?1003l', got '" ^ output)
+
 (** Test bracketed paste *)
 let test_enable_bracketed_paste = fun () ->
   let output = Tty.Escape_seq.enable_bracketed_paste_seq in
@@ -121,6 +126,7 @@ let test_disable_bracketed_paste = fun () ->
     Ok ()
   else
     Error ("Expected '\\x1b[?2004l', got '" ^ output)
+
 (** Test focus tracking *)
 let test_enable_focus_tracking = fun () ->
   let output = Tty.Escape_seq.enable_focus_events_seq in

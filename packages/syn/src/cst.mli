@@ -121,6 +121,7 @@ type trivia =
   | Docstring of docstring
   | Comment of comment
 val trivia_of_syntax_trivia: syntax_trivia -> trivia option
+
 (** An OCaml attribute attached to some surrounding grammar node.
 
     This covers item, type, pattern, expression, and module-language attributes.
@@ -140,6 +141,7 @@ module Ident: sig
     | Ident of { syntax_node: syntax_node; name_token: Token.t }
     (** A single unqualified segment such as `x`, `result`, or `List`. *)
     | Qualified of { syntax_node: syntax_node; prefix: t; dot_token: Token.t; name_token: Token.t }
+
   (** A dotted path segment appended to an earlier path.
 
             Examples include `Std.List`, `M.N`, and `Foo.Bar.baz`.
@@ -805,6 +807,7 @@ and class_type_field =
           Example: `val x : int [@@foo]`.
       *)
   | Extension of extension
+
 (** A PPX extension parsed as a class-type field.
 
           Example: `[%%foo]`.
@@ -903,6 +906,7 @@ module CoreType: sig
       }
   val syntax_node: t -> syntax_node
 end
+
 (** A function-arrow label.
 
     This preserves whether the argument was unlabeled, labeled, or optional.
@@ -917,6 +921,7 @@ module ModuleTypeConstraint: sig
     separator_token: Token.t;
   }
 end
+
 (** A named functor parameter together with its module type.
 
     Example:
@@ -933,6 +938,7 @@ module TypeConstraint: sig
     right: core_type;
   }
 end
+
 (** Module type syntax.
 
     Examples:
@@ -962,6 +968,7 @@ module ArrowLabel: sig
 
   val is_optional: t -> bool
 end
+
 (** Class type syntax.
 
     Examples:
@@ -980,6 +987,7 @@ module FunctorParameter: sig
     module_type: module_type;
   }
 end
+
 (** A field inside a class type signature.
 
     This covers inherited class types, values, methods, constraints, and the
@@ -1010,6 +1018,7 @@ module ModuleType: sig
     | Extension of extension
   val syntax_node: t -> syntax_node
 end
+
 (** How a string literal is delimited in source.
 
     `"..."` uses `DoubleQuote`, while OCaml's quoted-string form uses
@@ -1185,6 +1194,7 @@ type bool_constant = {
   value: bool;
   attributes: attribute list;
 }
+
 (** Alias for `PatternLiteral.t`. *)
 module Constant: sig
   type t =
@@ -1199,6 +1209,7 @@ module Constant: sig
     | Bool of bool_constant
     (** Boolean literals `true` and `false`. *)
     | Unit of { syntax_node: syntax_node; attributes: attribute list }
+
   (** The unit literal `()`. *)
   val syntax_node: t -> syntax_node
 end
@@ -3072,6 +3083,7 @@ and module_expression =
     }
   (** A module expression with an attached attribute. *)
   | Extension of extension
+
 (** A PPX extension parsed in module-expression position.
 
           Example: `[%driver]`.
@@ -3168,6 +3180,7 @@ module Parameter: sig
 
   val binding_pattern: t -> pattern option
 end
+
 (** A field inside a class structure body. *)
 module ObjectMember: sig
   type t = object_member =
@@ -3178,6 +3191,7 @@ module ObjectMember: sig
     | Initializer of object_initializer
   val syntax_node: t -> syntax_node
 end
+
 (** Module expression syntax.
 
     Examples:
@@ -3211,6 +3225,7 @@ module ClassExpression: sig
     | Extension of extension
   val syntax_node: t -> syntax_node
 end
+
 (** Pattern syntax helper namespace.
 
     This mirrors `pattern` exactly and exists mainly so callers can write
@@ -3228,6 +3243,7 @@ module ClassField: sig
     | Extension of extension
   val syntax_node: t -> syntax_node
 end
+
 (** Helper view over `infix_expression`.
 
     This module is convenient when callers specifically want to work with infix
@@ -3272,6 +3288,7 @@ module ModuleExpression: sig
     | Extension of extension
   val syntax_node: t -> syntax_node
 end
+
 (** Helper view over `record_expression`.
 
     The constructors mirror `record_expression` exactly, so the literal/update
@@ -3306,6 +3323,7 @@ module Pattern: sig
 
   val attributes: t -> attribute list
 end
+
 (** A type variable as it appears in a declaration parameter list.
 
     Examples include `'a` in `type 'a t = ...` and `_` in `type _ t = ...`.
@@ -3330,6 +3348,7 @@ module InfixExpression: sig
 
   val attributes: t -> attribute list
 end
+
 (** A single type parameter in a type or class declaration.
 
     This keeps the parameter's declared variance and injectivity flags together
@@ -3344,6 +3363,7 @@ module RecordExpression: sig
     | Update of record_update_expression
   val syntax_node: t -> syntax_node
 end
+
 (** A full declared type parameter.
 
     This combines the parameter token with any written variance or injectivity
@@ -3371,6 +3391,7 @@ module TypeVariable: sig
 
   val text: t -> string
 end
+
 (** Helper view over `private_flag`.
 
     This keeps the written `private` keyword when one was present instead of
@@ -3381,9 +3402,11 @@ module TypeParameterVariance: sig
     | Covariant of { marker_token: Token.t }
     (** A `+` variance marker, as in `type +'a t = ...`. *)
     | Contravariant of { marker_token: Token.t }
+
   (** A `-` variance marker, as in `type -'a sink = ...`. *)
   val marker_token: t -> Token.t
 end
+
 (** A field inside a record type definition.
 
     Covers entries such as `name : string`, `mutable count : int`, and
@@ -3404,6 +3427,7 @@ module TypeParameter: sig
 
   val type_variable: t -> TypeVariable.t option
 end
+
 (** Structured argument forms for variant constructors.
 
     These correspond to the `of ...` payload on ordinary constructors and the
@@ -3422,11 +3446,13 @@ module PrivateFlag: sig
     | Public
     (** A public declaration such as `type t = int`. *)
     | Private of { private_token: Token.t }
+
   (** A private declaration such as `type t = private int`. *)
   val private_token: t -> Token.t option
 
   val is_private: t -> bool
 end
+
 (** A constructor inside a variant type definition or type extension.
 
     Ordinary constructors fill `arguments` from their `of ...` payload and keep
@@ -3472,6 +3498,7 @@ module RecordField: sig
 
   val attributes: t -> attribute list
 end
+
 (** Helper view over `poly_variant_tag`.
 
     The structure matches `poly_variant_tag` exactly and is typically used while
@@ -3498,6 +3525,7 @@ module ConstructorArguments: sig
             ```
         *)
     | Record of { opening_token: Token.t; fields: RecordField.t list; closing_token: Token.t }
+
   (** Inline record constructor arguments.
 
             Example:
@@ -3525,6 +3553,7 @@ module ConstructorArguments: sig
             ```
         *)
 end
+
 (** Helper view over `poly_variant_bound`. *)
 module VariantConstructor: sig
   type t = {
@@ -3558,6 +3587,7 @@ module VariantConstructor: sig
 
   val name: t -> string
 end
+
 (** Helper view over `row_field`.
 
     This distinguishes explicit variant tags from inherited rows such as
@@ -3586,6 +3616,7 @@ module PolyVariantTag: sig
 
   val name: t -> string
 end
+
 (** Helper view over `poly_variant`. *)
 module PolyVariantBound: sig
   type t = poly_variant_bound =
@@ -3594,6 +3625,7 @@ module PolyVariantBound: sig
     | LowerBound of { marker_token: Token.t }
   val marker_token: t -> Token.t option
 end
+
 (** The right-hand side of a `type` declaration.
 
     This is intentionally a broad summary layer over the successful parse. The
@@ -3611,6 +3643,7 @@ module RowField: sig
 
   val inherited_type: t -> core_type option
 end
+
 (** A `type` declaration item.
 
     Examples:
@@ -3637,6 +3670,7 @@ module PolyVariant: sig
 
   val tags: t -> PolyVariantTag.t list
 end
+
 (** A `type ... += ...` extension item.
 
     Examples:
@@ -3713,6 +3747,7 @@ module TypeDefinition: sig
             and GADT-style constructors like `type _ expr = Int : int expr`.
         *)
     | PolyVariant of PolyVariant.t
+
   (** A polymorphic variant definition such as
             `type t = [ `A | `B of int ]` or
             `type t = [ color | `Yellow ]`.
@@ -3728,6 +3763,7 @@ module TypeDefinition: sig
             `type t = [ color | `Yellow ]`.
         *)
 end
+
 (** Helper view over `let_binding`.
 
     This is useful both for top-level `let` items and for nested `and` bindings
@@ -3761,6 +3797,7 @@ module TypeDeclaration: sig
   val type_params: t -> TypeParameter.t list
 
   val type_definition: t -> TypeDefinition.t
+
   (** Preserves the leading manifest alias in declarations such as
       `type t = Base.t = A | B`.
   *)
@@ -3773,12 +3810,14 @@ module TypeDeclaration: sig
   val destructive_substitution_token: t -> Token.t option
 
   val private_flag: t -> private_flag
+
   (** Preserves whether the declaration was written with `private`.
 
       Examples include `type t = private int` and
       `type color = private Red | Blue`.
   *)
   val constraints: t -> TypeConstraint.t list
+
   (** Declaration-level attributes such as `type t = int [@@immediate]`. *)
   val attributes: t -> attribute list
 
@@ -3790,6 +3829,7 @@ module TypeDeclaration: sig
 
   val name_token: t -> Token.t
 end
+
 (** A single module binding.
 
     This covers plain `module` items and the individual bindings nested under a
@@ -3823,6 +3863,7 @@ module TypeExtension: sig
 
   val name_token: t -> Token.t
 end
+
 (** A recursive module structure item.
 
     The grouped `declarations` preserve source order for bindings introduced by
@@ -3858,6 +3899,7 @@ module LetBinding: sig
   val attributes: t -> attribute list
 
   val binding_pattern: t -> Pattern.t
+
   (** Derived only when `binding_pattern` has a simple recoverable name. *)
   val binding_name_token: t -> Token.t option
 
@@ -3877,6 +3919,7 @@ module LetBinding: sig
 
   val is_function: t -> bool
 end
+
 (** A `module` item that appears in signatures.
 
     Example:
@@ -3928,6 +3971,7 @@ module ModuleSignature: sig
 
   val name: t -> string
 end
+
 (** A `module` item that appears in implementations.
 
     Examples:
@@ -3976,6 +4020,7 @@ module ModuleStructure: sig
 
   val name: t -> string
 end
+
 (** An `open` statement item.
 
     Covers both `open M` and `open! M`.
@@ -4010,6 +4055,7 @@ module ModuleTypeDeclaration: sig
 
   val name: t -> string
 end
+
 (** A `val` declaration item.
 
     `name_token` preserves the declared value name exactly as written, including
@@ -4107,19 +4153,24 @@ module Trivia: sig
 
   val is_comment: t -> bool
 end
+
 (** Filter a token's leading trivia down to the trivia entries that begin at or
     after the given source offset. *)
 val leading_trivia_after: after:int -> Token.t -> trivia list
+
 (** Return the first token's leading trivia for a syntax node, filtered to
     entries that begin at or after the given source offset. *)
 val leading_trivia_before_node: after:int -> syntax_node -> trivia list
+
 (** Return boundary trivia between a token and the next syntax node by combining
     the token's remaining leading trivia with the node's first-token leading
     trivia after the token ends. *)
 val leading_trivia_after_token_before_node: after:int -> Token.t -> syntax_node -> trivia list
+
 (** Return the span covered by the syntax node's real tokens, excluding any
     leading token-attached trivia. *)
 val token_body_span: syntax_node -> Ceibo.Span.t
+
 (** Return the syntax kind for a raw syntax node.
 
     This keeps diagnostics-only kind labeling behind `Syn.Cst` so downstream
@@ -4142,6 +4193,7 @@ type value_declaration = {
   type_: core_type;
   trailing_comment: comment option;
 }
+
 (** An `external` declaration item.
 
     `primitive_name_tokens` preserves primitive names in source order, so
@@ -4185,6 +4237,7 @@ type external_declaration = {
   primitive_name_tokens: Token.t list;
   attributes: attribute list;
 }
+
 (** A `class` declaration item that appears in signatures.
 
     Example:
@@ -4222,6 +4275,7 @@ module ClassDeclaration: sig
 
   val name: t -> string
 end
+
 (** A `class` definition item that appears in implementations.
 
     Examples:
@@ -4309,6 +4363,7 @@ type include_statement = {
   keyword_token: Token.t;
   target: include_target;
 }
+
 (** Top-level items that can appear in an implementation source file.
 
     This covers structure items such as `let`, `module`, `type`, floating
@@ -4319,6 +4374,7 @@ module Payload: sig
     | Opaque of { tokens: Token.t list }
   val tokens: t -> Token.t list
 end
+
 (** A parsed implementation source file.
 
     `items` preserves the original source ordering. Consumers that want to work
@@ -4358,6 +4414,7 @@ module StructureItem: sig
     | IncludeStatement of include_statement
     (** An `include` item. *)
     | ExceptionDeclaration of exception_declaration
+
   (** An `exception` declaration item. *)
   val syntax_node: t -> syntax_node
 end
@@ -4393,6 +4450,7 @@ module SignatureItem: sig
     | IncludeStatement of include_statement
     (** An `include` item. *)
     | ExceptionDeclaration of exception_declaration
+
   (** An `exception` declaration item. *)
   val syntax_node: t -> syntax_node
 end

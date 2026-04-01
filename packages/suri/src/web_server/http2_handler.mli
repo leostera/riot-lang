@@ -31,6 +31,7 @@ type error =
   | `Io_error of string
 ]
 val to_string_error: error -> string
+
 (** Create HTTP/2 handler state
 
     @param config Server configuration

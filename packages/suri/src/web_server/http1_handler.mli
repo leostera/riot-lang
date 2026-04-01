@@ -24,9 +24,11 @@ type error =
   | `IoError of string
 ]
 val to_string_error: error -> string
+
 (** Create a handler that supports WebSocket upgrades via {!Http_handler.response}. *)
 val make_handler:
   config:Super.Config.t -> handler:Http_handler.t -> ?sniffed_data:string -> unit -> state
+
 (** Handler functions for Socket_pool integration *)
 val handle_close: Socket_pool.Connection.t -> state -> unit
 

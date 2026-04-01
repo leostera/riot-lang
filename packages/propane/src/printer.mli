@@ -1,4 +1,5 @@
 open Std
+
 (** Printer module for pretty-printing values in counter-examples.
     
     Printers convert values to human-readable strings for displaying
@@ -7,6 +8,7 @@ open Std
 (** {1 Core Types} *)
 
 type 'value t = 'value -> string
+
 (** A printer that converts values to strings. *)
 (** {1 Primitive Printers} *)
 

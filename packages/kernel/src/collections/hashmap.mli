@@ -24,6 +24,7 @@
     - Use `HashSet` when you only need to track presence, not values *)
 
 type ('k, 'v) t
+
 (** The type of hash maps from keys of type `'k` to values of type `'v`.
 
     The implementation uses a growing hash table with Robin Hood hashing for
@@ -31,6 +32,7 @@ type ('k, 'v) t
 (** # Creation *)
 
 val create: unit -> ('k, 'v) t
+
 (** Creates a new empty HashMap with default capacity.
 
     The map will automatically grow as needed when elements are added.
@@ -43,6 +45,7 @@ val create: unit -> ('k, 'v) t
     let users : (string, user) HashMap.t = HashMap.create () (* Type annotations
     can help with inference *) ``` *)
 val with_capacity: int -> ('k, 'v) t
+
 (** Creates a new empty HashMap with specified initial capacity.
 
     Use this when you know approximately how many elements you'll store to avoid
@@ -59,6 +62,7 @@ val with_capacity: int -> ('k, 'v) t
     Pre-sizing prevents rehashing during growth, which is important for bulk
     insertions. The capacity is a hint - the map may still resize if needed. *)
 val of_list: ('k * 'v) list -> ('k, 'v) t
+
 (** Creates a HashMap from a list of key-value pairs.
 
     If duplicate keys exist, later values override earlier ones.
@@ -73,6 +77,7 @@ val of_list: ('k * 'v) list -> ('k, 'v) t
 (** # Basic Operations *)
 
 val insert: ('k, 'v) t -> 'k -> 'v -> 'v option
+
 (** Inserts a key-value pair into the map.
 
     Returns `Some previous_value` if the key already existed, `None` otherwise.
@@ -96,6 +101,7 @@ val insert: ('k, 'v) t -> 'k -> 'v -> 'v option
 
     O(1) average case, O(n) worst case during resize *)
 val get: ('k, 'v) t -> 'k -> 'v option
+
 (** Looks up a value by key.
 
     Returns `Some value` if key exists, `None` otherwise. Never raises
@@ -118,6 +124,7 @@ val get: ('k, 'v) t -> 'k -> 'v option
 
     O(1) average case *)
 val remove: ('k, 'v) t -> 'k -> 'v option
+
 (** Removes a key from the map.
 
     Returns `Some value` if the key existed, `None` otherwise.
@@ -135,6 +142,7 @@ val remove: ('k, 'v) t -> 'k -> 'v option
 
     O(1) average case *)
 val contains_key: ('k, 'v) t -> 'k -> bool
+
 (** Checks if a key exists in the map.
 
     ## Examples
@@ -149,6 +157,7 @@ val contains_key: ('k, 'v) t -> 'k -> bool
 
     O(1) average case *)
 val len: ('k, 'v) t -> int
+
 (** Returns the number of key-value pairs in the map.
 
     ## Examples
@@ -158,6 +167,7 @@ val len: ('k, 'v) t -> int
     HashMap.insert map "a" 1 |> ignore; HashMap.insert map "b" 2 |> ignore;
     assert (HashMap.len map = 2); ``` *)
 val is_empty: ('k, 'v) t -> bool
+
 (** Checks if the map contains no elements.
 
     ## Examples
@@ -167,6 +177,7 @@ val is_empty: ('k, 'v) t -> bool
     HashMap.insert map "key" "value" |> ignore; assert (not (HashMap.is_empty
     map)); ``` *)
 val clear: ('k, 'v) t -> unit
+
 (** Removes all elements from the map.
 
     The map's capacity is not affected.
@@ -180,6 +191,7 @@ val clear: ('k, 'v) t -> unit
 (** # Iteration *)
 
 val keys: ('k, 'v) t -> 'k list
+
 (** Returns a list of all keys in the map.
 
     The order is unspecified and may change between calls.
@@ -193,6 +205,7 @@ val keys: ('k, 'v) t -> 'k list
     (* Check if any key matches a condition *) let has_admin = HashMap.keys
     users |> List.exists (fun k -> String.starts_with ~prefix:"admin_" k) ``` *)
 val values: ('k, 'v) t -> 'v list
+
 (** Returns a list of all values in the map.
 
     The order is unspecified. Values may appear multiple times if different keys
@@ -207,6 +220,7 @@ val values: ('k, 'v) t -> 'v list
     HashMap.values scores in let sum = List.fold_left (+) 0 values in
     float_of_int sum /. float_of_int (List.length values) ``` *)
 val iter: ('k -> 'v -> unit) -> ('k, 'v) t -> unit
+
 (** Applies a function to each key-value pair.
 
     The iteration order is unspecified.
@@ -220,6 +234,7 @@ val iter: ('k -> 'v -> unit) -> ('k, 'v) t -> unit
     Log.debug "Active session: %s" user_id; update_last_seen user_id )
     active_sessions ``` *)
 val fold: ('k -> 'v -> 'acc -> 'acc) -> ('k, 'v) t -> 'acc -> 'acc
+
 (** Folds over all key-value pairs with an accumulator.
 
     The iteration order is unspecified.
@@ -237,6 +252,7 @@ val fold: ('k -> 'v -> 'acc -> 'acc) -> ('k, 'v) t -> 'acc -> 'acc
     HashMap.fold (fun name score acc -> if score > threshold then (name, score)
     :: acc else acc ) scores [] ``` *)
 val to_list: ('k, 'v) t -> ('k * 'v) list
+
 (** Converts the map to a list of key-value pairs.
 
     The order is unspecified.
@@ -261,8 +277,10 @@ type ('k, 'v) entry =
   | Occupied of 'v
   (** Key exists with reference to value *)
   | Vacant
+
 (** Key does not exist *)
 val entry: ('k, 'v) t -> 'k -> ('k, 'v) entry
+
 (** Gets the entry for a key for in-place manipulation.
 
     This allows efficient updates without multiple lookups.
@@ -275,6 +293,7 @@ val entry: ('k, 'v) t -> 'k -> ('k, 'v) entry
     Increment existing *) | Vacant -> HashMap.insert map "counter" 1 |> ignore
     ``` *)
 val or_insert: ('k, 'v) t -> 'k -> 'v -> 'v
+
 (** Inserts a default value if key is absent, returns the value.
 
     Useful for getting a mutable reference to a value, inserting a default if
@@ -291,6 +310,7 @@ val or_insert: ('k, 'v) t -> 'k -> 'v -> 'v
     in let list = HashMap.or_insert groups key [] in HashMap.insert groups key
     (item :: list) |> ignore ) items; groups ``` *)
 val and_modify: ('k, 'v) t -> 'k -> ('v -> 'v) -> unit
+
 (** Modifies the value if the key exists.
 
     No effect if the key is absent.
@@ -309,6 +329,7 @@ val and_modify: ('k, 'v) t -> 'k -> ('v -> 'v) -> unit
     = HashMap.and_modify map key f; if not (HashMap.contains_key map key) then
     HashMap.insert map key default |> ignore ``` *)
 val into_iter: ('k, 'v) t -> ('k * 'v) Iter.Iterator.t
+
 (** Converts the map into an immutable iterator over key-value pairs.
 
     ## Examples
@@ -321,6 +342,7 @@ val into_iter: ('k, 'v) t -> ('k * 'v) Iter.Iterator.t
     |> Iterator.to_list
     ``` *)
 val to_mut_iter: ('k, 'v) t -> ('k * 'v) Iter.MutIterator.t
+
 (** Returns a mutable iterator over the map's key-value pairs.
 
     ## Examples

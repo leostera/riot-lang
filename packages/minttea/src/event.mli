@@ -31,8 +31,10 @@ type key =
   | F of int
   (** Function keys F1-F12 *)
   | Key of string
+
 (** Any other character(s) *)
 val key_to_string: key -> string
+
 (** Convert a key to a human-readable string *)
 val modifier_to_string: modifier -> string
 
@@ -80,4 +82,5 @@ type t =
   | FocusLost
   | Custom of Message.t
 val to_string: t -> string
+
 (** Convert an event to a human-readable string *)

@@ -41,6 +41,7 @@ let opens = fun mods ->
       | MLI mod_ -> Some (Tusk_toolchain.Ocamlc.Open (Module.namespaced_name mod_))
       | _ -> None)
     mods
+
 (** Determine compiler flags for stdlib handling based on package dependencies *)
 let stdlib_flags = fun (package: Package.t) ->
   (* Check if this package has stdlib as a dependency *)
@@ -321,11 +322,8 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
   let get_dep_hash dep_id =
     match HashMap.get action_spec_hashes dep_id with
     | Some h -> h
-    | None ->
-        panic
-          ("Dependency hash not found for node "
-          ^ G.Node_id.to_string dep_id
-          ^ ". Graph not in topological order!")
+    | None -> panic
+      ("Dependency hash not found for node " ^ G.Node_id.to_string dep_id ^ ". Graph not in topological order!")
   in
   let get_dep_outputs dep_id =
     match HashMap.get node_outputs dep_id with

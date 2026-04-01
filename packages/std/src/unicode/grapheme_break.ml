@@ -45,15 +45,18 @@ type break_property =
   | LVT
   (** Hangul LVT syllable *)
   | Extended_Pictographic
+
 (** Emoji and pictographic characters *)
 
 (** Check if a code point is an emoji modifier *)
 let is_emoji_modifier = fun c -> c >= 0x1_f3fb && c <= 0x1_f3ff
 
 (* Emoji skin tone modifiers *)
+
 (** Check if a code point is a combining mark (simplified)
     Full implementation would use Unicode category Mn, Mc, Me *)
 let is_combining = fun c -> let open Width_tables in in_table combining c || is_emoji_modifier c
+
 (** Check if a code point is a control character *)
 let is_control = fun c ->
   (c >= 0x0000 && c <= 0x001f)
@@ -68,6 +71,7 @@ let is_control = fun c ->
   || (c >= 0xfff9 && c <= 0xfffb)
 
 (* Interlinear annotation *)
+
 (** Check if a code point is a prepend character *)
 let is_prepend = fun c ->
   (* Simplified - includes Arabic/Hebrew formatting marks *)
@@ -78,6 +82,7 @@ let is_prepend = fun c ->
   || (c = 0x08e2)
 
 (* Arabic disputed end *)
+
 (** Check if a code point is a spacing mark *)
 let is_spacing_mark = fun c ->
   (* Simplified - common spacing combining marks *)
@@ -95,12 +100,16 @@ let is_spacing_mark = fun c ->
   || (c >= 0x0a83 && c <= 0x0a83)
 
 (* Gujarati visarga *)
+
 (** Check if character is Hangul L (leading consonant) *)
 let is_hangul_l = fun c -> c >= 0x1100 && c <= 0x115f
+
 (** Check if character is Hangul V (vowel) *)
 let is_hangul_v = fun c -> c >= 0x1160 && c <= 0x11a7
+
 (** Check if character is Hangul T (trailing consonant) *)
 let is_hangul_t = fun c -> c >= 0x11a8 && c <= 0x11ff
+
 (** Check if character is Hangul LV syllable *)
 let is_hangul_lv = fun c ->
   if c < 0xac00 || c > 0xd7a3 then
@@ -109,16 +118,20 @@ let is_hangul_lv = fun c ->
     let s_base = 0xac00 in
     let t_count = 28 in
     ((c - s_base) mod t_count) = 0
+
 (** Check if character is Hangul LVT syllable *)
 let is_hangul_lvt = fun c ->
   if c < 0xac00 || c > 0xd7a3 then
     false
   else
     not (is_hangul_lv c)
+
 (** Check if character is Regional Indicator (for flag emoji) *)
 let is_regional_indicator = fun c -> c >= 0x1_f1e6 && c <= 0x1_f1ff
+
 (** Check if character is Extended Pictographic (emoji) *)
 let is_extended_pictographic = fun c -> let open Width_tables in in_table emoji c
+
 (** Get the grapheme break property for a code point *)
 let get_break_property = fun c ->
   if c = 0x000d then
@@ -151,6 +164,7 @@ let get_break_property = fun c ->
     Extended_Pictographic
   else
     Other
+
 (** Check if there should be a grapheme break between two code points
     
     This implements a simplified version of UAX #29 grapheme cluster boundaries.

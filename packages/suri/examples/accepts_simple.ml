@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Content negotiation example - JSON-only API *)
 let routes = Middleware.Router.[get "/"
   (fun conn _req ->

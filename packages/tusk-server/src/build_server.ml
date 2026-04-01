@@ -313,6 +313,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     Telemetry.detach handler_name;
     Log.debug "Build worker exiting";
     Ok ()
+
 (** Start a build in a spawned worker process *)
 let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~server_pid ~target ~scope ~target_arch ->
   let _ =

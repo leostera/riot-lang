@@ -13,6 +13,7 @@ type ('s, 'e) pool_state = {
   transport: Transport.t;
   acceptor_supervisor: Supervisor.Dynamic.t;
 }
+
 (** Start a supervised pool of acceptors *)
 let start_link = fun ~host ~port ?(acceptors = 100) ?(buffer_size = 4_096) ?(transport = Transport.tcp
   ()) (type s e) (handler: (s, e) Handler.handler) (initial_ctx: s) ->

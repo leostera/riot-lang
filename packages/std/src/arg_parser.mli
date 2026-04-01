@@ -106,6 +106,7 @@ type error =
   | ConflictingArguments of string * string
   | TooManyValues of string
   | TooFewValues of string
+
 (** Parsing errors. *)
 module Arg: sig
   type 'a t = 'a arg

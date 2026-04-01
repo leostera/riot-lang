@@ -104,10 +104,8 @@ let test_nested_multipart = fun () ->
         | Some (SinglePart _) -> Error "First part is SinglePart, expected MultiPart"
         | None -> Error "No first part found"
     )
-  | Ok (SinglePart _) ->
-      Error "Expected MultiPart, got SinglePart"
-  | Error e ->
-      Error ("Parse failed: " ^ e)
+  | Ok (SinglePart _) -> Error "Expected MultiPart, got SinglePart"
+  | Error e -> Error ("Parse failed: " ^ e)
 
 let test_content_type_parsing = fun () ->
   let headers = [ ("Content-Type", "text/html; charset=utf-8") ] in

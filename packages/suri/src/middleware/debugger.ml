@@ -355,6 +355,7 @@ type sandbox_info = {
   package_name: string;
   relative_path: string;
 }
+
 (** Find substring in string, returns start index *)
 let string_index = fun line pattern ->
   let pattern_len = String.length pattern in
@@ -368,6 +369,7 @@ let string_index = fun line pattern ->
       search (pos + 1)
   in
   search 0
+
 (** Parse sandbox path to extract package and relative path
     
     Input: /path/_build/debug/sandbox/suri-abc123/examples/file.ml
@@ -398,6 +400,7 @@ let parse_sandbox_path = fun path ->
               let relative_path = String.sub rest after_slash (String.length rest - after_slash) in
               Some { package_name; relative_path }
         )
+
 (** Try to connect to tusk server and get package sources *)
 let get_package_sources = fun package_name ->
   let cwd = Std.Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
@@ -415,6 +418,7 @@ let get_package_sources = fun package_name ->
           |> List.map Path.to_string in
           Some sources
     )
+
 (** Find actual source file path from sandbox path using tusk server *)
 let find_source_via_tusk = fun sandbox_info ->
   match get_package_sources sandbox_info.package_name with
@@ -422,6 +426,7 @@ let find_source_via_tusk = fun sandbox_info ->
   | Some sources ->
       (* Find source file that ends with the relative path *)
       List.find_opt (fun src_file -> String.ends_with ~suffix:sandbox_info.relative_path src_file) sources
+
 (** Resolve sandbox path to actual workspace source file
     
     Strategy:
@@ -468,6 +473,7 @@ let resolve_source_path = fun path ->
             [ "./packages/"; sandbox_info.package_name; "/"; sandbox_info.relative_path ] in
           { resolved_path = fallback; found_via_tusk = false }
     )
+
 (** Extract quoted string after a pattern *)
 let extract_quoted = fun line pattern ->
   match String.index_opt line '"' with
@@ -479,6 +485,7 @@ let extract_quoted = fun line pattern ->
         | None -> None
         | Some end_quote -> Some (String.sub line after_quote (end_quote - after_quote))
       )
+
 (** Extract number after a pattern *)
 let extract_number = fun line pattern ->
   match string_index line pattern with
@@ -499,6 +506,7 @@ let extract_number = fun line pattern ->
       else
         try Some (Int.of_string num_str) with
         | Failure _ -> None
+
 (** Parse a backtrace line into a stack frame
     
     OCaml backtrace format examples:
@@ -577,6 +585,7 @@ let parse_frame_line = fun line ->
     function_name;
     raw = line;
   }
+
 (** Check if a frame should be hidden from the stack trace *)
 let should_hide_frame = fun frame ->
   match frame.function_name with
@@ -593,12 +602,14 @@ let should_hide_frame = fun frame ->
       || String.starts_with ~prefix:"Stdlib.invalid_arg" fn
       || String.starts_with ~prefix:"CamlinternalLazy" fn
   | None -> false
+
 (** Parse full backtrace into list of stack frames *)
 let parse_backtrace = fun backtrace ->
   String.split_on_char '\n' backtrace
   |> List.filter (fun line -> String.trim line != "")
   |> List.map parse_frame_line
   |> List.filter (fun frame -> not (should_hide_frame frame))
+
 (** Try to find and read a source file using tusk server resolution *)
 let try_read_file = fun file ->
   (* First resolve the path using tusk server if it's a sandbox path *)
@@ -607,6 +618,7 @@ let try_read_file = fun file ->
   match Fs.read_to_string (Path.v resolved.resolved_path) with
   | Ok content -> Some (content, resolved)
   | Error _ -> None
+
 (** Read source file and extract lines around error location *)
 let extract_source = fun ~file ~line ~context ->
   match try_read_file file with
@@ -634,6 +646,7 @@ let extract_source = fun ~file ~line ~context ->
           source_path = resolved.resolved_path;
           found_via_tusk = resolved.found_via_tusk;
         }
+
 (** Render source code snippet *)
 let render_snippet = fun snippet ->
   let open Component in
@@ -674,6 +687,7 @@ let render_snippet = fun snippet ->
         div ~attrs:[ class_ "line-numbers" ] line_number_divs;
         div ~attrs:[ class_ "source-code" ] code_line_divs;
       ]
+
 (** Extract module name from function name
     
     Examples:
@@ -708,6 +722,7 @@ let extract_module_from_function = fun func_name ->
       else
         (* No underscores - just return as-is (already capitalized) *)
         Some module_part
+
 (** Find source file for a module using tusk server *)
 let find_source_for_module = fun package_name module_name ->
   match get_package_sources package_name with
@@ -715,6 +730,7 @@ let find_source_for_module = fun package_name module_name ->
   | Some sources ->
       let ml_name = module_name ^ ".ml" in
       List.find_opt (fun src_file -> String.ends_with ~suffix:ml_name src_file) sources
+
 (** Render a single stack frame with optional source snippet *)
 let render_stack_frame = fun frame ->
   let open Component in
@@ -818,6 +834,7 @@ let render_stack_frame = fun frame ->
               (* No source available *)
               div ~attrs:[ class_ "source-unavailable" ] [ text "Source file not available."; ]
         ); ]
+
 (** Render request inspector *)
 let render_request = fun conn ->
   let open Component in
@@ -871,6 +888,7 @@ let render_request = fun conn ->
             Fragment [ h3 [ text "Body" ]; pre ~attrs:[ class_ "request-body" ] [ text body_str ]; ]
         );
       ]
+
 (** Render response inspector (shows partial response state) *)
 let render_response = fun conn ->
   let open Component in
@@ -907,6 +925,7 @@ let render_response = fun conn ->
             ]
         );
       ]
+
 (** CSS styles for the error page *)
 let error_page_styles = {|
 * {
@@ -1347,6 +1366,7 @@ details[open] summary {
   overflow-x: auto;
 }
 |}
+
 (** Main error page component *)
 let render_error_page = fun ~conn ~exn ~backtrace ->
   let open Component in
@@ -1420,6 +1440,7 @@ let render_error_page = fun ~conn ~exn ~backtrace ->
               ];
           ];
       ]
+
 (** Debugger middleware - catches exceptions, displays error page, logs, and reraises *)
 let debugger = fun ~conn ~next ->
   try next conn with

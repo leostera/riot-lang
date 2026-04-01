@@ -1,7 +1,7 @@
 open Std
 module Test = Std.Test
 
-let stderr_payload_size = 256 * 1024
+let stderr_payload_size = 256 * 1_024
 
 let stderr_payload = String.make stderr_payload_size 'e'
 
@@ -17,9 +17,7 @@ let run_capture = fun () ->
   Command.output cmd |> Result.expect ~msg:"failed to run capture helper"
 
 let run_fd_check = fun fd_nums ->
-  let check_script =
-    "for fd in \"$@\"; do if [ -e \"/dev/fd/$fd\" ]; then echo \"$fd\"; exit 1; fi; done"
-  in
+  let check_script = "for fd in \"$@\"; do if [ -e \"/dev/fd/$fd\" ]; then echo \"$fd\"; exit 1; fi; done" in
   let args = "-c" :: check_script :: "check-fd-closed-on-exec" :: List.map Int.to_string fd_nums in
   let cmd = Command.make "/bin/sh" ~args in
   Command.output cmd |> Result.expect ~msg:"failed to run fd inheritance helper"
@@ -37,7 +35,7 @@ let test_command_output_drains_stdout_and_stderr = fun () ->
 
 let test_command_spawn_does_not_inherit_pipe_fds = fun () ->
   let pipe = Kernel.Fd.pipe () in
-  let close_pipe = fun () ->
+  let close_pipe () =
     Kernel.Fd.close pipe.read_fd;
     Kernel.Fd.close pipe.write_fd
   in
@@ -47,9 +45,10 @@ let test_command_spawn_does_not_inherit_pipe_fds = fun () ->
       if Int.equal output.status 0 then
         Ok ()
       else
-        Error
-          ("expected helper to observe closed pipe fds, got " ^ Int.to_string output.status ^ ": "
-          ^ output.stderr)
+        Error ("expected helper to observe closed pipe fds, got "
+        ^ Int.to_string output.status
+        ^ ": "
+        ^ output.stderr)
     with
     | exn ->
         close_pipe ();
@@ -59,12 +58,8 @@ let test_command_spawn_does_not_inherit_pipe_fds = fun () ->
   result
 
 let meta_tests = [
-  Test.case
-    "command output drains stdout and stderr without deadlock"
-    test_command_output_drains_stdout_and_stderr;
-  Test.case
-    "command spawn does not inherit unrelated pipe fds"
-    test_command_spawn_does_not_inherit_pipe_fds;
+  Test.case "command output drains stdout and stderr without deadlock" test_command_output_drains_stdout_and_stderr;
+  Test.case "command spawn does not inherit unrelated pipe fds" test_command_spawn_does_not_inherit_pipe_fds;
 ]
 
 let capture_main = fun () ->

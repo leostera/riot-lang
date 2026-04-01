@@ -1,4 +1,5 @@
 open Std
+
 (** Parse method string to Method.t, returning None for invalid/disallowed methods *)
 let parse_override_method = fun str ->
   let upper = String.uppercase_ascii str in
@@ -9,6 +10,7 @@ let parse_override_method = fun str ->
   | _ -> None
 
 (* Only allow PUT, PATCH, DELETE *)
+
 (** Method override middleware *)
 let middleware = fun ?(param = "_method") () ~conn ~next ->
   (* Only override POST requests *)

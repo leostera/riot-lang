@@ -76,25 +76,35 @@ let pm_package_source_label = function
   | None -> "src"
 
 let format_pm_event = function
-  | Tusk_model.Event.PackageResolvedForBuild { package; version; _ } ->
-      "    \027[1;32mResolved\027[0m " ^ package ^ " (" ^ pm_package_source_label version ^ ")"
-  | Tusk_model.Event.PackageDownloadStarted { package; version; _ } ->
-      " \027[1;32mDownloading\027[0m " ^ package ^ " (" ^ version ^ ")"
-  | Tusk_model.Event.PackageDownloadQueued { package; version; _ } ->
-      "      \027[1;33mQueued\027[0m " ^ package ^ " (" ^ version ^ ")"
-  | Tusk_model.Event.PackageDownloadSkipped { package; version; _ } ->
-      "    \027[1;33mUsing\027[0m " ^ package ^ " (" ^ version ^ ")"
-  | kind ->
-      Tusk_model.Event.display kind
+  | Tusk_model.Event.PackageResolvedForBuild { package; version; _ } -> "    \027[1;32mResolved\027[0m "
+  ^ package
+  ^ " ("
+  ^ pm_package_source_label version
+  ^ ")"
+  | Tusk_model.Event.PackageDownloadStarted { package; version; _ } -> " \027[1;32mDownloading\027[0m "
+  ^ package
+  ^ " ("
+  ^ version
+  ^ ")"
+  | Tusk_model.Event.PackageDownloadQueued { package; version; _ } -> "      \027[1;33mQueued\027[0m "
+  ^ package
+  ^ " ("
+  ^ version
+  ^ ")"
+  | Tusk_model.Event.PackageDownloadSkipped { package; version; _ } -> "    \027[1;33mUsing\027[0m "
+  ^ package
+  ^ " ("
+  ^ version
+  ^ ")"
+  | kind -> Tusk_model.Event.display kind
 
 let write_pm_event = fun ~mode ~session_id kind ->
   match mode with
-  | Json ->
-      Tusk_model.Event.create ~session_id ~level:Tusk_model.Event.Info kind
-      |> Tusk_model.Event.to_json
-      |> write_json_event
-  | Human ->
-      out (format_pm_event kind)
+  | Json -> Tusk_model.Event.create ~session_id ~level:Tusk_model.Event.Info kind
+  |> Tusk_model.Event.to_json
+  |> write_json_event
+  | Human -> out (format_pm_event kind)
+
 (** Helper functions for target resolution *)
 let ensure_toolchains_for_targets = fun workspace targets ->
   let config = Toolchain_config.from_workspace workspace in

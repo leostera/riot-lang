@@ -28,6 +28,7 @@ type execution_result = Action_queue.execution_result = {
 type t = {
   completed: (G.Node_id.t, execution_result) HashMap.t;
 }
+
 (** Execute a single planned action node.
 
     This low-level primitive is used by higher-level schedulers that need
@@ -47,6 +48,7 @@ val execute_node:
   Path.t ->
   Action_node.t ->
   execution_result
+
 (** Execute an action graph with dependency-aware parallelism.
 
     Passing `concurrency = 1` uses the same code path with serialized

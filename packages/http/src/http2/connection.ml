@@ -81,8 +81,10 @@ type event =
   | PriorityReceived of { stream_id: int; stream_dependency: int; weight: int; exclusive: bool }
 
 (** {1 Constants} *)
+
 (** RFC 9113: Connection preface for clients *)
 let client_preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
 (** Default settings per RFC 9113 *)
 let default_config = {
   max_frame_size = 16_384;

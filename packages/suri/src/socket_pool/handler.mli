@@ -27,6 +27,7 @@ and t =
       handler: ('new_state, 'error) handler;
       state: 'new_state;
     } -> t
+
 (** Default handler implementations.
 
     Include this in your handler module to get sensible defaults:

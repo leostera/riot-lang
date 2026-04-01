@@ -7,6 +7,7 @@ type detection_result = {
   bin_prefix: string;  (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
   c_compiler: Path.t option;  (** Path to C compiler *)
 }
+
 (** Derive binary prefix from target triplet
     
     Examples:
@@ -15,12 +16,16 @@ type detection_result = {
     - arm-unknown-linux-gnueabihf → "arm-linux-gnueabihf-"
 *)
 val bin_prefix_of_triplet: System.Host.t -> string
+
 (** Find C compiler in PATH using binary prefix *)
 val find_c_compiler: string -> Path.t option
+
 (** Detect sysroot from C compiler by running `gcc -print-sysroot` *)
 val detect_sysroot: Path.t -> Path.t option
+
 (** Get bin directory from compiler path *)
 val bin_dir_of_compiler: Path.t -> Path.t option
+
 (** Detect cross-compilation toolchain for target
     
     Detection order:
@@ -33,6 +38,7 @@ val bin_dir_of_compiler: Path.t -> Path.t option
     but the other fields left as [`None`].
 *)
 val detect: ?toolchain_root:Path.t -> unit -> target_triplet:System.Host.t -> detection_result
+
 (** Get full path to a cross-compilation binary
     
     Example:

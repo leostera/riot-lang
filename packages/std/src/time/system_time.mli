@@ -80,6 +80,7 @@ val epoch: t
     ```
 *)
 val secs: t -> int
+
 (** Returns seconds since Unix epoch as a float, including fractional seconds.
     
     ## Examples
@@ -91,6 +92,7 @@ val secs: t -> int
     ```
 *)
 val secs_float: t -> float
+
 (** Returns nanoseconds since Unix epoch as int64.
     
     Provides exact 1ns precision for high-resolution timestamps.
@@ -104,6 +106,7 @@ val secs_float: t -> float
     ```
 *)
 val nanos: t -> int64
+
 (** Creates a system time from floating-point seconds since Unix epoch.
     
     ## Examples
@@ -113,6 +116,7 @@ val nanos: t -> int64
     ```
 *)
 val from_seconds: float -> t
+
 (** Creates a system time from int64 nanoseconds since Unix epoch.
     
     ## Examples
@@ -145,6 +149,7 @@ val now: unit -> t
 
 (** {1 Duration Operations} *)
 val duration_since_epoch: unit -> Duration.t
+
 (** Returns the time elapsed from [earlier] to the given time.
 
     ## Examples
@@ -159,6 +164,7 @@ val duration_since_epoch: unit -> Duration.t
     panic or return an incorrect duration. For reliable duration measurement,
     use [Instant.duration_since] instead. *)
 val duration_since: earlier:t -> t -> Duration.t
+
 (** Returns the time elapsed since this system time. Equivalent to
     [duration_since ~earlier:self (now ())].
 
@@ -184,6 +190,7 @@ val elapsed: t -> Duration.t
     ```ocaml let now = SystemTime.now () in let expiry = SystemTime.add now
     (Duration.from_hours 24) in (* expiry is 24 hours from now *) ``` *)
 val add: t -> Duration.t -> t
+
 (** Subtracts a duration from a system time, returning a past time.
 
     ## Examples
@@ -201,6 +208,7 @@ val sub: t -> Duration.t -> t
     ```ocaml match SystemTime.checked_add time Duration.max with | Some future
     -> (* OK *) | None -> (* Overflow - time too far in future *) ``` *)
 val checked_add: t -> Duration.t -> t option
+
 (** Subtracts a duration if the result can be represented, returns [None] if it
     would underflow.
 
@@ -219,6 +227,7 @@ val checked_sub: t -> Duration.t -> t option
     ```ocaml let t1 = SystemTime.now () in sleep 0.1; let t2 = SystemTime.now ()
     in SystemTime.compare t1 t2 (* < 0, t1 is earlier *) ``` *)
 val compare: t -> t -> int
+
 (** Tests equality of two system times.
 
     ## Examples
@@ -226,12 +235,14 @@ val compare: t -> t -> int
     ```ocaml let t1 = SystemTime.now () in SystemTime.equal t1 t1 (* true *) ```
 *)
 val equal: t -> t -> bool
+
 (** Returns the earlier of two system times.
 
     ## Examples
 
     ```ocaml let earliest = SystemTime.min time1 time2 ``` *)
 val min: t -> t -> t
+
 (** Returns the later of two system times.
 
     ## Examples
@@ -247,12 +258,14 @@ val max: t -> t -> t
     ```ocaml let now = SystemTime.now () in let timestamp =
     SystemTime.to_unix_timestamp now ``` *)
 val to_unix_timestamp: t -> int
+
 (** Creates a system time from a Unix timestamp (seconds since epoch).
 
     ## Examples
 
     ```ocaml let time = SystemTime.from_unix_timestamp 1234567890 ``` *)
 val from_unix_timestamp: int -> t
+
 (** Returns the duration since the Unix epoch (January 1, 1970 00:00:00 UTC).
 
     This provides nanosecond-precision time since epoch, useful for unique

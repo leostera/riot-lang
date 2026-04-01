@@ -18,6 +18,7 @@ let shell_from_string = function
 
 let list_packages = fun (workspace: Tusk_model.Workspace.t) ->
   workspace.packages |> List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) |> List.sort String.compare
+
 (** List binaries as "package:binary" for display in completions, excluding tests *)
 let list_binaries = fun (workspace: Tusk_model.Workspace.t) ->
   workspace.packages |> List.filter Tusk_model.Package.is_workspace_member |> List.concat_map
@@ -32,6 +33,7 @@ let list_binaries = fun (workspace: Tusk_model.Workspace.t) ->
           else
             Some (pkg.name ^ ":" ^ bin.name))
         pkg.binaries) |> List.sort_uniq String.compare
+
 (** List package names, package wildcards, and test binaries for completions *)
 let list_tests = fun (workspace: Tusk_model.Workspace.t) ->
   let test_packages =
@@ -70,6 +72,7 @@ let list_tests = fun (workspace: Tusk_model.Workspace.t) ->
     List.map (fun pkg_name -> pkg_name ^ ":...") test_packages
   in
   (test_packages @ package_wildcards @ individual_tests) |> List.sort_uniq String.compare
+
 (** List benchmark binaries as "package:bench" for display in completions *)
 let list_benchmarks = fun (workspace: Tusk_model.Workspace.t) ->
   let individual_benches =
@@ -102,6 +105,7 @@ let list_benchmarks = fun (workspace: Tusk_model.Workspace.t) ->
           None)
   in
   (package_wildcards @ individual_benches) |> List.sort_uniq String.compare
+
 (** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
 let list_commands = fun (workspace: Tusk_model.Workspace.t) ->
   Tusk_model.Workspace.discover_commands workspace |> List.map
@@ -117,6 +121,7 @@ let list_commands = fun (workspace: Tusk_model.Workspace.t) ->
       let tab = Char.chr 9 in
       (* Explicit tab character *)
       name ^ String.make 1 tab ^ desc) |> List.sort_uniq String.compare
+
 (** List package command descriptions matching the order of list_commands *)
 let list_command_descriptions = fun (workspace: Tusk_model.Workspace.t) ->
   list_commands workspace |> List.map

@@ -106,6 +106,7 @@ val strikethrough: bool -> t -> t
 val underline: bool -> t -> t
 
 val border: Border.t -> t -> t
+
 (** Legacy size API - kept for compatibility *)
 val height: int -> t -> t
 
@@ -114,34 +115,45 @@ val width: int option -> t -> t
 val max_height: int -> t -> t
 
 val max_width: int -> t -> t
+
 (** New size API - preferred for layout system *)
 val width_auto: t -> t
+
 (** Set width to Auto (intrinsic/content size) *)
 val width_fixed: int -> t -> t
+
 (** Set width to a fixed size in cells *)
 val width_flex: float -> t -> t
+
 (** Set width to flex with given weight (e.g. 1.0 for equal sharing) *)
 val height_auto: t -> t
+
 (** Set height to Auto (intrinsic/content size) *)
 val height_fixed: int -> t -> t
+
 (** Set height to a fixed size in cells *)
 val height_flex: float -> t -> t
+
 (** Set height to flex with given weight (e.g. 1.0 for equal sharing) *)
 
 (** Constraint API *)
 val min_width: int -> t -> t
+
 (** Set minimum width constraint *)
 val min_height: int -> t -> t
+
 (** Set minimum height constraint *)
 
 (** Overflow API *)
 val overflow: overflow -> t -> t
+
 (** Set overflow behavior (Visible, Hidden, or Scroll) *)
 val align_horizontal: [
     `Left
     | `Center
     | `Right
   ] -> t -> t
+
 (** [align_horizontal pos t] sets horizontal text alignment.
     
     Only applies when [width] is set. Text will be padded to reach the target width.
@@ -164,6 +176,7 @@ val align_vertical: [
     | `Center
     | `Bottom
   ] -> t -> t
+
 (** `align_vertical pos t` sets vertical text alignment.
     
     Only applies when `height` is set. Content will be padded with empty lines.
@@ -182,6 +195,7 @@ val align_vertical: [
     (* Renders centered in 5-line box *)
     ``` *)
 val render: t -> string -> string
+
 (** `render t text` applies the t to text and returns formatted string.
     
     Processing order: padding, horizontal alignment, vertical alignment,
@@ -212,6 +226,7 @@ val get_padding_bottom: t -> int
 val get_width: t -> size
 
 val get_height: t -> size
+
 (** Accessors for rendering system *)
 val get_foreground: t -> color option
 

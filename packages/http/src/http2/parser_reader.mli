@@ -12,11 +12,13 @@ open Std
 type config = {
   max_frame_size: int;  (** Maximum frame size (default: 16384) *)
 }
+
 (** Default configuration *)
 val default_config: config
 
 (** Parser state - opaque, tracks position in frame parsing *)
 type state
+
 (** Create a new parser state *)
 val create: ?config:config -> unit -> state
 
@@ -39,6 +41,7 @@ type parse_result =
   | Need_more
   (** Need more data - call again with more bytes in reader *)
   | Error of parse_error
+
 (** Parse error *)
 
 (** Parse the next frame from the reader.
@@ -71,7 +74,9 @@ type parse_result =
     @return Parse result
 *)
 val parse: state -> ('src, 'err) IO.Reader.t -> parse_result
+
 (** Reset parser state to initial (for connection reuse) *)
 val reset: state -> unit
+
 (** Get bytes buffered in parser state (for debugging) *)
 val buffered_bytes: state -> int

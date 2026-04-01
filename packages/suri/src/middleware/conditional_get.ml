@@ -1,4 +1,5 @@
 open Std
+
 (** Parse HTTP date format (RFC 7231) into Unix timestamp *)
 let parse_http_date = fun date_str ->
   try
@@ -61,6 +62,7 @@ let parse_http_date = fun date_str ->
     | _ -> None
   with
   | _ -> None
+
 (** Check if ETag matches If-None-Match header *)
 let check_etag_match = fun conn resp_headers ->
   let req_headers = Conn.headers conn in
@@ -76,6 +78,7 @@ let check_etag_match = fun conn resp_headers ->
         (* Check if server ETag matches any client ETag *)
         List.mem server_etag client_etags
   | _ -> false
+
 (** Check if Last-Modified matches If-Modified-Since header *)
 let check_modified_since = fun conn resp_headers ->
   let req_headers = Conn.headers conn in
@@ -89,6 +92,7 @@ let check_modified_since = fun conn resp_headers ->
       | _ -> false
     )
   | _ -> false
+
 (** Headers to preserve in 304 responses *)
 let cacheable_headers = [
   "cache-control";
@@ -99,6 +103,7 @@ let cacheable_headers = [
   "vary";
   "last-modified";
 ]
+
 (** Build 304 response with preserved headers *)
 let not_modified_response = fun conn resp_headers ->
   (* Start with 304 status and empty body *)
@@ -112,6 +117,7 @@ let not_modified_response = fun conn resp_headers ->
       | None -> acc_conn)
     conn'
     cacheable_headers
+
 (** Conditional GET middleware *)
 let middleware = fun ~conn ~next ->
   (* Only apply to GET and HEAD requests *)

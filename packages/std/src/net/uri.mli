@@ -62,28 +62,38 @@ type error =
   | InvalidFormat
   (** General parsing error *)
   | TooLong
+
 (** URL exceeds maximum length *)
 (** ## Creation and Parsing *)
+
 (** Parse a string into a URL *)
 val of_string: string -> (t, error) result
+
 (** Convert a URL back to string representation *)
 val to_string: t -> string
 
 (** ## Components Access *)
 (** Get the scheme (e.g., "http", "https") *)
 val scheme: t -> string option
+
 (** Get the full authority part (e.g., "user:pass@host:port") *)
 val authority: t -> string option
+
 (** Get just the host part *)
 val host: t -> string option
+
 (** Get the port number if specified *)
 val port: t -> int option
+
 (** Get the path component (always present, defaults to "/") *)
 val path: t -> string
+
 (** Get the query string without the '?' *)
 val query: t -> string option
+
 (** Get the fragment without the '#' *)
 val fragment: t -> string option
+
 (** Get combined path and query (e.g., "/path?query") *)
 val path_and_query: t -> string
 
@@ -99,6 +109,7 @@ val path_and_query: t -> string
       percent_encode "100%"  (* "100%25" *)
     ]} *)
 val percent_encode: string -> string
+
 (** Decode percent-encoded string per RFC 3986.
     
     Converts %XX sequences to their corresponding characters.
@@ -112,6 +123,7 @@ val percent_encode: string -> string
     
     Invalid sequences (e.g., "%ZZ") are left as-is. *)
 val percent_decode: string -> string
+
 (** Encode for application/x-www-form-urlencoded.
     
     Like percent_encode but space becomes '+' instead of '%20'.
@@ -123,6 +135,7 @@ val percent_decode: string -> string
       form_encode "test@example.com"  (* "test%40example.com" *)
     ]} *)
 val form_encode: string -> string
+
 (** Decode application/x-www-form-urlencoded string.
     
     Like percent_decode but also converts '+' to space.
@@ -204,12 +217,16 @@ end
 (** ## Utilities *)
 (** Check if URL is absolute (has scheme) *)
 val is_absolute: t -> bool
+
 (** Check if URL is relative (no scheme) *)
 val is_relative: t -> bool
+
 (** Join a base URL with a relative path *)
 val join: t -> string -> (t, error) result
+
 (** Compare two URLs for equality *)
 val equal: t -> t -> bool
+
 (** Compare two URLs *)
 val compare: t -> t -> int
 
@@ -235,6 +252,7 @@ module Query: sig
       Now returns decoded values per RFC 3986. *)
   type t = param list
   val parse: string -> t
+
   (** Convert parameter list to query string.
       
       Automatically encodes keys and values using form_encode.
@@ -252,13 +270,17 @@ module Query: sig
       {b Breaking Change}: Previously did not encode values.
       Now encodes per application/x-www-form-urlencoded. *)
   val to_string: t -> string
+
   (** Get first value for a parameter name *)
   val get: t -> string -> string option
+
   (** Get all values for a parameter name *)
   val get_all: t -> string -> string list
+
   (** Add a parameter *)
   val add: t -> string -> string -> t
 
   val remove: t -> string -> t
+
   (** Remove all parameters with given name *)
 end

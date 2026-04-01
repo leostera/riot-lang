@@ -53,8 +53,10 @@ open Global
     ```ocaml Base85.encode "Man" (* "9jqo^" *) Base85.encode "\x00\x00\x00\x00"
     (* "z" - special case *) ``` *)
 val encode: string -> string
+
 (** Encodes bytes to Ascii85. *)
 val encode_bytes: bytes -> string
+
 (** Decodes an Ascii85 string.
 
     ## Examples
@@ -76,6 +78,7 @@ val encode_bytes: bytes -> string
 val decode: string -> (string, [
     | `Invalid_base85
   ]) result
+
 (** Decodes an Ascii85 string to bytes. *)
 val decode_bytes: string -> (bytes, [
     | `Invalid_base85

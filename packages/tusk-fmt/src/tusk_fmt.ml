@@ -24,7 +24,7 @@ let output_writer =
         println (String.sub buf 0 (String.length buf - 1))
       else
         print buf;
-      Ok (String.length buf)
+        Ok (String.length buf)
 
     let write_owned_vectored = fun () ~bufs:_ -> unimplemented ()
 

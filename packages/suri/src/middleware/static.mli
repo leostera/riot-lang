@@ -96,6 +96,7 @@ type config = {
   cache_control: string option;
   (** Cache-Control header value. Default: [Some "public, max-age=3600"] *)
 }
+
 (** Static file serving configuration.
 
     {3 Field descriptions}
@@ -122,6 +123,7 @@ type config = {
       [Some "public, max-age=3600"] for 1 hour, or
       [Some "public, max-age=31536000, immutable"] for fingerprinted assets. *)
 val default_config: config
+
 (** Default configuration:
     - [show_directory = false] - No directory browsing
     - [index_files = ["index.html"; "index.htm"]]
@@ -132,6 +134,7 @@ val default_config: config
 (** {1 Middleware} *)
 
 val middleware: ?config:config -> at:string -> Path.t -> unit -> Pipeline.middleware
+
 (** Create static file serving middleware.
 
     {3 Parameters}

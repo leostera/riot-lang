@@ -4,6 +4,7 @@ module SuriConfig = Config
 open Std
 module Protocol = Protocol
 module HandlerRegistry = Handler_registry
+
 (** Generate a unique LiveView component ID *)
 let id = fun base_name ->
   let uuid = Std.UUID.v7 () in
@@ -13,6 +14,7 @@ let id = fun base_name ->
 type 'msg event =
   Custom of Message.t
   | App of 'msg
+
 (** Component interface *)
 module type Component = sig
   val id: string
@@ -30,13 +32,16 @@ module type Component = sig
 
   val render: state:state -> unit -> msg Component.t
 end
+
 (** Message type for sending patches from component to handler *)
 type Message.t +=
   RenderPatch of string
+
 (** Component process messages *)
 type Message.t +=
   | ComponentMount
   | ComponentEvent of { handler_id: string; event_data: string }
+
 (** Attach handler IDs to component tree and register handlers *)
 let rec attach_handler_ids registry (component: 'msg Component.t) : 'msg Component.t =
   match component with
@@ -72,10 +77,12 @@ let rec attach_handler_ids registry (component: 'msg Component.t) : 'msg Compone
       (* Process children recursively *)
       let new_children = List.map (attach_handler_ids registry) children in
       Component.El { tag; attrs = regular_attrs @ handler_attrs; children = new_children }
+
 (** Render component with handler IDs attached *)
 let render_with_handlers = fun registry component ->
   let component_with_ids = attach_handler_ids registry component in
   Component.to_html component_with_ids
+
 (** Component process - manages state and rendering *)
 module ComponentProcess = struct
   type ('state, 'msg) t = {
@@ -145,6 +152,7 @@ module ComponentProcess = struct
           };
         Ok ())
 end
+
 (** Create a Channel.Handler for a LiveView component *)
 module MountHandler (C : Component) = struct
   include Channel.Handler.Default
@@ -154,10 +162,12 @@ module MountHandler (C : Component) = struct
   type state = {
     component: Pid.t;
   }
+
   (** Extract session token from query parameters *)
   let extract_session_token = fun conn ->
     let params = Middleware.Conn.query_params conn in
     List.assoc_opt "session" params
+
   (** Get secret from Suri config *)
   let get_secret = fun () ->
     (* Try to get from Std.Config, fall back to default *)
@@ -235,6 +245,7 @@ module MountHandler (C : Component) = struct
         `push ([ frame ], state)
     | _ -> `ok state
 end
+
 (** JavaScript runtime string - included inline *)
 let javascript_runtime = Morphdom.javascript ^ {|
 
@@ -429,9 +440,11 @@ class LiveView {
 // Export for use in browser
 window.LiveView = LiveView;
 |}
+
 (** Client script as a Component element *)
 let client_script : 'msg Component.t =
   let open Component in script ~attrs:[ attr "type" "text/javascript" ] javascript_runtime
+
 (** Generate HTML template with LiveView bootstrap *)
 let html_template = fun ~element_id ~ws_path ?title ?styles initial_content ->
   let title_text = Option.unwrap_or title ~default:"LiveView App" in
@@ -458,6 +471,7 @@ let html_template = fun ~element_id ~ws_path ?title ?styles initial_content ->
           ];
       ] in
     Component.to_html page
+
 (** Serve the LiveView JavaScript runtime as middleware.
     
     This middleware automatically serves the LiveView JavaScript runtime
@@ -482,6 +496,7 @@ let serve_runtime ?(prefix = "/assets/liveview.js") () : Middleware.Pipeline.mid
     next conn
 
 (* Pass to next middleware *)
+
 (** Create a LiveView mount handler *)
 let mount = fun (type s m) ((module C : Component with type state = s and type msg = m)) (
   conn: Middleware.Conn.t
@@ -489,6 +504,7 @@ let mount = fun (type s m) ((module C : Component with type state = s and type m
   let module M = MountHandler (C) in
   let opts = Channel.Handler.{ do_upgrade = true } in
   (opts, Channel.Handler.make (module M) conn)
+
 (** Embed a LiveView component into a page.
     
     Creates a mounting div with LiveView JavaScript bootstrap code and signed session token.
@@ -533,6 +549,7 @@ let embed = fun (type a) ((module C : Component with type args = a)) (args_value
         ^ js_var_name
         ^ ".connect();");
     ]
+
 (** Create a LiveView route.
     
     Reads the unique ID from the module's [id] field and creates the WebSocket endpoint

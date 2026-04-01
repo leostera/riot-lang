@@ -45,8 +45,10 @@ let add_node = fun graph value ->
 
 let get_node = fun t node_id ->
   Hashtbl.find t.nodes node_id
+
 (** Add a dependency edge between two nodes *)
 let add_edge = fun node ~depends_on -> node.deps <- depends_on.id :: node.deps
+
 (** Generate DOT format output for visualization *)
 let to_dot = fun graph ~name ~node_to_label ~node_to_attrs ->
   let buffer = Buffer.create 1_024 in
@@ -91,6 +93,7 @@ let to_dot = fun graph ~name ~node_to_label ~node_to_attrs ->
   Buffer.contents buffer
 
 exception Cycle of Node_id.t list
+
 (** Exception raised when a cycle is detected *)
 
 (** Topological sort using Kahn's algorithm *)

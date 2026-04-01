@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Simple CSRF protection demo with form submission *)
 let form_page = fun conn ->
   let open Component in

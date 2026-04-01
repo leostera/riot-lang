@@ -45,6 +45,7 @@ external find_insert_slot_simd: bytes -> int -> int -> int = "swisstable_find_in
 external find_candidates_simd: bytes -> int -> int -> int -> int list = "swisstable_find_candidates"
 
 (* === Internal Modules === *)
+
 (** Control byte (tag) module - manages the 1-byte metadata per bucket *)
 module Tag = struct
   type t = int
@@ -77,11 +78,12 @@ module Tag = struct
     assert (is_special tag);
     not (tag land 0x01 = 0)
 end
+
 (** BitMask module - wraps an int representing a bitmask of matching positions *)
 module BitMask = struct
   type t = int
 
-  let[@inline always] lowest_set_bit_index = fun mask ->
+  let lowest_set_bit_index = fun mask ->
     if mask = 0 then
       None
     else
@@ -94,10 +96,11 @@ module BitMask = struct
       in
       Some (count_trailing_zeros mask 0)
 
-  let[@inline always] remove_lowest_bit = fun mask -> mask land (mask - 1)
+  let remove_lowest_bit = fun mask -> mask land (mask - 1)
 
   let is_empty = fun mask -> mask = 0
 end
+
 (** Group module - parallel scanning of 8 control bytes *)
 module Group = struct
   let width = 8
@@ -112,7 +115,7 @@ module Group = struct
 
   (* Helper: replicate a byte across all 8 bytes of int64 *)
 
-  let[@inline always] repeat = fun byte ->
+  let repeat = fun byte ->
     let b = I64.of_int byte in
     let b = I64.logor b (I64.shift_left b 8) in
     let b = I64.logor b (I64.shift_left b 16) in
@@ -126,7 +129,7 @@ module Group = struct
      The result from match operations has the high bit (0x80) set for matching bytes.
      We need to extract bit 7 from each byte position and pack them into an int. *)
 
-  let[@inline always] bitmask_to_int = fun bits ->
+  let bitmask_to_int = fun bits ->
     let extract_bit byte_pos = I64.to_int
       (I64.shift_right_logical
         (I64.logand bits (I64.shift_left 0x80L (byte_pos * 8)))
@@ -154,7 +157,7 @@ module Group = struct
 
   (* Keep this version for backwards compatibility if needed *)
 
-  let[@inline always] match_tag = fun group tag ->
+  let match_tag = fun group tag ->
     let tag_repeated = repeat tag in
     let cmp = I64.logxor group tag_repeated in
     let ones = repeat 0x01 in
@@ -169,7 +172,7 @@ module Group = struct
 
   (* Keep this version for backwards compatibility *)
 
-  let[@inline always] match_empty = fun group ->
+  let match_empty = fun group ->
     let deleted_marker = repeat Tag.deleted in
     (* If top two bits are both 1, it's EMPTY (0xFF) *)
     let result = I64.logand (I64.logand group (I64.shift_left group 1)) deleted_marker in
@@ -193,6 +196,7 @@ module Group = struct
     let result = I64.logand (I64.lognot group) deleted_marker in
     bitmask_to_int result
 end
+
 (** ProbeSeq module - triangular/quadratic probing sequence *)
 module ProbeSeq = struct
   type t = {
@@ -212,6 +216,7 @@ module ProbeSeq = struct
     seq.stride <- seq.stride + Group.width;
     seq.pos <- (seq.pos + seq.stride) land bucket_mask
 end
+
 (** RawTable module - core hash table implementation *)
 module RawTable = struct
   type ('k, 'v) t = {
@@ -242,7 +247,7 @@ module RawTable = struct
 
   (* Calculate maximum load for given bucket count *)
 
-  let[@inline always] bucket_mask_to_capacity = fun bucket_mask ->
+  let bucket_mask_to_capacity = fun bucket_mask ->
     if bucket_mask < 8 then
       bucket_mask
     else

@@ -1,4 +1,5 @@
 open Std
+
 (** Lexical Analyzer - Source to Tokens
     
     The lexer (tokenizer) converts source code text into a flat stream of tokens.
@@ -100,6 +101,7 @@ val create: string -> t
     token *) (* ... *) let last = Lexer.next lexer [] in (* eventually returns
     EOF *) ``` *)
 val next: t -> Token.delimiter list -> Token.t
+
 (** `tokenize source` lexes the entire source into a token list.
 
     This is a convenience function that creates a lexer, repeatedly calls `next`

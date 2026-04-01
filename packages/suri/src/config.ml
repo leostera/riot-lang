@@ -21,6 +21,7 @@ let default = {
   buffer_size = 4_096;
   liveview_secret = "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS";
 }
+
 (** Configuration spec for Std.Config - automatically registered *)
 let spec = Config.Spec.for_app
   ~app:"suri"
@@ -34,6 +35,7 @@ let spec = Config.Spec.for_app
     Config.Spec.int "buffer_size" ~default:4_096 ~help:"Network buffer size in bytes";
     Config.Spec.string "liveview_secret" ~help:"Secret key for signing LiveView session tokens (min 32 characters)";
   ]
+
 (** Extract typed config from validated spec values *)
 let get = fun conf ->
   let host = Config.get_string conf "host" in

@@ -227,8 +227,7 @@ let test_start_local_prepares_workspace_with_registry_packages = fun () ->
         let app_root = Path.(tmpdir / Path.v "packages/app") in
         let app_src = Path.(app_root / Path.v "src") in
         Fs.create_dir_all app_src |> Result.expect ~msg:"expected app src dir to be created";
-        Fs.write "let answer = 42\n" Path.(app_src / Path.v "app.ml")
-        |> Result.expect ~msg:"expected app source to be written";
+        Fs.write "let answer = 42\n" Path.(app_src / Path.v "app.ml") |> Result.expect ~msg:"expected app source to be written";
         Fs.write
           {|
 [package]
@@ -241,12 +240,12 @@ path = "src/app.ml"
 [dependencies]
 std = "*"
 |}
-          Path.(app_root / Path.v "tusk.toml")
-        |> Result.expect ~msg:"expected app manifest to be written";
+          Path.(app_root / Path.v "tusk.toml") |> Result.expect ~msg:"expected app manifest to be written";
         let app_pkg =
           Tusk_model.Package.from_toml
-            (Data.Toml.parse
-              {|
+            (
+              Data.Toml.parse
+                {|
 [package]
 name = "app"
 version = "0.0.1"
@@ -256,8 +255,8 @@ path = "src/app.ml"
 
 [dependencies]
 std = "*"
-|}
-            |> Result.expect ~msg:"expected app manifest to parse")
+|} |> Result.expect ~msg:"expected app manifest to parse"
+            )
             ~workspace_deps:[]
             ~workspace_dev_deps:[]
             ~workspace_build_deps:[]
@@ -265,27 +264,20 @@ std = "*"
             ~relative_path:(Path.v "packages/app")
           |> Result.expect ~msg:"expected app package to load"
         in
-        let workspace =
-          Tusk_model.Workspace.make ~root:tmpdir ~packages:[ app_pkg ] ()
-        in
-        let registry_cache =
-          Pkgs_ml.Registry_cache.create
-            ~tusk_home:Path.(tmpdir / Path.v ".tusk")
-            ~registry_name:"pkgs.ml"
-            ()
-          |> Result.expect ~msg:"expected registry cache to initialize"
-        in
-        let registry =
-          Pkgs_ml.Registry.in_memory
-            ~cache:registry_cache
-            ~packages:[
-              Pkgs_ml.Sparse_index.{
-                schema_version = 1;
-                name = "std";
-                latest = "0.2.0";
-                updated_at = "2026-04-01T00:00:00Z";
-                releases = [
-                  {
+        let workspace = Tusk_model.Workspace.make ~root:tmpdir ~packages:[ app_pkg ] () in
+        let registry_cache = Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(tmpdir / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to initialize" in
+        let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache
+          ~packages:[ Pkgs_ml.Sparse_index.{
+              schema_version = 1;
+              name = "std";
+              latest = "0.2.0";
+              updated_at = "2026-04-01T00:00:00Z";
+              releases =
+                [ {
                     version = "0.2.0";
                     published_at = "2026-04-01T00:00:00Z";
                     canonical_locator = "github.com/example/std";
@@ -302,51 +294,55 @@ std = "*"
                     manifest_key = "manifests/std-0.2.0.json";
                     source_key = "sources/std-0.2.0.tar.gz";
                     dependencies = [];
-                  };
-                ];
-              };
-            ]
-            ~releases:[
-              {
-                Pkgs_ml.Registry.package_name = "std";
-                version = "0.2.0";
-                manifest_toml =
-                  {|
+                  }; ];
+            }; ]
+          ~releases:[ {
+              Pkgs_ml.Registry.package_name = "std";
+              version = "0.2.0";
+              manifest_toml =
+                {|
 [package]
 name = "std"
 version = "0.2.0"
 |};
-                files = [];
-              };
-            ]
-            ()
+              files = [];
+            }; ]
+          ()
         in
-        match
-          Tusk_server.start_local
-            ~workspace
-            ~registry
-            ~config:Tusk_server.Server_config.default
-            ()
-        with
+        match Tusk_server.start_local
+          ~workspace
+          ~registry
+          ~config:Tusk_server.Server_config.default
+          () with
         | Error exn -> Error ("expected local server to start: " ^ Exception.to_string exn)
         | Ok server_pid ->
-            send server_pid (Tusk_server.Protocol.ServerRequest (Tusk_server.Protocol.GetWorkspaceConfig { client_pid = self () }));
+            send
+              server_pid
+              (Tusk_server.Protocol.ServerRequest (Tusk_server.Protocol.GetWorkspaceConfig {
+                client_pid = self ()
+              }));
             let selector msg =
               match msg with
-              | Tusk_server.Protocol.ServerResponse (Tusk_server.Protocol.WorkspaceConfig { workspace; toolchain = _ }) ->
-                  `select workspace
+              | Tusk_server.Protocol.ServerResponse (Tusk_server.Protocol.WorkspaceConfig {
+                workspace;
+                toolchain=_
+              }) -> `select workspace
               | _ -> `skip
             in
             let prepared_workspace = receive ~selector () in
-            let package_names = List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) prepared_workspace.packages in
+            let package_names =
+              List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) prepared_workspace.packages
+            in
             let std_pkg =
               List.find_opt
-                (fun (pkg: Tusk_model.Package.t) -> String.equal pkg.name "std")
+                (fun (pkg: Tusk_model.Package.t) ->
+                  String.equal pkg.name "std")
                 prepared_workspace.packages
             in
-            let expected_std_root =
-              Pkgs_ml.Registry_cache.package_src_dir registry_cache ~package_name:"std" ~version:"0.2.0"
-            in
+            let expected_std_root = Pkgs_ml.Registry_cache.package_src_dir
+              registry_cache
+              ~package_name:"std"
+              ~version:"0.2.0" in
             match std_pkg with
             | Some std_pkg when package_names = [ "app"; "std" ] && Path.equal std_pkg.path expected_std_root -> Ok ()
             | Some _ -> Error "expected prepared workspace to include materialized registry package"
@@ -362,8 +358,7 @@ let test_start_local_emits_dependency_resolution_events = fun () ->
         let app_root = Path.(tmpdir / Path.v "packages/app") in
         let app_src = Path.(app_root / Path.v "src") in
         Fs.create_dir_all app_src |> Result.expect ~msg:"expected app src dir to be created";
-        Fs.write "let answer = 42\n" Path.(app_src / Path.v "app.ml")
-        |> Result.expect ~msg:"expected app source to be written";
+        Fs.write "let answer = 42\n" Path.(app_src / Path.v "app.ml") |> Result.expect ~msg:"expected app source to be written";
         Fs.write
           {|
 [package]
@@ -376,12 +371,12 @@ path = "src/app.ml"
 [dependencies]
 std = "*"
 |}
-          Path.(app_root / Path.v "tusk.toml")
-        |> Result.expect ~msg:"expected app manifest to be written";
+          Path.(app_root / Path.v "tusk.toml") |> Result.expect ~msg:"expected app manifest to be written";
         let app_pkg =
           Tusk_model.Package.from_toml
-            (Data.Toml.parse
-              {|
+            (
+              Data.Toml.parse
+                {|
 [package]
 name = "app"
 version = "0.0.1"
@@ -391,8 +386,8 @@ path = "src/app.ml"
 
 [dependencies]
 std = "*"
-|}
-            |> Result.expect ~msg:"expected app manifest to parse")
+|} |> Result.expect ~msg:"expected app manifest to parse"
+            )
             ~workspace_deps:[]
             ~workspace_dev_deps:[]
             ~workspace_build_deps:[]
@@ -400,27 +395,20 @@ std = "*"
             ~relative_path:(Path.v "packages/app")
           |> Result.expect ~msg:"expected app package to load"
         in
-        let workspace =
-          Tusk_model.Workspace.make ~root:tmpdir ~packages:[ app_pkg ] ()
-        in
-        let registry_cache =
-          Pkgs_ml.Registry_cache.create
-            ~tusk_home:Path.(tmpdir / Path.v ".tusk")
-            ~registry_name:"pkgs.ml"
-            ()
-          |> Result.expect ~msg:"expected registry cache to initialize"
-        in
-        let registry =
-          Pkgs_ml.Registry.in_memory
-            ~cache:registry_cache
-            ~packages:[
-              Pkgs_ml.Sparse_index.{
-                schema_version = 1;
-                name = "std";
-                latest = "0.2.0";
-                updated_at = "2026-04-01T00:00:00Z";
-                releases = [
-                  {
+        let workspace = Tusk_model.Workspace.make ~root:tmpdir ~packages:[ app_pkg ] () in
+        let registry_cache = Pkgs_ml.Registry_cache.create
+          ~tusk_home:Path.(tmpdir / Path.v ".tusk")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to initialize" in
+        let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache
+          ~packages:[ Pkgs_ml.Sparse_index.{
+              schema_version = 1;
+              name = "std";
+              latest = "0.2.0";
+              updated_at = "2026-04-01T00:00:00Z";
+              releases =
+                [ {
                     version = "0.2.0";
                     published_at = "2026-04-01T00:00:00Z";
                     canonical_locator = "github.com/example/std";
@@ -437,43 +425,37 @@ std = "*"
                     manifest_key = "manifests/std-0.2.0.json";
                     source_key = "sources/std-0.2.0.tar.gz";
                     dependencies = [];
-                  };
-                ];
-              };
-            ]
-            ~releases:[
-              {
-                Pkgs_ml.Registry.package_name = "std";
-                version = "0.2.0";
-                manifest_toml =
-                  {|
+                  }; ];
+            }; ]
+          ~releases:[ {
+              Pkgs_ml.Registry.package_name = "std";
+              version = "0.2.0";
+              manifest_toml =
+                {|
 [package]
 name = "std"
 version = "0.2.0"
 |};
-                files = [];
-              };
-            ]
-            ()
+              files = [];
+            }; ]
+          ()
         in
         let seen = ref [] in
-        match
-          Tusk_server.start_local
-            ~emit:(fun kind -> seen := kind :: !seen)
-            ~workspace
-            ~registry
-            ~config:Tusk_server.Server_config.default
-            ()
-        with
+        match Tusk_server.start_local
+          ~emit:(fun kind -> seen := kind :: !seen)
+          ~workspace
+          ~registry
+          ~config:Tusk_server.Server_config.default
+          () with
         | Error exn -> Error ("expected local server to start: " ^ Exception.to_string exn)
         | Ok _ ->
-            if
-              List.exists
-                (function
+            if List.exists
+                (
+                  function
                   | Tusk_model.Event.DependencyResolutionStarted _ -> true
-                  | _ -> false)
-                !seen
-            then
+                  | _ -> false
+                )
+                !seen then
               Ok ()
             else
               Error "expected start_local to emit dependency resolution events")

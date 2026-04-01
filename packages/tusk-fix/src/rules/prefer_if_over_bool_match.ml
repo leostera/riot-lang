@@ -87,10 +87,7 @@ let suggestion_for_match = fun (expr: Syn.Cst.match_expression) ->
 let should_flag_match = fun (expr: Syn.Cst.match_expression) ->
   match expr.cases with
   | [first_case;second_case] ->
-      first_case.guard = None
-      && second_case.guard = None
-      &&
-      (
+      first_case.guard = None && second_case.guard = None && (
         match case_pattern_kind first_case.pattern, case_pattern_kind second_case.pattern with
         | (TruePattern, FalsePattern)
         | (FalsePattern, TruePattern)

@@ -59,6 +59,7 @@ type 'a t
 
     ```ocaml let queue = Queue.create () in assert (Queue.is_empty queue) ``` *)
 val create: unit -> 'a t
+
 (** Creates an empty queue with specified initial capacity.
 
     Pre-allocating capacity can improve performance when the approximate size is
@@ -69,6 +70,7 @@ val create: unit -> 'a t
     ```ocaml let queue = Queue.with_capacity 1000 in (* Can push ~1000 items
     without reallocation *) ``` *)
 val with_capacity: int -> 'a t
+
 (** Creates a queue from a list. The first list element becomes the front of the
     queue.
 
@@ -96,6 +98,7 @@ val of_list: 'a list -> 'a t
 
     - Time: O(1) amortized *)
 val push: 'a t -> 'a -> unit
+
 (** Removes and returns the front element. Returns [Some element] if the queue
     is not empty, [None] otherwise.
 
@@ -110,6 +113,7 @@ val push: 'a t -> 'a -> unit
 
     - Time: O(1) *)
 val pop: 'a t -> 'a option
+
 (** Returns the front element without removing it.
 
     ## Examples
@@ -121,6 +125,7 @@ val pop: 'a t -> 'a option
 
     - Time: O(1) *)
 val front: 'a t -> 'a option
+
 (** Returns the number of elements in the queue.
 
     ## Examples
@@ -131,6 +136,7 @@ val front: 'a t -> 'a option
 
     - Time: O(1) *)
 val len: 'a t -> int
+
 (** Returns [true] if the queue contains no elements.
 
     ## Examples
@@ -142,6 +148,7 @@ val len: 'a t -> int
 
     - Time: O(1) *)
 val is_empty: 'a t -> bool
+
 (** Removes all elements from the queue.
 
     ## Examples
@@ -167,6 +174,7 @@ val clear: 'a t -> unit
 
     - Time: O(n) *)
 val iter: ('a -> unit) -> 'a t -> unit
+
 (** Folds over all elements from front to back.
 
     ## Examples
@@ -205,6 +213,7 @@ val to_list: 'a t -> 'a list
 
     - Time: O(n) *)
 val contains: 'a t -> 'a -> bool
+
 (** Moves all elements from [queue2] to the back of [queue1]. After this
     operation, [queue2] is empty.
 
@@ -217,6 +226,7 @@ val contains: 'a t -> 'a -> bool
 
     - Time: O(m) where m = len(queue2) *)
 val append: 'a t -> 'a t -> unit
+
 (** Converts this queue into an immutable iterator over its elements in FIFO order.
 
     ## Examples
@@ -236,6 +246,7 @@ val append: 'a t -> 'a t -> unit
     - Time: O(1) to create iterator
     - Space: O(1) *)
 val into_iter: 'a t -> 'a Iter.Iterator.t
+
 (** Returns a mutable iterator over the queue's elements in FIFO order.
 
     ## Examples
@@ -243,6 +254,7 @@ val into_iter: 'a t -> 'a Iter.Iterator.t
     ```ocaml let queue = Queue.of_list [1; 2; 3] in let iter = Queue.to_mut_iter
     queue in ``` *)
 val to_mut_iter: 'a t -> 'a Iter.MutIterator.t
+
 (** Efficiently transfers all elements from [src] to the back of [dst]. After
     this operation, [src] is empty. This is more efficient than [append] as it
     directly manipulates internal pointers rather than re-pushing elements.

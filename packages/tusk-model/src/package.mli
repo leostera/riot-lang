@@ -84,10 +84,12 @@ type resolved = {
 val equal: t -> t -> bool
 
 val is_workspace_member: t -> bool
+
 (** Check if this package is a workspace member (not an external dependency).
     External dependencies have relative_path that escapes the workspace (starts with "../")
     or uses absolute paths. *)
 val validate_name: string -> (string, string) result
+
 (** Validate a package name according to Tusk naming conventions:
     - Must start with a lowercase letter
     - Can only contain lowercase letters, numbers, hyphens, and underscores
@@ -136,5 +138,6 @@ val resolve:
   manifest_path:Path.t ->
   materialized_root:Path.t ->
   (resolved, string) result
+
 (** Hash package metadata into a Sha256 hasher state *)
 val hash: Crypto.Sha256.state -> t -> unit

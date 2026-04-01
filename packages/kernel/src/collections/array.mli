@@ -1,4 +1,5 @@
 include module type of Stdlib.Array
+
 (** Converts this array into an immutable iterator.
 
     ## Examples
@@ -18,6 +19,7 @@ include module type of Stdlib.Array
     - Time: O(1) to create iterator
     - Space: O(1) *)
 val into_iter: 'a array -> 'a Iter.Iterator.t
+
 (** Converts this array into a mutable iterator.
 
     ## Examples

@@ -1,6 +1,7 @@
 open Std
 
 (** {1 Security Helpers} *)
+
 (** Constant-time string equality check.
     
     Prevents timing attacks by always comparing the full length of both strings
@@ -28,6 +29,7 @@ let secure_equal = fun s1 s2 ->
   (* Length difference also contributes *)
   result := !result lor (len1 lxor len2);
   !result = 0
+
 (** Sanitize realm value to prevent header injection.
     
     Removes characters that could be used to inject additional headers:
@@ -44,6 +46,7 @@ let sanitize_realm = fun realm ->
   !chars |> List.rev |> List.to_seq |> String.of_seq
 
 (** {1 Credential Parsing} *)
+
 (** Extract and decode credentials from Authorization header.
     
     Parses "Authorization: Basic <base64>" header and decodes to
@@ -107,6 +110,7 @@ let get = fun key conn ->
   | _ -> None
 
 (** {1 HTTP Responses} *)
+
 (** Send 401 Unauthorized with WWW-Authenticate header *)
 let unauthorized = fun conn realm ->
   let sanitized_realm = sanitize_realm realm in

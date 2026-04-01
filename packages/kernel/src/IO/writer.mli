@@ -58,8 +58,10 @@ module type Write = sig
   type t
   (** The type of the writable destination *)
   type err
+
   (** The error type for this destination *)
   val write: t -> buf:string -> (int, err) result
+
   (** [write dst ~buf] writes data from [buf] to [dst].
 
       @return
@@ -77,6 +79,7 @@ module type Write = sig
       Note: This may write less than the full buffer. Use {!write_all} to ensure
       all data is written. *)
   val write_owned_vectored: t -> bufs:Iovec.t -> (int, err) result
+
   (** [write_owned_vectored dst ~bufs] writes data from multiple buffers atomically.
       
       This is more efficient than multiple [write] calls when gathering data
@@ -87,6 +90,7 @@ module type Write = sig
       @see {!Iovec} for IO vector operations
   *)
   val flush: t -> (unit, err) result
+
   (** [flush dst] ensures all buffered data is written to the destination.
 
       For unbuffered destinations (like TCP sockets), this is typically a no-op.
@@ -104,6 +108,7 @@ type ('dst, 'err) write = (module Write with type t = 'dst and type err = 'err)
     - ['dst] is the concrete destination type
     - ['err] is the error type for this destination *)
 type ('dst, 'err) t
+
 (** Writer wrapping a writable destination.
 
     This is an existential type that hides the concrete destination type while
@@ -115,6 +120,7 @@ type ('dst, 'err) t
       [Kernel.Net.Tcp_stream.t])
     - ['err] is the error type for write operations *)
 val of_write_src: ('dst, 'err) write -> 'dst -> ('dst, 'err) t
+
 (** [of_write_src (module Write) dst] creates a writer from a destination.
 
     This is typically called by destination modules (like
@@ -134,6 +140,7 @@ val of_write_src: ('dst, 'err) write -> 'dst -> ('dst, 'err) t
         IO.Writer.of_write_src (module Write) stream
     ]} *)
 val write: ('dst, 'err) t -> buf:string -> (int, 'err) result
+
 (** [write writer ~buf] writes data to the writer.
 
     @return
@@ -149,6 +156,7 @@ val write: ('dst, 'err) t -> buf:string -> (int, 'err) result
       | Error e -> handle_error e
     ]} *)
 val write_all: ('dst, 'err) t -> buf:string -> (unit, 'err) result
+
 (** [write_all writer ~buf] writes all data, retrying as needed.
 
     This is the recommended way to write data. It handles partial writes
@@ -175,6 +183,7 @@ val write_all: ('dst, 'err) t -> buf:string -> (unit, 'err) result
       write_loop original_buf
     ]} *)
 val write_owned_vectored: ('dst, 'err) t -> bufs:Iovec.t -> (int, 'err) result
+
 (** [write_owned_vectored writer ~bufs] writes data from multiple buffers.
 
     More efficient than multiple [write] calls when gathering data from multiple
@@ -194,6 +203,7 @@ val write_owned_vectored: ('dst, 'err) t -> bufs:Iovec.t -> (int, 'err) result
       | Error e -> handle_error e
     ]} *)
 val write_all_vectored: ('dst, 'err) t -> bufs:Iovec.t -> (unit, 'err) result
+
 (** [write_all_vectored writer ~bufs] writes all data from IO vectors.
 
     Repeatedly calls [write_owned_vectored] until all data in [bufs] is written
@@ -212,6 +222,7 @@ val write_all_vectored: ('dst, 'err) t -> bufs:Iovec.t -> (unit, 'err) result
       | Error e -> handle_error e
     ]} *)
 val map_err: ('dst, 'a) t -> fn:('a -> 'b) -> ('dst, 'b) t
+
 (** [map_err writer ~fn] transforms the error type of a writer.
     
     Useful for wrapping errors from one layer to another, such as wrapping
@@ -224,6 +235,7 @@ val map_err: ('dst, 'a) t -> fn:('a -> 'b) -> ('dst, 'b) t
         ~fn:(fun err -> Tls_error (Transport_error err))
     ]} *)
 val flush: ('dst, 'err) t -> (unit, 'err) result
+
 (** [flush writer] ensures all buffered data is written.
 
     For unbuffered destinations this is typically a no-op. For buffered

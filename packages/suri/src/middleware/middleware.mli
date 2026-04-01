@@ -325,6 +325,7 @@ module Debugger = Debugger
       ]
     ]} *)
 val router: Router.route list -> Pipeline.middleware
+
 (** Request logger middleware.
     
     Convenience alias for [Logger.logger].
@@ -341,6 +342,7 @@ val router: Router.route list -> Pipeline.middleware
     
     See {!Logger} for full documentation. *)
 val logger: Pipeline.middleware
+
 (** Request ID middleware.
     
     Convenience alias for [Request_id.request_id].
@@ -359,6 +361,7 @@ val logger: Pipeline.middleware
     
     See {!Request_id} for full documentation. *)
 val request_id: Pipeline.middleware
+
 (** Visual debugger middleware for development.
     
     Convenience alias for [Debugger.debugger].
@@ -813,6 +816,7 @@ val basic_auth: ?realm:string ->
   password:string ->
   unit ->
   Pipeline.middleware
+
 (** Basic Auth with custom validation function.
     
     Use for database lookups, LDAP, or any custom auth logic.

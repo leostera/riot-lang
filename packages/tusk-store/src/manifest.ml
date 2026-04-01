@@ -20,6 +20,7 @@ type t = {
   files: file_entry list;
   ocamlc_warnings: string list;
 }
+
 (** Convert manifest to JSON *)
 let to_json manifest : Data.Json.t =
   let version_to_string = function
@@ -41,6 +42,7 @@ let to_json manifest : Data.Json.t =
       Data.Json.Array (List.map (fun msg -> Data.Json.String msg) manifest.ocamlc_warnings)
     );
   ]
+
 (** Parse manifest from JSON *)
 let of_json = fun json ->
   let open Result in
@@ -134,6 +136,7 @@ let of_json = fun json ->
       with
       | Not_found -> Error "Missing required field"
       | _ -> Error "Failed to parse manifest"
+
 (** Write manifest to file *)
 let save = fun manifest ~path ->
   let json = to_json manifest in
@@ -141,6 +144,7 @@ let save = fun manifest ~path ->
   match Std.Fs.write content path with
   | Ok () -> Ok ()
   | Error _ -> Error "Failed to write manifest"
+
 (** Read manifest from file *)
 let load = fun ~path ->
   match Std.Fs.read path with
@@ -150,6 +154,7 @@ let load = fun ~path ->
       | Error _ -> Error "Failed to parse JSON"
     )
   | Error _ -> Error "Failed to read manifest file"
+
 (** Create a manifest for stored files *)
 let create = fun ?base_dir ?(ocamlc_warnings = []) () ~package ~build_hash ~files ->
   let timestamp = Time.SystemTime.now () in

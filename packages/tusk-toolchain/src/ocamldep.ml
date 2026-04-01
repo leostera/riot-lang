@@ -94,6 +94,7 @@ let deps = fun t ~cwd ~file ~package_namespace ->
     | _ ->
         Log.trace ("[OCAMLDEP] Failed to parse deps for " ^ file_str ^ ": " ^ deps_str);
         []
+
 (** Get dependencies for a single file with optional flags - returns
     Module_name.t list *)
 let deps_with_flags = fun t ~cwd ~file ~flags ~package_namespace ->
@@ -136,6 +137,7 @@ let deps_with_flags = fun t ~cwd ~file ~flags ~package_namespace ->
           |> List.map String.trim
           |> List.map (fun modname -> Module_name.of_string ~namespace:package_namespace modname)
     | _ -> []
+
 (** Get dependencies for multiple files in one ocamldep call - returns (file,
     deps) list *)
 let batch_deps = fun t ~cwd ~files ~package_namespace ->
@@ -185,6 +187,7 @@ let batch_deps = fun t ~cwd ~files ~package_namespace ->
                 Some (file, dep_list)
             | _ -> None)
         lines
+
 (** Get all module dependencies (for building .merlin files) *)
 let all_deps = fun t ~cwd ~files ~package_namespace ->
   List.map

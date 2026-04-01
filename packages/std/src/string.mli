@@ -35,6 +35,7 @@
     (* Join strings *) let csv = String.concat "," ["a"; "b"; "c"] ``` *)
 
 open Iter
+
 (** @inline
 
     Includes all standard library String functions:
@@ -104,6 +105,7 @@ include module type of Kernel.String
     UTF-8 decoding has some overhead. For byte-level operations, use standard
     String functions instead. *)
 val into_mut_iter: string -> Uchar.t MutIterator.t
+
 (** Creates an immutable iterator over UTF-8 characters.
 
     Similar to [`into_mut_iter`] but returns an immutable iterator suitable for
@@ -147,6 +149,7 @@ val into_iter: string -> Uchar.t Iterator.t
 
     This is essential for proper text alignment in terminals. *)
 val width: string -> int
+
 (** Count Unicode code points (runes) in the string.
 
     ## Examples
@@ -161,6 +164,7 @@ val width: string -> int
     Note: This counts code points, not user-perceived characters.
     Use `grapheme_count` for user-perceived character count. *)
 val rune_count: string -> int
+
 (** Count user-perceived characters (grapheme clusters).
 
     ## Examples
@@ -175,6 +179,7 @@ val rune_count: string -> int
 
     This gives the count users would expect when counting "characters". *)
 val grapheme_count: string -> int
+
 (** Truncate string to fit within display width.
 
     ## Parameters
@@ -197,6 +202,7 @@ val grapheme_count: string -> int
 
     Useful for fitting text in fixed-width terminal columns. *)
 val truncate_width: width:int -> ?tail:string -> string -> string
+
 (** Pad string on the left to reach display width.
 
     ## Examples
@@ -211,6 +217,7 @@ val truncate_width: width:int -> ?tail:string -> string -> string
 
     Uses display width, so handles wide characters correctly. *)
 val pad_left: width:int -> char -> string -> string
+
 (** Pad string on the right to reach display width.
 
     ## Examples
@@ -222,6 +229,7 @@ val pad_left: width:int -> char -> string -> string
 
     Uses display width, so handles wide characters correctly. *)
 val pad_right: width:int -> char -> string -> string
+
 (** Pad string on both sides to center within display width.
 
     ## Examples
@@ -233,6 +241,7 @@ val pad_right: width:int -> char -> string -> string
 
     If padding is uneven, adds extra space on the right. *)
 val pad_center: width:int -> char -> string -> string
+
 (** Creates an iterator over grapheme clusters.
 
     ## Examples
@@ -244,10 +253,12 @@ val pad_center: width:int -> char -> string -> string
 
     Iterates over user-perceived characters, not code points. *)
 val into_grapheme_iter: string -> Unicode.Grapheme.t Iterator.t
+
 (** Creates a mutable iterator over grapheme clusters.
 
     Similar to `into_grapheme_iter` but returns a mutable iterator. *)
 val into_grapheme_mut_iter: string -> Unicode.Grapheme.t MutIterator.t
+
 (** Find byte positions of word boundaries.
 
     ## Examples
@@ -259,6 +270,7 @@ val into_grapheme_mut_iter: string -> Unicode.Grapheme.t MutIterator.t
 
     Uses simplified word boundary detection. *)
 val word_boundaries: string -> int list
+
 (** Split string into words.
 
     ## Examples
@@ -270,6 +282,7 @@ val word_boundaries: string -> int list
 
     Uses simplified word boundary detection. *)
 val split_words: string -> string list
+
 (** Find line break opportunities.
 
     Returns list of (position, break_type) where:
@@ -286,6 +299,7 @@ val split_words: string -> string list
 
     Useful for text wrapping and line breaking. *)
 val line_breaks: string -> (int * Unicode.line_break) list
+
 (** Wrap text to fit within display width.
 
     ## Examples
@@ -297,10 +311,12 @@ val line_breaks: string -> (int * Unicode.line_break) list
 
     Breaks at word boundaries when possible. *)
 val wrap: width:int -> string -> string list
+
 (** Wrap text at word boundaries to fit within display width.
 
     Similar to `wrap` but ensures words aren't broken. *)
 val wrap_words: width:int -> string -> string list
+
 (** [contains haystack needle] returns [true] if [haystack] contains [needle] as a substring.
     
     Example:

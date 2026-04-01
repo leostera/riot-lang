@@ -137,6 +137,7 @@ let error_of_unix = fun e ->
   | Unix.EALREADY -> Operation_already_in_progress
   | Unix.EINPROGRESS -> Operation_now_in_progress
   | _ -> Unknown_error (Unix.error_message e)
+
 (** Retry helper for Unix syscalls that handles EINTR.
     EAGAIN/EWOULDBLOCK are returned as Operation_would_block for async handling at Std level. *)
 let rec unix_syscall = fun fn ->

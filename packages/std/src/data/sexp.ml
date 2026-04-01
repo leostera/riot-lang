@@ -11,6 +11,7 @@ type t =
   | List of t list
 
 exception Parse_error of string
+
 (** Parse error *)
 
 (** Convert S-expression to string *)
@@ -29,6 +30,7 @@ let rec to_string = function
       else
         s
   | List elems -> "(" ^ String.concat " " (List.map to_string elems) ^ ")"
+
 (** Pretty print S-expression *)
 let rec pp_sexp = fun indent ->
   function
@@ -43,6 +45,7 @@ let rec pp_sexp = fun indent ->
       indent ^ "(\n" ^ String.concat "\n" (List.map (pp_sexp indent_next) elems) ^ "\n" ^ indent ^ ")"
 
 let pretty_print = fun sexp -> pp_sexp "" sexp
+
 (** Parser implementation *)
 module Parser = struct
   type state = {
@@ -168,6 +171,7 @@ module Parser = struct
     in
     loop []
 end
+
 (** Parse a string into an S-expression *)
 let of_string = fun str ->
   let state = Parser.create str in
@@ -181,11 +185,13 @@ let of_string = fun str ->
   with
   | Parse_error msg -> Error msg
   | _ -> Error "Unknown parse error"
+
 (** Parse a string, raising exception on error *)
 let parse_exn = fun str ->
   match of_string str with
   | Ok sexp -> sexp
   | Error msg -> raise (Parse_error msg)
+
 (** Parse multiple S-expressions from a string *)
 let parse_many = fun str ->
   let state = Parser.create str in
@@ -202,6 +208,7 @@ let parse_many = fun str ->
       | _ -> Error "Unknown parse error"
   in
   loop []
+
 (** Helper functions for working with S-expressions *)
 let atom = fun s -> Atom s
 
@@ -242,6 +249,7 @@ let rec assoc = fun key ->
   | [] -> None
   | List (Atom k :: v :: _) :: _ when k = key -> Some v
   | _ :: rest -> assoc key rest
+
 (** Canonical S-expressions (Csexp) module *)
 module Csexp = struct
   (** Convert S-expression to canonical format *)
@@ -253,6 +261,7 @@ module Csexp = struct
         (* Format: (<elem1><elem2>...) *)
         let contents = String.concat "" (List.map to_string elems) in
         "(" ^ contents ^ ")"
+
   (** Parse canonical S-expression from string *)
   let of_string = fun str ->
     let len = String.length str in

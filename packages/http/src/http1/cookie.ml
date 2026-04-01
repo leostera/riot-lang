@@ -16,6 +16,7 @@ type t = {
   http_only: bool;
   same_site: same_site option;
 }
+
 (** Parse Cookie header: "name1=value1; name2=value2" *)
 let parse = fun header ->
   String.split_on_char ';' header |> List.filter_map
@@ -29,6 +30,7 @@ let parse = fun header ->
       | name :: value_parts ->
           let value = String.concat "=" value_parts in
           Some (String.trim name, String.trim value))
+
 (** Helper: Parse Set-Cookie attribute *)
 let parse_attribute = fun attr ->
   let trimmed = String.trim attr in
@@ -40,6 +42,7 @@ let parse_attribute = fun attr ->
   | key :: value_parts ->
       let value = String.concat "=" value_parts in
       (Some (String.lowercase_ascii (String.trim key)), Some (String.trim value))
+
 (** Parse Set-Cookie header *)
 let parse_set_cookie = fun header ->
   match String.split_on_char ';' header with
@@ -97,11 +100,13 @@ let parse_set_cookie = fun header ->
           Some cookie
       | [] -> Option.none
     )
+
 (** Serialize SameSite to string *)
 let same_site_to_string = function
   | Strict -> "Strict"
   | Lax -> "Lax"
   | None -> "None"
+
 (** Serialize cookie to Set-Cookie header value *)
 let to_set_cookie = fun t ->
   (* Start with name=value *)
@@ -153,6 +158,7 @@ let to_set_cookie = fun t ->
   in
   (* Join with "; " *)
   String.concat "; " (List.rev parts)
+
 (** Create a cookie with defaults *)
 let make = fun ~name ~value ?max_age ?expires ?(path = "/") ?domain ?(secure = false) ?(http_only = true) ?(same_site = Lax) () ->
   {
@@ -166,6 +172,7 @@ let make = fun ~name ~value ?max_age ?expires ?(path = "/") ?domain ?(secure = f
     http_only;
     same_site = Some same_site;
   }
+
 (** Validate cookie name (no special characters) *)
 let is_valid_name = fun name ->
   let len = String.length name in
@@ -186,6 +193,7 @@ let is_valid_name = fun name ->
         | _ -> false
     in
     check 0
+
 (** Validate cookie value (basic check for control characters) *)
 let is_valid_value = fun value ->
   let len = String.length value in
@@ -200,6 +208,7 @@ let is_valid_value = fun value ->
         check (i + 1)
   in
   check 0
+
 (** Create validated cookie *)
 let make_validated = fun ~name ~value ?max_age ?expires ?path ?domain ?secure ?http_only ?same_site () ->
   if not (is_valid_name name) then

@@ -188,14 +188,18 @@ val stdout: Fd.t
 val stderr: Fd.t
 
 (** {2 Generic I/O Abstractions} *)
+
 (** Growable byte buffers. See {!Buffer}. *)
 
 (** Byte sequences. See {!Bytes}. *)
 module Buffer: module type of Buffer
+
 (** IO vectors for scatter/gather operations. See {!Iovec}. *)
 module Bytes: module type of Bytes
+
 (** Reader abstraction. See {!Reader}. *)
 module Iovec: module type of Iovec
+
 (** Writer abstraction. See {!Writer}. *)
 module Reader: module type of Reader
 
@@ -204,8 +208,10 @@ module Writer: module type of Writer
 (** {2 Standard File Descriptors} *)
 (** Standard input file descriptor *)
 val stdin: Fd.t
+
 (** Standard output file descriptor *)
 val stdout: Fd.t
+
 (** Standard error file descriptor *)
 val stderr: Fd.t
 
@@ -216,24 +222,31 @@ val stderr: Fd.t
 (** [read reader ?timeout buf] reads data into [buf]. Equivalent to
     [Reader.read reader ?timeout buf]. *)
 val read: ('src, 'err) Reader.t -> ?timeout:int64 -> bytes -> (int, 'err) result
+
 (** [read_vectored reader iov] reads into multiple buffers. Equivalent to
     [Reader.read_vectored reader iov]. *)
 val read_vectored: ('src, 'err) Reader.t -> Iovec.t -> (int, 'err) result
+
 (** [read_to_end reader ~buf] reads until EOF. Equivalent to
     [Reader.read_to_end reader ~buf]. *)
 val read_to_end: ('src, 'err) Reader.t -> buf:Buffer.t -> (int, 'err) result
+
 (** [write writer ~buf] writes data (may be partial). Equivalent to
     [Writer.write writer ~buf]. *)
 val write: ('dst, 'err) Writer.t -> buf:string -> (int, 'err) result
+
 (** [write_all writer ~buf] writes all data, retrying as needed. Equivalent to
     [Writer.write_all writer ~buf]. *)
 val write_all: ('dst, 'err) Writer.t -> buf:string -> (unit, 'err) result
+
 (** [write_owned_vectored writer ~bufs] writes from multiple buffers. Equivalent
     to [Writer.write_owned_vectored writer ~bufs]. *)
 val write_owned_vectored: ('dst, 'err) Writer.t -> bufs:Iovec.t -> (int, 'err) result
+
 (** [write_all_vectored writer ~bufs] writes all vectored data. Equivalent to
     [Writer.write_all_vectored writer ~bufs]. *)
 val write_all_vectored: ('dst, 'err) Writer.t -> bufs:Iovec.t -> (unit, 'err) result
+
 (** [flush writer] flushes buffered data. Equivalent to [Writer.flush writer].
 *)
 val flush: ('dst, 'err) Writer.t -> (unit, 'err) result

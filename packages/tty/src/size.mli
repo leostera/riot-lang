@@ -53,6 +53,7 @@ type t = {
 val get: unit -> (t, [
     `System_error of string
   ]) result
+
 (** Get current terminal size.
     
     Queries the terminal for its dimensions using system calls.
@@ -83,6 +84,7 @@ val get: unit -> (t, [
     
     Note: Size may change if user resizes terminal window. *)
 val to_string: t -> string
+
 (** Convert size to human-readable string.
     
     Examples:

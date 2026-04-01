@@ -318,6 +318,7 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
         | _ -> Error "invalid plan bundle shape"
       )
     | _ -> Error "plan bundle must be a JSON object"
+
 (** Compute input hash - fast path that doesn't require ocamldep.
 
     This hash includes:

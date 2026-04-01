@@ -63,8 +63,10 @@ module Server = struct
         (* No stdout handler configured, use default *)
         loop { style = Log_config.Full }
 end
+
 (** Shared process state - updated by supervised process on start *)
 let handler_pid = Cell.create None
+
 (** Attach handler callback - sends events to supervised process *)
 let attach = fun () ->
   let handler event =
@@ -75,6 +77,7 @@ let attach = fun () ->
   Handler.attach handler_id handler
 
 let detach = fun () -> Handler.detach handler_id
+
 (** Child spec for supervision *)
 let child_spec = fun () ->
   Supervisor.child_spec ~id:handler_id

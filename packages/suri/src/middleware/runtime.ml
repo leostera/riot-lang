@@ -1,4 +1,5 @@
 open Std
+
 (** Runtime header middleware - measures request processing time *)
 let middleware = fun ~conn ~next ->
   (* Record start time *)

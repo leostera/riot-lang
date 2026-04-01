@@ -1,6 +1,7 @@
 open Std
 
 (** {1 Type Matching} *)
+
 (** Check if content type matches pattern.
     
     Supports:
@@ -24,6 +25,7 @@ type accept_entry = {
   media_type: string;
   quality: float;
 }
+
 (** Parse quality value from parameter string.
     
     Example: "q=0.8" -> Some 0.8 *)
@@ -31,6 +33,7 @@ let parse_quality = fun param ->
   match String.split_on_char '=' (String.trim param) with
   | ["q";value] -> Float.of_string_opt (String.trim value)
   | _ -> None
+
 (** Parse single Accept header entry with quality value.
     
     Examples:
@@ -42,6 +45,7 @@ let parse_accept_entry = fun entry ->
   | media_type :: params ->
       let quality = List.find_map parse_quality params |> Option.unwrap_or ~default:1.0 in
       { media_type = String.trim media_type; quality }
+
 (** Parse full Accept header.
     
     Returns list sorted by quality (highest first). *)
@@ -55,6 +59,7 @@ let parse_accept = fun header ->
       Float.compare b.quality a.quality)
 
 (** {1 Content-Type Parsing} *)
+
 (** Extract base content type, stripping parameters.
     
     Examples:
@@ -88,11 +93,13 @@ let default_config = {
 }
 
 (** {1 HTTP Responses} *)
+
 (** Send 406 Not Acceptable response *)
 let reject_not_acceptable = fun conn config received ->
   match config.on_reject with
   | Some handler -> handler conn received
   | None -> Conn.respond conn ~status:NotAcceptable ~body:"Not Acceptable" |> Conn.halt
+
 (** Send 415 Unsupported Media Type response *)
 let reject_unsupported_media_type = fun conn config received ->
   match config.on_reject with
@@ -100,6 +107,7 @@ let reject_unsupported_media_type = fun conn config received ->
   | None -> Conn.respond conn ~status:UnsupportedMediaType ~body:"Unsupported Media Type" |> Conn.halt
 
 (** {1 Validation Logic} *)
+
 (** Check if Accept header matches any accepted types *)
 let check_accept_header = fun conn config ->
   let headers = Conn.headers conn in
@@ -116,6 +124,7 @@ let check_accept_header = fun conn config ->
           entries
       in
       (matches, Some accept)
+
 (** Check if Content-Type header matches any accepted types *)
 let check_content_type_header = fun conn config ->
   let headers = Conn.headers conn in
@@ -130,6 +139,7 @@ let check_content_type_header = fun conn config ->
           (matches, Some ct)
       | None -> (false, Some ct)
     )
+
 (** Check if request method has a body *)
 let has_request_body = fun method_ ->
   match method_ with

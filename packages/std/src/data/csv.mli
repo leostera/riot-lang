@@ -95,14 +95,17 @@ type error =
   | Invalid_escape_sequence of { line: int; column: int }
   | Empty_input
   | Unknown_error of string
+
 (** CSV parsing errors with position information *)
 (** {1 Configuration} *)
+
 (** Default CSV configuration:
     - delimiter: ','
     - quote: '"'
     - escape: '"'
     - trim_fields: false *)
 val default_config: config
+
 (** Creates a custom CSV configuration.
 
     ## Examples
@@ -157,6 +160,7 @@ val config: ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool 
     - Parse errors occur (unterminated quotes, invalid escape sequences, etc.)
     - Reader errors occur during the initial read *)
 val parse: ?config:config -> ('src, 'err) IO.Reader.t -> (row, error) result Iter.MutIterator.t
+
 (** Parses a CSV string incrementally, returning a mutable iterator over rows.
     Useful for parsing CSV data from strings, network responses, or testing.
 
@@ -173,6 +177,7 @@ val parse: ?config:config -> ('src, 'err) IO.Reader.t -> (row, error) result Ite
     ```ocaml let config = Csv.config ~delimiter:';' () in let iter =
     Csv.of_string ~config "a;b;c\n1;2;3" in ``` *)
 val of_string: ?config:config -> string -> (row, error) result Iter.MutIterator.t
+
 (** Converts a parse error to a human-readable message.
 
     ## Examples
@@ -215,6 +220,7 @@ val write: ?config:config ->
   data:string list list ->
   ('dst, 'err) IO.Writer.t ->
   (unit, 'err) result
+
 (** Serializes CSV rows to a string. Fields containing delimiters, quotes, or
     newlines are automatically quoted.
 

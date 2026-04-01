@@ -42,22 +42,29 @@ exception Syscall_timeout
 (** Get the PID of the currently running process *)
 type 'msg selector = 'msg Miniriot.selector
 val self: unit -> Miniriot.Pid.t
+
 (** Spawn a new process *)
 val spawn: (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
+
 (** Spawn a new process linked to the current process *)
 val spawn_link: (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
+
 (** Send a message to a process *)
 val send: Miniriot.Pid.t -> Miniriot.Message.t -> unit
+
 (** Receive a message using a selector *)
 
 (** Receive any message *)
 val receive: selector:'value Miniriot.selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
 val receive_any: ?timeout:Time.Duration.t -> unit -> Miniriot.Message.t
+
 (** Sleeps the current process for at least the specified duration *)
 val sleep: Time.Duration.t -> unit
+
 (** Yield control to the scheduler *)
 val yield: unit -> unit
+
 (** Shutdown the runtime with the given exit status *)
 val shutdown: status:int -> unit
 
@@ -83,6 +90,7 @@ type 'a set = 'a Kernel.set
 *)
 type ('k, 'v) map = ('k, 'v) Kernel.map
 val vec: 'a list -> 'a vec
+
 (** Create a queue from a list.
     
     ## Examples
@@ -93,6 +101,7 @@ val vec: 'a list -> 'a vec
     ```
 *)
 val queue: 'a list -> 'a queue
+
 (** Create a set from a list.
     
     ## Examples
@@ -103,6 +112,7 @@ val queue: 'a list -> 'a queue
     ```
 *)
 val set: 'a list -> 'a set
+
 (** Create a map from a list of key-value pairs.
     
     ## Examples
@@ -113,6 +123,7 @@ val set: 'a list -> 'a set
     ```
 *)
 val map: ('k * 'v) list -> ('k, 'v) map
+
 (** Raises a panic exception with the given message. Program terminates unless
     caught.
 
@@ -132,6 +143,7 @@ val ( ! ): 'a Sync.Cell.t -> 'a
 val ( := ): 'a Sync.Cell.t -> 'a -> unit
 
 val ref: 'a -> 'a Sync.Cell.t
+
 (** Creates a mutable cell containing the given value.
 
     ## Examples
@@ -143,12 +155,14 @@ val ref: 'a -> 'a Sync.Cell.t
 
     - [Sync.Cell] for full cell API *)
 val cell: 'a -> 'a Sync.Cell.t
+
 (** Prints to stdout with immediate flush (no newline).
 
     ## Examples
 
     ```ocaml print "Processing..." (* Output: Processing... *) ``` *)
 val print: string -> unit
+
 (** Prints to stdout with newline and immediate flush.
 
     ## Examples
@@ -156,6 +170,7 @@ val print: string -> unit
     ```ocaml println "Operation complete" (* Output: Operation complete\n *) ```
 *)
 val println: string -> unit
+
 (** Prints to stderr with immediate flush (no newline).
 
     ## Examples
@@ -163,6 +178,7 @@ val println: string -> unit
     ```ocaml eprint "Debug: processing item" (* Output to stderr: Debug: processing item *) ```
 *)
 val eprint: string -> unit
+
 (** Prints to stderr with newline and immediate flush.
 
     ## Examples
@@ -170,6 +186,7 @@ val eprint: string -> unit
     ```ocaml eprintln "Error: file not found" (* Output to stderr: Error: file not found\n *) ```
 *)
 val eprintln: string -> unit
+
 (** Marks code as TODO, panicking with the given message when called.
 
     ## Examples

@@ -174,7 +174,13 @@ let sources_for_scope = fun scope (pkg: t) ->
   | Normal -> { pkg.sources with tests = []; examples = []; bench = [] }
   | Dev -> { pkg.sources with src = []; native = [] }
   | Build ->
-      { src = []; native = []; tests = []; examples = []; bench = [] }
+      {
+        src = [];
+        native = [];
+        tests = [];
+        examples = [];
+        bench = [];
+      }
 
 let for_scope = fun scope (pkg: t) ->
   match scope with
@@ -218,15 +224,16 @@ let resolve_scope = fun ~scope_name ~manifest_dependencies ~lock_dependencies ->
     | (requirement: dependency) :: rest ->
         if is_builtin_dependency requirement then
           loop acc rest
-        else (
-        match List.find_opt (fun (dep: Lockfile.dependency) -> dep.name = requirement.name) lock_dependencies with
-        | Some resolved -> loop ({ requirement; resolved_id = resolved.package } :: acc) rest
-        | None -> Error ("lockfile is missing resolved "
-        ^ scope_name
-        ^ " dependency '"
-        ^ requirement.name
-        ^ "'")
-      )
+        else
+          (
+            match List.find_opt (fun (dep: Lockfile.dependency) -> dep.name = requirement.name) lock_dependencies with
+            | Some resolved -> loop ({ requirement; resolved_id = resolved.package } :: acc) rest
+            | None -> Error ("lockfile is missing resolved "
+            ^ scope_name
+            ^ " dependency '"
+            ^ requirement.name
+            ^ "'")
+          )
   in
   loop [] manifest_dependencies
 
@@ -261,12 +268,14 @@ let resolve = fun ~(package:t) ~(lock_package:Lockfile.package) ~manifest_path ~
               }
         )
     )
+
 (** Check if this package is a workspace member (not an external dependency).
     External dependencies have relative_path that escapes the workspace (starts with "../")
     or uses absolute paths. *)
 let is_workspace_member : t -> bool = fun pkg ->
   let rel_str = Path.to_string pkg.relative_path in
   not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute pkg.relative_path)
+
 (** Validate package name according to Tusk naming conventions *)
 let validate_name = fun name ->
   let is_alpha c = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') in
@@ -291,6 +300,7 @@ let validate_name = fun name ->
       Error "Package name can only contain lowercase letters, numbers, hyphens, and underscores"
     else
       Ok name
+
 (** Package TOML parsing *)
 let parse_name : (string * Toml.value) list -> string -> string = fun items fallback ->
   match List.assoc_opt "package" items with
@@ -350,19 +360,22 @@ workspace_deps:dependency list ->
             )
         )
     )
-  | Toml.String requirement ->
-      (match validate_requirement ~dependency_name:name requirement with
+  | Toml.String requirement -> (
+      match validate_requirement ~dependency_name:name requirement with
       | Error _ as err -> err
       | Ok version ->
           if is_builtin_dependency_name name then
             if requirement_is_any version then
               Ok { name; source = Builtin }
             else
-              Error ("builtin dependency '" ^ name ^ "' does not support version requirement '"
+              Error ("builtin dependency '"
+              ^ name
+              ^ "' does not support version requirement '"
               ^ Version.requirement_to_string version
               ^ "'")
           else
-            Ok { name; source = Registry { version } })
+            Ok { name; source = Registry { version } }
+    )
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
 
@@ -828,6 +841,7 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () : sources =
     examples = example_files;
     bench = bench_files;
   }
+
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
 let autodiscover_test_binaries : sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
   List.filter_map
@@ -843,6 +857,7 @@ let autodiscover_test_binaries : sources -> package_path:Path.t -> binary list =
       else
         None)
     sources.tests
+
 (** Autodiscover example binaries from any .ml file in examples/ directory *)
 let autodiscover_example_binaries : sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
   List.filter_map
@@ -855,6 +870,7 @@ let autodiscover_example_binaries : sources -> package_path:Path.t -> binary lis
       else
         None)
     sources.examples
+
 (** Autodiscover benchmark binaries from bench files ending in _bench.ml *)
 let autodiscover_bench_binaries : sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
   List.filter_map
@@ -1146,6 +1162,7 @@ let from_json : Json.t -> (t, string) result = fun json ->
       | _ -> Error "Invalid package JSON"
     )
   | _ -> Error "Package must be a JSON object"
+
 (** Hash package metadata into a hasher state *)
 let hash = fun state (pkg: t) ->
   let module H = Crypto.Sha256 in
@@ -1444,7 +1461,7 @@ stdlib = "*"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { name = "stdlib"; source = Builtin } ] -> Ok ()
+    | [ { name="stdlib"; source=Builtin } ] -> Ok ()
     | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
 
   let test_builtin_dependency_rejects_version_constraints () : (unit, string) result =
@@ -1573,12 +1590,11 @@ ppx = {}
       dev_dependencies = [];
     }
     in
-    match
-      resolve
-        ~package
-        ~lock_package
-        ~manifest_path:Path.(package.path / Path.v "tusk.toml")
-        ~materialized_root:package.path with
+    match resolve
+      ~package
+      ~lock_package
+      ~manifest_path:Path.(package.path / Path.v "tusk.toml")
+      ~materialized_root:package.path with
     | Ok resolved ->
         if
           List.length resolved.runtime_resolved = 1
@@ -1621,12 +1637,11 @@ std = {}
       dev_dependencies = [];
     }
     in
-    match
-      resolve
-        ~package
-        ~lock_package
-        ~manifest_path:Path.(package.path / Path.v "tusk.toml")
-        ~materialized_root:package.path with
+    match resolve
+      ~package
+      ~lock_package
+      ~manifest_path:Path.(package.path / Path.v "tusk.toml")
+      ~materialized_root:package.path with
     | Ok _ -> Error "expected resolve to fail when a declared dependency is missing from the lockfile"
     | Error _ -> Ok () [@test]
 
@@ -1641,17 +1656,19 @@ std = {}
       foreign_dependencies = [];
       binaries = [];
       library = None;
-      sources = {
-        src = [];
-        native = [];
-        tests = [];
-        examples = [];
-        bench = [];
-      };
+      sources =
+        {
+          src = [];
+          native = [];
+          tests = [];
+          examples = [];
+          bench = [];
+        };
       compiler = { profile_overrides = []; target_overrides = [] };
       commands = [];
       fix_providers = [];
-    } in
+    }
+    in
     let lock_package : Lockfile.package = {
       id = { registry = None; name = "app"; version = None };
       root = Some (Path.v "packages/app");
@@ -1659,13 +1676,13 @@ std = {}
       dependencies = [];
       build_dependencies = [];
       dev_dependencies = [];
-    } in
-    match
-      resolve
-        ~package
-        ~lock_package
-        ~manifest_path:Path.(package.path / Path.v "tusk.toml")
-        ~materialized_root:package.path with
+    }
+    in
+    match resolve
+      ~package
+      ~lock_package
+      ~manifest_path:Path.(package.path / Path.v "tusk.toml")
+      ~materialized_root:package.path with
     | Ok resolved when resolved.runtime_resolved = [] -> Ok ()
     | Ok _ -> Error "expected builtin dependencies to stay out of the resolved lock graph"
     | Error err -> Error err [@test]

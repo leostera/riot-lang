@@ -81,13 +81,16 @@ type error =
   | ParseError of { path: string; message: string }
   (** TOML parsing error *)
   | FileNotFound of { path: string }
+
 (** Configuration file not found *)
 (** {1 Configuration Providers} *)
 
 module Provider: sig
   type t
+
   (** Configuration source - environment-based path, explicit path, or static TOML string *)
   val env: ?env:Loader.env -> unit -> t
+
   (** Load from file based on environment (RIOT_ENV or default to dev).
       
       Example:
@@ -97,6 +100,7 @@ module Provider: sig
       ```
   *)
   val file: Path.t -> t
+
   (** Load from explicit file path.
       
       Example:
@@ -106,6 +110,7 @@ module Provider: sig
       ```
   *)
   val static: string -> t
+
   (** Load from inline TOML string (useful for tests and examples).
       
       Example:
@@ -122,17 +127,21 @@ end
 (** {1 Configuration Schema} *)
 
 module Spec = Spec
+
 (** Configuration schema DSL. See {!Spec} for the complete API. *)
 module type ConfigSpec = sig
   val spec: Spec.t
 
   (** The configuration schema *)
   type t
+
   (** Your application's configuration type *)
   val get: Spec.value -> (t, error) result
+
   (** Extract your config type from validated values.
       Use the helper functions like {!get_string}, {!get_int}, etc. *)
 end
+
 (** Signature for user configuration modules.
     
     Example:
@@ -147,6 +156,7 @@ end
 (** {1 Core API} *)
 
 val load: ?provider:Provider.t -> unit -> unit
+
 (** Load configuration into the global config state.
     
     Defaults to loading from file based on RIOT_ENV environment variable.
@@ -170,6 +180,7 @@ val load: ?provider:Provider.t -> unit -> unit
     ```
 *)
 val load_string: string -> unit
+
 (** Load configuration from inline TOML string.
     
     Convenience function equivalent to [load ~provider:(Provider.static str) ()].
@@ -183,6 +194,7 @@ val load_string: string -> unit
     ```
 *)
 val load_file: Path.t -> unit
+
 (** Load configuration from specific file path.
     
     Convenience function equivalent to [load ~provider:(Provider.file path) ()].
@@ -194,6 +206,7 @@ val load_file: Path.t -> unit
     ```
 *)
 val get: (module ConfigSpec with type t = 'a) -> ('a, error) result
+
 (** Retrieve validated configuration from the server.
     
     This should be called after the config server has started (typically
@@ -214,6 +227,7 @@ val get: (module ConfigSpec with type t = 'a) -> ('a, error) result
     Returns [NotFound] if the config wasn't loaded (check your [child_spec]).
 *)
 val error_to_string: error -> string
+
 (** Convert a configuration error to a human-readable string.
     
     Example:
@@ -222,6 +236,7 @@ val error_to_string: error -> string
     ```
 *)
 val reload: ?provider:Provider.t -> unit -> (unit, string) result
+
 (** Hot reload configuration at runtime.
     
     If [provider] is given, uses that source. Otherwise reloads from
@@ -247,6 +262,7 @@ val reload: ?provider:Provider.t -> unit -> (unit, string) result
     Returns [Error] if the config server is not running.
 *)
 val patch: app:string -> (string * Spec.value) list -> (unit, string) result
+
 (** Patch specific config values at runtime (useful for testing/debugging).
     
     This allows you to override specific configuration values without
@@ -295,6 +311,7 @@ val patch: app:string -> (string * Spec.value) list -> (unit, string) result
 *)
 
 val get_string: Spec.value -> string -> string
+
 (** Extract a string value from a map.
     
     Example: [let host = Config.get_string conf "host"]
@@ -302,6 +319,7 @@ val get_string: Spec.value -> string -> string
     @raise Panic if key not found or value is not a string
 *)
 val get_char: Spec.value -> string -> char
+
 (** Extract a char value from a map.
     
     Example: [let delimiter = Config.get_char conf "delimiter"]
@@ -309,6 +327,7 @@ val get_char: Spec.value -> string -> char
     @raise Panic if key not found or value is not a char
 *)
 val get_int: Spec.value -> string -> int
+
 (** Extract an int value from a map.
     
     Example: [let port = Config.get_int conf "port"]
@@ -316,6 +335,7 @@ val get_int: Spec.value -> string -> int
     @raise Panic if key not found or value is not an int
 *)
 val get_int32: Spec.value -> string -> int32
+
 (** Extract an int32 value from a map.
     
     Example: [let size = Config.get_int32 conf "max_size"]
@@ -323,6 +343,7 @@ val get_int32: Spec.value -> string -> int32
     @raise Panic if key not found or value is not an int32
 *)
 val get_int64: Spec.value -> string -> int64
+
 (** Extract an int64 value from a map.
     
     Example: [let timestamp = Config.get_int64 conf "created_at"]
@@ -330,6 +351,7 @@ val get_int64: Spec.value -> string -> int64
     @raise Panic if key not found or value is not an int64
 *)
 val get_bool: Spec.value -> string -> bool
+
 (** Extract a bool value from a map.
     
     Example: [let debug = Config.get_bool conf "debug"]
@@ -337,6 +359,7 @@ val get_bool: Spec.value -> string -> bool
     @raise Panic if key not found or value is not a bool
 *)
 val get_float: Spec.value -> string -> float
+
 (** Extract a float value from a map.
     
     Example: [let rate = Config.get_float conf "sample_rate"]
@@ -344,6 +367,7 @@ val get_float: Spec.value -> string -> float
     @raise Panic if key not found or value is not a float
 *)
 val get_uri: Spec.value -> string -> Net.Uri.t
+
 (** Extract a URI value from a map.
     
     Example: [let api_url = Config.get_uri conf "api_endpoint"]
@@ -351,6 +375,7 @@ val get_uri: Spec.value -> string -> Net.Uri.t
     @raise Panic if key not found or value is not a URI
 *)
 val get_datetime: Spec.value -> string -> Datetime.t
+
 (** Extract a datetime value from a map.
     
     Example: [let created = Config.get_datetime conf "created_at"]
@@ -358,6 +383,7 @@ val get_datetime: Spec.value -> string -> Datetime.t
     @raise Panic if key not found or value is not a datetime
 *)
 val get_path: Spec.value -> string -> Path.t
+
 (** Extract a path value from a map.
     
     Example: [let config_dir = Config.get_path conf "config_dir"]
@@ -365,6 +391,7 @@ val get_path: Spec.value -> string -> Path.t
     @raise Panic if key not found or value is not a path
 *)
 val get_uuid: Spec.value -> string -> Uuid.t
+
 (** Extract a UUID value from a map.
     
     Example: [let instance_id = Config.get_uuid conf "instance_id"]
@@ -372,6 +399,7 @@ val get_uuid: Spec.value -> string -> Uuid.t
     @raise Panic if key not found or value is not a UUID
 *)
 val get_list: Spec.value -> string -> Spec.value list
+
 (** Extract a list value from a map.
     
     Example:
@@ -383,6 +411,7 @@ val get_list: Spec.value -> string -> Spec.value list
     @raise Panic if key not found or value is not a list
 *)
 val get_discriminated_union: Spec.value -> string -> string * string * (string * Spec.value) list
+
 (** Extract a discriminated union from a map by key.
     
     Returns [(discriminant_name, variant_value, fields)].
@@ -399,6 +428,7 @@ val get_discriminated_union: Spec.value -> string -> string * string * (string *
     @raise Panic if key not found or value is not a discriminated union
 *)
 val get_map: Spec.value -> string -> Spec.value
+
 (** Extract a nested map value from a map.
     
     Example: 
@@ -416,66 +446,79 @@ val get_map: Spec.value -> string -> Spec.value
 *)
 
 val as_string: Spec.value -> string
+
 (** Extract the string from a String value.
     
     @raise Panic if the value is not a string
 *)
 val as_char: Spec.value -> char
+
 (** Extract the char from a Char value.
     
     @raise Panic if the value is not a char
 *)
 val as_int: Spec.value -> int
+
 (** Extract the int from an Int value.
     
     @raise Panic if the value is not an int
 *)
 val as_int32: Spec.value -> int32
+
 (** Extract the int32 from an Int32 value.
     
     @raise Panic if the value is not an int32
 *)
 val as_int64: Spec.value -> int64
+
 (** Extract the int64 from an Int64 value.
     
     @raise Panic if the value is not an int64
 *)
 val as_bool: Spec.value -> bool
+
 (** Extract the bool from a Bool value.
     
     @raise Panic if the value is not a bool
 *)
 val as_float: Spec.value -> float
+
 (** Extract the float from a Float value.
     
     @raise Panic if the value is not a float
 *)
 val as_uri: Spec.value -> Net.Uri.t
+
 (** Extract the URI from a Uri value.
     
     @raise Panic if the value is not a URI
 *)
 val as_datetime: Spec.value -> Datetime.t
+
 (** Extract the datetime from a Datetime value.
     
     @raise Panic if the value is not a datetime
 *)
 val as_path: Spec.value -> Path.t
+
 (** Extract the path from a Path value.
     
     @raise Panic if the value is not a path
 *)
 val as_uuid: Spec.value -> Uuid.t
+
 (** Extract the UUID from a Uuid value.
     
     @raise Panic if the value is not a UUID
 *)
 val as_list: Spec.value -> Spec.value list
+
 (** Extract the items from a List value.
     
     @raise Panic if the value is not a List
 *)
 val as_discriminated_union: Spec.value -> string * string * (string * Spec.value) list
+
 (** Extract (discriminant_name, variant_value, fields) from a DiscriminatedUnion.
     
     Example:
@@ -489,6 +532,7 @@ val as_discriminated_union: Spec.value -> string * string * (string * Spec.value
     @raise Panic if value is not a DiscriminatedUnion
 *)
 val as_map: Spec.value -> (string * Spec.value) list
+
 (** Extract the field list from a Map value.
     
     @raise Panic if the value is not a map
@@ -500,6 +544,8 @@ val as_map: Spec.value -> (string * Spec.value) list
 *)
 
 module Loader = Loader
+
 (** Configuration file loading and environment detection *)
 module Validator = Validator
+
 (** Configuration validation against specs *)

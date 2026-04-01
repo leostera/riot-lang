@@ -10,17 +10,23 @@ type tm = {
   tm_yday: int;  (** Day of year 0-365 *)
   tm_isdst: bool;  (** Daylight saving time *)
 }
+
 (** Broken-down time representation compatible with C's struct tm *)
 val gettimeofday: unit -> float
+
 (** Get current time since Unix epoch with microsecond precision *)
 val localtime: float -> tm
+
 (** Convert Unix timestamp to broken-down time in local timezone *)
 val gmtime: float -> tm
+
 (** Convert Unix timestamp to broken-down time in UTC *)
 val mktime: tm -> float * tm
+
 (** Convert broken-down time to Unix timestamp. Returns (timestamp,
     normalized_tm) *)
 val monotonic_time_nanos: unit -> int64
+
 (** Get monotonic time in nanoseconds. This clock is immune to system clock
     adjustments and is suitable for measuring elapsed time. Uses CLOCK_MONOTONIC
     on Linux, mach_absolute_time on macOS. *)

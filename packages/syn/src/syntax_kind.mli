@@ -327,6 +327,7 @@ type t =
           The parser creates ERROR nodes when it encounters syntax it cannot
           parse, allowing it to continue and report multiple errors. *)
   | MISSING
+
 (** Missing token placeholder.
 
           When the parser expects a token but doesn't find it, it creates a
@@ -339,6 +340,7 @@ type t =
     Example: ```ocaml Syntax_kind.to_string LET_EXPR = "LET_EXPR"
     Syntax_kind.to_string INT_LITERAL = "INT_LITERAL" ``` *)
 val to_string: t -> string
+
 (** `from_string str` parses a syntax kind from its string representation.
 
     Returns [Some kind] if the string matches a valid syntax kind, [None]

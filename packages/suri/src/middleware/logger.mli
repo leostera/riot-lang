@@ -27,6 +27,7 @@
     2025-01-15 10:30:55 | ERROR | GET /error -> 500 in 5ms
     v} *)
 open Std
+
 (** Request logger middleware.
     
     Logs format: [METHOD /path -> STATUS in DURATIONms]

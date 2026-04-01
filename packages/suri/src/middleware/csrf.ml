@@ -1,6 +1,7 @@
 open Std
 
 (** {1 Token Generation} *)
+
 (** Generate random bytes *)
 let random_bytes = fun length ->
   let bytes = IO.Bytes.create length in
@@ -8,6 +9,7 @@ let random_bytes = fun length ->
     IO.Bytes.set bytes i (Char.chr (Random.int 256))
   done;
   IO.Bytes.to_string bytes
+
 (** Convert bytes to hex string *)
 let bytes_to_hex = fun bytes ->
   let hex_chars = "0123456789abcdef" in
@@ -19,6 +21,7 @@ let bytes_to_hex = fun bytes ->
     IO.Bytes.set hex (i * 2 + 1) (String.get hex_chars (byte land 0x0f))
   done;
   IO.Bytes.to_string hex
+
 (** Convert hex string to bytes *)
 let hex_to_bytes = fun hex ->
   let len = String.length hex in
@@ -42,10 +45,12 @@ let hex_to_bytes = fun hex ->
       Option.some (IO.Bytes.to_string bytes)
     with
     | Exit -> Option.none
+
 (** Generate a cryptographically random CSRF token (32 bytes as 64 hex chars) *)
 let generate_token = fun () -> bytes_to_hex (random_bytes 32)
 
 (** {1 Token Masking (BREACH Attack Protection)} *)
+
 (** Mask token to prevent BREACH attacks *)
 let mask_token = fun raw_token_hex ->
   match hex_to_bytes raw_token_hex with
@@ -63,6 +68,7 @@ let mask_token = fun raw_token_hex ->
       (* Combine pad + masked (64 bytes total) and base64 encode *)
       let combined = pad ^ IO.Bytes.to_string masked in
       Data.Base64.encode combined
+
 (** Unmask token received from client *)
 let unmask_token = fun masked_b64 ->
   match Data.Base64.decode masked_b64 with
@@ -89,8 +95,10 @@ let unmask_token = fun masked_b64 ->
         Option.some unmasked_hex
 
 (** {1 Token Storage and Verification} *)
+
 (** Session key for CSRF token *)
 let csrf_token_key = "_csrf_token"
+
 (** Get or create token from session *)
 let get_or_create_token = fun session ->
   match Session.get_value csrf_token_key session with
@@ -99,6 +107,7 @@ let get_or_create_token = fun session ->
       let token = generate_token () in
       Session.put csrf_token_key token session;
       token
+
 (** Verify token from request matches session *)
 let verify_token = fun session request_token ->
   match Session.get_value csrf_token_key session with
@@ -116,6 +125,7 @@ let verify_token = fun session request_token ->
       | Option.None -> String.equal request_token stored_token
 
 (** {1 HTTP Method Classification} *)
+
 (** Check if request method is safe (no CSRF protection needed) *)
 let is_safe_method = fun method_ ->
   match method_ with
@@ -125,6 +135,7 @@ let is_safe_method = fun method_ ->
   | _ -> false
 
 (** {1 Middleware} *)
+
 (** CSRF protection middleware *)
 let middleware = fun ?(param_name = "_csrf_token") ?(header_name = "x-csrf-token") ?(skip_safe_methods = true) ?skip () ->
   fun ~conn ~next ->
@@ -178,10 +189,12 @@ let middleware = fun ?(param_name = "_csrf_token") ?(header_name = "x-csrf-token
             end
 
 (** {1 View Helpers} *)
+
 (** Get current CSRF token for use in views *)
 let get_token = fun conn ->
   let session = Session.get conn in
   get_or_create_token session
+
 (** Generate HTML hidden field for forms *)
 let hidden_field = fun conn ->
   let token = get_token conn in
@@ -189,6 +202,7 @@ let hidden_field = fun conn ->
   Component.input
     ~attrs:[ Component.type_ "hidden"; Component.name "_csrf_token"; Component.value masked; ]
     ()
+
 (** Generate HTML meta tag for AJAX *)
 let meta_tag = fun conn ->
   let token = get_token conn in

@@ -57,6 +57,7 @@ type scan_ctx = {
   parent_impl: Module_node.t G.node;
   aliases: Module_node.t G.node list;
 }
+
 (** Scan context passed through recursive directory traversal.
 
     Fields:
@@ -111,6 +112,7 @@ let rec filter_entries = fun ~allowed entries ->
             Some (Module_scanner.Dir (name, path, children))
     )
     entries
+
 (** Check if a path is a binary source file.
 
     Binary paths are stored as ABSOLUTE in Package.binary, while scanned paths
@@ -122,6 +124,7 @@ let is_binary = fun config path ->
       let bin_abs_rel = make_relative ~base:config.package.path ~path:bin.path in
       Path.equal path bin_rel && Path.equal bin_rel bin_abs_rel)
     config.package.binaries
+
 (** Recursively scan directory entries and build graph nodes.
 
     Processing order (entries are pre-sorted by Module_scanner): 1. MLI files
@@ -346,6 +349,7 @@ let create = fun config ->
   let t = { config; graph; registry; entries } in
   scan_sources t entries;
   t
+
 (** Wire module dependencies using ocamldep.
 
     This function implements Phase 2 of graph construction by analyzing source

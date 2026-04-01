@@ -11,6 +11,7 @@ type Message.t +=
 type Message.t +=
   Stop_worker
   | Worker_stopped
+
 (** Simple worker that processes tasks with timeout *)
 let worker = fun coordinator ->
   let rec loop () =

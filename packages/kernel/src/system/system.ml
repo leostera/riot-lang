@@ -1,6 +1,7 @@
 (** System-level operations for Kernel *)
 open Global0
 module Sys = Stdlib.Sys
+
 (** Host triplet module *)
 module Host = struct
   type t = {
@@ -39,6 +40,7 @@ module Host = struct
     in
     { architecture = arch; vendor; os; abi }
 end
+
 (** Get the host triplet from C FFI *)
 let host_triplet = Host.current
 

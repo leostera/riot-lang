@@ -14,6 +14,7 @@ type when_to_apply =
   | Drain
   (** Wait for output to finish (was TCSADRAIN) *)
   | Flush
+
 (** Wait and discard pending input (was TCSAFLUSH) *)
 let to_unix_when = function
   | Now -> Unix.TCSANOW

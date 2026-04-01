@@ -7,6 +7,7 @@ type 'task state = {
   worker_fn: owner:Pid.t -> task:'task -> unit;
   task_ref: 'task Ref.t;
 }
+
 (** Worker loop - receives tasks from coordinator and executes them *)
 let rec loop = fun state ->
   let selector msg =

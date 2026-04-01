@@ -6,6 +6,7 @@ module G = Std.Graph.SimpleGraph
 (** Create an empty action graph *)
 type t
 val create: unit -> t
+
 (** Compute content-based hash of an action node as part of a Merkle graph.
     
     If two action nodes have the same hash, they will produce identical outputs.
@@ -22,6 +23,7 @@ val create: unit -> t
     changes, invalidating the cache for this node and all downstream nodes.
 *)
 val hash_action_node: t -> Action_node.t -> Crypto.hash
+
 (** Map a module graph to an action graph and collect all outputs.
     
     Each module node is transformed into an action node containing the 
@@ -53,21 +55,25 @@ val add_dependency: t -> Action_node.t -> depends_on:Action_node.t -> unit
 val topo_sort: t -> Action_node.t list
 
 val nodes: t -> Action_node.t list
+
 (** Returns all nodes in deterministic topological order *)
 val graph: t -> Action_node.action_spec G.t
 
 val to_action_list: t -> Action.t list
+
 (** Convert action graph to JSON with sorted nodes for deterministic output.
 
     The JSON representation is used as a persisted plan artifact for warm builds.
     It includes node-level package path context and the precomputed node hash so
     cache-key identity is stable across process boundaries. *)
 val to_json: t -> Data.Json.t
+
 (** Reconstruct action graph from JSON for warm-build execution.
 
     This function preserves each node's serialized hash and package path
     metadata rather than recomputing them. Recomputing can diverge from the
     original Merkle graph and break action-cache lookup. *)
 val from_json: Data.Json.t -> (t, string) Result.t
+
 (** Compare two action graphs structurally by comparing topologically sorted nodes *)
 val equal: t -> t -> bool

@@ -50,6 +50,7 @@ type t
     ```ocaml Permissions.of_mode 0o644 (* rw-r--r-- *) Permissions.of_mode 0o755
     (* rwxr-xr-x *) Permissions.of_mode 0o600 (* rw------- *) ``` *)
 val of_mode: int -> t
+
 (** Converts to Unix mode bits.
 
     ## Examples
@@ -76,6 +77,7 @@ val to_mode: t -> int
     - Actual user/group ownership
     - SELinux/AppArmor policies *)
 val readonly: t -> bool
+
 (** Sets or clears write permissions for owner, group, and others.
 
     ## Examples
@@ -93,20 +95,28 @@ val set_readonly: t -> bool -> t
 (** ## Permission Bits *)
 (** Checks if owner has read permission. *)
 val user_read: t -> bool
+
 (** Checks if owner has write permission. *)
 val user_write: t -> bool
+
 (** Checks if owner has execute permission. *)
 val user_execute: t -> bool
+
 (** Checks if group has read permission. *)
 val group_read: t -> bool
+
 (** Checks if group has write permission. *)
 val group_write: t -> bool
+
 (** Checks if group has execute permission. *)
 val group_execute: t -> bool
+
 (** Checks if others have read permission. *)
 val other_read: t -> bool
+
 (** Checks if others have write permission. *)
 val other_write: t -> bool
+
 (** Checks if others have execute permission. *)
 val other_execute: t -> bool
 
@@ -115,14 +125,17 @@ val other_execute: t -> bool
 
     Common for data files that need to be shared but not modified by others. *)
 val read_write: t
+
 (** `rwxr-xr-x` (0755) - Owner read/write/execute, group/others read/execute.
 
     Common for executable files and directories. *)
 val executable: t
+
 (** `rw-------` (0600) - Owner read/write only, no access for others.
 
     Common for private data files like SSH keys or credentials. *)
 val private_read_write: t
+
 (** `rwx------` (0700) - Owner read/write/execute only, no access for others.
 
     Common for private executables or personal directories. *)

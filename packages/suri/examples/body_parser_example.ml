@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Example app demonstrating body_parser middleware with CSRF protection *)
 
 (** Home page with form *)
@@ -58,6 +59,7 @@ let home = fun conn _req ->
 </html>|}
   in
   conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
+
 (** Handle form submission *)
 let submit_form = fun conn _req ->
   let body_params = Conn.body_params conn in
@@ -96,6 +98,7 @@ let submit_form = fun conn _req ->
 </html>|}
   in
   conn |> Conn.with_status Net.Http.Status.Ok |> Conn.with_body html |> Conn.send
+
 (** Handle JSON API request *)
 let api_handler = fun conn _req ->
   let body_params = Conn.body_params conn in
@@ -115,10 +118,12 @@ let api_handler = fun conn _req ->
   |> Conn.with_header "content-type" "application/json"
   |> Conn.with_body body
   |> Conn.send
+
 (** Routes *)
 let routes = Middleware.Router.[get "/" home;
 post "/submit" submit_form;
 post "/api/data" api_handler]
+
 (** Application with body_parser + CSRF *)
 let app =
   Middleware.[

@@ -1,6 +1,7 @@
 open Std
 open Suri
 open Suri.Component
+
 (** 
   This example shows how to start with static HTML components
   and progressively enhance them with LiveView interactivity.
@@ -105,6 +106,7 @@ let page_styles = {|
     font-family: 'Monaco', 'Courier New', monospace;
   }
 |}
+
 (** Step 1: Static Component (No Interactivity) *)
 let counter_view_static = fun count ->
   div
@@ -166,6 +168,7 @@ let static_page : unit t = html
 ]|} ]; ];
           ]; ];
   ]
+
 (** Step 2: LiveView Component (With Event Handlers) *)
 (* Define our message type for LiveView *)
 
@@ -252,6 +255,7 @@ let counter_view count =
               ];
           ]; ];
   ]
+
 (** Step 3: Comparison Page *)
 let comparison_page : msg t = html
   [ head
@@ -320,6 +324,7 @@ let comparison_page : msg t = html
               ];
           ];
       ]; ]
+
 (** Demo Output *)
 let () =
   println "=== STATIC HTML (No Interactivity) ===";

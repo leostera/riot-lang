@@ -1,4 +1,5 @@
 include module type of Stdlib.Seq
+
 (** Converts this stream into an immutable iterator.
 
     ## Examples
@@ -18,6 +19,7 @@ include module type of Stdlib.Seq
     - Time: O(1) to create iterator
     - Space: O(1) *)
 val into_iter: 'a t -> 'a Iter.Iterator.t
+
 (** Converts this stream into a mutable iterator.
 
     ## Examples

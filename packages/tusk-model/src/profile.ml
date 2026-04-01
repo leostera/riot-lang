@@ -43,6 +43,7 @@ type t = {
   ld_flags: string list;  (** Linker flags (passed with -cclib) *)
   ocamlc_flags: string list;  (** Additional raw ocamlc/ocamlopt flags *)
 }
+
 (** Default debug profile - fast compilation, all checks enabled *)
 let debug = {
   name = "debug";
@@ -64,6 +65,7 @@ let debug = {
   ld_flags = [];
   ocamlc_flags = [];
 }
+
 (** Default release profile - optimized, strict *)
 let release = {
   name = "release";
@@ -80,6 +82,7 @@ let release = {
   ld_flags = [];
   ocamlc_flags = [];
 }
+
 (** Merge two profiles - override takes precedence per-field *)
 let merge = fun base override ->
   {
@@ -102,6 +105,7 @@ let merge = fun base override ->
     ld_flags = base.ld_flags @ override.ld_flags;
     ocamlc_flags = base.ocamlc_flags @ override.ocamlc_flags;
   }
+
 (** Apply a profile override to a base profile *)
 let apply_override = fun base (override: profile_override) ->
   {
@@ -179,6 +183,7 @@ let apply_override = fun base (override: profile_override) ->
         | Override l -> base.ocamlc_flags @ l
       );
   }
+
 (** Apply overrides from a list by looking up the profile's name *)
 let apply_overrides = fun base overrides ->
   Log.debug ("[PROFILE] apply_overrides: looking for profile '" ^ base.name ^ "' in overrides");
@@ -190,6 +195,7 @@ let apply_overrides = fun base overrides ->
   | Some override ->
       Log.debug ("[PROFILE] Found override for '" ^ base.name ^ "', applying");
       apply_override base override
+
 (** Parse profile_override from TOML table *)
 let override_from_toml : (string * Std.Data.Toml.value) list -> profile_override = fun table_items ->
   let open Std.Data.Toml in
@@ -243,6 +249,7 @@ let override_from_toml : (string * Std.Data.Toml.value) list -> profile_override
       ld_flags = get_string_list "ld_flags";
       ocamlc_flags = get_string_list "ocamlc_flags";
     }
+
 (** Parse profile from TOML table *)
 let from_toml : (string * Std.Data.Toml.value) list -> base:t -> t = fun table_items ~base ->
   let open Std.Data.Toml in
@@ -328,6 +335,7 @@ let from_toml : (string * Std.Data.Toml.value) list -> base:t -> t = fun table_i
           | _ -> base.ocamlc_flags
         );
     }
+
 (** Convert profile to OCaml compiler flags *)
 let to_compiler_flags = fun profile ->
   let flags = [] in
@@ -368,6 +376,7 @@ let to_compiler_flags = fun profile ->
   (* Additional raw flags *)
   let flags = List.rev_append profile.ocamlc_flags flags in
   List.rev flags
+
 (** Hash profile into a Sha256 hasher state *)
 let hash = fun state profile ->
   let module H = Crypto.Sha256 in
@@ -399,6 +408,7 @@ let hash = fun state profile ->
   List.iter (H.write_string state) profile.cc_flags;
   List.iter (H.write_string state) profile.ld_flags;
   List.iter (H.write_string state) profile.ocamlc_flags
+
 (** Convert profile to JSON *)
 let to_json = fun profile ->
   let open Data.Json in

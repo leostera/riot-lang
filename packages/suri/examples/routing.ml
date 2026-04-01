@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Routing Example
     
     Demonstrates routing with middleware pipeline including request ID and logging.

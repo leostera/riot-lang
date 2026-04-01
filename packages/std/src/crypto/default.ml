@@ -2,6 +2,7 @@
 open Global
 open IO
 open Collections
+
 (** Default hasher using kernel's default hash algorithm *)
 module DefaultHasher = struct
   type state = {
@@ -117,6 +118,7 @@ module DefaultHasher = struct
       arr;
     finish state
 end
+
 (** Random state for HashMap/HashSet - provides seeded hashing *)
 module RandomState = struct
   type t = {
@@ -130,6 +132,7 @@ module RandomState = struct
       seed1 = Kernel.Random.int64 Kernel.Int64.max_int;
       seed2 = Kernel.Random.int64 Kernel.Int64.max_int
     }
+
   (** Hash with this random state for DoS resistance *)
   let hash_with_seed = fun state data seed1 seed2 ->
     (* Mix the default hash with random seeds *)

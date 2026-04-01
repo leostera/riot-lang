@@ -59,10 +59,12 @@ type t
 type column
 (** A column definition with title and width *)
 type row = string list
+
 (** A row is a list of cell values (one per column) *)
 (** ## Column Definition *)
 
 val column: title:string -> width:int -> column
+
 (** `column ~title ~width` creates a column definition.
     
     - `title` - The column header text
@@ -70,6 +72,7 @@ val column: title:string -> width:int -> column
 (** ## Creation *)
 
 val make: column list -> row list -> t
+
 (** `make columns rows` creates a new table.
     
     - `columns` - List of column definitions (headers)
@@ -79,56 +82,76 @@ val make: column list -> row list -> t
 (** ## Configuration *)
 
 val set_height: t -> height:int -> t
+
 (** `set_height table h` sets the visible height (number of rows shown).
     
     Set to 0 for unlimited height. Header is not counted in height. *)
 val set_width: t -> width:int -> t
+
 (** `set_width table w` sets the total table width.
     
     Columns will be sized according to their individual widths. *)
 val set_show_header: t -> show:bool -> t
+
 (** `set_show_header table show` controls header visibility. Default: true *)
 val set_cursor_char: t -> char:string -> t
+
 (** `set_cursor_char table char` sets the selection indicator. Default: "> " *)
 (** ## Data *)
 
 val columns: t -> column list
+
 (** `columns table` returns the column definitions. *)
 val rows: t -> row list
+
 (** `rows table` returns all rows. *)
 val set_columns: t -> columns:column list -> t
+
 (** `set_columns table cols` updates column definitions. *)
 val set_rows: t -> rows:row list -> t
+
 (** `set_rows table rows` replaces all rows. Resets selection to first row. *)
 (** ## Selection *)
 
 val selected_row: t -> row option
+
 (** `selected_row table` returns the currently selected row, if any. *)
 val selected_index: t -> int option
+
 (** `selected_index table` returns the index of the selected row (0-based). *)
 val cursor: t -> int
+
 (** `cursor table` returns the cursor position (same as selected_index but as int). *)
 val select: t -> int -> t
+
 (** `select table idx` selects row at index (clamped to valid range). *)
 val move_up: t -> int -> t
+
 (** `move_up table n` moves selection up by n rows. *)
 val move_down: t -> int -> t
+
 (** `move_down table n` moves selection down by n rows. *)
 val goto_top: t -> t
+
 (** `goto_top table` selects the first row. *)
 val goto_bottom: t -> t
+
 (** [goto_bottom table] selects the last row. *)
 (** ## Focus *)
 
 val focus: t -> t
+
 (** `focus table` enables keyboard navigation and shows selection. *)
 val blur: t -> t
+
 (** `blur table` disables keyboard navigation and hides selection. *)
 val is_focused: t -> bool
+
 (** `is_focused table` returns true if table has focus. *)
 (** ## Input Handling *)
 
 val handle_key: t -> Event.key -> Event.modifier -> t
+
 (** `handle_key table key modifier` processes keyboard input.
     
     Default bindings:
@@ -145,6 +168,7 @@ val handle_key: t -> Event.key -> Event.modifier -> t
 (** ## Rendering *)
 
 val view: t -> string
+
 (** `view table` renders the table for display.
     
     Format:

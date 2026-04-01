@@ -422,6 +422,7 @@ let do_render = fun t str ->
   Cell.get str
 
 let render = fun t str -> do_render t str
+
 (** Accessors for layout system *)
 let get_padding_left = fun t -> t.padding_left
 
@@ -434,6 +435,7 @@ let get_padding_bottom = fun t -> t.padding_bottom
 let get_width = fun t -> t.width
 
 let get_height = fun t -> t.height
+
 (** Accessors for rendering system *)
 let get_foreground = fun t -> t.foreground
 

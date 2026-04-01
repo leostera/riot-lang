@@ -60,7 +60,7 @@ type write_result =
 (* Wrapper for read_decrypted *)
 
 let read_decrypted = fun engine buf ~pos ~len ->
-  let n = _read_decrypted engine buf pos len in
+  let n = _read_decrypted engine buf ~pos ~len in
   if n > 0 then
     Read n
   else if n = 0 then
@@ -77,7 +77,7 @@ let read_decrypted = fun engine buf ~pos ~len ->
 (* Wrapper for write_plaintext *)
 
 let write_plaintext = fun engine buf ~pos ~len ->
-  let n = _write_plaintext engine buf pos len in
+  let n = _write_plaintext engine buf ~pos ~len in
   if n > 0 then
     Written n
   else if n = (-1) then

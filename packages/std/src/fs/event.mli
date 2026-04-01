@@ -37,5 +37,6 @@ type t = {
   system: system_flags;
 }
 val from_kernel_event: Kernel.Fs.Events.event -> t
+
 (** Convert an event to JSON representation with all metadata *)
 val to_json: t -> Data.Json.t

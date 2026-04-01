@@ -7,26 +7,19 @@ let no_emit : event_sink = fun _ -> ()
 let duration_ms_since = fun started ->
   Time.Instant.duration_since ~earlier:started (Time.Instant.now ()) |> Time.Duration.to_millis
 
-let ensure_registry_package = fun ?(emit = no_emit) ~registry (
-  pkg: Tusk_model.Lockfile.package
-) ->
+let ensure_registry_package = fun ?(emit = no_emit) ~registry (pkg: Tusk_model.Lockfile.package) ->
   let package = pkg.id.name in
   match pkg.id.version with
   | None -> Error ("registry lock package '" ^ package ^ "' is missing an exact version")
   | Some version -> (
-      let path =
-        Pkgs_ml.Registry_cache.package_src_dir
-          (Pkgs_ml.Registry.cache registry)
-          ~package_name:package
-          ~version
-        |> Path.to_string
-      in
+      let path = Pkgs_ml.Registry_cache.package_src_dir
+        (Pkgs_ml.Registry.cache registry)
+        ~package_name:package
+        ~version
+      |> Path.to_string in
       let started = Time.Instant.now () in
       emit (Tusk_model.Event.PackageMaterializationStarted { package; version; path });
-      match Pkgs_ml.Registry.materialize_release
-        registry
-        ~package_name:package
-        ~version with
+      match Pkgs_ml.Registry.materialize_release registry ~package_name:package ~version with
       | Ok `Materialized ->
           emit
             (Tusk_model.Event.PackageMaterializationFinished {

@@ -45,8 +45,10 @@ open Types
 (** Raised when borrowing rules are violated *)
 type 'a t
 exception BorrowError of string
+
 (** Raised when mutable borrowing rules are violated *)
 exception BorrowMutError of string
+
 (** Create a new RefCell with the given value *)
 val create: 'a -> 'a t
 
@@ -59,17 +61,21 @@ type 'a borrow
     BorrowError if the cell is mutably borrowed. *)
 type 'a borrow_mut
 val borrow: 'a t -> 'a borrow
+
 (** Release an immutable borrow *)
 val release_borrow: 'a borrow -> unit
+
 (** Borrow the value mutably. Only one mutable borrow is allowed. Raises
     BorrowMutError if the cell is already borrowed. *)
 val borrow_mut: 'a t -> 'a borrow_mut
+
 (** Get the value from a mutable borrow *)
 
 (** Set the value through a mutable borrow *)
 val get_mut: 'a borrow_mut -> 'a
 
 val set_mut: 'a borrow_mut -> 'a -> unit
+
 (** Release a mutable borrow *)
 val release_borrow_mut: 'a borrow_mut -> unit
 
@@ -84,6 +90,7 @@ val with_borrow_mut: 'a t -> ((unit -> 'a) -> ('a -> unit) -> 'b) -> 'b
 (** {2 Try variants} *)
 (** Try to borrow immutably, returning Error instead of raising *)
 val try_borrow: 'a t -> ('a borrow, string) result
+
 (** Try to borrow mutably, returning Error instead of raising *)
 val try_borrow_mut: 'a t -> ('a borrow_mut, string) result
 
@@ -97,5 +104,6 @@ val set_unchecked: 'a t -> 'a -> unit
 (** {2 Query} *)
 (** Check if the cell is currently borrowed *)
 val is_borrowed: 'a t -> bool
+
 (** Get the current number of borrows *)
 val borrow_count: 'a t -> int

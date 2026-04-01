@@ -6,6 +6,7 @@ open Std
 type protocol_version = string
 (** Protocol version string (e.g., "2024-11-05") *)
 type json = Data.Json.t
+
 (** JSON type alias *)
 (** {2 JSON-RPC Base Types} *)
 
@@ -19,6 +20,7 @@ type error = {
   message: string;
   data: json option;
 }
+
 (** JSON-RPC error *)
 (** {2 Client/Server Info} *)
 
@@ -223,6 +225,7 @@ val make_error: request_id -> error_code -> string -> response
 val make_notification: ?params:notification_params -> notification_method -> notification
 
 val parse_error: error_code
+
 (** Standard JSON-RPC error codes *)
 val invalid_request: error_code
 

@@ -58,6 +58,7 @@ type line_class =
   | CJK
   (** CJK ideographs - can break between any *)
   | Other
+
 (** Everything else *)
 
 (** Get line break class for a rune *)
@@ -152,6 +153,7 @@ let get_line_class = fun c ->
   || (c >= 0x005b && c <= 0x0060)
   || (c >= 0x007b && c <= 0x007e) -> Punctuation
   | _ -> Other
+
 (** Determine line break opportunity between two characters
     
     Simplified UAX #14 rules:
@@ -187,14 +189,13 @@ let get_break_opportunity = fun ~prev_class ~curr_class ->
   | Hyphen, Other -> Can_break
   | Punctuation, Letter -> Can_break
   | Punctuation, CJK -> Can_break
-  | Punctuation, Space -> Can_break
   | CJK, CJK -> Can_break
   | CJK, Letter -> Can_break
   | CJK, Punctuation -> Can_break
   | Letter, CJK -> Can_break
-  | Punctuation, CJK -> Can_break
   | Letter, Letter -> Dont_break
   | _, _ -> Dont_break
+
 (** Find all line break opportunities in a string
     Returns (position, opportunity_type) pairs *)
 let find_line_breaks = fun s ->
@@ -235,6 +236,7 @@ let find_line_breaks = fun s ->
       let first_len = Uchar.utf_decode_length first_decode in
       let first_class = get_line_class (Rune.to_int first_rune) in
       scan first_len first_class []
+
 (** Wrap text to fit within a given width
     Returns a list of lines *)
 let wrap_lines = fun ~width s ->

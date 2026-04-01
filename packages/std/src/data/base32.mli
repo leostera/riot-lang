@@ -35,6 +35,7 @@
     Padding with '=' to make output length a multiple of 8. *)
 
 open Global
+
 (** Encodes a string to Base32.
 
     ## Examples
@@ -42,8 +43,10 @@ open Global
     ```ocaml Base32.encode "Hi" (* "JBQQ====" *) Base32.encode "test" (*
     "ORSXG5A=" *) ``` *)
 val encode: string -> string
+
 (** Encodes bytes to Base32. *)
 val encode_bytes: bytes -> string
+
 (** Decodes a Base32 string. Case-insensitive.
 
     ## Examples
@@ -61,6 +64,7 @@ val encode_bytes: bytes -> string
 val decode: string -> (string, [
     | `Invalid_base32
   ]) result
+
 (** Decodes a Base32 string to bytes. *)
 val decode_bytes: string -> (bytes, [
     | `Invalid_base32

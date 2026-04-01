@@ -2,6 +2,7 @@ open Std
 open Tusk_model
 
 let ( let* ) = Result.and_then
+
 (** ArgParser command definition *)
 let command =
   let open ArgParser in
@@ -14,13 +15,16 @@ let command =
         flag "lib" |> long "lib" |> help "Create library package (default)";
         flag "bin" |> long "bin" |> help "Create binary package";
       ]
+
 (** Validate package name using Tusk_model *)
 let validate_name = fun name ->
   match Package.validate_name name with
   | Ok n -> Ok n
   | Error msg -> Error (Failure msg)
+
 (** Convert package name to module name using Tusk_model *)
 let package_name_to_module_name = fun name -> Module_name.of_string name |> Module_name.to_string
+
 (** Create workspace tusk.toml *)
 let create_workspace_toml = fun target_dir workspace_name ->
   let content = {|[workspace]
@@ -41,6 +45,7 @@ kind = "native"
       println "✓ Created tusk.toml";
       Ok ()
   | Error _e -> Error (Failure "Failed to create tusk.toml")
+
 (** Create ocaml-toolchain.toml *)
 let create_toolchain_toml = fun target_dir ->
   let content = {|[toolchain]
@@ -53,6 +58,7 @@ version = "5.5.0-riot.1"
       println "✓ Created ocaml-toolchain.toml";
       Ok ()
   | Error _e -> Error (Failure "Failed to create ocaml-toolchain.toml")
+
 (** Create .gitignore *)
 let create_gitignore = fun target_dir ->
   let content = {|# Tusk build artifacts
@@ -86,6 +92,7 @@ _opam
       println "✓ Created .gitignore";
       Ok ()
   | Error _e -> Error (Failure "Failed to create .gitignore")
+
 (** Create README.md *)
 let create_readme = fun target_dir workspace_name ->
   let content = {|# |} ^ workspace_name ^ {|
@@ -137,6 +144,7 @@ Then add it to `tusk.toml` workspace members.
       println "✓ Created README.md";
       Ok ()
   | Error _e -> Error (Failure "Failed to create README.md")
+
 (** Create default package structure *)
 let create_default_package = fun target_dir workspace_name is_library ->
   let pkg_dir = Path.(target_dir / Path.v "packages" / Path.v workspace_name) in
@@ -216,6 +224,7 @@ std = "*"
   in
   println ("✓ Created packages/" ^ workspace_name ^ "/");
   Ok ()
+
 (** Main run function *)
 let run = fun matches ->
   let open Result in

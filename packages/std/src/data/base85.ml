@@ -119,7 +119,6 @@ let decode_bytes = fun str ->
           decode_group ()
         )
       else
-        let start = !cursor in
         let chars = cell [] in
         let count = cell 0 in
         while !cursor < len && !count < 5 do

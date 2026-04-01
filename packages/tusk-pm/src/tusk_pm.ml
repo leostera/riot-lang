@@ -72,13 +72,7 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                       });
                     emit
                       (Tusk_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
-                    Dep_solver.lock_deps
-                      ~emit
-                      ~mode
-                      ~registry
-                      ~existing_lock
-                      ~workspace_root
-                      packages
+                    Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace_root packages
                     |> Result.map (fun lockfile -> (lockfile, false))
               )
             | None ->
@@ -145,7 +139,13 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                     else
                       emit
                   in
-                  match Projection.resolve_packages ~emit:projection_emit ~registry ~workspace_root ~packages ~lockfile () with
+                  match Projection.resolve_packages
+                    ~emit:projection_emit
+                    ~registry
+                    ~workspace_root
+                    ~packages
+                    ~lockfile
+                    () with
                   | Error err ->
                       emit (Tusk_model.Event.DependencyResolutionFailed { error = err });
                       Error err

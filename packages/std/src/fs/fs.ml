@@ -13,6 +13,7 @@ module ReadDir = ReadDir
 module File = File
 module Fd = Fd
 module FileWatcher = File_watcher
+
 (** Basic filesystem operations - defined first as they're used by other
     functions *)
 let is_directory = fun path ->
@@ -22,6 +23,7 @@ let is_directory = fun path ->
 let rmdir = fun path ->
   let path_str = Path.to_string path in
   Kernel.Fs.File.rmdir path_str |> convert_kernel_result
+
 (** Clean API implementations following the FIXME guidelines *)
 let canonicalize = fun path ->
   let path_str = Path.to_string path in
@@ -325,6 +327,7 @@ let read = fun path ->
 let read_file = read
 
 let write_file = fun path content -> write content path
+
 (** Get system temp directory *)
 let get_temp_dir = fun () ->
   (* Try TMPDIR, TEMP, TMP environment variables, fallback to /tmp *)
@@ -339,6 +342,7 @@ let get_temp_dir = fun () ->
           | _ -> "/tmp"
         )
     )
+
 (** Create a unique temporary directory name *)
 let make_temp_dir_name = fun temp_base prefix ->
   let pid = Kernel.System.OsProcess.current_pid () in
@@ -356,6 +360,7 @@ let make_temp_dir_name = fun temp_base prefix ->
   in
   let dir_name = prefix ^ string_of_int pid ^ "_" ^ hex_suffix in
   temp_base ^ "/" ^ dir_name
+
 (** Create a temporary directory, run a function with it, then clean it up *)
 let with_tempdir = fun ?(prefix = "tmp") fn ->
   try
@@ -377,6 +382,7 @@ let with_tempdir = fun ?(prefix = "tmp") fn ->
       )
   with
   | e -> Error (IO.Unknown_error (Exception.to_string e))
+
 (** Walk directory tree and call function on each path *)
 let rec walk = fun path fn ->
   match is_directory path with

@@ -111,6 +111,7 @@
 *)
 
 open Std
+
 (** CORS middleware with simple configuration.
     
     @param origins List of allowed origins. Use ["*"] for all, or exact matches like ["https://example.com"].

@@ -1,7 +1,6 @@
 open Std
 
 type event_sink = Tusk_model.Event.kind -> unit
-
 val resolve_packages:
   ?emit:event_sink ->
   registry:Pkgs_ml.Registry.t ->

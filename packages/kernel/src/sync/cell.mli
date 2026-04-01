@@ -18,12 +18,14 @@ val ( ! ): 'a t -> 'a
 (** {1 Writing} *)
 (** Set the cell to a new value *)
 val set: 'a t -> 'a -> unit
+
 (** Operator for setting the value, similar to ref *)
 val ( := ): 'a t -> 'a -> unit
 
 (** {1 Updating} *)
 (** Update the cell value using a function *)
 val update: 'a t -> ('a -> 'a) -> unit
+
 (** Replace the value in the cell, returning the old value *)
 
 (** Take the value from the cell, replacing it with the default value *)
@@ -39,9 +41,12 @@ val swap: 'a t -> 'a t -> unit
 (** Compare and swap: if the cell contains the expected value, set it to the new
     value and return true, otherwise return false *)
 val compare_and_swap: 'a t -> 'a -> 'a -> bool
+
 (** Check if two cells contain equal values *)
 val equal: 'a t -> 'a t -> bool
+
 (** Increment an integer cell *)
 val incr: int t -> unit
+
 (** Decrement an integer cell *)
 val decr: int t -> unit

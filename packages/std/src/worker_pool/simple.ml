@@ -94,6 +94,7 @@ let init = fun ~owner ~concurrency ~tasks ~result_ref ~fn () ->
       result_ref;
       tasks_in_flight = 0;
     }
+
 (** Run tasks in parallel with limited concurrency, collecting results in order
 *)
 let run : type task result. ?concurrency:int ->

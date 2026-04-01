@@ -48,8 +48,10 @@ module type Read = sig
   type t
   (** The type of the readable source *)
   type err
+
   (** The error type for this source *)
   val read: t -> ?timeout:int64 -> bytes -> (int, err) result
+
   (** [read src ?timeout buf] reads data from [src] into [buf].
 
       @param timeout
@@ -66,6 +68,7 @@ module type Read = sig
       - Suspend the calling process if no data is available (for async sources)
   *)
   val read_vectored: t -> Iovec.t -> (int, err) result
+
   (** [read_vectored src iov] reads data into multiple buffers atomically.
       
       This is more efficient than multiple [read] calls when scattering data
@@ -85,6 +88,7 @@ type ('src, 'err) read = (module Read with type t = 'src and type err = 'err)
     - ['src] is the concrete source type
     - ['err] is the error type for this source *)
 type ('src, 'err) t
+
 (** Reader wrapping a readable source.
 
     This is an existential type that hides the concrete source type while
@@ -95,6 +99,7 @@ type ('src, 'err) t
     - ['src] is the underlying source type (e.g., [Kernel.Net.Tcp_stream.t])
     - ['err] is the error type for read operations *)
 val of_read_src: ('src, 'err) read -> 'src -> ('src, 'err) t
+
 (** [of_read_src (module Read) src] creates a reader from a source.
 
     This is typically called by source modules (like [Net.TcpStream.to_reader])
@@ -113,6 +118,7 @@ val of_read_src: ('src, 'err) read -> 'src -> ('src, 'err) t
         IO.Reader.of_read_src (module Read) stream
     ]} *)
 val read: ('src, 'err) t -> ?timeout:int64 -> bytes -> (int, 'err) result
+
 (** [read reader ?timeout buf] reads data from the reader into a buffer.
 
     @param timeout Optional timeout in nanoseconds
@@ -127,6 +133,7 @@ val read: ('src, 'err) t -> ?timeout:int64 -> bytes -> (int, 'err) result
       | Error e -> handle_error e
     ]} *)
 val read_vectored: ('src, 'err) t -> Iovec.t -> (int, 'err) result
+
 (** [read_vectored reader iov] reads data into multiple buffers.
 
     More efficient than multiple [read] calls when scattering data across
@@ -140,6 +147,7 @@ val read_vectored: ('src, 'err) t -> Iovec.t -> (int, 'err) result
       | Error e -> handle_error e
     ]} *)
 val read_to_end: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
+
 (** [read_to_end reader ~buf] reads all available data until EOF.
 
     Repeatedly reads from [reader] until EOF (0 bytes returned) or error,
@@ -161,6 +169,7 @@ val read_to_end: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
       | Error e -> handle_error e
     ]} *)
 val map_err: ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t
+
 (** [map_err reader ~fn] transforms the error type of a reader.
     
     Useful for wrapping errors from one layer to another, such as wrapping
@@ -173,6 +182,7 @@ val map_err: ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t
         ~fn:(fun err -> Tls_error (Transport_error err))
     ]} *)
 val empty: (unit, unit) t
+
 (** [empty] is a reader that immediately returns 0 (EOF) on every read.
 
     This reader can never error, so its error type is [unit].
@@ -185,6 +195,7 @@ val empty: (unit, unit) t
       | _ -> assert false
     ]} *)
 val from_bytes: bytes -> (bytes, unit) t
+
 (** [from_bytes data] creates a reader that reads from in-memory bytes.
 
     The reader maintains an internal offset and returns data sequentially.
@@ -200,6 +211,7 @@ val from_bytes: bytes -> (bytes, unit) t
       | _ -> assert false
     ]} *)
 val from_string: string -> (string, unit) t
+
 (** [from_string str] creates a reader that reads from a string.
 
     Equivalent to [from_bytes (Bytes.of_string str)].

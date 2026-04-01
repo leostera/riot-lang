@@ -50,7 +50,7 @@ let calculate_slot = fun t expires_at ->
     None
 
 let schedule_timer = fun t timer ->
-  HashMap.insert t.timers_by_id timer.Timer.id timer;
+  let _ = HashMap.insert t.timers_by_id timer.Timer.id timer in
   match calculate_slot t timer.Timer.expires_at with
   | Some slot -> t.slots.(slot) <- timer :: t.slots.(slot)
   | None -> t.overflow := timer :: !(t.overflow)

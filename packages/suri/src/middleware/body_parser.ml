@@ -11,8 +11,10 @@ type config = {
 }
 
 let default_config = fun () -> { parsers = [ Urlencoded; Json ]; max_body_size = 10 * 1_024 * 1_024 }
+
 (** Parse application/x-www-form-urlencoded body using Net.Uri.Query.parse *)
 let parse_urlencoded = fun body -> Net.Uri.Query.parse body
+
 (** Parse JSON body - convert JSON object to string pairs *)
 let parse_json = fun body ->
   match Data.Json.of_string body with
@@ -29,6 +31,7 @@ let parse_json = fun body ->
           | _ -> None)
         fields
   | _ -> []
+
 (** Parse multipart/form-data - TODO: use Mime library *)
 let parse_multipart = fun ~boundary:_ _body ->
   (* TODO: Implement proper multipart parsing with Mime library *)

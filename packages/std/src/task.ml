@@ -44,6 +44,7 @@ let await : type res. res t -> (res, exn) result = fun t ->
   in
   let result = receive ~selector () in
   result
+
 (** Await multiple tasks efficiently, collecting results as they arrive *)
 let rec await_all : type res. res t list -> (res, exn) result list = fun tasks ->
   let find_task_by_ref tasks ref =

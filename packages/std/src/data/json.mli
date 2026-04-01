@@ -101,8 +101,10 @@ type error =
   | Unexpected_character of { position: int; character: char; expected: string }
   | Extra_input_after_value of { position: int }
   | Unknown_error of string
+
 (** JSON parsing errors with position information for debugging. *)
 (** {1 Parsing and Serialization} *)
+
 (** Parses a JSON string into a [t] value.
     
     ## Examples
@@ -123,6 +125,7 @@ type error =
     - Invalid number formats
 *)
 val of_string: string -> (t, error) result
+
 (** Serializes a JSON value to a compact string (no pretty-printing).
     
     ## Examples
@@ -135,6 +138,7 @@ val of_string: string -> (t, error) result
     ```
 *)
 val to_string: t -> string
+
 (** Converts a parse error to a human-readable error message.
 
     ## Examples
@@ -150,6 +154,7 @@ val error_to_string: error -> string
 
     ```ocaml Json.null (* Null *) Json.to_string Json.null (* "null" *) ``` *)
 val null: t
+
 (** Creates a JSON boolean value.
 
     ## Examples
@@ -157,12 +162,14 @@ val null: t
     ```ocaml Json.bool true (* Bool true *) Json.bool false (* Bool false *) ```
 *)
 val bool: bool -> t
+
 (** Creates a JSON integer value.
 
     ## Examples
 
     ```ocaml Json.int 42 (* Int 42 *) Json.int (-100) (* Int (-100) *) ``` *)
 val int: int -> t
+
 (** Creates a JSON floating-point value.
 
     ## Examples
@@ -170,6 +177,7 @@ val int: int -> t
     ```ocaml Json.float 3.14 (* Float 3.14 *) Json.float (-0.5) (* Float (-0.5)
     *) ``` *)
 val float: float -> t
+
 (** Creates a JSON string value.
 
     ## Examples
@@ -177,6 +185,7 @@ val float: float -> t
     ```ocaml Json.string "hello" (* String "hello" *) Json.to_string
     (Json.string "test") (* "\"test\"" *) ``` *)
 val string: string -> t
+
 (** Creates a JSON array from a list of values.
 
     ## Examples
@@ -186,6 +195,7 @@ val string: string -> t
 
     Json.array [] (* Array [] *) ``` *)
 val array: t list -> t
+
 (** Creates a JSON object from key-value pairs.
 
     ## Examples
@@ -209,6 +219,7 @@ val obj: (string * t) list -> t
 
     Json.get_field "x" (Json.int 5) (* None - not an object *) ``` *)
 val get_field: string -> t -> t option
+
 (** Extracts a string value. Returns [None] if not a string.
 
     ## Examples
@@ -217,6 +228,7 @@ val get_field: string -> t -> t option
     Json.get_string (Json.int 42) (* None *) Json.get_string Json.null (* None
     *) ``` *)
 val get_string: t -> string option
+
 (** Extracts an integer value. Returns [None] if not an integer.
 
     ## Examples
@@ -225,6 +237,7 @@ val get_string: t -> string option
     3.14) (* None - is a float *) Json.get_int (Json.string "42") (* None - is a
     string *) ``` *)
 val get_int: t -> int option
+
 (** Extracts a boolean value. Returns [None] if not a boolean.
 
     ## Examples
@@ -232,6 +245,7 @@ val get_int: t -> int option
     ```ocaml Json.get_bool (Json.bool true) (* Some true *) Json.get_bool
     (Json.int 1) (* None - not a bool *) ``` *)
 val get_bool: t -> bool option
+
 (** Extracts an array as a list of values. Returns [None] if not an array.
 
     ## Examples
@@ -241,6 +255,7 @@ val get_bool: t -> bool option
 
     Json.get_array (Json.string "test") (* None *) ``` *)
 val get_array: t -> t list option
+
 (** Extracts an object as a list of key-value pairs. Returns [None] if not an
     object.
 

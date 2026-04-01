@@ -128,6 +128,7 @@ let ignore = Stdlib.ignore
 let fst = Stdlib.fst
 
 let snd = Stdlib.snd
+
 (** Panic with a message and backtrace *)
 let panic = fun msg ->
   let exception Panic of string in

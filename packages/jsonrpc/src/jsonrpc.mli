@@ -67,21 +67,29 @@ type 'res response = {
 type batch_request = request list
 (** Batch request - multiple requests sent as array *)
 type 'res batch_response = 'res response list
+
 (** Batch response - array of responses matching batch request *)
 val request_to_json: request -> Json.t
+
 (** Convert a request to JSON representation *)
 val request_of_json: Json.t -> (request, string) result
+
 (** Parse a request from JSON, returns error message on failure *)
 val id_to_json: id -> Json.t
+
 (** Convert an ID to JSON representation *)
 val id_of_json: Json.t -> (id, string) result
+
 (** Parse an ID from JSON, returns error message on failure *)
 val request: method_:string -> ?params:params -> ?id:id -> unit -> request
+
 (** Create a request with the given method, optional parameters, and optional ID
 *)
 val notification: method_:string -> ?params:params -> unit -> request
+
 (** Create a notification (request with no ID) *)
 val is_notification: request -> bool
+
 (** Check if a request is a notification (has no ID) *)
 
 (** ApplicationProtocol interface - bridges typed application values and
@@ -122,22 +130,28 @@ val is_notification: request -> bool
       end
     ]} *)
 val ok: ?id:id -> 'res -> 'res response
+
 (** Create a response with an optional ID (defaults to Null) *)
 module type ApplicationProtocol = sig
   type request
   (** Application-specific request type *)
   type response
+
   (** Application-specific response type. This should include all possible
       server states including errors (e.g., NotFound, BuildFailed, etc.) as
       variants. These are not "errors" in the RPC sense - they're valid
       responses from the server. *)
   val response_to_json: response -> Json.t
+
   (** Convert typed response to JSON for transmission *)
   val response_of_json: Json.t -> (response, Json.t) result
+
   (** Parse JSON into typed response, returns error as Json.t on failure *)
   val request_to_params: request -> prerequest
+
   (** Convert typed request to method name and parameters *)
   val request_of_params: string -> params -> (request, Json.t) result
+
   (** Parse parameters into typed request for the given method name, returns
       error as Json.t on failure *)
 end
@@ -151,25 +165,32 @@ module Client: sig
     (** Transport interface for sending/receiving JSON-RPC messages.
         Implementations might use TCP, HTTP, WebSockets, etc. *)
     type t
+
     (** Transport connection type *)
     val send: t -> string -> (unit, string) result
+
     (** Send a string message over the transport *)
     val receive: t -> (string, string) result
+
     (** Receive a string message from the transport *)
     val close: t -> unit
+
     (** Close the transport connection *)
   end
 
   type ('request, 'response) t
+
   (** Client type parameterized by application request/response types *)
   val create:
     transport:(module Transport with type t = 'transport) ->
     protocol:(module ApplicationProtocol with type request = 'req and type response = 'res) ->
     'transport ->
     ('req, 'res) t
+
   (** Create a new client with the given transport and protocol. The protocol
       defines how to convert between typed values and JSON. *)
   val call: ('req, 'res) t -> method_:string -> ?params:params -> unit -> ('res, error) result
+
   (** Send a raw JSON-RPC request and wait for response.
       - Ok(response): Server successfully processed the request and returned a
         response
@@ -178,21 +199,27 @@ module Client: sig
       Note: Server errors/failures are part of the response type, not Error
       results. *)
   val notify: ('req, 'res) t -> method_:string -> ?params:params -> unit -> (unit, error) result
+
   (** Send a notification (no response expected). Notifications are
       fire-and-forget - the server will not send a response. *)
   val call_batch: ('req, 'res) t -> 'req list -> ('res response list, error) result
+
   (** Send a batch of typed requests and receive batch response. All requests
       are sent together and responses are returned together. Useful for reducing
       round-trip latency. *)
   val send_request: ('req, 'res) t -> 'req -> (unit, error) result
+
   (** Send a typed request without waiting for response. Use with
       receive_response for streaming or async patterns. *)
   val receive_response: ('req, 'res) t -> ('res response, error) result
+
   (** Receive and parse a typed response. Use after send_request to complete the
       request/response cycle. *)
   val close: ('req, 'res) t -> unit
+
   (** Close the client and underlying transport connection *)
 end
+
 (** Helper functions for creating responses - REMOVED: use ok and error above
     instead *)
 module Server: sig
@@ -203,15 +230,18 @@ module Server: sig
   }
   (** Method handler type - takes reply function and typed request *)
   type ('request, 'response) t
+
   (** Server configuration *)
   val create:
     protocol:(module ApplicationProtocol with type request = 'req and type response = 'res) ->
     methods:('req, 'res) handler list ->
     ('req, 'res) t
+
   (** Create a new server with the given protocol and method handlers. Each
       handler will be called when its method name is invoked. The protocol
       defines how to convert between typed values and JSON. *)
   val handle_message: ('req, 'res) t -> (string -> unit) -> string -> unit
+
   (** Process a JSON-RPC message string and call the appropriate handler. The
       reply function will be called with a JSON-RPC response string ready to
       send. For notifications, handlers are called but no reply is sent.

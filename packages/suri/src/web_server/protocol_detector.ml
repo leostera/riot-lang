@@ -40,6 +40,7 @@ let http2_handler =
     handle_shutdown = Http2_handler.handle_shutdown;
     handle_message = Http2_handler.handle_message;
   }
+
 (** Detect HTTP/2 by checking for connection preface *)
 let is_http2 = fun data ->
   let preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" in
@@ -49,6 +50,7 @@ let is_http2 = fun data ->
     None
 
 (* Need more data *)
+
 (** Detect HTTP/1.1 by checking for HTTP method *)
 let is_http1 = fun data ->
   let methods = [ "GET"; "POST"; "PUT"; "DELETE"; "HEAD"; "OPTIONS"; "PATCH"; "CONNECT"; "TRACE" ] in

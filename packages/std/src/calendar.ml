@@ -1,4 +1,5 @@
 open Global
+
 (** Pure Gregorian calendar computations *)
 (** {1 Types} *)
 
@@ -56,6 +57,7 @@ let days_from_0_to_10000 = 2_932_897
 let seconds_from_0_to_1970 = days_from_0_to_1970 * seconds_per_day
 
 (** {1 Helper Functions} *)
+
 (** Days in previous years (from Erlang calendar.erl) *)
 let dy = fun year ->
   if year <= 0 then
@@ -63,6 +65,7 @@ let dy = fun year ->
   else
     let x = year - 1 in
     (x / 4) - (x / 100) + (x / 400) + (x * days_per_year) + days_per_leap_year
+
 (** Days in previous months (January = 1 .. December = 12) *)
 let dm = function
   | 1 -> 0
@@ -78,6 +81,7 @@ let dm = function
   | 11 -> 304
   | 12 -> 334
   | m -> panic ("dm: invalid month " ^ string_of_int m)
+
 (** Leap year adjustment for months after February *)
 let df = fun year month ->
   if month < 3 then
@@ -138,6 +142,7 @@ let date_to_gregorian_days = fun { year; month; day } ->
       ^ string_of_int day)
   else
     dy year + dm month + df year month + day - 1
+
 (** Convert day-of-year to date within a year *)
 let year_day_to_date = fun year day_of_year ->
   let extra_day =
@@ -189,6 +194,7 @@ let year_day_to_date = fun year day_of_year ->
       find_month (m + 1)
   in
   find_month 1
+
 (** Convert gregorian days to year and day-of-year *)
 let day_to_year = fun days ->
   if days < 0 then
@@ -255,6 +261,7 @@ let day_of_week = fun ({ year; month; day } as date) ->
     ((days + 5) mod 7) + 1
 
 (** {1 ISO Week Number} *)
+
 (** Get gregorian days for the Monday of ISO week 1 in the given year *)
 let gregorian_days_of_iso_w01_1 = fun year ->
   let jan1_date = { year; month = 1; day = 1 } in

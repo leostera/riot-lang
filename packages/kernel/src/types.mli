@@ -20,4 +20,5 @@ type signal_behavior = Stdlib.Sys.signal_behavior =
   | Signal_default
   | Signal_ignore
   | Signal_handle of (int -> unit)
+
 (** Behavior for signal handling *)

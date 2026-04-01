@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Simple Basic Auth demo - protecting admin routes *)
 let home_handler = fun conn _req ->
   let html = String.concat ""

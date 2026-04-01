@@ -25,6 +25,7 @@ type case_range = {
 (* Case conversion ranges                     *)
 
 (* ============================================ *)
+
 (** Table of case conversion ranges *)
 let case_ranges = [|{
     lo = 0x0041;
@@ -1995,6 +1996,7 @@ let case_ranges = [|{
     to_lower = Delta 0;
     to_title = Delta (-34);
   };|]
+
 (** Apply case delta to a code point *)
 let apply_delta : int -> case_delta -> int -> int = fun r delta case_type ->
   match delta with
@@ -2003,8 +2005,6 @@ let apply_delta : int -> case_delta -> int -> int = fun r delta case_type ->
       (* In an Upper-Lower sequence, the characters at even offsets
          are upper case; the ones at odd offsets are lower.
          UpperCase=0, LowerCase=1, TitleCase=2 *)
-      let offset = r land 1 in
-      (* Get low bit *)
       if case_type = 1 then
         r lor 1
         (* Set low bit *)
@@ -2012,6 +2012,7 @@ let apply_delta : int -> case_delta -> int -> int = fun r delta case_type ->
         r land (lnot 1)
 
 (* Clear low bit *)
+
 (** Binary search for case range containing code point *)
 let find_case_range : case_range array -> int -> case_range option = fun ranges r ->
   let rec search lo hi =
@@ -2028,6 +2029,7 @@ let find_case_range : case_range array -> int -> case_range option = fun ranges 
         Some range
   in
   search 0 (Array.length ranges - 1)
+
 (** Convert code point to uppercase *)
 let to_upper : int -> int = fun r ->
   if r >= 0x61 && r <= 0x7a then
@@ -2037,6 +2039,7 @@ let to_upper : int -> int = fun r ->
     match find_case_range case_ranges r with
     | Some range -> apply_delta r range.to_upper 0
     | None -> r
+
 (** Convert code point to lowercase *)
 let to_lower : int -> int = fun r ->
   if r >= 0x41 && r <= 0x5a then
@@ -2046,6 +2049,7 @@ let to_lower : int -> int = fun r ->
     match find_case_range case_ranges r with
     | Some range -> apply_delta r range.to_lower 1
     | None -> r
+
 (** Convert code point to titlecase *)
 let to_title : int -> int = fun r ->
   if r >= 0x61 && r <= 0x7a then

@@ -30,9 +30,12 @@
     Benchmarking | [Instant] | | Calendar operations | [DateTime] (separate module) | *)
 
 module Duration = Duration
+
 (** Spans of time with nanosecond precision. See [Duration]. *)
 module Instant = Instant
+
 (** Monotonic clock measurements immune to system clock changes. See [Instant].
 *)
 module SystemTime = System_time
+
 (** Wall-clock time for timestamps and calendar operations. See [SystemTime]. *)

@@ -8,6 +8,7 @@ type detection_result = {
   bin_prefix: string;
   c_compiler: Path.t option;
 }
+
 (** Derive binary prefix from target triplet *)
 let bin_prefix_of_triplet = fun triplet ->
   let open System.Host in
@@ -19,6 +20,7 @@ let bin_prefix_of_triplet = fun triplet ->
     | _ -> ""
 
 (* Unknown - will try to detect *)
+
 (** Find C compiler in PATH *)
 let find_c_compiler = fun bin_prefix ->
   let gcc_name = bin_prefix ^ "gcc" in
@@ -28,6 +30,7 @@ let find_c_compiler = fun bin_prefix ->
       let cc_path = String.trim output.stdout in
       Some (Path.v cc_path)
   | _ -> None
+
 (** Detect sysroot from C compiler *)
 let detect_sysroot = fun cc_path ->
   let sysroot_cmd = Command.make ~args:[ "-print-sysroot" ] (Path.to_string cc_path) in
@@ -39,6 +42,7 @@ let detect_sysroot = fun cc_path ->
       else
         Some (Path.v sysroot_str)
   | _ -> None
+
 (** Get bin directory from compiler path *)
 let bin_dir_of_compiler = fun cc_path -> Path.parent cc_path
 
@@ -75,6 +79,7 @@ let bundled_sysroot = fun ~toolchain_root ~target_triplet ->
       Path.(toolchain_root / v ("sysroot-" ^ target));
       Path.(toolchain_root / v "gcc" / v target / v "sysroot");
     ]
+
 (** Detect cross-compilation toolchain for target *)
 let detect = fun ?toolchain_root () ~target_triplet ->
   let bin_prefix = bin_prefix_of_triplet target_triplet in
@@ -133,6 +138,7 @@ let detect = fun ?toolchain_root () ~target_triplet ->
         | None -> Log.warn "⚠ No sysroot found for cross-compiler"
       );
       { sysroot; bin_dir; bin_prefix; c_compiler = Some cc_path }
+
 (** Get full path to a cross-compilation binary *)
 let binary_path = fun config bin_name ->
   match config.bin_dir with

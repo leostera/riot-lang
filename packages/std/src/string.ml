@@ -248,6 +248,7 @@ let wrap_words = fun ~width:target_width s ->
           trim current_line :: build_lines word word_width rest
   in
   build_lines "" 0 words
+
 (** Check if a string contains a substring *)
 let contains = fun haystack needle ->
   let needle_len = length needle in

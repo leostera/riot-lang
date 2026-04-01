@@ -7,6 +7,8 @@
 open Std
 
 val render_to_string: Render.command_list -> string
+
 (** Convert render commands to ANSI string with absolute cursor positioning *)
 val render: Render.command_list -> unit
+
 (** Print render commands directly to stdout *)

@@ -61,12 +61,14 @@ val file_type: t -> [
   ]
 
 val is_file: t -> bool
+
 (** Returns [true] if this is a directory.
 
     ## Examples
 
     ```ocaml if Metadata.is_dir meta then list_directory path ``` *)
 val is_dir: t -> bool
+
 (** Returns [true] if this is a symbolic link.
 
     ## Examples
@@ -74,6 +76,7 @@ val is_dir: t -> bool
     ```ocaml if Metadata.is_symlink meta then Log.warn "Following symlink" ```
 *)
 val is_symlink: t -> bool
+
 (** Returns file size in bytes.
 
     ## Examples
@@ -86,6 +89,7 @@ val is_symlink: t -> bool
     For directories, this is the size of the directory structure itself, not the
     total size of contained files. *)
 val len: t -> int
+
 (** Returns file permissions.
 
     ## Examples
@@ -106,6 +110,7 @@ val permissions: t -> Permissions.t
 
     Some filesystems or mount options (noatime) may not update access times. *)
 val accessed: t -> float
+
 (** Returns last modification time (mtime) as seconds since Unix epoch.
 
     ## Examples
@@ -113,6 +118,7 @@ val accessed: t -> float
     ```ocaml let mtime = Metadata.modified meta in if mtime > last_build_time
     then rebuild_needed () ``` *)
 val modified: t -> float
+
 (** Returns creation time (birth time) if available.
 
     ## Examples
@@ -135,6 +141,7 @@ val created: t -> float option
     ```ocaml let mode = Metadata.mode meta in Printf.printf "Mode: 0o%o\n" mode
     ``` *)
 val mode: t -> int
+
 (** Returns user ID of the file owner.
 
     ## Examples
@@ -142,12 +149,14 @@ val mode: t -> int
     ```ocaml let uid = Metadata.uid meta in if uid = Unix.getuid () then
     Log.info "You own this file" ``` *)
 val uid: t -> int
+
 (** Returns group ID of the file.
 
     ## Examples
 
     ```ocaml let gid = Metadata.gid meta ``` *)
 val gid: t -> int
+
 (** Returns number of hard links to the file.
 
     ## Examples
@@ -155,18 +164,21 @@ val gid: t -> int
     ```ocaml let links = Metadata.nlink meta in if links > 1 then Log.info "File
     has %d hard links" links ``` *)
 val nlink: t -> int
+
 (** Returns inode number.
 
     ## Examples
 
     ```ocaml let inode = Metadata.ino meta ``` *)
 val ino: t -> int
+
 (** Returns device ID containing the file.
 
     ## Examples
 
     ```ocaml let device = Metadata.dev meta ``` *)
 val dev: t -> int
+
 (** Returns device ID for special files (block/character devices).
 
     ## Examples

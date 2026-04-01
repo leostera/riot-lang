@@ -63,12 +63,14 @@ let reset = fun decoder ->
 let dynamic_table_size = fun decoder ->
   (* Access internal dynamic table size - simplified for now *)
   4_096
+
 (** Try to read one byte from reader *)
 let read_byte = fun reader ->
   let buf = Bytes.create 1 in
   match IO.Reader.read reader buf with
   | Ok 1 -> Some (Char.code (Bytes.get buf 0))
   | _ -> None
+
 (** Try to read N bytes from reader *)
 let read_n_bytes = fun reader n ->
   if n = 0 then
@@ -78,6 +80,7 @@ let read_n_bytes = fun reader n ->
     match IO.Reader.read reader buf with
     | Ok bytes_read when bytes_read = n -> Some buf
     | _ -> None
+
 (** Decode variable-length integer (reentrant) *)
 let decode_varint_incremental = fun reader first_byte prefix_bits accumulated multiplier ->
   let prefix_mask = (1 lsl prefix_bits) - 1 in
@@ -116,10 +119,8 @@ let handle_indexed_header = fun decoder reader first_byte decode_next ->
 
 let handle_literal_incremental = fun decoder reader first_byte decode_next ->
   match decode_varint_incremental reader first_byte 6 0 1 with
-  | Result.Error Need_more_data ->
-      Need_more
-  | Result.Error e ->
-      Error e
+  | Result.Error Need_more_data -> Need_more
+  | Result.Error e -> Error e
   | Result.Ok (name_index, _, _) ->
       if name_index = 0 then
         match read_byte reader with

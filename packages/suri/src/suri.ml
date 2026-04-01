@@ -22,6 +22,7 @@ module WebServer = Web_server
 module Channel = Channel
 module Connection = Socket_pool.Connection
 module Handler = Web_server.Handler
+
 (** Suri.config () -> creates configuration with optional parameters *)
 let config = fun ?(host = "0.0.0.0") ?(port = 4_000) ?(acceptors = Std.System.available_parallelism) ?(max_request_line_length = 8_192) ?(max_header_count = 100) ?(max_header_length = 8_192) ?(buffer_size = 4_096) ?(liveview_secret = "INSECURE-CHANGE-ME-TO-AT-LEAST-32-CHARS") () ->
   Config.{
@@ -34,6 +35,7 @@ let config = fun ?(host = "0.0.0.0") ?(port = 4_000) ?(acceptors = Std.System.av
     buffer_size;
     liveview_secret;
   }
+
 (** Suri.start_link app -> starts the web server
     
     Handler is just a Middleware.t (a list of Conn.t -> Conn.t functions).

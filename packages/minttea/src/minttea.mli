@@ -5,6 +5,7 @@
 
 *)
 open Std
+
 (** Configuration *)
 module Config: sig
   type render_mode =
@@ -23,6 +24,7 @@ end
 
 val config:
   ?render_mode:Config.render_mode -> ?fps:int -> ?output:Config.output_target -> unit -> Config.t
+
 (** Create a configuration with optional parameters *)
 
 (** Terminal events *)
@@ -91,6 +93,7 @@ module Event: sig
 
   val modifier_to_string: modifier -> string
 end
+
 (** Terminal commands *)
 module Command: sig
   type mouse_mode =
@@ -114,10 +117,13 @@ module Command: sig
     | SetTimer of { ref: Timer.id Ref.t; duration: Time.Duration.t }
   val timer: after:Time.Duration.t -> Timer.id Ref.t * t
 end
+
 (** Declarative layout system - re-exported from Gooey *)
 module Element = Gooey.Element
+
 (** Styles module for terminal text styling - re-exported from Gooey *)
 module Style = Gooey.Style
+
 (** Application definition *)
 module App: sig
   type 'model t
@@ -137,8 +143,11 @@ val app:
   view:('model -> Gooey.Element.t) ->
   unit ->
   'model App.t
+
 (** Create a new application *)
 val run: ?config:Config.t -> 'model -> 'model App.t -> (unit, Process.exit_reason) result
+
 (** Run the application *)
 val start: ?config:Config.t -> 'model App.t -> 'model -> unit
+
 (** Start the application with Miniriot runtime *)

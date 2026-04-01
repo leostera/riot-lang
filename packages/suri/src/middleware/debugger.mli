@@ -145,6 +145,7 @@
     - [Printexc] - OCaml exception and backtrace utilities
 *)
 val debugger: conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t
+
 (** Debugger middleware that catches exceptions and displays detailed error pages.
     
     Catches exceptions, logs them to console, and sends beautiful HTML error pages.

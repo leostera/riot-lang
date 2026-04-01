@@ -449,6 +449,7 @@ let hash = fun t ->
       )
   in
   Crypto.Sha256.finish hasher
+
 (** Initialize toolchain for a specific target architecture *)
 let init_for_target = fun ~config ~target ->
   let version = config.Tusk_model.Toolchain_config.version in
@@ -550,6 +551,7 @@ let init_for_target = fun ~config ~target ->
       else
         (* Cross-compilation - download cross-toolchain *)
         refresh ()
+
 (** Get toolchain for specific target (lazy initialization) *)
 let get_for_target = fun ~config ~target -> init_for_target ~config ~target
 

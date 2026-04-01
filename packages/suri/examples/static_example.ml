@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Static Files Middleware Example
     
     Demonstrates serving static files with security, caching, and directory browsing.
@@ -43,16 +44,19 @@ let api_info = fun conn _req ->
   |> Conn.respond ~status:Net.Http.Status.Ok ~body:(Data.Json.to_string json)
   |> Conn.with_header "content-type" "application/json"
   |> Conn.send
+
 (** Root redirect *)
 let root = fun conn _req ->
   conn
   |> Conn.respond ~status:Net.Http.Status.MovedPermanently ~body:""
   |> Conn.with_header "location" "/public/"
   |> Conn.send
+
 (** API routes *)
 let routes = Middleware.Router.[get "/" root;
 get "/api/status" api_status;
 get "/api/info" api_info]
+
 (** Application with static files middleware *)
 let app =
   Middleware.[

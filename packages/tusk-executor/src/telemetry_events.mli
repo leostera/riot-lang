@@ -22,6 +22,7 @@ type warning_source =
   | `Fresh
   | `Cached
 ]
+
 (** Telemetry events for build system operations.
     
     These events extend the Std.Telemetry.event type and provide
@@ -139,11 +140,13 @@ type Telemetry.event +=
       built_count: int;
       failed_count: int
     }
+
 (** Convert a telemetry event to JSON.
     
     Returns [Some json] if the event is one of the build telemetry events,
     or [None] if it's a different type of event. *)
 val to_json: Telemetry.event -> Data.Json.t option
+
 (** Parse a telemetry event from JSON.
 
     Note: Action-related events (ActionStarted, ActionCompleted, etc.) can be

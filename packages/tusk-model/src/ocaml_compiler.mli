@@ -25,6 +25,7 @@ type warning =
   | NoCmiFile
   (** Warning 49: missing cmi when looking up module alias *)
   | All
+
 (** All warnings *)
 val warning_to_number: warning -> int
 
@@ -51,6 +52,7 @@ type compilation_kind =
   | Bytecode
   (** ocamlc - fast compilation, slower runtime *)
   | Native
+
 (** ocamlopt - slower compilation, optimized runtime *)
 val compilation_kind_to_string: compilation_kind -> string
 

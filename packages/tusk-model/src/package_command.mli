@@ -12,10 +12,13 @@ type t = {
   command_binary: Path.t;  (* _build/debug/out/minttea/Demo_cmd *)
 }
 val is_built: t -> bool
+
 (** Check if the command binary exists *)
 val status_string: t -> string
+
 (** Human-readable status: "ready" or "not built" *)
 val parse_from_toml: Toml.value list -> package_name:string -> package_path:Path.t -> t list
+
 (** Parse [[command]] declarations from TOML.
     
     Expected format:
@@ -27,4 +30,5 @@ val parse_from_toml: Toml.value list -> package_name:string -> package_path:Path
 (* Note: discover_all and find_by_name are in Workspace module to avoid circular dependency *)
 
 val to_json: t -> Json.t
+
 (** Serialize for caching/debugging *)

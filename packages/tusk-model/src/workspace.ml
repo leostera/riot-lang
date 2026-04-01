@@ -56,19 +56,22 @@ let parse_dependency : string -> Toml.value -> (Package.dependency, string) resu
                 Ok (make_dependency (Package.Registry { version = Version.any }))
         )
     )
-  | Toml.String requirement ->
-      (match validate_requirement ~dependency_name:name requirement with
+  | Toml.String requirement -> (
+      match validate_requirement ~dependency_name:name requirement with
       | Error _ as err -> err
       | Ok version ->
           if Package.is_builtin_dependency_name name then
             if String.equal (Version.requirement_to_string version) "*" then
               Ok (make_dependency Package.Builtin)
             else
-              Error ("builtin dependency '" ^ name ^ "' does not support version requirement '"
+              Error ("builtin dependency '"
+              ^ name
+              ^ "' does not support version requirement '"
               ^ Version.requirement_to_string version
               ^ "'")
           else
-            Ok (make_dependency (Package.Registry { version })))
+            Ok (make_dependency (Package.Registry { version }))
+    )
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
 
@@ -218,6 +221,7 @@ let make ~root ~packages ?(profile_overrides = []) ?target_dir () : t = {
   packages;
   profile_overrides
 }
+
 (** Utility functions *)
 let project_id = fun workspace ->
   let root_str = Path.to_string workspace.root in
@@ -235,6 +239,7 @@ let server_port = fun workspace ->
   let hash_int = Std.Crypto.Digest.to_int hash in
   let port_range = 65_535 - 49_152 in
   50_152 + (abs hash_int mod port_range)
+
 (** Command discovery functions - moved here to avoid circular dependency *)
 let discover_commands : t -> Package_command.t list = fun workspace ->
   List.concat_map (fun (pkg: Package.t) -> pkg.commands) workspace.packages

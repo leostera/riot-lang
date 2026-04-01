@@ -104,6 +104,7 @@ open Std
       ]
     ]} *)
 type t
+
 (** Get session from connection.
     
     Creates new session if none exists or cookie invalid.
@@ -126,6 +127,7 @@ val middleware:
   (conn:Conn.t -> next:(Conn.t -> Conn.t) -> Conn.t)
 
 val get: Conn.t -> t
+
 (** Get value from session by key.
     
     Returns [None] if key doesn't exist.
@@ -137,6 +139,7 @@ val get: Conn.t -> t
       | None -> (* No user ID *)
     ]} *)
 val get_value: string -> t -> string option
+
 (** Set value in session. Marks session as modified.
     
     Session will be saved to cookie on response.
@@ -147,6 +150,7 @@ val get_value: string -> t -> string option
       Session.put "username" "alice" session;
     ]} *)
 val put: string -> string -> t -> unit
+
 (** Delete value from session by key.
     
     Marks session as modified.
@@ -156,6 +160,7 @@ val put: string -> string -> t -> unit
       Session.delete "user_id" session
     ]} *)
 val delete: string -> t -> unit
+
 (** Clear all session data.
     
     Useful for logout - removes all keys but keeps session.
@@ -168,11 +173,13 @@ val delete: string -> t -> unit
         conn |> Conn.respond ~status:Ok ~body:"Logged out" |> Conn.send
     ]} *)
 val clear: t -> unit
+
 (** Check if session is expired.
     
     Automatically handled by middleware, but can be useful
     for manual session validation. *)
 val is_expired: t -> bool
+
 (** Check if session was modified.
     
     Used internally to determine if cookie needs updating. *)

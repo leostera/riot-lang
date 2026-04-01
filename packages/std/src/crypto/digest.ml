@@ -2,6 +2,7 @@
 open Global
 open IO
 open Kernel.Crypto
+
 (** Convert hash to hexadecimal string *)
 let hex = fun hash ->
   let bytes = Hash.to_bytes hash in
@@ -21,6 +22,7 @@ let hex = fun hash ->
     Buffer.add_char buf (hex_char lo)
   done;
   Buffer.contents buf
+
 (** Convert hash to base64 string *)
 let base64 = fun hash ->
   let bytes = Hash.to_bytes hash in
@@ -59,6 +61,7 @@ let base64 = fun hash ->
   in
   encode 0;
   Buffer.contents buf
+
 (** Convert hash to URL-safe base64 string *)
 let base64_url = fun hash ->
   let b64 = base64 hash in
@@ -70,8 +73,10 @@ let base64_url = fun hash ->
       | c -> c
     )
     b64
+
 (** Get raw bytes of hash *)
 let bytes = Hash.to_bytes
+
 (** Convert hash to int64 (truncates if necessary) *)
 let to_int64 = fun hash ->
   let bytes = Hash.to_bytes hash in
@@ -82,5 +87,6 @@ let to_int64 = fun hash ->
     result := Int64.logor !result (Int64.shift_left byte (i * 8))
   done;
   !result
+
 (** Convert hash to int (truncates) *)
 let to_int = fun hash -> Int64.to_int (to_int64 hash)

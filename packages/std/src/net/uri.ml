@@ -479,6 +479,7 @@ let compare = fun url1 url2 ->
   String.compare (to_string url1) (to_string url2)
 
 (* Percent encoding/decoding *)
+
 (** Check if character is unreserved per RFC 3986 Section 2.3 *)
 let is_unreserved = function
   | 'a' .. 'z'
@@ -489,12 +490,14 @@ let is_unreserved = function
   | '_'
   | '~' -> true
   | _ -> false
+
 (** Convert integer to hex char (0-15 -> '0'-'F') *)
 let int_to_hex = fun n ->
   if n < 10 then
     Char.chr (Char.code '0' + n)
   else
     Char.chr (Char.code 'A' + n - 10)
+
 (** Encode string per RFC 3986 - encode all except unreserved *)
 let percent_encode = fun str ->
   let len = String.length str in
@@ -519,6 +522,7 @@ let percent_encode = fun str ->
         encode (i + 1)
   in
   encode 0
+
 (** Encode for application/x-www-form-urlencoded (space -> +) *)
 let form_encode = fun str ->
   let len = String.length str in
@@ -548,6 +552,7 @@ let form_encode = fun str ->
         encode (i + 1)
   in
   encode 0
+
 (** Decode percent-encoded string per RFC 3986 *)
 let percent_decode = fun str ->
   let len = String.length str in
@@ -583,6 +588,7 @@ let percent_decode = fun str ->
           decode (i + 1)
   in
   decode 0
+
 (** Decode application/x-www-form-urlencoded (+ -> space) *)
 let form_decode = fun str ->
   let len = String.length str in

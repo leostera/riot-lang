@@ -40,6 +40,7 @@
 include module type of Kernel.Collections
 
 (* Std-specific collections *)
+
 (** Double-ended queue for efficient operations at both ends. See [Deque]. *)
 
 (** Binary heap for priority queue operations. See [Heap]. *)

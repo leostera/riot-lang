@@ -279,7 +279,7 @@ stdlib = "*"
     ~relative_path:(Path.v "packages/demo")
   |> Result.expect ~msg:"expected package manifest to parse" in
   match pkg.dependencies with
-  | [ { Tusk_model.Package.name = "stdlib"; source = Tusk_model.Package.Builtin } ] -> Ok ()
+  | [ { Tusk_model.Package.name="stdlib"; source=Tusk_model.Package.Builtin } ] -> Ok ()
   | _ -> Error "expected stdlib '*' to parse as a builtin dependency"
 
 let test_package_builtin_dependency_rejects_version_constraints = fun () ->

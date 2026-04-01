@@ -26,6 +26,7 @@ type config =
 
 let gen_id = fun () ->
   "conn_" ^ string_of_int (Random.int 1_000_000) ^ "_" ^ string_of_int (Random.int 1_000_000)
+
 (** Create a new connection - connects directly, no spawned process *)
 let create = fun (Config { driver; config }) ->
   let module D = (val driver) in
@@ -46,6 +47,7 @@ let create = fun (Config { driver; config }) ->
     to_string = D.error_to_string;
     to_json = D.error_to_json
   })
+
 (** Query executes DIRECTLY in caller's process *)
 let query = fun (Connection t) sql params ->
   t.last_used <- Time.Instant.now ();
@@ -73,6 +75,7 @@ let query = fun (Connection t) sql params ->
           in
           Ok cursor
     )
+
 (** Execute runs DIRECTLY in caller's process *)
 let execute = fun (Connection t) sql params ->
   t.last_used <- Time.Instant.now ();
@@ -92,10 +95,12 @@ let execute = fun (Connection t) sql params ->
       })
       | Ok result_set -> Ok (D.rows_affected result_set)
     )
+
 (** Ping executes DIRECTLY in caller's process *)
 let ping = fun (Connection t) ->
   let module D = (val t.driver) in
   D.ping t.driver_conn
+
 (** Close the underlying driver connection *)
 let close = fun (Connection t) ->
   let module D = (val t.driver) in

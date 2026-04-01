@@ -1,12 +1,15 @@
 open Std
+
 (** Check if IP string is in trusted proxy list *)
 let is_trusted_proxy = fun proxies ip_str ->
   List.exists (String.equal ip_str) proxies
+
 (** Extract IPs from X-Forwarded-For header *)
 let parse_forwarded_for = fun header_value ->
   String.split_on_char ',' header_value
   |> List.map String.trim
   |> List.filter (fun s -> String.length s > 0)
+
 (** Find real client IP by walking X-Forwarded-For chain from right to left *)
 let find_real_ip = fun proxies forwarded_ips ->
   (* Walk from right to left (closest proxy first) *)
@@ -21,6 +24,7 @@ let find_real_ip = fun proxies forwarded_ips ->
           Some ip_str
   in
   walk_chain (List.rev forwarded_ips)
+
 (** Remote IP middleware *)
 let middleware = fun ?(header = "x-forwarded-for") () ~proxies ~conn ~next ->
   (* If no proxies configured, pass through unchanged (safe default) *)

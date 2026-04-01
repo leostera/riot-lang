@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Basic Auth with different credentials for different routes *)
 let home_handler = fun conn _req ->
   let html = String.concat ""

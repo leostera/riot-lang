@@ -24,12 +24,14 @@
     - **Direct API** ([hash_string], etc.): When hashing complete values
 
     See [Crypto] for the default algorithm and convenience functions. *)
+
 (** Interface that all hash algorithms must implement *)
 module type Intf = sig
   (** Internal state of the state *)
   (** Create a new state state *)
   type state
   val create: unit -> state
+
   (** Write data to the state *)
   val write: state -> bytes -> unit
 
@@ -50,8 +52,10 @@ module type Intf = sig
   val write_list: (state -> 'a -> unit) -> state -> 'a list -> unit
 
   val write_array: (state -> 'a -> unit) -> state -> 'a array -> unit
+
   (** Finalize and get the hash *)
   val finish: state -> Kernel.Crypto.hash
+
   (** Convenience functions to hash values directly *)
   val hash_string: string -> Kernel.Crypto.hash
 

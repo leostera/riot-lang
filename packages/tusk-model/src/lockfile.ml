@@ -285,20 +285,22 @@ let render_dependency_list = fun deps ->
 
 let render_package = fun (pkg: package) ->
   let header_lines =
-    [ Some ("name = " ^ render_string pkg.id.name);
-      (match pkg.id.registry with
-      | Some registry -> Some ("registry = " ^ render_string registry)
-      | None -> None);
-      (match pkg.id.version with
-      | Some version -> Some ("version = " ^ render_string version)
-      | None -> None);
-      (match pkg.root with
-      | Some root -> Some ("root = " ^ render_string (Path.to_string root))
-      | None -> None);
-      Some ("provenance = " ^ render_provenance pkg.provenance);
-      Some ("dependencies = " ^ render_dependency_list pkg.dependencies);
-      Some ("build_dependencies = " ^ render_dependency_list pkg.build_dependencies);
-      Some ("dev_dependencies = " ^ render_dependency_list pkg.dev_dependencies); ]
+    [ Some ("name = " ^ render_string pkg.id.name); (
+        match pkg.id.registry with
+        | Some registry -> Some ("registry = " ^ render_string registry)
+        | None -> None
+      ); (
+        match pkg.id.version with
+        | Some version -> Some ("version = " ^ render_string version)
+        | None -> None
+      ); (
+        match pkg.root with
+        | Some root -> Some ("root = " ^ render_string (Path.to_string root))
+        | None -> None
+      ); Some ("provenance = " ^ render_provenance pkg.provenance); Some ("dependencies = "
+      ^ render_dependency_list pkg.dependencies); Some ("build_dependencies = "
+      ^ render_dependency_list pkg.build_dependencies); Some ("dev_dependencies = "
+      ^ render_dependency_list pkg.dev_dependencies); ]
     |> List.filter_map (fun item -> item)
   in
   String.concat "\n" ("[[packages]]" :: header_lines)
@@ -382,8 +384,8 @@ path = "../vendor/foo"
     match of_toml toml with
     | Ok { packages=[ pkg ]; _ } -> (
         match pkg.provenance, pkg.root with
-        | Path path, Some root when String.equal (Path.to_string path) "../vendor/foo" && String.equal (Path.to_string root) "../vendor/foo" ->
-            Ok ()
+        | Path path, Some root when String.equal (Path.to_string path) "../vendor/foo"
+        && String.equal (Path.to_string root) "../vendor/foo" -> Ok ()
         | _ -> Error "expected path provenance to parse"
       )
     | Ok _ ->

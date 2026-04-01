@@ -2,6 +2,7 @@ open Std
 open Std.Iter
 open Std.Collections
 open Tusk_model
+
 (** Store - Content-addressable storage for build artifacts **)
 module Manifest = Manifest
 
@@ -16,15 +17,18 @@ type export_entry = {
   path: Path.t;
   action_hash: string;
 }
+
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir = Tusk_dirs.cache_dir_with_target ~workspace_root:workspace.root ~profile ~target in
   Fs.create_dir_all store_dir
   |> Result.expect ~msg:(("Failed to create store directory: " ^ Path.to_string store_dir));
   { root_dir = store_dir }
+
 (** Create a new store for the given workspace *)
 let create = fun ~(workspace:Workspace.t) ->
   create_for_lane ~workspace ~profile:"debug" ~target:(Tusk_dirs.host_target ())
+
 (** Get the path for a given hash in the store *)
 let get_hash_dir = fun store hash -> Path.(store.root_dir / Path.v (Std.Crypto.Digest.hex hash))
 
@@ -39,6 +43,7 @@ let exports_dir = fun store -> Path.(store.root_dir / Path.v "exports")
 
 let package_exports_path = fun store ~package ~profile ~target ->
   Path.(exports_dir store / Path.v profile / Path.v target / Path.v (package ^ ".json"))
+
 (** Check if artifacts for a given hash exist in the store *)
 let exists = fun store hash ->
   let hash_dir = get_hash_dir store hash in
@@ -51,6 +56,7 @@ let exists = fun store hash ->
     )
   | Ok false
   | Error _ -> false
+
 (** Promote artifacts from store to target directory *)
 let promote = fun store hash ~target_dir ->
   let hash_dir = get_hash_dir store hash in
@@ -71,6 +77,7 @@ let promote = fun store hash ~target_dir ->
         manifest.files;
       Ok ()
   | Error _ -> Error "Hash not found in store"
+
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts = fun store ~package ?(ocamlc_warnings = []) hash sandbox_dir declared_outputs ->
   let hash_dir = get_hash_dir store hash in
@@ -145,6 +152,7 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) hash sandbox_di
     List.map (fun ((path, _)) -> path) stored_files_with_sizes
   in
   Artifact.{ hash; files = List.rev stored_files; ocamlc_warnings }
+
 (** Simple interface - check if we have cached artifacts for a hash *)
 let get = fun store hash ->
   if exists store hash then
@@ -157,6 +165,7 @@ let get = fun store hash ->
     | Error _ -> None
   else
     None
+
 (** Save build outputs to the store *)
 let save = fun ?(ocamlc_warnings = []) store ~package ~hash ~sandbox_dir ~outs ->
   let sandbox_str = Path.to_string sandbox_dir in
@@ -174,12 +183,15 @@ let save = fun ?(ocamlc_warnings = []) store ~package ~hash ~sandbox_dir ~outs -
   in
   let artifact = store_artifacts store ~package ~ocamlc_warnings hash sandbox_dir outs_str in
   Ok artifact
+
 (** Promote cached artifacts to target directory *)
 let promote_artifact = fun store artifact ~target_dir -> promote store Artifact.(artifact.hash) ~target_dir
+
 (** Get absolute paths to artifact files in immutable cache *)
 let get_artifact_paths = fun store artifact ->
   let hash_dir = get_hash_dir store Artifact.(artifact.hash) in
   List.map (fun rel_path -> Path.(hash_dir / rel_path)) Artifact.(artifact.files)
+
 (** Get the cache directory containing an artifact's files *)
 let get_artifact_dir = fun store artifact -> get_hash_dir store Artifact.(artifact.hash)
 

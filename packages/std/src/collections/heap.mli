@@ -83,6 +83,7 @@ type 'a t
     ```ocaml let heap = Heap.create () in Heap.push heap 5; Heap.push heap 3;
     Heap.pop heap (* Some 3 - min-heap returns smallest *) ``` *)
 val create: unit -> 'a t
+
 (** Creates an empty max-heap using reversed [compare].
 
     ## Examples
@@ -90,6 +91,7 @@ val create: unit -> 'a t
     ```ocaml let heap = Heap.create_max () in Heap.push heap 5; Heap.push heap
     3; Heap.pop heap (* Some 5 - max-heap returns largest *) ``` *)
 val create_max: unit -> 'a t
+
 (** Creates an empty heap with custom comparison function.
 
     The comparison function should return:
@@ -105,6 +107,7 @@ val create_max: unit -> 'a t
     Heap.push heap (-5); Heap.push heap 3; Heap.pop heap (* Some 3 - smallest
     absolute value *) ``` *)
 val create_with: compare:('a -> 'a -> int) -> unit -> 'a t
+
 (** Creates a min-heap from a list. O(n) time complexity.
 
     ## Examples
@@ -112,6 +115,7 @@ val create_with: compare:('a -> 'a -> int) -> unit -> 'a t
     ```ocaml let heap = Heap.of_list [5; 2; 8; 1] in Heap.peek heap (* Some 1 *)
     ``` *)
 val of_list: 'a list -> 'a t
+
 (** Creates a heap from a list with custom comparison. *)
 val of_list_with: compare:('a -> 'a -> int) -> 'a list -> 'a t
 
@@ -123,6 +127,7 @@ val of_list_with: compare:('a -> 'a -> int) -> 'a list -> 'a t
     ```ocaml let heap = Heap.create () in Heap.push heap 5; Heap.push heap 3;
     Heap.size heap (* 2 *) ``` *)
 val push: 'a t -> 'a -> unit
+
 (** Removes and returns the top element (min or max depending on heap type).
     Returns [None] if heap is empty. O(log n).
 
@@ -132,6 +137,7 @@ val push: 'a t -> 'a -> unit
     Heap.pop heap (* Some 3 *) Heap.pop heap (* Some 4 *) Heap.pop heap (* None
     \- empty *) ``` *)
 val pop: 'a t -> 'a option
+
 (** Returns the top element without removing it. O(1).
 
     ## Examples
@@ -139,6 +145,7 @@ val pop: 'a t -> 'a option
     ```ocaml let heap = Heap.of_list [3; 1; 4] in Heap.peek heap (* Some 1 *)
     Heap.peek heap (* Some 1 - still there *) ``` *)
 val peek: 'a t -> 'a option
+
 (** Removes and returns the top element. Raises [Not_found] if empty.
 
     ## Examples
@@ -158,12 +165,14 @@ val peek_exn: 'a t -> 'a
     ```ocaml let heap = Heap.create () in Heap.is_empty heap (* true *)
     Heap.push heap 1; Heap.is_empty heap (* false *) ``` *)
 val is_empty: 'a t -> bool
+
 (** Returns the number of elements in the heap. O(1).
 
     ## Examples
 
     ```ocaml let heap = Heap.of_list [1; 2; 3] in Heap.size heap (* 3 *) ``` *)
 val size: 'a t -> int
+
 (** Removes all elements from the heap.
 
     ## Examples
@@ -180,6 +189,7 @@ val clear: 'a t -> unit
     ```ocaml let heap = Heap.of_list [5; 2; 8; 1] in Heap.to_list heap (*
     [1; 2; 5; 8] *) Heap.is_empty heap (* true - heap is now empty *) ``` *)
 val to_list: 'a t -> 'a list
+
 (** Returns all elements in arbitrary order without emptying the heap. O(n).
 
     ## Examples
@@ -188,6 +198,7 @@ val to_list: 'a t -> 'a list
     Heap.to_list_unordered heap in Heap.size heap (* 4 - heap unchanged *) ```
 *)
 val to_list_unordered: 'a t -> 'a list
+
 (** Iterates over elements in heap order, emptying the heap. O(n log n).
 
     ## Examples
@@ -195,6 +206,7 @@ val to_list_unordered: 'a t -> 'a list
     ```ocaml let heap = Heap.of_list [3; 1; 4] in Heap.iter (fun x -> println
     "%d" x) heap (* Prints: 1, 3, 4 *) ``` *)
 val iter: ('a -> unit) -> 'a t -> unit
+
 (** Folds over elements in heap order, emptying the heap. O(n log n).
 
     ## Examples
@@ -224,6 +236,7 @@ val iter: ('a -> unit) -> 'a t -> unit
 val fold: ('b -> 'a -> 'b) -> 'b -> 'a t -> 'b
 
 val into_iter: 'a t -> 'a Iter.Iterator.t
+
 (** Returns a mutable iterator over the heap's elements in priority order. Note:
     This consumes the heap as you iterate.
 

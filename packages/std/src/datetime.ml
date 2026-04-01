@@ -1,4 +1,5 @@
 open Global
+
 (** Date and time utilities *)
 (* Helper to format integer with zero padding *)
 
@@ -161,6 +162,7 @@ let to_system_time : t -> Time.SystemTime.t = fun t ->
   Time.SystemTime.from_nanos total_nanos
 
 let epoch = Time.SystemTime.epoch |> from_system_time
+
 (** Convert timezone-aware datetime to naive datetime *)
 let to_naive : t -> naive = fun t ->
   let microsecond, _ = t.microseconds in
@@ -173,6 +175,7 @@ let to_naive : t -> naive = fun t ->
     second = t.second;
     microsecond;
   }
+
 (** Convert naive datetime to timezone-aware datetime *)
 let from_naive : naive -> tz:Tz.t -> t = fun naive ~tz ->
   match tz with

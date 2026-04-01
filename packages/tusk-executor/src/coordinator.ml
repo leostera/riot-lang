@@ -673,7 +673,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   update_planning_progress
                     package_key
                     `Planned
-                    ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
+                    ~duration:(Time.Instant.duration_since
+                      ~earlier:planning_start
+                      (Time.Instant.now ()))
                     ~package
                     ~reason:None;
                   if

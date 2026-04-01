@@ -1,6 +1,7 @@
 open Global
 module String = Kernel.String
 module Uchar = Kernel.Uchar
+
 (** UTF-8 encoding/decoding *)
 let decode_rune = fun s pos ->
   if pos < 0 || pos >= String.length s then

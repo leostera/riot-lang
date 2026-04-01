@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Comprehensive example demonstrating all 6 new HTTP middleware:
     
     1. Head Handler - Automatically strips body from HEAD requests
@@ -21,6 +22,7 @@ let users = [
 
 let find_user = fun id ->
   List.find_opt (fun ((uid, _, _)) -> uid = id) users
+
 (** Routes demonstrating the middleware *)
 let routes = Middleware.Router.[get "/"
   (fun conn req ->

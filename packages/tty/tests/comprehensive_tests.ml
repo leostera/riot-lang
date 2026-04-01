@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+
 (** Comprehensive tests for TTY module - tests both TTY state management and Escape_seq *)
 (** ## Test Categories
     

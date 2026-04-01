@@ -29,15 +29,21 @@
     - **base64_url**: URLs, filenames, query parameters
     - **bytes**: Raw binary, further processing
     - **to_int/to_int64**: Hash table indexing, fast comparison *)
+
 (** Convert hash to hexadecimal string. *)
 val hex: Kernel.Crypto.hash -> string
+
 (** Convert hash to base64 string. *)
 val base64: Kernel.Crypto.hash -> string
+
 (** Convert hash to URL-safe base64 string. *)
 val base64_url: Kernel.Crypto.hash -> string
+
 (** Get raw bytes of hash. *)
 val bytes: Kernel.Crypto.hash -> bytes
+
 (** Convert hash to int64 (truncates if necessary). *)
 val to_int64: Kernel.Crypto.hash -> int64
+
 (** Convert hash to int (truncates). *)
 val to_int: Kernel.Crypto.hash -> int

@@ -1,4 +1,5 @@
 include module type of Kernel.Float
+
 (** [to_string ?precision f] converts a float to a string with the specified precision.
     
     The precision parameter controls the number of decimal places (default: 6).

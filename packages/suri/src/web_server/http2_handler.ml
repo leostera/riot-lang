@@ -62,6 +62,7 @@ let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
     settings_sent = Cell.create false;
     buffer = Cell.create sniffed_data;
   }
+
 (** Verify HTTP/2 connection preface *)
 let verify_preface = fun data ->
   let preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" in
@@ -69,6 +70,7 @@ let verify_preface = fun data ->
     String.sub data 0 (String.length preface) = preface
   else
     false
+
 (** Send SETTINGS frame *)
 let send_settings = fun conn ->
   let settings_frame = Http.Http2.Frame.settings
@@ -81,6 +83,7 @@ let send_settings = fun conn ->
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
   | Error `Closed -> Error (`Io_error "Connection closed while sending SETTINGS")
+
 (** Send SETTINGS ACK *)
 let send_settings_ack = fun conn ->
   let ack_frame = Http.Http2.Frame.settings ~ack:true [] in
@@ -88,17 +91,20 @@ let send_settings_ack = fun conn ->
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
   | Error `Closed -> Error (`Io_error "Connection closed while sending SETTINGS ACK")
+
 (** Send HTTP/2 HEADERS frame *)
 let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
   let headers =
     List.map (fun ((name, value)) -> { Http.Http2.Hpack.name; value }) headers
   in
-  let header_block = Http.Http2.Hpack.encode hpack_encoder ~sensitive_headers:[] () ~headers |> Bytes.to_string in
+  let header_block = Http.Http2.Hpack.encode hpack_encoder ~sensitive_headers:[] () ~headers
+  |> Bytes.to_string in
   let frame = Http.Http2.Frame.headers ~stream_id ~end_stream ~end_headers:true header_block in
   let encoded = Http.Http2.Serializer.serialize_frame frame in
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
   | Error `Closed -> Error (`Io_error "Connection closed while sending HEADERS")
+
 (** Send HTTP/2 DATA frame *)
 let send_data = fun conn stream_id data end_stream ->
   let frame = Http.Http2.Frame.data ~stream_id ~end_stream data in
@@ -106,6 +112,7 @@ let send_data = fun conn stream_id data end_stream ->
   match Socket_pool.Connection.send conn encoded with
   | Ok () -> Ok ()
   | Error `Closed -> Error (`Io_error "Connection closed while sending DATA")
+
 (** Convert HTTP/2 headers to Request.t *)
 let headers_to_request = fun conn headers body ->
   let method_ = List.assoc_opt ":method" headers
@@ -122,6 +129,7 @@ let headers_to_request = fun conn headers body ->
   in
   let _ = conn in
   Request.of_http ~body http_request
+
 (** Handle completed stream (all headers and data received *)
 let handle_stream = fun conn state stream_id stream ->
   if not (Cell.get stream.end_stream) then
@@ -150,6 +158,7 @@ let handle_stream = fun conn state stream_id stream ->
                   Ok ()
         )
     | Http_handler.Upgrade _ -> Error (`Protocol_error "HTTP/2 upgrades are not supported")
+
 (** Process a single HTTP/2 frame *)
 let process_frame = fun conn state frame ->
   match frame.Http.Http2.Frame.frame_type, frame.Http.Http2.Frame.payload with
@@ -223,6 +232,7 @@ let process_frame = fun conn state frame ->
         Ok ()
   | _, _ ->
       Ok ()
+
 (** Main data handler *)
 let handle_data = fun data conn state ->
   (* Accumulate data in buffer *)

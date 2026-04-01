@@ -16,8 +16,7 @@ type materialize_result =
   `Materialized
   | `Already_present
 ]
-val create_filesystem:
-  registry_name:string -> ?tusk_home:Path.t -> unit -> (t, string) result
+val create_filesystem: registry_name:string -> ?tusk_home:Path.t -> unit -> (t, string) result
 
 val filesystem: Registry_cache.t -> t
 
@@ -38,8 +37,4 @@ val read_config: t -> (Sparse_index.config option, string) result
 val read_package_document:
   t -> package_name:string -> (Sparse_index.package_document option, string) result
 
-val materialize_release:
-  t ->
-  package_name:string ->
-  version:string ->
-  (materialize_result, string) result
+val materialize_release: t -> package_name:string -> version:string -> (materialize_result, string) result

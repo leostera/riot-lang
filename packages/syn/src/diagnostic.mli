@@ -1,4 +1,5 @@
 open Std
+
 (** Parse Diagnostics - Structured Error Information
 
     This module defines structured representations of parse errors.
@@ -112,29 +113,35 @@ val make: kind:kind -> span:Ceibo.Span.t -> t
     Example: ```ocaml Diagnostic.malformed_type_variable ~found:token ~text:" "
     ~span:error_span ``` *)
 val malformed_type_variable: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
 (** Create a "missing let binding pattern" diagnostic.
 
     Example: ```ocaml Diagnostic.missing_let_binding_pattern ~found:equals_token
     ~text:"=" ~span:error_span ``` *)
 val missing_let_binding_pattern: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
 (** Create a "missing let binding equals" diagnostic.
 
     Example: ```ocaml Diagnostic.missing_let_binding_equals ~found:int_token
     ~text:"42" ~span:error_span ``` *)
 val missing_let_binding_equals: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
 (** Create a "missing let binding expression" diagnostic.
 
     Example: ```ocaml Diagnostic.missing_let_binding_expr ~found:eof_token
     ~text:"" ~span:error_span ``` *)
 val missing_let_binding_expr: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
 (** Create an "unexpected structure item" diagnostic.
 
     Example: ```ocaml Diagnostic.unexpected_structure_item ~found:token
     ~text:"42" ~span:error_span ``` *)
 val unexpected_structure_item: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
 (** Create an "unexpected closing delimiter" diagnostic. *)
 val unexpected_closing_delimiter:
   delimiter:string -> found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
 (** Create a "missing module declaration equals" diagnostic. *)
 val missing_module_decl_equals: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
@@ -153,6 +160,7 @@ val missing_module_expr: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 val missing_with_keyword: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
 
 val invalid_module_name: found:Token.t -> text:string -> span:Ceibo.Span.t -> t
+
 (** Create an "unexpected signature item" diagnostic.
 
     Example: ```ocaml Diagnostic.unexpected_signature_item ~found:token
@@ -242,18 +250,24 @@ val poly_type_missing_dot: found:Token.t -> text:string -> span:Ceibo.Span.t -> 
 (** # Serialization *)
 (** `error_id diag` returns the error ID for this diagnostic. *)
 val error_id: t -> Error.id
+
 (** `id diag` returns the unique error identifier string for this diagnostic. *)
 val id: t -> string
+
 (** `kind_to_expected kind` returns what was expected at this position. *)
 val expected_message: t -> string
+
 (** `kind_to_fix kind` returns a quick fix suggestion (None if none). *)
 val fix_message: t -> string option
+
 (** `kind_to_hint diag` returns a detailed explanation hint. *)
 val hint_message: t -> string
+
 (** `main_message diag` returns the main error message for display. *)
 val main_message: t -> string
 
 val found_token: t -> found_token
+
 (** `to_string diag` converts a diagnostic to a human-readable error message.
 
     Example output: ``` Missing token ')' at position 10 Unexpected token '+'
@@ -262,6 +276,7 @@ val found_token: t -> found_token
     Example: ```ocaml let msg = Diagnostic.to_string diag in Printf.eprintf
     "Error: %s\n" msg ``` *)
 val to_string: t -> string
+
 (** `to_json diag` converts a diagnostic to structured JSON.
     
     This is useful for:
@@ -286,6 +301,7 @@ val to_string: t -> string
     ```
 *)
 val to_json: t -> Data.Json.t
+
 (** Deserialize a diagnostic from JSON.
 
     This is the inverse of [to_json], used for reading diagnostic test fixtures.

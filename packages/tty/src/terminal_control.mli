@@ -36,6 +36,7 @@
 (** {1 Synchronized Updates} *)
 
 val begin_synchronized_update: Terminal.t -> unit
+
 (** [begin_synchronized_update tty] instructs the terminal to buffer updates.
     
     When synchronized update mode is enabled, the terminal continues to
@@ -46,6 +47,7 @@ val begin_synchronized_update: Terminal.t -> unit
     Not all terminals support this feature. Unsupported terminals will
     ignore these sequences. *)
 val end_synchronized_update: Terminal.t -> unit
+
 (** [end_synchronized_update tty] flushes buffered updates to the screen.
     
     Must be paired with {!begin_synchronized_update}. *)
@@ -66,8 +68,10 @@ type cursor_style =
   | BlinkingBar
   (** Blinking bar cursor (|) *)
   | SteadyBar
+
 (** Steady bar cursor *)
 val set_cursor_style: Terminal.t -> cursor_style -> unit
+
 (** [set_cursor_style tty style] changes the terminal cursor appearance.
     
     Not all terminals support all cursor styles. Unsupported styles
@@ -75,11 +79,13 @@ val set_cursor_style: Terminal.t -> cursor_style -> unit
 (** {1 Line Wrapping} *)
 
 val enable_line_wrap: Terminal.t -> unit
+
 (** [enable_line_wrap tty] enables automatic line wrapping.
     
     When enabled (the default), text that exceeds the terminal width
     automatically continues on the next line. *)
 val disable_line_wrap: Terminal.t -> unit
+
 (** [disable_line_wrap tty] disables automatic line wrapping.
     
     When disabled, text that exceeds the terminal width is truncated.
@@ -94,6 +100,7 @@ type window_size = {
   height_px: int;  (** Terminal height in pixels (may be 0) *)
 }
 val window_size: Terminal.t -> window_size
+
 (** [window_size tty] queries the terminal size.
     
     Returns both character-based dimensions (rows, columns) and
@@ -105,6 +112,7 @@ val window_size: Terminal.t -> window_size
 (** {1 Raw Mode Queries} *)
 
 val is_raw_mode_enabled: Terminal.t -> bool
+
 (** [is_raw_mode_enabled tty] checks if the terminal is in raw mode.
     
     Returns [true] if the terminal mode is [Immediate] (raw/cbreak mode),

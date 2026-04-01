@@ -57,6 +57,7 @@ module Runner: sig
   type run_summary = Bench_result.summary
   val run_benchmarks: config:config -> bench_item list -> run_summary
 end
+
 (** [case name fn] creates a benchmark with default configuration.
     
     Example:
@@ -74,8 +75,10 @@ module Reporter: sig
 end
 
 val case: string -> (unit -> unit) -> bench_item
+
 (** [skip name fn] creates a skipped benchmark. *)
 val skip: string -> (unit -> unit) -> bench_item
+
 (** [with_config ~config name fn] creates a benchmark with custom configuration.
     
     Example:
@@ -87,6 +90,7 @@ val skip: string -> (unit -> unit) -> bench_item
     ]}
 *)
 val with_config: config:bench_config -> string -> (unit -> unit) -> bench_item
+
 (** [compare description cases] creates a comparison benchmark.
     
     Example:
@@ -98,12 +102,15 @@ val with_config: config:bench_config -> string -> (unit -> unit) -> bench_item
     ]}
 *)
 val compare: string -> bench_case list -> bench_item
+
 (** [compare_with_config ~config description cases] creates a comparison benchmark
     with custom configuration. *)
 val compare_with_config: config:bench_config -> string -> bench_case list -> bench_item
+
 (** [make_case name fn] creates a benchmark case without wrapping in Single.
     Useful for building comparison benchmarks. *)
 val make_case: string -> (unit -> unit) -> bench_case
+
 (** [make_case_with_config ~config name fn] creates a benchmark case with custom config. *)
 val make_case_with_config: config:bench_config -> string -> (unit -> unit) -> bench_case
 
@@ -113,6 +120,7 @@ module Cli: sig
     benchmarks:bench_item list ->
     args:string list ->
     (unit, Miniriot.Process.exit_reason) result
+
   (** Main entry point for benchmark binaries with CLI support.
       
       Supports subcommands:

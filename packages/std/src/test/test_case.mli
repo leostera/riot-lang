@@ -16,9 +16,12 @@ type t = {
   skip: bool;
 }
 val case: string -> (unit -> (unit, string) result) -> t
+
 (** [property name ~examples fn] creates a property test that ran [examples] test cases. *)
 val property: string -> examples:int -> (unit -> (unit, string) result) -> t
+
 (** [skip name fn] creates a skipped test. *)
 val skip: string -> (unit -> (unit, string) result) -> t
+
 (** [todo name] creates a placeholder test marked as todo. *)
 val todo: string -> t

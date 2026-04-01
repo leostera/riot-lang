@@ -18,6 +18,7 @@ type eval_result =
   | Error of { message: string; backtrace: string option }
   | ParseError of string
   | TypeError of string
+
 (** Parse and validate OCaml code *)
 let parse_code = fun code ->
   let tokens = Syn.tokenize code in
@@ -32,6 +33,7 @@ let parse_code = fun code ->
       output = "(* Code parsed successfully - evaluation not yet implemented *)";
       typ = None
     }
+
 (** Format the result for display *)
 let format_result = function
   | Success { output; typ=Some t } -> "- : " ^ t ^ " = " ^ output

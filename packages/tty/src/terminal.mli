@@ -46,8 +46,10 @@ type t = {
   mutable data_buffer: input_buffer option;  (** Separate buffer for data FD in dual mode *)
 }
 val write_to_fd: Kernel.Fd.t -> string -> unit
+
 (** [write_to_fd fd str] writes a string to a file descriptor.
     Handles partial writes automatically. *)
 val write_escape: t -> string -> unit
+
 (** [write_escape t code] writes an ANSI escape sequence to the terminal.
     Automatically prepends the CSI sequence. *)

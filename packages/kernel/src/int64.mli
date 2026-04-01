@@ -25,6 +25,7 @@
 (*                                                                        *)
 
 (**************************************************************************)
+
 (** 64-bit integers.
 
    This module provides operations on the type [int64] of
@@ -48,73 +49,97 @@
 
 (** The 64-bit integer 0. *)
 val zero: int64
+
 (** The 64-bit integer 1. *)
 val one: int64
+
 (** The 64-bit integer -1. *)
 val minus_one: int64
+
 (** Unary negation. *)
 external neg: int64 -> int64 = "%int64_neg"
+
 (** Addition. *)
 external add: int64 -> int64 -> int64 = "%int64_add"
+
 (** Subtraction. *)
 external sub: int64 -> int64 -> int64 = "%int64_sub"
+
 (** Multiplication. *)
 external mul: int64 -> int64 -> int64 = "%int64_mul"
+
 (** Integer division.
    @raise Division_by_zero if the second
    argument is zero.  This division rounds the real quotient of
    its arguments towards zero, as specified for {!Stdlib.(/)}. *)
 external div: int64 -> int64 -> int64 = "%int64_div"
+
 (** Same as {!div}, except that arguments and result are interpreted as {e
     unsigned} 64-bit integers.
 
     @since 4.08 *)
 val unsigned_div: int64 -> int64 -> int64
+
 (** Integer remainder.  If [y] is not zero, the result
    of [Int64.rem x y] satisfies the following property:
    [x = Int64.add (Int64.mul (Int64.div x y) y) (Int64.rem x y)].
    If [y = 0], [Int64.rem x y] raises [Division_by_zero]. *)
 external rem: int64 -> int64 -> int64 = "%int64_mod"
+
 (** Same as {!rem}, except that arguments and result are interpreted as {e
     unsigned} 64-bit integers.
 
     @since 4.08 *)
 val unsigned_rem: int64 -> int64 -> int64
+
 (** Successor.  [Int64.succ x] is [Int64.add x Int64.one]. *)
 val succ: int64 -> int64
+
 (** Predecessor.  [Int64.pred x] is [Int64.sub x Int64.one]. *)
 val pred: int64 -> int64
+
 (** [abs x] is the absolute value of [x]. On [min_int] this
    is [min_int] itself and thus remains negative. *)
 val abs: int64 -> int64
+
 (** The greatest representable 64-bit integer, 2{^63} - 1. *)
 val max_int: int64
+
 (** The smallest representable 64-bit integer, -2{^63}. *)
 val min_int: int64
+
 (** Bitwise logical and. *)
 external logand: int64 -> int64 -> int64 = "%int64_and"
+
 (** Bitwise logical or. *)
 external logor: int64 -> int64 -> int64 = "%int64_or"
+
 (** Bitwise logical exclusive or. *)
 external logxor: int64 -> int64 -> int64 = "%int64_xor"
+
 (** Bitwise logical negation. *)
 val lognot: int64 -> int64
+
 (** [Int64.shift_left x y] shifts [x] to the left by [y] bits.
    The result is unspecified if [y < 0] or [y >= 64]. *)
 external shift_left: int64 -> int -> int64 = "%int64_lsl"
+
 (** [Int64.shift_right x y] shifts [x] to the right by [y] bits.
    This is an arithmetic shift: the sign bit of [x] is replicated
    and inserted in the vacated bits.
    The result is unspecified if [y < 0] or [y >= 64]. *)
 external shift_right: int64 -> int -> int64 = "%int64_asr"
+
 (** [Int64.shift_right_logical x y] shifts [x] to the right by [y] bits.
    This is a logical shift: zeroes are inserted in the vacated bits
    regardless of the sign of [x].
    The result is unspecified if [y < 0] or [y >= 64]. *)
 external shift_right_logical: int64 -> int -> int64 = "%int64_lsr"
+
 (** Convert the given integer (type [int]) to a 64-bit integer
     (type [int64]). *)
 external of_int: int -> int64 = "%int64_of_int"
+
 (** Convert the given 64-bit integer (type [int64]) to an
    integer (type [int]).  On 64-bit platforms, the 64-bit integer
    is taken modulo 2{^63}, i.e. the high-order bit is lost
@@ -122,12 +147,14 @@ external of_int: int -> int64 = "%int64_of_int"
    is taken modulo 2{^31}, i.e. the top 33 bits are lost
    during the conversion. *)
 external to_int: int64 -> int = "%int64_to_int"
+
 (** Same as {!to_int}, but interprets the argument as an {e unsigned} integer.
     Returns [None] if the unsigned value of the argument cannot fit into an
     [int].
 
     @since 4.08 *)
 val unsigned_to_int: int64 -> int option
+
 (** Convert the given floating-point number to a 64-bit integer,
    discarding the fractional part (truncate towards 0).
    If the truncated floating-point number is outside the range
@@ -135,25 +162,31 @@ val unsigned_to_int: int64 -> int option
    an unspecified, platform-dependent integer is returned. *)
 external of_float: float -> int64
   = "caml_int64_of_float" "caml_int64_of_float_unboxed" [@@unboxed] [@@noalloc]
+
 (** Convert the given 64-bit integer to a floating-point number. *)
 external to_float: int64 -> float
   = "caml_int64_to_float" "caml_int64_to_float_unboxed" [@@unboxed] [@@noalloc]
+
 (** Convert the given 32-bit integer (type [int32])
    to a 64-bit integer (type [int64]). *)
 external of_int32: int32 -> int64 = "%int64_of_int32"
+
 (** Convert the given 64-bit integer (type [int64]) to a
    32-bit integer (type [int32]). The 64-bit integer
    is taken modulo 2{^32}, i.e. the top 32 bits are lost
    during the conversion.  *)
 external to_int32: int64 -> int32 = "%int64_to_int32"
+
 (** Convert the given native integer (type [nativeint])
    to a 64-bit integer (type [int64]). *)
 external of_nativeint: nativeint -> int64 = "%int64_of_nativeint"
+
 (** Convert the given 64-bit integer (type [int64]) to a
    native integer.  On 32-bit platforms, the 64-bit integer
    is taken modulo 2{^32}.  On 64-bit platforms,
    the conversion is exact. *)
 external to_nativeint: int64 -> nativeint = "%int64_to_nativeint"
+
 (** Convert the given string to a 64-bit integer.
    The string is read in decimal (by default, or if the string
    begins with [0u]) or in hexadecimal, octal or binary if the
@@ -170,11 +203,14 @@ external to_nativeint: int64 -> nativeint = "%int64_to_nativeint"
    a valid representation of an integer, or if the integer represented
    exceeds the range of integers representable in type [int64]. *)
 external of_string: string -> int64 = "caml_int64_of_string"
+
 (** Same as [of_string], but return [None] instead of raising.
     @since 4.05 *)
 val of_string_opt: string -> int64 option
+
 (** Return the string representation of its argument, in decimal. *)
 val to_string: int64 -> string
+
 (** Return the internal representation of the given float according
    to the IEEE 754 floating-point 'double format' bit layout.
    Bit 63 of the result represents the sign of the float;
@@ -182,6 +218,7 @@ val to_string: int64 -> string
    represent the mantissa. *)
 external bits_of_float: float -> int64
   = "caml_int64_bits_of_float" "caml_int64_bits_of_float_unboxed" [@@unboxed] [@@noalloc]
+
 (** Return the floating-point number whose internal representation,
    according to the IEEE 754 floating-point 'double format' bit layout,
    is the given [int64]. *)
@@ -195,28 +232,34 @@ external float_of_bits: int64 -> float
     {!Set.Make} and {!Map.Make}. *)
 type t = int64
 val compare: t -> t -> int
+
 (** Same as {!compare}, except that arguments are interpreted as {e unsigned}
     64-bit integers.
 
     @since 4.08 *)
 val unsigned_compare: t -> t -> int
+
 (** The equal function for int64s.
     @since 4.03 *)
 val equal: t -> t -> bool
+
 (** Return the smaller of the two arguments.
     @since 4.13
 *)
 val min: t -> t -> t
+
 (** Return the greater of the two arguments.
     @since 4.13
  *)
 val max: t -> t -> t
+
 (** A seeded hash function for 64-bit ints, with the same output value as
     {!Hashtbl.seeded_hash}. This function allows this module to be passed as
     argument to the functor {!Hashtbl.MakeSeeded}.
 
     @since 5.1 *)
 val seeded_hash: int -> t -> int
+
 (** An unseeded hash function for 64-bit ints, with the same output value as
     {!Hashtbl.hash}. This function allows this module to be passed as argument
     to the functor {!Hashtbl.Make}.

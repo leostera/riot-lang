@@ -37,6 +37,7 @@ type word_property =
   | Underscore
   (** _ for identifiers *)
   | Other
+
 (** Everything else *)
 
 (** Determine if a rune is a letter (extended beyond just ASCII) *)
@@ -57,6 +58,7 @@ let is_letter_extended = fun c ->
   || (c >= 0xac00 && c <= 0xd7af)
   || (c >= 0x3040 && c <= 0x309f)
   || (c >= 0x30a0 && c <= 0x30ff)
+
 (** Determine if a rune is a digit *)
 let is_digit = fun c ->
   (* ASCII digits *)
@@ -64,6 +66,7 @@ let is_digit = fun c ->
   || (c >= 0x0660 && c <= 0x0669)
   || (c >= 0x06f0 && c <= 0x06f9)
   || (c >= 0x0966 && c <= 0x096f)
+
 (** Determine if a rune is whitespace *)
 let is_whitespace = fun c ->
   match c with
@@ -92,6 +95,7 @@ let is_whitespace = fun c ->
   | 0x205f
   | 0x3000 -> true
   | _ -> false
+
 (** Get word property for a code point *)
 let get_word_property = fun c ->
   if is_whitespace c then
@@ -116,6 +120,7 @@ let get_word_property = fun c ->
     Punctuation
   else
     Other
+
 (** Check if there should be a word boundary between two characters
     
     Rules (simplified from UAX #29):
@@ -144,6 +149,7 @@ let should_break_word = fun ~prev_prop ~curr_prop ~next_prop ->
   | Underscore, (Letter | Number), _ -> false
   | (Letter | Number), Apostrophe, _ -> true
   | _, _, _ -> true
+
 (** Find all word boundaries in a string
     Returns byte positions where word breaks occur *)
 let find_word_boundaries = fun s ->
@@ -197,12 +203,14 @@ let find_word_boundaries = fun s ->
       let first_len = Uchar.utf_decode_length first_decode in
       let first_prop = get_word_property (Rune.to_int first_rune) in
       scan first_len first_prop []
+
 (** Find the start of the next word from position pos *)
 let find_next_word_start = fun s pos ->
   let boundaries = find_word_boundaries s in
   match List.find_opt (fun b -> b > pos) boundaries with
   | Some boundary -> boundary
   | None -> String.length s
+
 (** Find the start of the previous word from position pos *)
 let find_prev_word_start = fun s pos ->
   let boundaries = find_word_boundaries s in

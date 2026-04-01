@@ -1,18 +1,22 @@
 open Std
+
 (** Check if origin matches a pattern *)
 let origin_matches = fun pattern origin ->
   match pattern with
   | "*" -> true
   | p -> String.equal p origin
+
 (** Check if any pattern matches the origin *)
 let is_origin_allowed = fun origins origin ->
   List.exists (fun pattern -> origin_matches pattern origin) origins
+
 (** Get the origin value to send in response headers *)
 let get_response_origin = fun origins origin credentials ->
   if List.mem "*" origins && not credentials then
     "*"
   else
     origin
+
 (** CORS middleware with simple configuration *)
 let middleware = fun ~origins ?(methods = [ Net.Http.Method.Put; Patch; Delete ]) ?(headers = []) ?(credentials = false) ?(expose = []) ?max_age () ->
   (* Validate configuration *)

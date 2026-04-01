@@ -10,4 +10,5 @@ type t = {
 val make: viewport:Viewport.t -> text_measurer:text_measurer -> unit -> t
 
 val default_text_measurer: text_measurer
+
 (** Simple terminal-based text measurement *)

@@ -96,6 +96,7 @@ val now: unit -> t
     If [earlier] is greater than [self], use [saturating_duration_since] for
     safe handling. *)
 val duration_since: earlier:t -> t -> Duration.t
+
 (** Returns the time elapsed from [earlier], or zero if [earlier] is actually
     later (defensive version of [duration_since]).
 
@@ -111,6 +112,7 @@ val duration_since: earlier:t -> t -> Duration.t
     Use when you want to avoid panics from clock anomalies or incorrect ordering
     of instants. *)
 val saturating_duration_since: earlier:t -> t -> Duration.t
+
 (** Returns the time elapsed since this instant was created. Equivalent to
     [duration_since ~earlier:self (now ())].
 
@@ -135,6 +137,7 @@ val elapsed: t -> Duration.t
     (* Check if we've passed the deadline *) if Instant.compare (Instant.now ())
     deadline >= 0 then handle_timeout () ``` *)
 val add: t -> Duration.t -> t
+
 (** Subtracts a duration from an instant, returning a past instant. Panics if
     result would be before the epoch.
 
@@ -153,6 +156,7 @@ val sub: t -> Duration.t -> t
     ```ocaml match Instant.checked_add instant Duration.max with | Some future
     -> (* OK *) | None -> (* Overflow *) ``` *)
 val checked_add: t -> Duration.t -> t option
+
 (** Subtracts a duration if the result can be represented, returns [None] if it
     would underflow.
 
@@ -172,18 +176,21 @@ val checked_sub: t -> Duration.t -> t option
 
     Instant.compare t1 t2 (* <= 0, t1 should be earlier or equal *) ``` *)
 val compare: t -> t -> int
+
 (** Tests equality of two instants.
 
     ## Examples
 
     ```ocaml let t1 = Instant.now () in Instant.equal t1 t1 (* true *) ``` *)
 val equal: t -> t -> bool
+
 (** Returns the earlier of two instants.
 
     ## Examples
 
     ```ocaml let earliest = Instant.min instant1 instant2 ``` *)
 val min: t -> t -> t
+
 (** Returns the later of two instants.
 
     ## Examples

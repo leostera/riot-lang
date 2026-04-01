@@ -22,8 +22,7 @@ let update = fun event model ->
   | Event.KeyDown (Event.Key "q", _)
   | Event.KeyDown (Event.Key "Q", _)
   | Event.KeyDown (Event.Escape, _)
-  | Event.KeyDown (Event.Key "c", Event.Ctrl) ->
-      (model, Command.Quit)
+  | Event.KeyDown (Event.Key "c", Event.Ctrl) -> (model, Command.Quit)
   | Event.Timer _timer ->
       if model.waiting_to_quit then
         (model, Command.Quit)
@@ -36,8 +35,7 @@ let update = fun event model ->
           (* Continue incrementing *)
           let _timer, cmd = Command.timer ~after:(Time.Duration.from_secs_float 0.1) in
           ({ progress; waiting_to_quit = false }, cmd)
-  | _ ->
-      (model, Command.Noop)
+  | _ -> (model, Command.Noop)
 
 (* View: render the progress bar *)
 

@@ -63,10 +63,12 @@ module Ocamlc = struct
   let ocamlc_path =
     let bin_dir = Const.get_toolchain_bin_dir () in
     Filename.concat bin_dir "ocamlc.opt"
+
   (** Convert warning to its numeric code *)
   let warning_to_code = function
     | NoCmiFile -> "49"
     | All -> "a"
+
   (** Convert compiler flags to command-line arguments *)
   let flags_to_string = fun flags ->
     List.fold_left
@@ -89,6 +91,7 @@ module Ocamlc = struct
             acc @ [ "-w"; warning_str ])
       []
       flags
+
   (** Build and run an ocamlc command *)
   let run = fun ?(includes = []) ?(libs = []) ?(output = None) ?(mode = Compile) ?(flags = []) ?(extra_args = []) ?(verbose = false) sources ->
     (* Build command arguments *)
@@ -121,6 +124,7 @@ module Ocamlc = struct
     (* Execute the command with colors enabled *)
     (* Set OCAML_COLOR=always to get colored error output *)
     Io.run_command_with_output args
+
   (** Compile an interface file (.mli -> .cmi) *)
   let compile_interface = fun ?(cwd = "") ~includes ~flags ~output source ->
     (* Include current directory for .cmi files *)
@@ -172,6 +176,7 @@ module Ocamlc = struct
         Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
     else
       run ~includes:final_includes ~output:(Some output) ~mode:Compile [ source ]
+
   (** Compile an implementation file (.ml -> .cmo) *)
   let compile_impl = fun ?(cwd = "") ~includes ~flags ~output source ->
     (* Include current directory for .cmi files *)
@@ -223,6 +228,7 @@ module Ocamlc = struct
         Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
     else
       run ~includes:final_includes ~output:(Some output) ~mode:Compile [ source ]
+
   (** Generate interface file (.ml -> .mli) using ocamlc -i *)
   let generate_interface = fun ~includes ~flags ~output source ->
     (* Include current directory for .cmi files *)
@@ -239,6 +245,7 @@ module Ocamlc = struct
         Io.write_file output stdout;
         Ok ()
     | Error err -> Error err
+
   (** Compile a C file *)
   let compile_c = fun ?(cwd = "") ?(cc_flags = []) ~includes ~output source ->
     let cmd_parts = [ ocamlc_path; "-c" ]
@@ -251,9 +258,11 @@ module Ocamlc = struct
       let cmd_str = String.concat " " cmd_parts in
       let full_cmd = Printf.sprintf "cd %s && %s" cwd cmd_str in
       Io.run_command_with_output [ "/bin/sh"; "-c"; full_cmd ]
+
   (** Create a library (.cma) from object files *)
   let create_library = fun ?(extra_args = []) ~includes ~output objects ->
     run ~includes ~output:(Some output) ~mode:Library ~flags:[ NoStdlib ] ~extra_args objects
+
   (** Create an executable from object files and libraries *)
   let create_executable = fun ~includes ~output ~libs objects ->
     (* Include current directory *)
@@ -265,6 +274,7 @@ module Ocamlc = struct
       ~mode:Executable
       ~flags:[ NoStdlib ]
       objects
+
   (** Create a custom executable (with C stubs) *)
   let create_custom_executable = fun ~includes ~output ~libs objects ->
     (* Include current directory *)
@@ -276,6 +286,7 @@ module Ocamldep = struct
   let ocamldep_path =
     let bin_dir = Const.get_toolchain_bin_dir () in
     Filename.concat bin_dir "ocamldep.opt"
+
   (** Parse ocamldep output to extract module names *)
   let parse_deps = fun line ->
     (* Format: "file.ml: Module1 Module2 Module3" *)
@@ -287,6 +298,7 @@ module Ocamldep = struct
         else
           String.split_on_char ' ' deps |> List.map String.trim
     | _ -> []
+
   (** Run ocamldep to get module dependencies for a file *)
   let get_deps = fun ?(includes = []) ?(open_modules = []) source ->
     (* Build command arguments *)
@@ -310,6 +322,7 @@ module Ocamldep = struct
         | _ -> []
       )
     | Error _ -> []
+
   (** Sort files in dependency order *)
   let sort_files = fun ?(includes = []) files ->
     if files = [] then

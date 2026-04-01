@@ -8,22 +8,31 @@
     - Text segmentation (words, sentences, line breaks)
 *)
 (** {1 Submodules} *)
+
 (** Width tables for character display width calculation *)
 module Width_tables = Width_tables
+
 (** Grapheme break properties and rules *)
 module Grapheme_break = Grapheme_break
+
 (** Word break properties and detection *)
 module Word_break = Word_break
+
 (** Line break properties and text wrapping *)
 module Line_break = Line_break
+
 (** Configuration for Unicode processing *)
 module Config = Unicode_config
+
 (** Rune - Unicode code points *)
 module Rune = Rune
+
 (** UTF-8 encoding and decoding *)
 module Utf8 = Utf8
+
 (** Grapheme clusters - user-perceived characters *)
 module Grapheme = Grapheme
+
 (** Text segmentation *)
 module Segmentation = Segmentation
 
@@ -36,4 +45,5 @@ type line_break = Segmentation.line_break =
   | Can_break
   (** Line may break here (word boundary) *)
   | Dont_break
+
 (** Line must not break here *)

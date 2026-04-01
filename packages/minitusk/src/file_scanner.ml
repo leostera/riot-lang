@@ -21,6 +21,7 @@ let path = fun t ->
   match t with
   | File f -> f.path
   | Dir d -> d.path
+
 (** Walk a directory tree and build a file_tree structure *)
 let rec walk = fun ~root ->
   let name = Filename.basename root in
@@ -48,6 +49,7 @@ let rec walk = fun ~root ->
     (* It's a file *)
     let ext = Filename.extension name in
     File { path = root; name; ext }
+
 (** Pretty print a file tree for debugging *)
 let rec print_tree = fun ?(indent = 0) tree ->
   let prefix = String.make (indent * 2) ' ' in
@@ -56,11 +58,13 @@ let rec print_tree = fun ?(indent = 0) tree ->
   | Dir { name; children; _ } ->
       Printf.printf "%s+ %s/\n" prefix name;
       List.iter (print_tree ~indent:((indent + 1))) children
+
 (** Flatten tree to a list of file paths *)
 let rec flatten_to_paths = fun tree ->
   match tree with
   | File { path; _ } -> [ path ]
   | Dir { children; _ } -> List.concat_map flatten_to_paths children
+
 (** Get only directories (no files) *)
 let rec get_directories_only = fun tree ->
   match tree with

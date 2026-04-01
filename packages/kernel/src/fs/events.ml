@@ -114,7 +114,7 @@ let stop = fun t ->
   try
     let (ctx_ptr, read_fd) = t in
     fsevents_stop ctx_ptr;
-    File.close_fd read_fd;
+    let _ = File.close_fd read_fd in
     Ok ()
   with
   | Unix.Unix_error (err, _, _) -> Error (IO.error_of_unix err)

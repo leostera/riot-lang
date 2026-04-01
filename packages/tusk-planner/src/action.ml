@@ -50,6 +50,7 @@ type t =
       outputs: Path.t list;
       env: (string * string) list
     }
+
 (** Compute a deterministic content-based hash of an action.
 
     This hash is used for caching and must be deterministic regardless of:

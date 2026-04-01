@@ -53,7 +53,12 @@ type build_scope =
 let no_emit : Tusk_model.Event.kind -> unit = fun _ -> ()
 
 let connect_local = fun ?(emit = no_emit) ?(load_errors = []) ~workspace () ->
-  match Tusk_server.start_local ~emit ~workspace ~load_errors ~config:Tusk_server.Server_config.default () with
+  match Tusk_server.start_local
+    ~emit
+    ~workspace
+    ~load_errors
+    ~config:Tusk_server.Server_config.default
+    () with
   | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
   | Error exn -> Error (Exception.to_string exn)
 

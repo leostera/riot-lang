@@ -2,7 +2,10 @@ open Std
 module Test = Std.Test
 
 let test_registry_split_layout = fun () ->
-  let cache = Pkgs_ml.Registry_cache.create ~tusk_home:(Path.v "/tmp/.tusk") ~registry_name:"pkgs.ml" ()
+  let cache = Pkgs_ml.Registry_cache.create
+    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~registry_name:"pkgs.ml"
+    ()
   |> Result.expect ~msg:"expected registry cache to be created" in
   let index = Pkgs_ml.Registry_cache.index_dir cache |> Path.to_string in
   let archive = Pkgs_ml.Registry_cache.archive_path cache ~package_name:"std" ~version:"0.1.0"
@@ -19,7 +22,10 @@ let test_registry_split_layout = fun () ->
     Error ("unexpected registry layout:\nindex=" ^ index ^ "\narchive=" ^ archive ^ "\nsrc=" ^ src)
 
 let test_sparse_index_layout = fun () ->
-  let cache = Pkgs_ml.Registry_cache.create ~tusk_home:(Path.v "/tmp/.tusk") ~registry_name:"pkgs.ml" ()
+  let cache = Pkgs_ml.Registry_cache.create
+    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~registry_name:"pkgs.ml"
+    ()
   |> Result.expect ~msg:"expected registry cache to be created" in
   let actual = Pkgs_ml.Sparse_index.package_cache_path cache ~package_name:"AbCd" |> Path.to_string in
   if String.equal actual "/tmp/.tusk/registry/pkgs.ml/index/ab/cd/abcd.json" then
@@ -83,7 +89,10 @@ let test_sparse_index_cached_reads = fun () ->
 }|}
     |> Result.expect ~msg:"expected sparse index package to parse"
   in
-  let cache = Pkgs_ml.Registry_cache.create ~tusk_home:(Path.v "/tmp/.tusk") ~registry_name:"pkgs.ml" ()
+  let cache = Pkgs_ml.Registry_cache.create
+    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~registry_name:"pkgs.ml"
+    ()
   |> Result.expect ~msg:"expected registry cache to be created" in
   let registry = Pkgs_ml.Registry.in_memory ~config ~cache ~packages:[ package ] () in
   match Pkgs_ml.Registry.read_config registry, Pkgs_ml.Registry.read_package_document

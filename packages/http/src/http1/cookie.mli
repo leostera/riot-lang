@@ -102,6 +102,7 @@ type t = {
     - Optional whitespace around names/values
     - Missing values (treated as empty string) *)
 val parse: string -> (string * string) list
+
 (** Parse Set-Cookie header into cookie record.
     
     {b Example}:
@@ -150,6 +151,7 @@ val make: name:string ->
   ?same_site:same_site ->
   unit ->
   t
+
 (** Create a cookie with validation.
     
     Validates:
@@ -173,6 +175,7 @@ val make_validated:
 (** {2 Validation} *)
 (** Check if cookie name is valid (alphanumeric + underscore + hyphen). *)
 val is_valid_name: string -> bool
+
 (** Check if cookie value is valid (no control characters). *)
 val is_valid_value: string -> bool
 

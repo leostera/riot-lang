@@ -1,6 +1,7 @@
 open Std
 open Suri
 open Suri.Component
+
 (** MyDesign - Example Reusable Component Library *)
 module MyDesign = struct
   (* Design Tokens *)
@@ -228,6 +229,7 @@ module MyDesign = struct
           []
       ]
 end
+
 (** Example: Product Card Component *)
 let product_card = fun ~name ~price ~in_stock ~discount ->
   MyDesign.card ~class_extra:"product-card"
@@ -255,6 +257,7 @@ let product_card = fun ~name ~price ~in_stock ~discount ->
             ~attrs:[ style_ "font-size: 24px; font-weight: bold; color: #007bff" ]
             [ text "$"; text (Float.to_string price); ]; MyDesign.button_primary
             [ text "Add to Cart" ]; ]; ]
+
 (** Example Page *)
 let example_page : unit t = html
   [ head

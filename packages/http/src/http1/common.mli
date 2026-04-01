@@ -7,6 +7,7 @@ type 'a parse_result =
   | Need_more
   (** Need more data to continue parsing *)
   | Error of string
+
 (** Parse error with message *)
 val find_substring: needle:string -> string -> int option
 

@@ -114,31 +114,6 @@ let compute_pending state : (package * version Ranges.t) list =
     in
     ignore (HashMap.insert pending_map pkg final_ranges)
   in
-  (* Iterate through all decided packages and collect their undecided dependencies *)
-  (* We need to iterate through all assignments in the solution *)
-  let rec collect_from_assignments = function
-    | [] -> ()
-    | assignment :: rest ->
-        (
-          match assignment with
-          | Partial_solution.Decision (pkg, ver, _level, _gidx) ->
-              (* Get dependencies for this decided package *)
-              let deps = DependencyGraph.get_dependencies state.dependency_graph pkg ver in
-              List.iter
-                (fun ((dep_pkg, dep_ranges)) ->
-                  (* Check if dependency is undecided *)
-                  match Partial_solution.get_constraint state.solution dep_pkg with
-                  | `Undecided -> add_to_pending dep_pkg dep_ranges
-                  | `Decided _
-                  | `Constrained _ -> ())
-                deps
-          | Partial_solution.Derivation (pkg, _ranges, _cause, _level, _gidx) ->
-              (* Derivations don't have dependencies in our model *)
-              (* Only decisions correspond to actual package versions with deps *)
-              ()
-        );
-        collect_from_assignments rest
-  in
   (* Get all assignments from solution - we need to expose this in Partial_solution *)
   (* For now, we'll work around by iterating through incompatibilities *)
   (* which contain dependency information *)

@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** LiveView Counter Example
     
     A simple interactive counter demonstrating LiveView capabilities:
@@ -85,6 +86,7 @@ module Counter = struct
           ];
       ]
 end
+
 (** Page styles *)
 let page_styles = {|
   * {
@@ -227,6 +229,7 @@ let page_styles = {|
     font-size: 1.2em;
   }
 |}
+
 (** Home page handler with embedded LiveView *)
 let home_page = fun conn _req ->
   let open Component in

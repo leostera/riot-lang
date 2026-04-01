@@ -73,6 +73,7 @@ type 'a t
     match Task.await failing_task with | Ok _ -> assert false | Error exn ->
     println "Caught: %s" (Printexc.to_string exn) ``` *)
 val async: (unit -> 'a) -> 'a t
+
 (** Waits for a task to complete and returns its result.
 
     Blocks the current thread until the task completes. Returns [`Ok value`] if
@@ -94,6 +95,7 @@ val async: (unit -> 'a) -> 'a t
     This function blocks the calling thread. Don't call it from within another
     task if you need to maintain parallelism. *)
 val await: 'a t -> ('a, exn) result
+
 (** Waits for multiple tasks to complete.
 
     More efficient than `List.map await` for large task lists, as it collects

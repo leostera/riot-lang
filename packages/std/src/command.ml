@@ -3,14 +3,11 @@ open Collections
 open Kernel.System
 
 type Miniriot.Message.t +=
-  | Reader_finished of {
-      reader: Miniriot.Pid.t;
-      stream: [
-        `stdout
-        | `stderr
-      ];
-      result: (string, IO.error) result;
-    }
+  | Reader_finished of { reader: Miniriot.Pid.t; stream:
+        [
+          `stdout
+          | `stderr
+        ]; result: (string, IO.error) result }
 
 module Stdio = struct
   type t =
@@ -53,6 +50,7 @@ type t = {
   cwd: string option;
   mutable state: state;
 }
+
 (** Command - OS process spawning and management *)
 let make = fun ?cwd ?(env = []) ?(args = []) cmd ->
   {
@@ -101,11 +99,12 @@ let to_string = fun t ->
   | None -> command
 
 let spawn_reader = fun ~parent ~stream file ->
-  spawn (fun () ->
-    let reader = self () in
-    let result = Fs.File.read_to_end file in
-    send parent (Reader_finished { reader; stream; result });
-    Ok ())
+  spawn
+    (fun () ->
+      let reader = self () in
+      let result = Fs.File.read_to_end file in
+      send parent (Reader_finished { reader; stream; result });
+      Ok ())
 
 let wait_for_reader_output = fun ~stdout_reader ~stderr_reader ->
   let stdout_result = ref None in
@@ -113,24 +112,22 @@ let wait_for_reader_output = fun ~stdout_reader ~stderr_reader ->
   let rec loop () =
     if Option.is_some !stdout_result && Option.is_some !stderr_result then
       (Option.unwrap !stdout_result, Option.unwrap !stderr_result)
-    else
-      (
-        receive
-          ~selector:(
-            function
-            | Reader_finished { reader; stream = `stdout; result } when Miniriot.Pid.equal reader stdout_reader
-              ->
-                stdout_result := Some result;
-                `select ()
-            | Reader_finished { reader; stream = `stderr; result } when Miniriot.Pid.equal reader stderr_reader
-              ->
-                stderr_result := Some result;
-                `select ()
-            | _ -> `skip
-          )
-          ();
-        loop ()
-      )
+    else (
+      receive
+        ~selector:(
+          function
+          | Reader_finished { reader; stream=`stdout; result } when Miniriot.Pid.equal reader stdout_reader ->
+              stdout_result := Some result;
+              `select ()
+          | Reader_finished { reader; stream=`stderr; result } when Miniriot.Pid.equal reader stderr_reader ->
+              stderr_result := Some result;
+              `select ()
+          | _ ->
+              `skip
+        )
+        ();
+      loop ()
+    )
   in
   loop ()
 

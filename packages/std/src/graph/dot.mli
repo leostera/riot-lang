@@ -83,10 +83,13 @@ type t = {
   edges: edge list;
   graph_attrs: (string * string) list;
 }
+
 (** DOT graph representation. *)
 val create: name:string -> style:graph_style -> t
+
 (** Create an empty graph. *)
 val add_node: t -> id:string -> ?label:string -> ?attrs:(string * string) list -> unit -> t
+
 (** Add a node to the graph. *)
 val add_edge:
   t ->
@@ -96,6 +99,8 @@ val add_edge:
   ?attrs:(string * string) list ->
   unit ->
   t
+
 (** Add an edge to the graph. *)
 val to_string: t -> string
+
 (** Convert graph to DOT format string. *)

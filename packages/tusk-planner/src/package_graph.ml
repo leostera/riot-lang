@@ -113,8 +113,7 @@ let get_planned_data = function
   | Failed _ -> None
   | Skipped _ -> None
 
-let is_well_known_package = fun name ->
-  Tusk_model.Package.is_builtin_dependency_name name
+let is_well_known_package = fun name -> Tusk_model.Package.is_builtin_dependency_name name
 
 let dependencies_for_scope = fun scope (pkg: Package.t) ->
   match scope with

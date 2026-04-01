@@ -18,29 +18,39 @@ type peer = {
 }
 (** Peer connection information *)
 type t
+
 (** Connection context *)
 val make: Socket_pool.Connection.t -> Web_server.Request.t -> t
+
 (** Create a new connection from a socket connection and parsed request *)
 (** ## Request Access *)
 
 val request: t -> Web_server.Request.t
+
 (** Get the original HTTP request.
     
     Most handlers should use the convenience accessors like [method_], [uri], [body],
     etc. The raw request is available for advanced use cases. *)
 val method_: t -> Net.Http.Method.t
+
 (** Get the HTTP method *)
 val uri: t -> string
+
 (** Get the request URI *)
 val path: t -> string
+
 (** Get the request path (without query string) *)
 val headers: t -> Net.Http.Header.t
+
 (** Get request headers *)
 val body: t -> string
+
 (** Get request body *)
 val params: t -> (string * string) list
+
 (** Get path/query parameters *)
 val query_params: t -> (string * string) list
+
 (** Get query parameters from the URL.
     
     Parses the query string from the request URI and returns parameter pairs.
@@ -54,32 +64,42 @@ val query_params: t -> (string * string) list
     
     Note: URL-encoded values are automatically decoded. *)
 val body_params: t -> (string * string) list
+
 (** Get parsed body parameters (set by body_parser middleware) *)
 val peer: t -> peer
+
 (** Get peer connection info *)
 val resp_headers: t -> (string * string) list
+
 (** Get response headers that have been set so far.
     Useful for reading headers set by upstream middleware. *)
 (** ## Response Building *)
 
 val with_status: Net.Http.Status.t -> t -> t
+
 (** Set response status *)
 val with_body: string -> t -> t
+
 (** Set response body *)
 val with_header: string -> string -> t -> t
+
 (** Add a response header *)
 val respond: status:Net.Http.Status.t -> ?body:string -> t -> t
+
 (** Set status and optionally body *)
 (** ## Response Sending *)
 
 val send: t -> t
+
 (** Mark connection as ready to send response *)
 val sent: t -> bool
+
 (** Check if response has been sent *)
 (** ## HTML Rendering *)
 
 val render_component:
   ?headers:(string * string) list -> Net.Http.Status.t -> 'msg Component.t -> t -> t
+
 (** Render an HTML component as response with proper content-type.
     
     This is a convenience function that combines:
@@ -115,6 +135,7 @@ val render_component:
       |> Conn.send
     ]} *)
 val render_json: ?headers:(string * string) list -> Net.Http.Status.t -> Data.Json.t -> t -> t
+
 (** Render a JSON value as response with proper content-type.
     
     This is a convenience function that combines:
@@ -155,6 +176,7 @@ val render_json: ?headers:(string * string) list -> Net.Http.Status.t -> Data.Js
       |> Conn.send
     ]} *)
 val render_text: ?headers:(string * string) list -> Net.Http.Status.t -> string -> t -> t
+
 (** Render plain text response with proper content-type.
     
     This is a convenience function that combines:
@@ -189,6 +211,7 @@ val render_text: ?headers:(string * string) list -> Net.Http.Status.t -> string 
       |> Conn.send
     ]} *)
 val redirect: ?headers:(string * string) list -> string -> t -> t
+
 (** Redirect to another path with 302 Found status.
     
     This is a convenience function that combines:
@@ -230,18 +253,23 @@ val redirect: ?headers:(string * string) list -> string -> t -> t
 (** ## Control Flow *)
 
 val halt: t -> t
+
 (** Halt middleware pipeline execution *)
 val halted: t -> bool
+
 (** Check if pipeline is halted *)
 (** ## Parameters *)
 
 val set_params: (string * string) list -> t -> t
+
 (** Set path/query parameters (used by router) *)
 val set_body_params: (string * string) list -> t -> t
+
 (** Set parsed body parameters (used by body_parser middleware) *)
 val with_method: Net.Http.Method.t -> t -> t
 
 val with_peer: peer -> t -> t
+
 (** Update the peer connection info.
     
     Used by remote_ip middleware to set the real client IP.
@@ -260,6 +288,7 @@ val with_peer: peer -> t -> t
     
     {b Note}: This is primarily for internal middleware use. *)
 val socket_conn: t -> Socket_pool.Connection.t
+
 (** Get the underlying socket connection *)
 (** ## WebSocket Upgrade *)
 
@@ -278,19 +307,24 @@ type upgrade_info = private {
   handler: Channel.Handler.t;
 }
 val get_upgrade: t -> upgrade_info option
+
 (** Get the upgrade info if the connection is upgrading to WebSocket.
     Used internally by the framework. *)
 (** ## Response Extraction *)
 
 val to_response: t -> Web_server.Response.t
+
 (** Convert connection to HTTP response *)
 (** ## Private Data Storage *)
 
 type assign_value = ..
+
 (** Extensible type for storing arbitrary data in connection.
     Middleware can extend this type to store their own data. *)
 val assign: string -> assign_value -> t -> unit
+
 (** Store arbitrary data in the connection.
     Used by middleware to pass data down the pipeline. *)
 val get_assign: string -> t -> assign_value option
+
 (** Retrieve data stored by [assign]. *)

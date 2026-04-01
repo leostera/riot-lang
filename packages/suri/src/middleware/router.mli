@@ -145,6 +145,7 @@ type route
     ]} *)
 type t = route list
 val any: string -> handler -> route
+
 (** Create a GET route.
 
     {[
@@ -152,6 +153,7 @@ val any: string -> handler -> route
         Conn.respond conn ~status:Ok ~body:"List of users" |> Conn.send)
     ]} *)
 val get: string -> handler -> route
+
 (** Create a POST route.
 
     {[
@@ -160,6 +162,7 @@ val get: string -> handler -> route
         Conn.respond conn ~status:Created ~body:("Created: " ^ body) |> Conn.send)
     ]} *)
 val post: string -> handler -> route
+
 (** Create a PUT route.
 
     {[
@@ -169,6 +172,7 @@ val post: string -> handler -> route
         Conn.respond conn ~status:Ok ~body:("Updated user " ^ id) |> Conn.send)
     ]} *)
 val put: string -> handler -> route
+
 (** Create a PATCH route.
 
     {[
@@ -177,6 +181,7 @@ val put: string -> handler -> route
         Conn.respond conn ~status:Ok ~body:("Patched user " ^ id) |> Conn.send)
     ]} *)
 val patch: string -> handler -> route
+
 (** Create a DELETE route.
 
     {[
@@ -185,6 +190,7 @@ val patch: string -> handler -> route
         Conn.respond conn ~status:Ok ~body:("Deleted user " ^ id) |> Conn.send)
     ]} *)
 val delete: string -> handler -> route
+
 (** Create a HEAD route (like GET but no response body).
 
     {[
@@ -192,6 +198,7 @@ val delete: string -> handler -> route
         Conn.respond conn ~status:Ok |> Conn.send)
     ]} *)
 val head: string -> handler -> route
+
 (** Group routes under a common path prefix.
 
     {[
@@ -204,6 +211,7 @@ val head: string -> handler -> route
       (* Creates routes: /api/health, /api/v1/users *)
     ]} *)
 val scope: string -> route list -> route
+
 (** Create a WebSocket route that upgrades HTTP connections to WebSocket.
     
     This route handles both the initial HTTP request (for non-WebSocket clients)
@@ -234,6 +242,7 @@ val scope: string -> route list -> route
     The handler module must implement {!Channel.Handler.Intf}. *)
 val websocket:
   string -> (module Channel.Handler.Intf with type args = 'a and type state = 's) -> 'a -> route
+
 (** Convert a list of routes into middleware.
 
     This is the main function to use with {!Pipeline}.

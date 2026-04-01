@@ -55,6 +55,7 @@ type t
 (** The type of a command configuration, ready to be executed *)
 type error =
   | SystemError of string
+
 (** System-level errors when spawning or running commands.
 
           Note: A command exiting with non-zero status is NOT an error. Only
@@ -62,6 +63,7 @@ type error =
 (** # Building Commands *)
 
 val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> string -> t
+
 (** Creates a new command configuration.
 
     ## Parameters
@@ -93,6 +95,7 @@ val make: ?cwd:string -> ?env:(string * string) list -> ?args:string list -> str
     The command is resolved using the system's PATH environment variable unless
     an absolute path is provided. *)
 val to_string: t -> string
+
 (** Render a command as a shell-style string for logging and debugging.
 
     This is intended for observability only. Execution still goes through the
@@ -100,6 +103,7 @@ val to_string: t -> string
 (** # Execution *)
 
 val output: t -> (output, error) result
+
 (** Executes command and captures its output.
 
     Runs the command as a child process, waits for completion, and returns
@@ -128,6 +132,7 @@ val output: t -> (output, error) result
     Output is expected to be UTF-8. Invalid UTF-8 bytes may be replaced with
     replacement characters. *)
 val status: t -> (status, error) result
+
 (** Executes command and returns only its exit status.
 
     Runs the command as a child process without capturing output. Stdout and

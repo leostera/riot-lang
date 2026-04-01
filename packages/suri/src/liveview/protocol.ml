@@ -9,6 +9,7 @@ type server_msg =
   | Patch of string
   (* Full HTML replacement *)
   | Error of string
+
 (** Serialize server message to JSON *)
 let serialize_server_msg = fun msg ->
   match msg with
@@ -18,6 +19,7 @@ let serialize_server_msg = fun msg ->
   | Error msg ->
       let json = Data.Json.obj [ ("Error", Data.Json.string msg) ] in
       Data.Json.to_string json
+
 (** Deserialize client message from JSON *)
 let deserialize_client_msg = fun json_str ->
   try

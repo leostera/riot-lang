@@ -31,10 +31,13 @@ type state = t
 (** Open a directory for reading. *)
 type item = Path.t
 val create: Path.t -> (t, error) result
+
 (** Get next entry from directory, skipping . and .. *)
 val next: t -> Path.t option
+
 (** Close the directory handle. *)
 val close: t -> (unit, error) Result.t
+
 (** MutIterator interface. *)
 val size: t -> int
 

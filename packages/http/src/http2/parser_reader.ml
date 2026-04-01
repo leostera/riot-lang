@@ -55,6 +55,7 @@ let buffered_bytes = fun state ->
   match Cell.get state.phase with
   | ReadingFrameHeader { bytes_read; _ } -> bytes_read
   | ReadingFramePayload { bytes_read; _ } -> bytes_read + 9
+
 (** Read exactly N bytes from reader into buffer, returning number actually read *)
 let read_n_bytes = fun reader buffer n ->
   let bytes = Bytes.create n in
@@ -68,6 +69,7 @@ let read_n_bytes = fun reader buffer n ->
       0
 
 (* Read error treated as no data *)
+
 (** Parse 9-byte frame header from buffer *)
 let parse_frame_header_bytes = fun config data ->
   if String.length data < 9 then
@@ -137,6 +139,7 @@ let parse_frame_header_bytes = fun config data ->
             stream_id;
             payload = Frame.DataPayload { data = ""; pad_length = None };
           }
+
 (** Parse frame payload based on frame type *)
 let parse_payload = fun frame payload_data ->
   match frame.Frame.frame_type with
@@ -299,7 +302,6 @@ let parse_payload = fun frame payload_data ->
       Ok { frame with payload = Frame.DataPayload { data = payload_data; pad_length = None } }
 
 let rec parse = fun state reader ->
-  let ( let* ) = Result.and_then in
   match Cell.get state.phase with
   | ReadingFrameHeader { buffer; bytes_read } ->
       (* Try to read more header bytes *)

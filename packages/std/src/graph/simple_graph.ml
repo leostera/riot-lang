@@ -48,8 +48,10 @@ let add_node = fun graph value ->
 
 let get_node = fun t node_id ->
   HashMap.get t.nodes node_id
+
 (** Add a dependency edge between two nodes *)
 let add_edge = fun node ~depends_on -> node.deps <- depends_on.id :: node.deps
+
 (** Topological sort using Kahn's algorithm *)
 let topo_sort = fun graph ->
   (* Create in-degree table *)

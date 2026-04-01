@@ -38,8 +38,7 @@ let to_string = fun doc ->
   and write_text ~line_start ~indent value =
     let rec write_lines = fun line_start is_first ->
       function
-      | [] ->
-          line_start
+      | [] -> line_start
       | [ line ] ->
           if is_first && line_start && String.length line > 0 then
             IO.Buffer.add_string buffer (String.make indent ' ');

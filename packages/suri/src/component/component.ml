@@ -9,6 +9,7 @@ type 'msg t =
   | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
   | Text of string
   | Fragment of 'msg t list
+
 (** Attribute Constructors *)
 let attr = fun name value -> Attr (name, value)
 
@@ -59,6 +60,7 @@ let autofocus = Attr ("autofocus", "autofocus")
 let autocomplete = fun value -> Attr ("autocomplete", value)
 
 let data = fun name value -> Attr ("data-" ^ name, value)
+
 (** Event Constructors *)
 let on = fun event_name handler -> Event (event_name, handler)
 
@@ -89,6 +91,7 @@ let on_mouseleave = fun handler -> Event ("mouseleave", handler)
 let on_mouseover = fun handler -> Event ("mouseover", handler)
 
 let on_mouseout = fun handler -> Event ("mouseout", handler)
+
 (** HTML Element Constructors *)
 (* Generic element builder *)
 
@@ -341,6 +344,7 @@ let noscript = fun ?(attrs = []) children -> El { tag = "noscript"; attrs; child
 let svg = fun ?(attrs = []) children -> El { tag = "svg"; attrs; children }
 
 let math = fun ?(attrs = []) children -> El { tag = "math"; attrs; children }
+
 (** Content Helpers *)
 let text = fun str -> Text str
 
@@ -351,6 +355,7 @@ let float = fun f -> Text (Float.to_string f)
 let fragment = fun children -> Fragment children
 
 let empty = Fragment []
+
 (** Conditional Rendering *)
 let when_ = fun condition element ->
   if condition then
@@ -368,12 +373,14 @@ let maybe = fun opt f ->
   match opt with
   | Some x -> f x
   | None -> empty
+
 (** Rendering *)
 (* Web Components *)
 
 let slot = fun ?(attrs = []) children -> El { tag = "slot"; attrs; children }
 
 let template = fun ?(attrs = []) children -> El { tag = "template"; attrs; children }
+
 (** Rendering *)
 (* Self-closing tags per HTML5 spec *)
 
@@ -438,6 +445,7 @@ and escape_attr = fun str ->
     )
     str;
   IO.Buffer.contents buf
+
 (** Advanced *)
 let rec map = fun f t ->
   match t with

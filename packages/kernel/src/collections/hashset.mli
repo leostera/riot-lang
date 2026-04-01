@@ -79,6 +79,7 @@ type 'a t
 
     ```ocaml let set = HashSet.create () in assert (HashSet.is_empty set) ``` *)
 val create: unit -> 'a t
+
 (** Creates a new empty hash set with specified initial capacity.
 
     Pre-allocating capacity can improve performance when the approximate size is
@@ -89,6 +90,7 @@ val create: unit -> 'a t
     ```ocaml let set = HashSet.with_capacity 1000 in (* Can insert ~1000
     elements without rehashing *) ``` *)
 val with_capacity: int -> 'a t
+
 (** Creates a hash set from a list of elements. Duplicate elements in the input
     list are automatically deduplicated.
 
@@ -113,6 +115,7 @@ val of_list: 'a list -> 'a t
     - Time: O(1) average, O(n) worst case during rehashing
     - Space: O(1) amortized *)
 val insert: 'a t -> 'a -> bool
+
 (** Removes a value from the set. Returns [true] if the value was present and
     removed, [false] if it wasn't in the set.
 
@@ -125,6 +128,7 @@ val insert: 'a t -> 'a -> bool
 
     - Time: O(1) average, O(n) worst case *)
 val remove: 'a t -> 'a -> bool
+
 (** Returns [true] if the value exists in the set.
 
     ## Examples
@@ -136,6 +140,7 @@ val remove: 'a t -> 'a -> bool
 
     - Time: O(1) average, O(n) worst case *)
 val contains: 'a t -> 'a -> bool
+
 (** Returns the number of unique elements in the set.
 
     ## Examples
@@ -146,6 +151,7 @@ val contains: 'a t -> 'a -> bool
 
     - Time: O(1) *)
 val len: 'a t -> int
+
 (** Returns [true] if the set contains no elements.
 
     ## Examples
@@ -157,6 +163,7 @@ val len: 'a t -> int
 
     - Time: O(1) *)
 val is_empty: 'a t -> bool
+
 (** Removes all elements from the set.
 
     ## Examples
@@ -183,6 +190,7 @@ val clear: 'a t -> unit
 
     - Time: O(n) *)
 val iter: 'a t -> fn:('a -> unit) -> unit
+
 (** Converts the set into an immutable iterator.
 
     ## Examples
@@ -195,6 +203,7 @@ val iter: 'a t -> fn:('a -> unit) -> unit
     |> Iterator.to_list
     ``` *)
 val into_iter: 'a t -> 'a Iter.Iterator.t
+
 (** Returns a mutable iterator over the set's elements.
 
     ## Examples
@@ -203,6 +212,7 @@ val into_iter: 'a t -> 'a Iter.Iterator.t
     HashSet.to_mut_iter set in Iter.MutIterator.to_list iter (* [1; 2; 3] -
     order not guaranteed *) ``` *)
 val to_mut_iter: 'a t -> 'a Iter.MutIterator.t
+
 (** Folds over all elements in the set. The iteration order is unspecified.
 
     ## Examples
@@ -243,6 +253,7 @@ val to_list: 'a t -> 'a list
     - Time: O(n + m) where n = len(set1), m = len(set2)
     - Space: O(n + m) *)
 val union: 'a t -> 'a t -> 'a t
+
 (** Returns a new set containing only elements present in both sets.
 
     ## Examples
@@ -256,6 +267,7 @@ val union: 'a t -> 'a t -> 'a t
     - Time: O(min(n, m))
     - Space: O(min(n, m)) *)
 val intersection: 'a t -> 'a t -> 'a t
+
 (** Returns a new set containing elements in [set1] but not in [set2].
 
     ## Examples
@@ -269,6 +281,7 @@ val intersection: 'a t -> 'a t -> 'a t
     - Time: O(n) where n = len(set1)
     - Space: O(n) *)
 val difference: 'a t -> 'a t -> 'a t
+
 (** Returns a new set containing elements in either set, but not both.
     Equivalent to [(set1 ∪ set2) - (set1 ∩ set2)].
 
@@ -283,6 +296,7 @@ val difference: 'a t -> 'a t -> 'a t
     - Time: O(n + m)
     - Space: O(n + m) *)
 val symmetric_difference: 'a t -> 'a t -> 'a t
+
 (** Returns [true] if all elements of [set1] are in [set2].
 
     ## Examples
@@ -295,6 +309,7 @@ val symmetric_difference: 'a t -> 'a t -> 'a t
 
     - Time: O(n) where n = len(set1) *)
 val is_subset: 'a t -> 'a t -> bool
+
 (** Returns [true] if [set1] contains all elements of [set2]. Equivalent to
     [is_subset set2 set1].
 
@@ -307,6 +322,7 @@ val is_subset: 'a t -> 'a t -> bool
 
     - Time: O(m) where m = len(set2) *)
 val is_superset: 'a t -> 'a t -> bool
+
 (** Returns [true] if the sets have no common elements.
 
     ## Examples

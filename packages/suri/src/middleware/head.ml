@@ -1,4 +1,5 @@
 open Std
+
 (** HEAD request handler middleware
     
     Simply strips the response body for HEAD requests.

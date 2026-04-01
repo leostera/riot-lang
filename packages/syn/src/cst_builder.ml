@@ -5870,8 +5870,9 @@ and object_expression_from_node = fun node ->
       )
   in
   match lift_members [] member_children with
-  | Some members ->
-      Some (({ syntax_node = node; self_pattern; members; attributes = [] }: Cst.object_expression))
+  | Some members -> Some ((
+    { syntax_node = node; self_pattern; members; attributes = [] }: Cst.object_expression
+  ))
   | None -> None
 
 and method_call_expression_from_node = fun node ->

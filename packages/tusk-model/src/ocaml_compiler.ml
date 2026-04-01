@@ -26,6 +26,7 @@ type warning =
   | NoCmiFile
   (** Warning 49: missing cmi when looking up module alias *)
   | All
+
 (** All warnings *)
 let warning_to_number = function
   | PartialMatch -> 8
@@ -77,6 +78,7 @@ type compilation_kind =
   | Bytecode
   (** ocamlc - fast compilation, slower runtime *)
   | Native
+
 (** ocamlopt - slower compilation, optimized runtime *)
 let compilation_kind_to_string = function
   | Bytecode -> "bytecode"

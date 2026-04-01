@@ -1,4 +1,5 @@
 open Std
+
 (** Build the CLI with dynamically discovered package commands *)
 let build_cli = fun workspace_opt ->
   let open ArgParser in
@@ -54,6 +55,7 @@ let set_verbosity = fun verbose ->
   | 1 -> Log.(set_level Info)
   | 2 -> Log.(set_level Debug)
   | _ -> Log.(set_level Trace)
+
 (** Get workspace or return None *)
 let get_workspace_scan = fun () ->
   match Env.current_dir () with
@@ -66,6 +68,7 @@ let get_workspace_scan = fun () ->
 
 let get_workspace = fun () ->
   Option.map fst (get_workspace_scan ())
+
 (** Try to execute a package command if it exists *)
 let try_command = fun ?workspace_scan cmd_name remaining_args ->
   let workspace_scan =

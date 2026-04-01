@@ -5,6 +5,7 @@ module List = Kernel.Collections.List
 module Uchar = Kernel.Uchar
 
 type t = Rune.t list
+
 (** Extract the first grapheme cluster from a string
     
     This implements UAX #29 grapheme cluster boundary detection

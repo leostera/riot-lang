@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Basic Auth with custom validation - simulating database lookup *)
 
 (** Mock database module *)
@@ -45,6 +46,7 @@ module DB = struct
     (* For demo: just check if hash matches "hash_of_" + password *)
     String.equal user.password_hash (String.concat "" [ "hash_of_"; password ])
 end
+
 (** Custom validation function *)
 let validate = fun ~username ~password ->
   match DB.find_user username with
@@ -57,6 +59,7 @@ let validate = fun ~username ~password ->
   | None ->
       Log.warn (String.concat "" [ "Failed auth attempt for unknown user: "; username ]);
       None
+
 (** Route handlers *)
 let home_handler = fun conn _req ->
   let html = String.concat ""

@@ -1,6 +1,7 @@
 open Std
 open Std.Data
 open Std.Collections
+
 (** Event system for tusk - pure data types for events *)
 
 (** Strip ANSI escape codes from a string *)
@@ -178,8 +179,10 @@ type t = {
   level: level;
   kind: kind;
 }
+
 (** Create a new event with current timestamp *)
 let create = fun ~session_id ~level kind -> { timestamp = Datetime.now (); session_id; level; kind }
+
 (** Format timestamp for display *)
 
 (** Get the machine-readable event name *)
@@ -257,6 +260,7 @@ let name = function
   | StoreCreated _ -> "tusk.store.created"
   | WorkerPoolCreating _ -> "tusk.worker_pool.creating"
   | WorkerPoolCreated _ -> "tusk.worker_pool.created"
+
 (** Get human-readable display message *)
 let display = function
   | BuildStarted { packages; _ } ->
@@ -526,6 +530,7 @@ let display = function
       ^ " workers in "
       ^ Int.to_string duration_ms
       ^ "ms"
+
 (** Convert to human-readable string with timestamp *)
 let to_string = fun event ->
   let timestamp = Datetime.to_iso8601 event.timestamp in
@@ -560,6 +565,7 @@ let resolution_mode_of_json = function
   | Json.String "refresh" -> Some `Refresh
   | Json.String "unlock" -> Some `Unlock
   | _ -> None
+
 (** Convert kind to JSON *)
 let kind_to_json = function
   | BuildComplete { duration_ms; results; succeeded; failed } ->
@@ -862,6 +868,7 @@ let kind_to_json = function
       ]
   | WritingFile { path } ->
       Json.Object [ ("path", Json.String path) ]
+
 (** Convert event to JSON *)
 let to_json = fun event ->
   let timestamp = Datetime.to_iso8601 event.timestamp in
@@ -885,6 +892,7 @@ let to_json = fun event ->
     ("message", Json.String (strip_ansi_codes (display clean_event.kind)));
     ("data", kind_to_json clean_event.kind);
   ]
+
 (** Convert kind from JSON *)
 let kind_from_json = fun json ->
   match json with
@@ -1769,6 +1777,7 @@ let kind_from_json = fun json ->
       | _ -> Error "Missing event field"
     )
   | _ -> Error "Invalid JSON format"
+
 (** Convert from JSON *)
 let from_json = fun json ->
   match json with

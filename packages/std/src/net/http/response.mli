@@ -71,12 +71,14 @@ val create: Status.t -> t
     ```ocaml let status = Response.status resp in if Status.is_success status
     then Log.info "Success!" ``` *)
 val status: t -> Status.t
+
 (** Returns the HTTP version (defaults to HTTP/1.1).
 
     ## Examples
 
     ```ocaml Response.version resp (* Version.Http11 *) ``` *)
 val version: t -> Version.t
+
 (** Returns all response headers.
 
     ## Examples
@@ -84,6 +86,7 @@ val version: t -> Version.t
     ```ocaml let headers = Response.headers resp in Header.iter (fun name value
     -> Printf.printf "%s: %s\n" name value ) headers ``` *)
 val headers: t -> Header.t
+
 (** Returns the response body if present.
 
     ## Examples
@@ -99,12 +102,14 @@ val body: t -> string option
 
     ```ocaml Response.with_status resp Status.Created ``` *)
 val with_status: t -> Status.t -> t
+
 (** Returns a new response with the given HTTP version.
 
     ## Examples
 
     ```ocaml Response.with_version resp Version.Http2 ``` *)
 val with_version: t -> Version.t -> t
+
 (** Returns a new response with the given headers (replaces all).
 
     ## Examples
@@ -113,12 +118,14 @@ val with_version: t -> Version.t -> t
     |> Header.set "Cache-Control" "max-age=3600" in Response.with_headers resp
     headers ``` *)
 val with_headers: t -> Header.t -> t
+
 (** Returns a new response with the header set (replaces existing).
 
     ## Examples
 
     ```ocaml Response.with_header resp "Content-Type" "application/json" ``` *)
 val with_header: t -> Header.name -> Header.value -> t
+
 (** Returns a new response with the given body.
     
     ## Examples
@@ -128,12 +135,14 @@ val with_header: t -> Header.name -> Header.value -> t
     ```
 *)
 val with_body: t -> string -> t
+
 (** Returns a new response without a body.
 
     ## Examples
 
     ```ocaml Response.without_body resp ``` *)
 val without_body: t -> t
+
 (** Returns a new response with the header added (allows duplicates).
 
     ## Examples
@@ -141,12 +150,14 @@ val without_body: t -> t
     ```ocaml resp |> Response.add_header "Set-Cookie" "session=abc" |>
     Response.add_header "Set-Cookie" "token=xyz" ``` *)
 val add_header: t -> Header.name -> Header.value -> t
+
 (** Returns a new response with the header removed.
 
     ## Examples
 
     ```ocaml Response.remove_header resp "X-Debug-Info" ``` *)
 val remove_header: t -> Header.name -> t
+
 (** Returns the first value for the given header name.
 
     ## Examples
@@ -154,6 +165,7 @@ val remove_header: t -> Header.name -> t
     ```ocaml match Response.get_header resp "Content-Type" with | Some ct ->
     Printf.printf "Type: %s\n" ct | None -> () ``` *)
 val get_header: t -> Header.name -> Header.value option
+
 (** Checks if the response has the given header.
 
     ## Examples
@@ -183,18 +195,24 @@ module Builder: sig
   (** Creates a new response builder. *)
   type t
   val create: Status.t -> t
+
   (** Sets the status code. *)
   val status: t -> Status.t -> t
+
   (** Sets the HTTP version. *)
   val version: t -> Version.t -> t
+
   (** Adds a header. *)
   val header: t -> Header.name -> Header.value -> t
+
   (** Sets all headers. *)
   val headers: t -> Header.t -> t
+
   (** Sets the response body. *)
   val body: t -> string -> t
 
   val build: t -> response
+
   (** Builds the final response. *)
 end
 
@@ -209,6 +227,7 @@ end
     ```
 *)
 val ok: string -> t
+
 (** Creates a 201 Created response with body.
     
     ## Examples
@@ -219,6 +238,7 @@ val ok: string -> t
     ```
 *)
 val created: string -> t
+
 (** Creates a 202 Accepted response with body (async processing).
     
     ## Examples
@@ -228,12 +248,14 @@ val created: string -> t
     ```
 *)
 val accepted: string -> t
+
 (** Creates a 204 No Content response (successful, no body).
 
     ## Examples
 
     ```ocaml let resp = Response.no_content () ``` *)
 val no_content: unit -> t
+
 (** Creates a 400 Bad Request response with error message.
 
     ## Examples
@@ -241,6 +263,7 @@ val no_content: unit -> t
     ```ocaml let resp = Response.bad_request "Invalid JSON in request body" ```
 *)
 val bad_request: string -> t
+
 (** Creates a 401 Unauthorized response with error message.
 
     ## Examples
@@ -248,18 +271,21 @@ val bad_request: string -> t
     ```ocaml let resp = Response.unauthorized "Authentication required" |>
     Response.with_header "WWW-Authenticate" "Bearer" ``` *)
 val unauthorized: string -> t
+
 (** Creates a 403 Forbidden response with error message.
 
     ## Examples
 
     ```ocaml let resp = Response.forbidden "Access denied" ``` *)
 val forbidden: string -> t
+
 (** Creates a 404 Not Found response with error message.
 
     ## Examples
 
     ```ocaml let resp = Response.not_found "User not found" ``` *)
 val not_found: string -> t
+
 (** Creates a 405 Method Not Allowed response with error message.
 
     ## Examples
@@ -267,6 +293,7 @@ val not_found: string -> t
     ```ocaml let resp = Response.method_not_allowed "POST not allowed on this
     resource" |> Response.with_header "Allow" "GET, HEAD" ``` *)
 val method_not_allowed: string -> t
+
 (** Creates a 500 Internal Server Error response with error message.
 
     ## Examples
@@ -274,6 +301,7 @@ val method_not_allowed: string -> t
     ```ocaml let resp = Response.internal_server_error "Database connection
     failed" ``` *)
 val internal_server_error: string -> t
+
 (** Creates a 501 Not Implemented response with error message.
 
     ## Examples
@@ -281,6 +309,7 @@ val internal_server_error: string -> t
     ```ocaml let resp = Response.not_implemented "Feature not yet available" ```
 *)
 val not_implemented: string -> t
+
 (** Creates a 502 Bad Gateway response with error message.
 
     ## Examples
@@ -288,6 +317,7 @@ val not_implemented: string -> t
     ```ocaml let resp = Response.bad_gateway "Upstream service unavailable" ```
 *)
 val bad_gateway: string -> t
+
 (** Creates a 503 Service Unavailable response with error message.
 
     ## Examples

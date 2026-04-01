@@ -720,6 +720,7 @@ let main_message = fun diag ->
       let expected = expected_message diag in
       let found_kind = (found_token diag).kind in
       "expected " ^ expected ^ ", found " ^ found_kind
+
 (** Convert diagnostic to JSON for machine consumption *)
 let to_json = fun err ->
   let open Data.Json in

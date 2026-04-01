@@ -171,6 +171,7 @@ val middleware: ?realm:string ->
   password:string ->
   unit ->
   Pipeline.middleware
+
 (** Create Basic Auth middleware with custom validation.
     
     Use this for database lookups, LDAP authentication, or any custom
@@ -223,6 +224,7 @@ val middleware_with_validation:
     This is exposed for advanced use cases. Most applications should use
     {!middleware} or {!middleware_with_validation} instead. *)
 val get_credentials: Conn.t -> (string * string) option
+
 (** Store authenticated user data in connection.
     
     This is called automatically by {!middleware_with_validation}.
@@ -237,6 +239,7 @@ val get_credentials: Conn.t -> (string * string) option
       | None -> ()
     ]} *)
 val assign: string -> 'a -> Conn.t -> Conn.t
+
 (** Get authenticated user data from connection.
     
     Retrieve data stored by {!middleware_with_validation} or {!assign}.

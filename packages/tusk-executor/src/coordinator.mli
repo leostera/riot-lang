@@ -21,6 +21,7 @@ val build_workspace:
   build_ctx:Build_ctx.t ->
   session_id:Session_id.t ->
   (workspace_result, Workspace_planner.plan_error) result
+
 (** Plan and execute a workspace build.
 
     Concurrency ownership is action-scoped: [concurrency] must be threaded into

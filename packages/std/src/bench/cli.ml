@@ -35,6 +35,7 @@ let benchmark_name = function
 
 let matches_pattern = fun ~pattern bench_item ->
   String.contains (benchmark_name bench_item) pattern
+
 (** Apply CLI overrides to benchmark items *)
 let apply_overrides = fun ~iterations_override ~warmup_override benchmarks ->
   match (iterations_override, warmup_override) with

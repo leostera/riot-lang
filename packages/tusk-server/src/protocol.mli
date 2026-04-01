@@ -114,6 +114,7 @@ type response =
       package_names: string list;
       available_packages: string list
     }
+
 (** Message types for server communication *)
 type Message.t +=
   | ServerRequest of request

@@ -106,19 +106,25 @@ type t = {
   (* Z-index for layering *)
   z_index: int;
 }
+
 (** Empty/default style *)
 val empty: t
 
 (** {1 Builder Functions} *)
 val row: t -> t
+
 (** Set direction to LeftToRight *)
 val column: t -> t
+
 (** Set direction to TopToBottom *)
 val size: width:sizing_type -> height:sizing_type -> t -> t
+
 (** Set width and height sizing *)
 val width: sizing_type -> t -> t
+
 (** Set width sizing *)
 val height: sizing_type -> t -> t
+
 (** Set height sizing *)
 val min_width: float -> t -> t
 
@@ -133,10 +139,13 @@ val padding: padding -> t -> t
 val margin: margin -> t -> t
 
 val bg: Colors.rgb -> t -> t
+
 (** Set background color *)
 val fg: Colors.rgb -> t -> t
+
 (** Set foreground color *)
 val border: ?width:int -> ?color:Colors.rgb -> ?radius:corner_radius -> unit -> t -> t
+
 (** Set border properties *)
 val text_size: int -> t -> t
 
@@ -153,8 +162,10 @@ val align_center: t -> t
 val align_right: t -> t
 
 val grow: t -> t
+
 (** Set both width and height to Grow *)
 val fixed: width:float -> height:float -> t -> t
+
 (** Set both width and height to Fixed *)
 val child_gap: int -> t -> t
 
@@ -197,6 +208,7 @@ end
 
 (** {1 Color Helpers} *)
 val color: string -> Tty.Color.t
+
 (** [color hex] parses a hex color string like "#FF0000" or "#F00" into a Tty.Color.t.
     
     Examples:

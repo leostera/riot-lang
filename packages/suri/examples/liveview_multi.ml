@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Multiple LiveView Components Example
     
     Demonstrates embedding multiple independent LiveView components
@@ -71,6 +72,7 @@ module Counter = struct
           ];
       ]
 end
+
 (** Status LiveView - Shows current server timestamp *)
 module Status = struct
   let id = LiveView.id "status"
@@ -131,6 +133,7 @@ module Status = struct
           ];
       ]
 end
+
 (** Page styles *)
 let page_styles = {|
   * {
@@ -307,6 +310,7 @@ let page_styles = {|
     color: #667eea;
   }
 |}
+
 (** Home page handler with both LiveViews embedded *)
 let home_page = fun conn _req ->
   let open Component in

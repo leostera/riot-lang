@@ -3,14 +3,18 @@
     that can be used to cancel the timer. *)
 type id = Miniriot.Timer.id
 val send_after: Pid.t -> Message.t -> after:Time.Duration.t -> id
+
 (** Send a message to a process repeatedly at a given interval.
     Returns a timer ID that can be used to cancel the timer. *)
 val send_interval: Pid.t -> Message.t -> interval:Time.Duration.t -> id
+
 (** Cancel a timer by its ID. If the timer has already fired or doesn't exist,
     this is a no-op. *)
 val cancel: id -> unit
+
 (** Compare two timer IDs for equality *)
 val equal: id -> id -> bool
+
 (** [measure f] executes function [f] and returns both its result and the 
     time elapsed during execution.
     

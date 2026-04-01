@@ -23,6 +23,7 @@ let make = fun ~session_id ~profile ?target ?(available_parallelism = System.ava
     available_parallelism;
     session_id;
   }
+
 (** Get target platform name for package.target.* lookups *)
 let target_platform_name = fun ctx -> Target.platform_name ctx.target
 
@@ -32,12 +33,16 @@ let host_platform_name = fun ctx ->
   | "linux" -> "linux"
   | "windows" -> "windows"
   | other -> other
+
 (** Check if cross-compiling *)
 let is_cross_compile = fun ctx -> Target.is_cross ctx.target
+
 (** Get sysroot if cross-compiling *)
 let sysroot = fun ctx -> Target.sysroot ctx.target
+
 (** Get target triplet *)
 let target_triplet = fun ctx -> Target.triplet ctx.target
+
 (** Hash build context into a Sha256 hasher state *)
 let hash = fun state ctx ->
   let module H = Crypto.Sha256 in

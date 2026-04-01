@@ -18,6 +18,7 @@ let of_string = function
   | "linux" -> Linux
   | "windows" -> Windows
   | s -> Unknown s
+
 (** Detect the current platform using Kernel's System.Host *)
 let detect = fun () ->
   let host = Kernel.System.host_triplet in
@@ -26,5 +27,6 @@ let detect = fun () ->
   | "linux" -> Linux
   | "windows" -> Windows
   | other -> Unknown other
+
 (** Get current platform as string *)
 let current_string = fun () -> detect () |> to_string

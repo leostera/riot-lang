@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Example showing the debugger middleware in action *)
 (* Helper function that will be in the stack trace *)
 

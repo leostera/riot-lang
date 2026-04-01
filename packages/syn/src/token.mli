@@ -1,4 +1,5 @@
 open Std
+
 (** Tokens - Lexical Elements
 
     This module defines all token types produced by the lexer.
@@ -204,6 +205,7 @@ val trivia_of_token: t -> trivia option
 val trivia_to_token: trivia -> t
 
 val with_leading_trivia: t -> trivia list -> t
+
 (** `show_kind kind` returns a human-readable name for a token kind.
 
     Useful for error messages and debugging.
@@ -212,6 +214,7 @@ val with_leading_trivia: t -> trivia list -> t
     (Int 42)) = "integer" show_kind Plus = "'+'" show_kind EOF = "end of file"
     ``` *)
 val show_kind: token_kind -> string
+
 (** `to_string token` returns a human-readable description of the token.
     
     This is a convenience wrapper around `show_kind` that takes a full token.

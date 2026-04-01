@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Simple API with CORS enabled for cross-origin requests *)
 let routes = Middleware.Router.[get
   "/api/hello"

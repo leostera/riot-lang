@@ -178,4 +178,3 @@ let prior_cause = fun incompat satisfier_cause package ->
       (* Even if all_terms is empty, create a derived incompatibility *)
       (* An empty incompatibility is terminal (fundamental contradiction) *)
       create_derived all_terms incompat satisfier_cause None
-  | _ -> incompat

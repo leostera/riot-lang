@@ -5,12 +5,15 @@ open IO
 (** {1 Type} *)
 
 type t = Kernel.UUID.t
+
 (** UUID represented as 16 bytes *)
 (** {1 Creation - Using Native Platform APIs} *)
 
 let v4 = fun () -> Kernel.UUID.v4 ()
+
 (** Generate random UUID v4 using platform's cryptographic RNG *)
 let v7 = fun () -> Kernel.UUID.v7 ()
+
 (** Generate timestamp-ordered UUID v7 (RFC 9562) - sortable by creation time *)
 let v5 = fun ~namespace:_ ~name:_ -> raise (Invalid_argument "UUID.v5 not yet implemented")
 
@@ -84,6 +87,7 @@ let time = fun _uuid -> None
 (* TODO: extract from v7 *)
 
 (** {1 Monotonic UUIDv7 for Transaction IDs} *)
+
 (** Monotonic UUIDv7 state to prevent time regressions.
     
     This ensures that even if the system clock jumps backwards (NTP adjustment,
@@ -98,6 +102,7 @@ module Monotonic = struct
   }
 
   let create = fun () -> { last_timestamp_ms = cell 0L }
+
   (** Extract timestamp (ms since epoch) from UUIDv7 bytes.
       UUIDv7 format: [timestamp_ms(48 bits) | ver(4) | rand_a(12) | var(2) | rand_b(62)]
   *)
@@ -114,6 +119,7 @@ module Monotonic = struct
         (logor
           (shift_left b1 32)
           (logor (shift_left b2 24) (logor (shift_left b3 16) (logor (shift_left b4 8) b5)))))
+
   (** Generate monotonic UUIDv7.
       If the current timestamp is less than the last seen timestamp,
       we clamp to last_timestamp + 1ms to preserve monotonicity.
@@ -139,12 +145,14 @@ module Monotonic = struct
       uuid
     end
 end
+
 (** Global monotonic state for transaction IDs.
     Use {!v7_monotonic} for generating transaction UUIDs.
 *)
 let _global_monotonic_state = Monotonic.create ()
 
 let v7_monotonic = fun () -> Monotonic.v7 _global_monotonic_state
+
 (** Generate monotonic UUIDv7 safe for transaction IDs.
     
     This variant ensures that UUIDs are strictly monotonically increasing

@@ -5,6 +5,7 @@ open Collections
 (* # Supervisor - OTP-style process supervision *)
 
 type t = Pid.t
+
 (** Convert supervisor to Pid *)
 let to_pid : t -> Pid.t = fun sup -> sup
 

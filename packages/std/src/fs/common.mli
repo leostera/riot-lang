@@ -22,8 +22,11 @@ open Global
     matching for error handling. *)
 
 type error = Kernel.IO.error
+
 (** Filesystem error type - preserves structured error info. *)
 val error_message: error -> string
+
 (** Convert a filesystem error to a human-readable message. *)
 val convert_kernel_result: ('a, Kernel.IO.error) result -> ('a, error) result
+
 (** Convert a kernel result to a filesystem result (currently a no-op since types match). *)

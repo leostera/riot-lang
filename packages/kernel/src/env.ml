@@ -1,4 +1,5 @@
 open Global0
+
 (** Environment operations for Kernel *)
 let getenv = fun var ->
   try Some (sys__getenv var) with

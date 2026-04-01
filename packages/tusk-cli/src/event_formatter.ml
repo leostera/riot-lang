@@ -12,6 +12,7 @@ let format_prefixed_block = fun ~prefix message ->
         | [] -> ""
         | _ -> "\n" ^ String.concat "\n" rest
       )
+
 (** Format a telemetry event for cargo-style output. Uses displayed_packages
     HashSet to track what we've already shown. *)
 let format = fun ~displayed_packages (event: Telemetry.event) ->

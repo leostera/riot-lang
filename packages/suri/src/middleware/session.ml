@@ -15,29 +15,36 @@ type t = {
   secret: string;
   mutable modified: bool;
 }
+
 (** Extend Conn.assign_value to store sessions *)
 type Conn.assign_value +=
   Session_data of t
+
 (** Create empty session *)
 let create = fun ~cookie_name ~secret () ->
   let now = Unix.gettimeofday () |> Int64.of_float in
   let data = { values = HashMap.create (); created_at = now; expires_at = Option.none } in
   { data; cookie_name; secret; modified = false }
+
 (** Get value from session *)
 let get_value = fun key session ->
   HashMap.get session.data.values key
+
 (** Put value in session *)
 let put = fun key value session ->
   let _ = HashMap.insert session.data.values key value in
   session.modified <- true
+
 (** Delete value from session *)
 let delete = fun key session ->
   let _ = HashMap.remove session.data.values key in
   session.modified <- true
+
 (** Clear all session data *)
 let clear = fun session ->
   HashMap.clear session.data.values;
   session.modified <- true
+
 (** Check if session is expired *)
 let is_expired = fun session ->
   match session.data.expires_at with
@@ -45,10 +52,12 @@ let is_expired = fun session ->
       let now = Unix.gettimeofday () |> Int64.of_float in
       Int64.compare now exp > 0
   | Option.None -> false
+
 (** Check if session was modified *)
 let is_modified = fun session -> session.modified
 
 (** {1 JSON Serialization} *)
+
 (** Serialize session data to JSON *)
 let to_json = fun data ->
   let open Data.Json in
@@ -62,6 +71,7 @@ let to_json = fun data ->
           | Option.Some exp -> int (Int64.to_int exp)
           | Option.None -> null
         ); ]
+
 (** Deserialize session data from JSON *)
 let from_json = fun json ->
   let open Data.Json in
@@ -107,6 +117,7 @@ let from_json = fun json ->
     | _ -> Option.none
 
 (** {1 Basic Crypto (XOR placeholder - NOT SECURE for production)} *)
+
 (** Simple XOR encryption - placeholder for real AES-GCM *)
 let encrypt = fun ~secret data ->
   let secret_len = String.length secret in
@@ -119,8 +130,10 @@ let encrypt = fun ~secret data ->
     chars := encrypted_byte :: !chars
   done;
   String.of_seq (List.to_seq !chars)
+
 (** Simple XOR decryption - same as encryption for XOR *)
 let decrypt = fun ~secret encrypted -> encrypt ~secret encrypted
+
 (** Simple signature using hash of combined secret and data *)
 let sign = fun ~secret data ->
   let combined = String.concat ":" [ secret; data ] in
@@ -131,12 +144,14 @@ let sign = fun ~secret data ->
   done;
   (* Convert to hex string *)
   String.concat "" [ "0x"; Int.to_string !sum ]
+
 (** Verify signature *)
 let verify = fun ~secret data signature ->
   let expected = sign ~secret data in
   String.equal expected signature
 
 (** {1 Cookie Serialization} *)
+
 (** Serialize session to cookie value *)
 let to_cookie_value = fun session ->
   let json = to_json session.data in
@@ -148,6 +163,7 @@ let to_cookie_value = fun session ->
   let signature = sign ~secret:session.secret encrypted_b64 in
   (* Return: encrypted.signature *)
   String.concat "." [ encrypted_b64; signature ]
+
 (** Deserialize session from cookie value *)
 let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
   match String.split_on_char '.' cookie_value with
@@ -176,8 +192,10 @@ let from_cookie_value = fun ~cookie_name ~secret cookie_value ->
   | _ -> Result.err "Invalid cookie format"
 
 (** {1 Middleware} *)
+
 (** Storage key for session in connection *)
 let session_key = "suri.session"
+
 (** Get session from connection - creates new if not present *)
 let get = fun conn ->
   match Conn.get_assign session_key conn with
@@ -185,6 +203,7 @@ let get = fun conn ->
   | _ ->
       (* This shouldn't happen if middleware is installed *)
       create ~cookie_name:"_suri_session" ~secret:"" ()
+
 (** Session middleware *)
 let middleware = fun ~secret ?(cookie_name = "_suri_session") ?(max_age = 86_400) ?(secure = false) ?(same_site = Http.Http1.Cookie.Lax) () ->
   fun ~conn ~next ->

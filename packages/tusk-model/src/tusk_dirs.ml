@@ -24,6 +24,7 @@ let ensure_created = fun () ->
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "toolchains") in
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "bin") in
   Ok ()
+
 (** Build directory configuration - single source of truth *)
 let build_dir_name = "_build"
 
@@ -57,8 +58,10 @@ let workspace_build_dir_name = fun ~workspace_root ->
 
 let build_dir_root = fun ~workspace_root ->
   resolve_build_dir_root ~workspace_root (workspace_build_dir_name ~workspace_root)
+
 (** Get current host triple *)
 let host_target = fun () -> System.Host.to_string System.host_triplet
+
 (** New target-aware path functions *)
 let profile_dir = fun ~workspace_root ~profile ->
   Path.(build_dir_root ~workspace_root / Path.v profile)
@@ -77,6 +80,7 @@ let cache_dir_with_target = fun ~workspace_root ~profile ~target ->
 
 let build_lock_path_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "tusk.lock")
+
 (** Backward compatible functions - default to debug profile + host target *)
 let debug_dir = fun ~workspace_root -> profile_dir ~workspace_root ~profile:"debug"
 

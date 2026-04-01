@@ -1,5 +1,6 @@
 open Std
 open Suri
+
 (** Simple session counter demo *)
 let home_handler = fun conn req ->
   let session = Middleware.Session.get conn in

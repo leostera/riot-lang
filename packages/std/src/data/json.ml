@@ -77,6 +77,7 @@ let error_to_string = function
       "Extra input after JSON value at position " ^ string_of_int position
   | Unknown_error msg ->
       "Unknown error: " ^ msg
+
 (** Escape a string for JSON *)
 let escape_string = fun s ->
   let buffer = Buffer.create (String.length s * 2) in
@@ -92,6 +93,7 @@ let escape_string = fun s ->
     )
     s;
   Buffer.contents buffer
+
 (** Format float for JSON - ensures valid JSON number format *)
 let format_float = fun f ->
   (* Handle special float values *)
@@ -111,6 +113,7 @@ let format_float = fun f ->
       s ^ "0"
     else
       s
+
 (** Serialize JSON to string *)
 let rec to_string = function
   | Null -> "null"
@@ -128,6 +131,7 @@ let rec to_string = function
     ","
     (List.map (fun ((k, v)) -> "\"" ^ escape_string k ^ "\":" ^ to_string v) fields)
   ^ "}"
+
 (** Parse JSON from string *)
 let of_string = fun str ->
   let len = String.length str in
@@ -358,6 +362,7 @@ let of_string = fun str ->
   with
   | Json_parse_error err -> Error err
   | exn -> Error (Unknown_error (Exception.to_string exn))
+
 (** Helper functions *)
 let null = Null
 

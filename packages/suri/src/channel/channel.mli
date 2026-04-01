@@ -55,6 +55,7 @@
 open Std
 
 type topic = string
+
 (** Topic identifier for pub/sub channels *)
 module Handler: sig
   (** WebSocket handler interface.
@@ -78,6 +79,7 @@ module Handler: sig
     (** Continue with updated state *)
     | `error of 'state * 'error
   ]
+
   (** Handle error with state *)
 
   (** Result of handling a frame or message *)
@@ -112,10 +114,12 @@ module Handler: sig
     type state
     (** Handler state - maintains connection state across frames *)
     type args
+
     (** Initialization arguments passed when creating the handler *)
     val init: args -> (state, [>
         `Unknown_opcode of int
       ]) handle_result
+
     (** Initialize the handler when connection starts.
         
         Called once when the WebSocket connection is established.
@@ -123,6 +127,7 @@ module Handler: sig
     val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> state -> (state, [>
         `Unknown_opcode of int
       ]) handle_result
+
     (** Handle incoming WebSocket frame from client.
         
         Called for each frame received from the client.
@@ -133,6 +138,7 @@ module Handler: sig
     val handle_message: Miniriot.Message.t -> state -> (state, [>
         `Unknown_opcode of int
       ]) handle_result
+
     (** Handle messages from other processes.
         
         Called when another process sends a message to this handler.
@@ -140,8 +146,10 @@ module Handler: sig
   end
 
   type t
+
   (** Opaque handler type wrapping a handler module and its state *)
   val make: (module Intf with type args = 'a and type state = 'b) -> 'a -> t
+
   (** Create a handler from a module and initialization arguments.
       
       Example:
@@ -154,6 +162,7 @@ module Handler: sig
         `Unknown_opcode of int
       ]
     ]
+
   (** Initialize the handler with a TCP stream *)
   val handle_frame: t -> Http.Ws.Frame.t -> Net.TcpStream.t -> [>
       `continue of Net.TcpStream.t * t
@@ -162,6 +171,7 @@ module Handler: sig
       ]
       | `push of Http.Ws.Frame.t list * t
     ]
+
   (** Handle an incoming frame *)
   val handle_message: t -> Miniriot.Message.t -> 'a -> [>
       `continue of 'a * t
@@ -170,6 +180,7 @@ module Handler: sig
       ]
       | `push of Http.Ws.Frame.t list * t
     ]
+
   (** Handle a message from another process *)
   module Default: sig
     (** Default handler implementations.
@@ -198,8 +209,10 @@ module Handler: sig
         end
         ```*)
     val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> 'state -> ('state, 'error) handle_result
+
     (** Default frame handler: responds to Ping with Pong *)
     val handle_message: Miniriot.Message.t -> 'state -> ('state, 'error) handle_result
+
     (** Default message handler: ignores all messages *)
   end
 end

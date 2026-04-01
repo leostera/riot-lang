@@ -128,10 +128,8 @@ let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) resul
     match field_type with
     | String { default } -> (
         match toml_opt with
-        | Some (Data.Toml.String s) ->
-            Ok (Spec.String s)
-        | Some _ ->
-            Error (field_name ^ ": expected string")
+        | Some (Data.Toml.String s) -> Ok (Spec.String s)
+        | Some _ -> Error (field_name ^ ": expected string")
         | None ->
             if required then
               Error (field_name ^ ": required field missing")
@@ -199,14 +197,10 @@ let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) resul
       )
     | Bool { default } -> (
         match toml_opt with
-        | Some (Data.Toml.Bool b) ->
-            Ok (Spec.Bool b)
-        | Some (Data.Toml.String "true") ->
-            Ok (Spec.Bool true)
-        | Some (Data.Toml.String "false") ->
-            Ok (Spec.Bool false)
-        | Some _ ->
-            Error (field_name ^ ": expected boolean")
+        | Some (Data.Toml.Bool b) -> Ok (Spec.Bool b)
+        | Some (Data.Toml.String "true") -> Ok (Spec.Bool true)
+        | Some (Data.Toml.String "false") -> Ok (Spec.Bool false)
+        | Some _ -> Error (field_name ^ ": expected boolean")
         | None ->
             if required then
               Error (field_name ^ ": required field missing")
@@ -240,8 +234,7 @@ let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) resul
             else
               Error (field_name ^ ": expected single character, got: " ^ s)
           )
-        | Some _ ->
-            Error (field_name ^ ": expected character")
+        | Some _ -> Error (field_name ^ ": expected character")
         | None ->
             if required then
               Error (field_name ^ ": required field missing")

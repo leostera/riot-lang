@@ -41,12 +41,16 @@ let create = fun ~source tokens ->
   }
 
 let position = fun parser -> Token_cursor.position parser.cursor
+
 (** Check if at end of tokens *)
 let is_eof = fun parser -> Token_cursor.is_eof parser.cursor
+
 (** Peek at current token without advancing *)
 let peek = fun parser -> Token_cursor.peek parser.cursor
+
 (** Peek at current token kind *)
 let peek_kind = fun parser -> (peek parser).Token.kind
+
 (** Check if current token matches a specific kind *)
 
 (** Advance to next token *)
@@ -56,6 +60,7 @@ let peek_n = fun parser n ->
 let at = fun parser kind -> peek_kind parser = kind
 
 let advance = fun parser -> Token_cursor.advance parser.cursor
+
 (** Get current span for error reporting *)
 let report_diagnostic = fun parser diag ->
   let current_diags = Cell.get parser.diagnostics in
@@ -64,6 +69,7 @@ let report_diagnostic = fun parser diag ->
 let current_span = fun parser ->
   let token = peek parser in
   token.Token.span
+
 (** Get span pointing to end of last consumed token (for "expected X" errors) *)
 let expected_span = fun parser ->
   let last_tok = Token_cursor.last_token parser.cursor in
@@ -121,6 +127,7 @@ let unexpected_top_level_item_diagnostic = fun parser tok ~signature ->
         Diagnostic.unexpected_signature_item ~found:tok ~text ~span:tok.Token.span
       else
         Diagnostic.unexpected_structure_item ~found:tok ~text ~span:tok.Token.span
+
 (** Get text of a token from source *)
 let token_text = fun parser token ->
   Token_cursor.view parser.cursor token.Token.span
@@ -323,6 +330,7 @@ let can_start_class_type_arrow_parameter = fun parser ->
   | Token.OpenDelim Token.Brace
   | Token.Lt -> true
   | _ -> false
+
 (** Consume a single token WITHOUT consuming trivia after it.
 
     IMPORTANT: This is the primitive operation. It does NOT auto-consume trivia!
@@ -331,12 +339,14 @@ let consume = fun parser ->
   let token = peek parser in
   advance parser;
   token
+
 (** Check if a token kind is trivia *)
 let is_trivia_kind = function
   | Token.Comment _
   | Token.Docstring _
   | Token.Whitespace -> true
   | _ -> false
+
 (** Error recovery: skip tokens until we reach a synchronization point.
 
     This helps prevent cascading errors by consuming tokens after an error until
@@ -394,6 +404,7 @@ let expect = fun parser expected_kind diagnostic_fn ->
     found
 
 (* Return found token as dummy - don't consume for error recovery *)
+
 (** Parse content within parentheses: (content)
     Returns all the parts needed to build a node.
     
@@ -482,11 +493,13 @@ let parse_ident = fun parser diagnostic_fn ->
       found
 
 (* Return found token as dummy *)
+
 (** Convert trivia kinds to their trivia syntax kinds. *)
 let trivia_kind_to_syntax_kind = function
   | Token.WhitespaceTrivia -> Syntax_kind.WHITESPACE
   | Token.CommentTrivia _ -> Syntax_kind.COMMENT
   | Token.DocstringTrivia _ -> Syntax_kind.DOCSTRING
+
 (** Convert token kinds to the syntax kinds used by parser-built green tokens.
 
     Most real tokens still reuse nearby expression/pattern kinds because the
@@ -506,6 +519,7 @@ let syntax_kind_of_token_kind = function
   | _ -> Syntax_kind.IDENT_EXPR
 
 (* Catch-all: treat as identifier for now *)
+
 (** Make a green tree node from children *)
 
 (** Make a token green element *)
@@ -514,6 +528,7 @@ let syntax_kind_of_token_kind = function
 let make_node = fun kind children ->
   let children_array = Array.of_list children in
   Ceibo.Green.make_node ~kind ~children:children_array
+
 (** Make an ERROR node with diagnostic *)
 let green_trivia_of_token_trivia = fun parser (trivia: Token.trivia) ->
   let kind = trivia_kind_to_syntax_kind trivia.Token.kind in
@@ -529,6 +544,7 @@ let make_token = fun parser token ->
   let leading_trivia = List.map (green_trivia_of_token_trivia parser) token.Token.leading_trivia in
   let green_token = Ceibo.Green.make_token ~leading_trivia ~kind:syntax_kind ~text ~width in
   Ceibo.Green.Token green_token
+
 (** *
     ============================================================================
     * GRAMMAR SECTION 1: LEXICAL CONVENTIONS *
@@ -548,6 +564,7 @@ let make_error_node = fun parser ~diagnostic ~consumed_tokens ->
   (* Wrap consumed tokens in ERROR node *)
   let children = tokens_to_green parser consumed_tokens in
   make_node Syntax_kind.ERROR children
+
 (** Get operator precedence and associativity. Returns (precedence,
     is_right_associative). Higher precedence = tighter binding. *)
 let operator_info = function
@@ -582,6 +599,7 @@ let operator_info = function
   | Token.SlashDot -> Some (7, false)
   | Token.StarStar -> Some (8, true)
   | _ -> None
+
 (** Parse type variable: "'" ident
 
     CRITICAL: No trivia allowed between ' and ident! Grammar: typexpr ::= "'"
@@ -7123,8 +7141,7 @@ and parse_let_in_expr = fun parser ->
                           let trivia = consume_trivia parser in
                           params_trivia := trivia :: !params_trivia;
                           collect_params ()
-                      | Token.Eq ->
-                          ()
+                      | Token.Eq -> ()
                       | _ when can_start_pattern parser ->
                           if Option.is_none !first_param_start then
                             first_param_start := Some (peek parser).Token.span.start;
@@ -7133,8 +7150,7 @@ and parse_let_in_expr = fun parser ->
                           let trivia = consume_trivia parser in
                           params_trivia := trivia :: !params_trivia;
                           collect_params ()
-                      | _ ->
-                          ()
+                      | _ -> ()
                     )
                 in
                 collect_params ();
@@ -7244,8 +7260,7 @@ and parse_let_in_expr = fun parser ->
                                 let trivia = consume_trivia parser in
                                 params_trivia2 := trivia :: !params_trivia2;
                                 collect_params2 ()
-                            | Token.Eq ->
-                                ()
+                            | Token.Eq -> ()
                             | _ when can_start_pattern parser ->
                                 if Option.is_none !first_param_start2 then
                                   first_param_start2 := Some (peek parser).Token.span.start;
@@ -7254,8 +7269,7 @@ and parse_let_in_expr = fun parser ->
                                 let trivia = consume_trivia parser in
                                 params_trivia2 := trivia :: !params_trivia2;
                                 collect_params2 ()
-                            | _ ->
-                                ()
+                            | _ -> ()
                           )
                       in
                       collect_params2 ();
@@ -10487,9 +10501,11 @@ and parse = fun ~cst_kind ~parse_item ~source ~tokens ->
     tree;
     diagnostics;
   }
+
 (** Parse interface file (.mli) *)
 let parse_interface = fun ~source tokens ->
   parse ~cst_kind:`Interface ~parse_item:parse_signature_item ~source ~tokens
+
 (** Parse implementation file (.ml) *)
 let parse_implementation = fun ~source tokens ->
   parse ~cst_kind:`Implementation ~parse_item:parse_structure_item ~source ~tokens

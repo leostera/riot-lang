@@ -81,6 +81,7 @@ let apply_patches (base_value: Spec.value) updates : Spec.value =
       in
       Map updated_kvs
   | _ -> panic "Can only patch Map values"
+
 (** Public API *)
 let init = fun ~provider ->
   let configs = load_and_validate_all_specs provider in

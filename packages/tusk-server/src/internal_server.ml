@@ -14,6 +14,7 @@ type server_state = {
 }
 
 let default_registry_name = "pkgs.ml"
+
 let no_emit : Tusk_model.Event.kind -> unit = fun _ -> ()
 
 let resolve_registry = fun ?registry ?(registry_name = default_registry_name) () ->
@@ -21,20 +22,10 @@ let resolve_registry = fun ?registry ?(registry_name = default_registry_name) ()
   | Some registry -> Ok registry
   | None -> Pkgs_ml.Registry.create_filesystem ?tusk_home:None ~registry_name ()
 
-let prepare_workspace = fun ?(emit = no_emit) ~(registry: Pkgs_ml.Registry.t) ~(workspace: Workspace.t) () ->
-  Tusk_pm.ensure_workspace
-    ~emit
-    ~mode:Tusk_pm.Dep_solver.Refresh
-    ~registry
-    ~workspace
-    ()
+let prepare_workspace = fun ?(emit = no_emit) ~(registry:Pkgs_ml.Registry.t) ~(workspace:Workspace.t) () ->
+  Tusk_pm.ensure_workspace ~emit ~mode:Tusk_pm.Dep_solver.Refresh ~registry ~workspace ()
 
-let build_state = fun
-  ~(workspace:Workspace.t)
-  ~load_errors
-  ~(registry: Pkgs_ml.Registry.t)
-  ~(config: Server_config.t)
-  ->
+let build_state = fun ~(workspace:Workspace.t) ~load_errors ~(registry:Pkgs_ml.Registry.t) ~(config:Server_config.t) ->
   let _ = config in
   if List.length load_errors > 0 then
     (
@@ -76,6 +67,7 @@ let build_state = fun
     active_target = Tusk_model.Tusk_dirs.host_target ();
     registry;
   }
+
 (** Main server loop - handle all incoming requests *)
 let rec loop = fun state ->
   let selector msg =
@@ -149,13 +141,7 @@ and handle_ping = fun state client_pid ->
 (** Handler for scan workspace message *)
 and handle_scan_workspace = fun state client_pid current_dir ->
   let (workspace, load_errors) = Workspace_manager.scan current_dir |> Result.expect ~msg:"tusk_server: workspace scan failed" in
-  let workspace =
-    prepare_workspace
-      ~registry:state.registry
-      ~workspace
-      ()
-    |> Result.expect ~msg:"tusk_server: workspace pm preparation failed"
-  in
+  let workspace = prepare_workspace ~registry:state.registry ~workspace () |> Result.expect ~msg:"tusk_server: workspace pm preparation failed" in
   let package_graph =
     match Tusk_planner.Package_graph.create ~scope:Tusk_planner.Package_graph.Runtime workspace with
     | Ok graph -> graph
@@ -440,13 +426,11 @@ and handle_new_package = fun state client_pid path name is_library ->
           Log.debug "Server: Rescanning workspace after package creation";
           let (updated_workspace, updated_load_errors) = Workspace_manager.scan state.workspace.root
           |> Result.expect ~msg:"Failed to rescan workspace after package creation" in
-          let updated_workspace =
-            prepare_workspace
-              ~registry:state.registry
-              ~workspace:updated_workspace
-              ()
-            |> Result.expect ~msg:"Failed to prepare workspace after package creation"
-          in
+          let updated_workspace = prepare_workspace
+            ~registry:state.registry
+            ~workspace:updated_workspace
+            ()
+          |> Result.expect ~msg:"Failed to prepare workspace after package creation" in
           Log.debug
             ("Server: Workspace rescanned, found "
             ^ Int.to_string (List.length updated_workspace.packages)
@@ -515,36 +499,21 @@ and handle_build = fun state client_pid target scope target_arch session_id ->
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let start_local = fun
-  ?(emit = no_emit)
-  ?registry
-  ?(registry_name = default_registry_name)
-  ~workspace
-  ?(load_errors = [])
-  ~(config: Server_config.t)
-  ()
-  ->
+let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_registry_name) ~workspace ?(load_errors = []) ~(config:Server_config.t) () ->
   try
     match resolve_registry ?registry ~registry_name () with
-    | Error err ->
-        Error (Failure ("failed to initialize registry '" ^ registry_name ^ "': " ^ err))
+    | Error err -> Error (Failure ("failed to initialize registry '" ^ registry_name ^ "': " ^ err))
     | Ok registry ->
-        match
-          prepare_workspace
-            ~emit
-            ~registry
-            ~workspace
-            ()
-        with
+        match prepare_workspace ~emit ~registry ~workspace () with
         | Error err -> Error (Failure err)
         | Ok workspace ->
-        let state = build_state ~workspace ~load_errors ~registry ~config in
-        let server_pid =
-          spawn
-            (fun () ->
-              let _ = loop state in
-              Ok ())
-        in
-        Ok server_pid
+            let state = build_state ~workspace ~load_errors ~registry ~config in
+            let server_pid =
+              spawn
+                (fun () ->
+                  let _ = loop state in
+                  Ok ())
+            in
+            Ok server_pid
   with
   | exn -> Error exn

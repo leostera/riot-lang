@@ -54,8 +54,10 @@
 open Global
 
 type t
+
 (** A supervisor process *)
 val to_pid: t -> Pid.t
+
 (** Convert supervisor to Pid *)
 (** {1 Supervision Strategies} *)
 
@@ -68,6 +70,7 @@ type strategy =
   (** If one child fails, that child and all children started after it
           are terminated and restarted *)
   | SimpleOneForOne
+
 (** Simplified supervisor where all children use the same child_spec.
           Children are added dynamically. *)
 (** {1 Restart Policies} *)
@@ -78,6 +81,7 @@ type restart =
   | Temporary
   (** Never restart the child *)
   | Transient
+
 (** Restart only if the child terminates abnormally (with error) *)
 (** {1 Shutdown Behavior} *)
 
@@ -87,6 +91,7 @@ type shutdown =
   | Timeout of Time.Duration.t
   (** Wait for duration for graceful shutdown, then kill *)
   | Infinity
+
 (** Wait forever for graceful shutdown (use for supervisors) *)
 (** {1 Child Types} *)
 
@@ -94,6 +99,7 @@ type child_type =
   | Worker
   (** A regular worker process *)
   | Supervisor
+
 (** A nested supervisor *)
 (** {1 Child Specification} *)
 
@@ -120,6 +126,7 @@ val child_spec:
   ?significant:bool ->
   unit ->
   child_spec
+
 (** Create a child specification with sensible defaults.
 
     Defaults:
@@ -143,6 +150,7 @@ type intensity = {
   max_restarts: int;
   window: Time.Duration.t;
 }
+
 (** Maximum restarts within a time window.
 
     Example:
@@ -155,6 +163,7 @@ type intensity = {
 (** {1 Starting Supervisors} *)
 
 val start_link: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
+
 (** Start a supervisor linked to the current process.
 
     If the current process exits, the supervisor (and all children) exit.
@@ -170,6 +179,7 @@ val start_link: strategy:strategy -> ?intensity:intensity -> children:child_spec
     ```
 *)
 val start: strategy:strategy -> ?intensity:intensity -> children:child_spec list -> unit -> t
+
 (** Start a supervisor without linking.
 
     The supervisor continues running even if the caller exits.
@@ -203,8 +213,10 @@ type child_count = {
   workers: int;  (** Number of worker children *)
 }
 type count = child_count
+
 (** Alias for compatibility *)
 val count_children: t -> child_count
+
 (** Count children by type and status.
 
     Example:
@@ -215,6 +227,7 @@ val count_children: t -> child_count
     ```
 *)
 val delete_child: t -> id:string -> (unit, string) result
+
 (** Remove a child specification.
 
     The child must not be running. Use [terminate_child] first if needed.
@@ -232,6 +245,7 @@ val delete_child: t -> id:string -> (unit, string) result
     ```
 *)
 val restart_child: t -> id:string -> (Pid.t, string) result
+
 (** Restart a child that is not currently running.
 
     Returns [Error] if:
@@ -247,6 +261,7 @@ val restart_child: t -> id:string -> (Pid.t, string) result
     ```
 *)
 val terminate_child: t -> id:string -> (unit, string) result
+
 (** Terminate a running child according to its shutdown spec.
 
     The child spec remains, so the child can be restarted with [restart_child].
@@ -265,6 +280,7 @@ val terminate_child: t -> id:string -> (unit, string) result
 (** {1 Stopping Supervisors} *)
 
 val stop: t -> unit
+
 (** Stop the supervisor and all children gracefully.
 
     Children are stopped in reverse order of startup.
@@ -293,10 +309,12 @@ module Dynamic: sig
       ```
   *)
   type t
+
   (** A dynamic supervisor *)
   val to_pid: t -> Pid.t
 
   val start_link: ?intensity:intensity -> ?max_children:int -> unit -> t
+
   (** Start a dynamic supervisor.
 
       - [intensity]: Default [{ max_restarts = 3; window = Duration.of_sec 5 }]
@@ -310,9 +328,11 @@ module Dynamic: sig
       ```
   *)
   val start: ?intensity:intensity -> ?max_children:int -> unit -> t
+
   (** Start a dynamic supervisor without linking *)
   val start_child:
     t -> start:(unit -> Pid.t) -> ?restart:restart -> ?shutdown:shutdown -> unit -> (Pid.t, string) result
+
   (** Start a new child process.
 
       Returns [Error] if [max_children] limit is reached.
@@ -328,6 +348,7 @@ module Dynamic: sig
       ```
   *)
   val terminate_child: t -> Pid.t -> (unit, string) result
+
   (** Terminate a child by PID.
 
       The child spec is removed (unlike regular supervisor).
@@ -335,7 +356,9 @@ module Dynamic: sig
       Returns [Error "not_found"] if PID is not a child.
   *)
   val which_children: t -> Pid.t list
+
   (** Get list of all running child PIDs *)
   val count_children: t -> child_count
+
   (** Count running children *)
 end

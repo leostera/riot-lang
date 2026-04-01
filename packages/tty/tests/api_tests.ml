@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+
 (** Tests for TTY API - focusing on state management and input, not output *)
 let test_make_tty = fun () ->
   (* Test that we can create a TTY (may fail in non-interactive mode) *)

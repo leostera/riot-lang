@@ -1,4 +1,5 @@
 open Std
+
 (** Generate ETag from response body *)
 let generate_etag = fun ?(weak = false) body ->
   if String.length body = 0 then
@@ -17,6 +18,7 @@ let generate_etag = fun ?(weak = false) body ->
         "\"" ^ etag_value ^ "\""
     in
     Some etag
+
 (** ETag middleware - optional param first to avoid type issues *)
 let middleware = fun ?(weak = false) () ~conn ~next ->
   (* Process request *)

@@ -26,6 +26,7 @@ let default_config = {
   headers = [];
   cache_control = Some "public, max-age=3600";
 }
+
 (** MIME type detection from file extension *)
 module Mime = struct
   let extension_map = [
@@ -80,6 +81,7 @@ module Mime = struct
     in
     List.assoc_opt (String.lowercase_ascii ext) extension_map |> Option.unwrap_or ~default:"application/octet-stream"
 end
+
 (** Security checks for path traversal and dotfiles *)
 module Security = struct
   let is_dotfile = fun path ->
@@ -116,6 +118,7 @@ module Security = struct
     | Error _ -> false
     | Ok normalized -> check_dotfile config normalized
 end
+
 (** HTTP caching helpers *)
 module Cache = struct
   let weekday = fun n ->
@@ -272,6 +275,7 @@ module Cache = struct
     in
     etag_match || modified_match
 end
+
 (** Directory listing HTML generation *)
 module Directory = struct
   type entry = {
@@ -453,6 +457,7 @@ module Directory = struct
 </body>
 </html>|}; ]
 end
+
 (** Core file serving logic *)
 let find_index_file = fun config path ->
   List.find_map
@@ -554,6 +559,7 @@ and serve_regular_file = fun config path meta conn ->
             headers
         in
         Conn.send conn
+
 (** Middleware function *)
 let middleware = fun ?(config = default_config) ~at root () ->
   fun ~conn ~next ->

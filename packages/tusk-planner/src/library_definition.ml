@@ -31,6 +31,7 @@ type t = {
   concrete_mli_path: Path.t option;
   children_without_lib: Module_scanner.entry list;
 }
+
 (** Convert an absolute path to be relative to a base path.
 
     Example: base = "/home/user/project" path = "/home/user/project/src/main.ml"
@@ -46,6 +47,7 @@ let make_relative = fun ~base ~path ->
     Path.v (String.sub path_str len (String.length path_str - len))
   else
     path
+
 (** Check if a path is a binary source file.
 
     Binary paths in Package.binary are stored as ABSOLUTE paths (e.g.,
@@ -62,6 +64,7 @@ let is_binary_module = fun ~package_path ~binaries path ->
       let bin_abs_rel = make_relative ~base:package_path ~path:bin.path in
       Path.equal bin_rel bin_abs_rel)
     binaries
+
 (** Analyze directory entries to build a library definition.
 
     This function implements the core library analysis algorithm:
@@ -199,6 +202,7 @@ let concrete_ml_path = fun t -> t.concrete_ml_path
 let concrete_mli_path = fun t -> t.concrete_mli_path
 
 let children_without_lib = fun t -> t.children_without_lib
+
 (** Determine which children the library interface should depend on.
 
     CONCRETE library interfaces (user-written foo.ml/foo.mli):

@@ -199,6 +199,7 @@ type notification = {
   method_name: string;
   params: notification_params option;
 }
+
 (** Standard JSON-RPC error codes *)
 let parse_error = (-32_700)
 
@@ -209,6 +210,7 @@ let method_not_found = (-32_601)
 let invalid_params = (-32_602)
 
 let internal_error = (-32_603)
+
 (** Helper functions *)
 let method_to_string = function
   | Initialize -> "initialize"
@@ -253,6 +255,7 @@ let string_to_notification_method = function
   | "progress" -> Progress
   | "log_message" -> LogMessage
   | s -> CustomNotification s
+
 (** JSON Serialization *)
 let request_id_to_json = function
   | String s -> Json.String s
@@ -553,12 +556,14 @@ let notification_to_json = fun (notif: notification) ->
   in
   Json.Object ([ ("jsonrpc", Json.String notif.jsonrpc); ("method", Json.String notif.method_name); ]
   @ params_field)
+
 (** JSON Deserialization - simplified for now *)
 let request_of_json _json : (request, string) result = Error "Not implemented"
 
 let response_of_json _json : (response, string) result = Error "Not implemented"
 
 let notification_of_json _json : (notification, string) result = Error "Not implemented"
+
 (** Helper functions *)
 let make_request = fun ?params id method_type ->
   { jsonrpc = "2.0"; id; method_name = method_to_string method_type; params }
