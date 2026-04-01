@@ -2,17 +2,24 @@ import type {
   IndexConfig,
   IndexConfigDocument,
   PackageIndexDocument,
-  PackageLocator,
   PackagePublicationManifest,
   RegistryConfig,
 } from "./types.ts";
 
-export function sourceArchiveKey(locator: PackageLocator, sha: string): string {
-  return `sources/${locator.provider}/${locator.owner}/${locator.repo}/${sha}.tar.gz`;
+export function artifactSourceArchiveKey(
+  packageName: string,
+  packageVersion: string,
+  artifactDigest: string,
+): string {
+  return `sources/${encodePathSegment(packageName)}/${encodePathSegment(packageVersion)}/${artifactDigest}.tar.gz`;
 }
 
-export function manifestKey(locator: PackageLocator, sha: string): string {
-  return `packages/${locator.normalized}/${sha}.manifest.json`;
+export function artifactManifestKey(
+  packageName: string,
+  packageVersion: string,
+  artifactDigest: string,
+): string {
+  return `packages/${encodePathSegment(packageName)}/${encodePathSegment(packageVersion)}/${artifactDigest}.manifest.json`;
 }
 
 export function packageClaimKey(packageName: string): string {
@@ -31,20 +38,8 @@ export function userAvatarUrl(config: RegistryConfig, githubLogin: string): stri
   return `${config.cdnBaseUrl}/${userAvatarKey(githubLogin)}`;
 }
 
-export function prettyManifestUrl(
-  config: RegistryConfig,
-  locator: PackageLocator,
-  sha: string,
-): string {
-  return `${config.cdnBaseUrl}/${manifestKey(locator, sha)}`;
-}
-
-export function prettySourceUrl(
-  config: RegistryConfig,
-  locator: PackageLocator,
-  sha: string,
-): string {
-  return `${config.cdnBaseUrl}/${sourceArchiveKey(locator, sha)}`;
+export function cdnObjectUrl(config: RegistryConfig, key: string): string {
+  return `${config.cdnBaseUrl}/${key}`;
 }
 
 export function indexConfigKey(config: IndexConfig): string {

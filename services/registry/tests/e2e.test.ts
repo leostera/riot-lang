@@ -3,11 +3,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 import { parse as parseToml } from "smol-toml";
 
+import { makeTarGz } from "./helpers.ts";
+
 const baseUrl = trimTrailingSlash(process.env.REGISTRY_E2E_BASE_URL) ?? "https://api.pkgs.ml";
-const packageLocator =
-  process.env.REGISTRY_E2E_PACKAGE_LOCATOR ?? "github.com/leostera/riot-new/packages/kernel";
-const selector = process.env.REGISTRY_E2E_SELECTOR ?? "main";
-const publishPackageLocator = process.env.REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR ?? packageLocator;
+const publishPackagePath = process.env.REGISTRY_E2E_PUBLISH_PACKAGE_PATH ?? "packages/kernel";
 const liveTest = test;
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
 const livePublishTest = rootAuthToken === null ? test.skip : test;
@@ -17,48 +16,6 @@ const liveAuthenticatedTest =
   sessionCookie === null || githubLogin === null ? test.skip : test;
 const cdnBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
 const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "index/v1";
-const WORKSPACE_PUBLISH_ORDER = [
-  "packages/kernel",
-  "packages/miniriot",
-  "packages/std",
-  "packages/ceibo",
-  "packages/colors",
-  "packages/tty",
-  "packages/propane",
-  "packages/http",
-  "packages/jsonrpc",
-  "packages/mime",
-  "packages/pubgrub",
-  "packages/sqlx-driver",
-  "packages/sqlx",
-  "packages/sqlite",
-  "packages/postgres",
-  "packages/swisstable",
-  "packages/syn",
-  "packages/krasny",
-  "packages/fixme",
-  "packages/gooey",
-  "packages/minttea",
-  "packages/blink",
-  "packages/mcp",
-  "packages/hello-foreign",
-  "packages/minitusk",
-  "packages/tusk-model",
-  "packages/tusk-store",
-  "packages/tusk-toolchain",
-  "packages/tusk-planner",
-  "packages/tusk-executor",
-  "packages/tusk-init",
-  "packages/tusk-fmt",
-  "packages/tusk-fix",
-  "packages/tusk-server",
-  "packages/tusk-cli",
-  "packages/tusk-cmd",
-  "packages/tusk-eval",
-  "packages/tusk-repl",
-  "packages/suri",
-  "services/registry",
-] as const;
 
 describe("riot package registry live e2e", () => {
   liveTest("root route returns service metadata", async () => {
@@ -68,10 +25,7 @@ describe("riot package registry live e2e", () => {
     const payload = (await response.json()) as Record<string, unknown>;
     expect(payload.service).toBe("riot-package-registry");
     expect(payload.routes).toEqual({
-      resolve: "/v1/packages/<locator>/resolve?ref=<selector>",
-      manifest: "/v1/packages/<locator>/manifest/<sha>.json",
-      source: "/v1/packages/<locator>/source/<sha>.tar.gz",
-      publish: "/v1/packages/<locator>/publish?ref=<selector>",
+      publish_artifact: "/v1/publish",
       views_package_overview: "/v1/views/packages/<package-name>/overview",
       views_package_relations: "/v1/views/packages/<package-name>/relations",
       views_recent_packages: "/v1/views/recent/packages",
@@ -84,7 +38,10 @@ describe("riot package registry live e2e", () => {
       me: "/v1/me",
       tokens: "/v1/me/tokens",
       search: "/v1/search?q=<query>",
+      events: "/v1/events?limit=<count>&after=<event-id>",
+      package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
     });
+    expect(payload.cdn_base_url).toBe(cdnBaseUrl);
   });
 
   liveTest("github auth start redirects to GitHub authorize", async () => {
@@ -117,7 +74,7 @@ describe("riot package registry live e2e", () => {
     });
 
     expect(meResponse.status).toBe(200);
-    const mePayload = (await meResponse.json()) as Record<string, unknown>;
+    const mePayload = (await meResponse.json()) as { authenticated: boolean };
     expect(mePayload).toEqual({
       authenticated: false,
     });
@@ -143,7 +100,7 @@ describe("riot package registry live e2e", () => {
     });
 
     expect(response.status).toBe(200);
-    const payload = (await response.json()) as Record<string, unknown>;
+    const payload = (await response.json()) as SearchResponsePayload;
     expect(payload).toEqual({
       query,
       count: 0,
@@ -208,103 +165,33 @@ describe("riot package registry live e2e", () => {
     });
   });
 
-  liveTest("resolve returns a concrete source materialization", async () => {
-    const publication = await resolvePublication();
+  livePublishTest("artifact publish returns an immutable release and index fast path", async () => {
+    const expectedManifest = readPackageManifest(publishPackagePath);
+    const archive = await buildWorkspaceArtifact(publishPackagePath);
+    const publication = await publishArtifactArchive(archive);
 
-    expect(publication.package).toBe(packageLocator);
-    expect(publication.source_url).toBe("https://github.com/leostera/riot-new");
-    expect(publication.package_subdir).toBe("packages/kernel");
-    expect(publication.selector).toBe(selector);
-    expect(publication.resolved_sha).toMatch(/^[0-9a-f]{40}$/);
-    expect(publication.manifest.url).toContain(`/v1/packages/${packageLocator}/manifest/`);
-    expect(publication.source_archive.url).toContain(`/v1/packages/${packageLocator}/source/`);
-  });
-
-  liveTest("manifest route returns immutable source metadata", async () => {
-    const publication = await resolvePublication();
-
-    const response = await fetch(publication.manifest.url);
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("application/json");
-
-    const manifest = (await response.json()) as Record<string, unknown>;
-    expect(manifest.package_locator).toBe(packageLocator);
-    expect(manifest.source_url).toBe("https://github.com/leostera/riot-new");
-    expect(manifest.package_subdir).toBe("packages/kernel");
-    expect(manifest.resolved_sha).toBe(publication.resolved_sha);
-    expect(typeof manifest.package_name).toBe("string");
-    expect(typeof manifest.package_version).toBe("string");
-  });
-
-  liveTest("source route redirects to the immutable CDN object", async () => {
-    const publication = await resolvePublication();
-
-    const redirectResponse = await fetch(publication.source_archive.url, {
-      redirect: "manual",
-    });
-
-    expect(redirectResponse.status).toBe(307);
-    expect(redirectResponse.headers.get("location")).toBe(publication.source_archive.cdn_url);
-
-    const cdnResponse = await fetch(publication.source_archive.cdn_url);
-    expect(cdnResponse.status).toBe(200);
-  });
-
-  livePublishTest("publish returns a named release for the source package", async () => {
-    const publication = await publishPackage();
-
-    expect(publication.package).toBe(publishPackageLocator);
-    expect(publication.source_url).toMatch(/^https:\/\/github\.com\/[^/]+\/[^/]+$/);
-    expect(typeof publication.package_subdir).toBe("string");
-    expect(publication.selector).toBe(selector);
-    expect(publication.resolved_sha).toMatch(/^[0-9a-f]{40}$/);
-    expect(typeof publication.package_name).toBe("string");
-    expect(typeof publication.package_version).toBe("string");
-    expect(publication.claim.key).toBe(`claims/${publication.package_name}.json`);
+    expect(publication.package_name).toBe(expectedManifest.name);
+    expect(publication.package_version).toBe(expectedManifest.version);
+    expect(publication.artifact_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(publication.claim.key).toBe(`claims/${expectedManifest.name}.json`);
     expect(publication.release.key).toBe(
-      `releases/${publication.package_name}/${publication.package_version}.json`,
-    );
-    expect(typeof publication.claim.created).toBe("boolean");
-    expect(typeof publication.release.created).toBe("boolean");
-    expect(publication.manifest.url).toContain(`/v1/packages/${publishPackageLocator}/manifest/`);
-    expect(publication.source_archive.url).toContain(`/v1/packages/${publishPackageLocator}/source/`);
-
-    const config = await pollJson<Record<string, unknown>>(
-      `${cdnBaseUrl}/${indexBasePath}/config.json`,
-      (value) => value !== null && value.kind === "sparse",
-    );
-    expect(config.index_base_url).toBe(`${cdnBaseUrl}/${indexBasePath}`);
-
-    const packageDocument = await pollJson<Record<string, unknown>>(
-      `${cdnBaseUrl}/${packageIndexKey(publication.package_name)}`,
-      (value) => {
-        if (value === null || value.name !== publication.package_name || !Array.isArray(value.releases)) {
-          return false;
-        }
-
-        return value.releases.some(
-          (release) =>
-            release !== null &&
-            typeof release === "object" &&
-            "version" in release &&
-            "sha" in release &&
-            release.version === publication.package_version &&
-            release.sha === publication.resolved_sha,
-        );
-      },
+      `releases/${expectedManifest.name}/${expectedManifest.version}.json`,
     );
 
-    expect(packageDocument.latest).toBe(publication.package_version);
-  });
+    const manifestResponse = await fetch(publication.manifest.cdn_url);
+    expect(manifestResponse.status).toBe(200);
+    const manifest = (await manifestResponse.json()) as Record<string, unknown>;
+    expect(manifest.package_name).toBe(expectedManifest.name);
+    expect(manifest.package_version).toBe(expectedManifest.version);
+    expect(manifest.artifact_sha256).toBe(publication.artifact_sha256);
 
-  livePublishTest("published package exposes a complete sparse-index install fast path", async () => {
-    const publication = await publishPackage();
+    const sourceResponse = await fetch(publication.source_archive.cdn_url);
+    expect(sourceResponse.status).toBe(200);
 
     const config = await pollJson<IndexConfigPayload>(
       `${cdnBaseUrl}/${indexBasePath}/config.json`,
       (value) => value !== null && value.kind === "sparse",
     );
-
     expect(config).toEqual({
       schema_version: 1,
       kind: "sparse",
@@ -313,111 +200,74 @@ describe("riot package registry live e2e", () => {
       artifact_base_url: cdnBaseUrl,
     });
 
-    const packageDocumentUrl = `${cdnBaseUrl}/${packageIndexKey(publication.package_name)}`;
     const packageDocument = await pollJson<PackageIndexDocumentPayload>(
-      packageDocumentUrl,
+      `${cdnBaseUrl}/${packageIndexKey(expectedManifest.name)}`,
       (value) =>
         value !== null &&
-        value.name === publication.package_name &&
+        value.name === expectedManifest.name &&
         Array.isArray(value.releases) &&
         value.releases.some(
           (release) =>
-            release.version === publication.package_version &&
-            release.sha === publication.resolved_sha,
+            release.version === expectedManifest.version &&
+            release.artifact_sha256 === publication.artifact_sha256,
         ),
     );
-
-    expect(packageDocument.name).toBe(publication.package_name);
-    expect(packageDocument.latest).toBe(publication.package_version);
+    expect(packageDocument.latest).toBe(expectedManifest.version);
 
     const indexedRelease = packageDocument.releases.find(
       (release) =>
-        release.version === publication.package_version &&
-        release.sha === publication.resolved_sha,
+        release.version === expectedManifest.version &&
+        release.artifact_sha256 === publication.artifact_sha256,
     );
-
     expect(indexedRelease).toBeDefined();
-    expect(indexedRelease?.canonical_locator).toBe(publication.package);
-    expect(indexedRelease?.repo_url).toBe(publication.source_url);
-    expect(indexedRelease?.subdir).toBe(publication.package_subdir);
-
-    const manifestResponse = await fetch(`${cdnBaseUrl}/${indexedRelease!.manifest_key}`);
-    expect(manifestResponse.status).toBe(200);
-    expect(manifestResponse.headers.get("content-type")).toContain("application/json");
-
-    const manifest = (await manifestResponse.json()) as Record<string, unknown>;
-    expect(manifest.package_locator).toBe(publication.package);
-    expect(manifest.package_name).toBe(publication.package_name);
-    expect(manifest.package_version).toBe(publication.package_version);
-    expect(manifest.resolved_sha).toBe(publication.resolved_sha);
-
-    const sourceResponse = await fetch(`${cdnBaseUrl}/${indexedRelease!.source_key}`);
-    expect(sourceResponse.status).toBe(200);
+    expect(indexedRelease?.manifest_key).toBe(publication.manifest.key);
+    expect(indexedRelease?.source_key).toBe(publication.source_archive.key);
   });
 
-  livePublishTest("published package is immediately searchable through the registry api", async () => {
-    const publication = await publishPackage();
+  livePublishTest("published artifact becomes searchable and visible through views and events", async () => {
+    const packageName = `registry-e2e-${Date.now()}`;
+    const packageVersion = "0.1.0";
+    const archive = await buildInlinePackageArtifact({
+      packageName,
+      packageVersion,
+      description: "Artifact-published live e2e package",
+      license: "Apache-2.0",
+      categories: ["tooling"],
+      rootModule: "Registry_e2e",
+    });
+    const publication = await publishArtifactArchive(archive);
 
     const searchResponse = await pollJson<SearchResponsePayload>(
-      `${baseUrl}/v1/search?q=${encodeURIComponent(publication.package_name)}`,
+      `${baseUrl}/v1/search?q=${encodeURIComponent(packageName)}`,
       (value) =>
         value !== null &&
         Array.isArray(value.results) &&
         value.results.some(
           (result) =>
-            result.package_name === publication.package_name &&
-            result.latest_version === publication.package_version &&
-            result.canonical_locator === publication.package &&
-            result.repo_owner.length > 0 &&
-            result.repo_name.length > 0,
+            result.package_name === packageName &&
+            result.latest_version === packageVersion,
         ),
     );
-
-    expect(searchResponse.query).toBe(publication.package_name);
     expect(searchResponse.count).toBeGreaterThanOrEqual(1);
-    expect(searchResponse.results[0]?.package_name).toBe(publication.package_name);
-    expect(searchResponse.results[0]?.latest_version).toBe(publication.package_version);
-    expect(searchResponse.results[0]?.canonical_locator).toBe(publication.package);
-  });
-
-  livePublishTest("published package is immediately available through registry view routes", async () => {
-    const publication = await publishPackage();
-    const owner = publication.package.split("/")[1] ?? "unknown";
 
     const overview = await pollJson<Record<string, unknown>>(
-      `${baseUrl}/v1/views/packages/${encodeURIComponent(publication.package_name)}/overview`,
+      `${baseUrl}/v1/views/packages/${encodeURIComponent(packageName)}/overview`,
       (value) =>
         value !== null &&
-        value.package_name === publication.package_name &&
-        value.latest_version === publication.package_version,
+        value.package_name === packageName &&
+        value.latest_version === packageVersion,
     );
-    expect(overview.owner_github_login).toBe(owner);
+    expect(overview.package_name).toBe(packageName);
 
     const relations = await pollJson<Record<string, unknown>>(
-      `${baseUrl}/v1/views/packages/${encodeURIComponent(publication.package_name)}/relations`,
+      `${baseUrl}/v1/views/packages/${encodeURIComponent(packageName)}/relations`,
       (value) =>
         value !== null &&
-        value.package_name === publication.package_name &&
+        value.package_name === packageName &&
         Array.isArray(value.dependencies) &&
         Array.isArray(value.dependents),
     );
-    expect(relations.package_name).toBe(publication.package_name);
-
-    const ownerPackages = await pollJson<Record<string, unknown>>(
-      `${baseUrl}/v1/views/owners/${encodeURIComponent(owner)}/packages`,
-      (value) =>
-        value !== null &&
-        value.owner_github_login === owner &&
-        Array.isArray(value.packages) &&
-        value.packages.some(
-          (item) =>
-            item !== null &&
-            typeof item === "object" &&
-            "package_name" in item &&
-            item.package_name === publication.package_name,
-        ),
-    );
-    expect(ownerPackages.package_count).toBeGreaterThanOrEqual(1);
+    expect(relations.package_name).toBe(packageName);
 
     const recent = await pollJson<Record<string, unknown>>(
       `${baseUrl}/v1/views/recent/packages`,
@@ -429,7 +279,7 @@ describe("riot package registry live e2e", () => {
             item !== null &&
             typeof item === "object" &&
             "package_name" in item &&
-            item.package_name === publication.package_name,
+            item.package_name === packageName,
         ),
     );
     expect(Array.isArray(recent.packages)).toBe(true);
@@ -442,104 +292,172 @@ describe("riot package registry live e2e", () => {
 
     const categories = await pollJson<Record<string, unknown>>(
       `${baseUrl}/v1/views/categories`,
-      (value) => value !== null && Array.isArray(value.categories),
+      (value) =>
+        value !== null &&
+        Array.isArray(value.categories) &&
+        value.categories.some(
+          (category) =>
+            category !== null &&
+            typeof category === "object" &&
+            "name" in category &&
+            category.name === "tooling",
+        ),
     );
     expect(Array.isArray(categories.categories)).toBe(true);
+
+    const events = await pollJson<RegistryEventsPayload>(
+      `${baseUrl}/v1/events?limit=20`,
+      (value) =>
+        value !== null &&
+        Array.isArray(value.events) &&
+        value.events.some(
+          (event) =>
+            event.package_name === packageName &&
+            event.package_version === packageVersion &&
+            event.event_type === "package.published",
+        ),
+    );
+    expect(events.events[0]?.created_at).toBeDefined();
+
+    const packageEvents = await pollJson<RegistryEventsPayload>(
+      `${baseUrl}/v1/packages/${encodeURIComponent(packageName)}/events?version=${encodeURIComponent(packageVersion)}`,
+      (value) =>
+        value !== null &&
+        Array.isArray(value.events) &&
+        value.events.some((event) => event.event_type === "package.published"),
+    );
+    expect(packageEvents.events.some((event) => event.event_type === "package.indexed")).toBe(true);
+    expect(
+      packageEvents.events.some(
+        (event) =>
+          event.payload !== null &&
+          typeof event.payload === "object" &&
+          "artifact_sha256" in event.payload &&
+          event.payload.artifact_sha256 === publication.artifact_sha256,
+      ),
+    ).toBe(true);
   });
 
-  livePublishTest(
-    "all workspace packages publish successfully",
-    async () => {
-      const repoRoot = repoRootFromLocator(publishPackageLocator);
-      const members = readWorkspacePublishMembers();
+  liveAuthenticatedTest("user-owned artifact publishes show up on owner views", async () => {
+    const publishToken = await createPublishToken(`owner-e2e-${Date.now()}`);
+    const packageName = `registry-owned-e2e-${Date.now()}`;
+    const packageVersion = "0.1.0";
+    const archive = await buildInlinePackageArtifact({
+      packageName,
+      packageVersion,
+      description: "User-owned artifact publish",
+      license: "Apache-2.0",
+    });
 
-      expect(members.length).toBeGreaterThan(0);
+    const publication = await publishArtifactArchive(archive, publishToken);
+    expect(publication.package_name).toBe(packageName);
 
-      for (const member of members) {
-        const expectedManifest = readPackageManifest(member);
-        const locator = `${repoRoot}/${member}`;
-        const publication = await publishPackageAt(locator);
+    const overview = await pollJson<Record<string, unknown>>(
+      `${baseUrl}/v1/views/packages/${encodeURIComponent(packageName)}/overview`,
+      (value) =>
+        value !== null &&
+        value.package_name === packageName &&
+        value.latest_version === packageVersion &&
+        value.owner_github_login === githubLogin,
+    );
+    expect(overview.owner_github_login).toBe(githubLogin);
 
-        expect(publication.package).toBe(locator);
-        expect(publication.package_name).toBe(expectedManifest.name);
-        expect(publication.package_version).toBe(expectedManifest.version);
-        expect(publication.resolved_sha).toMatch(/^[0-9a-f]{40}$/);
-        expect(publication.claim.key).toBe(`claims/${expectedManifest.name}.json`);
-        expect(publication.release.key).toBe(
-          `releases/${expectedManifest.name}/${expectedManifest.version}.json`,
-        );
-      }
-    },
-    180_000,
-  );
+    const ownerPackages = await pollJson<Record<string, unknown>>(
+      `${baseUrl}/v1/views/owners/${encodeURIComponent(githubLogin ?? "")}/packages`,
+      (value) =>
+        value !== null &&
+        value.owner_github_login === githubLogin &&
+        Array.isArray(value.packages) &&
+        value.packages.some(
+          (item) =>
+            item !== null &&
+            typeof item === "object" &&
+            "package_name" in item &&
+            item.package_name === packageName,
+        ),
+    );
+    expect(ownerPackages.package_count).toBeGreaterThanOrEqual(1);
+  });
 });
 
-async function resolvePublication(): Promise<ResolvePayload> {
-  const response = await fetch(
-    `${baseUrl}/v1/packages/${packageLocator}/resolve?ref=${encodeURIComponent(selector)}`,
-  );
-
-  expect(response.status).toBe(200);
-  return (await response.json()) as ResolvePayload;
+async function buildWorkspaceArtifact(member: string): Promise<Uint8Array<ArrayBuffer>> {
+  return await makeTarGz({
+    "tusk.toml": readFileSync(new URL(`../../../${member}/tusk.toml`, import.meta.url), "utf8"),
+  }, "");
 }
 
-async function publishPackage(): Promise<PublishPayload> {
-  return await publishPackageAt(publishPackageLocator);
-}
+async function buildInlinePackageArtifact(args: {
+  packageName: string;
+  packageVersion: string;
+  description: string;
+  license: string;
+  categories?: string[];
+  rootModule?: string;
+}): Promise<Uint8Array<ArrayBuffer>> {
+  const packageLines = [
+    "[package]",
+    `name = "${args.packageName}"`,
+    `version = "${args.packageVersion}"`,
+    "public = true",
+    `description = "${args.description}"`,
+    `license = "${args.license}"`,
+  ];
 
-async function publishPackageAt(locator: string): Promise<PublishPayload> {
-  if (rootAuthToken === null) {
-    throw new Error("REGISTRY_E2E_ROOT_AUTH_TOKEN must be set to publish live packages.");
+  if (args.rootModule !== undefined) {
+    packageLines.push(`root_module = "${args.rootModule}"`);
   }
 
-  const response = await fetch(
-    `${baseUrl}/v1/packages/${locator}/publish?ref=${encodeURIComponent(selector)}`,
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${rootAuthToken}`,
-      },
+  if (args.categories !== undefined && args.categories.length > 0) {
+    packageLines.push(`categories = [${args.categories.map((value) => `"${value}"`).join(", ")}]`);
+  }
+
+  return await makeTarGz({
+    "tusk.toml": packageLines.join("\n"),
+  }, "");
+}
+
+async function publishArtifactArchive(
+  archive: Uint8Array<ArrayBuffer>,
+  token = rootAuthToken ?? "",
+): Promise<PublishPayload> {
+  if (token.length === 0) {
+    throw new Error("A publish token is required for artifact publish e2e tests.");
+  }
+
+  const response = await fetch(`${baseUrl}/v1/publish`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/gzip",
     },
-  );
+    body: archive,
+  });
 
   if (response.status !== 200) {
-    throw new Error(
-      `Publish failed for ${locator} with status ${response.status}: ${await response.text()}`,
-    );
+    throw new Error(`Artifact publish failed with status ${response.status}: ${await response.text()}`);
   }
 
   return (await response.json()) as PublishPayload;
 }
 
-function readWorkspacePublishMembers(): string[] {
-  const rootTuskToml = readFileSync(new URL("../../../tusk.toml", import.meta.url), "utf8");
-  const workspace = parseToml(rootTuskToml) as {
-    workspace?: { members?: unknown };
+async function createPublishToken(name: string): Promise<string> {
+  const response = await fetch(`${baseUrl}/v1/me/tokens`, {
+    method: "POST",
+    headers: {
+      ...authenticatedHeaders(),
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ name }),
+  });
+
+  if (response.status !== 201) {
+    throw new Error(`Token creation failed with status ${response.status}: ${await response.text()}`);
+  }
+
+  const payload = (await response.json()) as {
+    plaintext_token: string;
   };
-  const members = workspace.workspace?.members;
-
-  if (!Array.isArray(members)) {
-    throw new Error("Workspace members are missing from the repository tusk.toml.");
-  }
-
-  const publishableMembers = members.filter((member): member is string => {
-    return typeof member === "string" && !member.includes("tests/fixtures");
-  });
-
-  const order = new Map<string, number>(
-    WORKSPACE_PUBLISH_ORDER.map((member, index) => [member, index]),
-  );
-
-  const unorderedMembers = publishableMembers.filter((member) => !order.has(member));
-  if (unorderedMembers.length > 0) {
-    throw new Error(
-      `Workspace publish order is missing: ${unorderedMembers.join(", ")}.`,
-    );
-  }
-
-  return [...publishableMembers].sort((left, right) => {
-    return (order.get(left) ?? Number.MAX_SAFE_INTEGER) - (order.get(right) ?? Number.MAX_SAFE_INTEGER);
-  });
+  return payload.plaintext_token;
 }
 
 function readPackageManifest(member: string): { name: string; version: string } {
@@ -556,15 +474,6 @@ function readPackageManifest(member: string): { name: string; version: string } 
     name: parsed.package.name,
     version: parsed.package.version,
   };
-}
-
-function repoRootFromLocator(locator: string): string {
-  const parts = locator.split("/");
-  if (parts.length < 3) {
-    throw new Error(`Cannot derive repo root from locator ${locator}.`);
-  }
-
-  return parts.slice(0, 3).join("/");
 }
 
 function trimTrailingSlash(value: string | undefined): string | null {
@@ -626,28 +535,21 @@ async function pollJson<T>(
     await Bun.sleep(intervalMs);
   }
 
-  throw new Error(`Timed out waiting for indexed package at ${url}. Last status was ${lastStatus}.`);
+  throw new Error(`Timed out waiting for expected payload at ${url}. Last status was ${lastStatus}.`);
 }
 
-interface ResolvePayload {
-  package: string;
-  source_url: string;
-  package_subdir: string;
-  selector: string;
-  resolved_sha: string;
+interface PublishPayload {
+  package_name: string;
+  package_version: string;
+  artifact_sha256: string;
   manifest: {
-    url: string;
+    key: string;
     cdn_url: string;
   };
   source_archive: {
-    url: string;
+    key: string;
     cdn_url: string;
   };
-}
-
-interface PublishPayload extends ResolvePayload {
-  package_name: string;
-  package_version: string;
   claim: {
     key: string;
     created: boolean;
@@ -684,7 +586,7 @@ interface PackageIndexReleasePayload {
   canonical_locator: string;
   repo_url: string;
   subdir: string;
-  sha: string;
+  artifact_sha256: string;
   manifest_key: string;
   source_key: string;
   dependencies: unknown[];
@@ -702,6 +604,19 @@ interface SearchResponsePayload {
   query: string;
   count: number;
   results: SearchResultPayload[];
+}
+
+interface RegistryEventPayload {
+  event_id: string;
+  event_type: string;
+  package_name?: string;
+  package_version?: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+interface RegistryEventsPayload {
+  events: RegistryEventPayload[];
 }
 
 function authenticatedHeaders(): Record<string, string> {

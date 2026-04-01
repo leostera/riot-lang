@@ -13,14 +13,7 @@ import {
 } from "./auth.ts";
 import { getConfig } from "./config.ts";
 import { HttpError } from "./errors.ts";
-import { immutableHeaders, json, methodNotAllowed } from "./http.ts";
-import {
-  canonicalSourceUrl,
-  isFullSha,
-  normalizeLocator,
-  packageSubdir,
-} from "./locator.ts";
-import { readCachedMaterialization } from "./publication.ts";
+import { json, methodNotAllowed } from "./http.ts";
 import { writeRequestLog } from "./request-log.ts";
 import {
   listRegistryEvents,
@@ -34,17 +27,11 @@ import {
   readRecentPackagesDocument,
 } from "./metadata-db.ts";
 import { searchPackages } from "./search-db.ts";
-import {
-  manifestKey,
-  prettyManifestUrl,
-  prettySourceUrl,
-  sourceArchiveKey,
-} from "./storage.ts";
+import { cdnObjectUrl } from "./storage.ts";
 import type {
   ApiTokenRecord,
   AuthenticatedActor,
   Env,
-  PackageLocator,
   PublishedPackageRelease,
   RequestLogEntry,
 } from "./types.ts";
@@ -108,10 +95,7 @@ async function routeRequest(
     return json({
       service: "riot-package-registry",
       routes: {
-        resolve: "/v1/packages/<locator>/resolve?ref=<selector>",
-        manifest: "/v1/packages/<locator>/manifest/<sha>.json",
-        source: "/v1/packages/<locator>/source/<sha>.tar.gz",
-        publish: "/v1/packages/<locator>/publish?ref=<selector>",
+        publish_artifact: "/v1/publish",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -128,10 +112,7 @@ async function routeRequest(
         package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       legacy_routes: {
-        resolve: "/package/<locator>/-/resolve?ref=<selector>",
-        manifest: "/package/<locator>/-/manifest/<sha>.json",
-        source: "/package/<locator>/-/source/<sha>.tar.gz",
-        publish: "/package/<locator>/-/publish?ref=<selector>",
+        publish_artifact: "/api/v1/publish",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -281,135 +262,53 @@ async function routeRequest(
     return await handleDeleteToken(request, env, tokenId);
   }
 
-  const packageRoute = parsePackageRoute(path);
-  if (packageRoute === null) {
-    throw new HttpError(404, "not_found", "Route does not exist.");
-  }
-
-  const locator = normalizeLocator(packageRoute.rawLocator);
-  logEntry.package_locator = locator.normalized;
-
-  if (packageRoute.operation === "resolve") {
-    if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
-      return methodNotAllowed(["GET"]);
-    }
-
-    logEntry.route = "resolve";
-    const selector = url.searchParams.get("ref") ?? "main";
-    logEntry.selector = selector;
-    return await handleResolve(request, env, locator, selector, logEntry);
-  }
-
-  if (packageRoute.operation === "manifest" && packageRoute.sha !== null) {
-    if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
-      return methodNotAllowed(["GET"]);
-    }
-
-    logEntry.route = "manifest";
-    const sha = packageRoute.sha;
-    logEntry.resolved_sha = sha;
-    return await handleManifest(env, locator, sha);
-  }
-
-  if (packageRoute.operation === "source" && packageRoute.sha !== null) {
-    if (request.method !== "GET") {
-      logEntry.route = "method_not_allowed";
-      return methodNotAllowed(["GET"]);
-    }
-
-    logEntry.route = "source";
-    const sha = packageRoute.sha;
-    logEntry.resolved_sha = sha;
-    return await handleSource(env, locator, sha);
-  }
-
-  if (packageRoute.operation === "publish") {
+  if (matchesPath(path, "v1/publish", "api/v1/publish")) {
     if (request.method !== "POST") {
       logEntry.route = "method_not_allowed";
       return methodNotAllowed(["POST"]);
     }
 
-    logEntry.route = "publish";
-    const selector = url.searchParams.get("ref") ?? "main";
-    logEntry.selector = selector;
-    return await handlePublish(request, env, locator, selector, logEntry);
+    logEntry.route = "publish.artifact";
+    return await handleArtifactPublish(request, env, logEntry);
   }
 
-  throw new HttpError(404, "not_found", "Package route does not exist.");
+  throw new HttpError(404, "not_found", "Route does not exist.");
 }
 
-async function handleResolve(
+async function handleArtifactPublish(
   request: Request,
   env: Env,
-  locator: PackageLocator,
-  selector: string,
   logEntry: RequestLogEntry,
 ): Promise<Response> {
-  const config = getConfig(env);
-  const publication =
-    (await readCachedMaterialization(env, locator, selector)) ??
-    (await materializeThroughCoordinator(env, locator, selector));
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/gzip") && !contentType.includes("application/x-gzip")) {
+    throw new HttpError(
+      415,
+      "unsupported_media_type",
+      "Artifact publish requires Content-Type: application/gzip.",
+    );
+  }
 
-  const requestUrl = new URL(request.url);
-  const routeStyle = packageRouteStyle(requestUrl.pathname);
-  logEntry.resolved_sha = publication.resolvedSha;
-
-  return json({
-    package: locator.normalized,
-    source_url: canonicalSourceUrl(locator),
-    package_subdir: packageSubdir(locator),
-    selector,
-    resolved_sha: publication.resolvedSha,
-    manifest: {
-      key: publication.manifestKey,
-      url: `${requestUrl.origin}${manifestRoutePathForStyle(routeStyle, locator, publication.resolvedSha)}`,
-      cdn_url: prettyManifestUrl(config, locator, publication.resolvedSha),
-    },
-    source_archive: {
-      key: publication.sourceKey,
-      url: `${requestUrl.origin}${sourceRoutePathForStyle(routeStyle, locator, publication.resolvedSha)}`,
-      cdn_url: prettySourceUrl(config, locator, publication.resolvedSha),
-    },
-    cache: {
-      manifest: !publication.manifestCreated,
-      source: !publication.sourceCreated,
-    },
-  });
-}
-
-async function handlePublish(
-  request: Request,
-  env: Env,
-  locator: PackageLocator,
-  selector: string,
-  logEntry: RequestLogEntry,
-): Promise<Response> {
   const actor = await requirePublishActor(request, env);
+  const archiveBytes = new Uint8Array(await request.arrayBuffer());
+  if (archiveBytes.byteLength === 0) {
+    throw new HttpError(400, "invalid_package_archive", "Artifact publish requires a non-empty tarball body.");
+  }
 
-  const publishResult = await publishThroughCoordinator(env, locator, selector, actor);
-  const requestUrl = new URL(request.url);
-  const routeStyle = packageRouteStyle(requestUrl.pathname);
-  logEntry.resolved_sha = publishResult.resolvedSha;
+  const publishResult = await publishArtifactThroughCoordinator(env, archiveBytes, actor);
+  logEntry.artifact_sha256 = publishResult.artifactSha256;
 
   return json({
-    package: locator.normalized,
-    source_url: canonicalSourceUrl(locator),
-    package_subdir: packageSubdir(locator),
-    selector,
-    resolved_sha: publishResult.resolvedSha,
     package_name: publishResult.packageName,
     package_version: publishResult.packageVersion,
+    artifact_sha256: publishResult.artifactSha256,
     manifest: {
       key: publishResult.manifestKey,
-      url: `${requestUrl.origin}${manifestRoutePathForStyle(routeStyle, locator, publishResult.resolvedSha)}`,
-      cdn_url: prettyManifestUrl(getConfig(env), locator, publishResult.resolvedSha),
+      cdn_url: cdnObjectUrl(getConfig(env), publishResult.manifestKey),
     },
     source_archive: {
       key: publishResult.sourceKey,
-      url: `${requestUrl.origin}${sourceRoutePathForStyle(routeStyle, locator, publishResult.resolvedSha)}`,
-      cdn_url: prettySourceUrl(getConfig(env), locator, publishResult.resolvedSha),
+      cdn_url: cdnObjectUrl(getConfig(env), publishResult.sourceKey),
     },
     claim: {
       key: publishResult.claimKey,
@@ -426,64 +325,9 @@ async function handlePublish(
   });
 }
 
-async function materializeThroughCoordinator(
+async function publishArtifactThroughCoordinator(
   env: Env,
-  locator: PackageLocator,
-  selector: string,
-): Promise<{
-  selector: string;
-  resolvedSha: string;
-  sourceKey: string;
-  manifestKey: string;
-  sourceCreated: boolean;
-  manifestCreated: boolean;
-}> {
-  const id = env.PUBLICATION_COORDINATOR.idFromName("global");
-  const stub = env.PUBLICATION_COORDINATOR.get(id);
-  const response = await stub.fetch("https://publication-coordinator.internal/publish", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-    },
-    body: JSON.stringify({
-      operation: "materialize",
-      locator: locator.normalized,
-      selector,
-    }),
-  });
-
-  if (!response.ok) {
-    const payload = (await response.json()) as { error?: string; message?: string };
-    throw new HttpError(
-      response.status,
-      payload.error ?? "publication_failed",
-      payload.message ?? "Publication coordinator failed.",
-    );
-  }
-
-  const payload = (await response.json()) as {
-    selector: string;
-    resolved_sha: string;
-    source_key: string;
-    manifest_key: string;
-    source_created: boolean;
-    manifest_created: boolean;
-  };
-
-  return {
-    selector: payload.selector,
-    resolvedSha: payload.resolved_sha,
-    sourceKey: payload.source_key,
-    manifestKey: payload.manifest_key,
-    sourceCreated: payload.source_created,
-    manifestCreated: payload.manifest_created,
-  };
-}
-
-async function publishThroughCoordinator(
-  env: Env,
-  locator: PackageLocator,
-  selector: string,
+  archiveBytes: Uint8Array<ArrayBuffer>,
   actor: AuthenticatedActor,
 ): Promise<PublishedPackageRelease> {
   const id = env.PUBLICATION_COORDINATOR.idFromName("global");
@@ -491,14 +335,11 @@ async function publishThroughCoordinator(
   const response = await stub.fetch("https://publication-coordinator.internal/publish", {
     method: "POST",
     headers: {
-      "content-type": "application/json; charset=utf-8",
+      "content-type": "application/gzip",
+      "x-publication-operation": "publish-artifact",
+      "x-publication-actor": JSON.stringify(actor),
     },
-    body: JSON.stringify({
-      operation: "publish",
-      locator: locator.normalized,
-      selector,
-      actor,
-    }),
+    body: archiveBytes,
   });
 
   if (!response.ok) {
@@ -511,8 +352,7 @@ async function publishThroughCoordinator(
   }
 
   const payload = (await response.json()) as {
-    selector: string;
-    resolved_sha: string;
+    artifact_sha256: string;
     source_key: string;
     manifest_key: string;
     source_created: boolean;
@@ -527,8 +367,7 @@ async function publishThroughCoordinator(
   };
 
   return {
-    selector: payload.selector,
-    resolvedSha: payload.resolved_sha,
+    artifactSha256: payload.artifact_sha256,
     sourceKey: payload.source_key,
     manifestKey: payload.manifest_key,
     sourceCreated: payload.source_created,
@@ -541,42 +380,6 @@ async function publishThroughCoordinator(
     releaseCreated: payload.release_created,
     indexChanged: payload.index_changed,
   };
-}
-
-async function handleManifest(
-  env: Env,
-  locator: PackageLocator,
-  sha: string,
-): Promise<Response> {
-  if (!isFullSha(sha)) {
-    throw new HttpError(400, "invalid_sha", "Manifest requests require a full commit SHA.");
-  }
-
-  const object = await env.ML_PKGS_CDN.get(manifestKey(locator, sha));
-  if (object === null) {
-    throw new HttpError(404, "manifest_not_found", "Package manifest was not found.");
-  }
-
-  const headers = immutableHeaders("application/json; charset=utf-8");
-  object.writeHttpMetadata(headers);
-  return new Response(object.body, { headers });
-}
-
-async function handleSource(
-  env: Env,
-  locator: PackageLocator,
-  sha: string,
-): Promise<Response> {
-  if (!isFullSha(sha)) {
-    throw new HttpError(400, "invalid_sha", "Source archive requests require a full commit SHA.");
-  }
-
-  const object = await env.ML_PKGS_CDN.head(sourceArchiveKey(locator, sha));
-  if (object === null) {
-    throw new HttpError(404, "source_not_found", "Source archive was not found.");
-  }
-
-  return Response.redirect(prettySourceUrl(getConfig(env), locator, sha), 307);
 }
 
 async function handleLogout(request: Request, env: Env, url: URL): Promise<Response> {
@@ -770,12 +573,6 @@ async function handleDeleteToken(
   });
 }
 
-interface ParsedPackageRoute {
-  rawLocator: string;
-  operation: "resolve" | "manifest" | "source" | "publish";
-  sha: string | null;
-}
-
 interface ParsedPackageEventsRoute {
   packageName: string;
 }
@@ -788,99 +585,12 @@ type ParsedViewRoute =
   | { kind: "categories" }
   | { kind: "owner_packages"; ownerGithubLogin: string };
 
-type PackageRouteStyle = "legacy" | "v1";
-
 function trimSlashes(value: string): string {
   return value.replace(/^\/+|\/+$/g, "");
 }
 
 function matchesPath(path: string, ...candidates: string[]): boolean {
   return candidates.includes(path);
-}
-
-function packageRouteStyle(pathname: string): PackageRouteStyle {
-  return trimSlashes(pathname).startsWith("v1/packages/") ? "v1" : "legacy";
-}
-
-function manifestRoutePathForStyle(
-  style: PackageRouteStyle,
-  locator: PackageLocator,
-  sha: string,
-): string {
-  if (style === "v1") {
-    return `/v1/packages/${locator.normalized}/manifest/${sha}.json`;
-  }
-
-  return `/package/${locator.normalized}/-/manifest/${sha}.json`;
-}
-
-function sourceRoutePathForStyle(
-  style: PackageRouteStyle,
-  locator: PackageLocator,
-  sha: string,
-): string {
-  if (style === "v1") {
-    return `/v1/packages/${locator.normalized}/source/${sha}.tar.gz`;
-  }
-
-  return `/package/${locator.normalized}/-/source/${sha}.tar.gz`;
-}
-
-function parsePackageRoute(path: string): ParsedPackageRoute | null {
-  if (path.startsWith("package/")) {
-    const remainder = path.slice("package/".length);
-    const separatorIndex = remainder.indexOf("/-/");
-    if (separatorIndex === -1) {
-      throw new HttpError(404, "not_found", "Package route is missing the /-/ separator.");
-    }
-
-    return parsePackageOperation(
-      decodeURIComponent(remainder.slice(0, separatorIndex)),
-      remainder.slice(separatorIndex + 3),
-    );
-  }
-
-  if (path.startsWith("v1/packages/")) {
-    const remainder = path.slice("v1/packages/".length);
-
-    if (remainder.endsWith("/resolve")) {
-      return {
-        rawLocator: decodeURIComponent(remainder.slice(0, -"/resolve".length)),
-        operation: "resolve",
-        sha: null,
-      };
-    }
-
-    if (remainder.endsWith("/publish")) {
-      return {
-        rawLocator: decodeURIComponent(remainder.slice(0, -"/publish".length)),
-        operation: "publish",
-        sha: null,
-      };
-    }
-
-    const manifestMatch = remainder.match(/^(.*)\/manifest\/([^/]+)\.json$/);
-    if (manifestMatch !== null) {
-      return {
-        rawLocator: decodeURIComponent(manifestMatch[1] ?? ""),
-        operation: "manifest",
-        sha: manifestMatch[2] ?? "",
-      };
-    }
-
-    const sourceMatch = remainder.match(/^(.*)\/source\/([^/]+)\.tar\.gz$/);
-    if (sourceMatch !== null) {
-      return {
-        rawLocator: decodeURIComponent(sourceMatch[1] ?? ""),
-        operation: "source",
-        sha: sourceMatch[2] ?? "",
-      };
-    }
-
-    throw new HttpError(404, "not_found", "Package route does not exist.");
-  }
-
-  return null;
 }
 
 function parseViewRoute(path: string): ParsedViewRoute | null {
@@ -948,34 +658,6 @@ function parsePackageEventsRoute(path: string): ParsedPackageEventsRoute | null 
   return {
     packageName: decodeURIComponent(packageName),
   };
-}
-
-function parsePackageOperation(rawLocator: string, operationPath: string): ParsedPackageRoute {
-  if (operationPath === "resolve") {
-    return { rawLocator, operation: "resolve", sha: null };
-  }
-
-  if (operationPath === "publish") {
-    return { rawLocator, operation: "publish", sha: null };
-  }
-
-  if (operationPath.startsWith("manifest/") && operationPath.endsWith(".json")) {
-    return {
-      rawLocator,
-      operation: "manifest",
-      sha: operationPath.slice("manifest/".length, -".json".length),
-    };
-  }
-
-  if (operationPath.startsWith("source/") && operationPath.endsWith(".tar.gz")) {
-    return {
-      rawLocator,
-      operation: "source",
-      sha: operationPath.slice("source/".length, -".tar.gz".length),
-    };
-  }
-
-  throw new HttpError(404, "not_found", "Package route does not exist.");
 }
 
 function clampInteger(

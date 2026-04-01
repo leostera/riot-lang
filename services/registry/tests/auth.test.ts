@@ -4,9 +4,6 @@ import { handleRequest } from "../src/routes.ts";
 import { applyMetadataMigrations, readPackageClaim, readUserLoginRecord } from "../src/metadata-db.ts";
 import { FakeExecutionContext, makeEnv, makeTarGz, withMockedFetch } from "./helpers.ts";
 
-const SHA = "0123456789abcdef0123456789abcdef01234567";
-const NEXT_SHA = "89abcdef012345670123456789abcdef01234567";
-
 describe("riot package registry auth", () => {
   test("github oauth callback creates a session and /v1/me returns the user", async () => {
     const { env, db, bucket } = makeEnv({
@@ -285,7 +282,7 @@ describe("riot package registry auth", () => {
         'description = "Terminal UI toolkit for Riot"',
         'license = "MIT"',
       ].join("\n"),
-    });
+    }, "");
     const secondArchive = await makeTarGz({
       "tusk.toml": [
         "[package]",
@@ -295,57 +292,40 @@ describe("riot package registry auth", () => {
         'description = "Terminal UI toolkit for Riot"',
         'license = "MIT"',
       ].join("\n"),
-    });
+    }, "");
 
-    await withMockedFetch(async (input) => {
-      const url = new URL(toRequestUrl(input));
-      if (url.pathname === "/repos/leostera/minttea") {
-        return Response.json({ private: false });
-      }
-      if (url.pathname === "/repos/leostera/minttea/commits/main") {
-        return Response.json({ sha: NEXT_SHA });
-      }
-      if (url.pathname === "/repos/leostera/minttea/commits/v0.4.1") {
-        return Response.json({ sha: SHA });
-      }
-      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
-        return new Response(firstArchive, { status: 200 });
-      }
-      if (url.pathname === `/repos/leostera/minttea/tarball/${NEXT_SHA}`) {
-        return new Response(secondArchive, { status: 200 });
-      }
+    const rootCtx = new FakeExecutionContext();
+    const rootPublish = await handleRequest(
+      new Request("https://registry.test/v1/publish", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer root-secret",
+          "content-type": "application/gzip",
+        },
+        body: firstArchive,
+      }),
+      env,
+      rootCtx,
+    );
+    await rootCtx.drain();
+    expect(rootPublish.status).toBe(200);
 
-      throw new Error(`Unexpected fetch to ${url.toString()}`);
-    }, async () => {
-      const rootCtx = new FakeExecutionContext();
-      const rootPublish = await handleRequest(
-        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=v0.4.1", {
-          method: "POST",
-          headers: {
-            authorization: "Bearer root-secret",
-          },
-        }),
-        env,
-        rootCtx,
-      );
-      await rootCtx.drain();
-      expect(rootPublish.status).toBe(200);
+    const userCtx = new FakeExecutionContext();
+    const userPublish = await handleRequest(
+      new Request("https://registry.test/v1/publish", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${publishToken}`,
+          "content-type": "application/gzip",
+        },
+        body: secondArchive,
+      }),
+      env,
+      userCtx,
+    );
+    await userCtx.drain();
 
-      const userCtx = new FakeExecutionContext();
-      const userPublish = await handleRequest(
-        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${publishToken}`,
-          },
-        }),
-        env,
-        userCtx,
-      );
-      await userCtx.drain();
-
-      expect(userPublish.status).toBe(200);
-    });
+    expect(userPublish.status).toBe(200);
 
     await applyMetadataMigrations(db as unknown as D1Database);
     const claim = await readPackageClaim(db as unknown as D1Database, "minttea");
@@ -356,7 +336,7 @@ describe("riot package registry auth", () => {
     expect(indexedQueue.messages).toHaveLength(2);
   });
 
-  test("publish tokens cannot claim packages for a different github owner", async () => {
+  test("publish tokens can claim packages independent of source locator owner", async () => {
     const { env, db } = makeEnv({
       GITHUB_OAUTH_CLIENT_ID: "github-client-id",
       GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
@@ -373,43 +353,34 @@ describe("riot package registry auth", () => {
         'description = "Terminal UI toolkit for Riot"',
         'license = "MIT"',
       ].join("\n"),
-    });
+    }, "");
 
-    await withMockedFetch(async (input) => {
-      const url = new URL(toRequestUrl(input));
-      if (url.pathname === "/repos/leostera/minttea") {
-        return Response.json({ private: false });
-      }
-      if (url.pathname === "/repos/leostera/minttea/commits/main") {
-        return Response.json({ sha: SHA });
-      }
-      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
-        return new Response(archive, { status: 200 });
-      }
+    const publishCtx = new FakeExecutionContext();
+    const publishResponse = await handleRequest(
+      new Request("https://registry.test/v1/publish", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${publishToken}`,
+          "content-type": "application/gzip",
+        },
+        body: archive,
+      }),
+      env,
+      publishCtx,
+    );
+    await publishCtx.drain();
 
-      throw new Error(`Unexpected fetch to ${url.toString()}`);
-    }, async () => {
-      const publishCtx = new FakeExecutionContext();
-      const publishResponse = await handleRequest(
-        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${publishToken}`,
-          },
-        }),
-        env,
-        publishCtx,
-      );
-      await publishCtx.drain();
-
-      expect(publishResponse.status).toBe(403);
-      expect(await readJson(publishResponse)).toMatchObject({
-        error: "package_claim_forbidden",
-      });
+    expect(publishResponse.status).toBe(200);
+    expect(await readJson(publishResponse)).toMatchObject({
+      package_name: "minttea",
+      package_version: "0.4.2",
     });
 
     await applyMetadataMigrations(db as unknown as D1Database);
-    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toBeNull();
+    expect(await readPackageClaim(db as unknown as D1Database, "minttea")).toMatchObject({
+      owner_github_login: "someoneelse",
+      package_locator: "",
+    });
   });
 
   test("logging in after publish refreshes package overview owner avatars", async () => {
@@ -418,6 +389,8 @@ describe("riot package registry auth", () => {
       GITHUB_OAUTH_CLIENT_SECRET: "github-client-secret",
       PKGS_WEB_BASE_URL: "https://pkgs.ml",
     });
+    const initialCookie = await loginAsGitHubUser(env, "leostera");
+    const publishToken = await createPublishToken(env, initialCookie, "publish");
     const archive = await makeTarGz({
       "tusk.toml": [
         "[package]",
@@ -427,19 +400,10 @@ describe("riot package registry auth", () => {
         'description = "Terminal UI toolkit for Riot"',
         'license = "MIT"',
       ].join("\n"),
-    });
+    }, "");
 
     await withMockedFetch(async (input) => {
       const url = new URL(toRequestUrl(input));
-      if (url.pathname === "/repos/leostera/minttea") {
-        return Response.json({ private: false });
-      }
-      if (url.pathname === "/repos/leostera/minttea/commits/main") {
-        return Response.json({ sha: SHA });
-      }
-      if (url.pathname === `/repos/leostera/minttea/tarball/${SHA}`) {
-        return new Response(archive, { status: 200 });
-      }
       if (url.origin === "https://github.com" && url.pathname === "/login/oauth/access_token") {
         return Response.json({
           access_token: "token-for-leostera",
@@ -468,11 +432,13 @@ describe("riot package registry auth", () => {
     }, async () => {
       const publishCtx = new FakeExecutionContext();
       const publishResponse = await handleRequest(
-        new Request("https://registry.test/package/leostera/minttea/-/publish?ref=main", {
+        new Request("https://registry.test/v1/publish", {
           method: "POST",
           headers: {
-            authorization: "Bearer root-secret",
+            authorization: `Bearer ${publishToken}`,
+            "content-type": "application/gzip",
           },
+          body: archive,
         }),
         env,
         publishCtx,
@@ -495,10 +461,10 @@ describe("riot package registry auth", () => {
       expect(beforePayload.owner_github_login).toBe("leostera");
       expect(beforePayload.owner_github_avatar_url).toBeUndefined();
 
-      const loginCookie = await loginAsGitHubUser(env, "leostera", {
+      const refreshedLoginCookie = await loginAsGitHubUser(env, "leostera", {
         avatarUrl: "https://avatars.githubusercontent.com/u/42",
       });
-      expect(loginCookie).toContain("pkgs_session=");
+      expect(refreshedLoginCookie).toContain("pkgs_session=");
 
       const overviewAfterLoginCtx = new FakeExecutionContext();
       const overviewAfterLogin = await handleRequest(

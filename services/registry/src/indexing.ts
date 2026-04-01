@@ -1,9 +1,9 @@
 import { getConfig } from "./config.ts";
 import { buildIndexedRelease, upsertPackageDocument } from "./index-document.ts";
+import { readPackageClaim, writeRegistryEvent } from "./metadata-db.ts";
 import { upsertSearchRow } from "./search-db.ts";
 import { buildSearchRow } from "./search-document.ts";
 import { v7 as uuidv7 } from "uuid";
-import { writeRegistryEvent } from "./metadata-db.ts";
 import {
   packageIndexKey,
   packageIndexUrl,
@@ -48,7 +48,10 @@ export async function indexPublishedRelease(
 
   const key = packageIndexKey(config, releaseRecord.package_name);
   const url = packageIndexUrl(config, releaseRecord.package_name);
-  const searchRow = buildSearchRow(document);
+  const claim = await readPackageClaim(env.SEARCH_DB, releaseRecord.package_name);
+  const searchRow = buildSearchRow(document, {
+    ownerGithubLogin: claim?.owner_github_login,
+  });
   const searchableAt = addMilliseconds(document.updated_at, 1);
   const indexedAt = addMilliseconds(document.updated_at, 2);
 
@@ -78,7 +81,7 @@ export async function indexPublishedRelease(
       package_name: releaseRecord.package_name,
       package_version: releaseRecord.package_version,
       package_locator: releaseRecord.package_locator,
-      resolved_sha: releaseRecord.resolved_sha,
+      artifact_sha256: releaseRecord.artifact_sha256,
       package_index_key: key,
       package_index_url: url,
       latest: document.latest,
@@ -119,7 +122,7 @@ export async function indexPublishedRelease(
     package_name: releaseRecord.package_name,
     package_version: releaseRecord.package_version,
     package_locator: releaseRecord.package_locator,
-    resolved_sha: releaseRecord.resolved_sha,
+    artifact_sha256: releaseRecord.artifact_sha256,
     package_index_key: key,
     package_index_url: url,
     latest: document.latest,
@@ -150,7 +153,7 @@ function makeIndexEvent(
     package_version: releaseRecord.package_version,
     package_locator: releaseRecord.package_locator,
     payload: {
-      resolved_sha: releaseRecord.resolved_sha,
+      artifact_sha256: releaseRecord.artifact_sha256,
       ...payload,
     },
     created_at: createdAt,

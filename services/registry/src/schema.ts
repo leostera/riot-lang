@@ -93,8 +93,7 @@ export const publishedReleases = sqliteTable(
     packageLocator: text("package_locator").notNull(),
     sourceUrl: text("source_url").notNull(),
     packageSubdir: text("package_subdir").notNull(),
-    selector: text("selector").notNull(),
-    resolvedSha: text("resolved_sha").notNull(),
+    artifactSha256: text("artifact_sha256").notNull(),
     packageDescription: text("package_description"),
     packageLicense: text("package_license"),
     packageHomepage: text("package_homepage"),
@@ -113,21 +112,6 @@ export const publishedReleases = sqliteTable(
   }),
 );
 
-export const selectorResolutions = sqliteTable(
-  "selector_resolutions",
-  {
-    packageLocator: text("package_locator").notNull(),
-    selector: text("selector").notNull(),
-    resolvedSha: text("resolved_sha").notNull(),
-    frozen: integer("frozen", { mode: "boolean" }).notNull(),
-    recordedAt: text("recorded_at").notNull(),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.packageLocator, table.selector] }),
-    locatorIdx: index("idx_selector_resolutions_locator").on(table.packageLocator),
-  }),
-);
-
 export const requestLogs = sqliteTable(
   "request_logs",
   {
@@ -137,8 +121,7 @@ export const requestLogs = sqliteTable(
     path: text("path").notNull(),
     route: text("route").notNull(),
     packageLocator: text("package_locator"),
-    selector: text("selector"),
-    resolvedSha: text("resolved_sha"),
+    artifactSha256: text("artifact_sha256"),
     status: integer("status").notNull(),
     success: integer("success", { mode: "boolean" }).notNull(),
     errorCategory: text("error_category"),

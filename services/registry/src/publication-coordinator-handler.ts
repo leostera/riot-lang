@@ -1,65 +1,75 @@
 import { HttpError } from "./errors.ts";
-import { normalizeLocator } from "./locator.ts";
-import { ensureSourceMaterialization, publishPackageRelease } from "./publication.ts";
+import { publishPackageArtifact } from "./publication.ts";
 import { json } from "./http.ts";
 import type {
   AuthenticatedActor,
   Env,
   PublishedPackageRelease,
-  ResolvedPublication,
 } from "./types.ts";
-
-interface PublicationRequest {
-  operation?: "materialize" | "publish";
-  locator: string;
-  selector: string;
-  actor?: AuthenticatedActor;
-}
 
 export async function handlePublicationCoordinatorRequest(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  const body = (await request.json()) as Partial<PublicationRequest>;
-  const rawLocator = body.locator;
-  const selector = body.selector;
-
-  if (typeof rawLocator !== "string" || rawLocator.length === 0) {
-    throw new HttpError(400, "invalid_locator", "Coordinator request must include a locator.");
+  const operation = request.headers.get("x-publication-operation");
+  if (operation !== "publish-artifact") {
+    throw new HttpError(
+      404,
+      "not_found",
+      "Publication coordinator only accepts artifact publish operations.",
+    );
   }
 
-  if (typeof selector !== "string" || selector.length === 0) {
-    throw new HttpError(400, "invalid_selector", "Coordinator request must include a selector.");
+  const actorHeader = request.headers.get("x-publication-actor");
+  if (actorHeader === null) {
+    throw new HttpError(400, "invalid_actor", "Artifact publish requests must include an actor.");
   }
 
-  const locator = normalizeLocator(rawLocator);
-  if (body.operation === "publish") {
-    if (body.actor?.kind !== "root" && body.actor?.kind !== "user") {
-      throw new HttpError(400, "invalid_actor", "Coordinator publish requests must include an actor.");
-    }
-
-    const publication = await publishPackageRelease(env, locator, selector, body.actor);
-    return json(serializePublishedRelease(publication));
+  const actor = parseAuthenticatedActor(JSON.parse(actorHeader));
+  const archiveBytes = new Uint8Array(await request.arrayBuffer());
+  if (archiveBytes.byteLength === 0) {
+    throw new HttpError(400, "invalid_package_archive", "Artifact publish requires a non-empty tarball body.");
   }
 
-  const publication = await ensureSourceMaterialization(env, locator, selector);
-  return json(serializeMaterialization(publication));
+  const publication = await publishPackageArtifact(env, archiveBytes, actor);
+  return json(serializePublishedRelease(publication));
 }
 
-function serializeMaterialization(publication: ResolvedPublication): Record<string, unknown> {
+function parseAuthenticatedActor(value: unknown): AuthenticatedActor {
+  if (value !== null && typeof value === "object") {
+    const candidate = value as Record<string, unknown>;
+
+    if (candidate.kind === "root") {
+      return { kind: "root" };
+    }
+
+    if (
+      candidate.kind === "user" &&
+      typeof candidate.userId === "string" &&
+      candidate.userId.length > 0 &&
+      typeof candidate.githubLogin === "string" &&
+      candidate.githubLogin.length > 0
+    ) {
+      return {
+        kind: "user",
+        userId: candidate.userId,
+        githubLogin: candidate.githubLogin,
+        tokenId: typeof candidate.tokenId === "string" && candidate.tokenId.length > 0
+          ? candidate.tokenId
+          : undefined,
+      };
+    }
+  }
+
+  throw new HttpError(400, "invalid_actor", "Coordinator requests must include a valid actor.");
+}
+function serializePublishedRelease(publication: PublishedPackageRelease): Record<string, unknown> {
   return {
-    selector: publication.selector,
-    resolved_sha: publication.resolvedSha,
+    artifact_sha256: publication.artifactSha256,
     source_key: publication.sourceKey,
     manifest_key: publication.manifestKey,
     source_created: publication.sourceCreated,
     manifest_created: publication.manifestCreated,
-  };
-}
-
-function serializePublishedRelease(publication: PublishedPackageRelease): Record<string, unknown> {
-  return {
-    ...serializeMaterialization(publication),
     package_name: publication.packageName,
     package_version: publication.packageVersion,
     claim_key: publication.claimKey,

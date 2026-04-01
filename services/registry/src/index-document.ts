@@ -19,7 +19,7 @@ export function buildIndexedRelease(
     canonical_locator: release.package_locator,
     repo_url: release.source_url,
     subdir: release.package_subdir,
-    sha: release.resolved_sha,
+    artifact_sha256: release.artifact_sha256,
     description: release.package_description,
     license: release.package_license,
     homepage: release.package_homepage,
@@ -126,7 +126,7 @@ function assertMatchingManifest(
     release.package_locator !== manifest.package_locator ||
     release.source_url !== manifest.source_url ||
     release.package_subdir !== manifest.package_subdir ||
-    release.resolved_sha !== manifest.resolved_sha ||
+    release.artifact_sha256 !== manifest.artifact_sha256 ||
     release.package_description !== manifest.package_description ||
     release.package_license !== manifest.package_license ||
     release.package_homepage !== manifest.package_homepage ||
@@ -150,7 +150,7 @@ function isSameIndexedRelease(left: IndexedPackageRelease, right: IndexedPackage
     left.canonical_locator === right.canonical_locator &&
     left.repo_url === right.repo_url &&
     left.subdir === right.subdir &&
-    left.sha === right.sha &&
+    left.artifact_sha256 === right.artifact_sha256 &&
     left.description === right.description &&
     left.license === right.license &&
     left.homepage === right.homepage &&

@@ -1,10 +1,9 @@
-import type {
-  IndexedPackageRelease,
-  PackageIndexDocument,
-  SearchPackageRow,
-} from "./types.ts";
+import type { PackageIndexDocument, SearchPackageRow } from "./types.ts";
 
-export function buildSearchRow(document: PackageIndexDocument): SearchPackageRow {
+export function buildSearchRow(
+  document: PackageIndexDocument,
+  options: { ownerGithubLogin?: string } = {},
+): SearchPackageRow {
   const latestRelease = document.releases.find((release) => release.version === document.latest);
   if (latestRelease === undefined) {
     throw new Error(
@@ -13,6 +12,7 @@ export function buildSearchRow(document: PackageIndexDocument): SearchPackageRow
   }
 
   const parsed = parseCanonicalLocator(latestRelease.canonical_locator);
+  const repoOwner = parsed.owner.length > 0 ? parsed.owner : (options.ownerGithubLogin ?? "");
 
   return {
     package_name: document.name,
@@ -25,7 +25,7 @@ export function buildSearchRow(document: PackageIndexDocument): SearchPackageRow
     root_module: latestRelease.root_module ?? null,
     canonical_locator: latestRelease.canonical_locator,
     repo_url: latestRelease.repo_url,
-    repo_owner: parsed.owner,
+    repo_owner: repoOwner,
     repo_name: parsed.repo,
     subdir: latestRelease.subdir,
     release_count: document.releases.length,
@@ -70,13 +70,9 @@ function parseCanonicalLocator(locator: string): {
   repo: string;
 } {
   const parts = locator.split("/");
-  if (parts.length < 3) {
-    throw new Error(`Invalid canonical locator ${locator}.`);
-  }
-
   return {
-    owner: parts[1] ?? "",
-    repo: parts[2] ?? "",
+    owner: parts.length >= 3 ? (parts[1] ?? "") : "",
+    repo: parts.length >= 3 ? (parts[2] ?? "") : "",
   };
 }
 

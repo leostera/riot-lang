@@ -1,20 +1,10 @@
 import { HttpError } from "./errors.ts";
 
-export async function readRepoFileFromTarGz(
+export async function readArchiveFileFromTarGz(
   archiveBytes: Uint8Array<ArrayBuffer>,
-  repoRelativePath: string,
+  archiveRelativePath: string,
 ): Promise<string | null> {
-  const normalizedPath = repoRelativePath.replace(/^\/+|\/+$/g, "");
-  const tarBytes = await gunzip(archiveBytes);
-
-  for (const entry of iterateTarEntries(tarBytes)) {
-    const relativePath = stripRootPrefix(entry.name);
-    if (relativePath === normalizedPath) {
-      return new TextDecoder().decode(entry.body);
-    }
-  }
-
-  return null;
+  return await readFileFromTarGz(archiveBytes, archiveRelativePath);
 }
 
 async function gunzip(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
@@ -25,6 +15,26 @@ async function gunzip(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayB
 
   const decompressed = stream.pipeThrough(new DecompressionStream("gzip"));
   return new Uint8Array(await new Response(decompressed).arrayBuffer());
+}
+
+async function readFileFromTarGz(
+  archiveBytes: Uint8Array<ArrayBuffer>,
+  relativePath: string,
+): Promise<string | null> {
+  const normalizedPath = normalizeArchivePath(relativePath);
+  const tarBytes = await gunzip(archiveBytes);
+
+  for (const entry of iterateTarEntries(tarBytes)) {
+    if (!isRegularFileEntry(entry.typeFlag)) {
+      continue;
+    }
+
+    if (normalizeArchivePath(entry.name) === normalizedPath) {
+      return new TextDecoder().decode(entry.body);
+    }
+  }
+
+  return null;
 }
 
 function *iterateTarEntries(bytes: Uint8Array<ArrayBuffer>): Iterable<TarEntry> {
@@ -38,23 +48,32 @@ function *iterateTarEntries(bytes: Uint8Array<ArrayBuffer>): Iterable<TarEntry> 
 
     const name = readString(header, 0, 100);
     const prefix = readString(header, 345, 155);
+    const mode = parseOctal(readString(header, 100, 8));
     const size = parseOctal(readString(header, 124, 12));
+    const mtime = parseOctal(readString(header, 136, 12));
     const typeFlag = readString(header, 156, 1);
+    const linkName = readString(header, 157, 100);
     const fullName = prefix.length > 0 ? `${prefix}/${name}` : name;
     const bodyOffset = offset + 512;
     const body = bytes.subarray(bodyOffset, bodyOffset + size);
 
-    if (typeFlag === "" || typeFlag === "0") {
-      yield { name: fullName, body };
+    if (typeFlag === "" || typeFlag === "0" || typeFlag === "5" || typeFlag === "2") {
+      yield {
+        name: fullName,
+        body,
+        mode,
+        mtime,
+        typeFlag,
+        linkName,
+      };
     }
 
     offset = bodyOffset + alignTo512(size);
   }
 }
 
-function stripRootPrefix(path: string): string {
-  const firstSlash = path.indexOf("/");
-  return firstSlash === -1 ? path : path.slice(firstSlash + 1);
+function normalizeArchivePath(path: string): string {
+  return path.replace(/^\/+|\/+$/g, "");
 }
 
 function readString(bytes: Uint8Array<ArrayBuffer>, start: number, length: number): string {
@@ -82,7 +101,15 @@ function isZeroBlock(bytes: Uint8Array<ArrayBuffer>): boolean {
   return true;
 }
 
+function isRegularFileEntry(typeFlag: string): boolean {
+  return typeFlag === "" || typeFlag === "0";
+}
+
 interface TarEntry {
   name: string;
   body: Uint8Array<ArrayBuffer>;
+  mode: number;
+  mtime: number;
+  typeFlag: string;
+  linkName: string;
 }

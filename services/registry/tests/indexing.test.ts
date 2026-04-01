@@ -66,7 +66,7 @@ describe("registry indexing", () => {
           canonical_locator: "github.com/leostera/riot-new/packages/kernel",
           repo_url: "https://github.com/leostera/riot-new",
           subdir: "packages/kernel",
-          sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+          artifact_sha256: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
           description: "Actor runtime kernel primitives for Riot",
           license: "Apache-2.0",
           homepage: "https://riot.ml",
@@ -87,7 +87,7 @@ describe("registry indexing", () => {
         package_name: "kernel",
         package_version: "0.0.1",
         package_locator: "github.com/leostera/riot-new/packages/kernel",
-        resolved_sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+        artifact_sha256: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
         package_index_key: "index/v1/ke/rn/kernel.json",
         package_index_url: "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json",
         latest: "0.0.1",
@@ -174,7 +174,7 @@ describe("registry indexing", () => {
     const first = makeReleaseRecord();
     const second = makeReleaseRecord({
       package_version: "0.2.0",
-      resolved_sha: "eeee0372bf5b6687db05bda80cde55f960cbfd9d",
+      artifact_sha256: "eeee0372bf5b6687db05bda80cde55f960cbfd9d",
       source_archive_key:
         "sources/github.com/leostera/riot-new/eeee0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
       manifest_key:
@@ -216,7 +216,7 @@ describe("registry indexing", () => {
       package_name: "kernel",
       package_version: "0.0.1",
       package_locator: "github.com/leostera/riot-new/packages/kernel",
-      resolved_sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+      artifact_sha256: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
       package_index_key: "index/v1/ke/rn/kernel.json",
       package_index_url: "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json",
       latest: "0.0.1",
@@ -245,7 +245,7 @@ describe("registry indexing", () => {
             canonical_locator: "github.com/leostera/riot-new/packages/kernel",
             repo_url: "https://github.com/leostera/riot-new",
             subdir: "packages/kernel",
-            sha: "different",
+            artifact_sha256: "different",
             description: "Old description",
             license: "MIT",
             manifest_key: manifest.manifest_key,
@@ -272,7 +272,7 @@ describe("registry indexing", () => {
     expect(document.releases).toHaveLength(1);
     expect(document.releases[0]).toMatchObject({
       version: "0.0.1",
-      sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+      artifact_sha256: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
       description: "Actor runtime kernel primitives for Riot",
       license: "Apache-2.0",
     });
@@ -294,7 +294,7 @@ describe("registry indexing", () => {
         "sources/github.com/leostera/riot-new/abcf0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
       manifest_key:
         "packages/github.com/leostera/riot-new/packages/miniriot/abcf0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
-      resolved_sha: "abcf0372bf5b6687db05bda80cde55f960cbfd9d",
+      artifact_sha256: "abcf0372bf5b6687db05bda80cde55f960cbfd9d",
       published_at: "2026-03-27T16:10:00Z",
       package_categories: ["runtime", "actors"],
     });
@@ -358,7 +358,7 @@ describe("registry indexing", () => {
     const { db } = makeEnv();
     const legacy = makeReleaseRecord({
       package_version: "main",
-      resolved_sha: "11110372bf5b6687db05bda80cde55f960cbfd9d",
+      artifact_sha256: "11110372bf5b6687db05bda80cde55f960cbfd9d",
       source_archive_key:
         "sources/github.com/leostera/riot-new/11110372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
       manifest_key:
@@ -368,7 +368,7 @@ describe("registry indexing", () => {
     });
     const current = makeReleaseRecord({
       package_version: "0.1.0",
-      resolved_sha: "22220372bf5b6687db05bda80cde55f960cbfd9d",
+      artifact_sha256: "22220372bf5b6687db05bda80cde55f960cbfd9d",
       source_archive_key:
         "sources/github.com/leostera/riot-new/22220372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
       manifest_key:
@@ -426,8 +426,7 @@ function makeReleaseRecord(
     package_locator: "github.com/leostera/riot-new/packages/kernel",
     source_url: "https://github.com/leostera/riot-new",
     package_subdir: "packages/kernel",
-    selector: "main",
-    resolved_sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+    artifact_sha256: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
     package_description: "Actor runtime kernel primitives for Riot",
     package_license: "Apache-2.0",
     package_homepage: "https://riot.ml",
@@ -452,8 +451,7 @@ function makeManifest(
     package_locator: release.package_locator,
     source_url: release.source_url,
     package_subdir: release.package_subdir,
-    selector: release.selector,
-    resolved_sha: release.resolved_sha,
+    artifact_sha256: release.artifact_sha256,
     package_name: release.package_name,
     package_version: release.package_version,
     package_public: true,

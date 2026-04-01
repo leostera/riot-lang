@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { indexPublishedRelease } from "../src/indexing.ts";
 import { handleRequest } from "../src/routes.ts";
+import { applyMetadataMigrations, writePackageClaim, writePublishedRelease } from "../src/metadata-db.ts";
 import type { PackagePublicationManifest, PublishedReleaseRecord } from "../src/types.ts";
 import { FakeExecutionContext, makeEnv } from "./helpers.ts";
 
@@ -82,6 +83,80 @@ describe("registry search api", () => {
       results: [],
     });
   });
+
+  test("artifact-published packages remain searchable without canonical locator provenance", async () => {
+    const { env, db } = makeEnv();
+    const release = makeReleaseRecord({
+      package_name: "std",
+      package_version: "0.1.0",
+      package_locator: "",
+      source_url: "",
+      package_subdir: ".",
+      artifact_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      package_description: "The Riot standard library",
+      package_root_module: "Std",
+      dependencies: [],
+      source_archive_key:
+        "sources/std/0.1.0/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.tar.gz",
+      manifest_key:
+        "packages/std/0.1.0/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.manifest.json",
+      published_at: "2026-04-01T09:00:00Z",
+    });
+
+    await applyMetadataMigrations(db as unknown as D1Database);
+    await writePackageClaim(db as unknown as D1Database, {
+      package_name: release.package_name,
+      package_locator: "",
+      source_url: "",
+      package_subdir: ".",
+      owner_github_login: "leostera",
+      claimed_at: release.published_at,
+      updated_at: release.published_at,
+    });
+    await writePublishedRelease(db as unknown as D1Database, release);
+    await indexPublishedRelease(env, release, makeManifest({
+      package_name: release.package_name,
+      package_version: release.package_version,
+      package_locator: "",
+      source_url: "",
+      package_subdir: ".",
+      artifact_sha256: release.artifact_sha256,
+      package_description: release.package_description,
+      package_root_module: release.package_root_module,
+      dependencies: [],
+      source_archive_key: release.source_archive_key,
+      manifest_key: release.manifest_key,
+    }));
+
+    const byName = await handleRequest(
+      new Request("https://registry.test/v1/search?q=std"),
+      env,
+      new FakeExecutionContext(),
+    );
+    expect(byName.status).toBe(200);
+    expect(await byName.json()).toMatchObject({
+      count: 1,
+      results: [
+        {
+          package_name: "std",
+          repo_owner: "leostera",
+          repo_name: "",
+          canonical_locator: "",
+        },
+      ],
+    });
+
+    const byOwner = await handleRequest(
+      new Request("https://registry.test/v1/search?q=leostera"),
+      env,
+      new FakeExecutionContext(),
+    );
+    expect(byOwner.status).toBe(200);
+    expect(await byOwner.json()).toMatchObject({
+      count: 1,
+      results: [{ package_name: "std" }],
+    });
+  });
 });
 
 function makeReleaseRecord(
@@ -93,8 +168,7 @@ function makeReleaseRecord(
     package_locator: "github.com/leostera/riot-new/packages/kernel",
     source_url: "https://github.com/leostera/riot-new",
     package_subdir: "packages/kernel",
-    selector: "main",
-    resolved_sha: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
+    artifact_sha256: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
     package_description: "Actor runtime kernel primitives for Riot",
     package_license: "Apache-2.0",
     package_homepage: "https://riot.ml",
@@ -118,8 +192,7 @@ function makeManifest(
     package_locator: release.package_locator,
     source_url: release.source_url,
     package_subdir: release.package_subdir,
-    selector: release.selector,
-    resolved_sha: release.resolved_sha,
+    artifact_sha256: release.artifact_sha256,
     package_name: release.package_name,
     package_version: release.package_version,
     package_public: true,

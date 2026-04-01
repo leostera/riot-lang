@@ -1,80 +1,85 @@
 import { parse as parseToml } from "smol-toml";
 
-import { readRepoFileFromTarGz } from "./archive.ts";
+import { readArchiveFileFromTarGz } from "./archive.ts";
 import { HttpError } from "./errors.ts";
-import { canonicalSourceUrl, packageSubdir } from "./locator.ts";
-import { manifestKey, sourceArchiveKey } from "./storage.ts";
-import type { PackageLocator, PackagePublicationManifest } from "./types.ts";
+import {
+  artifactManifestKey,
+  artifactSourceArchiveKey,
+} from "./storage.ts";
+import type { PackagePublicationManifest } from "./types.ts";
 
-export async function buildPublicationManifest(args: {
-  locator: PackageLocator;
-  selector: string;
-  resolvedSha: string;
+export async function buildPublicationManifestFromArtifact(args: {
   archiveBytes: Uint8Array<ArrayBuffer>;
+  artifactSha256: string;
   materializedAt: string;
+  packageLocator?: string;
+  sourceUrl?: string;
+  packageSubdir?: string;
 }): Promise<PackagePublicationManifest> {
-  const tuskTomlPath = toRepoRelativeTuskTomlPath(args.locator);
-  const tuskToml = await readRepoFileFromTarGz(args.archiveBytes, tuskTomlPath);
+  const tuskToml = await readArchiveFileFromTarGz(args.archiveBytes, "tusk.toml");
 
   if (tuskToml === null) {
     throw new HttpError(
-      404,
-      "package_not_found",
-      `No tusk.toml exists at package locator ${args.locator.normalized}.`,
+      422,
+      "invalid_package_archive",
+      "Published package artifact must contain tusk.toml at archive root.",
     );
   }
 
-  const parsed = parseTuskToml(tuskToml, args.locator.normalized);
-  const packageSection = asRecord(parsed.package, "package", args.locator.normalized);
-  const packageName = expectString(packageSection.name, "package.name", args.locator.normalized);
+  const parsed = parseTuskToml(tuskToml, args.packageLocator ?? "artifact");
+  const packageSection = asRecord(parsed.package, "package", args.packageLocator ?? "artifact");
+  const packageName = expectString(packageSection.name, "package.name", args.packageLocator ?? "artifact");
   const packageVersion = expectString(
     packageSection.version,
     "package.version",
-    args.locator.normalized,
+    args.packageLocator ?? packageName,
   );
-  const packagePublic = readBoolean(packageSection.public, "package.public", args.locator.normalized);
+  const packagePublic = readBoolean(
+    packageSection.public,
+    "package.public",
+    args.packageLocator ?? packageName,
+  );
   const packageDescription = readOptionalString(
     packageSection.description,
     "package.description",
-    args.locator.normalized,
+    args.packageLocator ?? packageName,
   );
   const packageLicense = readOptionalString(
     packageSection.license,
     "package.license",
-    args.locator.normalized,
+    args.packageLocator ?? packageName,
   );
   const packageHomepage = readOptionalString(
     packageSection.homepage,
     "package.homepage",
-    args.locator.normalized,
+    args.packageLocator ?? packageName,
   );
   const packageRepository = readOptionalString(
     packageSection.repository,
     "package.repository",
-    args.locator.normalized,
+    args.packageLocator ?? packageName,
   );
   const packageRootModule = readOptionalString(
     packageSection.root_module,
     "package.root_module",
-    args.locator.normalized,
+    args.packageLocator ?? packageName,
   );
   const packageCategories = readOptionalStringArray(
     packageSection.categories,
     "package.categories",
-    args.locator.normalized,
+    args.packageLocator ?? packageName,
   );
   const packageKeywords = readOptionalStringArray(
     packageSection.keywords,
     "package.keywords",
-    args.locator.normalized,
+    args.packageLocator ?? packageName,
   );
 
   return {
-    package_locator: args.locator.normalized,
-    source_url: canonicalSourceUrl(args.locator),
-    package_subdir: packageSubdir(args.locator),
-    selector: args.selector,
-    resolved_sha: args.resolvedSha,
+    package_locator: args.packageLocator ?? "",
+    source_url: args.sourceUrl ?? "",
+    package_subdir: args.packageSubdir ?? ".",
+    artifact_sha256: args.artifactSha256,
     package_name: packageName,
     package_version: packageVersion,
     package_public: packagePublic,
@@ -86,8 +91,8 @@ export async function buildPublicationManifest(args: {
     package_categories: packageCategories,
     package_keywords: packageKeywords,
     dependencies: extractDependencies(parsed.dependencies),
-    source_archive_key: sourceArchiveKey(args.locator, args.resolvedSha),
-    manifest_key: manifestKey(args.locator, args.resolvedSha),
+    source_archive_key: artifactSourceArchiveKey(packageName, packageVersion, args.artifactSha256),
+    manifest_key: artifactManifestKey(packageName, packageVersion, args.artifactSha256),
     materialized_at: args.materializedAt,
   };
 }
@@ -123,10 +128,6 @@ function extractDependencies(section: unknown): Array<Record<string, unknown>> {
       raw: specification,
     };
   });
-}
-
-function toRepoRelativeTuskTomlPath(locator: PackageLocator): string {
-  return locator.subpath === null ? "tusk.toml" : `${locator.subpath}/tusk.toml`;
 }
 
 function asRecord(value: unknown, field: string, locator: string): Record<string, unknown> {

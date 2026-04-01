@@ -228,7 +228,6 @@ export function makeEnv(overrides: Partial<Env> = {}): {
     PUBLICATION_COORDINATOR: undefined as unknown as DurableObjectNamespace,
     CDN_BASE_URL: "https://cdn.pkgs.ml",
     INDEX_BASE_PATH: "index/v1",
-    GITHUB_TOKEN: "",
     ROOT_AUTH_TOKEN: "root-secret",
     ...overrides,
   };
@@ -385,7 +384,8 @@ export async function makeTarGz(
 
   for (const [path, content] of Object.entries(files)) {
     const body = new TextEncoder().encode(content);
-    const header = makeTarHeader(`${rootPrefix}/${path}`, body.byteLength);
+    const tarPath = rootPrefix.length === 0 ? path : `${rootPrefix}/${path}`;
+    const header = makeTarHeader(tarPath, body.byteLength);
     chunks.push(header, body, new Uint8Array(padLength(body.byteLength)));
   }
 

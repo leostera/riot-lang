@@ -21,7 +21,6 @@ import type {
   RecentPackagesDocument,
   RegistryEventRecord,
   RequestLogEntry,
-  SelectorResolutionRecord,
   SessionRecord,
   UserLoginRecord,
   UserRecord,
@@ -35,7 +34,6 @@ import {
   publishedReleases,
   registryEvents,
   requestLogs,
-  selectorResolutions,
   sessions,
   userLogins,
   users,
@@ -54,8 +52,7 @@ export async function writeRequestLog(db: D1Database, entry: RequestLogEntry): P
     path: entry.path,
     route: entry.route,
     packageLocator: entry.package_locator ?? null,
-    selector: entry.selector ?? null,
-    resolvedSha: entry.resolved_sha ?? null,
+    artifactSha256: entry.artifact_sha256 ?? null,
     status: entry.status,
     success: entry.success,
     errorCategory: entry.error_category ?? null,
@@ -77,8 +74,7 @@ export async function listRequestLogs(
       path: requestLogs.path,
       route: requestLogs.route,
       package_locator: requestLogs.packageLocator,
-      selector: requestLogs.selector,
-      resolved_sha: requestLogs.resolvedSha,
+      artifact_sha256: requestLogs.artifactSha256,
       status: requestLogs.status,
       success: requestLogs.success,
       error_category: requestLogs.errorCategory,
@@ -409,64 +405,6 @@ export async function writeApiTokenLookupRecord(
     });
 }
 
-export async function readSelectorResolution(
-  db: D1Database,
-  packageLocator: string,
-  selector: string,
-): Promise<SelectorResolutionRecord | null> {
-  const database = registryDb(db);
-  const [row] = await database
-    .select({
-      package_locator: selectorResolutions.packageLocator,
-      selector: selectorResolutions.selector,
-      resolved_sha: selectorResolutions.resolvedSha,
-      frozen: selectorResolutions.frozen,
-      recorded_at: selectorResolutions.recordedAt,
-    })
-    .from(selectorResolutions)
-    .where(
-      and(
-        eq(selectorResolutions.packageLocator, packageLocator),
-        eq(selectorResolutions.selector, selector),
-      ),
-    )
-    .limit(1);
-
-  return row
-    ? {
-        package_locator: row.package_locator,
-        selector: row.selector,
-        resolved_sha: row.resolved_sha,
-        frozen: row.frozen,
-        recorded_at: row.recorded_at,
-      }
-    : null;
-}
-
-export async function writeSelectorResolution(
-  db: D1Database,
-  record: SelectorResolutionRecord,
-): Promise<void> {
-  const database = registryDb(db);
-  await database
-    .insert(selectorResolutions)
-    .values({
-      packageLocator: record.package_locator,
-      selector: record.selector,
-      resolvedSha: record.resolved_sha,
-      frozen: record.frozen,
-      recordedAt: record.recorded_at,
-    })
-    .onConflictDoUpdate({
-      target: [selectorResolutions.packageLocator, selectorResolutions.selector],
-      set: {
-        resolvedSha: record.resolved_sha,
-        frozen: record.frozen,
-        recordedAt: record.recorded_at,
-      },
-    });
-}
-
 export async function readPackageClaim(
   db: D1Database,
   packageName: string,
@@ -534,8 +472,7 @@ export async function readPublishedRelease(
       package_locator: publishedReleases.packageLocator,
       source_url: publishedReleases.sourceUrl,
       package_subdir: publishedReleases.packageSubdir,
-      selector: publishedReleases.selector,
-      resolved_sha: publishedReleases.resolvedSha,
+      artifact_sha256: publishedReleases.artifactSha256,
       package_description: publishedReleases.packageDescription,
       package_license: publishedReleases.packageLicense,
       package_homepage: publishedReleases.packageHomepage,
@@ -584,8 +521,7 @@ export async function writePublishedRelease(
       packageLocator: record.package_locator,
       sourceUrl: record.source_url,
       packageSubdir: record.package_subdir,
-      selector: record.selector,
-      resolvedSha: record.resolved_sha,
+      artifactSha256: record.artifact_sha256,
       packageDescription: record.package_description ?? null,
       packageLicense: record.package_license ?? null,
       packageHomepage: record.package_homepage ?? null,
@@ -604,8 +540,7 @@ export async function writePublishedRelease(
         packageLocator: record.package_locator,
         sourceUrl: record.source_url,
         packageSubdir: record.package_subdir,
-        selector: record.selector,
-        resolvedSha: record.resolved_sha,
+        artifactSha256: record.artifact_sha256,
         packageDescription: record.package_description ?? null,
         packageLicense: record.package_license ?? null,
         packageHomepage: record.package_homepage ?? null,
@@ -749,7 +684,7 @@ export async function readPackageOverviewDocument(
     subdir: snapshot.subdir,
     source_key: snapshot.source_key,
     manifest_key: snapshot.manifest_key,
-    sha: snapshot.sha,
+    artifact_sha256: snapshot.artifact_sha256,
     owner_github_login: snapshot.owner_github_login ?? snapshot.repo_owner,
     owner_github_avatar_url: await resolveOwnerAvatarUrl(
       db,
@@ -923,8 +858,7 @@ async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> 
       package_locator: publishedReleases.packageLocator,
       source_url: publishedReleases.sourceUrl,
       package_subdir: publishedReleases.packageSubdir,
-      selector: publishedReleases.selector,
-      resolved_sha: publishedReleases.resolvedSha,
+      artifact_sha256: publishedReleases.artifactSha256,
       package_description: publishedReleases.packageDescription,
       package_license: publishedReleases.packageLicense,
       package_homepage: publishedReleases.packageHomepage,
@@ -976,7 +910,7 @@ async function listPackageSnapshots(db: D1Database): Promise<PackageSnapshot[]> 
       published_at: latestRelease.published_at,
       source_key: latestRelease.source_archive_key,
       manifest_key: latestRelease.manifest_key,
-      sha: latestRelease.resolved_sha,
+      artifact_sha256: latestRelease.artifact_sha256,
       owner_user_id: claim?.owner_user_id,
       owner_github_login: ownerGithubLogin,
       categories: latestRelease.package_categories ?? [],
@@ -1178,7 +1112,7 @@ function compareReleaseVersionsDesc(
     return versionResult;
   }
 
-  return right.resolved_sha.localeCompare(left.resolved_sha);
+  return right.artifact_sha256.localeCompare(left.artifact_sha256);
 }
 
 function parseOwnerFromLocator(locator: string): string {
@@ -1211,7 +1145,7 @@ interface PackageSnapshot {
   repo_owner: string;
   source_key: string;
   manifest_key: string;
-  sha: string;
+  artifact_sha256: string;
   owner_user_id?: string | null;
   owner_github_login?: string | null;
   categories: string[];
@@ -1262,22 +1196,13 @@ interface ApiTokenLookupRow {
   revoked_at?: string | null;
 }
 
-interface SelectorResolutionRow {
-  package_locator: string;
-  selector: string;
-  resolved_sha: string;
-  frozen: number;
-  recorded_at: string;
-}
-
 interface PublishedReleaseRow {
   package_name: string;
   package_version: string;
   package_locator: string;
   source_url: string;
   package_subdir: string;
-  selector: string;
-  resolved_sha: string;
+  artifact_sha256: string;
   package_description?: string | null;
   package_license?: string | null;
   package_homepage?: string | null;
@@ -1298,8 +1223,7 @@ interface RequestLogRow {
   path: string;
   route: string;
   package_locator?: string | null;
-  selector?: string | null;
-  resolved_sha?: string | null;
+  artifact_sha256?: string | null;
   status: number;
   success: number | boolean;
   error_category?: string | null;
@@ -1325,8 +1249,7 @@ function parseRequestLogRecord(row: RequestLogRow): RequestLogEntry {
     path: row.path,
     route: row.route,
     package_locator: row.package_locator ?? undefined,
-    selector: row.selector ?? undefined,
-    resolved_sha: row.resolved_sha ?? undefined,
+    artifact_sha256: row.artifact_sha256 ?? undefined,
     status: row.status,
     success: row.success === true || row.success === 1,
     error_category: row.error_category ?? undefined,
@@ -1386,16 +1309,6 @@ function parseApiTokenLookupRecord(row: ApiTokenLookupRow): ApiTokenLookupRecord
   };
 }
 
-function parseSelectorResolution(row: SelectorResolutionRow): SelectorResolutionRecord {
-  return {
-    package_locator: row.package_locator,
-    selector: row.selector,
-    resolved_sha: row.resolved_sha,
-    frozen: row.frozen === 1,
-    recorded_at: row.recorded_at,
-  };
-}
-
 function parsePublishedReleaseRecord(row: PublishedReleaseRow): PublishedReleaseRecord {
   return {
     package_name: row.package_name,
@@ -1403,8 +1316,7 @@ function parsePublishedReleaseRecord(row: PublishedReleaseRow): PublishedRelease
     package_locator: row.package_locator,
     source_url: row.source_url,
     package_subdir: row.package_subdir,
-    selector: row.selector,
-    resolved_sha: row.resolved_sha,
+    artifact_sha256: row.artifact_sha256,
     package_description: row.package_description ?? undefined,
     package_license: row.package_license ?? undefined,
     package_homepage: row.package_homepage ?? undefined,

@@ -9,7 +9,6 @@ export interface Env {
   CDN_BASE_URL?: string;
   INDEX_BASE_PATH?: string;
   VIEWS_BASE_PATH?: string;
-  GITHUB_TOKEN?: string;
   GITHUB_API_BASE_URL?: string;
   GITHUB_OAUTH_CLIENT_ID?: string;
   GITHUB_OAUTH_CLIENT_SECRET?: string;
@@ -21,15 +20,6 @@ export interface Env {
   D1_BACKUP_DATABASE_ID?: string;
   D1_BACKUP_BUCKET_PREFIX?: string;
   D1_BACKUP_ENABLED?: string;
-}
-
-export interface PackageLocator {
-  raw: string;
-  normalized: string;
-  provider: string;
-  owner: string;
-  repo: string;
-  subpath: string | null;
 }
 
 export interface RegistryConfig {
@@ -46,8 +36,7 @@ export interface PackagePublicationManifest {
   package_locator: string;
   source_url: string;
   package_subdir: string;
-  selector: string;
-  resolved_sha: string;
+  artifact_sha256: string;
   package_name: string;
   package_version: string;
   package_public: boolean;
@@ -176,8 +165,7 @@ export interface PublishedReleaseRecord {
   package_locator: string;
   source_url: string;
   package_subdir: string;
-  selector: string;
-  resolved_sha: string;
+  artifact_sha256: string;
   package_description?: string;
   package_license?: string;
   package_homepage?: string;
@@ -200,7 +188,7 @@ export interface PackageIndexedEvent {
   package_name: string;
   package_version: string;
   package_locator: string;
-  resolved_sha: string;
+  artifact_sha256: string;
   package_index_key: string;
   package_index_url: string;
   latest: string;
@@ -221,7 +209,7 @@ export interface IndexedPackageRelease {
   canonical_locator: string;
   repo_url: string;
   subdir: string;
-  sha: string;
+  artifact_sha256: string;
   description?: string;
   license?: string;
   homepage?: string;
@@ -278,7 +266,7 @@ export interface PackageOverviewDocument {
   subdir: string;
   source_key: string;
   manifest_key: string;
-  sha: string;
+  artifact_sha256: string;
   owner_github_login: string;
   owner_github_avatar_url?: string;
   release_count: number;
@@ -358,14 +346,6 @@ export interface OwnerPackagesDocument {
   packages: WebPackageListItem[];
 }
 
-export interface SelectorResolutionRecord {
-  package_locator: string;
-  selector: string;
-  resolved_sha: string;
-  frozen: boolean;
-  recorded_at: string;
-}
-
 export interface RequestLogEntry {
   request_id: string;
   request_timestamp: string;
@@ -373,8 +353,7 @@ export interface RequestLogEntry {
   path: string;
   route: string;
   package_locator?: string;
-  selector?: string;
-  resolved_sha?: string;
+  artifact_sha256?: string;
   status: number;
   success: boolean;
   error_category?: string;
@@ -382,16 +361,12 @@ export interface RequestLogEntry {
   user_agent?: string | null;
 }
 
-export interface ResolvedPublication {
-  selector: string;
-  resolvedSha: string;
+export interface PublishedPackageRelease {
+  artifactSha256: string;
   sourceKey: string;
   manifestKey: string;
   manifestCreated: boolean;
   sourceCreated: boolean;
-}
-
-export interface PublishedPackageRelease extends ResolvedPublication {
   packageName: string;
   packageVersion: string;
   claimKey: string;
