@@ -46,8 +46,53 @@ let test_decompress_file = fun () ->
             )
         ))
 
+let test_compress_string_roundtrip = fun () ->
+  match Gzip.compress_string "hello from gzip\n" with
+  | Error _ ->
+      Error "failed to compress string into gzip payload"
+  | Ok payload -> (
+      match Gzip.decompress_string payload with
+      | Ok "hello from gzip\n" ->
+          Ok ()
+      | Ok text ->
+          Error ("unexpected roundtrip string: " ^ text)
+      | Error _ ->
+          Error "failed to decompress compressed string payload"
+    )
+
+let test_compress_file_roundtrip = fun () ->
+  with_temp_dir "gzip_compress_file"
+    (fun dir ->
+      let src = Path.join dir (Path.v "payload.txt") in
+      let gzip_path = Path.join dir (Path.v "payload.txt.gz") in
+      let roundtrip = Path.join dir (Path.v "payload.roundtrip.txt") in
+      match Fs.write "hello from gzip\n" src with
+      | Error err ->
+          Error ("failed to write source file: " ^ Kernel.IO.error_message err)
+      | Ok () -> (
+          match Gzip.compress_file ~src ~dst:gzip_path with
+          | Error _ ->
+              Error "failed to compress file into gzip payload"
+          | Ok () -> (
+              match Gzip.decompress_file ~src:gzip_path ~dst:roundtrip with
+              | Error _ ->
+                  Error "failed to decompress roundtrip gzip file"
+              | Ok () -> (
+                  match Fs.read_to_string roundtrip with
+                  | Ok "hello from gzip\n" ->
+                      Ok ()
+                  | Ok text ->
+                      Error ("unexpected roundtrip file contents: " ^ text)
+                  | Error err ->
+                      Error ("failed to read roundtrip file: " ^ Kernel.IO.error_message err)
+                )
+            )
+        ))
+
 let tests =
   Test.[
+    case "gzip compress string roundtrip" test_compress_string_roundtrip;
+    case "gzip compress file roundtrip" test_compress_file_roundtrip;
     case "gzip decompress string" test_decompress_string;
     case "gzip decompress file" test_decompress_file;
   ]

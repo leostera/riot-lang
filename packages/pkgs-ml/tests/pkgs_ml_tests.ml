@@ -496,23 +496,27 @@ let gzip_file = fun ~src ~dst ->
   match Fs.create_dir_all parent with
   | Error err ->
       Error ("failed to create gzip output parent directory: " ^ IO.error_message err)
-  | Ok () -> (
-      let cmd = Command.make ~args:[ "-c"; Path.to_string src ] "gzip" in
-      match Command.output cmd with
-      | Error (Command.SystemError msg) ->
-          Error ("failed to gzip test archive: " ^ msg)
-      | Ok output when output.Command.status != 0 ->
-          let detail =
-            if String.equal output.stderr "" then
-              output.stdout
-            else
-              output.stderr
-          in
-          Error ("failed to gzip test archive: " ^ detail)
-      | Ok output ->
-          Fs.write output.stdout dst
-          |> Result.map_err (fun err -> "failed to write gzipped test archive: " ^ IO.error_message err)
-    )
+  | Ok () ->
+      Compress.Gzip.compress_file ~src ~dst
+      |> Result.map_err
+           (function
+            | Compress.Gzip.File_io_error err ->
+                "failed to gzip test archive: " ^ IO.error_message err
+            | Compress.Gzip.File_gzip_error err -> (
+                match err with
+                | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Invalid_data ->
+                    "failed to gzip test archive: invalid gzip data"
+                | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Need_dictionary ->
+                    "failed to gzip test archive: gzip stream requires a preset dictionary"
+                | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Buffer_error ->
+                    "failed to gzip test archive: gzip encoder buffer error"
+                | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Out_of_memory ->
+                    "failed to gzip test archive: gzip encoder out of memory"
+                | Compress.Gzip.Kernel_error (Kernel.Compress.Gzip.Unknown_error msg) ->
+                    "failed to gzip test archive: " ^ msg
+                | Compress.Gzip.Truncated_input ->
+                    "failed to gzip test archive: truncated gzip input"
+              ))
 
 let test_filesystem_registry_materializes_cached_release = fun () ->
   match

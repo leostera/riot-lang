@@ -490,7 +490,7 @@ let tar_extract_file_error_message = function
 
 let gzip_tar_extract_error_message = function
   | Archive.Tar.Extract_source_error (Compress.Gzip.Source_error err) -> IO.error_message err
-  | Archive.Tar.Extract_source_error (Compress.Gzip.Decode_error err) -> gzip_error_message err
+  | Archive.Tar.Extract_source_error (Compress.Gzip.Gzip_error err) -> gzip_error_message err
   | Archive.Tar.Extract_fs_error err -> IO.error_message err
   | Archive.Tar.Extract_error err -> tar_error_message err
 

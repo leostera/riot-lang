@@ -19,16 +19,16 @@ type ('src, 'read_err) reader = {
 
 type 'read_err read_error =
   | Source_error of 'read_err
-  | Decode_error of error
+  | Gzip_error of error
 
 type ('read_err, 'write_err) stream_error =
   | Stream_source_error of 'read_err
   | Stream_destination_error of 'write_err
-  | Stream_decode_error of error
+  | Stream_gzip_error of error
 
 type file_error =
   | File_io_error of Fs.error
-  | File_decode_error of error
+  | File_gzip_error of error
 
 let input_buffer_size = 32 * 1_024
 
@@ -63,7 +63,7 @@ let refill_input = fun (t: (_, _) reader) ->
   compact_input t;
   let available = Bytes.length t.input - t.input_len in
   if available = 0 then
-    Error (Decode_error (Kernel_error Kernel.Compress.Gzip.Buffer_error))
+    Error (Gzip_error (Kernel_error Kernel.Compress.Gzip.Buffer_error))
   else
     let chunk = Bytes.create available in
     match IO.read t.src chunk with
@@ -89,13 +89,13 @@ let read_into = fun (t: (_, _) reader) dst ->
         let available_input = buffered_input t in
         if available_input = 0 then
           if t.source_eof then
-            Error (Decode_error Truncated_input)
+            Error (Gzip_error Truncated_input)
           else
             match refill_input t with
             | Error err ->
                 Error err
             | Ok false ->
-                Error (Decode_error Truncated_input)
+                Error (Gzip_error Truncated_input)
             | Ok true ->
                 loop ()
         else
@@ -109,7 +109,7 @@ let read_into = fun (t: (_, _) reader) dst ->
                   ~dst_len
           with
           | Error err ->
-              Error (Decode_error (error_of_kernel err))
+              Error (Gzip_error (error_of_kernel err))
           | Ok step ->
               t.input_pos <- t.input_pos + step.consumed;
               if step.status = Kernel.Compress.Gzip.Finished then
@@ -122,18 +122,18 @@ let read_into = fun (t: (_, _) reader) dst ->
                     Ok 0
                 | Kernel.Compress.Gzip.Need_input ->
                     if t.source_eof then
-                      Error (Decode_error Truncated_input)
+                      Error (Gzip_error Truncated_input)
                     else (
                       match refill_input t with
                       | Error err ->
                           Error err
                       | Ok false ->
-                          Error (Decode_error Truncated_input)
+                          Error (Gzip_error Truncated_input)
                       | Ok true ->
                           loop ()
                     )
                 | Kernel.Compress.Gzip.Need_output ->
-                    Error (Decode_error (Kernel_error Kernel.Compress.Gzip.Buffer_error))
+                    Error (Gzip_error (Kernel_error Kernel.Compress.Gzip.Buffer_error))
               )
   in
   loop ()
@@ -183,6 +183,119 @@ let to_reader : type src read_err.
   end in
   Reader.of_read_src (module Read) state
 
+let buffer_writer =
+  let module Write = struct
+    type t = Buffer.t
+
+    type err = unit
+
+    let write = fun buffer ~buf ->
+      Buffer.add_string buffer buf;
+      Ok (String.length buf)
+
+    let write_owned_vectored = fun buffer ~bufs ->
+      let written = ref 0 in
+      Iovec.iter bufs
+        (fun { ba; off; len } ->
+          Buffer.add_string buffer (Bytes.sub_string ba off len);
+          written := !written + len);
+      Ok !written
+
+    let flush = fun _buffer -> Ok ()
+  end in
+  fun buffer -> Writer.of_write_src (module Write) buffer
+
+let compress = fun src dst ->
+  let encoder =
+    match Kernel.Compress.Gzip.create_encoder () with
+    | Ok encoder ->
+        encoder
+    | Error err ->
+        panic ("failed to create gzip encoder: " ^ string_of_kernel_error err)
+  in
+  Kernel.Fun.protect
+    ~finally:(fun () -> Kernel.Compress.Gzip.close_encoder encoder)
+    (fun () ->
+      let src_buf = Bytes.create input_buffer_size in
+      let dst_buf = Bytes.create input_buffer_size in
+      let rec encode_loop ~source_eof ~src_pos ~src_len ~chunk_count =
+        let available_src = src_len - src_pos in
+        if not source_eof && available_src = 0 then
+          match IO.read src src_buf with
+          | Ok 0 ->
+              encode_loop ~source_eof:true ~src_pos:0 ~src_len:0 ~chunk_count
+          | Ok bytes_read ->
+              encode_loop ~source_eof:false ~src_pos:0 ~src_len:bytes_read ~chunk_count
+          | Error err ->
+              Error (Stream_source_error err)
+        else
+          let flush =
+            if source_eof then
+              Kernel.Compress.Gzip.Finish
+            else
+              Kernel.Compress.Gzip.No_flush
+          in
+          match
+            Kernel.Compress.Gzip.encode
+              encoder
+              ~src:src_buf
+              ~src_pos
+              ~src_len:available_src
+              ~dst:dst_buf
+              ~dst_pos:0
+              ~dst_len:(Bytes.length dst_buf)
+              ~flush
+          with
+          | Error err ->
+              Error (Stream_gzip_error (error_of_kernel err))
+          | Ok step ->
+              let next_src_pos = src_pos + step.consumed in
+              let next_src_len = src_len in
+              let* () =
+                if step.produced = 0 then
+                  Ok ()
+                else
+                  let buf = Bytes.sub_string dst_buf 0 step.produced in
+                  IO.write_all dst ~buf
+                  |> Result.map_err (fun err -> Stream_destination_error err)
+              in
+              let next_chunk_count =
+                if step.produced > 0 then
+                  chunk_count + 1
+                else
+                  chunk_count
+              in
+              let () =
+                if next_chunk_count > 0 && Int.rem next_chunk_count 32 = 0 then
+                  yield ()
+              in
+              match step.status with
+              | Kernel.Compress.Gzip.Finished ->
+                  IO.flush dst |> Result.map_err (fun err -> Stream_destination_error err)
+              | Kernel.Compress.Gzip.Need_output ->
+                  encode_loop
+                    ~source_eof
+                    ~src_pos:next_src_pos
+                    ~src_len:next_src_len
+                    ~chunk_count:next_chunk_count
+              | Kernel.Compress.Gzip.Need_input ->
+                  if source_eof && step.consumed = 0 && step.produced = 0 then
+                    Error (Stream_gzip_error (Kernel_error Kernel.Compress.Gzip.Buffer_error))
+                  else if source_eof then
+                    encode_loop
+                      ~source_eof
+                      ~src_pos:next_src_pos
+                      ~src_len:next_src_len
+                      ~chunk_count:next_chunk_count
+                  else
+                    encode_loop
+                      ~source_eof:false
+                      ~src_pos:0
+                      ~src_len:0
+                      ~chunk_count:next_chunk_count
+      in
+      encode_loop ~source_eof:false ~src_pos:0 ~src_len:0 ~chunk_count:0)
+
 let decompress = fun src dst ->
   let gzip_reader = to_reader src in
   let chunk = Bytes.create input_buffer_size in
@@ -203,8 +316,8 @@ let decompress = fun src dst ->
         loop (chunk_count + 1)
     | Error (Source_error err) ->
         Error (Stream_source_error err)
-    | Error (Decode_error err) ->
-        Error (Stream_decode_error err)
+    | Error (Gzip_error err) ->
+        Error (Stream_gzip_error err)
   in
   loop 0
 
@@ -238,8 +351,36 @@ let decompress_file = fun ~src ~dst ->
                     File_io_error err
                 | Stream_destination_error err ->
                     File_io_error err
-                | Stream_decode_error err ->
-                    File_decode_error err)))
+                | Stream_gzip_error err ->
+                    File_gzip_error err)))
+
+let compress_file = fun ~src ~dst ->
+  with_open_input src
+    (fun src_file ->
+      with_open_output dst
+        (fun dst_file ->
+          compress (Fs.File.to_reader src_file) (Fs.File.to_writer dst_file)
+          |> Result.map_err
+               (function
+                | Stream_source_error err ->
+                    File_io_error err
+                | Stream_destination_error err ->
+                    File_io_error err
+                | Stream_gzip_error err ->
+                    File_gzip_error err)))
+
+let compress_string = fun data ->
+  let buffer = Buffer.create 128 in
+  let writer = buffer_writer buffer in
+  match compress (Reader.from_string data) writer with
+  | Ok () ->
+      Ok (Buffer.contents buffer)
+  | Error (Stream_source_error ()) ->
+      Error (Kernel_error (Kernel.Compress.Gzip.Unknown_error "unexpected in-memory source error"))
+  | Error (Stream_destination_error ()) ->
+      Error (Kernel_error (Kernel.Compress.Gzip.Unknown_error "unexpected in-memory destination error"))
+  | Error (Stream_gzip_error err) ->
+      Error err
 
 let decompress_string = fun data ->
   let gzip_reader = to_reader (Reader.from_string data) in
@@ -249,5 +390,5 @@ let decompress_string = fun data ->
       Ok (Buffer.contents buffer)
   | Error (Source_error ()) ->
       Error (Kernel_error (Kernel.Compress.Gzip.Unknown_error "unexpected in-memory source error"))
-  | Error (Decode_error err) ->
+  | Error (Gzip_error err) ->
       Error err
