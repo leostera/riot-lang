@@ -117,6 +117,38 @@ let list_tar_entries = fun artifact ->
           Ok (String.split_on_char '\n' output.stdout |> List.filter (fun line -> not (String.equal line "")))
     )
 
+let run_git = fun ~cwd args ->
+  let command =
+    Command.make
+      "env"
+      ~args:
+        ([
+           "-u";
+           "GIT_DIR";
+           "-u";
+           "GIT_WORK_TREE";
+           "-u";
+           "GIT_INDEX_FILE";
+           "git";
+           "-C";
+           Path.to_string cwd;
+         ]
+        @ args)
+  in
+  match Command.output command with
+  | Error (Command.SystemError err) ->
+      Error ("failed to spawn git: " ^ err)
+  | Ok output when not (Int.equal output.status 0) ->
+      let detail =
+        if String.equal output.stderr "" then
+          output.stdout
+        else
+          output.stderr
+      in
+      Error ("git command failed: " ^ detail)
+  | Ok output ->
+      Ok (String.trim output.stdout)
+
 type recorded_request = {
   method_: string;
   url: string;
@@ -434,6 +466,101 @@ let test_publisher_workspace_publish_order_reports_cycles = fun () ->
       Ok ()
   | Error err ->
       Error ("unexpected publish order error: " ^ Tusk_pm.Publisher.message err)
+
+let test_git_provenance_discovers_nested_package_locator = fun () ->
+  with_tempdir "tusk_pm_git_provenance_nested"
+    (fun root ->
+      let package_root = Path.(root / Path.v "packages/demo") in
+      write_file Path.(package_root / Path.v "tusk.toml")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+      write_file Path.(package_root / Path.v "src/demo.ml") "let answer = 42\n";
+      match
+        run_git ~cwd:root [ "init"; "-q" ],
+        run_git ~cwd:root [ "config"; "user.email"; "demo@example.com" ],
+        run_git ~cwd:root [ "config"; "user.name"; "Demo" ],
+        run_git ~cwd:root [ "remote"; "add"; "origin"; "https://github.com/example/riot.git" ],
+        run_git ~cwd:root [ "add"; "." ],
+        run_git ~cwd:root [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ]
+      with
+      | Ok _, Ok _, Ok _, Ok _, Ok _, Ok _ -> (
+          let canonical_root =
+            Fs.canonicalize root
+            |> Result.expect ~msg:"expected temp repo root to canonicalize"
+          in
+          match Tusk_pm.Git_provenance.discover ~package_root with
+          | Error err -> Error ("expected git provenance discovery to succeed: " ^ Tusk_pm.Git_provenance.message err)
+          | Ok provenance ->
+              if
+                String.equal provenance.locator "github.com/example/riot/packages/demo"
+                && Path.equal provenance.repository_root canonical_root
+                && provenance.package_subdir = Some (Path.v "packages/demo")
+                && String.equal provenance.origin_url "https://github.com/example/riot.git"
+                && String.length provenance.selector = 40
+              then
+                Ok ()
+              else
+                Error "unexpected nested git provenance"
+        )
+      | Error err, _, _, _, _, _
+      | _, Error err, _, _, _, _
+      | _, _, Error err, _, _, _
+      | _, _, _, Error err, _, _
+      | _, _, _, _, Error err, _
+      | _, _, _, _, _, Error err -> Error err)
+
+let test_git_provenance_discovers_repo_root_locator = fun () ->
+  with_tempdir "tusk_pm_git_provenance_root"
+    (fun root ->
+      write_file Path.(root / Path.v "tusk.toml")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+description = "demo"
+license = "Apache-2.0"
+public = true
+|};
+      write_file Path.(root / Path.v "src/demo.ml") "let answer = 42\n";
+      match
+        run_git ~cwd:root [ "init"; "-q" ],
+        run_git ~cwd:root [ "config"; "user.email"; "demo@example.com" ],
+        run_git ~cwd:root [ "config"; "user.name"; "Demo" ],
+        run_git ~cwd:root [ "remote"; "add"; "origin"; "git@github.com:example/demo.git" ],
+        run_git ~cwd:root [ "add"; "." ],
+        run_git ~cwd:root [ "-c"; "commit.gpgsign=false"; "commit"; "-qm"; "init" ]
+      with
+      | Ok _, Ok _, Ok _, Ok _, Ok _, Ok _ -> (
+          let canonical_root =
+            Fs.canonicalize root
+            |> Result.expect ~msg:"expected temp repo root to canonicalize"
+          in
+          match Tusk_pm.Git_provenance.discover ~package_root:root with
+          | Error err -> Error ("expected git provenance discovery to succeed: " ^ Tusk_pm.Git_provenance.message err)
+          | Ok provenance ->
+              if
+                String.equal provenance.locator "github.com/example/demo"
+                && Path.equal provenance.repository_root canonical_root
+                && provenance.package_subdir = None
+                && String.equal provenance.origin_url "git@github.com:example/demo.git"
+                && String.length provenance.selector = 40
+              then
+                Ok ()
+              else
+                Error "unexpected root git provenance"
+        )
+      | Error err, _, _, _, _, _
+      | _, Error err, _, _, _, _
+      | _, _, Error err, _, _, _
+      | _, _, _, Error err, _, _
+      | _, _, _, _, Error err, _
+      | _, _, _, _, _, Error err -> Error err)
 
 let test_lock_deps_projects_workspace_packages = fun () ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
@@ -1598,6 +1725,8 @@ let tests =
     case "publisher: workspace publish order uses runtime local dependencies" test_publisher_workspace_publish_order_uses_runtime_local_dependencies;
     case "publisher: workspace publish order ignores dev and build dependencies" test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies;
     case "publisher: workspace publish order reports cycles" test_publisher_workspace_publish_order_reports_cycles;
+    case "git provenance: discovers nested package locator" test_git_provenance_discovers_nested_package_locator;
+    case "git provenance: discovers repo root locator" test_git_provenance_discovers_repo_root_locator;
   ]
 
 let name = "Tusk PM Tests"

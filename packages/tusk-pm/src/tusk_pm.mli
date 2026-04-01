@@ -10,6 +10,7 @@ module Lock_refresh = Lock_refresh
 module Projection = Projection
 
 module Materializer = Materializer
+module Git_provenance = Git_provenance
 module Publisher = Publisher
 
 type event_sink = Tusk_model.Event.kind -> unit
