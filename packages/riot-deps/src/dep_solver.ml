@@ -1702,4 +1702,4 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
           dev_packages;
           duration_ms = duration_ms_since started;
         });
-      Ok Riot_model.Lockfile.{ format_version = 1; packages }
+      Ok Riot_model.Lockfile.{ format_version = 1; dependency_hash = ""; packages }

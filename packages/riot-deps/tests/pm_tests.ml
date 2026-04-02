@@ -1319,6 +1319,7 @@ let test_lock_refresh_preserves_existing_registry_version = fun _ctx ->
   let existing_lock =
     Riot_model.Lockfile.{
       format_version = 1;
+      dependency_hash = "test";
       packages =
         [ {
             id = { registry = None; name = "app"; version = None; sha256 = None };
@@ -1373,6 +1374,7 @@ let test_lock_refresh_preserves_existing_external_nodes = fun _ctx ->
   let existing_lock =
     Riot_model.Lockfile.{
       format_version = 1;
+      dependency_hash = "test";
       packages =
         [ {
             id = { registry = None; name = "app"; version = None; sha256 = None };
@@ -1408,6 +1410,7 @@ let test_unlock_discards_existing_external_nodes = fun _ctx ->
   let existing_lock =
     Riot_model.Lockfile.{
       format_version = 1;
+      dependency_hash = "test";
       packages =
         [ {
             id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0"; sha256 = None };
@@ -1432,36 +1435,48 @@ let test_lock_refresh_requires_lock_when_missing = fun _ctx ->
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
-      match Riot_deps.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      match Riot_deps.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] ~lockfile:None with
       | Ok true -> Ok ()
       | Ok false -> Error "expected missing lockfile to require refresh"
       | Error err -> Error err)
 
-let test_lock_refresh_false_when_lock_is_newer = fun _ctx ->
-  with_tempdir "riot_deps_fresh_lock"
+let test_lock_refresh_false_when_dependency_hash_matches = fun _ctx ->
+  with_tempdir "riot_deps_matching_dep_hash"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
-      let lock_path = Riot_model.Riot_dirs.package_lock_path ~workspace_root in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
-      sleep (Time.Duration.from_millis 20);
-      Fs.write "format_version = 1\npackages = []\n" lock_path |> Result.expect ~msg:"expected lockfile write to succeed";
-      match Riot_deps.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+        ~workspace_root
+        ~manifest_paths:[ manifest_path ]
+      |> Result.expect ~msg:"expected dependency hash to compute" in
+      let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
+      match Riot_deps.Lock_refresh.needs_refresh
+        ~workspace_root
+        ~manifest_paths:[ manifest_path ]
+        ~lockfile:(Some lockfile) with
       | Ok false -> Ok ()
-      | Ok true -> Error "expected newer lockfile to avoid refresh"
+      | Ok true -> Error "expected matching dependency hash to avoid refresh"
       | Error err -> Error err)
 
-let test_lock_refresh_true_when_manifest_is_newer = fun _ctx ->
-  with_tempdir "riot_deps_stale_lock"
+let test_lock_refresh_true_when_dependency_hash_changes = fun _ctx ->
+  with_tempdir "riot_deps_changed_dep_hash"
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
-      let lock_path = Riot_model.Riot_dirs.package_lock_path ~workspace_root in
-      Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
-      Fs.write "format_version = 1\npackages = []\n" lock_path |> Result.expect ~msg:"expected lockfile write to succeed";
-      sleep (Time.Duration.from_millis 20);
-      Fs.write "[workspace]\nmembers = [\"packages/demo\"]\n" manifest_path |> Result.expect ~msg:"expected manifest rewrite to succeed";
-      match Riot_deps.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] with
+      Fs.write "[workspace]\nmembers = []\n[dependencies]\nstd = \"*\"\n" manifest_path
+      |> Result.expect ~msg:"expected manifest write to succeed";
+      let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+        ~workspace_root
+        ~manifest_paths:[ manifest_path ]
+      |> Result.expect ~msg:"expected dependency hash to compute" in
+      let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
+      Fs.write "[workspace]\nmembers = []\n[dependencies]\nstd = \"0.1.0\"\n" manifest_path
+      |> Result.expect ~msg:"expected manifest rewrite to succeed";
+      match Riot_deps.Lock_refresh.needs_refresh
+        ~workspace_root
+        ~manifest_paths:[ manifest_path ]
+        ~lockfile:(Some lockfile) with
       | Ok true -> Ok ()
-      | Ok false -> Error "expected newer manifest to require refresh"
+      | Ok false -> Error "expected dependency hash change to require refresh"
       | Error err -> Error err)
 
 let test_lockfile_store_roundtrips = fun _ctx ->
@@ -1470,6 +1485,7 @@ let test_lockfile_store_roundtrips = fun _ctx ->
       let lockfile =
         Riot_model.Lockfile.{
           format_version = 1;
+          dependency_hash = "deadbeef";
           packages =
             [ {
                 id = { registry = None; name = "app"; version = None; sha256 = None };
@@ -1490,6 +1506,7 @@ let test_lockfile_store_roundtrips = fun _ctx ->
           | Ok (Some reloaded) ->
               if
                 reloaded.format_version = 1
+                && String.equal reloaded.dependency_hash "deadbeef"
                 && List.length reloaded.packages = 1
                 && (List.hd reloaded.packages).id.name = "app"
               then
@@ -1715,6 +1732,8 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected workspace manifest to be written";
+      write_file Path.(workspace_root / Path.v "packages/std/riot.toml") "[package]\nname = \"std\"\n";
+      write_file Path.(workspace_root / Path.v "packages/app/riot.toml") "[package]\nname = \"app\"\n";
       let std_pkg = make_package ~name:"std" ~path:Path.(workspace_root / Path.v "packages/std") () in
       let app_pkg = make_package
         ~name:"app"
@@ -1754,12 +1773,20 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
         ~path:Path.(workspace_root / Path.v "packages/app")
         ~dependencies:[ { name = "std"; source = source ~workspace:true () } ]
         () in
-      sleep (Time.Duration.from_millis 20);
       let existing_lock = run_lock_deps
         ~workspace_root
         ~mode:Refresh
         ~existing_lock:None [ app_pkg; std_pkg ]
       |> Result.expect ~msg:"expected workspace lock projection to succeed" in
+      let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+        ~workspace_root
+        ~manifest_paths:[
+          manifest_path;
+          Path.(workspace_root / Path.v "packages/std/riot.toml");
+          Path.(workspace_root / Path.v "packages/app/riot.toml");
+        ]
+      |> Result.expect ~msg:"expected dependency hash to compute" in
+      let existing_lock = { existing_lock with dependency_hash } in
       Riot_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile to be written";
       match collect_event_names
         (fun emit ->
@@ -1782,6 +1809,7 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun _ctx
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected workspace manifest to be written";
+      write_file Path.(workspace_root / Path.v "packages/app/riot.toml") "[package]\nname = \"app\"\n";
       let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
       let app_pkg = make_package
         ~name:"app"
@@ -1879,6 +1907,10 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
         ~workspace:(make_workspace ~workspace_root [ app_pkg ])
         ()
       |> Result.expect ~msg:"expected initial lock solve to succeed" in
+      let existing_lock = { existing_lock with dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+        ~workspace_root
+        ~manifest_paths:[ manifest_path; Path.(workspace_root / Path.v "packages/app/riot.toml") ]
+        |> Result.expect ~msg:"expected dependency hash to compute" } in
       Riot_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
       match collect_event_names (fun emit -> ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
       | Error err -> Error ("expected ensure_lock to reuse lock and materialize missing packages: "
@@ -1899,6 +1931,7 @@ let test_ensure_workspace_projects_materialized_registry_packages = fun _ctx ->
       let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = [\"packages/app\"]\n" workspace_manifest
       |> Result.expect ~msg:"expected workspace manifest to be written";
+      write_file Path.(workspace_root / Path.v "packages/app/riot.toml") "[package]\nname = \"app\"\n";
       let registry_cache = Pkgs_ml.Registry_cache.create
         ~riot_home:Path.(workspace_root / Path.v ".riot")
         ~registry_name:"pkgs.ml"
@@ -2023,6 +2056,7 @@ version = "1.0.0"
       let lockfile =
         Riot_model.Lockfile.{
           format_version = 1;
+          dependency_hash = "test";
           packages =
             [ {
                 id = { registry = None; name = "app"; version = None; sha256 = None };
@@ -2149,6 +2183,7 @@ kernel = 123
       let lockfile =
         Riot_model.Lockfile.{
           format_version = 1;
+          dependency_hash = "test";
           packages =
             [ {
                 id = { registry = None; name = "app"; version = None; sha256 = None };
@@ -2206,7 +2241,7 @@ kernel = 123
 
 let test_projection_fails_when_lockfile_is_missing_package = fun _ctx ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
-  let lockfile = Riot_model.Lockfile.{ format_version = 1; packages = [] } in
+  let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash = "test"; packages = [] } in
   match Riot_deps.Projection.resolve_packages
     ~registry:(make_registry [])
     ~workspace_root:(Path.v "/workspace")
@@ -2238,8 +2273,8 @@ let tests =
     case "dep solver: refresh preserves existing external nodes" test_lock_refresh_preserves_existing_external_nodes;
     case "dep solver: unlock discards existing external nodes" test_unlock_discards_existing_external_nodes;
     case "lock refresh: missing lock requires refresh" test_lock_refresh_requires_lock_when_missing;
-    case "lock refresh: newer lock avoids refresh" test_lock_refresh_false_when_lock_is_newer;
-    case "lock refresh: newer manifest requires refresh" test_lock_refresh_true_when_manifest_is_newer;
+    case "lock refresh: matching dependency hash avoids refresh" test_lock_refresh_false_when_dependency_hash_matches;
+    case "lock refresh: changed dependency hash requires refresh" test_lock_refresh_true_when_dependency_hash_changes;
     case "lockfile store: roundtrips root lockfile" test_lockfile_store_roundtrips;
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;

@@ -30,6 +30,7 @@ type package = {
 
 type t = {
   format_version: int;
+  dependency_hash: string;
   packages: package list;
 }
 
@@ -326,18 +327,24 @@ let package_of_toml = fun value ->
   | _ -> Error "lockfile package must be a table"
 
 let to_toml = fun (lockfile: t) ->
-  Toml.Table [
+  let fields = [
     ("format_version", Toml.Int lockfile.format_version);
-    ("packages", Toml.Array (List.map package_to_toml lockfile.packages));
-  ]
+    ("dependency_hash", Toml.String lockfile.dependency_hash);
+  ] in
+  let fields = ("packages", Toml.Array (List.map package_to_toml lockfile.packages)) :: fields in
+  Toml.Table (List.rev fields)
 
 let of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match List.assoc_opt "format_version" fields, List.assoc_opt "packages" fields with
-      | Some (Toml.Int format_version), Some (Toml.Array packages) ->
+      match
+        List.assoc_opt "format_version" fields,
+        List.assoc_opt "dependency_hash" fields,
+        List.assoc_opt "packages" fields
+      with
+      | Some (Toml.Int format_version), Some (Toml.String dependency_hash), Some (Toml.Array packages) ->
           let rec loop acc = function
-            | [] -> Ok { format_version; packages = List.rev acc }
+            | [] -> Ok { format_version; dependency_hash; packages = List.rev acc }
             | pkg :: rest -> (
                 match package_of_toml pkg with
                 | Ok pkg -> loop (pkg :: acc) rest
@@ -345,7 +352,7 @@ let of_toml = fun value ->
               )
           in
           loop [] packages
-      | _ -> Error "lockfile is missing required fields 'format_version' and 'packages'"
+      | _ -> Error "lockfile is missing required fields 'format_version', 'dependency_hash', and 'packages'"
     )
   | _ -> Error "lockfile must be a table"
 
@@ -458,14 +465,17 @@ let render_package = fun (pkg: package) ->
   String.concat "\n" ("[[packages]]" :: header_lines)
 
 let to_string = fun lockfile ->
-  let parts = ("format_version = " ^ Int.to_string lockfile.format_version)
-  :: List.map render_package lockfile.packages in
+  let parts = [
+    "format_version = " ^ Int.to_string lockfile.format_version;
+    "dependency_hash = " ^ render_string lockfile.dependency_hash;
+  ] @ List.map render_package lockfile.packages in
   String.concat "\n\n" parts ^ "\n"
 
 module Tests = struct
   let test_lockfile_roundtrip_toml () : (unit, string) result =
     let lockfile = {
       format_version = 1;
+      dependency_hash = "deadbeefcafebabe";
       packages =
         [ {
             id = { registry = None; name = "app"; version = None; sha256 = None };
@@ -511,10 +521,12 @@ module Tests = struct
         | Ok parsed ->
             if
               parsed.format_version = 1
+              && String.equal parsed.dependency_hash "deadbeefcafebabe"
               && List.length parsed.packages = 2
               && (List.hd parsed.packages).id.name = "app"
               && (List.nth parsed.packages 1).id.version = Some "0.1.0"
               && (List.nth parsed.packages 1).id.sha256 = Some "deadbeef"
+              && String.contains rendered {|dependency_hash = "deadbeefcafebabe"|}
               && String.contains rendered {|dependencies = [{ name = "std", version = "0.1.0", sha256 = "deadbeef" }]|}
               && not (String.contains rendered "package = {")
             then

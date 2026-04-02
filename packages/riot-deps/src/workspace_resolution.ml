@@ -23,6 +23,10 @@ let workspace_manifest_paths = fun (workspace: Riot_model.Workspace.t) ->
 let root_packages_for_workspace = fun (workspace: Riot_model.Workspace.t) ->
   List.filter Riot_model.Package.is_workspace_member workspace.packages
 
+let lockfile_with_dependency_hash = fun dependency_hash (lockfile: Riot_model.Lockfile.t) -> {
+  lockfile with dependency_hash = dependency_hash
+}
+
 let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~(workspace:Riot_model.Workspace.t) () ->
   let workspace_root = workspace.root in
   let manifest_paths = workspace_manifest_paths workspace in
@@ -35,73 +39,77 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~(workspace:Riot_model.W
       emit (Riot_model.Event.LockfileReadFailed { path = lock_path_str; error = err });
       Error err
   | Ok existing_lock ->
-      let solve_started = Time.Instant.now () in
+      let current_dependency_hash =
+        match Lock_refresh.dependency_hash ~workspace_root ~manifest_paths with
+        | Ok dependency_hash -> Ok dependency_hash
+        | Error err ->
+            Error (Error.LockRefreshCheckFailed { workspace_root; error = err })
+      in
       let lock_result =
-        match mode with
-        | Dep_solver.Unlock ->
-            emit
-              (Riot_model.Event.DependencyResolutionStarted {
-                packages = List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages;
-                mode = `Unlock
-              });
-            emit
-              (
-                Riot_model.Event.DependencyResolutionUnlocking {
-                  path =
+        match current_dependency_hash with
+        | Error _ as err -> err
+        | Ok current_dependency_hash ->
+            let solve_started = Time.Instant.now () in
+            let lock_result =
+              match mode with
+              | Dep_solver.Unlock ->
+                  emit
+                    (Riot_model.Event.DependencyResolutionStarted {
+                      packages = List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages;
+                      mode = `Unlock
+                    });
+                  emit
+                    (
+                      Riot_model.Event.DependencyResolutionUnlocking {
+                        path =
+                          match existing_lock with
+                          | Some _ -> Some lock_path_str
+                          | None -> None;
+                      }
+                    );
+                  Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
+                  |> Result.map (lockfile_with_dependency_hash current_dependency_hash)
+                  |> Result.map (fun lockfile -> (lockfile, false, true, solve_started))
+              | Dep_solver.Refresh -> (
+                  let needs_refresh =
                     match existing_lock with
-                    | Some _ -> Some lock_path_str
-                    | None -> None;
-                }
-              );
-            Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
-            |> Result.map (fun lockfile -> (lockfile, false))
-        | Dep_solver.Refresh -> (
-            match existing_lock with
-            | Some lockfile -> (
-                match Lock_refresh.needs_refresh ~workspace_root ~manifest_paths with
-                | Error err ->
-                    Error (Error.LockRefreshCheckFailed { workspace_root; error = err })
-                | Ok false ->
-                    Ok (lockfile, true)
-                | Ok true ->
-                    emit
-                      (Riot_model.Event.DependencyResolutionStarted {
-                        packages = List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages;
-                        mode = `Refresh
-                      });
-                    emit
-                      (Riot_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
-                    Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
-                    |> Result.map (fun lockfile -> (lockfile, false))
-              )
-            | None ->
-                emit
-                  (Riot_model.Event.DependencyResolutionStarted {
-                    packages = List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages;
-                    mode = `Refresh
-                  });
-                emit (Riot_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
-                Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
-                |> Result.map (fun lockfile -> (lockfile, false))
-          )
+                    | None -> true
+                    | Some (lockfile: Riot_model.Lockfile.t) ->
+                        not (String.equal lockfile.dependency_hash current_dependency_hash)
+                  in
+                  if not needs_refresh then
+                    (
+                      match existing_lock with
+                      | Some lockfile ->
+                          Ok (lockfile, true, false, solve_started)
+                      | None ->
+                          Error (Error.LockRefreshCheckFailed {
+                            workspace_root;
+                            error = "missing existing lockfile during refresh reuse"
+                          })
+                    )
+                  else
+                    (
+                      emit
+                        (Riot_model.Event.DependencyResolutionStarted {
+                          packages = List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages;
+                          mode = `Refresh
+                        });
+                      emit
+                        (Riot_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
+                      Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
+                      |> Result.map (lockfile_with_dependency_hash current_dependency_hash)
+                      |> Result.map (fun lockfile -> (lockfile, false, true, solve_started))
+                    )
+                )
+            in
+            lock_result
       in
       match lock_result with
       | Error err ->
           emit (Riot_model.Event.DependencyResolutionFailed { error = err });
           Error err
-      | Ok (lockfile, used_existing_lock) ->
-          let should_write =
-            match mode, existing_lock with
-            | Dep_solver.Unlock, _ ->
-                true
-            | Dep_solver.Refresh, None ->
-                true
-            | Dep_solver.Refresh, Some _ -> (
-                match Lock_refresh.needs_refresh ~workspace_root ~manifest_paths with
-                | Ok needs_refresh -> needs_refresh
-                | Error _ -> true
-              )
-          in
+      | Ok (lockfile, used_existing_lock, should_write, solve_started) ->
           let write_result =
             if should_write then
               (

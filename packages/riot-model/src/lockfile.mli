@@ -25,6 +25,7 @@ type package = {
 }
 type t = {
   format_version: int;
+  dependency_hash: string;
   packages: package list;
 }
 val of_toml: Std.Data.Toml.value -> (t, string) result

@@ -15,6 +15,7 @@
 9. `User_config` is the shared `~/.riot/config.toml` vocabulary. Registry entries carry `api_url`, `cdn_url`, and `api_token`; preserve those fields across parse/save/update paths.
 10. Test support trees under `tests/fixtures/`, `tests/generated/`, and `tests/diagnostics/` are non-compilable inputs. Keep them out of `Package.sources.tests` and test-binary autodiscovery.
 11. Lockfile dependency entries should stay flat and exact for registry packages: render `name`, `version`, and `sha256` directly in the dependency table instead of nesting a second `package = { ... }` object.
+12. `Lockfile.t` carries a required `dependency_hash` derived from the raw `[dependencies]`, `[build-dependencies]`, and `[dev-dependencies]` sections of workspace manifests. Treat it as the staleness contract for `riot.lock`, not as optional metadata.
 
 ## Validate
 
