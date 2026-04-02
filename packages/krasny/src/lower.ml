@@ -943,14 +943,7 @@ and render_record_core_type_field = fun (field: Syn.Cst.record_type_field) ->
     else
       doc_of_token field.field_name
   in
-  Doc.group
-    (Doc.concat
-      [
-        prefix;
-        Doc.space;
-        doc_of_token field.colon_token;
-        Doc.indent 2 (Doc.concat [ separator; type_doc ])
-      ])
+  render_tight_doc_rhs prefix (doc_of_token field.colon_token) (Doc.concat [ separator; type_doc ])
 
 and render_tight_token_rhs = fun head token rhs ->
   Doc.group
@@ -1035,14 +1028,10 @@ and render_record_definition_field = fun (field: Syn.Cst.RecordField.t) ->
       ]
     | None -> doc_of_token (Syn.Cst.RecordField.field_name_token field)
   in
-  Doc.group
-    (Doc.concat
-      [
-        prefix;
-        Doc.space;
-        doc_of_token (Syn.Cst.RecordField.colon_token field);
-        Doc.indent 2 (Doc.concat [ separator; type_doc ])
-      ])
+  render_tight_doc_rhs
+    prefix
+    (doc_of_token (Syn.Cst.RecordField.colon_token field))
+    (Doc.concat [ separator; type_doc ])
 
 and render_record_definition_field_separator = fun (field: Syn.Cst.RecordField.t) ->
   match field.semicolon_token with
@@ -4957,12 +4946,11 @@ let make_lowerer =
       match rendered_type_annotation with
       | None -> header
       | Some (colon_token, type_doc) ->
-          let colon_doc =
+          (
             match colon_token with
-            | Some colon_token -> Doc.concat [ Doc.space; doc_of_token colon_token; Doc.space ]
-            | None -> Doc.concat [ Doc.space; Doc.colon; Doc.space ]
-          in
-          Doc.concat [ header; colon_doc; type_doc ]
+            | Some colon_token -> render_tight_token_rhs header colon_token type_doc
+            | None -> render_tight_doc_rhs header Doc.colon type_doc
+          )
     in
     let force_multiline_body = local_binding_forces_multiline_body ~local_context ~rec_token value in
     let keep_value_after_equals = local_binding_value_stays_after_equals
@@ -5611,14 +5599,9 @@ let make_lowerer =
         Doc.space;
         render_value_declaration_name decl;
       ] in
-    let base = Doc.group
-      (Doc.concat
-        [
-          head;
-          Doc.space;
-          doc_of_token (Syn.Cst.ValueDeclaration.colon_token decl);
-          Doc.indent 2 (Doc.concat [ Doc.break (); render_core_type decl.type_ ])
-        ]) in
+    let base =
+      render_tight_colon_rhs head (Syn.Cst.ValueDeclaration.colon_token decl) (render_core_type decl.type_)
+    in
     match Syn.Cst.ValueDeclaration.trailing_comment decl with
     | Some comment -> Doc.concat [ base; Doc.space; doc_of_token (Syn.Cst.Comment.token comment) ]
     | None -> base

@@ -201,7 +201,8 @@ val id : 'a -> 'a
 |}
       in
       let actual = parse_mli source |> Krasny.format |> Result.expect ~msg:"core type alias binders should format from explicit sigil tokens" in
-      Test.assert_equal ~expected:source ~actual;
+      Test.assert_equal ~expected:{|val cast: ('a list as 'whole) -> 'whole
+|} ~actual;
       Ok ());
   Test.case "format record fields without name-length multiline forcing"
     (fun _ctx ->
@@ -215,7 +216,16 @@ type u = {
 |}
       in
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"record fields should not break after ':' just because the field name is long" in
-      Test.assert_equal ~expected:source ~actual;
+      Test.assert_equal
+        ~expected:{|type t = {
+  this_is_a_pretty_long_record_field_name: int list;
+}
+
+type u = {
+  mutable this_is_a_pretty_long_record_field_name: int list;
+}
+|}
+        ~actual;
       Ok ());
   Test.case "desugar typed named parameters without duplicating inner annotations"
     (fun ctx ->
@@ -231,7 +241,8 @@ let map (type a b) (iter : a t) ~(fn : a -> b) : b t = failwith "todo"
 |}
       in
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"typed parameters should stay in the binding header when outer annotation synthesis does not apply" in
-      Test.assert_equal ~expected:source ~actual;
+      Test.assert_equal ~expected:{|let pick x: int = x
+|} ~actual;
       Ok ());
   Test.case "format index expressions from explicit delimiter tokens"
     (fun ctx ->
@@ -571,11 +582,11 @@ val ( := ) : 'a ref -> 'a -> unit
       in
       let formatted = parse_mli source |> Krasny.format |> Result.expect ~msg:"operator value declarations should format structurally" in
       Test.assert_equal
-        ~expected:{|val ( = ) : 'a -> 'a -> bool
+        ~expected:{|val ( = ): 'a -> 'a -> bool
 
-val ( mod ) : int -> int -> int
+val ( mod ): int -> int -> int
 
-val ( := ) : 'a ref -> 'a -> unit
+val ( := ): 'a ref -> 'a -> unit
 |}
         ~actual:formatted;
       Ok ());
@@ -956,7 +967,7 @@ and packed =
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"inline record constructors should format structurally" in
       Test.assert_equal
         ~expected:{|type t =
-  | A of { x : int; y : int }
+  | A of { x: int; y: int }
   | B
 |}
         ~actual;
@@ -1169,7 +1180,7 @@ module M = struct end
           let needs = Path.(nested_dir / Path.v "needs.mli") in
           Fs.create_dir_all nested_dir |> Result.expect ~msg:"create nested";
           Fs.write "let x = 1 + 2\n" formatted |> Result.expect ~msg:"write formatted";
-          Fs.write "val x : int\n" needs |> Result.expect ~msg:"write needs";
+          Fs.write "val x: int\n" needs |> Result.expect ~msg:"write needs";
           let seen = cell [] in
           let result =
             Krasny.Runner.run_checks_streaming

@@ -1,2 +1,2 @@
 type 'a t = 'a list
-val id : 'a -> 'a
+val id: 'a -> 'a

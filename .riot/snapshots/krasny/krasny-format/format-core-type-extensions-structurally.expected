@@ -1,1 +1,1 @@
-val use : [%foo:int]
+val use: [%foo:int]

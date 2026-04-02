@@ -1,4 +1,4 @@
-val first : int
+val first: int
 
 (** doc for second *)
-val second : int
+val second: int
