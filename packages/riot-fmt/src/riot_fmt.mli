@@ -8,4 +8,9 @@ val run_check_paths:
   Path.t list ->
   (unit, exn) result
 
-val run: ?workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn) result
+val run:
+  ?workspace:Riot_model.Workspace.t ->
+  ?stdout:(string -> unit) ->
+  ?stderr:(string -> unit) ->
+  Std.ArgParser.matches ->
+  (unit, exn) result

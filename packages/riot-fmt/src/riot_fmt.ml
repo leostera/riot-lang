@@ -13,24 +13,33 @@ let command =
       positional "path" |> required false |> multiple |> help "OCaml file or directory to format/check/verify (default: workspace packages or current directory)";
     ]
 
-let output_writer =
+let default_stdout = fun buf ->
+  if String.ends_with ~suffix:"\n" buf then
+    println (String.sub buf 0 (String.length buf - 1))
+  else
+    print buf
+
+let default_stderr = fun buf ->
+  if String.ends_with ~suffix:"\n" buf then
+    eprintln (String.sub buf 0 (String.length buf - 1))
+  else
+    eprint buf
+
+let writer_of_emit = fun emit ->
   let module Write = struct
-    type t = unit
+    type t = string -> unit
 
     type err = unit
 
-    let write = fun () ~buf ->
-      if String.ends_with ~suffix:"\n" buf then
-        println (String.sub buf 0 (String.length buf - 1))
-      else
-        print buf;
-        Ok (String.length buf)
+    let write = fun emit ~buf ->
+      emit buf;
+      Ok (String.length buf)
 
-    let write_owned_vectored = fun () ~bufs:_ -> unimplemented ()
+    let write_owned_vectored = fun _ ~bufs:_ -> unimplemented ()
 
-    let flush = fun () -> Ok ()
+    let flush = fun _ -> Ok ()
   end in
-  IO.Writer.of_write_src (module Write) ()
+  IO.Writer.of_write_src (module Write) emit
 
 let workspace_roots = fun workspace ->
   workspace.Workspace.packages |> List.map (fun (pkg: Package.t) -> Path.(workspace.root / pkg.path))
@@ -116,24 +125,47 @@ let should_ignore_file = fun scope file ->
         | Some package_scope -> matches package_scope.config.ignore_patterns ~root:package_scope.package_root
         | None -> false
 
-let write_text_file = fun ~root file_result ->
-  Krasny.Report.write_text_file_result ~writer:output_writer ~root file_result
+let write_text_file = fun ~writer ~root file_result ->
+  Krasny.Report.write_text_file_result ~writer ~root file_result
   |> Result.expect ~msg:"failed to write fmt result"
 
-let write_json_event = fun ~root event ->
-  Krasny.Report.write_json_event ~writer:output_writer ~root event |> Result.expect ~msg:"failed to write fmt JSON event"
+let write_json_event = fun ~writer ~root event ->
+  Krasny.Report.write_json_event ~writer ~root event |> Result.expect ~msg:"failed to write fmt JSON event"
 
-let write_json_start = fun ~root ~mode ~concurrency ->
-  write_json_event ~root (Krasny.Report.Start { mode; concurrency })
+let write_json_start = fun ~writer ~root ~mode ~concurrency ->
+  write_json_event ~writer ~root (Krasny.Report.Start { mode; concurrency })
 
-let write_json_file = fun ~root file_result ->
-  write_json_event ~root (Krasny.Report.File file_result)
+let write_json_file = fun ~writer ~root file_result ->
+  write_json_event ~writer ~root (Krasny.Report.File file_result)
 
-let write_json_summary = fun ~root (summary: Krasny.Runner.summary) ->
-  write_json_event ~root (Krasny.Report.Summary summary)
+let write_json_summary = fun ~writer ~root (summary: Krasny.Runner.summary) ->
+  write_json_event ~writer ~root (Krasny.Report.Summary summary)
 
-let write_text_summary = fun ~mode (summary: Krasny.Runner.summary) ->
-  Krasny.Report.write_text_summary ~writer:output_writer ~mode summary |> Result.expect ~msg:"failed to write fmt summary"
+let write_text_summary = fun ~writer ~mode (summary: Krasny.Runner.summary) ->
+  Krasny.Report.write_text_summary ~writer ~mode summary |> Result.expect ~msg:"failed to write fmt summary"
+
+let format_failed_file = fun (file_result: Krasny.Runner.file_result) ->
+  let error_text = file_result.error |> Option.unwrap_or ~default:"Formatting failed" in
+  match Fs.read file_result.file with
+  | Error _ -> Path.to_string file_result.file ^ ": " ^ error_text ^ "\n"
+  | Ok source ->
+      let parsed = Syn.parse ~filename:file_result.file source in
+      if List.is_empty parsed.diagnostics then
+        Path.to_string file_result.file ^ ": " ^ error_text ^ "\n"
+      else
+        Syn.DiagnosticReporter.format
+          ~file:(Path.to_string file_result.file)
+          ~source
+          parsed.diagnostics
+
+let write_failed_file = fun ~writer file_result ->
+  IO.write_all writer ~buf:(format_failed_file file_result)
+  |> Result.expect ~msg:"failed to write fmt diagnostics"
+
+let write_silent_failures = fun ~writer (result: Krasny.Runner.run_result) ->
+  result.files
+  |> List.filter (fun (file_result: Krasny.Runner.file_result) -> file_result.status = Failed)
+  |> List.iter (write_failed_file ~writer)
 
 type output_mode =
   | Silent
@@ -145,25 +177,27 @@ let explicit_targets = fun matches ->
 
 let no_event = fun (_: Krasny.Report.event) -> ()
 
-let run_mode = fun ?workspace ?(on_event = no_event) ~mode ~output_mode ~explicit_targets () ->
+let run_mode = fun ?workspace ?(stdout = default_stdout) ?(stderr = default_stderr) ?(on_event = no_event) ~mode ~output_mode ~explicit_targets () ->
+  let stdout_writer = writer_of_emit stdout in
+  let stderr_writer = writer_of_emit stderr in
   let root = resolve_root workspace in
   let concurrency = default_concurrency () in
   let fmt_scope = load_fmt_scope workspace in
   on_event (Krasny.Report.Start { mode; concurrency });
   (
     match output_mode with
-    | Json -> write_json_start ~root ~mode ~concurrency
+    | Json -> write_json_start ~writer:stdout_writer ~root ~mode ~concurrency
     | Text
     | Silent -> ()
   );
   let on_result file_result =
     on_event (Krasny.Report.File file_result);
     match output_mode with
-    | Json -> write_json_file ~root file_result
-    | Text -> write_text_file ~root file_result
+    | Json -> write_json_file ~writer:stdout_writer ~root file_result
+    | Text -> write_text_file ~writer:stdout_writer ~root file_result
     | Silent -> ()
   in
-  let result : Krasny.Runner.run_result =
+  let result: Krasny.Runner.run_result =
     if List.is_empty explicit_targets then
       match mode with
       | Krasny.Runner.Check -> Krasny.Runner.run_checks_streaming
@@ -208,10 +242,12 @@ let run_mode = fun ?workspace ?(on_event = no_event) ~mode ~output_mode ~explici
   on_event (Krasny.Report.Summary result.summary);
   (
     match output_mode with
-    | Json -> write_json_summary ~root result.summary
-    | Text -> write_text_summary ~mode result.summary
+    | Json -> write_json_summary ~writer:stdout_writer ~root result.summary
+    | Text -> write_text_summary ~writer:stdout_writer ~mode result.summary
     | Silent -> ()
   );
+  if mode = Krasny.Runner.Format && output_mode = Silent && result.summary.failed_files > 0 then
+    write_silent_failures ~writer:stderr_writer result;
   match mode with
   | Krasny.Runner.Check ->
       if result.summary.needs_formatting = 0 && result.summary.failed_files = 0 then
@@ -238,7 +274,7 @@ let run_check_paths = fun ?workspace ?(on_event = no_event) paths ->
     ~explicit_targets:(List.sort_uniq compare_paths paths)
     ()
 
-let run = fun ?workspace fmt_matches ->
+let run = fun ?workspace ?stdout ?stderr fmt_matches ->
   let check = get_flag fmt_matches "check" in
   let verify = get_flag fmt_matches "verify" in
   match check, verify with
@@ -257,7 +293,16 @@ let run = fun ?workspace fmt_matches ->
       let output_mode =
         if get_flag fmt_matches "json" then
           Json
+        else if mode = Krasny.Runner.Format then
+          Silent
         else
           Text
       in
-      run_mode ?workspace ~mode ~output_mode ~explicit_targets:(explicit_targets fmt_matches) ()
+      run_mode
+        ?workspace
+        ?stdout
+        ?stderr
+        ~mode
+        ~output_mode
+        ~explicit_targets:(explicit_targets fmt_matches)
+        ()
