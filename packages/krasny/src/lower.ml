@@ -945,7 +945,12 @@ and render_record_core_type_field = fun (field: Syn.Cst.record_type_field) ->
   in
   Doc.group
     (Doc.concat
-      [ prefix; doc_of_token field.colon_token; Doc.indent 2 (Doc.concat [ separator; type_doc ]) ])
+      [
+        prefix;
+        Doc.space;
+        doc_of_token field.colon_token;
+        Doc.indent 2 (Doc.concat [ separator; type_doc ])
+      ])
 
 and render_tight_token_rhs = fun head token rhs ->
   Doc.group
@@ -1034,6 +1039,7 @@ and render_record_definition_field = fun (field: Syn.Cst.RecordField.t) ->
     (Doc.concat
       [
         prefix;
+        Doc.space;
         doc_of_token (Syn.Cst.RecordField.colon_token field);
         Doc.indent 2 (Doc.concat [ separator; type_doc ])
       ])
@@ -4110,12 +4116,18 @@ let make_lowerer =
       _
     }: Syn.Cst.if_expression) =
     let condition_doc = render_expression condition in
+    let then_branch_leading_trivia = Syn.Cst.leading_trivia_before_node
+      ~after:(Syn.Cst.Token.span then_token).end_
+      (Syn.Cst.Expression.syntax_node then_branch) in
     let then_doc =
       if branch_prefers_multiline_layout then_branch then
         render_block_expression then_branch
       else
         render_expression then_branch
     in
+    let then_doc = doc_with_leading_trivia
+      (pending_doc_of_trivia then_branch_leading_trivia)
+      then_doc in
     let then_branch_trailing_trivia =
       match else_token with
       | Some else_token -> Syn.Cst.leading_trivia_after
@@ -5599,10 +5611,14 @@ let make_lowerer =
         Doc.space;
         render_value_declaration_name decl;
       ] in
-    let base = render_tight_colon_rhs
-      head
-      (Syn.Cst.ValueDeclaration.colon_token decl)
-      (render_core_type decl.type_) in
+    let base = Doc.group
+      (Doc.concat
+        [
+          head;
+          Doc.space;
+          doc_of_token (Syn.Cst.ValueDeclaration.colon_token decl);
+          Doc.indent 2 (Doc.concat [ Doc.break (); render_core_type decl.type_ ])
+        ]) in
     match Syn.Cst.ValueDeclaration.trailing_comment decl with
     | Some comment -> Doc.concat [ base; Doc.space; doc_of_token (Syn.Cst.Comment.token comment) ]
     | None -> base
