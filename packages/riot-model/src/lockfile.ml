@@ -396,24 +396,37 @@ let render_provenance = fun provenance ->
   ^ " }"
 
 let render_dependency = fun (dep: dependency) ->
-  let fields = [ ("name", render_string dep.name) ] in
-  let fields =
-    if String.equal dep.package.name dep.name then
-      fields
-    else
-      ("package_name", render_string dep.package.name) :: fields
+  let is_flat_registry_dependency =
+    match dep.package.registry with
+    | Some "pkgs.ml" -> true
+    | Some _ -> false
+    | None -> false
   in
-  let fields =
-    match dep.package.version with
-    | Some version -> ("version", render_string version) :: fields
-    | None -> fields
-  in
-  let fields =
-    match dep.package.sha256 with
-    | Some sha256 -> ("sha256", render_string sha256) :: fields
-    | None -> fields
-  in
-  "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
+  if is_flat_registry_dependency then
+    let fields = [ ("name", render_string dep.name) ] in
+    let fields =
+      if String.equal dep.package.name dep.name then
+        fields
+      else
+        ("package_name", render_string dep.package.name) :: fields
+    in
+    let fields =
+      match dep.package.version with
+      | Some version -> ("version", render_string version) :: fields
+      | None -> fields
+    in
+    let fields =
+      match dep.package.sha256 with
+      | Some sha256 -> ("sha256", render_string sha256) :: fields
+      | None -> fields
+    in
+    "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
+  else
+    "{ name = "
+    ^ render_string dep.name
+    ^ ", package = "
+    ^ render_package_id dep.package
+    ^ " }"
 
 let render_dependency_list = fun deps ->
   "[" ^ String.concat ", " (List.map render_dependency deps) ^ "]"

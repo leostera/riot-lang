@@ -10,6 +10,13 @@ type t =
   | ManifestParseFailed of { manifest_path: Path.t; error: string }
   | PathDependencyLoadFailed of { dependency_name: string; dependency_path: Path.t; error: t }
   | PathDependencyDecodeFailed of { dependency_name: string; manifest_path: Path.t; error: string }
+  | SourceDependencyLoadFailed of {
+      dependency_name: string;
+      source_locator: string;
+      ref_: string option;
+      error: string;
+    }
+  | SourceDependencyDecodeFailed of { dependency_name: string; manifest_path: Path.t; error: string }
   | RegistryLatestReleaseMissing of { package: string; latest_version: string }
   | PackageMetadataReadFailed of { package: string; registry: string; error: string }
   | PackageNotFound of { package: string; registry: string; required_by: required_by option }

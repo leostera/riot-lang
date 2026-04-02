@@ -11,6 +11,13 @@ type manifest_selection =
 type event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
+  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
+  | SourceDependencyMaterializationFinished of {
+      source_locator: string;
+      ref_: string option;
+      package: string;
+      version: string option;
+    }
   | PackageUpdated of { package: string; from_version: string; to_version: string }
   | ManifestUpdated of { path: Path.t; section: string; operation:
         [
@@ -32,9 +39,14 @@ type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: string }
   | DependencySpecInvalid of { dependency: string; error: string }
-  | UnsupportedDependencySource of { dependency: string }
   | PathDependencyMustBeRelative of { dependency: string }
   | PathDependencyLoadFailed of { dependency: string; path: Path.t; error: string }
+  | SourceDependencyLoadFailed of {
+      dependency: string;
+      source_locator: string;
+      ref_: string option;
+      error: string;
+    }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string }

@@ -10,6 +10,17 @@ let dot_riot =
 
 let config_path = fun () -> Path.(dot_riot / Path.v "config.toml")
 
+let registry_dir = fun () ->
+  match Env.var Env.String ~name:"RIOT_REGISTRY_DIR" with
+  | Some path -> Path.v path
+  | None -> Path.(dot_riot / Path.v "registry")
+
+let git_registry_host_dir = fun ~host ->
+  Path.(registry_dir () / Path.v host)
+
+let git_registry_repo_dir = fun ~host ~owner ~repo ->
+  Path.(git_registry_host_dir ~host / Path.v owner / Path.v repo)
+
 let package_lock_path = fun ~workspace_root -> Path.(workspace_root / Path.v "riot.lock")
 
 let toolchains_dir = fun toolchain_config ->
@@ -22,6 +33,7 @@ let project_dir = fun workspace ->
 
 let ensure_created = fun () ->
   let _ = Fs.create_dir_all dot_riot in
+  let _ = Fs.create_dir_all (registry_dir ()) in
   let _ = Fs.create_dir_all Path.(dot_riot / Path.v "projects") in
   let _ = Fs.create_dir_all Path.(dot_riot / Path.v "toolchains") in
   let _ = Fs.create_dir_all Path.(dot_riot / Path.v "bin") in

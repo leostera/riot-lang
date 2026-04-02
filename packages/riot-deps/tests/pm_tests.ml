@@ -1,8 +1,8 @@
 open Std
 module Test = Std.Test
 
-let source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
-  Riot_model.Package.{ workspace; builtin; path; version }
+let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
+  Riot_model.Package.{ workspace; builtin; path; source_locator; ref_; version }
 
 let make_sources = fun () ->
   Riot_model.Package.{
@@ -179,6 +179,47 @@ let run_git_steps = fun ~cwd commands ->
       )
   in
   loop [] commands
+
+let prepare_local_git_repo = fun ~root ?subdir ~package_name ?(version = "0.0.1") () ->
+  let repo_root = root in
+  let package_root =
+    match subdir with
+    | Some subdir -> Path.(repo_root / subdir)
+    | None -> repo_root
+  in
+  let manifest_path = Path.(package_root / Path.v "riot.toml") in
+  let source_path = Path.(package_root / Path.v "src" / Path.v (package_name ^ ".ml")) in
+  let _ =
+    match Fs.exists repo_root with
+    | Ok true -> Fs.remove_dir_all repo_root
+    | _ -> Ok ()
+  in
+  Fs.create_dir_all package_root |> Result.expect ~msg:"expected git dependency package root to be created";
+  write_file manifest_path
+    ("[package]\n"
+    ^ "name = \""
+    ^ package_name
+    ^ "\"\n"
+    ^ "version = \""
+    ^ version
+    ^ "\"\n"
+    ^ "description = \""
+    ^ package_name
+    ^ "\"\n"
+    ^ "license = \"Apache-2.0\"\n"
+    ^ "public = true\n");
+  write_file source_path "let answer = 42\n";
+  run_git_steps
+    ~cwd:repo_root
+    [
+      [ "init"; "-b"; "main" ];
+      [ "config"; "user.email"; "riot-tests@example.com" ];
+      [ "config"; "user.name"; "Riot Tests" ];
+      [ "config"; "commit.gpgsign"; "false" ];
+      [ "add"; "." ];
+      [ "commit"; "-m"; "init" ];
+    ]
+  |> Result.map (fun _ -> repo_root)
 
 type recorded_request = {
   method_: string;
@@ -1580,9 +1621,39 @@ version = "0.0.1"
               Error "expected path add to write discovered package name and refresh riot.lock"
     )
 
+let test_git_dependency_parse_spec_normalizes_github_source = fun _ctx ->
+  match Riot_deps.Git_dependency.parse_spec "https://github.com/riot-tests/widgets-add#main" with
+  | Ok { source_locator; ref_ } ->
+      if String.equal source_locator "github.com/riot-tests/widgets-add" && ref_ = Some "main" then
+        Ok ()
+      else
+        Error "expected github source spec to normalize into locator + ref"
+  | Error err ->
+      Error ("expected git dependency spec to parse: " ^ Riot_deps.Git_dependency.message err)
+
+let test_git_dependency_sync_checkout_clones_local_repo = fun _ctx ->
+  let ( let* ) = Result.and_then in
+  with_tempdir "riot_deps_git_checkout"
+    (fun root ->
+      let origin = Path.(root / Path.v "origin") in
+      let checkout = Path.(root / Path.v "checkout") in
+      let* _repo_root = prepare_local_git_repo ~root:origin ~package_name:"widgets" () in
+      let* () = Riot_deps.Git_dependency.sync_checkout
+        ~repo_dir:checkout
+        ~remote_url:(Path.to_string origin)
+        ~ref_:"main"
+      |> Result.map_error Riot_deps.Git_dependency.message in
+      let* manifest_source = Fs.read_to_string Path.(checkout / Path.v "riot.toml")
+      |> Result.map_error IO.error_message in
+      if String.contains manifest_source "name = \"widgets\"" then
+        Ok ()
+      else
+        Error "expected git dependency checkout to clone the local repository"
+    )
+
 let test_add_rejects_unsupported_source_dependency_specs = fun _ctx ->
   let ( let* ) = Result.and_then in
-  with_tempdir "riot_deps_add_source"
+  with_tempdir "riot_deps_add_source_invalid"
     (fun workspace_root ->
       let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
       let app_root = Path.(workspace_root / Path.v "packages/app") in
@@ -1608,12 +1679,12 @@ version = "0.0.1"
           ~request:Riot_deps.{
             selection = Current;
             scope = Runtime;
-            dependency = "github.com/leostera/widgets"
+            dependency = "https://gitlab.com/leostera/widgets"
           }
           () with
-        | Ok () -> Error "expected source dependency add to be rejected until source support lands"
-        | Error (Riot_deps.UnsupportedDependencySource { dependency }) ->
-            if String.equal dependency "github.com/leostera/widgets" then
+        | Ok () -> Error "expected unsupported non-github source dependency add to fail"
+        | Error (Riot_deps.DependencySpecInvalid { dependency; _ }) ->
+            if String.equal dependency "https://gitlab.com/leostera/widgets" then
               Ok ()
             else
               Error "unexpected unsupported source dependency payload"
@@ -2154,6 +2225,8 @@ let tests =
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
     case "package management: add discovers path dependency package names and refreshes lockfile" test_add_path_dependency_discovers_package_name_and_refreshes_lock;
+    case "git dependency: github source spec normalizes into locator and ref" test_git_dependency_parse_spec_normalizes_github_source;
+    case "git dependency: sync checkout clones a local repository" test_git_dependency_sync_checkout_clones_local_repo;
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;

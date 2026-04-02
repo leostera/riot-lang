@@ -12,6 +12,8 @@ module Projection = Projection
 
 module Materializer = Materializer
 
+module Git_dependency = Git_dependency
+
 module Git_provenance = Git_provenance
 
 module Publisher = Publisher
@@ -29,6 +31,13 @@ type manifest_selection = Package_management.manifest_selection =
 type package_event = Package_management.event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
+  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
+  | SourceDependencyMaterializationFinished of {
+      source_locator: string;
+      ref_: string option;
+      package: string;
+      version: string option;
+    }
   | PackageUpdated of { package: string; from_version: string; to_version: string }
   | ManifestUpdated of { path: Path.t; section: string; operation:
         [
@@ -50,9 +59,14 @@ type package_error = Package_management.error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: string }
   | DependencySpecInvalid of { dependency: string; error: string }
-  | UnsupportedDependencySource of { dependency: string }
   | PathDependencyMustBeRelative of { dependency: string }
   | PathDependencyLoadFailed of { dependency: string; path: Path.t; error: string }
+  | SourceDependencyLoadFailed of {
+      dependency: string;
+      source_locator: string;
+      ref_: string option;
+      error: string;
+    }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string }

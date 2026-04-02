@@ -184,12 +184,12 @@ let validate_runtime_dependency = fun ~(package:Riot_model.Package.t) (
     dependency = dep.name;
     reason = `WorkspaceOnly
   })
-  | { path=Some path; version=None; _ } -> Error (RuntimeDependencyNotPublishable {
+  | { path=Some path; source_locator=None; version=None; _ } -> Error (RuntimeDependencyNotPublishable {
     package = package.name;
     dependency = dep.name;
     reason = `PathOnly path
   })
-  | { path=None; version=None; _ } -> Error (RuntimeDependencyNotPublishable {
+  | { path=None; source_locator=None; version=None; _ } -> Error (RuntimeDependencyNotPublishable {
     package = package.name;
     dependency = dep.name;
     reason = `MissingVersionOrPath
@@ -214,6 +214,8 @@ let validate_registry_dependencies = fun ~registry ~publishing_workspace_package
         if Riot_model.Package.is_builtin_dependency dep then
           loop rest
         else if List.exists (String.equal dep.name) publishing_workspace_packages then
+          loop rest
+        else if Option.is_some dep.source.source_locator then
           loop rest
         else
           match Pkgs_ml.Registry.read_package_document registry ~package_name:dep.name with

@@ -11,6 +11,13 @@ type t =
   | ManifestParseFailed of { manifest_path: Path.t; error: string }
   | PathDependencyLoadFailed of { dependency_name: string; dependency_path: Path.t; error: t }
   | PathDependencyDecodeFailed of { dependency_name: string; manifest_path: Path.t; error: string }
+  | SourceDependencyLoadFailed of {
+      dependency_name: string;
+      source_locator: string;
+      ref_: string option;
+      error: string;
+    }
+  | SourceDependencyDecodeFailed of { dependency_name: string; manifest_path: Path.t; error: string }
   | RegistryLatestReleaseMissing of { package: string; latest_version: string }
   | PackageMetadataReadFailed of { package: string; registry: string; error: string }
   | PackageNotFound of { package: string; registry: string; required_by: required_by option }
@@ -42,6 +49,25 @@ let rec headline = function
   ^ ": "
   ^ message error
   | PathDependencyDecodeFailed { dependency_name; manifest_path; error } -> "failed to decode path dependency '"
+  ^ dependency_name
+  ^ "' from "
+  ^ Path.to_string manifest_path
+  ^ ": "
+  ^ error
+  | SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error } ->
+      let suffix =
+        match ref_ with
+        | Some ref_ -> "#" ^ ref_
+        | None -> ""
+      in
+      "failed to load source dependency '"
+      ^ dependency_name
+      ^ "' from "
+      ^ source_locator
+      ^ suffix
+      ^ ": "
+      ^ error
+  | SourceDependencyDecodeFailed { dependency_name; manifest_path; error } -> "failed to decode source dependency '"
   ^ dependency_name
   ^ "' from "
   ^ Path.to_string manifest_path
@@ -127,6 +153,24 @@ let rec to_json = function
   ]
   | PathDependencyDecodeFailed { dependency_name; manifest_path; error } -> Json.Object [
     ("kind", Json.String "PathDependencyDecodeFailed");
+    ("dependency_name", Json.String dependency_name);
+    ("manifest_path", json_of_path manifest_path);
+    ("error", Json.String error);
+  ]
+  | SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error } -> Json.Object [
+    ("kind", Json.String "SourceDependencyLoadFailed");
+    ("dependency_name", Json.String dependency_name);
+    ("source_locator", Json.String source_locator);
+    (
+      "ref",
+      match ref_ with
+      | Some ref_ -> Json.String ref_
+      | None -> Json.Null
+    );
+    ("error", Json.String error);
+  ]
+  | SourceDependencyDecodeFailed { dependency_name; manifest_path; error } -> Json.Object [
+    ("kind", Json.String "SourceDependencyDecodeFailed");
     ("dependency_name", Json.String dependency_name);
     ("manifest_path", json_of_path manifest_path);
     ("error", Json.String error);
@@ -233,6 +277,33 @@ let rec of_json = function
             (fun manifest_path ->
               PathDependencyDecodeFailed { dependency_name; manifest_path; error })
           | _ -> Error "invalid PathDependencyDecodeFailed"
+        )
+      | Some (Json.String "SourceDependencyLoadFailed") -> (
+          match List.assoc_opt "dependency_name" fields, List.assoc_opt "source_locator" fields, List.assoc_opt
+            "ref"
+            fields, List.assoc_opt "error" fields with
+          | Some (Json.String dependency_name), Some (Json.String source_locator), ref_json_opt, Some (Json.String error) ->
+              let ref_ =
+                match ref_json_opt with
+                | Some (Json.String ref_) -> Ok (Some ref_)
+                | Some Json.Null
+                | None -> Ok None
+                | Some _ -> Error "invalid SourceDependencyLoadFailed.ref"
+              in
+              ref_ |> Result.map (fun ref_ ->
+                SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error })
+          | _ -> Error "invalid SourceDependencyLoadFailed"
+        )
+      | Some (Json.String "SourceDependencyDecodeFailed") -> (
+          match List.assoc_opt "dependency_name" fields, List.assoc_opt "manifest_path" fields, List.assoc_opt
+            "error"
+            fields with
+          | Some (Json.String dependency_name), Some path_json, Some (Json.String error) -> path_of_json
+            path_json
+          |> Result.map
+            (fun manifest_path ->
+              SourceDependencyDecodeFailed { dependency_name; manifest_path; error })
+          | _ -> Error "invalid SourceDependencyDecodeFailed"
         )
       | Some (Json.String "RegistryLatestReleaseMissing") -> (
           match List.assoc_opt "package" fields, List.assoc_opt "latest_version" fields with

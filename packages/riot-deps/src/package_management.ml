@@ -15,6 +15,13 @@ type manifest_selection =
 type event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
+  | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
+  | SourceDependencyMaterializationFinished of {
+      source_locator: string;
+      ref_: string option;
+      package: string;
+      version: string option;
+    }
   | PackageUpdated of { package: string; from_version: string; to_version: string }
   | ManifestUpdated of { path: Path.t; section: string; operation:
         [
@@ -39,9 +46,14 @@ type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: string }
   | DependencySpecInvalid of { dependency: string; error: string }
-  | UnsupportedDependencySource of { dependency: string }
   | PathDependencyMustBeRelative of { dependency: string }
   | PathDependencyLoadFailed of { dependency: string; path: Path.t; error: string }
+  | SourceDependencyLoadFailed of {
+      dependency: string;
+      source_locator: string;
+      ref_: string option;
+      error: string;
+    }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string }
@@ -67,9 +79,16 @@ type path_dependency = {
   path: Path.t;
 }
 
+type source_dependency = {
+  name: string;
+  source_locator: string;
+  ref_: string option;
+}
+
 type parsed_dependency =
   | Registry of registry_dependency
   | Path of path_dependency
+  | Source of source_dependency
 
 let no_emit = fun _ -> ()
 
@@ -81,9 +100,6 @@ let error_message = function
   ^ "'"
   | PackageNotFound { package } -> "workspace package '" ^ package ^ "' was not found"
   | DependencySpecInvalid { dependency; error } -> "invalid dependency '" ^ dependency ^ "': " ^ error
-  | UnsupportedDependencySource { dependency } -> "dependency '"
-  ^ dependency
-  ^ "' uses a source/github form that `riot add` does not support yet"
   | PathDependencyMustBeRelative { dependency } -> "path dependency '"
   ^ dependency
   ^ "' must be a relative path"
@@ -93,6 +109,19 @@ let error_message = function
   ^ Path.to_string path
   ^ "': "
   ^ error
+  | SourceDependencyLoadFailed { dependency; source_locator; ref_; error } ->
+      let suffix =
+        match ref_ with
+        | Some ref_ -> "#" ^ ref_
+        | None -> ""
+      in
+      "failed to load source dependency '"
+      ^ dependency
+      ^ "' from '"
+      ^ source_locator
+      ^ suffix
+      ^ "': "
+      ^ error
   | RegistryInitializationFailed { registry; error } -> "failed to initialize registry '"
   ^ registry
   ^ "': "
@@ -224,9 +253,77 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
         }) in
     Ok (Path { name = package.name; path = dep_path })
 
+let load_source_dependency = fun ~(emit:event -> unit) ~raw ->
+  let* spec = Git_dependency.parse_spec raw
+  |> Result.map_error (fun error -> DependencySpecInvalid {
+    dependency = raw;
+    error = Git_dependency.message error
+  }) in
+  let* () = Git_dependency.parse_source_locator spec.source_locator
+  |> Result.map_error (fun error -> DependencySpecInvalid {
+    dependency = raw;
+    error = Git_dependency.message error
+  })
+  |> Result.map (fun _ -> ()) in
+  emit (SourceDependencyMaterializationStarted {
+    source_locator = spec.source_locator;
+    ref_ = spec.ref_
+  });
+  let* materialized = Git_dependency.materialize ~source_locator:spec.source_locator ~ref_:spec.ref_ ()
+  |> Result.map_error (fun error -> SourceDependencyLoadFailed {
+    dependency = raw;
+    source_locator = spec.source_locator;
+    ref_ = spec.ref_;
+    error = Git_dependency.message error
+  }) in
+  let manifest_path = Path.(materialized.package_root / Path.v "riot.toml") in
+  let* source = Fs.read_to_string manifest_path |> Result.map_error
+    (fun err ->
+      SourceDependencyLoadFailed {
+        dependency = raw;
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        error = IO.error_message err
+      }) in
+  let* toml = Data.Toml.parse source |> Result.map_error
+    (fun err ->
+      SourceDependencyLoadFailed {
+        dependency = raw;
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        error = Data.Toml.error_to_string err
+      }) in
+  let relative_path =
+    match Path.strip_prefix materialized.package_root ~prefix:materialized.repository_root with
+    | Ok relative_path -> relative_path
+    | Error _ -> Path.v "."
+  in
+  let* package = Riot_model.Package.from_toml
+    toml
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path:materialized.package_root
+    ~relative_path
+  |> Result.map_error
+    (fun error ->
+      SourceDependencyLoadFailed {
+        dependency = raw;
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        error
+      }) in
+  emit (SourceDependencyMaterializationFinished {
+    source_locator = spec.source_locator;
+    ref_ = spec.ref_;
+    package = package.name;
+    version = Option.map Std.Version.to_string package.publish.version
+  });
+  Ok (Source { name = package.name; source_locator = spec.source_locator; ref_ = spec.ref_ })
+
 let parse_dependency_spec = fun ~(target:target_manifest) raw ->
   if is_source_dependency_spec raw then
-    Error (UnsupportedDependencySource { dependency = raw })
+    load_source_dependency ~emit:no_emit ~raw
   else
     match parse_registry_dependency_spec raw with
     | Ok parsed -> Ok (Registry parsed)
@@ -399,6 +496,8 @@ let dependency_of_parsed = function
           workspace = false;
           builtin = Riot_model.Package.is_builtin_dependency_name parsed.name;
           path = None;
+          source_locator = None;
+          ref_ = None;
           version = parsed.requirement
         }
       }
@@ -409,6 +508,20 @@ let dependency_of_parsed = function
           workspace = false;
           builtin = false;
           path = Some parsed.path;
+          source_locator = None;
+          ref_ = None;
+          version = None
+        }
+      }
+  | Source parsed ->
+      Riot_model.Package.{
+        name = parsed.name;
+        source = {
+          workspace = false;
+          builtin = false;
+          path = None;
+          source_locator = Some parsed.source_locator;
+          ref_ = parsed.ref_;
           version = None
         }
       }
@@ -471,13 +584,19 @@ let update_manifest = fun ~(emit:event -> unit) ~(target:target_manifest) ~scope
 let add = fun ?(on_event = no_emit) ~(workspace:Riot_model.Workspace.t) ~cwd ~(request:add_request) () ->
   let emit = on_event in
   let* target = target_manifest ~workspace ~cwd request.selection request.scope in
-  let* parsed = parse_dependency_spec ~target request.dependency in
+  let* parsed =
+    if is_source_dependency_spec request.dependency then
+      load_source_dependency ~emit ~raw:request.dependency
+    else
+      parse_dependency_spec ~target request.dependency
+  in
   let* parsed =
     match parsed with
     | Registry parsed ->
         let* registry = init_registry () in
         lookup_named_package ~emit ~registry parsed |> Result.map (fun parsed -> Registry parsed)
-    | Path _ as parsed -> Ok parsed
+    | Path parsed -> Ok (Path parsed)
+    | Source parsed -> Ok (Source parsed)
   in
   let dependencies = upsert_dependency target.dependencies (dependency_of_parsed parsed) in
   let* () = update_manifest
@@ -486,10 +605,11 @@ let add = fun ?(on_event = no_emit) ~(workspace:Riot_model.Workspace.t) ~cwd ~(r
     ~scope:request.scope
     ~dependencies
     ~operation:`Add
-    ~dependency:(
+      ~dependency:(
       match parsed with
       | Registry parsed -> parsed.name
       | Path parsed -> parsed.name
+      | Source parsed -> parsed.name
     ) in
   let* registry = init_registry () in
   let* workspace = reload_workspace ~workspace_root:workspace.root in

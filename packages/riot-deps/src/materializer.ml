@@ -114,7 +114,8 @@ let ensure_packages = fun ?(emit = no_emit) ~registry ~(lockfile:Riot_model.Lock
     | (pkg: Riot_model.Lockfile.package) :: rest -> (
         match pkg.provenance with
         | Riot_model.Lockfile.Workspace
-        | Riot_model.Lockfile.Path _ -> loop rest
+        | Riot_model.Lockfile.Path _
+        | Riot_model.Lockfile.Source _ -> loop rest
         | Riot_model.Lockfile.Registry _ -> (
             match ensure_registry_package ~emit ~registry pkg with
             | Ok () -> loop rest

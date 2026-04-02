@@ -1890,7 +1890,19 @@ std = ">= 1.2.3"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { source={ workspace=false; builtin=false; path=None; version=Some requirement }; _ } ] ->
+    | [
+      {
+        source={
+          workspace = false;
+          builtin = false;
+          path = None;
+          source_locator = None;
+          ref_ = None;
+          version = Some requirement;
+        };
+        _;
+      }
+    ] ->
         if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
           Ok ()
         else
@@ -1922,6 +1934,67 @@ stdlib = "*"
     | [ { name="stdlib"; source={ builtin=true; version=Some requirement; _ } } ] when requirement_is_any
       requirement -> Ok ()
     | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
+
+  let test_parse_github_dependency_shorthand () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "example"
+version = "0.1.0"
+
+[dependencies]
+widgets = { github = "riot-tests/widgets" }
+|}
+      |> Result.expect ~msg:"expected package toml to parse"
+    in
+    let pkg = from_toml
+      toml
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:(Path.v "/tmp/example")
+      ~relative_path:(Path.v "packages/example")
+    |> Result.expect ~msg:"expected package manifest" in
+    match pkg.dependencies with
+    | [ { name="widgets"; source={ source_locator=Some "github.com/riot-tests/widgets"; ref_=None; _ } } ] ->
+        Ok ()
+    | _ -> Error "expected github shorthand to normalize into a source locator" [@test]
+
+  let test_parse_source_dependency_with_ref_and_path () : (unit, string) result =
+    let toml =
+      Std.Data.Toml.parse
+        {|
+[package]
+name = "example"
+version = "0.1.0"
+
+[dependencies]
+widgets = { source = "https://github.com/riot-tests/monorepo/packages/widgets", ref = "main" }
+|}
+      |> Result.expect ~msg:"expected package toml to parse"
+    in
+    let pkg = from_toml
+      toml
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:(Path.v "/tmp/example")
+      ~relative_path:(Path.v "packages/example")
+    |> Result.expect ~msg:"expected package manifest" in
+    match pkg.dependencies with
+    | [
+      {
+        name = "widgets";
+        source={
+          source_locator = Some "github.com/riot-tests/monorepo/packages/widgets";
+          ref_ = Some "main";
+          _;
+        };
+      }
+    ] ->
+        Ok ()
+    | _ -> Error "expected source dependency to preserve locator and ref" [@test]
 
   let test_builtin_dependency_rejects_version_constraints () : (unit, string) result =
     let toml =
@@ -2001,7 +2074,14 @@ std = "definitely-not-semver"
         match decoded.dependencies with
         | [
           {
-            source={ workspace=false; builtin=false; path=None; version=Some decoded_requirement };
+            source={
+              workspace = false;
+              builtin = false;
+              path = None;
+              source_locator = None;
+              ref_ = None;
+              version = Some decoded_requirement;
+            };
             _
           }
         ] ->
@@ -2011,6 +2091,56 @@ std = "definitely-not-semver"
               Error "expected registry requirement to survive package json roundtrip"
         | _ -> Error "expected registry dependency after package json roundtrip"
       ) [@test]
+
+  let test_package_json_round_trips_source_dependency () : (unit, string) result =
+    let package = {
+      name = "example";
+      path = Path.v "/tmp/example";
+      relative_path = Path.v "packages/example";
+      dependencies = [
+        {
+          name = "widgets";
+          source = source ~source_locator:"github.com/riot-tests/widgets" ~ref_:"main" ();
+        }
+      ];
+      dev_dependencies = [];
+      build_dependencies = [];
+      foreign_dependencies = [];
+      binaries = [];
+      library = None;
+      sources =
+        {
+          src = [];
+          native = [];
+          tests = [];
+          examples = [];
+          bench = [];
+        };
+      compiler = { profile_overrides = []; target_overrides = [] };
+      commands = [];
+      fix_providers = [];
+      publish;
+    }
+    in
+    match from_json (to_json package) with
+    | Ok {
+        dependencies = [
+          {
+            name = "widgets";
+            source={
+              source_locator = Some "github.com/riot-tests/widgets";
+              ref_ = Some "main";
+              _;
+            };
+          }
+        ];
+        _;
+      } ->
+        Ok ()
+    | Ok _ ->
+        Error "expected source dependency to survive package json roundtrip"
+    | Error err ->
+        Error err [@test]
 
   let test_resolve_projects_runtime_and_build_edges () : (unit, string) result =
     let toml =

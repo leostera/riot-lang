@@ -1,6 +1,8 @@
 open Std
 module Error = Error
 
+let ( let* ) = Result.and_then
+
 type mode =
   | Refresh
   | Unlock
@@ -32,6 +34,14 @@ type resolution_state = {
 
 let package_id_of_local_package = fun (pkg: Riot_model.Package.t) ->
   Riot_model.Lockfile.{ registry = None; name = pkg.name; version = None; sha256 = None }
+
+let package_id_of_source_package = fun (pkg: Riot_model.Package.t) ->
+  Riot_model.Lockfile.{
+    registry = None;
+    name = pkg.name;
+    version = Option.map Std.Version.to_string pkg.publish.version;
+    sha256 = None;
+  }
 
 let required_by_local_package = fun (pkg: Riot_model.Package.t) ->
   Riot_model.Pm_error.{ package = pkg.name; path = Some pkg.path }
@@ -96,6 +106,31 @@ let load_path_dependency_package = fun ~declared_from ~dependency_name dep_path 
   |> Result.map_error
     (fun err -> Error.PathDependencyDecodeFailed { dependency_name; manifest_path; error = err })
 
+let load_source_dependency_package = fun ~dependency_name ~source_locator ~ref_ ->
+  let* materialized = Git_dependency.materialize ~source_locator ~ref_ ()
+  |> Result.map_error (fun error -> Error.SourceDependencyLoadFailed {
+    dependency_name;
+    source_locator;
+    ref_;
+    error = Git_dependency.message error
+  }) in
+  let manifest_path = Path.(materialized.package_root / Path.v "riot.toml") in
+  let* toml = load_manifest_toml ~manifest_path in
+  let relative_path =
+    match Path.strip_prefix materialized.package_root ~prefix:materialized.repository_root with
+    | Ok relative_path -> relative_path
+    | Error _ -> Path.v "."
+  in
+  Riot_model.Package.from_toml
+    toml
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path:materialized.package_root
+    ~relative_path
+  |> Result.map_error
+    (fun err -> Error.SourceDependencyDecodeFailed { dependency_name; manifest_path; error = err })
+
 let package_id_key = fun (id: Riot_model.Lockfile.package_id) ->
   let registry =
     match id.registry with
@@ -113,6 +148,10 @@ let registry_resolution_key = fun ~registry_name ~package_name ->
   registry_name ^ ":" ^ Pkgs_ml.Sparse_index.normalized_name package_name
 
 let path_resolution_key = fun ~package_root -> "path:" ^ Path.to_string (Path.normalize package_root)
+
+let source_resolution_key = fun ~source_locator ~ref_ ->
+  "source:" ^ source_locator ^ "#"
+  ^ Option.unwrap_or ~default:"main" ref_
 
 let find_workspace_package_by_name = fun ~(workspace_packages:Riot_model.Package.t list) ~package_name ->
   List.find_opt
@@ -240,10 +279,20 @@ let rec lock_package_of_local_package = fun ~(ctx:context) ~state ~provenance (
             pkg.dev_dependencies with
           | Error _ as err -> err
           | Ok (dev_dependencies, dev_packages, state) ->
+              let id =
+                match provenance with
+                | Riot_model.Lockfile.Source _ -> package_id_of_source_package pkg
+                | _ -> package_id_of_local_package pkg
+              in
+              let root =
+                match provenance with
+                | Riot_model.Lockfile.Source _ -> None
+                | _ -> Some (relative_path_from ~base:ctx.workspace.root pkg.path)
+              in
               Ok (
                 Riot_model.Lockfile.{
-                  id = package_id_of_local_package pkg;
-                  root = Some (relative_path_from ~base:ctx.workspace.root pkg.path);
+                  id;
+                  root;
                   provenance;
                   dependencies;
                   build_dependencies;
@@ -375,6 +424,8 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by (
                                       workspace = false;
                                       builtin = false;
                                       path = None;
+                                      source_locator = None;
+                                      ref_ = None;
                                       version = None
                                     }
                                   } with
@@ -499,6 +550,91 @@ and resolve_path_dependency = fun ~(ctx:context) ~state ~declared_from dependenc
         )
     )
 
+and resolve_source_dependency = fun ~(ctx:context) ~state (dep: Riot_model.Package.dependency) ->
+  let dependency_name = dep.name in
+  let source_locator =
+    match dep.source.source_locator with
+    | Some source_locator -> source_locator
+    | None -> panic "resolve_source_dependency requires a source locator"
+  in
+  let ref_ = dep.source.ref_ in
+  let key = source_resolution_key ~source_locator ~ref_ in
+  match find_resolved_package ~state ~key with
+  | Some lock_package ->
+      Ok (
+        {
+          dependency =
+            Riot_model.Lockfile.{ name = dependency_name; package = lock_package.id };
+          packages = [];
+        },
+        state
+      )
+  | None -> (
+      match find_resolving_package_id ~state ~key with
+      | Some package_id ->
+          Ok (
+            {
+              dependency =
+                Riot_model.Lockfile.{ name = dependency_name; package = package_id };
+              packages = [];
+            },
+            state
+          )
+      | None -> (
+          let* pkg = load_source_dependency_package ~dependency_name ~source_locator ~ref_ in
+          let* () =
+            match dep.source.version, pkg.publish.version with
+            | Some requirement, Some version when Std.Version.matches requirement version ->
+                Ok ()
+            | Some requirement, Some version ->
+                Error (Error.Unexpected {
+                  error = "source dependency '"
+                  ^ dependency_name
+                  ^ "' from '"
+                  ^ source_locator
+                  ^ "' does not satisfy required version '"
+                  ^ Std.Version.requirement_to_string requirement
+                  ^ "' (found "
+                  ^ Std.Version.to_string version
+                  ^ ")"
+                })
+            | Some requirement, None ->
+                Error (Error.Unexpected {
+                  error = "source dependency '"
+                  ^ dependency_name
+                  ^ "' from '"
+                  ^ source_locator
+                  ^ "' is missing a package version required by '"
+                  ^ Std.Version.requirement_to_string requirement
+                  ^ "'"
+                })
+            | None, _ ->
+                Ok ()
+          in
+          let package_id = package_id_of_source_package pkg in
+          let state = add_resolving ~state ~key ~package_id in
+          match lock_package_of_local_package
+            ~ctx
+            ~state
+            ~provenance:(Riot_model.Lockfile.Source { locator = source_locator; ref_ })
+            pkg with
+          | Error _ as err -> err
+          | Ok (lock_package, dependency_packages, state) ->
+              let state = add_resolved ~state ~key ~pkg:lock_package in
+              Ok (
+                {
+                  dependency =
+                    Riot_model.Lockfile.{
+                      name = dependency_name;
+                      package = lock_package.id
+                    };
+                  packages = dependency_packages @ [ lock_package ];
+                },
+                state
+              )
+        )
+    )
+
 and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~declared_from acc_packages acc_dependencies deps ->
   match deps with
   | [] -> Ok (List.rev acc_dependencies, List.rev acc_packages, state)
@@ -522,6 +658,30 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             acc_packages
             acc_dependencies
             rest
+      | { path=Some path; _ } -> (
+          match resolve_path_dependency ~ctx ~state ~declared_from dep.name path with
+          | Error _ as err -> err
+          | Ok (resolved, state) -> resolve_manifest_dependencies
+            ~ctx
+            ~state
+            ~required_by
+            ~declared_from
+            (List.rev_append resolved.packages acc_packages)
+            (resolved.dependency :: acc_dependencies)
+            rest
+        )
+      | { source_locator=Some _; _ } -> (
+          match resolve_source_dependency ~ctx ~state dep with
+          | Error _ as err -> err
+          | Ok (resolved, state) -> resolve_manifest_dependencies
+            ~ctx
+            ~state
+            ~required_by
+            ~declared_from
+            (List.rev_append resolved.packages acc_packages)
+            (resolved.dependency :: acc_dependencies)
+            rest
+        )
       | { path=None; _ } -> (
           match find_workspace_package_by_name
             ~workspace_packages:ctx.workspace.packages
@@ -557,18 +717,6 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
                     rest
                 )
             )
-        )
-      | { path=Some path; _ } -> (
-          match resolve_path_dependency ~ctx ~state ~declared_from dep.name path with
-          | Error _ as err -> err
-          | Ok (resolved, state) -> resolve_manifest_dependencies
-            ~ctx
-            ~state
-            ~required_by
-            ~declared_from
-            (List.rev_append resolved.packages acc_packages)
-            (resolved.dependency :: acc_dependencies)
-            rest
         )
     )
 

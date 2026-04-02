@@ -51,6 +51,11 @@ let materialized_root_of_lock_package = fun ~registry ~workspace_root ~(lock_pac
         error = "path lock package '" ^ lock_package.id.name ^ "' is missing a portable root"
       })
     )
+  | Riot_model.Lockfile.Source { locator; ref_ } -> (
+      match Git_dependency.materialize ~source_locator:locator ~ref_ () with
+      | Ok materialized -> Ok materialized.package_root
+      | Error error -> Error (Error.ProjectionFailed { error = Git_dependency.message error })
+    )
   | Riot_model.Lockfile.Registry { registry=registry_name } -> (
       match lock_package.id.version with
       | None -> Error (Error.ProjectionFailed {
@@ -148,6 +153,7 @@ let load_package_for_lock_package = fun ~emit ~registry ~workspace_root ~(packag
       })
     )
   | Riot_model.Lockfile.Path _
+  | Riot_model.Lockfile.Source _
   | Riot_model.Lockfile.Registry _ -> load_external_package ~emit ~registry ~workspace_root ~lock_package
 
 let resolve_dependency_ids = fun (resolved: Riot_model.Package.resolved) ->
@@ -175,6 +181,7 @@ let rec resolve_package_graph = fun ~emit ~registry ~workspace_root ~(packages:R
                   match lock_package.provenance with
                   | Riot_model.Lockfile.Workspace -> package.path
                   | Riot_model.Lockfile.Path _
+                  | Riot_model.Lockfile.Source _
                   | Riot_model.Lockfile.Registry _ -> materialized_root_of_lock_package
                     ~registry
                     ~workspace_root

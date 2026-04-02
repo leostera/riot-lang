@@ -45,10 +45,12 @@ let requirement_is_any = fun requirement ->
   String.equal (Version.requirement_to_string requirement) "*"
 
 let validate_dependency_source = fun ~dependency_name (source: Package.dependency_source) ->
-  if source.workspace then
+    if source.workspace then
     Error ("workspace dependency '" ^ dependency_name ^ "' cannot use workspace = true")
-  else if source.builtin && Option.is_some source.path then
-    Error ("builtin dependency '" ^ dependency_name ^ "' does not support path overrides")
+  else if Option.is_some source.ref_ && Option.is_none source.source_locator then
+    Error ("dependency '" ^ dependency_name ^ "' cannot specify ref without source")
+  else if source.builtin && (Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.ref_) then
+    Error ("builtin dependency '" ^ dependency_name ^ "' does not support path or source overrides")
   else if source.builtin then
     match source.version with
     | None -> Ok { source with version = Some Version.any }
@@ -58,10 +60,28 @@ let validate_dependency_source = fun ~dependency_name (source: Package.dependenc
     ^ "' does not support version requirement '"
     ^ Version.requirement_to_string version
     ^ "'")
-  else if Option.is_some source.path || Option.is_some source.version then
+  else if Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.version then
     Ok source
   else
     Ok { source with version = Some Version.any }
+
+let normalize_source_locator = fun raw ->
+  let raw = String.trim raw in
+  let raw =
+    if String.starts_with ~prefix:"https://" raw then
+      String.sub raw 8 (String.length raw - 8)
+    else if String.starts_with ~prefix:"http://" raw then
+      String.sub raw 7 (String.length raw - 7)
+    else
+      raw
+  in
+  if String.ends_with ~suffix:".git" raw then
+    String.sub raw 0 (String.length raw - 4)
+  else
+    raw
+
+let github_locator_of_value = fun value ->
+  "github.com/" ^ String.trim value
 
 let parse_dependency : string -> Toml.value -> (Package.dependency, string) result = fun name value ->
   let make_dependency source : Package.dependency = { name; source } in
@@ -73,6 +93,27 @@ let parse_dependency : string -> Toml.value -> (Package.dependency, string) resu
         | Some _ -> Error ("dependency '" ^ name ^ "' has non-string path")
         | None -> Ok None
       in
+      let source_locator =
+        match List.assoc_opt "source" attrs, List.assoc_opt "github" attrs with
+        | Some _, Some _ ->
+            Error ("dependency '" ^ name ^ "' cannot specify both source and github")
+        | Some (Toml.String locator), None ->
+            Ok (Some (normalize_source_locator locator))
+        | Some _, None ->
+            Error ("dependency '" ^ name ^ "' has non-string source locator")
+        | None, Some (Toml.String github) ->
+            Ok (Some (github_locator_of_value github))
+        | None, Some _ ->
+            Error ("dependency '" ^ name ^ "' has non-string github shorthand")
+        | None, None ->
+            Ok None
+      in
+      let ref_ =
+        match List.assoc_opt "ref" attrs with
+        | Some (Toml.String ref_) -> Ok (Some (String.trim ref_))
+        | Some _ -> Error ("dependency '" ^ name ^ "' has non-string ref")
+        | None -> Ok None
+      in
       let version =
         match List.assoc_opt "version" attrs with
         | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
@@ -80,12 +121,21 @@ let parse_dependency : string -> Toml.value -> (Package.dependency, string) resu
         | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
         | None -> Ok None
       in
-      match path, version with
-      | (Error _ as err), _ -> err
-      | _, (Error _ as err) -> err
-      | Ok path, Ok version -> validate_dependency_source
+      match path, source_locator, ref_, version with
+      | (Error _ as err), _, _, _ -> err
+      | _, (Error _ as err), _, _ -> err
+      | _, _, (Error _ as err), _ -> err
+      | _, _, _, (Error _ as err) -> err
+      | Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
         ~dependency_name:name
-        { workspace = false; builtin = Package.is_builtin_dependency_name name; path; version }
+        {
+          workspace = false;
+          builtin = Package.is_builtin_dependency_name name;
+          path;
+          source_locator;
+          ref_;
+          version
+        }
       |> Result.map make_dependency
     )
   | Toml.String requirement -> (
@@ -97,6 +147,8 @@ let parse_dependency : string -> Toml.value -> (Package.dependency, string) resu
           workspace = false;
           builtin = Package.is_builtin_dependency_name name;
           path = None;
+          source_locator = None;
+          ref_ = None;
           version = Some version
         }
       |> Result.map make_dependency
@@ -350,7 +402,14 @@ std = ">= 1.2.3"
         match manifest.dependencies with
         | [
           {
-            Package.source={ workspace=false; builtin=false; path=None; version=Some requirement };
+            Package.source={
+              workspace = false;
+              builtin = false;
+              path = None;
+              source_locator = None;
+              ref_ = None;
+              version = Some requirement;
+            };
             _
           }
         ] ->

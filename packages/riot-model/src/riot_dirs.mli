@@ -4,6 +4,12 @@ val dot_riot: Path.t
 
 val config_path: unit -> Path.t
 
+val registry_dir: unit -> Path.t
+
+val git_registry_host_dir: host:string -> Path.t
+
+val git_registry_repo_dir: host:string -> owner:string -> repo:string -> Path.t
+
 val package_lock_path: workspace_root:Path.t -> Path.t
 
 val toolchains_dir: Toolchain_config.t -> Path.t
