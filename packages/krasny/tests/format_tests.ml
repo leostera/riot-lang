@@ -628,8 +628,8 @@ let packed = (module Protocol.Http1)
       in
       assert_idempotent ~source ~msg:"first-class module expressions should stay stable";
       Ok ());
-  Test.case "format currently fails for class declaration items"
-    (fun _ctx ->
+  Test.case "format class declaration items"
+    (fun ctx ->
       let source = {|class ['a] service : object
   val mutable state : int
   method private run : int
@@ -642,7 +642,7 @@ end =
   end
 |}
       in
-      assert_format_ml_fails ~msg:"class declaration items are not supported structurally yet" source);
+      assert_formatted_ml_snapshot ~ctx ~msg:"class declaration items should lower structurally" source);
   Test.case "format class type declaration items"
     (fun ctx ->
       let source = {|class type ['a] service = object
