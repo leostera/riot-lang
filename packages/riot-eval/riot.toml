@@ -1,7 +1,7 @@
 [package]
 name = "riot-eval"
 version = "0.0.1"
-description = "OCaml evaluation tooling for the Riot toolchain."
+description = "OCaml evaluation tooling for Riot"
 license = "Apache-2.0"
 public = true
 

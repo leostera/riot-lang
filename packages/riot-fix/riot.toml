@@ -1,7 +1,7 @@
 [package]
 name = "riot-fix"
 version = "0.0.1"
-description = "Linting and auto-fix pipeline for OCaml workspaces."
+description = "Linting and auto-fix pipeline"
 license = "Apache-2.0"
 public = true
 

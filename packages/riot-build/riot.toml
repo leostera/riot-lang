@@ -1,7 +1,7 @@
 [package]
 name = "riot-build"
 version = "0.0.1"
-description = "In-process build session runtime for the Riot server."
+description = "In-process build session runtime"
 license = "Apache-2.0"
 public = true
 

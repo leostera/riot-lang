@@ -1,6 +1,6 @@
 [package]
 name = "kernel"
-description = "Low-level primitives for the Riot stack"
+description = "Low-level runtime primitives"
 version = "0.0.1"
 license = "Apache-2.0"
 public = true

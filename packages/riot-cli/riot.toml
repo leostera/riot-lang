@@ -1,7 +1,7 @@
 [package]
 name = "riot-cli"
 version = "0.0.1"
-description = "Command-line interface for the Riot build system."
+description = "Command-line interface for Riot"
 license = "Apache-2.0"
 public = true
 

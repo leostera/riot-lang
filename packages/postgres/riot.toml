@@ -1,7 +1,7 @@
 [package]
 name = "postgres"
 version = "0.0.1"
-description = "PostgreSQL adapter for the sqlx database APIs."
+description = "PostgreSQL adapter for sqlx"
 license = "Apache-2.0"
 
 [dependencies]

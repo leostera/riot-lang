@@ -1,7 +1,7 @@
 [package]
 name = "mcp"
 version = "0.0.1"
-description = "Model Context Protocol transports and data types."
+description = "Model Context Protocol transports and types"
 license = "Apache-2.0"
 
 [lib]

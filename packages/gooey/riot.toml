@@ -1,7 +1,7 @@
 [package]
 name = "gooey"
 version = "0.0.1"
-description = "Terminal UI primitives for Riot applications."
+description = "Terminal UI primitives"
 license = "Apache-2.0"
 public = true
 

@@ -1,7 +1,7 @@
 [package]
 name = "fixme"
 version = "0.0.1"
-description = "Shared rule-authoring types for the riot-fix linting pipeline."
+description = "Rule-authoring types for riot-fix"
 license = "Apache-2.0"
 public = true
 

@@ -1,7 +1,7 @@
 [package]
 name = "propane"
 version = "0.0.1"
-description = "Property-based testing support for OCaml packages."
+description = "Property-based testing support"
 license = "Apache-2.0"
 public = true
 

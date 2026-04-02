@@ -1,7 +1,7 @@
 [package]
 name = "krasny"
 version = "0.0.1"
-description = "Document layout and OCaml code formatting engine."
+description = "Document layout and OCaml formatter"
 license = "Apache-2.0"
 public = true
 

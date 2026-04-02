@@ -1,7 +1,7 @@
 [package]
 name = "riot-executor"
 version = "0.0.1"
-description = "Build execution and result aggregation for Riot."
+description = "Build execution and result aggregation"
 license = "Apache-2.0"
 public = true
 

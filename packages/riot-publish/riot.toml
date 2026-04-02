@@ -1,7 +1,7 @@
 [package]
 name = "riot-publish"
 version = "0.0.1"
-description = "Publish command orchestration for Riot."
+description = "Publish workflow orchestration"
 license = "Apache-2.0"
 public = true
 

@@ -1,7 +1,7 @@
 [package]
 name = "miniriot"
 version = "0.0.1"
-description = "Bootstrap build tool for building the Riot toolchain."
+description = "Bootstrap build tool for the Riot toolchain"
 license = "Apache-2.0"
 public = true
 
