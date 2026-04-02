@@ -724,119 +724,6 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
 
-let test_registry_publish_from_locator_posts_tarball_to_publish_route = fun _ctx ->
-  let cache = Pkgs_ml.Registry_cache.create
-    ~riot_home:(Path.v "/tmp/.riot")
-    ~registry_name:"pkgs.ml"
-    ()
-  |> Result.expect ~msg:"expected registry cache to be created" in
-  let artifact = "fake-tarball-bytes" in
-  let fetch, requests =
-    make_fetch_recorder
-      ~post_handler:(fun _uri ~headers:_ ~body:_ ->
-        Ok {
-          Pkgs_ml.Registry.status_code = 200;
-          body =
-            {|{
-  "package_name": "minttea",
-  "package_version": "0.4.2",
-  "artifact_sha256": "0123456789abcdef0123456789abcdef01234567",
-  "manifest": {
-    "key": "packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json",
-    "cdn_url": "https://cdn.pkgs.ml/packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
-  },
-  "source_archive": {
-    "key": "sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz",
-    "cdn_url": "https://cdn.pkgs.ml/sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
-  },
-  "claim": {
-    "key": "claims/minttea.json",
-    "created": true
-  },
-  "release": {
-    "key": "releases/minttea/0.4.2.json",
-    "created": true
-  },
-  "materialization": {
-    "manifest": false,
-    "source": false
-  }
-}|};
-        })
-      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
-  in
-  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
-  match Pkgs_ml.Registry.publish_from_locator
-    registry
-    ~locator:"github.com/leostera/minttea"
-    ~selector:"main"
-    ~api_token:"root-secret"
-    ~artifact with
-  | Error err -> Error err
-  | Ok published ->
-      let requested = List.rev !requests in
-      match requested with
-      | [ request ] ->
-          let has_header name value =
-            List.exists
-              (fun (header_name, header_value) ->
-                String.equal header_name name && String.equal header_value value)
-              request.headers
-          in
-          if
-            String.equal request.method_ "POST"
-            && String.equal request.url "https://api.pkgs.ml/v1/publish"
-            && request.body = Some artifact
-            && has_header "authorization" "Bearer root-secret"
-            && has_header "content-type" "application/gzip"
-            && String.equal published.artifact_sha256 "0123456789abcdef0123456789abcdef01234567"
-            && String.equal published.package_name "minttea"
-            && String.equal published.package_version "0.4.2"
-            && String.equal published.manifest.key "packages/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.manifest.json"
-            && String.equal published.source_archive.key "sources/minttea/0.4.2/0123456789abcdef0123456789abcdef01234567.tar.gz"
-            && published.claim.created
-            && published.release.created
-            && not published.materialization.manifest
-            && not published.materialization.source
-          then
-            Ok ()
-          else
-            Error "unexpected publish-from-locator request or response"
-      | _ -> Error "expected exactly one publish request"
-
-let test_registry_publish_from_locator_bubbles_registry_error_message = fun _ctx ->
-  let cache = Pkgs_ml.Registry_cache.create
-    ~riot_home:(Path.v "/tmp/.riot")
-    ~registry_name:"pkgs.ml"
-    ()
-  |> Result.expect ~msg:"expected registry cache to be created" in
-  let fetch, _requests =
-    make_fetch_recorder
-      ~post_handler:(fun _uri ~headers:_ ~body:_ ->
-        Ok {
-          Pkgs_ml.Registry.status_code = 404;
-          body =
-            {|{
-  "error": "package_not_found",
-  "message": "package `std` was not found in registry `pkgs.ml`"
-}|};
-        })
-      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
-  in
-  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
-  match Pkgs_ml.Registry.publish_from_locator
-    registry
-    ~locator:"github.com/leostera/riot/packages/std"
-    ~selector:"main"
-    ~api_token:"root-secret"
-    ~artifact:"tarball" with
-  | Ok _ -> Error "expected publish artifact to return the registry error"
-  | Error err ->
-      if String.equal err "package `std` was not found in registry `pkgs.ml`" then
-        Ok ()
-      else
-        Error ("unexpected publish artifact error: " ^ err)
-
 let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
     ~riot_home:(Path.v "/tmp/.riot")
@@ -940,8 +827,6 @@ let tests =
     case "registry: filesystem registry materializes cached release archives" test_filesystem_registry_materializes_cached_release;
     case "registry: filesystem registry materializes gzipped cached release archives" test_filesystem_registry_materializes_gzip_cached_release;
     case "registry: filesystem registry downloads release archives on cache miss" test_filesystem_registry_downloads_release_archive_on_cache_miss;
-    case "registry: publish from locator posts tarball to publish route" test_registry_publish_from_locator_posts_tarball_to_publish_route;
-    case "registry: publish from locator bubbles registry error message" test_registry_publish_from_locator_bubbles_registry_error_message;
     case "registry: publish artifact posts tarball to artifact publish route" test_registry_publish_artifact_posts_tarball_to_artifact_publish_route;
     case "registry: publish artifact bubbles transport exceptions as errors" test_registry_publish_artifact_bubbles_transport_exceptions_as_errors;
   ]

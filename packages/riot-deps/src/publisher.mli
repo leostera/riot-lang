@@ -84,15 +84,6 @@ val publish_prepared:
   prepared_publish ->
   (Pkgs_ml.Registry.published_release, error) result
 
-val publish_from_locator:
-  registry:Pkgs_ml.Registry.t ->
-  target_dir_root:Path.t ->
-  package:Riot_model.Package.t ->
-  locator:string ->
-  selector:string ->
-  api_token:string ->
-  (Pkgs_ml.Registry.published_release, error) result
-
 val publish:
   registry:Pkgs_ml.Registry.t ->
   target_dir_root:Path.t ->

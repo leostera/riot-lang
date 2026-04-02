@@ -394,34 +394,6 @@ let publish_prepared = fun ~registry ~api_token (prepared: prepared_publish) ->
       | Error error -> Error (RegistryPublishFailed { locator = prepared.locator; error })
     )
 
-let publish_from_locator = fun ~registry ~target_dir_root ~(package:Riot_model.Package.t) ~locator ~selector:_ ~api_token ->
-  match validate_publish_metadata ~package with
-  | Error _ as err -> err
-  | Ok version -> (
-      match validate_runtime_dependencies ~package with
-      | Error _ as err -> err
-      | Ok () -> (
-          match validate_registry_dependencies ~registry ~publishing_workspace_packages:[] ~package with
-          | Error _ as err -> err
-          | Ok () -> (
-              match create_artifact ~target_dir_root ~package ~version with
-              | Error _ as err -> err
-              | Ok artifact_path -> (
-                  match Fs.read artifact_path with
-                  | Error err -> Error (ArtifactReadFailed {
-                    path = artifact_path;
-                    error = IO.error_message err
-                  })
-                  | Ok artifact -> (
-                      match Pkgs_ml.Registry.publish_artifact registry ~api_token ~artifact with
-                      | Ok published -> Ok published
-                      | Error error -> Error (RegistryPublishFailed { locator; error })
-                    )
-                )
-            )
-        )
-    )
-
 let publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(package:Riot_model.Package.t) ~api_token ->
   match prepare_publish ~registry ~target_dir_root ~publishing_workspace_packages ~package with
   | Error _ as err -> err

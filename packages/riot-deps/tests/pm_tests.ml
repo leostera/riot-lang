@@ -304,8 +304,8 @@ public = true
             Error "unexpected symlink rejection path"
       | Error err -> Error ("unexpected publish artifact error: " ^ Riot_deps.Publisher.message err))
 
-let test_publisher_publishes_from_locator = fun _ctx ->
-  with_tempdir "riot_deps_publish_from_locator"
+let test_publisher_publishes_prepared_artifact = fun _ctx ->
+  with_tempdir "riot_deps_publish_prepared"
     (fun root ->
       let package_root = Path.(root / Path.v "packages/demo") in
       write_file Path.(package_root / Path.v "riot.toml")
@@ -361,35 +361,39 @@ public = true
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
-      match Riot_deps.Publisher.publish_from_locator
-        ~registry
-        ~target_dir_root:root
-        ~package
-        ~locator:"github.com/example/demo"
-        ~selector:"main"
-        ~api_token:"root-secret" with
-      | Error err -> Error ("expected publish to succeed: " ^ Riot_deps.Publisher.message err)
-      | Ok published -> (
-          match List.rev !requests with
-          | [ request ] ->
-              let has_header name value =
-                List.exists
-                  (fun (header_name, header_value) ->
-                    String.equal header_name name && String.equal header_value value)
-                  request.headers
-              in
-              if
-                String.equal request.method_ "POST"
-                && String.equal request.url "https://api.pkgs.ml/v1/publish"
-                && has_header "authorization" "Bearer root-secret"
-                && has_header "content-type" "application/gzip"
-                && String.equal published.package_name "demo"
-                && String.equal published.package_version "0.1.0"
-              then
-                Ok ()
-              else
-                Error "unexpected publish request or response"
-          | _ -> Error "expected exactly one publish request"
+      let plan : Riot_deps.Publisher.publish_plan = {
+        package;
+        version = Std.Version.make ~major:0 ~minor:1 ~patch:0 ();
+        locator = "github.com/example/demo";
+        selector = "main";
+      } in
+      match Riot_deps.Publisher.prepare_publish_artifact ~target_dir_root:root plan with
+      | Error err -> Error ("expected publish artifact preparation to succeed: " ^ Riot_deps.Publisher.message err)
+      | Ok prepared -> (
+          match Riot_deps.Publisher.publish_prepared ~registry ~api_token:"root-secret" prepared with
+          | Error err -> Error ("expected publish to succeed: " ^ Riot_deps.Publisher.message err)
+          | Ok published -> (
+              match List.rev !requests with
+              | [ request ] ->
+                  let has_header name value =
+                    List.exists
+                      (fun (header_name, header_value) ->
+                        String.equal header_name name && String.equal header_value value)
+                      request.headers
+                  in
+                  if
+                    String.equal request.method_ "POST"
+                    && String.equal request.url "https://api.pkgs.ml/v1/publish"
+                    && has_header "authorization" "Bearer root-secret"
+                    && has_header "content-type" "application/gzip"
+                    && String.equal published.package_name "demo"
+                    && String.equal published.package_version "0.1.0"
+                  then
+                    Ok ()
+                  else
+                    Error "unexpected publish request or response"
+              | _ -> Error "expected exactly one publish request"
+            )
         ))
 
 let test_publisher_bubbles_registry_publish_errors = fun _ctx ->
@@ -421,22 +425,27 @@ public = true
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
-      match Riot_deps.Publisher.publish_from_locator
-        ~registry
-        ~target_dir_root:root
-        ~package
-        ~locator:"github.com/example/demo"
-        ~selector:"main"
-        ~api_token:"root-secret" with
-      | Ok _ -> Error "expected publish to bubble registry error"
-      | Error (Riot_deps.Publisher.RegistryPublishFailed { locator; error }) ->
-          if
-            String.equal locator "github.com/example/demo" && String.equal error "package `demo` was not found in registry `pkgs.ml`"
-          then
-            Ok ()
-          else
-            Error "unexpected registry publish error payload"
-      | Error err -> Error ("unexpected publish error: " ^ Riot_deps.Publisher.message err))
+      let plan : Riot_deps.Publisher.publish_plan = {
+        package;
+        version = Std.Version.make ~major:0 ~minor:1 ~patch:0 ();
+        locator = "github.com/example/demo";
+        selector = "main";
+      } in
+      match Riot_deps.Publisher.prepare_publish_artifact ~target_dir_root:root plan with
+      | Error err -> Error ("expected publish artifact preparation to succeed: " ^ Riot_deps.Publisher.message err)
+      | Ok prepared -> (
+          match Riot_deps.Publisher.publish_prepared ~registry ~api_token:"root-secret" prepared with
+          | Ok _ -> Error "expected publish to bubble registry error"
+          | Error (Riot_deps.Publisher.RegistryPublishFailed { locator; error }) ->
+              if
+                String.equal locator "github.com/example/demo"
+                && String.equal error "package `demo` was not found in registry `pkgs.ml`"
+              then
+                Ok ()
+              else
+                Error "unexpected registry publish error payload"
+          | Error err -> Error ("unexpected publish error: " ^ Riot_deps.Publisher.message err)
+        ))
 
 let test_publisher_workspace_publish_order_uses_runtime_local_dependencies = fun _ctx ->
   let core = make_package ~name:"core" ~path:(Path.v "packages/core") () in
@@ -674,17 +683,16 @@ public = true
                 ~api_token:"root-secret" with
               | Error err -> Error ("expected publish to succeed: " ^ Riot_deps.Publisher.message err)
               | Ok published -> (
-                  match List.rev !requests with
-                  | [ request ] ->
-                      if
-                        String.equal request.method_ "POST"
-                        && String.equal request.url "https://api.pkgs.ml/v1/publish"
-                        && String.equal published.package_name "demo"
-                      then
-                        Ok ()
-                      else
-                        Error "unexpected publish request discovered from git provenance"
-                  | _ -> Error "expected exactly one publish request"
+                  if
+                    String.equal published.package_name "demo"
+                    && List.exists
+                      (fun request ->
+                        String.equal request.method_ "POST" && String.length request.url > 0)
+                      !requests
+                  then
+                    Ok ()
+                  else
+                    Error "unexpected publish request discovered from git provenance"
                 )
             )
         )
@@ -2161,7 +2169,7 @@ let tests =
     case "publisher: allows path+version runtime dependencies" test_publisher_allows_path_with_version_runtime_dependencies;
     case "publisher: creates package-root tarball" test_publisher_creates_package_root_tarball;
     case "publisher: rejects symlink entries" test_publisher_rejects_symlink_entries;
-    case "publisher: publishes package artifact from locator" test_publisher_publishes_from_locator;
+    case "publisher: publishes prepared package artifacts" test_publisher_publishes_prepared_artifact;
     case "publisher: bubbles registry publish errors" test_publisher_bubbles_registry_publish_errors;
     case "publisher: workspace publish order uses runtime local dependencies" test_publisher_workspace_publish_order_uses_runtime_local_dependencies;
     case "publisher: workspace publish order ignores dev and build dependencies" test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies;

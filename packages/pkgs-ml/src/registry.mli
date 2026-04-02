@@ -77,11 +77,3 @@ val refresh_package_document:
 val materialize_release: t -> package_name:string -> version:string -> (materialize_result, string) result
 
 val publish_artifact: t -> api_token:string -> artifact:string -> (published_release, string) result
-
-val publish_from_locator:
-  t ->
-  locator:string ->
-  selector:string ->
-  api_token:string ->
-  artifact:string ->
-  (published_release, string) result
