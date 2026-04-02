@@ -50,7 +50,11 @@ type build_scope =
 val error_message: error -> string
 
 val connect_local:
-  ?emit:(Riot_model.Event.kind -> unit) -> workspace:Riot_model.Workspace.t -> unit -> (t, error) result
+  ?emit:(Riot_model.Event.kind -> unit) ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace:Riot_model.Workspace.t ->
+  unit ->
+  (t, error) result
 
 val close: t -> unit
 
@@ -87,7 +91,5 @@ val build_streaming:
   (streaming_event, error) result
 
 val find_executable: t -> string -> ((string * string) option, 'a) result
-
-val find_artifact: t -> package:string -> kind:string -> name:string -> (string, string) result
 
 val new_package: t -> path:string -> name:string -> is_library:bool -> ((string * string), string) result

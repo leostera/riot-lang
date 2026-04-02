@@ -17,6 +17,7 @@ let error_message = function
 
 type server_state = {
   workspace: Workspace.t;
+  workspace_manager: Workspace_manager.t;
   toolchain: Riot_toolchain.t;
   concurrency: int;
   package_graph: Riot_planner.Package_graph.t;
@@ -28,7 +29,7 @@ type server_state = {
 
 let default_registry_name = "pkgs.ml"
 
-let no_emit : Riot_model.Event.kind -> unit = fun _ -> ()
+let no_emit: Riot_model.Event.kind -> unit = fun _ -> ()
 
 let server_trace_enabled = fun () ->
   match Env.var String ~name:"RIOT_SERVER_TRACE" with
@@ -51,15 +52,21 @@ let resolve_registry = fun ?registry ?(registry_name = default_registry_name) ()
       trace_server "resolve_registry creating filesystem registry";
       Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name ()
 
-let prepare_workspace = fun ?(emit = no_emit) ~(registry:Pkgs_ml.Registry.t) ~(workspace:Workspace.t) () ->
+let prepare_workspace = fun ?(emit = no_emit) ?workspace_manager ~(registry:Pkgs_ml.Registry.t) ~(workspace:Workspace.t) () ->
   trace_server
     ("prepare_workspace root="
     ^ Path.to_string workspace.root
     ^ " packages="
     ^ Int.to_string (List.length workspace.packages));
-  Riot_deps.ensure_workspace ~emit ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace ()
+  Riot_deps.ensure_workspace
+    ?workspace_manager
+    ~emit
+    ~mode:Riot_deps.Dep_solver.Refresh
+    ~registry
+    ~workspace
+    ()
 
-let build_state = fun ~(workspace:Workspace.t) ~load_errors ~(registry:Pkgs_ml.Registry.t) ~(config:Server_config.t) ->
+let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~(registry:Pkgs_ml.Registry.t) ~(config:Server_config.t) ->
   let _ = config in
   if List.length load_errors > 0 then
     (
@@ -93,6 +100,7 @@ let build_state = fun ~(workspace:Workspace.t) ~load_errors ~(registry:Pkgs_ml.R
   in
   {
     workspace;
+    workspace_manager;
     toolchain;
     concurrency = System.available_parallelism;
     package_graph;
@@ -143,16 +151,6 @@ let rec loop = fun state ->
   | `Request (Protocol.FindExecutable { client_pid; name }) ->
       Log.debug ("Server loop received: FindExecutable(" ^ name ^ ")");
       handle_find_executable state client_pid name
-  | `Request (Protocol.FindArtifact { client_pid; package; kind; name }) ->
-      Log.debug
-        ("Server loop received: FindArtifact(package="
-        ^ package
-        ^ ", kind="
-        ^ kind
-        ^ ", name="
-        ^ name
-        ^ ")");
-      handle_find_artifact state client_pid package kind name
   | `Request (Protocol.FormatFile { client_pid; file_path; check_only }) ->
       Log.debug "Server loop received: FormatFile";
       handle_format_file state client_pid file_path check_only
@@ -176,8 +174,11 @@ and handle_ping = fun state client_pid ->
 (** Handler for scan workspace message *)
 and handle_scan_workspace = fun state client_pid current_dir ->
   trace_server ("handle_scan_workspace cwd=" ^ Path.to_string current_dir);
-  let (workspace, load_errors) = Workspace_manager.scan current_dir |> Result.expect ~msg:"riot_build: workspace scan failed" in
-  let workspace = prepare_workspace ~registry:state.registry ~workspace () |> Result.expect ~msg:"riot_build: workspace pm preparation failed" in
+  let workspace_manager = Workspace_manager.create () in
+  let (workspace, load_errors) = Workspace_manager.scan workspace_manager current_dir
+  |> Result.expect ~msg:"riot_build: workspace scan failed" in
+  let workspace = prepare_workspace ~workspace_manager ~registry:state.registry ~workspace ()
+  |> Result.expect ~msg:"riot_build: workspace pm preparation failed" in
   let package_graph =
     match Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace with
     | Ok graph -> graph
@@ -187,7 +188,7 @@ and handle_scan_workspace = fun state client_pid current_dir ->
         Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime ws
         |> Result.expect ~msg:"Failed to create empty package graph"
   in
-  let new_state = { state with workspace; package_graph; load_errors } in
+  let new_state = { state with workspace; workspace_manager; package_graph; load_errors } in
   trace_server
     ("handle_scan_workspace done packages=" ^ Int.to_string (List.length workspace.packages));
   send client_pid (Protocol.ServerResponse Protocol.WorkspaceScanned);
@@ -294,71 +295,6 @@ and handle_find_executable = fun state client_pid name ->
       (Protocol.ServerResponse (Protocol.ExecutableFound { package = pkg.name; binary = name }))
     | None -> send client_pid (Protocol.ServerResponse Protocol.ExecutableNotFound)
   );
-  loop state
-
-and handle_find_artifact = fun state client_pid package kind name ->
-  Log.info ("Server: handle_find_artifact package=" ^ package ^ " kind=" ^ kind ^ " name=" ^ name);
-  (* Find the package in the workspace *)
-  let pkg_opt =
-    List.find_opt (fun (p: Package.t) -> p.name = package) state.workspace.packages
-  in
-  let response =
-    match pkg_opt with
-    | None ->
-        Log.info ("Server: Package '" ^ package ^ "' not found in workspace");
-        Protocol.ServerResponse (Protocol.ArtifactNotFound {
-          error = "Package '" ^ package ^ "' not found"
-        })
-    | Some pkg ->
-        (* Artifact resolution order:
-           1) promoted package outputs in out/ (fast path for current command flow)
-           2) package export manifest -> immutable action artifact path
-
-           Package-level artifact hash lookup is no longer part of the hot
-           path. *)
-        let promoted_artifact_dir =
-          Path.(Riot_model.Riot_dirs.out_dir_with_target
-            ~workspace_root:state.workspace.root
-            ~profile:state.active_profile
-            ~target:state.active_target
-          / Path.v package) in
-        let promoted_artifact_path = Path.(promoted_artifact_dir / Path.v name) in
-        match Fs.exists promoted_artifact_path with
-        | Ok true ->
-            Log.info ("Server: Found promoted artifact at " ^ Path.to_string promoted_artifact_path);
-            Protocol.ServerResponse (Protocol.ArtifactFound { path = promoted_artifact_path })
-        | _ ->
-            let profile = state.active_profile in
-            let target = state.active_target in
-            let store = Riot_store.Store.create_for_lane ~workspace:state.workspace ~profile ~target in
-            (
-              match Riot_store.Store.find_package_export_path
-                store
-                ~package:pkg.name
-                ~profile
-                ~target
-                ~name with
-              | Some export_path -> (
-                  match Fs.exists export_path with
-                  | Ok true ->
-                      Log.info
-                        ("Server: Found export manifest artifact at " ^ Path.to_string export_path);
-                      Protocol.ServerResponse (Protocol.ArtifactFound { path = export_path })
-                  | _ ->
-                      Log.warn
-                        ("Server: Export manifest pointed to missing path " ^ Path.to_string export_path);
-                      Protocol.ServerResponse (Protocol.ArtifactNotFound {
-                        error = "Artifact '" ^ name ^ "' was not materialized and export source is missing"
-                      })
-                )
-              | None -> Protocol.ServerResponse (Protocol.ArtifactNotFound {
-                error = "Artifact '" ^ name ^ "' not found in package export manifest"
-              })
-            )
-  in
-  Log.debug "Server: Sending response";
-  send client_pid response;
-  Log.debug "Server: Response sent, continuing loop";
   loop state
 
 and handle_format_file = fun state client_pid file_path check_only ->
@@ -468,9 +404,13 @@ and handle_new_package = fun state client_pid path name is_library ->
       match (Fs.write ml_content main_ml, Fs.write toml_content package_toml, write_mli) with
       | Ok (), Ok (), Ok () ->
           Log.debug "Server: Rescanning workspace after package creation";
-          let (updated_workspace, updated_load_errors) = Workspace_manager.scan state.workspace.root
+          let workspace_manager = Workspace_manager.create () in
+          let (updated_workspace, updated_load_errors) = Workspace_manager.scan
+            workspace_manager
+            state.workspace.root
           |> Result.expect ~msg:"Failed to rescan workspace after package creation" in
           let updated_workspace = prepare_workspace
+            ~workspace_manager
             ~registry:state.registry
             ~workspace:updated_workspace
             ()
@@ -485,6 +425,7 @@ and handle_new_package = fun state client_pid path name is_library ->
           let updated_state = {
             state
             with workspace = updated_workspace;
+            workspace_manager;
             package_graph = updated_package_graph;
             load_errors = updated_load_errors
           } in
@@ -555,7 +496,7 @@ and handle_build = fun state client_pid target scope profile target_arch session
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ~(config:Server_config.t) () ->
+let start_local = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ~(config:Server_config.t) () ->
   try
     trace_server
       ("start_local workspace_root="
@@ -569,7 +510,12 @@ let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_regi
         Error (RegistryInitializationFailed { registry_name; error = err })
     | Ok registry ->
         trace_server "start_local resolved registry";
-        match prepare_workspace ~emit ~registry ~workspace () with
+        let workspace_manager =
+          match workspace_manager with
+          | Some workspace_manager -> workspace_manager
+          | None -> Workspace_manager.create ()
+        in
+        match prepare_workspace ~emit ~workspace_manager ~registry ~workspace () with
         | Error err ->
             trace_server ("start_local prepare_workspace failed: " ^ Riot_model.Pm_error.message err);
             Error (WorkspacePreparationFailed { error = err })
@@ -577,7 +523,7 @@ let start_local = fun ?(emit = no_emit) ?registry ?(registry_name = default_regi
             trace_server
               ("start_local prepared workspace packages="
               ^ Int.to_string (List.length workspace.packages));
-            let state = build_state ~workspace ~load_errors:[] ~registry ~config in
+            let state = build_state ~workspace ~workspace_manager ~load_errors:[] ~registry ~config in
             let server_pid =
               spawn
                 (fun () ->

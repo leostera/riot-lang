@@ -3,10 +3,16 @@ open Std
 
 type version =
   V0
+  | V1
 type file_entry = {
   path: Path.t;
   hash: string;
   size: int;
+}
+type export_entry = {
+  name: string;
+  path: Path.t;
+  action_hash: string;
 }
 type t = {
   version: version;
@@ -15,10 +21,12 @@ type t = {
   timestamp: Std.Time.SystemTime.t;
   files: file_entry list;
   ocamlc_warnings: string list;
+  exports: export_entry list;
 }
 val create:
   ?base_dir:Path.t ->
   ?ocamlc_warnings:string list ->
+  ?exports:export_entry list ->
   unit ->
   package:string ->
   build_hash:string ->

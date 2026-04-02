@@ -63,6 +63,7 @@ val run_event_to_json: run_event -> Data.Json.t option
 
 val start_local:
   ?emit:(Riot_model.Event.kind -> unit) ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
   ?registry:Pkgs_ml.Registry.t ->
   ?registry_name:string ->
   workspace:Riot_model.Workspace.t ->
@@ -70,7 +71,11 @@ val start_local:
   unit ->
   (Pid.t, error) result
 
-val build: ?on_event:(build_event -> unit) -> build_request -> (unit, build_error) result
+val build:
+  ?on_event:(build_event -> unit) ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  build_request ->
+  (Riot_executor.Package_builder.build_result list, build_error) result
 
 val run: ?on_event:(run_event -> unit) -> run_request -> (unit, run_error) result
 

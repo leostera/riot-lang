@@ -13,6 +13,7 @@
 7. Normal command entrypoints should assume `riot-cli` already validated workspace load errors; do not reintroduce `load_errors` plumbing into public request types unless a command truly needs partial-workspace behavior.
 8. Requested profiles must propagate end-to-end through the client/server/worker path. Do not recompute `debug` inside the internal server or build worker once a request already carries `profile`.
 9. Test-suite discovery narrowing belongs here. When the CLI parses `package:suite`, carry the suite filter through typed test requests and apply it before building/running binaries instead of forwarding the whole selector as a per-test query string.
+10. `build` returns per-package build results. `run`/`install`/`test`/`bench` should consume those returned outputs directly instead of round-tripping through the server/store to rediscover artifacts by name.
 
 ## Validate
 

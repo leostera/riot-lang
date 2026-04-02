@@ -165,7 +165,7 @@ let collect_ocamlc_warnings = fun completed_actions ->
         result.Action_executor.ocamlc_warnings)
     []
 
-let compute_export_entries : Action_graph.t -> Riot_store.Store.export_entry list = fun action_graph ->
+let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list = fun action_graph ->
   let entries =
     Action_graph.nodes action_graph
     |> List.concat_map
@@ -196,7 +196,7 @@ let artifact_from_exports = fun ~package_hash (exports: Riot_store.Store.export_
   let files =
     List.map (fun (entry: Riot_store.Store.export_entry) -> Path.v entry.name) exports
   in
-  Riot_store.Artifact.{ hash = package_hash; files; ocamlc_warnings = [] }
+  Riot_store.Artifact.{ hash = package_hash; files; ocamlc_warnings = []; exports }
 
 let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
   let start = Instant.now () in
@@ -306,22 +306,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
     depset;
     exports
   }) ->
-      let all_exports_present =
-        List.for_all
-          (fun (entry: Riot_store.Store.export_entry) ->
-            let dst = Path.(target_dir / Path.v entry.name) in
-            match Fs.exists dst with
-            | Ok true -> true
-            | Ok false
-            | Error _ -> false)
-          exports
-      in
-      let materialized =
-        if all_exports_present then
-          Ok ()
-        else
-          Riot_store.Store.materialize_package_exports store ~exports ~target_dir
-      in
+      let materialized = Ok () in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       (
         match materialized with
@@ -381,14 +366,12 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               | None -> ()
             );
             Telemetry.emit
-              (
-                BuildFailed {
-                  session_id;
-                  package;
-                  target = Workspace_planner.Package package.name;
-                  error
-                }
-              );
+              (BuildFailed {
+                session_id;
+                package;
+                target = Workspace_planner.Package package.name;
+                error
+              });
             {
               package_key = planned_key;
               package;
@@ -506,13 +489,6 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
             duration;
           }
       | Ok (artifact, export_entries, ocamlc_warnings) ->
-          let _ = Riot_store.Store.save_package_exports
-            store
-            ~package:package.name
-            ~profile:profile_name
-            ~target:target_triple_str
-            ~exports:export_entries
-          |> Result.expect ~msg:(("Failed to save package export manifest for " ^ package.name)) in
           Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
           |> Result.expect ~msg:(("Failed to materialize package exports for " ^ package.name));
           let package_outs =
@@ -524,6 +500,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
             store
             ~package:package.name
             ~ocamlc_warnings
+            ~exports:export_entries
             ~hash:package_hash
             ~sandbox_dir:target_dir
             ~outs:package_outs

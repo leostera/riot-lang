@@ -14,7 +14,7 @@
 8. Package-plan cache keys must include all compiler inputs that can change produced artifacts, including the resolved toolchain identity for cross builds.
 9. `CreateLibrary` inputs must be `.cmx` from OCaml module deps plus `.o` from `Native` C deps only. Do not feed ML companion `.o` files into library archive planning.
 10. Resolved profile-owned compile flags must flow into planned OCaml compile actions. If release/debug profile settings change emitted compiler args, the action graph and planner artifact version must change with them.
-11. Warm cached packages should short-circuit from artifact + export metadata when possible. Do not require full module/action graph decode on cache hits unless execution really needs the full plan.
+11. Warm cached packages should short-circuit from the hash-addressed artifact manifest when possible. Do not require full module/action graph decode on cache hits unless execution really needs the full plan.
 
 ## Validate
 

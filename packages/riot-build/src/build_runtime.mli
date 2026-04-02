@@ -25,4 +25,8 @@ type build_error =
   | ClientError of Client.error
 val error_message: build_error -> string
 
-val build: ?on_event:(build_event -> unit) -> build_request -> (unit, build_error) result
+val build:
+  ?on_event:(build_event -> unit) ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  build_request ->
+  (Riot_executor.Package_builder.build_result list, build_error) result

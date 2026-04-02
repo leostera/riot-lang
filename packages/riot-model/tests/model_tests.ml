@@ -2,7 +2,14 @@ open Std
 module Test = Std.Test
 
 let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
-  Riot_model.Package.{ workspace; builtin; path; source_locator; ref_; version }
+  Riot_model.Package.{
+    workspace;
+    builtin;
+    path;
+    source_locator;
+    ref_;
+    version;
+  }
 
 let make_command = fun () ->
   Riot_model.Package_command.{
@@ -564,7 +571,8 @@ kernel = { path = "../kernel" }
 name = "kernel"
 version = "0.1.0"
 |};
-      match Riot_model.Workspace_manager.scan root with
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      match Riot_model.Workspace_manager.scan workspace_manager root with
       | Error err -> Error err
       | Ok (workspace, errors) ->
           if errors != [] then
@@ -599,17 +607,19 @@ version = "0.1.0"
 [dependencies]
 minttea = "not-a-version"
 |};
-      match Riot_model.Workspace_manager.scan root with
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      match Riot_model.Workspace_manager.scan workspace_manager root with
       | Error err -> Error err
       | Ok (_workspace, errors) -> (
           match errors with
           | [ Riot_model.Workspace_manager.PackageFromTomlFailed { package; error; _ } ] ->
-              if String.equal package "app" && String.contains error "invalid version requirement 'not-a-version'" then
+              if
+                String.equal package "app" && String.contains error "invalid version requirement 'not-a-version'"
+              then
                 Ok ()
               else
                 Error ("unexpected member decode error: " ^ error)
-          | _ ->
-              Error "expected invalid member manifest to surface as a workspace load error"
+          | _ -> Error "expected invalid member manifest to surface as a workspace load error"
         ))
 
 let test_user_config_parses_registry_api_token = fun _ctx ->

@@ -2,14 +2,11 @@ open Std
 module Test = Std.Test
 
 let write_workspace_manifest = fun ~root ~members ->
-  let members =
-    members
-    |> List.map (fun member -> "  \"" ^ Path.to_string member ^ "\"")
-    |> String.concat ",\n"
-  in
+  let members = members
+  |> List.map (fun member -> "  \"" ^ Path.to_string member ^ "\"")
+  |> String.concat ",\n" in
   let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
-  Fs.write content Path.(root / Path.v "riot.toml")
-  |> Result.expect ~msg:"expected workspace manifest to be written"
+  Fs.write content Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"expected workspace manifest to be written"
 
 let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in

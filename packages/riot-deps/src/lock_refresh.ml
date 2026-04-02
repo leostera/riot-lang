@@ -12,9 +12,9 @@ let rec canonicalize_toml_value = function
   | Std.Data.Toml.Array items -> Std.Data.Toml.Array (List.map canonicalize_toml_value items)
   | Std.Data.Toml.Table fields ->
       Std.Data.Toml.Table (
-        fields
-        |> List.map (fun (key, value) -> (key, canonicalize_toml_value value))
-        |> List.sort (fun (left, _) (right, _) -> String.compare left right)
+        fields |> List.map (fun (key, value) -> (key, canonicalize_toml_value value)) |> List.sort
+          (fun (left, _) (right, _) ->
+            String.compare left right)
       )
 
 let manifest_id = fun ~workspace_root manifest_path ->
@@ -27,27 +27,33 @@ let dependency_section_value = fun ~manifest_path section_name toml ->
   | Std.Data.Toml.Table fields -> (
       match List.assoc_opt section_name fields with
       | Some (Std.Data.Toml.Table _ as value) -> Ok (canonicalize_toml_value value)
-      | Some _ ->
-          Error ("manifest dependency section '["
-          ^ section_name
-          ^ "]' in '"
-          ^ Path.to_string manifest_path
-          ^ "' must be a table")
+      | Some _ -> Error ("manifest dependency section '["
+      ^ section_name
+      ^ "]' in '"
+      ^ Path.to_string manifest_path
+      ^ "' must be a table")
       | None -> Ok (Std.Data.Toml.Table [])
     )
-  | _ ->
-      Error ("manifest '" ^ Path.to_string manifest_path ^ "' must decode to a TOML table")
+  | _ -> Error ("manifest '" ^ Path.to_string manifest_path ^ "' must decode to a TOML table")
 
-let manifest_dependency_fingerprint = fun ~workspace_root manifest_path ->
-  let* source = Fs.read_to_string manifest_path
-  |> Result.map_error (fun err ->
-    "failed to read manifest '" ^ Path.to_string manifest_path ^ "': " ^ IO.error_message err) in
-  let* toml = Std.Data.Toml.parse source
-  |> Result.map_error (fun err ->
-    "failed to parse manifest '"
-    ^ Path.to_string manifest_path
-    ^ "': "
-    ^ Std.Data.Toml.error_to_string err) in
+let load_manifest_toml = fun ~workspace_manager manifest_path ->
+  match workspace_manager with
+  | Some workspace_manager -> Riot_model.Workspace_manager.load_riot_toml workspace_manager manifest_path
+  | None ->
+      let* source = Fs.read_to_string manifest_path
+      |> Result.map_error
+        (fun err ->
+          "failed to read manifest '" ^ Path.to_string manifest_path ^ "': " ^ IO.error_message err) in
+      Std.Data.Toml.parse source
+      |> Result.map_error
+        (fun err ->
+          "failed to parse manifest '"
+          ^ Path.to_string manifest_path
+          ^ "': "
+          ^ Std.Data.Toml.error_to_string err)
+
+let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root manifest_path ->
+  let* toml = load_manifest_toml ~workspace_manager manifest_path in
   let* dependencies = dependency_section_value ~manifest_path "dependencies" toml in
   let* build_dependencies = dependency_section_value ~manifest_path "build-dependencies" toml in
   let* dev_dependencies = dependency_section_value ~manifest_path "dev-dependencies" toml in
@@ -58,25 +64,23 @@ let manifest_dependency_fingerprint = fun ~workspace_root manifest_path ->
     ("dev-dependencies", dev_dependencies);
   ])
 
-let dependency_hash = fun ~workspace_root ~manifest_paths ->
+let dependency_hash = fun ~workspace_manager ~workspace_root ~manifest_paths ->
   let manifest_paths = List.sort_uniq compare_by_path manifest_paths in
   let rec loop acc = function
     | [] ->
-        let canonical =
-          Std.Data.Toml.Array (List.rev acc)
-          |> canonicalize_toml_value
-          |> Std.Data.Toml.to_string
-        in
+        let canonical = Std.Data.Toml.Array (List.rev acc)
+        |> canonicalize_toml_value
+        |> Std.Data.Toml.to_string in
         Ok (Crypto.hash_string canonical |> Crypto.Digest.hex)
     | manifest_path :: rest ->
-        let* fingerprint = manifest_dependency_fingerprint ~workspace_root manifest_path in
+        let* fingerprint = manifest_dependency_fingerprint ~workspace_manager ~workspace_root manifest_path in
         loop (fingerprint :: acc) rest
   in
   loop [] manifest_paths
 
-let needs_refresh = fun ~workspace_root ~manifest_paths ~lockfile ->
-  let* current_dependency_hash = dependency_hash ~workspace_root ~manifest_paths in
+let needs_refresh = fun ~workspace_manager ~workspace_root ~manifest_paths ~lockfile ->
+  let* current_dependency_hash = dependency_hash ~workspace_manager ~workspace_root ~manifest_paths in
   match lockfile with
   | None -> Ok true
-  | Some (lockfile: Riot_model.Lockfile.t) ->
-      Ok (not (String.equal lockfile.dependency_hash current_dependency_hash))
+  | Some (lockfile: Riot_model.Lockfile.t) -> Ok (not
+    (String.equal lockfile.dependency_hash current_dependency_hash))

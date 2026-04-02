@@ -66,7 +66,7 @@ let package_error_to_telemetry_error = function
     failed
   }
 
-let compute_export_entries : Action_graph.t -> Riot_store.Store.export_entry list = fun action_graph ->
+let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list = fun action_graph ->
   let entries =
     Action_graph.nodes action_graph
     |> List.concat_map
@@ -97,7 +97,7 @@ let artifact_from_exports = fun ~package_hash (exports: Riot_store.Store.export_
   let files =
     List.map (fun (entry: Riot_store.Store.export_entry) -> Path.v entry.name) exports
   in
-  Riot_store.Artifact.{ hash = package_hash; files; ocamlc_warnings = [] }
+  Riot_store.Artifact.{ hash = package_hash; files; ocamlc_warnings = []; exports }
 
 let collect_ocamlc_warnings = fun completed_actions ->
   let seen = HashSet.create () in
@@ -217,13 +217,6 @@ let mark_package_cached_in_graph = fun package_graph ~package ~package_key ~hash
 
 let finalize_package_success = fun ~session_id ~store ~runtime ->
   let ocamlc_warnings = collect_ocamlc_warnings runtime.completed_actions in
-  let _ = Riot_store.Store.save_package_exports
-    store
-    ~package:runtime.package.name
-    ~profile:runtime.profile_name
-    ~target:runtime.target_name
-    ~exports:runtime.export_entries
-  |> Result.expect ~msg:(("Failed to save package export manifest for " ^ runtime.package.name)) in
   Riot_store.Store.materialize_package_exports
     store
     ~exports:runtime.export_entries
@@ -238,6 +231,7 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     store
     ~package:runtime.package.name
     ~ocamlc_warnings
+    ~exports:runtime.export_entries
     ~hash:runtime.hash
     ~sandbox_dir:runtime.target_dir
     ~outs:package_outs
@@ -246,7 +240,8 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     Riot_store.Artifact.{
       hash = runtime.hash;
       files = List.map (fun (entry: Riot_store.Store.export_entry) -> Path.v entry.name) runtime.export_entries;
-      ocamlc_warnings
+      ocamlc_warnings;
+      exports = runtime.export_entries
     } in
   let all_cached =
     HashMap.into_iter runtime.completed_actions
@@ -289,11 +284,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
   let profile_name = build_ctx.Build_ctx.profile.name in
   let target_triple_str = Kernel.System.Host.to_string (Build_ctx.target_triplet build_ctx) in
   let planning_duration = ref Time.Duration.zero in
-  let planning_results : (Package.key, package_planning_status) HashMap.t = HashMap.create () in
-  let runtimes : (Package.key, package_runtime) HashMap.t = HashMap.create () in
-  let package_results : (Package.key, Package_builder.build_result) HashMap.t = HashMap.create () in
-  let pending_planning : (Package.key, Package_graph.package_node) HashMap.t = HashMap.create () in
-  let action_ready_queue : (Package.key * Action_node.t) Queue.t = Queue.create () in
+  let planning_results: (Package.key, package_planning_status) HashMap.t = HashMap.create () in
+  let runtimes: (Package.key, package_runtime) HashMap.t = HashMap.create () in
+  let package_results: (Package.key, Package_builder.build_result) HashMap.t = HashMap.create () in
+  let pending_planning: (Package.key, Package_graph.package_node) HashMap.t = HashMap.create () in
+  let action_ready_queue: (Package.key * Action_node.t) Queue.t = Queue.create () in
   let ready_count = ref 0 in
   let coordinator_pid = self () in
   let enqueue_ready item =
@@ -362,23 +357,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       ~target:target_triple_str
     / Path.v package_name) in
   let finalize_cached_package ~package_key ~(package:Package.t) ~hash ~artifact ~depset ~exports =
-    let target_dir = target_dir_for package.name in
-    let all_exports_present =
-      List.for_all
-        (fun (entry: Riot_store.Store.export_entry) ->
-          let dst = Path.(target_dir / Path.v entry.name) in
-          match Fs.exists dst with
-          | Ok true -> true
-          | Ok false
-          | Error _ -> false)
-        exports
-    in
-    let materialized =
-      if all_exports_present then
-        Ok ()
-      else
-        Riot_store.Store.materialize_package_exports store ~exports ~target_dir
-    in
+    let materialized = Ok () in
     match materialized with
     | Ok () ->
         let result =
@@ -419,21 +398,14 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
           }
         in
         let _ = HashMap.insert package_results package_key result in
-        mark_package_failed_in_graph
-          package_graph
-          ~package
-          ~package_key
-          ~hash
-          ~error:message;
+        mark_package_failed_in_graph package_graph ~package ~package_key ~hash ~error:message;
         Telemetry.emit
-          (
-            BuildFailed {
-              session_id;
-              package;
-              target = Workspace_planner.Package package.name;
-              error = package_error_to_telemetry_error error;
-            }
-          )
+          (BuildFailed {
+            session_id;
+            package;
+            target = Workspace_planner.Package package.name;
+            error = package_error_to_telemetry_error error
+          })
   in
   let stage_runtime ~package_key ~(package:Package.t) ~hash ~depset ~module_graph ~action_graph =
     let inputs = List.concat [ package.sources.src; package.sources.native; package.sources.tests; ] in
@@ -544,7 +516,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
             artifact;
             depset;
             exports;
-            _; }) ->
+            _;
+
+          }) ->
               update_planning_progress
                 package_key
                 `Planned
@@ -565,9 +539,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               update_planning_progress
                 package_key
                 `Planned
-                  ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
-                  ~package
-                  ~reason:None;
+                ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
+                ~package
+                ~reason:None;
               progressed := true;
               stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph)
         pending_nodes;
@@ -630,7 +604,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 package_graph
                 ~package
                 ~package_key
-                ~reason:("needs " ^ String.concat ", " names);
+                ~reason:(("needs " ^ String.concat ", " names));
               let _ = HashMap.remove pending_planning package_key in
               ()
             )
@@ -700,7 +674,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     package_graph
                     ~package
                     ~package_key
-                    ~reason:("needs " ^ String.concat ", " names);
+                    ~reason:(("needs " ^ String.concat ", " names));
                   let _ = HashMap.remove pending_planning package_key in
                   ()
               | Ok (Cached {
@@ -709,7 +683,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 artifact;
                 depset;
                 exports;
-                _; }) ->
+                _;
+
+              }) ->
                   update_planning_progress
                     package_key
                     `Planned
@@ -768,11 +744,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 package_key
                 runtime.package
                 (Package_builder.Skipped { reason }) in
-              mark_package_skipped_in_graph
-                package_graph
-                ~package:runtime.package
-                ~package_key
-                ~reason;
+              mark_package_skipped_in_graph package_graph ~package:runtime.package ~package_key ~reason;
               Sandbox.cleanup runtime.sandbox
             )
           else
@@ -887,12 +859,12 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
   let workers =
     List.make ~len:worker_count ~fn:(fun _ -> spawn workspace_worker_loop)
   in
-  let idle_workers : Pid.t Queue.t = Queue.create () in
+  let idle_workers: Pid.t Queue.t = Queue.create () in
   List.iter
     (fun pid ->
       Queue.push idle_workers pid)
     workers;
-  let busy_workers : (Pid.t, Package.key) HashMap.t = HashMap.create () in
+  let busy_workers: (Pid.t, Package.key) HashMap.t = HashMap.create () in
   let rec drain_work_queue () =
     match Queue.pop idle_workers with
     | None -> ()

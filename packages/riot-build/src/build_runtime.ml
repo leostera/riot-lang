@@ -28,7 +28,7 @@ type build_error =
   | ToolchainInitializationFailed of { target: string; error: string }
   | ClientError of Client.error
 
-let no_event : build_event -> unit = fun _ -> ()
+let no_event: build_event -> unit = fun _ -> ()
 
 let error_message = function
   | NoTargetsMatched { pattern; available_targets } -> "No targets match pattern '"
@@ -124,7 +124,7 @@ let client_target = fun packages ->
   | [ package ] -> Client.BuildPackage package
   | packages -> Client.BuildPackages packages
 
-let build = fun ?(on_event = no_event) request ->
+let build = fun ?(on_event = no_event) ?workspace_manager request ->
   let pm_session_id = Riot_model.Session_id.make () in
   match resolve_targets request with
   | Error _ as err -> err
@@ -136,6 +136,7 @@ let build = fun ?(on_event = no_event) request ->
           | Error _ as err -> err
           | Ok () -> (
               match Client.connect_local
+                ?workspace_manager
                 ~emit:(fun kind ->
                   on_event
                     (Pm (Riot_model.Event.create
@@ -148,8 +149,8 @@ let build = fun ?(on_event = no_event) request ->
                   try
                     let host = Riot_toolchain.get_host_triple () in
                     let request_target = client_target request.packages in
-                    let rec loop = function
-                      | [] -> Ok ()
+                    let rec loop acc = function
+                      | [] -> Ok (List.rev acc |> List.concat)
                       | target :: rest ->
                           on_event (BuildingTarget { target; host = String.equal target host });
                           let target_arch =
@@ -165,10 +166,11 @@ let build = fun ?(on_event = no_event) request ->
                             ~profile:request.profile
                             ?target_arch
                             (fun event -> on_event (Streaming event)) with
-                          | Ok _ -> loop rest
+                          | Ok (Client.BuildCompleted { results; _ }) -> loop (results :: acc) rest
+                          | Ok _ -> loop acc rest
                           | Error err -> Error (ClientError err)
                     in
-                    let result = loop targets in
+                    let result = loop [] targets in
                     Client.close client;
                     result
                   with

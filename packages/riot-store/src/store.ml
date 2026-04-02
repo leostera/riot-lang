@@ -8,11 +8,12 @@ module Manifest = Manifest
 
 type t = {
   root_dir: Path.t;  (* Root directory for the store *)
+  manifest_cache: (string, Manifest.t option) HashMap.t;
 }
 
 type error = string
 
-type export_entry = {
+type export_entry = Manifest.export_entry = {
   name: string;
   path: Path.t;
   action_hash: string;
@@ -23,7 +24,7 @@ let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir = Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache") in
   Fs.create_dir_all store_dir
   |> Result.expect ~msg:(("Failed to create store directory: " ^ Path.to_string store_dir));
-  { root_dir = store_dir }
+  { root_dir = store_dir; manifest_cache = HashMap.create () }
 
 (** Create a new store for the given workspace *)
 let create = fun ~(workspace:Workspace.t) ->
@@ -34,28 +35,31 @@ let get_hash_dir = fun store hash -> Path.(store.root_dir / Path.v (Std.Crypto.D
 
 let manifest_path = fun hash_dir -> Path.(hash_dir / Path.v "manifest.json")
 
+let manifest_cache_key = fun hash -> Std.Crypto.Digest.hex hash
+
 let plans_dir = fun store -> Path.(store.root_dir / Path.v "plans")
 
 let plan_path = fun store hash ->
   Path.(plans_dir store / Path.v (Std.Crypto.Digest.hex hash ^ ".json"))
 
-let exports_dir = fun store -> Path.(store.root_dir / Path.v "exports")
-
-let package_exports_path = fun store ~package ~profile ~target ->
-  Path.(exports_dir store / Path.v profile / Path.v target / Path.v (package ^ ".json"))
-
 (** Check if artifacts for a given hash exist in the store *)
 let exists = fun store hash ->
-  let hash_dir = get_hash_dir store hash in
-  match Fs.exists hash_dir with
-  | Ok true -> (
-      match Fs.exists (manifest_path hash_dir) with
-      | Ok true -> true
+  match HashMap.get store.manifest_cache (manifest_cache_key hash) with
+  | Some (Some _) ->
+      true
+  | Some None ->
+      false
+  | None ->
+      let hash_dir = get_hash_dir store hash in
+      match Fs.exists hash_dir with
+      | Ok true -> (
+          match Fs.exists (manifest_path hash_dir) with
+          | Ok true -> true
+          | Ok false
+          | Error _ -> false
+        )
       | Ok false
       | Error _ -> false
-    )
-  | Ok false
-  | Error _ -> false
 
 (** Promote artifacts from store to target directory *)
 let promote = fun store hash ~target_dir ->
@@ -79,7 +83,7 @@ let promote = fun store hash ~target_dir ->
   | Error _ -> Error "Hash not found in store"
 
 (** Store artifacts from sandbox to content-addressable store *)
-let store_artifacts = fun store ~package ?(ocamlc_warnings = []) hash sandbox_dir declared_outputs ->
+let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = []) hash sandbox_dir declared_outputs ->
   let hash_dir = get_hash_dir store hash in
   let temp_dir =
     let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
@@ -115,6 +119,7 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) hash sandbox_di
   let manifest = Manifest.create
     ~base_dir:temp_dir
     ~ocamlc_warnings
+    ~exports
     ()
     ~package
     ~build_hash:(Std.Crypto.Digest.hex hash)
@@ -147,27 +152,43 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) hash sandbox_di
     | Ok false
     | Error _ -> ()
   );
+  let _ = HashMap.insert store.manifest_cache (manifest_cache_key hash) (Some manifest) in
   (* Return artifact witness with just the filenames *)
   let stored_files =
     List.map (fun ((path, _)) -> path) stored_files_with_sizes
   in
-  Artifact.{ hash; files = List.rev stored_files; ocamlc_warnings }
+  Artifact.{ hash; files = List.rev stored_files; ocamlc_warnings; exports }
+
+let load_manifest = fun store ~hash ->
+  let key = manifest_cache_key hash in
+  match HashMap.get store.manifest_cache key with
+  | Some manifest -> manifest
+  | None ->
+      let manifest =
+        match Manifest.load ~path:(manifest_path (get_hash_dir store hash)) with
+        | Ok manifest -> Some manifest
+        | Error _ -> None
+      in
+      let _ = HashMap.insert store.manifest_cache key manifest in
+      manifest
 
 (** Simple interface - check if we have cached artifacts for a hash *)
 let get = fun store hash ->
-  if exists store hash then
-    match Manifest.load ~path:(manifest_path (get_hash_dir store hash)) with
-    | Ok manifest ->
-        let files =
-          List.map (fun entry -> entry.Manifest.path) manifest.files
-        in
-        Some Artifact.{ hash; files; ocamlc_warnings = manifest.ocamlc_warnings }
-    | Error _ -> None
-  else
-    None
+  match load_manifest store ~hash with
+  | Some manifest ->
+      let files =
+        List.map (fun (entry: Manifest.file_entry) -> entry.path) manifest.files
+      in
+      Some Artifact.{
+        hash;
+        files;
+        ocamlc_warnings = manifest.ocamlc_warnings;
+        exports = manifest.exports
+      }
+  | None -> None
 
 (** Save build outputs to the store *)
-let save = fun ?(ocamlc_warnings = []) store ~package ~hash ~sandbox_dir ~outs ->
+let save = fun ?(ocamlc_warnings = []) ?(exports = []) store ~package ~hash ~sandbox_dir ~outs ->
   let sandbox_str = Path.to_string sandbox_dir in
   let sandbox_len = String.length sandbox_str in
   let outs_str =
@@ -181,7 +202,7 @@ let save = fun ?(ocamlc_warnings = []) store ~package ~hash ~sandbox_dir ~outs -
           Path.to_string out_path)
       outs
   in
-  let artifact = store_artifacts store ~package ~ocamlc_warnings hash sandbox_dir outs_str in
+  let artifact = store_artifacts store ~package ~ocamlc_warnings ~exports hash sandbox_dir outs_str in
   Ok artifact
 
 (** Promote cached artifacts to target directory *)
@@ -228,111 +249,30 @@ let load_plan_bundle = fun store ~hash ->
     )
   | Error _ -> None
 
-let export_entry_to_json = fun (entry: export_entry) ->
-  Std.Data.Json.Object [
-    ("name", Std.Data.Json.String entry.name);
-    ("path", Std.Data.Json.String (Path.to_string entry.path));
-    ("action_hash", Std.Data.Json.String entry.action_hash);
-  ]
-
-let export_entry_of_json = fun json ->
-  match json with
-  | Std.Data.Json.Object fields -> (
-      match (
-        List.assoc_opt "name" fields,
-        List.assoc_opt "path" fields,
-        List.assoc_opt "action_hash" fields
-      ) with
-      | Some (Std.Data.Json.String name), Some (Std.Data.Json.String path), Some (Std.Data.Json.String action_hash) -> Some {
-        name;
-        path = Path.v path;
-        action_hash
-      }
-      | _ -> None
-    )
-  | _ -> None
-
-let save_package_exports = fun store ~package ~profile ~target ~exports ->
-  let path = package_exports_path store ~package ~profile ~target in
-  let parent = Path.dirname path in
-  Fs.create_dir_all parent
-  |> Result.expect ~msg:(("Failed to create package export directory: " ^ Path.to_string parent));
-  let payload = Std.Data.Json.Object [
-    ("version", Std.Data.Json.Int 1);
-    ("package", Std.Data.Json.String package);
-    ("profile", Std.Data.Json.String profile);
-    ("target", Std.Data.Json.String target);
-    ("exports", Std.Data.Json.Array (List.map export_entry_to_json exports));
-  ] in
-  match Fs.write (Std.Data.Json.to_string payload) path with
-  | Ok () -> Ok ()
-  | Error _ -> Error "Failed to write package export manifest"
-
-let load_package_exports = fun store ~package ~profile ~target ->
-  let path = package_exports_path store ~package ~profile ~target in
-  match Fs.read path with
-  | Error _ -> None
-  | Ok content -> (
-      match Std.Data.Json.of_string content with
-      | Error _ ->
-          None
-      | Ok (Std.Data.Json.Object fields) -> (
-          match List.assoc_opt "exports" fields with
-          | Some (Std.Data.Json.Array entries) -> Some (List.filter_map export_entry_of_json entries)
-          | _ -> None
-        )
-      | Ok _ ->
-          None
-    )
-
-let package_export_sources_exist = fun store ~exports ->
-  List.for_all
-    (fun (entry: export_entry) ->
-      if Path.is_absolute entry.path then
-        false
-      else
-        let src = Path.(store.root_dir / Path.v entry.action_hash / entry.path) in
-        match Fs.exists src with
-        | Ok true -> true
-        | Ok false
-        | Error _ -> false)
-    exports
-
-let find_package_export_path = fun store ~package ~profile ~target ~name ->
-  match load_package_exports store ~package ~profile ~target with
-  | None -> None
-  | Some exports -> (
-      match
-        List.find_opt
-          (fun entry ->
-            String.equal entry.name name)
-          exports
-      with
-      | None -> None
-      | Some entry ->
-          if Path.is_absolute entry.path then
-            None
-          else
-            Some Path.(store.root_dir / Path.v entry.action_hash / entry.path)
-    )
+let export_source_path = fun store (entry: export_entry) ->
+  if Path.is_absolute entry.path then
+    None
+  else
+    Some Path.(store.root_dir / Path.v entry.action_hash / entry.path)
 
 let materialize_package_exports = fun store ~exports ~target_dir ->
   Fs.create_dir_all target_dir
   |> Result.expect ~msg:(("Failed to create package output directory: " ^ Path.to_string target_dir));
   let copy_one (entry: export_entry) =
-    if Path.is_absolute entry.path then
-      Error ("Export path must be relative: " ^ Path.to_string entry.path)
-    else
-      let src = Path.(store.root_dir / Path.v entry.action_hash / entry.path) in
-      let dst = Path.(target_dir / Path.v entry.name) in
-      match Fs.exists src with
-      | Ok true -> Fs.copy ~src ~dst
-      |> Result.map_error
-        (fun _ -> "Failed to copy export: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst)
-      | Ok false
-      | Error _ ->
-          Log.warn ("Export source not found in store: " ^ Path.to_string src);
-          Ok ()
+    match export_source_path store entry with
+    | None -> Error ("Export path must be relative: " ^ Path.to_string entry.path)
+    | Some src ->
+        let dst = Path.(target_dir / Path.v entry.name) in
+        match Fs.exists src with
+        | Ok true -> Fs.copy ~src ~dst
+        |> Result.map_error
+          (fun _ -> "Failed to copy export: " ^ Path.to_string src ^ " -> " ^ Path.to_string dst)
+        | Ok false
+        | Error _ ->
+            Error
+              ("Export source is missing from the store: "
+              ^ Path.to_string src
+              ^ " (cache is corrupted; try `riot clean`)")
   in
   List.fold_left
     (fun acc entry ->

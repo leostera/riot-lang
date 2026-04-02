@@ -27,7 +27,7 @@ type test_error =
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 
-let no_event : test_event -> unit = fun _ -> ()
+let no_event: test_event -> unit = fun _ -> ()
 
 let is_test_binary_name = fun name ->
   String.ends_with ~suffix:"_tests" name || String.ends_with ~suffix:"-tests" name
@@ -49,11 +49,11 @@ let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_fi
     (fun (pkg: Riot_model.Package.t) ->
       List.filter_map
         (fun (bin: Riot_model.Package.binary) ->
-          if is_test_binary_name bin.name
-             && (match suite_filter with
-             | None -> true
-             | Some suite_name -> String.equal bin.name suite_name)
-          then
+          if is_test_binary_name bin.name && (
+              match suite_filter with
+              | None -> true
+              | Some suite_name -> String.equal bin.name suite_name
+            ) then
             Some { package_name = pkg.name; suite_name = bin.name }
           else
             None)
@@ -102,21 +102,45 @@ let test_event_to_json = function
     ("failed", Data.Json.Int failed);
   ])
 
-let reconnect = fun ~workspace ->
-  Client.connect_local ~workspace () |> Result.map_error (fun err -> ClientError err)
+let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) results ->
+  let find_suite_export (result: Riot_executor.Package_builder.build_result) =
+    if String.equal result.package.name suite.package_name then
+      match result.status with
+      | Riot_executor.Package_builder.Built artifact
+      | Riot_executor.Package_builder.Cached artifact ->
+          List.find_opt
+            (fun (entry: Riot_store.Manifest.export_entry) ->
+              String.equal entry.name suite.suite_name)
+            artifact.exports
+      | Riot_executor.Package_builder.Skipped _
+      | Riot_executor.Package_builder.Failed _ -> None
+    else
+      None
+  in
+  match List.find_map find_suite_export results with
+  | None -> Error (SuiteArtifactNotFound {
+    suite;
+    reason = "suite '" ^ suite.suite_name ^ "' was not produced by build results"
+  })
+  | Some export_entry -> (
+      match Riot_store.Store.export_source_path store export_entry with
+      | Some path -> Ok (Path.to_string path)
+      | None -> Error (SuiteArtifactNotFound {
+        suite;
+        reason = "suite '" ^ suite.suite_name ^ "' resolved to an invalid absolute export path"
+      })
+    )
 
 let run_suite_binary_capture = fun ~extra_args binary_path ->
   let cmd = Command.make binary_path ~args:(("run-tests" :: extra_args)) in
   Command.output cmd
 
 let test = fun ?(on_event = no_event) (request: test_request) ->
-  let suites =
-    collect_suite_binaries
-      request.workspace
-      ?package_filter:request.package_filter
-      ?suite_filter:request.suite_filter
-      ()
-  in
+  let suites = collect_suite_binaries
+    request.workspace
+    ?package_filter:request.package_filter
+    ?suite_filter:request.suite_filter
+    () in
   if suites = [] then
     (
       on_event
@@ -135,58 +159,50 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
         }
     with
     | Error err -> Error (BuildFailed err)
-    | Ok () -> (
-        match reconnect ~workspace:request.workspace with
-        | Error _ as err -> err
-        | Ok client ->
-            let result =
-              let total = ref 0 in
-              let passed = ref 0 in
-              let failed = ref 0 in
-              let extra_args =
-                match request.query with
-                | None -> request.extra_args
-                | Some query -> query :: request.extra_args
-              in
-              let rec loop = function
-                | [] ->
-                    on_event (Summary { total = !total; passed = !passed; failed = !failed });
-                    if !failed > 0 then
-                      Error (SuitesFailed !failed)
-                    else
-                      Ok ()
-                | suite :: rest -> (
-                    total := !total + 1;
-                    match Client.find_artifact
-                      client
-                      ~package:suite.package_name
-                      ~kind:"binary"
-                      ~name:suite.suite_name with
-                    | Error reason -> Error (SuiteArtifactNotFound { suite; reason })
-                    | Ok binary_path ->
-                        on_event (RunningSuite suite);
-                        match run_suite_binary_capture ~extra_args binary_path with
-                        | Error (Command.SystemError reason) -> Error (SuiteExecutionError {
+    | Ok results ->
+        let store = Riot_store.Store.create_for_lane
+          ~workspace:request.workspace
+          ~profile:"debug"
+          ~target:(Riot_model.Riot_dirs.host_target ()) in
+        let total = ref 0 in
+        let passed = ref 0 in
+        let failed = ref 0 in
+        let extra_args =
+          match request.query with
+          | None -> request.extra_args
+          | Some query -> query :: request.extra_args
+        in
+        let rec loop = function
+          | [] ->
+              on_event (Summary { total = !total; passed = !passed; failed = !failed });
+              if !failed > 0 then
+                Error (SuitesFailed !failed)
+              else
+                Ok ()
+          | suite :: rest -> (
+              total := !total + 1;
+              match find_suite_binary_path ~store ~suite results with
+              | Error _ as err -> err
+              | Ok binary_path ->
+                  on_event (RunningSuite suite);
+                  match run_suite_binary_capture ~extra_args binary_path with
+                  | Error (Command.SystemError reason) -> Error (SuiteExecutionError {
+                    suite;
+                    reason
+                  })
+                  | Ok output ->
+                      on_event
+                        (SuiteCompleted {
                           suite;
-                          reason
-                        })
-                        | Ok output ->
-                            on_event
-                              (SuiteCompleted {
-                                suite;
-                                status = output.status;
-                                stdout = output.stdout;
-                                stderr = output.stderr
-                              });
-                            if Int.equal output.status 0 then
-                              passed := !passed + 1
-                            else
-                              failed := !failed + 1;
-                              loop rest
-                  )
-              in
-              loop suites
-            in
-            Client.close client;
-            result
-      )
+                          status = output.status;
+                          stdout = output.stdout;
+                          stderr = output.stderr
+                        });
+                      if Int.equal output.status 0 then
+                        passed := !passed + 1
+                      else
+                        failed := !failed + 1;
+                        loop rest
+            )
+        in
+        loop suites

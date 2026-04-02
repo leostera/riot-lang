@@ -195,30 +195,21 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
         let output = Path.(sandbox_dir / Path.v "pkg.cma") in
         let _ = Fs.create_dir_all sandbox_dir |> Result.expect ~msg:"sandbox dir creation should succeed" in
         let _ = Fs.write "cached" output |> Result.expect ~msg:"artifact output write should succeed" in
-        let _artifact = Riot_store.Store.save
-          store
-          ~package:package.name
-          ~hash:input_hash
-          ~sandbox_dir
-          ~outs:[ output ]
-        |> Result.expect ~msg:"artifact save should succeed" in
         let exports = [
           Riot_store.Store.{
             name = "pkg.cma";
             path = Path.v "pkg.cma";
-            action_hash = Std.Crypto.Digest.hex input_hash;
+            action_hash = Std.Crypto.Digest.hex input_hash
           };
         ] in
-        let target_triple_str =
-          Kernel.System.Host.to_string (Riot_model.Build_ctx.target_triplet build_ctx)
-        in
-        let _ = Riot_store.Store.save_package_exports
+        let _artifact = Riot_store.Store.save
           store
           ~package:package.name
-          ~profile:profile.name
-          ~target:target_triple_str
           ~exports
-        |> Result.expect ~msg:"package export save should succeed" in
+          ~hash:input_hash
+          ~sandbox_dir
+          ~outs:[ output ]
+        |> Result.expect ~msg:"artifact save should succeed" in
         if Option.is_some (Riot_store.Store.load_plan_bundle store ~hash:input_hash) then
           Error "expected no plan bundle before cached planner lookup"
         else
@@ -236,10 +227,14 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
             ~package_key
             ~package
             ~build_ctx with
-          | Error err ->
-              Error ("expected cached plan result, got planner error: "
-              ^ Riot_planner.Planning_error.to_string err)
-          | Ok (Riot_planner.Package_planner.Cached { hash; artifact = cached_artifact; exports = cached_exports; _ }) ->
+          | Error err -> Error ("expected cached plan result, got planner error: "
+          ^ Riot_planner.Planning_error.to_string err)
+          | Ok (Riot_planner.Package_planner.Cached {
+            hash;
+            artifact=cached_artifact;
+            exports=cached_exports;
+            _
+          }) ->
               if not (Std.Crypto.Hash.compare hash input_hash = 0) then
                 Error "expected cached plan hash to match input hash"
               else if not (List.length cached_artifact.Riot_store.Artifact.files = 1) then
@@ -248,8 +243,7 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
                 Error "expected cached export manifest to expose one export"
               else
                 Ok ()
-          | Ok _ ->
-              Error "expected Cached result")
+          | Ok _ -> Error "expected Cached result")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"

@@ -29,19 +29,15 @@ let write_package = fun ~root ~name ~lib_body ~deps ->
   ()
 
 let write_workspace = fun ~root members ->
-  let riot_toml =
-    "[workspace]\nmembers = ["
-    ^ String.concat ", " (List.map (fun member -> "\"" ^ member ^ "\"") members)
-    ^ "]\n"
-  in
-  let _ =
-    Fs.write riot_toml Path.(root / Path.v "riot.toml")
-    |> Result.expect ~msg:"write workspace riot.toml failed"
-  in
+  let riot_toml = "[workspace]\nmembers = ["
+  ^ String.concat ", " (List.map (fun member -> "\"" ^ member ^ "\"") members)
+  ^ "]\n" in
+  let _ = Fs.write riot_toml Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"write workspace riot.toml failed" in
   ()
 
 let with_scanned_workspace = fun tmpdir f ->
-  match Riot_model.Workspace_manager.scan tmpdir with
+  let workspace_manager = Riot_model.Workspace_manager.create () in
+  match Riot_model.Workspace_manager.scan workspace_manager tmpdir with
   | Error _ -> Error "workspace scan failed"
   | Ok (workspace, _load_errors) -> f workspace
 
@@ -82,14 +78,13 @@ let test_build_workspace_two_packages_success = fun _ctx ->
                 if List.length result.results = 2 && result.failed_count = 0 then
                   Ok ()
                 else
-                  Error
-                    ("unexpected workspace result accounting: results="
-                    ^ Int.to_string (List.length result.results)
-                    ^ " failed_count="
-                    ^ Int.to_string result.failed_count
-                    ^ " statuses=["
-                    ^ String.concat ", " (List.map result_status_to_string result.results)
-                    ^ "]")))
+                  Error ("unexpected workspace result accounting: results="
+                  ^ Int.to_string (List.length result.results)
+                  ^ " failed_count="
+                  ^ Int.to_string result.failed_count
+                  ^ " statuses=["
+                  ^ String.concat ", " (List.map result_status_to_string result.results)
+                  ^ "]")))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -121,14 +116,13 @@ let test_build_workspace_respects_serial_package_orchestration = fun _ctx ->
                 if List.length result.results = 2 && result.failed_count = 0 then
                   Ok ()
                 else
-                  Error
-                    ("serial orchestration build should succeed: results="
-                    ^ Int.to_string (List.length result.results)
-                    ^ " failed_count="
-                    ^ Int.to_string result.failed_count
-                    ^ " statuses=["
-                    ^ String.concat ", " (List.map result_status_to_string result.results)
-                    ^ "]")))
+                  Error ("serial orchestration build should succeed: results="
+                  ^ Int.to_string (List.length result.results)
+                  ^ " failed_count="
+                  ^ Int.to_string result.failed_count
+                  ^ " statuses=["
+                  ^ String.concat ", " (List.map result_status_to_string result.results)
+                  ^ "]")))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -162,17 +156,12 @@ let test_failed_dependency_updates_package_graph = fun _ctx ->
                   Riot_planner.Package_graph.Runtime in
                 match Riot_planner.Package_graph.get_node_by_key result.package_graph package_key with
                 | None ->
-                    let graph_nodes =
-                      Riot_planner.Package_graph.topological_sort result.package_graph
-                      |> List.map
-                        (fun node ->
-                          Riot_planner.Package_graph.get_key node
-                          |> Riot_model.Package.key_to_string)
-                    in
-                    Error
-                      ("missing package graph node for failed package; graph keys=["
-                      ^ String.concat ", " graph_nodes
-                      ^ "]")
+                    let graph_nodes = Riot_planner.Package_graph.topological_sort result.package_graph
+                    |> List.map
+                      (fun node -> Riot_planner.Package_graph.get_key node |> Riot_model.Package.key_to_string) in
+                    Error ("missing package graph node for failed package; graph keys=["
+                    ^ String.concat ", " graph_nodes
+                    ^ "]")
                 | Some node -> (
                     match node.value with
                     | Riot_planner.Package_graph.Failed _ -> Ok ()
@@ -181,6 +170,9 @@ let test_failed_dependency_updates_package_graph = fun _ctx ->
                            dependency failure"
                     | Riot_planner.Package_graph.Planned _ ->
                         Error "package graph left dependent package planned after \
+                           dependency failure"
+                    | Riot_planner.Package_graph.Cached _ ->
+                        Error "package graph left dependent package cached after \
                            dependency failure"
                     | Riot_planner.Package_graph.Built _ ->
                         Error "package graph left dependent package built after \

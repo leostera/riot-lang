@@ -22,6 +22,7 @@ type build_progress = {
 
 type request = {
   build_request: Riot_build.build_request;
+  workspace_manager: Workspace_manager.t option;
   output_mode: output_mode;
   show_finished_summary: bool;
 }
@@ -162,7 +163,7 @@ let profile_of_matches = fun matches ->
   else
     "debug"
 
-let make_request = fun ~workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
+let make_request = fun ~workspace ?workspace_manager ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
   {
     build_request =
       Riot_build.{
@@ -172,6 +173,7 @@ let make_request = fun ~workspace ?(scope = Runtime) ?(profile = "debug") ?(mode
         scope;
         profile;
       };
+    workspace_manager;
     output_mode = mode;
     show_finished_summary;
   }
@@ -358,7 +360,7 @@ let run_request = fun (request: request) ->
   let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let attempted_build = ref false in
   let result =
-    Riot_build.build
+    Riot_build.build ?workspace_manager:request.workspace_manager
       ~on_event:(
         function
         | Riot_build.Pm kind ->
@@ -411,7 +413,7 @@ let run_request = fun (request: request) ->
               ^ " skipped)")
     );
   match result with
-  | Ok () -> Ok ()
+  | Ok _ -> Ok ()
   | Error err ->
       if not (build_error_already_reported err) then
         write_build_error ~mode:request.output_mode err;
@@ -422,30 +424,36 @@ let print_workspace_load_errors = fun errors ->
     (fun err -> out ("\027[1;31mError\027[0m: " ^ Workspace_manager.load_error_to_string err))
     errors
 
+type loaded_workspace = {
+  workspace: Workspace.t;
+  workspace_manager: Workspace_manager.t;
+}
+
 let load_workspace_strict = fun cwd ->
-  match Workspace_manager.scan cwd with
+  let workspace_manager = Workspace_manager.create () in
+  match Workspace_manager.scan workspace_manager cwd with
   | Error err ->
       Error (Failure err)
   | Ok (_workspace, load_errors) when List.length load_errors > 0 ->
       print_workspace_load_errors load_errors;
       Error (Failure "Workspace load failed")
   | Ok (workspace, _) ->
-      Ok workspace
+      Ok { workspace; workspace_manager }
 
 let build_command = fun ?workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
-  let workspace =
+  let loaded_workspace =
     match workspace with
-    | Some workspace -> Ok workspace
+    | Some workspace -> Ok { workspace; workspace_manager = Workspace_manager.create () }
     | None ->
         let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
         load_workspace_strict cwd
   in
-  match workspace with
+  match loaded_workspace with
   | Error _ as err -> err
-  | Ok workspace ->
+  | Ok { workspace; workspace_manager } ->
       run_request
         (
-          make_request ~workspace ~scope ~profile ~mode ~show_finished_summary ~packages:((package_opt
+          make_request ~workspace ~workspace_manager ~scope ~profile ~mode ~show_finished_summary ~packages:((package_opt
           |> Option.to_list))
             ~targets:((
               match target_arch with

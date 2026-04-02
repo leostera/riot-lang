@@ -2,14 +2,11 @@ open Std
 module Test = Std.Test
 
 let write_workspace_manifest = fun ~root ~members ->
-  let members =
-    members
-    |> List.map (fun member -> "  \"" ^ Path.to_string member ^ "\"")
-    |> String.concat ",\n"
-  in
+  let members = members
+  |> List.map (fun member -> "  \"" ^ Path.to_string member ^ "\"")
+  |> String.concat ",\n" in
   let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
-  Fs.write content Path.(root / Path.v "riot.toml")
-  |> Result.expect ~msg:"Write workspace riot.toml failed"
+  Fs.write content Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"Write workspace riot.toml failed"
 
 let make_broken_workspace = fun tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
@@ -106,7 +103,7 @@ let test_build_surfaces_failed_builds = fun _ctx ->
             else
               Error "expected at least one build error"
         | Error err -> Error ("expected build failure, got: " ^ Riot_build.build_error_message err)
-        | Ok () -> Error "expected broken package build to fail")
+        | Ok _ -> Error "expected broken package build to fail")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -139,7 +136,7 @@ let test_build_release_uses_release_lane = fun _ctx ->
         with
         | Error err -> Error ("expected release build to succeed, got: "
         ^ Riot_build.build_error_message err)
-        | Ok () ->
+        | Ok _ ->
             if not
                 (Fs.exists release_package_dir |> Result.unwrap_or ~default:false) then
               Error ("expected release output under " ^ Path.to_string release_package_dir)

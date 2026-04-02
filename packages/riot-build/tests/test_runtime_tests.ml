@@ -52,9 +52,7 @@ let test_collect_test_suites_filters_by_suite_name = fun _ctx ->
       Riot_model.Package.{ name = "beta-tests"; path = Path.v "tests/beta-tests.ml" };
     ] in
   let actual = Riot_build.collect_test_suites workspace ~suite_filter:"beta-tests" () in
-  Test.assert_equal
-    ~expected:[ Riot_build.{ package_name = "demo"; suite_name = "beta-tests" } ]
-    ~actual;
+  Test.assert_equal ~expected:[ Riot_build.{ package_name = "demo"; suite_name = "beta-tests" } ] ~actual;
   Ok ()
 
 let test_test_event_to_json_serializes_summary = fun _ctx ->

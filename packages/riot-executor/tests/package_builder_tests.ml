@@ -104,7 +104,12 @@ let test_build_result_status_variants = fun _ctx ->
     }
   in
   let artifact =
-    Riot_store.Artifact.{ hash = Crypto.hash_string "test"; files = []; ocamlc_warnings = [] } in
+    Riot_store.Artifact.{
+      hash = Crypto.hash_string "test";
+      files = [];
+      ocamlc_warnings = [];
+      exports = []
+    } in
   let result_cached =
     Riot_executor.Package_builder.{
       package_key = Riot_planner.Package_graph.package_key
@@ -150,7 +155,7 @@ let test_package_error_variants = fun _ctx ->
   | PlanningFailed _, ExecutionFailed _ -> Ok ()
   | _ -> Error "Error variants don't match expected types"
 
-let test_build_writes_package_export_manifest = fun _ctx ->
+let test_build_writes_hash_manifest_with_exports = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"pkg_builder_export_manifest_test"
       (fun tmpdir ->
@@ -218,22 +223,15 @@ let test_build_writes_package_export_manifest = fun _ctx ->
             Error ("build failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
         | Riot_executor.Package_builder.Skipped { reason } ->
             Error ("build skipped: " ^ reason)
-        | Riot_executor.Package_builder.Built _
-        | Riot_executor.Package_builder.Cached _ ->
-            let target = Kernel.System.Host.to_string (Riot_model.Build_ctx.target_triplet build_ctx) in
-            (
-              match Riot_store.Store.load_package_exports
-                store
-                ~package:package.name
-                ~profile:"debug"
-                ~target with
-              | None -> Error "expected package export manifest to be saved"
-              | Some exports ->
-                  if List.length exports > 0 then
-                    Ok ()
-                  else
-                    Error "expected at least one exported output entry"
-            ))
+        | Riot_executor.Package_builder.Built artifact
+        | Riot_executor.Package_builder.Cached artifact ->
+            match Riot_store.Store.load_manifest store ~hash:artifact.hash with
+            | None -> Error "expected package hash manifest to be saved"
+            | Some manifest ->
+                if List.length manifest.Riot_store.Manifest.exports > 0 then
+                  Ok ()
+                else
+                  Error "expected hash manifest to include exported outputs")
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -243,7 +241,7 @@ let tests =
     case "collect_source_files: filters by extension" test_collect_source_files;
     case "build_result: status variants" test_build_result_status_variants;
     case "package_error: variants" test_package_error_variants;
-    case "build writes package export manifest" test_build_writes_package_export_manifest;
+    case "build writes hash manifest with exports" test_build_writes_hash_manifest_with_exports;
   ]
 
 let name = "Package Builder Tests"

@@ -5,11 +5,18 @@ open Std.Collections
 
 type version =
   V0
+  | V1
 
 type file_entry = {
   path: Path.t;
   hash: string;  (* SHA512 hash of the file *)
   size: int;
+}
+
+type export_entry = {
+  name: string;
+  path: Path.t;
+  action_hash: string;
 }
 
 type t = {
@@ -19,17 +26,24 @@ type t = {
   timestamp: Time.SystemTime.t;
   files: file_entry list;
   ocamlc_warnings: string list;
+  exports: export_entry list;
 }
 
 (** Convert manifest to JSON *)
-let to_json manifest : Data.Json.t =
+let to_json manifest: Data.Json.t =
   let version_to_string = function
     | V0 -> "v0"
+    | V1 -> "v1"
   in
-  let file_entry_to_json entry = Data.Json.Object [
+  let file_entry_to_json (entry: file_entry) = Data.Json.Object [
     ("path", Data.Json.String (Path.to_string entry.path));
     ("hash", Data.Json.String entry.hash);
     ("size", Data.Json.Int entry.size);
+  ] in
+  let export_entry_to_json (entry: export_entry) = Data.Json.Object [
+    ("name", Data.Json.String entry.name);
+    ("path", Data.Json.String (Path.to_string entry.path));
+    ("action_hash", Data.Json.String entry.action_hash);
   ] in
   Data.Json.Object [
     ("version", Data.Json.String (version_to_string manifest.version));
@@ -41,6 +55,7 @@ let to_json manifest : Data.Json.t =
       "ocamlc_warnings",
       Data.Json.Array (List.map (fun msg -> Data.Json.String msg) manifest.ocamlc_warnings)
     );
+    ("exports", Data.Json.Array (List.map export_entry_to_json manifest.exports));
   ]
 
 (** Parse manifest from JSON *)
@@ -54,6 +69,7 @@ let of_json = fun json ->
             let version =
               match get_field "version" with
               | Some (String "v0") -> Ok V0
+              | Some (String "v1") -> Ok V1
               | _ -> Error "Invalid or missing version"
             in
             let package =
@@ -115,8 +131,41 @@ let of_json = fun json ->
                     entries |> Result.map List.rev
               | Some _ -> Error "Invalid ocamlc_warnings"
             in
-            match (version, package, build_hash, timestamp, files, ocamlc_warnings) with
-            | Ok v, Ok p, Ok h, Ok t, Ok f, Ok warnings ->
+            let exports =
+              match get_field "exports" with
+              | None ->
+                  Ok []
+              | Some (Array entries) ->
+                  let parse_entry = function
+                    | Object entry_fields -> (
+                        let get_entry_field name = List.assoc_opt name entry_fields in
+                        match (
+                          get_entry_field "name",
+                          get_entry_field "path",
+                          get_entry_field "action_hash"
+                        ) with
+                        | Some (String name), Some (String path), Some (String action_hash) -> Ok {
+                          name;
+                          path = Path.v path;
+                          action_hash
+                        }
+                        | _ -> Error "Invalid export entry"
+                      )
+                    | _ -> Error "Export entry must be an object"
+                  in
+                  List.fold_left
+                    (fun acc entry ->
+                      match (acc, parse_entry entry) with
+                      | Ok parsed, Ok export -> Ok (export :: parsed)
+                      | (Error e, _)
+                      | (_, Error e) -> Error e)
+                    (Ok [])
+                    entries |> Result.map List.rev
+              | Some _ ->
+                  Error "Invalid exports"
+            in
+            match (version, package, build_hash, timestamp, files, ocamlc_warnings, exports) with
+            | Ok v, Ok p, Ok h, Ok t, Ok f, Ok warnings, Ok exports ->
                 Ok {
                   version = v;
                   package = p;
@@ -124,13 +173,15 @@ let of_json = fun json ->
                   timestamp = t;
                   files = f;
                   ocamlc_warnings = warnings;
+                  exports;
                 }
-            | (Error e, _, _, _, _, _)
-            | (_, Error e, _, _, _, _)
-            | (_, _, Error e, _, _, _)
-            | (_, _, _, Error e, _, _)
-            | (_, _, _, _, Error e, _)
-            | (_, _, _, _, _, Error e) -> Error e
+            | (Error e, _, _, _, _, _, _)
+            | (_, Error e, _, _, _, _, _)
+            | (_, _, Error e, _, _, _, _)
+            | (_, _, _, Error e, _, _, _)
+            | (_, _, _, _, Error e, _, _)
+            | (_, _, _, _, _, Error e, _)
+            | (_, _, _, _, _, _, Error e) -> Error e
           )
         | _ -> Error "Manifest must be a JSON object"
       with
@@ -156,7 +207,7 @@ let load = fun ~path ->
   | Error _ -> Error "Failed to read manifest file"
 
 (** Create a manifest for stored files *)
-let create = fun ?base_dir ?(ocamlc_warnings = []) () ~package ~build_hash ~files ->
+let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~build_hash ~files ->
   let timestamp = Time.SystemTime.now () in
   let file_entries =
     List.filter_map
@@ -178,10 +229,11 @@ let create = fun ?base_dir ?(ocamlc_warnings = []) () ~package ~build_hash ~file
       files
   in
   {
-    version = V0;
+    version = V1;
     package;
     build_hash;
     timestamp;
     files = file_entries;
     ocamlc_warnings;
+    exports;
   }

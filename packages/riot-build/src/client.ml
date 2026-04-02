@@ -53,7 +53,7 @@ type build_scope =
   Runtime
   | Dev
 
-let no_emit : Riot_model.Event.kind -> unit = fun _ -> ()
+let no_emit: Riot_model.Event.kind -> unit = fun _ -> ()
 
 let error_message = function
   | StartupFailed { error } ->
@@ -90,8 +90,13 @@ let error_message = function
   | UnexpectedEvent { reason } ->
       reason
 
-let connect_local = fun ?(emit = no_emit) ~workspace () ->
-  match Internal_server.start_local ~emit ~workspace ~config:Server_config.default () with
+let connect_local = fun ?(emit = no_emit) ?workspace_manager ~workspace () ->
+  match Internal_server.start_local
+    ?workspace_manager
+    ~emit
+    ~workspace
+    ~config:Server_config.default
+    () with
   | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
   | Error err -> Error (StartupFailed { error = err })
 
@@ -175,7 +180,7 @@ module BuildLock = struct
             raise exn
 end
 
-let convert_build_stats : Protocol.BuildStats.t -> build_stats = fun stats ->
+let convert_build_stats: Protocol.BuildStats.t -> build_stats = fun stats ->
   {
     duration_ms = int_of_float (Protocol.BuildStats.get_build_duration stats *. 1000.0);
     packages_built = Protocol.BuildStats.get_packages_built stats;
@@ -355,16 +360,6 @@ let find_executable = fun t name ->
       binary
     )))
     | Protocol.ServerResponse Protocol.ExecutableNotFound -> `select (Ok None)
-    | _ -> `skip
-  in
-  receive_response ~selector
-
-let find_artifact = fun t ~package ~kind ~name ->
-  send_request t (Protocol.FindArtifact { client_pid = self (); package; kind; name });
-  let selector msg =
-    match msg with
-    | Protocol.ServerResponse (Protocol.ArtifactFound { path }) -> `select (Ok (Path.to_string path))
-    | Protocol.ServerResponse (Protocol.ArtifactNotFound { error }) -> `select (Error error)
     | _ -> `skip
   in
   receive_response ~selector

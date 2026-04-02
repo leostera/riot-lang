@@ -91,15 +91,9 @@ type request =
   | GetPackageInfo of { client_pid: Pid.t; package_name: string }
   | GetPackageGraph of { client_pid: Pid.t }
   | FindExecutable of { client_pid: Pid.t; name: string }
-  | FindArtifact of {
-      client_pid: Pid.t;
-      package: string;
-      kind: string;  (* currently only "binary" *)
-      name: string;
-    }
   | FormatFile of { client_pid: Pid.t; file_path: Path.t; check_only: bool }
   | FormatCode of { client_pid: Pid.t; code: string; file_path: Path.t option }
-  | FormatAll of { client_pid: Pid.t; mode:
+  | FormatAll of { client_pid: Pid.t; mode: 
         [
           `check
           | `write
@@ -136,8 +130,6 @@ type response =
   | PackageGraph of { nodes: Package.t list }
   | ExecutableFound of { package: string; binary: string }
   | ExecutableNotFound
-  | ArtifactFound of { path: Path.t }
-  | ArtifactNotFound of { error: string }
   | FormatResult of { formatted_code: string; changed: bool }
   | FormatError of { error: string }
   | FormatAllResult of { files_formatted: int; files_failed: int; errors: (string * string) list }
