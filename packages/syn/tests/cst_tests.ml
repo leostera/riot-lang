@@ -45,6 +45,13 @@ let parse_mli = fun source -> Syn.parse ~filename:sample_mli source |> with_opti
 
 let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
 
+let assert_cst_json_snapshot = fun ~ctx parsed ->
+  let cst =
+    expect_some parsed.cst ~msg:"expected CST for diagnostics-free parse"
+    |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+  in
+  Test.Snapshot.assert_json ~ctx ~actual:(Syn.CstJson.of_source_file cst)
+
 let structure_items = function
   | Syn.Cst.Implementation { items; _ } -> items
   | Syn.Cst.Interface _ -> []
@@ -659,39 +666,7 @@ let tests = [
              (** {2 Next} *)\n\
              type next = unit\n"
       in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [
-        Syn.Cst.SignatureItem.TypeDeclaration node_decl;
-        Syn.Cst.SignatureItem.Docstring heading;
-        Syn.Cst.SignatureItem.TypeDeclaration next_decl
-      ] -> (
-          match Syn.Cst.TypeDeclaration.and_declarations node_decl with
-          | [ element_decl ] ->
-              (
-                match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node node_decl) with
-                | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-                  ~expected:"(** Node type doc *)"
-                  ~actual:(Syn.Cst.Docstring.text doc)
-                | _ -> raise (Failure "expected node leading docstring")
-              );
-              (
-                match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl) with
-                | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-                  ~expected:"(** Element type doc *)"
-                  ~actual:(Syn.Cst.Docstring.text doc)
-                | _ -> raise (Failure "expected element leading docstring")
-              );
-              Test.assert_equal ~expected:"(** {2 Next} *)" ~actual:(Syn.Cst.Docstring.text heading);
-              Test.assert_equal
-                ~expected:0
-                ~actual:(List.length
-                  (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node next_decl)));
-              Ok ()
-          | _ -> Error "expected grouped node/element declarations"
-        )
-      | _ -> Error "expected grouped type declaration, heading, and trailing type");
+      assert_cst_json_snapshot ~ctx:_ctx result);
   Test.case "cst grouped type declarations keep docstrings on trailing and-members at eof"
     (fun _ctx ->
       let result = parse_mli
@@ -699,21 +674,7 @@ let tests = [
              (** doc for b *)\n\
              and b = unit\n"
       in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [ Syn.Cst.SignatureItem.TypeDeclaration decl ] -> (
-          match Syn.Cst.TypeDeclaration.and_declarations decl with
-          | [ b_decl ] -> (
-              match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node b_decl) with
-              | [ Syn.Cst.Trivia.Docstring doc ] ->
-                  Test.assert_equal ~expected:"(** doc for b *)" ~actual:(Syn.Cst.Docstring.text doc);
-                  Ok ()
-              | _ -> Error "expected trailing and-member docstring on b"
-            )
-          | _ -> Error "expected grouped type declaration with trailing and-member"
-        )
-      | _ -> Error "expected a single grouped type declaration item");
+      assert_cst_json_snapshot ~ctx:_ctx result);
   Test.case "cst grouped type declarations keep comments on trailing and-members at eof"
     (fun _ctx ->
       let result = parse_mli
@@ -721,23 +682,7 @@ let tests = [
              (* comment for b *)\n\
              and b = unit\n"
       in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [ Syn.Cst.SignatureItem.TypeDeclaration decl ] -> (
-          match Syn.Cst.TypeDeclaration.and_declarations decl with
-          | [ b_decl ] -> (
-              match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node b_decl) with
-              | [ Syn.Cst.Trivia.Comment comment ] ->
-                  Test.assert_equal
-                    ~expected:"(* comment for b *)"
-                    ~actual:(Syn.Cst.Comment.text comment);
-                  Ok ()
-              | _ -> Error "expected trailing and-member comment on b"
-            )
-          | _ -> Error "expected grouped type declaration with trailing and-member"
-        )
-      | _ -> Error "expected a single grouped type declaration item");
+      assert_cst_json_snapshot ~ctx:_ctx result);
   Test.case "cst type declarations expose direct type parameters"
     (fun _ctx ->
       let result = parse_ml "type ('a, 'error) resultish = int\n" in
