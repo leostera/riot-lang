@@ -27,14 +27,16 @@ let test_container_element = fun _ctx ->
 let test_row_element = fun _ctx ->
   let elem = Element.row [ Element.text "A" ] in
   match elem with
-  | Element.Container { style; _ } when style.direction = Style.LeftToRight -> Ok ()
-  | _ -> Error "Row should have LeftToRight direction"
+  | Element.Container { style; _ } when style.direction = Style.LeftToRight
+  && style.sizing.width = Style.Grow -> Ok ()
+  | _ -> Error "Row should flow left-to-right and grow to fill available width"
 
 let test_column_element = fun _ctx ->
   let elem = Element.column [ Element.text "A" ] in
   match elem with
-  | Element.Container { style; _ } when style.direction = Style.TopToBottom -> Ok ()
-  | _ -> Error "Column should have TopToBottom direction"
+  | Element.Container { style; _ } when style.direction = Style.TopToBottom
+  && style.sizing.height = Style.Grow -> Ok ()
+  | _ -> Error "Column should flow top-to-bottom and grow to fill available height"
 
 let test_spacer_element = fun _ctx ->
   let elem = Element.spacer ~flex:2.0 () in

@@ -18,10 +18,13 @@ let empty = Empty
 
 let custom = fun ?(style = Style.empty) ~measure ~render () -> Custom { style; measure; render }
 
-let row = fun ?(style = Style.empty) children -> Container { style = Style.row style; children }
+let row = fun ?(style = Style.empty) children ->
+  let style = Style.(style |> row |> width Grow) in
+  Container { style; children }
 
 let column = fun ?(style = Style.empty) children ->
-  Container { style = Style.column style; children }
+  let style = Style.(style |> column |> height Grow) in
+  Container { style; children }
 
 let spacer = fun ?(flex = 1.0) () ->
   Container {
