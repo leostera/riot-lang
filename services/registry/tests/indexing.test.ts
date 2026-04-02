@@ -44,7 +44,7 @@ describe("registry indexing", () => {
       latest: "0.0.1",
       indexedAt: "2026-03-27T15:27:35Z",
       packageIndexKey: "index/v1/ke/rn/kernel.json",
-      packageIndexUrl: "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json",
+      packageIndexUrl: "https://api.pkgs.ml/v1/index/ke/rn/kernel.json",
     });
 
     const config = getConfig(env);
@@ -89,7 +89,7 @@ describe("registry indexing", () => {
         package_locator: "github.com/leostera/riot-new/packages/kernel",
         artifact_sha256: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
         package_index_key: "index/v1/ke/rn/kernel.json",
-        package_index_url: "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json",
+        package_index_url: "https://api.pkgs.ml/v1/index/ke/rn/kernel.json",
         latest: "0.0.1",
         indexed_at: "2026-03-27T15:27:35Z",
       },
@@ -218,7 +218,7 @@ describe("registry indexing", () => {
       package_locator: "github.com/leostera/riot-new/packages/kernel",
       artifact_sha256: "2aef0372bf5b6687db05bda80cde55f960cbfd9d",
       package_index_key: "index/v1/ke/rn/kernel.json",
-      package_index_url: "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json",
+      package_index_url: "https://api.pkgs.ml/v1/index/ke/rn/kernel.json",
       latest: "0.0.1",
       indexed_at: "2026-03-27T15:27:35Z",
     });

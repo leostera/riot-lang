@@ -24,6 +24,8 @@ describe("riot package registry routes", () => {
       service: "riot-package-registry",
       routes: {
         publish_artifact: "/v1/publish",
+        index_config: "/v1/index/config.json",
+        index_package: "/v1/index/<sharded-package-document>.json",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -41,6 +43,8 @@ describe("riot package registry routes", () => {
       },
       legacy_routes: {
         publish_artifact: "/api/v1/publish",
+        index_config: "/api/v1/index/config.json",
+        index_package: "/api/v1/index/<sharded-package-document>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -57,6 +61,7 @@ describe("riot package registry routes", () => {
         package_events: "/api/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       cdn_base_url: "https://cdn.pkgs.ml",
+      index_base_url: "https://api.pkgs.ml/v1/index",
     });
 
     await applyMetadataMigrations(db as unknown as D1Database);
@@ -87,6 +92,149 @@ describe("riot package registry routes", () => {
 
     expect(responses[0].status).toBe(404);
     expect(responses[1].status).toBe(404);
+  });
+
+  test("index config route serves the sparse config through the api worker", async () => {
+    const { env } = makeEnv();
+    const ctx = new FakeExecutionContext();
+
+    const response = await handleRequest(
+      new Request("https://registry.test/v1/index/config.json"),
+      env,
+      ctx,
+    );
+    await ctx.drain();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
+    expect(await readJson(response)).toEqual({
+      schema_version: 1,
+      kind: "sparse",
+      package_path_strategy: "cargo-lowercase-v1",
+      index_base_url: "https://api.pkgs.ml/v1/index",
+      artifact_base_url: "https://cdn.pkgs.ml",
+    });
+  });
+
+  test("index package route serves the latest package document with etag revalidation", async () => {
+    const { env, db } = makeEnv();
+    const releaseResponse = await publishArtifact(
+      env,
+      await makePackageArtifact({
+        packageName: "kernel",
+        packageVersion: "0.0.1",
+        description: "Kernel package",
+        license: "Apache-2.0",
+      }),
+    );
+    expect(releaseResponse.status).toBe(200);
+    await applyMetadataMigrations(db as unknown as D1Database);
+
+    const firstResponse = await handleRequest(
+      new Request("https://registry.test/v1/index/ke/rn/kernel.json"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstResponse.headers.get("content-type")).toContain("application/json");
+    expect(firstResponse.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
+
+    const etag = firstResponse.headers.get("etag");
+    expect(etag).not.toBeNull();
+    expect(await readJson(firstResponse)).toMatchObject({
+      name: "kernel",
+      latest: "0.0.1",
+    });
+
+    const secondResponse = await handleRequest(
+      new Request("https://registry.test/v1/index/ke/rn/kernel.json", {
+        headers: {
+          "if-none-match": etag ?? "",
+        },
+      }),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(secondResponse.status).toBe(304);
+    expect(secondResponse.headers.get("etag")).toBe(etag);
+  });
+
+  test("index package route drops legacy source-snapshot releases from served documents", async () => {
+    const { env, bucket } = makeEnv();
+
+    await bucket.put(
+      "index/v1/ke/rn/kernel.json",
+      JSON.stringify({
+        schema_version: 1,
+        name: "kernel",
+        latest: "0.2.0",
+        updated_at: "2026-04-02T10:00:00.000Z",
+        releases: [
+          {
+            version: "0.2.0",
+            published_at: "2026-04-02T10:00:00.000Z",
+            canonical_locator: "",
+            repo_url: "",
+            subdir: ".",
+            artifact_sha256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            manifest_key:
+              "packages/github.com/leostera/riot-new/packages/kernel/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.manifest.json",
+            source_key:
+              "sources/github.com/leostera/riot-new/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.tar.gz",
+            dependencies: [],
+          },
+          {
+            version: "0.1.0",
+            published_at: "2026-04-01T10:00:00.000Z",
+            canonical_locator: "",
+            repo_url: "",
+            subdir: ".",
+            artifact_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            manifest_key:
+              "packages/kernel/0.1.0/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.manifest.json",
+            source_key:
+              "sources/kernel/0.1.0/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.tar.gz",
+            dependencies: [],
+          },
+        ],
+      }),
+      {
+        httpMetadata: {
+          contentType: "application/json; charset=utf-8",
+        },
+      },
+    );
+
+    const response = await handleRequest(
+      new Request("https://registry.test/v1/index/ke/rn/kernel.json"),
+      env,
+      new FakeExecutionContext(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await readJson(response)).toEqual({
+      schema_version: 1,
+      name: "kernel",
+      latest: "0.1.0",
+      updated_at: "2026-04-01T10:00:00.000Z",
+      releases: [
+        {
+          version: "0.1.0",
+          published_at: "2026-04-01T10:00:00.000Z",
+          canonical_locator: "",
+          repo_url: "",
+          subdir: ".",
+          artifact_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          manifest_key:
+            "packages/kernel/0.1.0/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.manifest.json",
+          source_key:
+            "sources/kernel/0.1.0/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.tar.gz",
+          dependencies: [],
+        },
+      ],
+    });
   });
 
   test("events route returns the latest registry events in reverse chronological order", async () => {

@@ -1,12 +1,8 @@
-import { readFileSync } from "node:fs";
-
 import { describe, expect, test } from "bun:test";
-import { parse as parseToml } from "smol-toml";
 
 import { makeTarGz } from "./helpers.ts";
 
 const baseUrl = trimTrailingSlash(process.env.REGISTRY_E2E_BASE_URL) ?? "https://api.pkgs.ml";
-const publishPackagePath = process.env.REGISTRY_E2E_PUBLISH_PACKAGE_PATH ?? "packages/kernel";
 const liveTest = test;
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
 const livePublishTest = rootAuthToken === null ? test.skip : test;
@@ -15,7 +11,8 @@ const githubLogin = process.env.REGISTRY_E2E_GITHUB_LOGIN ?? null;
 const liveAuthenticatedTest =
   sessionCookie === null || githubLogin === null ? test.skip : test;
 const cdnBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
-const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "index/v1";
+const indexBaseUrl = trimTrailingSlash(process.env.REGISTRY_INDEX_E2E_BASE_URL) ?? baseUrl;
+const indexBasePath = trimSlashes(process.env.REGISTRY_INDEX_E2E_BASE_PATH) ?? "v1/index";
 
 describe("riot package registry live e2e", () => {
   liveTest("root route returns service metadata", async () => {
@@ -26,6 +23,8 @@ describe("riot package registry live e2e", () => {
     expect(payload.service).toBe("riot-package-registry");
     expect(payload.routes).toEqual({
       publish_artifact: "/v1/publish",
+      index_config: "/v1/index/config.json",
+      index_package: "/v1/index/<sharded-package-document>.json",
       views_package_overview: "/v1/views/packages/<package-name>/overview",
       views_package_relations: "/v1/views/packages/<package-name>/relations",
       views_recent_packages: "/v1/views/recent/packages",
@@ -42,6 +41,7 @@ describe("riot package registry live e2e", () => {
       package_events: "/v1/packages/<package-name>/events?version=<version>&limit=<count>",
     });
     expect(payload.cdn_base_url).toBe(cdnBaseUrl);
+    expect(payload.index_base_url).toBe(`${indexBaseUrl}/${indexBasePath}`);
   });
 
   liveTest("github auth start redirects to GitHub authorize", async () => {
@@ -166,8 +166,17 @@ describe("riot package registry live e2e", () => {
   });
 
   livePublishTest("artifact publish returns an immutable release and index fast path", async () => {
-    const expectedManifest = readPackageManifest(publishPackagePath);
-    const archive = await buildWorkspaceArtifact(publishPackagePath);
+    const expectedManifest = {
+      name: `registry-fast-path-${Date.now()}`,
+      version: "0.1.0",
+    };
+    const archive = await buildInlinePackageArtifact({
+      packageName: expectedManifest.name,
+      packageVersion: expectedManifest.version,
+      description: "Artifact publish fast-path live e2e package",
+      license: "Apache-2.0",
+      rootModule: "Registry_fast_path",
+    });
     const publication = await publishArtifactArchive(archive);
 
     expect(publication.package_name).toBe(expectedManifest.name);
@@ -189,19 +198,19 @@ describe("riot package registry live e2e", () => {
     expect(sourceResponse.status).toBe(200);
 
     const config = await pollJson<IndexConfigPayload>(
-      `${cdnBaseUrl}/${indexBasePath}/config.json`,
+      `${indexBaseUrl}/${indexBasePath}/config.json`,
       (value) => value !== null && value.kind === "sparse",
     );
     expect(config).toEqual({
       schema_version: 1,
       kind: "sparse",
       package_path_strategy: "cargo-lowercase-v1",
-      index_base_url: `${cdnBaseUrl}/${indexBasePath}`,
+      index_base_url: `${indexBaseUrl}/${indexBasePath}`,
       artifact_base_url: cdnBaseUrl,
     });
 
     const packageDocument = await pollJson<PackageIndexDocumentPayload>(
-      `${cdnBaseUrl}/${packageIndexKey(expectedManifest.name)}`,
+      `${indexBaseUrl}/${packageIndexKey(expectedManifest.name)}`,
       (value) =>
         value !== null &&
         value.name === expectedManifest.name &&
@@ -380,12 +389,6 @@ describe("riot package registry live e2e", () => {
   });
 });
 
-async function buildWorkspaceArtifact(member: string): Promise<Uint8Array<ArrayBuffer>> {
-  return await makeTarGz({
-    "tusk.toml": readFileSync(new URL(`../../../${member}/tusk.toml`, import.meta.url), "utf8"),
-  }, "");
-}
-
 async function buildInlinePackageArtifact(args: {
   packageName: string;
   packageVersion: string;
@@ -458,22 +461,6 @@ async function createPublishToken(name: string): Promise<string> {
     plaintext_token: string;
   };
   return payload.plaintext_token;
-}
-
-function readPackageManifest(member: string): { name: string; version: string } {
-  const manifestSource = readFileSync(new URL(`../../../${member}/tusk.toml`, import.meta.url), "utf8");
-  const parsed = parseToml(manifestSource) as {
-    package?: { name?: unknown; version?: unknown };
-  };
-
-  if (typeof parsed.package?.name !== "string" || typeof parsed.package?.version !== "string") {
-    throw new Error(`Workspace member ${member} is missing package.name or package.version.`);
-  }
-
-  return {
-    name: parsed.package.name,
-    version: parsed.package.version,
-  };
 }
 
 function trimTrailingSlash(value: string | undefined): string | null {

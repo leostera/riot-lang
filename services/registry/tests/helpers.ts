@@ -227,7 +227,9 @@ export function makeEnv(overrides: Partial<Env> = {}): {
     PACKAGE_INDEXED_QUEUE: indexedQueue as unknown as Queue,
     PUBLICATION_COORDINATOR: undefined as unknown as DurableObjectNamespace,
     CDN_BASE_URL: "https://cdn.pkgs.ml",
+    INDEX_BASE_URL: "https://api.pkgs.ml",
     INDEX_BASE_PATH: "index/v1",
+    INDEX_ROUTE_PATH: "v1/index",
     ROOT_AUTH_TOKEN: "root-secret",
     ...overrides,
   };

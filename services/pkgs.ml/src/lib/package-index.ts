@@ -21,7 +21,7 @@ export function packageIndexPath(packageName: string, indexBasePath = getConfig(
 
 export function packageIndexUrl(packageName: string): string {
   const config = getConfig();
-  return `${config.cdnBaseUrl}/${packageIndexPath(packageName, config.indexBasePath)}`;
+  return `${config.indexBaseUrl}/${packageIndexPath(packageName, config.indexBasePath)}`;
 }
 
 export async function fetchPackageDocument(packageName: string): Promise<PackageIndexDocument | null> {

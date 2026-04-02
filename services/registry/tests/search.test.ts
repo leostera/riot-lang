@@ -21,7 +21,7 @@ describe("registry search api", () => {
       service: "riot-package-registry",
       route: "/v1/search?q=<query>",
       source: {
-        package_index_base_url: "https://cdn.pkgs.ml/index/v1",
+        package_index_base_url: "https://api.pkgs.ml/v1/index",
         updated_during_publish: true,
       },
     });

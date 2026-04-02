@@ -4,6 +4,11 @@ compatibility_date = "2026-03-27"
 compatibility_flags = [ "nodejs_compat" ]
 workers_dev = false
 
+[vars]
+PUBLIC_INDEX_BASE_URL = "https://api.pkgs.ml"
+PUBLIC_INDEX_BASE_PATH = "v1/index"
+PUBLIC_CDN_BASE_URL = "https://cdn.pkgs.ml"
+
 [[routes]]
 pattern = "pkgs.ml"
 custom_domain = true

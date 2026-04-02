@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { gzipSync } from "node:zlib";
 
 const pkgsBaseUrl = trimTrailingSlash(process.env.PKGS_E2E_BASE_URL) ?? "https://pkgs.ml";
 const publicRegistryBaseUrl =
@@ -8,16 +9,13 @@ const publicRegistryBaseUrl =
 const registryApiBaseUrl =
   trimTrailingSlash(process.env.REGISTRY_E2E_BASE_URL) ??
   publicRegistryBaseUrl;
-const publishPackageLocator =
-  process.env.PKGS_E2E_PUBLISH_PACKAGE_LOCATOR ??
-  process.env.REGISTRY_E2E_PUBLISH_PACKAGE_LOCATOR ??
-  process.env.REGISTRY_E2E_PACKAGE_LOCATOR ??
-  "github.com/leostera/riot-new/packages/kernel";
-const selector = process.env.REGISTRY_E2E_SELECTOR ?? "main";
 const searchApiBaseUrl =
   trimTrailingSlash(process.env.PKGS_E2E_SEARCH_API_BASE_URL) ?? `${registryApiBaseUrl}/v1/search`;
-const cdnBaseUrl = trimTrailingSlash(process.env.PUBLIC_CDN_BASE_URL) ?? "https://cdn.pkgs.ml";
-const indexBasePath = trimSlashes(process.env.PUBLIC_INDEX_BASE_PATH) ?? "index/v1";
+const indexBaseUrl =
+  trimTrailingSlash(process.env.PKGS_E2E_INDEX_BASE_URL) ??
+  trimTrailingSlash(process.env.PUBLIC_INDEX_BASE_URL) ??
+  publicRegistryBaseUrl;
+const indexBasePath = trimSlashes(process.env.PUBLIC_INDEX_BASE_PATH) ?? "v1/index";
 const rootAuthToken = process.env.REGISTRY_E2E_ROOT_AUTH_TOKEN ?? null;
 const sessionCookie = process.env.PKGS_E2E_SESSION_COOKIE ?? process.env.REGISTRY_E2E_SESSION_COOKIE ?? null;
 const githubLogin = process.env.PKGS_E2E_GITHUB_LOGIN ?? process.env.REGISTRY_E2E_GITHUB_LOGIN ?? null;
@@ -34,7 +32,7 @@ describe("pkgs.ml live e2e", () => {
 
     const html = await response.text();
     expect(html).toContain("pkgs.ml");
-    expect(html).toContain("community package registry");
+    expect(html).toContain("The Riot Community&apos;s Package Registry");
     expect(html).toContain('name="q"');
     expect(html).toContain("Login with GitHub");
     expect(html).toContain(
@@ -126,7 +124,7 @@ describe("pkgs.ml live e2e", () => {
 
   liveTest("search results page lists all packages returned by the search api", async () => {
     const query = "leostera";
-    const searchApi = await fetchSearchApi(query);
+    const searchApi = await fetchSearchApi(query, 20);
     expect(searchApi.results.length).toBeGreaterThan(1);
 
     const html = await pollText(
@@ -143,9 +141,8 @@ describe("pkgs.ml live e2e", () => {
     }
   });
 
-  livePublishTest("published package appears across search, package, and owner pages", async () => {
+  livePublishTest("published package appears across search and package pages", async () => {
     const publication = await publishPackage();
-    const owner = ownerFromLocator(publication.package);
 
     const searchHtml = await pollText(
       `${pkgsBaseUrl}/?q=${encodeURIComponent(publication.package_name)}`,
@@ -165,7 +162,6 @@ describe("pkgs.ml live e2e", () => {
         html.includes(`tusk add ${publication.package_name}`),
     );
     expect(packageHtml).toContain("Discover Packages");
-    expect(packageHtml).toContain(owner);
     expect(packageHtml).toContain(`tusk add ${publication.package_name}`);
 
     const versionHtml = await pollText(
@@ -175,15 +171,6 @@ describe("pkgs.ml live e2e", () => {
     );
     expect(versionHtml).toContain(publication.package_name);
     expect(versionHtml).toContain(`v${publication.package_version}`);
-
-    const ownerHtml = await pollText(
-      `${pkgsBaseUrl}/u/${encodeURIComponent(owner)}`,
-      (html) =>
-        html.includes(`@${owner}`) &&
-        html.includes("Recently published packages") &&
-        html.includes(publication.package_name),
-    );
-    expect(ownerHtml).toContain(publication.package_name);
   });
 
   livePublishTest("package page shows every indexed version for the published package", async () => {
@@ -308,15 +295,16 @@ describe("pkgs.ml live e2e", () => {
 });
 
 async function publishPackage(): Promise<PublishPayload> {
-  const response = await fetch(
-    `${registryApiBaseUrl}/v1/packages/${publishPackageLocator}/publish?ref=${encodeURIComponent(selector)}`,
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${rootAuthToken}`,
-      },
+  const packageName = `pkgs-e2e-${Date.now()}`;
+  const packageVersion = "0.1.0";
+  const response = await fetch(`${registryApiBaseUrl}/v1/publish`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${rootAuthToken}`,
+      "content-type": "application/gzip",
     },
-  );
+    body: buildInlinePackageArtifact(packageName, packageVersion),
+  });
 
   expect(response.status).toBe(200);
   return (await response.json()) as PublishPayload;
@@ -360,12 +348,7 @@ function trimTrailingSlash(value: string | undefined): string | null {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
-function ownerFromLocator(locator: string): string {
-  return locator.split("/")[1] ?? "unknown";
-}
-
 interface PublishPayload {
-  package: string;
   package_name: string;
   package_version: string;
 }
@@ -407,8 +390,8 @@ interface PackageIndexDocument {
   }>;
 }
 
-async function fetchSearchApi(query: string): Promise<SearchApiResponse> {
-  const response = await fetch(`${searchApiBaseUrl}?q=${encodeURIComponent(query)}&limit=100`, {
+async function fetchSearchApi(query: string, limit = 100): Promise<SearchApiResponse> {
+  const response = await fetch(`${searchApiBaseUrl}?q=${encodeURIComponent(query)}&limit=${limit}`, {
     headers: {
       accept: "application/json",
     },
@@ -419,7 +402,7 @@ async function fetchSearchApi(query: string): Promise<SearchApiResponse> {
 }
 
 async function fetchPackageIndexDocument(packageName: string): Promise<PackageIndexDocument> {
-  const response = await fetch(`${cdnBaseUrl}/${packageIndexKey(packageName)}`, {
+  const response = await fetch(`${indexBaseUrl}/${packageIndexKey(packageName)}`, {
     headers: {
       accept: "application/json",
     },
@@ -427,6 +410,59 @@ async function fetchPackageIndexDocument(packageName: string): Promise<PackageIn
 
   expect(response.status).toBe(200);
   return (await response.json()) as PackageIndexDocument;
+}
+
+function buildInlinePackageArtifact(packageName: string, packageVersion: string): Uint8Array {
+  const entries = [
+    tarEntry(
+      "tusk.toml",
+      [
+        "[package]",
+        `name = "${packageName}"`,
+        `version = "${packageVersion}"`,
+        "public = true",
+        `description = "${packageName} package for pkgs.ml live e2e"`,
+        'license = "Apache-2.0"',
+      ].join("\n"),
+    ),
+    tarEntry("src/main.ml", "let hello = \"riot\"\n"),
+  ];
+
+  const tarBody = Buffer.concat([...entries, Buffer.alloc(1024, 0)]);
+  return new Uint8Array(gzipSync(tarBody));
+}
+
+function tarEntry(path: string, contents: string): Buffer {
+  const data = Buffer.from(contents, "utf8");
+  const header = Buffer.alloc(512, 0);
+
+  writeString(header, 0, 100, path);
+  writeOctal(header, 100, 8, 0o644);
+  writeOctal(header, 108, 8, 0);
+  writeOctal(header, 116, 8, 0);
+  writeOctal(header, 124, 12, data.length);
+  writeOctal(header, 136, 12, Math.floor(Date.now() / 1000));
+  header.fill(0x20, 148, 156);
+  header[156] = "0".charCodeAt(0);
+  writeString(header, 257, 6, "ustar");
+  writeString(header, 263, 2, "00");
+
+  const checksum = header.reduce((sum, value) => sum + value, 0);
+  writeOctal(header, 148, 8, checksum);
+
+  const padding = (512 - (data.length % 512)) % 512;
+  return Buffer.concat([header, data, Buffer.alloc(padding, 0)]);
+}
+
+function writeString(target: Buffer, offset: number, length: number, value: string): void {
+  const source = Buffer.from(value, "utf8");
+  source.copy(target, offset, 0, Math.min(source.length, length));
+}
+
+function writeOctal(target: Buffer, offset: number, length: number, value: number): void {
+  const rendered = value.toString(8).padStart(length - 2, "0");
+  writeString(target, offset, length - 1, rendered);
+  target[offset + length - 1] = 0;
 }
 
 async function fetchCategoriesView(): Promise<CategoriesIndexDocument> {

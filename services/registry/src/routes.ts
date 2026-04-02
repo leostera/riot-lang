@@ -27,11 +27,19 @@ import {
   readRecentPackagesDocument,
 } from "./metadata-db.ts";
 import { searchPackages } from "./search-db.ts";
-import { cdnObjectUrl } from "./storage.ts";
+import {
+  artifactManifestKey,
+  artifactSourceArchiveKey,
+  buildIndexConfigDocument,
+  cdnObjectUrl,
+  indexConfigKey,
+} from "./storage.ts";
 import type {
   ApiTokenRecord,
   AuthenticatedActor,
   Env,
+  IndexedPackageRelease,
+  PackageIndexDocument,
   PublishedPackageRelease,
   RequestLogEntry,
 } from "./types.ts";
@@ -96,6 +104,8 @@ async function routeRequest(
       service: "riot-package-registry",
       routes: {
         publish_artifact: "/v1/publish",
+        index_config: "/v1/index/config.json",
+        index_package: "/v1/index/<sharded-package-document>.json",
         views_package_overview: "/v1/views/packages/<package-name>/overview",
         views_package_relations: "/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/v1/views/recent/packages",
@@ -113,6 +123,8 @@ async function routeRequest(
       },
       legacy_routes: {
         publish_artifact: "/api/v1/publish",
+        index_config: "/api/v1/index/config.json",
+        index_package: "/api/v1/index/<sharded-package-document>.json",
         views_package_overview: "/api/v1/views/packages/<package-name>/overview",
         views_package_relations: "/api/v1/views/packages/<package-name>/relations",
         views_recent_packages: "/api/v1/views/recent/packages",
@@ -129,7 +141,19 @@ async function routeRequest(
         package_events: "/api/v1/packages/<package-name>/events?version=<version>&limit=<count>",
       },
       cdn_base_url: getConfig(env).cdnBaseUrl,
+      index_base_url: `${getConfig(env).indexBaseUrl}/${getConfig(env).indexRoutePath}`,
     });
+  }
+
+  const indexStorageKey = resolveIndexStorageKey(path, getConfig(env));
+  if (indexStorageKey !== null) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      logEntry.route = "method_not_allowed";
+      return methodNotAllowed(["GET", "HEAD"]);
+    }
+
+    logEntry.route = "api.index";
+    return await handleIndexDocument(request, env, indexStorageKey);
   }
 
   if (matchesPath(path, "v1/auth/github/start", "auth/github/start")) {
@@ -426,7 +450,7 @@ async function handleSearch(env: Env, url: URL): Promise<Response> {
       service: "riot-package-registry",
       route: "/v1/search?q=<query>",
       source: {
-        package_index_base_url: `${config.cdnBaseUrl}/${config.indexBasePath}`,
+        package_index_base_url: `${config.indexBaseUrl}/${config.indexRoutePath}`,
         updated_during_publish: true,
       },
     });
@@ -538,6 +562,29 @@ async function handleViewDocument(
   }
 }
 
+async function handleIndexDocument(
+  request: Request,
+  env: Env,
+  storageKey: string,
+): Promise<Response> {
+  const config = getConfig(env);
+  if (storageKey === indexConfigKey(config)) {
+    return await respondWithIndexJson(request, buildIndexConfigDocument(config));
+  }
+
+  const object = await env.ML_PKGS_CDN.get(storageKey);
+  if (object === null) {
+    throw new HttpError(404, "index_not_found", "Index document was not found.");
+  }
+
+  const document = sanitizePackageIndexDocument(await object.json<PackageIndexDocument>());
+  if (document === null) {
+    throw new HttpError(404, "index_not_found", "Index document was not found.");
+  }
+
+  return await respondWithIndexJson(request, document);
+}
+
 async function handleCreateToken(request: Request, env: Env): Promise<Response> {
   const { user } = await requireAuthenticatedSession(request, env);
   const payload = await readBodyObject(request);
@@ -641,6 +688,102 @@ function parseViewRoute(path: string): ParsedViewRoute | null {
   }
 
   throw new HttpError(404, "not_found", "View route does not exist.");
+}
+
+function resolveIndexStorageKey(path: string, config: ReturnType<typeof getConfig>): string | null {
+  const normalizedPath = trimSlashes(path);
+  const routePrefixes = [config.indexRoutePath, `api/${config.indexRoutePath}`];
+
+  for (const prefix of routePrefixes) {
+    if (normalizedPath === `${prefix}/config.json`) {
+      return indexConfigKey(config);
+    }
+
+    if (normalizedPath.startsWith(`${prefix}/`)) {
+      const suffix = normalizedPath.slice(prefix.length + 1);
+      if (suffix.length === 0 || !suffix.endsWith(".json")) {
+        return null;
+      }
+
+      return `${config.indexBasePath}/${suffix}`;
+    }
+  }
+
+  return null;
+}
+
+function sanitizePackageIndexDocument(document: PackageIndexDocument): PackageIndexDocument | null {
+  const releases = document.releases.filter((release) => isServableIndexedRelease(document.name, release));
+  if (releases.length === 0) {
+    return null;
+  }
+
+  const updatedAt = releases
+    .map((release) => Date.parse(release.published_at))
+    .filter((value) => Number.isFinite(value))
+    .sort((left, right) => right - left)[0];
+
+  return {
+    ...document,
+    latest: releases[0]?.version ?? document.latest,
+    updated_at: updatedAt === undefined ? document.updated_at : new Date(updatedAt).toISOString(),
+    releases,
+  };
+}
+
+function isServableIndexedRelease(packageName: string, release: IndexedPackageRelease): boolean {
+  if (
+    typeof release.version !== "string" ||
+    typeof release.artifact_sha256 !== "string" ||
+    release.version.length === 0 ||
+    release.artifact_sha256.length === 0
+  ) {
+    return false;
+  }
+
+  return (
+    release.manifest_key === artifactManifestKey(packageName, release.version, release.artifact_sha256) &&
+    release.source_key === artifactSourceArchiveKey(packageName, release.version, release.artifact_sha256)
+  );
+}
+
+async function respondWithIndexJson(request: Request, body: unknown): Promise<Response> {
+  const payload = JSON.stringify(body, null, 2);
+  const etag = `"${await sha256Hex(payload)}"`;
+
+  if (request.headers.get("if-none-match") === etag) {
+    return new Response(null, {
+      status: 304,
+      headers: {
+        etag,
+        "cache-control": "public, max-age=0, must-revalidate",
+      },
+    });
+  }
+
+  const headers = new Headers({
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "public, max-age=0, must-revalidate",
+    etag,
+  });
+
+  if (request.method === "HEAD") {
+    return new Response(null, {
+      status: 200,
+      headers,
+    });
+  }
+
+  return new Response(payload, {
+    status: 200,
+    headers,
+  });
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function parsePackageEventsRoute(path: string): ParsedPackageEventsRoute | null {

@@ -46,26 +46,34 @@ export function indexConfigKey(config: IndexConfig): string {
   return `${config.indexBasePath}/config.json`;
 }
 
-export function packageIndexKey(config: IndexConfig, packageName: string): string {
+function packageIndexShardPath(prefix: string, packageName: string): string {
   const normalized = packageName.toLowerCase();
 
   if (normalized.length === 1) {
-    return `${config.indexBasePath}/1/${normalized}.json`;
+    return `${prefix}/1/${normalized}.json`;
   }
 
   if (normalized.length === 2) {
-    return `${config.indexBasePath}/2/${normalized}.json`;
+    return `${prefix}/2/${normalized}.json`;
   }
 
   if (normalized.length === 3) {
-    return `${config.indexBasePath}/3/${normalized[0]}/${normalized}.json`;
+    return `${prefix}/3/${normalized[0]}/${normalized}.json`;
   }
 
-  return `${config.indexBasePath}/${normalized.slice(0, 2)}/${normalized.slice(2, 4)}/${normalized}.json`;
+  return `${prefix}/${normalized.slice(0, 2)}/${normalized.slice(2, 4)}/${normalized}.json`;
+}
+
+export function packageIndexKey(config: IndexConfig, packageName: string): string {
+  return packageIndexShardPath(config.indexBasePath, packageName);
+}
+
+export function packageIndexRoutePath(config: IndexConfig, packageName: string): string {
+  return packageIndexShardPath(config.indexRoutePath, packageName);
 }
 
 export function packageIndexUrl(config: IndexConfig, packageName: string): string {
-  return `${config.cdnBaseUrl}/${packageIndexKey(config, packageName)}`;
+  return `${config.indexBaseUrl}/${packageIndexRoutePath(config, packageName)}`;
 }
 
 export function buildIndexConfigDocument(config: IndexConfig): IndexConfigDocument {
@@ -73,7 +81,7 @@ export function buildIndexConfigDocument(config: IndexConfig): IndexConfigDocume
     schema_version: 1,
     kind: "sparse",
     package_path_strategy: "cargo-lowercase-v1",
-    index_base_url: `${config.cdnBaseUrl}/${config.indexBasePath}`,
+    index_base_url: `${config.indexBaseUrl}/${config.indexRoutePath}`,
     artifact_base_url: config.cdnBaseUrl,
   };
 }

@@ -7,7 +7,9 @@ export interface Env {
   PUBLICATION_COORDINATOR: DurableObjectNamespace;
   REGISTRY_D1_BACKUP?: Workflow<{ accountId: string; databaseId: string; bucketPrefix?: string }>;
   CDN_BASE_URL?: string;
+  INDEX_BASE_URL?: string;
   INDEX_BASE_PATH?: string;
+  INDEX_ROUTE_PATH?: string;
   VIEWS_BASE_PATH?: string;
   GITHUB_API_BASE_URL?: string;
   GITHUB_OAUTH_CLIENT_ID?: string;
@@ -24,7 +26,9 @@ export interface Env {
 
 export interface RegistryConfig {
   cdnBaseUrl: string;
+  indexBaseUrl: string;
   indexBasePath: string;
+  indexRoutePath: string;
   viewsBasePath: string;
   authCookieDomain: string;
   pkgsWebBaseUrl: string;
