@@ -12,22 +12,8 @@ let out = eprintln
 
 let command =
   let open ArgParser in
-    let open Arg in command "remove"
-    |> about "Remove a dependency from a manifest section and refresh riot.lock"
-    |> args
-      [
-        positional "dependency" |> help "Dependency name to remove";
-        option "package" |> short 'p' |> long "package" |> help "Edit a specific workspace package manifest";
-        flag "workspace" |> long "workspace" |> help "Edit the workspace root manifest";
-        flag "build" |> long "build" |> help "Remove from [build-dependencies]";
-        flag "dev" |> long "dev" |> help "Remove from [dev-dependencies]";
-        flag "json" |> long "json" |> help "Render events as JSON";
-      ]
-
-let rm_command =
-  let open ArgParser in
     let open Arg in command "rm"
-    |> about "Alias for `riot remove`"
+    |> about "Remove a dependency from a manifest section and refresh riot.lock"
     |> args
       [
         positional "dependency" |> help "Dependency name to remove";

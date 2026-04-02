@@ -8,7 +8,6 @@ let build_cli = fun workspace_opt ->
         Add.command;
         Build.command;
         Remove.command;
-        Remove.rm_command;
         Clean.command;
         Completions.command;
         Fix_cmd.command;
@@ -240,6 +239,11 @@ format = "full"
               | Ok workspace -> Add.run ~workspace add_matches
               | Error _ as e -> e
             )
+          | Some ("rm", remove_matches) -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> Remove.run ~workspace remove_matches
+              | Error _ as e -> e
+            )
           | Some ("fmt", fmt_matches) ->
               Riot_fmt.run ?workspace:workspace_opt fmt_matches
           | Some ("clean", clean_matches) ->
@@ -259,12 +263,6 @@ format = "full"
           | Some ("publish", publish_matches) -> (
               match require_clean_workspace workspace_scan_opt with
               | Ok workspace -> Publish.run workspace publish_matches
-              | Error _ as e -> e
-            )
-          | Some ("remove", remove_matches)
-          | Some ("rm", remove_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
-              | Ok workspace -> Remove.run ~workspace remove_matches
               | Error _ as e -> e
             )
           | Some ("install", install_matches) -> (

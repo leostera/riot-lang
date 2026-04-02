@@ -22,7 +22,7 @@
 16. `login` and `logout` should stay thin auth-config commands. They manage `~/.riot/config.toml` through `Riot_model.User_config`; do not turn them into registry-discovery or profile-management commands while the main registry stays hardcoded.
 17. `riot snapshots` owns repository-level snapshot review commands. Keep it focused on discovering pending `.expected.new` files, showing review diffs, and promoting or rejecting candidates; do not fold snapshot approval into `riot test`.
 18. PM human output should only show `Fetching <pkg> <version>` for real download-start events. Cache-hit materialization events stay structured in JSON but should be silent in human mode.
-19. `add`, `remove`/`rm`, and `update` are thin package-management commands. Parse flags into `Riot_deps` request types, delegate, and reuse the normal PM event renderer instead of inventing a second lock/progress surface.
+19. `add`, `rm`, and `update` are thin package-management commands. Parse flags into `Riot_deps` request types, delegate, and reuse the normal PM event renderer instead of inventing a second lock/progress surface.
 20. `riot add` should accept named registry specs, local path specs, and GitHub source specs. Keep the CLI help text and errors honest about the accepted forms, but keep package-name discovery and Git materialization inside `riot-deps`.
 
 ## Validate
