@@ -87,11 +87,13 @@
 80. Render declaration separators from the original CST tokens when trivia can attach there. Use `ValueDeclaration.colon_token`, `ExternalDeclaration.colon_token`, `ExternalDeclaration.equals_token`, and `ModuleTypeDeclaration.equals_token` instead of synthesized `:` / `=` docs so separator-owned comments survive formatting.
 81. Render module declaration heads from the original CST shell tokens too. Use `ModuleSignature.keyword_token` / `rec_token` and `ModuleStructure.keyword_token` / `rec_token` so comments attached to `module`, `and`, or `rec` survive formatting instead of being lost behind synthesized keywords.
 82. Render object/class member modifiers from CST-carried tokens too. Preserve comments on `!`, `private`, `mutable`, and `virtual` by lowering `modifier_tokens` and virtual-definition tokens directly instead of rebuilding those shells from booleans.
+83. Keep new fixture migrations on the shared `Std.Test.FixtureRunner` + `Std.Test.Snapshot` path. When a `krasny` fixture family already has adjacent approved outputs, point `snapshot_path` at those `.expected` files instead of inventing a second storage convention.
 
 ## Validate
 
 `timeout 30 riot build krasny`
 `timeout 30 riot test krasny:format_tests`
+`timeout 180 riot test krasny:fixture_tests`
 `timeout 900 python3 packages/krasny/tests/test_runner.py`
 
 Target individual fixture subsets when needed:
