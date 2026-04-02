@@ -667,11 +667,7 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
             | Unlock, _ ->
                 []
             | Refresh, Some (existing_lock: Riot_model.Lockfile.t) ->
-                let root_ids = List.map (fun (pkg: Riot_model.Lockfile.package) -> pkg.id) workspace_packages
-                @ List.map (fun (dep: Riot_model.Lockfile.dependency) -> dep.package) root_runtime_dependencies
-                @ List.map (fun (dep: Riot_model.Lockfile.dependency) -> dep.package) root_build_dependencies
-                @ List.map (fun (dep: Riot_model.Lockfile.dependency) -> dep.package) root_dev_dependencies in
-                collect_reachable_existing ~existing_lock ~root_ids
+                existing_lock.packages
                 |> List.filter (keep_existing_package packages)
             | Refresh, None ->
                 []
