@@ -18,6 +18,11 @@ type suggested_package = {
   description: string option;
 }
 
+type search_request = {
+  query: string;
+  limit: int;
+}
+
 type event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
@@ -62,6 +67,7 @@ type error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
+  | RegistrySearchFailed of { query: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
@@ -136,6 +142,12 @@ let error_message = function
   ^ package
   ^ "' in registry '"
   ^ registry
+  ^ "': "
+  ^ error
+  | RegistrySearchFailed { query; registry; error } -> "failed to search registry '"
+  ^ registry
+  ^ "' for '"
+  ^ query
   ^ "': "
   ^ error
   | RegistryPackageNotFound { package; registry; suggestions } ->
@@ -483,6 +495,25 @@ let lookup_package_suggestions = fun ~registry ~package_name ->
       |> List.map suggested_package_of_search_result
   | Error _ ->
       []
+
+let search = fun ?registry ~(request:search_request) () ->
+  let* registry =
+    match registry with
+    | Some registry -> Ok registry
+    | None -> init_registry ()
+  in
+  let* results = Pkgs_ml.Registry.search_packages
+    registry
+    ~query:request.query
+    ~limit:request.limit
+    ()
+  |> Result.map_error (fun error ->
+    RegistrySearchFailed {
+      query = request.query;
+      registry = Pkgs_ml.Registry.name registry;
+      error;
+    }) in
+  Ok (List.map suggested_package_of_search_result results)
 
 let lookup_named_package = fun ~(emit:event -> unit) ~registry (parsed: registry_dependency) ->
   emit (RegistryPackageLookupStarted { package = parsed.name });

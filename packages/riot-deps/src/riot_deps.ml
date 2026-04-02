@@ -33,6 +33,11 @@ type suggested_package = Package_management.suggested_package = {
   description: string option;
 }
 
+type search_request = Package_management.search_request = {
+  query: string;
+  limit: int;
+}
+
 type package_event = Package_management.event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
@@ -77,6 +82,7 @@ type package_error = Package_management.error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
+  | RegistrySearchFailed of { query: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
@@ -88,6 +94,8 @@ type package_error = Package_management.error =
 let package_error_message = Package_management.error_message
 
 let add = Package_management.add
+
+let search = Package_management.search
 
 let remove = Package_management.remove
 

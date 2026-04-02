@@ -148,6 +148,7 @@ _riot() {
         'login:Save pkgs.ml API token'
         'logout:Remove saved pkgs.ml API token'
         'new:Create new package'
+        'search:Search registry packages'
         'completions:Generate shell completions'
         'doc:Generate documentation'
         'lsp:Start LSP server'
@@ -272,6 +273,12 @@ _riot() {
                         ;;
                 esac
             fi
+            ;;
+        search)
+            _arguments \
+                '--json[Emit machine-readable JSON results]' \
+                '(-n --limit)'{-n,--limit}'[Maximum number of results to return]:limit:' \
+                ':query:'
             ;;
         completions)
             if [[ $CURRENT -eq 3 ]]; then

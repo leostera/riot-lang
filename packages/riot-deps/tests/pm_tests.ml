@@ -1846,6 +1846,30 @@ let test_package_error_message_lists_search_suggestions = fun _ctx ->
   else
     Error ("unexpected suggestion message:\n" ^ message)
 
+let test_search_returns_registry_results = fun _ctx ->
+  let release = {
+    (make_release ~version:"0.0.1" ()) with
+    description = Some "Bootstrap build tool for the Riot toolchain";
+  } in
+  let registry = make_registry [
+    make_registry_document ~name:"miniriot" ~latest:"0.0.1" ~releases:[ release ] ();
+    make_registry_document ~name:"jsonrpc" ~latest:"0.1.0" ~releases:[ make_release ~version:"0.1.0" () ] ();
+  ] in
+  match Riot_deps.search ~registry ~request:Riot_deps.{ query = "mini"; limit = 5 } () with
+  | Error err ->
+      Error ("expected search to succeed: " ^ Riot_deps.package_error_message err)
+  | Ok [ result ] ->
+      if
+        String.equal result.package "miniriot"
+        && String.equal result.latest_version "0.0.1"
+        && Option.equal String.equal result.description (Some "Bootstrap build tool for the Riot toolchain")
+      then
+        Ok ()
+      else
+        Error "unexpected search result payload"
+  | Ok results ->
+      Error ("expected one search result, got " ^ Int.to_string (List.length results))
+
 let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
   with_tempdir "riot_deps_ensure_lock_missing"
     (fun workspace_root ->
@@ -2402,6 +2426,7 @@ let tests =
     case "git dependency: sync checkout clones a local repository" test_git_dependency_sync_checkout_clones_local_repo;
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
     case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
+    case "package management: search returns registry results" test_search_returns_registry_results;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;

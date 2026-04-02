@@ -33,6 +33,10 @@ type suggested_package = Package_management.suggested_package = {
   latest_version: string;
   description: string option;
 }
+type search_request = Package_management.search_request = {
+  query: string;
+  limit: int;
+}
 type package_event = Package_management.event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
@@ -74,6 +78,7 @@ type package_error = Package_management.error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
+  | RegistrySearchFailed of { query: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
@@ -107,6 +112,12 @@ val add:
   request:add_request ->
   unit ->
   (unit, package_error) result
+
+val search:
+  ?registry:Pkgs_ml.Registry.t ->
+  request:search_request ->
+  unit ->
+  (suggested_package list, package_error) result
 
 val remove:
   ?on_event:(package_event -> unit) ->

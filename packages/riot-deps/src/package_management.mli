@@ -13,6 +13,10 @@ type suggested_package = {
   latest_version: string;
   description: string option;
 }
+type search_request = {
+  query: string;
+  limit: int;
+}
 type event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
@@ -54,6 +58,7 @@ type error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
+  | RegistrySearchFailed of { query: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
@@ -78,5 +83,11 @@ val remove:
   request:remove_request ->
   unit ->
   (unit, error) result
+
+val search:
+  ?registry:Pkgs_ml.Registry.t ->
+  request:search_request ->
+  unit ->
+  (suggested_package list, error) result
 
 val update: ?on_event:(event -> unit) -> workspace:Riot_model.Workspace.t -> unit -> (unit, error) result

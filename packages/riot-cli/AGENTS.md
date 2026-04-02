@@ -25,6 +25,7 @@
 19. `add`, `rm`, and `update` are thin package-management commands. Parse flags into `Riot_deps` request types, delegate, and reuse the normal PM event renderer instead of inventing a second lock/progress surface.
 20. `riot add` should accept named registry specs, local path specs, and GitHub source specs. Keep the CLI help text and errors honest about the accepted forms, but keep package-name discovery and Git materialization inside `riot-deps`.
 21. `riot test` selectors should treat `package:suite` as suite discovery narrowing, not as a raw per-test substring. Only the remaining query text should be forwarded into `run-tests`.
+22. `riot search` should stay workspace-independent. Parse flags in the CLI, delegate to `Riot_deps.search`, and keep stdout reserved for the search results themselves.
 
 ## Validate
 

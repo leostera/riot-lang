@@ -19,6 +19,7 @@ let build_cli = fun workspace_opt ->
         New.command;
         Publish.command;
         Run.command;
+        Search.command;
         Snapshots.command;
         Test_cmd.command;
         Bench_cmd.command;
@@ -240,6 +241,8 @@ format = "full"
                 )
               | Error _ as e -> e
             )
+          | Some ("search", search_matches) ->
+              Search.run search_matches
           | Some ("snapshots", snapshots_matches) -> (
               match require_clean_workspace workspace_scan_opt with
               | Ok workspace -> Snapshots.run ~workspace snapshots_matches
