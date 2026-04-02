@@ -413,7 +413,7 @@ let read_line = fun t ->
     match read t with
     | Ok s ->
         Buffer.add_string buf s;
-        if String.contains s "\n" then
+        if String.contains s "\n" || String.contains s "\r" then
           Ok (Buffer.contents buf)
         else
           loop ()

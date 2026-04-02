@@ -230,6 +230,26 @@ let validate_registry_dependencies = fun ~registry ~publishing_workspace_package
   in
   loop package.dependencies
 
+let published_version_exists = fun ~registry ~package_name ~version ->
+  match Pkgs_ml.Registry.read_package_document registry ~package_name with
+  | Error error ->
+      Error (RuntimeDependencyRegistryLookupFailed {
+        package = package_name;
+        dependency = package_name;
+        registry = Pkgs_ml.Registry.name registry;
+        error
+      })
+  | Ok None ->
+      Ok false
+  | Ok (Some document) ->
+      let version = Std.Version.to_string version in
+      Ok (
+        List.exists
+          (fun (release: Pkgs_ml.Sparse_index.release) ->
+            String.equal release.version version)
+          document.releases
+      )
+
 let collect_relative_files = fun ~package_root ->
   let rec walk_dir acc dir =
     match Fs.read_dir dir with

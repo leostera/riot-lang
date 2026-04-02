@@ -1,6 +1,6 @@
 [package]
 name = "syn"
-version = "0.1.0"
+version = "0.0.1"
 description = "Parser, lexer, CST, and diagnostics toolkit."
 license = "Apache-2.0"
 public = true
@@ -13,7 +13,7 @@ name = "syn"
 path = "src/main.ml"
 
 [dependencies]
-std = { path = "../std" }
-tty = { path  ="../tty"} 
-colors = { path ="../colors"}
-ceibo = { path = "../ceibo" }
+std = { path = "../std" , version = "*"}
+tty = { path  ="../tty", version = "*"} 
+colors = { path ="../colors", version = "*"}
+ceibo = { path = "../ceibo", version = "*" }

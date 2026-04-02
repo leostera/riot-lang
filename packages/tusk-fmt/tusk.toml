@@ -1,6 +1,6 @@
 [package]
 name = "tusk-fmt"
-version = "0.1.0"
+version = "0.0.1"
 description = "Formatting checks and wrappers around Krasny."
 license = "Apache-2.0"
 public = true
@@ -13,6 +13,6 @@ name = "fmt_tests"
 path = "tests/fmt_tests.ml"
 
 [dependencies]
-std = { path = "../std" }
-tusk-model = { path = "../tusk-model" }
-krasny = { path = "../krasny" }
+std = { path = "../std", version = "*" }
+tusk-model = { path = "../tusk-model", version = "*" }
+krasny = { path = "../krasny", version = "*" }

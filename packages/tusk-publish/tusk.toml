@@ -1,6 +1,6 @@
 [package]
 name = "tusk-publish"
-version = "0.1.0"
+version = "0.0.1"
 description = "Publish command orchestration for Tusk."
 license = "Apache-2.0"
 public = true
@@ -9,10 +9,10 @@ public = true
 path = "src/tusk_publish.ml"
 
 [dependencies]
-std = { path = "../std" }
-tusk-model = { path = "../tusk-model" }
-pkgs-ml = { path = "../pkgs-ml" }
-tusk-deps = { path = "../tusk-deps" }
-tusk-build = { path = "../tusk-build" }
-tusk-fix = { path = "../tusk-fix" }
-tusk-fmt = { path = "../tusk-fmt" }
+std = { path = "../std", version = "*" }
+tusk-model = { path = "../tusk-model", version = "*" }
+pkgs-ml = { path = "../pkgs-ml", version = "*" }
+tusk-deps = { path = "../tusk-deps", version = "*" }
+tusk-build = { path = "../tusk-build", version = "*" }
+tusk-fix = { path = "../tusk-fix", version = "*" }
+tusk-fmt = { path = "../tusk-fmt", version = "*" }

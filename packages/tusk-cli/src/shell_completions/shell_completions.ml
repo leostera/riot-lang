@@ -145,6 +145,8 @@ _tusk() {
         'bench:Run benchmarks'
         'clean:Clean build artifacts'
         'install:Install dependencies'
+        'login:Save pkgs.ml API token'
+        'logout:Remove saved pkgs.ml API token'
         'new:Create new package'
         'completions:Generate shell completions'
         'doc:Generate documentation'
@@ -300,7 +302,7 @@ _tusk() {
                 '--verify[Verify formatting would preserve syntax hashes]' \
                 '--json[Emit machine-readable JSONL events]'
             ;;
-        clean|install|new|doc|lsp|version)
+        clean|install|login|logout|new|doc|lsp|version)
             # These commands have their own completion logic
             # Can be extended later
             ;;

@@ -108,35 +108,56 @@ let blink_error_message = function
   | Blink.Error.Eof -> "unexpected eof"
   | Blink.Error.Closed -> "connection closed"
 
+let exn_message = function
+  | Failure message -> message
+  | exn -> Exception.to_string exn
+
 let default_fetch =
   let run method_ uri ~headers ?body () =
-    match Blink.connect uri with
-    | Error err -> Error (blink_error_message err)
-    | Ok conn ->
-        let request =
-          List.fold_left
-            (fun request (name, value) ->
-              Net.Http.Request.add_header request name value)
-            (Net.Http.Request.create method_ uri)
-            headers
-        in
-        let finish result =
-          Blink.close conn;
-          result
-        in
-        let response =
-          match Blink.request conn request ?body () with
-          | Error err -> Error (blink_error_message err)
-          | Ok () -> (
-              match Blink.await conn with
+    try
+      match Blink.connect uri with
+      | Error err -> Error (blink_error_message err)
+      | Ok conn ->
+          let request =
+            List.fold_left
+              (fun request (name, value) ->
+                Net.Http.Request.add_header request name value)
+              (Net.Http.Request.create method_ uri)
+              headers
+          in
+          let finish result =
+            try
+              Blink.close conn;
+              result
+            with
+            | exn -> (
+                match result with
+                | Error _ ->
+                    result
+                | Ok _ ->
+                    Error (exn_message exn)
+              )
+          in
+          let response =
+            try
+              match Blink.request conn request ?body () with
               | Error err -> Error (blink_error_message err)
-              | Ok (response, body) -> Ok {
-                status_code = Net.Http.Status.to_int (Net.Http.Response.status response);
-                body
-              }
-            )
-        in
-        finish response
+              | Ok () -> (
+                  match Blink.await conn with
+                  | Error err -> Error (blink_error_message err)
+                  | Ok (response, body) -> Ok {
+                    status_code = Net.Http.Status.to_int (Net.Http.Response.status response);
+                    body
+                  }
+                )
+            with
+            | exn ->
+                Error (exn_message exn)
+          in
+          finish response
+    with
+    | exn ->
+        Error (exn_message exn)
   in
   make_fetch
     ~get:(fun uri -> run Net.Http.Method.Get uri ~headers:[] ())

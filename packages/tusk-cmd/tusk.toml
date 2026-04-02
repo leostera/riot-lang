@@ -1,6 +1,6 @@
 [package]
 name = "tusk-cmd"
-version = "0.1.0"
+version = "0.0.1"
 description = "Shared command registration interfaces for Tusk commands."
 license = "Apache-2.0"
 public = true
@@ -9,4 +9,4 @@ public = true
 path = "src/tusk_cmd.ml"
 
 [dependencies]
-std = { path = "../std" }
+std = { path = "../std", version = "*" }

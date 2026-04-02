@@ -3,7 +3,7 @@ name = "miniriot"
 license = "Apache-2.0"
 description = "Actor-model multi-core runtime for OCaml 5"
 public = true
-version = "0.0.1"
+version = "0.0.2"
 categories = ["runtime", "actors"]
 keywords = ["actors", "scheduler", "mailbox"]
 
@@ -17,11 +17,11 @@ rules = [ "loop-yield" ]
 path = "src/miniriot.ml"
 
 [dependencies]
-kernel = { path = "../kernel" }
+kernel = { path = "../kernel", version = "*" }
 
 [build-dependencies]
-fixme = { path = "../fixme" }
+fixme = { path = "../fixme", version = "*" }
 
 [dev-dependencies]
-propane = { path = "../propane" }
-std = { path = "../std" }
+propane = { path = "../propane", version = "*" }
+std = { path = "../std", version = "*" }

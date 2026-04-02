@@ -13,16 +13,17 @@ name = "tusk"
 path = "src/main.ml"
 
 [dependencies]
-std = { path = "../std" }
-tusk-init = { path = "../tusk-init" }
-tusk-executor = { path = "../tusk-executor" }
-tusk-model = { path = "../tusk-model" }
-tusk-planner = { path = "../tusk-planner" }
-tusk-build = { path = "../tusk-build" }
-tusk-store = { path = "../tusk-store" }
-tusk-toolchain = { path = "../tusk-toolchain" }
-tusk-fix = { path = "../tusk-fix" }
-tusk-fmt = { path = "../tusk-fmt" }
-tusk-deps = { path = "../tusk-deps" }
-tusk-publish = { path = "../tusk-publish" }
-pkgs-ml = { path = "../pkgs-ml" }
+std = { path = "../std", version = "*" }
+tusk-init = { path = "../tusk-init", version = "*" }
+tusk-executor = { path = "../tusk-executor", version = "*" }
+tusk-model = { path = "../tusk-model", version = "*" }
+tusk-planner = { path = "../tusk-planner", version = "*" }
+tusk-build = { path = "../tusk-build", version = "*" }
+tusk-store = { path = "../tusk-store", version = "*" }
+tusk-toolchain = { path = "../tusk-toolchain", version = "*" }
+tusk-fix = { path = "../tusk-fix", version = "*" }
+tusk-fmt = { path = "../tusk-fmt", version = "*" }
+tusk-deps = { path = "../tusk-deps", version = "*" }
+tusk-publish = { path = "../tusk-publish", version = "*" }
+pkgs-ml = { path = "../pkgs-ml", version = "*" }
+tty = { path = "../tty", version = "*" }

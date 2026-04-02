@@ -529,6 +529,67 @@ api_token = "publish-token"
           | _ -> Error "expected config loader to expose registry token"
         ))
 
+let test_user_config_parses_empty_registry_entry = fun () ->
+  let toml =
+    Std.Data.Toml.parse
+      {|
+[registry."pkgs.ml"]
+|}
+    |> Result.expect ~msg:"expected user config TOML to parse"
+  in
+  match Tusk_model.User_config.of_toml toml with
+  | Error err -> Error (Tusk_model.User_config.message err)
+  | Ok config -> (
+      match Tusk_model.User_config.api_token config ~registry_name:"pkgs.ml" with
+      | None -> Ok ()
+      | Some _ -> Error "expected empty registry config to keep missing api_token"
+    )
+
+let test_user_config_parses_registry_urls = fun () ->
+  let toml =
+    Std.Data.Toml.parse
+      {|
+[registry."pkgs.ml"]
+api_url = "https://api.pkgs.ml"
+cdn_url = "https://cdn.pkgs.ml"
+api_token = "publish-token"
+|}
+    |> Result.expect ~msg:"expected user config TOML to parse"
+  in
+  match Tusk_model.User_config.of_toml toml with
+  | Error err -> Error (Tusk_model.User_config.message err)
+  | Ok config -> (
+      match
+        List.find_opt
+          (fun (name, _registry) ->
+            String.equal name "pkgs.ml")
+          config.Tusk_model.User_config.registries
+      with
+      | None -> Error "expected pkgs.ml registry entry to be present"
+      | Some (_name, registry) ->
+          if not (String.equal (Net.Uri.to_string registry.api_url) "https://api.pkgs.ml/") then
+            Error "expected api_url to parse"
+          else if not (String.equal (Net.Uri.to_string registry.cdn_url) "https://cdn.pkgs.ml/") then
+            Error "expected cdn_url to parse"
+          else if not (registry.api_token = Some "publish-token") then
+            Error "expected api_token to parse"
+          else
+            Ok ()
+    )
+
+let test_user_config_save_roundtrips_default_registry_config = fun () ->
+  with_tempdir "tusk_model_user_config_default"
+    (fun tmpdir ->
+      let config_path = Path.(tmpdir / Path.v "config.toml") in
+      Tusk_model.User_config.save Tusk_model.User_config.default config_path |> Result.expect ~msg:"expected default config to write";
+      match Tusk_model.User_config.load config_path with
+      | Error err -> Error (Tusk_model.User_config.message err)
+      | Ok config -> (
+          match Tusk_model.User_config.api_token config ~registry_name:"pkgs.ml" with
+          | None -> Ok ()
+          | Some _ -> Error "expected saved default config to keep missing api_token"
+        ))
+
 let test_debug_profile_defaults_to_native_with_debug_symbols = fun () ->
   let profile = Tusk_model.Profile.debug in
   let flags = Tusk_model.Profile.to_compiler_flags profile in
@@ -580,8 +641,11 @@ let tests =
     case "workspace: registry dependency requirement parses structurally" test_workspace_dependency_requirement_parses_structurally;
     case "workspace: star dependency becomes unconstrained registry dependency" test_workspace_star_requirement_becomes_unconstrained_registry_dep;
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
+    case "user config: parses empty registry entry" test_user_config_parses_empty_registry_entry;
+    case "user config: parses registry urls" test_user_config_parses_registry_urls;
     case "user config: parses registry API token" test_user_config_parses_registry_api_token;
     case "user config: loads config file" test_user_config_load_reads_config_file;
+    case "user config: saves default registry config" test_user_config_save_roundtrips_default_registry_config;
     case "profile: debug defaults to native with debug symbols" test_debug_profile_defaults_to_native_with_debug_symbols;
     case "profile: release defaults to strict native optimization" test_release_profile_defaults_to_strict_native_optimization;
   ]

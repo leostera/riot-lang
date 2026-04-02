@@ -1,6 +1,6 @@
 [package]
 name = "krasny"
-version = "0.1.0"
+version = "0.0.1"
 description = "Document layout and OCaml code formatting engine."
 license = "Apache-2.0"
 public = true
@@ -12,10 +12,6 @@ path = "src/krasny.ml"
 name = "krasny"
 path = "src/main.ml"
 
-[[bin]]
-name = "format_tests"
-path = "tests/format_tests.ml"
-
 [dependencies]
-std = { path = "../std" }
-syn = { path = "../syn" }
+std = { path = "../std", version = "*" }
+syn = { path = "../syn", version = "*" }

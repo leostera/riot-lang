@@ -1,17 +1,16 @@
 [package]
 name = "sqlx"
-version = "0.1.0"
+version = "0.0.1"
 description = "High-level SQL API for Riot applications."
 license = "Apache-2.0"
-public = true
 
 [lib]
 path = "src/sqlx.ml"
 
 [dependencies]
-std = { path = "../std" }
-kernel = { path = "../kernel" }
-sqlx-driver = { path = "../sqlx-driver" }
+std = { path = "../std", version = "*" }
+kernel = { path = "../kernel" , version = "*"}
+sqlx-driver = { path = "../sqlx-driver", version = "*" }
 
 # TODO: Use these for sqltool example when dev-dependencies are implemented
 # [dev-dependencies]

@@ -54,6 +54,9 @@ val validate_registry_dependencies:
   package:Tusk_model.Package.t ->
   (unit, error) result
 
+val published_version_exists:
+  registry:Pkgs_ml.Registry.t -> package_name:string -> version:Std.Version.t -> (bool, error) result
+
 val create_artifact:
   target_dir_root:Path.t ->
   package:Tusk_model.Package.t ->

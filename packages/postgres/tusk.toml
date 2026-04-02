@@ -1,13 +1,11 @@
 [package]
 name = "postgres"
-version = "0.1.0"
+version = "0.0.1"
 description = "PostgreSQL adapter for the sqlx database APIs."
 license = "Apache-2.0"
-public = true
 
 [dependencies]
-std = { path = "../std" }
-kernel = { path = "../kernel" }
-sqlx-driver = { path = "../sqlx-driver" }
+std = { path = "../std", version = "*" }
+kernel = { path = "../kernel", version = "*" }
+sqlx-driver = { path = "../sqlx-driver", version = "*" }
 # Add dependencies here
-

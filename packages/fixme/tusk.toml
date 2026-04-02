@@ -1,6 +1,6 @@
 [package]
 name = "fixme"
-version = "0.1.0"
+version = "0.0.1"
 description = "Shared rule-authoring types for the tusk-fix linting pipeline."
 license = "Apache-2.0"
 public = true
@@ -9,5 +9,5 @@ public = true
 path = "src/fixme.ml"
 
 [dependencies]
-std = { path = "../std" }
-syn = { path = "../syn" }
+std = { path = "../std", version = "*" }
+syn = { path = "../syn" , version = "*"}

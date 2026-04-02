@@ -25,6 +25,13 @@ let ensure_created = fun () ->
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "projects") in
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "toolchains") in
   let _ = Fs.create_dir_all Path.(dot_tusk / Path.v "bin") in
+  let config = config_path () in
+  let _ =
+    match Fs.exists config with
+    | Ok true -> Ok ()
+    | Ok false -> User_config.save User_config.default config
+    | Error _ -> Ok ()
+  in
   Ok ()
 
 (** Build directory configuration - single source of truth *)

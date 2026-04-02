@@ -1,6 +1,6 @@
 [package]
 name = "blink"
-version = "0.2.0"
+version = "0.0.1"
 description = "Streaming HTTP client built on Riot actors."
 license = "Apache-2.0"
 public = true
@@ -17,6 +17,6 @@ name = "test_https_httpbin"
 path = "examples/test_https_httpbin.ml"
 
 [dependencies]
-std = { path = "../std" }
-http = { path = "../http" }
-miniriot = { path = "../miniriot" }
+std = { path = "../std", version = "*" }
+http = { path = "../http", version = "*" }
+miniriot = { path = "../miniriot", version = "*" }

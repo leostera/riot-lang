@@ -1,6 +1,6 @@
 [package]
 name = "http"
-version = "0.1.0"
+version = "0.0.1"
 description = "HTTP protocol parsing, rendering, and wire-level types."
 license = "Apache-2.0"
 public = true
@@ -9,5 +9,5 @@ public = true
 path = "src/http.ml"
 
 [dependencies]
-std = { path = "../std" }
-propane = { path = "../propane" }
+std = { path = "../std", version = "*" }
+propane = { path = "../propane", version = "*" }

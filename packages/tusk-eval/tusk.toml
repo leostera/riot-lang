@@ -1,6 +1,6 @@
 [package]
 name = "tusk-eval"
-version = "0.1.0"
+version = "0.0.1"
 description = "OCaml evaluation tooling for the Tusk toolchain."
 license = "Apache-2.0"
 public = true
@@ -13,6 +13,6 @@ name = "tusk-eval"
 path = "src/main.ml"
 
 [dependencies]
-std = { path = "../std" }
-syn = { path = "../syn" }
-tusk-toolchain = { path = "../tusk-toolchain" }
+std = { path = "../std", version = "*" }
+syn = { path = "../syn", version = "*" }
+tusk-toolchain = { path = "../tusk-toolchain", version = "*" }

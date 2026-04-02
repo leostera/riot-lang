@@ -192,7 +192,11 @@ let test_publisher_rejects_path_only_runtime_dependencies = fun () ->
     () in
   match Tusk_deps.Publisher.validate_runtime_dependencies ~package with
   | Ok () -> Error "expected path-only runtime dependency to be rejected for publish"
-  | Error (Tusk_deps.Publisher.RuntimeDependencyNotPublishable { dependency; reason=`PathOnly path; _ }) ->
+  | Error (Tusk_deps.Publisher.RuntimeDependencyNotPublishable {
+    dependency;
+    reason=`PathOnly path;
+    _
+  }) ->
       if String.equal dependency "std" && Path.equal path (Path.v "../std") then
         Ok ()
       else

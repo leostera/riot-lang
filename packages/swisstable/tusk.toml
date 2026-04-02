@@ -1,6 +1,6 @@
 [package]
 name = "swisstable"
-version = "0.1.0"
+version = "0.0.1"
 description = "SwissTable-inspired hash map implementation for OCaml."
 license = "Apache-2.0"
 public = true
@@ -9,9 +9,9 @@ public = true
 path = "src/swisstable.ml"
 
 [dependencies]
-kernel = { path = "../kernel" }
-std = { path = "../std" }
-propane = { path = "../propane" }
+kernel = { path = "../kernel", version = "*" }
+std = { path = "../std", version = "*" }
+propane = { path = "../propane", version = "*" }
 
 # Benchmark binaries
 [[bin]]

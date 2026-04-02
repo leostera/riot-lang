@@ -1,6 +1,6 @@
 [package]
 name = "tusk-deps"
-version = "0.1.0"
+version = "0.0.1"
 description = "Package management and dependency solving for Tusk."
 license = "Apache-2.0"
 public = true
@@ -13,12 +13,12 @@ name = "pm_tests"
 path = "tests/pm_tests.ml"
 
 [dependencies]
-std = { path = "../std" }
-tusk-model = { path = "../tusk-model" }
-pkgs-ml = { path = "../pkgs-ml" }
-tusk-fmt = { path = "../tusk-fmt" }
-tusk-fix = { path = "../tusk-fix" }
-tusk-planner = { path = "../tusk-planner" }
-tusk-executor = { path = "../tusk-executor" }
-tusk-store = { path = "../tusk-store" }
-tusk-toolchain = { path = "../tusk-toolchain" }
+std = { path = "../std", version = "*" }
+tusk-model = { path = "../tusk-model", version = "*" }
+pkgs-ml = { path = "../pkgs-ml", version = "*" }
+tusk-fmt = { path = "../tusk-fmt", version = "*" }
+tusk-fix = { path = "../tusk-fix", version = "*" }
+tusk-planner = { path = "../tusk-planner", version = "*" }
+tusk-executor = { path = "../tusk-executor", version = "*" }
+tusk-store = { path = "../tusk-store", version = "*" }
+tusk-toolchain = { path = "../tusk-toolchain", version = "*" }

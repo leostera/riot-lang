@@ -1,6 +1,6 @@
 [package]
 name = "minttea"
-version = "0.1.0"
+version = "0.0.1"
 description = "Elm-style terminal UI framework for OCaml."
 license = "Apache-2.0"
 public = true
@@ -9,13 +9,13 @@ public = true
 path = "src/minttea.ml"
 
 [dependencies]
-colors = { path ="../colors" }
-gooey = { path = "../gooey" }
-std = { path = "../std" }
-tty = { path = "../tty" }
+colors = { path ="../colors", version = "*" }
+gooey = { path = "../gooey", version = "*" }
+std = { path = "../std", version = "*" }
+tty = { path = "../tty", version = "*" }
 
 [build-dependencies]
-std = { path = "../std" }
+std = { path = "../std", version = "*" }
 
 [[command]]
 name = "demo"

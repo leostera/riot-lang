@@ -9,14 +9,14 @@ public = true
 path = "src/tusk_build.ml"
 
 [dependencies]
-std = { path = "../std" }
-tusk-model = { path = "../tusk-model" }
-tusk-deps = { path = "../tusk-deps" }
-pkgs-ml = { path = "../pkgs-ml" }
-tusk-executor = { path = "../tusk-executor" }
-tusk-planner = { path = "../tusk-planner" }
-tusk-store = { path = "../tusk-store" }
-tusk-toolchain = { path = "../tusk-toolchain" }
+std = { path = "../std", version = "*" }
+tusk-model = { path = "../tusk-model", version = "*" }
+tusk-deps = { path = "../tusk-deps", version = "*" }
+pkgs-ml = { path = "../pkgs-ml", version = "*" }
+tusk-executor = { path = "../tusk-executor", version = "*" }
+tusk-planner = { path = "../tusk-planner", version = "*" }
+tusk-store = { path = "../tusk-store", version = "*" }
+tusk-toolchain = { path = "../tusk-toolchain", version = "*" }
 
 [[bin]]
 name = "cache_tests"

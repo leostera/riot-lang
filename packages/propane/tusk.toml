@@ -1,9 +1,9 @@
 [package]
 name = "propane"
-version = "0.1.0"
+version = "0.0.1"
 description = "Property-based testing support for OCaml packages."
 license = "Apache-2.0"
 public = true
 
 [dependencies]
-std = { path = "../std" }
+std = { path = "../std", version = "*" }

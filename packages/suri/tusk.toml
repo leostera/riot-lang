@@ -1,6 +1,6 @@
 [package]
 name = "suri"
-version = "0.1.0"
+version = "0.0.1"
 description = "Web framework, middleware, and routing for Riot applications."
 license = "Apache-2.0"
 public = true
@@ -9,10 +9,10 @@ public = true
 path = "src/suri.ml"
 
 [dependencies]
-std = { path = "../std" }
-http = { path = "../http" }
-blink = { path = "../blink" }
-tusk-model = { path = "../tusk-model" }
+std = { path = "../std", version = "*" }
+http = { path = "../http", version = "*" }
+blink = { path = "../blink", version = "*" }
+tusk-model = { path = "../tusk-model", version = "*" }
 
 # NOTE: Disabled until Telemetry.event API is updated
 # [[command]]

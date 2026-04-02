@@ -1,6 +1,6 @@
 [package]
 name = "tusk-toolchain"
-version = "0.1.0"
+version = "0.0.1"
 description = "Compiler and toolchain invocation wrappers for Tusk."
 license = "Apache-2.0"
 public = true

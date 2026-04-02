@@ -1,13 +1,15 @@
 open Std
 
-type publish_request =
+type publish_selection =
   | Workspace
   | Package of string
-
+type publish_request = {
+  selection: publish_selection;
+  skip_check: bool;
+}
 type publish_mode =
   | Dry_run
   | Publish
-
 type publish_check_stage =
 [
   | `Fmt
@@ -15,20 +17,20 @@ type publish_check_stage =
   | `Build
   | `Metadata
 ]
-
 type publish_event =
   | Fmt of Krasny.Report.event
   | Fix of Tusk_fix.Event.t
   | Build of Tusk_build.build_event
-  | CheckStarted of { package: string; stage: publish_check_stage }
-  | CheckFinished of { package: string; stage: publish_check_stage }
+  | CheckStarted of { package: string; version: Std.Version.t option; stage: publish_check_stage }
+  | CheckFinished of { package: string; version: Std.Version.t option; stage: publish_check_stage }
+  | Packing of { package: string; version: Std.Version.t; artifact_path: Path.t }
+  | SkippedAlreadyPublished of { package: string; version: Std.Version.t }
   | DryRunPlanned of Tusk_deps.Publisher.prepared_publish
   | PackagePublished of Pkgs_ml.Registry.published_release
-
 type publish_outcome =
+  | SkippedAlreadyPublished of { package: string; version: Std.Version.t }
   | DryRun of Tusk_deps.Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release
-
 type publish_error =
   | PackageNotFound of { package: string }
   | NoWorkspacePackages
@@ -41,7 +43,6 @@ type publish_error =
   | BuildCheckFailed of { package: string; error: string }
   | PublishPlanFailed of Tusk_deps.Publisher.error
   | PublishFailed of { package: string; error: Tusk_deps.Publisher.error }
-
 val publish_error_message: publish_error -> string
 
 val publish:

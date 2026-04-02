@@ -1,9 +1,8 @@
 [package]
 name = "hello-foreign"
-version = "0.1.0"
+version = "0.0.1"
 description = "OCaml-to-Rust foreign function interface smoke tests."
 license = "Apache-2.0"
-public = true
 
 [lib]
 path = "src/hello_foreign.ml"
@@ -13,7 +12,7 @@ name = "hello"
 path = "src/hello.ml"
 
 [dependencies]
-std = { path = "../std" }
+std = { path = "../std", version = "*" }
 
 [foreign-dependencies.hello-rust]
 path = "../../native/hello-rust"

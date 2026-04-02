@@ -921,6 +921,28 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
             Error "unexpected artifact publish request or response"
       | _ -> Error "expected exactly one publish request"
 
+let test_registry_publish_artifact_bubbles_transport_exceptions_as_errors = fun () ->
+  let cache = Pkgs_ml.Registry_cache.create
+    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~registry_name:"pkgs.ml"
+    ()
+  |> Result.expect ~msg:"expected registry cache to be created" in
+  let fetch, _requests =
+    make_fetch_recorder
+      ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+        raise (Failure "SSL_write error"))
+      (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
+  in
+  let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+  match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact:"tarball" with
+  | Ok _ ->
+      Error "expected publish artifact to return the transport exception as an error"
+  | Error err ->
+      if String.equal err "SSL_write error" then
+        Ok ()
+      else
+        Error ("unexpected publish artifact transport error: " ^ err)
+
 let tests =
   Test.[
     case "registry cache: uses cargo-style split layout" test_registry_split_layout;
@@ -938,6 +960,7 @@ let tests =
     case "registry: publish from locator posts tarball to publish route" test_registry_publish_from_locator_posts_tarball_to_publish_route;
     case "registry: publish from locator bubbles registry error message" test_registry_publish_from_locator_bubbles_registry_error_message;
     case "registry: publish artifact posts tarball to artifact publish route" test_registry_publish_artifact_posts_tarball_to_artifact_publish_route;
+    case "registry: publish artifact bubbles transport exceptions as errors" test_registry_publish_artifact_bubbles_transport_exceptions_as_errors;
   ]
 
 let name = "pkgs-ml Tests"

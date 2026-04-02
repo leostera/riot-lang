@@ -1,6 +1,6 @@
 [package]
 name = "tusk-fix"
-version = "0.1.0"
+version = "0.0.1"
 description = "Linting and auto-fix pipeline for OCaml workspaces."
 license = "Apache-2.0"
 public = true
@@ -13,10 +13,10 @@ name = "tusk-fix"
 path = "src/main.ml"
 
 [dependencies]
-std = { path = "../std" }
-syn = { path = "../syn" }
-tusk-model = { path = "../tusk-model" }
-fixme = { path = "../fixme" }
+std = { path = "../std", version = "*" }
+syn = { path = "../syn", version = "*" }
+tusk-model = { path = "../tusk-model", version = "*" }
+fixme = { path = "../fixme", version = "*" }
 
 [[bin]]
 name = "fix_tests"

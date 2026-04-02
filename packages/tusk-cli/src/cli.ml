@@ -12,6 +12,8 @@ let build_cli = fun workspace_opt ->
         Tusk_fmt.command;
         Tusk_init.command;
         Install.command;
+        Login.command;
+        Logout.command;
         New.command;
         Publish.command;
         Run.command;
@@ -231,6 +233,10 @@ format = "full"
               Completions.run completions_matches
           | Some ("fix", fix_matches) ->
               Fix_cmd.run fix_matches
+          | Some ("login", login_matches) ->
+              Login.run login_matches
+          | Some ("logout", logout_matches) ->
+              Logout.run logout_matches
           | Some ("init", init_matches) ->
               Tusk_init.run init_matches
           | Some ("new", new_matches) ->

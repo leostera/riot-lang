@@ -1,6 +1,6 @@
 [package]
 name = "std"
-version = "0.1.0"
+version = "0.0.1"
 description = "Shared standard library surface for Riot and Tusk."
 license = "Apache-2.0"
 public = true
@@ -20,11 +20,11 @@ rules = [
 ]
 
 [dependencies]
-miniriot = { path = "../miniriot" }
-kernel = { path = "../kernel" }
+miniriot = { path = "../miniriot", version = "*" }
+kernel = { path = "../kernel", version = "*" }
 
 [dev-dependencies]
-propane = { path = "../propane" }
+propane = { path = "../propane", version = "*" }
 
 [build-dependencies]
-fixme = { path = "../fixme" }
+fixme = { path = "../fixme", version = "*" }

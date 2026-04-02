@@ -1,6 +1,6 @@
 [package]
 name = "pkgs-ml"
-version = "0.1.0"
+version = "0.0.1"
 description = "Reusable pkgs.ml registry client and cache helpers."
 license = "Apache-2.0"
 public = true
@@ -13,5 +13,5 @@ name = "pkgs_ml_tests"
 path = "tests/pkgs_ml_tests.ml"
 
 [dependencies]
-std = { path = "../std" }
-blink = { path = "../blink" }
+std = { path = "../std", version = "*" }
+blink = { path = "../blink", version = "*" }
