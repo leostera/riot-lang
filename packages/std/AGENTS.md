@@ -13,6 +13,7 @@
 7. Archive and compression APIs should compose with `IO.Reader` and `IO.Writer`. Keep path-based helpers as thin wrappers around the streaming APIs rather than making them the only surface.
 8. Binary/text codecs belong under `Std.Encoding`. Keep `Std.Data` focused on structured data formats like JSON, TOML, CSV, XML, and S-expressions.
 9. `Std.Test` owns the shared test-binary contract. Per-test callbacks now receive a `Std.Test.ctx`; future snapshot and fixture helpers should extend that context instead of inventing parallel identity plumbing.
+10. Keep `Std.Test.FixtureRunner` path-typed. Fixture roots and discovery filters should use `Std.Path.t`, and mixed fixture directories should narrow discovery through the shared `~filter` hook instead of package-local file scanning.
 
 ## Validate
 

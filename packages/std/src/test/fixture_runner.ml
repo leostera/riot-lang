@@ -8,6 +8,10 @@ type ctx = {
   fixture_name: string;
 }
 
+type filter_result =
+  [ `keep
+  | `skip ]
+
 let is_snapshot_artifact = fun path ->
   let basename = Path.basename path in
   String.ends_with ~suffix:".expected" basename || String.ends_with ~suffix:".expected.new" basename
@@ -55,15 +59,19 @@ let relpath_string = fun ~root path ->
 
 let fixture_name = fun relpath -> relpath |> Path.v |> Path.remove_extension |> Path.to_string
 
-let cases = fun ~dir ~run ->
+let keep_path = fun filter path ->
+  match filter path with
+  | `keep -> true
+  | `skip -> false
+
+let cases = fun ?(filter = fun _ -> `keep) () ~dir ~run ->
   let root =
-    let root = Path.v dir in
-    if Path.is_relative root then
+    if Path.is_relative dir then
       match Env.current_dir () with
-      | Ok cwd -> Path.join cwd root
-      | Error _ -> root
+      | Ok cwd -> Path.join cwd dir
+      | Error _ -> dir
     else
-      root
+      dir
   in
   let fixtures =
     match discover_fixture_paths root with
@@ -71,7 +79,7 @@ let cases = fun ~dir ~run ->
     | Error err -> panic
       ("failed to discover fixtures under " ^ Path.to_string root ^ ": " ^ IO.error_message err)
   in
-  fixtures |> List.map
+  fixtures |> List.filter (keep_path filter) |> List.map
     (fun fixture_path ->
       let fixture_relpath = relpath_string ~root fixture_path in
       let fixture_name = fixture_name fixture_relpath in
