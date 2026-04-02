@@ -1,0 +1,16 @@
+{
+  "name": "riot-get",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "@types/bun": "latest",
+    "typescript": "^5",
+    "wrangler": "latest"
+  }
+}
