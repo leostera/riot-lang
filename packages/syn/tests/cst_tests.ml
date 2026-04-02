@@ -349,9 +349,14 @@ let tests = [
         ~expected:[ ";"; ";" ]
         ~actual:((Syn.Cst.SourceFile.phrase_separator_tokens cst |> List.map Syn.Cst.Token.text));
       Ok ());
-  Test.case "cst polymorphic-variant inherit patterns keep the path after #"
+  Test.case "cst polymorphic-variant inherit patterns keep the identifier after #"
     (fun _ctx ->
-      let result = parse_ml "let x = match y with #color | #M.color -> 1\n" in
+      let result = parse_ml
+        "let x =\n\
+             match y with\n\
+             | #color -> 0\n\
+             | #theme -> 1\n"
+      in
       let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
@@ -362,7 +367,7 @@ let tests = [
                 ~expected:[ "color" ]
                 ~actual:((Syn.Cst.Ident.segments first.type_path |> List.map Syn.Cst.Token.text));
               Test.assert_equal
-                ~expected:[ "M"; "color" ]
+                ~expected:[ "theme" ]
                 ~actual:((Syn.Cst.Ident.segments second.type_path |> List.map Syn.Cst.Token.text));
               Ok ()
           | _ -> Error "expected polymorphic-variant inherit match cases"
@@ -599,8 +604,8 @@ let tests = [
           ] ->
               Test.assert_equal ~expected:"A" ~actual:(Syn.Cst.VariantConstructor.name head_constr);
               (
-                match Syn.Cst.TypeDeclaration.manifest_alias alias_decl with
-                | Some (Syn.Cst.CoreType.Constr { constructor_path; _ }) ->
+                match Syn.Cst.TypeDeclaration.type_definition alias_decl with
+                | Syn.Cst.TypeDefinition.Alias { manifest=Syn.Cst.CoreType.Constr { constructor_path; _ }; _ } ->
                     Test.assert_equal
                       ~expected:[ "Outer"; "Inner"; "t" ]
                       ~actual:(Syn.Cst.Ident.segments constructor_path |> List.map Syn.Cst.Token.text)
