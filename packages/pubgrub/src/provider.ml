@@ -16,6 +16,7 @@ type dependencies =
 
 type 'error t = {
   choose_version: package -> version_ranges -> (version option, 'error) result;
+  count_versions: package -> version_ranges -> (int, 'error) result;
   get_dependencies: package -> version -> (dependencies, 'error) result;
 }
 
@@ -61,6 +62,17 @@ let to_provider : offline -> string t = fun offline ->
           | entry :: _ -> Some entry.version
         )
   in
+  let count_versions pkg ranges =
+    match Collections.HashMap.get offline.packages pkg with
+    | None -> Ok 0
+    | Some entries ->
+        let matching =
+          List.filter
+            (fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
+            entries
+        in
+        Ok (List.length matching)
+  in
   let get_dependencies pkg ver =
     match Collections.HashMap.get offline.packages pkg with
     | None -> Ok (Unavailable ("Package '" ^ pkg ^ "' not found"))
@@ -74,4 +86,4 @@ let to_provider : offline -> string t = fun offline ->
         | Some entry -> Ok (Available entry.deps)
       )
   in
-  { choose_version; get_dependencies }
+  { choose_version; count_versions; get_dependencies }

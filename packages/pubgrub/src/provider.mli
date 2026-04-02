@@ -9,6 +9,7 @@ type dependencies =
   | Unavailable of string
 type 'error t = {
   choose_version: package -> version_ranges -> (version option, 'error) result;
+  count_versions: package -> version_ranges -> (int, 'error) result;
   get_dependencies: package -> version -> (dependencies, 'error) result;
 }
 type offline

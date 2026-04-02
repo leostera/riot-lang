@@ -28,6 +28,6 @@ val is_terminal: t -> package -> version -> bool
 
 val merge_dependents: t -> t -> t option
 
-val prior_cause: t -> t -> package -> t
+val prior_cause: ?extra_term:Term.t -> t -> t -> package -> t
 
 val as_dependency: t -> (package * package) option

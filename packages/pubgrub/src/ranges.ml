@@ -163,14 +163,19 @@ let rec intersection = fun ~compare_v r1 r2 ->
   | (s1, e1) :: rest1, (s2, e2) :: rest2 ->
       let start = max_by (compare_bound_start ~compare_v) s1 s2 in
       let end_ = min_by (compare_bound_end ~compare_v) e1 e2 in
-      if valid_segment ~compare_v (start, end_) then
-        (start, end_) :: intersection ~compare_v rest1 rest2
-      else
+      let tail =
         let cmp_end = compare_bound_end ~compare_v e1 e2 in
-        if cmp_end <= 0 then
+        if cmp_end < 0 then
           intersection ~compare_v rest1 r2
-        else
+        else if cmp_end > 0 then
           intersection ~compare_v r1 rest2
+        else
+          intersection ~compare_v rest1 rest2
+      in
+      if valid_segment ~compare_v (start, end_) then
+        (start, end_) :: tail
+      else
+        tail
 
 let union = fun ~compare_v r1 r2 ->
   complement

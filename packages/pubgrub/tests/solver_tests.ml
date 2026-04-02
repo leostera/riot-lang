@@ -21,8 +21,8 @@ let assert_conflict = fun result ->
   | Ok (Pubgrub.Solver.Success _) -> Error "Expected conflict but found solution"
   | Error err -> Error ("Error: " ^ err)
 
-let test_debug_derivations =
-  Test.case "DEBUG: Test derivations are created"
+let test_derivations_are_created =
+  Test.case "Derivations are created"
     (fun _ctx ->
       let provider = Pubgrub.create_offline () in
       Pubgrub.add_package provider "root" (v 1 0 0) [ ("foo", Pubgrub.full) ];
@@ -926,41 +926,45 @@ let test_ref_conflict_resolution =
       | Ok (Pubgrub.Solver.Failure _) -> Error "Expected success but got failure"
       | Error err -> Error ("Unexpected error: " ^ err))
 
-let test_debug_conflict_partial_satisfier =
-  Test.case "DEBUG: Conflict with partial satisfier"
+let make_partial_satisfier_provider = fun () ->
+  let provider = Pubgrub.create_offline () in
+  Pubgrub.add_package
+    provider
+    "root"
+    (v 1 0 0)
+    [
+      ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
+      ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
+    ];
+  Pubgrub.add_package
+    provider
+    "foo"
+    (v 1 1 0)
+    [
+      ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
+      ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
+    ];
+  Pubgrub.add_package provider "foo" (v 1 0 0) [];
+  Pubgrub.add_package provider "left" (v 1 0 0) [ ("shared", Pubgrub.higher_than (v 1 0 0)) ];
+  Pubgrub.add_package
+    provider
+    "right"
+    (v 1 0 0)
+    [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
+  Pubgrub.add_package
+    provider
+    "shared"
+    (v 1 0 0)
+    [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
+  Pubgrub.add_package provider "shared" (v 2 0 0) [];
+  Pubgrub.add_package provider "target" (v 2 0 0) [];
+  Pubgrub.add_package provider "target" (v 1 0 0) [];
+  provider
+
+let test_conflict_partial_satisfier_variant =
+  Test.case "Conflict with partial satisfier variant"
     (fun _ctx ->
-      let provider = Pubgrub.create_offline () in
-      Pubgrub.add_package
-        provider
-        "root"
-        (v 1 0 0)
-        [
-          ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
-          ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
-        ];
-      Pubgrub.add_package
-        provider
-        "foo"
-        (v 1 1 0)
-        [
-          ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
-          ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
-        ];
-      Pubgrub.add_package provider "foo" (v 1 0 0) [];
-      Pubgrub.add_package provider "left" (v 1 0 0) [ ("shared", Pubgrub.higher_than (v 1 0 0)) ];
-      Pubgrub.add_package
-        provider
-        "right"
-        (v 1 0 0)
-        [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
-      Pubgrub.add_package
-        provider
-        "shared"
-        (v 1 0 0)
-        [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
-      Pubgrub.add_package provider "shared" (v 2 0 0) [];
-      Pubgrub.add_package provider "target" (v 2 0 0) [];
-      Pubgrub.add_package provider "target" (v 1 0 0) [];
+      let provider = make_partial_satisfier_provider () in
       match Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
           let packages =
@@ -973,46 +977,15 @@ let test_debug_conflict_partial_satisfier =
             ^ (Int.to_string (List.length solution))
             ^ ": "
             ^ (String.concat ", " packages))
-      | Ok (Pubgrub.Solver.Failure _) ->
-          Error "Expected success but got failure"
+      | Ok (Pubgrub.Solver.Failure incompat) ->
+          Error ("Expected success but got failure: " ^ (Pubgrub.Report.explain_conflict incompat))
       | Error err ->
           Error ("Unexpected error: " ^ err))
 
 let test_ref_conflict_partial_satisfier =
   Test.case "REF: Conflict with partial satisfier"
     (fun _ctx ->
-      let provider = Pubgrub.create_offline () in
-      Pubgrub.add_package
-        provider
-        "root"
-        (v 1 0 0)
-        [
-          ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0));
-          ("target", Pubgrub.between (v 2 0 0) (v 3 0 0));
-        ];
-      Pubgrub.add_package
-        provider
-        "foo"
-        (v 1 1 0)
-        [
-          ("left", Pubgrub.between (v 1 0 0) (v 2 0 0));
-          ("right", Pubgrub.between (v 1 0 0) (v 2 0 0));
-        ];
-      Pubgrub.add_package provider "foo" (v 1 0 0) [];
-      Pubgrub.add_package provider "left" (v 1 0 0) [ ("shared", Pubgrub.higher_than (v 1 0 0)) ];
-      Pubgrub.add_package
-        provider
-        "right"
-        (v 1 0 0)
-        [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
-      Pubgrub.add_package
-        provider
-        "shared"
-        (v 1 0 0)
-        [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
-      Pubgrub.add_package provider "shared" (v 2 0 0) [];
-      Pubgrub.add_package provider "target" (v 2 0 0) [];
-      Pubgrub.add_package provider "target" (v 1 0 0) [];
+      let provider = make_partial_satisfier_provider () in
       match Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
           let packages =
@@ -1025,8 +998,21 @@ let test_ref_conflict_partial_satisfier =
             ^ (Int.to_string (List.length solution))
             ^ ": "
             ^ (String.concat ", " packages))
-      | Ok (Pubgrub.Solver.Failure _) ->
-          Error "Expected success but got failure"
+      | Ok (Pubgrub.Solver.Failure incompat) ->
+          Error ("Expected success but got failure: " ^ (Pubgrub.Report.explain_conflict incompat))
+      | Error err ->
+          Error ("Unexpected error: " ^ err))
+
+let test_trace_conflict_partial_satisfier =
+  Test.case "TRACE: Conflict with partial satisfier"
+    (fun ctx ->
+      let provider = make_partial_satisfier_provider () in
+      let trace_ctx = Pubgrub.Trace.create () in
+      match Pubgrub.solve ~trace_ctx (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+      | Ok (Pubgrub.Solver.Success _) ->
+          Test.Snapshot.assert_json ~ctx ~actual:(Pubgrub.Trace.to_json trace_ctx)
+      | Ok (Pubgrub.Solver.Failure incompat) ->
+          Error ("Expected success but got failure: " ^ (Pubgrub.Report.explain_conflict incompat))
       | Error err ->
           Error ("Unexpected error: " ^ err))
 
@@ -1073,7 +1059,7 @@ let test_ref_confusing_with_holes =
 
 let all_tests =
   let base_tests = [
-    test_debug_derivations;
+    test_derivations_are_created;
     test_empty_root;
     test_single_dependency;
     test_two_dependencies;
@@ -1125,7 +1111,9 @@ let all_tests =
     test_ref_no_conflict;
     test_ref_avoiding_conflict;
     test_ref_conflict_resolution;
+    test_conflict_partial_satisfier_variant;
     test_ref_conflict_partial_satisfier;
+    test_trace_conflict_partial_satisfier;
     test_ref_double_choices;
     test_ref_confusing_with_holes;
   ]

@@ -15,6 +15,11 @@ type assignment =
 
 (* global_index *)
 
+type same_decision_levels = {
+  cause: Incompatibility.t;
+  extra_term: Term.t option;
+}
+
 type t = {
   assignments: assignment list;
   decisions: (package, version) Collections.HashMap.t;
@@ -31,6 +36,12 @@ let empty = fun () ->
   }
 
 let current_decision_level = fun solution -> solution.decision_level
+
+let version_compare = fun a b ->
+  match Version.compare a b with
+  | Lt -> (-1)
+  | Eq -> 0
+  | Gt -> 1
 
 let add_decision = fun solution pkg ver ->
   let new_level = solution.decision_level + 1 in
@@ -80,52 +91,68 @@ let get_constraint = fun solution pkg ->
   match get_decision solution pkg with
   | Some ver -> `Decided ver
   | None ->
-      (* Check if there's a derivation *)
-      let rec find_derivation = function
-        | [] -> `Undecided
-        | Derivation (p, ranges, _, _, _) :: _ when p = pkg -> `Constrained ranges
-        | _ :: rest -> find_derivation rest
+      let derived_ranges =
+        List.fold_left
+          (fun acc ->
+            function
+            | Derivation (p, ranges, _, _, _) when p = pkg -> Some (
+                match acc with
+                | None -> ranges
+                | Some existing ->
+                    Ranges.intersection ~compare_v:version_compare existing ranges
+              )
+            | _ -> acc)
+          None
+          solution.assignments
       in
-      find_derivation solution.assignments
+      match derived_ranges with
+      | Some ranges -> `Constrained ranges
+      | None -> `Undecided
 
 let extract_solution = fun solution -> Collections.HashMap.to_list solution.decisions
 
 let pick_highest_priority_pkg = fun solution prioritizer ->
+  let seen = Collections.HashSet.create () in
   let candidates = ref [] in
   List.iter
     (
       function
-      | Derivation (pkg, ranges, _, _, _) -> (
+      | Derivation (pkg, _, _, _, gidx) -> (
           match Collections.HashMap.get solution.decisions pkg with
-          | None ->
-              if not (Ranges.is_empty ranges) then
-                (
+          | None when not (Collections.HashSet.contains seen pkg) -> (
+              ignore (Collections.HashSet.insert seen pkg);
+              match get_constraint solution pkg with
+              | `Constrained ranges ->
                   Log.info ("🔍 pick: found candidate " ^ pkg);
-                  candidates := (pkg, ranges) :: !candidates
-                )
+                  candidates := (pkg, ranges, gidx) :: !candidates
+              | `Undecided -> ()
+              | `Decided _ -> ()
+            )
+          | None -> ()
           | Some _ -> Log.info ("🔍 pick: " ^ pkg ^ " already decided, skipping")
         )
       | Decision _ -> ()
     )
-    solution.assignments;
+    (List.rev solution.assignments);
   Log.info ("🔍 pick: found " ^ string_of_int (List.length !candidates) ^ " total candidates");
   match !candidates with
   | [] -> None
   | _ ->
       let sorted =
         List.sort
-          (fun ((p1, r1)) ((p2, r2)) ->
+          (fun ((p1, r1, gidx1)) ((p2, r2, gidx2)) ->
             let pri1 = prioritizer p1 r1 in
             let pri2 = prioritizer p2 r2 in
             if pri1 = pri2 then
-              String.compare p1 p2
+              compare gidx1 gidx2
             else
               compare pri2 pri1)
           !candidates
       in
-      let pkg, _ = List.hd sorted in
+      let pkg, _, _ = List.hd sorted in
       Log.info ("🔍 pick: selected " ^ pkg);
-      Some (List.hd sorted)
+      let pkg, ranges, _ = List.hd sorted in
+      Some (pkg, ranges)
 
 let backtrack = fun solution target_level ->
   let new_decisions = Collections.HashMap.create () in
@@ -154,12 +181,6 @@ let backtrack = fun solution target_level ->
     decision_level = target_level;
     next_global_index = solution.next_global_index
   }
-
-let version_compare = fun a b ->
-  match Version.compare a b with
-  | Lt -> (-1)
-  | Eq -> 0
-  | Gt -> 1
 
 let relation = fun solution incompat ->
   let terms = Incompatibility.terms incompat in
@@ -210,6 +231,11 @@ let relation = fun solution incompat ->
               (Ranges.intersection ~compare_v:version_compare constrained_ranges ranges)
           then
             incr satisfied_count
+          else if Ranges.subset_of ~compare_v:version_compare constrained_ranges ranges then
+            (
+              incr contradicted_count;
+              contradicted_pkg := Some pkg
+            )
           else (
             incr undecided_count;
             undecided_pkg := Some pkg
@@ -228,12 +254,6 @@ let relation = fun solution incompat ->
         Log.debug ("Incompatibility ALMOST SATISFIED (one undecided: " ^ pkg ^ ")");
         `AlmostSatisfied pkg
     | None -> `Unknown
-  else if !contradicted_count = total then
-    (
-      Log.debug
-        ("Incompatibility SATISFIED (all " ^ string_of_int total ^ " terms' constraints unmet → conflict!)");
-      `Satisfied
-    )
   else if !contradicted_count > 0 then
     match !contradicted_pkg with
     | Some pkg ->
@@ -271,108 +291,132 @@ let get_assignment_level = fun solution pkg ->
 (* Port of Rust's satisfier_search algorithm *)
 
 let satisfier_search = fun solution incompat ->
-  let terms = Incompatibility.terms incompat in
-  (* Step 1: find_satisfier - for each term, find when it was first satisfied *)
-  (* Returns: (package, (cause_option, global_index, decision_level)) *)
-  let find_satisfier_for_term term =
-    let pkg = Term.package term in
-    let term_ranges = Term.ranges term in
-    let is_positive = Term.is_positive term in
-    (* Search through assignments to find first one that satisfies the term *)
-    let rec search = function
-      | [] ->
-          None
-      | Decision (p, ver, level, gidx) :: _ when p = pkg ->
-          (* Check if decision satisfies the term *)
-          let in_range = Ranges.contains ~compare_v:version_compare term_ranges ver in
-          let satisfies = (is_positive && in_range) || ((not is_positive) && not in_range) in
-          if satisfies then
-            Some (pkg, (None, gidx, level))
-          else
-            None
-      | Derivation (p, ranges, cause, level, gidx) :: rest when p = pkg ->
-          (* Check if derivation satisfies the term *)
-          (* For positive term: derivation ranges must be subset of term ranges *)
-          (* For negative term: derivation ranges must be disjoint from term ranges *)
-          let satisfies =
-            if is_positive then
-              Ranges.subset_of ~compare_v:version_compare ranges term_ranges
-            else
-              Ranges.is_disjoint ~compare_v:version_compare ranges term_ranges
-          in
-          if satisfies then
-            Some (pkg, (Some cause, gidx, level))
-          else
-            search rest
-      | _ :: rest ->
-          search rest
-    in
-    search solution.assignments
+  let chronological = List.rev solution.assignments in
+  let solution_of_chronological = fun assignments ->
+    let decisions = Collections.HashMap.create () in
+    let decision_level = ref 0 in
+    List.iter
+      (function
+      | Decision (pkg, ver, level, _) ->
+          ignore (Collections.HashMap.insert decisions pkg ver);
+          decision_level := max !decision_level level
+      | Derivation (_, _, _, level, _) ->
+          decision_level := max !decision_level level)
+      assignments;
+    {
+      assignments = List.rev assignments;
+      decisions;
+      decision_level = !decision_level;
+      next_global_index = List.length assignments
+    }
   in
-  (* Build satisfied_map for all terms *)
-  let satisfied_map = List.filter_map find_satisfier_for_term terms in
-  if List.length satisfied_map = 0 then
-    (
-      Log.error "No satisfiers found in satisfier_search!";
-      Log.error ("Incompatibility has " ^ string_of_int (List.length terms) ^ " terms");
-      List.iter
-        (fun term ->
-          Log.error
-            ("  Term: "
-            ^ Term.package term
-            ^ "@ranges (positive="
-            ^ string_of_bool (Term.is_positive term)
-            ^ ")"))
-        terms;
-      panic "No satisfiers found in satisfier_search"
-    );
-  let satisfier_pkg, (satisfier_cause_opt, _satisfier_gidx, satisfier_level) =
-    List.fold_left
-      (fun acc ((pkg, (cause_opt, gidx, level))) ->
-        let _, (_, acc_gidx, _) = acc in
-        if gidx > acc_gidx then
-          (pkg, (cause_opt, gidx, level))
-        else
-          acc)
-      (List.hd satisfied_map)
-      (List.tl satisfied_map)
+  let assignment_pkg = function
+    | Decision (pkg, _, _, _)
+    | Derivation (pkg, _, _, _, _) -> pkg
   in
-  (* Step 3: find_previous_satisfier *)
-  (* Find max global_index excluding satisfier *)
-  let previous_satisfier_level =
-    let filtered =
-      List.filter (fun ((pkg, _)) -> pkg != satisfier_pkg) satisfied_map
-    in
-    if List.length filtered = 0 then
-      1
-      (* No previous satisfier *)
+  let assignment_level = function
+    | Decision (_, _, level, _)
+    | Derivation (_, _, _, level, _) -> level
+  in
+  let assignment_cause = function
+    | Decision _ -> None
+    | Derivation (_, _, cause, _, _) -> Some cause
+  in
+  let assignment_term = function
+    | Decision (pkg, ver, _, _) -> Term.positive pkg (Ranges.singleton ver)
+    | Derivation (pkg, ranges, _, _, _) -> Term.positive pkg ranges
+  in
+  let assignment_satisfies_term assignment term =
+    let assigned_ranges = Term.ranges (assignment_term assignment) in
+    if Term.is_positive term then
+      Ranges.subset_of ~compare_v:version_compare assigned_ranges (Term.ranges term)
     else
-      let _, (_, _, level) =
-        List.fold_left
-          (fun acc ((pkg, (cause_opt, gidx, level))) ->
-            let _, (_, acc_gidx, _) = acc in
-            if gidx > acc_gidx then
-              (pkg, (cause_opt, gidx, level))
-            else
-              acc)
-          (List.hd filtered)
-          (List.tl filtered)
-      in
-      max level 1
+      Ranges.is_disjoint ~compare_v:version_compare assigned_ranges (Term.ranges term)
   in
-  (* Determine result based on decision levels *)
-  if previous_satisfier_level >= satisfier_level then
-    (
-      (* SameDecisionLevels *)
-      match satisfier_cause_opt with
-      | Some cause -> (satisfier_pkg, `SameDecisionLevels cause)
-      | None ->
-          (* Satisfier is a decision, not a derivation - shouldn't happen in this case *)
-          Log.error
-            "Satisfier is decision at same level, treating as \
-           DifferentDecisionLevels";
-          (satisfier_pkg, `DifferentDecisionLevels previous_satisfier_level)
-    )
-  else
-    (* DifferentDecisionLevels *)
-    (satisfier_pkg, `DifferentDecisionLevels previous_satisfier_level)
+  let extra_term_for_partial_satisfier assignment term =
+    let assigned_ranges = Term.ranges (assignment_term assignment) in
+    let term_allowed_ranges =
+      if Term.is_positive term then
+        Term.ranges term
+      else
+        Ranges.complement ~compare_v:version_compare (Term.ranges term)
+    in
+    let difference =
+      Ranges.intersection
+        ~compare_v:version_compare
+        assigned_ranges
+        (Ranges.complement ~compare_v:version_compare term_allowed_ranges)
+    in
+    if Ranges.is_empty difference then
+      None
+    else
+      Some (Term.negative (Term.package term) difference)
+  in
+  let rec find_satisfier prefix =
+    function
+    | [] ->
+        Log.error "No satisfier found in satisfier_search";
+        panic ("No satisfier found in satisfier_search for "
+        ^ (Incompatibility.terms incompat
+          |> List.map
+            (fun term ->
+              let prefix =
+                if Term.is_positive term then
+                  ""
+                else
+                  "not "
+              in
+              prefix ^ Term.package term)
+          |> String.concat " && "))
+    | assignment :: rest ->
+        let prefix' = prefix @ [ assignment ] in
+        let prefix_solution = solution_of_chronological prefix' in
+        if relation prefix_solution incompat = `Satisfied then
+          let pkg = assignment_pkg assignment in
+          let term =
+            match Incompatibility.get_term incompat pkg with
+            | Some term -> term
+            | None -> panic "Satisfier package not found in incompatibility"
+          in
+          (prefix', assignment, pkg, term)
+        else
+          find_satisfier prefix' rest
+  in
+  let satisfier_prefix, satisfier_assignment, satisfier_pkg, satisfier_term =
+    find_satisfier [] chronological
+  in
+  let satisfier_level = assignment_level satisfier_assignment in
+  let rec find_previous_satisfier prefix candidate before_satisfier =
+    match before_satisfier with
+    | [] -> candidate
+    | assignment :: rest ->
+        let prefix' = prefix @ [ assignment ] in
+        let prefix_with_satisfier = prefix' @ [ satisfier_assignment ] in
+        let prefix_solution = solution_of_chronological prefix_with_satisfier in
+        if relation prefix_solution incompat = `Satisfied then
+          find_previous_satisfier prefix' (Some assignment) rest
+        else
+          find_previous_satisfier prefix' candidate rest
+  in
+  let before_satisfier =
+    List.rev (List.tl (List.rev satisfier_prefix))
+  in
+  let previous_satisfier = find_previous_satisfier [] None before_satisfier in
+  let previous_level =
+    match previous_satisfier with
+    | Some assignment -> max (assignment_level assignment) 1
+    | None -> 1
+  in
+  match (assignment_cause satisfier_assignment, previous_satisfier) with
+  | None, _ ->
+      (satisfier_pkg, `DifferentDecisionLevels previous_level)
+  | Some _, _ when previous_level < satisfier_level ->
+      (satisfier_pkg, `DifferentDecisionLevels previous_level)
+  | Some cause, _ ->
+      let extra_term =
+        if assignment_satisfies_term satisfier_assignment satisfier_term then
+          None
+        else
+          extra_term_for_partial_satisfier satisfier_assignment satisfier_term
+      in
+      (satisfier_pkg, `SameDecisionLevels { cause; extra_term })

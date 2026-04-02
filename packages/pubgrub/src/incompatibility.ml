@@ -93,7 +93,29 @@ let merge_dependents = fun incompat1 incompat2 ->
         None
   | _ -> None
 
-let prior_cause = fun incompat satisfier_cause package ->
+let normalize_terms = fun terms ->
+  List.fold_left
+    (fun acc term ->
+      match List.find_opt (fun existing -> Term.package existing = Term.package term) acc with
+      | None ->
+          if Term.is_any term then
+            acc
+          else
+            term :: acc
+      | Some existing ->
+          let merged = Term.intersection existing term in
+          let acc_without_pkg =
+            List.filter (fun existing -> Term.package existing != Term.package term) acc
+          in
+          if Term.is_any merged then
+            acc_without_pkg
+          else
+            merged :: acc_without_pkg)
+    []
+    terms
+  |> List.rev
+
+let prior_cause = fun ?extra_term incompat satisfier_cause package ->
   let incompat_terms = terms incompat in
   let satisfier_terms = terms satisfier_cause in
   Log.info
@@ -174,6 +196,12 @@ let prior_cause = fun incompat satisfier_cause package ->
         else
           (merged_term :: merged_other_terms) @ remaining_satisfier_terms
       in
+      let all_terms =
+        match extra_term with
+        | Some term -> term :: all_terms
+        | None -> all_terms
+      in
+      let all_terms = normalize_terms all_terms in
       Log.info ("prior_cause: all_terms has " ^ string_of_int (List.length all_terms) ^ " terms");
       (* Even if all_terms is empty, create a derived incompatibility *)
       (* An empty incompatibility is terminal (fundamental contradiction) *)

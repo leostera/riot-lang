@@ -7,6 +7,10 @@ type assignment =
   | Decision of package * version * decision_level * int
   | Derivation of package * version Ranges.t * Incompatibility.t * decision_level * int
 type t
+type same_decision_levels = {
+  cause: Incompatibility.t;
+  extra_term: Term.t option;
+}
 val empty: unit -> t
 
 val add_decision: t -> package -> version -> t
@@ -39,5 +43,5 @@ val relation: t -> Incompatibility.t -> [
 
 val satisfier_search: t -> Incompatibility.t -> package * [
     `DifferentDecisionLevels of decision_level
-    | `SameDecisionLevels of Incompatibility.t
+    | `SameDecisionLevels of same_decision_levels
   ]
