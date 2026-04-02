@@ -9449,7 +9449,7 @@ let object_member_items_of_members = fun ?source_node members ->
   let terminal_tokens =
     match members, source_node with
     | _ :: _, Some source_node -> (
-        match direct_non_trivia_tokens source_node with
+        match List.rev (direct_non_trivia_tokens source_node) with
         | closing_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" -> Ceibo.Red.SyntaxToken.leading_trivia
           closing_token
         |> List.map syntax_token_from_trivia
@@ -9458,14 +9458,16 @@ let object_member_items_of_members = fun ?source_node members ->
     | member :: _, None -> (
         match Ceibo.Red.SyntaxNode.parent (Cst.ObjectMember.syntax_node member) with
         | Some source_node -> (
-            match direct_non_trivia_tokens source_node with
-            | closing_token :: _ -> Ceibo.Red.SyntaxToken.leading_trivia closing_token |> List.map syntax_token_from_trivia
+            match List.rev (direct_non_trivia_tokens source_node) with
+            | closing_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" -> Ceibo.Red.SyntaxToken.leading_trivia
+              closing_token |> List.map syntax_token_from_trivia
             | [] -> []
+            | _ -> []
           )
         | None -> []
       )
     | [], Some source_node -> (
-        match direct_non_trivia_tokens source_node with
+        match List.rev (direct_non_trivia_tokens source_node) with
         | closing_token :: _ when String.equal (Ceibo.Red.SyntaxToken.text closing_token) "end" -> Ceibo.Red.SyntaxToken.leading_trivia
           closing_token
         |> List.map syntax_token_from_trivia
