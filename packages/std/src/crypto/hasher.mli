@@ -7,19 +7,19 @@
 
     ```ocaml open Std
 
-    (* Use any algorithm that implements Hasher.Intf *) module H = Crypto.Sha256
-    in
-
-    (* Stateful hashing - update incrementally *) let state = H.create () in let
-    state = H.update state "Part 1" in let state = H.update state "Part 2" in
-    let hash = H.finish state in Crypto.Digest.hex hash
+    (* Use any algorithm that implements Hasher.Intf *) module H = Crypto.Sha256 in
+    let state = H.create () in
+    H.write state "Part 1";
+    H.write state "Part 2";
+    let hash = H.finish state in
+    Crypto.Digest.hex hash
 
     (* Direct hashing - one-shot *) let hash = H.hash_string "Hello, World!" in
     Crypto.Digest.hex hash ```
 
     ## When to Use
 
-    - **Stateful API** ([create], [update], [finish]): When hashing streaming
+    - **Stateful API** ([create], [write], [finish]): When hashing streaming
       data
     - **Direct API** ([hash_string], etc.): When hashing complete values
 
@@ -32,10 +32,11 @@ module type Intf = sig
   type state
   val create: unit -> state
 
-  (** Write data to the state *)
-  val write: state -> bytes -> unit
+  (** Write immutable string data to the state. *)
+  val write: state -> string -> unit
 
-  val write_string: state -> string -> unit
+  (** Write an existing digest/hash value into the state. *)
+  val write_hash: state -> Kernel.Crypto.hash -> unit
 
   val write_unit: state -> unit -> unit
 

@@ -391,8 +391,8 @@ let to_compiler_flags = fun profile ->
 (** Hash profile into a Sha256 hasher state *)
 let hash = fun state profile ->
   let module H = Crypto.Sha256 in
-  H.write_string state profile.name;
-  H.write_string state
+  H.write state profile.name;
+  H.write state
     (
       match profile.kind with
       | Ocaml_compiler.Bytecode -> "bytecode"
@@ -400,25 +400,25 @@ let hash = fun state profile ->
     );
   (
     match profile.inline with
-    | Some n -> H.write_string state (Int.to_string n)
-    | None -> H.write_string state "none"
+    | Some n -> H.write state (Int.to_string n)
+    | None -> H.write state "none"
   );
-  H.write_string state (Bool.to_string profile.no_assert);
-  H.write_string state (Bool.to_string profile.compact);
-  H.write_string state (Bool.to_string profile.unsafe);
-  H.write_string state (Bool.to_string profile.no_alias_deps);
-  List.iter (H.write_string state) profile.open_modules;
+  H.write state (Bool.to_string profile.no_assert);
+  H.write state (Bool.to_string profile.compact);
+  H.write state (Bool.to_string profile.unsafe);
+  H.write state (Bool.to_string profile.no_alias_deps);
+  List.iter (H.write state) profile.open_modules;
   List.iter
     (fun w ->
-      H.write_string state (Ocaml_compiler.warning_to_string w))
+      H.write state (Ocaml_compiler.warning_to_string w))
     profile.warnings;
   List.iter
     (fun w ->
-      H.write_string state (Ocaml_compiler.warning_to_string w))
+      H.write state (Ocaml_compiler.warning_to_string w))
     profile.errors;
-  List.iter (H.write_string state) profile.cc_flags;
-  List.iter (H.write_string state) profile.ld_flags;
-  List.iter (H.write_string state) profile.ocamlc_flags
+  List.iter (H.write state) profile.cc_flags;
+  List.iter (H.write state) profile.ld_flags;
+  List.iter (H.write state) profile.ocamlc_flags
 
 (** Convert profile to JSON *)
 let to_json = fun profile ->

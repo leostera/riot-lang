@@ -7,10 +7,10 @@ module type Intf = sig
   type state
   val create: unit -> state
 
-  (** Write data to the hasher - mutates state *)
-  val write: state -> bytes -> unit
+  (** Write immutable string data to the hasher - mutates state *)
+  val write: state -> string -> unit
 
-  val write_string: state -> string -> unit
+  val write_hash: state -> Kernel.Crypto.hash -> unit
 
   val write_unit: state -> unit -> unit
 

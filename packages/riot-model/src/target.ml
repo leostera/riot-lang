@@ -63,14 +63,14 @@ let hash = fun state t ->
   let module H = Crypto.Sha256 in
   match t with
   | Host ->
-      H.write_string state "Host";
-      H.write_string state (System.Host.to_string System.Host.current)
+      H.write state "Host";
+      H.write state (System.Host.to_string System.Host.current)
   | Cross cfg ->
-      H.write_string state "Cross";
-      H.write_string state (System.Host.to_string cfg.target_triplet);
+      H.write state "Cross";
+      H.write state (System.Host.to_string cfg.target_triplet);
       (
         match cfg.sysroot with
-        | Some sr -> H.write_string state (Path.to_string sr)
+        | Some sr -> H.write state (Path.to_string sr)
         | None -> ()
       );
-      H.write_string state cfg.bin_prefix
+      H.write state cfg.bin_prefix

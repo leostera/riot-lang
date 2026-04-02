@@ -6,47 +6,54 @@ open Collections
 (** Default hasher using kernel's default hash algorithm *)
 module DefaultHasher = struct
   type state = {
-    mutable buffer: Buffer.t;
+    mutable segments_rev: Iovec.iov list;
   }
 
-  let create = fun () -> { buffer = Buffer.create 64 }
+  let create = fun () -> { segments_rev = [] }
 
-  let write = fun state bytes ->
-    Buffer.add_bytes state.buffer bytes
+  let push_segment = fun state ba ~off ~len ->
+    state.segments_rev <- { Iovec.ba; off; len } :: state.segments_rev
 
-  let write_string = fun state s -> write state (Bytes.unsafe_of_string s)
+  let write = fun state s ->
+    if String.length s > 0 then
+      push_segment state (Bytes.unsafe_of_string s) ~off:0 ~len:(String.length s)
+
+  let write_hash = fun state hash ->
+    let data = Kernel.Crypto.Hash.to_bytes hash |> Bytes.to_string in
+    write state data
 
   let write_unit = fun state () ->
     (* Default: unit is a single zero byte *)
-    write state (Bytes.create 1)
+    let bytes = Bytes.create 1 in
+    write state (Bytes.unsafe_to_string bytes)
 
   let write_int = fun state i ->
-    let b = Bytes.create 8 in
-    Bytes.set_int64_ne b 0 (Int64.of_int i);
-    write state b
+    let bytes = Bytes.create 8 in
+    Bytes.set_int64_ne bytes 0 (Int64.of_int i);
+    write state (Bytes.unsafe_to_string bytes)
 
   let write_int32 = fun state i ->
-    let b = Bytes.create 4 in
-    Bytes.set_int32_ne b 0 i;
-    write state b
+    let bytes = Bytes.create 4 in
+    Bytes.set_int32_ne bytes 0 i;
+    write state (Bytes.unsafe_to_string bytes)
 
   let write_int64 = fun state i ->
-    let b = Bytes.create 8 in
-    Bytes.set_int64_ne b 0 i;
-    write state b
+    let bytes = Bytes.create 8 in
+    Bytes.set_int64_ne bytes 0 i;
+    write state (Bytes.unsafe_to_string bytes)
 
   let write_float = fun state f -> write_int64 state (Int64.bits_of_float f)
 
   let write_bool = fun state b ->
-    let byte = Bytes.create 1 in
-    Bytes.set byte 0
+    let bytes = Bytes.create 1 in
+    Bytes.set bytes 0
       (
         if b then
           '\001'
         else
           '\000'
       );
-    write state byte
+    write state (Bytes.unsafe_to_string bytes)
 
   let write_list = fun writer state lst ->
     (* Default: include length for better distribution *)
@@ -59,14 +66,19 @@ module DefaultHasher = struct
     Array.iter (writer state) arr
 
   let finish = fun state ->
-    let data = Buffer.to_bytes state.buffer in
-    Kernel.Crypto.FFI.default_hash (Bytes.unsafe_to_string data)
+    let segments = state.segments_rev |> List.rev |> Array.of_list in
+    Kernel.Crypto.FFI.default_hash_iovec segments
 
   (* Convenience functions *)
 
-  let hash_string = fun s -> Kernel.Crypto.FFI.default_hash s
+  let hash_string = fun s ->
+    let state = create () in
+    write state s;
+    finish state
 
-  let hash_bytes = fun b -> Kernel.Crypto.FFI.default_hash (Bytes.unsafe_to_string b)
+  let hash_bytes = fun b ->
+    Kernel.Crypto.FFI.default_hash_iovec
+      [|{ Iovec.ba = Bytes.copy b; off = 0; len = Bytes.length b }|]
 
   let hash_unit = fun () ->
     let state = create () in
@@ -103,7 +115,7 @@ module DefaultHasher = struct
     write_list
       (fun s x ->
         let h = hasher x in
-        write s (Kernel.Crypto.Hash.to_bytes h))
+        write_hash s h)
       state
       lst;
     finish state
@@ -113,7 +125,7 @@ module DefaultHasher = struct
     write_array
       (fun s x ->
         let h = hasher x in
-        write s (Kernel.Crypto.Hash.to_bytes h))
+        write_hash s h)
       state
       arr;
     finish state

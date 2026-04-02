@@ -49,9 +49,9 @@ let make_package = fun tmpdir name ->
 let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~package ~workspace ~profile ~build_ctx () ->
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
-  H.write_string state planner_version;
+  H.write state planner_version;
   Riot_model.Build_ctx.hash state build_ctx;
-  H.write state (Std.Crypto.Digest.bytes (Riot_toolchain.hash test_toolchain));
+  H.write_hash state (Riot_toolchain.hash test_toolchain);
   Riot_model.Package.hash state package;
   let sorted_deps =
     List.sort
@@ -67,8 +67,8 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
             (fun (p: Riot_model.Package.t) -> p.name = dep.name)
             workspace.Riot_model.Workspace.packages with
           | Some dep_pkg ->
-              H.write_string state (Path.to_string dep_pkg.path);
-              H.write_string state
+              H.write state (Path.to_string dep_pkg.path);
+              H.write state
                 (
                   if Option.is_some dep_pkg.library then
                     "true"

@@ -66,9 +66,9 @@ let hash_file = fun ~(package:Package.t) path ->
 let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_hashes ~deps ->
   let open Crypto in
     let hasher = Sha256.create () in
-    Sha256.write_string hasher package.Package.name;
+    Sha256.write hasher package.Package.name;
     let toolchain_hash = Riot_toolchain.hash toolchain in
-    Sha256.write hasher (Digest.bytes toolchain_hash);
+    Sha256.write_hash hasher toolchain_hash;
     let sorted_actions =
       List.sort
         (fun a b ->
@@ -80,7 +80,7 @@ let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_
     List.iter
       (fun action ->
         let action_hash = Action.hash action in
-        Sha256.write hasher (Digest.bytes action_hash))
+        Sha256.write_hash hasher action_hash)
       sorted_actions;
     let sorted_srcs =
       List.sort
@@ -91,7 +91,7 @@ let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_
     List.iter
       (fun source ->
         let source_hash = hash_file ~package source in
-        Sha256.write hasher (Digest.bytes source_hash))
+        Sha256.write_hash hasher source_hash)
       sorted_srcs;
     let sorted_outs =
       List.sort
@@ -101,7 +101,7 @@ let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_
     in
     List.iter
       (fun output ->
-        Sha256.write_string hasher (Path.to_string output))
+        Sha256.write hasher (Path.to_string output))
       sorted_outs;
     let sorted_deps =
       List.sort (fun a b -> G.Node_id.to_int a - G.Node_id.to_int b) deps
@@ -109,7 +109,7 @@ let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_
     List.iter
       (fun dep_id ->
         let dep_hash = dependency_hashes dep_id in
-        Sha256.write hasher (Digest.bytes dep_hash))
+        Sha256.write_hash hasher dep_hash)
       sorted_deps;
     let hash = Sha256.finish hasher in
     {

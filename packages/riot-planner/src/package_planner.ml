@@ -347,13 +347,13 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
   (* Planner artifact contract version.
      Bump this when planned output shapes or link-time artifact requirements
      change in ways that must invalidate cached package artifacts. *)
-  H.write_string state "planner-artifacts:v8";
+  H.write state "planner-artifacts:v8";
   (* Build context (includes resolved profile) *)
   Build_ctx.hash state build_ctx;
   (* Toolchain identity must participate in package cache invalidation so
      cross-compiled artifacts are rebuilt when the installed compiler/sysroot
      changes underneath the same target triple. *)
-  H.write state (Std.Crypto.Digest.bytes (Riot_toolchain.hash toolchain));
+  H.write_hash state (Riot_toolchain.hash toolchain);
   (* Package metadata (includes compiler config overrides) *)
   Package.hash state package;
   (* Add workspace-specific dependency info not captured in package metadata *)
@@ -370,7 +370,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
       | { Package.workspace=true; _ } -> (
           match List.find_opt (fun (p: Package.t) -> p.name = dep.name) workspace.Workspace.packages with
           | Some dep_pkg -> (
-              H.write_string state (Path.to_string dep_pkg.path);
+              H.write state (Path.to_string dep_pkg.path);
               match dep_pkg.library with
               | Some _ -> H.write_bool state true
               | None -> H.write_bool state false
@@ -388,7 +388,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
   |> List.sort Std.Crypto.Hash.compare in
   List.iter
     (fun hash ->
-      H.write state (Kernel.Crypto.Hash.to_bytes hash))
+      H.write_hash state hash)
     dep_hashes;
   H.finish state
 

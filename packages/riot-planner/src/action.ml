@@ -74,7 +74,7 @@ let hash = fun action ->
       in
       List.iter
         (fun path ->
-          Sha256.write_string hasher (Path.to_string path))
+          Sha256.write hasher (Path.to_string path))
         sorted
     in
     (* Helper to write sorted flags - use flags_to_string which returns string list *)
@@ -83,39 +83,39 @@ let hash = fun action ->
       let sorted = List.sort String.compare flag_strings in
       List.iter
         (fun s ->
-          Sha256.write_string hasher s)
+          Sha256.write hasher s)
         sorted
     in
     match action with
     | CompileInterface { source; outputs; includes; flags } ->
-        Sha256.write_string hasher "CompileInterface";
-        Sha256.write_string hasher (Path.to_string source);
+        Sha256.write hasher "CompileInterface";
+        Sha256.write hasher (Path.to_string source);
         write_sorted_paths hasher outputs;
         write_sorted_paths hasher includes;
         write_sorted_flags hasher flags;
         Sha256.finish hasher
     | CompileImplementation { source; outputs; includes; flags } ->
-        Sha256.write_string hasher "CompileImplementation";
-        Sha256.write_string hasher (Path.to_string source);
+        Sha256.write hasher "CompileImplementation";
+        Sha256.write hasher (Path.to_string source);
         write_sorted_paths hasher outputs;
         write_sorted_paths hasher includes;
         write_sorted_flags hasher flags;
         Sha256.finish hasher
     | GenerateInterface { source; outputs; includes; flags } ->
-        Sha256.write_string hasher "GenerateInterface";
-        Sha256.write_string hasher (Path.to_string source);
+        Sha256.write hasher "GenerateInterface";
+        Sha256.write hasher (Path.to_string source);
         write_sorted_paths hasher outputs;
         write_sorted_paths hasher includes;
         write_sorted_flags hasher flags;
         Sha256.finish hasher
     | CompileC { source; outputs; ccflags } ->
-        Sha256.write_string hasher "CompileC";
-        Sha256.write_string hasher (Path.to_string source);
+        Sha256.write hasher "CompileC";
+        Sha256.write hasher (Path.to_string source);
         write_sorted_paths hasher outputs;
-        List.iter (Sha256.write_string hasher) ccflags;
+        List.iter (Sha256.write hasher) ccflags;
         Sha256.finish hasher
     | CreateLibrary { outputs; objects; includes } ->
-        Sha256.write_string hasher "CreateLibrary";
+        Sha256.write hasher "CreateLibrary";
         write_sorted_paths hasher outputs;
         write_sorted_paths hasher objects;
         write_sorted_paths hasher includes;
@@ -129,7 +129,7 @@ let hash = fun action ->
       ccopt_flags;
       cclib_flags
     } ->
-        Sha256.write_string hasher "CreateExecutable";
+        Sha256.write hasher "CreateExecutable";
         write_sorted_paths hasher outputs;
         write_sorted_paths hasher objects;
         write_sorted_paths hasher libraries;
@@ -138,12 +138,12 @@ let hash = fun action ->
         let sorted_ccopt = List.sort String.compare ccopt_flags in
         List.iter
           (fun s ->
-            Sha256.write_string hasher s)
+            Sha256.write hasher s)
           sorted_ccopt;
         let sorted_cclib = List.sort String.compare cclib_flags in
         List.iter
           (fun s ->
-            Sha256.write_string hasher s)
+            Sha256.write hasher s)
           sorted_cclib;
         Sha256.finish hasher
     | CreateSharedLibrary {
@@ -155,7 +155,7 @@ let hash = fun action ->
       ccopt_flags;
       cclib_flags
     } ->
-        Sha256.write_string hasher "CreateSharedLibrary";
+        Sha256.write hasher "CreateSharedLibrary";
         write_sorted_paths hasher outputs;
         write_sorted_paths hasher objects;
         write_sorted_paths hasher libraries;
@@ -164,23 +164,23 @@ let hash = fun action ->
         let sorted_ccopt = List.sort String.compare ccopt_flags in
         List.iter
           (fun s ->
-            Sha256.write_string hasher s)
+            Sha256.write hasher s)
           sorted_ccopt;
         let sorted_cclib = List.sort String.compare cclib_flags in
         List.iter
           (fun s ->
-            Sha256.write_string hasher s)
+            Sha256.write hasher s)
           sorted_cclib;
         Sha256.finish hasher
     | CopyFile { source; destination } ->
-        Sha256.write_string hasher "CopyFile";
-        Sha256.write_string hasher (Path.to_string source);
-        Sha256.write_string hasher (Path.to_string destination);
+        Sha256.write hasher "CopyFile";
+        Sha256.write hasher (Path.to_string source);
+        Sha256.write hasher (Path.to_string destination);
         Sha256.finish hasher
     | WriteFile { destination; content } ->
-        Sha256.write_string hasher "WriteFile";
-        Sha256.write_string hasher (Path.to_string destination);
-        Sha256.write_string hasher content;
+        Sha256.write hasher "WriteFile";
+        Sha256.write hasher (Path.to_string destination);
+        Sha256.write hasher content;
         Sha256.finish hasher
     | BuildForeignDependency {
       name;
@@ -189,11 +189,11 @@ let hash = fun action ->
       outputs;
       env
     } ->
-        Sha256.write_string hasher "BuildForeignDependency";
-        Sha256.write_string hasher name;
-        Sha256.write_string hasher (Path.to_string path);
+        Sha256.write hasher "BuildForeignDependency";
+        Sha256.write hasher name;
+        Sha256.write hasher (Path.to_string path);
         let sorted_cmd = List.sort String.compare build_cmd in
-        List.iter (Sha256.write_string hasher) sorted_cmd;
+        List.iter (Sha256.write hasher) sorted_cmd;
         write_sorted_paths hasher outputs;
         let sorted_env =
           List.sort
@@ -203,7 +203,7 @@ let hash = fun action ->
         in
         List.iter
           (fun ((k, v)) ->
-            Sha256.write_string hasher (k ^ "=" ^ v))
+            Sha256.write hasher (k ^ "=" ^ v))
           sorted_env;
         Sha256.finish hasher
 

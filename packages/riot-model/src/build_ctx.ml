@@ -46,7 +46,7 @@ let target_triplet = fun ctx -> Target.triplet ctx.target
 (** Hash build context into a Sha256 hasher state *)
 let hash = fun state ctx ->
   let module H = Crypto.Sha256 in
-  H.write_string state (System.Host.to_string ctx.host_triplet);
+  H.write state (System.Host.to_string ctx.host_triplet);
   Target.hash state ctx.target;
   (* Session ID excluded - it's for tracking/logging, not a build input *)
   Profile.hash state ctx.profile

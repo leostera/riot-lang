@@ -18,9 +18,11 @@
 
     Using specific algorithms:
 
-    ```ocaml module H = Crypto.Sha256 in let state = H.create () in let state =
-    H.update state "Hello" in let state = H.update state ", World!" in let hash
-    = H.finish state in Crypto.Digest.hex hash ```
+    ```ocaml module H = Crypto.Sha256 in let state = H.create () in
+    H.write state "Hello";
+    H.write state ", World!";
+    let hash = H.finish state in
+    Crypto.Digest.hex hash ```
 
     ## Available Algorithms
 

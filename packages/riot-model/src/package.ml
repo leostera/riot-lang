@@ -1598,13 +1598,21 @@ let from_json: Json.t -> (t, string) result = fun json ->
   | _ -> Error "Package must be a JSON object"
 
 (** Hash package metadata into a hasher state *)
-let hash = fun state (pkg: t) ->
-  let module H = Crypto.Sha256 in
+module type Hash_writer = sig
+  type state
+  val write: state -> string -> unit
+  val write_int: state -> int -> unit
+  val write_float: state -> float -> unit
+  val write_bool: state -> bool -> unit
+  val write_list: (state -> 'a -> unit) -> state -> 'a list -> unit
+end
+
+let hash_with = fun (type s) (module H: Hash_writer with type state = s) state (pkg: t) ->
   let hash_string_option = fun value ->
     match value with
     | Some value ->
         H.write_bool state true;
-        H.write_string state value
+        H.write state value
     | None ->
         H.write_bool state false
   in
@@ -1612,7 +1620,7 @@ let hash = fun state (pkg: t) ->
     match value with
     | Some value ->
         H.write_bool state true;
-        H.write_string state (Path.to_string value)
+        H.write state (Path.to_string value)
     | None ->
         H.write_bool state false
   in
@@ -1628,7 +1636,7 @@ let hash = fun state (pkg: t) ->
             H.write_int state n
         | Version.Alphanumeric s ->
             H.write_bool state false;
-            H.write_string state s)
+            H.write state s)
       state
       version.pre;
     hash_string_option version.build
@@ -1699,9 +1707,9 @@ let hash = fun state (pkg: t) ->
     | Profile.Inherit -> H.write_int state 0
     | Profile.Override values ->
         H.write_int state 1;
-        H.write_list H.write_string state values
+        H.write_list H.write state values
   in
-  H.write_string state pkg.name;
+  H.write state pkg.name;
   (* Dependencies metadata *)
   let sorted_deps =
     List.sort
@@ -1711,7 +1719,7 @@ let hash = fun state (pkg: t) ->
   in
   List.iter
     (fun (dep: dependency) ->
-      H.write_string state dep.name;
+      H.write state dep.name;
       H.write_bool state dep.source.workspace;
       H.write_bool state dep.source.builtin;
       hash_path_option dep.source.path;
@@ -1737,14 +1745,14 @@ let hash = fun state (pkg: t) ->
     match pkg.publish.description with
     | Some description ->
         H.write_bool state true;
-        H.write_string state description
+        H.write state description
     | None -> H.write_bool state false
   );
   (
     match pkg.publish.license with
     | Some license ->
         H.write_bool state true;
-        H.write_string state license
+        H.write state license
     | None -> H.write_bool state false
   );
   (
@@ -1763,8 +1771,8 @@ let hash = fun state (pkg: t) ->
   in
   List.iter
     (fun (bin: binary) ->
-      H.write_string state bin.name;
-      H.write_string state (Path.to_string bin.path))
+      H.write state bin.name;
+      H.write state (Path.to_string bin.path))
     sorted_bins;
   let sorted_providers =
     List.sort
@@ -1774,16 +1782,16 @@ let hash = fun state (pkg: t) ->
   in
   List.iter
     (fun (provider: Fix_provider.t) ->
-      H.write_string state provider.name;
-      H.write_string state (Path.to_string provider.source_path);
-      H.write_list H.write_string state provider.rules)
+      H.write state provider.name;
+      H.write state (Path.to_string provider.source_path);
+      H.write_list H.write state provider.rules)
     sorted_providers;
   (* Library metadata *)
   (
     match pkg.library with
     | Some lib ->
         H.write_bool state true;
-        H.write_string state (Path.to_string lib.path)
+        H.write state (Path.to_string lib.path)
     | None -> H.write_bool state false
   );
   (* Compiler configuration - profile and target overrides *)
@@ -1806,7 +1814,7 @@ let hash = fun state (pkg: t) ->
   in
   List.iter
     (fun ((profile_name, override): string * profile_override) ->
-      H.write_string state profile_name;
+      H.write state profile_name;
       hash_override override)
     sorted_profile_overrides;
   let sorted_target_overrides =
@@ -1817,7 +1825,7 @@ let hash = fun state (pkg: t) ->
   in
   List.iter
     (fun ((platform_name, target): string * target_override) ->
-      H.write_string state platform_name;
+      H.write state platform_name;
       (
         match target.profile_override with
         | Some override ->
@@ -1861,11 +1869,11 @@ let hash = fun state (pkg: t) ->
       let path_str = Path.to_string file_path in
       match Fs.read abs_path with
       | Ok content ->
-          H.write_string state path_str;
-          H.write_string state content
+          H.write state path_str;
+          H.write state content
       | Error _ ->
           (* File read error - include path only *)
-          H.write_string state path_str)
+          H.write state path_str)
     sorted_files;
   (* Foreign dependency sources *)
   let sorted_foreign_deps =
@@ -1876,9 +1884,9 @@ let hash = fun state (pkg: t) ->
   in
   List.iter
     (fun (fdep: foreign_dependency) ->
-      H.write_string state fdep.name;
-      H.write_string state (Path.to_string fdep.path);
-      List.iter (H.write_string state) fdep.build_cmd;
+      H.write state fdep.name;
+      H.write state (Path.to_string fdep.path);
+      List.iter (H.write state) fdep.build_cmd;
       (* Hash all input files *)
       let sorted_inputs =
         List.sort
@@ -1891,11 +1899,14 @@ let hash = fun state (pkg: t) ->
           let abs_path = Path.(fdep.path / input_path) in
           match Fs.read abs_path with
           | Ok content ->
-              H.write_string state (Path.to_string input_path);
-              H.write_string state content
-          | Error _ -> H.write_string state (Path.to_string input_path))
+              H.write state (Path.to_string input_path);
+              H.write state content
+          | Error _ -> H.write state (Path.to_string input_path))
         sorted_inputs)
     sorted_foreign_deps
+
+let hash = fun state pkg ->
+  hash_with (module Crypto.Sha256) state pkg
 
 module Tests = struct
   let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->

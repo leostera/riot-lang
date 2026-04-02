@@ -92,12 +92,12 @@ let dir_exists = fun path ->
   | _ -> false
 
 let write_path_fingerprint = fun hasher path ->
-  Crypto.Sha256.write_string hasher (Path.to_string path);
+  Crypto.Sha256.write hasher (Path.to_string path);
   match Fs.metadata path with
   | Ok metadata ->
-      Crypto.Sha256.write_string hasher (Int.to_string (Fs.Metadata.len metadata));
-      Crypto.Sha256.write_string hasher (Float.to_string (Fs.Metadata.modified metadata))
-  | Error _ -> Crypto.Sha256.write_string hasher "missing"
+      Crypto.Sha256.write hasher (Int.to_string (Fs.Metadata.len metadata));
+      Crypto.Sha256.write hasher (Float.to_string (Fs.Metadata.modified metadata))
+  | Error _ -> Crypto.Sha256.write hasher "missing"
 
 let first_existing = fun paths ->
   List.find_map
@@ -409,8 +409,8 @@ let hash = fun t ->
   let hasher = Crypto.Sha256.create () in
   let toolchain_path = get_toolchain_path_for_target t.version t.target in
   let write_legacy_path_fingerprint paths = List.iter (write_path_fingerprint hasher) paths in
-  Crypto.Sha256.write_string hasher t.version;
-  Crypto.Sha256.write_string hasher t.target;
+  Crypto.Sha256.write hasher t.version;
+  Crypto.Sha256.write hasher t.target;
   let () =
     match t.source with
     | Path _ ->
@@ -441,7 +441,7 @@ let hash = fun t ->
     | Version _
     | Url _ -> (
         match read_manifest_fingerprint toolchain_path with
-        | Some fingerprint when not (String.equal (String.trim fingerprint) "") -> Crypto.Sha256.write_string
+        | Some fingerprint when not (String.equal (String.trim fingerprint) "") -> Crypto.Sha256.write
           hasher
           fingerprint
         | _ -> panic

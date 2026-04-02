@@ -8,7 +8,6 @@ module Manifest = Manifest
 
 type t = {
   root_dir: Path.t;  (* Root directory for the store *)
-  manifest_cache: (string, Manifest.t option) HashMap.t;
 }
 
 type error = string
@@ -24,7 +23,7 @@ let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir = Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache") in
   Fs.create_dir_all store_dir
   |> Result.expect ~msg:(("Failed to create store directory: " ^ Path.to_string store_dir));
-  { root_dir = store_dir; manifest_cache = HashMap.create () }
+  { root_dir = store_dir }
 
 (** Create a new store for the given workspace *)
 let create = fun ~(workspace:Workspace.t) ->
@@ -44,22 +43,16 @@ let plan_path = fun store hash ->
 
 (** Check if artifacts for a given hash exist in the store *)
 let exists = fun store hash ->
-  match HashMap.get store.manifest_cache (manifest_cache_key hash) with
-  | Some (Some _) ->
-      true
-  | Some None ->
-      false
-  | None ->
-      let hash_dir = get_hash_dir store hash in
-      match Fs.exists hash_dir with
-      | Ok true -> (
-          match Fs.exists (manifest_path hash_dir) with
-          | Ok true -> true
-          | Ok false
-          | Error _ -> false
-        )
+  let hash_dir = get_hash_dir store hash in
+  match Fs.exists hash_dir with
+  | Ok true -> (
+      match Fs.exists (manifest_path hash_dir) with
+      | Ok true -> true
       | Ok false
       | Error _ -> false
+    )
+  | Ok false
+  | Error _ -> false
 
 (** Promote artifacts from store to target directory *)
 let promote = fun store hash ~target_dir ->
@@ -152,7 +145,6 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = [])
     | Ok false
     | Error _ -> ()
   );
-  let _ = HashMap.insert store.manifest_cache (manifest_cache_key hash) (Some manifest) in
   (* Return artifact witness with just the filenames *)
   let stored_files =
     List.map (fun ((path, _)) -> path) stored_files_with_sizes
@@ -160,17 +152,9 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = [])
   Artifact.{ hash; files = List.rev stored_files; ocamlc_warnings; exports }
 
 let load_manifest = fun store ~hash ->
-  let key = manifest_cache_key hash in
-  match HashMap.get store.manifest_cache key with
-  | Some manifest -> manifest
-  | None ->
-      let manifest =
-        match Manifest.load ~path:(manifest_path (get_hash_dir store hash)) with
-        | Ok manifest -> Some manifest
-        | Error _ -> None
-      in
-      let _ = HashMap.insert store.manifest_cache key manifest in
-      manifest
+  match Manifest.load ~path:(manifest_path (get_hash_dir store hash)) with
+  | Ok manifest -> Some manifest
+  | Error _ -> None
 
 (** Simple interface - check if we have cached artifacts for a hash *)
 let get = fun store hash ->
