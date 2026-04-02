@@ -4,6 +4,7 @@ open Std.Data
 type provenance =
   | Workspace
   | Path of Path.t
+  | Source of { locator: string; ref_: string option }
   | Registry of { registry: string }
 
 type package_id = {
@@ -104,6 +105,17 @@ let provenance_to_toml = fun provenance ->
     ("kind", Toml.String "path");
     ("path", Toml.String (Path.to_string path))
   ]
+  | Source { locator; ref_ } ->
+      let fields = [
+        ("kind", Toml.String "source");
+        ("locator", Toml.String locator);
+      ] in
+      let fields =
+        match ref_ with
+        | Some ref_ -> ("ref", Toml.String ref_) :: fields
+        | None -> fields
+      in
+      Toml.Table (List.rev fields)
   | Registry { registry } -> Toml.Table [
     ("kind", Toml.String "registry");
     ("registry", Toml.String registry)
@@ -120,6 +132,17 @@ let provenance_of_toml = fun value ->
           | Some (Toml.String path) -> Ok (Path (Path.v path))
           | _ -> Error "lockfile path provenance is missing required field 'path'"
         )
+      | Some (Toml.String "source") -> (
+          match List.assoc_opt "locator" fields with
+          | Some (Toml.String locator) ->
+              let ref_ =
+                match List.assoc_opt "ref" fields with
+                | Some (Toml.String ref_) -> Some ref_
+                | _ -> None
+              in
+              Ok (Source { locator; ref_ })
+          | _ -> Error "lockfile source provenance is missing required field 'locator'"
+        )
       | Some (Toml.String "registry") -> (
           match List.assoc_opt "registry" fields with
           | Some (Toml.String registry) -> Ok (Registry { registry })
@@ -133,24 +156,36 @@ let provenance_of_toml = fun value ->
   | _ -> Error "lockfile provenance must be a table"
 
 let dependency_to_toml = fun (dep: dependency) ->
-  let fields = [ ("name", Toml.String dep.name) ] in
-  let fields =
-    if String.equal dep.package.name dep.name then
-      fields
-    else
-      ("package_name", Toml.String dep.package.name) :: fields
+  let should_use_flat_registry_shape =
+    match dep.package.registry with
+    | Some "pkgs.ml" -> true
+    | Some _ -> false
+    | None -> false
   in
-  let fields =
-    match dep.package.version with
-    | Some version -> ("version", Toml.String version) :: fields
-    | None -> fields
-  in
-  let fields =
-    match dep.package.sha256 with
-    | Some sha256 -> ("sha256", Toml.String sha256) :: fields
-    | None -> fields
-  in
-  Toml.Table (List.rev fields)
+  if should_use_flat_registry_shape then
+    let fields = [ ("name", Toml.String dep.name) ] in
+    let fields =
+      if String.equal dep.package.name dep.name then
+        fields
+      else
+        ("package_name", Toml.String dep.package.name) :: fields
+    in
+    let fields =
+      match dep.package.version with
+      | Some version -> ("version", Toml.String version) :: fields
+      | None -> fields
+    in
+    let fields =
+      match dep.package.sha256 with
+      | Some sha256 -> ("sha256", Toml.String sha256) :: fields
+      | None -> fields
+    in
+    Toml.Table (List.rev fields)
+  else
+    Toml.Table [
+      ("name", Toml.String dep.name);
+      ("package", package_id_to_toml dep.package)
+    ]
 
 let dependency_of_toml = fun value ->
   match value with
@@ -343,6 +378,17 @@ let render_provenance = fun provenance ->
   ^ ", path = "
   ^ render_string (Path.to_string path)
   ^ " }"
+  | Source { locator; ref_ } ->
+      let fields = [
+        ("kind", render_string "source");
+        ("locator", render_string locator);
+      ] in
+      let fields =
+        match ref_ with
+        | Some ref_ -> ("ref", render_string ref_) :: fields
+        | None -> fields
+      in
+      "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
   | Registry { registry } -> "{ kind = "
   ^ render_string "registry"
   ^ ", registry = "

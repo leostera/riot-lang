@@ -3,6 +3,7 @@ open Std
 type provenance =
   | Workspace
   | Path of Path.t
+  | Source of { locator: string; ref_: string option }
   | Registry of { registry: string }
 type package_id = {
   registry: string option;

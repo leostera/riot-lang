@@ -4,6 +4,8 @@ type dependency_source = {
   workspace: bool;
   builtin: bool;
   path: Path.t option;
+  source_locator: string option;
+  ref_: string option;
   version: Std.Version.requirement option;
 }
 type dependency_scope =

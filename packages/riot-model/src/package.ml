@@ -8,6 +8,8 @@ type dependency_source = {
   workspace: bool;
   builtin: bool;
   path: Path.t option;
+  source_locator: string option;
+  ref_: string option;
   version: Std.Version.requirement option;
 }
 
@@ -413,17 +415,41 @@ let validate_requirement = fun ~dependency_name requirement ->
 let requirement_is_any = fun requirement ->
   String.equal (Version.requirement_to_string requirement) "*"
 
-let make_source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
-  { workspace; builtin; path; version }
+let normalize_source_locator = fun raw ->
+  let raw = String.trim raw in
+  let raw =
+    if String.starts_with ~prefix:"https://" raw then
+      String.sub raw 8 (String.length raw - 8)
+    else if String.starts_with ~prefix:"http://" raw then
+      String.sub raw 7 (String.length raw - 7)
+    else
+      raw
+  in
+  if String.ends_with ~suffix:".git" raw then
+    String.sub raw 0 (String.length raw - 4)
+  else
+    raw
+
+let github_locator_of_value = fun value ->
+  "github.com/" ^ String.trim value
+
+let make_source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
+  { workspace; builtin; path; source_locator; ref_; version }
 
 let validate_dependency_source = fun ~dependency_name source ->
   if
     source.workspace
-    && (source.builtin || Option.is_some source.path || Option.is_some source.version)
+    && (source.builtin
+    || Option.is_some source.path
+    || Option.is_some source.source_locator
+    || Option.is_some source.ref_
+    || Option.is_some source.version)
   then
-    Error ("dependency '" ^ dependency_name ^ "' cannot combine workspace = true with path or version")
-  else if source.builtin && Option.is_some source.path then
-    Error ("builtin dependency '" ^ dependency_name ^ "' does not support path overrides")
+    Error ("dependency '" ^ dependency_name ^ "' cannot combine workspace = true with path, source, ref, or version")
+  else if Option.is_some source.ref_ && Option.is_none source.source_locator then
+    Error ("dependency '" ^ dependency_name ^ "' cannot specify ref without source")
+  else if source.builtin && (Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.ref_) then
+    Error ("builtin dependency '" ^ dependency_name ^ "' does not support path or source overrides")
   else if source.builtin then
     match source.version with
     | None -> Ok { source with version = Some Version.any }
@@ -433,7 +459,12 @@ let validate_dependency_source = fun ~dependency_name source ->
     ^ "' does not support version requirement '"
     ^ Version.requirement_to_string version
     ^ "'")
-  else if source.workspace || Option.is_some source.path || Option.is_some source.version then
+  else if
+    source.workspace
+    || Option.is_some source.path
+    || Option.is_some source.source_locator
+    || Option.is_some source.version
+  then
     Ok source
   else
     Ok { source with version = Some Version.any }
@@ -462,6 +493,27 @@ workspace_deps:dependency list ->
             | Some _ -> Error ("dependency '" ^ name ^ "' has non-string path")
             | None -> Ok None
           in
+          let source_locator =
+            match List.assoc_opt "source" attrs, List.assoc_opt "github" attrs with
+            | Some _, Some _ ->
+                Error ("dependency '" ^ name ^ "' cannot specify both source and github")
+            | Some (Toml.String locator), None ->
+                Ok (Some (normalize_source_locator locator))
+            | Some _, None ->
+                Error ("dependency '" ^ name ^ "' has non-string source locator")
+            | None, Some (Toml.String github) ->
+                Ok (Some (github_locator_of_value github))
+            | None, Some _ ->
+                Error ("dependency '" ^ name ^ "' has non-string github shorthand")
+            | None, None ->
+                Ok None
+          in
+          let ref_ =
+            match List.assoc_opt "ref" attrs with
+            | Some (Toml.String ref_) -> Ok (Some (String.trim ref_))
+            | Some _ -> Error ("dependency '" ^ name ^ "' has non-string ref")
+            | None -> Ok None
+          in
           let version =
             match List.assoc_opt "version" attrs with
             | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
@@ -469,12 +521,20 @@ workspace_deps:dependency list ->
             | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
             | None -> Ok None
           in
-          match path, version with
-          | (Error _ as err), _ -> err
-          | _, (Error _ as err) -> err
-          | Ok path, Ok version -> validate_dependency_source
+          match path, source_locator, ref_, version with
+          | (Error _ as err), _, _, _ -> err
+          | _, (Error _ as err), _, _ -> err
+          | _, _, (Error _ as err), _ -> err
+          | _, _, _, (Error _ as err) -> err
+          | Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
             ~dependency_name:name
-            (make_source ~builtin:(is_builtin_dependency_name name) ?path ?version ())
+            (make_source
+              ~builtin:(is_builtin_dependency_name name)
+              ?path
+              ?source_locator
+              ?ref_
+              ?version
+              ())
           |> Result.map (fun source -> { name; source })
         )
     )
@@ -529,6 +589,16 @@ let dependency_source_to_json = fun source ->
     | None -> fields
   in
   let fields =
+    match source.source_locator with
+    | Some source_locator -> ("source", Json.String source_locator) :: fields
+    | None -> fields
+  in
+  let fields =
+    match source.ref_ with
+    | Some ref_ -> ("ref", Json.String ref_) :: fields
+    | None -> fields
+  in
+  let fields =
     match source.version with
     | Some version -> ("version", Json.String (Version.requirement_to_string version)) :: fields
     | None -> fields
@@ -538,20 +608,55 @@ let dependency_source_to_json = fun source ->
 let dependency_source_of_json = fun json ->
   match json with
   | Json.String "workspace" ->
-      Ok { workspace = true; builtin = false; path = None; version = None }
+      Ok { workspace = true; builtin = false; path = None; source_locator = None; ref_ = None; version = None }
   | Json.String source_path ->
-      Ok { workspace = false; builtin = false; path = Some (Path.v source_path); version = None }
+      Ok {
+        workspace = false;
+        builtin = false;
+        path = Some (Path.v source_path);
+        source_locator = None;
+        ref_ = None;
+        version = None
+      }
   | Json.Object fields -> (
       match List.assoc_opt "kind" fields with
       | Some (Json.String "workspace") ->
-          Ok { workspace = true; builtin = false; path = None; version = None }
+          Ok {
+            workspace = true;
+            builtin = false;
+            path = None;
+            source_locator = None;
+            ref_ = None;
+            version = None
+          }
       | Some (Json.String "builtin") ->
-          Ok { workspace = false; builtin = true; path = None; version = Some Version.any }
+          Ok {
+            workspace = false;
+            builtin = true;
+            path = None;
+            source_locator = None;
+            ref_ = None;
+            version = Some Version.any
+          }
       | Some (Json.String "path") -> (
           let path =
             match List.assoc_opt "path" fields with
             | Some (Json.String path) -> Ok (Some (Path.v path))
             | _ -> Error "path dependency source is missing a string path"
+          in
+          let source_locator =
+            match List.assoc_opt "source" fields with
+            | Some (Json.String locator) -> Ok (Some (normalize_source_locator locator))
+            | Some Json.Null
+            | None -> Ok None
+            | Some _ -> Error "path dependency source has non-string source locator"
+          in
+          let ref_ =
+            match List.assoc_opt "ref" fields with
+            | Some (Json.String ref_) -> Ok (Some ref_)
+            | Some Json.Null
+            | None -> Ok None
+            | Some _ -> Error "path dependency source has non-string ref"
           in
           let version =
             match List.assoc_opt "version" fields with
@@ -561,10 +666,14 @@ let dependency_source_of_json = fun json ->
             |> Result.map (fun version -> Some version)
             | _ -> Error "path dependency source has non-string version requirement"
           in
-          match path, version with
-          | Ok path, Ok version -> Ok { workspace = false; builtin = false; path; version }
-          | (Error err, _)
-          | (_, Error err) -> Error err
+          match path, source_locator, ref_, version with
+          | Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
+            ~dependency_name:"<json>"
+            { workspace = false; builtin = false; path; source_locator; ref_; version }
+          | (Error err, _, _, _)
+          | (_, Error err, _, _)
+          | (_, _, Error err, _)
+          | (_, _, _, Error err) -> Error err
         )
       | Some (Json.String "registry") -> (
           match List.assoc_opt "version" fields with
@@ -573,12 +682,21 @@ let dependency_source_of_json = fun json ->
             workspace = false;
             builtin = false;
             path = None;
+            source_locator = None;
+            ref_ = None;
             version = Some Version.any
           }
           | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
           |> Result.map
             (fun version ->
-              { workspace = false; builtin = false; path = None; version = Some version })
+              {
+                workspace = false;
+                builtin = false;
+                path = None;
+                source_locator = None;
+                ref_ = None;
+                version = Some version
+              })
           | _ -> Error "registry dependency source has non-string version requirement"
         )
       | Some (Json.String kind) ->
@@ -603,6 +721,20 @@ let dependency_source_of_json = fun json ->
             | Some _ -> Error "dependency source path must be a string"
             | None -> Ok None
           in
+          let source_locator =
+            match List.assoc_opt "source" fields with
+            | Some (Json.String locator) -> Ok (Some (normalize_source_locator locator))
+            | Some Json.Null -> Ok None
+            | Some _ -> Error "dependency source source must be a string"
+            | None -> Ok None
+          in
+          let ref_ =
+            match List.assoc_opt "ref" fields with
+            | Some (Json.String ref_) -> Ok (Some ref_)
+            | Some Json.Null -> Ok None
+            | Some _ -> Error "dependency source ref must be a string"
+            | None -> Ok None
+          in
           let version =
             match List.assoc_opt "version" fields with
             | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
@@ -611,14 +743,16 @@ let dependency_source_of_json = fun json ->
             | Some _ -> Error "dependency source version must be a string"
             | None -> Ok None
           in
-          match workspace, builtin, path, version with
-          | Ok workspace, Ok builtin, Ok path, Ok version -> validate_dependency_source
+          match workspace, builtin, path, source_locator, ref_, version with
+          | Ok workspace, Ok builtin, Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
             ~dependency_name:"<json>"
-            { workspace; builtin; path; version }
-          | (Error err, _, _, _)
-          | (_, Error err, _, _)
-          | (_, _, Error err, _)
-          | (_, _, _, Error err) -> Error err
+            { workspace; builtin; path; source_locator; ref_; version }
+          | (Error err, _, _, _, _, _)
+          | (_, Error err, _, _, _, _)
+          | (_, _, Error err, _, _, _)
+          | (_, _, _, Error err, _, _)
+          | (_, _, _, _, Error err, _)
+          | (_, _, _, _, _, Error err) -> Error err
     )
   | _ ->
       Error "dependency source must be a string or object"
@@ -1464,6 +1598,16 @@ let hash = fun state (pkg: t) ->
         | None -> H.write_string state ""
       );
       (
+        match dep.source.source_locator with
+        | Some source_locator -> H.write_string state source_locator
+        | None -> H.write_string state ""
+      );
+      (
+        match dep.source.ref_ with
+        | Some ref_ -> H.write_string state ref_
+        | None -> H.write_string state ""
+      );
+      (
         match dep.source.version with
         | Some version -> H.write_string state (Version.requirement_to_string version)
         | None -> H.write_string state ""
@@ -1682,8 +1826,8 @@ let hash = fun state (pkg: t) ->
     sorted_foreign_deps
 
 module Tests = struct
-  let source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
-    { workspace; builtin; path; version }
+  let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
+    { workspace; builtin; path; source_locator; ref_; version }
 
   let publish = default_publish_metadata
 
