@@ -36,6 +36,9 @@ let compare_suite_binary = fun left right ->
     (left.package_name ^ ":" ^ left.suite_name)
     (right.package_name ^ ":" ^ right.suite_name)
 
+let requested_packages = fun suites ->
+  suites |> List.map (fun (suite: suite_binary) -> suite.package_name) |> List.sort_uniq String.compare
+
 let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () ->
   workspace.packages |> List.filter Riot_model.Package.is_workspace_member |> List.filter
     (fun (pkg: Riot_model.Package.t) ->
@@ -108,7 +111,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
       Build_runtime.build ~on_event:(fun event -> on_event (Build event))
         {
           workspace = request.workspace;
-          packages = [];
+          packages = requested_packages suites;
           targets = Build_runtime.Host;
           scope = Build_runtime.Dev;
           profile = "debug";
