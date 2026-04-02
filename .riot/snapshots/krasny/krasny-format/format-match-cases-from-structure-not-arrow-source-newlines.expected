@@ -1,0 +1,2 @@
+let render = function
+  | A -> value

@@ -1,0 +1,5 @@
+let classify = function
+  | `Ok value -> value
+  | `Error -> fallback
+
+let value = `Ok 1

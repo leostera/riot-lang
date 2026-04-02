@@ -65,6 +65,10 @@ let assert_idempotent = fun ~source ~msg ->
   let second = parse_ml first |> Krasny.format |> Result.expect ~msg:"formatted output should reformat" in
   Test.assert_equal ~expected:first ~actual:second
 
+let assert_formatted_ml_snapshot = fun ~ctx ~msg source ->
+  let actual = parse_ml source |> Krasny.format |> Result.expect ~msg in
+  Test.Snapshot.assert_text ~ctx ~actual
+
 let assert_roundtrip_hash = fun path ->
   let parsed = parse_file path in
   let original_hash = Krasny.syntax_hash parsed in
@@ -98,23 +102,12 @@ let tests = [
       Test.assert_equal ~expected:source ~actual;
       Ok ());
   Test.case "format renders fun body trivia from token-leading trivia"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let with_comment = fun x -> (* keep *) x
 let with_doc = fun x -> (** keep *) x
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"fun-body comment and docstring trivia should not need source reparsing" in
-      Test.assert_equal
-        ~expected:{|let with_comment = fun x ->
-  (* keep *)
-  x
-
-let with_doc = fun x ->
-  (** keep *)
-  x
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"fun-body comment and docstring trivia should not need source reparsing" source);
   Test.case "format renders if-branch trivia from token-leading trivia"
     (fun _ctx ->
       let source = {|let classify = fun flag -> if flag then value (* keep before else *) else other
@@ -144,27 +137,16 @@ let nested = fun flag other ->
         ~actual;
       Ok ());
   Test.case "format renders let rhs and body trivia from token-leading trivia"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let run =
   let value = (* keep before rhs *) compute in
   (* keep before body *)
   use value
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"let rhs/body trivia should not need source reparsing" in
-      Test.assert_equal
-        ~expected:{|let run =
-  let value =
-    (* keep before rhs *)
-    compute
-  in
-  (* keep before body *)
-  use value
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"let rhs/body trivia should not need source reparsing" source);
   Test.case "format renders sequence and let-operator trivia from tokens"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let run = fun () -> first (* keep after first *); (* keep before second *) second; (** keep before third *) third
 let bind =
   let* value = (* keep before bound value *) compute in
@@ -172,43 +154,17 @@ let bind =
   finish value
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"sequence and binding-operator trivia should not need source reparsing" in
-      Test.assert_equal
-        ~expected:{|let run = fun () ->
-  first;
-  (* keep after first *)
-  (* keep before second *)
-  second;
-  (** keep before third *)
-  third
-
-let bind =
-  let* value =
-    (* keep before bound value *)
-    compute
-  in
-  (* keep before body *)
-  finish value
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"sequence and binding-operator trivia should not need source reparsing" source);
   Test.case "format match cases from structure, not arrow source newlines"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let render = function
   | A ->
       value
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"match case layout should not preserve source newlines after arrows" in
-      Test.assert_equal
-        ~expected:{|let render =
-  function
-  | A -> value
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"match case layout should not preserve source newlines after arrows" source);
   Test.case "format polymorphic variant heads from explicit tag tokens"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let classify = function
   | `Ok value -> value
   | `Error -> fallback
@@ -216,9 +172,7 @@ let bind =
 let value = `Ok 1
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"polymorphic variant heads should format from tag tokens" in
-      Test.assert_equal ~expected:source ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"polymorphic variant heads should format from tag tokens" source);
   Test.case "format quoted core type variables from explicit sigil tokens"
     (fun _ctx ->
       let source = {|type 'a t = 'a list
