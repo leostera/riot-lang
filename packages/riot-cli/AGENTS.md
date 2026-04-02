@@ -26,6 +26,7 @@
 20. `riot add` should accept named registry specs, local path specs, and GitHub source specs. Keep the CLI help text and errors honest about the accepted forms, but keep package-name discovery and Git materialization inside `riot-deps`.
 21. `riot test` selectors should treat `package:suite` as suite discovery narrowing, not as a raw per-test substring. Only the remaining query text should be forwarded into `run-tests`.
 22. `riot search` should stay workspace-independent. Parse flags in the CLI, delegate to `Riot_deps.search`, and keep stdout reserved for the search results themselves.
+23. Keep `Riot_cli.Cli.run` reusable for in-process benches and tools. One-time runtime bootstrapping belongs in `initialize_runtime`, not in every embedded caller loop.
 
 ## Validate
 

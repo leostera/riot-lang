@@ -171,7 +171,7 @@ let ensure_toolchain = fun workspace ->
       eprintln "";
       Error (Failure "Toolchain not available")
 
-let main = fun ~args ->
+let initialize_runtime = fun () ->
   (* Load config BEFORE starting logger - handlers need config *)
   Std.Config.load_string
     {|
@@ -184,7 +184,9 @@ format = "full"
   let _ = Std.Log.start_link () in
   let _ = Std.Telemetry.start () in
   (* Ensure ~/.riot directories exist *)
-  Riot_model.Riot_dirs.ensure_created () |> Result.expect ~msg:"Could not create riot dirs";
+  Riot_model.Riot_dirs.ensure_created () |> Result.expect ~msg:"Could not create riot dirs"
+
+let run = fun ~args ->
   (* Try to load workspace for command discovery (silently fail if not in workspace) *)
   let workspace_scan_opt = get_workspace_scan () in
   let workspace_opt =
@@ -329,3 +331,7 @@ format = "full"
                   Error (Failure ("Unknown command: " ^ cmd))
             )
         )
+
+let main = fun ~args ->
+  initialize_runtime ();
+  run ~args
