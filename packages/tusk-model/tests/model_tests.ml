@@ -179,6 +179,56 @@ path = "src/demo.ml"
       else
         Error "expected hidden source entries to be ignored")
 
+let test_scan_sources_ignores_test_support_entries = fun _ctx ->
+  with_tempdir "tusk_model_test_support_sources"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let tests_dir = Path.(tmpdir / Path.v "tests") in
+      let fixtures_dir = Path.(tests_dir / Path.v "fixtures") in
+      let diagnostics_dir = Path.(tests_dir / Path.v "diagnostics") in
+      let generated_dir = Path.(tests_dir / Path.v "generated") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all fixtures_dir) ~msg:"Failed to create fixtures directory";
+      Result.expect (Fs.create_dir_all diagnostics_dir) ~msg:"Failed to create diagnostics directory";
+      Result.expect (Fs.create_dir_all generated_dir) ~msg:"Failed to create generated directory";
+      Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml"))
+        ~msg:"Failed to write visible source";
+      Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml"))
+        ~msg:"Failed to write real test source";
+      Result.expect (Fs.write "let () = ()\n" Path.(fixtures_dir / Path.v "0056_bad-module-name.ml"))
+        ~msg:"Failed to write fixture source";
+      Result.expect (Fs.write "let () = ()\n" Path.(diagnostics_dir / Path.v "broken.ml"))
+        ~msg:"Failed to write diagnostics source";
+      Result.expect (Fs.write "let () = ()\n" Path.(generated_dir / Path.v "generated.ml"))
+        ~msg:"Failed to write generated source";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg = Tusk_model.Package.from_toml
+        manifest
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:tmpdir
+        ~relative_path:(Path.v "packages/demo")
+      |> Result.expect ~msg:"Expected package manifest to parse" in
+      if
+        pkg.sources.tests = [ Path.v "tests/demo_tests.ml" ]
+        && pkg.binaries = [ Tusk_model.Package.{ name = "demo_tests"; path = Path.v "tests/demo_tests.ml" } ]
+      then
+        Ok ()
+      else
+        Error "expected test support entries under tests/fixtures|generated|diagnostics to be ignored")
+
 let test_workspace_fmt_ignore_parses = fun _ctx ->
   let toml =
     Std.Data.Toml.parse
@@ -665,6 +715,7 @@ let tests =
     case "for_scope: dev keeps only dev outputs" test_dev_scope_keeps_only_dev_outputs;
     case "package: explicit binaries suppress autodiscovery duplicates" test_explicit_binaries_override_autodiscovery;
     case "package: source scan ignores hidden entries" test_scan_sources_ignores_hidden_entries;
+    case "package: source scan ignores test support entries" test_scan_sources_ignores_test_support_entries;
     case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;
     case "fmt config: package ignore loads" test_package_fmt_ignore_loads;
     case "fmt config: legacy top-level fmt still loads" test_legacy_fmt_ignore_still_loads;

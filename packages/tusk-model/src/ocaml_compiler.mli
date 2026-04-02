@@ -14,6 +14,8 @@ type mode =
 type warning =
   | PartialMatch
   (** Warning 8: partial pattern match *)
+  | BadModuleName
+  (** Warning 24: source file name is not a valid module name *)
   | UnusedVariable
   (** Warning 26: unused variable *)
   | UnusedOpen

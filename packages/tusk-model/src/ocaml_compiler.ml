@@ -15,6 +15,8 @@ type mode =
 type warning =
   | PartialMatch
   (** Warning 8: partial pattern match *)
+  | BadModuleName
+  (** Warning 24: source file name is not a valid module name *)
   | UnusedVariable
   (** Warning 26: unused variable *)
   | UnusedOpen
@@ -30,6 +32,7 @@ type warning =
 (** All warnings *)
 let warning_to_number = function
   | PartialMatch -> 8
+  | BadModuleName -> 24
   | UnusedVariable -> 26
   | UnusedOpen -> 33
   | UnusedConstructor -> 34
@@ -41,6 +44,7 @@ let warning_to_number = function
 
 let warning_to_string = function
   | PartialMatch -> "partial-match"
+  | BadModuleName -> "bad-module-name"
   | UnusedVariable -> "unused-variable"
   | UnusedOpen -> "unused-open"
   | UnusedConstructor -> "unused-constructor"
@@ -50,6 +54,7 @@ let warning_to_string = function
 
 let warning_of_string = function
   | "partial-match" -> Some PartialMatch
+  | "bad-module-name" -> Some BadModuleName
   | "unused-variable" -> Some UnusedVariable
   | "unused-open" -> Some UnusedOpen
   | "unused-constructor" -> Some UnusedConstructor
@@ -90,6 +95,7 @@ let render_warning_spec = fun ~sign warnings ->
 let parse_warning_spec = fun ~sign spec ->
   let warning_of_code = function
     | "8" -> Some PartialMatch
+    | "24" -> Some BadModuleName
     | "11" -> Some UnusedMatch
     | "26" -> Some UnusedVariable
     | "33" -> Some UnusedOpen

@@ -38,6 +38,21 @@ let test_compile_impl_disables_no_cmi_file_by_default = fun _ctx ->
   else
     Error ("expected default warning baseline to disable warning 49, got: " ^ command)
 
+let test_compile_impl_disables_bad_module_name_for_dev_sources = fun _ctx ->
+  let ocamlc = Tusk_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
+  let invocation = Tusk_toolchain.Ocamlc.compile_impl
+    ocamlc
+    ~cwd:(Path.v "/tmp/work")
+    ~includes:[ Path.v "examples" ]
+    ~flags:[]
+    ~output:(Path.v "001_hello_world.cmx")
+    (Path.v "examples/001_hello_world.ml") in
+  let command = Tusk_toolchain.Ocamlc.to_string invocation in
+  if String.contains command "-w -49-24" || String.contains command "-w -24-49" then
+    Ok ()
+  else
+    Error ("expected dev-source warning baseline to disable warnings 49 and 24, got: " ^ command)
+
 let test_compile_impl_does_not_force_debug_symbols = fun _ctx ->
   let ocamlc = Tusk_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
   let invocation = Tusk_toolchain.Ocamlc.compile_impl
@@ -153,6 +168,9 @@ let test_parse_colored_ocaml_warning_diagnostic = fun _ctx ->
 let tests =
   Test.[
     case "compile impl disables no-cmi-file by default" test_compile_impl_disables_no_cmi_file_by_default;
+    case
+      "compile impl disables bad-module-name for dev sources"
+      test_compile_impl_disables_bad_module_name_for_dev_sources;
     case "compile impl does not force debug symbols" test_compile_impl_does_not_force_debug_symbols;
     case "compile impl renders warn-error and raw flags" test_compile_impl_renders_warn_error_and_raw_flags;
     case "parse ocaml warning diagnostic" test_parse_ocaml_warning_diagnostic;

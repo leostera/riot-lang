@@ -14,8 +14,9 @@
 8. Toolchains shipped in release archives should include `manifest.json` with a stable `toolchain_fingerprint`, and toolchain cache hashing should prefer this manifest over probing files on disk.
 9. Prepared compiler invocations should stay opaque to callers; keep execution semantics in `tusk-toolchain` instead of exposing raw process execution to higher layers.
 10. OCaml compiler invocations should set an explicit warning baseline; keep warning 49 (`no-cmi-file`) disabled by default unless a caller intentionally opts into it.
-11. Parse OCaml compiler stderr into structured diagnostics here; higher layers may rewrite diagnostic paths, but coarse compiler-output parsing belongs in `Ocamlc`.
-12. Reuse `Tusk_model.Ocaml_compiler` for shared warning/flag vocabulary and string parsing/rendering. Do not shadow OCaml flag codecs locally in `tusk-toolchain`.
+11. Dev-only source trees (`tests/`, `examples/`, `bench/`) may use numbered filenames for fixtures and demos. Keep warning 24 (`bad-module-name`) disabled for those source paths, but do not widen that suppression to normal library/runtime compilation.
+12. Parse OCaml compiler stderr into structured diagnostics here; higher layers may rewrite diagnostic paths, but coarse compiler-output parsing belongs in `Ocamlc`.
+13. Reuse `Tusk_model.Ocaml_compiler` for shared warning/flag vocabulary and string parsing/rendering. Do not shadow OCaml flag codecs locally in `tusk-toolchain`.
 
 ## Validate
 

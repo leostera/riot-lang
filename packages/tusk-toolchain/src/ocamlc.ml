@@ -7,6 +7,7 @@ type t = Path.t
 
 type compiler_warning = Ocaml_compiler.warning =
   | PartialMatch
+  | BadModuleName
   | UnusedVariable
   | UnusedOpen
   | UnusedConstructor
@@ -390,7 +391,34 @@ let run_in_dir = fun ~cwd ~env cmd_str ->
 
 let base_command = fun t -> Path.to_string t
 
-let default_warning_flags = [ "-w"; "-49" ]
+let default_disabled_warnings = [ NoCmiFile ]
+
+let warning_code = function
+  | All -> "a"
+  | warning -> Tusk_model.Ocaml_compiler.warning_to_number warning |> Int.to_string
+
+let render_warning_baseline = fun warnings ->
+  warnings |> List.map (fun warning -> "-" ^ warning_code warning) |> String.concat ""
+
+let is_dev_source = fun source ->
+  let path = Path.to_string source in
+  String.contains path "/tests/"
+  || String.contains path "/examples/"
+  || String.contains path "/bench/"
+  || String.starts_with ~prefix:"tests/" path
+  || String.starts_with ~prefix:"examples/" path
+  || String.starts_with ~prefix:"bench/" path
+
+let warning_baseline_flags = fun source ->
+  let disabled_warnings =
+    if is_dev_source source then
+      default_disabled_warnings @ [ BadModuleName ]
+    else
+      default_disabled_warnings
+  in
+  [ "-w"; render_warning_baseline disabled_warnings ]
+
+let default_warning_flags = [ "-w"; render_warning_baseline default_disabled_warnings ]
 
 let flags_to_string = Ocaml_compiler.flags_to_string
 
@@ -486,7 +514,7 @@ let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
       flags
   in
   let args = [ "-bin-annot"; "-c" ]
-  @ default_warning_flags
+  @ warning_baseline_flags source
   @ flags_to_string flags
   @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
   @ [ "-o"; Path.to_string output ]
@@ -509,7 +537,7 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
       flags
   in
   let args = [ "-bin-annot"; "-c" ]
-  @ default_warning_flags
+  @ warning_baseline_flags source
   @ flags_to_string flags
   @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
   @ [ "-o"; Path.to_string output ]
@@ -523,7 +551,7 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
 let generate_interface = fun t ~cwd ~includes ~flags ~output source ->
   let includes_with_dot = Path.v "." :: includes in
   let args = [ "-i" ]
-  @ default_warning_flags
+  @ warning_baseline_flags source
   @ flags_to_string flags
   @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
   @ [ Path.to_string source ] in
