@@ -2,7 +2,7 @@ open Global
 
 type fixture = {
   path: Path.t;
-  relpath: string;
+  relpath: Path.t;
   name: string;
 }
 
@@ -10,8 +10,8 @@ type t = {
   suite_name: string;
   test_name: string;
   test_index: int;
-  source_file: string option;
-  binary_path: string option;
+  source_file: Path.t option;
+  binary_path: Path.t option;
   workspace_root: Path.t option;
   package_name: string option;
   fixture: fixture option;

@@ -4,7 +4,7 @@ open Collections
 type ctx = {
   test: Test_context.t;
   fixture_path: Path.t;
-  fixture_relpath: string;
+  fixture_relpath: Path.t;
   fixture_name: string;
 }
 
@@ -52,12 +52,12 @@ let discover_fixture_paths = fun root ->
             String.compare (Path.to_string left) (Path.to_string right))
       )
 
-let relpath_string = fun ~root path ->
+let relpath = fun ~root path ->
   match Path.strip_prefix path ~prefix:root with
-  | Ok relpath -> Path.to_string relpath
-  | Error _ -> Path.to_string path
+  | Ok relpath -> relpath
+  | Error _ -> path
 
-let fixture_name = fun relpath -> relpath |> Path.v |> Path.remove_extension |> Path.to_string
+let fixture_name = fun relpath -> relpath |> Path.remove_extension |> Path.to_string
 
 let keep_path = fun filter path ->
   match filter path with
@@ -81,9 +81,9 @@ let cases = fun ?(filter = fun _ -> `keep) () ~dir ~run ->
   in
   fixtures |> List.filter (keep_path filter) |> List.map
     (fun fixture_path ->
-      let fixture_relpath = relpath_string ~root fixture_path in
+      let fixture_relpath = relpath ~root fixture_path in
       let fixture_name = fixture_name fixture_relpath in
-      Test_case.case fixture_relpath
+      Test_case.case (Path.to_string fixture_relpath)
         (fun test_ctx ->
           let fixture =
             Test_context.{ path = fixture_path; relpath = fixture_relpath; name = fixture_name } in

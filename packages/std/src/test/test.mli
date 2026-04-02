@@ -4,8 +4,8 @@ type ctx = Test_context.t = {
   suite_name: string;
   test_name: string;
   test_index: int;
-  source_file: string option;
-  binary_path: string option;
+  source_file: Path.t option;
+  binary_path: Path.t option;
   workspace_root: Path.t option;
   package_name: string option;
   fixture: Test_context.fixture option;
@@ -14,7 +14,7 @@ module Context: sig
   type t = ctx
   type fixture = Test_context.fixture = {
     path: Path.t;
-    relpath: string;
+    relpath: Path.t;
     name: string;
   }
   val with_fixture: t -> fixture -> t

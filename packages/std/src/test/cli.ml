@@ -33,7 +33,7 @@ let run_tests_cmd =
 let list_tests_cmd = command "list-tests" |> about "List all tests"
 
 let get_suite_info name : Reporter.suite_info =
-  let binary_path = List.hd Env.args in
+  let binary_path = List.hd Env.args |> Path.v in
   { name; source_file = None; binary_path = Some binary_path }
 
 let main = fun ~name ~tests ~args ->

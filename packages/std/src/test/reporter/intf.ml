@@ -2,8 +2,8 @@ open Global
 
 type suite_info = {
   name: string;
-  source_file: string option;
-  binary_path: string option;
+  source_file: Path.t option;
+  binary_path: Path.t option;
 }
 
 module type Intf = sig

@@ -30,7 +30,7 @@ open Global
 type ctx = {
   test: Test_context.t;
   fixture_path: Path.t;
-  fixture_relpath: string;
+  fixture_relpath: Path.t;
   fixture_name: string;
 }
 type filter_result =

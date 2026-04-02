@@ -30,7 +30,7 @@ let derive_package_name = fun binary_path ->
   match binary_path with
   | None -> None
   | Some path ->
-      let segments = String.split_on_char '/' path in
+      let segments = Path.components path |> List.map Path.to_string in
       match find_segment_index segments "out" with
       | Some idx when List.length segments > idx + 1 -> Some (List.nth segments (idx + 1))
       | _ -> None
@@ -39,7 +39,7 @@ let derive_workspace_root = fun ~current_dir ~binary_path ->
   match binary_path with
   | None -> current_dir
   | Some path -> (
-      let segments = String.split_on_char '/' path in
+      let segments = Path.components path |> List.map Path.to_string in
       match find_segment_index segments "_build" with
       | Some 0 ->
           current_dir

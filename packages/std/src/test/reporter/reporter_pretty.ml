@@ -6,10 +6,10 @@ let init = fun (suite: Intf.suite_info) total ->
     match (suite.source_file, suite.binary_path) with
     | Some source, Some binary ->
         println "";
-        println ("     Running " ^ source ^ " (" ^ binary ^ ")")
+        println ("     Running " ^ Path.to_string source ^ " (" ^ Path.to_string binary ^ ")")
     | Some source, None ->
         println "";
-        println ("     Running " ^ source)
+        println ("     Running " ^ Path.to_string source)
     | None, _ ->
         ()
   );
