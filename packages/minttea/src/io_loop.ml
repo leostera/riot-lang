@@ -32,11 +32,20 @@ let translate = fun key ->
 let rec loop = fun state ->
   (* Check for shutdown message with timeout *)
   let timeout = Time.Duration.from_millis 100 in
-  match receive_any ~timeout () with
-  | Shutdown ->
+  let should_shutdown =
+    try
+      match receive_any ~timeout () with
+      | Shutdown -> true
+      | _ -> false
+    with
+    | Receive_timeout -> false
+  in
+  if should_shutdown then
+    (
       Log.trace "[IO_LOOP] Received shutdown, exiting";
-      ()
-  | _ -> (* Try to read with non-blocking check *)
+      send state.parent ShutdownComplete
+    )
+  else
     (
       match Tty.read_utf8 state.termios with
       | Read input ->
@@ -59,7 +68,7 @@ let rec loop = fun state ->
             );
           loop state
       | End ->
-          ()
+          send state.parent ShutdownComplete
       | Malformed _err ->
           loop state
       | Retry ->
