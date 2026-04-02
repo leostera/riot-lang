@@ -812,6 +812,7 @@ type catalog = {
   mutable local_order: string list;
   registry_documents: (string, Pkgs_ml.Sparse_index.package_document option) HashMap.t;
   required_by: (string, Riot_model.Pm_error.required_by option) HashMap.t;
+  requested_requirements: (string, string list) HashMap.t;
 }
 
 let local_solver_version = fun (pkg: Riot_model.Package.t) ->
@@ -844,6 +845,7 @@ let create_catalog = fun ~(ctx:context) ->
     local_order = [];
     registry_documents = HashMap.create ();
     required_by = HashMap.create ();
+    requested_requirements = HashMap.create ();
   }
 
 let register_local_entry = fun (catalog:catalog) (entry:local_entry) ->
@@ -939,6 +941,25 @@ let record_required_by = fun (catalog:catalog) ~package_name required_by ->
 let required_by_for_package = fun (catalog:catalog) package_name ->
   match HashMap.get catalog.required_by package_name with
   | Some required_by -> required_by
+  | None -> None
+
+let record_requested_requirement = fun (catalog:catalog) ~package_name requirement ->
+  let requirement = Std.Version.requirement_to_string requirement in
+  match HashMap.get catalog.requested_requirements package_name with
+  | Some existing when List.mem requirement existing ->
+      ()
+  | Some existing ->
+      let _ = HashMap.insert catalog.requested_requirements package_name (existing @ [ requirement ]) in
+      ()
+  | None ->
+      let _ = HashMap.insert catalog.requested_requirements package_name [ requirement ] in
+      ()
+
+let requested_requirement_for_package = fun (catalog:catalog) package_name ->
+  match HashMap.get catalog.requested_requirements package_name with
+  | Some [] -> None
+  | Some [ requirement ] -> Some requirement
+  | Some requirements -> Some (String.concat ", " requirements)
   | None -> None
 
 let validate_source_requirement = fun ~dependency_name ~source_locator (dep:Riot_model.Package.dependency) (
@@ -1042,6 +1063,11 @@ let provider_dependency_of_manifest_dependency = fun (catalog:catalog) ~declared
         Ok (Some (target_name, Pubgrub.full))
       else
         let () = record_required_by catalog ~package_name:target_name required_by in
+        let () =
+          match dep.source.version with
+          | Some requirement -> record_requested_requirement catalog ~package_name:target_name requirement
+          | None -> ()
+        in
         let* ranges =
           match dep.source.version with
           | Some requirement -> ranges_of_requirement requirement
@@ -1152,6 +1178,16 @@ let parse_registry_version = fun ~package_name version_string ->
       ^ package_name
       ^ "'"
     })
+
+let sort_registry_versions = fun ~package_name versions ->
+  let compare left right =
+    match parse_registry_version ~package_name left, parse_registry_version ~package_name right with
+    | Ok left, Ok right ->
+        pubgrub_version_compare left right
+    | _ ->
+        String.compare left right
+  in
+  List.sort compare versions
 
 let matching_registry_versions = fun (catalog:catalog) ~package_name ~ranges ->
   let rec contains_version version = function
@@ -1525,7 +1561,7 @@ let lock_package_of_local_entry = fun (catalog:catalog) ~selected_versions (entr
 
 let pm_error_of_pubgrub_failure = fun (catalog:catalog) incompat ->
   let registry_name = Pkgs_ml.Registry.name catalog.ctx.registry in
-  let rec find_missing_registry_package = function
+  let rec find_no_versions = function
     | Pubgrub.Incompatibility.External {
         cause=Pubgrub.Incompatibility.NoVersions (package_name, _);
         _;
@@ -1540,20 +1576,47 @@ let pm_error_of_pubgrub_failure = fun (catalog:catalog) incompat ->
         else
           Some package_name
     | Pubgrub.Incompatibility.Derived { cause1; cause2; _ } -> (
-        match find_missing_registry_package cause1 with
+        match find_no_versions cause1 with
         | Some _ as found -> found
-        | None -> find_missing_registry_package cause2
+        | None -> find_no_versions cause2
       )
     | _ ->
         None
   in
-  match find_missing_registry_package incompat with
-  | Some package_name ->
-      Error.PackageNotFound {
-        package = package_name;
-        registry = registry_name;
-        required_by = required_by_for_package catalog package_name;
-      }
+  match find_no_versions incompat with
+  | Some package_name -> (
+      match HashMap.get catalog.registry_documents package_name with
+      | Some None ->
+          Error.PackageNotFound {
+            package = package_name;
+            registry = registry_name;
+            required_by = required_by_for_package catalog package_name;
+          }
+      | Some (Some document) ->
+          let available_versions =
+            document.releases
+            |> List.map (fun (release: Pkgs_ml.Sparse_index.release) -> release.version)
+            |> sort_registry_versions ~package_name
+          in
+          let requirement =
+            match requested_requirement_for_package catalog package_name with
+            | Some requirement -> requirement
+            | None -> "the requested range"
+          in
+          Error.RegistryVersionNotFound {
+            package = package_name;
+            registry = registry_name;
+            requirement;
+            available_versions;
+            required_by = required_by_for_package catalog package_name;
+          }
+      | None ->
+          Error.PackageNotFound {
+            package = package_name;
+            registry = registry_name;
+            required_by = required_by_for_package catalog package_name;
+          }
+    )
   | _ ->
       Error.Unexpected { error = Pubgrub.explain_conflict incompat }
 

@@ -265,16 +265,17 @@ let parse_requirement = fun req_string ->
     Ok Any
   else
     let len = String.length s in
+    let starts_with = fun prefix -> String.starts_with ~prefix s in
     let op, version_start =
-      if String.length s >= 2 && String.sub s 0 2 = "~>" then
+      if starts_with "~>" then
         (Some ReqTilde, 2)
-      else if String.length s >= 2 && String.sub s 0 2 = "==" then
+      else if starts_with "==" then
         (Some ReqEq, 2)
-      else if String.length s >= 2 && String.sub s 0 2 = "!=" then
+      else if starts_with "!=" then
         (Some ReqNeq, 2)
-      else if String.length s >= 2 && String.sub s 0 2 = ">=" then
+      else if starts_with ">=" then
         (Some ReqGte, 2)
-      else if String.length s >= 2 && String.sub s 0 2 = "<=" then
+      else if starts_with "<=" then
         (Some ReqLte, 2)
       else if len > 0 && String.get s 0 = '>' then
         (Some ReqGt, 1)
@@ -283,8 +284,11 @@ let parse_requirement = fun req_string ->
       else
         (None, 0)
     in
-    let version_str = String.trim (String.sub s version_start (len - version_start)) in
-    match op with
+    if version_start > len then
+      Error (Invalid_format s)
+    else
+      let version_str = String.trim (String.sub s version_start (len - version_start)) in
+      match op with
     | Some op -> (
         match parse version_str with
         | Ok version -> Ok (Requirement (op, version))

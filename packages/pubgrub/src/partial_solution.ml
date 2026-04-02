@@ -1,4 +1,11 @@
 open Std
+
+module Log = struct
+  let debug _ = ()
+  let info _ = ()
+  let error _ = ()
+  let trace _ = ()
+end
 open Std.Sync
 open Std.Sync.Cell
 

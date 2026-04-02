@@ -21,6 +21,13 @@ type t =
   | RegistryLatestReleaseMissing of { package: string; latest_version: string }
   | PackageMetadataReadFailed of { package: string; registry: string; error: string }
   | PackageNotFound of { package: string; registry: string; required_by: required_by option }
+  | RegistryVersionNotFound of {
+      package: string;
+      registry: string;
+      requirement: string;
+      available_versions: string list;
+      required_by: required_by option;
+    }
   | LockfileReadFailed of { path: Path.t; error: string }
   | LockRefreshCheckFailed of { workspace_root: Path.t; error: string }
   | LockfileWriteFailed of { path: Path.t; error: string }
@@ -87,6 +94,13 @@ let rec headline = function
   ^ "` was not found in registry `"
   ^ registry
   ^ "`"
+  | RegistryVersionNotFound { package; registry; requirement; required_by=_; _ } -> "package `"
+  ^ package
+  ^ "` has no release matching `"
+  ^ requirement
+  ^ "` in registry `"
+  ^ registry
+  ^ "`"
   | LockfileReadFailed { path; error } -> "failed to read lockfile '"
   ^ Path.to_string path
   ^ "': "
@@ -105,6 +119,17 @@ let rec headline = function
 
 and detail_lines = function
   | PackageNotFound { required_by=Some required_by; _ } -> [ format_required_by required_by ]
+  | RegistryVersionNotFound { available_versions; required_by; _ } ->
+      let version_line =
+        match available_versions with
+        | [] -> [ "available versions: none" ]
+        | versions -> [ "available versions: " ^ String.concat ", " versions ]
+      in
+      (
+        match required_by with
+        | Some required_by -> version_line @ [ format_required_by required_by ]
+        | None -> version_line
+      )
   | _ -> []
 
 and message error =
@@ -205,6 +230,34 @@ let rec to_json = function
                       | None -> Json.Null
                     )
                   ); ]
+          )
+        );
+      ]
+  | RegistryVersionNotFound { package; registry; requirement; available_versions; required_by } ->
+      Json.Object [
+        ("kind", Json.String "RegistryVersionNotFound");
+        ("package", Json.String package);
+        ("registry", Json.String registry);
+        ("requirement", Json.String requirement);
+        (
+          "available_versions",
+          Json.Array (List.map (fun version -> Json.String version) available_versions)
+        );
+        (
+          "required_by",
+          (
+            match required_by with
+            | None -> Json.Null
+            | Some { package; path } ->
+                Json.Object [
+                  ("package", Json.String package);
+                  (
+                    "path",
+                    match path with
+                    | Some path -> json_of_path path
+                    | None -> Json.Null
+                  );
+                ]
           )
         );
       ]
@@ -351,6 +404,53 @@ let rec of_json = function
               required_by
               |> Result.map (fun required_by -> PackageNotFound { package; registry; required_by })
           | _ -> Error "invalid PackageNotFound"
+        )
+      | Some (Json.String "RegistryVersionNotFound") -> (
+          match
+            List.assoc_opt "package" fields,
+            List.assoc_opt "registry" fields,
+            List.assoc_opt "requirement" fields,
+            List.assoc_opt "available_versions" fields,
+            List.assoc_opt "required_by" fields
+          with
+          | Some (Json.String package), Some (Json.String registry), Some (Json.String requirement), Some (Json.Array available_versions), required_by_json_opt ->
+              let available_versions =
+                let rec loop acc = function
+                  | [] -> Ok (List.rev acc)
+                  | Json.String version :: rest -> loop (version :: acc) rest
+                  | _ -> Error "invalid RegistryVersionNotFound.available_versions"
+                in
+                loop [] available_versions
+              in
+              let required_by =
+                match required_by_json_opt with
+                | Some Json.Null
+                | None -> Ok None
+                | Some (Json.Object required_by_fields) -> (
+                    match List.assoc_opt "package" required_by_fields, List.assoc_opt "path" required_by_fields with
+                    | Some (Json.String package), Some path_json -> (
+                        match path_json with
+                        | Json.Null -> Ok (Some { package; path = None })
+                        | _ -> path_of_json path_json |> Result.map (fun path -> Some { package; path = Some path })
+                      )
+                    | _ -> Error "invalid RegistryVersionNotFound.required_by"
+                  )
+                | Some _ -> Error "invalid RegistryVersionNotFound.required_by"
+              in
+              (
+                match available_versions, required_by with
+                | Ok available_versions, Ok required_by ->
+                    Ok (RegistryVersionNotFound {
+                      package;
+                      registry;
+                      requirement;
+                      available_versions;
+                      required_by;
+                    })
+                | Error err, _
+                | _, Error err -> Error err
+              )
+          | _ -> Error "invalid RegistryVersionNotFound"
         )
       | Some (Json.String "LockfileReadFailed") -> (
           match List.assoc_opt "path" fields, List.assoc_opt "error" fields with

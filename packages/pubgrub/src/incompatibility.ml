@@ -1,5 +1,12 @@
 open Std
 
+module Log = struct
+  let debug _ = ()
+  let info _ = ()
+  let error _ = ()
+  let trace _ = ()
+end
+
 type package = string
 
 type version = Version.t

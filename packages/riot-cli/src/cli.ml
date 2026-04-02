@@ -63,18 +63,38 @@ let set_verbosity = fun verbose ->
   | 2 -> Log.(set_level Debug)
   | _ -> Log.(set_level Trace)
 
-(** Get workspace or return None *)
+let path_error_message = function
+  | Path.InvalidUtf8 { path } -> "invalid UTF-8 path: " ^ path
+  | Path.SystemInvalidUtf8 { syscall; path } -> "system call '"
+  ^ syscall
+  ^ "' returned invalid UTF-8 path: "
+  ^ path
+  | Path.SystemError error -> error
+
+type workspace_scan =
+  | NoWorkspace
+  | ScanFailed of string
+  | Loaded of Riot_model.Workspace.t * Riot_model.Workspace_manager.load_error list
+
+(** Get workspace scan status *)
 let get_workspace_scan = fun () ->
   match Env.current_dir () with
-  | Error _ -> None
+  | Error err -> ScanFailed ("failed to read current directory: " ^ path_error_message err)
   | Ok cwd -> (
-      match Riot_model.Workspace_manager.scan cwd with
-      | Error _ -> None
-      | Ok (workspace, load_errors) -> Some (workspace, load_errors)
+      match Riot_model.Workspace_manager.find_workspace_root cwd with
+      | None -> NoWorkspace
+      | Some _ -> (
+          match Riot_model.Workspace_manager.scan cwd with
+          | Error err -> ScanFailed err
+          | Ok (workspace, load_errors) -> Loaded (workspace, load_errors)
+        )
     )
 
 let get_workspace = fun () ->
-  Option.map fst (get_workspace_scan ())
+  match get_workspace_scan () with
+  | Loaded (workspace, _) -> Some workspace
+  | NoWorkspace
+  | ScanFailed _ -> None
 
 let report_workspace_load_errors = fun load_errors ->
   List.iter
@@ -84,25 +104,29 @@ let report_workspace_load_errors = fun load_errors ->
 
 let require_clean_workspace = fun workspace_scan_opt ->
   match workspace_scan_opt with
-  | None ->
+  | NoWorkspace ->
       eprintln "❌ Not in a riot workspace";
       Error (Failure "Not in a riot workspace")
-  | Some (_workspace, load_errors) when List.length load_errors > 0 ->
+  | ScanFailed err ->
+      eprintln ("\027[1;31mError\027[0m: " ^ err);
+      Error (Failure "Workspace scan failed")
+  | Loaded (_workspace, load_errors) when List.length load_errors > 0 ->
       report_workspace_load_errors load_errors;
       Error (Failure "Workspace load failed")
-  | Some (workspace, _) ->
+  | Loaded (workspace, _) ->
       Ok workspace
 
 (** Try to execute a package command if it exists *)
 let try_command = fun ?workspace_scan cmd_name remaining_args ->
   let workspace_scan =
     match workspace_scan with
-    | Some workspace_scan -> Some workspace_scan
+    | Some workspace_scan -> workspace_scan
     | None -> get_workspace_scan ()
   in
   match workspace_scan with
-  | None -> None
-  | Some (workspace, _load_errors) -> (
+  | NoWorkspace
+  | ScanFailed _ -> None
+  | Loaded (workspace, _load_errors) -> (
       (* Parse package:command format *)
       match String.split_on_char ':' cmd_name with
       | [package_name;command_name] -> (
@@ -162,14 +186,19 @@ format = "full"
   Riot_model.Riot_dirs.ensure_created () |> Result.expect ~msg:"Could not create riot dirs";
   (* Try to load workspace for command discovery (silently fail if not in workspace) *)
   let workspace_scan_opt = get_workspace_scan () in
-  let workspace_opt = Option.map fst workspace_scan_opt in
+  let workspace_opt =
+    match workspace_scan_opt with
+    | Loaded (workspace, _) -> Some workspace
+    | NoWorkspace
+    | ScanFailed _ -> None
+  in
   (* Check if first arg is a package command (format: package:command) before ArgParser *)
   match args with
   | _ :: "completions" :: "install" :: rest ->
       Completions.run_install_args rest
   | _ :: cmd :: rest when String.contains cmd ":" -> (
       (* This looks like a package command, try to execute it directly *)
-      match try_command ?workspace_scan:workspace_scan_opt cmd rest with
+      match try_command ?workspace_scan:(Some workspace_scan_opt) cmd rest with
       | Some result -> result
       | None ->
           (* Not a valid package command, fall through to normal parsing *)
@@ -290,7 +319,7 @@ format = "full"
                 | cmd_arg :: rest when cmd_arg = cmd -> rest
                 | _ -> []
               in
-              match try_command ?workspace_scan:workspace_scan_opt cmd remaining_args with
+              match try_command ?workspace_scan:(Some workspace_scan_opt) cmd remaining_args with
               | Some result -> result
               | None ->
                   ArgParser.print_error (ArgParser.UnknownSubcommand cmd);

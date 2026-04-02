@@ -20,6 +20,13 @@ type t =
   | RegistryLatestReleaseMissing of { package: string; latest_version: string }
   | PackageMetadataReadFailed of { package: string; registry: string; error: string }
   | PackageNotFound of { package: string; registry: string; required_by: required_by option }
+  | RegistryVersionNotFound of {
+      package: string;
+      registry: string;
+      requirement: string;
+      available_versions: string list;
+      required_by: required_by option;
+    }
   | LockfileReadFailed of { path: Path.t; error: string }
   | LockRefreshCheckFailed of { workspace_root: Path.t; error: string }
   | LockfileWriteFailed of { path: Path.t; error: string }

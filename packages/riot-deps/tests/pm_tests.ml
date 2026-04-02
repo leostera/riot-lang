@@ -1027,6 +1027,50 @@ let test_lock_deps_reports_missing_registry_package_with_required_by = fun _ctx 
         Error "expected missing registry package error to include the requiring workspace package"
   | Error err -> Error ("expected missing registry package error, got: " ^ pm_error_message err)
 
+let test_lock_deps_reports_missing_registry_version_with_available_versions = fun _ctx ->
+  let app_root = Path.v "/workspace/packages/app" in
+  let requirement =
+    Std.Version.parse_requirement "0.3"
+    |> Result.expect ~msg:"expected 0.3 requirement to parse"
+  in
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:app_root
+    ~dependencies:[ { name = "minttea"; source = source ~version:requirement () } ]
+    () in
+  let registry = make_registry [
+    make_registry_document
+      ~name:"minttea"
+      ~latest:"0.2.5"
+      ~releases:[
+        make_release ~version:"0.1.0" ();
+        make_release ~version:"0.2.5" ();
+      ]
+      ()
+  ] in
+  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+  | Ok _ -> Error "expected unavailable registry version to fail"
+  | Error (Riot_deps.Error.RegistryVersionNotFound {
+    package;
+    registry;
+    requirement;
+    available_versions;
+    required_by=Some required_by;
+  }) ->
+      if
+        String.equal package "minttea"
+        && String.equal registry "pkgs.ml"
+        && String.equal requirement "0.3"
+        && available_versions = [ "0.1.0"; "0.2.5" ]
+        && String.equal required_by.package "app"
+        && required_by.path = Some app_root
+      then
+        Ok ()
+      else
+        Error "expected registry version error to include requirement, available versions, and required-by"
+  | Error err ->
+      Error ("expected missing registry version error, got: " ^ pm_error_message err)
+
 let test_lock_deps_supports_major_minor_prefix_requirements = fun _ctx ->
   let requirement =
     Std.Version.parse_requirement "0.2"
