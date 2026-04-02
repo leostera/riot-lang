@@ -32,6 +32,13 @@ let test_fmt_usage_shows_variadic_paths = fun _ctx ->
   else
     Error ("expected variadic path usage, got: " ^ usage)
 
+let test_fmt_accepts_explain_option = fun _ctx ->
+  match parse_fmt [ "fmt"; "--explain"; "E0001" ] with
+  | Error err -> Error ("expected fmt explain args to parse: " ^ err)
+  | Ok matches ->
+      Test.assert_equal ~expected:(Some "E0001") ~actual:(ArgParser.get_one matches "explain");
+      Ok ()
+
 let test_fmt_formats_only_explicit_file = fun _ctx ->
   with_tempdir "riot_fmt_explicit_file"
     (fun tmpdir ->
@@ -90,13 +97,40 @@ let test_fmt_prints_syn_diagnostics_for_syntax_errors = fun _ctx ->
               Ok ()
         ))
 
+let test_fmt_explain_prints_syn_explanation = fun _ctx ->
+  let matches = parse_fmt [ "fmt"; "--explain"; "E0001" ] |> Result.expect ~msg:"parse fmt explain args" in
+  let stdout, stdout_contents = make_capture_writer () in
+  let stderr, stderr_contents = make_capture_writer () in
+  Riot_fmt.run ~stdout ~stderr matches |> Result.expect ~msg:"explain error id";
+  Test.assert_equal
+    ~expected:(Syn.Error.explain Syn.Error.E0001_MalformedTypeVariable ^ "\n")
+    ~actual:(stdout_contents ());
+  Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
+  Ok ()
+
+let test_fmt_explain_rejects_unknown_error_id = fun _ctx ->
+  let matches = parse_fmt [ "fmt"; "--explain"; "E9999" ] |> Result.expect ~msg:"parse fmt explain args" in
+  let stdout, stdout_contents = make_capture_writer () in
+  let stderr, stderr_contents = make_capture_writer () in
+  (
+    match Riot_fmt.run ~stdout ~stderr matches with
+    | Ok () -> Error "expected unknown explain id to fail"
+    | Error _ ->
+        Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
+        Test.assert_equal ~expected:"Unknown error code: E9999\n" ~actual:(stderr_contents ());
+        Ok ()
+  )
+
 let tests =
   Test.[
     case "fmt: accept multiple path arguments" test_fmt_accepts_multiple_paths;
     case "fmt: usage shows variadic paths" test_fmt_usage_shows_variadic_paths;
+    case "fmt: accept explain option" test_fmt_accepts_explain_option;
     case "fmt: format rewrites only the explicit file" test_fmt_formats_only_explicit_file;
     case "fmt: default format is quiet on success" test_fmt_is_quiet_by_default;
     case "fmt: syntax errors render syn diagnostics" test_fmt_prints_syn_diagnostics_for_syntax_errors;
+    case "fmt: explain prints syn explanation" test_fmt_explain_prints_syn_explanation;
+    case "fmt: explain rejects unknown error id" test_fmt_explain_rejects_unknown_error_id;
   ]
 
 let name = "Riot Fmt Tests"

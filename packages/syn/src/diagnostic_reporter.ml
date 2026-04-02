@@ -73,7 +73,7 @@ let format_diagnostic = fun ~layout diag ->
   let fix_label = Style.styled fix_style " fix:" in
   let main_msg = Diagnostic.main_message diag in
   let expected = Diagnostic.expected_message diag in
-  let explain_msg = "  For more information about this error, try `syn explain " ^ error_id ^ "`" in
+  let explain_msg = "  For more information about this error, try `riot fmt --explain " ^ error_id ^ "`" in
   match extract_code_snippet_from_layout layout diag.Diagnostic.span with
   | Some (code_line, pointer_line, line_num) -> (
       let styled_pointer = Style.styled error_style pointer_line in

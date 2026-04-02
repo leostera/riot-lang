@@ -13,6 +13,7 @@
 6. Keep no-flag `riot fmt` as the in-place rewrite path, and keep it quiet on success. With explicit positional paths, format only those files/directories; without them, keep the existing workspace-scan behavior.
 7. Keep `--json` machine-readable, line-delimited, timestamped, and incrementally emitted as `start`/`file`/`summary` events.
 8. Do not reintroduce an `ocamlformat` dependency here; `krasny` is the formatter backend.
+9. Keep `riot fmt --explain <id>` as a thin in-process pass-through to `Syn.Error.explain`; do not shell out to the `syn` binary.
 
 ## Validate
 

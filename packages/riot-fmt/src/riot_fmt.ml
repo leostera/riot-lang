@@ -10,6 +10,7 @@ let command =
       flag "check" |> long "check" |> help "Check if files need formatting";
       flag "verify" |> long "verify" |> help "Verify formatting would preserve syntax hashes";
       flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+      option "explain" |> long "explain" |> help "Explain a syn parse error code (e.g. E0001)";
       positional "path" |> required false |> multiple |> help "OCaml file or directory to format/check/verify (default: workspace packages or current directory)";
     ]
 
@@ -274,13 +275,29 @@ let run_check_paths = fun ?workspace ?(on_event = no_event) paths ->
     ~explicit_targets:(List.sort_uniq compare_paths paths)
     ()
 
+let run_explain = fun ?(stdout = default_stdout) ?(stderr = default_stderr) error_code ->
+  match Syn.Error.id_of_string error_code with
+  | Some id ->
+      stdout (Syn.Error.explain id ^ "\n");
+      Ok ()
+  | None ->
+      stderr ("Unknown error code: " ^ error_code ^ "\n");
+      Error (Failure ("Unknown error code: " ^ error_code))
+
 let run = fun ?workspace ?stdout ?stderr fmt_matches ->
   let check = get_flag fmt_matches "check" in
   let verify = get_flag fmt_matches "verify" in
-  match check, verify with
-  | true, true ->
+  let explain = get_one fmt_matches "explain" in
+  let has_paths = not (List.is_empty (explicit_targets fmt_matches)) in
+  match check, verify, explain with
+  | true, true, _ ->
       eprintln "riot fmt cannot use both --check and --verify";
       Error (Failure "riot fmt cannot use both --check and --verify")
+  | _, _, Some _ when check || verify || get_flag fmt_matches "json" || has_paths ->
+      eprintln "riot fmt --explain cannot be combined with formatting flags or paths";
+      Error (Failure "riot fmt --explain cannot be combined with formatting flags or paths")
+  | _, _, Some error_code ->
+      run_explain ?stdout ?stderr error_code
   | _ ->
       let mode =
         if check then
