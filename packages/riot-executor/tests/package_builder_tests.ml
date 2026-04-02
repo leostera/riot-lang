@@ -171,7 +171,7 @@ let test_build_writes_package_export_manifest = fun _ctx ->
             library = Some { path = Path.v "src/lib.ml" };
             sources =
               {
-                src = [];
+                src = [ Path.v "src/lib.ml" ];
                 native = [];
                 tests = [];
                 examples = [];
