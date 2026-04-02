@@ -195,6 +195,9 @@ let render_publishing = fun ~package ~version ->
 let render_skipping = fun ~package ~version ->
   "    \027[1;33mSkipping\027[0m " ^ package ^ " " ^ version ^ " (already published)"
 
+let render_skipping_not_public = fun ~package ~version ->
+  "    \027[1;33mSkipping\027[0m " ^ package ^ " " ^ version ^ " (package is not public)"
+
 let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_packages ~progress event ->
   match event with
   | Riot_publish.Fmt (Krasny.Report.Start _) -> ()
@@ -232,6 +235,8 @@ let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_
       ~package
       ~version:(Std.Version.to_string version)
       ~artifact_path:(relative_or_absolute ~root:workspace_root artifact_path))
+  | Riot_publish.SkippedNotPublic { package; version } -> out
+    (render_skipping_not_public ~package ~version:(version_label version))
   | Riot_publish.SkippedAlreadyPublished { package; version } -> out
     (render_skipping ~package ~version:(Std.Version.to_string version))
   | Riot_publish.DryRunPlanned prepared -> out

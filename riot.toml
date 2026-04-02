@@ -13,7 +13,7 @@ members = [
   "packages/mcp",
   "packages/mime",
   "packages/actors",
-  "packages/actors",
+  "packages/miniriot",
   "packages/minttea",
   "packages/postgres",
   "packages/pkgs-ml",

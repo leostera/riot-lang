@@ -188,9 +188,7 @@ let http_status_message = fun status_code ->
   Int.to_string status_code ^ " " ^ Net.Http.Status.reason_phrase status
 
 let protect_fetch = fun ~uri f ->
-  try
-    f ()
-  with
+  try f () with
   | exn ->
       let _ = uri in
       Error (exn_message exn)
@@ -576,42 +574,38 @@ let extract_cached_archive = fun ~archive_path ~root ->
 
 let read_dir_entries = fun dir ->
   match Fs.read_dir dir with
-  | Error err ->
-      Error ("failed to read directory '" ^ Path.to_string dir ^ "': " ^ IO.error_message err)
-  | Ok iter ->
-      Ok (Iter.MutIterator.to_list iter)
+  | Error err -> Error ("failed to read directory '"
+  ^ Path.to_string dir
+  ^ "': "
+  ^ IO.error_message err)
+  | Ok iter -> Ok (Iter.MutIterator.to_list iter)
 
 let move_directory_contents = fun ~src ~dst ->
   let* entries = read_dir_entries src in
   let rec loop = function
-    | [] ->
-        Ok ()
+    | [] -> Ok ()
     | entry :: rest ->
         let from_path = Path.(src / entry) in
         let to_path = Path.(dst / entry) in
-        let* () =
-          Fs.rename ~src:from_path ~dst:to_path
-          |> Result.map_error
-            (fun err ->
-              "failed to move extracted entry '"
-              ^ Path.to_string from_path
-              ^ "' into '"
-              ^ Path.to_string dst
-              ^ "': "
-              ^ IO.error_message err)
-        in
+        let* () = Fs.rename ~src:from_path ~dst:to_path
+        |> Result.map_error
+          (fun err ->
+            "failed to move extracted entry '"
+            ^ Path.to_string from_path
+            ^ "' into '"
+            ^ Path.to_string dst
+            ^ "': "
+            ^ IO.error_message err) in
         loop rest
   in
   loop entries
 
 let path_is_directory = fun path ->
   match Fs.metadata path with
-  | Ok metadata ->
-      Ok (Fs.Metadata.is_dir metadata)
-  | Error err ->
-      Error ("failed to stat '" ^ Path.to_string path ^ "': " ^ IO.error_message err)
+  | Ok metadata -> Ok (Fs.Metadata.is_dir metadata)
+  | Error err -> Error ("failed to stat '" ^ Path.to_string path ^ "': " ^ IO.error_message err)
 
-let normalize_legacy_package_root = fun ~root ~(release: Sparse_index.release) ->
+let normalize_legacy_package_root = fun ~root ~(release:Sparse_index.release) ->
   let manifest_path = Path.(root / Path.v "riot.toml") in
   match Fs.exists manifest_path with
   | Error err ->
@@ -637,24 +631,20 @@ let normalize_legacy_package_root = fun ~root ~(release: Sparse_index.release) -
         let rec collect acc = function
           | [] -> Ok (List.rev acc)
           | Ok path :: rest -> collect (path :: acc) rest
-          | Error _ as err :: _ -> err
+          | (Error _ as err) :: _ -> err
         in
         collect [] top_level_dirs
       in
       let candidate_root =
         match top_level_dirs with
-        | [ top_level_dir ] when String.equal release.subdir "." || String.equal release.subdir "" ->
-            Some top_level_dir
-        | [ top_level_dir ] ->
-            Some Path.(top_level_dir / Path.v release.subdir)
-        | _ ->
-            None
+        | [ top_level_dir ] when String.equal release.subdir "." || String.equal release.subdir "" -> Some top_level_dir
+        | [ top_level_dir ] -> Some Path.(top_level_dir / Path.v release.subdir)
+        | _ -> None
       in
       match candidate_root with
-      | None ->
-          Error ("materialized archive did not contain riot.toml at package root '"
-          ^ Path.to_string root
-          ^ "'")
+      | None -> Error ("materialized archive did not contain riot.toml at package root '"
+      ^ Path.to_string root
+      ^ "'")
       | Some candidate_root ->
           let candidate_manifest = Path.(candidate_root / Path.v "riot.toml") in
           match Fs.exists candidate_manifest with
@@ -674,47 +664,36 @@ let normalize_legacy_package_root = fun ~root ~(release: Sparse_index.release) -
                 | [] -> root
               in
               let* () = move_directory_contents ~src:candidate_root ~dst:root in
-              let* () =
-                Fs.remove_dir_all top_level_dir
-                |> Result.map_error
-                  (fun err ->
-                    "failed to clean extracted archive root '"
-                    ^ Path.to_string top_level_dir
-                    ^ "': "
-                    ^ IO.error_message err)
-              in
-              match Fs.exists manifest_path with
-              | Ok true ->
-                  Ok ()
-              | Ok false ->
-                  Error ("normalized archive for '"
-                  ^ release.canonical_locator
-                  ^ "' is still missing riot.toml at '"
-                  ^ Path.to_string manifest_path
-                  ^ "'")
-              | Error err ->
-                  Error ("failed to check normalized manifest '"
-                  ^ Path.to_string manifest_path
+              let* () = Fs.remove_dir_all top_level_dir
+              |> Result.map_error
+                (fun err ->
+                  "failed to clean extracted archive root '"
+                  ^ Path.to_string top_level_dir
                   ^ "': "
-                  ^ IO.error_message err)
+                  ^ IO.error_message err) in
+              match Fs.exists manifest_path with
+              | Ok true -> Ok ()
+              | Ok false -> Error ("normalized archive for '"
+              ^ release.canonical_locator
+              ^ "' is still missing riot.toml at '"
+              ^ Path.to_string manifest_path
+              ^ "'")
+              | Error err -> Error ("failed to check normalized manifest '"
+              ^ Path.to_string manifest_path
+              ^ "': "
+              ^ IO.error_message err)
 
 let reset_materialized_root = fun root ->
   match Fs.exists root with
-  | Error err ->
-      Error ("failed to check package source directory '"
-      ^ Path.to_string root
-      ^ "': "
-      ^ IO.error_message err)
-  | Ok false ->
-      Ok ()
-  | Ok true ->
-      Fs.remove_dir_all root
-      |> Result.map_error
-        (fun err ->
-          "failed to clean package source directory '"
-          ^ Path.to_string root
-          ^ "': "
-          ^ IO.error_message err)
+  | Error err -> Error ("failed to check package source directory '"
+  ^ Path.to_string root
+  ^ "': "
+  ^ IO.error_message err)
+  | Ok false -> Ok ()
+  | Ok true -> Fs.remove_dir_all root
+  |> Result.map_error
+    (fun err ->
+      "failed to clean package source directory '" ^ Path.to_string root ^ "': " ^ IO.error_message err)
 
 let find_release = fun registry ~package_name ~version ->
   match read_package_document registry ~package_name with
@@ -783,7 +762,7 @@ let materialize_release = fun registry ~package_name ~version ->
   let root = Registry_cache.package_src_dir registry.cache ~package_name ~version in
   let manifest_path = Path.(root / Path.v "riot.toml") in
   let archive_path = Registry_cache.archive_path registry.cache ~package_name ~version in
-  let finalize_extracted_root = fun () ->
+  let finalize_extracted_root () =
     match Fs.exists manifest_path with
     | Error err ->
         Error ("failed to check package manifest '"
@@ -807,26 +786,29 @@ let materialize_release = fun registry ~package_name ~version ->
   | Ok false -> (
       match registry.source with
       | Filesystem -> (
-          let* () = reset_materialized_root root in
-          match Fs.exists archive_path with
-          | Error err ->
-              Error ("failed to check cached package archive '"
-              ^ Path.to_string archive_path
-              ^ "': "
-              ^ IO.error_message err)
-          | Ok false -> (
-              match fetch_release_archive registry ~package_name ~version ~archive_path with
-              | Error _ as err -> err
-              | Ok () -> (
+          match reset_materialized_root root with
+          | Error _ as err -> err
+          | Ok () -> (
+              match Fs.exists archive_path with
+              | Error err ->
+                  Error ("failed to check cached package archive '"
+                  ^ Path.to_string archive_path
+                  ^ "': "
+                  ^ IO.error_message err)
+              | Ok false -> (
+                  match fetch_release_archive registry ~package_name ~version ~archive_path with
+                  | Error _ as err -> err
+                  | Ok () -> (
+                      match extract_cached_archive ~archive_path ~root with
+                      | Ok () -> finalize_extracted_root ()
+                      | Error _ as err -> err
+                    )
+                )
+              | Ok true -> (
                   match extract_cached_archive ~archive_path ~root with
                   | Ok () -> finalize_extracted_root ()
                   | Error _ as err -> err
                 )
-            )
-          | Ok true -> (
-              match extract_cached_archive ~archive_path ~root with
-              | Ok () -> finalize_extracted_root ()
-              | Error _ as err -> err
             )
         )
       | In_memory { releases; config=_; packages=_ } -> (

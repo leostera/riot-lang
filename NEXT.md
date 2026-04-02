@@ -36,6 +36,8 @@
 
 # Later
 
+* registry safeties: rate-limiting!
+
 * enforce my-pkg/src/my_subdir/hello_world.ml becomes MyPkg.SubDir.HelloWorld module
 
 * implement js targets

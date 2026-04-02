@@ -29,11 +29,13 @@ type publish_event =
   | CheckStarted of { package: string; version: Std.Version.t option; stage: publish_check_stage }
   | CheckFinished of { package: string; version: Std.Version.t option; stage: publish_check_stage }
   | Packing of { package: string; version: Std.Version.t; artifact_path: Path.t }
+  | SkippedNotPublic of { package: string; version: Std.Version.t option }
   | SkippedAlreadyPublished of { package: string; version: Std.Version.t }
   | DryRunPlanned of Riot_deps.Publisher.prepared_publish
   | PackagePublished of Pkgs_ml.Registry.published_release
 
 type publish_outcome =
+  | SkippedNotPublicPackage of { package: string; version: Std.Version.t option }
   | Skipped of { package: string; version: Std.Version.t }
   | Planned of Riot_deps.Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release
@@ -108,7 +110,7 @@ let is_public_package = fun (package: Package.t) ->
   | Some false
   | None -> false
 
-let select_packages = fun ~(workspace:Workspace.t) request ->
+let select_packages = fun ~(emit:publish_event -> unit) ~(workspace:Workspace.t) request ->
   let packages = workspace_packages workspace in
   let public_packages = List.filter is_public_package packages in
   match request.selection with
@@ -119,9 +121,13 @@ let select_packages = fun ~(workspace:Workspace.t) request ->
             String.equal pkg.name package_name)
           packages
       with
-      | Some pkg when not (is_public_package pkg) -> Ok []
-      | Some pkg -> Ok [ pkg ]
-      | None -> Error (PackageNotFound { package = package_name })
+      | Some pkg when not (is_public_package pkg) ->
+          emit (SkippedNotPublic { package = pkg.name; version = pkg.publish.version });
+          Ok []
+      | Some pkg ->
+          Ok [ pkg ]
+      | None ->
+          Error (PackageNotFound { package = package_name })
     )
   | Workspace ->
       if packages = [] then
@@ -377,7 +383,7 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
 
 let publish = fun ?(on_event = no_event) ~(workspace:Workspace.t) ~request ~mode () ->
   let* registry = resolve_registry () in
-  let* packages = select_packages ~workspace request in
+  let* packages = select_packages ~emit:on_event ~workspace request in
   let publishing_workspace_packages =
     List.map (fun (pkg: Package.t) -> pkg.name) packages
   in

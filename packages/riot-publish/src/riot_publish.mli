@@ -24,10 +24,12 @@ type publish_event =
   | CheckStarted of { package: string; version: Std.Version.t option; stage: publish_check_stage }
   | CheckFinished of { package: string; version: Std.Version.t option; stage: publish_check_stage }
   | Packing of { package: string; version: Std.Version.t; artifact_path: Path.t }
+  | SkippedNotPublic of { package: string; version: Std.Version.t option }
   | SkippedAlreadyPublished of { package: string; version: Std.Version.t }
   | DryRunPlanned of Riot_deps.Publisher.prepared_publish
   | PackagePublished of Pkgs_ml.Registry.published_release
 type publish_outcome =
+  | SkippedNotPublicPackage of { package: string; version: Std.Version.t option }
   | Skipped of { package: string; version: Std.Version.t }
   | Planned of Riot_deps.Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release

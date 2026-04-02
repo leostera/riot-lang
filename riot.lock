@@ -105,6 +105,14 @@ build_dependencies = [{ name = "fixme" }]
 dev_dependencies = [{ name = "propane" }, { name = "std" }]
 
 [[packages]]
+name = "miniriot"
+root = "packages/miniriot"
+provenance = { kind = "workspace" }
+dependencies = []
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
 name = "minttea"
 root = "packages/minttea"
 provenance = { kind = "workspace" }

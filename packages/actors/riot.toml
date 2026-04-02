@@ -5,6 +5,7 @@ description = "Actor runtime for multicore OCaml"
 version = "0.0.1"
 categories = ["runtime", "actors"]
 keywords = ["actors", "scheduler", "mailbox"]
+public = true
 
 [riot.fix]
 rules = [ "-no-stdlib" ]
