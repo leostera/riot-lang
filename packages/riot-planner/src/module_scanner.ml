@@ -81,6 +81,8 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
                 match Path.extension source_path with
                 | Some ".ml" -> [ ML (name, entry_rel_path) ]
                 | Some ".mli" -> [ MLI (name, entry_rel_path) ]
+                | Some ".c" -> [ C (name, entry_rel_path) ]
+                | Some ".h" -> [ H (name, entry_rel_path) ]
                 | Some ext -> [ Other (name, entry_rel_path, ext) ]
                 | None -> [ Other (name, entry_rel_path, "") ]
               )

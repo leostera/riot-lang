@@ -51,6 +51,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
   let state = H.create () in
   H.write_string state planner_version;
   Riot_model.Build_ctx.hash state build_ctx;
+  H.write state (Std.Crypto.Digest.bytes (Riot_toolchain.hash test_toolchain));
   Riot_model.Package.hash state package;
   let sorted_deps =
     List.sort

@@ -372,6 +372,30 @@ let create = fun config ->
     - MLI -> ML dependencies are filtered out to maintain proper compilation
       order *)
 let wire_dependencies = fun t sandbox_dir ->
+  let preferred_dependency_nodes dep_node_ids =
+    let rec collect acc has_ml = function
+      | [] -> (List.rev acc, has_ml)
+      | dep_node_id :: rest -> (
+          match G.get_node t.graph dep_node_id with
+          | Some (dep_node: Module_node.t G.node) -> (
+              match dep_node.value.kind with
+              | Module_node.ML _ -> collect ((dep_node_id, dep_node) :: acc) true rest
+              | _ -> collect ((dep_node_id, dep_node) :: acc) has_ml rest
+            )
+          | None -> collect acc has_ml rest
+        )
+    in
+    let resolved_nodes, has_ml = collect [] false dep_node_ids in
+    if has_ml then
+      List.filter
+        (fun ((_dep_node_id, (dep_node: Module_node.t G.node))) ->
+          match dep_node.value.kind with
+          | Module_node.ML _ -> true
+          | _ -> false)
+        resolved_nodes
+    else
+      resolved_nodes
+  in
   let all_nodes =
     G.map t.graph ~fn:(fun ((node_id, node)) -> (node_id, node))
   in
@@ -479,21 +503,15 @@ let wire_dependencies = fun t sandbox_dir ->
           try
             let dep_node_ids = Module_registry.get_by_name t.registry dep_name in
             List.iter
-              (fun dep_node_id ->
+              (fun (dep_node_id, dep_node) ->
                 (* Skip self-references: a module can't depend on itself.
                    This happens when ocamldep reports "A" as a dependency of A.ml,
                    which actually refers to a different module A (e.g., Bar.A when using 'open Bar'). *)
                 if G.Node_id.eq dep_node_id node.id then
                   ()
                 else
-                  match G.get_node t.graph dep_node_id with
-                  | None -> ()
-                  | Some dep_node -> (
-                      match (node.value.kind, dep_node.value.kind) with
-                      | Module_node.MLI _, Module_node.ML _ -> ()
-                      | _ -> G.add_edge node ~depends_on:dep_node
-                    ))
-              dep_node_ids
+                  G.add_edge node ~depends_on:dep_node)
+              (preferred_dependency_nodes dep_node_ids)
           with
           | Not_found -> ())
         module_deps)
