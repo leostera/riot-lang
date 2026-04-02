@@ -19,7 +19,12 @@ let test_cache_store_creation = fun _ctx ->
       (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
         ignore (Tusk_store.Store.create ~workspace);
-        let cache_dir = Path.(tmpdir / Path.v "target" / Path.v "debug" / Path.v "cache") in
+        let cache_dir = Path.(
+          tmpdir
+          / Path.v "target"
+          / Path.v "debug"
+          / Path.v (Tusk_model.Tusk_dirs.host_target ())
+          / Path.v "cache") in
         match Fs.exists cache_dir with
         | Ok true -> Ok ()
         | Ok false -> Error "Cache directory was not created"

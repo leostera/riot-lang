@@ -20,7 +20,9 @@ type export_entry = {
 
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
-  let store_dir = Tusk_dirs.cache_dir_with_target ~workspace_root:workspace.root ~profile ~target in
+  let store_dir =
+    Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache")
+  in
   Fs.create_dir_all store_dir
   |> Result.expect ~msg:(("Failed to create store directory: " ^ Path.to_string store_dir));
   { root_dir = store_dir }

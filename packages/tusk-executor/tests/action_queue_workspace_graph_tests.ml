@@ -31,6 +31,7 @@ let make_test_package = fun name ->
   }
 
 let make_action_node = fun ?(deps = []) ?(outs = []) ?(actions = []) package_name ->
+  let graph = Tusk_planner.Action_graph.create () in
   let package = make_test_package package_name in
   let spec =
     Tusk_planner.Action_node.make
@@ -42,7 +43,21 @@ let make_action_node = fun ?(deps = []) ?(outs = []) ?(actions = []) package_nam
       ~dependency_hashes:(fun _ -> Crypto.hash_string "dep")
       ~deps
   in
-  Tusk_planner.Action_graph.add_node (Tusk_planner.Action_graph.create ()) spec
+  Tusk_planner.Action_graph.add_node graph spec
+
+let make_action_node_in = fun graph ?(deps = []) ?(outs = []) ?(actions = []) package_name ->
+  let package = make_test_package package_name in
+  let spec =
+    Tusk_planner.Action_node.make
+      ~actions
+      ~outs
+      ~srcs:[]
+      ~package
+      ~toolchain:(test_toolchain ())
+      ~dependency_hashes:(fun _ -> Crypto.hash_string "dep")
+      ~deps
+  in
+  Tusk_planner.Action_graph.add_node graph spec
 
 let executed_result = fun node_id ->
   let now = Time.Instant.now () in
@@ -68,15 +83,19 @@ let failed_result = fun node_id ->
 
 let queue_respects_dependency_order = fun _ctx ->
   let queue = Tusk_executor.Action_queue.create () in
-  let dep_node = make_action_node
+  let graph = Tusk_planner.Action_graph.create () in
+  let dep_node = make_action_node_in
+    graph
     "kernel"
     ~actions:[
       Tusk_planner.Action.WriteFile { destination = Path.v "kernel.txt"; content = "kernel" };
     ] in
-  let app_node = make_action_node
+  let app_node = make_action_node_in
+    graph
     "app"
     ~deps:[ dep_node.id ]
     ~actions:[ Tusk_planner.Action.WriteFile { destination = Path.v "app.txt"; content = "app" }; ] in
+  Tusk_planner.Action_graph.add_dependency graph app_node ~depends_on:dep_node;
   Tusk_executor.Action_queue.queue queue app_node;
   Tusk_executor.Action_queue.queue queue dep_node;
   match Tusk_executor.Action_queue.next queue with
@@ -94,8 +113,10 @@ let queue_respects_dependency_order = fun _ctx ->
 
 let queue_marks_dependents_skipped_after_failure = fun _ctx ->
   let queue = Tusk_executor.Action_queue.create () in
-  let dep_node = make_action_node "std" in
-  let dependent_node = make_action_node "tusk-model" ~deps:[ dep_node.id ] in
+  let graph = Tusk_planner.Action_graph.create () in
+  let dep_node = make_action_node_in graph "std" in
+  let dependent_node = make_action_node_in graph "tusk-model" ~deps:[ dep_node.id ] in
+  Tusk_planner.Action_graph.add_dependency graph dependent_node ~depends_on:dep_node;
   Tusk_executor.Action_queue.queue queue dependent_node;
   Tusk_executor.Action_queue.queue queue dep_node;
   ignore (Tusk_executor.Action_queue.next queue);
@@ -110,6 +131,7 @@ let requeue_with_deps_moves_blocked_node_and_queues_missing_dependency = fun _ct
   let queue = Tusk_executor.Action_queue.create () in
   let missing_dep = make_action_node "kernel" in
   let blocked = make_action_node "std" ~deps:[ missing_dep.id ] in
+  blocked.deps <- [ missing_dep.id ];
   Tusk_executor.Action_queue.queue queue blocked;
   ignore (Tusk_executor.Action_queue.next queue);
   Tusk_executor.Action_queue.requeue_with_deps
