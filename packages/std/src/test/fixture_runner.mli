@@ -26,7 +26,25 @@ open Global
     The callback receives both the ordinary test context and fixture-specific
     metadata, allowing it to reuse [Std.Test.Snapshot] without inventing a
     package-local harness.
-*)
+
+    Use [snapshot_path] when a fixture family already stores approved snapshots
+    with a package-specific filename convention:
+
+    ```ocaml
+    let append_snapshot_suffix path suffix =
+      Std.Path.to_string path ^ suffix
+      |> Std.Path.of_string
+      |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+
+    let tests =
+      Test.FixtureRunner.cases ()
+        ~dir:(Std.Path.v "packages/syn/tests/fixtures")
+        ~snapshot_path:(fun path ->
+          Some (append_snapshot_suffix path ".expected_lossless.json"))
+        ~filter
+        ~run
+    ```
+ *)
 type ctx = {
   test: Test_context.t;
   fixture_path: Path.t;
@@ -38,6 +56,7 @@ type filter_result =
   | `skip ]
 val cases:
   ?filter:(Path.t -> filter_result) ->
+  ?snapshot_path:(Path.t -> Path.t option) ->
   unit ->
   dir:Path.t ->
   run:(ctx -> (unit, string) result) ->

@@ -64,7 +64,7 @@ let keep_path = fun filter path ->
   | `keep -> true
   | `skip -> false
 
-let cases = fun ?(filter = fun _ -> `keep) () ~dir ~run ->
+let cases = fun ?(filter = fun _ -> `keep) ?(snapshot_path = fun _ -> None) () ~dir ~run ->
   let root =
     if Path.is_relative dir then
       match Env.current_dir () with
@@ -86,7 +86,12 @@ let cases = fun ?(filter = fun _ -> `keep) () ~dir ~run ->
       Test_case.case (Path.to_string fixture_relpath)
         (fun test_ctx ->
           let fixture =
-            Test_context.{ path = fixture_path; relpath = fixture_relpath; name = fixture_name } in
+            Test_context.{
+              path = fixture_path;
+              relpath = fixture_relpath;
+              name = fixture_name;
+              snapshot_path = snapshot_path fixture_path
+            } in
           run
             {
               test = Test_context.with_fixture test_ctx fixture;

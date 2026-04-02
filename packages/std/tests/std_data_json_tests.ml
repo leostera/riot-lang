@@ -148,6 +148,26 @@ let test_serialize_object = fun _ctx ->
   else
     Error "Failed to serialize object"
 
+let test_serialize_object_pretty = fun _ctx ->
+  let json =
+    Json.obj
+      [
+        ("a", Json.int 1);
+        ("items", Json.array [ Json.int 2; Json.int 3 ]);
+      ] in
+  let expected =
+    "{\n"
+    ^ "  \"a\": 1,\n"
+    ^ "  \"items\": [\n"
+    ^ "    2,\n"
+    ^ "    3\n"
+    ^ "  ]\n"
+    ^ "}" in
+  if String.equal (Json.to_string_pretty json) expected then
+    Ok ()
+  else
+    Error ("Failed to serialize pretty JSON:\n" ^ Json.to_string_pretty json)
+
 let test_roundtrip = fun _ctx ->
   let original = Json.obj
     [ ("name", Json.string "Alice"); ("age", Json.int 30); ("active", Json.bool true); ] in
@@ -205,6 +225,7 @@ let tests =
     case "serialize string" test_serialize_string;
     case "serialize array" test_serialize_array;
     case "serialize object" test_serialize_object;
+    case "serialize object pretty" test_serialize_object_pretty;
     case "roundtrip" test_roundtrip;
     case "get field" test_get_field;
     case "get string" test_get_string;

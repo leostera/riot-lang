@@ -139,6 +139,33 @@ val of_string: string -> (t, error) result
 *)
 val to_string: t -> string
 
+val to_string_pretty: ?depth:int -> t -> string
+(** Serializes a JSON value with stable two-space indentation.
+
+    This preserves array/object field order from the input value, unlike any
+    higher-level canonicalization helpers that may sort keys first.
+
+    ## Examples
+
+    ```ocaml
+    let json =
+      Json.obj
+        [
+          ("name", Json.string "Alice");
+          ("tags", Json.array [ Json.string "admin"; Json.string "verified" ]);
+        ]
+    in
+    Json.to_string_pretty json
+    (* {
+         "name": "Alice",
+         "tags": [
+           "admin",
+           "verified"
+         ]
+       } *)
+    ```
+*)
+
 (** Converts a parse error to a human-readable error message.
 
     ## Examples

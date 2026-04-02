@@ -132,6 +132,43 @@ let rec to_string = function
     (List.map (fun ((k, v)) -> "\"" ^ escape_string k ^ "\":" ^ to_string v) fields)
   ^ "}"
 
+let indentation = fun depth -> String.make (depth * 2) ' '
+
+let rec to_string_pretty = fun ?(depth = 0) json ->
+  match json with
+  | Null
+  | Bool _
+  | Int _
+  | Float _
+  | String _ -> to_string json
+  | Array [] -> "[]"
+  | Array items ->
+      let item_indent = indentation (depth + 1) in
+      let closing_indent = indentation depth in
+      "[\n"
+      ^ (items
+      |> List.map (fun item -> item_indent ^ to_string_pretty ~depth:(depth + 1) item)
+      |> String.concat ",\n")
+      ^ "\n"
+      ^ closing_indent
+      ^ "]"
+  | Object [] -> "{}"
+  | Object fields ->
+      let field_indent = indentation (depth + 1) in
+      let closing_indent = indentation depth in
+      "{\n"
+      ^ (fields
+      |> List.map
+        (fun (key, value) ->
+          field_indent
+          ^ to_string (String key)
+          ^ ": "
+          ^ to_string_pretty ~depth:(depth + 1) value)
+      |> String.concat ",\n")
+      ^ "\n"
+      ^ closing_indent
+      ^ "}"
+
 (** Parse JSON from string *)
 let of_string = fun str ->
   let len = String.length str in

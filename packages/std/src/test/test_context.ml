@@ -4,6 +4,7 @@ type fixture = {
   path: Path.t;
   relpath: Path.t;
   name: string;
+  snapshot_path: Path.t option;
 }
 
 type t = {

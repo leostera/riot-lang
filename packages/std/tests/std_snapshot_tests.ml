@@ -123,7 +123,10 @@ let test_json_snapshot_canonicalizes_object_keys =
           match Fs.create_dir_all (Path.dirname approved) with
           | Error err -> Error (IO.error_message err)
           | Ok () -> (
-              match Fs.write "{\"a\":1,\"b\":2}" approved with
+              match Fs.write
+                (Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2) ]
+                |> Data.Json.to_string_pretty)
+                approved with
               | Error err -> Error (IO.error_message err)
               | Ok () ->
                   let ctx = make_ctx ~test_name:"json_snapshot" workspace_root in
@@ -132,12 +135,37 @@ let test_json_snapshot_canonicalizes_object_keys =
                     ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1) ])
             )))
 
+let test_fixture_snapshot_uses_explicit_snapshot_path =
+  Test.case "fixture snapshot uses explicit snapshot path"
+    (fun _ctx ->
+      with_tempdir_result "snapshot_fixture_explicit"
+        (fun workspace_root ->
+          let fixture_path = Path.(workspace_root / Path.v "fixtures" / Path.v "sample.input") in
+          let approved = Path.(workspace_root / Path.v "fixtures" / Path.v "sample.expected_lossless.json") in
+          match Fs.create_dir_all (Path.dirname fixture_path) with
+          | Error err -> Error (IO.error_message err)
+          | Ok () -> (
+              match Fs.write "approved fixture snapshot\n" approved with
+              | Error err -> Error (IO.error_message err)
+              | Ok () ->
+                  let fixture =
+                    Test.Context.{
+                      path = fixture_path;
+                      relpath = Path.v "sample.input";
+                      name = "sample";
+                      snapshot_path = Some approved;
+                    } in
+                  let ctx = make_ctx ~fixture ~test_name:"fixture_explicit_snapshot" workspace_root in
+                  Test.Snapshot.assert_text ~ctx ~actual:"approved fixture snapshot\n"
+            )))
+
 let tests = [
   test_snapshot_missing_approved_writes_pending;
   test_snapshot_matching_approved_passes;
   test_snapshot_mismatch_writes_pending;
   test_inline_snapshot_mismatch_reports_error;
   test_json_snapshot_canonicalizes_object_keys;
+  test_fixture_snapshot_uses_explicit_snapshot_path;
 ]
 
 let () =

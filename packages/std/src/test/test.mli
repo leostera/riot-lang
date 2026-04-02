@@ -16,6 +16,7 @@ module Context: sig
     path: Path.t;
     relpath: Path.t;
     name: string;
+    snapshot_path: Path.t option;
   }
   val with_fixture: t -> fixture -> t
 end

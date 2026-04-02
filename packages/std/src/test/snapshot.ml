@@ -92,7 +92,11 @@ let canonicalize_json =
 let resolve_paths = fun ~(ctx:Test_context.t) ->
   match ctx.fixture with
   | Some fixture ->
-      let approved = Path.add_extension (Path.remove_extension fixture.path) ~ext:"expected" in
+      let approved =
+        match fixture.snapshot_path with
+        | Some approved -> approved
+        | None -> Path.add_extension (Path.remove_extension fixture.path) ~ext:"expected"
+      in
       Ok { approved; pending = append_path_suffix approved ".new" }
   | None -> (
       match (ctx.workspace_root, ctx.package_name) with
@@ -176,7 +180,7 @@ let assert_text = fun ~ctx ~actual ->
 let assert_with = fun ~ctx ~render ~actual -> assert_text ~ctx ~actual:(render actual)
 
 let assert_json = fun ~ctx ~actual ->
-  let rendered = actual |> canonicalize_json |> Data.Json.to_string in
+  let rendered = actual |> canonicalize_json |> Data.Json.to_string_pretty in
   assert_text ~ctx ~actual:rendered
 
 let assert_inline_text = fun ~ctx:_ ~actual ~expected ->

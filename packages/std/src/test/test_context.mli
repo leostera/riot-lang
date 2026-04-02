@@ -6,6 +6,7 @@ type fixture = {
   path: Path.t;
   relpath: Path.t;
   name: string;
+  snapshot_path: Path.t option;
 }
 (** Stable per-test metadata supplied by the shared test runner.
 
