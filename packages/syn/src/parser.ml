@@ -1980,7 +1980,7 @@ and parse_or_pattern = fun parser ->
 
 (** Parse or-patterns without allowing top-level tuple commas. *)
 and parse_or_pattern_no_tuple = fun parser ->
-  let first_pat = parse_as_pattern parser in
+  let first_pat = parse_cons_pattern parser in
   if peek_kind parser = Token.Pipe then
     let trivia_after_first = consume_trivia parser in
     let rec parse_pipe_patterns acc =
@@ -1990,7 +1990,7 @@ and parse_or_pattern_no_tuple = fun parser ->
         let trivia_after_pipe = consume_trivia parser in
         let pat =
           if can_start_pattern parser then
-            parse_as_pattern parser
+            parse_cons_pattern parser
           else
             let found_tok = peek parser in
             let diagnostic = Diagnostic.or_pattern_missing
@@ -2107,7 +2107,7 @@ and parse_tuple_pattern_element = fun parser ->
   match peek_kind parser with
   | Token.Tilde -> parse_labeled_tuple_pattern_element parser
   | _ ->
-      let pattern = parse_as_pattern parser in
+      let pattern = parse_cons_pattern parser in
       ([ Ceibo.Green.Node pattern ], Some pattern, false)
 
 (** Parse tuple pattern without parentheses: a, b, c *)
@@ -2164,7 +2164,7 @@ and parse_tuple_pattern_or_as = fun parser ->
 
 (** Parse as-pattern: p as x *)
 and parse_as_pattern = fun parser ->
-  let left = parse_cons_pattern parser in
+  let left = parse_primary_pattern parser in
   (* Check for 'as' keyword *)
   match peek_kind parser with
   | Token.Keyword Keyword.As ->
@@ -2196,7 +2196,7 @@ and parse_as_pattern = fun parser ->
 
 (** Parse cons pattern: x :: xs *)
 and parse_cons_pattern = fun parser ->
-  let left = parse_primary_pattern parser in
+  let left = parse_as_pattern parser in
   if peek_kind parser = Token.ColonColon then
     let trivia_after_left = consume_trivia parser in
     (* Found ::, consume it and parse right side *)
@@ -4572,6 +4572,8 @@ and parse_primary_expr = fun parser ->
       parse_while_expr parser
   | Token.Keyword Keyword.For ->
       parse_for_expr parser
+  | Token.OpenDelim Token.Paren when (peek_n parser 1).Token.kind = Token.Keyword Keyword.Let ->
+      parse_parenthesized_let_expr parser
   | Token.OpenDelim Token.Paren ->
       parse_paren_expr parser
   | Token.OpenDelim Token.BeginEnd ->
@@ -5345,6 +5347,44 @@ and parse_sequence_expr = fun parser ->
     first
 
 (** Parse parenthesized expression or unit: (expr) or () *)
+and parse_parenthesized_let_expr = fun parser ->
+  match peek_kind parser with
+  | Token.OpenDelim Token.Paren -> (
+      let lparen = consume parser in
+      let trivia_after_lparen = consume_trivia parser in
+      let expr = parse_let_in_expr parser in
+      let trivia_after_expr = consume_trivia parser in
+      let rparen_children =
+        match peek_kind parser with
+        | Token.CloseDelim Token.Paren ->
+            let rparen = consume parser in
+            [ make_token parser rparen ]
+        | _ ->
+            let found_tok = peek parser in
+            let diagnostic = Diagnostic.unclosed_delimiter
+              ~opener:"("
+              ~found:found_tok
+              ~text:(token_text parser found_tok)
+              ~span:(expected_span parser) in
+            report_diagnostic parser diagnostic;
+            []
+      in
+      make_node
+        Syntax_kind.PAREN_EXPR
+        ([ make_token parser lparen ]
+        @ tokens_to_green parser trivia_after_lparen
+        @ [ Ceibo.Green.Node expr ]
+        @ tokens_to_green parser trivia_after_expr
+        @ rparen_children)
+    )
+  | _ ->
+      let found_tok = peek parser in
+      let diagnostic = Diagnostic.invalid_expression
+        ~found:found_tok
+        ~text:(token_text parser found_tok)
+        ~span:(expected_span parser) in
+      make_error_node parser ~diagnostic ~consumed_tokens:[]
+
 and parse_paren_expr = fun parser ->
   match peek_kind parser with
   | Token.OpenDelim Token.Paren -> (
