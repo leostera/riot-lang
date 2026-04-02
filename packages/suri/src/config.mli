@@ -43,6 +43,6 @@ val default: t
 val spec: Std.Config.Spec.t
 
 (** Configuration spec for Std.Config - automatically registered on module load *)
-val get: Config.Spec.value -> (t, Config.error) result
+val get: Std.Config.Spec.value -> (t, Std.Config.error) result
 
 (** Extract typed config from validated spec values *)
