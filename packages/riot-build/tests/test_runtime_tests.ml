@@ -45,6 +45,18 @@ let test_collect_test_suites_filters_workspace_binaries = fun _ctx ->
     ~actual;
   Ok ()
 
+let test_collect_test_suites_filters_by_suite_name = fun _ctx ->
+  let workspace = make_workspace
+    [
+      Riot_model.Package.{ name = "alpha_tests"; path = Path.v "tests/alpha_tests.ml" };
+      Riot_model.Package.{ name = "beta-tests"; path = Path.v "tests/beta-tests.ml" };
+    ] in
+  let actual = Riot_build.collect_test_suites workspace ~suite_filter:"beta-tests" () in
+  Test.assert_equal
+    ~expected:[ Riot_build.{ package_name = "demo"; suite_name = "beta-tests" } ]
+    ~actual;
+  Ok ()
+
 let test_test_event_to_json_serializes_summary = fun _ctx ->
   match Riot_build.test_event_to_json (Riot_build.Summary { total = 3; passed = 2; failed = 1 }) with
   | Some (Data.Json.Object fields) ->
@@ -61,6 +73,7 @@ let test_test_event_to_json_serializes_summary = fun _ctx ->
 let tests =
   let open Test in [
     case "test runtime: collect test suites" test_collect_test_suites_filters_workspace_binaries;
+    case "test runtime: collect test suites by suite name" test_collect_test_suites_filters_by_suite_name;
     case "test runtime: summary event json" test_test_event_to_json_serializes_summary;
   ]
 

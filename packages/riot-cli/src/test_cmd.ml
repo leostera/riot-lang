@@ -11,8 +11,8 @@ let command =
       |> ArgParser.allow_trailing_args
       |> args
         [ positional "pattern" |> required false |> help
-            "Test query passed to every test suite binary. Use -p/--package \
-               to limit execution to one package. Omit to run all tests."; option "package"
+            "Optional test query. Use package:suite to run one suite, or \
+               -p/--package to limit execution to one package. Omit to run all tests."; option "package"
           |> short 'p'
           |> long "package"
           |> help "Run tests from a specific package"; flag "verbose"
@@ -38,10 +38,16 @@ let print_run_label = fun (suite: Riot_build.suite_binary) ->
   println ("Running " ^ suite.package_name ^ "/" ^ suite.suite_name ^ "...");
   println ""
 
-let print_empty_hint = fun package_filter ->
-  match package_filter with
-  | Some package_name -> println ("No test suites found in package '" ^ package_name ^ "'")
-  | None -> println "No test binaries found"
+let print_empty_hint = fun package_filter suite_filter ->
+  match (package_filter, suite_filter) with
+  | (Some package_name, Some suite_name) ->
+      println ("No test suite '" ^ suite_name ^ "' found in package '" ^ package_name ^ "'")
+  | (Some package_name, None) ->
+      println ("No test suites found in package '" ^ package_name ^ "'")
+  | (None, Some suite_name) ->
+      println ("No test suites named '" ^ suite_name ^ "' found")
+  | (None, None) ->
+      println "No test binaries found"
 
 let print_summary = fun ~label ~total ~passed ~failed ->
   println "";
@@ -53,7 +59,7 @@ let print_summary = fun ~label ~total ~passed ~failed ->
 let write_test_event = fun (event: Riot_build.test_event) ->
   match event with
   | Riot_build.Build _ -> ()
-  | Riot_build.NoSuitesFound { package_name } -> print_empty_hint package_name
+  | Riot_build.NoSuitesFound { package_name; suite_name } -> print_empty_hint package_name suite_name
   | Riot_build.RunningSuite suite -> print_run_label suite
   | Riot_build.SuiteCompleted { stdout; stderr; _ } -> print_command_output
     Command.{ stdout; stderr; status = 0 }
@@ -94,7 +100,13 @@ let run = fun ~workspace matches ->
   in
   match Riot_build.test
     ~on_event
-    { workspace; package_filter = request.package_filter; query = request.query; extra_args } with
+    {
+      workspace;
+      package_filter = request.package_filter;
+      suite_filter = request.suite_filter;
+      query = request.query;
+      extra_args;
+    } with
   | Ok () -> Ok ()
   | Error err ->
       write_test_error err;

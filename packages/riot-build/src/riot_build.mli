@@ -81,12 +81,13 @@ type suite_binary = Test_runtime.suite_binary = {
 type test_request = Test_runtime.test_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
+  suite_filter: string option;
   query: string option;
   extra_args: string list;
 }
 type test_event =
   | Build of build_event
-  | NoSuitesFound of { package_name: string option }
+  | NoSuitesFound of { package_name: string option; suite_name: string option }
   | RunningSuite of suite_binary
   | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
   | Summary of { total: int; passed: int; failed: int }
@@ -96,7 +97,8 @@ type test_error =
   | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
-val collect_test_suites: Riot_model.Workspace.t -> ?package_filter:string -> unit -> suite_binary list
+val collect_test_suites:
+  Riot_model.Workspace.t -> ?package_filter:string -> ?suite_filter:string -> unit -> suite_binary list
 
 val test_error_message: test_error -> string
 

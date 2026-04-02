@@ -8,13 +8,14 @@ type suite_binary = {
 type test_request = {
   workspace: Riot_model.Workspace.t;
   package_filter: string option;
+  suite_filter: string option;
   query: string option;
   extra_args: string list;
 }
 
 type test_event =
   | Build of Build_runtime.build_event
-  | NoSuitesFound of { package_name: string option }
+  | NoSuitesFound of { package_name: string option; suite_name: string option }
   | RunningSuite of suite_binary
   | SuiteCompleted of { suite: suite_binary; status: int; stdout: string; stderr: string }
   | Summary of { total: int; passed: int; failed: int }
@@ -39,7 +40,7 @@ let compare_suite_binary = fun left right ->
 let requested_packages = fun suites ->
   suites |> List.map (fun (suite: suite_binary) -> suite.package_name) |> List.sort_uniq String.compare
 
-let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () ->
+let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter ?suite_filter () ->
   workspace.packages |> List.filter Riot_model.Package.is_workspace_member |> List.filter
     (fun (pkg: Riot_model.Package.t) ->
       match package_filter with
@@ -48,7 +49,11 @@ let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_fi
     (fun (pkg: Riot_model.Package.t) ->
       List.filter_map
         (fun (bin: Riot_model.Package.binary) ->
-          if is_test_binary_name bin.name then
+          if is_test_binary_name bin.name
+             && (match suite_filter with
+             | None -> true
+             | Some suite_name -> String.equal bin.name suite_name)
+          then
             Some { package_name = pkg.name; suite_name = bin.name }
           else
             None)
@@ -63,11 +68,16 @@ let test_error_message = function
 
 let test_event_to_json = function
   | Build event -> Event.to_json event
-  | NoSuitesFound { package_name } ->
+  | NoSuitesFound { package_name; suite_name } ->
       Some (
         Data.Json.Object [ ("type", Data.Json.String "NoSuitesFound"); (
             "package_name",
             match package_name with
+            | Some name -> Data.Json.String name
+            | None -> Data.Json.Null
+          ); (
+            "suite_name",
+            match suite_name with
             | Some name -> Data.Json.String name
             | None -> Data.Json.Null
           ); ]
@@ -100,10 +110,17 @@ let run_suite_binary_capture = fun ~extra_args binary_path ->
   Command.output cmd
 
 let test = fun ?(on_event = no_event) (request: test_request) ->
-  let suites = collect_suite_binaries request.workspace ?package_filter:request.package_filter () in
+  let suites =
+    collect_suite_binaries
+      request.workspace
+      ?package_filter:request.package_filter
+      ?suite_filter:request.suite_filter
+      ()
+  in
   if suites = [] then
     (
-      on_event (NoSuitesFound { package_name = request.package_filter });
+      on_event
+        (NoSuitesFound { package_name = request.package_filter; suite_name = request.suite_filter });
       Ok ()
     )
   else
