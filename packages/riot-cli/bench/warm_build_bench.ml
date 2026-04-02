@@ -1,7 +1,7 @@
 open Std
 
 let bench_config : Bench.bench_config = {
-  iterations = 20;
+  iterations = 100;
   warmup = 3;
 }
 
@@ -36,7 +36,15 @@ type fixture = {
   workspace_root: Path.t;
 }
 
-let prepare_fixture = fun root ->
+let run_build = fun workspace_root ->
+  with_current_dir
+    workspace_root
+    (fun () ->
+      match Riot_cli.Cli.run ~args:[ "riot"; "build" ] with
+      | Ok () -> ()
+      | Error exn -> panic ("warm riot build bench failed: " ^ Exception.to_string exn))
+
+let prepare_synthetic_fixture = fun root ->
   let workspace_root = Path.(root / Path.v "workspace") in
   let package_root = Path.(workspace_root / Path.v "packages" / Path.v "app") in
   write_file
@@ -56,45 +64,48 @@ version = "0.0.1"
 
 [lib]
 path = "src/app.ml"
+
+[dependencies]
+std = "0.0.1"
+minttea = "0.0.1"
+
+[dev-dependencies]
+propane = "0.0.1"
 |};
   write_file
     Path.(package_root / Path.v "src" / Path.v "app.ml")
     {|
 let answer = 42
 |};
-  with_current_dir
-    workspace_root
-    (fun () ->
-      match Riot_cli.Cli.main ~args:[ "riot"; "build" ] with
-      | Ok () -> ()
-      | Error exn -> panic ("failed to warm build benchmark fixture: " ^ Exception.to_string exn));
+  run_build workspace_root;
   { workspace_root }
 
 let bench_cli_build_warm = fun (fixture:fixture) () ->
-  with_current_dir
-    fixture.workspace_root
-    (fun () ->
-      match Riot_cli.Cli.run ~args:[ "riot"; "build" ] with
-      | Ok () -> ()
-      | Error exn -> panic ("warm riot build bench failed: " ^ Exception.to_string exn))
+  run_build fixture.workspace_root
 
-let benchmark_suite = fun fixture ->
+let benchmark_suite = fun ~repo_root synthetic_fixture ->
   Bench.[
     with_config
       ~config:bench_config
-      "riot build warm local workspace"
-      (bench_cli_build_warm fixture);
+      "riot build warm riot workspace"
+      (fun () -> run_build repo_root);
+    with_config
+      ~config:bench_config
+      "riot build warm synthetic deps workspace"
+      (bench_cli_build_warm synthetic_fixture);
   ]
 
 let () =
   Actors.run
     ~main:(fun ~args ->
       Riot_cli.Cli.initialize_runtime ();
+      let repo_root = current_dir () in
+      run_build repo_root;
       match Fs.with_tempdir ~prefix:"riot_cli_bench" (fun root ->
-        let fixture = prepare_fixture root in
+        let synthetic_fixture = prepare_synthetic_fixture root in
         Bench.Cli.main
           ~name:"riot-cli warm build path"
-          ~benchmarks:(benchmark_suite fixture)
+          ~benchmarks:(benchmark_suite ~repo_root synthetic_fixture)
           ~args) with
       | Ok result -> result
       | Error err -> panic ("failed to prepare warm build benchmark: " ^ IO.error_message err))
