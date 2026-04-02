@@ -12,6 +12,12 @@ type manifest_selection =
   | Workspace
   | Package of string
 
+type suggested_package = {
+  package: string;
+  latest_version: string;
+  description: string option;
+}
+
 type event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
@@ -56,7 +62,7 @@ type error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
-  | RegistryPackageNotFound of { package: string; registry: string }
+  | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
@@ -132,11 +138,24 @@ let error_message = function
   ^ registry
   ^ "': "
   ^ error
-  | RegistryPackageNotFound { package; registry } -> "package '"
-  ^ package
-  ^ "' was not found in registry '"
-  ^ registry
-  ^ "'"
+  | RegistryPackageNotFound { package; registry; suggestions } ->
+      let base = "package '" ^ package ^ "' was not found in registry '" ^ registry ^ "'" in
+      (
+        match suggestions with
+        | [] -> base
+        | suggestions ->
+            let lines =
+              List.map
+                (fun { package; latest_version; description } ->
+                  match description with
+                  | Some description ->
+                      "  - " ^ package ^ "@" ^ latest_version ^ " - " ^ description
+                  | None ->
+                      "  - " ^ package ^ "@" ^ latest_version)
+                suggestions
+            in
+            base ^ "\nDid you mean:\n" ^ String.concat "\n" lines
+      )
   | RegistryVersionNotFound { package; requirement; registry } -> "package '"
   ^ package
   ^ "' has no release matching '"
@@ -447,13 +466,36 @@ let dependency_exists = fun ~(package_name:string) document requirement ->
   in
   loop document.Pkgs_ml.Sparse_index.releases
 
+let suggested_package_of_search_result = fun (result: Pkgs_ml.Registry.search_result) -> {
+  package = result.package_name;
+  latest_version = result.latest_version;
+  description = result.description;
+}
+
+let lookup_package_suggestions = fun ~registry ~package_name ->
+  match Pkgs_ml.Registry.search_packages registry ~query:package_name ~limit:5 () with
+  | Ok results ->
+      results
+      |> List.filter (fun (result: Pkgs_ml.Registry.search_result) ->
+        not (String.equal
+          (Pkgs_ml.Sparse_index.normalized_name result.package_name)
+          (Pkgs_ml.Sparse_index.normalized_name package_name)))
+      |> List.map suggested_package_of_search_result
+  | Error _ ->
+      []
+
 let lookup_named_package = fun ~(emit:event -> unit) ~registry (parsed: registry_dependency) ->
   emit (RegistryPackageLookupStarted { package = parsed.name });
   let* document = Pkgs_ml.Registry.read_package_document registry ~package_name:parsed.name
   |> Result.map_error
     (fun error -> RegistryLookupFailed { package = parsed.name; registry = registry_name; error }) in
   match document with
-  | None -> Error (RegistryPackageNotFound { package = parsed.name; registry = registry_name })
+  | None ->
+      Error (RegistryPackageNotFound {
+        package = parsed.name;
+        registry = registry_name;
+        suggestions = lookup_package_suggestions ~registry ~package_name:parsed.name
+      })
   | Some document ->
       emit
         (RegistryPackageLookupFinished { package = document.name; latest_version = document.latest });

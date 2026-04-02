@@ -27,6 +27,12 @@ type manifest_selection = Package_management.manifest_selection =
   | Workspace
   | Package of string
 
+type suggested_package = Package_management.suggested_package = {
+  package: string;
+  latest_version: string;
+  description: string option;
+}
+
 type package_event = Package_management.event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
@@ -71,7 +77,7 @@ type package_error = Package_management.error =
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
-  | RegistryPackageNotFound of { package: string; registry: string }
+  | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }

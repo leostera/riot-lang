@@ -1691,6 +1691,26 @@ version = "0.0.1"
         | Error err -> Error ("unexpected add error: " ^ Riot_deps.package_error_message err)
     )
 
+let test_package_error_message_lists_search_suggestions = fun _ctx ->
+  let message = Riot_deps.package_error_message
+    (Riot_deps.RegistryPackageNotFound {
+      package = "kernl";
+      registry = "pkgs.ml";
+      suggestions = [
+        { Riot_deps.package = "kernel"; latest_version = "0.0.1"; description = Some "Core primitives" };
+        { Riot_deps.package = "kernel-tools"; latest_version = "0.1.0"; description = None };
+      ];
+    }) in
+  if
+    String.contains message "package 'kernl' was not found in registry 'pkgs.ml'"
+    && String.contains message "Did you mean:"
+    && String.contains message "kernel@0.0.1 - Core primitives"
+    && String.contains message "kernel-tools@0.1.0"
+  then
+    Ok ()
+  else
+    Error ("unexpected suggestion message:\n" ^ message)
+
 let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
   with_tempdir "riot_deps_ensure_lock_missing"
     (fun workspace_root ->
@@ -2228,6 +2248,7 @@ let tests =
     case "git dependency: github source spec normalizes into locator and ref" test_git_dependency_parse_spec_normalizes_github_source;
     case "git dependency: sync checkout clones a local repository" test_git_dependency_sync_checkout_clones_local_repo;
     case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
+    case "package management: add not-found message lists search suggestions" test_package_error_message_lists_search_suggestions;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
