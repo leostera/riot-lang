@@ -222,12 +222,12 @@ RELEASE_TUSK="$REPO_ROOT/tusk"
 [ -x "$RELEASE_TUSK" ] || die "expected release driver at $RELEASE_TUSK"
 
 if [ "$TARGET" = "$HOST_TARGET" ]; then
-  run_cmd "$RELEASE_TUSK" build tusk-cli
+  run_cmd "$RELEASE_TUSK" build --release tusk-cli
 else
-  run_cmd "$RELEASE_TUSK" build -x "$TARGET" tusk-cli
+  run_cmd "$RELEASE_TUSK" build --release -x "$TARGET" tusk-cli
 fi
 
-BINARY_PATH="$REPO_ROOT/_build/debug/$TARGET/out/tusk-cli/tusk"
+BINARY_PATH="$REPO_ROOT/_build/release/$TARGET/out/tusk-cli/tusk"
 VERSIONED_TARBALL="$OUTPUT_DIR/tusk-${VERSION}-${TARGET}.tar.gz"
 LATEST_TARBALL="$OUTPUT_DIR/tusk-latest-${TARGET}.tar.gz"
 STAGING_DIR="$OUTPUT_DIR/.pkg-$TARGET"
