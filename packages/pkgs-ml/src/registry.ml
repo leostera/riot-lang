@@ -187,8 +187,16 @@ let http_status_message = fun status_code ->
   let status = Net.Http.Status.of_int status_code in
   Int.to_string status_code ^ " " ^ Net.Http.Status.reason_phrase status
 
+let protect_fetch = fun ~uri f ->
+  try
+    f ()
+  with
+  | exn ->
+      let _ = uri in
+      Error (exn_message exn)
+
 let fetch_required = fun registry uri ->
-  match registry.fetch.get uri with
+  match protect_fetch ~uri (fun () -> registry.fetch.get uri) with
   | Ok { status_code=200; body } -> Ok body
   | Ok { status_code; _ } -> Error ("request to '"
   ^ Net.Uri.to_string uri
@@ -197,7 +205,7 @@ let fetch_required = fun registry uri ->
   | Error err -> Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed: " ^ err)
 
 let fetch_optional = fun registry uri ->
-  match registry.fetch.get uri with
+  match protect_fetch ~uri (fun () -> registry.fetch.get uri) with
   | Ok { status_code=200; body } -> Ok (Some body)
   | Ok { status_code=404; body=_ } -> Ok None
   | Ok { status_code; _ } -> Error ("request to '"
@@ -207,7 +215,7 @@ let fetch_optional = fun registry uri ->
   | Error err -> Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed: " ^ err)
 
 let post_required = fun registry uri ~headers ~body ->
-  match registry.fetch.post uri ~headers ~body with
+  match protect_fetch ~uri (fun () -> registry.fetch.post uri ~headers ~body) with
   | Ok { status_code=200; body } ->
       Ok body
   | Ok { status_code; body } -> (
@@ -227,7 +235,7 @@ let post_required = fun registry uri ~headers ~body ->
       ^ http_status_message status_code)
     )
   | Error err ->
-      Error ("request to '" ^ Net.Uri.to_string uri ^ "' failed: " ^ err)
+      Error err
 
 let object_field = fun ~context ~field fields ->
   match List.assoc_opt field fields with
@@ -566,6 +574,148 @@ let extract_cached_archive = fun ~archive_path ~root ->
         )
     )
 
+let read_dir_entries = fun dir ->
+  match Fs.read_dir dir with
+  | Error err ->
+      Error ("failed to read directory '" ^ Path.to_string dir ^ "': " ^ IO.error_message err)
+  | Ok iter ->
+      Ok (Iter.MutIterator.to_list iter)
+
+let move_directory_contents = fun ~src ~dst ->
+  let* entries = read_dir_entries src in
+  let rec loop = function
+    | [] ->
+        Ok ()
+    | entry :: rest ->
+        let from_path = Path.(src / entry) in
+        let to_path = Path.(dst / entry) in
+        let* () =
+          Fs.rename ~src:from_path ~dst:to_path
+          |> Result.map_error
+            (fun err ->
+              "failed to move extracted entry '"
+              ^ Path.to_string from_path
+              ^ "' into '"
+              ^ Path.to_string dst
+              ^ "': "
+              ^ IO.error_message err)
+        in
+        loop rest
+  in
+  loop entries
+
+let path_is_directory = fun path ->
+  match Fs.metadata path with
+  | Ok metadata ->
+      Ok (Fs.Metadata.is_dir metadata)
+  | Error err ->
+      Error ("failed to stat '" ^ Path.to_string path ^ "': " ^ IO.error_message err)
+
+let normalize_legacy_package_root = fun ~root ~(release: Sparse_index.release) ->
+  let manifest_path = Path.(root / Path.v "tusk.toml") in
+  match Fs.exists manifest_path with
+  | Error err ->
+      Error ("failed to check package manifest '"
+      ^ Path.to_string manifest_path
+      ^ "': "
+      ^ IO.error_message err)
+  | Ok true ->
+      Ok ()
+  | Ok false ->
+      let* entries = read_dir_entries root in
+      let top_level_dirs =
+        List.filter_map
+          (fun entry ->
+            let full_path = Path.(root / entry) in
+            match path_is_directory full_path with
+            | Ok true -> Some (Ok full_path)
+            | Ok false -> None
+            | Error err -> Some (Error err))
+          entries
+      in
+      let* top_level_dirs =
+        let rec collect acc = function
+          | [] -> Ok (List.rev acc)
+          | Ok path :: rest -> collect (path :: acc) rest
+          | Error _ as err :: _ -> err
+        in
+        collect [] top_level_dirs
+      in
+      let candidate_root =
+        match top_level_dirs with
+        | [ top_level_dir ] when String.equal release.subdir "." || String.equal release.subdir "" ->
+            Some top_level_dir
+        | [ top_level_dir ] ->
+            Some Path.(top_level_dir / Path.v release.subdir)
+        | _ ->
+            None
+      in
+      match candidate_root with
+      | None ->
+          Error ("materialized archive did not contain tusk.toml at package root '"
+          ^ Path.to_string root
+          ^ "'")
+      | Some candidate_root ->
+          let candidate_manifest = Path.(candidate_root / Path.v "tusk.toml") in
+          match Fs.exists candidate_manifest with
+          | Error err ->
+              Error ("failed to check candidate manifest '"
+              ^ Path.to_string candidate_manifest
+              ^ "': "
+              ^ IO.error_message err)
+          | Ok false ->
+              Error ("materialized archive did not contain tusk.toml at package root '"
+              ^ Path.to_string root
+              ^ "'")
+          | Ok true ->
+              let top_level_dir =
+                match top_level_dirs with
+                | top_level_dir :: _ -> top_level_dir
+                | [] -> root
+              in
+              let* () = move_directory_contents ~src:candidate_root ~dst:root in
+              let* () =
+                Fs.remove_dir_all top_level_dir
+                |> Result.map_error
+                  (fun err ->
+                    "failed to clean extracted archive root '"
+                    ^ Path.to_string top_level_dir
+                    ^ "': "
+                    ^ IO.error_message err)
+              in
+              match Fs.exists manifest_path with
+              | Ok true ->
+                  Ok ()
+              | Ok false ->
+                  Error ("normalized archive for '"
+                  ^ release.canonical_locator
+                  ^ "' is still missing tusk.toml at '"
+                  ^ Path.to_string manifest_path
+                  ^ "'")
+              | Error err ->
+                  Error ("failed to check normalized manifest '"
+                  ^ Path.to_string manifest_path
+                  ^ "': "
+                  ^ IO.error_message err)
+
+let reset_materialized_root = fun root ->
+  match Fs.exists root with
+  | Error err ->
+      Error ("failed to check package source directory '"
+      ^ Path.to_string root
+      ^ "': "
+      ^ IO.error_message err)
+  | Ok false ->
+      Ok ()
+  | Ok true ->
+      Fs.remove_dir_all root
+      |> Result.map_error
+        (fun err ->
+          "failed to clean package source directory '"
+          ^ Path.to_string root
+          ^ "': "
+          ^ IO.error_message err)
+
 let find_release = fun registry ~package_name ~version ->
   match read_package_document registry ~package_name with
   | Error _ as err ->
@@ -633,6 +783,19 @@ let materialize_release = fun registry ~package_name ~version ->
   let root = Registry_cache.package_src_dir registry.cache ~package_name ~version in
   let manifest_path = Path.(root / Path.v "tusk.toml") in
   let archive_path = Registry_cache.archive_path registry.cache ~package_name ~version in
+  let finalize_extracted_root = fun () ->
+    match Fs.exists manifest_path with
+    | Error err ->
+        Error ("failed to check package manifest '"
+        ^ Path.to_string manifest_path
+        ^ "': "
+        ^ IO.error_message err)
+    | Ok true ->
+        Ok `Materialized
+    | Ok false ->
+        let* release = find_release registry ~package_name ~version in
+        normalize_legacy_package_root ~root ~release |> Result.map (fun () -> `Materialized)
+  in
   match Fs.exists manifest_path with
   | Error err ->
       Error ("failed to check package manifest '"
@@ -644,6 +807,7 @@ let materialize_release = fun registry ~package_name ~version ->
   | Ok false -> (
       match registry.source with
       | Filesystem -> (
+          let* () = reset_materialized_root root in
           match Fs.exists archive_path with
           | Error err ->
               Error ("failed to check cached package archive '"
@@ -655,13 +819,13 @@ let materialize_release = fun registry ~package_name ~version ->
               | Error _ as err -> err
               | Ok () -> (
                   match extract_cached_archive ~archive_path ~root with
-                  | Ok () -> Ok `Materialized
+                  | Ok () -> finalize_extracted_root ()
                   | Error _ as err -> err
                 )
             )
           | Ok true -> (
               match extract_cached_archive ~archive_path ~root with
-              | Ok () -> Ok `Materialized
+              | Ok () -> finalize_extracted_root ()
               | Error _ as err -> err
             )
         )
