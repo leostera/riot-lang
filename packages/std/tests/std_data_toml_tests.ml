@@ -213,7 +213,8 @@ miniriot = { path = "../miniriot" }
     )
   | _ -> Error "Parse failed"
 
-let test_inline_table_multiple_keys = Test.case "parse inline table with multiple keys" @@ fun _ctx ->
+let test_inline_table_multiple_keys = Test.case "parse inline table with multiple keys"
+@@ fun _ctx ->
   let input = {|person = { name = "John", age = "30", city = "NYC" }|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (

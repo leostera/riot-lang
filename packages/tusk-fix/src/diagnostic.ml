@@ -190,7 +190,8 @@ let to_formatted_output = fun ~file ~source diag ->
     | None, Some fix -> lines_with_snippet @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
     | None, None -> lines_with_snippet
   in
-  let lines_with_explain = lines_with_suggestion @ [ ""; explain_hint (severity diag) (rule_id diag) ] in
+  let lines_with_explain = lines_with_suggestion
+  @ [ ""; explain_hint (severity diag) (rule_id diag) ] in
   header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n\n"
 
 let to_json = fun diag ->
@@ -198,7 +199,11 @@ let to_json = fun diag ->
     Object [
       ("severity", String (severity_to_string (severity diag)));
       ("message", String (message diag));
-      ("span", let span = span diag in Object [ ("start", Int span.start); ("end", Int span.end_) ]);
+      (
+        "span",
+        let span = span diag in
+        Object [ ("start", Int span.start); ("end", Int span.end_) ]
+      );
       ("rule_id", String (rule_id diag));
       (
         "suggestion",

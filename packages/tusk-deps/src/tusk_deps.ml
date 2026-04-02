@@ -29,12 +29,11 @@ type manifest_selection = Package_management.manifest_selection =
 type package_event = Package_management.event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
-  | ManifestUpdated of {
-      path: Path.t;
-      section: string;
-      operation: [ `Add | `Remove ];
-      dependency: string;
-    }
+  | ManifestUpdated of { path: Path.t; section: string; operation:
+        [
+          `Add
+          | `Remove
+        ]; dependency: string }
   | Pm of Tusk_model.Event.kind
 
 type add_request = Package_management.add_request = {

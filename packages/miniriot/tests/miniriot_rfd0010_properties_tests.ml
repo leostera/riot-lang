@@ -64,7 +64,8 @@ let test_pid_monotonicity = fun _ctx -> assert_ok "pid monotonicity" pid_uids_in
 
 let test_scheduler_count_clamped = fun _ctx -> assert_ok "scheduler_count clamping" scheduler_count_clamped
 
-let test_config_worker_count = fun _ctx -> assert_ok "worker_count accessor mirrors scheduler_count" config_worker_count_matches_scheduler_count
+let test_config_worker_count = fun _ctx ->
+  assert_ok "worker_count accessor mirrors scheduler_count" config_worker_count_matches_scheduler_count
 
 let default_scheduler_count_matches_config =
   Property.for_all Arbitrary.bool

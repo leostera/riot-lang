@@ -10,7 +10,6 @@ type ctx = Test_context.t = {
   package_name: string option;
   fixture: Test_context.fixture option;
 }
-
 module Context: sig
   type t = ctx
   type fixture = Test_context.fixture = {
@@ -18,7 +17,6 @@ module Context: sig
     relpath: string;
     name: string;
   }
-
   val with_fixture: t -> fixture -> t
 end
 

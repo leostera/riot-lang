@@ -196,9 +196,7 @@ let matching_rule_names = fun states name ->
       exact_matches
     else
       let suffix = ":" ^ name in
-      let qualified_matches =
-        List.filter (String.ends_with ~suffix) names
-      in
+      let qualified_matches = List.filter (String.ends_with ~suffix) names in
       if not (List.is_empty qualified_matches) then
         qualified_matches
       else

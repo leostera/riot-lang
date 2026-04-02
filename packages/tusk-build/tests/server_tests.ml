@@ -136,8 +136,10 @@ let check_cache_invalidation_results = fun first_build second_build ->
     | Tusk_executor.Package_builder.ActionDependenciesFailed _ -> "dependencies failed"
   in
   match first_build.Tusk_executor.Package_builder.status with
-  | Failed err -> Error ("First build failed: " ^ error_msg err)
-  | Skipped _ -> Error "First build was unexpectedly skipped"
+  | Failed err ->
+      Error ("First build failed: " ^ error_msg err)
+  | Skipped _ ->
+      Error "First build was unexpectedly skipped"
   | Built _
   | Cached _ -> (
       match second_build.Tusk_executor.Package_builder.status with

@@ -22,35 +22,29 @@ type dependency_scope = Package_management.dependency_scope =
   | Runtime
   | Build
   | Dev
-
 type manifest_selection = Package_management.manifest_selection =
   | Current
   | Workspace
   | Package of string
-
 type package_event = Package_management.event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
-  | ManifestUpdated of {
-      path: Path.t;
-      section: string;
-      operation: [ `Add | `Remove ];
-      dependency: string;
-    }
+  | ManifestUpdated of { path: Path.t; section: string; operation:
+        [
+          `Add
+          | `Remove
+        ]; dependency: string }
   | Pm of Tusk_model.Event.kind
-
 type add_request = Package_management.add_request = {
   selection: manifest_selection;
   scope: dependency_scope;
   dependency: string;
 }
-
 type remove_request = Package_management.remove_request = {
   selection: manifest_selection;
   scope: dependency_scope;
   dependency: string;
 }
-
 type package_error = Package_management.error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: string }
@@ -64,7 +58,6 @@ type package_error = Package_management.error =
   | WorkspaceReloadFailed of { workspace_root: Path.t; error: string }
   | WorkspaceReloadHadErrors of { workspace_root: Path.t; errors: string list }
   | LockRefreshFailed of Error.t
-
 val package_error_message: package_error -> string
 
 type event_sink = Tusk_model.Event.kind -> unit

@@ -133,9 +133,7 @@ let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
         String.compare (Path.to_string a) (Path.to_string b))
       files
   in
-  let results =
-    List.map (run_file ?pipeline ?pipeline_for_file ~mode) files
-  in
+  let results = List.map (run_file ?pipeline ?pipeline_for_file ~mode) files in
   { files = results; summary = summarize results }
 
 let summary_to_json = fun summary ->

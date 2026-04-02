@@ -63,10 +63,10 @@ let make_diagnostic = fun binding counts ->
         ~severity:Warning
         ~kind:(Diagnostic.Known { rule_id; message = rule_description })
         ~span:(Syn.Cst.Token.span token)
-        ~suggestion:("This function has "
+        ~suggestion:(("This function has "
         ^ Int.to_string total
         ^ " parameters; consider introducing a named record parameter because "
-        ^ threshold_description counts)
+        ^ threshold_description counts))
         ())
 
 let diagnostic_for_binding = fun binding ->

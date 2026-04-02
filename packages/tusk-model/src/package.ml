@@ -165,8 +165,7 @@ let scope_of_binary_name = fun (pkg: t) ~binary_name ->
   List.find_opt
     (fun (bin: binary) ->
       String.equal bin.name binary_name)
-    pkg.binaries
-  |> Option.map binary_scope
+    pkg.binaries |> Option.map binary_scope
 
 let binaries_for_scope = fun scope (pkg: t) ->
   match scope with
@@ -982,7 +981,7 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
 
 let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () : sources =
   let excluded_relpath_strings = excluded_relpaths |> List.map Path.to_string in
-  let should_skip_source_entry = fun filename -> String.starts_with ~prefix:"." (Path.basename filename) in
+  let should_skip_source_entry filename = String.starts_with ~prefix:"." (Path.basename filename) in
   let rec scan_dir_recursive ~from_dir ~rel_path =
     match Fs.read_dir from_dir with
     | Error _ -> []

@@ -8,25 +8,21 @@ type pending_snapshot = {
 
 let command =
   let open ArgParser in
-  let open Arg in
-  let make_subcommand = fun name about_text ->
-    command name
-    |> about about_text
-    |> args
-      [
-        positional "query"
-        |> required false
-        |> help "Optional path substring used to filter pending snapshots";
-      ]
-  in
-  command "snapshots"
-  |> about "Review and manage pending snapshot candidates"
-  |> subcommands
-    [
-      make_subcommand "review" "Show pending snapshot diffs";
-      make_subcommand "approve" "Promote pending snapshots to approved files";
-      make_subcommand "reject" "Delete pending snapshot candidates";
-    ]
+    let open Arg in
+      let make_subcommand name about_text = command name
+      |> about about_text
+      |> args
+        [
+          positional "query" |> required false |> help "Optional path substring used to filter pending snapshots";
+        ] in
+      command "snapshots"
+      |> about "Review and manage pending snapshot candidates"
+      |> subcommands
+        [
+          make_subcommand "review" "Show pending snapshot diffs";
+          make_subcommand "approve" "Promote pending snapshots to approved files";
+          make_subcommand "reject" "Delete pending snapshot candidates";
+        ]
 
 let pending_suffix = ".expected.new"
 
@@ -34,15 +30,11 @@ let ensure_trailing_new_removed = fun path ->
   let rendered = Path.to_string path in
   if String.ends_with ~suffix:".new" rendered then
     let len = String.length rendered - 4 in
-    String.sub rendered 0 len
-    |> Path.of_string
-    |> Result.expect ~msg:"pending snapshot path should stay valid UTF-8"
+    String.sub rendered 0 len |> Path.of_string |> Result.expect ~msg:"pending snapshot path should stay valid UTF-8"
   else
     path
 
-let is_pending_snapshot = fun path ->
-  Path.basename path
-  |> String.ends_with ~suffix:pending_suffix
+let is_pending_snapshot = fun path -> Path.basename path |> String.ends_with ~suffix:pending_suffix
 
 let should_skip_dir = fun path ->
   match Path.basename path with
@@ -58,33 +50,34 @@ let display_path = fun ~workspace_root path ->
 let matches_query = fun ?query snapshot ->
   match query with
   | None -> true
-  | Some query ->
-      String.contains (Path.to_string snapshot.pending) query
-      || String.contains (Path.to_string snapshot.approved) query
+  | Some query -> String.contains (Path.to_string snapshot.pending) query
+  || String.contains (Path.to_string snapshot.approved) query
 
 let discover_pending_snapshots = fun ~workspace_root ?query () ->
-  let rec visit = fun path ->
+  let rec visit path =
     match Fs.is_dir path with
-    | Error err -> Error err
+    | Error err ->
+        Error err
     | Ok true ->
         if should_skip_dir path then
           Ok []
-        else (
-          match Fs.read_dir path with
-          | Error err -> Error err
-          | Ok entries ->
-              let children = Iter.MutIterator.to_list entries in
-              let rec loop acc = function
-                | [] -> Ok acc
-                | child :: rest -> (
-                    let child_path = Path.join path child in
-                    match visit child_path with
-                    | Error err -> Error err
-                    | Ok found -> loop (List.rev_append found acc) rest
-                  )
-              in
-              loop [] children
-        )
+        else
+          (
+            match Fs.read_dir path with
+            | Error err -> Error err
+            | Ok entries ->
+                let children = Iter.MutIterator.to_list entries in
+                let rec loop acc = function
+                  | [] -> Ok acc
+                  | child :: rest -> (
+                      let child_path = Path.join path child in
+                      match visit child_path with
+                      | Error err -> Error err
+                      | Ok found -> loop (List.rev_append found acc) rest
+                    )
+                in
+                loop [] children
+          )
     | Ok false ->
         if is_pending_snapshot path then
           Ok [ { approved = ensure_trailing_new_removed path; pending = path } ]
@@ -94,11 +87,11 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
   match visit workspace_root with
   | Error err -> Error err
   | Ok snapshots ->
-      Ok
-        (snapshots
-         |> List.filter (matches_query ?query)
-         |> List.sort (fun left right ->
-           String.compare (Path.to_string left.pending) (Path.to_string right.pending)))
+      Ok (
+        snapshots |> List.filter (matches_query ?query) |> List.sort
+          (fun left right ->
+            String.compare (Path.to_string left.pending) (Path.to_string right.pending))
+      )
 
 let ensure_parent_dir = fun path ->
   match Path.parent path with
@@ -150,7 +143,8 @@ let review_pending_snapshot = fun ~workspace_root snapshot ->
   println ("Approved: " ^ display_path ~workspace_root snapshot.approved);
   println ("Pending:  " ^ display_path ~workspace_root snapshot.pending);
   match Fs.exists snapshot.approved with
-  | Error err -> Error err
+  | Error err ->
+      Error err
   | Ok false -> (
       match Fs.read snapshot.pending with
       | Error err -> Error err
@@ -161,19 +155,17 @@ let review_pending_snapshot = fun ~workspace_root snapshot ->
           Ok ()
     )
   | Ok true -> (
-      let diff_cmd =
-        Command.make "git"
-          ~cwd:(Path.to_string workspace_root)
-          ~args:
-            [
-              "diff";
-              "--no-index";
-              "--color=always";
-              "--";
-              Path.to_string snapshot.approved;
-              Path.to_string snapshot.pending;
-            ]
-      in
+      let diff_cmd = Command.make
+        "git"
+        ~cwd:(Path.to_string workspace_root)
+        ~args:[
+          "diff";
+          "--no-index";
+          "--color=always";
+          "--";
+          Path.to_string snapshot.approved;
+          Path.to_string snapshot.pending;
+        ] in
       match Command.output diff_cmd with
       | Error (Command.SystemError msg) -> Error (IO.Unknown_error msg)
       | Ok { stdout; stderr; status } ->
@@ -186,12 +178,10 @@ let review_pending_snapshot = fun ~workspace_root snapshot ->
               Ok ()
             )
           else
-            Error
-              (IO.Unknown_error
-                 ("git diff failed for "
-                 ^ Path.to_string snapshot.pending
-                 ^ " with status "
-                 ^ Int.to_string status))
+            Error (IO.Unknown_error ("git diff failed for "
+            ^ Path.to_string snapshot.pending
+            ^ " with status "
+            ^ Int.to_string status))
     )
 
 let review_pending_snapshots = fun ~workspace_root snapshots ->
@@ -205,8 +195,7 @@ let review_pending_snapshots = fun ~workspace_root snapshots ->
   in
   loop snapshots
 
-let print_no_pending = fun () ->
-  println "No pending snapshots."
+let print_no_pending = fun () -> println "No pending snapshots."
 
 let print_review_summary = fun count ->
   println ("Found " ^ Int.to_string count ^ " pending snapshot(s).")
@@ -219,7 +208,8 @@ let print_rejected = fun ~workspace_root snapshot ->
 
 let run_action = fun ~workspace_root ?query action ->
   match discover_pending_snapshots ~workspace_root ?query () with
-  | Error err -> Error (Failure (IO.error_message err))
+  | Error err ->
+      Error (Failure (IO.error_message err))
   | Ok [] ->
       print_no_pending ();
       Ok ()
@@ -232,32 +222,35 @@ let run_action = fun ~workspace_root ?query action ->
             | Ok () -> Ok ()
             | Error err -> Error (Failure (IO.error_message err))
           )
-      | `Approve ->
-          (
-            match approve_pending_snapshots snapshots with
-            | Error err -> Error (Failure (IO.error_message err))
-            | Ok () ->
-                List.iter (print_approved ~workspace_root) snapshots;
-                Ok ()
-          )
-      | `Reject ->
-          (
-            match reject_pending_snapshots snapshots with
-            | Error err -> Error (Failure (IO.error_message err))
-            | Ok () ->
-                List.iter (print_rejected ~workspace_root) snapshots;
-                Ok ()
-          )
+      | `Approve -> (
+          match approve_pending_snapshots snapshots with
+          | Error err -> Error (Failure (IO.error_message err))
+          | Ok () ->
+              List.iter (print_approved ~workspace_root) snapshots;
+              Ok ()
+        )
+      | `Reject -> (
+          match reject_pending_snapshots snapshots with
+          | Error err -> Error (Failure (IO.error_message err))
+          | Ok () ->
+              List.iter (print_rejected ~workspace_root) snapshots;
+              Ok ()
+        )
     )
 
-let run = fun ~(workspace: Tusk_model.Workspace.t) matches ->
+let run = fun ~(workspace:Tusk_model.Workspace.t) matches ->
   let open ArgParser in
-  match get_subcommand matches with
-  | Some ("review", sub_matches) ->
-      run_action ~workspace_root:workspace.root ?query:(get_one sub_matches "query") `Review
-  | Some ("approve", sub_matches) ->
-      run_action ~workspace_root:workspace.root ?query:(get_one sub_matches "query") `Approve
-  | Some ("reject", sub_matches) ->
-      run_action ~workspace_root:workspace.root ?query:(get_one sub_matches "query") `Reject
-  | _ ->
-      Error (Failure "Unknown snapshots subcommand")
+    match get_subcommand matches with
+    | Some ("review", sub_matches) -> run_action
+      ~workspace_root:workspace.root
+      ?query:(get_one sub_matches "query")
+      `Review
+    | Some ("approve", sub_matches) -> run_action
+      ~workspace_root:workspace.root
+      ?query:(get_one sub_matches "query")
+      `Approve
+    | Some ("reject", sub_matches) -> run_action
+      ~workspace_root:workspace.root
+      ?query:(get_one sub_matches "query")
+      `Reject
+    | _ -> Error (Failure "Unknown snapshots subcommand")

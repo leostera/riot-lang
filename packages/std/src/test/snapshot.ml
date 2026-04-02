@@ -21,11 +21,11 @@ let sanitize_path_component = fun value ->
   let lower = String.lowercase_ascii value in
   let buf = Bytes.create (String.length lower) in
   let length = ref 0 in
-  let push_char = fun ch ->
+  let push_char ch =
     Bytes.set buf !length ch;
     length := !length + 1
   in
-  let push_dash = fun () ->
+  let push_dash () =
     if !length > 0 && Bytes.get buf (!length - 1) != '-' then
       push_char '-'
   in
@@ -79,18 +79,17 @@ let write_pending_snapshot = fun path content ->
 let canonicalize_json =
   let rec loop = function
     | Data.Json.Object fields ->
-        Data.Json.Object
-          (fields
-           |> List.map (fun (key, value) -> (key, loop value))
-           |> List.sort (fun (left, _) (right, _) -> String.compare left right))
-    | Data.Json.Array items ->
-        Data.Json.Array (List.map loop items)
-    | other ->
-        other
+        Data.Json.Object (
+          fields |> List.map (fun (key, value) -> (key, loop value)) |> List.sort
+            (fun (left, _) (right, _) ->
+              String.compare left right)
+        )
+    | Data.Json.Array items -> Data.Json.Array (List.map loop items)
+    | other -> other
   in
   loop
 
-let resolve_paths = fun ~(ctx: Test_context.t) ->
+let resolve_paths = fun ~(ctx:Test_context.t) ->
   match ctx.fixture with
   | Some fixture ->
       let approved = Path.add_extension (Path.remove_extension fixture.path) ~ext:"expected" in
@@ -101,14 +100,12 @@ let resolve_paths = fun ~(ctx: Test_context.t) ->
           let suite_dir = sanitize_path_component ctx.suite_name in
           let test_name = sanitize_path_component ctx.test_name in
           let base =
-            Path.(
-              workspace_root
-              / Path.v ".tusk"
-              / Path.v "snapshots"
-              / Path.v package_name
-              / Path.v suite_dir
-              / Path.v test_name)
-          in
+            Path.(workspace_root
+            / Path.v ".tusk"
+            / Path.v "snapshots"
+            / Path.v package_name
+            / Path.v suite_dir
+            / Path.v test_name) in
           let approved = Path.add_extension base ~ext:"expected" in
           Ok { approved; pending = append_path_suffix approved ".new" }
       | (None, _) ->
@@ -118,7 +115,8 @@ let resolve_paths = fun ~(ctx: Test_context.t) ->
     )
 
 let mismatch_message = fun ~kind ~approved ~pending ~expected ~actual ->
-  String.concat "\n"
+  String.concat
+    "\n"
     [
       kind;
       "Approved: " ^ Path.to_string approved;
@@ -132,7 +130,8 @@ let mismatch_message = fun ~kind ~approved ~pending ~expected ~actual ->
     ]
 
 let pending_exists_message = fun ~approved ~pending ->
-  String.concat "\n"
+  String.concat
+    "\n"
     [
       "Snapshot has a pending candidate awaiting review.";
       "Approved: " ^ Path.to_string approved;
@@ -157,48 +156,33 @@ let assert_text = fun ~ctx ~actual ->
             else
               match write_pending_snapshot paths.pending actual with
               | Error err -> Error (IO.error_message err)
-              | Ok () ->
-                  Error
-                    (mismatch_message
-                       ~kind:"Snapshot mismatch."
-                       ~approved:paths.approved
-                       ~pending:paths.pending
-                       ~expected
-                       ~actual)
+              | Ok () -> Error (mismatch_message
+                ~kind:"Snapshot mismatch."
+                ~approved:paths.approved
+                ~pending:paths.pending
+                ~expected
+                ~actual)
       else
         match write_pending_snapshot paths.pending actual with
         | Error err -> Error (IO.error_message err)
-        | Ok () ->
-            Error
-              (String.concat "\n"
-                 [
-                   "Missing approved snapshot.";
-                   "Approved: " ^ Path.to_string paths.approved;
-                   "Pending: " ^ Path.to_string paths.pending;
-                 ])
+        | Ok () -> Error (String.concat
+          "\n"
+          [
+            "Missing approved snapshot.";
+            "Approved: " ^ Path.to_string paths.approved;
+            "Pending: " ^ Path.to_string paths.pending;
+          ])
 
 let assert_with = fun ~ctx ~render ~actual -> assert_text ~ctx ~actual:(render actual)
 
 let assert_json = fun ~ctx ~actual ->
-  let rendered =
-    actual
-    |> canonicalize_json
-    |> Data.Json.to_string
-  in
+  let rendered = actual |> canonicalize_json |> Data.Json.to_string in
   assert_text ~ctx ~actual:rendered
 
 let assert_inline_text = fun ~ctx:_ ~actual ~expected ->
   if String.equal actual expected then
     Ok ()
   else
-    Error
-      (String.concat "\n"
-         [
-           "Inline snapshot mismatch.";
-           "";
-           "Expected:";
-           expected;
-           "";
-           "Actual:";
-           actual;
-         ])
+    Error (String.concat
+      "\n"
+      [ "Inline snapshot mismatch."; ""; "Expected:"; expected; ""; "Actual:"; actual; ])

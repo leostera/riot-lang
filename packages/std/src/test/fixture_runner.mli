@@ -10,15 +10,10 @@ open Global
     metadata, allowing it to reuse [Std.Test.Snapshot] without inventing a
     package-local harness.
 *)
-
 type ctx = {
   test: Test_context.t;
   fixture_path: Path.t;
   fixture_relpath: string;
   fixture_name: string;
 }
-
-val cases:
-  dir:string ->
-  run:(ctx -> (unit, string) result) ->
-  Test_case.t list
+val cases: dir:string -> run:(ctx -> (unit, string) result) -> Test_case.t list

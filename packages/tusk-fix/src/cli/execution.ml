@@ -40,9 +40,11 @@ let run_result_with = fun ~on_result ~mode ~scope ~limit ~files ->
       | Messages.AllComplete summary -> `select (`AllComplete summary)
       | _ -> `skip
     in
-      match receive ~selector () with
-      | `FileResult { Messages.result; _ } ->
-        let remaining_budget = Option.map (fun max_diagnostics -> max_diagnostics - diagnostics_seen) limit in
+    match receive ~selector () with
+    | `FileResult { Messages.result; _ } ->
+        let remaining_budget =
+          Option.map (fun max_diagnostics -> max_diagnostics - diagnostics_seen) limit
+        in
         let result =
           match remaining_budget with
           | None -> result

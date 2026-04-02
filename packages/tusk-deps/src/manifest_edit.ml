@@ -12,24 +12,21 @@ let section_name = function
 
 let quoted = fun value -> Std.Data.Toml.to_string (Std.Data.Toml.String value)
 
-let render_dependency = fun (dep:Tusk_model.Package.dependency) ->
+let render_dependency = fun (dep: Tusk_model.Package.dependency) ->
   let name = dep.name in
   match dep.source with
-  | { workspace=true; _ } ->
-      name ^ " = { workspace = true }"
-  | { path=None; version=Some requirement; _ } ->
-      name ^ " = " ^ quoted (Std.Version.requirement_to_string requirement)
-  | { path=None; version=None; _ } ->
-      name ^ " = " ^ quoted "*"
-  | { path=Some path; version=None; _ } ->
-      name ^ " = { path = " ^ quoted (Path.to_string path) ^ " }"
-  | { path=Some path; version=Some requirement; _ } ->
-      name
-      ^ " = { path = "
-      ^ quoted (Path.to_string path)
-      ^ ", version = "
-      ^ quoted (Std.Version.requirement_to_string requirement)
-      ^ " }"
+  | { workspace=true; _ } -> name ^ " = { workspace = true }"
+  | { path=None; version=Some requirement; _ } -> name
+  ^ " = "
+  ^ quoted (Std.Version.requirement_to_string requirement)
+  | { path=None; version=None; _ } -> name ^ " = " ^ quoted "*"
+  | { path=Some path; version=None; _ } -> name ^ " = { path = " ^ quoted (Path.to_string path) ^ " }"
+  | { path=Some path; version=Some requirement; _ } -> name
+  ^ " = { path = "
+  ^ quoted (Path.to_string path)
+  ^ ", version = "
+  ^ quoted (Std.Version.requirement_to_string requirement)
+  ^ " }"
 
 let render_section_lines = fun ~section dependencies ->
   let header = "[" ^ section_name section ^ "]" in
@@ -53,7 +50,10 @@ let replace_section_lines = fun ~source ~section dependencies ->
   let rec find_header index =
     if index >= len then
       None
-    else if Option.is_some_and (fun line -> String.equal (String.trim line) header) (line_at index lines) then
+    else if Option.is_some_and
+        (fun line ->
+          String.equal (String.trim line) header)
+        (line_at index lines) then
       Some index
     else
       find_header (index + 1)
@@ -77,8 +77,7 @@ let replace_section_lines = fun ~source ~section dependencies ->
       let rec find_end index =
         if index >= len then
           len
-        else if index > start_index
-             && Option.is_some_and is_section_header (line_at index lines) then
+        else if index > start_index && Option.is_some_and is_section_header (line_at index lines) then
           index
         else
           find_end (index + 1)
@@ -102,11 +101,15 @@ let replace_section_lines = fun ~source ~section dependencies ->
 
 let update_dependency_section = fun ~manifest_path ~section ~dependencies ->
   match Fs.read_to_string manifest_path with
-  | Error err ->
-      Error ("failed to read manifest '" ^ Path.to_string manifest_path ^ "': " ^ IO.error_message err)
+  | Error err -> Error ("failed to read manifest '"
+  ^ Path.to_string manifest_path
+  ^ "': "
+  ^ IO.error_message err)
   | Ok source ->
       let updated = replace_section_lines ~source ~section dependencies in
       match Fs.write updated manifest_path with
       | Ok () -> Ok ()
-      | Error err ->
-          Error ("failed to write manifest '" ^ Path.to_string manifest_path ^ "': " ^ IO.error_message err)
+      | Error err -> Error ("failed to write manifest '"
+      ^ Path.to_string manifest_path
+      ^ "': "
+      ^ IO.error_message err)

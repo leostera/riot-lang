@@ -104,12 +104,7 @@ let run_lock_deps = fun ?emit ?(registry = make_registry []) ?(workspace_root = 
 
 let ensure_lock = fun ?emit ?(registry = make_registry []) ?(workspace_root = Path.v "/workspace") packages ->
   let workspace = make_workspace ~workspace_root packages in
-  Tusk_deps.ensure_lock
-    ?emit
-    ~mode:Tusk_deps.Dep_solver.Refresh
-    ~registry
-    ~workspace
-    ()
+  Tusk_deps.ensure_lock ?emit ~mode:Tusk_deps.Dep_solver.Refresh ~registry ~workspace ()
 
 let collect_event_names = fun fn ->
   let names = ref [] in
@@ -1567,9 +1562,7 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun _ctx
           };
         ]
         () in
-      match collect_event_names
-        (fun emit ->
-          ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
+      match collect_event_names (fun emit -> ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
       | Error err -> Error ("expected ensure_lock to materialize registry packages: "
       ^ pm_error_message err)
       | Ok ((_, resolved), event_names) ->
@@ -1637,9 +1630,7 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
         ()
       |> Result.expect ~msg:"expected initial lock solve to succeed" in
       Tusk_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
-      match collect_event_names
-        (fun emit ->
-          ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
+      match collect_event_names (fun emit -> ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
       | Error err -> Error ("expected ensure_lock to reuse lock and materialize missing packages: "
       ^ pm_error_message err)
       | Ok ((_, resolved), event_names) ->

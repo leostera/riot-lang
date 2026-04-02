@@ -16,29 +16,15 @@ open Global
     Fixture-backed snapshots live adjacent to the fixture input, replacing the
     input extension with [.expected].
 *)
+val assert_text: ctx:Test_context.t -> actual:string -> (unit, string) result
 
-val assert_text:
-  ctx:Test_context.t ->
-  actual:string ->
-  (unit, string) result
 (** Compare opaque text against an external snapshot derived from [ctx]. *)
+val assert_json: ctx:Test_context.t -> actual:Data.Json.t -> (unit, string) result
 
-val assert_json:
-  ctx:Test_context.t ->
-  actual:Data.Json.t ->
-  (unit, string) result
 (** Compare canonical JSON against an external snapshot derived from [ctx]. *)
+val assert_with: ctx:Test_context.t -> render:('a -> string) -> actual:'a -> (unit, string) result
 
-val assert_with:
-  ctx:Test_context.t ->
-  render:('a -> string) ->
-  actual:'a ->
-  (unit, string) result
 (** Render a value to text with a custom function before snapshotting it. *)
+val assert_inline_text: ctx:Test_context.t -> actual:string -> expected:string -> (unit, string) result
 
-val assert_inline_text:
-  ctx:Test_context.t ->
-  actual:string ->
-  expected:string ->
-  (unit, string) result
 (** Compare two inline strings without creating external snapshot artifacts. *)

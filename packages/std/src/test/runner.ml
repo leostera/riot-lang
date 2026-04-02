@@ -32,10 +32,8 @@ let derive_package_name = fun binary_path ->
   | Some path ->
       let segments = String.split_on_char '/' path in
       match find_segment_index segments "out" with
-      | Some idx when List.length segments > idx + 1 ->
-          Some (List.nth segments (idx + 1))
-      | _ ->
-          None
+      | Some idx when List.length segments > idx + 1 -> Some (List.nth segments (idx + 1))
+      | _ -> None
 
 let derive_workspace_root = fun ~current_dir ~binary_path ->
   match binary_path with
@@ -43,7 +41,8 @@ let derive_workspace_root = fun ~current_dir ~binary_path ->
   | Some path -> (
       let segments = String.split_on_char '/' path in
       match find_segment_index segments "_build" with
-      | Some 0 -> current_dir
+      | Some 0 ->
+          current_dir
       | Some idx -> (
           match take idx segments with
           | []
@@ -54,7 +53,8 @@ let derive_workspace_root = fun ~current_dir ~binary_path ->
               | Error _ -> current_dir
             )
         )
-      | None -> current_dir
+      | None ->
+          current_dir
     )
 
 type mode =
@@ -75,7 +75,7 @@ type config = {
 
 type run_summary = Test_result.summary
 
-let make_ctx = fun ~(suite_info: Reporter.suite_info) ~index (test: Test_case.t) ->
+let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) ->
   let current_dir = Env.current_dir () |> Result.to_option in
   Test_context.{
     suite_name = suite_info.name;
@@ -146,8 +146,7 @@ let run_tests = fun ~config tests ->
   R.init config.suite_info (List.length tests_to_run);
   let results =
     List.mapi
-      (fun i test ->
-        run_single_test config.reporter ~suite_info:config.suite_info (i + 1) test)
+      (fun i test -> run_single_test config.reporter ~suite_info:config.suite_info (i + 1) test)
       tests_to_run
   in
   let summary = Test_result.make_summary results in

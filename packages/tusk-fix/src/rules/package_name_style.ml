@@ -109,7 +109,7 @@ let make_diagnostic = fun ~suggestion path ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-    ~suggestion:(suggestion ^ " In `" ^ Path.to_string path ^ "`.")
+    ~suggestion:((suggestion ^ " In `" ^ Path.to_string path ^ "`."))
     ()
 
 let diagnostics_for_name = fun path name ->
@@ -118,7 +118,7 @@ let diagnostics_for_name = fun path name ->
       []
     else
       [
-        make_diagnostic ~suggestion:("Rename package `" ^ name ^ "` so it starts with a letter") path;
+        make_diagnostic ~suggestion:(("Rename package `" ^ name ^ "` so it starts with a letter")) path;
       ]
   in
   let kebab_case_diagnostic =
@@ -127,7 +127,7 @@ let diagnostics_for_name = fun path name ->
     else
       [
         make_diagnostic
-          ~suggestion:("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only")
+          ~suggestion:(("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only"))
           path;
       ]
   in

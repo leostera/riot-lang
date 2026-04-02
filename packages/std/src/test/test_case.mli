@@ -1,7 +1,6 @@
 open Global
 
 type ctx = Test_context.t
-
 (** The type of test: regular unit test or property test with example count. *)
 type test_result =
   | Pass

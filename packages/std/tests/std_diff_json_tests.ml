@@ -114,7 +114,8 @@ let test_diff_array_longer = Test.case "diff array with added elements" @@ fun _
   else
     Error "Expected added elements"
 
-let test_diff_array_completely_different = Test.case "diff completely different arrays" @@ fun _ctx ->
+let test_diff_array_completely_different = Test.case "diff completely different arrays"
+@@ fun _ctx ->
   let a1 = Json.array [ Json.int 1; Json.int 2 ] in
   let a2 = Json.array [ Json.string "a"; Json.string "b" ] in
   let diff = Json.diff a1 a2 in

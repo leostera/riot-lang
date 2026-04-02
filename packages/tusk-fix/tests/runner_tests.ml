@@ -826,7 +826,8 @@ let tests = [
       Ok ());
   Test.case
     "rule explanations explain inline parameter annotations"
-    (fun _ctx -> assert_explanation_contains ~rule_id:"no-inline-parameter-type-annotations" ~snippet:"Function signatures");
+    (fun _ctx ->
+      assert_explanation_contains ~rule_id:"no-inline-parameter-type-annotations" ~snippet:"Function signatures");
   Test.case "no-function-shorthand flags named function shorthand"
     (fun _ctx ->
       let source = "let render = function | x -> x + 1\n" in

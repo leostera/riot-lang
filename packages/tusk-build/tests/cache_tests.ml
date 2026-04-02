@@ -81,8 +81,8 @@ let test_fresh_build_no_cache = fun _ctx ->
         | Tusk_executor.Package_builder.Built _ -> Ok ()
         | Tusk_executor.Package_builder.Cached _ -> Error "Fresh build should not be cached"
         | Tusk_executor.Package_builder.Skipped { reason } -> Error ("Build skipped: " ^ reason)
-        | Tusk_executor.Package_builder.Failed err ->
-            Error ("Build failed: " ^ package_error_message err))
+        | Tusk_executor.Package_builder.Failed err -> Error ("Build failed: "
+        ^ package_error_message err))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -125,8 +125,7 @@ let test_second_build_reuses_action_cache_path = fun _ctx ->
             | Built _
             | Cached _ -> Ok ()
             | Skipped { reason } -> Error ("Second build skipped: " ^ reason)
-            | Failed err ->
-                Error ("Second build failed: " ^ package_error_message err)
+            | Failed err -> Error ("Second build failed: " ^ package_error_message err)
           )
         | Skipped { reason } ->
             Error ("First build skipped: " ^ reason)

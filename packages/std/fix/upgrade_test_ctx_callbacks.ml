@@ -50,11 +50,9 @@ let is_test_source_path = fun path ->
     | [] -> path
   in
   (String.contains path "/tests/" || String.starts_with ~prefix:"tests/" path)
-  && (
-    String.ends_with ~suffix:"_tests.ml" basename
-    || String.ends_with ~suffix:"_test.ml" basename
-    || String.starts_with ~prefix:"test_" basename
-  )
+  && (String.ends_with ~suffix:"_tests.ml" basename
+  || String.ends_with ~suffix:"_test.ml" basename
+  || String.starts_with ~prefix:"test_" basename)
 
 let rec unwrap_expression = fun expr ->
   match expr with
@@ -84,18 +82,16 @@ let rec expression_name = fun expr ->
 
 let simple_path_name = fun expr ->
   match unwrap_expression expr with
-  | Syn.Cst.Expression.Path { path; _ } when List.length (Syn.Cst.Ident.segments path) = 1 ->
-      Syn.Cst.Ident.name path
-  | _ ->
-      None
+  | Syn.Cst.Expression.Path { path; _ } when List.length (Syn.Cst.Ident.segments path) = 1 -> Syn.Cst.Ident.name
+    path
+  | _ -> None
 
 let rec flatten_apply = fun expr ->
   match unwrap_expression expr with
   | Syn.Cst.Expression.Apply { callee; argument; _ } ->
       let head, arguments = flatten_apply callee in
       (head, arguments @ [ argument ])
-  | _ ->
-      (unwrap_expression expr, [])
+  | _ -> (unwrap_expression expr, [])
 
 let positional_arguments = fun arguments ->
   arguments |> List.filter_map
@@ -144,15 +140,14 @@ let callback_argument = fun expr ->
             Some infix.right
           else
             None
-      | _ ->
-          None
+      | _ -> None
     )
 
 let is_unit_parameter = fun parameter ->
   match parameter with
   | Syn.Cst.Parameter.Positional positional -> (
       match unwrap_pattern positional.pattern with
-      | Syn.Cst.Pattern.Literal { literal = Syn.Cst.PatternLiteral.Unit _; _ } -> true
+      | Syn.Cst.Pattern.Literal { literal=Syn.Cst.PatternLiteral.Unit _; _ } -> true
       | _ -> false
     )
   | Syn.Cst.Parameter.Labeled _
@@ -183,12 +178,9 @@ type callback_reference =
 
 let callback_reference = fun expr ->
   match callback_argument expr |> Option.map unwrap_expression with
-  | Some (Syn.Cst.Expression.Fun { parameters = [ parameter ]; _ }) when is_unit_parameter parameter ->
-      Some (Inline parameter)
-  | Some callback ->
-      simple_path_name callback |> Option.map (fun name -> Named name)
-  | None ->
-      None
+  | Some (Syn.Cst.Expression.Fun { parameters=[ parameter ]; _ }) when is_unit_parameter parameter -> Some (Inline parameter)
+  | Some callback -> simple_path_name callback |> Option.map (fun name -> Named name)
+  | None -> None
 
 let increment_count = fun counts key ->
   let next =
@@ -200,13 +192,12 @@ let increment_count = fun counts key ->
 
 let binding_parameter = fun binding ->
   match Syn.Cst.LetBinding.parameters binding with
-  | [ parameter ] when is_unit_parameter parameter -> Some parameter
+  | [ parameter ] when is_unit_parameter parameter ->
+      Some parameter
   | [] -> (
       match unwrap_expression (Syn.Cst.LetBinding.value binding) with
-      | Syn.Cst.Expression.Fun { parameters = [ parameter ]; _ } when is_unit_parameter parameter ->
-          Some parameter
-      | _ ->
-          None
+      | Syn.Cst.Expression.Fun { parameters=[ parameter ]; _ } when is_unit_parameter parameter -> Some parameter
+      | _ -> None
     )
   | _ ->
       None
@@ -216,12 +207,14 @@ let check_tree = fun (ctx: Api.Rule.context) _red_root ->
     []
   else
     let expressions = Tusk_fix.Rule_query.expressions ctx in
-    let inline_diagnostics = expressions |> List.filter_map
-      (fun expr ->
-        match callback_reference expr with
-        | Some (Inline parameter) -> Some (make_diagnostic parameter)
-        | Some (Named _)
-        | None -> None)
+    let inline_diagnostics =
+      expressions
+      |> List.filter_map
+        (fun expr ->
+          match callback_reference expr with
+          | Some (Inline parameter) -> Some (make_diagnostic parameter)
+          | Some (Named _)
+          | None -> None)
     in
     let named_callback_counts = HashMap.create () in
     expressions |> List.iter
@@ -237,18 +230,16 @@ let check_tree = fun (ctx: Api.Rule.context) _red_root ->
         | Some name -> increment_count path_use_counts name
         | None -> ());
     let named_diagnostics =
-      Tusk_fix.Rule_query.let_bindings ctx |> List.filter_map
+      Tusk_fix.Rule_query.let_bindings ctx
+      |> List.filter_map
         (fun binding ->
           match Syn.Cst.LetBinding.binding_name_token binding with
           | None -> None
           | Some name_token ->
               let name = Syn.Cst.Token.text name_token in
-              let callback_uses =
-                HashMap.get named_callback_counts name |> Option.unwrap_or ~default:0
-              in
-              let total_uses =
-                HashMap.get path_use_counts name |> Option.unwrap_or ~default:0
-              in
+              let callback_uses = HashMap.get named_callback_counts name
+              |> Option.unwrap_or ~default:0 in
+              let total_uses = HashMap.get path_use_counts name |> Option.unwrap_or ~default:0 in
               if callback_uses = 0 || total_uses != callback_uses then
                 None
               else

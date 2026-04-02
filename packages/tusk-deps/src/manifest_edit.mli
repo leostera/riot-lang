@@ -4,7 +4,6 @@ type section =
   | Runtime
   | Build
   | Dev
-
 val section_name: section -> string
 
 val update_dependency_section:

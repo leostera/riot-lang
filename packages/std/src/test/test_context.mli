@@ -7,7 +7,6 @@ type fixture = {
   relpath: string;
   name: string;
 }
-
 (** Stable per-test metadata supplied by the shared test runner.
 
     This context intentionally carries enough identity to support snapshot
@@ -24,5 +23,4 @@ type t = {
   package_name: string option;
   fixture: fixture option;
 }
-
 val with_fixture: t -> fixture -> t

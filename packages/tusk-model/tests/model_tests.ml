@@ -140,7 +140,7 @@ path = "examples/test_https_httpbin.ml"
       | ["test_https_httpbin";"simple_https"] -> Ok ()
       | _ ->
           Error (
-          "expected explicit example binary to suppress autodiscovery \
+            "expected explicit example binary to suppress autodiscovery \
               duplicate, got: [" ^ String.concat ", " binary_names ^ "]"
           ))
 
@@ -151,12 +151,9 @@ let test_scan_sources_ignores_hidden_entries = fun _ctx ->
       let native_dir = Path.(tmpdir / Path.v "native") in
       Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
       Result.expect (Fs.create_dir_all native_dir) ~msg:"Failed to create native directory";
-      Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml"))
-        ~msg:"Failed to write visible source";
-      Result.expect (Fs.write "junk\n" Path.(src_dir / Path.v "._demo.ml"))
-        ~msg:"Failed to write hidden source";
-      Result.expect (Fs.write "junk\n" Path.(native_dir / Path.v "._demo.c"))
-        ~msg:"Failed to write hidden native source";
+      Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml")) ~msg:"Failed to write visible source";
+      Result.expect (Fs.write "junk\n" Path.(src_dir / Path.v "._demo.ml")) ~msg:"Failed to write hidden source";
+      Result.expect (Fs.write "junk\n" Path.(native_dir / Path.v "._demo.c")) ~msg:"Failed to write hidden native source";
       let manifest =
         Std.Data.Toml.parse
           {|
@@ -177,10 +174,7 @@ path = "src/demo.ml"
         ~path:tmpdir
         ~relative_path:(Path.v "packages/demo")
       |> Result.expect ~msg:"Expected package manifest to parse" in
-      if
-        pkg.sources.src = [ Path.v "src/demo.ml" ]
-        && pkg.sources.native = []
-      then
+      if pkg.sources.src = [ Path.v "src/demo.ml" ] && pkg.sources.native = [] then
         Ok ()
       else
         Error "expected hidden source entries to be ignored")
