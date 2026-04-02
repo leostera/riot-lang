@@ -1600,6 +1600,107 @@ let from_json: Json.t -> (t, string) result = fun json ->
 (** Hash package metadata into a hasher state *)
 let hash = fun state (pkg: t) ->
   let module H = Crypto.Sha256 in
+  let hash_string_option = fun value ->
+    match value with
+    | Some value ->
+        H.write_bool state true;
+        H.write_string state value
+    | None ->
+        H.write_bool state false
+  in
+  let hash_path_option = fun value ->
+    match value with
+    | Some value ->
+        H.write_bool state true;
+        H.write_string state (Path.to_string value)
+    | None ->
+        H.write_bool state false
+  in
+  let rec hash_version = fun (version: Version.t) ->
+    H.write_int state version.major;
+    H.write_int state version.minor;
+    H.write_int state version.patch;
+    H.write_list
+      (fun state segment ->
+        match segment with
+        | Version.Numeric n ->
+            H.write_bool state true;
+            H.write_int state n
+        | Version.Alphanumeric s ->
+            H.write_bool state false;
+            H.write_string state s)
+      state
+      version.pre;
+    hash_string_option version.build
+  in
+  let hash_requirement = fun requirement ->
+    match Version.view_requirement requirement with
+    | Version.AnyRequirement ->
+        H.write_int state 0
+    | Version.ExactRequirement version ->
+        H.write_int state 1;
+        hash_version version
+    | Version.NotEqualRequirement version ->
+        H.write_int state 2;
+        hash_version version
+    | Version.GreaterThanRequirement version ->
+        H.write_int state 3;
+        hash_version version
+    | Version.GreaterThanOrEqualRequirement version ->
+        H.write_int state 4;
+        hash_version version
+    | Version.LessThanRequirement version ->
+        H.write_int state 5;
+        hash_version version
+    | Version.LessThanOrEqualRequirement version ->
+        H.write_int state 6;
+        hash_version version
+    | Version.TildeRequirement version ->
+        H.write_int state 7;
+        hash_version version
+    | Version.PrefixMajorRequirement major ->
+        H.write_int state 8;
+        H.write_int state major
+    | Version.PrefixMinorRequirement (major, minor) ->
+        H.write_int state 9;
+        H.write_int state major;
+        H.write_int state minor
+  in
+  let hash_kind_override = fun value ->
+    match value with
+    | Profile.Inherit -> H.write_int state 0
+    | Profile.Override kind ->
+        H.write_int state 1;
+        H.write_int state
+          (
+            match kind with
+            | Ocaml_compiler.Bytecode -> 0
+            | Native -> 1
+          )
+  in
+  let hash_inline_override = fun value ->
+    match value with
+    | Profile.Inherit -> H.write_int state 0
+    | Profile.Override (Some n) ->
+        H.write_int state 1;
+        H.write_int state n
+    | Profile.Override None ->
+        H.write_int state 2
+  in
+  let hash_bool_override = fun value ->
+    match value with
+    | Profile.Inherit -> H.write_int state 0
+    | Profile.Override value ->
+        H.write_int state 1;
+        H.write_bool state value
+  in
+  let hash_string_list_override = fun value ->
+    match value with
+    | Profile.Inherit -> H.write_int state 0
+    | Profile.Override values ->
+        H.write_int state 1;
+        H.write_list H.write_string state values
+  in
   H.write_string state pkg.name;
   (* Dependencies metadata *)
   let sorted_deps =
@@ -1611,56 +1712,47 @@ let hash = fun state (pkg: t) ->
   List.iter
     (fun (dep: dependency) ->
       H.write_string state dep.name;
-      H.write_string state (Bool.to_string dep.source.workspace);
-      H.write_string state (Bool.to_string dep.source.builtin);
-      (
-        match dep.source.path with
-        | Some path -> H.write_string state (Path.to_string path)
-        | None -> H.write_string state ""
-      );
-      (
-        match dep.source.source_locator with
-        | Some source_locator -> H.write_string state source_locator
-        | None -> H.write_string state ""
-      );
-      (
-        match dep.source.ref_ with
-        | Some ref_ -> H.write_string state ref_
-        | None -> H.write_string state ""
-      );
+      H.write_bool state dep.source.workspace;
+      H.write_bool state dep.source.builtin;
+      hash_path_option dep.source.path;
+      hash_string_option dep.source.source_locator;
+      hash_string_option dep.source.ref_;
       (
         match dep.source.version with
-        | Some version -> H.write_string state (Version.requirement_to_string version)
-        | None -> H.write_string state ""
+        | Some version ->
+            H.write_bool state true;
+            hash_requirement version
+        | None ->
+            H.write_bool state false
       ))
     sorted_deps;
   (
     match pkg.publish.version with
     | Some version ->
-        H.write_string state "publish-version";
-        H.write_string state (Version.to_string version)
-    | None -> H.write_string state "publish-version:none"
+        H.write_bool state true;
+        hash_version version
+    | None -> H.write_bool state false
   );
   (
     match pkg.publish.description with
     | Some description ->
-        H.write_string state "publish-description";
+        H.write_bool state true;
         H.write_string state description
-    | None -> H.write_string state "publish-description:none"
+    | None -> H.write_bool state false
   );
   (
     match pkg.publish.license with
     | Some license ->
-        H.write_string state "publish-license";
+        H.write_bool state true;
         H.write_string state license
-    | None -> H.write_string state "publish-license:none"
+    | None -> H.write_bool state false
   );
   (
     match pkg.publish.is_public with
     | Some is_public ->
-        H.write_string state "publish-public";
-        H.write_string state (Bool.to_string is_public)
-    | None -> H.write_string state "publish-public:none"
+        H.write_bool state true;
+        H.write_bool state is_public
+    | None -> H.write_bool state false
   );
   (* Binaries metadata *)
   let sorted_bins =
@@ -1684,70 +1776,27 @@ let hash = fun state (pkg: t) ->
     (fun (provider: Fix_provider.t) ->
       H.write_string state provider.name;
       H.write_string state (Path.to_string provider.source_path);
-      List.iter (H.write_string state) provider.rules)
+      H.write_list H.write_string state provider.rules)
     sorted_providers;
   (* Library metadata *)
   (
     match pkg.library with
     | Some lib ->
-        H.write_string state "true";
+        H.write_bool state true;
         H.write_string state (Path.to_string lib.path)
-    | None -> H.write_string state "false"
+    | None -> H.write_bool state false
   );
   (* Compiler configuration - profile and target overrides *)
   let hash_override (override: profile_override) =
-    (
-      match override.kind with
-      | Inherit -> H.write_string state "inherit"
-      | Override kind ->
-          H.write_string state
-            (
-              match kind with
-              | Ocaml_compiler.Bytecode -> "bytecode"
-              | Native -> "native"
-            )
-    );
-    (
-      match override.inline with
-      | Inherit -> H.write_string state "inherit"
-      | Override (Some n) -> H.write_string state (Int.to_string n)
-      | Override None -> H.write_string state "none"
-    );
-    (
-      match override.no_assert with
-      | Inherit -> H.write_string state "inherit"
-      | Override b -> H.write_string state (Bool.to_string b)
-    );
-    (
-      match override.compact with
-      | Inherit -> H.write_string state "inherit"
-      | Override b -> H.write_string state (Bool.to_string b)
-    );
-    (
-      match override.unsafe with
-      | Inherit -> H.write_string state "inherit"
-      | Override b -> H.write_string state (Bool.to_string b)
-    );
-    (
-      match override.no_alias_deps with
-      | Inherit -> H.write_string state "inherit"
-      | Override b -> H.write_string state (Bool.to_string b)
-    );
-    (
-      match override.open_modules with
-      | Inherit -> H.write_string state "inherit"
-      | Override mods -> List.iter (H.write_string state) mods
-    );
-    (
-      match override.cc_flags with
-      | Inherit -> H.write_string state "inherit"
-      | Override flags -> List.iter (H.write_string state) flags
-    );
-    (
-      match override.ocamlc_flags with
-      | Inherit -> H.write_string state "inherit"
-      | Override flags -> List.iter (H.write_string state) flags
-    );
+    hash_kind_override override.kind;
+    hash_inline_override override.inline;
+    hash_bool_override override.no_assert;
+    hash_bool_override override.compact;
+    hash_bool_override override.unsafe;
+    hash_bool_override override.no_alias_deps;
+    hash_string_list_override override.open_modules;
+    hash_string_list_override override.cc_flags;
+    hash_string_list_override override.ocamlc_flags;
   in
   let sorted_profile_overrides =
     List.sort
@@ -1771,8 +1820,10 @@ let hash = fun state (pkg: t) ->
       H.write_string state platform_name;
       (
         match target.profile_override with
-        | Some override -> hash_override override
-        | None -> H.write_string state "none"
+        | Some override ->
+            H.write_bool state true;
+            hash_override override
+        | None -> H.write_bool state false
       );)
     sorted_target_overrides;
   (* Source file contents - include explicit [[bin]] entries that may not be in source dirs *)

@@ -372,8 +372,8 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
           | Some dep_pkg -> (
               H.write_string state (Path.to_string dep_pkg.path);
               match dep_pkg.library with
-              | Some _ -> H.write_string state "true"
-              | None -> H.write_string state "false"
+              | Some _ -> H.write_bool state true
+              | None -> H.write_bool state false
             )
           | None -> ()
         )
