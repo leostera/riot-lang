@@ -16,6 +16,7 @@ path = "tests/pm_tests.ml"
 std = { path = "../std", version = "*" }
 riot-model = { path = "../riot-model", version = "*" }
 pkgs-ml = { path = "../pkgs-ml", version = "*" }
+pubgrub = { path = "../pubgrub", version = "*" }
 riot-fmt = { path = "../riot-fmt", version = "*" }
 riot-fix = { path = "../riot-fix", version = "*" }
 riot-planner = { path = "../riot-planner", version = "*" }

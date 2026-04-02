@@ -71,10 +71,6 @@ let write_build_event_json = fun event ->
 let command_error_event_to_json = fun kind details ->
   Data.Json.Object (("type", Data.Json.String kind) :: details)
 
-let pm_package_source_label = function
-  | Some version -> version
-  | None -> "src"
-
 let format_pm_event = fun ~seen_registry_updates kind ->
   match kind with
   | Riot_model.Event.RegistryIndexUpdating { registry } ->
@@ -85,11 +81,8 @@ let format_pm_event = fun ~seen_registry_updates kind ->
           let _ = HashSet.insert seen_registry_updates registry in
           Some ("    \027[1;32mUpdating\027[0m " ^ registry ^ " index")
         )
-  | Riot_model.Event.PackageResolvedForBuild { package; version; workspace; _ } ->
-      if workspace then
-        None
-      else
-        Some ("    \027[1;32mResolved\027[0m " ^ package ^ " (" ^ pm_package_source_label version ^ ")")
+  | Riot_model.Event.PackageResolvedForBuild _ ->
+      None
   | Riot_model.Event.PackageDownloadStarted { package; version; _ } ->
       Some ("    \027[1;32mFetching\027[0m " ^ package ^ " " ^ version)
   | Riot_model.Event.PackageDownloadQueued { package; version; _ } ->

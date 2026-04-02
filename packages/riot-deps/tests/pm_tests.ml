@@ -942,11 +942,10 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
     )
 
 let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun _ctx ->
-  let requirement = Std.Version.parse_requirement ">= 1.2.3" |> Result.expect ~msg:"expected requirement to parse" in
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ { name = "std"; source = source ~version:requirement () } ]
+    ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
     () in
   let registry = make_registry
     [
