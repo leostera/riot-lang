@@ -1,1 +1,1 @@
-let f (x : 'a) = x
+let f (x: 'a) = x

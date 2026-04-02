@@ -1,1 +1,1 @@
-let x = (f : int -> int -> int)
+let x : int -> int -> int = f

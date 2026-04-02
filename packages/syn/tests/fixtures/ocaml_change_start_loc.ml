@@ -2,23 +2,23 @@
  flags = "-I ${ocamlsrcdir}/parsing -I ${ocamlsrcdir}/toplevel";
  include ocamlcommon;
 *)
+
 let position =
-  Lexing.
-    {
-      (* This corresponds to File "file.ml", line 100, character 10 *)
-      pos_fname = "------should not appear------";
-      pos_lnum = 100;
-      pos_bol = 1000;
-      pos_cnum = 1010;
-    }
+  Lexing.{
+    pos_fname = "------should not appear------";
+    pos_lnum = 100;
+    pos_bol = 1_000;
+    pos_cnum = 1_010
+  }
 
 (* We need to show, that just changing lex_curr_p is not enough.
    See wrong columns in output for 'Incomplete version'. *)
+
 let set_position_incomplete lexbuf position =
-  let open Lexing in
-  lexbuf.lex_curr_p <- { position with pos_fname = lexbuf.lex_curr_p.pos_fname }
+  let open Lexing in lexbuf.lex_curr_p <- { position with pos_fname = lexbuf.lex_curr_p.pos_fname }
 
 (* "Testing framework" *)
+
 let print_error_in_parse set_position_variant =
   try
     let _ =
@@ -30,7 +30,8 @@ let print_error_in_parse set_position_variant =
       Parse.expression lexbuf
     in
     ()
-  with e -> Location.report_exception Format.std_formatter e
+  with
+  | e -> Location.report_exception Format.std_formatter e
 
 let _ =
   print_string "Incomplete version:\n";

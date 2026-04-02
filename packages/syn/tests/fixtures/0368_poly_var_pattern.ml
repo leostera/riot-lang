@@ -1,1 +1,3 @@
-let x = match y with `Point (a, b) -> a + b
+let x =
+  match y with
+  | `Point (a, b) -> a + b

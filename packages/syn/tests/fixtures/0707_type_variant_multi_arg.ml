@@ -1,1 +1,2 @@
-type t = Point of int * int
+type t =
+  Point of int * int

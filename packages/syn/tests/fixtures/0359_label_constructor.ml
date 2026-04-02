@@ -1,1 +1,1 @@
-let x = (Some) ~y:1
+let x = Some ~y:1

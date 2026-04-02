@@ -1,4 +1,4 @@
-module M : S = struct
+module M: S = struct
   type t = int
 
   let create () = 0

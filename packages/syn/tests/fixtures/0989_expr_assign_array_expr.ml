@@ -1,1 +1,2 @@
-let () = matrix.(i).(j) <- value
+let () =
+  matrix.(i).(j) <- value

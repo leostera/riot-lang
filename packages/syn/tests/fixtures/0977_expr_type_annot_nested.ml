@@ -1,1 +1,1 @@
-let x = (1 + 2 : int)
+let x : int = 1 + 2

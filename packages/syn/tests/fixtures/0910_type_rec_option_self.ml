@@ -1,1 +1,4 @@
-type chain = { value : int; next : chain option }
+type chain = {
+  value: int;
+  next: chain option;
+}

@@ -1,1 +1,1 @@
-let f = fun [ x; y ] -> x + y
+let f = fun [x;y] -> x + y

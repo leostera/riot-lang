@@ -1,1 +1,3 @@
-let x = match value with _ -> 42
+let x =
+  match value with
+  | _ -> 42

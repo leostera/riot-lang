@@ -1,3 +1,3 @@
 module type F = functor (X : S) -> sig
-  val x : int
+  val x: int
 end

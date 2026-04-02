@@ -1,1 +1,2 @@
-let () = obj.data.value <- 100
+let () =
+  obj.data.value <- 100

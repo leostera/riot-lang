@@ -1,1 +1,5 @@
-type t = [ `Some of int option | `None ]
+type t =
+[
+  `Some of int option
+  | `None
+]

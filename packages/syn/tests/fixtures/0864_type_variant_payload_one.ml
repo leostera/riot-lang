@@ -1,1 +1,2 @@
-type msg = Text of string
+type msg =
+  Text of string

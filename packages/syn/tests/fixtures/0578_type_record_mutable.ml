@@ -1,1 +1,4 @@
-type t = { mutable x : int; y : string }
+type t = {
+  mutable x: int;
+  y: string;
+}

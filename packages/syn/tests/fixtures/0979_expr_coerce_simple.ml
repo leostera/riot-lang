@@ -1,1 +1,1 @@
-let x = (obj :> parent)
+let x = (obj:> parent)

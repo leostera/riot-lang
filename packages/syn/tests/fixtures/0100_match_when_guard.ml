@@ -1,1 +1,4 @@
-let x = match n with x when x > 0 -> x | _ -> 0
+let x =
+  match n with
+  | x when x > 0 -> x
+  | _ -> 0

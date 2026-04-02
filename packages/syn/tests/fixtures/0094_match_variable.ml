@@ -1,1 +1,3 @@
-let x = match y with n -> n + 1
+let x =
+  match y with
+  | n -> n + 1

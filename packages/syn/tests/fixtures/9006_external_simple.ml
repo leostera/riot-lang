@@ -1,1 +1,1 @@
-external sqrt : float -> float = "caml_sqrt_float"
+external sqrt: float -> float = "caml_sqrt_float"

@@ -1,3 +1,5 @@
 let x =
-  let y = assert true in
+  let y =
+    assert true
+  in
   y

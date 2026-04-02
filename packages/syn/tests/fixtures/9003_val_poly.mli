@@ -1,1 +1,1 @@
-val map : ('a -> 'b) -> 'a list -> 'b list
+val map: ('a -> 'b) -> 'a list -> 'b list

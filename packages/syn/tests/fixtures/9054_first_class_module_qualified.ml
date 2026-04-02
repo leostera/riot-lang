@@ -1,8 +1,14 @@
 (* First-class modules with qualified paths *)
-let x = f ~transport:(module Std.Net.TcpClient)
+
+let x =
+  f ~transport:(module Std.Net.TcpClient)
 
 (* Multiple levels *)
-let y = g (module A.B.C.D)
+
+let y =
+  g (module A.B.C.D)
 
 (* In function calls *)
-let result = Client.create ~transport:(module Std.Net.TcpClient) ()
+
+let result =
+  Client.create ~transport:(module Std.Net.TcpClient) ()

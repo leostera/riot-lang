@@ -1,1 +1,1 @@
-let f (x : int) = x
+let f (x: int) = x

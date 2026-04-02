@@ -1,1 +1,2 @@
-type status = Active
+type status =
+  Active

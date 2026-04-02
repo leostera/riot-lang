@@ -1,1 +1,4 @@
-let x = try e with E | F -> handler
+let x =
+  try e with
+  | E
+  | F -> handler

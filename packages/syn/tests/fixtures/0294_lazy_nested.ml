@@ -1,1 +1,2 @@
-let x = lazy (lazy 5)
+let x =
+  lazy (lazy 5)

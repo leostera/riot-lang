@@ -1,3 +1,5 @@
 -e;;
 
-let x = try expr with E -> handler
+let x =
+  try expr with
+  | E -> handler

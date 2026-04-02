@@ -1,1 +1,3 @@
-type coord = Point of int * int | Origin
+type coord =
+  Point of int * int
+  | Origin

@@ -24,8 +24,6 @@ let command =
           make_subcommand "reject" "Delete pending snapshot candidates";
         ]
 
-let pending_suffix = ".expected.new"
-
 let ensure_trailing_new_removed = fun path ->
   let rendered = Path.to_string path in
   if String.ends_with ~suffix:".new" rendered then
@@ -34,7 +32,9 @@ let ensure_trailing_new_removed = fun path ->
   else
     path
 
-let is_pending_snapshot = fun path -> Path.basename path |> String.ends_with ~suffix:pending_suffix
+let is_pending_snapshot = fun path ->
+  let basename = Path.basename path in
+  String.ends_with ~suffix:".new" basename && String.contains basename ".expected"
 
 let should_skip_dir = fun path ->
   match Path.basename path with

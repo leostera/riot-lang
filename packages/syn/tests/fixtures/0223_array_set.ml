@@ -1,1 +1,2 @@
-let x = arr.(0) <- 5
+let x =
+  arr.(0) <- 5

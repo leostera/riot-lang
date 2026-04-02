@@ -2,30 +2,28 @@
    expect;
 *)
 
-module M : sig
-  class \#and : object
-    val mutable \#and : int
-    method \#and : int
+module M: sig
+  class \#and:object
+    val mutable \#and: int
+    method \#and: int
   end
 end = struct
-  class \#and =
-    let \#and = 1 in
-    object
-      val mutable \#and = \#and
-      method \#and = 2
-    end
+  class \#and = let \#and = 1 in
+  object
+    val mutable \#and = \#and
+    method \#and = 2
+  end
 end
 
 let obj = new M.\#and
-
-[%%expect
+  [%%expect
 {|
 module M :
   sig class \#and : object val mutable \#and : int method \#and : int end end
 val obj : M.\#and = <obj>
 |}]
 
-module M : sig
+module M: sig
   type \#and = int
 end = struct
   type \#and = string
@@ -48,18 +46,21 @@ Error: Signature mismatch:
        The type "string" is not equal to the type "int"
 |}]
 
-let x = (`\#let `\#and : [ `\#let of [ `\#and ] ])
-let (`\#let \#rec) = x
+let x : [
+  `\#let of [
+    `\#and
+  ]
+] = `\#let `\#and
 
-[%%expect
+let (`\#let \#rec) = x
+  [%%expect
 {|
 val x : [ `\#let of [ `\#and ] ] = `\#let `\#and
 val \#rec : [ `\#and ] = `\#and
 |}]
 
 let f g ~\#let ?\#and ?(\#for = \#and) () = g ~\#let ?\#and ()
-
-[%%expect
+  [%%expect
 {|
 val f :
   (\#let:'a -> ?\#and:'b -> unit -> 'c) ->
@@ -76,18 +77,21 @@ Line 1, characters 9-15:
 Error: The type variable "'\#let" is unbound in this type declaration.
 |}]
 
-type \#mutable = { mutable \#mutable : \#mutable }
+type \#mutable = {
+  mutable \#mutable: \#mutable;
+}
 
 let rec \#rec = { \#mutable = \#rec }
-
-[%%expect
+  [%%expect
 {|
 type \#mutable = { mutable \#mutable : \#mutable; }
 val \#rec : \#mutable = {\#mutable = <cycle>}
 |}]
 
 type \#and = ..
-type \#and += Foo
+
+type \#and +=
+  Foo
 
 [%%expect {|
 type \#and = ..
@@ -95,8 +99,7 @@ type \#and += Foo
 |}]
 
 let x = ( ++ )
-
-[%%expect
+  [%%expect
 {|
 Line 1, characters 8-12:
 1 | let x = (++);;
@@ -105,8 +108,7 @@ Error: Unbound value "(++)"
 |}]
 
 let x = \#let
-
-[%%expect
+  [%%expect
 {|
 Line 1, characters 8-13:
 1 | let x = \#let;;
@@ -115,14 +117,12 @@ Error: Unbound value "\#let"
 |}]
 
 let f ~\#let ?\#and () = 1
-
-[%%expect {|
+  [%%expect {|
 val f : \#let:'a -> ?\#and:'b -> unit -> int = <fun>
 |}]
 
-let x = (true : int)
-
-[%%expect
+let x = (true: int)
+  [%%expect
 {|
 Line 1, characters 9-13:
 1 | let x = (true:int)
@@ -136,19 +136,23 @@ module M = struct
 end
 
 let x = M.(true)
-
-[%%expect
+  [%%expect
 {|
 module M : sig type \#true = true end
 val x : M.\#true = M.(true)
 |}]
 
-type t = { \#false : int; x : int }
-type u = { \#true : int }
+type t = {
+  \#false: int;
+  x: int;
+}
+
+type u = {
+  \#true: int;
+}
 
 let f { \#false; \#true } = 0
-
-[%%expect
+  [%%expect
 {|
 type t = { \#false : int; x : int; }
 type u = { \#true : int; }
@@ -160,15 +164,23 @@ Error: The record field "\#true" belongs to the type "u"
 |}]
 
 module M = struct
-  type t = { \#true : int; y : int }
-  type r = { \#true : int; y : int }
+  type t = {
+    \#true: int;
+    y: int;
+  }
+
+  type r = {
+    \#true: int;
+    y: int;
+  }
 end
 
-type t = { \#false : int }
+type t = {
+  \#false: int;
+}
 
-let _ = ({ M.\#true = 0 } : t)
-
-[%%expect
+let _ = ({ M.\#true = 0 }: t)
+  [%%expect
 {|
 module M :
   sig

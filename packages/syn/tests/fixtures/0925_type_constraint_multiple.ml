@@ -1,1 +1,3 @@
-type ('a, 'b) t = 'a * 'b constraint 'a = int constraint 'b = string
+type ('a, 'b) t = 'a * 'b
+  constraint 'a=int
+  constraint 'b=string

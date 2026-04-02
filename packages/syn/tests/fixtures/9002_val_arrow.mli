@@ -1,1 +1,1 @@
-val add : int -> int -> int
+val add: int -> int -> int

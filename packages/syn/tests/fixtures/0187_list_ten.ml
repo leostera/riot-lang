@@ -1,1 +1,12 @@
-let x = [ a; b; c; d; e; f; g; h; i; j ]
+let x = [
+  a;
+  b;
+  c;
+  d;
+  e;
+  f;
+  g;
+  h;
+  i;
+  j
+]

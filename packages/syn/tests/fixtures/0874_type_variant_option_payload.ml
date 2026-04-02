@@ -1,1 +1,3 @@
-type nullable = Empty | Value of int option
+type nullable =
+  Empty
+  | Value of int option

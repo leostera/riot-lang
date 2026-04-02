@@ -1,1 +1,1 @@
-let x = ({ y = 1 } : point)
+let x : point = { y = 1 }

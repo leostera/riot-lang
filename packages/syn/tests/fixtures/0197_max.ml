@@ -1,1 +1,5 @@
-let x = if x > y then x else y
+let x =
+  if x > y then
+    x
+  else
+    y

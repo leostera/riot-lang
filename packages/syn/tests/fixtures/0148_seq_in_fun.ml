@@ -1,4 +1,3 @@
-let f =
- fun x ->
+let f = fun x ->
   print x;
   x + 1

@@ -1,1 +1,2 @@
-type t = Value of int * string * bool
+type t =
+  Value of int * string * bool

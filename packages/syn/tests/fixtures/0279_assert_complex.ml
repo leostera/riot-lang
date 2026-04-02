@@ -1,1 +1,2 @@
-let x = assert (List.length l > 0)
+let x =
+  assert (List.length l > 0)

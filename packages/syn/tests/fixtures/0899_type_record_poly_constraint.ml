@@ -1,1 +1,5 @@
-type 'a store = { items : 'a list; count : int } constraint 'a = int
+type 'a store = {
+  items: 'a list;
+  count: int;
+}
+  constraint 'a=int

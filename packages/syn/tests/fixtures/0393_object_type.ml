@@ -1,1 +1,3 @@
-let x = (y : < m : int >)
+let x : <
+  m: int
+> = y

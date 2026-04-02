@@ -1,1 +1,4 @@
-let x = match b with true -> 1 | false -> 0
+let x =
+  match b with
+  | true -> 1
+  | false -> 0

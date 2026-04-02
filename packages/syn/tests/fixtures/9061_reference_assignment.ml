@@ -1,2 +1,4 @@
 let x = ref 0
-let () = x := 5
+
+let () =
+  x := 5

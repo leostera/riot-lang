@@ -1,1 +1,1 @@
-let f (g : int -> string) = g 42
+let f (g: int -> string) = g 42

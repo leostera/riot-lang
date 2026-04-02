@@ -1,1 +1,4 @@
-let x = match y with `A | `B -> 1
+let x =
+  match y with
+  | `A
+  | `B -> 1

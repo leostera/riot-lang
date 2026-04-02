@@ -1,1 +1,4 @@
-let x = fun ?y -> match y with Some v -> v | None -> 0
+let x = fun ?y ->
+  match y with
+  | Some v -> v
+  | None -> 0

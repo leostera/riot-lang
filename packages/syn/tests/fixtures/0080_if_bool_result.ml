@@ -1,1 +1,5 @@
-let x = if a then true else false
+let x =
+  if a then
+    true
+  else
+    false

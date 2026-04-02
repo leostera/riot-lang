@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": ")",
+      "fix": "add ) to close the type parameter list",
+      "found": {
+        "kind": "identifier",
+        "text": "foo"
+      },
+      "hint": "Type parameter lists must be closed with a closing parenthesis ). For example: type ('a, 'b) t = ...",
+      "id": "E0019",
+      "name": "unclosed-type-params"
+    },
+    "span": {
+      "end": 12,
+      "start": 12
+    }
+  }
+]

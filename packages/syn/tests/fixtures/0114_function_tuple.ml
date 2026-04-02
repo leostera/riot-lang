@@ -1,1 +1,2 @@
-let f = function x, y -> x + y
+let f = function
+  | x, y -> x + y

@@ -1,2 +1,2 @@
-let (x : int) = (5 : int) in
-(x : int)
+let x : int = 5 in
+(x: int)

@@ -1,1 +1,2 @@
-type t = Value of int
+type t =
+  Value of int

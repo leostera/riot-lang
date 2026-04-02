@@ -1,1 +1,4 @@
-type state = { name : string; mutable value : int }
+type state = {
+  name: string;
+  mutable value: int;
+}

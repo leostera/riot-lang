@@ -1,1 +1,4 @@
-let x = match lst with h :: t -> h | [] -> 0
+let x =
+  match lst with
+  | h :: t -> h
+  | [] -> 0

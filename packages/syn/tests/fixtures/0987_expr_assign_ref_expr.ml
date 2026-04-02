@@ -1,1 +1,2 @@
-let () = counter := !counter + 1
+let () =
+  counter := !counter + 1

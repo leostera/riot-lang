@@ -1,1 +1,3 @@
-type color = RGB of int * int * int | Named of string
+type color =
+  RGB of int * int * int
+  | Named of string

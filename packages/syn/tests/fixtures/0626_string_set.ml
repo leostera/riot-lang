@@ -1,1 +1,2 @@
-let x = str.[0] <- 'a'
+let x =
+  str.[0] <- 'a'

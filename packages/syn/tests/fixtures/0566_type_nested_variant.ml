@@ -1,1 +1,3 @@
-type t = A of int | B of (string * bool)
+type t =
+  A of int
+  | B of (string * bool)

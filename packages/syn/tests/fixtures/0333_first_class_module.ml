@@ -1,1 +1,2 @@
-let x = (module M : S)
+let x =
+  (module M : S)

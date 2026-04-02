@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "pattern before ->",
+      "fix": "add a pattern before the '->' arrow",
+      "found": {
+        "kind": "->",
+        "text": "->"
+      },
+      "hint": "Match cases require a pattern before the arrow (->).\n\nIn OCaml, each match case has the syntax: | pattern -> result\n  ```ocaml\n  (* Correct syntax *)\n  let x = match n with 0 -> \"zero\" | n -> \"other\"\n  let y = match opt with Some x -> x | None -> 0\n  \n  (* Missing pattern *)\n  let z = match n with -> \"result\"  (* error: missing pattern before '->' *)\n  ```\n\nFix: add a pattern before the '->' arrow.\n",
+      "id": "E0030",
+      "name": "match-missing-pattern"
+    },
+    "span": {
+      "end": 24,
+      "start": 24
+    }
+  }
+]

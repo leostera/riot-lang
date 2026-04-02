@@ -1,1 +1,4 @@
-let x = match x with _ when true -> 1 | _ -> 0
+let x =
+  match x with
+  | _ when true -> 1
+  | _ -> 0

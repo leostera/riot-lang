@@ -1,3 +1,3 @@
 (* TEST_BELOW *)
 
-let test (module M) = M.value
+let test ((module M)) = M.value

@@ -1,1 +1,5 @@
-type state = Init | Running | Paused | Stopped
+type state =
+  Init
+  | Running
+  | Paused
+  | Stopped

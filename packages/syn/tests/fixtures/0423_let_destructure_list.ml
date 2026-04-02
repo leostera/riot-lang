@@ -1,2 +1,2 @@
-let [ a; b; c ] = xs in
+let [a;b;c] = xs in
 a + b + c

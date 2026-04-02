@@ -1,1 +1,2 @@
-let x = assert true
+let x =
+  assert true

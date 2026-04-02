@@ -1,1 +1,2 @@
-let x = assert (y > 0)
+let x =
+  assert (y > 0)

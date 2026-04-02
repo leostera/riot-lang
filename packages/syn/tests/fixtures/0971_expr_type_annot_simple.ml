@@ -1,1 +1,1 @@
-let x = (42 : int)
+let x : int = 42

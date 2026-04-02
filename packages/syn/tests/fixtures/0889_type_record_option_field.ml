@@ -1,1 +1,4 @@
-type user = { name : string; email : string option }
+type user = {
+  name: string;
+  email: string option;
+}

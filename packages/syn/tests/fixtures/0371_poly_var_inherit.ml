@@ -1,1 +1,3 @@
-let x = match y with #color -> 1
+let x =
+  match y with
+  | #color -> 1

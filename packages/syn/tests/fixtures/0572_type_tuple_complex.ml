@@ -1,1 +1,2 @@
-type t = int * string * bool * float
+type t =
+  int * string * bool * float

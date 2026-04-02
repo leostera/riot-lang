@@ -1,1 +1,1 @@
-let p = ((1, "a") : int * string)
+let p : int * string = (1, "a")

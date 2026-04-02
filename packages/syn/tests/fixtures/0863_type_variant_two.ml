@@ -1,1 +1,3 @@
-type bool_t = True | False
+type bool_t =
+  True
+  | False

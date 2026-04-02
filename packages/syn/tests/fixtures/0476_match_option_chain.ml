@@ -1,1 +1,4 @@
-let x = match opt with Some (Some (Some y)) -> y | _ -> 0
+let x =
+  match opt with
+  | Some (Some (Some y)) -> y
+  | _ -> 0

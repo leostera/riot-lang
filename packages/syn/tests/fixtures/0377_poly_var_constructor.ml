@@ -1,1 +1,3 @@
-let x = match y with `Some z -> z
+let x =
+  match y with
+  | `Some z -> z

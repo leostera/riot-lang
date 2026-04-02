@@ -1,1 +1,2 @@
-type t = Person of { name : string; age : int }
+type t =
+  Person of { name: string; age: int }

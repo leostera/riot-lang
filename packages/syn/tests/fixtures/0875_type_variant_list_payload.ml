@@ -1,1 +1,3 @@
-type items = Items of int list | Empty
+type items =
+  Items of int list
+  | Empty

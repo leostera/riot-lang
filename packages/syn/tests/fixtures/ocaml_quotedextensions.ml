@@ -7,40 +7,41 @@ serve_locations_while_translati
 *)
 
 (* Structures *)
-{%%M.foo| <hello>{x} |}
-{%%M.foo| <hello>{x} |}
-{%%M.foo bar| <hello>{|x|} |bar}
+
+[%%{.foo] [%%{.foo] [%%{.foo]
 
 (* Signatures *)
+
 module type S = sig
-  {%%M.foo| <hello>{x} |}
-  {%%M.foo bar| <hello>{|x|} |bar}
+  [%%{.foo]
+
+  [%%{.foo]
 end
 
 (* Expressions/Pattern/Types *)
-let {%M.foo| <hello>{x} |} : {%M.foo| <hello>{x} |} = {%M.foo| <hello>{x} |}
 
-let {%M.foo bar| <hello>{|x|} |bar} : {%M.foo bar| <hello>{|x|} |bar} =
-  {%M.foo bar| <hello>{|x|} |bar}
+let [%{.foo] : [%{.foo] = [%{.foo]
 
-let {%M.foo| <hello>{u|x|u} |} : {%M.foo| <hello>{u|x|u} |} =
-  {%M.foo| <hello>{u|x|u} |}
+let [%{.foo] : [%{.foo] = [%{.foo]
 
-(* Multiline *)
-{%%M.foo|
- <hello>
-   {x}
- </hello>
-|}
+let [%{.foo] : [%{.foo] = [%{.foo]
+  (* Multiline *)
+  [%%{.foo]
 
 (* Double quotes inside quoted strings inside comments *)
+
 (* {|"|}, and *)
+
 (* [%foo {|"|}], and *)
+
 (* {%foo|"|} should be valid inside comments *)
 
 (* Comment delimiters inside quoted strings inside comments: *)
+
 (* {|*)|}, and *)
+
 (* [%foo {bar|*)|bar}], and *)
+
 (* {%foo bar|*)|bar} should be valid inside comments *)
 
 (* TEST

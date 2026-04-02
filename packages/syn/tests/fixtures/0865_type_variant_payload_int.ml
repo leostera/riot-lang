@@ -1,1 +1,3 @@
-type value = Int of int | Float of float
+type value =
+  Int of int
+  | Float of float

@@ -1,1 +1,4 @@
-let x = match pair with h :: t, x -> h + x | _ -> 0
+let x =
+  match pair with
+  | h :: t, x -> h + x
+  | _ -> 0

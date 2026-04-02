@@ -1,1 +1,2 @@
-type 'a t = 'a constraint 'a = int
+type 'a t = 'a
+  constraint 'a=int

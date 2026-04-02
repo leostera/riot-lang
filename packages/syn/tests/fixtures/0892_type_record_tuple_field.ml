@@ -1,1 +1,4 @@
-type data = { coords : int * int; label : string }
+type data = {
+  coords: int * int;
+  label: string;
+}

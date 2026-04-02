@@ -1,1 +1,3 @@
-type counter = { mutable count : int }
+type counter = {
+  mutable count: int;
+}

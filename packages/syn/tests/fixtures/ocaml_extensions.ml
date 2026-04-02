@@ -10,28 +10,15 @@ serve_locations_while_translati
 let x = 1 in
 x]
 
-let [%foo 2 + 1] : [%foo bar.baz] = [%foo "foo"]
+let [%foo2+1] : [%foo.bazbar.baz] = [%foo "foo"] [%%%foo module M = [%bar]]
 
-[%%foo module M = [%bar]]
+let [%foolet()=()] : [%footypet=t] = [%foo class c = object end] [%%foo: 'a list]
 
-let [%foo let () = ()] : [%foo type t = t] = [%foo class c = object end]
+let [%foo:[`Foo]] : [%foo:t->t] = [%foo: < foo : t >] [%%foo? _] [%%foo? Some y when y > 0]
 
-[%%foo: 'a list]
+let [%foo?Barx|Bazx] : [%foo?#bar] = [%foo? { x }] [%%%foo: module M : [%baz]]
 
-let [%foo: [ `Foo ]] : [%foo: t -> t] = [%foo: < foo : t > ]
-
-[%%foo? _]
-[%%foo? Some y when y > 0]
-
-let [%foo? Bar x | Baz x] : [%foo? #bar] = [%foo? { x }]
-
-[%%foo: module M : [%baz]]
-
-let [%foo: include S with type t = t] :
-    [%foo:
-      val x : t
-      val y : t] =
-  [%foo: type t = t]
+let [%foo:includeSwithtypet=t] : [%foo:valx:tvaly:t] = [%foo: type t = t]
 
 (* TEST
  flags = "-dparsetree";

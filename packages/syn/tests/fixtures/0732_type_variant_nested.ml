@@ -1,1 +1,2 @@
-type t = A of int * (string * bool)
+type t =
+  A of int * (string * bool)

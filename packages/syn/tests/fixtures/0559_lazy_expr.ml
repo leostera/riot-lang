@@ -1,1 +1,2 @@
-let x = lazy (expensive_computation ())
+let x =
+  lazy (expensive_computation ())

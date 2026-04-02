@@ -1,1 +1,2 @@
-type 'a rose = Node of 'a * 'a rose list
+type 'a rose =
+  Node of 'a * 'a rose list

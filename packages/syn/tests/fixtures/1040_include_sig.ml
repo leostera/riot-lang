@@ -1,7 +1,7 @@
-module M : sig
+module M: sig
   include S
 
-  val extra : int
+  val extra: int
 end = struct
   include N
 

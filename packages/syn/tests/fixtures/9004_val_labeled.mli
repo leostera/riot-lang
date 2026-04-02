@@ -1,1 +1,1 @@
-val create : name:string -> age:int -> person
+val create: name:string -> age:int -> person

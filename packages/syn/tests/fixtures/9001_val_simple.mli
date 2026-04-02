@@ -1,1 +1,1 @@
-val name : string
+val name: string

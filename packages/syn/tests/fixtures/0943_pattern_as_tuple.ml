@@ -1,1 +1,3 @@
-let f x = match x with (a, b) as pair -> pair
+let f x =
+  match x with
+  | (a, b) as pair -> pair

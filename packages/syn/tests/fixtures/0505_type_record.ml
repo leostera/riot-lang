@@ -1,1 +1,4 @@
-type person = { name : string; age : int }
+type person = {
+  name: string;
+  age: int;
+}

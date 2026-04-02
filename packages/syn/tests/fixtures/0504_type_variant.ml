@@ -1,1 +1,3 @@
-type option = None | Some of int
+type option =
+  None
+  | Some of int

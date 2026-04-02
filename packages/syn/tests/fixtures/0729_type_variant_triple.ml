@@ -1,1 +1,2 @@
-type t = Triple of int * string * bool
+type t =
+  Triple of int * string * bool

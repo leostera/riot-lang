@@ -1,1 +1,4 @@
-type ('a, 'b) complex = { data : ('a list * 'b option) list; meta : string }
+type ('a, 'b) complex = {
+  data: ('a list * 'b option) list;
+  meta: string;
+}

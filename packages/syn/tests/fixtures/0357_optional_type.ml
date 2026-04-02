@@ -1,1 +1,1 @@
-let x = (f : ?y:int -> int)
+let x : ?y:int -> int = f

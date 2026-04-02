@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "module expression",
+      "fix": "add a module expression after module",
+      "found": {
+        "kind": ")",
+        "text": ")"
+      },
+      "hint": "This construct expects a module expression.\n\nExamples:\n  ```ocaml\n  module M = struct end\n  let x = (module M)\n  let x = (module struct let y = 1 end)\n  ```\n",
+      "id": "E0050",
+      "name": "missing-module-expr"
+    },
+    "span": {
+      "end": 15,
+      "start": 15
+    }
+  }
+]

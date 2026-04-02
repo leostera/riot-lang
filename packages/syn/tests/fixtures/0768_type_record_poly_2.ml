@@ -1,1 +1,4 @@
-type ('a, 'b) pair = { fst : 'a; snd : 'b }
+type ('a, 'b) pair = {
+  fst: 'a;
+  snd: 'b;
+}

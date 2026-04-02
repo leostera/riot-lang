@@ -1,1 +1,1 @@
-val greet : ?name:string -> unit -> string
+val greet: ?name:string -> unit -> string

@@ -1,1 +1,4 @@
-type callbacks = { on_start : unit -> unit; on_stop : int -> unit }
+type callbacks = {
+  on_start: unit -> unit;
+  on_stop: int -> unit;
+}

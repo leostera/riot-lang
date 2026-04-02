@@ -1,1 +1,3 @@
-let x = function true -> false | false -> true
+let x = function
+  | true -> false
+  | false -> true

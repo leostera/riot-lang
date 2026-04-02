@@ -1,1 +1,1 @@
-let f ((x, y) : int * string) = (x, y)
+let f ((x, y): int * string) = (x, y)

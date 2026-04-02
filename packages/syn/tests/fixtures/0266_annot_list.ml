@@ -1,1 +1,1 @@
-let x = ([ 1; 2 ] : int list)
+let x : int list = [ 1; 2 ]

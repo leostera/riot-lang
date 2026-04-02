@@ -5,132 +5,156 @@ slating_from_old_syntax__Filler_
 text_added_to_pre
 serve_locations_while_translati
 *)
-(* Expressions *)
-let () =
-  let%foo[@foo] x = 3 and[@foo] y = 4 in
-  (let module%foo [@foo] M = M in
-  ());
-  (let open%foo[@foo] M in
-   ());
-  (fun%foo[@foo] x -> ());
-  (function%foo[@foo] x -> ());
-  (try%foo[@foo] () with _ -> ());
-  if%foo[@foo] () then () else ();
-  while%foo[@foo] () do
-    ()
-  done;
-  for%foo[@foo] x = () to () do
-    ()
-  done;
-  ();%foo
-  ();
-  assert%foo[@foo] true;
-  lazy%foo[@foo] x;
-  object%foo[@foo] end;
-  begin%foo[@foo]
-    3
-  end;
-  new%foo[@foo] x;
 
-  match%foo[@foo] () with
-  | [%foo?
-      (* Pattern expressions *)
-      ((lazy x) [@foo])] ->
+(* Expressions *)
+
+let () =
+  let x = 3
+  and y = 4 in
+  (
+    let module % = M in
+    ()
+  );
+  (let open M in ());
+  (fun x [@foo] -> ());
+  (
+    function
+    | x -> ()
+  );
+  (
+    try () with
+    | _ -> ()
+  );
+  if () then
+    ()
+  else
+    ();
+    while () do
       ()
-  | [%foo? ((exception x) [@foo])] -> ()
+    done;
+    for % = () to () do
+      ()
+    done;
+    ();
+    [%foo];
+    assert true;
+    lazy x;
+    object end;
+    begin
+      3
+    end;
+    new x;
+    match () with
+    | [%foo?((lazyx)[@foo])] -> ()
+    | [%foo?((exceptionx)[@foo])] -> ()
 
 (* Class expressions *)
-class x =
-  fun [@foo] x ->
-  let[@foo] x = 3 in
+
+class x = fun x [@foo] ->
+  let x = 3 in
   object
-    inherit x [@@foo]
-    val x = 3 [@@foo]
-    val virtual x : t [@@foo]
-    val! mutable x = 3 [@@foo]
-    method x = 3 [@@foo]
-    method virtual x : t [@@foo]
-    method! private x = 3 [@@foo]
-    initializer x [@@foo]
-  end
-  [@foo]
+    inherit x [@@foo] [@@foo]
+    val x = 3 [@@foo] [@@foo]
+    val virtual x: t [@@foo] [@@foo]
+    val ! mutable x = 3 [@@foo] [@@foo]
+    method x = 3 [@@foo] [@@foo]
+    method virtual x: t [@@foo] [@@foo]
+    method ! private x = 3 [@@foo] [@@foo]
+    initializer x [@@foo] [@@foo]
+  end [@foo]
 
 (* Class type expressions *)
+
 class type t = object
   inherit t [@@foo]
-  val x : t [@@foo]
-  val mutable x : t [@@foo]
-  method x : t [@@foo]
-  method private x : t [@@foo]
-  constraint t = t' [@@foo]
-end[@foo]
+  val x: t [@@foo]
+  val mutable x: t [@@foo]
+  method x: t [@@foo]
+  method private x: t [@@foo]
+  constraint t =t' [@@foo]
+end [@foo]
 
 (* Type expressions *)
-type t = [%foo: ((module M)[@foo])]
+
+type t = [%foo:((moduleM)[@foo])]
 
 (* Module expressions *)
-module M = (functor [@foo] (M : S) -> (val x) [@foo] (struct end [@foo]))
+
+module M = (functor (M : S) -> (valval xval) [@foo] (struct
+
+end [@foo]))
 
 (* Module type expression *)
-module type S = functor [@foo]
-  (M : S)
-  -> (_ : (module type of M) [@foo])
-  -> sig end [@foo]
+
+module type S = functor (M : S) -> functor (_ : (module type of M) [@foo]) -> sig
+
+end [@foo]
 
 (* Structure items *)
-let%foo[@foo] x = 4
-and[@foo] y = x
 
-type%foo[@foo] t = int
-and[@foo] t = int
+let x = 4
 
-type%foo [@foo] t += T
+and y = x
 
-class%foo [@foo] x = x
+type t = int
 
-class type%foo [@foo] x = x
+and t = int
 
-external%foo [@foo] x : _ = ""
+type t +=
+  T
 
-exception%foo [@foo] X
+class [@foo] x = x
 
-module%foo [@foo] M = M
+class type [@foo] x = x
 
-module%foo [@foo] rec M : S = M
-and [@foo] M : S = M
+external x: _ = "" [@foo]
 
-module type%foo [@foo] S = S
+exception X
 
-include%foo [@foo] M
-open%foo [@foo] M
+module M = M
+
+module rec M: S = M
+
+and M: S = M
+
+module type S = S
+
+include M
+
+open M
 
 (* Signature items *)
+
 module type S = sig
-  val%foo [@foo] x : t
-  external%foo [@foo] x : t = ""
+  val x: t
 
-  type%foo[@foo] t = int
-  and[@foo] t' = int
+  external x: t = "" [@foo]
 
-  type%foo [@foo] t += T
+  type t = int
 
-  exception%foo [@foo] X
+  and t' = int
+  type t +=
+    T
 
-  module%foo [@foo] M : S
+  exception X
 
-  module%foo [@foo] rec M : S
-  and [@foo] M : S
+  module M: S
 
-  module%foo [@foo] M = M
+  module rec M: S
 
-  module type%foo [@foo] S = S
+  and M: S
 
-  include%foo [@foo] M
-  open%foo [@foo] M
+  module M = M
 
-  class%foo [@foo] x : t
+  module type S = S
 
-  class type%foo [@foo] x = x
+  include M
+
+  open %
+
+  class [@foo] x:t
+
+  class type [@foo] x = x
 end
 
 (* TEST

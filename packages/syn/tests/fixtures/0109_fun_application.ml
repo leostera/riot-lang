@@ -1,1 +1,2 @@
-let x = (fun x -> x + 1) 5
+let x =
+  (fun x -> x + 1) 5

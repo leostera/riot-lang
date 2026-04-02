@@ -1,1 +1,3 @@
-let x = try expr with exn -> handler
+let x =
+  try expr with
+  | exn -> handler

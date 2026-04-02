@@ -19,43 +19,61 @@ let pending_paths = fun workspace_root ->
   let fixture_pending =
     Path.(workspace_root / Path.v "packages/std/tests/fixtures/sample.expected.new") in
   let fixture_approved = Path.(workspace_root / Path.v "packages/std/tests/fixtures/sample.expected") in
+  let custom_pending =
+    Path.(workspace_root / Path.v "packages/syn/tests/fixtures/sample.expected_lossless.json.new") in
+  let custom_approved =
+    Path.(workspace_root / Path.v "packages/syn/tests/fixtures/sample.expected_lossless.json") in
   let workspace_pending =
     Path.(workspace_root / Path.v ".riot/snapshots/std/suite/case.expected.new") in
   let workspace_approved = Path.(workspace_root / Path.v ".riot/snapshots/std/suite/case.expected") in
   let build_pending = Path.(workspace_root / Path.v "_build/debug/std/ignored.expected.new") in
-  (fixture_pending, fixture_approved, workspace_pending, workspace_approved, build_pending)
+  (
+    fixture_pending,
+    fixture_approved,
+    custom_pending,
+    custom_approved,
+    workspace_pending,
+    workspace_approved,
+    build_pending
+  )
 
 let test_discover_pending_snapshots =
   Test.case "snapshots: discover pending candidates"
     (fun _ctx ->
       with_tempdir_result "snapshots_discover"
         (fun workspace_root ->
-          let fixture_pending, _, workspace_pending, _, build_pending = pending_paths workspace_root in
+          let fixture_pending, _, custom_pending, _, workspace_pending, _, build_pending =
+            pending_paths workspace_root in
           match write_file fixture_pending "fixture pending\n" with
           | Error msg -> Error msg
           | Ok () -> (
-              match write_file workspace_pending "workspace pending\n" with
+              match write_file custom_pending "custom pending\n" with
               | Error msg -> Error msg
               | Ok () -> (
-                  match write_file build_pending "ignored\n" with
+                  match write_file workspace_pending "workspace pending\n" with
                   | Error msg -> Error msg
                   | Ok () -> (
-                      match Riot_cli.Snapshots.discover_pending_snapshots ~workspace_root () with
-                      | Error err -> Error (IO.error_message err)
-                      | Ok snapshots ->
-                          let actual =
-                            List.map
-                              (fun snapshot -> Path.to_string snapshot.Riot_cli.Snapshots.pending)
-                              snapshots
-                          in
-                          let expected = [
-                            Path.to_string workspace_pending;
-                            Path.to_string fixture_pending
-                          ]
-                          |> List.sort String.compare in
-                          let actual = List.sort String.compare actual in
-                          Test.assert_equal ~expected ~actual;
-                          Ok ()
+                      match write_file build_pending "ignored\n" with
+                      | Error msg -> Error msg
+                      | Ok () -> (
+                          match Riot_cli.Snapshots.discover_pending_snapshots ~workspace_root () with
+                          | Error err -> Error (IO.error_message err)
+                          | Ok snapshots ->
+                              let actual =
+                                List.map
+                                  (fun snapshot -> Path.to_string snapshot.Riot_cli.Snapshots.pending)
+                                  snapshots
+                              in
+                              let expected = [
+                                Path.to_string workspace_pending;
+                                Path.to_string fixture_pending;
+                                Path.to_string custom_pending
+                              ]
+                              |> List.sort String.compare in
+                              let actual = List.sort String.compare actual in
+                              Test.assert_equal ~expected ~actual;
+                              Ok ()
+                        )
                     )
                 )
             )))
@@ -65,27 +83,31 @@ let test_discover_pending_snapshots_filters_by_query =
     (fun _ctx ->
       with_tempdir_result "snapshots_query"
         (fun workspace_root ->
-          let fixture_pending, _, workspace_pending, _, _ = pending_paths workspace_root in
+          let fixture_pending, _, custom_pending, _, workspace_pending, _, _ = pending_paths workspace_root in
           match write_file fixture_pending "fixture pending\n" with
           | Error msg -> Error msg
           | Ok () -> (
-              match write_file workspace_pending "workspace pending\n" with
+              match write_file custom_pending "custom pending\n" with
               | Error msg -> Error msg
               | Ok () -> (
-                  match Riot_cli.Snapshots.discover_pending_snapshots
-                    ~workspace_root
-                    ~query:"fixtures/sample"
-                    () with
-                  | Error err ->
-                      Error (IO.error_message err)
-                  | Ok [ snapshot ] ->
-                      Test.assert_equal
-                        ~expected:(Path.to_string fixture_pending)
-                        ~actual:(Path.to_string snapshot.pending);
-                      Ok ()
-                  | Ok snapshots ->
-                      Error ("expected one filtered snapshot, got "
-                      ^ Int.to_string (List.length snapshots))
+                  match write_file workspace_pending "workspace pending\n" with
+                  | Error msg -> Error msg
+                  | Ok () -> (
+                      match Riot_cli.Snapshots.discover_pending_snapshots
+                        ~workspace_root
+                        ~query:"lossless"
+                        () with
+                      | Error err ->
+                          Error (IO.error_message err)
+                      | Ok [ snapshot ] ->
+                          Test.assert_equal
+                            ~expected:(Path.to_string custom_pending)
+                            ~actual:(Path.to_string snapshot.pending);
+                          Ok ()
+                      | Ok snapshots ->
+                          Error ("expected one filtered snapshot, got "
+                          ^ Int.to_string (List.length snapshots))
+                    )
                 )
             )))
 
@@ -94,7 +116,7 @@ let test_approve_pending_snapshots =
     (fun _ctx ->
       with_tempdir_result "snapshots_approve"
         (fun workspace_root ->
-          let _, fixture_approved, _, _, _ = pending_paths workspace_root in
+          let _, fixture_approved, _, _, _, _, _ = pending_paths workspace_root in
           let pending = Path.add_extension fixture_approved ~ext:"new" in
           match write_file fixture_approved "old approved\n" with
           | Error msg -> Error msg
@@ -122,7 +144,7 @@ let test_reject_pending_snapshots =
     (fun _ctx ->
       with_tempdir_result "snapshots_reject"
         (fun workspace_root ->
-          let _, fixture_approved, _, _, _ = pending_paths workspace_root in
+          let _, fixture_approved, _, _, _, _, _ = pending_paths workspace_root in
           let pending = Path.add_extension fixture_approved ~ext:"new" in
           match write_file fixture_approved "approved content\n" with
           | Error msg -> Error msg

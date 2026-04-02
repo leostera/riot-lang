@@ -1,1 +1,1 @@
-let { a = { b = x } } = record
+let { a={ b=x } } = record

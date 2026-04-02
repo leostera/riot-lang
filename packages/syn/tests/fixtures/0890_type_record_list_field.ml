@@ -1,1 +1,4 @@
-type group = { name : string; members : string list }
+type group = {
+  name: string;
+  members: string list;
+}

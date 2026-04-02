@@ -1,1 +1,1 @@
-let f ({ name } : person) = name
+let f ({ name }: person) = name

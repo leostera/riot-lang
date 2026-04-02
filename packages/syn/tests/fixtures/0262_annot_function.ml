@@ -1,1 +1,1 @@
-let x = (fun y -> y : int -> int)
+let x : int -> int = fun y -> y

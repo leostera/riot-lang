@@ -1,1 +1,3 @@
-let x = try expr with E y -> y
+let x =
+  try expr with
+  | E y -> y

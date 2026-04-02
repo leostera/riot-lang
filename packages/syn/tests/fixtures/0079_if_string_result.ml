@@ -1,1 +1,5 @@
-let x = if flag then "on" else "off"
+let x =
+  if flag then
+    "on"
+  else
+    "off"

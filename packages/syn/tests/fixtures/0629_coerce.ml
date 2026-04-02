@@ -1,1 +1,1 @@
-let x = (obj :> base_type)
+let x = (obj:> base_type)

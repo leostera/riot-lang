@@ -1,1 +1,3 @@
-type 'a container = Box of 'a | Empty
+type 'a container =
+  Box of 'a
+  | Empty

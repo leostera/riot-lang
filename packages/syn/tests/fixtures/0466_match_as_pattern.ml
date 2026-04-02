@@ -1,1 +1,4 @@
-let x = match xs with y :: _ as full -> (y, full) | [] -> (0, [])
+let x =
+  match xs with
+  | y :: _ as full -> (y, full)
+  | [] -> (0, [])

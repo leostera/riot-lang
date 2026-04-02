@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "expression",
+      "fix": "add an expression after the =",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Every let binding needs a value on the right side of the =.",
+      "id": "E0004",
+      "name": "missing-let-binding-expr"
+    },
+    "span": {
+      "end": 7,
+      "start": 7
+    }
+  }
+]

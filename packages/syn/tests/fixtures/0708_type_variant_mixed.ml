@@ -1,1 +1,4 @@
-type t = A | B of int | C of string * bool
+type t =
+  A
+  | B of int
+  | C of string * bool

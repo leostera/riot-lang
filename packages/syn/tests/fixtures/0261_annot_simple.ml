@@ -1,1 +1,1 @@
-let x = (5 : int)
+let x : int = 5

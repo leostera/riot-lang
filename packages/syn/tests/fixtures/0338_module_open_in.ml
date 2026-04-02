@@ -1,3 +1,1 @@
-let x =
-  let open M in
-  f y
+let x = let open M in f y

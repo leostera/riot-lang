@@ -1,5 +1,6 @@
-let x =
-  (object
-     method m = 1
-   end
-    : < m : int >)
+let x : <
+  m: int
+> =
+  object
+    method m = 1
+  end

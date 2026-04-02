@@ -1,1 +1,3 @@
-type coord = Point2D of int * int | Point3D of int * int * int
+type coord =
+  Point2D of int * int
+  | Point3D of int * int * int

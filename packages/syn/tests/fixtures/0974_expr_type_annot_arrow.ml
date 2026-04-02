@@ -1,1 +1,1 @@
-let f = (fun x -> x + 1 : int -> int)
+let f : int -> int = fun x -> x + 1

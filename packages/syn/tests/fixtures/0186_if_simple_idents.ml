@@ -1,1 +1,5 @@
-let x = if p then q else r
+let x =
+  if p then
+    q
+  else
+    r

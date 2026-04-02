@@ -1,3 +1,5 @@
 let x =
-  let y = lazy (expensive ()) in
+  let y =
+    lazy (expensive ())
+  in
   y

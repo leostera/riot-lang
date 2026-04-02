@@ -1,1 +1,3 @@
-let x = function x :: y :: zs -> x + y | _ -> 0
+let x = function
+  | x :: y :: zs -> x + y
+  | _ -> 0

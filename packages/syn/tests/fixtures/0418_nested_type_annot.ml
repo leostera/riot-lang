@@ -1,1 +1,1 @@
-let x = ((f : int -> int) : int -> int)
+let x : int -> int = (f: int -> int)

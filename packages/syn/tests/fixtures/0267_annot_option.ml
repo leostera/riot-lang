@@ -1,1 +1,1 @@
-let x = (Some 5 : int option)
+let x : int option = Some 5

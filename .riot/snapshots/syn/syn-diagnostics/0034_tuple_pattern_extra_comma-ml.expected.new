@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "pattern element (not comma)",
+      "fix": "use () for unit or (_, _) for a tuple pattern",
+      "found": {
+        "kind": ",",
+        "text": ","
+      },
+      "hint": "Tuple patterns cannot have leading, trailing, or consecutive commas.\n\nIn OCaml, tuple patterns require at least two elements separated by single commas:\n  ```ocaml\n  (* Correct syntax *)\n  let (x, y) = pair\n  let (a, b, c) = triple\n  \n  (* Extra commas *)\n  let (,) = value       (* error: empty tuple with comma *)\n  let (,x) = value      (* error: leading comma *)\n  let (x,) = value      (* error: trailing comma *)\n  let (x,,y) = value    (* error: consecutive commas *)\n  ```\n\nFix: remove extra commas and ensure at least two patterns.\n",
+      "id": "E0032",
+      "name": "tuple-pattern-extra-comma"
+    },
+    "span": {
+      "end": 6,
+      "start": 5
+    }
+  }
+]

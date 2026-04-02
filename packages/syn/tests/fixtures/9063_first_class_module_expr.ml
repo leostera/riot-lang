@@ -1,2 +1,5 @@
-let driver = (module Sqlite.Driver)
-let constrained = (module M : S)
+let driver =
+  (module Sqlite.Driver)
+
+let constrained =
+  (module M : S)

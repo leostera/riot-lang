@@ -1,1 +1,4 @@
-type t = A | B | C
+type t =
+  A
+  | B
+  | C

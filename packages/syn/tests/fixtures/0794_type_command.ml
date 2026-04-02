@@ -1,1 +1,5 @@
-type cmd = Get | Set of string | Delete | List
+type cmd =
+  Get
+  | Set of string
+  | Delete
+  | List

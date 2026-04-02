@@ -1,1 +1,3 @@
-type handler = { on_click : int -> unit }
+type handler = {
+  on_click: int -> unit;
+}

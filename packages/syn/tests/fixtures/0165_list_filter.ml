@@ -1,5 +1,8 @@
-let rec filter =
- fun f lst ->
+let rec filter = fun f lst ->
   match lst with
   | [] -> []
-  | x :: xs -> if f x then x :: filter f xs else filter f xs
+  | x :: xs ->
+      if f x then
+        x :: filter f xs
+      else
+        filter f xs

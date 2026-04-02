@@ -1,1 +1,2 @@
-let f = function _ -> 42
+let f = function
+  | _ -> 42

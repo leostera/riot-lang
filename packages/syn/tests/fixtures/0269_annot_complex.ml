@@ -1,1 +1,1 @@
-let x = (fun y -> (y : int) + 1 : int -> int)
+let x : int -> int = fun y -> (y: int) + 1

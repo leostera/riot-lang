@@ -1,5 +1,8 @@
 let x =
-  if a then (
-    b;
-    c)
-  else d
+  if a then
+    (
+      b;
+      c
+    )
+  else
+    d

@@ -1,1 +1,3 @@
-let x = if true then ()
+let x =
+  if true then
+    ()

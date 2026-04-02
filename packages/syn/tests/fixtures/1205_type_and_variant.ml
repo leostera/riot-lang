@@ -1,4 +1,5 @@
 type foo = int
-and bar = 
+
+and bar =
   | A of int
   | B of string

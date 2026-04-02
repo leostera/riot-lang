@@ -1,1 +1,2 @@
-let () = obj.field <- 10
+let () =
+  obj.field <- 10

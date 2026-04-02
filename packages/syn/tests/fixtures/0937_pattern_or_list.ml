@@ -1,1 +1,5 @@
-let f x = match x with [] | [ _ ] -> "short" | _ -> "long"
+let f x =
+  match x with
+  | []
+  | [ _ ] -> "short"
+  | _ -> "long"

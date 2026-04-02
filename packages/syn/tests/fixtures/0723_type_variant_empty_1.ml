@@ -1,1 +1,2 @@
-type t = A
+type t =
+  A

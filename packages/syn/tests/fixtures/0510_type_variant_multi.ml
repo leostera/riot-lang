@@ -1,1 +1,5 @@
-type color = Red | Green | Blue | RGB of int * int * int
+type color =
+  Red
+  | Green
+  | Blue
+  | RGB of int * int * int

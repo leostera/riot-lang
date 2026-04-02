@@ -1,1 +1,1 @@
-module WebSocket : module type of Websocket
+module WebSocket: module type of Websocket

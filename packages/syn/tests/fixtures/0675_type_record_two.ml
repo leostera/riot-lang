@@ -1,1 +1,4 @@
-type t = { x : int; y : int }
+type t = {
+  x: int;
+  y: int;
+}

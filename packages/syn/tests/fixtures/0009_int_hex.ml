@@ -1,1 +1,1 @@
-let x = 0xFF
+let x = 0xff

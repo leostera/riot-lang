@@ -1,1 +1,2 @@
-let x = object end
+let x =
+  object end

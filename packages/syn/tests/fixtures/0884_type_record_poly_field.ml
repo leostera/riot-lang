@@ -1,1 +1,3 @@
-type 'a box = { value : 'a }
+type 'a box = {
+  value: 'a;
+}

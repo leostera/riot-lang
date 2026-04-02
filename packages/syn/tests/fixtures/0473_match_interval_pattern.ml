@@ -1,1 +1,4 @@
-let x = match c with 'a' .. 'z' -> true | _ -> false
+let x =
+  match c with
+  | 'a' .. 'z' -> true
+  | _ -> false

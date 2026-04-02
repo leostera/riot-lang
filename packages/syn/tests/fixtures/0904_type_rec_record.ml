@@ -1,1 +1,4 @@
-type node = { value : int; next : node option }
+type node = {
+  value: int;
+  next: node option;
+}

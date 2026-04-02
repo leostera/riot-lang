@@ -6,12 +6,13 @@ text_added_to_pre
 serve_locations_while_translati
 *)
 
-let%foo x = 42
+let x = 42
 
-let%foo _ = ()
+let _ = ()
+
 and _ = ()
 
-let%foo _ = ()
+let _ = ()
 
 (* TEST
  flags = "-dparsetree";

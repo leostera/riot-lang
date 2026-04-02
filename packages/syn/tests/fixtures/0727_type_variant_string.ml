@@ -1,1 +1,2 @@
-type t = Name of string
+type t =
+  Name of string

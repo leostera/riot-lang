@@ -5,46 +5,45 @@ slating_from_old_
 syntax__Filler_text_added_to_pr
 *)
 
-exception Foo [@foo] [@@foo]
-exception Bar of (int[@foo]) [@foo] [@@foo]
+exception Foo
 
-[@@@foo]
+[@foo]
 
-let (x [@foo]) : (unit[@foo]) = () [@foo] [@@foo]
+exception Bar of (int [@foo]) [@foo]
 
-type t = Foo of (t[@foo]) [@foo] [@@foo]
+let (x [@foo]) : (unit [@foo]) = () [@foo] [@@foo]
 
-[@@@foo]
+type t =
+  Foo of (t [@foo]) [@foo]
 
 module M = struct
-  type t = { l : (t[@foo]) [@foo] } [@@foo] [@@foo]
-
+  type t = {
+    l: (t [@foo]);
+  }
   [@@@foo]
 end [@foo]
-[@@foo]
 
 module type S = sig
-  exception Bar of (int[@foo]) [@foo] [@@foo]
+  exception Bar of (int [@foo]) [@foo]
 
   include ((module type of M [@foo]) [@foo] with type t := M.t [@foo]) [@@foo]
-
-  [@@@foo]
 end [@foo]
-[@@foo]
-
-[@@@foo]
 
 module type T = sig
   type t
 end
 
-module _ : T [@foo] = Int
-module _ : (T with type t = int [@foo]) = Int
+module _: T [@foo] = Int
 
-let _ = (module Int : T[@foo])
-let _ = (module Int : T with type t = int[@foo])
+module _: (T with type t = int [@foo]) = Int
 
-let f (x [@foo]) : (unit -> unit[@foo]) = function[@foo]
+let _ =
+  (module Int : T [@foo])
+
+let _ =
+  (module Int : T with type t = int [@foo])
+
+let f (x [@foo]) : (unit -> unit [@foo]) = function
   | (() [@foo]) -> () [@foo]
 
 (* TEST

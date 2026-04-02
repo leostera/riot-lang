@@ -1,1 +1,4 @@
-let x = match lst with [] -> 0 | x :: xs -> x
+let x =
+  match lst with
+  | [] -> 0
+  | x :: xs -> x

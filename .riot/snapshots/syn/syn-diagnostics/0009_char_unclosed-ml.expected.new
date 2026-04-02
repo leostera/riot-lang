@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "' (closing quote)",
+      "fix": "add a closing ' (quote) after the character",
+      "found": {
+        "kind": "char literal",
+        "text": "'a"
+      },
+      "hint": "Character literals must be closed with a single quote '.",
+      "id": "E0018",
+      "name": "unclosed-char-literal"
+    },
+    "span": {
+      "end": 10,
+      "start": 10
+    }
+  }
+]

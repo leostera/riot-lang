@@ -1,1 +1,4 @@
-let x = match [] with [] -> true | _ -> false
+let x =
+  match [] with
+  | [] -> true
+  | _ -> false

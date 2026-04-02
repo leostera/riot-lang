@@ -1,1 +1,4 @@
-type 'a response = Success of 'a | Failure of string | Retry of int
+type 'a response =
+  Success of 'a
+  | Failure of string
+  | Retry of int

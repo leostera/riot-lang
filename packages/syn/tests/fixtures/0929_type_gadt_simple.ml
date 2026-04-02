@@ -1,1 +1,3 @@
-type _ expr = Int : int -> int expr | Bool : bool -> bool expr
+type _ expr =
+  Int: int -> int expr
+  | Bool: bool -> bool expr

@@ -1,1 +1,3 @@
-let x = match lz with (lazy v) -> v
+let x =
+  match lz with
+  | (lazy v) -> v

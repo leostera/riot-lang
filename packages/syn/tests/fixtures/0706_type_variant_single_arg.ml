@@ -1,1 +1,3 @@
-type t = Some of int | None
+type t =
+  Some of int
+  | None

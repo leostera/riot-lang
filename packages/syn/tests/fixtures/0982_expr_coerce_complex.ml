@@ -1,1 +1,1 @@
-let x = (get_obj () : concrete :> abstract)
+let x = (get_obj (): concrete :> abstract)

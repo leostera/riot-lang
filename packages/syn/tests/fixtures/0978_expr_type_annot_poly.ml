@@ -1,1 +1,1 @@
-let id = (fun x -> x : 'a -> 'a)
+let id : 'a -> 'a = fun x -> x
