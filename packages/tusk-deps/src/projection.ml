@@ -22,7 +22,7 @@ let package_id_key = fun (id: Tusk_model.Lockfile.package_id) ->
   registry ^ ":" ^ id.name ^ ":" ^ version
 
 let workspace_package_id_of_package = fun (package: Tusk_model.Package.t) ->
-  Tusk_model.Lockfile.{ registry = None; name = package.name; version = None }
+  Tusk_model.Lockfile.{ registry = None; name = package.name; version = None; sha256 = None }
 
 let find_lock_package_by_id = fun ~(package_id:Tusk_model.Lockfile.package_id) ~(lockfile:Tusk_model.Lockfile.t) ->
   List.find_opt

@@ -11,6 +11,7 @@ type manifest_selection =
 type event =
   | RegistryPackageLookupStarted of { package: string }
   | RegistryPackageLookupFinished of { package: string; latest_version: string }
+  | PackageUpdated of { package: string; from_version: string; to_version: string }
   | ManifestUpdated of { path: Path.t; section: string; operation:
         [
           `Add

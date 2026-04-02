@@ -8,6 +8,7 @@ type package_id = {
   registry: string option;
   name: string;
   version: string option;
+  sha256: string option;
 }
 type dependency = {
   name: string;

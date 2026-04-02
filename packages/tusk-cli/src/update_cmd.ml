@@ -46,6 +46,15 @@ let json_of_event = function
           ("dependency", Data.Json.String dependency)
         ]
       )
+  | Tusk_deps.PackageUpdated { package; from_version; to_version } ->
+      Some (
+        Data.Json.Object [
+          ("type", Data.Json.String "PackageUpdated");
+          ("package", Data.Json.String package);
+          ("from_version", Data.Json.String from_version);
+          ("to_version", Data.Json.String to_version)
+        ]
+      )
   | Tusk_deps.Pm _ -> None
 
 let write_pm_event_json = fun ~session_id kind ->
@@ -74,6 +83,15 @@ let write_event = fun ~mode ~pm_session_id ~seen_registry_updates event ->
       match event with
       | Tusk_deps.RegistryPackageLookupStarted _ -> ()
       | Tusk_deps.RegistryPackageLookupFinished _ -> ()
+      | Tusk_deps.PackageUpdated { package; from_version; to_version } ->
+          out
+            ("    \027[1;32mUpdated\027[0m "
+            ^ package
+            ^ " ("
+            ^ from_version
+            ^ " -> "
+            ^ to_version
+            ^ ")")
       | Tusk_deps.ManifestUpdated _ -> ()
       | Tusk_deps.Pm event -> write_pm_event_human ~session_id:pm_session_id ~seen_registry_updates event
     )

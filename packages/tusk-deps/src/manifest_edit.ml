@@ -35,7 +35,11 @@ let render_section_lines = fun ~section dependencies ->
 
 let is_section_header = fun line ->
   let trimmed = String.trim line in
-  String.length trimmed >= 3 && trimmed.[0] = '[' && trimmed.[String.length trimmed - 1] = ']'
+  match String.length trimmed with
+  | len when len >= 3 ->
+      Char.equal trimmed.[0] '[' && Char.equal trimmed.[len - 1] ']'
+  | _ ->
+      false
 
 let replace_section_lines = fun ~source ~section dependencies ->
   let header = "[" ^ section_name section ^ "]" in

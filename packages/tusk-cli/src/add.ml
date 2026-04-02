@@ -88,6 +88,15 @@ let json_of_event = function
           ("dependency", Data.Json.String dependency)
         ]
       )
+  | Tusk_deps.PackageUpdated { package; from_version; to_version } ->
+      Some (
+        Data.Json.Object [
+          ("type", Data.Json.String "PackageUpdated");
+          ("package", Data.Json.String package);
+          ("from_version", Data.Json.String from_version);
+          ("to_version", Data.Json.String to_version)
+        ]
+      )
   | Tusk_deps.Pm _ -> None
 
 let write_pm_event_json = fun ~session_id kind ->
@@ -118,6 +127,15 @@ let write_event = fun ~mode ~pm_session_id ~seen_registry_updates event ->
           ()
       | Tusk_deps.RegistryPackageLookupFinished _ ->
           ()
+      | Tusk_deps.PackageUpdated { package; from_version; to_version } ->
+          out
+            ("    \027[1;32mUpdated\027[0m "
+            ^ package
+            ^ " ("
+            ^ from_version
+            ^ " -> "
+            ^ to_version
+            ^ ")")
       | Tusk_deps.ManifestUpdated { path; section; operation; dependency } ->
           let verb =
             match operation with
@@ -154,13 +172,16 @@ let run = fun ~workspace matches ->
       let request : Tusk_deps.add_request = Tusk_deps.{ selection; scope; dependency } in
       let pm_session_id = Tusk_model.Session_id.make () in
       let seen_registry_updates = HashSet.create () in
-      Tusk_deps.add
-        ~on_event:(write_event ~mode ~pm_session_id ~seen_registry_updates)
-        ~workspace
-        ~cwd
-        ~request
-        ()
-      |> Result.map_error (fun error -> Failure (Tusk_deps.package_error_message error))
+      (
+        match Tusk_deps.add
+          ~on_event:(write_event ~mode ~pm_session_id ~seen_registry_updates)
+          ~workspace
+          ~cwd
+          ~request
+          () with
+        | Ok () -> Ok ()
+        | Error error -> fail (AddFailed error)
+      )
   | (Error err, _, _, _)
   | (_, Error err, _, _)
   | (_, _, Error err, _) ->

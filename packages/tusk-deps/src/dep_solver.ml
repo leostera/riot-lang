@@ -31,7 +31,7 @@ type resolution_state = {
 }
 
 let package_id_of_local_package = fun (pkg: Tusk_model.Package.t) ->
-  Tusk_model.Lockfile.{ registry = None; name = pkg.name; version = None }
+  Tusk_model.Lockfile.{ registry = None; name = pkg.name; version = None; sha256 = None }
 
 let required_by_local_package = fun (pkg: Tusk_model.Package.t) ->
   Tusk_model.Pm_error.{ package = pkg.name; path = Some pkg.path }
@@ -187,7 +187,7 @@ let latest_release_of_document = fun (document: Pkgs_ml.Sparse_index.package_doc
 let lock_dependency_of_local_dependency = fun (dep: Tusk_model.Package.dependency) ->
   Tusk_model.Lockfile.{
     name = dep.name;
-    package = { registry = None; name = dep.name; version = None }
+    package = { registry = None; name = dep.name; version = None; sha256 = None }
   }
 
 let merge_lock_packages = fun packages ->
@@ -346,7 +346,8 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by (
                         Tusk_model.Lockfile.{
                           registry = Some registry_name;
                           name = document.name;
-                          version = Some release.version
+                          version = Some release.version;
+                          sha256 = Some release.artifact_sha256
                         } in
                       let state = add_resolving ~state ~key ~package_id in
                       let rec resolve_release_dependencies ~(state:resolution_state) (

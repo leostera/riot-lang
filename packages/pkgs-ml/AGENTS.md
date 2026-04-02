@@ -11,6 +11,7 @@ Tusk-specific workflow policy.
 3. Prefer small, composable modules that `tusk-deps` can build on.
 4. Validate each slice with focused build and package tests.
 5. Use Riot-owned archive and compression APIs for source materialization instead of shelling out to external `tar` commands.
+6. Materialization must validate that `src/<pkg>/<version>/tusk.toml` exists before treating a package as present. Legacy repo-snapshot archives should be normalized to package-root layout during extraction instead of leaking nested repo roots into the cache.
 
 ## Validate
 

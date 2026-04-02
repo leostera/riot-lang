@@ -10,6 +10,7 @@ type package_id = {
   registry: string option;
   name: string;
   version: string option;
+  sha256: string option;
 }
 
 type dependency = {
@@ -43,6 +44,11 @@ let package_id_to_toml = fun (id: package_id) ->
     | Some version -> ("version", Toml.String version) :: fields
     | None -> fields
   in
+  let fields =
+    match id.sha256 with
+    | Some sha256 -> ("sha256", Toml.String sha256) :: fields
+    | None -> fields
+  in
   Toml.Table (List.rev fields)
 
 let package_id_of_toml = fun value ->
@@ -60,7 +66,12 @@ let package_id_of_toml = fun value ->
             | Some (Toml.String version) -> Some version
             | _ -> None
           in
-          Ok { registry; name; version }
+          let sha256 =
+            match List.assoc_opt "sha256" fields with
+            | Some (Toml.String sha256) -> Some sha256
+            | _ -> None
+          in
+          Ok { registry; name; version; sha256 }
       | _ -> Error "lockfile package id is missing required field 'name'"
     )
   | _ -> Error "lockfile package id must be a table"
@@ -78,7 +89,12 @@ let package_id_of_fields = fun fields ->
         | Some (Toml.String version) -> Some version
         | _ -> None
       in
-      Ok { registry; name; version }
+      let sha256 =
+        match List.assoc_opt "sha256" fields with
+        | Some (Toml.String sha256) -> Some sha256
+        | _ -> None
+      in
+      Ok { registry; name; version; sha256 }
   | _ -> Error "lockfile package is missing required field 'name'"
 
 let provenance_to_toml = fun provenance ->
@@ -117,15 +133,70 @@ let provenance_of_toml = fun value ->
   | _ -> Error "lockfile provenance must be a table"
 
 let dependency_to_toml = fun (dep: dependency) ->
-  Toml.Table [ ("name", Toml.String dep.name); ("package", package_id_to_toml dep.package); ]
+  let fields = [ ("name", Toml.String dep.name) ] in
+  let fields =
+    if String.equal dep.package.name dep.name then
+      fields
+    else
+      ("package_name", Toml.String dep.package.name) :: fields
+  in
+  let fields =
+    match dep.package.version with
+    | Some version -> ("version", Toml.String version) :: fields
+    | None -> fields
+  in
+  let fields =
+    match dep.package.sha256 with
+    | Some sha256 -> ("sha256", Toml.String sha256) :: fields
+    | None -> fields
+  in
+  Toml.Table (List.rev fields)
 
 let dependency_of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match List.assoc_opt "name" fields, List.assoc_opt "package" fields with
-      | Some (Toml.String name), Some package_value -> package_id_of_toml package_value
-      |> Result.map (fun package -> { name; package })
-      | _ -> Error "lockfile dependency must contain 'name' and 'package'"
+      match List.assoc_opt "name" fields with
+      | Some (Toml.String name) -> (
+          match List.assoc_opt "package" fields with
+          | Some package_value ->
+              package_id_of_toml package_value
+              |> Result.map (fun package -> { name; package })
+          | None ->
+              let package_name =
+                match List.assoc_opt "package_name" fields with
+                | Some (Toml.String package_name) -> package_name
+                | _ -> name
+              in
+              let registry =
+                match List.assoc_opt "registry" fields with
+                | Some (Toml.String registry) -> Some registry
+                | _ ->
+                    if List.mem_assoc "version" fields || List.mem_assoc "sha256" fields then
+                      Some "pkgs.ml"
+                    else
+                      None
+              in
+              let version =
+                match List.assoc_opt "version" fields with
+                | Some (Toml.String version) -> Some version
+                | _ -> None
+              in
+              let sha256 =
+                match List.assoc_opt "sha256" fields with
+                | Some (Toml.String sha256) -> Some sha256
+                | _ -> None
+              in
+              Ok {
+                name;
+                package = {
+                  name = package_name;
+                  registry;
+                  version;
+                  sha256;
+                };
+              }
+        )
+      | _ -> Error "lockfile dependency must contain 'name'"
     )
   | _ -> Error "lockfile dependency must be a table"
 
@@ -161,6 +232,11 @@ let package_to_toml = fun (pkg: package) ->
   let fields =
     match pkg.id.version with
     | Some version -> ("version", Toml.String version) :: fields
+    | None -> fields
+  in
+  let fields =
+    match pkg.id.sha256 with
+    | Some sha256 -> ("sha256", Toml.String sha256) :: fields
     | None -> fields
   in
   let fields =
@@ -261,6 +337,11 @@ let render_package_id = fun (id: package_id) ->
     | Some version -> ("version", render_string version) :: fields
     | None -> fields
   in
+  let fields =
+    match id.sha256 with
+    | Some sha256 -> ("sha256", render_string sha256) :: fields
+    | None -> fields
+  in
   "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
 
 let render_provenance = fun provenance ->
@@ -278,7 +359,24 @@ let render_provenance = fun provenance ->
   ^ " }"
 
 let render_dependency = fun (dep: dependency) ->
-  "{ name = " ^ render_string dep.name ^ ", package = " ^ render_package_id dep.package ^ " }"
+  let fields = [ ("name", render_string dep.name) ] in
+  let fields =
+    if String.equal dep.package.name dep.name then
+      fields
+    else
+      ("package_name", render_string dep.package.name) :: fields
+  in
+  let fields =
+    match dep.package.version with
+    | Some version -> ("version", render_string version) :: fields
+    | None -> fields
+  in
+  let fields =
+    match dep.package.sha256 with
+    | Some sha256 -> ("sha256", render_string sha256) :: fields
+    | None -> fields
+  in
+  "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
 
 let render_dependency_list = fun deps ->
   "[" ^ String.concat ", " (List.map render_dependency deps) ^ "]"
@@ -292,6 +390,10 @@ let render_package = fun (pkg: package) ->
       ); (
         match pkg.id.version with
         | Some version -> Some ("version = " ^ render_string version)
+        | None -> None
+      ); (
+        match pkg.id.sha256 with
+        | Some sha256 -> Some ("sha256 = " ^ render_string sha256)
         | None -> None
       ); (
         match pkg.root with
@@ -316,19 +418,29 @@ module Tests = struct
       format_version = 1;
       packages =
         [ {
-            id = { registry = None; name = "app"; version = None };
+            id = { registry = None; name = "app"; version = None; sha256 = None };
             root = Some (Path.v "packages/app");
             provenance = Workspace;
             dependencies = [
               {
                 name = "std";
-                package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" }
+                package = {
+                  registry = Some "pkgs.ml";
+                  name = "std";
+                  version = Some "0.1.0";
+                  sha256 = Some "deadbeef";
+                }
               };
             ];
             build_dependencies = [];
             dev_dependencies = [];
           }; {
-            id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
+            id = {
+              registry = Some "pkgs.ml";
+              name = "std";
+              version = Some "0.1.0";
+              sha256 = Some "deadbeef";
+            };
             root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
@@ -337,8 +449,9 @@ module Tests = struct
           }; ];
     }
     in
+    let rendered = to_string lockfile in
     let parsed =
-      match lockfile |> to_string |> Toml.parse with
+      match rendered |> Toml.parse with
       | Ok toml -> Ok toml
       | Error err -> Error ("expected generated lockfile TOML to parse: " ^ Toml.error_to_string err)
     in
@@ -351,6 +464,11 @@ module Tests = struct
               && List.length parsed.packages = 2
               && (List.hd parsed.packages).id.name = "app"
               && (List.nth parsed.packages 1).id.version = Some "0.1.0"
+              && (List.nth parsed.packages 1).id.sha256 = Some "deadbeef"
+              && String.contains
+                rendered
+                {|dependencies = [{ name = "std", version = "0.1.0", sha256 = "deadbeef" }]|}
+                && not (String.contains rendered "package = {")
             then
               Ok ()
             else

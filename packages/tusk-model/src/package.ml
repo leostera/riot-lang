@@ -982,6 +982,12 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
 let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () : sources =
   let excluded_relpath_strings = excluded_relpaths |> List.map Path.to_string in
   let should_skip_source_entry filename = String.starts_with ~prefix:"." (Path.basename filename) in
+  let should_skip_test_support_path rel_path =
+    let path_str = Path.to_string rel_path in
+    String.starts_with ~prefix:"tests/fixtures/" path_str
+    || String.starts_with ~prefix:"tests/generated/" path_str
+    || String.starts_with ~prefix:"tests/diagnostics/" path_str
+  in
   let rec scan_dir_recursive ~from_dir ~rel_path =
     match Fs.read_dir from_dir with
     | Error _ -> []
@@ -997,7 +1003,10 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () : sources =
               match Fs.is_dir abs_path with
               | Ok true -> scan_dir_recursive ~from_dir:abs_path ~rel_path:rel_path_full
               | Ok false ->
-                  if List.mem (Path.to_string rel_path_full) excluded_relpath_strings then
+                  if
+                    List.mem (Path.to_string rel_path_full) excluded_relpath_strings
+                    || should_skip_test_support_path rel_path_full
+                  then
                     []
                   else
                     [ rel_path_full ]
@@ -1884,19 +1893,29 @@ ppx = {}
       ~relative_path:(Path.v "packages/app")
     |> Result.expect ~msg:"expected package manifest" in
     let lock_package : Lockfile.package = {
-      id = { registry = None; name = "app"; version = None };
+      id = { registry = None; name = "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [
         {
           name = "std";
-          package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" }
+          package = {
+            registry = Some "pkgs.ml";
+            name = "std";
+            version = Some "0.1.0";
+            sha256 = Some "deadbeef";
+          }
         };
       ];
       build_dependencies = [
         {
           name = "ppx";
-          package = { registry = Some "pkgs.ml"; name = "ppx"; version = Some "1.2.3" }
+          package = {
+            registry = Some "pkgs.ml";
+            name = "ppx";
+            version = Some "1.2.3";
+            sha256 = Some "cafebabe";
+          }
         };
       ];
       dev_dependencies = [];
@@ -1941,7 +1960,7 @@ std = {}
       ~relative_path:(Path.v "packages/app")
     |> Result.expect ~msg:"expected package manifest" in
     let lock_package : Lockfile.package = {
-      id = { registry = None; name = "app"; version = None };
+      id = { registry = None; name = "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [];
@@ -1983,7 +2002,7 @@ std = {}
     }
     in
     let lock_package : Lockfile.package = {
-      id = { registry = None; name = "app"; version = None };
+      id = { registry = None; name = "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [];
