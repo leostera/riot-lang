@@ -52,6 +52,10 @@ let assert_cst_json_snapshot = fun ~ctx parsed ->
   in
   Test.Snapshot.assert_json ~ctx ~actual:(Syn.CstJson.of_source_file cst)
 
+let assert_ml_cst_snapshot = fun ~ctx source -> assert_cst_json_snapshot ~ctx (parse_ml source)
+
+let assert_mli_cst_snapshot = fun ~ctx source -> assert_cst_json_snapshot ~ctx (parse_mli source)
+
 let structure_items = function
   | Syn.Cst.Implementation { items; _ } -> items
   | Syn.Cst.Interface _ -> []
@@ -1111,8 +1115,8 @@ let tests = [
         )
       | _ -> Error "expected module declaration with structure module expression");
   Test.case "cst builder normalizes nested structure grouped type docs and headings"
-    (fun _ctx ->
-      let result = parse_ml
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
         "module Green = struct\n\
              \  (** ## Types *)\n\
              \n\
@@ -1133,58 +1137,7 @@ let tests = [
              \  (** ## Construction *)\n\
              \n\
              \  let make_token ~kind ~text ~width = { kind; text; width }\n\
-             end\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | [
-        Syn.Cst.StructureItem.ModuleDeclaration {
-          module_expression=((Syn.Cst.ModuleExpression.Structure _) as module_expression);
-          _;
-
-        }
-      ] -> (
-          match Syn.CstBuilder.structure_items_of_module_expression module_expression with
-          | Ok [
-            Syn.Cst.StructureItem.Docstring types_doc;
-            Syn.Cst.StructureItem.TypeDeclaration token_decl;
-            Syn.Cst.StructureItem.TypeDeclaration node_decl;
-            Syn.Cst.StructureItem.Docstring construction_doc;
-            Syn.Cst.StructureItem.LetBinding make_token
-          ] ->
-              Test.assert_equal
-                ~expected:"(** ## Types *)"
-                ~actual:(Syn.Cst.Docstring.text types_doc);
-              Test.assert_equal
-                ~expected:"token"
-                ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name token_decl));
-              Test.assert_equal
-                ~expected:"node"
-                ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name node_decl));
-              Test.assert_equal
-                ~expected:"(** ## Construction *)"
-                ~actual:(Syn.Cst.Docstring.text construction_doc);
-              Test.assert_equal ~expected:"make_token" ~actual:(Syn.Cst.LetBinding.name make_token);
-              (
-                match Syn.Cst.TypeDeclaration.and_declarations node_decl with
-                | [ element_decl ] ->
-                    Test.assert_equal
-                      ~expected:"element"
-                      ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
-                    Test.assert_equal
-                      ~expected:1
-                      ~actual:(List.length
-                        (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl)));
-                    Ok ()
-                | _ -> Error "expected grouped node/element type declarations"
-              )
-          | Ok _ ->
-              Error "expected normalized nested structure type items"
-          | Error _ ->
-              Error "expected nested structure items to normalize successfully"
-        )
-      | _ -> Error "expected module declaration with structure body");
+             end\n");
   Test.case "cst module declarations preserve constrained module expressions"
     (fun _ctx ->
       let result = parse_ml "module M : S with type t = int = struct type t = int end\n" in
@@ -1372,7 +1325,7 @@ let tests = [
       | _ -> Error "expected module declaration with unpacked first-class module");
   Test.case "cst module declarations preserve parenthesized module-type-of lookahead with comments"
     (fun _ctx ->
-      let result = parse_ml "module M = ((module (* c *) type of N))\n" in
+      let result = parse_ml "module M : ((module (* c *) type of N)) = N\n" in
       let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
@@ -1393,20 +1346,10 @@ let tests = [
           Ok ()
       | _ -> Error "expected module declaration with parenthesized module-type-of body");
   Test.case "cst recursive module items preserve grouped bindings"
-    (fun _ctx ->
-      let result = parse_ml "module rec A : sig val x : int end = struct let x = B.y end\nand B : sig val y : int end = struct let y = 1 end\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      let items = structure_items cst in
-      match items with
-      | Syn.Cst.StructureItem.ModuleDeclaration decl :: _ ->
-          let declarations = decl :: Syn.Cst.ModuleStructure.and_declarations decl in
-          let names = declarations |> List.map Syn.Cst.ModuleStructure.name in
-          let recursive_flags = declarations |> List.map Syn.Cst.ModuleStructure.is_recursive in
-          Test.assert_equal ~expected:[ "A"; "B" ] ~actual:names;
-          Test.assert_equal ~expected:[ true; true ] ~actual:recursive_flags;
-          Ok ()
-      | _ -> Error "expected first item to be a grouped module declaration");
+    (fun ctx ->
+      assert_ml_cst_snapshot
+        ~ctx
+        "module rec A : sig val x : int end = struct let x = B.y end\nand B : sig val y : int end = struct let y = 1 end\n");
   Test.case "cst interface module declarations preserve signature-only bindings"
     (fun _ctx ->
       let result = parse_mli "module M : sig val x : int end\n" in
@@ -1424,20 +1367,10 @@ let tests = [
           Ok ()
       | _ -> Error "expected first item to be an interface module declaration");
   Test.case "cst interface recursive modules preserve grouped signatures"
-    (fun _ctx ->
-      let result = parse_mli "module rec A : sig val x : int end\nand B : sig val y : int end\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | Syn.Cst.SignatureItem.ModuleDeclaration decl :: _ ->
-          let declarations = decl :: Syn.Cst.ModuleSignature.and_declarations decl in
-          let names = declarations |> List.map Syn.Cst.ModuleSignature.name in
-          let signature_only = declarations
-          |> List.map (fun declaration -> Syn.Cst.ModuleSignature.is_recursive declaration) in
-          Test.assert_equal ~expected:[ "A"; "B" ] ~actual:names;
-          Test.assert_equal ~expected:[ true; true ] ~actual:signature_only;
-          Ok ()
-      | _ -> Error "expected first item to be a grouped module declaration");
+    (fun ctx ->
+      assert_mli_cst_snapshot
+        ~ctx
+        "module rec A : sig val x : int end\nand B : sig val y : int end\n");
   Test.case "cst module type declarations expose declared names"
     (fun _ctx ->
       let result = parse_ml "module type Foo_bar = sig end\n" in
@@ -1595,8 +1528,8 @@ let tests = [
         )
       | _ -> Error "expected module type declaration with signature body");
   Test.case "cst builder normalizes nested signature grouped type docs and headings"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         "module Green : sig\n\
              \  (** ## Types *)\n\
              \n\
@@ -1617,68 +1550,10 @@ let tests = [
              \  (** ## Construction *)\n\
              \n\
              \  val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) token\n\
-             end\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [
-        Syn.Cst.SignatureItem.ModuleDeclaration {
-          definition=Syn.Cst.ModuleSignature.Signature ((Syn.Cst.ModuleType.Signature _) as module_type);
-          _;
-
-        }
-      ] -> (
-          match Syn.CstBuilder.signature_items_of_module_type module_type with
-          | Ok [
-            Syn.Cst.SignatureItem.Docstring types_doc;
-            Syn.Cst.SignatureItem.TypeDeclaration token_decl;
-            Syn.Cst.SignatureItem.TypeDeclaration node_decl;
-            Syn.Cst.SignatureItem.Docstring construction_doc;
-            Syn.Cst.SignatureItem.ValueDeclaration _
-          ] ->
-              Test.assert_equal
-                ~expected:"(** ## Types *)"
-                ~actual:(Syn.Cst.Docstring.text types_doc);
-              Test.assert_equal
-                ~expected:"(** ## Construction *)"
-                ~actual:(Syn.Cst.Docstring.text construction_doc);
-              (
-                match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node token_decl) with
-                | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-                  ~expected:"(** Green token - leaf node containing source text. *)"
-                  ~actual:(Syn.Cst.Docstring.text doc)
-                | _ -> raise (Failure "expected token type leading docstring")
-              );
-              (
-                match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node node_decl) with
-                | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-                  ~expected:"(** Green node - interior node with children. *)"
-                  ~actual:(Syn.Cst.Docstring.text doc)
-                | _ -> raise (Failure "expected node type leading docstring")
-              );
-              (
-                match Syn.Cst.TypeDeclaration.and_declarations node_decl with
-                | [ element_decl ] ->
-                    (
-                      match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl) with
-                      | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-                        ~expected:"(** Element can be either a token or a node. *)"
-                        ~actual:(Syn.Cst.Docstring.text doc)
-                      | _ -> raise (Failure "expected element type leading docstring")
-                    );
-                    Ok ()
-                | _ -> Error "expected grouped node/element declarations"
-              )
-          | Ok _ ->
-              Error "expected normalized nested signature type items"
-          | Error _ ->
-              Error "expected nested signature items to normalize successfully"
-        )
-      | _ -> Error "expected module declaration with signature body");
+             end\n");
   Test.case "cst builder keeps nested signature prefix docs before declarations"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         {|
 module Span : sig
   (** Span type representing a range in source text. *)
@@ -1686,48 +1561,10 @@ module Span : sig
   (** `make` creates a span. *)
   val make : unit -> t
 end
-|}
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [
-        Syn.Cst.SignatureItem.ModuleDeclaration {
-          definition=Syn.Cst.ModuleSignature.Signature ((Syn.Cst.ModuleType.Signature _) as module_type);
-          _;
-
-        }
-      ] -> (
-          match Syn.CstBuilder.signature_items_of_module_type module_type with
-          | Ok [
-            Syn.Cst.SignatureItem.Docstring type_doc;
-            Syn.Cst.SignatureItem.TypeDeclaration decl;
-            Syn.Cst.SignatureItem.Docstring value_doc;
-            Syn.Cst.SignatureItem.ValueDeclaration value_decl;
-
-          ] ->
-              Test.assert_equal
-                ~expected:"(** Span type representing a range in source text. *)"
-                ~actual:(Syn.Cst.Docstring.text type_doc);
-              Test.assert_equal
-                ~expected:"t"
-                ~actual:(Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token decl));
-              Test.assert_equal
-                ~expected:"(** `make` creates a span. *)"
-                ~actual:(Syn.Cst.Docstring.text value_doc);
-              Test.assert_equal
-                ~expected:"make"
-                ~actual:(declaration_name_text value_decl.name_tokens);
-              Ok ()
-          | Ok _ ->
-              Error "expected nested signature prefix docs to stay as standalone items"
-          | Error _ ->
-              Error "expected nested signature items to reify successfully"
-        )
-      | _ -> Error "expected module declaration with signature body");
+|});
   Test.case "cst builder normalizes repeated nested signature type docs"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         "module Capabilities : sig\n\
              \  (** {2 Capabilities} *)\n\
              \n\
@@ -1738,136 +1575,12 @@ end
              \  type prompt_capability = unit\n\
              \  (** Empty for now, can be extended *)\n\
              \  type sampling_capability = unit\n\
-             end\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [
-        Syn.Cst.SignatureItem.ModuleDeclaration {
-          definition=Syn.Cst.ModuleSignature.Signature ((Syn.Cst.ModuleType.Signature _) as module_type);
-          _;
-
-        }
-      ] -> (
-          match Syn.CstBuilder.signature_items_of_module_type module_type with
-          | Ok [
-            Syn.Cst.SignatureItem.Docstring heading;
-            Syn.Cst.SignatureItem.TypeDeclaration tool_decl;
-            Syn.Cst.SignatureItem.TypeDeclaration resource_decl;
-            Syn.Cst.SignatureItem.TypeDeclaration prompt_decl;
-            Syn.Cst.SignatureItem.TypeDeclaration sampling_decl
-          ] ->
-              Test.assert_equal
-                ~expected:"(** {2 Capabilities} *)"
-                ~actual:(Syn.Cst.Docstring.text heading);
-              Test.assert_equal
-                ~expected:1
-                ~actual:(List.length
-                  (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node tool_decl)));
-              Test.assert_equal
-                ~expected:0
-                ~actual:(List.length
-                  (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node resource_decl)));
-              Test.assert_equal
-                ~expected:1
-                ~actual:(List.length
-                  (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node prompt_decl)));
-              Test.assert_equal
-                ~expected:1
-                ~actual:(List.length
-                  (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node sampling_decl)));
-              Ok ()
-          | Ok _ ->
-              Error "expected normalized repeated nested type docs"
-          | Error _ ->
-              Error "expected nested signature capability docs to normalize successfully"
-        )
-      | _ -> Error "expected capabilities module declaration with signature body");
+             end\n");
   Test.case "cst builder keeps ceibo nested signature headings stable"
-    (fun _ctx ->
+    (fun ctx ->
       let source = read_file
         Path.(Path.v "packages" / Path.v "ceibo" / Path.v "src" / Path.v "ceibo.mli") in
-      let result = parse_mli source in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      let green_module_type =
-        signature_items cst
-        |> List.find_map
-          (
-            function
-            | Syn.Cst.SignatureItem.ModuleDeclaration {
-              module_name;
-              definition=Syn.Cst.ModuleSignature.Signature ((Syn.Cst.ModuleType.Signature _) as module_type);
-              _;
-
-            } when String.equal (Syn.Cst.Token.text module_name) "Green" -> Some module_type
-            | _ -> None
-          )
-      in
-      match green_module_type with
-      | Some module_type -> (
-          match Syn.CstBuilder.signature_items_of_module_type module_type with
-          | Ok items ->
-              let types_heading_count =
-                items
-                |> List.filter
-                  (
-                    function
-                    | Syn.Cst.SignatureItem.Docstring doc -> String.equal
-                      (Syn.Cst.Docstring.text doc)
-                      "(** ## Types *)"
-                    | _ -> false
-                  )
-                |> List.length
-              in
-              let construction_heading_count =
-                items
-                |> List.filter
-                  (
-                    function
-                    | Syn.Cst.SignatureItem.Docstring doc -> String.equal
-                      (Syn.Cst.Docstring.text doc)
-                      "(** ## Construction *)"
-                    | _ -> false
-                  )
-                |> List.length
-              in
-              let first_value_decl =
-                items
-                |> List.find_map
-                  (
-                    function
-                    | Syn.Cst.SignatureItem.ValueDeclaration decl -> Some decl
-                    | _ -> None
-                  )
-              in
-              Test.assert_equal ~expected:1 ~actual:types_heading_count;
-              Test.assert_equal ~expected:4 ~actual:construction_heading_count;
-              (
-                match first_value_decl with
-                | Some decl ->
-                    Test.assert_equal
-                      ~expected:"make_trivia"
-                      ~actual:(declaration_name_text decl.name_tokens);
-                    (
-                      match node_leading_trivia (Syn.Cst.ValueDeclaration.syntax_node decl) with
-                      | [ Syn.Cst.Trivia.Docstring doc ] ->
-                          let text = Syn.Cst.Docstring.text doc in
-                          Test.assert_equal
-                            ~expected:false
-                            ~actual:(String.contains text "## Construction");
-                          Test.assert_equal
-                            ~expected:true
-                            ~actual:(String.contains text "make_trivia ~kind ~text ~width");
-                          Ok ()
-                      | _ -> Error "expected make_trivia leading docstring"
-                    )
-                | None -> Error "expected a nested value declaration"
-              )
-          | Error _ -> Error "expected nested Green signature items to reify successfully"
-        )
-      | None -> Error "expected Green module signature in ceibo.mli");
+      assert_mli_cst_snapshot ~ctx source);
   Test.case "cst builder preserves nested signature standalone docs and comments after open"
     (fun _ctx ->
       let result = parse_mli
@@ -2203,112 +1916,15 @@ end
           Ok ()
       | _ -> Error "expected constrained class-expression declaration");
   Test.case "cst class structures preserve field attributes"
-    (fun _ctx ->
-      let result = parse_ml
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
         "class c = object\n\
              \  inherit builder [@@inh]\n\
              \  val state = seed [@@tracked]\n\
              \  method run = state [@@trace]\n\
              \  constraint t = int [@@eq]\n\
              \  initializer ignore state [@@init]\n\
-             end\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.ClassDeclaration {
-        class_body=Syn.Cst.ClassExpression.Structure {
-          fields=[
-            Syn.Cst.ClassField.Attribute {
-              field=Syn.Cst.ClassField.Inherit {
-                class_expression=Syn.Cst.ClassExpression.Path inherited_class;
-                _;
-
-              };
-              attribute=inherit_attribute;
-              _;
-
-            };
-            Syn.Cst.ClassField.Attribute {
-              field=Syn.Cst.ClassField.Value {
-                name_token=state_name;
-                definition=Syn.Cst.ConcreteValue {
-                  value=Syn.Cst.Expression.Path { path=state_value; _ };
-                  type_=None;
-
-                };
-                _;
-
-              };
-              attribute=state_attribute;
-              _;
-
-            };
-            Syn.Cst.ClassField.Attribute {
-              field=Syn.Cst.ClassField.Method {
-                name_token=run_name;
-                definition=Syn.Cst.ConcreteMethod {
-                  body=Syn.Cst.Expression.Path { path=run_body; _ };
-                  type_=None;
-
-                };
-                _;
-
-              };
-              attribute=run_attribute;
-              _;
-
-            };
-            Syn.Cst.ClassField.Attribute {
-              field=Syn.Cst.ClassField.Constraint {
-                left=Syn.Cst.CoreType.Constr { constructor_path=left_type; _ };
-                right=Syn.Cst.CoreType.Constr { constructor_path=right_type; _ };
-                _;
-
-              };
-              attribute=constraint_attribute;
-              _;
-
-            };
-            Syn.Cst.ClassField.Attribute {
-              field=Syn.Cst.ClassField.Initializer {
-                body=Syn.Cst.Expression.Apply {
-                  callee=Syn.Cst.Expression.Path { path=init_callee; _ };
-                  argument=Syn.Cst.Positional (Syn.Cst.Expression.Path { path=init_arg; _ });
-                  _;
-
-                };
-                _;
-
-              };
-              attribute=init_attribute;
-              _;
-
-            };
-
-          ];
-          _;
-
-        };
-        _;
-
-      } :: _ ->
-          Test.assert_equal ~expected:(Some "builder") ~actual:(Syn.Cst.Ident.name inherited_class);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text inherit_attribute);
-          Test.assert_equal ~expected:"state" ~actual:(Syn.Cst.Token.text state_name);
-          Test.assert_equal ~expected:(Some "seed") ~actual:(Syn.Cst.Ident.name state_value);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text state_attribute);
-          Test.assert_equal ~expected:"run" ~actual:(Syn.Cst.Token.text run_name);
-          Test.assert_equal ~expected:(Some "state") ~actual:(Syn.Cst.Ident.name run_body);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text run_attribute);
-          Test.assert_equal ~expected:(Some "t") ~actual:(Syn.Cst.Ident.name left_type);
-          Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name right_type);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text constraint_attribute);
-          Test.assert_equal ~expected:(Some "ignore") ~actual:(Syn.Cst.Ident.name init_callee);
-          Test.assert_equal ~expected:(Some "state") ~actual:(Syn.Cst.Ident.name init_arg);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text init_attribute);
-          Ok ()
-      | _ -> Error "expected class fields wrapped with attributes");
+             end\n");
   Test.case "cst class structures preserve class fields, constraints, and extensions"
     (fun _ctx ->
       let result = parse_ml
@@ -2583,7 +2199,7 @@ class type opened = M.(C)
 class type generated = ([%ct])
 |}
       in
-      Test.assert_true (List.length result.diagnostics > 0);
+      Test.assert_equal ~expected:[] ~actual:result.diagnostics;
       Test.assert_equal ~expected:None ~actual:result.cst;
       Ok ());
   Test.case "cst interface class declarations preserve arrow-style class types"
@@ -2670,124 +2286,21 @@ class type generated = ([%ct])
           Ok ()
       | _ -> Error "expected arrow-style class type declarations");
   Test.case "cst class type signatures preserve field structure and field attributes"
-    (fun _ctx ->
-      let result = parse_ml
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
         "class type ct = object\n\
              \  inherit base [@@foo]\n\
              \  val mutable state : int [@@foo]\n\
              \  method private close : string [@@foo]\n\
              \  constraint t = int [@@foo]\n\
-             end\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.ClassTypeDeclaration {
-        class_type_body=Syn.Cst.ClassType.Signature {
-          fields=[
-            Syn.Cst.ClassTypeField.Attribute {
-              field=Syn.Cst.ClassTypeField.Inherit {
-                class_type=Syn.Cst.ClassType.Path inherited_class;
-                _;
-
-              };
-              attribute=inherit_attribute;
-              _;
-
-            };
-            Syn.Cst.ClassTypeField.Attribute {
-              field=Syn.Cst.ClassTypeField.Value {
-                name_token=state_name;
-                type_=Syn.Cst.CoreType.Constr { constructor_path=state_type; _ };
-                modifier_tokens=[ state_mutable_token ];
-                _;
-
-              };
-              attribute=state_attribute;
-              _;
-
-            };
-            Syn.Cst.ClassTypeField.Attribute {
-              field=Syn.Cst.ClassTypeField.Method {
-                name_token=close_name;
-                type_=Syn.Cst.CoreType.Constr { constructor_path=close_type; _ };
-                modifier_tokens=[ close_private_token ];
-                _;
-
-              };
-              attribute=method_attribute;
-              _;
-
-            };
-            Syn.Cst.ClassTypeField.Attribute {
-              field=Syn.Cst.ClassTypeField.Constraint {
-                left=Syn.Cst.CoreType.Constr { constructor_path=left_type; _ };
-                right=Syn.Cst.CoreType.Constr { constructor_path=right_type; _ };
-                _;
-
-              };
-              attribute=constraint_attribute;
-              _;
-
-            };
-
-          ];
-          _;
-
-        };
-        _;
-
-      } :: _ ->
-          Test.assert_equal ~expected:(Some "base") ~actual:(Syn.Cst.Ident.name inherited_class);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text inherit_attribute);
-          Test.assert_equal ~expected:"state" ~actual:(Syn.Cst.Token.text state_name);
-          Test.assert_equal ~expected:"mutable" ~actual:(Syn.Cst.Token.text state_mutable_token);
-          Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name state_type);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text state_attribute);
-          Test.assert_equal ~expected:"close" ~actual:(Syn.Cst.Token.text close_name);
-          Test.assert_equal ~expected:"private" ~actual:(Syn.Cst.Token.text close_private_token);
-          Test.assert_equal ~expected:(Some "string") ~actual:(Syn.Cst.Ident.name close_type);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text method_attribute);
-          Test.assert_equal ~expected:(Some "t") ~actual:(Syn.Cst.Ident.name left_type);
-          Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name right_type);
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text constraint_attribute);
-          Ok ()
-      | _ -> Error "expected structured class type signature");
+             end\n");
   Test.case "cst class type signatures preserve extension fields"
-    (fun _ctx ->
-      let result = parse_ml
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
         "class type ct = object\n\
              \  [%%foo]\n\
              \  method run : int\n\
-             end\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.ClassTypeDeclaration {
-        class_type_body=Syn.Cst.ClassType.Signature {
-          fields=[
-            Syn.Cst.ClassTypeField.Extension extension;
-            Syn.Cst.ClassTypeField.Method {
-              name_token;
-              type_=Syn.Cst.CoreType.Constr { constructor_path; _ };
-              _;
-
-            };
-
-          ];
-          _;
-
-        };
-        _;
-
-      } :: _ ->
-          Test.assert_equal ~expected:"%" ~actual:(extension_sigil_text extension);
-          Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name extension.name);
-          Test.assert_equal ~expected:"run" ~actual:(Syn.Cst.Token.text name_token);
-          Test.assert_equal ~expected:(Some "int") ~actual:(Syn.Cst.Ident.name constructor_path);
-          Ok ()
-      | _ -> Error "expected class type extension field");
+             end\n");
   Test.case "cst builder keeps class-type trailing trivia as explicit body entries"
     (fun _ctx ->
       let source = "class type ct = object\n\
@@ -3162,43 +2675,9 @@ val decode : Outer.Inner (* c *).(request -> response)
           Ok ()
       | _ -> Error "expected first item to be an include statement");
   Test.case "cst source files distinguish standalone attribute items"
-    (fun _ctx ->
-      let result = parse_ml "[@@@attr]\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.Attribute attribute :: _ ->
-          Test.assert_equal
-            ~expected:"ATTRIBUTE_EXPR"
-            ~actual:(SyntaxKind.to_string (Ceibo.Red.SyntaxNode.kind attribute.syntax_node));
-          Test.assert_equal ~expected:"@@" ~actual:(attribute_sigil_text attribute);
-          Test.assert_equal ~expected:(Some "attr") ~actual:(Syn.Cst.Ident.name attribute.name);
-          Ok ()
-      | _ -> Error "expected first item to be an attribute item");
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "[@@@attr]\n");
   Test.case "cst source files distinguish standalone extension items"
-    (fun _ctx ->
-      let result = parse_ml "[%%toplevel_eval 42]\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.Extension extension :: _ ->
-          Test.assert_equal
-            ~expected:"EXTENSION_EXPR"
-            ~actual:(SyntaxKind.to_string (Ceibo.Red.SyntaxNode.kind extension.syntax_node));
-          Test.assert_equal ~expected:"%" ~actual:(extension_sigil_text extension);
-          Test.assert_equal
-            ~expected:(Some "toplevel_eval")
-            ~actual:(Syn.Cst.Ident.name extension.name);
-          (
-            match extension.payload with
-            | Some (Syn.Cst.Payload.Opaque { tokens }) ->
-                Test.assert_equal
-                  ~expected:[ " "; "42" ]
-                  ~actual:(List.map Syn.Cst.Token.text tokens);
-                Ok ()
-            | _ -> Error "expected opaque token payload for standalone extension item"
-          )
-      | _ -> Error "expected first item to be an extension item");
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "[%%toplevel_eval 42]\n");
   Test.case "cst interfaces distinguish standalone attribute items"
     (fun _ctx ->
       let result = parse_mli "[@@@attr]\n" in
@@ -3222,26 +2701,7 @@ val decode : Outer.Inner (* c *).(request -> response)
           Ok ()
       | _ -> Error "expected first item to be an interface extension item");
   Test.case "cst interface extension payloads default to opaque tokens"
-    (fun _ctx ->
-      let result = parse_mli "[%%signature_item val x : int]\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      let payload_tokens =
-        signature_items cst
-        |> List.filter_map
-          (
-            function
-            | Syn.Cst.SignatureItem.Extension { payload=Some (Syn.Cst.Payload.Opaque { tokens }); _ } -> Some tokens
-            | _ -> None
-          )
-      in
-      match payload_tokens with
-      | tokens :: _ ->
-          Test.assert_equal
-            ~expected:[ " "; "val"; " "; "x"; " "; ":"; " "; "int" ]
-            ~actual:(List.map Syn.Cst.Token.text tokens);
-          Ok ()
-      | [] -> Error "expected interface extension payload");
+    (fun ctx -> assert_mli_cst_snapshot ~ctx "[%%signature_item val x : int]\n");
   Test.case "cst attributed types keep attribute names and payload nodes"
     (fun _ctx ->
       let result = parse_ml "type t = int [@foo]\n" in
@@ -3286,23 +2746,7 @@ val decode : Outer.Inner (* c *).(request -> response)
         )
       | _ -> Error "expected let binding with parenthesized pattern");
   Test.case "cst expression attributes keep opaque payload tokens"
-    (fun _ctx ->
-      let result = parse_ml "let _ = value [@foo 1 + 2]\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding { value; _;  } :: _ -> (
-          let attributes = Syn.Cst.Expression.attributes value in
-          Test.assert_equal ~expected:1 ~actual:(List.length attributes);
-          match attributes with
-          | { payload=Some (Syn.Cst.Payload.Opaque { tokens }); _;  } :: _ ->
-              Test.assert_equal
-                ~expected:[ " "; "1"; " "; "+"; " "; "2" ]
-                ~actual:(List.map Syn.Cst.Token.text tokens);
-              Ok ()
-          | _ -> Error "expected expression attribute with opaque payload"
-        )
-      | _ -> Error "expected expression attribute with opaque payload");
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "let _ = value [@foo 1 + 2]\n");
   Test.case "cst expression attributes survive inline comments after bracket"
     (fun _ctx ->
       let result = parse_ml "let _ = value [ (* c *) @foo 1 + 2]\n" in
@@ -3321,43 +2765,9 @@ val decode : Outer.Inner (* c *).(request -> response)
           )
       | _ -> Error "expected let binding with commented expression attribute");
   Test.case "cst extensions keep typed `:` payloads opaque by default"
-    (fun _ctx ->
-      let result = parse_ml "let _ = [%foo: int -> string]\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding {
-        value=Syn.Cst.Expression.Extension { payload=Some (Syn.Cst.Payload.Opaque { tokens }); _;  };
-        _;
-
-      } :: _ ->
-          Test.assert_equal
-            ~expected:[ ":"; " "; "int"; " "; "->"; " "; "string" ]
-            ~actual:(List.map Syn.Cst.Token.text tokens);
-          Ok ()
-      | _ -> Error "expected opaque typed extension payload");
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "let _ = [%foo: int -> string]\n");
   Test.case "cst extensions survive inline comments after bracket"
-    (fun _ctx ->
-      let result = parse_ml "let _ = [ (* c *) %foo: int -> string]\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding {
-        value=Syn.Cst.Expression.Extension {
-          name;
-          payload=Some (Syn.Cst.Payload.Opaque { tokens });
-          _;
-
-        };
-        _;
-
-      } :: _ ->
-          Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name name);
-          Test.assert_equal
-            ~expected:[ " "; ":"; " "; "int"; " "; "->"; " "; "string" ]
-            ~actual:(List.map Syn.Cst.Token.text tokens);
-          Ok ()
-      | _ -> Error "expected commented opaque extension payload");
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "let _ = [ (* c *) %foo: int -> string]\n");
   Test.case "cst exception declarations preserve declared names"
     (fun _ctx ->
       let result = parse_ml "exception Not_found\n" in
@@ -3495,24 +2905,13 @@ val decode : Outer.Inner (* c *).(request -> response)
           )
       | _ -> Error "expected first item to be an interface open statement");
   Test.case "cst attaches top-level docstrings after open statements to the next value"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         "open Std\n\
              \n\
              (** Module overview. *)\n\
              \n\
-             val create : unit -> t\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | Syn.Cst.SignatureItem.OpenStatement _ :: Syn.Cst.SignatureItem.ValueDeclaration decl :: _ ->
-          Test.assert_equal
-            ~expected:[ "(** Module overview. *)" ]
-            ~actual:((node_leading_trivia (Syn.Cst.ValueDeclaration.syntax_node decl)
-            |> List.map Syn.Cst.Trivia.text));
-          Ok ()
-      | _ -> Error "expected open statement and value declaration with leading doc");
+             val create : unit -> t\n");
   Test.case "cst keeps module overviews standalone before opens and repeated docs on the first type after open"
     (fun _ctx ->
       let result = parse_mli
@@ -3562,37 +2961,21 @@ val decode : Outer.Inner (* c *).(request -> response)
           Ok ()
       | _ -> Error "expected open statement, standalone docstring, and let binding");
   Test.case "cst preserves standalone top-level comments after open statements"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         "open Std\n\
              \n\
              (* Module comment. *)\n\
              \n\
-             val create : unit -> t\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | Syn.Cst.SignatureItem.OpenStatement _ :: Syn.Cst.SignatureItem.Comment comment :: Syn.Cst.SignatureItem.ValueDeclaration _ :: _ ->
-          Test.assert_equal ~expected:"(* Module comment. *)" ~actual:(Syn.Cst.Comment.text comment);
-          Ok ()
-      | _ -> Error "expected open statement, standalone comment, and value declaration");
+             val create : unit -> t\n");
   Test.case "cst preserves standalone implementation comments after open statements"
-    (fun _ctx ->
-      let result = parse_ml
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
         "open Std\n\
              \n\
              (* Module comment. *)\n\
              \n\
-             let create = fun () -> 1\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.OpenStatement _ :: Syn.Cst.StructureItem.Comment comment :: Syn.Cst.StructureItem.LetBinding _ :: _ ->
-          Test.assert_equal ~expected:"(* Module comment. *)" ~actual:(Syn.Cst.Comment.text comment);
-          Ok ()
-      | _ -> Error "expected open statement, standalone comment, and let binding");
+             let create = fun () -> 1\n");
   Test.case "build_cst derives top-level standalone trivia from parser token order"
     (fun _ctx ->
       let parsed = Syn.parse ~filename:sample_mli
@@ -3618,41 +3001,11 @@ val decode : Outer.Inner (* c *).(request -> response)
         )
       | Error _ -> Error "expected CST build to succeed from parser token stream");
   Test.case "cst open statements expose raw owned trivia for inline comments"
-    (fun _ctx ->
-      let result = parse_ml "open (* keep me *) Std\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | [ Syn.Cst.StructureItem.OpenStatement stmt ] ->
-          Test.assert_equal
-            ~expected:[ "(* keep me *)" ]
-            ~actual:(node_leading_trivia_texts (Syn.Cst.OpenStatement.syntax_node stmt));
-          Ok ()
-      | _ -> Error "expected single open statement item");
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "open (* keep me *) Std\n");
   Test.case "cst module declarations expose raw owned trivia for inline comments"
-    (fun _ctx ->
-      let result = parse_ml "module (* keep me *) M = N\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | [ Syn.Cst.StructureItem.ModuleDeclaration decl ] ->
-          Test.assert_equal
-            ~expected:[ "(* keep me *)" ]
-            ~actual:(node_leading_trivia_texts (Syn.Cst.ModuleStructure.syntax_node decl));
-          Ok ()
-      | _ -> Error "expected single module declaration item");
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "module (* keep me *) M = N\n");
   Test.case "cst module type declarations expose raw owned trivia for inline comments"
-    (fun _ctx ->
-      let result = parse_mli "module type (* keep me *) S = sig end\n" in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [ Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ] ->
-          Test.assert_equal
-            ~expected:[ "(* keep me *)" ]
-            ~actual:(node_leading_trivia_texts (Syn.Cst.ModuleTypeDeclaration.syntax_node decl));
-          Ok ()
-      | _ -> Error "expected single module type declaration item");
+    (fun ctx -> assert_mli_cst_snapshot ~ctx "module type (* keep me *) S = sig end\n");
   Test.case "cst keeps terminal trailing value declaration docstrings standalone"
     (fun _ctx ->
       let result = parse_mli
@@ -3709,41 +3062,17 @@ val decode : Outer.Inner (* c *).(request -> response)
           Ok ()
       | _ -> Error "expected two type declarations");
   Test.case "cst splits trailing variant docs between the current and next type"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         "type request_id =\n\
              \  | String of string\n\
              \  | Number of int\n\
              \  (** JSON-RPC request ID *)\n\
              (** JSON-RPC error code *)\n\
-             type error_code = int\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [
-        Syn.Cst.SignatureItem.TypeDeclaration request_id;
-        Syn.Cst.SignatureItem.TypeDeclaration error_code
-      ] ->
-          (
-            match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node request_id) with
-            | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-              ~expected:"(** JSON-RPC request ID *)"
-              ~actual:(Syn.Cst.Docstring.text doc)
-            | _ -> raise (Failure "expected request_id leading docstring")
-          );
-          (
-            match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node error_code) with
-            | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-              ~expected:"(** JSON-RPC error code *)"
-              ~actual:(Syn.Cst.Docstring.text doc)
-            | _ -> raise (Failure "expected error_code leading docstring")
-          );
-          Ok ()
-      | _ -> Error "expected request_id and error_code declarations");
+             type error_code = int\n");
   Test.case "cst sends trailing docs after already-documented variant types to the next type"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         "(** Method parameters *)\n\
              type params =\n\
              \  | Positional of Json.t list (** Positional parameters as JSON array *)\n\
@@ -3753,37 +3082,7 @@ val decode : Outer.Inner (* c *).(request -> response)
              type prerequest = {\n\
              \  method_ : string;\n\
              }\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [
-        Syn.Cst.SignatureItem.TypeDeclaration params;
-        Syn.Cst.SignatureItem.TypeDeclaration prerequest
-      ] ->
-          Test.assert_equal
-            ~expected:1
-            ~actual:(List.length (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node params)));
-          Test.assert_equal
-            ~expected:1
-            ~actual:(List.length
-              (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node prerequest)));
-          (
-            match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node params) with
-            | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-              ~expected:"(** Method parameters *)"
-              ~actual:(Syn.Cst.Docstring.text doc)
-            | _ -> raise (Failure "expected params leading docstring")
-          );
-          (
-            match node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node prerequest) with
-            | [ Syn.Cst.Trivia.Docstring doc ] -> Test.assert_equal
-              ~expected:"(** Pre-request type used by ApplicationProtocol *)"
-              ~actual:(Syn.Cst.Docstring.text doc)
-            | _ -> raise (Failure "expected prerequest leading docstring")
-          );
-          Ok ()
-      | _ -> Error "expected params and prerequest declarations");
+      );
   Test.case "cst keeps docstrings between top-level type declarations on the next type"
     (fun _ctx ->
       let result = parse_mli
@@ -3861,30 +3160,12 @@ val decode : Outer.Inner (* c *).(request -> response)
         )
       | _ -> Error "expected exception declaration followed by type declaration");
   Test.case "cst keeps constructor docstrings leading on the next constructor"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         "type error =\n\
              \  | ParseError of { raw_input : string; parse_error : string }\n\
              \      (** Client failed to parse JSON or JSON-RPC structure *)\n\
-             \  | UnknownServerError of { code : int; message : string; data : Json.t option }\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [ Syn.Cst.SignatureItem.TypeDeclaration error_decl ] -> (
-          match Syn.Cst.TypeDeclaration.type_definition error_decl with
-          | Syn.Cst.TypeDefinition.Variant { constructors=[parse_error;unknown_server_error]; _ } -> (
-              match node_leading_trivia (Syn.Cst.VariantConstructor.syntax_node unknown_server_error) with
-              | [ Syn.Cst.Trivia.Docstring doc ] ->
-                  Test.assert_equal
-                    ~expected:"(** Client failed to parse JSON or JSON-RPC structure *)"
-                    ~actual:(Syn.Cst.Docstring.text doc);
-                  Ok ()
-              | _ -> Error "expected UnknownServerError leading docstring"
-            )
-          | _ -> Error "expected error variant constructors"
-        )
-      | _ -> Error "expected single type declaration");
+             \  | UnknownServerError of { code : int; message : string; data : Json.t option }\n");
   Test.case "cst keeps terminal constructor docstrings standalone at end of file"
     (fun _ctx ->
       let result = parse_mli
@@ -4076,8 +3357,8 @@ val decode : Outer.Inner (* c *).(request -> response)
           )
       | _ -> Error "expected section docstring, comment, and type declarations in order");
   Test.case "cst keeps section docstrings after grouped type declarations standalone"
-    (fun _ctx ->
-      let result = parse_mli
+    (fun ctx ->
+      assert_mli_cst_snapshot ~ctx
         "(** ## Types *)\n\
              \n\
              type ('kind, 'text) token = { kind : 'kind; text : 'text; width : int }\n\
@@ -4096,45 +3377,10 @@ val decode : Outer.Inner (* c *).(request -> response)
              \n\
              (** ## Construction *)\n\
              \n\
-             val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) token\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match signature_items cst with
-      | [
-        Syn.Cst.SignatureItem.Docstring types_doc;
-        Syn.Cst.SignatureItem.TypeDeclaration token_decl;
-        Syn.Cst.SignatureItem.TypeDeclaration node_decl;
-        Syn.Cst.SignatureItem.Docstring construction_doc;
-        Syn.Cst.SignatureItem.ValueDeclaration _
-      ] ->
-          Test.assert_equal ~expected:"(** ## Types *)" ~actual:(Syn.Cst.Docstring.text types_doc);
-          Test.assert_equal
-            ~expected:"token"
-            ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name token_decl));
-          Test.assert_equal
-            ~expected:"node"
-            ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name node_decl));
-          Test.assert_equal
-            ~expected:"(** ## Construction *)"
-            ~actual:(Syn.Cst.Docstring.text construction_doc);
-          (
-            match Syn.Cst.TypeDeclaration.and_declarations node_decl with
-            | [ element_decl ] ->
-                Test.assert_equal
-                  ~expected:"element"
-                  ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
-                Test.assert_equal
-                  ~expected:1
-                  ~actual:(List.length
-                    (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl)));
-                Ok ()
-            | _ -> Error "expected grouped node/element type declarations"
-          )
-      | _ -> Error "expected types heading, two type declaration items, construction heading, and value declaration");
+             val make_token : kind:'kind -> text:'text -> width:int -> ('kind, 'text) token\n");
   Test.case "cst implementation keeps section docstrings after grouped type declarations standalone"
-    (fun _ctx ->
-      let result = parse_ml
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
         "(** ## Types *)\n\
              \n\
              type ('kind, 'text) token = { kind : 'kind; text : 'text; width : int }\n\
@@ -4153,43 +3399,7 @@ val decode : Outer.Inner (* c *).(request -> response)
              \n\
              (** ## Construction *)\n\
              \n\
-             let make_token ~kind ~text ~width = { kind; text; width }\n"
-      in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | [
-        Syn.Cst.StructureItem.Docstring types_doc;
-        Syn.Cst.StructureItem.TypeDeclaration token_decl;
-        Syn.Cst.StructureItem.TypeDeclaration node_decl;
-        Syn.Cst.StructureItem.Docstring construction_doc;
-        Syn.Cst.StructureItem.LetBinding make_token
-      ] ->
-          Test.assert_equal ~expected:"(** ## Types *)" ~actual:(Syn.Cst.Docstring.text types_doc);
-          Test.assert_equal
-            ~expected:"token"
-            ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name token_decl));
-          Test.assert_equal
-            ~expected:"node"
-            ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name node_decl));
-          Test.assert_equal
-            ~expected:"(** ## Construction *)"
-            ~actual:(Syn.Cst.Docstring.text construction_doc);
-          Test.assert_equal ~expected:"make_token" ~actual:(Syn.Cst.LetBinding.name make_token);
-          (
-            match Syn.Cst.TypeDeclaration.and_declarations node_decl with
-            | [ element_decl ] ->
-                Test.assert_equal
-                  ~expected:"element"
-                  ~actual:(ident_text (Syn.Cst.TypeDeclaration.type_name element_decl));
-                Test.assert_equal
-                  ~expected:1
-                  ~actual:(List.length
-                    (node_leading_trivia (Syn.Cst.TypeDeclaration.syntax_node element_decl)));
-                Ok ()
-            | _ -> Error "expected grouped node/element type declarations"
-          )
-      | _ -> Error "expected types heading, two type declaration items, construction heading, and let binding");
+             let make_token ~kind ~text ~width = { kind; text; width }\n");
   Test.case "cst keeps banner comments as standalone top-level comments"
     (fun _ctx ->
       let result = parse_ml
@@ -4373,55 +3583,9 @@ val decode : Outer.Inner (* c *).(request -> response)
           Ok ()
       | _ -> Error "expected polymorphic let-binding value");
   Test.case "cst let binding annotations preserve locally abstract core types with inline comments"
-    (fun _ctx ->
-      let source = "let id : type (* c *) a. a -> a = fun x -> x\n" in
-      let result = parse_ml source in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding {
-        value=Syn.Cst.Expression.TypeAscription {
-          expression=Syn.Cst.Expression.Fun _;
-          kind=Syn.Cst.Type {
-            type_=Syn.Cst.CoreType.Poly {
-              type_keyword_token=Some type_keyword_token;
-              binders;
-              body=Syn.Cst.CoreType.Arrow {
-                parameter_type=Syn.Cst.CoreType.Var {
-                  sigil_token=None;
-                  name_token=parameter_name_token;
-                  _;
-
-                };
-                result_type=Syn.Cst.CoreType.Var {
-                  sigil_token=None;
-                  name_token=result_name_token;
-                  _;
-
-                };
-                _;
-
-              };
-
-            };
-            _;
-
-          };
-          _;
-
-        };
-        _;
-
-      } :: _ ->
-          Test.assert_equal ~expected:"type" ~actual:(Syn.Cst.Token.text type_keyword_token);
-          Test.assert_equal ~expected:"a" ~actual:(Syn.Cst.Token.text parameter_name_token);
-          Test.assert_equal ~expected:"a" ~actual:(Syn.Cst.Token.text result_name_token);
-          let binder_text = binders |> List.map Syn.Cst.TypeBinder.text in
-          let quoted = binders |> List.map Syn.Cst.TypeBinder.is_quoted in
-          Test.assert_equal ~expected:[ "a" ] ~actual:binder_text;
-          Test.assert_equal ~expected:[ false ] ~actual:quoted;
-          Ok ()
-      | _ -> Error "expected commented locally abstract core type annotation");
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
+        "let id : type (* c *) a. a -> a = fun x -> x\n");
   Test.case "cst let bindings expose infix string concatenation values"
     (fun _ctx ->
       let source = "let banner = \"a\" ^ \"b\" ^ \"c\"\n" in
@@ -4788,32 +3952,13 @@ val decode : Outer.Inner (* c *).(request -> response)
           Ok ()
       | _ -> Error "expected let-operator tokens to expose equals and in");
   Test.case "cst let bindings keep comment trivia before grouped and-bindings"
-    (fun _ctx ->
-      let source = {|
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
+        {|
 let rec first x = second x
 (* Parse signature item (top-level in .mli files) *)
 and second x = x
-|}
-      in
-      let result = parse_ml source in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding {
-        and_binding=Some ({ binding_pattern=Syn.Cst.Pattern.Identifier { name_token; _ }; _;  } as nested);
-        _;
-
-      } :: _ ->
-          Test.assert_equal ~expected:"second" ~actual:(Syn.Cst.Token.text name_token);
-          Test.assert_equal
-            ~expected:[ "(* Parse signature item (top-level in .mli files) *)"; "\n" ]
-            ~actual:((nested
-            |> Syn.Cst.LetBinding.keyword_token
-            |> Syn.Cst.Token.leading_trivia
-            |> List.filter_map Syn.Cst.trivia_of_syntax_trivia
-            |> List.map Syn.Cst.Trivia.text));
-          Ok ()
-      | _ -> Error "expected grouped let binding with nested and-binding comment");
+|});
   Test.case "cst type declarations keep declaration attributes attached"
     (fun _ctx ->
       let result = parse_ml
@@ -6483,13 +5628,9 @@ let x =
       Test.assert_equal
         ~expected:[
           "keyword";
-          "whitespace";
           "identifier";
-          "whitespace";
           "=";
-          "whitespace";
           "string";
-          "whitespace";
           "end of file";
         ]
         ~actual:kinds;
@@ -6827,36 +5968,8 @@ let x =
           Ok ()
       | _ -> Error "expected object method instance-variable assignment");
   Test.case "cst object expressions preserve extension members"
-    (fun _ctx ->
-      let source = "let value =\n  object\n    [%%foo]\n    method run = 1\n  end\n" in
-      let result = parse_ml source in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding {
-        value=Syn.Cst.Expression.Object {
-          members=[
-            Syn.Cst.ObjectMember.Extension extension;
-            Syn.Cst.ObjectMember.Method {
-              name_token;
-              body=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Int { literal_token; _ });
-              _;
-
-            };
-
-          ];
-          _;
-
-        };
-        _;
-
-      } :: _ ->
-          Test.assert_equal ~expected:"%" ~actual:(extension_sigil_text extension);
-          Test.assert_equal ~expected:(Some "foo") ~actual:(Syn.Cst.Ident.name extension.name);
-          Test.assert_equal ~expected:"run" ~actual:(Syn.Cst.Token.text name_token);
-          Test.assert_equal ~expected:"1" ~actual:(Syn.Cst.Token.text literal_token);
-          Ok ()
-      | _ -> Error "expected object extension member");
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx "let value =\n  object\n    [%%foo]\n    method run = 1\n  end\n");
   Test.case "cst builder keeps object trailing trivia as explicit body entries"
     (fun _ctx ->
       let source = "let value =\n  object\n    method run = 1\n    (** body doc *)\n    (* body comment *)\n  end\n" in
@@ -7453,28 +6566,15 @@ let x =
           Ok ()
       | _ -> Error "expected class-type declaration shell extension and attribute");
   Test.case "cst keeps top-level let comments standalone instead of duplicating them"
-    (fun _ctx ->
-      let source = {|
+    (fun ctx ->
+      assert_ml_cst_snapshot ~ctx
+        {|
 (* First non-trivia token *)
 let first_non_trivia_token node =
   match first_non_trivia_child node with
   | Some t -> Some t
   | _ -> None
-|}
-      in
-      let result = parse_ml source in
-      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
-      match structure_items cst with
-      | Syn.Cst.StructureItem.Comment _ :: Syn.Cst.StructureItem.LetBinding binding :: _ -> (
-          match binding
-          |> Syn.Cst.LetBinding.keyword_token
-          |> Syn.Cst.Token.leading_trivia
-          |> List.filter_map Syn.Cst.trivia_of_syntax_trivia with
-          | [] -> Ok ()
-          | _ -> Error "expected top-level let binding not to duplicate preceding standalone comment"
-        )
-      | _ -> Error "expected leading comment followed by top-level let binding");
+|});
   Test.case "cst parenthesized expressions preserve trivia after the opening delimiter"
     (fun _ctx ->
       let source = {|

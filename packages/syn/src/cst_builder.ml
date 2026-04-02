@@ -2204,6 +2204,30 @@ let extension_from_node node : Cst.extension =
     ~syntax_node:node
     ~context:[ "extension" ]
 
+let extension_from_tokens = fun ~syntax_node syntax_tokens : Cst.extension ->
+  let sigil_syntax_tokens =
+    syntax_tokens
+    |> List.filter
+      (fun syntax_token ->
+        let text = Ceibo.Red.SyntaxToken.text syntax_token in
+        String.equal text percent_text
+        || String.equal text double_percent_text
+        || String.equal text triple_percent_text)
+  in
+  match sigil_syntax_tokens with
+  | _ :: _ ->
+      {
+        Cst.syntax_node;
+        sigil_tokens = List.map token sigil_syntax_tokens;
+        name = annotation_name_from_tokens ~syntax_node ~sigils:extension_sigil_texts syntax_tokens;
+        payload = None;
+        attributes = [];
+      }
+  | [] -> bail
+    ~message:"expected extension sigil during Ceibo -> CST lifting"
+    ~syntax_node
+    ~context:[ "extension" ]
+
 let attributes_from_node = fun node ->
   direct_non_trivia_nodes node
   |> List.filter (fun child -> Ceibo.Red.SyntaxNode.kind child = Syntax_kind.ATTRIBUTE_EXPR)
@@ -2677,6 +2701,40 @@ let declaration_modifiers_from_nodes = fun nodes ->
   let declaration_extension = nodes |> List.find_opt is_extension_node |> Option.map extension_from_node in
   let declaration_attributes = nodes |> List.filter is_attribute_node |> List.map attribute_from_node in
   (declaration_extension, declaration_attributes)
+
+let declaration_extension_from_gap_tokens = fun ~node ~keywords ~boundary_start ->
+  let keyword_end =
+    direct_non_trivia_tokens node
+    |> List.filter
+      (fun syntax_token ->
+        let text = Ceibo.Red.SyntaxToken.text syntax_token in
+        List.exists (String.equal text) keywords
+        && (Ceibo.Red.SyntaxToken.span syntax_token).start < boundary_start)
+    |> List.rev
+    |> List.find_map
+      (fun syntax_token ->
+        let text = Ceibo.Red.SyntaxToken.text syntax_token in
+        if List.exists (String.equal text) keywords then
+          Some ((Ceibo.Red.SyntaxToken.span syntax_token).end_)
+        else
+          None)
+    |> Option.unwrap_or ~default:0
+  in
+  let syntax_tokens =
+    direct_non_trivia_tokens node
+    |> List.filter
+      (fun syntax_token ->
+        let span = Ceibo.Red.SyntaxToken.span syntax_token in
+        span.start >= keyword_end && span.end_ <= boundary_start)
+  in
+  match syntax_tokens with
+  | first_token :: _ ->
+      let first_text = Ceibo.Red.SyntaxToken.text first_token in
+      if List.exists (String.equal first_text) extension_sigil_texts then
+        Some (extension_from_tokens ~syntax_node:node syntax_tokens)
+      else
+        None
+  | [] -> None
 
 let is_let_binding_node = fun node ->
   let kind = Ceibo.Red.SyntaxNode.kind node in
@@ -8516,8 +8574,24 @@ let class_declaration_from_node = fun node ->
   | Some (name_node, prefix, remainder) -> (
       match first_ident_token_in_subtree name_node, List.rev remainder with
       | Some class_name, class_body_node :: rev_prefix ->
-          let class_declaration_extension, class_declaration_attributes = declaration_modifiers_from_nodes
-            prefix in
+          let class_declaration_extension, class_declaration_attributes =
+            let declaration_extension, declaration_attributes = declaration_modifiers_from_nodes prefix in
+              let boundary_start =
+                match prefix with
+                | first_prefix_node :: _ -> (Ceibo.Red.SyntaxNode.span first_prefix_node).start
+                | [] -> (Cst.Token.span class_name).start
+            in
+            let declaration_extension =
+              match declaration_extension with
+              | Some _ -> declaration_extension
+              | None ->
+                  declaration_extension_from_gap_tokens
+                    ~node
+                    ~keywords:[ "class" ]
+                    ~boundary_start
+            in
+            (declaration_extension, declaration_attributes)
+          in
           let suffix_class_type, suffix_class_body = class_type_and_body_from_child class_body_node in
           let prefix_class_type =
             if Option.is_some suffix_class_type then
@@ -8557,10 +8631,14 @@ let class_declaration_from_node = fun node ->
                     (
                       match direct_token_with_text node "=" with
                       | Some equals_token -> equals_token
-                      | None -> bail
-                        ~message:"expected class definition equals token during Ceibo -> CST lifting"
-                        ~syntax_node:node
-                        ~context:[ "item"; "class_definition"; "equals_token" ]
+                      | None -> (
+                          match token_with_text class_body_node "=" with
+                          | Some equals_token -> equals_token
+                          | None -> bail
+                            ~message:"expected class definition equals token during Ceibo -> CST lifting"
+                            ~syntax_node:node
+                            ~context:[ "item"; "class_definition"; "equals_token" ]
+                        )
                     );
                   class_body = declaration_class_body;
                 })
@@ -8583,7 +8661,7 @@ let class_declaration_from_node = fun node ->
                   colon_token =
                     (
                       match direct_token_with_text node ":" with
-                      | Some colon_token -> colon_token
+                      | Some equals_token -> equals_token
                       | None -> bail
                         ~message:"expected class declaration colon token during Ceibo -> CST lifting"
                         ~syntax_node:node
@@ -8615,7 +8693,24 @@ let class_type_declaration_from_node = fun node ->
       match first_ident_token_in_subtree name_node with
       | Some class_type_name ->
           if can_lift_class_type_node body_node then
-            let declaration_extension, declaration_attributes = declaration_modifiers_from_nodes prefix in
+            let declaration_extension, declaration_attributes =
+              let declaration_extension, declaration_attributes = declaration_modifiers_from_nodes prefix in
+              let boundary_start =
+                match prefix with
+                | first_prefix_node :: _ -> (Ceibo.Red.SyntaxNode.span first_prefix_node).start
+                | [] -> (Cst.Token.span class_type_name).start
+              in
+              let declaration_extension =
+                match declaration_extension with
+                | Some _ -> declaration_extension
+                | None ->
+                    declaration_extension_from_gap_tokens
+                      ~node
+                      ~keywords:[ "class"; "type" ]
+                      ~boundary_start
+              in
+              (declaration_extension, declaration_attributes)
+            in
             Some {
               Cst.syntax_node = node;
               class_keyword_token =
