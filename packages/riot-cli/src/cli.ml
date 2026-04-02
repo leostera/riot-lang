@@ -1,7 +1,7 @@
 open Std
 
-(** Build the CLI with dynamically discovered package commands *)
-let build_cli = fun workspace_opt ->
+(** Build the static CLI. Workspace commands are resolved lazily after parse. *)
+let build_cli = fun () ->
   let open ArgParser in
     let open Arg in
       let builtin_commands = [
@@ -30,26 +30,12 @@ let build_cli = fun workspace_opt ->
         command "version" |> about "Show riot version";
       ]
       in
-      (* Add package commands if we have a workspace *)
-      let package_commands =
-        match workspace_opt with
-        | None -> []
-        | Some workspace ->
-            let commands = Riot_model.Workspace.discover_commands workspace in
-            List.map
-              (fun (cmd: Riot_model.Package_command.t) ->
-                (* Use package:command format to avoid conflicts *)
-                let namespaced_name = cmd.package_name ^ ":" ^ cmd.name in
-                command namespaced_name
-                |> about (cmd.description ^ " (from " ^ cmd.package_name ^ ")"))
-              commands
-      in
       command "riot"
       |> version "0.1.0"
       |> about "OCaml build system and package manager"
       |> args
         [ flag "verbose" |> short 'v' |> long "verbose" |> help "Enable verbose output" |> count; ]
-      |> subcommands (builtin_commands @ package_commands)
+      |> subcommands builtin_commands
 
 let set_verbosity = fun verbose ->
   let verbose =
@@ -78,7 +64,7 @@ type workspace_scan =
   | Loaded of Riot_model.Workspace.t * Riot_model.Workspace_manager.load_error list
 
 (** Get workspace scan status *)
-let get_workspace_scan = fun () ->
+let scan_workspace = fun () ->
   match Env.current_dir () with
   | Error err -> ScanFailed ("failed to read current directory: " ^ path_error_message err)
   | Ok cwd -> (
@@ -91,12 +77,6 @@ let get_workspace_scan = fun () ->
           | Ok (workspace, load_errors) -> Loaded (workspace, load_errors)
         )
     )
-
-let get_workspace = fun () ->
-  match get_workspace_scan () with
-  | Loaded (workspace, _) -> Some workspace
-  | NoWorkspace
-  | ScanFailed _ -> None
 
 let report_workspace_load_errors = fun load_errors ->
   List.iter
@@ -122,8 +102,8 @@ let require_clean_workspace = fun workspace_scan_opt ->
 let try_command = fun ?workspace_scan cmd_name remaining_args ->
   let workspace_scan =
     match workspace_scan with
-    | Some workspace_scan -> workspace_scan
-    | None -> get_workspace_scan ()
+    | Some workspace_scan -> workspace_scan ()
+    | None -> scan_workspace ()
   in
   match workspace_scan with
   | NoWorkspace
@@ -184,14 +164,20 @@ format = "full"
   (* Now start logger and telemetry *)
   let _ = Std.Log.start_link () in
   let _ = Std.Telemetry.start () in
-  (* Ensure ~/.riot directories exist *)
-  Riot_model.Riot_dirs.ensure_created () |> Result.expect ~msg:"Could not create riot dirs"
+  ()
 
 let run = fun ~args ->
-  (* Try to load workspace for command discovery (silently fail if not in workspace) *)
-  let workspace_scan_opt = get_workspace_scan () in
-  let workspace_opt =
-    match workspace_scan_opt with
+  let workspace_scan_cache = ref None in
+  let get_workspace_scan = fun () ->
+    match !workspace_scan_cache with
+    | Some workspace_scan -> workspace_scan
+    | None ->
+        let workspace_scan = scan_workspace () in
+        let _ = workspace_scan_cache := Some workspace_scan in
+        workspace_scan
+  in
+  let workspace_opt = fun () ->
+    match get_workspace_scan () with
     | Loaded (workspace, _) -> Some workspace
     | NoWorkspace
     | ScanFailed _ -> None
@@ -202,11 +188,11 @@ let run = fun ~args ->
       Completions.run_install_args rest
   | _ :: cmd :: rest when String.contains cmd ":" -> (
       (* This looks like a package command, try to execute it directly *)
-      match try_command ?workspace_scan:(Some workspace_scan_opt) cmd rest with
+      match try_command ?workspace_scan:(Some get_workspace_scan) cmd rest with
       | Some result -> result
       | None ->
           (* Not a valid package command, fall through to normal parsing *)
-          let cli = build_cli workspace_opt in
+          let cli = build_cli () in
           match ArgParser.get_matches cli args with
           | Error err ->
               ArgParser.print_error err;
@@ -217,7 +203,7 @@ let run = fun ~args ->
     )
   | _ ->
       (* Normal command parsing *)
-      let cli = build_cli workspace_opt in
+      let cli = build_cli () in
       match ArgParser.get_matches cli args with
       | Error err ->
           ArgParser.print_error err;
@@ -227,7 +213,7 @@ let run = fun ~args ->
           set_verbosity verbose;
           match ArgParser.get_subcommand matches with
           | Some ("build", build_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
                   match ensure_toolchain workspace with
                   | Ok () -> Build.run ~workspace build_matches
@@ -236,7 +222,7 @@ let run = fun ~args ->
               | Error _ as e -> e
             )
           | Some ("run", run_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
                   match ensure_toolchain workspace with
                   | Ok () -> Run.run ~workspace run_matches
@@ -247,12 +233,12 @@ let run = fun ~args ->
           | Some ("search", search_matches) ->
               Search.run search_matches
           | Some ("snapshots", snapshots_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> Snapshots.run ~workspace snapshots_matches
               | Error _ as e -> e
             )
           | Some ("test", test_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
                   match ensure_toolchain workspace with
                   | Ok () -> Test_cmd.run ~workspace test_matches
@@ -261,7 +247,7 @@ let run = fun ~args ->
               | Error _ as e -> e
             )
           | Some ("bench", bench_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
                   match ensure_toolchain workspace with
                   | Ok () -> Bench_cmd.run ~workspace bench_matches
@@ -270,17 +256,24 @@ let run = fun ~args ->
               | Error _ as e -> e
             )
           | Some ("add", add_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> Add.run ~workspace add_matches
               | Error _ as e -> e
             )
           | Some ("rm", remove_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> Remove.run ~workspace remove_matches
               | Error _ as e -> e
             )
           | Some ("fmt", fmt_matches) ->
-              Riot_fmt.run ?workspace:workspace_opt fmt_matches
+              let explicit_paths = ArgParser.get_many fmt_matches "path" in
+              let workspace =
+                if List.is_empty explicit_paths then
+                  workspace_opt ()
+                else
+                  None
+              in
+              Riot_fmt.run ?workspace fmt_matches
           | Some ("clean", clean_matches) ->
               Clean.run clean_matches
           | Some ("completions", completions_matches) ->
@@ -296,17 +289,17 @@ let run = fun ~args ->
           | Some ("new", new_matches) ->
               New.run new_matches
           | Some ("publish", publish_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> Publish.run workspace publish_matches
               | Error _ as e -> e
             )
           | Some ("install", install_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> Install.run ~workspace install_matches
               | Error _ as e -> e
             )
           | Some ("update", update_matches) -> (
-              match require_clean_workspace workspace_scan_opt with
+              match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> Update_cmd.run ~workspace update_matches
               | Error _ as e -> e
             )
@@ -325,7 +318,7 @@ let run = fun ~args ->
                 | cmd_arg :: rest when cmd_arg = cmd -> rest
                 | _ -> []
               in
-              match try_command ?workspace_scan:(Some workspace_scan_opt) cmd remaining_args with
+              match try_command ?workspace_scan:(Some get_workspace_scan) cmd remaining_args with
               | Some result -> result
               | None ->
                   ArgParser.print_error (ArgParser.UnknownSubcommand cmd);

@@ -11,6 +11,10 @@ let fail = fun message -> Error (Failure message)
 
 let config_path = fun () -> Riot_dirs.config_path ()
 
+let ensure_riot_dirs = fun () ->
+  Riot_dirs.ensure_created ()
+  |> Result.map_error (fun exn -> Failure (Exception.to_string exn))
+
 let load_config = fun path ->
   match Fs.exists path with
   | Error io_error -> fail
@@ -23,6 +27,7 @@ let save_config = fun path config ->
   User_config.save config path |> Result.map_error (fun err -> Failure (User_config.message err))
 
 let run = fun _matches ->
+  let* () = ensure_riot_dirs () in
   let path = config_path () in
   let* config = load_config path in
   let config = User_config.clear_api_token config ~registry_name in
