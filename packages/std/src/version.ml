@@ -30,6 +30,20 @@ type requirement_op =
 type requirement =
   | Any
   | Requirement of requirement_op * t
+  | PrefixMajor of int
+  | PrefixMinor of int * int
+
+type requirement_view =
+  | AnyRequirement
+  | ExactRequirement of t
+  | NotEqualRequirement of t
+  | GreaterThanRequirement of t
+  | GreaterThanOrEqualRequirement of t
+  | LessThanRequirement of t
+  | LessThanOrEqualRequirement of t
+  | TildeRequirement of t
+  | PrefixMajorRequirement of int
+  | PrefixMinorRequirement of int * int
 
 type parse_error =
   | Invalid_format of string
@@ -251,42 +265,87 @@ let parse_requirement = fun req_string ->
     Ok Any
   else
     let len = String.length s in
-    if len < 2 then
-      Error (Invalid_format "Requirement too short")
-    else
-      let op, version_start =
-        if String.length s >= 2 && String.sub s 0 2 = "~>" then
-          (ReqTilde, 2)
-        else if String.length s >= 2 && String.sub s 0 2 = "==" then
-          (ReqEq, 2)
-        else if String.length s >= 2 && String.sub s 0 2 = "!=" then
-          (ReqNeq, 2)
-        else if String.length s >= 2 && String.sub s 0 2 = ">=" then
-          (ReqGte, 2)
-        else if String.length s >= 2 && String.sub s 0 2 = "<=" then
-          (ReqLte, 2)
-        else if String.get s 0 = '>' then
-          (ReqGt, 1)
-        else if String.get s 0 = '<' then
-          (ReqLt, 1)
-        else
-          (* Default to equality if no operator *)
-          (ReqEq, 0)
-      in
-      let version_str = String.trim (String.sub s version_start (len - version_start)) in
-      match parse version_str with
-      | Ok version -> Ok (Requirement (op, version))
-      | Error e -> Error e
+    let op, version_start =
+      if String.length s >= 2 && String.sub s 0 2 = "~>" then
+        (Some ReqTilde, 2)
+      else if String.length s >= 2 && String.sub s 0 2 = "==" then
+        (Some ReqEq, 2)
+      else if String.length s >= 2 && String.sub s 0 2 = "!=" then
+        (Some ReqNeq, 2)
+      else if String.length s >= 2 && String.sub s 0 2 = ">=" then
+        (Some ReqGte, 2)
+      else if String.length s >= 2 && String.sub s 0 2 = "<=" then
+        (Some ReqLte, 2)
+      else if len > 0 && String.get s 0 = '>' then
+        (Some ReqGt, 1)
+      else if len > 0 && String.get s 0 = '<' then
+        (Some ReqLt, 1)
+      else
+        (None, 0)
+    in
+    let version_str = String.trim (String.sub s version_start (len - version_start)) in
+    match op with
+    | Some op -> (
+        match parse version_str with
+        | Ok version -> Ok (Requirement (op, version))
+        | Error e -> Error e
+      )
+    | None -> (
+        match parse version_str with
+        | Ok version -> Ok (Requirement (ReqEq, version))
+        | Error _ -> (
+            match split_on_char '.' version_str with
+            | [ major_s ] -> (
+                match parse_int major_s with
+                | Some major when major >= 0 -> Ok (PrefixMajor major)
+                | _ -> Error (Invalid_format version_str)
+              )
+            | [ major_s; minor_s ] -> (
+                match parse_int major_s, parse_int minor_s with
+                | Some major, Some minor when major >= 0 && minor >= 0 -> Ok (PrefixMinor (major, minor))
+                | _ -> Error (Invalid_format version_str)
+              )
+            | _ -> Error (Invalid_format version_str)
+          )
+      )
 
 let any = Any
 
 let requirement_to_string = function
   | Any -> "*"
   | Requirement (op, version) -> requirement_op_to_string op ^ " " ^ to_string version
+  | PrefixMajor major -> Int.to_string major
+  | PrefixMinor (major, minor) -> Int.to_string major ^ "." ^ Int.to_string minor
+
+let view_requirement = function
+  | Any ->
+      AnyRequirement
+  | PrefixMajor major ->
+      PrefixMajorRequirement major
+  | PrefixMinor (major, minor) ->
+      PrefixMinorRequirement (major, minor)
+  | Requirement (ReqEq, version) ->
+      ExactRequirement version
+  | Requirement (ReqNeq, version) ->
+      NotEqualRequirement version
+  | Requirement (ReqGt, version) ->
+      GreaterThanRequirement version
+  | Requirement (ReqGte, version) ->
+      GreaterThanOrEqualRequirement version
+  | Requirement (ReqLt, version) ->
+      LessThanRequirement version
+  | Requirement (ReqLte, version) ->
+      LessThanOrEqualRequirement version
+  | Requirement (ReqTilde, version) ->
+      TildeRequirement version
 
 let matches = fun requirement test_version ->
   match requirement with
   | Any -> true
+  | PrefixMajor major ->
+      Int.equal test_version.major major
+  | PrefixMinor (major, minor) ->
+      Int.equal test_version.major major && Int.equal test_version.minor minor
   | Requirement (op, req_version) ->
       let cmp = compare test_version req_version in
       match op with
@@ -342,4 +401,32 @@ module Tests = struct
         else
           Error "expected '*' to roundtrip as unconstrained requirement"
     | Error _ -> Error "expected '*' requirement to parse" [@test]
+
+  let test_prefix_minor_requirement_matches_patch_range () : (unit, string) result =
+    match parse_requirement "0.2" with
+    | Ok requirement ->
+        if
+          String.equal (requirement_to_string requirement) "0.2"
+          && matches requirement (make ~major:0 ~minor:2 ~patch:0 ())
+          && matches requirement (make ~major:0 ~minor:2 ~patch:99 ())
+          && not (matches requirement (make ~major:0 ~minor:3 ~patch:0 ()))
+        then
+          Ok ()
+        else
+          Error "expected bare major.minor requirement to match only that patch range"
+    | Error _ -> Error "expected bare major.minor requirement to parse" [@test]
+
+  let test_prefix_major_requirement_matches_minor_and_patch_range () : (unit, string) result =
+    match parse_requirement "0" with
+    | Ok requirement ->
+        if
+          String.equal (requirement_to_string requirement) "0"
+          && matches requirement (make ~major:0 ~minor:0 ~patch:0 ())
+          && matches requirement (make ~major:0 ~minor:99 ~patch:99 ())
+          && not (matches requirement (make ~major:1 ~minor:0 ~patch:0 ()))
+        then
+          Ok ()
+        else
+          Error "expected bare major requirement to match only that major range"
+    | Error _ -> Error "expected bare major requirement to parse" [@test]
 end

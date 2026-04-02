@@ -577,6 +577,41 @@ version = "0.1.0"
             Test.assert_equal ~expected:[ "app"; "kernel"; "vendor" ] ~actual:names;
             Ok ())
 
+let test_workspace_manager_reports_member_manifest_decode_errors = fun _ctx ->
+  with_tempdir "riot_model_workspace_member_decode_error"
+    (fun root ->
+      let write path content = Fs.write content path
+      |> Result.expect ~msg:(("expected write to succeed: " ^ Path.to_string path)) in
+      let mkdir path = Fs.create_dir_all path
+      |> Result.expect ~msg:(("expected mkdir to succeed: " ^ Path.to_string path)) in
+      mkdir Path.(root / Path.v "packages/app/src");
+      write Path.(root / Path.v "riot.toml")
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write Path.(root / Path.v "packages/app/riot.toml")
+        {|
+[package]
+name = "app"
+version = "0.1.0"
+
+[dependencies]
+minttea = "not-a-version"
+|};
+      match Riot_model.Workspace_manager.scan root with
+      | Error err -> Error err
+      | Ok (_workspace, errors) -> (
+          match errors with
+          | [ Riot_model.Workspace_manager.PackageFromTomlFailed { package; error; _ } ] ->
+              if String.equal package "app" && String.contains error "invalid version requirement 'not-a-version'" then
+                Ok ()
+              else
+                Error ("unexpected member decode error: " ^ error)
+          | _ ->
+              Error "expected invalid member manifest to surface as a workspace load error"
+        ))
+
 let test_user_config_parses_registry_api_token = fun _ctx ->
   let toml =
     Std.Data.Toml.parse
@@ -726,6 +761,7 @@ let tests =
     case "workspace: registry dependency requirement parses structurally" test_workspace_dependency_requirement_parses_structurally;
     case "workspace: star dependency becomes unconstrained registry dependency" test_workspace_star_requirement_becomes_unconstrained_registry_dep;
     case "workspace manager: package path deps resolve relative to declaring package" test_workspace_manager_resolves_member_path_dependencies_relative_to_package;
+    case "workspace manager: member manifest decode failures surface as load errors" test_workspace_manager_reports_member_manifest_decode_errors;
     case "user config: parses empty registry entry" test_user_config_parses_empty_registry_entry;
     case "user config: parses registry urls" test_user_config_parses_registry_urls;
     case "user config: parses registry API token" test_user_config_parses_registry_api_token;

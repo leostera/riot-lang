@@ -13,7 +13,7 @@ type load_error =
     }
   | PackageTomlReadFailed of { package: string; path: string }
   | PackageTomlParseFailed of { package: string; path: string }
-  | PackageFromTomlFailed of { package: string; path: string }
+  | PackageFromTomlFailed of { package: string; path: string; error: string }
 
 let rec find_workspace_root : Path.t -> Path.t option = fun start_dir ->
   let riot_toml = Path.(start_dir / riot_toml) in
@@ -47,16 +47,19 @@ string ->
 workspace_deps:Package.dependency list ->
 workspace_dev_deps:Package.dependency list ->
 workspace_build_deps:Package.dependency list ->
-Package.t option = fun workspace_root member ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ->
+(Package.t option * load_error list) = fun workspace_root member ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ->
   let member_path = Path.(workspace_root / Path.v member) in
   let toml_path = Path.(member_path / riot_toml) in
+  let member_name = Path.basename member_path in
   match Fs.exists toml_path with
   | Ok true -> (
       match Fs.read_to_string toml_path with
-      | Error _ -> None
+      | Error _ ->
+          (None, [ PackageTomlReadFailed { package = member_name; path = Path.to_string member_path } ])
       | Ok content -> (
           match Data.Toml.parse content with
-          | Error _ -> None
+          | Error _ ->
+              (None, [ PackageTomlParseFailed { package = member_name; path = Path.to_string member_path } ])
           | Ok toml -> (
               let relative_path = Path.v member in
               match Package.from_toml
@@ -66,12 +69,17 @@ Package.t option = fun workspace_root member ~workspace_deps ~workspace_dev_deps
                 ~workspace_build_deps
                 ~path:member_path
                 ~relative_path with
-              | Ok pkg -> Some pkg
-              | Error _ -> None
+              | Ok pkg -> (Some pkg, [])
+              | Error error ->
+                  (None, [ PackageFromTomlFailed {
+                    package = member_name;
+                    path = Path.to_string member_path;
+                    error;
+                  } ])
             )
         )
     )
-  | _ -> None
+  | _ -> (None, [ PackageNotFound { dependant = None; package = member_name; path = Path.to_string member_path } ])
 
 let resolve_dependency_root = fun ~declared_from dep_path ->
   if Path.is_absolute dep_path then
@@ -144,9 +152,9 @@ dependant:string option ->
                         let transitive_pkgs = List.concat_map fst transitive_results in
                         let transitive_errs = List.concat_map snd transitive_results in
                         (pkg :: transitive_pkgs, transitive_errs)
-                    | Error _ -> (
+                    | Error error -> (
                       [],
-                      [ PackageFromTomlFailed { package = dep.name; path = path_str } ]
+                      [ PackageFromTomlFailed { package = dep.name; path = path_str; error } ]
                     )
                   )
               )
@@ -155,8 +163,8 @@ dependant:string option ->
       )
 
 let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun workspace_root workspace_manifest ->
-  let member_packages =
-    List.filter_map
+  let member_results =
+    List.map
       (fun member ->
         load_member_package
           workspace_root
@@ -166,6 +174,8 @@ let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error 
           ~workspace_build_deps:workspace_manifest.build_dependencies)
       workspace_manifest.members
   in
+  let member_packages = List.filter_map fst member_results in
+  let member_errors = List.concat_map snd member_results in
   let seen =
     Cell.create (List.map (fun (p: Package.t) -> p.name) member_packages)
   in
@@ -201,7 +211,7 @@ let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error 
   let external_packages = List.concat_map fst external_results in
   let external_errors = List.concat_map snd external_results in
   let all_packages = member_packages @ workspace_packages @ external_packages in
-  let all_errors = workspace_errors @ external_errors in
+  let all_errors = member_errors @ workspace_errors @ external_errors in
   (
     Workspace.make
       ~root:workspace_root
@@ -252,5 +262,5 @@ let load_error_to_string = function
       "package '" ^ package ^ "': failed to read riot.toml at path " ^ path
   | PackageTomlParseFailed { package; path } ->
       "package '" ^ package ^ "': failed to parse riot.toml at path " ^ path
-  | PackageFromTomlFailed { package; path } ->
-      "package '" ^ package ^ "': failed to load from riot.toml at path " ^ path
+  | PackageFromTomlFailed { package; path; error } ->
+      "package '" ^ package ^ "': failed to load from riot.toml at path " ^ path ^ ": " ^ error

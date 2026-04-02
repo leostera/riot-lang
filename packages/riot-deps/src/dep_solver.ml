@@ -877,53 +877,51 @@ let register_workspace_packages = fun (catalog:catalog) packages ->
   loop packages
 
 let ranges_of_requirement = fun requirement ->
-  let text = Std.Version.requirement_to_string requirement in
-  let parse_version prefix_len =
-    let version_text = String.trim (String.sub text prefix_len (String.length text - prefix_len)) in
-    Std.Version.parse version_text |> Result.map_error (fun err ->
-      Error.Unexpected {
-        error = "failed to parse version requirement '" ^ text ^ "'"
-      })
-  in
-  if String.equal text "*" then
-    Ok Pubgrub.full
-  else if String.starts_with ~prefix:"==" text then
-    let* version = parse_version 2 in
-    Ok (Pubgrub.singleton version)
-  else if String.starts_with ~prefix:"!=" text then
-    let* version = parse_version 2 in
-    Ok
-      (Pubgrub.Ranges.complement
-         ~compare_v:pubgrub_version_compare
-         (Pubgrub.singleton version))
-  else if String.starts_with ~prefix:">=" text then
-    let* version = parse_version 2 in
-    Ok (Pubgrub.higher_than version)
-  else if String.starts_with ~prefix:"<=" text then
-    let* version = parse_version 2 in
-    Ok (Pubgrub.lower_than version)
-  else if String.starts_with ~prefix:">" text then
-    let* version = parse_version 1 in
-    Ok (Pubgrub.strictly_higher_than version)
-  else if String.starts_with ~prefix:"<" text then
-    let* version = parse_version 1 in
-    Ok (Pubgrub.strictly_lower_than version)
-  else if String.starts_with ~prefix:"~>" text then
-    let* version = parse_version 2 in
-    let upper_bound = Std.Version.make
-      ~major:version.major
-      ~minor:(version.minor + 1)
-      ~patch:0
-      ()
-    in
-    Ok
-      (Pubgrub.Ranges.intersection
-         ~compare_v:pubgrub_version_compare
-         (Pubgrub.higher_than version)
-         (Pubgrub.strictly_lower_than upper_bound))
-  else
-    let* version = parse_version 0 in
-    Ok (Pubgrub.singleton version)
+  match Std.Version.view_requirement requirement with
+  | Std.Version.AnyRequirement ->
+      Ok Pubgrub.full
+  | Std.Version.PrefixMajorRequirement major ->
+      let lower_bound = Std.Version.make ~major ~minor:0 ~patch:0 () in
+      let upper_bound = Std.Version.make ~major:(major + 1) ~minor:0 ~patch:0 () in
+      Ok
+        (Pubgrub.Ranges.intersection
+           ~compare_v:pubgrub_version_compare
+           (Pubgrub.higher_than lower_bound)
+           (Pubgrub.strictly_lower_than upper_bound))
+  | Std.Version.PrefixMinorRequirement (major, minor) ->
+      let lower_bound = Std.Version.make ~major ~minor ~patch:0 () in
+      let upper_bound = Std.Version.make ~major ~minor:(minor + 1) ~patch:0 () in
+      Ok
+        (Pubgrub.Ranges.intersection
+           ~compare_v:pubgrub_version_compare
+           (Pubgrub.higher_than lower_bound)
+           (Pubgrub.strictly_lower_than upper_bound))
+  | Std.Version.ExactRequirement version ->
+          Ok (Pubgrub.singleton version)
+  | Std.Version.NotEqualRequirement version ->
+          Ok
+            (Pubgrub.Ranges.complement
+               ~compare_v:pubgrub_version_compare
+               (Pubgrub.singleton version))
+  | Std.Version.GreaterThanRequirement version ->
+          Ok (Pubgrub.strictly_higher_than version)
+  | Std.Version.GreaterThanOrEqualRequirement version ->
+          Ok (Pubgrub.higher_than version)
+  | Std.Version.LessThanRequirement version ->
+          Ok (Pubgrub.strictly_lower_than version)
+  | Std.Version.LessThanOrEqualRequirement version ->
+          Ok (Pubgrub.lower_than version)
+  | Std.Version.TildeRequirement version ->
+          let upper_bound = Std.Version.make
+            ~major:version.major
+            ~minor:(version.minor + 1)
+            ~patch:0
+            () in
+          Ok
+            (Pubgrub.Ranges.intersection
+               ~compare_v:pubgrub_version_compare
+               (Pubgrub.higher_than version)
+               (Pubgrub.strictly_lower_than upper_bound))
 
 let record_required_by = fun (catalog:catalog) ~package_name required_by ->
   match required_by with

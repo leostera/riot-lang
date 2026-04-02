@@ -1027,6 +1027,81 @@ let test_lock_deps_reports_missing_registry_package_with_required_by = fun _ctx 
         Error "expected missing registry package error to include the requiring workspace package"
   | Error err -> Error ("expected missing registry package error, got: " ^ pm_error_message err)
 
+let test_lock_deps_supports_major_minor_prefix_requirements = fun _ctx ->
+  let requirement =
+    Std.Version.parse_requirement "0.2"
+    |> Result.expect ~msg:"expected 0.2 requirement to parse"
+  in
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:(Path.v "/workspace/packages/app")
+    ~dependencies:[ { name = "minttea"; source = source ~version:requirement () } ]
+    () in
+  let registry = make_registry [
+    make_registry_document
+      ~name:"minttea"
+      ~latest:"1.0.0"
+      ~releases:[
+        make_release ~version:"0.1.0" ();
+        make_release ~version:"0.2.0" ();
+        make_release ~version:"0.2.3" ();
+        make_release ~version:"0.3.0" ();
+        make_release ~version:"1.0.0" ();
+      ]
+      ()
+  ] in
+  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+  | Error err -> Error ("expected 0.2 requirement to resolve: " ^ pm_error_message err)
+  | Ok lockfile -> (
+      match List.find_opt
+        (fun (pkg: Riot_model.Lockfile.package) -> String.equal pkg.id.name "minttea")
+        lockfile.packages with
+      | Some pkg when pkg.id.version = Some "0.2.3" ->
+          Ok ()
+      | Some pkg ->
+          Error ("expected 0.2 requirement to pick highest 0.2.x release, got "
+          ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
+      | None ->
+          Error "expected minttea to be locked"
+    )
+
+let test_lock_deps_supports_major_prefix_requirements = fun _ctx ->
+  let requirement =
+    Std.Version.parse_requirement "0"
+    |> Result.expect ~msg:"expected 0 requirement to parse"
+  in
+  let app_pkg = make_package
+    ~name:"app"
+    ~path:(Path.v "/workspace/packages/app")
+    ~dependencies:[ { name = "minttea"; source = source ~version:requirement () } ]
+    () in
+  let registry = make_registry [
+    make_registry_document
+      ~name:"minttea"
+      ~latest:"1.0.0"
+      ~releases:[
+        make_release ~version:"0.1.0" ();
+        make_release ~version:"0.2.0" ();
+        make_release ~version:"0.9.9" ();
+        make_release ~version:"1.0.0" ();
+      ]
+      ()
+  ] in
+  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+  | Error err -> Error ("expected 0 requirement to resolve: " ^ pm_error_message err)
+  | Ok lockfile -> (
+      match List.find_opt
+        (fun (pkg: Riot_model.Lockfile.package) -> String.equal pkg.id.name "minttea")
+        lockfile.packages with
+      | Some pkg when pkg.id.version = Some "0.9.9" ->
+          Ok ()
+      | Some pkg ->
+          Error ("expected 0 requirement to pick highest 0.x.y release, got "
+          ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
+      | None ->
+          Error "expected minttea to be locked"
+    )
+
 let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names = fun _ctx ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package

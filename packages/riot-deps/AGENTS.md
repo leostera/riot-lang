@@ -18,6 +18,7 @@
 12. `add` should accept local path specs by loading the target `riot.toml`, discovering the real package name, and writing the dependency entry under that discovered name.
 13. Git-backed source dependencies belong here. Normalize `github.com/...` and `https://github.com/...` specs into source locators, materialize them through the local Git cache under `~/.riot/registry/...`, and keep that source provenance in `riot.lock`.
 14. `Dep_solver.lock_deps` is pubgrub-backed. Keep local package discovery, lock reconstruction, and refresh-preservation policy here, but route version choice and incompatibility resolution through `packages/pubgrub` instead of reintroducing ad-hoc recursive selection logic.
+15. Feed pubgrub typed `Std.Version` requirements, not reparsed requirement strings. Prefix requirements like `"0"` and `"0.2"` need to survive all the way into solver ranges.
 
 ## Validate
 

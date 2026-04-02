@@ -123,6 +123,17 @@ type requirement_op =
 type requirement
 (** Version requirement specification (opaque). Includes the unconstrained
     ["*"] requirement. *)
+type requirement_view =
+  | AnyRequirement
+  | ExactRequirement of t
+  | NotEqualRequirement of t
+  | GreaterThanRequirement of t
+  | GreaterThanOrEqualRequirement of t
+  | LessThanRequirement of t
+  | LessThanOrEqualRequirement of t
+  | TildeRequirement of t
+  | PrefixMajorRequirement of int
+  | PrefixMinorRequirement of int * int
 type parse_error =
   | Invalid_format of string
   | Invalid_version_segment of string
@@ -183,13 +194,17 @@ val parse_requirement: string -> (requirement, parse_error) result
     - "< 1.2.3" - less than
     - "<= 1.2.3" - less than or equal
     - "~> 1.2.3" - allows patch-level changes (>= 1.2.3 and < 1.3.0)
-    - "~> 1.2" - allows minor-level changes (>= 1.2.0 and < 2.0.0) *)
+    - "1.2" - any patch release in the 1.2.x line
+    - "1" - any release in the 1.x.y line *)
 val any: requirement
 
 (** Unconstrained requirement: ["*"] *)
 val requirement_to_string: requirement -> string
 
 (** Convert a requirement to its canonical string representation *)
+val view_requirement: requirement -> requirement_view
+
+(** View a requirement without exposing the underlying representation *)
 val matches: requirement -> t -> bool
 
 (** Check if a version satisfies a requirement *)

@@ -16,6 +16,7 @@
 10. Test support trees under `tests/fixtures/`, `tests/generated/`, and `tests/diagnostics/` are non-compilable inputs. Keep them out of `Package.sources.tests` and test-binary autodiscovery.
 11. Lockfile dependency entries should stay flat and exact for registry packages: render `name`, `version`, and `sha256` directly in the dependency table instead of nesting a second `package = { ... }` object.
 12. `Lockfile.t` carries a required `dependency_hash` derived from the raw `[dependencies]`, `[build-dependencies]`, and `[dev-dependencies]` sections of workspace manifests. Treat it as the staleness contract for `riot.lock`, not as optional metadata.
+13. Member package manifest decode failures are workspace load errors, not silent drops. `Workspace_manager.scan` should preserve those failures in `load_error list` so CLI commands can fail honestly instead of pretending the member disappeared.
 
 ## Validate
 
