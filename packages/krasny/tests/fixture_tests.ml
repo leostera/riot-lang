@@ -7,7 +7,7 @@ let fixtures_dir = Path.(tests_dir / Path.v "fixtures")
 
 let manifest_path = Path.(tests_dir / Path.v "format_expectations.txt")
 
-let native_fixture_prefixes = [ "010"; "020"; "050"; "071"; "080"; "081"; "082"; "097" ]
+let native_fixture_prefixes = [ "010"; "020"; "050"; "071"; "080"; "081"; "082"; "097"; "098" ]
 
 let parse_file = fun path ->
   let source = Fs.read path |> Result.expect ~msg:"fixture file should exist" in
