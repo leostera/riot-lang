@@ -164,21 +164,24 @@ let hide_cursor_seq = escape "?25l"
 let strip = fun str ->
   let buf = Buffer.create (String.length str) in
   let len = String.length str in
+  let rec skip_csi j =
+    if j >= len then
+      len
+    else
+      let c = str.[j] in
+      if (c >= '@' && c <= '~') then
+        j + 1
+      else
+        skip_csi (j + 1)
+  in
   let rec scan i =
     if i >= len then
       Buffer.contents buf
-    else if i < len - 1 && str.[i] = '\x1b' && str.[i + 1] = '[' then
-      let rec skip j =
-        if j >= len then
-          scan len
-        else
-          let c = str.[j] in
-          if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') then
-            scan (j + 1)
-          else
-            skip (j + 1)
-      in
-      skip (i + 2)
+    else if str.[i] = '\x1b' then
+      if i + 1 < len && str.[i + 1] = '[' then
+        scan (skip_csi (i + 2))
+      else
+        scan (i + 1)
     else begin
       Buffer.add_char buf str.[i];
       scan (i + 1)
