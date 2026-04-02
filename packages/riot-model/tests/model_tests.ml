@@ -1,8 +1,8 @@
 open Std
 module Test = Std.Test
 
-let source = fun ?(workspace = false) ?(builtin = false) ?path ?version () ->
-  Riot_model.Package.{ workspace; builtin; path; version }
+let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
+  Riot_model.Package.{ workspace; builtin; path; source_locator; ref_; version }
 
 let make_command = fun () ->
   Riot_model.Package_command.{

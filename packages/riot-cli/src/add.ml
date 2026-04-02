@@ -13,14 +13,15 @@ let out = eprintln
 let command =
   let open ArgParser in
     let open Arg in command "add"
-    |> about "Add a dependency to a manifest and refresh riot.lock"
+    |> about "Add a registry, local path, or GitHub dependency and refresh riot.lock"
     |> args
       [
-        positional "dependency" |> help "Dependency name, name@version, or local path";
-        option "package" |> short 'p' |> long "package" |> help "Target a specific workspace package manifest";
-        flag "workspace" |> long "workspace" |> help "Target the workspace root manifest";
-        flag "build" |> long "build" |> help "Add to [build-dependencies]";
-        flag "dev" |> long "dev" |> help "Add to [dev-dependencies]";
+        positional "dependency"
+        |> help "Dependency spec: <name>, <name>@<version>, ../path, github.com/<owner>/<repo>[/pkg][#ref], or https://github.com/<owner>/<repo>[/pkg][#ref]";
+        option "package" |> short 'p' |> long "package" |> help "Edit a specific workspace package manifest";
+        flag "workspace" |> long "workspace" |> help "Edit the workspace root manifest";
+        flag "build" |> long "build" |> help "Write into [build-dependencies]";
+        flag "dev" |> long "dev" |> help "Write into [dev-dependencies]";
         flag "json" |> long "json" |> help "Render events as JSON";
       ]
 
@@ -71,6 +72,34 @@ let json_of_event = function
     ("package", Data.Json.String package);
     ("latest_version", Data.Json.String latest_version)
   ])
+  | Riot_deps.SourceDependencyMaterializationStarted { source_locator; ref_ } -> Some (Data.Json.Object [
+    ("type", Data.Json.String "SourceDependencyMaterializationStarted");
+    ("source_locator", Data.Json.String source_locator);
+    (
+      "ref",
+      match ref_ with
+      | Some ref_ -> Data.Json.String ref_
+      | None -> Data.Json.Null
+    )
+  ])
+  | Riot_deps.SourceDependencyMaterializationFinished { source_locator; ref_; package; version } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "SourceDependencyMaterializationFinished");
+        ("source_locator", Data.Json.String source_locator);
+        (
+          "ref",
+          match ref_ with
+          | Some ref_ -> Data.Json.String ref_
+          | None -> Data.Json.Null
+        );
+        ("package", Data.Json.String package);
+        (
+          "version",
+          match version with
+          | Some version -> Data.Json.String version
+          | None -> Data.Json.Null
+        )
+      ])
   | Riot_deps.ManifestUpdated { path; section; operation; dependency } ->
       Some (
         Data.Json.Object [
@@ -106,10 +135,10 @@ let write_pm_event_human = fun ~session_id ~seen_registry_updates kind ->
   Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info kind
   |> Build.write_pm_event ~mode:Build.Human ~seen_registry_updates
 
-let write_build_event_json = fun event ->
-  match Riot_build.Event.to_json event with
-  | Some json -> println (Data.Json.to_string json)
-  | None -> ()
+let render_source_spec = fun ~source_locator ~ref_ ->
+  match ref_ with
+  | Some ref_ -> source_locator ^ "#" ^ ref_
+  | None -> source_locator
 
 let write_event = fun ~mode ~pm_session_id ~seen_registry_updates event ->
   match mode with
@@ -123,6 +152,10 @@ let write_event = fun ~mode ~pm_session_id ~seen_registry_updates event ->
       | Riot_deps.RegistryPackageLookupStarted _ ->
           ()
       | Riot_deps.RegistryPackageLookupFinished _ ->
+          ()
+      | Riot_deps.SourceDependencyMaterializationStarted { source_locator; ref_ } ->
+          out ("    \027[1;34mCloning\027[0m " ^ render_source_spec ~source_locator ~ref_)
+      | Riot_deps.SourceDependencyMaterializationFinished _ ->
           ()
       | Riot_deps.PackageUpdated { package; from_version; to_version } ->
           out

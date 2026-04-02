@@ -15,7 +15,8 @@
 9. Root `riot.toml` dependency sections are part of the refresh contract. A stale-lock check must treat the workspace root manifest the same way it treats member manifests.
 10. `add`/`remove` operate on the dependencies explicitly declared in the target manifest section, not the effective dependency set after workspace inheritance. Do not remove or rewrite dependencies that only come from the workspace root.
 11. `update` should surface concrete registry version changes as typed events so the CLI can say `Updated foo (old -> new)` without diffing lockfiles itself.
-12. `add` should accept local path specs by loading the target `riot.toml`, discovering the real package name, and writing the dependency entry under that discovered name. Keep unsupported source/github adds explicit until the model grows those fields.
+12. `add` should accept local path specs by loading the target `riot.toml`, discovering the real package name, and writing the dependency entry under that discovered name.
+13. Git-backed source dependencies belong here. Normalize `github.com/...` and `https://github.com/...` specs into source locators, materialize them through the local Git cache under `~/.riot/registry/...`, and keep that source provenance in `riot.lock`.
 
 ## Validate
 

@@ -9,7 +9,7 @@ let out = eprintln
 let command =
   let open ArgParser in
     let open Arg in command "update"
-    |> about "Re-resolve the workspace graph and rewrite riot.lock"
+    |> about "Re-resolve the workspace graph, update locked package versions, and rewrite riot.lock"
     |> args [ flag "json" |> long "json" |> help "Render events as JSON"; ]
 
 let message = function
@@ -29,6 +29,34 @@ let json_of_event = function
     ("package", Data.Json.String package);
     ("latest_version", Data.Json.String latest_version)
   ])
+  | Riot_deps.SourceDependencyMaterializationStarted { source_locator; ref_ } -> Some (Data.Json.Object [
+    ("type", Data.Json.String "SourceDependencyMaterializationStarted");
+    ("source_locator", Data.Json.String source_locator);
+    (
+      "ref",
+      match ref_ with
+      | Some ref_ -> Data.Json.String ref_
+      | None -> Data.Json.Null
+    )
+  ])
+  | Riot_deps.SourceDependencyMaterializationFinished { source_locator; ref_; package; version } ->
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "SourceDependencyMaterializationFinished");
+        ("source_locator", Data.Json.String source_locator);
+        (
+          "ref",
+          match ref_ with
+          | Some ref_ -> Data.Json.String ref_
+          | None -> Data.Json.Null
+        );
+        ("package", Data.Json.String package);
+        (
+          "version",
+          match version with
+          | Some version -> Data.Json.String version
+          | None -> Data.Json.Null
+        )
+      ])
   | Riot_deps.ManifestUpdated { path; section; operation; dependency } ->
       Some (
         Data.Json.Object [
@@ -64,11 +92,6 @@ let write_pm_event_human = fun ~session_id ~seen_registry_updates kind ->
   Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info kind
   |> Build.write_pm_event ~mode:Build.Human ~seen_registry_updates
 
-let write_build_event_json = fun event ->
-  match Riot_build.Event.to_json event with
-  | Some json -> println (Data.Json.to_string json)
-  | None -> ()
-
 let write_event = fun ~mode ~pm_session_id ~seen_registry_updates event ->
   match mode with
   | Build.Json -> (
@@ -80,6 +103,8 @@ let write_event = fun ~mode ~pm_session_id ~seen_registry_updates event ->
       match event with
       | Riot_deps.RegistryPackageLookupStarted _ -> ()
       | Riot_deps.RegistryPackageLookupFinished _ -> ()
+      | Riot_deps.SourceDependencyMaterializationStarted _ -> ()
+      | Riot_deps.SourceDependencyMaterializationFinished _ -> ()
       | Riot_deps.PackageUpdated { package; from_version; to_version } -> out
         ("    \027[1;32mUpdated\027[0m " ^ package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")")
       | Riot_deps.ManifestUpdated _ -> ()
