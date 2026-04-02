@@ -178,6 +178,15 @@ let mark_package_failed_in_graph = fun package_graph ~package ~package_key ~hash
     error
   }
 
+let mark_package_skipped_in_graph = fun package_graph ~package ~package_key ~reason ->
+  match Package_graph.get_node_by_key package_graph package_key with
+  | None -> ()
+  | Some node -> node.value <- Package_graph.Skipped {
+    package;
+    scope = Package_graph.get_scope node.value;
+    reason
+  }
+
 let mark_package_built_in_graph = fun package_graph ~runtime ~artifact ~status ->
   match Package_graph.get_node_by_key package_graph runtime.package_key with
   | None -> ()
@@ -594,6 +603,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 package_key
                 package
                 (Package_builder.Skipped { reason = "needs " ^ String.concat ", " names }) in
+              mark_package_skipped_in_graph
+                package_graph
+                ~package
+                ~package_key
+                ~reason:("needs " ^ String.concat ", " names);
               let _ = HashMap.remove pending_planning package_key in
               ()
             )
@@ -659,6 +673,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     package_key
                     package
                     (Package_builder.Skipped { reason = "needs " ^ String.concat ", " names }) in
+                  mark_package_skipped_in_graph
+                    package_graph
+                    ~package
+                    ~package_key
+                    ~reason:("needs " ^ String.concat ", " names);
                   let _ = HashMap.remove pending_planning package_key in
                   ()
               | Ok (Planned {
@@ -718,12 +737,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 package_key
                 runtime.package
                 (Package_builder.Skipped { reason }) in
-              mark_package_failed_in_graph
+              mark_package_skipped_in_graph
                 package_graph
                 ~package:runtime.package
                 ~package_key
-                ~hash:runtime.hash
-                ~error:reason;
+                ~reason;
               Sandbox.cleanup runtime.sandbox
             )
           else
