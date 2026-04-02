@@ -7,7 +7,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check && tsc --noEmit",
-    "deploy": "astro build && wrangler pages deploy"
+    "deploy": "astro build && rm -rf .wrangler/deploy && wrangler pages deploy ./dist --project-name riot-web"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
