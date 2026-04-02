@@ -876,7 +876,7 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
             = [
               Tusk_model.Lockfile.{
                 name = "std";
-                package = { registry = None; name = "std"; version = None }
+                package = { registry = None; name = "std"; version = None; sha256 = None }
               }
             ]
             && std_lock.provenance = Tusk_model.Lockfile.Workspace
@@ -1002,7 +1002,7 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
             = [
               Tusk_model.Lockfile.{
                 name = "std";
-                package = { registry = None; name = "std"; version = None }
+                package = { registry = None; name = "std"; version = None; sha256 = None }
               }
             ]
             && std_lock.id.registry = None
@@ -1268,19 +1268,19 @@ let test_lock_refresh_preserves_existing_registry_version = fun _ctx ->
       format_version = 1;
       packages =
         [ {
-            id = { registry = None; name = "app"; version = None };
+            id = { registry = None; name = "app"; version = None; sha256 = None };
             root = Some (Path.v "packages/app");
             provenance = Workspace;
             dependencies = [
               {
                 name = "std";
-                package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" }
+                package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0"; sha256 = None }
               }
             ];
             build_dependencies = [];
             dev_dependencies = [];
           }; {
-            id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
+            id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0"; sha256 = None };
             root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
@@ -1317,14 +1317,14 @@ let test_lock_refresh_preserves_existing_external_nodes = fun _ctx ->
       format_version = 1;
       packages =
         [ {
-            id = { registry = None; name = "app"; version = None };
+            id = { registry = None; name = "app"; version = None; sha256 = None };
             root = Some (Path.v "packages/app");
             provenance = Workspace;
             dependencies = [];
             build_dependencies = [];
             dev_dependencies = [];
           }; {
-            id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
+            id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0"; sha256 = None };
             root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
@@ -1352,7 +1352,7 @@ let test_unlock_discards_existing_external_nodes = fun _ctx ->
       format_version = 1;
       packages =
         [ {
-            id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0" };
+            id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.1.0"; sha256 = None };
             root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
@@ -1414,7 +1414,7 @@ let test_lockfile_store_roundtrips = fun _ctx ->
           format_version = 1;
           packages =
             [ {
-                id = { registry = None; name = "app"; version = None };
+                id = { registry = None; name = "app"; version = None; sha256 = None };
                 root = Some (Path.v "packages/app");
                 provenance = Workspace;
                 dependencies = [];
@@ -1462,6 +1462,49 @@ let test_lockfile_store_bubbles_parse_errors = fun _ctx ->
             Ok ()
           else
             Error ("unexpected error: " ^ err))
+
+let test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace = fun _ctx ->
+  with_tempdir "tusk_deps_remove_inherited"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "tusk.toml") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      write_file workspace_manifest
+        {|
+[workspace]
+members = ["packages/app"]
+
+[dependencies]
+std = "*"
+|};
+      write_package_manifest ~root:app_root
+        {|
+[package]
+name = "app"
+version = "0.0.1"
+|};
+      let workspace = make_workspace
+        ~workspace_root
+        ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
+        [ make_package ~name:"app" ~path:app_root () ]
+      in
+      match Tusk_deps.remove
+        ~workspace
+        ~cwd:app_root
+        ~request:Tusk_deps.{ selection = Current; scope = Runtime; dependency = "std" }
+        () with
+      | Ok () ->
+          Error "expected remove to reject dependencies that are only inherited from the workspace root"
+      | Error (Tusk_deps.DependencyNotFoundInSection { path; section; dependency }) ->
+          if
+            Path.equal path Path.(app_root / Path.v "tusk.toml")
+            && String.equal section "dependencies"
+            && String.equal dependency "std"
+          then
+            Ok ()
+          else
+            Error "unexpected dependency-not-found payload for inherited dependency removal"
+      | Error err ->
+          Error ("unexpected remove error: " ^ Tusk_deps.package_error_message err))
 
 let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
   with_tempdir "tusk_deps_ensure_lock_missing"
@@ -1775,31 +1818,31 @@ version = "1.0.0"
           format_version = 1;
           packages =
             [ {
-                id = { registry = None; name = "app"; version = None };
+                id = { registry = None; name = "app"; version = None; sha256 = None };
                 root = Some (Path.v "packages/app");
                 provenance = Workspace;
                 dependencies = [
                   {
                     name = "std";
-                    package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" }
+                    package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0"; sha256 = None }
                   }
                 ];
                 build_dependencies = [];
                 dev_dependencies = [];
               }; {
-                id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" };
+                id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0"; sha256 = None };
                 root = None;
                 provenance = Registry { registry = "pkgs.ml" };
                 dependencies = [
                   {
                     name = "kernel";
-                    package = { registry = Some "pkgs.ml"; name = "kernel"; version = Some "1.0.0" }
+                    package = { registry = Some "pkgs.ml"; name = "kernel"; version = Some "1.0.0"; sha256 = None }
                   }
                 ];
                 build_dependencies = [];
                 dev_dependencies = [];
               }; {
-                id = { registry = Some "pkgs.ml"; name = "kernel"; version = Some "1.0.0" };
+                id = { registry = Some "pkgs.ml"; name = "kernel"; version = Some "1.0.0"; sha256 = None };
                 root = None;
                 provenance = Registry { registry = "pkgs.ml" };
                 dependencies = [];
@@ -1881,19 +1924,19 @@ kernel = 123
           format_version = 1;
           packages =
             [ {
-                id = { registry = None; name = "app"; version = None };
+                id = { registry = None; name = "app"; version = None; sha256 = None };
                 root = Some (Path.v "packages/app");
                 provenance = Workspace;
                 dependencies = [
                   {
                     name = "std";
-                    package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" }
+                    package = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0"; sha256 = None }
                   }
                 ];
                 build_dependencies = [];
                 dev_dependencies = [];
               }; {
-                id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0" };
+                id = { registry = Some "pkgs.ml"; name = "std"; version = Some "0.2.0"; sha256 = None };
                 root = None;
                 provenance = Registry { registry = "pkgs.ml" };
                 dependencies = [];
@@ -1963,6 +2006,7 @@ let tests =
     case "lockfile store: roundtrips root lockfile" test_lockfile_store_roundtrips;
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
+    case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
     case "ensure lock: materializes registry packages before projection" test_ensure_lock_materializes_registry_packages_before_projection;
