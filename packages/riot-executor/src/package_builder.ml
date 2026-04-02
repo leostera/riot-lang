@@ -170,15 +170,33 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
     Action_graph.nodes action_graph
     |> List.concat_map
       (fun (node: Action_node.t) ->
-        let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
-        List.map
-          (fun out_path ->
-            Riot_store.Store.{
-              name = Path.basename out_path;
-              path = out_path;
-              action_hash = action_hash_hex
-            })
-          node.value.outs)
+        let is_package_export =
+          List.exists
+            (function
+              | Action.CreateLibrary _
+              | Action.CreateExecutable _
+              | Action.CreateSharedLibrary _ -> true
+              | Action.CompileInterface _
+              | Action.CompileImplementation _
+              | Action.GenerateInterface _
+              | Action.CompileC _
+              | Action.CopyFile _
+              | Action.WriteFile _
+              | Action.BuildForeignDependency _ -> false)
+            node.value.actions
+        in
+        if not is_package_export then
+          []
+        else
+          let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
+          List.map
+            (fun out_path ->
+              Riot_store.Store.{
+                name = Path.basename out_path;
+                path = out_path;
+                action_hash = action_hash_hex
+              })
+            node.value.outs)
   in
   let seen = HashSet.create () in
   List.filter_map
@@ -192,11 +210,23 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
         ))
     entries
 
-let artifact_from_exports = fun ~package_hash (exports: Riot_store.Store.export_entry list) ->
-  let files =
-    List.map (fun (entry: Riot_store.Store.export_entry) -> Path.v entry.name) exports
-  in
-  Riot_store.Artifact.{ hash = package_hash; files; ocamlc_warnings = []; exports }
+let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
+  let seen = HashSet.create () in
+  outputs
+  |> List.filter_map
+    (fun out_path ->
+      let abs_path = Path.join sandbox_dir out_path in
+      match Path.strip_prefix abs_path ~prefix:sandbox_dir with
+      | Ok _ ->
+          let abs_path_str = Path.to_string abs_path in
+          if HashSet.contains seen abs_path_str then
+            None
+          else
+            (
+              let _ = HashSet.insert seen abs_path_str in
+              Some abs_path
+            )
+      | Error _ -> None)
 
 let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
   let start = Instant.now () in
@@ -444,10 +474,11 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         match failed_actions with
         | first_error :: _ -> Error (convert_action_error first_error)
         | [] ->
+            let sandbox_dir = Sandbox.get_dir sandbox in
             let export_entries = compute_export_entries action_graph in
-            let artifact = artifact_from_exports ~package_hash export_entries in
+            let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
             let ocamlc_warnings = collect_ocamlc_warnings exec_result.completed in
-            Ok (artifact, export_entries, ocamlc_warnings)
+            Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings)
       in
       match Sandbox.with_sandbox
         ~workspace
@@ -488,22 +519,17 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
             ocamlc_warnings = [];
             duration;
           }
-      | Ok (artifact, export_entries, ocamlc_warnings) ->
+      | Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings) ->
           Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
           |> Result.expect ~msg:(("Failed to materialize package exports for " ^ package.name));
-          let package_outs =
-            List.map
-              (fun (entry: Riot_store.Store.export_entry) -> Path.(target_dir / Path.v entry.name))
-              export_entries
-          in
-          let _ = Riot_store.Store.save
+          let artifact = Riot_store.Store.save
             store
             ~package:package.name
             ~ocamlc_warnings
             ~exports:export_entries
             ~hash:package_hash
-            ~sandbox_dir:target_dir
-            ~outs:package_outs
+            ~sandbox_dir
+            ~outs:package_outputs
           |> Result.expect ~msg:(("Failed to save package hash artifact for " ^ package.name)) in
           if emit_visible_progress && List.length ocamlc_warnings > 0 then
             Telemetry.emit

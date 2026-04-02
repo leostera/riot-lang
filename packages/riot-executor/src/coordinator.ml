@@ -71,15 +71,33 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
     Action_graph.nodes action_graph
     |> List.concat_map
       (fun (node: Action_node.t) ->
-        let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
-        List.map
-          (fun out_path ->
-            Riot_store.Store.{
-              name = Path.basename out_path;
-              path = out_path;
-              action_hash = action_hash_hex
-            })
-          node.value.outs)
+        let is_package_export =
+          List.exists
+            (function
+              | Action.CreateLibrary _
+              | Action.CreateExecutable _
+              | Action.CreateSharedLibrary _ -> true
+              | Action.CompileInterface _
+              | Action.CompileImplementation _
+              | Action.GenerateInterface _
+              | Action.CompileC _
+              | Action.CopyFile _
+              | Action.WriteFile _
+              | Action.BuildForeignDependency _ -> false)
+            node.value.actions
+        in
+        if not is_package_export then
+          []
+        else
+          let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
+          List.map
+            (fun out_path ->
+              Riot_store.Store.{
+                name = Path.basename out_path;
+                path = out_path;
+                action_hash = action_hash_hex
+              })
+            node.value.outs)
   in
   let seen = HashSet.create () in
   List.filter_map
@@ -93,11 +111,23 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
         ))
     entries
 
-let artifact_from_exports = fun ~package_hash (exports: Riot_store.Store.export_entry list) ->
-  let files =
-    List.map (fun (entry: Riot_store.Store.export_entry) -> Path.v entry.name) exports
-  in
-  Riot_store.Artifact.{ hash = package_hash; files; ocamlc_warnings = []; exports }
+let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
+  let seen = HashSet.create () in
+  outputs
+  |> List.filter_map
+    (fun out_path ->
+      let abs_path = Path.join sandbox_dir out_path in
+      match Path.strip_prefix abs_path ~prefix:sandbox_dir with
+      | Ok _ ->
+          let abs_path_str = Path.to_string abs_path in
+          if HashSet.contains seen abs_path_str then
+            None
+          else
+            (
+              let _ = HashSet.insert seen abs_path_str in
+              Some abs_path
+            )
+      | Error _ -> None)
 
 let collect_ocamlc_warnings = fun completed_actions ->
   let seen = HashSet.create () in
@@ -222,27 +252,23 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     ~exports:runtime.export_entries
     ~target_dir:runtime.target_dir
   |> Result.expect ~msg:(("Failed to materialize package exports for " ^ runtime.package.name));
-  let package_outs =
-    List.map
-      (fun (entry: Riot_store.Store.export_entry) -> Path.(runtime.target_dir / Path.v entry.name))
-      runtime.export_entries
+  let sandbox_dir = Sandbox.get_dir runtime.sandbox in
+  let package_outputs =
+    collect_package_artifact_outputs
+      ~sandbox_dir
+      ~outputs:(List.concat_map
+        (fun (node: Action_node.t) -> node.value.outs)
+        (Action_graph.nodes runtime.action_graph))
   in
-  let _ = Riot_store.Store.save
+  let artifact = Riot_store.Store.save
     store
     ~package:runtime.package.name
     ~ocamlc_warnings
     ~exports:runtime.export_entries
     ~hash:runtime.hash
-    ~sandbox_dir:runtime.target_dir
-    ~outs:package_outs
+    ~sandbox_dir
+    ~outs:package_outputs
   |> Result.expect ~msg:(("Failed to save package hash artifact for " ^ runtime.package.name)) in
-  let artifact =
-    Riot_store.Artifact.{
-      hash = runtime.hash;
-      files = List.map (fun (entry: Riot_store.Store.export_entry) -> Path.v entry.name) runtime.export_entries;
-      ocamlc_warnings;
-      exports = runtime.export_entries
-    } in
   let all_cached =
     HashMap.into_iter runtime.completed_actions
     |> Iter.Iterator.to_list
