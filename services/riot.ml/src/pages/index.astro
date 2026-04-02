@@ -1,0 +1,237 @@
+---
+import SiteLayout from "../layouts/SiteLayout.astro";
+
+const installCommand = "curl -sSL https://cdn.pkgs.ml/tusk/install.sh | sh";
+const terminalDemo = `$ tusk run leostera/create-riot-app
+Fetching toolchain...
+Creating app...
+Building app...
+Running app...
+
+hello from riot`;
+const actorCode = `spawn (fun () ->
+  match receive () with
+  | Hello_world -> ...
+)`;
+const packageCommands = `tusk add <package>
+tusk publish`;
+---
+
+<SiteLayout
+  title="Riot"
+  description="Riot is a stack for building applications in OCaml."
+>
+  <nav class="fixed top-6 right-6 hidden border-0 bg-transparent p-0 text-right text-sm leading-6 opacity-80 lg:block">
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#about">About</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#why">Why</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#what">What</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#std">Std</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#tusk">Tusk</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#philosophy">Philosophy</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#packages">Packages</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#community">Community</a>
+    <span class="block h-2"></span>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="https://github.com/leostera/riot">GitHub</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="https://github.com/leostera/riot/tree/main/docs">Docs</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="https://discord.gg/">Discord</a>
+  </nav>
+
+  <main class="mx-auto w-[min(calc(100%-2rem),60rem)] px-0 py-16 md:py-24">
+    <section class="pt-12 text-center md:pt-16">
+      <img
+        src="/logo.svg"
+        alt="Riot logo"
+        class="mx-auto mb-4 h-auto w-40 opacity-95 md:w-52"
+      />
+      <p class="mx-auto mt-4 max-w-xl text-[1.15rem] text-[#c8afb7] md:text-[1.35rem]">
+        There are many OCaml stacks. This one is mine.
+      </p>
+
+      <div class="mt-6 flex flex-wrap justify-center gap-4 text-base text-[#c8afb7]">
+        <a class="text-[#fff6f8] no-underline transition-colors hover:text-[#ff354f]" href="https://github.com/leostera/riot">GitHub</a>
+        <a class="text-[#fff6f8] no-underline transition-colors hover:text-[#ff354f]" href="https://discord.gg/">Discord</a>
+      </div>
+
+      <div class="relative mx-auto mt-8 max-w-xl">
+        <div class="mt-0 overflow-x-auto rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,#181116_0%,#130f12_100%)] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+          <button
+            type="button"
+            class="absolute top-2.5 right-2.5 rounded-md border border-[#32242a] px-3 py-1.5 text-sm text-[#c8afb7] transition hover:text-[#fff6f8]"
+            data-copy={installCommand}
+          >
+            copy
+          </button>
+          <pre class="m-0 text-left text-[0.95rem] text-slate-200"><code>{installCommand}</code></pre>
+        </div>
+      </div>
+
+      <div class="mx-auto mt-6 max-w-4xl overflow-hidden rounded-[1.125rem] border border-[#32242a] bg-[linear-gradient(180deg,#121720,#0d1117)] text-left shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
+        <div class="flex items-center gap-2 border-b border-[#32242a] bg-[#0f141b] px-4 py-3">
+          <span class="h-3 w-3 rounded-full bg-rose-400"></span>
+          <span class="h-3 w-3 rounded-full bg-amber-400"></span>
+          <span class="h-3 w-3 rounded-full bg-emerald-400"></span>
+        </div>
+        <div class="px-5 py-5 text-[0.95rem] text-slate-200">
+          <pre class="m-0 whitespace-pre-wrap">{terminalDemo}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">About</p>
+      <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>Riot is a stack for building applications in OCaml. It reflects how I like to build systems: one toolchain, one runtime model, and one cohesive experience from writing code to running it.</p>
+        <p>I care about a few things: a unified tooling story like Go, fast feedback loops, an actor model with supervision like Elixir, and a strong type system like OCaml and Rust. Riot brings those together into a single way of working.</p>
+        <p>It comes with a runtime built around actors and message passing, a standard library for real applications, and a toolchain that handles building, testing, formatting, and packaging without making you assemble it yourself.</p>
+        <p>This is not meant to be everything for everyone. It&apos;s just my way of building systems in OCaml, shared as-is.</p>
+      </div>
+    </section>
+
+    <section id="why" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Why Riot?</p>
+      <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>Riot is my vision of a great developer experience, rooted in OCaml and inspired by Erlang. It ships as a complete stack for building type-safe, multicore applications without having to assemble the pieces yourself.</p>
+        <p>Riot ships with <code class="bg-transparent p-0 text-inherit">tusk</code> , the only tool in the stack. Tusk is the package manager, build system, task runner, toolchain manager, formatter, and linter. One tool, one workflow, one place to do the work.</p>
+        <p>If you like tooling that gets out of your way and a strong foundation for building real systems, Riot should feel natural.</p>
+      </div>
+    </section>
+
+    <section id="what" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">What Riot Gives You</p>
+      <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1.45rem,3vw,2.15rem)] leading-[1.15] tracking-[-0.03em]">
+        <p>Type safety comes from OCaml.</p>
+        <p>Riot gives you a way to build systems.</p>
+      </div>
+      <div class="mt-5 max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>That difference matters. OCaml already gives you a strong foundation for writing correct code. Riot tries to answer a different question: once your program becomes a long-running application, how should it be structured so it stays understandable, observable, and resilient when things go wrong?</p>
+        <p>The answer Riot leans into is inspired by Erlang and Elixir. Applications are made of long-lived actors that communicate through messages and live under supervisors. Instead of pretending failures will not happen, the system is built around the idea that they will. Processes crash. Supervisors restart them. The application keeps moving.</p>
+      </div>
+      <div class="mt-6 max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1.45rem,3vw,2.15rem)] leading-[1.15] tracking-[-0.03em]">
+        <p>Actors.</p>
+        <p>Messages.</p>
+        <p>Supervisors.</p>
+      </div>
+      <div class="mt-6 max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1.45rem,3vw,2.15rem)] leading-[1.15] tracking-[-0.03em] text-[#c8afb7]">
+        <p>Systems fail.</p>
+        <p>Riot embraces that.</p>
+      </div>
+      <div class="mt-5 max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>That makes Riot closer in spirit to Erlang and Elixir than to the usual OCaml application story, but it stays rooted in OCaml&apos;s strengths: static types, fast builds, and a language that is still a pleasure to write.</p>
+      </div>
+    </section>
+
+    <section id="std" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Std</p>
+      <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p><code class="bg-transparent p-0 text-inherit">Std</code> is not a conventional utility standard library. It is Riot&apos;s application layer: the place where the runtime, the system model, and the everyday operational pieces come together into something you can actually build on.</p>
+        <p>It re-exports the core primitives you need, but more importantly it gives you the parts that usually end up scattered across a dozen decisions: supervision and lifecycle, structured logging, telemetry, typed configuration, networking, file and process I/O, testing, benchmarking, and the rest of the shape of a real application stack.</p>
+        <p>You do not start from a blank project and then slowly rediscover what your stack ought to look like. You start from a system that already has opinions about how applications should be structured and run.</p>
+      </div>
+      <div class="mt-6 grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,rgba(255,53,79,0.06),rgba(255,255,255,0.02))] px-4 py-4">
+          <h3 class="mb-2 text-base font-semibold">Concurrency &amp; fault tolerance</h3>
+          <p class="m-0 text-base text-[#c8afb7]">Actors, supervision, lifecycle, and long-lived systems built to survive failure.</p>
+        </div>
+        <div class="rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,rgba(255,53,79,0.06),rgba(255,255,255,0.02))] px-4 py-4">
+          <h3 class="mb-2 text-base font-semibold">Observability</h3>
+          <p class="m-0 text-base text-[#c8afb7]">Structured logging, telemetry, and event-driven visibility are part of the stack from day one.</p>
+        </div>
+        <div class="rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,rgba(255,53,79,0.06),rgba(255,255,255,0.02))] px-4 py-4">
+          <h3 class="mb-2 text-base font-semibold">Configuration</h3>
+          <p class="m-0 text-base text-[#c8afb7]">Typed configuration, validation at startup, and environment-aware loading without stringly-typed guesswork.</p>
+        </div>
+        <div class="rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,rgba(255,53,79,0.06),rgba(255,255,255,0.02))] px-4 py-4">
+          <h3 class="mb-2 text-base font-semibold">I/O, networking, and data</h3>
+          <p class="m-0 text-base text-[#c8afb7]">Filesystem, TCP, HTTP, TLS, JSON, TOML, CSV, and the rest of the boring but necessary surface area.</p>
+        </div>
+        <div class="rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,rgba(255,53,79,0.06),rgba(255,255,255,0.02))] px-4 py-4">
+          <h3 class="mb-2 text-base font-semibold">Parallelism</h3>
+          <p class="m-0 text-base text-[#c8afb7]">Tasks, worker pools, timers, and scheduling tools for the parts of your system that need more than one actor.</p>
+        </div>
+        <div class="rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,rgba(255,53,79,0.06),rgba(255,255,255,0.02))] px-4 py-4">
+          <h3 class="mb-2 text-base font-semibold">Testing &amp; benchmarking</h3>
+          <p class="m-0 text-base text-[#c8afb7]">Built-in runners and conventions for verifying behavior and measuring performance without assembling another toolchain.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tusk" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Tusk</p>
+      <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>Tusk is Riot&apos;s toolchain. It is the thing that makes the whole experience feel cohesive instead of improvised. It installs what you need, fetches the right compiler, builds your project, runs it, tests it, formats it, and manages dependencies through one consistent interface.</p>
+        <p>I wanted the toolchain to feel like an instrument: something you trust enough that you stop thinking about it while you work. That is why the first experience matters so much. You run one install command, then you create and run an app immediately. The setup fades into the background where it belongs.</p>
+      </div>
+      <div class="mt-4 grid max-w-[42rem] gap-2 font-['Cormorant_Garamond','Times_New_Roman',serif] text-[1.15rem] text-[#fff6f8]">
+        <span>Installs everything.</span>
+        <span>Builds and runs your app.</span>
+        <span>Runs tests and formats code.</span>
+        <span>Manages dependencies and packages.</span>
+      </div>
+      <div class="mt-4 max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>No setup. No glue. No separate story you have to invent before the real work starts.</p>
+      </div>
+    </section>
+
+    <section class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Code</p>
+      <div class="mt-4 overflow-x-auto rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,#181116_0%,#130f12_100%)] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+        <pre class="m-0 text-[0.95rem] text-slate-200"><code>{actorCode}</code></pre>
+      </div>
+    </section>
+
+    <section id="philosophy" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Philosophy</p>
+      <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>Riot is opinionated on purpose. It values convention over endless configurability, vertical integration over a puzzle of interchangeable parts, and programmer happiness over the performance of having infinite choices all the time.</p>
+        <p>There is one stack here. You do not fight it. You use it, extend it where it makes sense, and let its defaults carry most of the weight. If that sounds restrictive, Riot may not be for you. If that sounds relieving, you probably already understand it.</p>
+      </div>
+      <div class="mt-5 max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1.45rem,3vw,2.15rem)] leading-[1.15] tracking-[-0.03em]">
+        <p>One stack.</p>
+        <p>You don&apos;t fight it.</p>
+      </div>
+      <a class="mt-4 inline-flex items-center gap-2 text-[#ff8a9a] no-underline transition-colors hover:text-[#ff354f]" href="#">
+        Read the doctrine →
+      </a>
+    </section>
+
+    <section id="packages" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Packages</p>
+      <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>Riot also has a growing package ecosystem through <strong>pkgs.ml</strong>. The point is not just to let you consume packages, but to let you grow the stack in the same style it was built: one tool, one workflow, one place to share and reuse code.</p>
+        <p>You can add packages to a project, publish your own, and help shape what this ecosystem becomes by using it. Riot is mine, but it does not have to stop with me.</p>
+      </div>
+      <div class="mt-4 overflow-x-auto rounded-2xl border border-[#32242a] bg-[linear-gradient(180deg,#181116_0%,#130f12_100%)] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+        <pre class="m-0 text-[0.95rem] text-slate-200"><code>{packageCommands}</code></pre>
+      </div>
+    </section>
+
+    <section id="community" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Community</p>
+      <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
+        <p>This is still early, and that is part of the fun. Riot is growing in public. The ideas are clear, the stack is real, and there is still plenty of room for the ecosystem and the community around it to take shape.</p>
+        <p>If this way of building resonates with you, come hang out on Discord and help push it forward.</p>
+        <p><a class="text-[#fff6f8] no-underline transition-colors hover:text-[#ff354f]" href="https://discord.gg/">Come hang out on Discord →</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mx-auto w-[min(calc(100%-2rem),60rem)] px-0 pt-4 pb-16">
+    <p class="font-['Cormorant_Garamond','Times_New_Roman',serif] text-[1.45rem] text-[#fff6f8]">I built this for myself.</p>
+    <p class="font-['Cormorant_Garamond','Times_New_Roman',serif] text-[1.45rem] text-[#fff6f8]">You&apos;re welcome to use it too.</p>
+  </footer>
+
+  <script>
+    document.querySelectorAll("button[data-copy]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const text = button.getAttribute("data-copy");
+        if (!text) return;
+        await navigator.clipboard.writeText(text);
+        const previous = button.textContent;
+        button.textContent = "copied";
+        window.setTimeout(() => {
+          button.textContent = previous;
+        }, 1200);
+      });
+    });
+  </script>
+</SiteLayout>

@@ -1,0 +1,28 @@
+---
+import "../styles/globals.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "Riot",
+  description = "Riot is a stack for building applications in OCaml.",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+  </head>
+  <body
+    class="m-0 bg-[#0c0b0d] font-['Source_Sans_3_Variable',sans-serif] text-[#fff6f8] [background:radial-gradient(circle_at_top,rgba(255,53,79,0.18)_0%,transparent_32%),radial-gradient(circle_at_50%_-10%,#26161b_0%,#0c0b0d_52%)] text-[1.0625rem] leading-[1.6]"
+  >
+    <slot />
+  </body>
+</html>

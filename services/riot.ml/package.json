@@ -1,0 +1,25 @@
+{
+  "name": "riot-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check && tsc --noEmit",
+    "deploy": "astro build && wrangler pages deploy"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "@fontsource-variable/source-sans-3": "^5.2.9",
+    "@fontsource/cormorant-garamond": "^5.2.7",
+    "astro": "^6.1.1",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.8",
+    "@types/bun": "latest",
+    "typescript": "^5",
+    "wrangler": "latest"
+  }
+}
