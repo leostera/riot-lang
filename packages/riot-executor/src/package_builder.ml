@@ -299,6 +299,104 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         ocamlc_warnings = [];
         duration;
       }
+  | Ok (Riot_planner.Package_planner.Cached {
+    package_key=planned_key;
+    hash=package_hash;
+    artifact;
+    depset;
+    exports
+  }) ->
+      let all_exports_present =
+        List.for_all
+          (fun (entry: Riot_store.Store.export_entry) ->
+            let dst = Path.(target_dir / Path.v entry.name) in
+            match Fs.exists dst with
+            | Ok true -> true
+            | Ok false
+            | Error _ -> false)
+          exports
+      in
+      let materialized =
+        if all_exports_present then
+          Ok ()
+        else
+          Riot_store.Store.materialize_package_exports store ~exports ~target_dir
+      in
+      let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
+      (
+        match materialized with
+        | Ok () ->
+            (
+              match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
+              | Some node ->
+                  node.value <- Riot_planner.Package_graph.Cached {
+                    package;
+                    scope = Riot_planner.Package_graph.get_scope node.value;
+                    hash = package_hash;
+                    artifact;
+                    depset;
+                    exports;
+                  }
+              | None -> ()
+            );
+            if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
+              Telemetry.emit
+                (
+                  PackageOcamlcWarnings {
+                    session_id;
+                    package;
+                    target = Workspace_planner.Package package.name;
+                    source = `Cached;
+                    messages = artifact.ocamlc_warnings;
+                  }
+                );
+            if emit_visible_progress then
+              Telemetry.emit
+                (
+                  BuildCompleted {
+                    session_id;
+                    package;
+                    target = Workspace_planner.Package package.name;
+                    status = `Cached;
+                    duration;
+                  }
+                );
+            {
+              package_key = planned_key;
+              package;
+              status = Cached artifact;
+              ocamlc_warnings = artifact.ocamlc_warnings;
+              duration;
+            }
+        | Error message ->
+            let error = ExecutionFailed { message } in
+            (
+              match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
+              | Some node -> node.value <- Riot_planner.Package_graph.Failed {
+                package;
+                scope = Riot_planner.Package_graph.get_scope node.value;
+                hash = package_hash;
+                error = message
+              }
+              | None -> ()
+            );
+            Telemetry.emit
+              (
+                BuildFailed {
+                  session_id;
+                  package;
+                  target = Workspace_planner.Package package.name;
+                  error
+                }
+              );
+            {
+              package_key = planned_key;
+              package;
+              status = Failed error;
+              ocamlc_warnings = [];
+              duration;
+            }
+      )
   | Ok (Planned {
     package_key=planned_key;
     hash=package_hash;

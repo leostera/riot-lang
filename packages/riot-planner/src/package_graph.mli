@@ -19,6 +19,14 @@ type package_node =
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash
     }
+  | Cached of {
+      package: Package.t;
+      scope: package_scope;
+      hash: Std.Crypto.hash;
+      artifact: Riot_store.Artifact.t;
+      depset: Dependency.t list;
+      exports: Riot_store.Store.export_entry list
+    }
   | Built of {
       package: Package.t;
       scope: package_scope;

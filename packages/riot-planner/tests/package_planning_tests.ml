@@ -180,6 +180,80 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_cached_artifact_hit_test"
+      (fun tmpdir ->
+        let package = make_package tmpdir "pkg" in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        let input_hash = compute_input_hash ~package ~workspace ~profile ~build_ctx () in
+        let sandbox_dir = Path.(tmpdir / Path.v "sandbox") in
+        let output = Path.(sandbox_dir / Path.v "pkg.cma") in
+        let _ = Fs.create_dir_all sandbox_dir |> Result.expect ~msg:"sandbox dir creation should succeed" in
+        let _ = Fs.write "cached" output |> Result.expect ~msg:"artifact output write should succeed" in
+        let _artifact = Riot_store.Store.save
+          store
+          ~package:package.name
+          ~hash:input_hash
+          ~sandbox_dir
+          ~outs:[ output ]
+        |> Result.expect ~msg:"artifact save should succeed" in
+        let exports = [
+          Riot_store.Store.{
+            name = "pkg.cma";
+            path = Path.v "pkg.cma";
+            action_hash = Std.Crypto.Digest.hex input_hash;
+          };
+        ] in
+        let target_triple_str =
+          Kernel.System.Host.to_string (Riot_model.Build_ctx.target_triplet build_ctx)
+        in
+        let _ = Riot_store.Store.save_package_exports
+          store
+          ~package:package.name
+          ~profile:profile.name
+          ~target:target_triple_str
+          ~exports
+        |> Result.expect ~msg:"package export save should succeed" in
+        if Option.is_some (Riot_store.Store.load_plan_bundle store ~hash:input_hash) then
+          Error "expected no plan bundle before cached planner lookup"
+        else
+          let package_graph = Riot_planner.Package_graph.create
+            ~scope:Riot_planner.Package_graph.Runtime workspace
+          |> Result.expect ~msg:"package graph should build" in
+          let package_key = Riot_planner.Package_graph.package_key
+            ~package_name:package.name
+            Riot_planner.Package_graph.Runtime in
+          match Riot_planner.Package_planner.plan_package
+            ~workspace
+            ~toolchain:test_toolchain
+            ~store
+            ~package_graph
+            ~package_key
+            ~package
+            ~build_ctx with
+          | Error err ->
+              Error ("expected cached plan result, got planner error: "
+              ^ Riot_planner.Planning_error.to_string err)
+          | Ok (Riot_planner.Package_planner.Cached { hash; artifact = cached_artifact; exports = cached_exports; _ }) ->
+              if not (Std.Crypto.Hash.compare hash input_hash = 0) then
+                Error "expected cached plan hash to match input hash"
+              else if not (List.length cached_artifact.Riot_store.Artifact.files = 1) then
+                Error "expected cached artifact to expose one file"
+              else if not (List.length cached_exports = 1) then
+                Error "expected cached export manifest to expose one export"
+              else
+                Ok ()
+          | Ok _ ->
+              Error "expected Cached result")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_bundle_stale_version_test"
@@ -298,6 +372,7 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
 let tests =
   Test.[
     case "plan bundle cache hit restores module and action graphs" test_plan_bundle_cache_hit_restores_module_and_action_graphs;
+    case "cached artifact and exports short-circuit without plan bundle" test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
     case "stale plan bundle version rebuilds plan graphs" test_stale_plan_bundle_version_rebuilds_plan_graphs;
   ]
 

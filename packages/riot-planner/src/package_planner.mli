@@ -5,9 +5,10 @@ open Riot_model
 (** Plan a package:
 
     1. Check if all package dependencies are planned in the package_graph 2. If
-    not → return MissingDependencies 3. Compute package input hash 4. Try to
-    load a cached plan bundle by that hash 5. On miss, build module/action
-    graphs and persist the bundle 6. Return Planned
+    not → return MissingDependencies 3. Compute package input hash 4. Try the
+    warm cached-artifact + export-manifest fast path 5. Otherwise try to load a
+    cached plan bundle by that hash 6. On miss, build module/action graphs and
+    persist the bundle 7. Return Cached or Planned
 
     The hash includes:
     - Package metadata (name, dependencies, binaries)
@@ -15,6 +16,14 @@ open Riot_model
     - Source-level package metadata
     - Hashes of all direct dependencies (transitive cache invalidation) *)
 type plan_result =
+  | Cached of {
+      package_key: Package.key;
+      package: Package.t;
+      hash: Std.Crypto.hash;
+      artifact: Riot_store.Artifact.t;
+      depset: Dependency.t list;
+      exports: Riot_store.Store.export_entry list
+    }
   | Planned of {
       package_key: Package.key;
       package: Package.t;

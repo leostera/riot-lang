@@ -35,6 +35,14 @@ type package_node =
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash
     }
+  | Cached of {
+      package: Package.t;
+      scope: package_scope;
+      hash: Std.Crypto.hash;
+      artifact: Artifact.t;
+      depset: Dependency.t list;
+      exports: Riot_store.Store.export_entry list
+    }
   | Built of {
       package: Package.t;
       scope: package_scope;
@@ -56,6 +64,7 @@ type t = {
 let get_package = function
   | Unplanned { package; _ } -> package
   | Planned { package; _ } -> package
+  | Cached { package; _ } -> package
   | Built { package; _ } -> package
   | Failed { package; _ } -> package
   | Skipped { package; _ } -> package
@@ -63,6 +72,7 @@ let get_package = function
 let get_scope = function
   | Unplanned { scope; _ } -> scope
   | Planned { scope; _ } -> scope
+  | Cached { scope; _ } -> scope
   | Built { scope; _ } -> scope
   | Failed { scope; _ } -> scope
   | Skipped { scope; _ } -> scope
@@ -83,6 +93,7 @@ let get_key = fun node ->
 let is_planned = function
   | Unplanned _ -> false
   | Planned _ -> true
+  | Cached _ -> true
   | Built _ -> true
   | Failed _ -> true
   | Skipped _ -> true
@@ -90,6 +101,7 @@ let is_planned = function
 let get_hash = function
   | Unplanned _ -> None
   | Planned { hash; _ } -> Some hash
+  | Cached { hash; _ } -> Some hash
   | Built { hash; _ } -> Some hash
   | Failed { hash; _ } -> Some hash
   | Skipped _ -> None
@@ -110,6 +122,7 @@ let get_planned_data = function
     hash;
     _
   } -> Some (package, module_graph, action_graph, hash)
+  | Cached _ -> None
   | Failed _ -> None
   | Skipped _ -> None
 

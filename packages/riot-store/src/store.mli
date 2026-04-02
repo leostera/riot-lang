@@ -96,6 +96,12 @@ val load_package_exports:
 
     Returns [None] when no manifest is present or the stored payload is
     invalid. *)
+val package_export_sources_exist: t -> exports:export_entry list -> bool
+
+(** Check whether all export entries point at existing immutable store files.
+
+    This is used by warm cached-package fast paths before treating a package as
+    terminally reusable without replaying the full planner bundle. *)
 val find_package_export_path:
   t -> package:string -> profile:string -> target:string -> name:string -> Std.Path.t option
 

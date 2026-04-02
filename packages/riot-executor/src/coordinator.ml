@@ -202,6 +202,19 @@ let mark_package_built_in_graph = fun package_graph ~runtime ~artifact ~status -
         depset = runtime.depset;
       }
 
+let mark_package_cached_in_graph = fun package_graph ~package ~package_key ~hash ~artifact ~depset ~exports ->
+  match Package_graph.get_node_by_key package_graph package_key with
+  | None -> ()
+  | Some node ->
+      node.value <- Package_graph.Cached {
+        package;
+        scope = Package_graph.get_scope node.value;
+        hash;
+        artifact;
+        depset;
+        exports;
+      }
+
 let finalize_package_success = fun ~session_id ~store ~runtime ->
   let ocamlc_warnings = collect_ocamlc_warnings runtime.completed_actions in
   let _ = Riot_store.Store.save_package_exports
@@ -348,8 +361,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       ~profile:profile_name
       ~target:target_triple_str
     / Path.v package_name) in
-  let maybe_short_circuit_cached_package ~package_key ~(package:Package.t) ~hash ~depset ~module_graph ~action_graph =
-    let export_entries = compute_export_entries action_graph in
+  let finalize_cached_package ~package_key ~(package:Package.t) ~hash ~artifact ~depset ~exports =
     let target_dir = target_dir_for package.name in
     let all_exports_present =
       List.for_all
@@ -359,63 +371,69 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
           | Ok true -> true
           | Ok false
           | Error _ -> false)
-        export_entries
+        exports
     in
-    match Riot_store.Store.get store hash with
-    | None -> false
-    | Some artifact ->
-        let materialized =
-          if all_exports_present then
-            Ok ()
-          else
-            Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
+    let materialized =
+      if all_exports_present then
+        Ok ()
+      else
+        Riot_store.Store.materialize_package_exports store ~exports ~target_dir
+    in
+    match materialized with
+    | Ok () ->
+        let result =
+          Package_builder.{
+            package_key;
+            package;
+            status = Cached artifact;
+            ocamlc_warnings = artifact.ocamlc_warnings;
+            duration = Time.Duration.zero;
+          }
         in
-        (
-          match materialized with
-          | Error _ -> false
-          | Ok () ->
-              let result =
-                Package_builder.{
-                  package_key;
-                  package;
-                  status = Cached artifact;
-                  ocamlc_warnings = artifact.ocamlc_warnings;
-                  duration = Time.Duration.zero;
-                }
-              in
-              let _ = HashMap.insert package_results package_key result in
-              (
-                match Package_graph.get_node_by_key package_graph package_key with
-                | None -> ()
-                | Some node ->
-                    node.value <- Package_graph.Built {
-                      package;
-                      scope = Package_graph.get_scope node.value;
-                      module_graph;
-                      action_graph;
-                      hash;
-                      artifact;
-                      status = Package_graph.Cached;
-                      depset;
-                    }
-              );
-              emit_package_ocamlc_warnings
-                ~session_id
-                ~package
-                ~target:(Workspace_planner.Package package.name)
-                ~source:`Cached artifact.ocamlc_warnings;
-              Telemetry.emit
-                (
-                  BuildCompleted {
-                    session_id;
-                    package;
-                    target = Workspace_planner.Package package.name;
-                    status = `Cached;
-                    duration = Time.Duration.zero;
-                  }
-                );
-              true
-        )
+        let _ = HashMap.insert package_results package_key result in
+        mark_package_cached_in_graph package_graph ~package ~package_key ~hash ~artifact ~depset ~exports;
+        emit_package_ocamlc_warnings
+          ~session_id
+          ~package
+          ~target:(Workspace_planner.Package package.name)
+          ~source:`Cached artifact.ocamlc_warnings;
+        Telemetry.emit
+          (
+            BuildCompleted {
+              session_id;
+              package;
+              target = Workspace_planner.Package package.name;
+              status = `Cached;
+              duration = Time.Duration.zero;
+            }
+          )
+    | Error message ->
+        let error = Package_builder.ExecutionFailed { message } in
+        let result =
+          Package_builder.{
+            package_key;
+            package;
+            status = Failed error;
+            ocamlc_warnings = [];
+            duration = Time.Duration.zero;
+          }
+        in
+        let _ = HashMap.insert package_results package_key result in
+        mark_package_failed_in_graph
+          package_graph
+          ~package
+          ~package_key
+          ~hash
+          ~error:message;
+        Telemetry.emit
+          (
+            BuildFailed {
+              session_id;
+              package;
+              target = Workspace_planner.Package package.name;
+              error = package_error_to_telemetry_error error;
+            }
+          )
   in
   let stage_runtime ~package_key ~(package:Package.t) ~hash ~depset ~module_graph ~action_graph =
     let inputs = List.concat [ package.sources.src; package.sources.native; package.sources.tests; ] in
@@ -520,6 +538,21 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~reason:(Some ("Failed dependencies: "
                 ^ (failed |> List.map (fun p -> p.Package.name) |> String.concat ", ")));
               Vector.push still_pending package_node
+          | Ok (Cached {
+            package_key;
+            hash;
+            artifact;
+            depset;
+            exports;
+            _; }) ->
+              update_planning_progress
+                package_key
+                `Planned
+                ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
+                ~package
+                ~reason:None;
+              progressed := true;
+              finalize_cached_package ~package_key ~package ~hash ~artifact ~depset ~exports
           | Ok (Planned {
             package_key;
             hash;
@@ -532,21 +565,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               update_planning_progress
                 package_key
                 `Planned
-                ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
-                ~package
-                ~reason:None;
+                  ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
+                  ~package
+                  ~reason:None;
               progressed := true;
-              if
-                not
-                  (maybe_short_circuit_cached_package
-                    ~package_key
-                    ~package
-                    ~hash
-                    ~depset
-                    ~module_graph
-                    ~action_graph)
-              then
-                stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph)
+              stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph)
         pending_nodes;
       let next_pending = Vector.into_iter still_pending |> Iter.Iterator.to_list in
       if next_pending = [] then
@@ -680,6 +703,24 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     ~reason:("needs " ^ String.concat ", " names);
                   let _ = HashMap.remove pending_planning package_key in
                   ()
+              | Ok (Cached {
+                package_key;
+                hash;
+                artifact;
+                depset;
+                exports;
+                _; }) ->
+                  update_planning_progress
+                    package_key
+                    `Planned
+                    ~duration:(Time.Instant.duration_since
+                      ~earlier:planning_start
+                      (Time.Instant.now ()))
+                    ~package
+                    ~reason:None;
+                  finalize_cached_package ~package_key ~package ~hash ~artifact ~depset ~exports;
+                  let _ = HashMap.remove pending_planning package_key in
+                  ()
               | Ok (Planned {
                 package_key;
                 hash;
@@ -697,17 +738,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                       (Time.Instant.now ()))
                     ~package
                     ~reason:None;
-                  if
-                    not
-                      (maybe_short_circuit_cached_package
-                        ~package_key
-                        ~package
-                        ~hash
-                        ~depset
-                        ~module_graph
-                        ~action_graph)
-                  then
-                    stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph;
+                  stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph;
                   let _ = HashMap.remove pending_planning package_key in
                   ())
       pending_entries

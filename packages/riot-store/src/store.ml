@@ -285,6 +285,19 @@ let load_package_exports = fun store ~package ~profile ~target ->
           None
     )
 
+let package_export_sources_exist = fun store ~exports ->
+  List.for_all
+    (fun (entry: export_entry) ->
+      if Path.is_absolute entry.path then
+        false
+      else
+        let src = Path.(store.root_dir / Path.v entry.action_hash / entry.path) in
+        match Fs.exists src with
+        | Ok true -> true
+        | Ok false
+        | Error _ -> false)
+    exports
+
 let find_package_export_path = fun store ~package ~profile ~target ~name ->
   match load_package_exports store ~package ~profile ~target with
   | None -> None
