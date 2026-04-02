@@ -220,7 +220,7 @@ dev_dependencies = []
 name = "tusk-cli"
 root = "packages/tusk-cli"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }, { name = "tusk-init", package = { name = "tusk-init" } }, { name = "tusk-executor", package = { name = "tusk-executor" } }, { name = "tusk-model", package = { name = "tusk-model" } }, { name = "tusk-planner", package = { name = "tusk-planner" } }, { name = "tusk-build", package = { name = "tusk-build" } }, { name = "tusk-store", package = { name = "tusk-store" } }, { name = "tusk-toolchain", package = { name = "tusk-toolchain" } }, { name = "tusk-fix", package = { name = "tusk-fix" } }, { name = "tusk-fmt", package = { name = "tusk-fmt" } }, { name = "tusk-deps", package = { name = "tusk-deps" } }, { name = "tusk-publish", package = { name = "tusk-publish" } }, { name = "pkgs-ml", package = { name = "pkgs-ml" } }]
+dependencies = [{ name = "std", package = { name = "std" } }, { name = "tusk-init", package = { name = "tusk-init" } }, { name = "tusk-executor", package = { name = "tusk-executor" } }, { name = "tusk-model", package = { name = "tusk-model" } }, { name = "tusk-planner", package = { name = "tusk-planner" } }, { name = "tusk-build", package = { name = "tusk-build" } }, { name = "tusk-store", package = { name = "tusk-store" } }, { name = "tusk-toolchain", package = { name = "tusk-toolchain" } }, { name = "tusk-fix", package = { name = "tusk-fix" } }, { name = "tusk-fmt", package = { name = "tusk-fmt" } }, { name = "tusk-deps", package = { name = "tusk-deps" } }, { name = "tusk-publish", package = { name = "tusk-publish" } }, { name = "pkgs-ml", package = { name = "pkgs-ml" } }, { name = "tty", package = { name = "tty" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -244,7 +244,7 @@ dev_dependencies = []
 name = "tusk-executor"
 root = "packages/tusk-executor"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "std", package = { name = "std" } }, { name = "tusk-model", package = { name = "tusk-model" } }, { name = "tusk-planner", package = { name = "tusk-planner" } }, { name = "tusk-toolchain", package = { name = "tusk-toolchain" } }, { name = "tusk-store", package = { name = "tusk-store" } }]
+dependencies = [{ name = "std", package = { name = "tusk-planner" } }, { name = "tusk-model", package = { name = "tusk-planner" } }, { name = "tusk-planner", package = { name = "tusk-planner" } }, { name = "tusk-toolchain", package = { name = "tusk-planner" } }, { name = "tusk-store", package = { name = "tusk-planner" } }]
 build_dependencies = []
 dev_dependencies = []
 
