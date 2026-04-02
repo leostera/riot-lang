@@ -1,6 +1,16 @@
 open Std
 module Test = Std.Test
 
+let write_workspace_manifest = fun ~root ~members ->
+  let members =
+    members
+    |> List.map (fun member -> "  \"" ^ Path.to_string member ^ "\"")
+    |> String.concat ",\n"
+  in
+  let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
+  Fs.write content Path.(root / Path.v "riot.toml")
+  |> Result.expect ~msg:"Write workspace riot.toml failed"
+
 let make_broken_workspace = fun tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
   let src_dir = Path.(pkg_dir / Path.v "src") in
@@ -10,6 +20,7 @@ let make_broken_workspace = fun tmpdir ->
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
   let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
+  let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
   let package =
     Riot_model.Package.{
       name = "demo";
@@ -46,6 +57,7 @@ let make_valid_workspace = fun tmpdir ->
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
   let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
+  let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
   let package =
     Riot_model.Package.{
       name = "demo";

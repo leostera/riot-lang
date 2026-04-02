@@ -1,6 +1,16 @@
 open Std
 module Test = Std.Test
 
+let write_workspace_manifest = fun ~root ~members ->
+  let members =
+    members
+    |> List.map (fun member -> "  \"" ^ Path.to_string member ^ "\"")
+    |> String.concat ",\n"
+  in
+  let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
+  Fs.write content Path.(root / Path.v "riot.toml")
+  |> Result.expect ~msg:"expected workspace manifest to be written"
+
 let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in
   Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
@@ -26,6 +36,7 @@ let make_simple_package = fun tmpdir name ->
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
   let riot_content = "[package]\nname = \"" ^ name ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml" in
+  let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v name ] in
   Riot_model.Package.{
     name;
     path = pkg_dir;
@@ -261,6 +272,7 @@ path = "src/app.ml"
 std = "*"
 |}
           Path.(app_root / Path.v "riot.toml") |> Result.expect ~msg:"expected app manifest to be written";
+        write_workspace_manifest ~root:tmpdir ~members:[ Path.v "packages/app" ];
         let app_pkg =
           Riot_model.Package.from_toml
             (
@@ -388,6 +400,7 @@ path = "src/app.ml"
 std = "*"
 |}
           Path.(app_root / Path.v "riot.toml") |> Result.expect ~msg:"expected app manifest to be written";
+        write_workspace_manifest ~root:tmpdir ~members:[ Path.v "packages/app" ];
         let app_pkg =
           Riot_model.Package.from_toml
             (
