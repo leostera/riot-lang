@@ -105,6 +105,9 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
             target_dir_root =
               Path.(tmpdir / Path.v "target");
             packages = [ package ];
+            dependencies = [];
+            dev_dependencies = [];
+            build_dependencies = [];
             profile_overrides = [];
           }
         in

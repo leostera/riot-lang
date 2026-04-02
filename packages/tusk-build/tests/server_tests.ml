@@ -11,6 +11,9 @@ let make_test_workspace = fun tmpdir ->
     target_dir_root =
       Path.(tmpdir / Path.v "target");
     packages = [];
+    dependencies = [];
+    dev_dependencies = [];
+    build_dependencies = [];
     profile_overrides = [];
   }
 
@@ -47,7 +50,7 @@ let make_simple_package = fun tmpdir name ->
     publish = { version = None; description = None; license = None; is_public = None };
   }
 
-let test_server_starts_and_shuts_down = fun () -> Ok ()
+let test_server_starts_and_shuts_down = fun _ctx -> Ok ()
 
 let test_cache_hit_using_package_builder = fun _ctx ->
   match
@@ -60,6 +63,9 @@ let test_cache_hit_using_package_builder = fun _ctx ->
             target_dir_root =
               Path.(tmpdir / Path.v "target");
             packages = [ package ];
+            dependencies = [];
+            dev_dependencies = [];
+            build_dependencies = [];
             profile_overrides = [];
           }
         in
@@ -161,6 +167,9 @@ let test_cache_invalidation_on_source_change = fun _ctx ->
               target_dir_root =
                 Path.(tmpdir / Path.v "target");
               packages = [ package ];
+              dependencies = [];
+              dev_dependencies = [];
+              build_dependencies = [];
               profile_overrides = [];
             }
           in
@@ -189,6 +198,9 @@ let test_cache_invalidation_on_source_change = fun _ctx ->
               target_dir_root =
                 Path.(tmpdir / Path.v "target");
               packages = [ updated_package ];
+              dependencies = [];
+              dev_dependencies = [];
+              build_dependencies = [];
               profile_overrides = [];
             }
           in
@@ -213,7 +225,7 @@ let test_cache_invalidation_on_source_change = fun _ctx ->
   with
   | exn -> Error ("Exception in test: " ^ Exception.to_string exn)
 
-let test_telemetry_events_during_build = fun () -> Ok ()
+let test_telemetry_events_during_build = fun _ctx -> Ok ()
 
 let test_build_stats_action_cache_counters = fun _ctx ->
   let stats = Tusk_build.Protocol.BuildStats.make () in

@@ -56,6 +56,9 @@ let test_concurrent_builds_different_packages = fun _ctx ->
             target_dir_root =
               Path.(tmpdir / Path.v "target");
             packages = [ pkg1; pkg2 ];
+            dependencies = [];
+            dev_dependencies = [];
+            build_dependencies = [];
             profile_overrides = [];
           }
         in
@@ -159,6 +162,9 @@ let test_concurrent_builds_same_package = fun _ctx ->
             target_dir_root =
               Path.(tmpdir / Path.v "target");
             packages = [ package ];
+            dependencies = [];
+            dev_dependencies = [];
+            build_dependencies = [];
             profile_overrides = [];
           }
         in
@@ -258,6 +264,9 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
             target_dir_root =
               Path.(tmpdir / Path.v "target");
             packages = [ package ];
+            dependencies = [];
+            dev_dependencies = [];
+            build_dependencies = [];
             profile_overrides = [];
           }
         in

@@ -11,6 +11,9 @@ let make_workspace = fun root ->
     target_dir_root =
       Path.(root / Path.v "target");
     packages = [];
+    dependencies = [];
+    dev_dependencies = [];
+    build_dependencies = [];
     profile_overrides = [];
   }
 

@@ -37,6 +37,9 @@ let make_workspace = fun packages ->
     root = Path.v "/tmp/workspace_like_graph_tests";
     target_dir_root = Path.v "/tmp/workspace_like_graph_tests/_build";
     packages;
+    dependencies = [];
+    dev_dependencies = [];
+    build_dependencies = [];
     profile_overrides = []
   }
 

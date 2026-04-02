@@ -146,7 +146,7 @@ let test_extract_rejects_path_traversal = fun _ctx ->
       | Error _ -> Error "expected unsafe-path rejection"
       | Ok () -> Error "tar extraction should reject path traversal")
 
-let test_extract_skips_pax_extended_headers = fun () ->
+let test_extract_skips_pax_extended_headers = fun _ctx ->
   let archive = build_archive
     [
       ("paxheader", 'x', 0o644L, "25 path=./src/std.ml\n");
@@ -166,7 +166,7 @@ let test_extract_skips_pax_extended_headers = fun () ->
           ^ Kernel.IO.error_message err)
         ))
 
-let test_extract_skips_appledouble_entries = fun () ->
+let test_extract_skips_appledouble_entries = fun _ctx ->
   let archive = build_archive
     [
       ("src/", '5', 0o755L, "");

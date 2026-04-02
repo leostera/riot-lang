@@ -189,6 +189,9 @@ let test_build_writes_package_export_manifest = fun _ctx ->
             target_dir_root =
               Path.(tmpdir / Path.v "target");
             packages = [ package ];
+            dependencies = [];
+            dev_dependencies = [];
+            build_dependencies = [];
             profile_overrides = [];
           }
         in

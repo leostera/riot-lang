@@ -7,6 +7,9 @@ let make_test_workspace = fun tmpdir ->
     target_dir_root =
       Path.(tmpdir / Path.v "target");
     packages = [];
+    dependencies = [];
+    dev_dependencies = [];
+    build_dependencies = [];
     profile_overrides = [];
   }
 
