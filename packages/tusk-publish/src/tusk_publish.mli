@@ -8,14 +8,14 @@ type publish_request = {
   skip_check: bool;
 }
 type publish_mode =
-  | Dry_run
+  | DryRun
   | Publish
 type publish_check_stage =
 [
-  | `Fmt
-  | `Fix
-  | `Build
-  | `Metadata
+  | `fmt
+  | `fix
+  | `build
+  | `metadata
 ]
 type publish_event =
   | Fmt of Krasny.Report.event
@@ -28,8 +28,8 @@ type publish_event =
   | DryRunPlanned of Tusk_deps.Publisher.prepared_publish
   | PackagePublished of Pkgs_ml.Registry.published_release
 type publish_outcome =
-  | SkippedAlreadyPublished of { package: string; version: Std.Version.t }
-  | DryRun of Tusk_deps.Publisher.prepared_publish
+  | Skipped of { package: string; version: Std.Version.t }
+  | Planned of Tusk_deps.Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release
 type publish_error =
   | PackageNotFound of { package: string }

@@ -21,6 +21,8 @@
 15. `publish.ml` should parse `matches`, build a `Tusk_publish.publish_request`, call `Tusk_publish.publish`, and render publish events. Keep the combined publish command surface in `tusk-publish`, not in `tusk-deps`.
 16. `login` and `logout` should stay thin auth-config commands. They manage `~/.tusk/config.toml` through `Tusk_model.User_config`; do not turn them into registry-discovery or profile-management commands while the main registry stays hardcoded.
 17. `tusk snapshots` owns repository-level snapshot review commands. Keep it focused on discovering pending `.expected.new` files, showing review diffs, and promoting or rejecting candidates; do not fold snapshot approval into `tusk test`.
+18. PM human output should only show `Fetching <pkg> <version>` for real download-start events. Cache-hit materialization events stay structured in JSON but should be silent in human mode.
+19. `add`, `remove`/`rm`, and `update` are thin package-management commands. Parse flags into `Tusk_deps` request types, delegate, and reuse the normal PM event renderer instead of inventing a second lock/progress surface.
 
 ## Validate
 

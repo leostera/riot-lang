@@ -58,7 +58,7 @@ type target_platform = string
 (* "macos", "linux", "windows", etc. *)
 
 (** Re-export types from Profile *)
-type 'a override = 'a Profile.override
+type 'value override = 'value Profile.override
 
 type profile_override = Profile.profile_override
 
@@ -136,7 +136,8 @@ let dependencies_for_scope = fun scope (pkg: t) ->
   | Dev -> pkg.dev_dependencies
   | Build -> pkg.build_dependencies
 
-let is_builtin_dependency_name = function
+let is_builtin_dependency_name = fun name ->
+  match name with
   | "unix"
   | "stdlib"
   | "threads"
@@ -161,14 +162,11 @@ let binary_scope = fun (bin: binary) ->
     Normal
 
 let scope_of_binary_name = fun (pkg: t) ~binary_name ->
-  match
-    List.find_opt
-      (fun (bin: binary) ->
-        String.equal bin.name binary_name)
-      pkg.binaries
-  with
-  | None -> None
-  | Some bin -> Some (binary_scope bin)
+  List.find_opt
+    (fun (bin: binary) ->
+      String.equal bin.name binary_name)
+    pkg.binaries
+  |> Option.map binary_scope
 
 let binaries_for_scope = fun scope (pkg: t) ->
   match scope with
@@ -314,7 +312,8 @@ let validate_name = fun name ->
     else
       Ok name
 
-let version_parse_error_to_string = function
+let version_parse_error_to_string = fun err ->
+  match err with
   | Version.Invalid_format msg -> msg
   | Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
@@ -783,7 +782,7 @@ package_path:Path.t ->
           None)
       items
   in
-  if List.length foreign_dep_items > 0 then
+  if not (List.is_empty foreign_dep_items) then
     Log.debug
       ("[PACKAGE] Found " ^ Int.to_string (List.length foreign_dep_items) ^ " foreign dependencies via dotted keys");
   let nested_deps =
@@ -983,6 +982,7 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
 
 let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () : sources =
   let excluded_relpath_strings = excluded_relpaths |> List.map Path.to_string in
+  let should_skip_source_entry = fun filename -> String.starts_with ~prefix:"." (Path.basename filename) in
   let rec scan_dir_recursive ~from_dir ~rel_path =
     match Fs.read_dir from_dir with
     | Error _ -> []
@@ -992,14 +992,17 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () : sources =
           (fun filename ->
             let abs_path = Path.(from_dir / filename) in
             let rel_path_full = Path.(rel_path / filename) in
-            match Fs.is_dir abs_path with
-            | Ok true -> scan_dir_recursive ~from_dir:abs_path ~rel_path:rel_path_full
-            | Ok false ->
-                if List.mem (Path.to_string rel_path_full) excluded_relpath_strings then
-                  []
-                else
-                  [ rel_path_full ]
-            | Error _ -> [])
+            if should_skip_source_entry filename then
+              []
+            else
+              match Fs.is_dir abs_path with
+              | Ok true -> scan_dir_recursive ~from_dir:abs_path ~rel_path:rel_path_full
+              | Ok false ->
+                  if List.mem (Path.to_string rel_path_full) excluded_relpath_strings then
+                    []
+                  else
+                    [ rel_path_full ]
+              | Error _ -> [])
           entries
   in
   let src_files = scan_dir_recursive

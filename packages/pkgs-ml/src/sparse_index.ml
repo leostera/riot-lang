@@ -68,8 +68,10 @@ let optional_string_field = fun ~field fields ->
 
 let string_field_with_fallback = fun ~context ~field ~fallback fields ->
   match List.assoc_opt field fields with
-  | Some (Data.Json.String value) -> Ok value
-  | Some _ -> Error (context ^ "." ^ field ^ " must be a string")
+  | Some (Data.Json.String value) ->
+      Ok value
+  | Some _ ->
+      Error (context ^ "." ^ field ^ " must be a string")
   | None -> (
       match List.assoc_opt fallback fields with
       | Some (Data.Json.String value) -> Ok value
@@ -128,13 +130,11 @@ let release_of_json = fun json ->
       let* canonical_locator = string_field ~context:"release" ~field:"canonical_locator" fields in
       let* repo_url = string_field ~context:"release" ~field:"repo_url" fields in
       let* subdir = string_field ~context:"release" ~field:"subdir" fields in
-      let* artifact_sha256 =
-        string_field_with_fallback
-          ~context:"release"
-          ~field:"artifact_sha256"
-          ~fallback:"sha"
-          fields
-      in
+      let* artifact_sha256 = string_field_with_fallback
+        ~context:"release"
+        ~field:"artifact_sha256"
+        ~fallback:"sha"
+        fields in
       let* description = optional_string_field ~field:"description" fields in
       let* license = optional_string_field ~field:"license" fields in
       let* homepage = optional_string_field ~field:"homepage" fields in
@@ -247,7 +247,7 @@ let ensure_dir_url = fun url ->
     url ^ "/"
 
 let bootstrap_config_url = fun ~registry_name ->
-  let url = "https://cdn." ^ registry_name ^ "/index/v1/config.json" in
+  let url = "https://api." ^ registry_name ^ "/v1/index/config.json" in
   match Net.Uri.of_string url with
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build sparse index config url '" ^ url ^ "'")
@@ -352,7 +352,7 @@ module Tests = struct
   "schema_version": 1,
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
-  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "index_base_url": "https://api.pkgs.ml/v1/index",
   "artifact_base_url": "https://cdn.pkgs.ml"
 }|}
     in
@@ -362,7 +362,7 @@ module Tests = struct
           config.schema_version = 1
           && String.equal config.kind "sparse"
           && String.equal config.package_path_strategy "cargo-lowercase-v1"
-          && String.equal config.index_base_url "https://cdn.pkgs.ml/index/v1"
+          && String.equal config.index_base_url "https://api.pkgs.ml/v1/index"
           && String.equal config.artifact_base_url "https://cdn.pkgs.ml"
         then
           Ok ()

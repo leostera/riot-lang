@@ -140,9 +140,50 @@ path = "examples/test_https_httpbin.ml"
       | ["test_https_httpbin";"simple_https"] -> Ok ()
       | _ ->
           Error (
-            "expected explicit example binary to suppress autodiscovery \
+          "expected explicit example binary to suppress autodiscovery \
               duplicate, got: [" ^ String.concat ", " binary_names ^ "]"
           ))
+
+let test_scan_sources_ignores_hidden_entries = fun _ctx ->
+  with_tempdir "tusk_model_hidden_sources"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let native_dir = Path.(tmpdir / Path.v "native") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all native_dir) ~msg:"Failed to create native directory";
+      Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml"))
+        ~msg:"Failed to write visible source";
+      Result.expect (Fs.write "junk\n" Path.(src_dir / Path.v "._demo.ml"))
+        ~msg:"Failed to write hidden source";
+      Result.expect (Fs.write "junk\n" Path.(native_dir / Path.v "._demo.c"))
+        ~msg:"Failed to write hidden native source";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg = Tusk_model.Package.from_toml
+        manifest
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:tmpdir
+        ~relative_path:(Path.v "packages/demo")
+      |> Result.expect ~msg:"Expected package manifest to parse" in
+      if
+        pkg.sources.src = [ Path.v "src/demo.ml" ]
+        && pkg.sources.native = []
+      then
+        Ok ()
+      else
+        Error "expected hidden source entries to be ignored")
 
 let test_workspace_fmt_ignore_parses = fun _ctx ->
   let toml =
@@ -629,6 +670,7 @@ let tests =
     case "for_scope: runtime keeps commands" test_runtime_scope_keeps_commands;
     case "for_scope: dev keeps only dev outputs" test_dev_scope_keeps_only_dev_outputs;
     case "package: explicit binaries suppress autodiscovery duplicates" test_explicit_binaries_override_autodiscovery;
+    case "package: source scan ignores hidden entries" test_scan_sources_ignores_hidden_entries;
     case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;
     case "fmt config: package ignore loads" test_package_fmt_ignore_loads;
     case "fmt config: legacy top-level fmt still loads" test_legacy_fmt_ignore_still_loads;

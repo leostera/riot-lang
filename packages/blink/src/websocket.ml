@@ -20,6 +20,7 @@ type t = {
 let generate_websocket_key = fun () ->
   let random_bytes = Bytes.create 16 in
   for i = 0 to 15 do
+    yield ();
     Bytes.set random_bytes i (Char.chr (Random.int 256))
   done;
   Encoding.Base64.encode_bytes random_bytes
@@ -37,17 +38,17 @@ let connect = fun uri ->
   let path = Net.Uri.path uri in
   match Net.Addr.of_host_and_port ~host ~port with
   | Error (Net.Addr.System_error io_err) ->
-      Error (Error.Net_error (Net.System_error io_err))
+      Error (Error.NetError (Net.System_error io_err))
   | Error (Net.Addr.Invalid_port_number _ | Net.Addr.Invalid_format _) ->
-      Error (Error.Net_error (Net.System_error IO.Invalid_argument))
+      Error (Error.NetError (Net.System_error IO.Invalid_argument))
   | Ok addr -> (
       match Net.TcpStream.connect addr with
       | Error Net.TcpStream.Closed ->
-          Error (Error.Net_error Net.Closed)
+          Error (Error.NetError Net.Closed)
       | Error Net.TcpStream.Connection_refused ->
-          Error (Error.Net_error Net.Connection_refused)
+          Error (Error.NetError Net.Connection_refused)
       | Error (Net.TcpStream.System_error s) ->
-          Error (Error.Net_error (Net.System_error s))
+          Error (Error.NetError (Net.System_error s))
       | Ok stream -> (
           let key = generate_websocket_key () in
           let expected_accept = compute_accept_key key in
@@ -69,11 +70,11 @@ let connect = fun uri ->
           let writer = Net.TcpStream.to_writer stream in
           match IO.write_all writer ~buf:handshake with
           | Error Net.TcpStream.Closed ->
-              Error (Error.Net_error Net.Closed)
+              Error (Error.NetError Net.Closed)
           | Error Net.TcpStream.Connection_refused ->
-              Error (Error.Net_error Net.Connection_refused)
+              Error (Error.NetError Net.Connection_refused)
           | Error (Net.TcpStream.System_error s) ->
-              Error (Error.Net_error (Net.System_error s))
+              Error (Error.NetError (Net.System_error s))
           | Ok () -> (
               let reader = Net.TcpStream.to_reader stream in
               let buf = Bytes.create 4_096 in
@@ -81,13 +82,13 @@ let connect = fun uri ->
               let rec read_response () =
                 match IO.read reader buf with
                 | Error Net.TcpStream.Closed ->
-                    Error (Error.Net_error Net.Closed)
+                    Error (Error.NetError Net.Closed)
                 | Error Net.TcpStream.Connection_refused ->
-                    Error (Error.Net_error Net.Connection_refused)
+                    Error (Error.NetError Net.Connection_refused)
                 | Error (Net.TcpStream.System_error s) ->
-                    Error (Error.Net_error (Net.System_error s))
+                    Error (Error.NetError (Net.System_error s))
                 | Ok 0 ->
-                    Error (Error.Handshake_failed "Connection closed during handshake")
+                    Error (Error.HandshakeFailed "Connection closed during handshake")
                 | Ok n -> (
                     Buffer.add_subbytes response_buffer buf 0 n;
                     let response = Buffer.contents response_buffer in
@@ -115,7 +116,7 @@ let connect = fun uri ->
                       && String.contains status_line "0"
                       && String.contains status_line "1")
                   then
-                    Error (Error.Handshake_failed "Server did not return 101 Switching Protocols")
+                    Error (Error.HandshakeFailed "Server did not return 101 Switching Protocols")
                   else
                     let has_correct_accept =
                       List.exists
@@ -130,7 +131,7 @@ let connect = fun uri ->
                         lines
                     in
                     if not has_correct_accept then
-                      Error (Error.Handshake_failed "Invalid Sec-WebSocket-Accept header")
+                      Error (Error.HandshakeFailed "Invalid Sec-WebSocket-Accept header")
                     else
                       Ok { stream; uri; buffer = Buffer.create 4_096; closed = false }
             )
@@ -145,9 +146,9 @@ let send_frame = fun conn frame ->
     let writer = Net.TcpStream.to_writer conn.stream in
     match IO.write_all writer ~buf:serialized with
     | Ok () -> Ok ()
-    | Error Net.TcpStream.Closed -> Error (Error.Net_error Net.Closed)
-    | Error Net.TcpStream.Connection_refused -> Error (Error.Net_error Net.Connection_refused)
-    | Error (Net.TcpStream.System_error s) -> Error (Error.Net_error (Net.System_error s))
+    | Error Net.TcpStream.Closed -> Error (Error.NetError Net.Closed)
+    | Error Net.TcpStream.Connection_refused -> Error (Error.NetError Net.Connection_refused)
+    | Error (Net.TcpStream.System_error s) -> Error (Error.NetError (Net.System_error s))
 
 let send_text = fun conn text ->
   let frame = Http.Ws.Frame.text text in
@@ -186,7 +187,7 @@ let receive = fun conn ->
       | Http.Ws.Parser.Done { value=frame; remaining } -> (
           Buffer.clear conn.buffer;
           Buffer.add_string conn.buffer remaining;
-          match frame.Http.Ws.Frame.opcode with
+          match Http.Ws.Frame.(frame.opcode) with
           | Http.Ws.Frame.Text ->
               Ok (Text frame.payload)
           | Http.Ws.Frame.Binary ->
@@ -210,18 +211,18 @@ let receive = fun conn ->
               else
                 Ok (Close (None, ""))
           | Http.Ws.Frame.Continuation ->
-              Error Error.Invalid_frame
+              Error Error.InvalidFrame
         )
       | Http.Ws.Parser.Need_more -> (
           let reader = Net.TcpStream.to_reader conn.stream in
           let buf = Bytes.create 4_096 in
           match IO.read reader buf with
           | Error Net.TcpStream.Closed ->
-              Error (Error.Net_error Net.Closed)
+              Error (Error.NetError Net.Closed)
           | Error Net.TcpStream.Connection_refused ->
-              Error (Error.Net_error Net.Connection_refused)
+              Error (Error.NetError Net.Connection_refused)
           | Error (Net.TcpStream.System_error s) ->
-              Error (Error.Net_error (Net.System_error s))
+              Error (Error.NetError (Net.System_error s))
           | Ok 0 ->
               Error Error.Eof
           | Ok n ->
@@ -229,7 +230,7 @@ let receive = fun conn ->
               try_parse ()
         )
       | Http.Ws.Parser.Error msg ->
-          Error (Error.Handshake_failed msg)
+          Error (Error.HandshakeFailed msg)
     in
     try_parse ()
 

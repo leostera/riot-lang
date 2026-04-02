@@ -25,7 +25,8 @@ let direct_non_trivia_nodes = fun node ->
         | _ -> None
       )
 
-let is_expression_syntax_kind = function
+let is_expression_syntax_kind syntax_kind =
+  match syntax_kind with
   | Syn.SyntaxKind.IDENT_EXPR
   | Syn.SyntaxKind.MODULE_PATH
   | Syn.SyntaxKind.OPERATOR_PATTERN
@@ -75,7 +76,8 @@ let is_expression_syntax_kind = function
   | Syn.SyntaxKind.PAREN_EXPR -> true
   | _ -> false
 
-let is_parameter_like_kind = function
+let is_parameter_like_kind syntax_kind =
+  match syntax_kind with
   | Syn.SyntaxKind.IDENT_PATTERN
   | Syn.SyntaxKind.WILDCARD_PATTERN
   | Syn.SyntaxKind.LITERAL_PATTERN
@@ -109,7 +111,8 @@ let is_parameter_like_kind = function
   | Syn.SyntaxKind.LOCALLY_ABSTRACT_TYPE_PARAM -> true
   | _ -> false
 
-let rec binding_name_token_from_pattern = function
+let rec binding_name_token_from_pattern pattern =
+  match pattern with
   | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some name_token
   | Syn.Cst.Pattern.Alias { name_token; _ } -> Some name_token
   | Syn.Cst.Pattern.Typed { pattern; _ }
@@ -123,7 +126,8 @@ let expression_is_function = fun expr ->
   | _ -> false
 
 let has_parameter_prefix = fun syntax_node ->
-  let rec go = function
+  let rec go nodes =
+    match nodes with
     | [] -> false
     | node :: rest ->
         let kind = Syn.Ceibo.Red.SyntaxNode.kind node in
@@ -139,24 +143,27 @@ let has_parameter_prefix = fun syntax_node ->
   | [] -> false
 
 let binding_site_of_let_binding = fun binding ->
-  match Syn.Cst.LetBinding.binding_name_token binding with
-  | Some name_token -> Some {
-    syntax_node = Syn.Cst.LetBinding.syntax_node binding;
-    name_token;
-    is_function = Syn.Cst.LetBinding.is_function binding
-  }
-  | None -> None
+  Syn.Cst.LetBinding.binding_name_token binding
+  |> Option.map
+    (fun name_token ->
+      {
+        syntax_node = Syn.Cst.LetBinding.syntax_node binding;
+        name_token;
+        is_function = Syn.Cst.LetBinding.is_function binding
+      })
 
 let binding_site_of_expression_let = fun ~syntax_node ~binding_pattern ~bound_value ->
-  match binding_name_token_from_pattern binding_pattern with
-  | Some name_token -> Some {
-    syntax_node;
-    name_token;
-    is_function = has_parameter_prefix syntax_node || expression_is_function bound_value
-  }
-  | None -> None
+  binding_name_token_from_pattern binding_pattern
+  |> Option.map
+    (fun name_token ->
+      {
+        syntax_node;
+        name_token;
+        is_function = has_parameter_prefix syntax_node || expression_is_function bound_value
+      })
 
-let rec binding_sites_of_module_expression = function
+let rec binding_sites_of_module_expression module_expression =
+  match module_expression with
   | Syn.Cst.ModuleExpression.Path _
   | Syn.Cst.ModuleExpression.Structure _
   | Syn.Cst.ModuleExpression.Extension _ -> []
@@ -170,14 +177,16 @@ let rec binding_sites_of_module_expression = function
   | Syn.Cst.ModuleExpression.ModuleUnpack { expression; _ } -> binding_sites_of_expression expression
   | Syn.Cst.ModuleExpression.Parenthesized { inner; _ } -> binding_sites_of_module_expression inner
 
-and binding_sites_of_object_member = function
+and binding_sites_of_object_member object_member =
+  match object_member with
   | Syn.Cst.ObjectMember.Method { body; _ } -> binding_sites_of_expression body
   | Syn.Cst.ObjectMember.Value { value; _ } -> binding_sites_of_expression value
   | Syn.Cst.ObjectMember.Inherit { expression; _ } -> binding_sites_of_expression expression
   | Syn.Cst.ObjectMember.Extension _ -> []
   | Syn.Cst.ObjectMember.Initializer { body; _ } -> binding_sites_of_expression body
 
-and binding_sites_of_function_body = function
+and binding_sites_of_function_body function_body =
+  match function_body with
   | Syn.Cst.Expression expression -> binding_sites_of_expression expression
   | Syn.Cst.Cases { cases; _ } -> cases |> List.concat_map binding_sites_of_match_case
 
@@ -264,7 +273,8 @@ and binding_sites_of_expression = fun expr ->
   @ (Option.to_list else_branch |> List.concat_map binding_sites_of_expression)
   | Syn.Cst.Expression.Parenthesized { inner; _ } -> binding_sites_of_expression inner
 
-and binding_sites_of_apply_argument = function
+and binding_sites_of_apply_argument argument =
+  match argument with
   | Syn.Cst.Positional argument -> binding_sites_of_expression argument
   | Syn.Cst.Labeled { value; _ }
   | Syn.Cst.Optional { value; _ } -> Option.to_list value |> List.concat_map binding_sites_of_expression
@@ -277,7 +287,8 @@ and binding_sites_of_match_case = fun ({ guard; body; _ }: Syn.Cst.match_case) -
   (Option.to_list guard |> List.concat_map binding_sites_of_expression)
   @ binding_sites_of_expression body
 
-and binding_sites_of_class_field = function
+and binding_sites_of_class_field class_field =
+  match class_field with
   | Syn.Cst.ClassField.Method { definition; _ } -> (
       match definition with
       | Syn.Cst.ConcreteMethod { body; _ } -> binding_sites_of_expression body
@@ -299,7 +310,8 @@ and binding_sites_of_class_field = function
   | Syn.Cst.ClassField.Extension _ ->
       []
 
-and binding_sites_of_class_expression = function
+and binding_sites_of_class_expression class_expression =
+  match class_expression with
   | Syn.Cst.ClassExpression.Path _
   | Syn.Cst.ClassExpression.Extension _ -> []
   | Syn.Cst.ClassExpression.Structure { fields; _ } -> fields |> List.concat_map binding_sites_of_class_field
@@ -324,7 +336,8 @@ and binding_sites_of_class_expression = function
   | Syn.Cst.ClassExpression.Parenthesized { inner; _ } -> binding_sites_of_class_expression inner
   | Syn.Cst.ClassExpression.Attribute { class_expression; _ } -> binding_sites_of_class_expression class_expression
 
-let binding_sites_of_structure_item = function
+let binding_sites_of_structure_item structure_item =
+  match structure_item with
   | Syn.Cst.StructureItem.LetBinding binding ->
       binding_sites_of_let_binding binding
   | Syn.Cst.StructureItem.Expression expr ->

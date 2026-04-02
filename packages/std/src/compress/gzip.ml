@@ -10,9 +10,12 @@ type error =
 type ('src, 'read_err) reader = {
   src: ('src, 'read_err) Reader.t;
   decoder: Kernel.Compress.Gzip.decoder;
-  input: Bytes.t;
+  mutable input: Bytes.t;
   mutable input_pos: int;
   mutable input_len: int;
+  output: Bytes.t;
+  mutable output_pos: int;
+  mutable output_len: int;
   mutable source_eof: bool;
   mutable finished: bool;
 }
@@ -32,6 +35,8 @@ type file_error =
 
 let input_buffer_size = 32 * 1_024
 
+let output_buffer_size = 256 * 1_024
+
 let error_of_kernel = fun err -> Kernel_error err
 
 let string_of_kernel_error = function
@@ -42,6 +47,8 @@ let string_of_kernel_error = function
   | Kernel.Compress.Gzip.Unknown_error msg -> msg
 
 let buffered_input = fun (t: (_, _) reader) -> t.input_len - t.input_pos
+
+let buffered_output = fun (t: (_, _) reader) -> t.output_len - t.output_pos
 
 let compact_input = fun (t: (_, _) reader) ->
   if t.input_pos = 0 then
@@ -59,27 +66,52 @@ let compact_input = fun (t: (_, _) reader) ->
       t.input_len <- remaining
     )
 
+let ensure_input_capacity = fun (t: (_, _) reader) ->
+  let available = Bytes.length t.input - t.input_len in
+  if available > 0 then
+    ()
+  else
+    let buffered = buffered_input t in
+    let next_capacity = max (Bytes.length t.input * 2) (buffered + input_buffer_size) in
+    let next = Bytes.create next_capacity in
+    Bytes.blit t.input t.input_pos next 0 buffered;
+    t.input <- next;
+    t.input_pos <- 0;
+    t.input_len <- buffered
+
 let refill_input = fun (t: (_, _) reader) ->
   compact_input t;
+  ensure_input_capacity t;
   let available = Bytes.length t.input - t.input_len in
-  if available = 0 then
-    Error (Gzip_error (Kernel_error Kernel.Compress.Gzip.Buffer_error))
-  else
-    let chunk = Bytes.create available in
-    match IO.read t.src chunk with
-    | Ok 0 ->
-        t.source_eof <- true;
-        Ok false
-    | Ok bytes_read ->
-        Bytes.blit chunk 0 t.input t.input_len bytes_read;
-        t.input_len <- t.input_len + bytes_read;
-        Ok true
-    | Error err ->
-        Error (Source_error err)
+  let chunk = Bytes.create available in
+  match IO.read t.src chunk with
+  | Ok 0 ->
+      t.source_eof <- true;
+      Ok false
+  | Ok bytes_read ->
+      Bytes.blit chunk 0 t.input t.input_len bytes_read;
+      t.input_len <- t.input_len + bytes_read;
+      Ok true
+  | Error err ->
+      Error (Source_error err)
 
 let read_into = fun (t: (_, _) reader) dst ->
+  let copy_from_output () =
+    let available = buffered_output t in
+    let to_copy = min available (Bytes.length dst) in
+    Bytes.blit t.output t.output_pos dst 0 to_copy;
+    t.output_pos <- t.output_pos + to_copy;
+    if t.output_pos >= t.output_len then
+      (
+        t.output_pos <- 0;
+        t.output_len <- 0
+      );
+    Ok to_copy
+  in
   let rec loop () =
-    if t.finished then
+    if buffered_output t > 0 then
+      copy_from_output ()
+    else if t.finished then
       Ok 0
     else
       let dst_len = Bytes.length dst in
@@ -101,16 +133,21 @@ let read_into = fun (t: (_, _) reader) dst ->
             ~src:t.input
             ~src_pos:t.input_pos
             ~src_len:available_input
-            ~dst
+            ~dst:t.output
             ~dst_pos:0
-            ~dst_len with
+            ~dst_len:(Bytes.length t.output) with
           | Error err -> Error (Gzip_error (error_of_kernel err))
           | Ok step ->
               t.input_pos <- t.input_pos + step.consumed;
+              if step.produced > 0 then
+                (
+                  t.output_pos <- 0;
+                  t.output_len <- step.produced
+                );
               if step.status = Kernel.Compress.Gzip.Finished then
                 t.finished <- true;
               if step.produced > 0 then
-                Ok step.produced
+                copy_from_output ()
               else
                 (
                   match step.status with
@@ -145,6 +182,9 @@ let to_reader : type src read_err. (src, read_err) Reader.t ->
     input = Bytes.create input_buffer_size;
     input_pos = 0;
     input_len = 0;
+    output = Bytes.create output_buffer_size;
+    output_pos = 0;
+    output_len = 0;
     source_eof = false;
     finished = false;
   }

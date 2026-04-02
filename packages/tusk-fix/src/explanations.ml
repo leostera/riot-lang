@@ -20,6 +20,6 @@ let explain = fun rule_id ->
   let normalized = normalize_rule_id rule_id in
   all () |> List.find_opt
     (fun entry ->
-      String.equal entry.Explanation.rule_id normalized)
+      String.equal Explanation.(entry.rule_id) normalized)
 
 let format = Explanation.format

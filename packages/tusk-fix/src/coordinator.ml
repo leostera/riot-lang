@@ -31,10 +31,9 @@ type state = {
 }
 
 let diagnostic_count = fun result ->
-  List.length result.Runner.parse_diagnostics + List.length result.diagnostics
+  Runner.(List.length result.parse_diagnostics + List.length result.diagnostics)
 
-let should_ignore_file = fun scope file ->
-  Fix_config.should_ignore_file scope file
+let should_ignore_file = Fix_config.should_ignore_file
 
 let stop_worker = fun state worker ->
   send worker Messages.Stop;
@@ -191,6 +190,7 @@ let init = fun config () ->
         false
   in
   for _ = 1 to config.concurrency do
+    yield ();
     ignore (Worker.start { mode = config.mode; scope = config.scope; coordinator = self () })
   done;
   let state = {

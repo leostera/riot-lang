@@ -11,15 +11,15 @@ type publish_request = {
 }
 
 type publish_mode =
-  | Dry_run
+  | DryRun
   | Publish
 
 type publish_check_stage =
 [
-  | `Fmt
-  | `Fix
-  | `Build
-  | `Metadata
+  | `fmt
+  | `fix
+  | `build
+  | `metadata
 ]
 
 type publish_event =
@@ -34,8 +34,8 @@ type publish_event =
   | PackagePublished of Pkgs_ml.Registry.published_release
 
 type publish_outcome =
-  | SkippedAlreadyPublished of { package: string; version: Std.Version.t }
-  | DryRun of Tusk_deps.Publisher.prepared_publish
+  | Skipped of { package: string; version: Std.Version.t }
+  | Planned of Tusk_deps.Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release
 
 type publish_error =
@@ -57,11 +57,13 @@ let no_event : publish_event -> unit = fun _ -> ()
 
 let ( let* ) = Result.and_then
 
-let exn_message = function
+let exn_message = fun exn ->
+  match exn with
   | Failure message -> message
   | exn -> Exception.to_string exn
 
-let publish_error_message = function
+let publish_error_message = fun error ->
+  match error with
   | PackageNotFound { package } -> "package '" ^ package ^ "' was not found in this workspace"
   | NoWorkspacePackages -> "no workspace packages were found to publish"
   | PublishConfigLoadFailed err -> Tusk_model.User_config.message err
@@ -92,7 +94,8 @@ let publish_error_message = function
   | PublishPlanFailed err -> Tusk_deps.Publisher.message err
   | PublishFailed { error; _ } -> Tusk_deps.Publisher.message error
 
-let publish_error_is_already_published = function
+let publish_error_is_already_published = fun error ->
+  match error with
   | Tusk_deps.Publisher.RegistryPublishFailed { error; _ } -> String.starts_with ~prefix:"Package " error
   && String.ends_with ~suffix:" is already published." error
   | _ -> false
@@ -232,7 +235,7 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
     ~emit
     ~package_name:package.name
     ~version:package.publish.version
-    ~stage:`Fmt
+    ~stage:`fmt
     (fun () ->
       Tusk_fmt.run_check_paths ~workspace ~on_event:(fun event -> emit (Fmt event)) [ package.path ])
   |> Result.map_error (fun exn -> FmtCheckFailed { package = package.name; error = exn_message exn }) in
@@ -245,7 +248,7 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
         ~emit
         ~package_name:package.name
         ~version:package.publish.version
-        ~stage:`Fix
+        ~stage:`fix
         (fun () ->
           Tusk_fix.fix
             ~on_event:(fun event -> emit (Fix event))
@@ -262,14 +265,14 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
       ~emit
       ~package_name:package.name
       ~version:package.publish.version
-      ~stage:`Build
+      ~stage:`build
       (fun () -> build_package ~emit ~workspace ~package_name:package.name ~profile:"debug")
   in
   run_check
     ~emit
     ~package_name:package.name
     ~version:package.publish.version
-    ~stage:`Metadata
+    ~stage:`metadata
     (fun () -> Tusk_deps.Publisher.plan_publish ~registry ~publishing_workspace_packages ~package)
   |> Result.map_error (fun err -> PublishPlanFailed err)
 
@@ -289,7 +292,7 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
       if already_published then
         let version = Option.unwrap package.publish.version in
         let event : publish_event = SkippedAlreadyPublished { package = package.name; version } in
-        let outcome : publish_outcome = SkippedAlreadyPublished { package = package.name; version } in
+        let outcome : publish_outcome = Skipped { package = package.name; version } in
         emit event;
         run_packages
           ~emit
@@ -320,7 +323,7 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
             artifact_path = prepared.artifact_path
           });
         match mode, api_token_opt with
-        | Dry_run, _ ->
+        | DryRun, _ ->
             emit (DryRunPlanned prepared);
             run_packages
               ~emit
@@ -330,7 +333,7 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
               ~publishing_workspace_packages
               ~api_token_opt
               ~mode
-              (DryRun prepared :: acc)
+              (Planned prepared :: acc)
               rest
         | Publish, Some api_token -> (
             match Tusk_deps.Publisher.publish_prepared ~registry ~api_token prepared with
@@ -339,7 +342,7 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
                   package = package.name;
                   version = prepared.version
                 } in
-                let outcome : publish_outcome = SkippedAlreadyPublished {
+                let outcome : publish_outcome = Skipped {
                   package = package.name;
                   version = prepared.version
                 } in
@@ -380,7 +383,7 @@ let publish = fun ?(on_event = no_event) ~(workspace:Workspace.t) ~request ~mode
   in
   let* api_token_opt =
     match mode with
-    | Dry_run -> Ok None
+    | DryRun -> Ok None
     | Publish -> load_api_token ~registry_name:(Pkgs_ml.Registry.name registry)
     |> Result.map (fun token -> Some token)
   in

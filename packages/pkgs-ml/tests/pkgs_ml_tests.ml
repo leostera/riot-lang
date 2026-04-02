@@ -73,7 +73,7 @@ let test_sparse_index_cached_reads = fun _ctx ->
   "schema_version": 1,
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
-  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "index_base_url": "https://api.pkgs.ml/v1/index",
   "artifact_base_url": "https://cdn.pkgs.ml"
 }|}
     |> Result.expect ~msg:"expected sparse index config to parse"
@@ -108,7 +108,7 @@ let sparse_index_config_json = {|{
   "schema_version": 1,
   "kind": "sparse",
   "package_path_strategy": "cargo-lowercase-v1",
-  "index_base_url": "https://cdn.pkgs.ml/index/v1",
+  "index_base_url": "https://api.pkgs.ml/v1/index",
   "artifact_base_url": "https://cdn.pkgs.ml"
 }|}
 
@@ -177,7 +177,7 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
         let fetch, requests =
           make_fetch_recorder
             (fun uri ->
-              if String.equal (Net.Uri.to_string uri) "https://cdn.pkgs.ml/index/v1/config.json" then
+              if String.equal (Net.Uri.to_string uri) "https://api.pkgs.ml/v1/index/config.json" then
                 Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
               else
                 Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
@@ -198,8 +198,8 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
                 let requested = List.rev !requests |> List.map (fun request -> request.url) in
                 if
                   String.equal config.kind "sparse"
-                  && String.equal cached.index_base_url "https://cdn.pkgs.ml/index/v1"
-                  && requested = [ "https://cdn.pkgs.ml/index/v1/config.json" ]
+                  && String.equal cached.index_base_url "https://api.pkgs.ml/v1/index"
+                  && requested = [ "https://api.pkgs.ml/v1/index/config.json" ]
                 then
                   Ok ()
                 else
@@ -222,11 +222,11 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
           make_fetch_recorder
             (fun uri ->
               match Net.Uri.to_string uri with
-              | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
+              | "https://api.pkgs.ml/v1/index/config.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 200;
                 body = sparse_index_config_json
               }
-              | "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" -> Ok {
+              | "https://api.pkgs.ml/v1/index/ke/rn/kernel.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 200;
                 body = sparse_index_kernel_json
               }
@@ -255,8 +255,8 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
                   && String.equal cached.name "kernel"
                   && requested
                   = [
-                    "https://cdn.pkgs.ml/index/v1/config.json";
-                    "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json";
+                    "https://api.pkgs.ml/v1/index/config.json";
+                    "https://api.pkgs.ml/v1/index/ke/rn/kernel.json";
                   ]
                 then
                   Ok ()
@@ -280,11 +280,11 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
           make_fetch_recorder
             (fun uri ->
               match Net.Uri.to_string uri with
-              | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
+              | "https://api.pkgs.ml/v1/index/config.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 200;
                 body = sparse_index_config_json
               }
-              | "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json" -> Ok {
+              | "https://api.pkgs.ml/v1/index/mi/ss/missing.json" -> Ok {
                 Pkgs_ml.Registry.status_code = 404;
                 body = ""
               }
@@ -307,8 +307,8 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
                 if
                   requested
                   = [
-                    "https://cdn.pkgs.ml/index/v1/config.json";
-                    "https://cdn.pkgs.ml/index/v1/mi/ss/missing.json";
+                    "https://api.pkgs.ml/v1/index/config.json";
+                    "https://api.pkgs.ml/v1/index/mi/ss/missing.json";
                   ]
                 then
                   Ok ()
@@ -662,11 +662,11 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                   make_fetch_recorder
                     (fun uri ->
                       match Net.Uri.to_string uri with
-                      | "https://cdn.pkgs.ml/index/v1/config.json" -> Ok {
+                      | "https://api.pkgs.ml/v1/index/config.json" -> Ok {
                         Pkgs_ml.Registry.status_code = 200;
                         body = sparse_index_config_json
                       }
-                      | "https://cdn.pkgs.ml/index/v1/3/s/std.json" -> Ok {
+                      | "https://api.pkgs.ml/v1/index/3/s/std.json" -> Ok {
                         Pkgs_ml.Registry.status_code = 200;
                         body = sparse_index_std_release_json
                       }
@@ -711,8 +711,8 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                           && String.equal source "let answer = 42\n"
                           && requested
                           = [
-                            "https://cdn.pkgs.ml/index/v1/config.json";
-                            "https://cdn.pkgs.ml/index/v1/3/s/std.json";
+                            "https://api.pkgs.ml/v1/index/config.json";
+                            "https://api.pkgs.ml/v1/index/3/s/std.json";
                             "https://cdn.pkgs.ml/sources/std/0.1.0.tar";
                           ]
                         then

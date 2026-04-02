@@ -45,8 +45,8 @@ let sorted_diagnostics = fun () ->
   Explanations.all () |> List.sort
     (fun left right ->
       String.compare
-        (display_rule_id_text left.Explanation.rule_id)
-        (display_rule_id_text right.Explanation.rule_id))
+        (display_rule_id_text Explanation.(left.rule_id))
+        (display_rule_id_text Explanation.(right.rule_id)))
 
 let rule_to_json = fun rule ->
   let open Data.Json in
@@ -72,8 +72,8 @@ let rule_to_json = fun rule ->
 
 let diagnostic_to_json = fun entry ->
   let open Data.Json in Object [
-    ("rule_id", string (display_rule_id_text entry.Explanation.rule_id));
-    ("message", string entry.Explanation.message);
+    ("rule_id", string (display_rule_id_text Explanation.(entry.rule_id)));
+    ("message", string Explanation.(entry.message));
   ]
 
 let list_rules_text = fun rules ->
@@ -120,7 +120,8 @@ let list_diagnostics_text = fun entries ->
   let bold text = "\027[1m" ^ text ^ "\027[0m" in
   entries
   |> List.map
-    (fun entry -> bold (display_rule_id_text entry.Explanation.rule_id) ^ " - " ^ entry.Explanation.message)
+    (fun entry ->
+      bold (display_rule_id_text Explanation.(entry.rule_id)) ^ " - " ^ Explanation.(entry.message))
   |> String.concat "\n"
 
 let list_rules_output = fun ~format ->

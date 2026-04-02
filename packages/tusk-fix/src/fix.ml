@@ -5,15 +5,15 @@ type target = Fixme.Fix.target =
   | Token of Syn.Cst.syntax_token
 
 type replacement = Fixme.Fix.replacement =
-  | Source_of_node of Syn.Cst.syntax_node
-  | Source_of_token of Syn.Cst.syntax_token
+  | SourceOfNode of Syn.Cst.syntax_node
+  | SourceOfToken of Syn.Cst.syntax_token
   | Text of string
 
 type operation = Fixme.Fix.operation =
   | Delete of { target: target }
   | Replace of { target: target; replacement: replacement }
-  | Insert_before of { anchor: target; content: replacement }
-  | Insert_after of { anchor: target; content: replacement }
+  | InsertBefore of { anchor: target; content: replacement }
+  | InsertAfter of { anchor: target; content: replacement }
   | Swap of { left: target; right: target }
 
 type fix = Fixme.Fix.fix = {
@@ -59,7 +59,8 @@ let apply_fixes = Fixme.Fix.apply_fixes
 
 let validate_fix = Fixme.Fix.validate_fix
 
-let target_to_json = function
+let target_to_json target =
+  match target with
   | Node node ->
       let span = Syn.Ceibo.Red.SyntaxNode.span node in
       Data.Json.Object [
@@ -79,8 +80,9 @@ let target_to_json = function
         );
       ]
 
-let replacement_to_json = function
-  | Source_of_node node ->
+let replacement_to_json replacement =
+  match replacement with
+  | SourceOfNode node ->
       let span = Syn.Ceibo.Red.SyntaxNode.span node in
       Data.Json.Object [
         ("kind", Data.Json.String "source_of_node");
@@ -89,7 +91,7 @@ let replacement_to_json = function
           Data.Json.Object [ ("start", Data.Json.Int span.start); ("end", Data.Json.Int span.end_); ]
         );
       ]
-  | Source_of_token token ->
+  | SourceOfToken token ->
       let span = Syn.Ceibo.Red.SyntaxToken.span token in
       Data.Json.Object [
         ("kind", Data.Json.String "source_of_token");
@@ -101,7 +103,8 @@ let replacement_to_json = function
   | Text value ->
       Data.Json.Object [ ("kind", Data.Json.String "text"); ("text", Data.Json.String value); ]
 
-let operation_to_json = function
+let operation_to_json operation =
+  match operation with
   | Delete { target } -> Data.Json.Object [
     ("kind", Data.Json.String "delete");
     ("target", target_to_json target);
@@ -111,12 +114,12 @@ let operation_to_json = function
     ("target", target_to_json target);
     ("replacement", replacement_to_json replacement);
   ]
-  | Insert_before { anchor; content } -> Data.Json.Object [
+  | InsertBefore { anchor; content } -> Data.Json.Object [
     ("kind", Data.Json.String "insert_before");
     ("anchor", target_to_json anchor);
     ("content", replacement_to_json content);
   ]
-  | Insert_after { anchor; content } -> Data.Json.Object [
+  | InsertAfter { anchor; content } -> Data.Json.Object [
     ("kind", Data.Json.String "insert_after");
     ("anchor", target_to_json anchor);
     ("content", replacement_to_json content);

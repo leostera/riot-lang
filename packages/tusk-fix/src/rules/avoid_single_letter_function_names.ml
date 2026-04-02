@@ -24,7 +24,7 @@ let make_diagnostic = fun token ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-    ~suggestion:(("Rename " ^ original ^ " to a descriptive function name"))
+    ~suggestion:("Rename " ^ original ^ " to a descriptive function name")
     ()
 
 let diagnostic_for_binding_site = fun (site: Traversal.binding_site) ->

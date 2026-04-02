@@ -78,9 +78,9 @@ type fix_output_mode = Api.fix_output_mode =
   Silent
   | Report of Reporter.format
 type fix_action = Api.fix_action =
-  | List_rules of { format: Reporter.format }
-  | List_diagnostics of { format: Reporter.format }
-  | Explain_rule of { rule_id: string }
+  | ListRules of { format: Reporter.format }
+  | ListDiagnostics of { format: Reporter.format }
+  | ExplainRule of { rule_id: string }
   | Run of {
       mode: Runner.mode;
       limit: int option;
@@ -96,9 +96,9 @@ type fix_request = Api.fix_request = {
 }
 type fix_response = Api.fix_response =
   | Completed
-  | Listed_rules of { format: Reporter.format; output: string }
-  | Listed_diagnostics of { format: Reporter.format; output: string }
-  | Explained_rule of { rule_id: string; output: string }
+  | ListedRules of { format: Reporter.format; output: string }
+  | ListedDiagnostics of { format: Reporter.format; output: string }
+  | ExplainedRule of { rule_id: string; output: string }
 val check_request: cwd:Path.t -> target:Path.t -> fix_request
 
 val fix_request_of_matches: ArgParser.matches -> (fix_request, exn) result

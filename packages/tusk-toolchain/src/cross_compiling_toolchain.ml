@@ -44,7 +44,7 @@ let detect_sysroot = fun cc_path ->
   | _ -> None
 
 (** Get bin directory from compiler path *)
-let bin_dir_of_compiler = fun cc_path -> Path.parent cc_path
+let bin_dir_of_compiler = Path.parent
 
 let env_sysroot = fun () ->
   let from_env name =
@@ -141,6 +141,4 @@ let detect = fun ?toolchain_root () ~target_triplet ->
 
 (** Get full path to a cross-compilation binary *)
 let binary_path = fun config bin_name ->
-  match config.bin_dir with
-  | Some dir -> Some Path.(dir / v (config.bin_prefix ^ bin_name))
-  | None -> None
+  config.bin_dir |> Option.map (fun dir -> Path.(dir / v (config.bin_prefix ^ bin_name)))

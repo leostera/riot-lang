@@ -12,23 +12,29 @@ type kind = Fixme.Diagnostic.kind =
   | Known of { rule_id: string; message: string }
   | Generic of { rule_id: string; message: string }
 
-type t = Fixme.Diagnostic.t = {
-  severity: severity;
-  kind: kind;
-  span: Syn.Ceibo.Span.t;
-  suggestion: string option;
-  fix: Fix.fix option;
-}
+type t = Fixme.Diagnostic.t
 
 let make = Fixme.Diagnostic.make
 
-let severity_to_string = function
+let kind = Fixme.Diagnostic.kind
+
+let severity = Fixme.Diagnostic.severity
+
+let span = Fixme.Diagnostic.span
+
+let suggestion = Fixme.Diagnostic.suggestion
+
+let fix = Fixme.Diagnostic.fix
+
+let severity_to_string severity =
+  match severity with
   | Error -> "error"
   | Warning -> "warning"
   | Info -> "info"
   | Hint -> "hint"
 
-let severity_to_colored_string = function
+let severity_to_colored_string severity =
+  match severity with
   | Error -> "\027[1;31merror\027[0m"
   | Warning -> "\027[1;33mwarning\027[0m"
   | Info -> "\027[1;36minfo\027[0m"
@@ -56,8 +62,8 @@ let explain_hint = fun severity rule_id ->
   ^ "`"
 
 let to_string = fun diag ->
-  let severity_str = severity_to_string diag.severity in
-  let span_str = Syn.Ceibo.Span.to_string diag.span in
+  let severity_str = severity_to_string (severity diag) in
+  let span_str = Syn.Ceibo.Span.to_string (span diag) in
   let base_msg =
     "["
     ^ severity_str
@@ -69,22 +75,22 @@ let to_string = fun diag ->
     ^ rule_id diag
     ^ ")"
   in
-  match diag.suggestion, diag.fix with
+  match suggestion diag, fix diag with
   | Some sugg, _ -> base_msg ^ "\n  Suggestion: " ^ sugg
   | None, Some fix -> base_msg ^ "\n  Fix: " ^ Fix.title fix
   | None, None -> base_msg
 
 let to_colored_string = fun diag ->
-  let span_str = Syn.Ceibo.Span.to_string diag.span in
+  let span_str = Syn.Ceibo.Span.to_string (span diag) in
   let lines = [
-    colored_header_label diag.severity (rule_id diag);
+    colored_header_label (severity diag) (rule_id diag);
     "";
     "  at " ^ span_str;
     "";
     message diag;
   ] in
   let lines =
-    match diag.suggestion, diag.fix with
+    match suggestion diag, fix diag with
     | Some sugg, _ -> lines @ [ ""; "  \027[1;90m→\027[0m " ^ sugg ]
     | None, Some fix -> lines @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
     | None, None -> lines
@@ -96,6 +102,7 @@ let make_source_layout = fun source ->
   let line_starts = Array.make (Array.length lines) 0 in
   let offset = ref 0 in
   for index = 0 to Array.length lines - 1 do
+    yield ();
     line_starts.(index) <- !offset;
     offset := !offset + String.length lines.(index) + 1
   done;
@@ -166,58 +173,46 @@ let extract_code_snippet = fun source span ->
 
 let to_formatted_output = fun ~file ~source diag ->
   let header = Path.to_string file ^ ":" in
-  let basic_info = [ header_label diag.severity (rule_id diag); ""; message diag ] in
+  let basic_info = [ header_label (severity diag) (rule_id diag); ""; message diag ] in
   let lines_with_snippet =
-    match extract_code_snippet source diag.span with
+    match extract_code_snippet source (span diag) with
     | Some (code_line, pointer_line, line_num) -> basic_info
     @ [
       "";
       "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
       "  \027[1;90m" ^ String.make (String.length (string_of_int line_num)) ' ' ^ " |\027[0m " ^ pointer_line;
     ]
-    | None -> basic_info @ [ "  at " ^ Syn.Ceibo.Span.to_string diag.span ]
+    | None -> basic_info @ [ "  at " ^ Syn.Ceibo.Span.to_string (span diag) ]
   in
   let lines_with_suggestion =
-    match diag.suggestion, diag.fix with
+    match suggestion diag, fix diag with
     | Some sugg, _ -> lines_with_snippet @ [ ""; "  \027[1;90m→\027[0m " ^ sugg ]
     | None, Some fix -> lines_with_snippet @ [ ""; "  \027[1;90m→\027[0m " ^ Fix.title fix ]
     | None, None -> lines_with_snippet
   in
-  let lines_with_explain = lines_with_suggestion @ [ ""; explain_hint diag.severity (rule_id diag) ] in
+  let lines_with_explain = lines_with_suggestion @ [ ""; explain_hint (severity diag) (rule_id diag) ] in
   header ^ "\n" ^ String.concat "\n" lines_with_explain ^ "\n\n"
 
 let to_json = fun diag ->
   let open Data.Json in
     Object [
-      ("severity", String (severity_to_string diag.severity));
+      ("severity", String (severity_to_string (severity diag)));
       ("message", String (message diag));
-      ("span", Object [ ("start", Int diag.span.start); ("end", Int diag.span.end_) ]);
+      ("span", let span = span diag in Object [ ("start", Int span.start); ("end", Int span.end_) ]);
       ("rule_id", String (rule_id diag));
       (
         "suggestion",
-        match diag.suggestion with
+        match suggestion diag with
         | Some s -> String s
         | None -> Null
       );
       (
         "fix",
-        match diag.fix with
+        match fix diag with
         | Some fix -> Fix.to_json fix
         | None -> Null
       );
     ]
-
-(* Accessor functions *)
-
-let kind = Fixme.Diagnostic.kind
-
-let severity = Fixme.Diagnostic.severity
-
-let span = Fixme.Diagnostic.span
-
-let suggestion = Fixme.Diagnostic.suggestion
-
-let fix = Fixme.Diagnostic.fix
 
 (* Grouped diagnostics *)
 
@@ -235,12 +230,12 @@ let group_diagnostics : t list -> grouped list = fun diags ->
   let map = DiagMap.create () in
   List.iter
     (fun (diag: t) ->
-      let fix_title = diag.fix |> Option.map Fix.title in
-      let key = (diag.severity, message diag, rule_id diag, diag.suggestion, fix_title) in
+      let fix_title = fix diag |> Option.map Fix.title in
+      let key = (severity diag, message diag, rule_id diag, suggestion diag, fix_title) in
       match DiagMap.get map key with
       | Some existing_spans -> ignore
-        (DiagMap.insert map key ((diag.fix, diag.span) :: existing_spans))
-      | None -> ignore (DiagMap.insert map key [ (diag.fix, diag.span) ]))
+        (DiagMap.insert map key ((fix diag, span diag) :: existing_spans))
+      | None -> ignore (DiagMap.insert map key [ (fix diag, span diag) ]))
     diags;
   DiagMap.into_iter map |> Iter.Iterator.map
     ~fn:(fun (((severity, message, rule_id, suggestion, _fix_title), spans)) ->

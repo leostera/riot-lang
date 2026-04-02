@@ -54,10 +54,11 @@ let make_diagnostic = fun token ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Red.SyntaxToken.span token)
-    ~suggestion:(("Rename " ^ original ^ " to " ^ replacement))
+    ~suggestion:("Rename " ^ original ^ " to " ^ replacement)
     ()
 
-let diagnostics_for_decl = function
+let diagnostics_for_decl type_declaration =
+  match type_declaration with
   | Syn.Cst.TypeDeclaration.{ type_definition=Syn.Cst.TypeDefinition.Variant { constructors; _ }; _ } ->
       constructors |> List.filter_map
         (fun constructor ->

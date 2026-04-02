@@ -31,12 +31,14 @@ type scope = {
 
 let empty_fix_config = { ignore_patterns = []; rules = [] }
 
-let parse_rule_state = function
+let parse_rule_state state =
+  match state with
   | "enabled" -> Some Enabled
   | "disabled" -> Some Disabled
   | _ -> None
 
-let parse_rule_override = function
+let parse_rule_override item =
+  match item with
   | Data.Toml.String name ->
       if String.starts_with ~prefix:"-" name then
         Some { name = String.sub name 1 (String.length name - 1); state = Disabled }
@@ -57,7 +59,8 @@ let parse_rule_override = function
   | _ ->
       None
 
-let parse_fix_config = function
+let parse_fix_config toml =
+  match toml with
   | Data.Toml.Table items -> (
       match List.assoc_opt "tusk" items with
       | Some (Data.Toml.Table tusk_items) -> (
@@ -115,11 +118,13 @@ let workspace_root = fun scope -> scope.workspace_root
 
 let target_dir_root = fun scope -> scope.target_dir_root
 
-let providers = function
+let providers scope =
+  match scope with
   | None -> []
   | Some scope -> scope.providers
 
-let ignore_patterns = function
+let ignore_patterns scope =
+  match scope with
   | None -> []
   | Some scope -> scope.workspace_config.ignore_patterns
 
@@ -187,14 +192,14 @@ let matching_rule_names = fun states name ->
           String.equal actual name)
         names
     in
-    if List.length exact_matches > 0 then
+    if not (List.is_empty exact_matches) then
       exact_matches
     else
       let suffix = ":" ^ name in
       let qualified_matches =
-        List.filter (fun actual -> String.ends_with ~suffix actual) names
+        List.filter (String.ends_with ~suffix) names
       in
-      if List.length qualified_matches > 0 then
+      if not (List.is_empty qualified_matches) then
         qualified_matches
       else
         [ name ]

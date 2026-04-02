@@ -8,9 +8,9 @@ type message =
   | Status of Net.Http.Status.t
 
 type response_state =
-  | Waiting_for_headers
-  | Reading_fixed_body of { length: int; received: int }
-  | Reading_chunked_body
+  | WaitingForHeaders
+  | ReadingFixedBody of { length: int; received: int }
+  | ReadingChunkedBody
   | Complete
 
 type t =
@@ -36,7 +36,7 @@ t = fun ~reader ~writer ~of_io_error ~uri ->
     writer;
     uri;
     buffer = Buffer.create 4_096;
-    state = Waiting_for_headers;
+    state = WaitingForHeaders;
     response = None;
     of_io_error;
   }
@@ -79,7 +79,7 @@ let request = fun (Conn conn) req ?body () ->
   in
   match IO.write_all conn.writer ~buf:full_request with
   | Ok () ->
-      conn.state <- Waiting_for_headers;
+      conn.state <- WaitingForHeaders;
       conn.response <- None;
       Buffer.clear conn.buffer;
       Ok ()
@@ -100,7 +100,7 @@ let stream = fun (Conn conn as c) ->
   match conn.state with
   | Complete ->
       Ok [ Done ]
-  | Waiting_for_headers ->
+  | WaitingForHeaders ->
       let rec try_parse () =
         let data = Buffer.contents conn.buffer in
         match Http.Http1.Response.parse data with
@@ -114,13 +114,13 @@ let stream = fun (Conn conn as c) ->
             let content_length = Net.Http.Header.get headers "content-length" in
             conn.state <- (
               match transfer_encoding with
-              | Some "chunked" -> Reading_chunked_body
+              | Some "chunked" -> ReadingChunkedBody
               | _ -> (
                   match content_length with
                   | Some len -> (
                       try
                         let length = int_of_string len in
-                        Reading_fixed_body { length; received = 0 }
+                        ReadingFixedBody { length; received = 0 }
                       with
                       | _ -> Complete
                     )
@@ -134,10 +134,10 @@ let stream = fun (Conn conn as c) ->
             | Error e -> Error e
           )
         | Http.Http1.Common.Error msg ->
-            Error (Error.Parse_error msg)
+            Error (Error.ParseError msg)
       in
       try_parse ()
-  | Reading_fixed_body { length; received } -> (
+  | ReadingFixedBody { length; received } -> (
       let data = Buffer.contents conn.buffer in
       let available = String.length data in
       let remaining = length - received in
@@ -161,7 +161,7 @@ let stream = fun (Conn conn as c) ->
         (
           (* Partial data available, consume it and continue *)
           Buffer.clear conn.buffer;
-          conn.state <- Reading_fixed_body { length; received = received + available };
+          conn.state <- ReadingFixedBody { length; received = received + available };
           Ok [ Data data ]
         )
       else
@@ -169,7 +169,7 @@ let stream = fun (Conn conn as c) ->
         | Ok () -> Ok []
         | Error e -> Error e
     )
-  | Reading_chunked_body ->
+  | ReadingChunkedBody ->
       let rec parse_chunks acc =
         let data = Buffer.contents conn.buffer in
         match Http.Http1.Chunk.parse data with
@@ -188,13 +188,13 @@ let stream = fun (Conn conn as c) ->
             match read_more c with
             | Ok () -> parse_chunks acc
             | Error e ->
-                if List.length acc > 0 then
+                if not (List.is_empty acc) then
                   Ok (List.rev acc)
                 else
                   Error e
           )
         | Http.Http1.Common.Error msg ->
-            Error (Error.Parse_error msg)
+            Error (Error.ParseError msg)
       in
       parse_chunks []
 

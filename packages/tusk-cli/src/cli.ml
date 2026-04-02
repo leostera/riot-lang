@@ -5,7 +5,10 @@ let build_cli = fun workspace_opt ->
   let open ArgParser in
     let open Arg in
       let builtin_commands = [
+        Add.command;
         Build.command;
+        Remove.command;
+        Remove.rm_command;
         Clean.command;
         Completions.command;
         Fix_cmd.command;
@@ -21,6 +24,7 @@ let build_cli = fun workspace_opt ->
         Test_cmd.command;
         Bench_cmd.command;
         Toolchain_cmd.command;
+        Update_cmd.command;
         command "doc" |> about "Generate documentation";
         command "lsp" |> about "Start OCaml LSP server";
         command "version" |> about "Show tusk version";
@@ -231,6 +235,11 @@ format = "full"
                 )
               | Error _ as e -> e
             )
+          | Some ("add", add_matches) -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> Add.run ~workspace add_matches
+              | Error _ as e -> e
+            )
           | Some ("fmt", fmt_matches) ->
               Tusk_fmt.run ?workspace:workspace_opt fmt_matches
           | Some ("clean", clean_matches) ->
@@ -252,9 +261,20 @@ format = "full"
               | Ok workspace -> Publish.run workspace publish_matches
               | Error _ as e -> e
             )
+          | Some ("remove", remove_matches)
+          | Some ("rm", remove_matches) -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> Remove.run ~workspace remove_matches
+              | Error _ as e -> e
+            )
           | Some ("install", install_matches) -> (
               match require_clean_workspace workspace_scan_opt with
               | Ok workspace -> Install.run ~workspace install_matches
+              | Error _ as e -> e
+            )
+          | Some ("update", update_matches) -> (
+              match require_clean_workspace workspace_scan_opt with
+              | Ok workspace -> Update_cmd.run ~workspace update_matches
               | Error _ as e -> e
             )
           | Some ("toolchain", toolchain_matches) ->

@@ -219,11 +219,11 @@ let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_
     ~displayed_packages
     ~progress
     event
-  | Tusk_publish.CheckStarted { package; version; stage=`Fmt } -> out
+  | Tusk_publish.CheckStarted { package; version; stage=`fmt } -> out
     (render_formatting ~package ~version:(version_label version))
-  | Tusk_publish.CheckStarted { package; version; stage=`Fix } -> out
+  | Tusk_publish.CheckStarted { package; version; stage=`fix } -> out
     (render_checking ~package ~version:(version_label version))
-  | Tusk_publish.CheckStarted { package; version; stage=`Build } -> out
+  | Tusk_publish.CheckStarted { package; version; stage=`build } -> out
     (render_compiling ~package ~version:(version_label version))
   | Tusk_publish.CheckStarted _ -> ()
   | Tusk_publish.CheckFinished _ -> ()
@@ -249,7 +249,7 @@ let run = fun (workspace: Workspace.t) matches ->
   | Ok request ->
       let mode =
         if ArgParser.get_flag matches "dry-run" then
-          Tusk_publish.Dry_run
+          Tusk_publish.DryRun
         else
           Tusk_publish.Publish
       in

@@ -18,6 +18,9 @@ syn = { path = "../syn", version = "*" }
 tusk-model = { path = "../tusk-model", version = "*" }
 fixme = { path = "../fixme", version = "*" }
 
+[tusk.fix]
+ignore = ["tests/000*.ml"]
+
 [[bin]]
 name = "fix_tests"
 path = "tests/fix_tests.ml"

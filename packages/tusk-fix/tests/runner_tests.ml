@@ -33,8 +33,8 @@ let assert_explanation_contains = fun ~rule_id ~snippet ->
   match Tusk_fix.Explanations.explain rule_id with
   | None -> Error ("Expected explanation for " ^ rule_id)
   | Some entry ->
-      Test.assert_equal ~expected:rule_id ~actual:entry.Tusk_fix.Explanation.rule_id;
-      let body = String.trim entry.Tusk_fix.Explanation.body in
+      Test.assert_equal ~expected:rule_id ~actual:Tusk_fix.Explanation.(entry.rule_id);
+      let body = String.trim Tusk_fix.Explanation.(entry.body) in
       Test.assert_true (String.length body > 80);
       Test.assert_true (not (String.contains body "Avoid:"));
       Test.assert_true (not (String.contains body "Better:"));
@@ -1847,7 +1847,7 @@ let render x y z =
               Test.assert_equal
                 ~expected:(Path.to_string
                   Path.(package_dir / Path.v "fix" / Path.v "no_stdlib_provider.ml"))
-                ~actual:(Path.to_string provider.Tusk_model.Fix_provider.source_path);
+                ~actual:(Path.to_string Tusk_model.Fix_provider.(provider.source_path));
               Ok ()
           | _ -> Error "expected one discovered provider"));
   Test.case "config scope defaults provider path to fix/tusk_fix_rules.ml"
@@ -1866,7 +1866,7 @@ let render x y z =
           | [ provider ] ->
               Test.assert_equal
                 ~expected:(Path.to_string Path.(fix_dir / Path.v "tusk_fix_rules.ml"))
-                ~actual:(Path.to_string provider.Tusk_model.Fix_provider.source_path);
+                ~actual:(Path.to_string Tusk_model.Fix_provider.(provider.source_path));
               Test.assert_equal ~expected:[ "demo:demo-rule" ] ~actual:provider.rules;
               Ok ()
           | _ -> Error "expected one discovered provider"));
@@ -1886,7 +1886,7 @@ let render x y z =
           | [ provider ] ->
               Test.assert_equal
                 ~expected:(Path.to_string Path.(provider_dir / Path.v "tusk_fix_rules.ml"))
-                ~actual:(Path.to_string provider.Tusk_model.Fix_provider.source_path);
+                ~actual:(Path.to_string Tusk_model.Fix_provider.(provider.source_path));
               Test.assert_equal ~expected:[ "demo:demo-rule" ] ~actual:provider.rules;
               Ok ()
           | _ -> Error "expected one discovered provider"));

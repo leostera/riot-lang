@@ -178,13 +178,13 @@ let test_sse_parsing = fun _ctx ->
                   ("SSE Event "
                   ^ string_of_int (i + 1)
                   ^ ": "
-                  ^ String.sub event.Blink.SSE.data 0 (min 80 (String.length event.Blink.SSE.data))))
+                  ^ Blink.SSE.(String.sub event.data 0 (min 80 (String.length event.data)))))
               events;
             (* Verify each event has JSON data *)
             let all_valid_json =
               List.for_all
                 (fun event ->
-                  match Data.Json.of_string event.Blink.SSE.data with
+                  match Blink.SSE.(Data.Json.of_string event.data) with
                   | Ok _ -> true
                   | Error _ -> false)
                 events

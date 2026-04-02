@@ -32,10 +32,11 @@ let make_diagnostic = fun ~previous_name parameter ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(parameter_span parameter)
-    ~suggestion:(("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized"))
+    ~suggestion:("Place " ^ current_name ^ " before " ^ previous_name ^ " so named arguments stay alphabetized")
     ()
 
-let classify_parameter = function
+let classify_parameter parameter =
+  match parameter with
   | Syn.Cst.Parameter.Labeled _ as parameter -> Some (`Labeled, parameter)
   | Syn.Cst.Parameter.Optional _ as parameter -> Some (`Optional, parameter)
   | Syn.Cst.Parameter.Positional _

@@ -1,6 +1,6 @@
 [package]
 name = "std"
-version = "0.0.1"
+version = "0.2.1"
 description = "Shared standard library surface for Riot and Tusk."
 license = "Apache-2.0"
 public = true

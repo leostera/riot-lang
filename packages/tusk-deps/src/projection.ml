@@ -131,7 +131,7 @@ let load_external_package = fun ~emit ~registry ~workspace_root ~(lock_package:T
           |> Result.map
             (fun pkg ->
               emit_finished ();
-              pkg)
+              Tusk_model.Package.for_scope Tusk_model.Package.Normal pkg)
           |> Result.map_error
             (fun err ->
               let err = Error.ProjectionFailed { error = err } in

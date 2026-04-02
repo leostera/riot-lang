@@ -20,7 +20,7 @@ let () =
       in
       println "Connected! Sending request...";
       let req = Net.Http.Request.create Net.Http.Method.Get uri in
-      let () = Blink.request conn req () |> Result.expect ~msg:"Request failed" in
+      Blink.request conn req () |> Result.expect ~msg:"Request failed";
       println "Request sent! Awaiting response...";
       let response, body = Blink.await conn |> Result.expect ~msg:"Failed to receive response" in
       let status = Net.Http.Response.status response in

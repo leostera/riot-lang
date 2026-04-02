@@ -11,15 +11,15 @@ type target =
   | Token of Syn.Cst.syntax_token
 (** A single syntax-directed operation. *)
 type replacement =
-  | Source_of_node of Syn.Cst.syntax_node
-  | Source_of_token of Syn.Cst.syntax_token
+  | SourceOfNode of Syn.Cst.syntax_node
+  | SourceOfToken of Syn.Cst.syntax_token
   | Text of string
 (** A fix that can be applied to source code. *)
 type operation =
   | Delete of { target: target }
   | Replace of { target: target; replacement: replacement }
-  | Insert_before of { anchor: target; content: replacement }
-  | Insert_after of { anchor: target; content: replacement }
+  | InsertBefore of { anchor: target; content: replacement }
+  | InsertAfter of { anchor: target; content: replacement }
   | Swap of { left: target; right: target }
 type fix = {
   title: string;

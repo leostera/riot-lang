@@ -206,6 +206,9 @@ let build_workspace : Path.t -> Workspace.manifest -> (Workspace.t * load_error 
     Workspace.make
       ~root:workspace_root
       ~packages:all_packages
+      ~dependencies:workspace_manifest.dependencies
+      ~dev_dependencies:workspace_manifest.dev_dependencies
+      ~build_dependencies:workspace_manifest.build_dependencies
       ~profile_overrides:workspace_manifest.profile_overrides
       ?target_dir:workspace_manifest.target_dir
       (),

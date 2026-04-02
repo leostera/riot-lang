@@ -14,8 +14,7 @@ type context = {
   mode: mode;
   registry: Pkgs_ml.Registry.t;
   existing_lock: Tusk_model.Lockfile.t option;
-  workspace_root: Path.t;
-  workspace_packages: Tusk_model.Package.t list;
+  workspace: Tusk_model.Workspace.t;
 }
 
 let duration_ms_since = fun started ->
@@ -80,7 +79,7 @@ let load_manifest_toml = fun ~manifest_path ->
 
 let load_path_dependency_package = fun ~declared_from ~dependency_name dep_path ->
   let package_root = resolve_dependency_root ~declared_from dep_path in
-  let manifest_path = Path.(package_root / Path.v "tusk.toml") in
+      let manifest_path = Path.(package_root / Path.v "tusk.toml") in
   match load_manifest_toml ~manifest_path with
   | Error err -> Error (Error.PathDependencyLoadFailed {
     dependency_name;
@@ -244,7 +243,7 @@ let rec lock_package_of_local_package = fun ~(ctx:context) ~state ~provenance (
               Ok (
                 Tusk_model.Lockfile.{
                   id = package_id_of_local_package pkg;
-                  root = Some (relative_path_from ~base:ctx.workspace_root pkg.path);
+                  root = Some (relative_path_from ~base:ctx.workspace.root pkg.path);
                   provenance;
                   dependencies;
                   build_dependencies;
@@ -256,7 +255,8 @@ let rec lock_package_of_local_package = fun ~(ctx:context) ~state ~provenance (
         )
     )
 
-and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by package_name ->
+and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by (dep:Tusk_model.Package.dependency) ->
+  let package_name = dep.name in
   let registry_name = Pkgs_ml.Registry.name ctx.registry in
   match ctx.mode, find_existing_external_package ~registry_name ~existing_lock:ctx.existing_lock ~package_name with
   | Refresh, Some (existing_pkg: Tusk_model.Lockfile.package) ->
@@ -366,7 +366,7 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by package
                                     package = document.name;
                                     path = None
                                   })
-                                  dep.name with
+                                  Tusk_model.Package.{ name = dep.name; source = { workspace = false; builtin = false; path = None; version = None } } with
                                 | Error _ as err -> err
                                 | Ok (resolved, state) -> resolve_release_dependencies
                                   ~state
@@ -407,7 +407,7 @@ and resolve_registry_dependency = fun ~(ctx:context) ~state ~required_by package
 and resolve_path_dependency = fun ~(ctx:context) ~state ~declared_from dependency_name dep_path ->
   let package_root = resolve_dependency_root ~declared_from dep_path in
   let key = path_resolution_key ~package_root in
-  match find_workspace_package_by_root ~workspace_packages:ctx.workspace_packages ~package_root with
+  match find_workspace_package_by_root ~workspace_packages:ctx.workspace.packages ~package_root with
   | Some workspace_pkg ->
       Ok (
         {
@@ -447,7 +447,7 @@ and resolve_path_dependency = fun ~(ctx:context) ~state ~declared_from dependenc
               | Error _ as err -> err
               | Ok pkg -> (
                   match find_workspace_package_by_name
-                    ~workspace_packages:ctx.workspace_packages
+                    ~workspace_packages:ctx.workspace.packages
                     ~package_name:pkg.name with
                   | Some workspace_pkg ->
                       Ok (
@@ -513,7 +513,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
             rest
       | { path=None; _ } -> (
           match find_workspace_package_by_name
-            ~workspace_packages:ctx.workspace_packages
+            ~workspace_packages:ctx.workspace.packages
             ~package_name:dep.name with
           | Some _ -> resolve_manifest_dependencies
             ~ctx
@@ -534,7 +534,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
                 (Tusk_model.Lockfile.{ name = dep.name; package = package_id } :: acc_dependencies)
                 rest
               | None -> (
-                  match resolve_registry_dependency ~ctx ~state ~required_by dep.name with
+                  match resolve_registry_dependency ~ctx ~state ~required_by dep with
                   | Error _ as err -> err
                   | Ok (resolved, state) -> resolve_manifest_dependencies
                     ~ctx
@@ -584,32 +584,113 @@ let keep_existing_package = fun workspace_packages (pkg: Tusk_model.Lockfile.pac
   in
   not (List.mem pkg.id.name workspace_names)
 
-let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace_root packages ->
+let resolve_root_scope = fun ~(ctx:context) ~state ~(declared_from:Path.t) deps ->
+  match resolve_manifest_dependencies
+    ~ctx
+    ~state
+    ~required_by:None
+    ~declared_from
+    []
+    []
+    deps with
+  | Error _ as err -> err
+  | Ok (dependencies, packages, state) -> Ok (dependencies, packages, state)
+
+let lock_root_dependencies = fun ~(ctx:context) ~state ->
+  let declared_from = ctx.workspace.root in
+  match resolve_root_scope
+    ~ctx
+    ~state
+    ~declared_from
+    ctx.workspace.dependencies with
+  | Error _ as err -> err
+  | Ok (runtime_dependencies, runtime_packages, state) -> (
+      match resolve_root_scope
+        ~ctx
+        ~state
+        ~declared_from
+        ctx.workspace.build_dependencies with
+      | Error _ as err -> err
+      | Ok (build_dependencies, build_packages, state) -> (
+          match resolve_root_scope
+            ~ctx
+            ~state
+            ~declared_from
+            ctx.workspace.dev_dependencies with
+          | Error _ as err -> err
+          | Ok (dev_dependencies, dev_packages, state) ->
+              Ok (runtime_dependencies, build_dependencies, dev_dependencies, runtime_packages @ build_packages @ dev_packages, state)
+        )
+    )
+
+let collect_reachable_existing = fun ~(existing_lock:Tusk_model.Lockfile.t) ~(root_ids:Tusk_model.Lockfile.package_id list) ->
+  let find_package package_id =
+    List.find_opt
+      (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id = package_id)
+      existing_lock.packages
+  in
+  let rec loop seen acc pending =
+    match pending with
+    | [] -> List.rev acc
+    | package_id :: rest ->
+        let key = package_id_key package_id in
+        if List.mem key seen then
+          loop seen acc rest
+        else
+          match find_package package_id with
+          | None -> loop (key :: seen) acc rest
+          | Some pkg ->
+              let next =
+                List.map (fun (dep: Tusk_model.Lockfile.dependency) -> dep.package) pkg.dependencies
+                @ List.map (fun (dep: Tusk_model.Lockfile.dependency) -> dep.package) pkg.build_dependencies
+                @ List.map (fun (dep: Tusk_model.Lockfile.dependency) -> dep.package) pkg.dev_dependencies
+              in
+              loop (key :: seen) (pkg :: acc) (next @ rest)
+  in
+  loop [] [] root_ids
+
+let lock_deps = fun
+  ?(emit = no_emit)
+  ~mode
+  ~registry
+  ~existing_lock
+  ~workspace
+  ()
+  ->
   let started = Time.Instant.now () in
   let ctx = {
     emit;
     mode;
     registry;
     existing_lock;
-    workspace_root;
-    workspace_packages = packages;
+    workspace;
   }
   in
+  let packages = List.filter Tusk_model.Package.is_workspace_member workspace.packages in
   emit
     (Tusk_model.Event.DependencyUniverseBuilding {
       packages = List.map (fun (pkg: Tusk_model.Package.t) -> pkg.name) packages
     });
   match lock_packages ~ctx ~state:empty_resolution_state [] [] packages with
-  | Ok (workspace_packages, external_packages, _state) ->
+  | Ok (workspace_packages, external_packages, state) -> (
+      match lock_root_dependencies ~ctx ~state with
+      | Error _ as err -> err
+      | Ok (root_runtime_dependencies, root_build_dependencies, root_dev_dependencies, root_external_packages, _state) ->
       let preserved =
         match (mode, existing_lock) with
         | Unlock, _ -> []
-        | Refresh, Some (existing_lock: Tusk_model.Lockfile.t) -> List.filter
-          (keep_existing_package packages)
-          existing_lock.packages
+        | Refresh, Some (existing_lock: Tusk_model.Lockfile.t) ->
+            let root_ids =
+              List.map (fun (pkg: Tusk_model.Lockfile.package) -> pkg.id) workspace_packages
+              @ List.map (fun (dep: Tusk_model.Lockfile.dependency) -> dep.package) root_runtime_dependencies
+              @ List.map (fun (dep: Tusk_model.Lockfile.dependency) -> dep.package) root_build_dependencies
+              @ List.map (fun (dep: Tusk_model.Lockfile.dependency) -> dep.package) root_dev_dependencies
+            in
+            collect_reachable_existing ~existing_lock ~root_ids
+            |> List.filter (keep_existing_package packages)
         | Refresh, None -> []
       in
-      let packages = merge_lock_packages (workspace_packages @ external_packages @ preserved) in
+      let packages = merge_lock_packages (workspace_packages @ external_packages @ root_external_packages @ preserved) in
       let runtime_packages, build_packages, dev_packages = dependency_counts packages in
       emit
         (Tusk_model.Event.DependencyUniverseBuilt {
@@ -619,4 +700,5 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace_
           duration_ms = duration_ms_since started
         });
       Ok Tusk_model.Lockfile.{ format_version = 1; packages }
+    )
   | Error _ as err -> err

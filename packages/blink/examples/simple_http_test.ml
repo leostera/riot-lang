@@ -20,33 +20,33 @@ let () =
         | Ok conn ->
             println "Connected successfully!";
             conn
-        | Error (Blink.Error.Net_error Net.Connection_refused) ->
+        | Error (Blink.Error.NetError Net.Connection_refused) ->
             panic "Connection refused"
-        | Error (Blink.Error.Net_error Net.Closed) ->
+        | Error (Blink.Error.NetError Net.Closed) ->
             panic "Connection closed"
-        | Error (Blink.Error.Net_error (Net.System_error io_err)) ->
+        | Error (Blink.Error.NetError (Net.System_error io_err)) ->
             panic ("System error: " ^ IO.error_message io_err)
-        | Error (Blink.Error.Tls_error Net.TlsStream.Closed) ->
+        | Error (Blink.Error.TlsError Net.TlsStream.Closed) ->
             panic "TLS closed"
-        | Error (Blink.Error.Tls_error (Net.TlsStream.Handshake_failed msg)) ->
+        | Error (Blink.Error.TlsError (Net.TlsStream.Handshake_failed msg)) ->
             panic ("TLS handshake failed: " ^ msg)
-        | Error (Blink.Error.Tls_error (Net.TlsStream.System_error io_err)) ->
+        | Error (Blink.Error.TlsError (Net.TlsStream.System_error io_err)) ->
             panic ("TLS system error: " ^ IO.error_message io_err)
-        | Error (Blink.Error.Tls_error (Net.TlsStream.Network_read_failed _err)) ->
+        | Error (Blink.Error.TlsError (Net.TlsStream.Network_read_failed _err)) ->
             panic "TLS network read failed"
-        | Error (Blink.Error.Tls_error (Net.TlsStream.Network_write_failed _err)) ->
+        | Error (Blink.Error.TlsError (Net.TlsStream.Network_write_failed _err)) ->
             panic "TLS network write failed"
-        | Error (Blink.Error.Tls_error Net.TlsStream.Tls_not_available) ->
+        | Error (Blink.Error.TlsError Net.TlsStream.Tls_not_available) ->
             panic "TLS not available"
-        | Error (Blink.Error.Tls_error Net.TlsStream.Unsupported_vectored_operation) ->
+        | Error (Blink.Error.TlsError Net.TlsStream.Unsupported_vectored_operation) ->
             panic "Unsupported vectored operation"
-        | Error (Blink.Error.Parse_error msg) ->
+        | Error (Blink.Error.ParseError msg) ->
             panic ("Parse error: " ^ msg)
-        | Error (Blink.Error.Protocol_error msg) ->
+        | Error (Blink.Error.ProtocolError msg) ->
             panic ("Protocol error: " ^ msg)
-        | Error (Blink.Error.Handshake_failed msg) ->
+        | Error (Blink.Error.HandshakeFailed msg) ->
             panic ("Handshake failed: " ^ msg)
-        | Error Blink.Error.Invalid_frame ->
+        | Error Blink.Error.InvalidFrame ->
             panic "Invalid frame"
         | Error Blink.Error.Eof ->
             panic "EOF"
@@ -57,7 +57,7 @@ let () =
       (* Create GET request *)
       let req = Net.Http.Request.create Net.Http.Method.Get uri in
       (* Send request *)
-      let () = Blink.request conn req () |> Result.expect ~msg:"Request failed" in
+      Blink.request conn req () |> Result.expect ~msg:"Request failed";
       println "Request sent! Awaiting response...";
       (* Get full response *)
       let response, body = Blink.await conn |> Result.expect ~msg:"Failed to receive response" in

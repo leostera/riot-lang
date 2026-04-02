@@ -41,11 +41,13 @@ let package_toml_for_file = fun path ->
   package_root_for_file path
   |> Option.map (fun package_root -> Path.(package_root / Path.v "tusk.toml"))
 
-let get_table = function
+let get_table value =
+  match value with
   | Toml.Table table -> Some table
   | _ -> None
 
-let get_string = function
+let get_string value =
+  match value with
   | Toml.String value -> Some value
   | _ -> None
 
@@ -83,7 +85,8 @@ let starts_with_letter = fun name ->
   | 'A' .. 'Z' -> true
   | _ -> false
 
-let is_kebab_case_char = function
+let is_kebab_case_char ch =
+  match ch with
   | 'a' .. 'z'
   | '0' .. '9'
   | '-' -> true
@@ -106,7 +109,7 @@ let make_diagnostic = fun ~suggestion path ->
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
     ~span:(Syn.Ceibo.Span.make ~start:0 ~end_:0)
-    ~suggestion:((suggestion ^ " In `" ^ Path.to_string path ^ "`."))
+    ~suggestion:(suggestion ^ " In `" ^ Path.to_string path ^ "`.")
     ()
 
 let diagnostics_for_name = fun path name ->
@@ -115,7 +118,7 @@ let diagnostics_for_name = fun path name ->
       []
     else
       [
-        make_diagnostic ~suggestion:(("Rename package `" ^ name ^ "` so it starts with a letter")) path;
+        make_diagnostic ~suggestion:("Rename package `" ^ name ^ "` so it starts with a letter") path;
       ]
   in
   let kebab_case_diagnostic =
@@ -124,7 +127,7 @@ let diagnostics_for_name = fun path name ->
     else
       [
         make_diagnostic
-          ~suggestion:(("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only"))
+          ~suggestion:("Rename package `" ^ name ^ "` to use lowercase letters, digits, and `-` only")
           path;
       ]
   in

@@ -49,19 +49,19 @@ let run_matches = fun ~build_package ?(on_event = Types.no_event) ?output_mode m
         match output_mode with
         | Some output_mode -> output_mode
         | None -> (
-            match request.Request.action with
+            match Request.(request.action) with
             | Request.Run { output_mode; _ } -> output_mode
-            | Request.List_rules { format }
-            | Request.List_diagnostics { format } -> Types.Report format
-            | Request.Explain_rule _ -> Types.Report Reporter.Text
+            | Request.ListRules { format }
+            | Request.ListDiagnostics { format } -> Types.Report format
+            | Request.ExplainRule _ -> Types.Report Reporter.Text
           )
       in
       match request.action with
-      | Request.List_rules { format } ->
+      | Request.ListRules { format } ->
           Catalog.list_rules format
-      | Request.List_diagnostics { format } ->
+      | Request.ListDiagnostics { format } ->
           Catalog.list_diagnostics format
-      | Request.Explain_rule { rule_id } ->
+      | Request.ExplainRule { rule_id } ->
           Catalog.explain_rule rule_id
       | Request.Run {
         mode;

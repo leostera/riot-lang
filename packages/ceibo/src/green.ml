@@ -38,7 +38,8 @@ let token_full_width = fun (token: ('kind, 'text) token) ->
 
 let make_token = fun ~leading_trivia ~kind ~text ~width -> { kind; text; width; leading_trivia }
 
-let rec element_width = function
+let rec element_width = fun element ->
+  match element with
   | Token token -> token_full_width token
   | Node node -> node.width
 
@@ -49,19 +50,23 @@ let make_node = fun ~kind ~children -> { kind; children; width = compute_width c
 
 let width = element_width
 
-let kind = function
+let kind = fun element ->
+  match element with
   | Token t -> t.kind
   | Node n -> n.kind
 
-let text = function
+let text = fun element ->
+  match element with
   | Token t -> Some t.text
   | Node _ -> None
 
-let is_token = function
+let is_token = fun element ->
+  match element with
   | Token _ -> true
   | Node _ -> false
 
-let is_node = function
+let is_node = fun element ->
+  match element with
   | Token _ -> false
   | Node _ -> true
 

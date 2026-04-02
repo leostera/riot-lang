@@ -13,6 +13,14 @@ let with_temp_dir = fun label fn ->
     ~finally:(fun () -> ignore (Fs.remove_dir_all temp_root))
     (fun () -> fn temp_root)
 
+let render_gzip_error = function
+  | Gzip.Kernel_error Kernel.Compress.Gzip.Invalid_data -> "invalid gzip data"
+  | Gzip.Kernel_error Kernel.Compress.Gzip.Need_dictionary -> "gzip stream requires a preset dictionary"
+  | Gzip.Kernel_error Kernel.Compress.Gzip.Buffer_error -> "gzip decoder buffer error"
+  | Gzip.Kernel_error Kernel.Compress.Gzip.Out_of_memory -> "gzip decoder out of memory"
+  | Gzip.Kernel_error (Kernel.Compress.Gzip.Unknown_error msg) -> msg
+  | Gzip.Truncated_input -> "truncated input"
+
 let test_decompress_string = fun _ctx ->
   match Gzip.decompress_string gzip_hello with
   | Ok "hello from gzip\n" -> Ok ()
@@ -70,12 +78,33 @@ let test_compress_file_roundtrip = fun _ctx ->
             )
         ))
 
+let make_pseudorandom_string = fun len ->
+  let bytes = IO.Bytes.create len in
+  let state = ref 0x1234_abcd in
+  for index = 0 to len - 1 do
+    state := Int.logand ((1_103_515_245 * !state) + 12_345) 0x7fff_ffff;
+    IO.Bytes.set bytes index (Char.chr (Int.logand !state 0xff))
+  done;
+  IO.Bytes.to_string bytes
+
+let test_large_roundtrip = fun _ctx ->
+  let original = make_pseudorandom_string (5 * 1_024 * 1_024) in
+  match Gzip.compress_string original with
+  | Error _ -> Error "failed to compress large payload"
+  | Ok payload -> (
+      match Gzip.decompress_string payload with
+      | Ok decoded when decoded = original -> Ok ()
+      | Ok _ -> Error "large gzip roundtrip produced different contents"
+      | Error err -> Error ("failed to decompress large payload: " ^ render_gzip_error err)
+    )
+
 let tests =
   Test.[
     case "gzip compress string roundtrip" test_compress_string_roundtrip;
     case "gzip compress file roundtrip" test_compress_file_roundtrip;
     case "gzip decompress string" test_decompress_string;
     case "gzip decompress file" test_decompress_file;
+    case "gzip large roundtrip" test_large_roundtrip;
   ]
 
 let () =

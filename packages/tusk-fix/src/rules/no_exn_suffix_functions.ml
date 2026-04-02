@@ -27,8 +27,8 @@ let make_diagnostic = fun (site: Traversal.binding_site) ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:((Syn.Cst.Token.syntax_token site.name_token |> Syn.Ceibo.Red.SyntaxToken.span))
-    ~suggestion:(("Rename " ^ name ^ " to remove the _exn suffix and prefer a Result/Option API."))
+    ~span:(Syn.Cst.Token.syntax_token site.name_token |> Syn.Ceibo.Red.SyntaxToken.span)
+    ~suggestion:("Rename " ^ name ^ " to remove the _exn suffix and prefer a Result/Option API.")
     ()
 
 let diagnostic_for_binding_site = fun (site: Traversal.binding_site) ->

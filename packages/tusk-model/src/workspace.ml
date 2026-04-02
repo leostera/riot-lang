@@ -9,6 +9,9 @@ type t = {
   root: Path.t;
   target_dir_root: Path.t;
   packages: Package.t list;
+  dependencies: Package.dependency list;
+  dev_dependencies: Package.dependency list;
+  build_dependencies: Package.dependency list;
   profile_overrides: (string * Package.profile_override) list;
 }
 
@@ -241,12 +244,52 @@ let resolve_target_dir_root = fun ~root ?target_dir () ->
   else
     Path.(root / target_dir_path)
 
-let make ~root ~packages ?(profile_overrides = []) ?target_dir () : t = {
+let make
+  ~root
+  ~packages
+  ?(dependencies = [])
+  ?(dev_dependencies = [])
+  ?(build_dependencies = [])
+  ?(profile_overrides = [])
+  ?target_dir
+  ()
+  : t =
+{
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
   packages;
+  dependencies;
+  dev_dependencies;
+  build_dependencies;
   profile_overrides
 }
+
+let dependencies_for_scope = fun scope (workspace: t) ->
+  match scope with
+  | Package.Normal -> workspace.dependencies
+  | Package.Dev -> workspace.dev_dependencies
+  | Package.Build -> workspace.build_dependencies
+
+let find_package_for_path = fun (workspace: t) ~path ->
+  let path = Path.normalize path in
+  let contains_path (pkg: Package.t) =
+    let package_root = Path.normalize pkg.path in
+    Path.equal path package_root
+    ||
+    match Path.strip_prefix path ~prefix:package_root with
+    | Ok _ -> true
+    | Error _ -> false
+  in
+  workspace.packages
+  |> List.filter contains_path
+  |> List.sort
+    (fun (left: Package.t) (right: Package.t) ->
+      Int.compare
+        (String.length (Path.to_string right.path))
+        (String.length (Path.to_string left.path)))
+  |> function
+  | pkg :: _ -> Some pkg
+  | [] -> None
 
 (** Utility functions *)
 let project_id = fun workspace ->

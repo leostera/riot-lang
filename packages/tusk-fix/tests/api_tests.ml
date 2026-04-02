@@ -120,7 +120,7 @@ let tests = [ Test.case "fix_request_of_matches parses explicit check requests"
           | Error err ->
               Test.assert_true
                 (String.contains (Exception.to_string err) "Issues remain after tusk fix");
-              Test.assert_true (List.length !seen > 0);
+              Test.assert_true (not (List.is_empty !seen));
               Ok ())); Test.case "fix_request_of_matches disables generated runner when requested via env"
     (fun _ctx ->
       with_tempdir "tusk_fix_api"

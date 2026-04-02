@@ -7,9 +7,9 @@ type fix_output_mode = Cli.Types.output_mode =
   | Report of Reporter.format
 
 type fix_action = Cli.Request.action =
-  | List_rules of { format: Reporter.format }
-  | List_diagnostics of { format: Reporter.format }
-  | Explain_rule of { rule_id: string }
+  | ListRules of { format: Reporter.format }
+  | ListDiagnostics of { format: Reporter.format }
+  | ExplainRule of { rule_id: string }
   | Run of {
       mode: Runner.mode;
       limit: int option;
@@ -27,9 +27,9 @@ type fix_request = Cli.Request.t = {
 
 type fix_response =
   | Completed
-  | Listed_rules of { format: Reporter.format; output: string }
-  | Listed_diagnostics of { format: Reporter.format; output: string }
-  | Explained_rule of { rule_id: string; output: string }
+  | ListedRules of { format: Reporter.format; output: string }
+  | ListedDiagnostics of { format: Reporter.format; output: string }
+  | ExplainedRule of { rule_id: string; output: string }
 
 let unavailable_build_package = fun ~workspace_root:_ ~package_name:_ ~profile:_ ->
   Error (Failure "No build_package callback was provided")
@@ -41,20 +41,21 @@ let fix_request_of_matches = Cli.Request.of_matches
 let output_mode_of_request = fun request ->
   match request.action with
   | Run { output_mode; _ } -> output_mode
-  | List_rules { format }
-  | List_diagnostics { format } -> Report format
-  | Explain_rule _ -> Report Reporter.Text
+  | ListRules { format }
+  | ListDiagnostics { format } -> Report format
+  | ExplainRule _ -> Report Reporter.Text
 
 let explain_rule_output = fun rule_id ->
   match Explanations.explain rule_id with
   | Some entry -> Ok (Explanations.format entry)
   | None -> Error (Failure ("Unknown tusk-fix rule id: " ^ rule_id))
 
-let response_output = function
+let response_output response =
+  match response with
   | Completed -> None
-  | Listed_rules { output; _ }
-  | Listed_diagnostics { output; _ }
-  | Explained_rule { output; _ } -> Some output
+  | ListedRules { output; _ }
+  | ListedDiagnostics { output; _ }
+  | ExplainedRule { output; _ } -> Some output
 
 let no_event = fun (_: Event.t) -> ()
 
@@ -65,16 +66,16 @@ let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event
     | None -> output_mode_of_request request
   in
   match request.action with
-  | List_rules { format } -> Ok (Listed_rules {
+  | ListRules { format } -> Ok (ListedRules {
     format;
     output = Cli.Catalog.list_rules_output ~format
   })
-  | List_diagnostics { format } -> Ok (Listed_diagnostics {
+  | ListDiagnostics { format } -> Ok (ListedDiagnostics {
     format;
     output = Cli.Catalog.list_diagnostics_output ~format
   })
-  | Explain_rule { rule_id } -> explain_rule_output rule_id
-  |> Result.map (fun output -> Explained_rule { rule_id; output })
+  | ExplainRule { rule_id } -> explain_rule_output rule_id
+  |> Result.map (fun output -> ExplainedRule { rule_id; output })
   | Run {
     mode;
     limit;

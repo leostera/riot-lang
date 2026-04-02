@@ -1,9 +1,9 @@
 open Std
 
 type action =
-  | List_rules of { format: Reporter.format }
-  | List_diagnostics of { format: Reporter.format }
-  | Explain_rule of { rule_id: string }
+  | ListRules of { format: Reporter.format }
+  | ListDiagnostics of { format: Reporter.format }
+  | ExplainRule of { rule_id: string }
   | Run of {
       mode: Runner.mode;
       limit: int option;
@@ -43,7 +43,7 @@ let use_generated_runner = fun scope ->
     false
   else
     match scope with
-    | Some scope when List.length (Fix_config.providers (Some scope)) > 0 -> true
+    | Some scope when not (List.is_empty (Fix_config.providers (Some scope))) -> true
     | _ -> false
 
 let check_request = fun ~cwd ~target ->
@@ -79,11 +79,11 @@ let of_matches = fun matches ->
             matches
             "explain" with
           | true, _, _ ->
-              List_rules { format }
+              ListRules { format }
           | false, true, _ ->
-              List_diagnostics { format }
+              ListDiagnostics { format }
           | false, false, Some rule_id ->
-              Explain_rule { rule_id }
+              ExplainRule { rule_id }
           | false, false, None ->
               let mode =
                 if apply then

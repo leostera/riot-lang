@@ -345,8 +345,7 @@ let test_discriminated_union_console = fun _ctx ->
     );
   ] in
   match Config.Validator.validate spec toml with
-  | Error err ->
-      Error ("Validation failed: " ^ err)
+  | Error err -> Error ("Validation failed: " ^ err)
   | Ok validated ->
       let (disc, variant, fields) = Config.get_discriminated_union validated "handler" in
       if disc = "type" && variant = "console" then

@@ -47,11 +47,11 @@ let run = fun matches ->
                 print output;
                 (
                   match response with
-                  | Tusk_fix.Listed_rules { format=Tusk_fix.Reporter.Text; _ }
-                  | Tusk_fix.Listed_diagnostics { format=Tusk_fix.Reporter.Text; _ }
-                  | Tusk_fix.Explained_rule _ -> print "\n"
-                  | Tusk_fix.Listed_rules { format=Tusk_fix.Reporter.Json; _ }
-                  | Tusk_fix.Listed_diagnostics { format=Tusk_fix.Reporter.Json; _ }
+                  | Tusk_fix.ListedRules { format=Tusk_fix.Reporter.Text; _ }
+                  | Tusk_fix.ListedDiagnostics { format=Tusk_fix.Reporter.Text; _ }
+                  | Tusk_fix.ExplainedRule _ -> print "\n"
+                  | Tusk_fix.ListedRules { format=Tusk_fix.Reporter.Json; _ }
+                  | Tusk_fix.ListedDiagnostics { format=Tusk_fix.Reporter.Json; _ }
                   | Tusk_fix.Completed -> ()
                 )
             | None -> ()

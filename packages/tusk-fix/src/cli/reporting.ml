@@ -1,13 +1,13 @@
 open Std
 
 let print_diagnostics = fun result ->
-  let grouped = Diagnostic.group_diagnostics result.Runner.diagnostics in
-  if List.length grouped > 0 then
+  let grouped = Diagnostic.group_diagnostics Runner.(result.diagnostics) in
+  if not (List.is_empty grouped) then
     print
       (Diagnostic.grouped_list_to_formatted_output ~file:result.file ~source:result.final_source grouped)
 
 let print_parse_diagnostics = fun result ->
-  if List.length result.Runner.parse_diagnostics > 0 then
+  if not (List.is_empty Runner.(result.parse_diagnostics)) then
     print
       (Syn.DiagnosticReporter.format
         ~file:(Path.to_string result.file)
@@ -15,7 +15,7 @@ let print_parse_diagnostics = fun result ->
         result.parse_diagnostics)
 
 let print_text_result = fun mode result ->
-  let rel = Common.relative_to_cwd result.Runner.file in
+  let rel = Common.relative_to_cwd Runner.(result.file) in
   match result.error with
   | Some error ->
       println ("\027[1;31m✗\027[0m " ^ rel);
@@ -28,7 +28,7 @@ let print_text_result = fun mode result ->
           ^ " (applied "
           ^ Int.to_string (List.length result.applied_fixes)
           ^ " safe fixes)");
-      if List.length result.parse_diagnostics > 0 then
+      if not (List.is_empty result.parse_diagnostics) then
         (
           println
             ("\027[1;31m✗\027[0m "
@@ -38,7 +38,7 @@ let print_text_result = fun mode result ->
             ^ " parse issues)");
           print_parse_diagnostics result
         );
-      if List.length result.diagnostics > 0 then
+      if not (List.is_empty result.diagnostics) then
         (
           let prefix =
             match mode with
@@ -59,7 +59,7 @@ let print_text_summary = fun mode summary ->
   println "";
   match mode with
   | Runner.Check ->
-      if summary.Runner.remaining_diagnostics = 0 && summary.failed_files = 0 then
+      if Runner.(summary.remaining_diagnostics = 0) && summary.failed_files = 0 then
         println
           ("\027[1;32m✓\027[0m No issues found in " ^ Int.to_string summary.total_files ^ " files")
       else

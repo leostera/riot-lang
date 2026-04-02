@@ -60,6 +60,9 @@ let excluded_entry_names = [
   "tmp";
 ]
 
+let is_apple_junk_entry = fun name ->
+  String.starts_with ~prefix:"._" name || String.equal name ".DS_Store" || String.equal name "__MACOSX"
+
 let message = function
   | MissingPublishVersion { package } ->
       "package '" ^ package ^ "' is missing [package].version"
@@ -137,7 +140,7 @@ let message = function
 
 let should_skip_entry = fun path ->
   let name = Path.basename path in
-  List.exists (String.equal name) excluded_entry_names
+  is_apple_junk_entry name || List.exists (String.equal name) excluded_entry_names
 
 let file_kind_to_string = function
   | `Regular -> "regular file"

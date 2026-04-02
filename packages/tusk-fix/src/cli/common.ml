@@ -4,7 +4,7 @@ let current_dir = fun () -> Env.current_dir () |> Result.expect ~msg:"Failed to 
 
 let set_current_dir = fun path ->
   Env.set_current_dir path
-  |> Result.expect ~msg:(("Failed to change directory to " ^ Path.to_string path))
+  |> Result.expect ~msg:("Failed to change directory to " ^ Path.to_string path)
 
 let with_cwd = fun ?cwd fn ->
   match cwd with
@@ -46,7 +46,7 @@ let relative_to_cwd = fun path ->
   | Error _ -> Path.to_string path
 
 let diagnostic_count = fun result ->
-  List.length result.Runner.parse_diagnostics + List.length result.diagnostics
+  Runner.(List.length result.parse_diagnostics + List.length result.diagnostics)
 
 let rec take = fun n xs ->
   if n <= 0 then
@@ -60,15 +60,11 @@ let clip_result_to_limit = fun remaining result ->
   if remaining <= 0 then
     { result with Runner.parse_diagnostics = []; diagnostics = [] }
   else
-    let parse_count = List.length result.Runner.parse_diagnostics in
+    let parse_count = List.length Runner.(result.parse_diagnostics) in
     if parse_count >= remaining then
-      {
-        result
-        with Runner.parse_diagnostics = take remaining result.parse_diagnostics;
-        diagnostics = []
-      }
+      Runner.{ result with parse_diagnostics = take remaining result.parse_diagnostics; diagnostics = [] }
     else
-      { result with Runner.diagnostics = take (remaining - parse_count) result.diagnostics }
+      Runner.{ result with diagnostics = take (remaining - parse_count) result.diagnostics }
 
 let args_of_matches = fun matches ->
   let args = ref [] in

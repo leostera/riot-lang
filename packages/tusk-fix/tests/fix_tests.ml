@@ -42,7 +42,7 @@ let overlapping_replace_rule = fun ~rule_id ~needle ~replacement ~overlap_text -
       | None -> []
       | Some token ->
           let span = Syn.Ceibo.Red.SyntaxToken.span token in
-          let overlap_span = Syn.Ceibo.Span.make ~start:((span.start + 1)) ~end_:span.end_ in
+          let overlap_span = Syn.Ceibo.Span.make ~start:(span.start + 1) ~end_:span.end_ in
           let overlap_token = synthetic_token ~span:overlap_span ~text:overlap_text in
           let fix = Tusk_fix.Fix.make
             ~title:message
@@ -102,7 +102,7 @@ let tests = [ Test.case "apply single operation"
       let result = Tusk_fix.Source_runner.run_rule
         ~rule:(replace_token_rule ~rule_id:"test:broken-source" ~needle:"let" ~replacement:"and")
         source in
-      Test.assert_true (List.length result.parse_diagnostics > 0);
+      Test.assert_true (not (List.is_empty result.parse_diagnostics));
       Test.assert_equal ~expected:0 ~actual:(List.length result.diagnostics);
       Ok ()); Test.case "rule-test applies snake-case type fixes and reruns cleanly"
     (fun _ctx ->

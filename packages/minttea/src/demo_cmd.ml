@@ -19,4 +19,16 @@ let main = fun ~args ->
       Ok ()
     )
 
-let () = Miniriot.run ~main ~args:Std.Env.args ()
+let should_autorun =
+  match Std.Env.args with
+  | argv0 :: _ -> (
+      match Path.of_string argv0 with
+      | Ok path -> Path.basename path = name
+      | Error _ -> argv0 = name
+    )
+  | [] -> false
+
+let () =
+  if should_autorun then
+    let _ = Miniriot.run ~main ~args:Std.Env.args () in
+    ()

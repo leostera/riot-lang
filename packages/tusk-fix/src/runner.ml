@@ -134,7 +134,7 @@ let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
       files
   in
   let results =
-    List.map (fun file -> run_file ?pipeline ?pipeline_for_file ~mode file) files
+    List.map (run_file ?pipeline ?pipeline_for_file ~mode) files
   in
   { files = results; summary = summarize results }
 

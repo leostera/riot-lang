@@ -8,13 +8,7 @@ type severity =
 type kind =
   | Known of { rule_id: string; message: string }
   | Generic of { rule_id: string; message: string }
-type t = {
-  severity: severity;
-  kind: kind;
-  span: Syn.Ceibo.Span.t;
-  suggestion: string option;
-  fix: Fix.fix option;
-}
+type t
 val make:
   severity:severity ->
   kind:kind ->

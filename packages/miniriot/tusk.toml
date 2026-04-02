@@ -2,8 +2,7 @@
 name = "miniriot"
 license = "Apache-2.0"
 description = "Actor-model multi-core runtime for OCaml 5"
-public = true
-version = "0.0.2"
+version = "0.0.3"
 categories = ["runtime", "actors"]
 keywords = ["actors", "scheduler", "mailbox"]
 

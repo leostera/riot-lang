@@ -104,7 +104,7 @@ let test_pm_event_hides_workspace_resolved_packages = fun _ctx ->
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
-let test_pm_event_maps_materialization_to_fetching = fun _ctx ->
+let test_pm_event_hides_materialization_started = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual = Tusk_cli.Build.format_pm_event
     ~seen_registry_updates
@@ -113,12 +113,8 @@ let test_pm_event_maps_materialization_to_fetching = fun _ctx ->
       version = "0.1.0";
       path = "/cache/std"
     }) in
-  match actual with
-  | Some message ->
-      Test.assert_true (String.contains message "Fetching");
-      Test.assert_true (String.contains message "std 0.1.0");
-      Ok ()
-  | None -> Error "expected materialization event to render as a fetching message"
+  Test.assert_equal ~expected:None ~actual;
+  Ok ()
 
 let test_pm_event_hides_manifest_fetch_chatter = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
@@ -151,7 +147,7 @@ let tests =
     case "run: test binaries use dev scope" test_run_build_scope_uses_dev_for_test_binaries;
     case "run: missing binaries default to runtime scope" test_run_build_scope_defaults_to_runtime_when_binary_is_missing;
     case "build: pm events hide workspace resolved packages" test_pm_event_hides_workspace_resolved_packages;
-    case "build: pm materialization renders as fetching" test_pm_event_maps_materialization_to_fetching;
+    case "build: pm materialization start is hidden" test_pm_event_hides_materialization_started;
     case "build: pm manifest fetch chatter is hidden" test_pm_event_hides_manifest_fetch_chatter;
     case "build: pm download skipped is hidden" test_pm_event_hides_download_skipped;
   ]

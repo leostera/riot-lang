@@ -146,12 +146,56 @@ let test_extract_rejects_path_traversal = fun _ctx ->
       | Error _ -> Error "expected unsafe-path rejection"
       | Ok () -> Error "tar extraction should reject path traversal")
 
+let test_extract_skips_pax_extended_headers = fun () ->
+  let archive = build_archive
+    [
+      ("paxheader", 'x', 0o644L, "25 path=./src/std.ml\n");
+      ("src/", '5', 0o755L, "");
+      ("src/std.ml", '0', 0o644L, "let answer = 42\n");
+    ] in
+  with_temp_dir "tar_pax_header"
+    (fun dir ->
+      match Tar.extract (IO.Reader.from_string archive) ~into:dir with
+      | Error _ -> Error "failed to extract tar archive with pax header"
+      | Ok () -> (
+          let extracted = Path.join (Path.join dir (Path.v "src")) (Path.v "std.ml") in
+          match Fs.read_to_string extracted with
+          | Ok "let answer = 42\n" -> Ok ()
+          | Ok text -> Error ("unexpected extracted pax-header content: " ^ text)
+          | Error err -> Error ("failed to read pax-header extracted file: "
+          ^ Kernel.IO.error_message err)
+        ))
+
+let test_extract_skips_appledouble_entries = fun () ->
+  let archive = build_archive
+    [
+      ("src/", '5', 0o755L, "");
+      ("src/._std.ml", '0', 0o644L, "appledouble");
+      ("src/std.ml", '0', 0o644L, "let answer = 42\n");
+      ("__MACOSX/", '5', 0o755L, "");
+      ("__MACOSX/.DS_Store", '0', 0o644L, "junk");
+    ] in
+  with_temp_dir "tar_appledouble"
+    (fun dir ->
+      match Tar.extract (IO.Reader.from_string archive) ~into:dir with
+      | Error _ -> Error "failed to extract tar archive with AppleDouble entries"
+      | Ok () -> (
+          let extracted = Path.join (Path.join dir (Path.v "src")) (Path.v "std.ml") in
+          let skipped = Path.join (Path.join dir (Path.v "src")) (Path.v "._std.ml") in
+          match Fs.read_to_string extracted, Fs.exists skipped with
+          | Ok "let answer = 42\n", Ok false -> Ok ()
+          | Ok text, _ -> Error ("unexpected extracted AppleDouble content: " ^ text)
+          | Error err, _ -> Error ("failed to read extracted file: " ^ Kernel.IO.error_message err)
+        ))
+
 let tests =
   Test.[
     case "tar entries lists archive members" test_entries_lists_archive_members;
     case "tar extract writes regular files" test_extract_writes_regular_files;
     case "tar extract allows dot root directory entry" test_extract_allows_dot_root_directory_entry;
     case "tar extract rejects path traversal" test_extract_rejects_path_traversal;
+    case "tar extract skips pax extended headers" test_extract_skips_pax_extended_headers;
+    case "tar extract skips AppleDouble entries" test_extract_skips_appledouble_entries;
   ]
 
 let () =

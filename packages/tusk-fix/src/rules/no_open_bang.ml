@@ -27,9 +27,8 @@ let make_diagnostic = fun token ->
     ()
 
 let diagnostic_for_open_statement = fun stmt ->
-  match Syn.Cst.OpenStatement.bang_token stmt with
-  | Some bang_token -> Some (make_diagnostic (Syn.Cst.Token.syntax_token bang_token))
-  | None -> None
+  Syn.Cst.OpenStatement.bang_token stmt
+  |> Option.map (fun bang_token -> make_diagnostic (Syn.Cst.Token.syntax_token bang_token))
 
 let diagnostics_for_items = fun source_file ->
   match source_file with

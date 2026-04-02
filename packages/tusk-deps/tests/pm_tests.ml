@@ -89,8 +89,27 @@ let with_tempdir = fun prefix fn ->
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let make_workspace = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
+  Tusk_model.Workspace.make
+    ~root:workspace_root
+    ~packages
+    ~dependencies
+    ~dev_dependencies
+    ~build_dependencies
+    ()
+
 let run_lock_deps = fun ?emit ?(registry = make_registry []) ?(workspace_root = Path.v "/workspace") ~mode ~existing_lock packages ->
-  Tusk_deps.Dep_solver.lock_deps ?emit ~mode ~registry ~existing_lock ~workspace_root packages
+  let workspace = make_workspace ~workspace_root packages in
+  Tusk_deps.Dep_solver.lock_deps ?emit ~mode ~registry ~existing_lock ~workspace ()
+
+let ensure_lock = fun ?emit ?(registry = make_registry []) ?(workspace_root = Path.v "/workspace") packages ->
+  let workspace = make_workspace ~workspace_root packages in
+  Tusk_deps.ensure_lock
+    ?emit
+    ~mode:Tusk_deps.Dep_solver.Refresh
+    ~registry
+    ~workspace
+    ()
 
 let collect_event_names = fun fn ->
   let names = ref [] in
@@ -235,6 +254,8 @@ public = true
       write_file Path.(package_root / Path.v ".git/config") "ignore\n";
       write_file Path.(package_root / Path.v "node_modules/left-pad.js") "ignore\n";
       write_file Path.(package_root / Path.v ".DS_Store") "ignore\n";
+      write_file Path.(package_root / Path.v "src/._demo.ml") "ignore\n";
+      write_file Path.(package_root / Path.v "__MACOSX/._demo.ml") "ignore\n";
       let package = make_package ~name:"demo" ~path:package_root () in
       match Tusk_deps.Publisher.create_artifact
         ~target_dir_root:root
@@ -1460,14 +1481,7 @@ let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
         () in
       match collect_event_names
         (fun emit ->
-          Tusk_deps.ensure_lock
-            ~emit
-            ~mode:Tusk_deps.Dep_solver.Refresh
-            ~registry:(make_registry [])
-            ~workspace_root
-            ~manifest_paths:[ manifest_path ]
-            ~packages:[ app_pkg; std_pkg ]
-            ()) with
+          ensure_lock ~emit ~registry:(make_registry []) ~workspace_root [ app_pkg; std_pkg ]) with
       | Error err -> Error ("expected ensure_lock to refresh missing lock: " ^ pm_error_message err)
       | Ok ((lockfile, resolved), event_names) ->
           let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
@@ -1505,14 +1519,7 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
       Tusk_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile to be written";
       match collect_event_names
         (fun emit ->
-          Tusk_deps.ensure_lock
-            ~emit
-            ~mode:Tusk_deps.Dep_solver.Refresh
-            ~registry:(make_registry [])
-            ~workspace_root
-            ~manifest_paths:[ manifest_path ]
-            ~packages:[ app_pkg; std_pkg ]
-            ()) with
+          ensure_lock ~emit ~registry:(make_registry []) ~workspace_root [ app_pkg; std_pkg ]) with
       | Error err -> Error ("expected ensure_lock to use existing lock: " ^ pm_error_message err)
       | Ok ((lockfile, resolved), event_names) ->
           if
@@ -1562,14 +1569,7 @@ let test_ensure_lock_materializes_registry_packages_before_projection = fun _ctx
         () in
       match collect_event_names
         (fun emit ->
-          Tusk_deps.ensure_lock
-            ~emit
-            ~mode:Tusk_deps.Dep_solver.Refresh
-            ~registry
-            ~workspace_root
-            ~manifest_paths:[ manifest_path ]
-            ~packages:[ app_pkg ]
-            ()) with
+          ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
       | Error err -> Error ("expected ensure_lock to materialize registry packages: "
       ^ pm_error_message err)
       | Ok ((_, resolved), event_names) ->
@@ -1633,20 +1633,13 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
         ~mode:Tusk_deps.Dep_solver.Refresh
         ~registry
         ~existing_lock:None
-        ~workspace_root
-        [ app_pkg ]
+        ~workspace:(make_workspace ~workspace_root [ app_pkg ])
+        ()
       |> Result.expect ~msg:"expected initial lock solve to succeed" in
       Tusk_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
       match collect_event_names
         (fun emit ->
-          Tusk_deps.ensure_lock
-            ~emit
-            ~mode:Tusk_deps.Dep_solver.Refresh
-            ~registry
-            ~workspace_root
-            ~manifest_paths:[ manifest_path ]
-            ~packages:[ app_pkg ]
-            ()) with
+          ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
       | Error err -> Error ("expected ensure_lock to reuse lock and materialize missing packages: "
       ^ pm_error_message err)
       | Ok ((_, resolved), event_names) ->
@@ -1774,6 +1767,9 @@ version = "0.2.0"
 
 [dependencies]
 kernel = "*"
+
+[build-dependencies]
+fixme = "*"
 |}
         std_manifest_path |> Result.expect ~msg:"expected std manifest to be written";
       Fs.write
@@ -1859,6 +1855,7 @@ version = "1.0.0"
                 && List.mem "tusk.pm.package_resolved_for_build" event_names
                 && Path.to_string std_resolved.materialized_root = Path.to_string std_root
                 && List.length std_resolved.runtime_resolved = 1
+                && List.length std_resolved.build_resolved = 0
                 && (List.hd std_resolved.runtime_resolved).resolved_id.name = "kernel"
                 && Path.to_string kernel_resolved.materialized_root = Path.to_string kernel_root
               then

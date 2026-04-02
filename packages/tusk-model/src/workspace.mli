@@ -4,6 +4,9 @@ type t = {
   root: Path.t;
   target_dir_root: Path.t;
   packages: Package.t list;
+  dependencies: Package.dependency list;
+  dev_dependencies: Package.dependency list;
+  build_dependencies: Package.dependency list;
   profile_overrides: (string * Package.profile_override) list;
 }
 type manifest = {
@@ -19,10 +22,17 @@ val of_toml: Std.Data.Toml.value -> (manifest, string) result
 val make:
   root:Path.t ->
   packages:Package.t list ->
+  ?dependencies:Package.dependency list ->
+  ?dev_dependencies:Package.dependency list ->
+  ?build_dependencies:Package.dependency list ->
   ?profile_overrides:(string * Package.profile_override) list ->
   ?target_dir:string ->
   unit ->
   t
+
+val dependencies_for_scope: Package.dependency_scope -> t -> Package.dependency list
+
+val find_package_for_path: t -> path:Path.t -> Package.t option
 
 (** Get a unique project identifier for the workspace by replacing / with - in
     the root path *)

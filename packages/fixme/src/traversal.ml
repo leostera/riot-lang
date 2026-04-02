@@ -30,6 +30,7 @@ let traverse = fun ~visit_node ~visit_token tree ->
           let children = SyntaxNode.children n in
           let result = ref acc in
           for i = 0 to Array.length children - 1 do
+            yield ();
             result := go children.(i) !result
           done;
           !result
@@ -108,6 +109,7 @@ let fold = fun visitor init tree ->
           let children = SyntaxNode.children n in
           let result = ref acc in
           for i = 0 to Array.length children - 1 do
+            yield ();
             result := go children.(i) !result
           done;
           !result
@@ -115,7 +117,8 @@ let fold = fun visitor init tree ->
     in
     go (Node tree) init
 
-let rec let_bindings_of_module_expression = function
+let rec let_bindings_of_module_expression = fun expr ->
+  match expr with
   | Syn.Cst.ModuleExpression.Path _
   | Syn.Cst.ModuleExpression.Structure _
   | Syn.Cst.ModuleExpression.Extension _ -> []
@@ -256,7 +259,8 @@ and let_bindings_of_class_expression = function
   | Syn.Cst.ClassExpression.Parenthesized { inner; _ } -> let_bindings_of_class_expression inner
   | Syn.Cst.ClassExpression.Attribute { class_expression; _ } -> let_bindings_of_class_expression class_expression
 
-let let_bindings_of_structure_item = function
+let let_bindings_of_structure_item = fun item ->
+  match item with
   | Syn.Cst.StructureItem.LetBinding binding ->
       let_bindings_of_let_binding binding
   | Syn.Cst.StructureItem.Expression expr ->
@@ -420,7 +424,8 @@ and expressions_of_class_expression = function
   | Syn.Cst.ClassExpression.Parenthesized { inner; _ } -> expressions_of_class_expression inner
   | Syn.Cst.ClassExpression.Attribute { class_expression; _ } -> expressions_of_class_expression class_expression
 
-let expressions_of_structure_item = function
+let expressions_of_structure_item = fun item ->
+  match item with
   | Syn.Cst.StructureItem.TypeDeclaration _
   | Syn.Cst.StructureItem.TypeExtension _
   | Syn.Cst.StructureItem.ModuleDeclaration _

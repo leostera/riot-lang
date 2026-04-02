@@ -221,6 +221,15 @@ let register_target = fun seen path ->
     let _ = HashSet.insert seen path in
     Ok ()
 
+let should_skip_metadata_entry = function
+  | Other "x"
+  | Other "g" -> true
+  | _ -> false
+
+let should_skip_entry_path = fun path ->
+  let name = Path.basename path in
+  String.starts_with ~prefix:"._" name || String.equal name ".DS_Store" || String.equal name "__MACOSX"
+
 let set_permissions = fun path permissions ->
   match permissions with
   | None -> Ok ()
@@ -275,6 +284,10 @@ let extract = fun reader ~into ->
                 |> Result.map_err (fun err -> Extract_error err) in
                 let* () =
                   match entry.kind, relative_path with
+                  | kind, _ when should_skip_metadata_entry kind ->
+                      drain_entry_extract source tar_reader
+                  | _, Some path when should_skip_entry_path path ->
+                      drain_entry_extract source tar_reader
                   | Directory, None ->
                       let* () = Fs.create_dir_all into
                       |> Result.map_err (fun err -> Extract_fs_error err) in

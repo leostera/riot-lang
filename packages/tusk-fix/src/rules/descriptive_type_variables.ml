@@ -26,11 +26,12 @@ let make_diagnostic = fun type_variable ->
   Diagnostic.make
     ~severity:Warning
     ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-    ~span:((Syn.Cst.TypeVariable.syntax_node type_variable |> Syn.Ceibo.Red.SyntaxNode.span))
-    ~suggestion:(("Prefer a descriptive type variable name instead of " ^ original ^ ", for example 'value or 'error"))
+    ~span:(Syn.Cst.TypeVariable.syntax_node type_variable |> Syn.Ceibo.Red.SyntaxNode.span)
+    ~suggestion:("Prefer a descriptive type variable name instead of " ^ original ^ ", for example 'value or 'error")
     ()
 
-let diagnostic_for_type_param = function
+let diagnostic_for_type_param type_parameter =
+  match type_parameter with
   | Syn.Cst.TypeParameter.{ type_variable=Some type_variable; _ } ->
       let name = Syn.Cst.TypeVariable.name type_variable in
       if should_flag_type_variable_name name then

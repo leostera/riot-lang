@@ -94,8 +94,6 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       Some ("    \027[1;32mFetching\027[0m " ^ package ^ " " ^ version)
   | Tusk_model.Event.PackageDownloadQueued { package; version; _ } ->
       Some ("      \027[1;33mQueued\027[0m " ^ package ^ " (" ^ version ^ ")")
-  | Tusk_model.Event.PackageMaterializationStarted { package; version; _ } ->
-      Some ("    \027[1;32mFetching\027[0m " ^ package ^ " " ^ version)
   | Tusk_model.Event.DependencyResolutionStarted _
   | Tusk_model.Event.DependencyResolutionRefreshingLock _
   | Tusk_model.Event.DependencyResolutionFailed _
@@ -117,6 +115,7 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Tusk_model.Event.PackageManifestFetchFinished _
   | Tusk_model.Event.PackageManifestFetchFailed _
   | Tusk_model.Event.PackageDownloadSkipped _
+  | Tusk_model.Event.PackageMaterializationStarted _
   | Tusk_model.Event.PackageMaterializationFinished _
   | Tusk_model.Event.PackageMaterializationFailed _ ->
       None

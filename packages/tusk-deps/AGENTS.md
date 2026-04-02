@@ -11,6 +11,8 @@
 5. Prefer small slices with tests; phase 1 may be naive operationally, but it should stay structurally honest.
 6. Keep publish orchestration out of this package. `tusk-deps` should expose low-level `Publisher` primitives; the command-level `fmt -> fix -> build -> metadata -> artifact -> upload` flow belongs in `tusk-publish`.
 7. Keep low-level publish planning honest: validate metadata and artifact inputs here, but do not take a dependency on `tusk-build`.
+8. Package-management commands (`add`, `remove`, `update`) belong here. They should take a full `Workspace.t`, mutate manifests, reload the workspace, and refresh or unlock `tusk.lock` from the new workspace state.
+9. Root `tusk.toml` dependency sections are part of the refresh contract. A stale-lock check must treat the workspace root manifest the same way it treats member manifests.
 
 ## Validate
 

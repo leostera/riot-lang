@@ -5,6 +5,7 @@
 #include <caml/fail.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <zlib.h>
 
 typedef struct {
@@ -19,20 +20,38 @@ typedef struct {
     int finished;
 } gzip_decoder_t;
 
+static gzip_encoder_t *gzip_encoder_val(value v_encoder) {
+    return *((gzip_encoder_t **)Data_custom_val(v_encoder));
+}
+
+static gzip_decoder_t *gzip_decoder_val(value v_decoder) {
+    return *((gzip_decoder_t **)Data_custom_val(v_decoder));
+}
+
 static void gzip_encoder_finalize(value v_encoder) {
-    gzip_encoder_t *encoder = (gzip_encoder_t *)Data_custom_val(v_encoder);
+    gzip_encoder_t *encoder = gzip_encoder_val(v_encoder);
+    if (encoder == NULL) {
+        return;
+    }
     if (encoder->initialized) {
         deflateEnd(&encoder->stream);
         encoder->initialized = 0;
     }
+    free(encoder);
+    *((gzip_encoder_t **)Data_custom_val(v_encoder)) = NULL;
 }
 
 static void gzip_decoder_finalize(value v_decoder) {
-    gzip_decoder_t *decoder = (gzip_decoder_t *)Data_custom_val(v_decoder);
+    gzip_decoder_t *decoder = gzip_decoder_val(v_decoder);
+    if (decoder == NULL) {
+        return;
+    }
     if (decoder->initialized) {
         inflateEnd(&decoder->stream);
         decoder->initialized = 0;
     }
+    free(decoder);
+    *((gzip_decoder_t **)Data_custom_val(v_decoder)) = NULL;
 }
 
 static struct custom_operations gzip_encoder_ops = {
@@ -72,8 +91,12 @@ CAMLprim value kernel_gzip_create_encoder(value v_level) {
     CAMLparam1(v_level);
     CAMLlocal1(v_encoder);
 
-    v_encoder = caml_alloc_custom(&gzip_encoder_ops, sizeof(gzip_encoder_t), 0, 1);
-    gzip_encoder_t *encoder = (gzip_encoder_t *)Data_custom_val(v_encoder);
+    v_encoder = caml_alloc_custom(&gzip_encoder_ops, sizeof(gzip_encoder_t *), 0, 1);
+    gzip_encoder_t *encoder = malloc(sizeof(gzip_encoder_t));
+    if (encoder == NULL) {
+        caml_failwith("failed to allocate gzip encoder");
+    }
+    *((gzip_encoder_t **)Data_custom_val(v_encoder)) = encoder;
     memset(encoder, 0, sizeof(*encoder));
 
     int level = Int_val(v_level);
@@ -92,8 +115,12 @@ CAMLprim value kernel_gzip_create_decoder(value v_unit) {
     CAMLparam1(v_unit);
     CAMLlocal1(v_decoder);
 
-    v_decoder = caml_alloc_custom(&gzip_decoder_ops, sizeof(gzip_decoder_t), 0, 1);
-    gzip_decoder_t *decoder = (gzip_decoder_t *)Data_custom_val(v_decoder);
+    v_decoder = caml_alloc_custom(&gzip_decoder_ops, sizeof(gzip_decoder_t *), 0, 1);
+    gzip_decoder_t *decoder = malloc(sizeof(gzip_decoder_t));
+    if (decoder == NULL) {
+        caml_failwith("failed to allocate gzip decoder");
+    }
+    *((gzip_decoder_t **)Data_custom_val(v_decoder)) = decoder;
     memset(decoder, 0, sizeof(*decoder));
 
     int ret = inflateInit2(&decoder->stream, 15 + 16);
@@ -119,7 +146,7 @@ CAMLprim value kernel_gzip_decode(
     CAMLparam5(v_decoder, v_src, v_src_pos, v_src_len, v_dst);
     CAMLxparam2(v_dst_pos, v_dst_len);
 
-    gzip_decoder_t *decoder = (gzip_decoder_t *)Data_custom_val(v_decoder);
+    gzip_decoder_t *decoder = gzip_decoder_val(v_decoder);
     int src_pos = Int_val(v_src_pos);
     int src_len = Int_val(v_src_len);
     int dst_pos = Int_val(v_dst_pos);
@@ -190,7 +217,7 @@ CAMLprim value kernel_gzip_encode(
     CAMLparam5(v_encoder, v_src, v_src_pos, v_src_len, v_dst);
     CAMLxparam3(v_dst_pos, v_dst_len, v_flush);
 
-    gzip_encoder_t *encoder = (gzip_encoder_t *)Data_custom_val(v_encoder);
+    gzip_encoder_t *encoder = gzip_encoder_val(v_encoder);
     int src_pos = Int_val(v_src_pos);
     int src_len = Int_val(v_src_len);
     int dst_pos = Int_val(v_dst_pos);

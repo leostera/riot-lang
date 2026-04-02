@@ -84,22 +84,22 @@ let tcp_stream_error_message = function
   | Net.TcpStream.System_error io_err -> IO.error_message io_err
 
 let blink_error_message = function
-  | Blink.Error.Net_error Net.Connection_refused -> "connection refused"
-  | Blink.Error.Net_error Net.Closed -> "connection closed"
-  | Blink.Error.Net_error (Net.System_error io_err) -> IO.error_message io_err
-  | Blink.Error.Tls_error Net.TlsStream.Closed -> "tls connection closed"
-  | Blink.Error.Tls_error (Net.TlsStream.Handshake_failed msg) -> "tls handshake failed: " ^ msg
-  | Blink.Error.Tls_error (Net.TlsStream.System_error io_err) -> IO.error_message io_err
-  | Blink.Error.Tls_error (Net.TlsStream.Network_read_failed tcp_err) -> "tls read failed: "
+  | Blink.Error.NetError Net.Connection_refused -> "connection refused"
+  | Blink.Error.NetError Net.Closed -> "connection closed"
+  | Blink.Error.NetError (Net.System_error io_err) -> IO.error_message io_err
+  | Blink.Error.TlsError Net.TlsStream.Closed -> "tls connection closed"
+  | Blink.Error.TlsError (Net.TlsStream.Handshake_failed msg) -> "tls handshake failed: " ^ msg
+  | Blink.Error.TlsError (Net.TlsStream.System_error io_err) -> IO.error_message io_err
+  | Blink.Error.TlsError (Net.TlsStream.Network_read_failed tcp_err) -> "tls read failed: "
   ^ tcp_stream_error_message tcp_err
-  | Blink.Error.Tls_error (Net.TlsStream.Network_write_failed tcp_err) -> "tls write failed: "
+  | Blink.Error.TlsError (Net.TlsStream.Network_write_failed tcp_err) -> "tls write failed: "
   ^ tcp_stream_error_message tcp_err
-  | Blink.Error.Tls_error Net.TlsStream.Tls_not_available -> "tls not available"
-  | Blink.Error.Tls_error Net.TlsStream.Unsupported_vectored_operation -> "unsupported vectored tls operation"
-  | Blink.Error.Parse_error msg -> "parse error: " ^ msg
-  | Blink.Error.Protocol_error msg -> "protocol error: " ^ msg
-  | Blink.Error.Handshake_failed msg -> "handshake failed: " ^ msg
-  | Blink.Error.Invalid_frame -> "invalid frame"
+  | Blink.Error.TlsError Net.TlsStream.Tls_not_available -> "tls not available"
+  | Blink.Error.TlsError Net.TlsStream.Unsupported_vectored_operation -> "unsupported vectored tls operation"
+  | Blink.Error.ParseError msg -> "parse error: " ^ msg
+  | Blink.Error.ProtocolError msg -> "protocol error: " ^ msg
+  | Blink.Error.HandshakeFailed msg -> "handshake failed: " ^ msg
+  | Blink.Error.InvalidFrame -> "invalid frame"
   | Blink.Error.Eof -> "unexpected eof"
   | Blink.Error.Closed -> "connection closed"
 
@@ -366,10 +366,7 @@ let read_package_document = fun registry ~package_name ->
             ^ "': "
             ^ err)
             | Ok document -> (
-                match Sparse_index.write_cached_package_document
-                  registry.cache
-                  ~package_name
-                  ~source with
+                match Sparse_index.write_cached_package_document registry.cache ~package_name ~source with
                 | Error _ as err -> err
                 | Ok () -> Ok (Some document)
               )
@@ -381,20 +378,16 @@ let read_package_document = fun registry ~package_name ->
       match Sparse_index.read_cached_package_document registry.cache ~package_name with
       | Error _ -> (
           match read_config registry with
-          | Error _ as err ->
-              err
-          | Ok None ->
-              Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
+          | Error _ as err -> err
+          | Ok None -> Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
           | Ok (Some config) -> fetch_package_document config
         )
       | Ok (Some _ as cached) ->
           Ok cached
       | Ok None -> (
           match read_config registry with
-          | Error _ as err ->
-              err
-          | Ok None ->
-              Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
+          | Error _ as err -> err
+          | Ok None -> Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
           | Ok (Some config) -> fetch_package_document config
         )
     )

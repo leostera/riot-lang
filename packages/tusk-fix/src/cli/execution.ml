@@ -8,8 +8,6 @@ let fix_trace_enabled = fun () ->
 let trace_fix = fun message ->
   if fix_trace_enabled () then
     eprintln ("[tusk-fix] " ^ message)
-  else
-    ()
 
 let recommended_concurrency = fun ~limit ->
   let concurrency =
@@ -42,13 +40,9 @@ let run_result_with = fun ~on_result ~mode ~scope ~limit ~files ->
       | Messages.AllComplete summary -> `select (`AllComplete summary)
       | _ -> `skip
     in
-    match receive ~selector () with
-    | `FileResult { Messages.result; _ } ->
-        let remaining_budget =
-          match limit with
-          | None -> None
-          | Some max_diagnostics -> Some (max_diagnostics - diagnostics_seen)
-        in
+      match receive ~selector () with
+      | `FileResult { Messages.result; _ } ->
+        let remaining_budget = Option.map (fun max_diagnostics -> max_diagnostics - diagnostics_seen) limit in
         let result =
           match remaining_budget with
           | None -> result
@@ -130,9 +124,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
           loop results_rev diagnostics_seen limit_reached
       | `FileResult { Messages.result; _ } ->
           let remaining_budget =
-            match limit with
-            | None -> None
-            | Some max_diagnostics -> Some (max_diagnostics - diagnostics_seen)
+            Option.map (fun max_diagnostics -> max_diagnostics - diagnostics_seen) limit
           in
           let result =
             match remaining_budget with

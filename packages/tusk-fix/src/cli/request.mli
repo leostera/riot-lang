@@ -1,9 +1,9 @@
 open Std
 
 type action =
-  | List_rules of { format: Reporter.format }
-  | List_diagnostics of { format: Reporter.format }
-  | Explain_rule of { rule_id: string }
+  | ListRules of { format: Reporter.format }
+  | ListDiagnostics of { format: Reporter.format }
+  | ExplainRule of { rule_id: string }
   | Run of {
       mode: Runner.mode;
       limit: int option;

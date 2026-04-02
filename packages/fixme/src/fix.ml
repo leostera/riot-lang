@@ -5,15 +5,15 @@ type target =
   | Token of Syn.Cst.syntax_token
 
 type replacement =
-  | Source_of_node of Syn.Cst.syntax_node
-  | Source_of_token of Syn.Cst.syntax_token
+  | SourceOfNode of Syn.Cst.syntax_node
+  | SourceOfToken of Syn.Cst.syntax_token
   | Text of string
 
 type operation =
   | Delete of { target: target }
   | Replace of { target: target; replacement: replacement }
-  | Insert_before of { anchor: target; content: replacement }
-  | Insert_after of { anchor: target; content: replacement }
+  | InsertBefore of { anchor: target; content: replacement }
+  | InsertAfter of { anchor: target; content: replacement }
   | Swap of { left: target; right: target }
 
 type fix = {
@@ -26,9 +26,9 @@ type text_edit = {
   new_text: string;
 }
 
-let source_of_node = fun node -> Source_of_node node
+let source_of_node = fun node -> SourceOfNode node
 
-let source_of_token = fun token -> Source_of_token token
+let source_of_token = fun token -> SourceOfToken token
 
 let text = fun value -> Text value
 
@@ -47,9 +47,9 @@ let replace_node_with_text = fun ~target ~text:value ->
 let replace_token_with_text = fun ~target ~text:value ->
   replace ~target:(Token target) ~replacement:(text value)
 
-let insert_before = fun ~anchor ~content -> Insert_before { anchor; content }
+let insert_before = fun ~anchor ~content -> InsertBefore { anchor; content }
 
-let insert_after = fun ~anchor ~content -> Insert_after { anchor; content }
+let insert_after = fun ~anchor ~content -> InsertAfter { anchor; content }
 
 let swap = fun ~left ~right -> Swap { left; right }
 
@@ -59,18 +59,19 @@ let title = fun fix -> fix.title
 
 let operations = fun fix -> fix.operations
 
-let target_span = function
+let target_span = fun target ->
+  match target with
   | Node node -> Syn.Ceibo.Red.SyntaxNode.span node
   | Token token -> Syn.Ceibo.Red.SyntaxToken.span token
 
 let source_slice = fun ~source span ->
-  let len = span.Syn.Ceibo.Span.end_ - span.start in
+  let len = Syn.Ceibo.Span.(span.end_ - span.start) in
   String.sub source span.start len
 
 let replacement_text = fun ~source ->
   function
-  | Source_of_node node -> source_slice ~source (Syn.Ceibo.Red.SyntaxNode.span node)
-  | Source_of_token token -> source_slice ~source (Syn.Ceibo.Red.SyntaxToken.span token)
+  | SourceOfNode node -> source_slice ~source (Syn.Ceibo.Red.SyntaxNode.span node)
+  | SourceOfToken token -> source_slice ~source (Syn.Ceibo.Red.SyntaxToken.span token)
   | Text text -> text
 
 let make_insert_at = fun pos ~new_text ->
@@ -83,10 +84,10 @@ let lower_operation = fun ~source ->
       Ok [ { span = target_span target; new_text = "" } ]
   | Replace { target; replacement } ->
       Ok [ { span = target_span target; new_text = replacement_text ~source replacement } ]
-  | Insert_before { anchor; content } ->
+  | InsertBefore { anchor; content } ->
       let anchor_span = target_span anchor in
       Ok [ make_insert_at anchor_span.start ~new_text:(replacement_text ~source content); ]
-  | Insert_after { anchor; content } ->
+  | InsertAfter { anchor; content } ->
       let anchor_span = target_span anchor in
       Ok [ make_insert_at anchor_span.end_ ~new_text:(replacement_text ~source content); ]
   | Swap { left; right } ->

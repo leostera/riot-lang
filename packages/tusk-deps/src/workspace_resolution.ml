@@ -23,7 +23,16 @@ let workspace_manifest_paths = fun (workspace: Tusk_model.Workspace.t) ->
 let root_packages_for_workspace = fun (workspace: Tusk_model.Workspace.t) ->
   List.filter Tusk_model.Package.is_workspace_member workspace.packages
 
-let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifest_paths ~packages () ->
+let ensure_lock = fun
+  ?(emit = no_emit)
+  ~mode
+  ~registry
+  ~(workspace:Tusk_model.Workspace.t)
+  ()
+  ->
+  let workspace_root = workspace.root in
+  let manifest_paths = workspace_manifest_paths workspace in
+  let packages = root_packages_for_workspace workspace in
   let lock_path = Tusk_model.Tusk_dirs.package_lock_path ~workspace_root in
   let lock_path_str = Path.to_string lock_path in
   match Lockfile_store.read ~workspace_root with
@@ -50,7 +59,13 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                     | None -> None;
                 }
               );
-            Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace_root packages
+            Dep_solver.lock_deps
+              ~emit
+              ~mode
+              ~registry
+              ~existing_lock
+              ~workspace
+              ()
             |> Result.map (fun lockfile -> (lockfile, false))
         | Dep_solver.Refresh -> (
             match existing_lock with
@@ -68,7 +83,13 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                       });
                     emit
                       (Tusk_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
-                    Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace_root packages
+                    Dep_solver.lock_deps
+                      ~emit
+                      ~mode
+                      ~registry
+                      ~existing_lock
+                      ~workspace
+                      ()
                     |> Result.map (fun lockfile -> (lockfile, false))
               )
             | None ->
@@ -78,7 +99,13 @@ let ensure_lock = fun ?(emit = no_emit) ~mode ~registry ~workspace_root ~manifes
                     mode = `Refresh
                   });
                 emit (Tusk_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
-                Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace_root packages
+                Dep_solver.lock_deps
+                  ~emit
+                  ~mode
+                  ~registry
+                  ~existing_lock
+                  ~workspace
+                  ()
                 |> Result.map (fun lockfile -> (lockfile, false))
           )
       in
@@ -163,9 +190,7 @@ let ensure_workspace = fun ?(emit = no_emit) ~mode ~registry ~(workspace:Tusk_mo
     ~emit
     ~mode
     ~registry
-    ~workspace_root:workspace.root
-    ~manifest_paths:(workspace_manifest_paths workspace)
-    ~packages:(root_packages_for_workspace workspace)
+    ~workspace
     () with
   | Error _ as err -> err
   | Ok (_lockfile, resolved_packages) -> Ok {

@@ -266,7 +266,7 @@ let matching_rule_ids = fun rules requested_id ->
     []
   else
     let suffix = ":" ^ requested_id in
-    List.filter (fun rule_id -> String.ends_with ~suffix rule_id) available_ids
+    List.filter (String.ends_with ~suffix) available_ids
 
 let rules_by_id = fun ids ->
   let available_rules = default_rules () in

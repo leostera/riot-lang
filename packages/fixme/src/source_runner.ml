@@ -46,7 +46,7 @@ let lint_diagnostics = fun ~rules ?filename ?on_progress (parse_result: Syn.Pars
   trace
     ?filename
     ("parsed (" ^ Int.to_string (List.length parse_result.diagnostics) ^ " diagnostics)");
-  if List.length parse_result.diagnostics > 0 then
+  if not (List.is_empty parse_result.diagnostics) then
     []
   else
     match Syn.build_cst parse_result with
@@ -86,7 +86,7 @@ let run = fun ~rules ?filename ?on_progress source ->
 let run_rule = fun ~rule ?filename ?on_progress source ->
   run ~rules:[ rule ] ?filename ?on_progress source
 
-let has_parse_errors = fun result -> List.length result.parse_diagnostics > 0
+let has_parse_errors = fun result -> not (List.is_empty result.parse_diagnostics)
 
 let has_errors = fun result ->
   List.exists (fun diag -> Diagnostic.severity diag = Diagnostic.Error) result.diagnostics
@@ -95,11 +95,11 @@ let safe_fixes = fun result ->
   List.filter_map Diagnostic.fix result.diagnostics
 
 let can_apply_safe_fixes = fun result ->
-  not (has_parse_errors result) && not (has_errors result) && List.length (safe_fixes result) > 0
+  not (has_parse_errors result) && not (has_errors result) && not (List.is_empty (safe_fixes result))
 
 let apply_safe_fixes = fun ~source result ->
   let fixes = safe_fixes result in
-  if has_parse_errors result || has_errors result || List.length fixes = 0 then
+  if has_parse_errors result || has_errors result || List.is_empty fixes then
     Ok None
   else
     match Fix.apply_fixes ~source fixes with

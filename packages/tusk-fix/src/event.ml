@@ -16,7 +16,8 @@ let json_object_with_type = fun type_name json ->
 let timestamp_ms = fun () ->
   Time.SystemTime.now () |> Time.SystemTime.nanos |> Int64.div 1_000_000L |> Int64.to_int
 
-let to_json = function
+let to_json event =
+  match event with
   | Start { mode; concurrency } ->
       let open Data.Json in
         Object [ ("type", String "start"); (

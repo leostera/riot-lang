@@ -1,15 +1,15 @@
 open Std
 
 type t =
-  | Net_error of Net.error
-  | Tls_error of Net.TlsStream.error
-  | Parse_error of string
-  | Protocol_error of string
-  | Handshake_failed of string
-  | Invalid_frame
+  | NetError of Net.error
+  | TlsError of Net.TlsStream.error
+  | ParseError of string
+  | ProtocolError of string
+  | HandshakeFailed of string
+  | InvalidFrame
   | Eof
   | Closed
 
-let of_net_error = fun e -> Net_error e
+let of_net_error = fun e -> NetError e
 
-let of_tls_error = fun e -> Tls_error e
+let of_tls_error = fun e -> TlsError e

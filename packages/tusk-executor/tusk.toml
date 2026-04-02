@@ -9,8 +9,8 @@ public = true
 path = "src/tusk_executor.ml"
 
 [dependencies]
-std = "*"
-tusk-model = "*"
-tusk-planner = "*"
-tusk-toolchain = "*"
-tusk-store = "*"
+std = { path = "../tusk-planner", version = "*" }
+tusk-model = { path = "../tusk-planner", version = "*" }
+tusk-planner = { path = "../tusk-planner", version = "*" }
+tusk-toolchain = { path = "../tusk-planner", version = "*" }
+tusk-store = { path = "../tusk-planner", version = "*" }
