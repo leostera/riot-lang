@@ -83,6 +83,7 @@
 74. Keep module declaration head tokens explicit on the recursive chain. `ModuleSignature` and `ModuleStructure` should preserve their original `module` / `and` shell token on each node plus any explicit `rec` token, instead of collapsing that shell down to `is_recursive` alone.
 75. Keep object/class member modifiers token-backed too. Preserve `!`, `private`, `mutable`, and `virtual` as ordered modifier tokens or definition-local tokens instead of collapsing them to booleans that drop attached comments/docstrings.
 76. Prefer shared `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed parser/diagnostic suites instead of package-local expected-file harnesses; keep fixture selection path-typed with `Std.Path.t`.
+77. In the shared root worktree, fixture-backed `syn` suites may skip fixture source files that already have local edits so snapshot churn stays scoped to the agent editing those inputs. Clean trees should still exercise the full approved fixture corpus.
 
 ## Validate
 

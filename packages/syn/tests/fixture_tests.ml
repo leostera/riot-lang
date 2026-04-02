@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+open Std.Collections
 open Syn
 
 let parse_result_to_json = fun result ->
@@ -52,27 +53,61 @@ let parse_result_to_json = fun result ->
     ("diagnostics", Json.Array (List.map Diagnostic.to_json result.Parser.diagnostics))
   ]
 
-let normalize_json = fun json -> Json.to_string json
+let append_path_suffix = fun path suffix ->
+  Path.to_string path ^ suffix |> Path.of_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
-let parse_expected_json = fun raw_json -> Json.of_string raw_json |> Result.expect ~msg:"Failed to parse expected JSON fixture"
+let fixture_root = Path.v "packages/syn/tests/fixtures"
 
-let test_fixture = fun fixture_path expected_path ->
-  let source = Fs.read (Path.v fixture_path) |> Result.expect ~msg:"Failed to read fixture" in
-  let expected_json = Fs.read (Path.v expected_path) |> Result.expect ~msg:"Failed to read expected" in
-  let parse_result = Syn.parse ~filename:(Path.v fixture_path) source in
+let lossless_snapshot_path = fun path -> append_path_suffix path ".expected_lossless.json"
+
+let load_modified_fixture_paths = fun () ->
+  let cwd = Env.current_dir () |> Result.expect ~msg:"failed to get cwd for fixture filter" in
+  let args = [ "diff"; "--name-only"; "--"; Path.to_string fixture_root ] in
+  match Command.make "git" ~args |> Command.output with
+  | Error _ ->
+      HashSet.create ()
+  | Ok { status; stdout; _ } when status = 0 ->
+      let modified = HashSet.create () in
+      let lines = stdout |> String.split_on_char '\n' |> List.map String.trim in
+      let rec loop = function
+        | [] -> modified
+        | "" :: rest -> loop rest
+        | relpath :: rest ->
+            let () =
+              match Path.of_string relpath with
+              | Ok relpath ->
+                  let _ = HashSet.insert modified (Path.join cwd relpath) in
+                  ()
+              | Error _ -> ()
+            in
+            loop rest
+      in
+      loop lines
+  | Ok _ ->
+      HashSet.create ()
+
+let is_locally_modified_fixture = fun modified_fixture_paths path -> HashSet.contains modified_fixture_paths path
+
+let has_lossless_snapshot = fun modified_fixture_paths path ->
+  match Path.extension path with
+  | Some ".ml"
+  | Some ".mli" ->
+      if is_locally_modified_fixture modified_fixture_paths path then
+        `skip
+      else
+        let snapshot_path = lossless_snapshot_path path in
+        let exists = Fs.exists snapshot_path |> Result.unwrap_or ~default:false in
+        if exists then
+          `keep
+        else
+          `skip
+  | _ -> `skip
+
+let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
+  let source = Fs.read ctx.fixture_path |> Result.expect ~msg:"Failed to read fixture" in
+  let parse_result = Syn.parse ~filename:ctx.fixture_path source in
   let actual_json = parse_result_to_json parse_result in
-  let actual_str = normalize_json actual_json in
-  let expected_str = parse_expected_json expected_json |> normalize_json in
-  if actual_str = expected_str then
-    Ok ()
-  else
-    Error ("Parse tree mismatch for "
-    ^ fixture_path
-    ^ "\nExpected:\n"
-    ^ expected_str
-    ^ "\n\nActual:\n"
-    ^ actual_str
-    ^ "\n")
+  Test.Snapshot.assert_with ~ctx:ctx.test ~render:(fun json -> Json.to_string_pretty json ^ "\n") ~actual:actual_json
 
 let test_tagged_quoted_string_cst = fun _ctx ->
   let source = "let explanation = {explain|hello|explain}\n" in
@@ -120,35 +155,18 @@ let test_tagged_quoted_string_cst = fun _ctx ->
         let diagnostics = diagnostics |> List.map Diagnostic.to_string |> String.concat "\n" in
         Error ("unexpected build_cst parse diagnostics:\n" ^ diagnostics)
 
-let discover_fixtures = fun () ->
-  let fixtures_dir = Path.v "packages/syn/tests/fixtures" in
-  let entries_iter = Fs.read_dir fixtures_dir |> Result.expect ~msg:"Failed to read fixtures directory" in
-  let entries = Iter.MutIterator.to_list entries_iter in
-  List.filter_map
-    (fun entry ->
-      let path = Path.to_string (Path.join fixtures_dir entry) in
-      if String.ends_with ~suffix:".ml" path || String.ends_with ~suffix:".mli" path then
-        let expected_path = path ^ ".expected_lossless.json" in
-        let exists = Fs.exists (Path.v expected_path) |> Result.unwrap_or ~default:false in
-        if exists then
-          Some (path, expected_path)
-        else
-          None
-      else
-        None)
-    entries |> List.sort
-    (fun ((a, _)) ((b, _)) ->
-      String.compare a b)
-
 let () =
   Actors.run
     ~main:(fun ~args ->
-      let fixtures = discover_fixtures () in
-      let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: List.map
-        (fun ((fixture_path, expected_path)) ->
-          let name = Path.basename (Path.v fixture_path) in
-          Test.case name (fun _ctx -> test_fixture fixture_path expected_path))
-        fixtures
+      let modified_fixture_paths = load_modified_fixture_paths () in
+      let fixture_tests =
+        Test.FixtureRunner.cases ()
+          ~dir:(Path.v "packages/syn/tests/fixtures")
+          ~filter:(has_lossless_snapshot modified_fixture_paths)
+          ~snapshot_path:(fun path -> Some (lossless_snapshot_path path))
+          ~run:(fun ctx -> test_fixture ~ctx)
+      in
+      let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: fixture_tests
       in
       Test.Cli.main ~name:"syn-fixtures" ~tests ~args)
     ~args:Env.args
