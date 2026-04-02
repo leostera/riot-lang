@@ -1,0 +1,36 @@
+[
+  {
+    "kind": {
+      "expected": "matching opening delimiter before ]",
+      "fix": "remove the extra ]",
+      "found": {
+        "kind": "]",
+        "text": "]"
+      },
+      "hint": "This closing delimiter does not match any still-open delimiter in the current parse context.\n\nThis often means a list, tuple, record, array, or block was closed twice:\n  ```ocaml\n  let xs = [1; 2]]\n  let pair = (x, y))\n  let record = { x = 1 }}\n  ```\n\nFix: remove the extra closing delimiter, or add the matching opening delimiter earlier if something was left out.\n",
+      "id": "E0043",
+      "name": "unexpected-closing-delimiter"
+    },
+    "span": {
+      "end": 11,
+      "start": 10
+    }
+  },
+  {
+    "kind": {
+      "expected": "matching opening delimiter before ]",
+      "fix": "remove the extra ]",
+      "found": {
+        "kind": "]",
+        "text": "]"
+      },
+      "hint": "This closing delimiter does not match any still-open delimiter in the current parse context.\n\nThis often means a list, tuple, record, array, or block was closed twice:\n  ```ocaml\n  let xs = [1; 2]]\n  let pair = (x, y))\n  let record = { x = 1 }}\n  ```\n\nFix: remove the extra closing delimiter, or add the matching opening delimiter earlier if something was left out.\n",
+      "id": "E0043",
+      "name": "unexpected-closing-delimiter"
+    },
+    "span": {
+      "end": 31,
+      "start": 30
+    }
+  }
+]

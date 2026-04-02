@@ -82,6 +82,7 @@
 73. Keep declaration separator tokens when trivia can attach to them. `ModuleTypeDeclaration`, `ValueDeclaration`, and `ExternalDeclaration` should preserve their original `=` / `:` tokens so downstream tools never synthesize those boundaries and lose separator-owned comments.
 74. Keep module declaration head tokens explicit on the recursive chain. `ModuleSignature` and `ModuleStructure` should preserve their original `module` / `and` shell token on each node plus any explicit `rec` token, instead of collapsing that shell down to `is_recursive` alone.
 75. Keep object/class member modifiers token-backed too. Preserve `!`, `private`, `mutable`, and `virtual` as ordered modifier tokens or definition-local tokens instead of collapsing them to booleans that drop attached comments/docstrings.
+76. Prefer shared `Std.Test.FixtureRunner` plus `Std.Test.Snapshot` for fixture-backed parser/diagnostic suites instead of package-local expected-file harnesses; keep fixture selection path-typed with `Std.Path.t`.
 
 ## Validate
 

@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "right operand for +",
+      "fix": "add an expression after the operator",
+      "found": {
+        "kind": "end of file",
+        "text": ""
+      },
+      "hint": "Binary operators like +, -, *, =, etc. require both a left and right operand.\n\nFor example:\n  ```ocaml\n  let x = 1 + 2   (* correct *)\n  let y = 1 +     (* missing right operand *)\n  let z = + 2     (* missing left operand *)\n  ```\n\nIf you want to create a partially applied operator function, use parentheses:\n  ```ocaml\n  let add_one = (+) 1\n  ```\n",
+      "id": "E0020",
+      "name": "missing-binary-operand"
+    },
+    "span": {
+      "end": 11,
+      "start": 11
+    }
+  }
+]

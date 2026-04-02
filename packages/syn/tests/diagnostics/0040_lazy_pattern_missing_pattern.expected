@@ -1,0 +1,19 @@
+[
+  {
+    "kind": {
+      "expected": "identifier or pattern",
+      "fix": "add a variable name, \"_\" (underscore) to ignore it.",
+      "found": {
+        "kind": "=",
+        "text": "="
+      },
+      "hint": "\nThe left side of a let-expression allows you to pattern match on values to assign them to variables, but also to deconstruct them and access their inner values.\n\n   ```ocaml\n   let variable = 42 in\n   let { x; _ } = point in\n   let Some x = optional in\n   (* ... *)\n   ```\n\nBeware that pattern matching on only one of many possible values will lead to runtime errors!\n",
+      "id": "E0007",
+      "name": "invalid-pattern"
+    },
+    "span": {
+      "end": 8,
+      "start": 8
+    }
+  }
+]
