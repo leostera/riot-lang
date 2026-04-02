@@ -20,7 +20,7 @@ let xlarge_config = { iterations = 3; warmup = 1 }
 let bench_hashmap_insert_1m = fun () ->
   let map = HashMap.create () in
   for i = 0 to 999_999 do
-    HashMap.insert map i (i * 2)
+    ignore (HashMap.insert map i (i * 2))
   done
 
 (* Swisstable: Insert 1m items *)
@@ -36,7 +36,7 @@ let bench_swisstable_insert_1m = fun () ->
 let bench_hashmap_get_from_1m = fun () ->
   let map = HashMap.create () in
   for i = 0 to 999_999 do
-    HashMap.insert map i (i * 2)
+    ignore (HashMap.insert map i (i * 2))
   done;
   for i = 0 to 9_999 do
     ignore (HashMap.get map (i * 100))
@@ -58,7 +58,7 @@ let bench_swisstable_get_from_1m = fun () ->
 let bench_hashmap_get_missing_from_1m = fun () ->
   let map = HashMap.create () in
   for i = 0 to 999_999 do
-    HashMap.insert map i (i * 2)
+    ignore (HashMap.insert map i (i * 2))
   done;
   for i = 1_000_000 to 1_009_999 do
     ignore (HashMap.get map i)
@@ -80,7 +80,7 @@ let bench_swisstable_get_missing_from_1m = fun () ->
 let bench_hashmap_iterate_1m = fun () ->
   let map = HashMap.create () in
   for i = 0 to 999_999 do
-    HashMap.insert map i (i * 2)
+    ignore (HashMap.insert map i (i * 2))
   done;
   let sum = Cell.create 0 in
   HashMap.iter
@@ -106,10 +106,10 @@ let bench_swisstable_iterate_1m = fun () ->
 let bench_hashmap_remove_from_1m = fun () ->
   let map = HashMap.create () in
   for i = 0 to 999_999 do
-    HashMap.insert map i (i * 2)
+    ignore (HashMap.insert map i (i * 2))
   done;
   for i = 0 to 9_999 do
-    HashMap.remove map (i * 100)
+    ignore (HashMap.remove map (i * 100))
   done
 
 (* Swisstable: Remove from 1m items (10k removals) *)
@@ -132,7 +132,7 @@ let bench_swisstable_remove_from_1m = fun () ->
 let bench_hashmap_insert_500k = fun () ->
   let map = HashMap.create () in
   for i = 0 to 499_999 do
-    HashMap.insert map i (i * 2)
+    ignore (HashMap.insert map i (i * 2))
   done
 
 (* Swisstable: Insert 500k items *)
@@ -148,7 +148,7 @@ let bench_swisstable_insert_500k = fun () ->
 let bench_hashmap_get_from_500k = fun () ->
   let map = HashMap.create () in
   for i = 0 to 499_999 do
-    HashMap.insert map i (i * 2)
+    ignore (HashMap.insert map i (i * 2))
   done;
   for i = 0 to 9_999 do
     ignore (HashMap.get map (i * 50))

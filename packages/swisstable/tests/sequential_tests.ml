@@ -298,7 +298,6 @@ let empty_invariant_prop =
               Swisstable.clear swiss;
               true
           | _ ->
-              true;
               (* Check is_empty matches len = 0 *)
               let empty = Swisstable.is_empty swiss in
               let zero_len = Swisstable.len swiss = 0 in

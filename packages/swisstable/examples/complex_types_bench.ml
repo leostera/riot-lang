@@ -80,7 +80,7 @@ let bench_hashmap_record_keys_insert = fun () ->
       name = "user_" ^ string_of_int i;
       email = "user" ^ string_of_int i ^ "@example.com"
     } in
-    HashMap.insert map user i
+    ignore (HashMap.insert map user i)
   done
 
 (* Swisstable: Insert with user record keys *)
@@ -106,7 +106,7 @@ let bench_hashmap_record_keys_get = fun () ->
       name = "user_" ^ string_of_int i;
       email = "user" ^ string_of_int i ^ "@example.com"
     } in
-    HashMap.insert map user i
+    ignore (HashMap.insert map user i)
   done;
   for i = 0 to 999 do
     let user = {
@@ -154,7 +154,7 @@ let bench_hashmap_variant_keys_insert = fun () ->
       | 2 -> Scroll i
       | _ -> MouseMove { x = i; y = i * 2; button = i mod 3 }
     in
-    HashMap.insert map event i
+    ignore (HashMap.insert map event i)
   done
 
 (* Swisstable: Insert with variant keys *)
@@ -184,7 +184,7 @@ let bench_hashmap_variant_keys_get = fun () ->
       | 2 -> Scroll i
       | _ -> MouseMove { x = i; y = i * 2; button = i mod 3 }
     in
-    HashMap.insert map event i
+    ignore (HashMap.insert map event i)
   done;
   for i = 0 to 999 do
     let event =
@@ -232,7 +232,7 @@ let bench_hashmap_tuple_keys_insert = fun () ->
   let map = HashMap.create () in
   for i = 0 to 9_999 do
     let key = (i, i mod 100, "category_" ^ string_of_int (i mod 10)) in
-    HashMap.insert map key i
+    ignore (HashMap.insert map key i)
   done
 
 (* Swisstable: Insert with tuple keys *)
@@ -250,7 +250,7 @@ let bench_hashmap_tuple_keys_get = fun () ->
   let map = HashMap.create () in
   for i = 0 to 9_999 do
     let key = (i, i mod 100, "category_" ^ string_of_int (i mod 10)) in
-    HashMap.insert map key i
+    ignore (HashMap.insert map key i)
   done;
   for i = 0 to 999 do
     let key = (i * 10, (i * 10) mod 100, "category_" ^ string_of_int ((i * 10) mod 10)) in
@@ -293,7 +293,7 @@ let bench_hashmap_complex_values_insert = fun () ->
           Pending;
     }
     in
-    HashMap.insert map i order
+    ignore (HashMap.insert map i order)
   done
 
 (* Swisstable: Insert with complex order values *)
@@ -331,7 +331,7 @@ let bench_hashmap_complex_values_get = fun () ->
       status = Pending;
     }
     in
-    HashMap.insert map i order
+    ignore (HashMap.insert map i order)
   done;
   for i = 0 to 999 do
     ignore (HashMap.get map (i * 10))
@@ -374,7 +374,7 @@ let bench_hashmap_nested_keys_insert = fun () ->
       address = { street = string_of_int i ^ " Main St"; city = "City"; zip = 10_000 + i };
       order_count = i mod 50
     } in
-    HashMap.insert map customer i
+    ignore (HashMap.insert map customer i)
   done
 
 (* Swisstable: Insert with nested customer keys *)
