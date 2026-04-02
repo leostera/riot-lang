@@ -14,6 +14,11 @@ type published_record = {
   key: string;
   created: bool;
 }
+type search_result = {
+  package_name: string;
+  latest_version: string;
+  description: string option;
+}
 type published_materialization = {
   manifest: bool;
   source: bool;
@@ -70,6 +75,9 @@ val read_config: t -> (Sparse_index.config option, string) result
 
 val read_package_document:
   t -> package_name:string -> (Sparse_index.package_document option, string) result
+
+val search_packages:
+  t -> query:string -> ?limit:int -> unit -> (search_result list, string) result
 
 val refresh_package_document:
   t -> package_name:string -> (Sparse_index.package_document option, string) result

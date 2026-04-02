@@ -1,6 +1,8 @@
 open Std
 module Test = Std.Test
 
+let ( let* ) = Result.and_then
+
 let test_registry_split_layout = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
     ~riot_home:(Path.v "/tmp/.riot")
@@ -165,6 +167,62 @@ let make_fetch_recorder = fun ?post_handler get_handler ->
   in
   (fetch, requests)
 
+let set_old_mtime = fun path ->
+  match Command.make "touch" ~args:[ "-t"; "200001010000"; Path.to_string path ] |> Command.output with
+  | Error (Command.SystemError err) -> Error ("failed to spawn touch: " ^ err)
+  | Ok output when not (Int.equal output.status 0) ->
+      Error ("failed to age cache file: " ^ output.stderr)
+  | Ok _ -> Ok ()
+
+let sparse_index_config_json_stale = {|{
+  "schema_version": 1,
+  "kind": "sparse",
+  "package_path_strategy": "cargo-lowercase-v1",
+  "index_base_url": "https://stale.example/v1/index",
+  "artifact_base_url": "https://cdn.pkgs.ml"
+}|}
+
+let sparse_index_search_kernel_json = {|{
+  "query": "ker",
+  "count": 2,
+  "results": [
+    {
+      "package_name": "kernel",
+      "normalized_name": "kernel",
+      "latest_version": "0.0.1",
+      "description": "Core primitives",
+      "license": "Apache-2.0",
+      "homepage": null,
+      "repository": "https://github.com/leostera/riot",
+      "root_module": null,
+      "canonical_locator": "github.com/leostera/riot/packages/kernel",
+      "repo_url": "https://github.com/leostera/riot",
+      "repo_owner": "leostera",
+      "repo_name": "riot",
+      "subdir": "packages/kernel",
+      "release_count": 1,
+      "updated_at": "2026-04-02T00:00:00Z"
+    },
+    {
+      "package_name": "kernel-tools",
+      "normalized_name": "kerneltools",
+      "latest_version": "0.1.0",
+      "description": null,
+      "license": "Apache-2.0",
+      "homepage": null,
+      "repository": "https://github.com/leostera/riot",
+      "root_module": null,
+      "canonical_locator": "github.com/leostera/riot/packages/kernel-tools",
+      "repo_url": "https://github.com/leostera/riot",
+      "repo_owner": "leostera",
+      "repo_name": "riot",
+      "subdir": "packages/kernel-tools",
+      "release_count": 1,
+      "updated_at": "2026-04-02T00:00:00Z"
+    }
+  ]
+}|}
+
 let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"pkgs_ml_fetch_config"
@@ -315,6 +373,145 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
                 else
                   Error "unexpected sparse index fetch sequence for missing package document"
           ))
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_filesystem_registry_reuses_fresh_cached_config_without_fetch = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_fresh_config_cache"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~riot_home:Path.(tempdir / Path.v ".riot")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let* () = Pkgs_ml.Sparse_index.write_cached_config cache ~source:sparse_index_config_json in
+        let fetch, requests =
+          make_fetch_recorder (fun uri -> Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
+        in
+        let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+        match Pkgs_ml.Registry.read_config registry with
+        | Ok (Some config) when String.equal config.index_base_url "https://api.pkgs.ml/v1/index" && !requests = [] ->
+            Ok ()
+        | Ok (Some _) ->
+            Error "expected fresh cached config to be reused without fetch"
+        | Ok None ->
+            Error "expected cached config to be available"
+        | Error err ->
+            Error err)
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_filesystem_registry_refetches_stale_cached_config = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_stale_config_cache"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~riot_home:Path.(tempdir / Path.v ".riot")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let* () = Pkgs_ml.Sparse_index.write_cached_config cache ~source:sparse_index_config_json_stale in
+        let* () = set_old_mtime (Pkgs_ml.Sparse_index.config_cache_path cache) in
+        let fetch, requests =
+          make_fetch_recorder
+            (fun uri ->
+              if String.equal (Net.Uri.to_string uri) "https://api.pkgs.ml/v1/index/config.json" then
+                Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_config_json }
+              else
+                Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
+        in
+        let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+        match Pkgs_ml.Registry.read_config registry with
+        | Ok (Some config)
+          when String.equal config.index_base_url "https://api.pkgs.ml/v1/index"
+          && List.map (fun request -> request.url) (List.rev !requests) = [ "https://api.pkgs.ml/v1/index/config.json" ] ->
+            Ok ()
+        | Ok (Some _) ->
+            Error "expected stale cached config to be refreshed from the registry"
+        | Ok None ->
+            Error "expected refreshed config to be available"
+        | Error err ->
+            Error err)
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_filesystem_registry_refetches_stale_cached_package_document = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_stale_package_cache"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~riot_home:Path.(tempdir / Path.v ".riot")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let* () = Pkgs_ml.Sparse_index.write_cached_config cache ~source:sparse_index_config_json in
+        let* () = Pkgs_ml.Sparse_index.write_cached_package_document cache ~package_name:"kernel" ~source:sparse_index_kernel_json in
+        let* () = set_old_mtime (Pkgs_ml.Sparse_index.package_cache_path cache ~package_name:"kernel") in
+        let fresh_kernel_json = {|{
+  "schema_version": 1,
+  "name": "kernel",
+  "latest": "0.0.3",
+  "updated_at": "2026-04-02T00:00:00Z",
+  "releases": []
+}|} in
+        let fetch, requests =
+          make_fetch_recorder
+            (fun uri ->
+              match Net.Uri.to_string uri with
+              | "https://api.pkgs.ml/v1/index/ke/rn/kernel.json" -> Ok {
+                Pkgs_ml.Registry.status_code = 200;
+                body = fresh_kernel_json
+              }
+              | url -> Error ("unexpected fetch url " ^ url))
+        in
+        let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+        match Pkgs_ml.Registry.read_package_document registry ~package_name:"kernel" with
+        | Ok (Some document)
+          when String.equal document.latest "0.0.3"
+          && List.map (fun request -> request.url) (List.rev !requests) = [ "https://api.pkgs.ml/v1/index/ke/rn/kernel.json" ] ->
+            Ok ()
+        | Ok (Some _) ->
+            Error "expected stale cached package document to be refreshed from the registry"
+        | Ok None ->
+            Error "expected refreshed package document to be available"
+        | Error err ->
+            Error err)
+  with
+  | Error err -> Error (IO.error_message err)
+  | Ok result -> result
+
+let test_registry_search_packages = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"pkgs_ml_search"
+      (fun tempdir ->
+        let cache = Pkgs_ml.Registry_cache.create
+          ~riot_home:Path.(tempdir / Path.v ".riot")
+          ~registry_name:"pkgs.ml"
+          ()
+        |> Result.expect ~msg:"expected registry cache to be created" in
+        let fetch, requests =
+          make_fetch_recorder
+            (fun uri ->
+              if String.equal (Net.Uri.to_string uri) "https://api.pkgs.ml/v1/search?q=ker&limit=3" then
+                Ok { Pkgs_ml.Registry.status_code = 200; body = sparse_index_search_kernel_json }
+              else
+                Error ("unexpected fetch url " ^ Net.Uri.to_string uri))
+        in
+        let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
+        match Pkgs_ml.Registry.search_packages registry ~query:"ker" ~limit:3 () with
+        | Ok [
+          { package_name = "kernel"; latest_version = "0.0.1"; description = Some "Core primitives" };
+          { package_name = "kernel-tools"; latest_version = "0.1.0"; description = None };
+        ] when List.map (fun request -> request.url) (List.rev !requests) = [ "https://api.pkgs.ml/v1/search?q=ker&limit=3" ] ->
+            Ok ()
+        | Ok _ ->
+            Error "expected search results to decode from the registry search api"
+        | Error err ->
+            Error err)
   with
   | Error err -> Error (IO.error_message err)
   | Ok result -> result
@@ -822,6 +1019,10 @@ let tests =
     case "registry: filesystem registry fetches config on cache miss" test_filesystem_registry_fetches_config_on_cache_miss;
     case "registry: filesystem registry fetches package document on cache miss" test_filesystem_registry_fetches_package_document_on_cache_miss;
     case "registry: filesystem registry returns none for missing package document" test_filesystem_registry_returns_none_for_missing_package_document;
+    case "registry: filesystem registry reuses fresh cached config without fetch" test_filesystem_registry_reuses_fresh_cached_config_without_fetch;
+    case "registry: filesystem registry refetches stale cached config" test_filesystem_registry_refetches_stale_cached_config;
+    case "registry: filesystem registry refetches stale cached package document" test_filesystem_registry_refetches_stale_cached_package_document;
+    case "registry: search packages decodes search results" test_registry_search_packages;
     case "registry: in-memory registry materializes release source trees" test_registry_materializes_in_memory_release;
     case "registry: materialization skips existing release sources" test_registry_materialize_skips_existing_release;
     case "registry: filesystem registry materializes cached release archives" test_filesystem_registry_materializes_cached_release;

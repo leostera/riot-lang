@@ -22,6 +22,12 @@ type published_record = {
   created: bool;
 }
 
+type search_result = {
+  package_name: string;
+  latest_version: string;
+  description: string option;
+}
+
 type published_materialization = {
   manifest: bool;
   source: bool;
@@ -235,6 +241,23 @@ let post_required = fun registry uri ~headers ~body ->
   | Error err ->
       Error err
 
+let sparse_index_cache_ttl_secs = 300.0
+
+let cache_path_is_fresh = fun path ->
+  match Fs.metadata path with
+  | Error _ -> Ok false
+  | Ok metadata ->
+      let now = Time.SystemTime.now () |> Time.SystemTime.secs_float in
+      Ok ((now -. Fs.Metadata.modified metadata) <= sparse_index_cache_ttl_secs)
+
+let rec take = fun n items ->
+  if n <= 0 then
+    []
+  else
+    match items with
+    | [] -> []
+    | item :: rest -> item :: take (n - 1) rest
+
 let object_field = fun ~context ~field fields ->
   match List.assoc_opt field fields with
   | Some value -> Ok value
@@ -249,6 +272,7 @@ let string_field = fun ~context ~field fields ->
 let optional_string_field = fun ~context ~field fields ->
   match List.assoc_opt field fields with
   | None -> Ok None
+  | Some Data.Json.Null -> Ok None
   | Some (Data.Json.String value) -> Ok (Some value)
   | Some _ -> Error (context ^ "." ^ field ^ " must be a string")
 
@@ -324,14 +348,74 @@ let publish_artifact_url = fun ~registry_name ->
   | Ok uri -> Ok uri
   | Error _ -> Error ("failed to build publish url '" ^ url ^ "'")
 
+let search_url = fun ~registry_name ~query ~limit ->
+  let url = "https://api."
+  ^ registry_name
+  ^ "/v1/search?q="
+  ^ Net.Uri.form_encode query
+  ^ "&limit="
+  ^ Int.to_string limit in
+  match Net.Uri.of_string url with
+  | Ok uri -> Ok uri
+  | Error _ -> Error ("failed to build search url '" ^ url ^ "'")
+
+let search_result_of_json = fun json ->
+  match json with
+  | Data.Json.Object fields ->
+      let* package_name = string_field ~context:"search result" ~field:"package_name" fields in
+      let* latest_version = string_field ~context:"search result" ~field:"latest_version" fields in
+      let* description = optional_string_field ~context:"search result" ~field:"description" fields in
+      Ok { package_name; latest_version; description }
+  | _ -> Error "search result must be an object"
+
+let search_results_of_json = fun json ->
+  match json with
+  | Data.Json.Object fields -> (
+      match object_field ~context:"search response" ~field:"results" fields with
+      | Ok (Data.Json.Array values) ->
+          let rec loop acc = function
+            | [] -> Ok (List.rev acc)
+            | value :: rest ->
+                let* result = search_result_of_json value in
+                loop (result :: acc) rest
+          in
+          loop [] values
+      | Ok _ -> Error "search response.results must be an array"
+      | Error _ as err -> err
+    )
+  | _ -> Error "search response must be an object"
+
 let read_config = fun registry ->
   match registry.source with
   | Filesystem -> (
       match Sparse_index.read_cached_config registry.cache with
       | Error _ as err ->
           err
-      | Ok (Some _ as cached) ->
-          Ok cached
+      | Ok (Some _ as cached) -> (
+          match cache_path_is_fresh (Sparse_index.config_cache_path registry.cache) with
+          | Ok true -> Ok cached
+          | Ok false
+          | Error _ -> (
+              match Sparse_index.bootstrap_config_url ~registry_name:(name registry) with
+              | Error _ as err -> err
+              | Ok uri -> (
+                  match fetch_required registry uri with
+                  | Error _ as err -> err
+                  | Ok source -> (
+                      match Sparse_index.config_of_string source with
+                      | Error err -> Error ("failed to decode sparse index config from '"
+                      ^ Net.Uri.to_string uri
+                      ^ "': "
+                      ^ err)
+                      | Ok config -> (
+                          match Sparse_index.write_cached_config registry.cache ~source with
+                          | Error _ as err -> err
+                          | Ok () -> Ok (Some config)
+                        )
+                    )
+                )
+            )
+        )
       | Ok None -> (
           match Sparse_index.bootstrap_config_url ~registry_name:(name registry) with
           | Error _ as err -> err
@@ -388,8 +472,17 @@ let read_package_document = fun registry ~package_name ->
           | Ok None -> Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
           | Ok (Some config) -> fetch_package_document config
         )
-      | Ok (Some _ as cached) ->
-          Ok cached
+      | Ok (Some _ as cached) -> (
+          match cache_path_is_fresh (Sparse_index.package_cache_path registry.cache ~package_name) with
+          | Ok true -> Ok cached
+          | Ok false
+          | Error _ -> (
+              match read_config registry with
+              | Error _ as err -> err
+              | Ok None -> Error ("filesystem registry '" ^ name registry ^ "' is missing sparse index config")
+              | Ok (Some config) -> fetch_package_document config
+            )
+        )
       | Ok None -> (
           match read_config registry with
           | Error _ as err -> err
@@ -400,6 +493,58 @@ let read_package_document = fun registry ~package_name ->
   | In_memory { packages; config=_; releases=_ } -> Ok (List.assoc_opt
     (Sparse_index.normalized_name package_name)
     packages)
+
+let search_packages = fun registry ~query ?(limit = 5) () ->
+  if String.equal (String.trim query) "" then
+    Ok []
+  else
+    match registry.source with
+    | Filesystem -> (
+        match search_url ~registry_name:(name registry) ~query ~limit with
+        | Error _ as err -> err
+        | Ok uri -> (
+            match fetch_required registry uri with
+            | Error _ as err -> err
+            | Ok source -> (
+                match Data.Json.of_string source with
+                | Error err ->
+                    Error ("failed to decode search response from '"
+                    ^ Net.Uri.to_string uri
+                    ^ "': "
+                    ^ (Data.Json.error_to_string err))
+                | Ok json -> (
+                    match search_results_of_json json with
+                    | Ok results -> Ok results
+                    | Error err -> Error ("failed to decode search response from '"
+                    ^ Net.Uri.to_string uri
+                    ^ "': "
+                    ^ err)
+                  )
+              )
+          )
+      )
+    | In_memory { packages; config=_; releases=_ } ->
+        let normalized_query = Sparse_index.normalized_name query in
+        packages
+        |> List.map snd
+        |> List.filter (fun (document: Sparse_index.package_document) ->
+          let normalized_name = Sparse_index.normalized_name document.name in
+          String.equal normalized_name normalized_query
+          || String.starts_with ~prefix:normalized_query normalized_name
+          || String.contains normalized_name normalized_query)
+        |> List.sort
+          (fun (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
+            String.compare left.name right.name)
+        |> take limit
+        |> List.map (fun (document: Sparse_index.package_document) -> {
+          package_name = document.name;
+          latest_version = document.latest;
+          description =
+            match document.releases with
+            | release :: _ -> release.description
+            | [] -> None;
+        })
+        |> fun results -> Ok results
 
 let refresh_package_document = fun registry ~package_name ->
   match registry.source with
