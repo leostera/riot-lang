@@ -2,10 +2,14 @@ open Std
 
 module Log = struct
   let debug _ = ()
+
   let info _ = ()
+
   let error _ = ()
+
   let trace _ = ()
 end
+
 open Std.Collections
 
 type package = string
@@ -37,8 +41,7 @@ let equal_term = fun left right ->
 let equal_incompatibility_terms = fun left right ->
   let left_terms = Incompatibility.terms left in
   let right_terms = Incompatibility.terms right in
-  let rec remove_first_match term acc =
-    function
+  let rec remove_first_match term acc = function
     | [] -> None
     | candidate :: tail when equal_term term candidate -> Some (List.rev_append acc tail)
     | candidate :: tail -> remove_first_match term (candidate :: acc) tail
@@ -136,7 +139,7 @@ type state = {
    4. Merge ranges if same package appears multiple times
 *)
 
-let compute_pending state : (package * version Ranges.t) list =
+let compute_pending state: (package * version Ranges.t) list =
   Log.debug "compute_pending called";
   let pending_map = HashMap.create () in
   (* Helper to add a package to pending with range merging *)
@@ -289,10 +292,10 @@ let rec conflict_resolution = fun ~emit root_package root_version state incompat
       | `DifferentDecisionLevels previous_level ->
           emit
             (Trace.ConflictResolvedDifferent {
-               package = pkg;
-               previous_level;
-               incompatibility = current_incompat;
-             });
+              package = pkg;
+              previous_level;
+              incompatibility = current_incompat
+            });
           Log.info ("🔙 Backtracking to decision level " ^ string_of_int previous_level);
           (* Backtrack the solution *)
           let new_solution = Partial_solution.backtrack state.solution previous_level in
@@ -331,7 +334,7 @@ let rec conflict_resolution = fun ~emit root_package root_version state incompat
             terms;
           (* Return the package, root cause, and backtracked solution *)
           Ok (pkg, current_incompat, new_solution)
-      | `SameDecisionLevels { cause = satisfier_cause; extra_term } ->
+      | `SameDecisionLevels { cause=satisfier_cause; extra_term } ->
           Log.info ("🔄 Same decision level, computing prior cause for " ^ pkg);
           (* Check if satisfier_cause is the same as current to avoid infinite loop *)
           if Ptr.equal satisfier_cause current_incompat then
@@ -342,20 +345,17 @@ let rec conflict_resolution = fun ~emit root_package root_version state incompat
               Error current_incompat
             )
           else
-            let prior =
-              Incompatibility.prior_cause ?extra_term current_incompat satisfier_cause pkg
-            in
+            let prior = Incompatibility.prior_cause ?extra_term current_incompat satisfier_cause pkg in
             emit
               (Trace.ConflictResolvedSame {
-                 package = pkg;
-                 incompatibility = current_incompat;
-                 cause = satisfier_cause;
-                 prior;
-               });
+                package = pkg;
+                incompatibility = current_incompat;
+                cause = satisfier_cause;
+                prior
+              });
             if equal_incompatibility_terms prior current_incompat then
               (
-                Log.error
-                  "Prior cause produced the same incompatibility terms - treating as terminal";
+                Log.error "Prior cause produced the same incompatibility terms - treating as terminal";
                 Error current_incompat
               )
             else (
@@ -425,106 +425,99 @@ let unit_propagation = fun ~emit root_package root_version state changed_package
                   );
                   match rel with
                   | `Satisfied -> (
-                          Log.info "  CONFLICT: Incompatibility satisfied - resolving";
-                          (* Handle conflict resolution internally *)
-                          match conflict_resolution ~emit root_package root_version state incompat with
-                          | Error terminal_incompat ->
-                              Log.error "Terminal incompatibility, no solution";
-                              Error terminal_incompat
-                          | Ok (resolved_pkg, root_cause, backtracked_solution) ->
-                              emit
-                                (Trace.LearnedIncompatibility {
-                                   package = resolved_pkg;
-                                   incompatibility = root_cause;
-                                 });
-                              Log.info
-                                ("  ✅ Conflict resolved for " ^ resolved_pkg ^ ", adding derivation");
-                              let before_constraint =
-                                Partial_solution.get_constraint backtracked_solution resolved_pkg
-                              in
-                              (* Add derivation - it will negate the term from root_cause *)
-                              let new_solution = Partial_solution.add_derivation
-                                backtracked_solution
-                                resolved_pkg
-                                root_cause in
-                              let after_constraint =
-                                Partial_solution.get_constraint new_solution resolved_pkg
-                              in
-                              (* Add the root_cause to incompatibilities so choose_version can see it *)
-                              List.iter
-                                (fun term ->
-                                  let term_pkg = Term.package term in
-                                  add_incompatibility state term_pkg root_cause)
-                                (Incompatibility.terms root_cause);
-                              let new_state =
-                                if equal_constraint before_constraint after_constraint then
-                                  state
-                                else
-                                  { state with solution = new_solution }
-                              in
-                              if equal_constraint before_constraint after_constraint then
-                                process_packages new_state rest
-                              else (
-                                Log.info
-                                  ("🔄 Continuing unit propagation from learned package " ^ resolved_pkg);
-                                process_packages new_state [ resolved_pkg ]
-                              )
-                        )
-                  | `AlmostSatisfied satisfier_pkg -> (
+                      Log.info "  CONFLICT: Incompatibility satisfied - resolving";
+                      (* Handle conflict resolution internally *)
+                      match conflict_resolution ~emit root_package root_version state incompat with
+                      | Error terminal_incompat ->
+                          Log.error "Terminal incompatibility, no solution";
+                          Error terminal_incompat
+                      | Ok (resolved_pkg, root_cause, backtracked_solution) ->
+                          emit
+                            (Trace.LearnedIncompatibility {
+                              package = resolved_pkg;
+                              incompatibility = root_cause
+                            });
                           Log.info
-                            ("  🎯 Almost satisfied, deriving constraint for " ^ satisfier_pkg);
-                          Log.info
-                            ("  📋 Remaining incompats: "
-                            ^ (Int.to_string (List.length remaining))
-                            ^ ", remaining packages: "
-                            ^ (Int.to_string (List.length rest)));
-                          (* RUST: Just add derivation with the incompatibility *)
-                          (* add_derivation will negate the term to get the derived ranges *)
-                          let before_constraint =
-                            Partial_solution.get_constraint state.solution satisfier_pkg
-                          in
+                            ("  ✅ Conflict resolved for " ^ resolved_pkg ^ ", adding derivation");
+                          let before_constraint = Partial_solution.get_constraint
+                            backtracked_solution
+                            resolved_pkg in
+                          (* Add derivation - it will negate the term from root_cause *)
                           let new_solution = Partial_solution.add_derivation
-                            state.solution
-                            satisfier_pkg
-                            incompat in
-                          let after_constraint =
-                            Partial_solution.get_constraint new_solution satisfier_pkg
-                          in
+                            backtracked_solution
+                            resolved_pkg
+                            root_cause in
+                          let after_constraint = Partial_solution.get_constraint new_solution resolved_pkg in
+                          (* Add the root_cause to incompatibilities so choose_version can see it *)
+                          List.iter
+                            (fun term ->
+                              let term_pkg = Term.package term in
+                              add_incompatibility state term_pkg root_cause)
+                            (Incompatibility.terms root_cause);
                           let new_state =
                             if equal_constraint before_constraint after_constraint then
                               state
                             else
                               { state with solution = new_solution }
                           in
-                          emit
-                            (Trace.DerivedConstraint {
-                               package = satisfier_pkg;
-                               incompatibility = incompat;
-                               changed = not (equal_constraint before_constraint after_constraint);
-                             });
-                          (* Continue with remaining incompats, then process satisfier_pkg *)
+                          if equal_constraint before_constraint after_constraint then
+                            process_packages new_state rest
+                          else (
+                            Log.info
+                              ("🔄 Continuing unit propagation from learned package " ^ resolved_pkg);
+                            process_packages new_state [ resolved_pkg ]
+                          )
+                    )
+                  | `AlmostSatisfied satisfier_pkg -> (
+                      Log.info ("  🎯 Almost satisfied, deriving constraint for " ^ satisfier_pkg);
+                      Log.info
+                        ("  📋 Remaining incompats: "
+                        ^ (Int.to_string (List.length remaining))
+                        ^ ", remaining packages: "
+                        ^ (Int.to_string (List.length rest)));
+                      (* RUST: Just add derivation with the incompatibility *)
+                      (* add_derivation will negate the term to get the derived ranges *)
+                      let before_constraint = Partial_solution.get_constraint state.solution satisfier_pkg in
+                      let new_solution = Partial_solution.add_derivation
+                        state.solution
+                        satisfier_pkg
+                        incompat in
+                      let after_constraint = Partial_solution.get_constraint new_solution satisfier_pkg in
+                      let new_state =
+                        if equal_constraint before_constraint after_constraint then
+                          state
+                        else
+                          { state with solution = new_solution }
+                      in
+                      emit
+                        (Trace.DerivedConstraint {
+                          package = satisfier_pkg;
+                          incompatibility = incompat;
+                          changed = not (equal_constraint before_constraint after_constraint)
+                        });
+                      (* Continue with remaining incompats, then process satisfier_pkg *)
+                      Log.info
+                        ("  ⏭️  Continuing: satisfier="
+                        ^ satisfier_pkg
+                        ^ ", rest="
+                        ^ (String.concat "," rest));
+                      match check_incompats new_state remaining with
+                      | Ok state' ->
+                          let next_packages =
+                            if equal_constraint before_constraint after_constraint then
+                              rest
+                            else
+                              satisfier_pkg :: rest
+                          in
                           Log.info
-                            ("  ⏭️  Continuing: satisfier="
-                            ^ satisfier_pkg
-                            ^ ", rest="
-                            ^ (String.concat "," rest));
-                          match check_incompats new_state remaining with
-                          | Ok state' ->
-                              let next_packages =
-                                if equal_constraint before_constraint after_constraint then
-                                  rest
-                                else
-                                  satisfier_pkg :: rest
-                              in
-                              Log.info
-                                ("  ✅ check_incompats OK, processing ["
-                                ^ (String.concat "," next_packages)
-                                ^ "]");
-                              process_packages state' next_packages
-                          | Error _ as err ->
-                              Log.error "  ❌ check_incompats ERROR";
-                              err
-                        )
+                            ("  ✅ check_incompats OK, processing ["
+                            ^ (String.concat "," next_packages)
+                            ^ "]");
+                          process_packages state' next_packages
+                      | Error _ as err ->
+                          Log.error "  ❌ check_incompats ERROR";
+                          err
+                    )
                   | `Contradicted _ ->
                       check_incompats state remaining
                   | `Unknown ->
@@ -795,7 +788,8 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                       | Error err ->
                           Error err
                       | Ok (None, effective_ranges) ->
-                          emit (Trace.NoVersionAvailable { package = pkg; ranges = effective_ranges });
+                          emit
+                            (Trace.NoVersionAvailable { package = pkg; ranges = effective_ranges });
                           (* No version available, add no_versions incompatibility and continue *)
                           (* This will trigger conflict resolution in the next iteration *)
                           Log.info
@@ -905,13 +899,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                     ^ " dependency incompatibilities: "
                                     ^ (String.concat ", " !affected_packages));
                                   (* Run unit propagation on affected packages *)
-                                  match unit_propagation
-                                          ~emit
-                                          root_package
-                                          root_version
-                                          new_state
-                                          !affected_packages
-                                  with
+                                  match unit_propagation ~emit root_package root_version new_state !affected_packages with
                                   | Error terminal_incompat ->
                                       Log.error
                                         "Terminal incompatibility after adding \

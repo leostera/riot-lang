@@ -477,7 +477,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               package = node.value.package;
               action = node
             });
-          let copy_result : (unit, string) Result.t =
+          let copy_result: (unit, string) Result.t =
             List.fold_left
               (fun acc src_path ->
                 match acc with
@@ -665,7 +665,7 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
     (fun pid ->
       Queue.push idle_workers pid)
     workers;
-  let busy_workers : (Pid.t, Action_node.t) HashMap.t = HashMap.create () in
+  let busy_workers: (Pid.t, Action_node.t) HashMap.t = HashMap.create () in
   let completed_count = ref 0 in
   let rec drain_work_queue () =
     match Queue.pop idle_workers with

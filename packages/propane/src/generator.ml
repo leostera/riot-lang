@@ -194,8 +194,8 @@ let negative_int =
   map (fun n -> -n) positive_int
 
 let non_zero_int =
-  let pos : int t = int_range 1 max_int in
-  let neg : int t = int_range min_int (-1) in
+  let pos: int t = int_range 1 max_int in
+  let neg: int t = int_range min_int (-1) in
   one_of [ pos; neg ]
 
 (* Floats *)

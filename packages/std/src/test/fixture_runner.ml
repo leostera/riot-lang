@@ -9,8 +9,10 @@ type ctx = {
 }
 
 type filter_result =
-  [ `keep
-  | `skip ]
+[
+  `keep
+  | `skip
+]
 
 let is_snapshot_artifact = fun path ->
   let basename = Path.basename path in

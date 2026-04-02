@@ -6,7 +6,7 @@ let with_tempdir_result = fun prefix fn ->
   | Error err -> Error (IO.error_message err)
 
 let make_ctx = fun ?fixture ?(test_name = "snapshot_test") workspace_root ->
-  let ctx : Test.ctx = {
+  let ctx: Test.ctx = {
     suite_name = "std_snapshot_tests";
     test_name;
     test_index = 1;
@@ -123,10 +123,11 @@ let test_json_snapshot_canonicalizes_object_keys =
           match Fs.create_dir_all (Path.dirname approved) with
           | Error err -> Error (IO.error_message err)
           | Ok () -> (
-              match Fs.write
-                (Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2) ]
-                |> Data.Json.to_string_pretty)
-                approved with
+              match
+                Fs.write
+                  (Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2) ] |> Data.Json.to_string_pretty)
+                  approved
+              with
               | Error err -> Error (IO.error_message err)
               | Ok () ->
                   let ctx = make_ctx ~test_name:"json_snapshot" workspace_root in
@@ -141,7 +142,8 @@ let test_fixture_snapshot_uses_explicit_snapshot_path =
       with_tempdir_result "snapshot_fixture_explicit"
         (fun workspace_root ->
           let fixture_path = Path.(workspace_root / Path.v "fixtures" / Path.v "sample.input") in
-          let approved = Path.(workspace_root / Path.v "fixtures" / Path.v "sample.expected_lossless.json") in
+          let approved =
+            Path.(workspace_root / Path.v "fixtures" / Path.v "sample.expected_lossless.json") in
           match Fs.create_dir_all (Path.dirname fixture_path) with
           | Error err -> Error (IO.error_message err)
           | Ok () -> (
@@ -153,7 +155,7 @@ let test_fixture_snapshot_uses_explicit_snapshot_path =
                       path = fixture_path;
                       relpath = Path.v "sample.input";
                       name = "sample";
-                      snapshot_path = Some approved;
+                      snapshot_path = Some approved
                     } in
                   let ctx = make_ctx ~fixture ~test_name:"fixture_explicit_snapshot" workspace_root in
                   Test.Snapshot.assert_text ~ctx ~actual:"approved fixture snapshot\n"

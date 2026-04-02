@@ -20,7 +20,7 @@ type 'src t = {
   reader: ('src, error) IO.Reader.t;
   writer: ('src, error) IO.Writer.t;
   engine: Kernel.Net.Tls.engine;
-  mutable state:
+  mutable state: 
     [
       `Active
       | `Eof
@@ -154,7 +154,7 @@ let of_tcp_server = fun ~cert_file ~key_file tcp ->
 
 (* Read plaintext from TLS stream *)
 
-let read_plaintext t dst : (int, error) result =
+let read_plaintext t dst: (int, error) result =
   let rec read_loop () =
     match Kernel.Net.Tls.read_decrypted t.engine dst ~pos:0 ~len:(Bytes.length dst) with
     | Read n ->
@@ -189,7 +189,7 @@ let read_plaintext t dst : (int, error) result =
 
 (* Write plaintext to TLS stream *)
 
-let write_plaintext t src : (int, error) result =
+let write_plaintext t src: (int, error) result =
   let src_bytes = Bytes.of_string src in
   let src_len = Bytes.length src_bytes in
   let rec write_loop pos remaining =
@@ -225,7 +225,7 @@ let write_plaintext t src : (int, error) result =
 
 (* Expose as reader *)
 
-let to_reader : type src. src t -> (src t, error) IO.Reader.t = fun tls_stream ->
+let to_reader: type src. src t -> (src t, error) IO.Reader.t = fun tls_stream ->
   let module Read = struct
     type nonrec t = src t
 
@@ -239,7 +239,7 @@ let to_reader : type src. src t -> (src t, error) IO.Reader.t = fun tls_stream -
 
 (* Expose as writer *)
 
-let to_writer : type src. src t -> (src t, error) IO.Writer.t = fun tls ->
+let to_writer: type src. src t -> (src t, error) IO.Writer.t = fun tls ->
   let module Write = struct
     type nonrec t = src t
 

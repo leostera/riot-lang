@@ -26,11 +26,11 @@ let async = fun fn ->
   in
   { pid; ref }
 
-let await : type res. res t -> (res, exn) result = fun t ->
-  let selector : Message.t -> [
-    `select of (res, exn) result
-    | `skip
-  ] = fun msg ->
+let await: type res. res t -> (res, exn) result = fun t ->
+  let selector: Message.t -> [
+      `select of (res, exn) result
+      | `skip
+    ] = fun msg ->
     match msg with
     | Crash (ref', exn) when Ref.equal t.ref ref' ->
         `select (Error exn)
@@ -46,7 +46,7 @@ let await : type res. res t -> (res, exn) result = fun t ->
   result
 
 (** Await multiple tasks efficiently, collecting results as they arrive *)
-let rec await_all : type res. res t list -> (res, exn) result list = fun tasks ->
+let rec await_all: type res. res t list -> (res, exn) result list = fun tasks ->
   let find_task_by_ref tasks ref =
     List.find
       (fun t ->
@@ -62,16 +62,16 @@ let rec await_all : type res. res t list -> (res, exn) result list = fun tasks -
   let remove_task tasks task =
     List.filter (fun t -> not (Ref.equal t.ref task.ref)) tasks
   in
-  let selector : Message.t -> [
-    `select of (res, exn) result * res t
-    | `skip
-  ] = fun msg ->
+  let selector: Message.t -> [
+      `select of (res, exn) result * res t
+      | `skip
+    ] = fun msg ->
     match msg with
     | Crash (ref', exn) when is_one_of_our_refs tasks ref' ->
-        let task : res t = find_task_by_ref tasks ref' in
+        let task: res t = find_task_by_ref tasks ref' in
         `select (Error exn, task)
     | Reply (ref', res) when is_one_of_our_refs tasks ref' -> (
-        let task : res t = find_task_by_ref tasks ref' in
+        let task: res t = find_task_by_ref tasks ref' in
         match Ref.type_equal task.ref ref' with
         | Some Type.Equal -> `select (Ok res, task)
         | None -> panic "bad message"

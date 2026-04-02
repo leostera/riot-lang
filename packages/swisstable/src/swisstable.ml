@@ -22,7 +22,7 @@ external caml_hash: int -> int -> int -> 'a -> int = "caml_hash" [@@noalloc]
  * This ensures two records/variants/tuples with same values hash equally
  * This fixes the bug where duplicate complex keys weren't properly deduplicated *)
 
-let hash_native : 'a -> int = fun key -> caml_hash 10 100 0 key
+let hash_native: 'a -> int = fun key -> caml_hash 10 100 0 key
 
 external hash_h1: int -> int -> int = "swisstable_h1"
 
@@ -528,7 +528,7 @@ let and_modify = fun map key f ->
 
 (* Iterators *)
 
-let into_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.Iterator.t = fun map ->
+let into_iter: type k v. (k, v) t -> (k * v) Kernel.Iter.Iterator.t = fun map ->
   let module MapIter = struct
     type state = {
       items: (k * v) list;
@@ -549,7 +549,7 @@ let into_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.Iterator.t = fun map -
   let items = to_list map in
   Kernel.Iter.Iterator.make (module MapIter) { MapIter.items; pos = 0 }
 
-let to_mut_iter : type k v. (k, v) t -> (k * v) Kernel.Iter.MutIterator.t = fun map ->
+let to_mut_iter: type k v. (k, v) t -> (k * v) Kernel.Iter.MutIterator.t = fun map ->
   let module MapIter = struct
     type state = {
       items: (k * v) list;

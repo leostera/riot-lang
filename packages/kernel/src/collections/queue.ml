@@ -116,7 +116,7 @@ let of_list = fun elements ->
   List.iter (push queue) elements;
   queue
 
-let into_iter : type item. item t -> item Iter.Iterator.t = fun queue ->
+let into_iter: type item. item t -> item Iter.Iterator.t = fun queue ->
   let module QueueIter = struct
     type state = item node option
 
@@ -136,7 +136,7 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun queue ->
   end in
   Iter.Iterator.make (module QueueIter) queue.front
 
-let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun queue ->
+let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun queue ->
   let module QueueIter = struct
     type state = item t
 

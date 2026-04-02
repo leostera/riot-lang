@@ -132,7 +132,8 @@ let rec to_string = function
     (List.map (fun ((k, v)) -> "\"" ^ escape_string k ^ "\":" ^ to_string v) fields)
   ^ "}"
 
-let indentation = fun depth -> String.make (depth * 2) ' '
+let indentation = fun depth ->
+  String.make (depth * 2) ' '
 
 let rec to_string_pretty = fun ?(depth = 0) json ->
   match json with
@@ -140,19 +141,22 @@ let rec to_string_pretty = fun ?(depth = 0) json ->
   | Bool _
   | Int _
   | Float _
-  | String _ -> to_string json
-  | Array [] -> "[]"
+  | String _ ->
+      to_string json
+  | Array [] ->
+      "[]"
   | Array items ->
       let item_indent = indentation (depth + 1) in
       let closing_indent = indentation depth in
       "[\n"
       ^ (items
-      |> List.map (fun item -> item_indent ^ to_string_pretty ~depth:(depth + 1) item)
+      |> List.map (fun item -> item_indent ^ to_string_pretty ~depth:((depth + 1)) item)
       |> String.concat ",\n")
       ^ "\n"
       ^ closing_indent
       ^ "]"
-  | Object [] -> "{}"
+  | Object [] ->
+      "{}"
   | Object fields ->
       let field_indent = indentation (depth + 1) in
       let closing_indent = indentation depth in
@@ -160,10 +164,7 @@ let rec to_string_pretty = fun ?(depth = 0) json ->
       ^ (fields
       |> List.map
         (fun (key, value) ->
-          field_indent
-          ^ to_string (String key)
-          ^ ": "
-          ^ to_string_pretty ~depth:(depth + 1) value)
+          field_indent ^ to_string (String key) ^ ": " ^ to_string_pretty ~depth:((depth + 1)) value)
       |> String.concat ",\n")
       ^ "\n"
       ^ closing_indent

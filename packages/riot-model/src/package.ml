@@ -284,7 +284,7 @@ let resolve = fun ~(package:t) ~(lock_package:Lockfile.package) ~manifest_path ~
 (** Check if this package is a workspace member (not an external dependency).
     External dependencies have relative_path that escapes the workspace (starts with "../")
     or uses absolute paths. *)
-let is_workspace_member : t -> bool = fun pkg ->
+let is_workspace_member: t -> bool = fun pkg ->
   let rel_str = Path.to_string pkg.relative_path in
   not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute pkg.relative_path)
 
@@ -320,7 +320,7 @@ let version_parse_error_to_string = fun err ->
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
 (** Package TOML parsing *)
-let parse_name : (string * Toml.value) list -> string -> string = fun items fallback ->
+let parse_name: (string * Toml.value) list -> string -> string = fun items fallback ->
   match List.assoc_opt "package" items with
   | Some (Toml.Table pkg_items) -> (
       match List.assoc_opt "name" pkg_items with
@@ -329,7 +329,7 @@ let parse_name : (string * Toml.value) list -> string -> string = fun items fall
     )
   | _ -> fallback
 
-let parse_publish_metadata : (string * Toml.value) list -> (publish_metadata, string) result = fun items ->
+let parse_publish_metadata: (string * Toml.value) list -> (publish_metadata, string) result = fun items ->
   let parse_version = fun ~package_name ->
     function
     | Toml.String raw_version -> (
@@ -395,7 +395,7 @@ let parse_publish_metadata : (string * Toml.value) list -> (publish_metadata, st
   | None ->
       Ok default_publish_metadata
 
-let resolve_workspace_dependency : string -> dependency list -> dependency = fun name workspace_deps ->
+let resolve_workspace_dependency: string -> dependency list -> dependency = fun name workspace_deps ->
   match List.find_opt (fun (d: dependency) -> d.name = name) workspace_deps with
   | Some dep -> dep
   | None -> panic
@@ -430,11 +430,17 @@ let normalize_source_locator = fun raw ->
   else
     raw
 
-let github_locator_of_value = fun value ->
-  "github.com/" ^ String.trim value
+let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
 let make_source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
-  { workspace; builtin; path; source_locator; ref_; version }
+  {
+    workspace;
+    builtin;
+    path;
+    source_locator;
+    ref_;
+    version;
+  }
 
 let validate_dependency_source = fun ~dependency_name source ->
   if
@@ -448,7 +454,10 @@ let validate_dependency_source = fun ~dependency_name source ->
     Error ("dependency '" ^ dependency_name ^ "' cannot combine workspace = true with path, source, ref, or version")
   else if Option.is_some source.ref_ && Option.is_none source.source_locator then
     Error ("dependency '" ^ dependency_name ^ "' cannot specify ref without source")
-  else if source.builtin && (Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.ref_) then
+  else if
+    source.builtin
+    && (Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.ref_)
+  then
     Error ("builtin dependency '" ^ dependency_name ^ "' does not support path or source overrides")
   else if source.builtin then
     match source.version with
@@ -469,10 +478,8 @@ let validate_dependency_source = fun ~dependency_name source ->
   else
     Ok { source with version = Some Version.any }
 
-let parse_dependency : string ->
-Toml.value ->
-workspace_deps:dependency list ->
-(dependency, string) result = fun name value ~workspace_deps ->
+let parse_dependency:
+  string -> Toml.value -> workspace_deps:dependency list -> (dependency, string) result = fun name value ~workspace_deps ->
   match value with
   | Toml.Table attrs -> (
       match List.assoc_opt "workspace" attrs with
@@ -495,18 +502,12 @@ workspace_deps:dependency list ->
           in
           let source_locator =
             match List.assoc_opt "source" attrs, List.assoc_opt "github" attrs with
-            | Some _, Some _ ->
-                Error ("dependency '" ^ name ^ "' cannot specify both source and github")
-            | Some (Toml.String locator), None ->
-                Ok (Some (normalize_source_locator locator))
-            | Some _, None ->
-                Error ("dependency '" ^ name ^ "' has non-string source locator")
-            | None, Some (Toml.String github) ->
-                Ok (Some (github_locator_of_value github))
-            | None, Some _ ->
-                Error ("dependency '" ^ name ^ "' has non-string github shorthand")
-            | None, None ->
-                Ok None
+            | Some _, Some _ -> Error ("dependency '" ^ name ^ "' cannot specify both source and github")
+            | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
+            | Some _, None -> Error ("dependency '" ^ name ^ "' has non-string source locator")
+            | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
+            | None, Some _ -> Error ("dependency '" ^ name ^ "' has non-string github shorthand")
+            | None, None -> Ok None
           in
           let ref_ =
             match List.assoc_opt "ref" attrs with
@@ -549,9 +550,8 @@ workspace_deps:dependency list ->
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
 
-let parse_dependencies : (string * Toml.value) list ->
-workspace_deps:dependency list ->
-(dependency list, string) result = fun items ~workspace_deps ->
+let parse_dependencies:
+  (string * Toml.value) list -> workspace_deps:dependency list -> (dependency list, string) result = fun items ~workspace_deps ->
   let rec loop acc entries =
     match entries with
     | [] -> Ok (List.rev acc)
@@ -608,7 +608,14 @@ let dependency_source_to_json = fun source ->
 let dependency_source_of_json = fun json ->
   match json with
   | Json.String "workspace" ->
-      Ok { workspace = true; builtin = false; path = None; source_locator = None; ref_ = None; version = None }
+      Ok {
+        workspace = true;
+        builtin = false;
+        path = None;
+        source_locator = None;
+        ref_ = None;
+        version = None;
+      }
   | Json.String source_path ->
       Ok {
         workspace = false;
@@ -616,7 +623,7 @@ let dependency_source_of_json = fun json ->
         path = Some (Path.v source_path);
         source_locator = None;
         ref_ = None;
-        version = None
+        version = None;
       }
   | Json.Object fields -> (
       match List.assoc_opt "kind" fields with
@@ -627,7 +634,7 @@ let dependency_source_of_json = fun json ->
             path = None;
             source_locator = None;
             ref_ = None;
-            version = None
+            version = None;
           }
       | Some (Json.String "builtin") ->
           Ok {
@@ -636,7 +643,7 @@ let dependency_source_of_json = fun json ->
             path = None;
             source_locator = None;
             ref_ = None;
-            version = Some Version.any
+            version = Some Version.any;
           }
       | Some (Json.String "path") -> (
           let path =
@@ -667,9 +674,16 @@ let dependency_source_of_json = fun json ->
             | _ -> Error "path dependency source has non-string version requirement"
           in
           match path, source_locator, ref_, version with
-          | Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
-            ~dependency_name:"<json>"
-            { workspace = false; builtin = false; path; source_locator; ref_; version }
+          | Ok path, Ok source_locator, Ok ref_, Ok version ->
+              validate_dependency_source ~dependency_name:"<json>"
+                {
+                  workspace = false;
+                  builtin = false;
+                  path;
+                  source_locator;
+                  ref_;
+                  version;
+                }
           | (Error err, _, _, _)
           | (_, Error err, _, _)
           | (_, _, Error err, _)
@@ -678,25 +692,26 @@ let dependency_source_of_json = fun json ->
       | Some (Json.String "registry") -> (
           match List.assoc_opt "version" fields with
           | Some Json.Null
-          | None -> Ok {
-            workspace = false;
-            builtin = false;
-            path = None;
-            source_locator = None;
-            ref_ = None;
-            version = Some Version.any
-          }
-          | Some (Json.String requirement) -> validate_requirement ~dependency_name:"<json>" requirement
-          |> Result.map
-            (fun version ->
-              {
+          | None ->
+              Ok {
                 workspace = false;
                 builtin = false;
                 path = None;
                 source_locator = None;
                 ref_ = None;
-                version = Some version
-              })
+                version = Some Version.any;
+              }
+          | Some (Json.String requirement) ->
+              validate_requirement ~dependency_name:"<json>" requirement |> Result.map
+                (fun version ->
+                  {
+                    workspace = false;
+                    builtin = false;
+                    path = None;
+                    source_locator = None;
+                    ref_ = None;
+                    version = Some version;
+                  })
           | _ -> Error "registry dependency source has non-string version requirement"
         )
       | Some (Json.String kind) ->
@@ -744,9 +759,16 @@ let dependency_source_of_json = fun json ->
             | None -> Ok None
           in
           match workspace, builtin, path, source_locator, ref_, version with
-          | Ok workspace, Ok builtin, Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
-            ~dependency_name:"<json>"
-            { workspace; builtin; path; source_locator; ref_; version }
+          | Ok workspace, Ok builtin, Ok path, Ok source_locator, Ok ref_, Ok version ->
+              validate_dependency_source ~dependency_name:"<json>"
+                {
+                  workspace;
+                  builtin;
+                  path;
+                  source_locator;
+                  ref_;
+                  version;
+                }
           | (Error err, _, _, _, _, _)
           | (_, Error err, _, _, _, _)
           | (_, _, Error err, _, _, _)
@@ -757,10 +779,8 @@ let dependency_source_of_json = fun json ->
   | _ ->
       Error "dependency source must be a string or object"
 
-let parse_foreign_dependency : string ->
-Toml.value ->
-package_path:Path.t ->
-(foreign_dependency, string) result = fun name value ~package_path ->
+let parse_foreign_dependency:
+  string -> Toml.value -> package_path:Path.t -> (foreign_dependency, string) result = fun name value ~package_path ->
   match value with
   | Toml.Table attrs -> (
       let get_string key =
@@ -898,9 +918,8 @@ package_path:Path.t ->
     )
   | _ -> Error ("Foreign dependency '" ^ name ^ "' must be a table")
 
-let parse_foreign_dependencies : (string * Toml.value) list ->
-package_path:Path.t ->
-(foreign_dependency list, string) result = fun items ~package_path ->
+let parse_foreign_dependencies:
+  (string * Toml.value) list -> package_path:Path.t -> (foreign_dependency list, string) result = fun items ~package_path ->
   Log.debug "[PACKAGE] parse_foreign_dependencies: checking for 'foreign-dependencies' key";
   Log.debug ("[PACKAGE] Available keys: " ^ String.concat ", " (List.map fst items));
   (* Collect all keys that start with "foreign-dependencies." *)
@@ -959,7 +978,7 @@ package_path:Path.t ->
           results
       )
 
-let parse_binary : Toml.value -> package_path:Path.t -> (binary, string) result = fun value ~package_path ->
+let parse_binary: Toml.value -> package_path:Path.t -> (binary, string) result = fun value ~package_path ->
   match value with
   | Toml.Table items -> (
       match (List.assoc_opt "name" items, List.assoc_opt "path" items) with
@@ -983,7 +1002,7 @@ let parse_binary : Toml.value -> package_path:Path.t -> (binary, string) result 
     )
   | _ -> Error "Binary entry must be a table"
 
-let parse_binaries : (string * Toml.value) list -> package_path:Path.t -> (binary list, string) result = fun items ~package_path ->
+let parse_binaries: (string * Toml.value) list -> package_path:Path.t -> (binary list, string) result = fun items ~package_path ->
   match List.assoc_opt "bin" items with
   | None ->
       Ok []
@@ -1011,10 +1030,11 @@ let parse_binaries : (string * Toml.value) list -> package_path:Path.t -> (binar
   | Some _ ->
       Error "[[bin]] must be an array of tables"
 
-let parse_library : (string * Toml.value) list ->
-package_path:Path.t ->
-package_name:string ->
-(library option, string) result = fun items ~package_path ~package_name ->
+let parse_library:
+  (string * Toml.value) list ->
+  package_path:Path.t ->
+  package_name:string ->
+  (library option, string) result = fun items ~package_path ~package_name ->
   match List.assoc_opt "lib" items with
   | None ->
       (* Autodiscover: if src/<package_name>.ml exists, use it as library *)
@@ -1039,7 +1059,7 @@ package_name:string ->
   | Some _ ->
       Error "[lib] must be a table"
 
-let parse_compiler_config : (string * Toml.value) list -> compiler_config = fun items ->
+let parse_compiler_config: (string * Toml.value) list -> compiler_config = fun items ->
   let profile_overrides =
     match List.assoc_opt "profile" items with
     | Some (Toml.Table profile_table) ->
@@ -1113,7 +1133,7 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
     (fun left right ->
       String.compare (Path.to_string left) (Path.to_string right))
 
-let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () : sources =
+let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
   let excluded_relpath_strings = excluded_relpaths |> List.map Path.to_string in
   let should_skip_source_entry filename = String.starts_with ~prefix:"." (Path.basename filename) in
   let should_skip_test_support_path rel_path =
@@ -1171,7 +1191,7 @@ let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) () : sources =
   }
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
-let autodiscover_test_binaries : sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
+let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
   List.filter_map
     (fun test_file ->
       let filename = Path.basename test_file in
@@ -1187,7 +1207,7 @@ let autodiscover_test_binaries : sources -> package_path:Path.t -> binary list =
     sources.tests
 
 (** Autodiscover example binaries from any .ml file in examples/ directory *)
-let autodiscover_example_binaries : sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
+let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
   List.filter_map
     (fun example_file ->
       let filename = Path.basename example_file in
@@ -1200,7 +1220,7 @@ let autodiscover_example_binaries : sources -> package_path:Path.t -> binary lis
     sources.examples
 
 (** Autodiscover benchmark binaries from bench files ending in _bench.ml *)
-let autodiscover_bench_binaries : sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
+let autodiscover_bench_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
   List.filter_map
     (fun bench_file ->
       let filename = Path.basename bench_file in
@@ -1212,7 +1232,7 @@ let autodiscover_bench_binaries : sources -> package_path:Path.t -> binary list 
         None)
     sources.bench
 
-let merge_binaries : declared:binary list -> autodiscovered:binary list -> binary list = fun ~declared ~autodiscovered ->
+let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary list = fun ~declared ~autodiscovered ->
   let seen_paths = declared |> List.map (fun (bin: binary) -> Path.to_string bin.path) in
   let _, discovered =
     List.fold_left
@@ -1227,13 +1247,14 @@ let merge_binaries : declared:binary list -> autodiscovered:binary list -> binar
   in
   declared @ List.rev discovered
 
-let from_toml : Toml.value ->
-workspace_deps:dependency list ->
-workspace_dev_deps:dependency list ->
-workspace_build_deps:dependency list ->
-path:Path.t ->
-relative_path:Path.t ->
-(t, string) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
+let from_toml:
+  Toml.value ->
+  workspace_deps:dependency list ->
+  workspace_dev_deps:dependency list ->
+  workspace_build_deps:dependency list ->
+  path:Path.t ->
+  relative_path:Path.t ->
+  (t, string) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
   match toml with
   | Toml.Table items -> (
       let fallback_name = Path.basename path in
@@ -1339,7 +1360,7 @@ relative_path:Path.t ->
     )
   | _ -> Error "TOML is not a table"
 
-let to_json : t -> Json.t = fun pkg ->
+let to_json: t -> Json.t = fun pkg ->
   let dependencies_json = Json.Array (List.map
     (fun (dep: dependency) ->
       Json.Object [
@@ -1404,7 +1425,7 @@ let to_json : t -> Json.t = fun pkg ->
     );
   ]
 
-let from_json : Json.t -> (t, string) result = fun json ->
+let from_json: Json.t -> (t, string) result = fun json ->
   match json with
   | Json.Object fields -> (
       match (
@@ -1827,11 +1848,18 @@ let hash = fun state (pkg: t) ->
 
 module Tests = struct
   let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
-    { workspace; builtin; path; source_locator; ref_; version }
+    {
+      workspace;
+      builtin;
+      path;
+      source_locator;
+      ref_;
+      version;
+    }
 
   let publish = default_publish_metadata
 
-  let test_parse_dependency_classes () : (unit, string) result =
+  let test_parse_dependency_classes (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -1868,7 +1896,7 @@ fixme = { path = "../fixme" }
     else
       Error "expected dependency classes to round-trip" [@test]
 
-  let test_parse_registry_requirement () : (unit, string) result =
+  let test_parse_registry_requirement (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -1890,26 +1918,22 @@ std = ">= 1.2.3"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [
-      {
-        source={
-          workspace = false;
-          builtin = false;
-          path = None;
-          source_locator = None;
-          ref_ = None;
-          version = Some requirement;
-        };
-        _;
-      }
-    ] ->
+    | [ { source={
+          workspace=false;
+          builtin=false;
+          path=None;
+          source_locator=None;
+          ref_=None;
+          version=Some requirement;
+
+        }; _;  } ] ->
         if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
           Ok ()
         else
           Error "expected parsed dependency requirement to be preserved structurally"
     | _ -> Error "expected a registry dependency with a parsed requirement" [@test]
 
-  let test_parse_builtin_dependency () : (unit, string) result =
+  let test_parse_builtin_dependency (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -1935,7 +1959,7 @@ stdlib = "*"
       requirement -> Ok ()
     | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
 
-  let test_parse_github_dependency_shorthand () : (unit, string) result =
+  let test_parse_github_dependency_shorthand (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -1957,11 +1981,15 @@ widgets = { github = "riot-tests/widgets" }
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { name="widgets"; source={ source_locator=Some "github.com/riot-tests/widgets"; ref_=None; _ } } ] ->
-        Ok ()
+    | [
+      {
+        name="widgets";
+        source={ source_locator=Some "github.com/riot-tests/widgets"; ref_=None; _ }
+      }
+    ] -> Ok ()
     | _ -> Error "expected github shorthand to normalize into a source locator" [@test]
 
-  let test_parse_source_dependency_with_ref_and_path () : (unit, string) result =
+  let test_parse_source_dependency_with_ref_and_path (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -1985,18 +2013,19 @@ widgets = { source = "https://github.com/riot-tests/monorepo/packages/widgets", 
     match pkg.dependencies with
     | [
       {
-        name = "widgets";
+        name="widgets";
         source={
-          source_locator = Some "github.com/riot-tests/monorepo/packages/widgets";
-          ref_ = Some "main";
+          source_locator=Some "github.com/riot-tests/monorepo/packages/widgets";
+          ref_=Some "main";
           _;
+
         };
+
       }
-    ] ->
-        Ok ()
+    ] -> Ok ()
     | _ -> Error "expected source dependency to preserve locator and ref" [@test]
 
-  let test_builtin_dependency_rejects_version_constraints () : (unit, string) result =
+  let test_builtin_dependency_rejects_version_constraints (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2019,7 +2048,7 @@ stdlib = ">= 1.0.0"
     | Ok _ -> Error "expected builtin dependency version constraints to fail"
     | Error _ -> Ok () [@test]
 
-  let test_invalid_registry_requirement_fails_manifest_parse () : (unit, string) result =
+  let test_invalid_registry_requirement_fails_manifest_parse (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2042,7 +2071,7 @@ std = "definitely-not-semver"
     | Ok _ -> Error "expected invalid semver requirement to fail package parsing"
     | Error _ -> Ok () [@test]
 
-  let test_package_json_round_trips_registry_requirement () : (unit, string) result =
+  let test_package_json_round_trips_registry_requirement (): (unit, string) result =
     let requirement = Version.parse_requirement ">= 1.2.3" |> Result.expect ~msg:"expected requirement to parse" in
     let package = {
       name = "example";
@@ -2072,19 +2101,15 @@ std = "definitely-not-semver"
     | Error err -> Error err
     | Ok decoded -> (
         match decoded.dependencies with
-        | [
-          {
-            source={
-              workspace = false;
-              builtin = false;
-              path = None;
-              source_locator = None;
-              ref_ = None;
-              version = Some decoded_requirement;
-            };
-            _
-          }
-        ] ->
+        | [ { source={
+              workspace=false;
+              builtin=false;
+              path=None;
+              source_locator=None;
+              ref_=None;
+              version=Some decoded_requirement;
+
+            }; _ } ] ->
             if String.equal (Version.requirement_to_string decoded_requirement) ">= 1.2.3" then
               Ok ()
             else
@@ -2092,7 +2117,7 @@ std = "definitely-not-semver"
         | _ -> Error "expected registry dependency after package json roundtrip"
       ) [@test]
 
-  let test_package_json_round_trips_source_dependency () : (unit, string) result =
+  let test_package_json_round_trips_source_dependency (): (unit, string) result =
     let package = {
       name = "example";
       path = Path.v "/tmp/example";
@@ -2100,7 +2125,7 @@ std = "definitely-not-semver"
       dependencies = [
         {
           name = "widgets";
-          source = source ~source_locator:"github.com/riot-tests/widgets" ~ref_:"main" ();
+          source = source ~source_locator:"github.com/riot-tests/widgets" ~ref_:"main" ()
         }
       ];
       dev_dependencies = [];
@@ -2124,25 +2149,20 @@ std = "definitely-not-semver"
     in
     match from_json (to_json package) with
     | Ok {
-        dependencies = [
-          {
-            name = "widgets";
-            source={
-              source_locator = Some "github.com/riot-tests/widgets";
-              ref_ = Some "main";
-              _;
-            };
-          }
-        ];
-        _;
-      } ->
-        Ok ()
-    | Ok _ ->
-        Error "expected source dependency to survive package json roundtrip"
-    | Error err ->
-        Error err [@test]
+      dependencies=[
+        {
+          name="widgets";
+          source={ source_locator=Some "github.com/riot-tests/widgets"; ref_=Some "main"; _;  };
 
-  let test_resolve_projects_runtime_and_build_edges () : (unit, string) result =
+        }
+      ];
+      _;
+
+    } -> Ok ()
+    | Ok _ -> Error "expected source dependency to survive package json roundtrip"
+    | Error err -> Error err [@test]
+
+  let test_resolve_projects_runtime_and_build_edges (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2166,7 +2186,7 @@ ppx = {}
       ~path:(Path.v "/workspace/packages/app")
       ~relative_path:(Path.v "packages/app")
     |> Result.expect ~msg:"expected package manifest" in
-    let lock_package : Lockfile.package = {
+    let lock_package: Lockfile.package = {
       id = { registry = None; name = "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
@@ -2212,7 +2232,7 @@ ppx = {}
           Error "expected resolved package projection to preserve exact ids"
     | Error err -> Error err [@test]
 
-  let test_resolve_requires_all_declared_dependencies () : (unit, string) result =
+  let test_resolve_requires_all_declared_dependencies (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -2233,7 +2253,7 @@ std = {}
       ~path:(Path.v "/workspace/packages/app")
       ~relative_path:(Path.v "packages/app")
     |> Result.expect ~msg:"expected package manifest" in
-    let lock_package : Lockfile.package = {
+    let lock_package: Lockfile.package = {
       id = { registry = None; name = "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
@@ -2250,7 +2270,7 @@ std = {}
     | Ok _ -> Error "expected resolve to fail when a declared dependency is missing from the lockfile"
     | Error _ -> Ok () [@test]
 
-  let test_resolve_ignores_builtin_dependencies () : (unit, string) result =
+  let test_resolve_ignores_builtin_dependencies (): (unit, string) result =
     let package = {
       name = "app";
       path = Path.v "/workspace/packages/app";
@@ -2275,7 +2295,7 @@ std = {}
       publish;
     }
     in
-    let lock_package : Lockfile.package = {
+    let lock_package: Lockfile.package = {
       id = { registry = None; name = "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
@@ -2293,7 +2313,7 @@ std = {}
     | Ok _ -> Error "expected builtin dependencies to stay out of the resolved lock graph"
     | Error err -> Error err [@test]
 
-  let test_build_graph_dependencies_exclude_build_only_deps () : (unit, string) result =
+  let test_build_graph_dependencies_exclude_build_only_deps (): (unit, string) result =
     let pkg = {
       name = "example";
       path = Path.v "/tmp/example";

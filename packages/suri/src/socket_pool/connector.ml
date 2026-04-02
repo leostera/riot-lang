@@ -18,7 +18,7 @@ type Message.t +=
 
 let timeout = Time.Duration.from_millis 1
 
-let rec loop : type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
+let rec loop: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
   (* Check for messages before blocking on TCP *)
   match receive_any ~timeout () with
   | msg ->
@@ -28,7 +28,7 @@ let rec loop : type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = f
       (* No messages, proceed to TCP I/O *)
       try_receive conn handler ctx
 
-and handle_message_internal : type s e. Message.t -> Connection.t -> (s, e) Handler.handler -> s -> unit = fun msg conn handler ctx ->
+and handle_message_internal: type s e. Message.t -> Connection.t -> (s, e) Handler.handler -> s -> unit = fun msg conn handler ctx ->
   match handler.handle_message msg conn ctx with
   | Continue ctx -> loop conn handler ctx
   | Close ctx -> handler.handle_close conn ctx
@@ -36,7 +36,7 @@ and handle_message_internal : type s e. Message.t -> Connection.t -> (s, e) Hand
   | Error (_state, err) -> Log.error ("message handling error: " ^ (handler.to_string_error err))
   | Ok -> ()
 
-and try_receive : type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
+and try_receive: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
   try
     match Connection.receive conn ~timeout with
     | Ok "" -> handler.handle_close conn ctx
@@ -47,7 +47,7 @@ and try_receive : type s e. Connection.t -> (s, e) Handler.handler -> s -> unit 
       (* Timeout = no data available within 1ms, loop to check mailbox again *)
       loop conn handler ctx
 
-and handle_data : type s e. string -> Connection.t -> (s, e) Handler.handler -> s -> unit = fun data conn handler ctx ->
+and handle_data: type s e. string -> Connection.t -> (s, e) Handler.handler -> s -> unit = fun data conn handler ctx ->
   match handler.handle_data data conn ctx with
   | Continue ctx -> loop conn handler ctx
   | Close ctx -> handler.handle_close conn ctx
@@ -55,7 +55,7 @@ and handle_data : type s e. string -> Connection.t -> (s, e) Handler.handler -> 
   | Error (_state, err) -> Log.error ("connection error: " ^ (handler.to_string_error err))
   | Ok -> ()
 
-and handle_connection : type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
+and handle_connection: type s e. Connection.t -> (s, e) Handler.handler -> s -> unit = fun conn handler ctx ->
   match handler.handle_connection conn ctx with
   | Continue ctx -> loop conn handler ctx
   | Close ctx -> handler.handle_close conn ctx

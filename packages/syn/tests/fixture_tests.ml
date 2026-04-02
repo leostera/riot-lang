@@ -70,8 +70,10 @@ let load_modified_fixture_paths = fun () ->
       let modified = HashSet.create () in
       let lines = stdout |> String.split_on_char '\n' |> List.map String.trim in
       let rec loop = function
-        | [] -> modified
-        | "" :: rest -> loop rest
+        | [] ->
+            modified
+        | "" :: rest ->
+            loop rest
         | relpath :: rest ->
             let () =
               match Path.of_string relpath with
@@ -86,7 +88,8 @@ let load_modified_fixture_paths = fun () ->
   | Ok _ ->
       HashSet.create ()
 
-let is_locally_modified_fixture = fun modified_fixture_paths path -> HashSet.contains modified_fixture_paths path
+let is_locally_modified_fixture = fun modified_fixture_paths path ->
+  HashSet.contains modified_fixture_paths path
 
 let has_lossless_snapshot = fun modified_fixture_paths path ->
   match Path.extension path with
@@ -107,7 +110,10 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let source = Fs.read ctx.fixture_path |> Result.expect ~msg:"Failed to read fixture" in
   let parse_result = Syn.parse ~filename:ctx.fixture_path source in
   let actual_json = parse_result_to_json parse_result in
-  Test.Snapshot.assert_with ~ctx:ctx.test ~render:(fun json -> Json.to_string_pretty json ^ "\n") ~actual:actual_json
+  Test.Snapshot.assert_with
+    ~ctx:ctx.test
+    ~render:(fun json -> Json.to_string_pretty json ^ "\n")
+    ~actual:actual_json
 
 let test_tagged_quoted_string_cst = fun _ctx ->
   let source = "let explanation = {explain|hello|explain}\n" in
@@ -160,14 +166,14 @@ let () =
     ~main:(fun ~args ->
       let modified_fixture_paths = load_modified_fixture_paths () in
       let fixture_tests =
-        Test.FixtureRunner.cases ()
-          ~dir:(Path.v "packages/syn/tests/fixtures")
+        Test.FixtureRunner.cases
+          ()
+          ~dir:fixture_root
           ~filter:(has_lossless_snapshot modified_fixture_paths)
           ~snapshot_path:(fun path -> Some (lossless_snapshot_path path))
           ~run:(fun ctx -> test_fixture ~ctx)
       in
-      let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: fixture_tests
-      in
+      let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: fixture_tests in
       Test.Cli.main ~name:"syn-fixtures" ~tests ~args)
     ~args:Env.args
     ()

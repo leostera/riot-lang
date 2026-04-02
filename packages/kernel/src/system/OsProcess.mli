@@ -9,21 +9,21 @@ type status =
   | Stopped of int
 (** Process status *)
 type stdio_config = {
-  stdin:
+  stdin: 
     [
       `Null
       | `Pipe
       | `Inherit
       | `File of Fd.t
     ];
-  stdout:
+  stdout: 
     [
       `Null
       | `Pipe
       | `Inherit
       | `File of Fd.t
     ];
-  stderr:
+  stderr: 
     [
       `Null
       | `Pipe

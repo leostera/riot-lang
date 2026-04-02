@@ -10,7 +10,7 @@ type timeout =
 
 type _ Effect.t +=
   | Receive: {
-      selector:
+      selector: 
         Message.t -> [
           `select of 'msg
           | `skip

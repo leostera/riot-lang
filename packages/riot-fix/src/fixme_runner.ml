@@ -196,7 +196,8 @@ let workspace_toml_source = fun plan ->
 
 let dependency_entries = fun workspace_root providers ->
   let workspace_packages =
-    match Riot_model.Workspace_manager.scan workspace_root with
+    let workspace_manager = Riot_model.Workspace_manager.create () in
+    match Riot_model.Workspace_manager.scan workspace_manager workspace_root with
     | Ok (workspace, _errors) -> Riot_model.Workspace.(workspace.packages)
     | Error _ -> []
   in

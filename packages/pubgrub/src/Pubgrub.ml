@@ -9,7 +9,6 @@ module Solver = New_solver
 (* SWAPPED TO NEW SOLVER! *)
 
 module Trace = Trace
-
 module Report = Report
 
 type version = Version.t

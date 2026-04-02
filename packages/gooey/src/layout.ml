@@ -20,7 +20,7 @@ let get_element_style = function
 
 (* Phase 1: Build layout tree from element tree *)
 
-let rec build_layout_tree : Element.t -> layout_node = fun element ->
+let rec build_layout_tree: Element.t -> layout_node = fun element ->
   let style = get_element_style element in
   let children =
     match element with
@@ -58,7 +58,7 @@ let clamp_option = fun value min_opt max_opt ->
 
 (* Phase 2: Calculate sizes (ported from Clay) *)
 
-let rec calculate_sizes : layout_node -> Viewport.t -> Super.Config.t -> unit = fun node available config ->
+let rec calculate_sizes: layout_node -> Viewport.t -> Super.Config.t -> unit = fun node available config ->
   let style = node.style in
   (* Calculate intrinsic size based on content *)
   let intrinsic_size =
@@ -96,7 +96,7 @@ let rec calculate_sizes : layout_node -> Viewport.t -> Super.Config.t -> unit = 
   | Element.Container _ -> layout_children node config
   | _ -> ()
 
-and calculate_container_fit_size : layout_node -> Viewport.t -> Super.Config.t -> Viewport.t = fun node available config ->
+and calculate_container_fit_size: layout_node -> Viewport.t -> Super.Config.t -> Viewport.t = fun node available config ->
   let style = node.style in
   (* First calculate all children sizes *)
   List.iter (fun child -> calculate_sizes child available config) node.children;
@@ -131,7 +131,7 @@ and calculate_container_fit_size : layout_node -> Viewport.t -> Super.Config.t -
   in
   Viewport.make ~width ~height
 
-and layout_children : layout_node -> Super.Config.t -> unit = fun node config ->
+and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
   let style = node.style in
   let available_width = node.computed_size.width -. padding_horizontal style.padding in
   let available_height = node.computed_size.height -. padding_vertical style.padding in
@@ -239,7 +239,7 @@ and layout_children : layout_node -> Super.Config.t -> unit = fun node config ->
 
 (* Phase 3: Calculate positions *)
 
-let rec calculate_positions : layout_node -> Geometry.Point.t -> unit = fun node origin ->
+let rec calculate_positions: layout_node -> Geometry.Point.t -> unit = fun node origin ->
   let style = node.style in
   node.computed_position <- origin;
   (* Calculate content origin (inside padding) *)
@@ -268,7 +268,7 @@ let rec calculate_positions : layout_node -> Geometry.Point.t -> unit = fun node
 
 (* Phase 4: Generate render commands *)
 
-let rec generate_commands : layout_node -> Render.command Vector.t -> unit = fun node commands ->
+let rec generate_commands: layout_node -> Render.command Vector.t -> unit = fun node commands ->
   let style = node.style in
   (* Generate background rectangle *)
   (

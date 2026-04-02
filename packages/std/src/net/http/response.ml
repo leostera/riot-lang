@@ -64,7 +64,7 @@ module Builder = struct
   let header = fun builder name value ->
     { builder with headers = Header.set builder.headers name value }
 
-  let build builder : response = {
+  let build builder: response = {
     status = builder.status;
     version = builder.version;
     headers = builder.headers;

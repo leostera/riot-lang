@@ -243,12 +243,12 @@ let rec get_matches_internal = fun cmd args ->
         parse_args rest
   and parse_short_arg arg c rest = parse_long_arg arg arg.name rest
   and parse_positional pos_args =
-    let positional_args : unit arg list =
+    let positional_args: unit arg list =
       List.filter
         (fun positional_arg -> positional_arg.short = None && positional_arg.long = None)
         cmd.args
     in
-    let unfilled_positionals : unit arg list =
+    let unfilled_positionals: unit arg list =
       List.filter
         (fun (positional_arg: unit arg) ->
           let current = HashMap.get matches.values positional_arg.name in
@@ -318,7 +318,7 @@ and print_help = fun cmd ->
   if List.length positionals > 0 then
     (
       println "\nArguments:";
-      let max_arg_width : int =
+      let max_arg_width: int =
         List.fold_left
           (fun (acc: int) (arg: unit arg) ->
             let name =

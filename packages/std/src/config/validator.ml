@@ -118,13 +118,13 @@ let check_allowed_values = fun field_name (value: Spec.value) allowed_values ->
 
 (* Validate a TOML value against a field spec and apply defaults, converting to Spec.value *)
 
-let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) result =
+let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result =
   let field_name = field.name in
   let field_type = field.field_type in
   let required = field.required in
   let allowed_values = field.allowed_values in
   (* First validate the type and get a Spec.value *)
-  let type_result : (Spec.value, string) result =
+  let type_result: (Spec.value, string) result =
     match field_type with
     | String { default } -> (
         match toml_opt with
@@ -398,7 +398,7 @@ let rec validate_field (field: Spec.field) toml_opt : (Spec.value, string) resul
   | Error err -> Error err
   | Ok validated_value -> check_allowed_values field_name validated_value allowed_values
 
-and validate_fields (fields: Spec.field list) toml_opt : (Spec.value, string) result =
+and validate_fields (fields: Spec.field list) toml_opt: (Spec.value, string) result =
   let table =
     match toml_opt with
     | Some (Data.Toml.Table t) -> t
@@ -418,6 +418,6 @@ and validate_fields (fields: Spec.field list) toml_opt : (Spec.value, string) re
   | Ok validated_fields -> Ok (Spec.Map validated_fields)
   | Error err -> Error err
 
-let validate spec toml : (Spec.value, string) result = validate_fields
+let validate spec toml: (Spec.value, string) result = validate_fields
   (Spec.get_fields spec)
   (Some toml)

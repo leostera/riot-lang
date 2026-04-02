@@ -15,7 +15,7 @@ type t =
       dependency_name: string;
       source_locator: string;
       ref_: string option;
-      error: string;
+      error: string
     }
   | SourceDependencyDecodeFailed of { dependency_name: string; manifest_path: Path.t; error: string }
   | RegistryLatestReleaseMissing of { package: string; latest_version: string }
@@ -26,7 +26,7 @@ type t =
       registry: string;
       requirement: string;
       available_versions: string list;
-      required_by: required_by option;
+      required_by: required_by option
     }
   | LockfileReadFailed of { path: Path.t; error: string }
   | LockRefreshCheckFailed of { workspace_root: Path.t; error: string }
@@ -41,26 +41,24 @@ let format_required_by = fun { package; path } ->
   | None -> "required by package `" ^ package ^ "`"
 
 let rec headline = function
-  | ManifestReadFailed { manifest_path; error } -> "failed to read manifest '"
-  ^ Path.to_string manifest_path
-  ^ "': "
-  ^ error
-  | ManifestParseFailed { manifest_path; error } -> "failed to parse manifest '"
-  ^ Path.to_string manifest_path
-  ^ "': "
-  ^ error
-  | PathDependencyLoadFailed { dependency_name; dependency_path; error } -> "failed to load path dependency '"
-  ^ dependency_name
-  ^ "' from "
-  ^ Path.to_string dependency_path
-  ^ ": "
-  ^ message error
-  | PathDependencyDecodeFailed { dependency_name; manifest_path; error } -> "failed to decode path dependency '"
-  ^ dependency_name
-  ^ "' from "
-  ^ Path.to_string manifest_path
-  ^ ": "
-  ^ error
+  | ManifestReadFailed { manifest_path; error } ->
+      "failed to read manifest '" ^ Path.to_string manifest_path ^ "': " ^ error
+  | ManifestParseFailed { manifest_path; error } ->
+      "failed to parse manifest '" ^ Path.to_string manifest_path ^ "': " ^ error
+  | PathDependencyLoadFailed { dependency_name; dependency_path; error } ->
+      "failed to load path dependency '"
+      ^ dependency_name
+      ^ "' from "
+      ^ Path.to_string dependency_path
+      ^ ": "
+      ^ message error
+  | PathDependencyDecodeFailed { dependency_name; manifest_path; error } ->
+      "failed to decode path dependency '"
+      ^ dependency_name
+      ^ "' from "
+      ^ Path.to_string manifest_path
+      ^ ": "
+      ^ error
   | SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error } ->
       let suffix =
         match ref_ with
@@ -74,51 +72,49 @@ let rec headline = function
       ^ suffix
       ^ ": "
       ^ error
-  | SourceDependencyDecodeFailed { dependency_name; manifest_path; error } -> "failed to decode source dependency '"
-  ^ dependency_name
-  ^ "' from "
-  ^ Path.to_string manifest_path
-  ^ ": "
-  ^ error
-  | RegistryLatestReleaseMissing { package; latest_version } -> "registry package '"
-  ^ package
-  ^ "' declares latest version '"
-  ^ latest_version
-  ^ "' but that release is missing from the sparse index document"
-  | PackageMetadataReadFailed { package; error; _ } -> "failed to read package document for '"
-  ^ package
-  ^ "': "
-  ^ error
-  | PackageNotFound { package; registry; required_by=_ } -> "package `"
-  ^ package
-  ^ "` was not found in registry `"
-  ^ registry
-  ^ "`"
-  | RegistryVersionNotFound { package; registry; requirement; required_by=_; _ } -> "package `"
-  ^ package
-  ^ "` has no release matching `"
-  ^ requirement
-  ^ "` in registry `"
-  ^ registry
-  ^ "`"
-  | LockfileReadFailed { path; error } -> "failed to read lockfile '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ error
-  | LockRefreshCheckFailed { workspace_root; error } -> "failed to check lock freshness for workspace '"
-  ^ Path.to_string workspace_root
-  ^ "': "
-  ^ error
-  | LockfileWriteFailed { path; error } -> "failed to write lockfile '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ error
-  | MaterializationFailed { error } -> error
-  | ProjectionFailed { error } -> error
-  | Unexpected { error } -> error
+  | SourceDependencyDecodeFailed { dependency_name; manifest_path; error } ->
+      "failed to decode source dependency '"
+      ^ dependency_name
+      ^ "' from "
+      ^ Path.to_string manifest_path
+      ^ ": "
+      ^ error
+  | RegistryLatestReleaseMissing { package; latest_version } ->
+      "registry package '" ^ package ^ "' declares latest version '" ^ latest_version ^ "' but that release is missing from the sparse index document"
+  | PackageMetadataReadFailed { package; error; _ } ->
+      "failed to read package document for '" ^ package ^ "': " ^ error
+  | PackageNotFound { package; registry; required_by=_ } ->
+      "package `" ^ package ^ "` was not found in registry `" ^ registry ^ "`"
+  | RegistryVersionNotFound {
+    package;
+    registry;
+    requirement;
+    required_by=_;
+    _
+  } ->
+      "package `"
+      ^ package
+      ^ "` has no release matching `"
+      ^ requirement
+      ^ "` in registry `"
+      ^ registry
+      ^ "`"
+  | LockfileReadFailed { path; error } ->
+      "failed to read lockfile '" ^ Path.to_string path ^ "': " ^ error
+  | LockRefreshCheckFailed { workspace_root; error } ->
+      "failed to check lock freshness for workspace '" ^ Path.to_string workspace_root ^ "': " ^ error
+  | LockfileWriteFailed { path; error } ->
+      "failed to write lockfile '" ^ Path.to_string path ^ "': " ^ error
+  | MaterializationFailed { error } ->
+      error
+  | ProjectionFailed { error } ->
+      error
+  | Unexpected { error } ->
+      error
 
 and detail_lines = function
-  | PackageNotFound { required_by=Some required_by; _ } -> [ format_required_by required_by ]
+  | PackageNotFound { required_by=Some required_by; _ } ->
+      [ format_required_by required_by ]
   | RegistryVersionNotFound { available_versions; required_by; _ } ->
       let version_line =
         match available_versions with
@@ -130,7 +126,8 @@ and detail_lines = function
         | Some required_by -> version_line @ [ format_required_by required_by ]
         | None -> version_line
       )
-  | _ -> []
+  | _ ->
+      []
 
 and message error =
   match detail_lines error with
@@ -182,18 +179,19 @@ let rec to_json = function
     ("manifest_path", json_of_path manifest_path);
     ("error", Json.String error);
   ]
-  | SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error } -> Json.Object [
-    ("kind", Json.String "SourceDependencyLoadFailed");
-    ("dependency_name", Json.String dependency_name);
-    ("source_locator", Json.String source_locator);
-    (
-      "ref",
-      match ref_ with
-      | Some ref_ -> Json.String ref_
-      | None -> Json.Null
-    );
-    ("error", Json.String error);
-  ]
+  | SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error } ->
+      Json.Object [
+        ("kind", Json.String "SourceDependencyLoadFailed");
+        ("dependency_name", Json.String dependency_name);
+        ("source_locator", Json.String source_locator);
+        (
+          "ref",
+          match ref_ with
+          | Some ref_ -> Json.String ref_
+          | None -> Json.Null
+        );
+        ("error", Json.String error);
+      ]
   | SourceDependencyDecodeFailed { dependency_name; manifest_path; error } -> Json.Object [
     ("kind", Json.String "SourceDependencyDecodeFailed");
     ("dependency_name", Json.String dependency_name);
@@ -233,7 +231,13 @@ let rec to_json = function
           )
         );
       ]
-  | RegistryVersionNotFound { package; registry; requirement; available_versions; required_by } ->
+  | RegistryVersionNotFound {
+    package;
+    registry;
+    requirement;
+    available_versions;
+    required_by
+  } ->
       Json.Object [
         ("kind", Json.String "RegistryVersionNotFound");
         ("package", Json.String package);
@@ -249,15 +253,12 @@ let rec to_json = function
             match required_by with
             | None -> Json.Null
             | Some { package; path } ->
-                Json.Object [
-                  ("package", Json.String package);
-                  (
+                Json.Object [ ("package", Json.String package); (
                     "path",
                     match path with
                     | Some path -> json_of_path path
                     | None -> Json.Null
-                  );
-                ]
+                  ); ]
           )
         );
       ]
@@ -343,8 +344,10 @@ let rec of_json = function
                 | None -> Ok None
                 | Some _ -> Error "invalid SourceDependencyLoadFailed.ref"
               in
-              ref_ |> Result.map (fun ref_ ->
-                SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error })
+              ref_
+              |> Result.map
+                (fun ref_ ->
+                  SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error })
           | _ -> Error "invalid SourceDependencyLoadFailed"
         )
       | Some (Json.String "SourceDependencyDecodeFailed") -> (
@@ -406,13 +409,9 @@ let rec of_json = function
           | _ -> Error "invalid PackageNotFound"
         )
       | Some (Json.String "RegistryVersionNotFound") -> (
-          match
-            List.assoc_opt "package" fields,
-            List.assoc_opt "registry" fields,
-            List.assoc_opt "requirement" fields,
-            List.assoc_opt "available_versions" fields,
-            List.assoc_opt "required_by" fields
-          with
+          match List.assoc_opt "package" fields, List.assoc_opt "registry" fields, List.assoc_opt
+            "requirement"
+            fields, List.assoc_opt "available_versions" fields, List.assoc_opt "required_by" fields with
           | Some (Json.String package), Some (Json.String registry), Some (Json.String requirement), Some (Json.Array available_versions), required_by_json_opt ->
               let available_versions =
                 let rec loop acc = function
@@ -425,30 +424,35 @@ let rec of_json = function
               let required_by =
                 match required_by_json_opt with
                 | Some Json.Null
-                | None -> Ok None
+                | None ->
+                    Ok None
                 | Some (Json.Object required_by_fields) -> (
                     match List.assoc_opt "package" required_by_fields, List.assoc_opt "path" required_by_fields with
                     | Some (Json.String package), Some path_json -> (
                         match path_json with
                         | Json.Null -> Ok (Some { package; path = None })
-                        | _ -> path_of_json path_json |> Result.map (fun path -> Some { package; path = Some path })
+                        | _ -> path_of_json path_json
+                        |> Result.map (fun path -> Some { package; path = Some path })
                       )
                     | _ -> Error "invalid RegistryVersionNotFound.required_by"
                   )
-                | Some _ -> Error "invalid RegistryVersionNotFound.required_by"
+                | Some _ ->
+                    Error "invalid RegistryVersionNotFound.required_by"
               in
               (
                 match available_versions, required_by with
                 | Ok available_versions, Ok required_by ->
-                    Ok (RegistryVersionNotFound {
-                      package;
-                      registry;
-                      requirement;
-                      available_versions;
-                      required_by;
-                    })
-                | Error err, _
-                | _, Error err -> Error err
+                    Ok (
+                      RegistryVersionNotFound {
+                        package;
+                        registry;
+                        requirement;
+                        available_versions;
+                        required_by;
+                      }
+                    )
+                | (Error err, _)
+                | (_, Error err) -> Error err
               )
           | _ -> Error "invalid RegistryVersionNotFound"
         )

@@ -80,7 +80,7 @@ let and_modify = fun map key f ->
       Hashtbl.replace map key new_value
   | None -> ()
 
-let into_iter : type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
+let into_iter: type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
   let module MapIter = struct
     type state = {
       items: (k * v) list;
@@ -101,7 +101,7 @@ let into_iter : type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
   let items = to_list map in
   Iter.Iterator.make (module MapIter) { MapIter.items; pos = 0 }
 
-let to_mut_iter : type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
+let to_mut_iter: type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
   let module MapIter = struct
     type state = {
       items: (k * v) list;

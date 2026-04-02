@@ -31,7 +31,7 @@ type input_mode =
       (* Dual FD mode for piped input + TTY control *)
       data_fd: Kernel.Fd.t;  (* stdin for data *)
       control_fd: Kernel.Fd.t;  (* /dev/tty for control *)
-      mutable active:
+      mutable active: 
         [
           `Data
           | `Control

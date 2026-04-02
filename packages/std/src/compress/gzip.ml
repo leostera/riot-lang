@@ -169,8 +169,9 @@ let read_into = fun (t: (_, _) reader) dst ->
   in
   loop ()
 
-let to_reader : type src read_err. (src, read_err) Reader.t ->
-((src, read_err) reader, read_err read_error) Reader.t = fun src ->
+let to_reader:
+  type src read_err. (src, read_err) Reader.t ->
+  ((src, read_err) reader, read_err read_error) Reader.t = fun src ->
   let decoder =
     match Kernel.Compress.Gzip.create_decoder () with
     | Ok decoder -> decoder

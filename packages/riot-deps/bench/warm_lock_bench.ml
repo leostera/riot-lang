@@ -2,10 +2,7 @@ open Std
 
 let registry_version = "0.0.1"
 
-let bench_config : Bench.bench_config = {
-  iterations = 20;
-  warmup = 3;
-}
+let bench_config: Bench.bench_config = { iterations = 20; warmup = 3 }
 
 type fixture = {
   workspace: Riot_model.Workspace.t;
@@ -40,7 +37,14 @@ let make_package = fun ~name ~path ~relative_path ~dependencies ->
     foreign_dependencies = [];
     binaries = [];
     library = None;
-    sources = { src = []; native = []; tests = []; examples = []; bench = [] };
+    sources =
+      {
+        src = [];
+        native = [];
+        tests = [];
+        examples = [];
+        bench = [];
+      };
     compiler = { profile_overrides = []; target_overrides = [] };
     commands = [];
     fix_providers = [];
@@ -48,7 +52,7 @@ let make_package = fun ~name ~path ~relative_path ~dependencies ->
       version = Some (Std.Version.make ~major:0 ~minor:0 ~patch:1 ());
       description = Some ("Package " ^ name);
       license = Some "Apache-2.0";
-      is_public = Some true;
+      is_public = Some true
     };
   }
 
@@ -64,11 +68,7 @@ let write_file = fun path contents ->
 let dependency_line = fun name -> name ^ " = \"*\""
 
 let package_manifest = fun ~name ~dependencies ->
-  let header = [
-    "[package]";
-    "name = \"" ^ name ^ "\"";
-    "version = \"" ^ registry_version ^ "\"";
-  ] in
+  let header = [ "[package]"; "name = \"" ^ name ^ "\""; "version = \"" ^ registry_version ^ "\""; ] in
   let body =
     match dependencies with
     | [] -> []
@@ -118,31 +118,27 @@ let make_registry_names = fun count ->
   loop [] (count - 1)
 
 let registry_documents = fun names ->
-  let rec loop acc =
-    function
+  let rec loop acc = function
     | [] -> List.rev acc
-    | [ name ] ->
-        loop (make_document ~name ~dependencies:[] :: acc) []
-    | name :: ((next_name :: _) as rest) ->
-        loop (make_document ~name ~dependencies:[ next_name ] :: acc) rest
+    | [ name ] -> loop (make_document ~name ~dependencies:[] :: acc) []
+    | name :: ((next_name :: _) as rest) -> loop
+      (make_document ~name ~dependencies:[ next_name ] :: acc)
+      rest
   in
   loop [] names
 
 let write_registry_package_roots = fun ~cache ~(lockfile:Riot_model.Lockfile.t) ->
-  let write_package_root = fun (pkg: Riot_model.Lockfile.package) ->
+  let write_package_root (pkg: Riot_model.Lockfile.package) =
     match pkg.provenance, pkg.id.version with
     | Riot_model.Lockfile.Registry _, Some version ->
-        let package_root =
-          Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:pkg.id.name ~version
-        in
+        let package_root = Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:pkg.id.name ~version in
         let manifest =
           package_manifest
             ~name:pkg.id.name
             ~dependencies:(List.map (fun (dep: Riot_model.Lockfile.dependency) -> dep.name) pkg.dependencies)
         in
         write_file Path.(package_root / Path.v "riot.toml") manifest
-    | _ ->
-        ()
+    | _ -> ()
   in
   List.iter write_package_root lockfile.packages
 
@@ -163,72 +159,61 @@ let prepare_fixture = fun root ->
     | first :: _ -> first
     | [] -> panic "expected benchmark registry package names"
   in
-  write_file
-    Path.(workspace_root / Path.v "riot.toml")
-    "[workspace]\nmembers = [\"packages/app\"]\n\n[dependencies]\n";
+  write_file Path.(workspace_root / Path.v "riot.toml") "[workspace]\nmembers = [\"packages/app\"]\n\n[dependencies]\n";
   write_file
     Path.(app_root / Path.v "riot.toml")
-    ("[package]\nname = \"app\"\nversion = \"0.0.1\"\n\n[dependencies]\n"
-    ^ root_dependency
-    ^ " = \"*\"\n");
-  let app_package =
-    make_package
-      ~name:"app"
-      ~path:app_root
-      ~relative_path:app_relative
-      ~dependencies:[
-        {
-          name = root_dependency;
-          source = dependency_source Std.Version.any;
-        }
-      ]
-  in
-  let workspace =
-    Riot_model.Workspace.make
-      ~root:workspace_root
-      ~packages:[ app_package ]
-      ~dependencies:[]
-      ~dev_dependencies:[]
-      ~build_dependencies:[]
-      ()
-  in
+    ("[package]\nname = \"app\"\nversion = \"0.0.1\"\n\n[dependencies]\n" ^ root_dependency ^ " = \"*\"\n");
+  let app_package = make_package
+    ~name:"app"
+    ~path:app_root
+    ~relative_path:app_relative
+    ~dependencies:[ { name = root_dependency; source = dependency_source Std.Version.any } ] in
+  let workspace = Riot_model.Workspace.make
+    ~root:workspace_root
+    ~packages:[ app_package ]
+    ~dependencies:[]
+    ~dev_dependencies:[]
+    ~build_dependencies:[]
+    () in
   let riot_home = Path.(workspace_root / Path.v ".riot") in
-  let cache =
-    Pkgs_ml.Registry_cache.create ~riot_home ~registry_name:"pkgs.ml" ()
-    |> Result.expect ~msg:"expected registry cache to initialize"
-  in
-  let solve_registry =
-    Pkgs_ml.Registry.in_memory ~cache ~packages:(registry_documents registry_names) ()
-  in
-  let lockfile =
-    Riot_deps.Dep_solver.lock_deps
-      ~mode:Riot_deps.Dep_solver.Refresh
-      ~registry:solve_registry
-      ~existing_lock:None
-      ~workspace
-      ()
-    |> Result.expect ~msg:"expected lockfile to solve for warm benchmark"
-  in
-  let dependency_hash =
-    Riot_deps.Lock_refresh.dependency_hash
-      ~workspace_root
-      ~manifest_paths:[ Path.(workspace_root / Path.v "riot.toml"); Path.(app_root / Path.v "riot.toml") ]
-    |> Result.expect ~msg:"expected dependency hash to compute"
-  in
+  let cache = Pkgs_ml.Registry_cache.create ~riot_home ~registry_name:"pkgs.ml" ()
+  |> Result.expect ~msg:"expected registry cache to initialize" in
+  let solve_registry = Pkgs_ml.Registry.in_memory
+    ~cache
+    ~packages:(registry_documents registry_names)
+    () in
+  let lockfile = Riot_deps.Dep_solver.lock_deps
+    ~mode:Riot_deps.Dep_solver.Refresh
+    ~registry:solve_registry
+    ~existing_lock:None
+    ~workspace
+    ()
+  |> Result.expect ~msg:"expected lockfile to solve for warm benchmark" in
+  let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+    ~workspace_manager:None
+    ~workspace_root
+    ~manifest_paths:[
+      Path.(workspace_root / Path.v "riot.toml");
+      Path.(app_root / Path.v "riot.toml")
+    ]
+  |> Result.expect ~msg:"expected dependency hash to compute" in
   let lockfile = { lockfile with dependency_hash } in
-  Riot_deps.Lockfile_store.write ~workspace_root lockfile
-  |> Result.expect ~msg:"expected warm benchmark lockfile to be written";
+  Riot_deps.Lockfile_store.write ~workspace_root lockfile |> Result.expect ~msg:"expected warm benchmark lockfile to be written";
   write_registry_package_roots ~cache ~lockfile;
   let fetch_counter = { count = 0 } in
-  let registry =
-    Pkgs_ml.Registry.create_filesystem
-      ~fetch:(registry_fetch fetch_counter)
-      ~registry_name:"pkgs.ml"
-      ~riot_home
-      ()
-    |> Result.expect ~msg:"expected filesystem registry to initialize"
-  in
-  { workspace; registry; lockfile; app_package; fetch_counter }
+  let registry = Pkgs_ml.Registry.create_filesystem
+    ~fetch:(registry_fetch fetch_counter)
+    ~registry_name:"pkgs.ml"
+    ~riot_home
+    ()
+  |> Result.expect ~msg:"expected filesystem registry to initialize" in
+  {
+    workspace;
+    registry;
+    lockfile;
+    app_package;
+    fetch_counter;
+  }
 
 let assert_no_fetches = fun counter ->
   if Int.equal counter.count 0 then
@@ -236,13 +221,13 @@ let assert_no_fetches = fun counter ->
   else
     panic ("expected warm path to avoid registry fetches, saw " ^ Int.to_string counter.count)
 
-let bench_materializer_cache_hit = fun (fixture:fixture) () ->
+let bench_materializer_cache_hit = fun (fixture: fixture) () ->
   fixture.fetch_counter.count <- 0;
   Riot_deps.Materializer.ensure_packages ~registry:fixture.registry ~lockfile:fixture.lockfile ()
   |> Result.expect ~msg:"expected materializer cache-hit benchmark to succeed";
   assert_no_fetches fixture.fetch_counter
 
-let bench_projection_warm = fun (fixture:fixture) () ->
+let bench_projection_warm = fun (fixture: fixture) () ->
   fixture.fetch_counter.count <- 0;
   Riot_deps.Projection.resolve_packages
     ~registry:fixture.registry
@@ -254,7 +239,7 @@ let bench_projection_warm = fun (fixture:fixture) () ->
   |> ignore;
   assert_no_fetches fixture.fetch_counter
 
-let bench_ensure_lock_warm = fun (fixture:fixture) () ->
+let bench_ensure_lock_warm = fun (fixture: fixture) () ->
   fixture.fetch_counter.count <- 0;
   Riot_deps.ensure_lock
     ~mode:Riot_deps.Dep_solver.Refresh
@@ -284,12 +269,12 @@ let benchmark_suite = fun fixture ->
 let () =
   Actors.run
     ~main:(fun ~args ->
-      match Fs.with_tempdir ~prefix:"riot_deps_bench" (fun root ->
-        let fixture = prepare_fixture root in
-        Bench.Cli.main
-          ~name:"riot-deps warm path"
-          ~benchmarks:(benchmark_suite fixture)
-          ~args) with
+      match
+        Fs.with_tempdir ~prefix:"riot_deps_bench"
+          (fun root ->
+            let fixture = prepare_fixture root in
+            Bench.Cli.main ~name:"riot-deps warm path" ~benchmarks:(benchmark_suite fixture) ~args)
+      with
       | Ok result -> result
       | Error err -> panic ("failed to prepare warm lock benchmark: " ^ IO.error_message err))
     ~args:Env.args

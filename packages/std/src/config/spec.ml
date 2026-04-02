@@ -49,7 +49,7 @@ type t = {
 
 (* Global registry of specs - mutable! *)
 
-let registered_specs : t list Sync.Cell.t = cell []
+let registered_specs: t list Sync.Cell.t = cell []
 
 let for_app = fun ~app fields ->
   let spec = { app; fields } in

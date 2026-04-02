@@ -68,7 +68,7 @@ let load_and_validate_all_specs = fun provider ->
 
 (* Apply patches to a Map value *)
 
-let apply_patches (base_value: Spec.value) updates : Spec.value =
+let apply_patches (base_value: Spec.value) updates: Spec.value =
   match base_value with
   | Map kvs ->
       let updated_kvs =

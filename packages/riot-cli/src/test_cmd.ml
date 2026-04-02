@@ -40,14 +40,11 @@ let print_run_label = fun (suite: Riot_build.suite_binary) ->
 
 let print_empty_hint = fun package_filter suite_filter ->
   match (package_filter, suite_filter) with
-  | (Some package_name, Some suite_name) ->
-      println ("No test suite '" ^ suite_name ^ "' found in package '" ^ package_name ^ "'")
-  | (Some package_name, None) ->
-      println ("No test suites found in package '" ^ package_name ^ "'")
-  | (None, Some suite_name) ->
-      println ("No test suites named '" ^ suite_name ^ "' found")
-  | (None, None) ->
-      println "No test binaries found"
+  | (Some package_name, Some suite_name) -> println
+    ("No test suite '" ^ suite_name ^ "' found in package '" ^ package_name ^ "'")
+  | (Some package_name, None) -> println ("No test suites found in package '" ^ package_name ^ "'")
+  | (None, Some suite_name) -> println ("No test suites named '" ^ suite_name ^ "' found")
+  | (None, None) -> println "No test binaries found"
 
 let print_summary = fun ~label ~total ~passed ~failed ->
   println "";
@@ -98,15 +95,16 @@ let run = fun ~workspace matches ->
       )
     | _ -> write_test_event event
   in
-  match Riot_build.test
-    ~on_event
-    {
-      workspace;
-      package_filter = request.package_filter;
-      suite_filter = request.suite_filter;
-      query = request.query;
-      extra_args;
-    } with
+  match
+    Riot_build.test ~on_event
+      {
+        workspace;
+        package_filter = request.package_filter;
+        suite_filter = request.suite_filter;
+        query = request.query;
+        extra_args;
+      }
+  with
   | Ok () -> Ok ()
   | Error err ->
       write_test_error err;

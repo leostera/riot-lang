@@ -412,7 +412,7 @@ let promote_outputs = fun (plan: build_plan) ->
     plan.outputs;
   Printf.printf "Promoted %d artifacts to %s\n" (List.length plan.outputs) out_dir
 
-let from_dep_graph : Dep_graph.t -> build_plan = fun dep_graph ->
+let from_dep_graph: Dep_graph.t -> build_plan = fun dep_graph ->
   let sandbox_dir = Printf.sprintf
     "_build/bootstrap/sandbox/%s"
     (Dep_graph.Module_name.to_string dep_graph.package_name) in

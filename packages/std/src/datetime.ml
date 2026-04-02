@@ -117,7 +117,7 @@ let now_naive = fun () ->
     microsecond;
   }
 
-let from_system_time : Time.SystemTime.t -> t = fun sys_time ->
+let from_system_time: Time.SystemTime.t -> t = fun sys_time ->
   let unix_time = Time.SystemTime.secs_float sys_time in
   let tm = Kernel.Time.gmtime unix_time in
   let nanos_total = Time.SystemTime.nanos sys_time in
@@ -140,7 +140,7 @@ let from_system_time : Time.SystemTime.t -> t = fun sys_time ->
     std_offset = 0;
   }
 
-let to_system_time : t -> Time.SystemTime.t = fun t ->
+let to_system_time: t -> Time.SystemTime.t = fun t ->
   let tm = {
     Kernel.Time.tm_sec = t.second;
     tm_min = t.minute;
@@ -164,7 +164,7 @@ let to_system_time : t -> Time.SystemTime.t = fun t ->
 let epoch = Time.SystemTime.epoch |> from_system_time
 
 (** Convert timezone-aware datetime to naive datetime *)
-let to_naive : t -> naive = fun t ->
+let to_naive: t -> naive = fun t ->
   let microsecond, _ = t.microseconds in
   {
     year = t.year;
@@ -177,7 +177,7 @@ let to_naive : t -> naive = fun t ->
   }
 
 (** Convert naive datetime to timezone-aware datetime *)
-let from_naive : naive -> tz:Tz.t -> t = fun naive ~tz ->
+let from_naive: naive -> tz:Tz.t -> t = fun naive ~tz ->
   match tz with
   | Tz.Etc_UTC ->
       {

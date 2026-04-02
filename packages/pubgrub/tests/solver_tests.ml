@@ -951,11 +951,7 @@ let make_partial_satisfier_provider = fun () ->
     "right"
     (v 1 0 0)
     [ ("shared", Pubgrub.strictly_lower_than (v 2 0 0)) ];
-  Pubgrub.add_package
-    provider
-    "shared"
-    (v 1 0 0)
-    [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
+  Pubgrub.add_package provider "shared" (v 1 0 0) [ ("target", Pubgrub.between (v 1 0 0) (v 2 0 0)) ];
   Pubgrub.add_package provider "shared" (v 2 0 0) [];
   Pubgrub.add_package provider "target" (v 2 0 0) [];
   Pubgrub.add_package provider "target" (v 1 0 0) [];
@@ -1009,12 +1005,12 @@ let test_trace_conflict_partial_satisfier =
       let provider = make_partial_satisfier_provider () in
       let trace_ctx = Pubgrub.Trace.create () in
       match Pubgrub.solve ~trace_ctx (Pubgrub.to_provider provider) "root" (v 1 0 0) with
-      | Ok (Pubgrub.Solver.Success _) ->
-          Test.Snapshot.assert_json ~ctx ~actual:(Pubgrub.Trace.to_json trace_ctx)
-      | Ok (Pubgrub.Solver.Failure incompat) ->
-          Error ("Expected success but got failure: " ^ (Pubgrub.Report.explain_conflict incompat))
-      | Error err ->
-          Error ("Unexpected error: " ^ err))
+      | Ok (Pubgrub.Solver.Success _) -> Test.Snapshot.assert_json
+        ~ctx
+        ~actual:(Pubgrub.Trace.to_json trace_ctx)
+      | Ok (Pubgrub.Solver.Failure incompat) -> Error ("Expected success but got failure: "
+      ^ (Pubgrub.Report.explain_conflict incompat))
+      | Error err -> Error ("Unexpected error: " ^ err))
 
 let test_ref_double_choices =
   Test.case "REF: Double choices"

@@ -149,20 +149,8 @@ let test_serialize_object = fun _ctx ->
     Error "Failed to serialize object"
 
 let test_serialize_object_pretty = fun _ctx ->
-  let json =
-    Json.obj
-      [
-        ("a", Json.int 1);
-        ("items", Json.array [ Json.int 2; Json.int 3 ]);
-      ] in
-  let expected =
-    "{\n"
-    ^ "  \"a\": 1,\n"
-    ^ "  \"items\": [\n"
-    ^ "    2,\n"
-    ^ "    3\n"
-    ^ "  ]\n"
-    ^ "}" in
+  let json = Json.obj [ ("a", Json.int 1); ("items", Json.array [ Json.int 2; Json.int 3 ]); ] in
+  let expected = "{\n" ^ "  \"a\": 1,\n" ^ "  \"items\": [\n" ^ "    2,\n" ^ "    3\n" ^ "  ]\n" ^ "}" in
   if String.equal (Json.to_string_pretty json) expected then
     Ok ()
   else

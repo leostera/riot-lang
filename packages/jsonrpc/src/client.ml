@@ -32,7 +32,7 @@ let receive_raw_response = fun (Client { transport_mod; transport; _ }) ->
   let module T = (val transport_mod : Transport with type t = _) in
   T.receive transport
 
-let send_request : type req res. (req, res) t -> req -> (unit, Common.error) result = fun (Client c as client) request ->
+let send_request: type req res. (req, res) t -> req -> (unit, Common.error) result = fun (Client c as client) request ->
   let module P = (val c.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
   let prereq = P.request_to_params request in
   let id = Common.Number c.next_id in
@@ -44,7 +44,7 @@ let send_request : type req res. (req, res) t -> req -> (unit, Common.error) res
   | Ok () -> Ok ()
   | Error e -> Error (Common.InternalError { context = "send_request"; details = e })
 
-let receive_response : type req res. (req, res) t -> (res Common.response, Common.error) result = fun (Client c as client) ->
+let receive_response: type req res. (req, res) t -> (res Common.response, Common.error) result = fun (Client c as client) ->
   let module P = (val c.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
   match receive_raw_response client with
   | Error e -> Error (Common.InternalError { context = "receive_response"; details = e })
@@ -115,7 +115,7 @@ let receive_response : type req res. (req, res) t -> (res Common.response, Commo
         )
     )
 
-let call (type req res) (client: (req, res) t) ~method_ ?params () : (res, Common.error) result =
+let call (type req res) (client: (req, res) t) ~method_ ?params (): (res, Common.error) result =
   let (Client c) = client in
   let module P = (val c.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
   let id = Common.Number c.next_id in
@@ -185,7 +185,7 @@ let call (type req res) (client: (req, res) t) ~method_ ?params () : (res, Commo
         )
     )
 
-let notify (type req res) (client: (req, res) t) ~method_ ?params () : (unit, Common.error) result =
+let notify (type req res) (client: (req, res) t) ~method_ ?params (): (unit, Common.error) result =
   let jsonrpc_req = Common.notification ~method_ ?params () in
   let json = Common.request_to_json jsonrpc_req in
   let str = Json.to_string json in
@@ -193,7 +193,7 @@ let notify (type req res) (client: (req, res) t) ~method_ ?params () : (unit, Co
   | Ok () -> Ok ()
   | Error e -> Error (Common.InternalError { context = "notify"; details = e })
 
-let call_batch : type req res. (req, res) t -> req list -> (res Common.response list, Common.error) result = fun client requests ->
+let call_batch: type req res. (req, res) t -> req list -> (res Common.response list, Common.error) result = fun client requests ->
   let (Client c) = client in
   let module P = (val c.protocol_mod : Common.ApplicationProtocol with type request = req and type response = res) in
   let jsonrpc_requests =

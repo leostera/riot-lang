@@ -6,7 +6,7 @@ type error =
   | MissingPublishLicense of { package: string }
   | PackageNotPublic of { package: string }
   | MissingManifest of { package_root: Path.t }
-  | RuntimeDependencyNotPublishable of { package: string; dependency: string; reason:
+  | RuntimeDependencyNotPublishable of { package: string; dependency: string; reason: 
         [
           | `PathOnly of Path.t
           | `WorkspaceOnly

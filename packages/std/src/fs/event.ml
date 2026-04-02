@@ -56,7 +56,7 @@ type t = {
 
 (* Decode all flags from kernel event *)
 
-let from_kernel_event : Ev.event -> t = fun ev ->
+let from_kernel_event: Ev.event -> t = fun ev ->
   let has_flag flag = Int32.logand ev.flags flag != Int32.zero in
   {
     path = Path.v ev.path;
@@ -91,7 +91,7 @@ let from_kernel_event : Ev.event -> t = fun ev ->
 
 (* Convert event to JSON *)
 
-let to_json : t -> Data.Json.t = fun t ->
+let to_json: t -> Data.Json.t = fun t ->
   Data.Json.(obj
     [
       ("path", string (Path.to_string t.path));

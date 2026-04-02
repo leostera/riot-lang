@@ -3,6 +3,7 @@ name = "jsonrpc"
 version = "0.0.1"
 description = "JSON-RPC framing, codecs, and types"
 license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/jsonrpc.ml"

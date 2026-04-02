@@ -35,7 +35,7 @@ type trace_counters = {
   duplicate_enqueue_races: int;
 }
 
-let create_counters () : runtime_counters = {
+let create_counters (): runtime_counters = {
   steals = Atomic.make 0;
   failed_steals = Atomic.make 0;
   remote_wakeups = Atomic.make 0;
@@ -637,7 +637,7 @@ let handle_syscall = fun k t proc name interest source timeout ->
 let perform = fun t proc ->
   let open Proc_state in
     let open Proc_effect in
-      let perform : type a b. (a, b) step_callback = fun k eff ->
+      let perform: type a b. (a, b) step_callback = fun k eff ->
         match eff with
         | Receive { selector; timeout } -> handle_receive k t proc ~selector ~timeout
         | Yield -> k Yield
@@ -987,7 +987,7 @@ let poll_io = fun t ->
   List.iter
     (fun event ->
       let token = Async.Event.token event in
-      let proc : Process.t = Async.Token.unsafe_to_value token in
+      let proc: Process.t = Async.Token.unsafe_to_value token in
       match get_process_slot t (Process.pid proc) with
       | None -> ()
       | Some slot -> (
@@ -1022,7 +1022,7 @@ module Worker = struct
     Scheduler_worker.loop ~pop_local ~step_process ~attempt_steal ~wait_for_local_work scheduler worker
 end
 
-let runtime_deps : Scheduler_runtime.deps = {
+let runtime_deps: Scheduler_runtime.deps = {
   ensure_can_run_once;
   create;
   spawn_on_worker;

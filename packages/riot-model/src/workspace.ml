@@ -45,11 +45,14 @@ let requirement_is_any = fun requirement ->
   String.equal (Version.requirement_to_string requirement) "*"
 
 let validate_dependency_source = fun ~dependency_name (source: Package.dependency_source) ->
-    if source.workspace then
+  if source.workspace then
     Error ("workspace dependency '" ^ dependency_name ^ "' cannot use workspace = true")
   else if Option.is_some source.ref_ && Option.is_none source.source_locator then
     Error ("dependency '" ^ dependency_name ^ "' cannot specify ref without source")
-  else if source.builtin && (Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.ref_) then
+  else if
+    source.builtin
+    && (Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.ref_)
+  then
     Error ("builtin dependency '" ^ dependency_name ^ "' does not support path or source overrides")
   else if source.builtin then
     match source.version with
@@ -60,7 +63,9 @@ let validate_dependency_source = fun ~dependency_name (source: Package.dependenc
     ^ "' does not support version requirement '"
     ^ Version.requirement_to_string version
     ^ "'")
-  else if Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.version then
+  else if
+    Option.is_some source.path || Option.is_some source.source_locator || Option.is_some source.version
+  then
     Ok source
   else
     Ok { source with version = Some Version.any }
@@ -80,11 +85,10 @@ let normalize_source_locator = fun raw ->
   else
     raw
 
-let github_locator_of_value = fun value ->
-  "github.com/" ^ String.trim value
+let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
-let parse_dependency : string -> Toml.value -> (Package.dependency, string) result = fun name value ->
-  let make_dependency source : Package.dependency = { name; source } in
+let parse_dependency: string -> Toml.value -> (Package.dependency, string) result = fun name value ->
+  let make_dependency source: Package.dependency = { name; source } in
   match value with
   | Toml.Table attrs -> (
       let path =
@@ -95,18 +99,12 @@ let parse_dependency : string -> Toml.value -> (Package.dependency, string) resu
       in
       let source_locator =
         match List.assoc_opt "source" attrs, List.assoc_opt "github" attrs with
-        | Some _, Some _ ->
-            Error ("dependency '" ^ name ^ "' cannot specify both source and github")
-        | Some (Toml.String locator), None ->
-            Ok (Some (normalize_source_locator locator))
-        | Some _, None ->
-            Error ("dependency '" ^ name ^ "' has non-string source locator")
-        | None, Some (Toml.String github) ->
-            Ok (Some (github_locator_of_value github))
-        | None, Some _ ->
-            Error ("dependency '" ^ name ^ "' has non-string github shorthand")
-        | None, None ->
-            Ok None
+        | Some _, Some _ -> Error ("dependency '" ^ name ^ "' cannot specify both source and github")
+        | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
+        | Some _, None -> Error ("dependency '" ^ name ^ "' has non-string source locator")
+        | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
+        | None, Some _ -> Error ("dependency '" ^ name ^ "' has non-string github shorthand")
+        | None, None -> Ok None
       in
       let ref_ =
         match List.assoc_opt "ref" attrs with
@@ -126,37 +124,35 @@ let parse_dependency : string -> Toml.value -> (Package.dependency, string) resu
       | _, (Error _ as err), _, _ -> err
       | _, _, (Error _ as err), _ -> err
       | _, _, _, (Error _ as err) -> err
-      | Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
-        ~dependency_name:name
-        {
-          workspace = false;
-          builtin = Package.is_builtin_dependency_name name;
-          path;
-          source_locator;
-          ref_;
-          version
-        }
-      |> Result.map make_dependency
+      | Ok path, Ok source_locator, Ok ref_, Ok version ->
+          validate_dependency_source ~dependency_name:name
+            {
+              workspace = false;
+              builtin = Package.is_builtin_dependency_name name;
+              path;
+              source_locator;
+              ref_;
+              version;
+            } |> Result.map make_dependency
     )
   | Toml.String requirement -> (
       match validate_requirement ~dependency_name:name requirement with
       | Error _ as err -> err
-      | Ok version -> validate_dependency_source
-        ~dependency_name:name
-        {
-          workspace = false;
-          builtin = Package.is_builtin_dependency_name name;
-          path = None;
-          source_locator = None;
-          ref_ = None;
-          version = Some version
-        }
-      |> Result.map make_dependency
+      | Ok version ->
+          validate_dependency_source ~dependency_name:name
+            {
+              workspace = false;
+              builtin = Package.is_builtin_dependency_name name;
+              path = None;
+              source_locator = None;
+              ref_ = None;
+              version = Some version;
+            } |> Result.map make_dependency
     )
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
 
-let parse_dependencies : (string * Toml.value) list -> (Package.dependency list, string) result = fun items ->
+let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, string) result = fun items ->
   let rec loop acc entries =
     match entries with
     | [] -> Ok (List.rev acc)
@@ -168,7 +164,7 @@ let parse_dependencies : (string * Toml.value) list -> (Package.dependency list,
   in
   loop [] items
 
-let parse_dependency_section section_name (toml: Toml.value) : (Package.dependency list, string) result =
+let parse_dependency_section section_name (toml: Toml.value): (Package.dependency list, string) result =
   match toml with
   | Toml.Table items -> (
       match List.assoc_opt section_name items with
@@ -178,7 +174,7 @@ let parse_dependency_section section_name (toml: Toml.value) : (Package.dependen
     )
   | _ -> Ok []
 
-let parse_members : Toml.value -> Path.t list = fun toml ->
+let parse_members: Toml.value -> Path.t list = fun toml ->
   match toml with
   | Toml.Table items -> (
       match List.assoc_opt "workspace" items with
@@ -195,17 +191,17 @@ let parse_members : Toml.value -> Path.t list = fun toml ->
     )
   | _ -> []
 
-let parse_workspace_dependencies : Toml.value -> Package.dependency list = fun toml ->
+let parse_workspace_dependencies: Toml.value -> Package.dependency list = fun toml ->
   Log.debug ("[WORKSPACE] parse_workspacE_dependencies has items: " ^ Toml.to_string toml);
   parse_dependency_section "dependencies" toml |> Result.expect ~msg:"workspace dependencies should be parsed through of_toml"
 
-let parse_workspace_dev_dependencies : Toml.value -> Package.dependency list = fun toml ->
+let parse_workspace_dev_dependencies: Toml.value -> Package.dependency list = fun toml ->
   parse_dependency_section "dev-dependencies" toml |> Result.expect ~msg:"workspace dev dependencies should be parsed through of_toml"
 
-let parse_workspace_build_dependencies : Toml.value -> Package.dependency list = fun toml ->
+let parse_workspace_build_dependencies: Toml.value -> Package.dependency list = fun toml ->
   parse_dependency_section "build-dependencies" toml |> Result.expect ~msg:"workspace build dependencies should be parsed through of_toml"
 
-let parse_profile_overrides : Toml.value -> (string * Profile.profile_override) list = fun toml ->
+let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) list = fun toml ->
   Log.debug "[WORKSPACE] parse_profile_overrides called";
   match toml with
   | Toml.Table items -> (
@@ -247,7 +243,7 @@ let parse_profile_overrides : Toml.value -> (string * Profile.profile_override) 
       Log.debug "[WORKSPACE] TOML root is not a table";
       []
 
-let parse_target_dir : Toml.value -> string option = fun toml ->
+let parse_target_dir: Toml.value -> string option = fun toml ->
   match toml with
   | Toml.Table items -> (
       match List.assoc_opt "riot" items with
@@ -260,7 +256,7 @@ let parse_target_dir : Toml.value -> string option = fun toml ->
     )
   | _ -> None
 
-let of_toml : Toml.value -> (manifest, string) result = fun toml ->
+let of_toml: Toml.value -> (manifest, string) result = fun toml ->
   let members = parse_members toml in
   match parse_dependency_section "dependencies" toml with
   | Error _ as err -> err
@@ -296,7 +292,8 @@ let resolve_target_dir_root = fun ~root ?target_dir () ->
   else
     Path.(root / target_dir_path)
 
-let make ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () : t = {
+let make ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir ():
+  t = {
   root;
   target_dir_root = resolve_target_dir_root ~root ?target_dir ();
   packages;
@@ -347,19 +344,19 @@ let server_port = fun workspace ->
   50_152 + (abs hash_int mod port_range)
 
 (** Command discovery functions - moved here to avoid circular dependency *)
-let discover_commands : t -> Package_command.t list = fun workspace ->
+let discover_commands: t -> Package_command.t list = fun workspace ->
   List.concat_map (fun (pkg: Package.t) -> pkg.commands) workspace.packages
 
-let find_command : t -> string -> Package_command.t option = fun workspace name ->
+let find_command: t -> string -> Package_command.t option = fun workspace name ->
   discover_commands workspace |> List.find_opt (fun (cmd: Package_command.t) -> cmd.name = name)
 
-let discover_fix_providers : t -> Fix_provider.t list = fun workspace ->
+let discover_fix_providers: t -> Fix_provider.t list = fun workspace ->
   List.concat_map (fun (pkg: Package.t) -> pkg.fix_providers) workspace.packages
 
 module Tests = struct
-  let test_parse_workspace_toml () : (unit, string) result = Ok () [@test]
+  let test_parse_workspace_toml (): (unit, string) result = Ok () [@test]
 
-  let test_parse_target_dir () : (unit, string) result =
+  let test_parse_target_dir (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -377,14 +374,14 @@ target_dir = "build-out"
     else
       Error "expected [riot].target_dir to be parsed" [@test]
 
-  let test_make_uses_custom_target_dir () : (unit, string) result =
+  let test_make_uses_custom_target_dir (): (unit, string) result =
     let workspace = make ~root:(Path.v "/tmp/example") ~packages:[] ~target_dir:"build-out" () in
     if Path.to_string workspace.target_dir_root = "/tmp/example/build-out" then
       Ok ()
     else
       Error "expected custom target_dir_root" [@test]
 
-  let test_workspace_dependencies_parse_registry_requirements () : (unit, string) result =
+  let test_workspace_dependencies_parse_registry_requirements (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|
@@ -400,19 +397,15 @@ std = ">= 1.2.3"
     | Error err -> Error err
     | Ok manifest -> (
         match manifest.dependencies with
-        | [
-          {
-            Package.source={
-              workspace = false;
-              builtin = false;
-              path = None;
-              source_locator = None;
-              ref_ = None;
-              version = Some requirement;
-            };
-            _
-          }
-        ] ->
+        | [ { Package.source={
+              workspace=false;
+              builtin=false;
+              path=None;
+              source_locator=None;
+              ref_=None;
+              version=Some requirement;
+
+            }; _ } ] ->
             if String.equal (Version.requirement_to_string requirement) ">= 1.2.3" then
               Ok ()
             else
@@ -420,7 +413,7 @@ std = ">= 1.2.3"
         | _ -> Error "expected workspace dependency to parse as a registry requirement"
       ) [@test]
 
-  let test_discover_fix_providers () : (unit, string) result =
+  let test_discover_fix_providers (): (unit, string) result =
     let package_toml =
       Std.Data.Toml.parse
         {|
@@ -456,7 +449,7 @@ rules = ["no-stdlib"]
           Error "expected provider metadata to round-trip"
     | _ -> Error "expected one fix provider" [@test]
 
-  let test_parse_workspace_dependency_classes () : (unit, string) result =
+  let test_parse_workspace_dependency_classes (): (unit, string) result =
     let toml =
       Std.Data.Toml.parse
         {|

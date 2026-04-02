@@ -46,10 +46,8 @@ let parse_mli = fun source -> Syn.parse ~filename:sample_mli source |> with_opti
 let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
 
 let assert_cst_json_snapshot = fun ~ctx parsed ->
-  let cst =
-    expect_some parsed.cst ~msg:"expected CST for diagnostics-free parse"
-    |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-  in
+  let cst = expect_some parsed.cst ~msg:"expected CST for diagnostics-free parse"
+  |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
   Test.Snapshot.assert_json ~ctx ~actual:(Syn.CstJson.of_source_file cst)
 
 let assert_ml_cst_snapshot = fun ~ctx source -> assert_cst_json_snapshot ~ctx (parse_ml source)
@@ -290,7 +288,7 @@ let tests = [
             token_kinds
         );
       Test.assert_equal
-        ~expected:(String.length source - 1)
+        ~expected:((String.length source - 1))
         ~actual:(Ceibo.Green.width (Ceibo.Green.Node result.tree));
       Ok ());
   Test.case "red tree traversal stays trivia-free while first token keeps leading trivia"
@@ -609,10 +607,12 @@ let tests = [
               Test.assert_equal ~expected:"A" ~actual:(Syn.Cst.VariantConstructor.name head_constr);
               (
                 match Syn.Cst.TypeDeclaration.type_definition alias_decl with
-                | Syn.Cst.TypeDefinition.Alias { manifest=Syn.Cst.CoreType.Constr { constructor_path; _ }; _ } ->
-                    Test.assert_equal
-                      ~expected:[ "Outer"; "Inner"; "t" ]
-                      ~actual:(Syn.Cst.Ident.segments constructor_path |> List.map Syn.Cst.Token.text)
+                | Syn.Cst.TypeDefinition.Alias {
+                  manifest=Syn.Cst.CoreType.Constr { constructor_path; _ };
+                  _
+                } -> Test.assert_equal
+                  ~expected:[ "Outer"; "Inner"; "t" ]
+                  ~actual:((Syn.Cst.Ident.segments constructor_path |> List.map Syn.Cst.Token.text))
                 | _ -> raise
                   (Failure "expected grouped alias declaration to keep the qualified type path")
               );
@@ -1345,11 +1345,9 @@ let tests = [
           Test.assert_equal ~expected:(Some "N") ~actual:(Syn.Cst.Ident.name module_path);
           Ok ()
       | _ -> Error "expected module declaration with parenthesized module-type-of body");
-  Test.case "cst recursive module items preserve grouped bindings"
-    (fun ctx ->
-      assert_ml_cst_snapshot
-        ~ctx
-        "module rec A : sig val x : int end = struct let x = B.y end\nand B : sig val y : int end = struct let y = 1 end\n");
+  Test.case
+    "cst recursive module items preserve grouped bindings"
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "module rec A : sig val x : int end = struct let x = B.y end\nand B : sig val y : int end = struct let y = 1 end\n");
   Test.case "cst interface module declarations preserve signature-only bindings"
     (fun _ctx ->
       let result = parse_mli "module M : sig val x : int end\n" in
@@ -1366,11 +1364,9 @@ let tests = [
           Test.assert_false (Syn.Cst.ModuleSignature.is_recursive decl);
           Ok ()
       | _ -> Error "expected first item to be an interface module declaration");
-  Test.case "cst interface recursive modules preserve grouped signatures"
-    (fun ctx ->
-      assert_mli_cst_snapshot
-        ~ctx
-        "module rec A : sig val x : int end\nand B : sig val y : int end\n");
+  Test.case
+    "cst interface recursive modules preserve grouped signatures"
+    (fun ctx -> assert_mli_cst_snapshot ~ctx "module rec A : sig val x : int end\nand B : sig val y : int end\n");
   Test.case "cst module type declarations expose declared names"
     (fun _ctx ->
       let result = parse_ml "module type Foo_bar = sig end\n" in
@@ -2674,9 +2670,11 @@ val decode : Outer.Inner (* c *).(request -> response)
           Test.assert_equal ~expected:"List" ~actual:(Syn.Cst.Token.text leaf);
           Ok ()
       | _ -> Error "expected first item to be an include statement");
-  Test.case "cst source files distinguish standalone attribute items"
+  Test.case
+    "cst source files distinguish standalone attribute items"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "[@@@attr]\n");
-  Test.case "cst source files distinguish standalone extension items"
+  Test.case
+    "cst source files distinguish standalone extension items"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "[%%toplevel_eval 42]\n");
   Test.case "cst interfaces distinguish standalone attribute items"
     (fun _ctx ->
@@ -2700,7 +2698,8 @@ val decode : Outer.Inner (* c *).(request -> response)
             ~actual:(Syn.Cst.Ident.name extension.name);
           Ok ()
       | _ -> Error "expected first item to be an interface extension item");
-  Test.case "cst interface extension payloads default to opaque tokens"
+  Test.case
+    "cst interface extension payloads default to opaque tokens"
     (fun ctx -> assert_mli_cst_snapshot ~ctx "[%%signature_item val x : int]\n");
   Test.case "cst attributed types keep attribute names and payload nodes"
     (fun _ctx ->
@@ -2745,7 +2744,8 @@ val decode : Outer.Inner (* c *).(request -> response)
           | _ -> Error "expected parenthesized identifier pattern"
         )
       | _ -> Error "expected let binding with parenthesized pattern");
-  Test.case "cst expression attributes keep opaque payload tokens"
+  Test.case
+    "cst expression attributes keep opaque payload tokens"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "let _ = value [@foo 1 + 2]\n");
   Test.case "cst expression attributes survive inline comments after bracket"
     (fun _ctx ->
@@ -2764,9 +2764,11 @@ val decode : Outer.Inner (* c *).(request -> response)
             | _ -> Error "expected commented expression attribute payload"
           )
       | _ -> Error "expected let binding with commented expression attribute");
-  Test.case "cst extensions keep typed `:` payloads opaque by default"
+  Test.case
+    "cst extensions keep typed `:` payloads opaque by default"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "let _ = [%foo: int -> string]\n");
-  Test.case "cst extensions survive inline comments after bracket"
+  Test.case
+    "cst extensions survive inline comments after bracket"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "let _ = [ (* c *) %foo: int -> string]\n");
   Test.case "cst exception declarations preserve declared names"
     (fun _ctx ->
@@ -3000,11 +3002,14 @@ val decode : Outer.Inner (* c *).(request -> response)
           | _ -> Error "expected open statement, standalone docstring, standalone comment, and value declaration"
         )
       | Error _ -> Error "expected CST build to succeed from parser token stream");
-  Test.case "cst open statements expose raw owned trivia for inline comments"
+  Test.case
+    "cst open statements expose raw owned trivia for inline comments"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "open (* keep me *) Std\n");
-  Test.case "cst module declarations expose raw owned trivia for inline comments"
+  Test.case
+    "cst module declarations expose raw owned trivia for inline comments"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "module (* keep me *) M = N\n");
-  Test.case "cst module type declarations expose raw owned trivia for inline comments"
+  Test.case
+    "cst module type declarations expose raw owned trivia for inline comments"
     (fun ctx -> assert_mli_cst_snapshot ~ctx "module type (* keep me *) S = sig end\n");
   Test.case "cst keeps terminal trailing value declaration docstrings standalone"
     (fun _ctx ->
@@ -3081,8 +3086,7 @@ val decode : Outer.Inner (* c *).(request -> response)
              (** Pre-request type used by ApplicationProtocol *)\n\
              type prerequest = {\n\
              \  method_ : string;\n\
-             }\n"
-      );
+             }\n");
   Test.case "cst keeps docstrings between top-level type declarations on the next type"
     (fun _ctx ->
       let result = parse_mli
@@ -3582,10 +3586,9 @@ val decode : Outer.Inner (* c *).(request -> response)
           Test.assert_equal ~expected:(Some "x") ~actual:(Syn.Cst.Ident.name path);
           Ok ()
       | _ -> Error "expected polymorphic let-binding value");
-  Test.case "cst let binding annotations preserve locally abstract core types with inline comments"
-    (fun ctx ->
-      assert_ml_cst_snapshot ~ctx
-        "let id : type (* c *) a. a -> a = fun x -> x\n");
+  Test.case
+    "cst let binding annotations preserve locally abstract core types with inline comments"
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "let id : type (* c *) a. a -> a = fun x -> x\n");
   Test.case "cst let bindings expose infix string concatenation values"
     (fun _ctx ->
       let source = "let banner = \"a\" ^ \"b\" ^ \"c\"\n" in
@@ -5626,13 +5629,7 @@ let x =
       let kinds = Syn.tokenize "let explanation = {explain|hello|explain}\n"
       |> List.map (fun token -> Syn.Token.show_kind token.Syn.Token.kind) in
       Test.assert_equal
-        ~expected:[
-          "keyword";
-          "identifier";
-          "=";
-          "string";
-          "end of file";
-        ]
+        ~expected:[ "keyword"; "identifier"; "="; "string"; "end of file"; ]
         ~actual:kinds;
       Ok ());
   Test.case "cst tagged quoted string literals preserve marker and contents"
@@ -5967,9 +5964,9 @@ let x =
           Test.assert_equal ~expected:(Some "next") ~actual:(Syn.Cst.Ident.name value_path);
           Ok ()
       | _ -> Error "expected object method instance-variable assignment");
-  Test.case "cst object expressions preserve extension members"
-    (fun ctx ->
-      assert_ml_cst_snapshot ~ctx "let value =\n  object\n    [%%foo]\n    method run = 1\n  end\n");
+  Test.case
+    "cst object expressions preserve extension members"
+    (fun ctx -> assert_ml_cst_snapshot ~ctx "let value =\n  object\n    [%%foo]\n    method run = 1\n  end\n");
   Test.case "cst builder keeps object trailing trivia as explicit body entries"
     (fun _ctx ->
       let source = "let value =\n  object\n    method run = 1\n    (** body doc *)\n    (* body comment *)\n  end\n" in

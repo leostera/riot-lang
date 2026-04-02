@@ -15,8 +15,7 @@ let registry_dir = fun () ->
   | Some path -> Path.v path
   | None -> Path.(dot_riot / Path.v "registry")
 
-let git_registry_host_dir = fun ~host ->
-  Path.(registry_dir () / Path.v host)
+let git_registry_host_dir = fun ~host -> Path.(registry_dir () / Path.v host)
 
 let git_registry_repo_dir = fun ~host ~owner ~repo ->
   Path.(git_registry_host_dir ~host / Path.v owner / Path.v repo)
@@ -115,7 +114,7 @@ let sandbox_dir = fun ~workspace_root ->
   sandbox_dir_with_target ~workspace_root ~profile:"debug" ~target:(host_target ())
 
 module Tests = struct
-  let test_package_lock_path () : (unit, string) result =
+  let test_package_lock_path (): (unit, string) result =
     let actual = package_lock_path ~workspace_root:(Path.v "/tmp/workspace") |> Path.to_string in
     if String.equal actual "/tmp/workspace/riot.lock" then
       Ok ()

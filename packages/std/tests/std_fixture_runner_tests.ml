@@ -1,8 +1,7 @@
 open Std
 
 let tests =
-  Test.FixtureRunner.cases ()
-    ~dir:(Path.v "packages/std/tests/fixtures/snapshot_fixture_runner")
+  Test.FixtureRunner.cases () ~dir:(Path.v "packages/std/tests/fixtures/snapshot_fixture_runner")
     ~filter:(fun path ->
       if String.ends_with ~suffix:".txt" (Path.basename path) then
         `keep

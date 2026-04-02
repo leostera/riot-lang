@@ -82,10 +82,11 @@ let get_workspace_scan = fun () ->
   match Env.current_dir () with
   | Error err -> ScanFailed ("failed to read current directory: " ^ path_error_message err)
   | Ok cwd -> (
-      match Riot_model.Workspace_manager.find_workspace_root cwd with
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      match Riot_model.Workspace_manager.find_workspace_root workspace_manager cwd with
       | None -> NoWorkspace
       | Some _ -> (
-          match Riot_model.Workspace_manager.scan cwd with
+          match Riot_model.Workspace_manager.scan workspace_manager cwd with
           | Error err -> ScanFailed err
           | Ok (workspace, load_errors) -> Loaded (workspace, load_errors)
         )

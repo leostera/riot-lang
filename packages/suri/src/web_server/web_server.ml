@@ -20,7 +20,7 @@ module ProtocolDetector = Protocol_detector
 *)
 let start_link = fun ?(host = "0.0.0.0") ~port ?(acceptors = Std.System.available_parallelism) ~config ~handler () ->
   let handler_state = Http1.make_handler ~config ~handler () in
-  let socket_handler : (Http1.state, Http1.error) Socket_pool.Handler.handler = {
+  let socket_handler: (Http1.state, Http1.error) Socket_pool.Handler.handler = {
     handle_connection = Http1.handle_connection;
     handle_data = Http1.handle_data;
     handle_close = Http1.handle_close;

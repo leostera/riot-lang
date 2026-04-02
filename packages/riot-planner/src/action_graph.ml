@@ -107,7 +107,8 @@ let profile_compile_flags = fun (profile: Profile.t) ->
 
 let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get_dep_kind ~depset ~needs_unix ~needs_dynlink (
   module_node: Module_node.t
-) (deps: G.Node_id.t list) : Action.t list * Path.t list * Path.t list =
+) (deps: G.Node_id.t list):
+  Action.t list * Path.t list * Path.t list =
   let base_compile_flags = stdlib_flags package @ profile_compile_flags profile in
   match module_node with
   | { kind=MLI mod_; file=Concrete path; open_modules; _ } ->
@@ -337,7 +338,8 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
 
 let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (
   module_graph: Module_node.t G.t
-) : t * Path.t list =
+):
+  t * Path.t list =
   let transitive_deps = Dependency.transitive_closure depset in
   (* Extract dependency cache include paths - no file copying needed! *)
   let dep_cache_includes =
@@ -479,8 +481,8 @@ let from_json = fun json ->
         Error "Missing 'nodes' field"
     | Some (Array node_jsons) -> (
         let graph = create () in
-        let id_to_node : (int, Action_node.t) HashMap.t = HashMap.create () in
-        let dependencies_to_wire : (Action_node.t * int list) vec = vec [] in
+        let id_to_node: (int, Action_node.t) HashMap.t = HashMap.create () in
+        let dependencies_to_wire: (Action_node.t * int list) vec = vec [] in
         let parse_actions actions_json =
           match actions_json with
           | Array action_jsons ->
@@ -595,7 +597,7 @@ let from_json = fun json ->
                               let toolchain = Riot_toolchain.init
                                 ~config:Riot_model.Toolchain_config.default
                               |> Result.expect ~msg:"Failed to initialize toolchain" in
-                              let action_spec : Action_node.action_spec = {
+                              let action_spec: Action_node.action_spec = {
                                 actions;
                                 outs = outputs;
                                 srcs = sources;

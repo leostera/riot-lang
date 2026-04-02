@@ -460,7 +460,7 @@ let emoji = [|
 |]
 
 (** Binary search in a sorted table of ranges *)
-let in_table : table -> int -> bool = fun tbl c ->
+let in_table: table -> int -> bool = fun tbl c ->
   let rec search low high =
     if low > high then
       false

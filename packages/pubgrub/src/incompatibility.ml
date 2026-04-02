@@ -2,8 +2,11 @@ open Std
 
 module Log = struct
   let debug _ = ()
+
   let info _ = ()
+
   let error _ = ()
+
   let trace _ = ()
 end
 
@@ -119,8 +122,7 @@ let normalize_terms = fun terms ->
           else
             merged :: acc_without_pkg)
     []
-    terms
-  |> List.rev
+    terms |> List.rev
 
 let prior_cause = fun ?extra_term incompat satisfier_cause package ->
   let incompat_terms = terms incompat in

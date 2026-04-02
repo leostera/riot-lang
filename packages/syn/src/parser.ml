@@ -14,7 +14,7 @@ open Std.Collections
 type parse_result = {
   source: string;
   tokens: Token.t list;
-  kind:
+  kind: 
     [
       | `Implementation
       | `Interface

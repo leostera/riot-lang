@@ -180,33 +180,33 @@ let child_gap = fun gap t -> { t with child_gap = gap }
 let z_index = fun z t -> { t with z_index = z }
 
 module Padding = struct
-  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) () : padding = {
+  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) (): padding = {
     left;
     right;
     top;
     bottom
   }
 
-  let all n : padding = { left = n; right = n; top = n; bottom = n }
+  let all n: padding = { left = n; right = n; top = n; bottom = n }
 
   let symmetric ~h ~v : padding = { left = h; right = h; top = v; bottom = v }
 
-  let empty : padding = { left = 0; right = 0; top = 0; bottom = 0 }
+  let empty: padding = { left = 0; right = 0; top = 0; bottom = 0 }
 end
 
 module Margin = struct
-  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) () : margin = {
+  let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) (): margin = {
     left;
     right;
     top;
     bottom
   }
 
-  let all n : margin = { left = n; right = n; top = n; bottom = n }
+  let all n: margin = { left = n; right = n; top = n; bottom = n }
 
   let symmetric ~h ~v : margin = { left = h; right = h; top = v; bottom = v }
 
-  let empty : margin = { left = 0; right = 0; top = 0; bottom = 0 }
+  let empty: margin = { left = 0; right = 0; top = 0; bottom = 0 }
 end
 
 module CornerRadius = struct

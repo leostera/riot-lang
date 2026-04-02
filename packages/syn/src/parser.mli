@@ -87,7 +87,7 @@ type parse_result = {
   tokens: Token.t list;
   (** The original lexer token stream, including token-attached trivia and
       `EOF.leading_trivia` for trailing file trivia. *)
-  kind:
+  kind: 
     [
       | `Implementation
       | `Interface

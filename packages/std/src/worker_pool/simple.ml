@@ -26,11 +26,11 @@ type Message.t +=
       result_ref: 'result Ref.t;
     } -> Message.t
 
-let rec loop : type task res. (task, res) state -> (unit, Process.exit_reason) result = fun state ->
-  let selector : ([
-    `WorkerReady of task worker
-    | `TaskResult of int * res
-  ]) selector = fun msg ->
+let rec loop: type task res. (task, res) state -> (unit, Process.exit_reason) result = fun state ->
+  let selector: ([
+      `WorkerReady of task worker
+      | `TaskResult of int * res
+    ]) selector = fun msg ->
     match msg with
     | Dynamic.WorkerReady worker -> (
         match Ref.type_equal state.pool.task_ref worker.task_ref with
@@ -97,20 +97,21 @@ let init = fun ~owner ~concurrency ~tasks ~result_ref ~fn () ->
 
 (** Run tasks in parallel with limited concurrency, collecting results in order
 *)
-let run : type task result. ?concurrency:int ->
-tasks:task list ->
-fn:(task -> result) ->
-unit ->
-(int * result) list = fun ?(concurrency = System.available_parallelism) ~tasks ~fn () ->
+let run:
+  type task result. ?concurrency:int ->
+  tasks:task list ->
+  fn:(task -> result) ->
+  unit ->
+  (int * result) list = fun ?(concurrency = System.available_parallelism) ~tasks ~fn () ->
   (* Edge case: empty task list *)
   if tasks = [] then
     []
   else
-    let result_ref : result Ref.t = Ref.make () in
+    let result_ref: result Ref.t = Ref.make () in
     let owner = self () in
     (* Spawn dispatcher process *)
     let _dispatcher_pid = spawn (init ~owner ~result_ref ~concurrency ~tasks ~fn) in
-    let selector : (int * result) list selector = function
+    let selector: (int * result) list selector = function
       | Completed { results; result_ref=ref } when Ref.equal result_ref ref -> (
           match Ref.type_equal result_ref ref with
           | Some Type.Equal -> `select results

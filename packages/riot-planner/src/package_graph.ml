@@ -142,7 +142,7 @@ let projected_package = fun scope pkg ->
 
 let needs_build_scope_node = fun (pkg: Package.t) -> List.length pkg.build_dependencies > 0
 
-let create ~scope (workspace: Workspace.t) : (t, create_error) result =
+let create ~scope (workspace: Workspace.t): (t, create_error) result =
   let graph = G.make () in
   let name_to_node = HashMap.create () in
   let missing = vec [] in

@@ -55,7 +55,7 @@ type state = {
   mutable lines_rendered: int;
   mutable is_altscreen_active: bool;
   mutable needs_altscreen_setup: bool;  (* Flag to defer alt screen setup *)
-  mutable cursor_visibility:
+  mutable cursor_visibility: 
     [
       `hidden
       | `visible

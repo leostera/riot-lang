@@ -380,8 +380,10 @@ let search_results_of_json = fun json ->
                 loop (result :: acc) rest
           in
           loop [] values
-      | Ok _ -> Error "search response.results must be an array"
-      | Error _ as err -> err
+      | Ok _ ->
+          Error "search response.results must be an array"
+      | Error _ as err ->
+          err
     )
   | _ -> Error "search response must be an object"
 
@@ -507,11 +509,10 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
             | Error _ as err -> err
             | Ok source -> (
                 match Data.Json.of_string source with
-                | Error err ->
-                    Error ("failed to decode search response from '"
-                    ^ Net.Uri.to_string uri
-                    ^ "': "
-                    ^ (Data.Json.error_to_string err))
+                | Error err -> Error ("failed to decode search response from '"
+                ^ Net.Uri.to_string uri
+                ^ "': "
+                ^ (Data.Json.error_to_string err))
                 | Ok json -> (
                     match search_results_of_json json with
                     | Ok results -> Ok results
@@ -525,26 +526,23 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
       )
     | In_memory { packages; config=_; releases=_ } ->
         let normalized_query = Sparse_index.normalized_name query in
-        packages
-        |> List.map snd
-        |> List.filter (fun (document: Sparse_index.package_document) ->
-          let normalized_name = Sparse_index.normalized_name document.name in
-          String.equal normalized_name normalized_query
-          || String.starts_with ~prefix:normalized_query normalized_name
-          || String.contains normalized_name normalized_query)
-        |> List.sort
+        packages |> List.map snd |> List.filter
+          (fun (document: Sparse_index.package_document) ->
+            let normalized_name = Sparse_index.normalized_name document.name in
+            String.equal normalized_name normalized_query
+            || String.starts_with ~prefix:normalized_query normalized_name
+            || String.contains normalized_name normalized_query) |> List.sort
           (fun (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
-            String.compare left.name right.name)
-        |> take limit
-        |> List.map (fun (document: Sparse_index.package_document) -> {
-          package_name = document.name;
-          latest_version = document.latest;
-          description =
-            match document.releases with
-            | release :: _ -> release.description
-            | [] -> None;
-        })
-        |> fun results -> Ok results
+            String.compare left.name right.name) |> take limit |> List.map
+          (fun (document: Sparse_index.package_document) ->
+            {
+              package_name = document.name;
+              latest_version = document.latest;
+              description =
+                match document.releases with
+                | release :: _ -> release.description
+                | [] -> None;
+            }) |> fun results -> Ok results
 
 let refresh_package_document = fun registry ~package_name ->
   match registry.source with

@@ -3,6 +3,7 @@ name = "sqlite"
 version = "0.0.1"
 description = "SQLite adapter for sqlx"
 license = "Apache-2.0"
+public = true
 
 [lib]
 path = "src/sqlite.ml"

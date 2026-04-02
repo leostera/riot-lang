@@ -127,8 +127,7 @@ let should_ignore_file = fun scope file ->
         | None -> false
 
 let write_text_file = fun ~writer ~root file_result ->
-  Krasny.Report.write_text_file_result ~writer ~root file_result
-  |> Result.expect ~msg:"failed to write fmt result"
+  Krasny.Report.write_text_file_result ~writer ~root file_result |> Result.expect ~msg:"failed to write fmt result"
 
 let write_json_event = fun ~writer ~root event ->
   Krasny.Report.write_json_event ~writer ~root event |> Result.expect ~msg:"failed to write fmt JSON event"
@@ -154,14 +153,10 @@ let format_failed_file = fun (file_result: Krasny.Runner.file_result) ->
       if List.is_empty parsed.diagnostics then
         Path.to_string file_result.file ^ ": " ^ error_text ^ "\n"
       else
-        Syn.DiagnosticReporter.format
-          ~file:(Path.to_string file_result.file)
-          ~source
-          parsed.diagnostics
+        Syn.DiagnosticReporter.format ~file:(Path.to_string file_result.file) ~source parsed.diagnostics
 
 let write_failed_file = fun ~writer file_result ->
-  IO.write_all writer ~buf:(format_failed_file file_result)
-  |> Result.expect ~msg:"failed to write fmt diagnostics"
+  IO.write_all writer ~buf:(format_failed_file file_result) |> Result.expect ~msg:"failed to write fmt diagnostics"
 
 let write_silent_failures = fun ~writer (result: Krasny.Runner.run_result) ->
   result.files

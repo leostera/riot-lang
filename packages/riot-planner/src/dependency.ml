@@ -10,7 +10,7 @@ type t = {
   hash: Crypto.hash;
 }
 
-let library_cmxa : t -> Path.t = fun dep ->
+let library_cmxa: t -> Path.t = fun dep ->
   let cmxa = Module_name.(of_string dep.package.name |> cmxa) in
   Path.(dep.artifact_dir / cmxa)
 

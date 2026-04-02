@@ -79,7 +79,7 @@ type kind =
   | PackageComplete of build_result
   | PackageSkipped of { package: string; reason: skip_reason }
   | PackageStarted of { package: string }
-  | QueuePackage of { package: string; queue_type:
+  | QueuePackage of { package: string; queue_type: 
         [
           | `Ready
           | `Waiting
@@ -108,7 +108,7 @@ type kind =
   | LockfileWriteStarted of { path: string }
   | LockfileWriteFinished of { path: string; duration_ms: int }
   | LockfileWriteFailed of { path: string; error: Pm_error.t }
-  | DependencyResolutionStarted of { packages: string list; mode:
+  | DependencyResolutionStarted of { packages: string list; mode: 
         [
           | `Refresh
           | `Unlock

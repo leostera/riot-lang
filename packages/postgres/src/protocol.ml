@@ -1031,7 +1031,7 @@ module Reader = struct
             let format = Binary_reader.read_int16 reader
             |> Option.expect ~msg:(("Protocol error: expected format (field " ^ name ^ ")"))
             |> Format.of_int in
-            let field : Row.field = {
+            let field: Row.field = {
               Row.name;
               table_oid;
               column_attr;
@@ -1112,7 +1112,7 @@ module Reader = struct
                     read_fields err
               )
         in
-        let empty_error : Error.t = {
+        let empty_error: Error.t = {
           Error.severity = None;
           sqlstate = None;
           message = "Unknown error";

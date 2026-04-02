@@ -4114,9 +4114,7 @@ let make_lowerer =
       else
         render_expression then_branch
     in
-    let then_doc = doc_with_leading_trivia
-      (pending_doc_of_trivia then_branch_leading_trivia)
-      then_doc in
+    let then_doc = doc_with_leading_trivia (pending_doc_of_trivia then_branch_leading_trivia) then_doc in
     let then_branch_trailing_trivia =
       match else_token with
       | Some else_token -> Syn.Cst.leading_trivia_after
@@ -4945,12 +4943,11 @@ let make_lowerer =
     let header =
       match rendered_type_annotation with
       | None -> header
-      | Some (colon_token, type_doc) ->
-          (
-            match colon_token with
-            | Some colon_token -> render_tight_token_rhs header colon_token type_doc
-            | None -> render_tight_doc_rhs header Doc.colon type_doc
-          )
+      | Some (colon_token, type_doc) -> (
+          match colon_token with
+          | Some colon_token -> render_tight_token_rhs header colon_token type_doc
+          | None -> render_tight_doc_rhs header Doc.colon type_doc
+        )
     in
     let force_multiline_body = local_binding_forces_multiline_body ~local_context ~rec_token value in
     let keep_value_after_equals = local_binding_value_stays_after_equals
@@ -5599,9 +5596,10 @@ let make_lowerer =
         Doc.space;
         render_value_declaration_name decl;
       ] in
-    let base =
-      render_tight_colon_rhs head (Syn.Cst.ValueDeclaration.colon_token decl) (render_core_type decl.type_)
-    in
+    let base = render_tight_colon_rhs
+      head
+      (Syn.Cst.ValueDeclaration.colon_token decl)
+      (render_core_type decl.type_) in
     match Syn.Cst.ValueDeclaration.trailing_comment decl with
     | Some comment -> Doc.concat [ base; Doc.space; doc_of_token (Syn.Cst.Comment.token comment) ]
     | None -> base

@@ -265,7 +265,7 @@ let parse_requirement = fun req_string ->
     Ok Any
   else
     let len = String.length s in
-    let starts_with = fun prefix -> String.starts_with ~prefix s in
+    let starts_with prefix = String.starts_with ~prefix s in
     let op, version_start =
       if starts_with "~>" then
         (Some ReqTilde, 2)
@@ -289,29 +289,33 @@ let parse_requirement = fun req_string ->
     else
       let version_str = String.trim (String.sub s version_start (len - version_start)) in
       match op with
-    | Some op -> (
-        match parse version_str with
-        | Ok version -> Ok (Requirement (op, version))
-        | Error e -> Error e
-      )
-    | None -> (
-        match parse version_str with
-        | Ok version -> Ok (Requirement (ReqEq, version))
-        | Error _ -> (
-            match split_on_char '.' version_str with
-            | [ major_s ] -> (
-                match parse_int major_s with
-                | Some major when major >= 0 -> Ok (PrefixMajor major)
-                | _ -> Error (Invalid_format version_str)
-              )
-            | [ major_s; minor_s ] -> (
-                match parse_int major_s, parse_int minor_s with
-                | Some major, Some minor when major >= 0 && minor >= 0 -> Ok (PrefixMinor (major, minor))
-                | _ -> Error (Invalid_format version_str)
-              )
-            | _ -> Error (Invalid_format version_str)
-          )
-      )
+      | Some op -> (
+          match parse version_str with
+          | Ok version -> Ok (Requirement (op, version))
+          | Error e -> Error e
+        )
+      | None -> (
+          match parse version_str with
+          | Ok version -> Ok (Requirement (ReqEq, version))
+          | Error _ -> (
+              match split_on_char '.' version_str with
+              | [ major_s ] -> (
+                  match parse_int major_s with
+                  | Some major when major >= 0 -> Ok (PrefixMajor major)
+                  | _ -> Error (Invalid_format version_str)
+                )
+              | [major_s;minor_s] -> (
+                  match parse_int major_s, parse_int minor_s with
+                  | Some major, Some minor when major >= 0 && minor >= 0 -> Ok (PrefixMinor (
+                    major,
+                    minor
+                  ))
+                  | _ -> Error (Invalid_format version_str)
+                )
+              | _ ->
+                  Error (Invalid_format version_str)
+            )
+        )
 
 let any = Any
 
@@ -322,30 +326,21 @@ let requirement_to_string = function
   | PrefixMinor (major, minor) -> Int.to_string major ^ "." ^ Int.to_string minor
 
 let view_requirement = function
-  | Any ->
-      AnyRequirement
-  | PrefixMajor major ->
-      PrefixMajorRequirement major
-  | PrefixMinor (major, minor) ->
-      PrefixMinorRequirement (major, minor)
-  | Requirement (ReqEq, version) ->
-      ExactRequirement version
-  | Requirement (ReqNeq, version) ->
-      NotEqualRequirement version
-  | Requirement (ReqGt, version) ->
-      GreaterThanRequirement version
-  | Requirement (ReqGte, version) ->
-      GreaterThanOrEqualRequirement version
-  | Requirement (ReqLt, version) ->
-      LessThanRequirement version
-  | Requirement (ReqLte, version) ->
-      LessThanOrEqualRequirement version
-  | Requirement (ReqTilde, version) ->
-      TildeRequirement version
+  | Any -> AnyRequirement
+  | PrefixMajor major -> PrefixMajorRequirement major
+  | PrefixMinor (major, minor) -> PrefixMinorRequirement (major, minor)
+  | Requirement (ReqEq, version) -> ExactRequirement version
+  | Requirement (ReqNeq, version) -> NotEqualRequirement version
+  | Requirement (ReqGt, version) -> GreaterThanRequirement version
+  | Requirement (ReqGte, version) -> GreaterThanOrEqualRequirement version
+  | Requirement (ReqLt, version) -> LessThanRequirement version
+  | Requirement (ReqLte, version) -> LessThanOrEqualRequirement version
+  | Requirement (ReqTilde, version) -> TildeRequirement version
 
 let matches = fun requirement test_version ->
   match requirement with
-  | Any -> true
+  | Any ->
+      true
   | PrefixMajor major ->
       Int.equal test_version.major major
   | PrefixMinor (major, minor) ->
@@ -385,7 +380,7 @@ let make = fun ~major ~minor ~patch ?(pre = []) ?build () ->
   }
 
 module Tests = struct
-  let test_requirement_to_string () : (unit, string) result =
+  let test_requirement_to_string (): (unit, string) result =
     match parse_requirement ">= 1.2.3" with
     | Ok requirement ->
         if String.equal (requirement_to_string requirement) ">= 1.2.3" then
@@ -394,7 +389,7 @@ module Tests = struct
           Error "expected requirement_to_string to preserve operator and version"
     | Error _ -> Error "expected requirement to parse" [@test]
 
-  let test_any_requirement_roundtrip () : (unit, string) result =
+  let test_any_requirement_roundtrip (): (unit, string) result =
     match parse_requirement "*" with
     | Ok requirement ->
         if
@@ -406,7 +401,7 @@ module Tests = struct
           Error "expected '*' to roundtrip as unconstrained requirement"
     | Error _ -> Error "expected '*' requirement to parse" [@test]
 
-  let test_prefix_minor_requirement_matches_patch_range () : (unit, string) result =
+  let test_prefix_minor_requirement_matches_patch_range (): (unit, string) result =
     match parse_requirement "0.2" with
     | Ok requirement ->
         if
@@ -420,7 +415,7 @@ module Tests = struct
           Error "expected bare major.minor requirement to match only that patch range"
     | Error _ -> Error "expected bare major.minor requirement to parse" [@test]
 
-  let test_prefix_major_requirement_matches_minor_and_patch_range () : (unit, string) result =
+  let test_prefix_major_requirement_matches_minor_and_patch_range (): (unit, string) result =
     match parse_requirement "0" with
     | Ok requirement ->
         if

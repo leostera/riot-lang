@@ -87,7 +87,7 @@ let compute_websocket_accept = fun key ->
 
 (* Bridge Channel.Handler.t to Socket_pool.Handler.t for WebSocket connections *)
 
-let websocket_to_socket_pool_handler : Channel.Handler.t -> Socket_pool.Handler.t = fun ws_handler ->
+let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t = fun ws_handler ->
   let handler = {
     Socket_pool.Handler.to_string_error = (fun (`Unknown_opcode code) ->
       "Unknown WebSocket opcode: " ^ string_of_int code);

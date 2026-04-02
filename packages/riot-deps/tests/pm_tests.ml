@@ -2,7 +2,14 @@ open Std
 module Test = Std.Test
 
 let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
-  Riot_model.Package.{ workspace; builtin; path; source_locator; ref_; version }
+  Riot_model.Package.{
+    workspace;
+    builtin;
+    path;
+    source_locator;
+    ref_;
+    version;
+  }
 
 let make_sources = fun () ->
   Riot_model.Package.{
@@ -195,7 +202,8 @@ let prepare_local_git_repo = fun ~root ?subdir ~package_name ?(version = "0.0.1"
     | _ -> Ok ()
   in
   Fs.create_dir_all package_root |> Result.expect ~msg:"expected git dependency package root to be created";
-  write_file manifest_path
+  write_file
+    manifest_path
     ("[package]\n"
     ^ "name = \""
     ^ package_name
@@ -402,14 +410,15 @@ public = true
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
-      let plan : Riot_deps.Publisher.publish_plan = {
+      let plan: Riot_deps.Publisher.publish_plan = {
         package;
         version = Std.Version.make ~major:0 ~minor:1 ~patch:0 ();
         locator = "github.com/example/demo";
-        selector = "main";
+        selector = "main"
       } in
       match Riot_deps.Publisher.prepare_publish_artifact ~target_dir_root:root plan with
-      | Error err -> Error ("expected publish artifact preparation to succeed: " ^ Riot_deps.Publisher.message err)
+      | Error err -> Error ("expected publish artifact preparation to succeed: "
+      ^ Riot_deps.Publisher.message err)
       | Ok prepared -> (
           match Riot_deps.Publisher.publish_prepared ~registry ~api_token:"root-secret" prepared with
           | Error err -> Error ("expected publish to succeed: " ^ Riot_deps.Publisher.message err)
@@ -466,21 +475,21 @@ public = true
           (fun uri -> Error ("unexpected GET " ^ Net.Uri.to_string uri))
       in
       let registry = Pkgs_ml.Registry.filesystem ~fetch (make_registry_cache ()) in
-      let plan : Riot_deps.Publisher.publish_plan = {
+      let plan: Riot_deps.Publisher.publish_plan = {
         package;
         version = Std.Version.make ~major:0 ~minor:1 ~patch:0 ();
         locator = "github.com/example/demo";
-        selector = "main";
+        selector = "main"
       } in
       match Riot_deps.Publisher.prepare_publish_artifact ~target_dir_root:root plan with
-      | Error err -> Error ("expected publish artifact preparation to succeed: " ^ Riot_deps.Publisher.message err)
+      | Error err -> Error ("expected publish artifact preparation to succeed: "
+      ^ Riot_deps.Publisher.message err)
       | Ok prepared -> (
           match Riot_deps.Publisher.publish_prepared ~registry ~api_token:"root-secret" prepared with
           | Ok _ -> Error "expected publish to bubble registry error"
           | Error (Riot_deps.Publisher.RegistryPublishFailed { locator; error }) ->
               if
-                String.equal locator "github.com/example/demo"
-                && String.equal error "package `demo` was not found in registry `pkgs.ml`"
+                String.equal locator "github.com/example/demo" && String.equal error "package `demo` was not found in registry `pkgs.ml`"
               then
                 Ok ()
               else
@@ -674,13 +683,13 @@ public = true
           | Error err -> Error err
           | Ok selector -> (
               let package = make_package ~name:"demo" ~path:package_root () in
-	              let fetch, requests =
-	                make_fetch_recorder
-	                  ~post_handler:(fun _uri ~headers:_ ~body:_ ->
-	                    Ok {
-	                      Pkgs_ml.Registry.status_code = 200;
-	                      body =
-	                        {|{
+              let fetch, requests =
+                make_fetch_recorder
+                  ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+                    Ok {
+                      Pkgs_ml.Registry.status_code = 200;
+                      body =
+                        {|{
   "artifact_sha256": "deadbeef",
   "package": "github.com/example/riot/packages/demo",
   "source_url": "https://github.com/example/riot",
@@ -1029,25 +1038,20 @@ let test_lock_deps_reports_missing_registry_package_with_required_by = fun _ctx 
 
 let test_lock_deps_reports_missing_registry_version_with_available_versions = fun _ctx ->
   let app_root = Path.v "/workspace/packages/app" in
-  let requirement =
-    Std.Version.parse_requirement "0.3"
-    |> Result.expect ~msg:"expected 0.3 requirement to parse"
-  in
+  let requirement = Std.Version.parse_requirement "0.3" |> Result.expect ~msg:"expected 0.3 requirement to parse" in
   let app_pkg = make_package
     ~name:"app"
     ~path:app_root
     ~dependencies:[ { name = "minttea"; source = source ~version:requirement () } ]
     () in
-  let registry = make_registry [
-    make_registry_document
-      ~name:"minttea"
-      ~latest:"0.2.5"
-      ~releases:[
-        make_release ~version:"0.1.0" ();
-        make_release ~version:"0.2.5" ();
-      ]
-      ()
-  ] in
+  let registry = make_registry
+    [
+      make_registry_document
+        ~name:"minttea"
+        ~latest:"0.2.5"
+        ~releases:[ make_release ~version:"0.1.0" (); make_release ~version:"0.2.5" (); ]
+        ()
+    ] in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Ok _ -> Error "expected unavailable registry version to fail"
   | Error (Riot_deps.Error.RegistryVersionNotFound {
@@ -1056,6 +1060,7 @@ let test_lock_deps_reports_missing_registry_version_with_available_versions = fu
     requirement;
     available_versions;
     required_by=Some required_by;
+
   }) ->
       if
         String.equal package "minttea"
@@ -1068,82 +1073,77 @@ let test_lock_deps_reports_missing_registry_version_with_available_versions = fu
         Ok ()
       else
         Error "expected registry version error to include requirement, available versions, and required-by"
-  | Error err ->
-      Error ("expected missing registry version error, got: " ^ pm_error_message err)
+  | Error err -> Error ("expected missing registry version error, got: " ^ pm_error_message err)
 
 let test_lock_deps_supports_major_minor_prefix_requirements = fun _ctx ->
-  let requirement =
-    Std.Version.parse_requirement "0.2"
-    |> Result.expect ~msg:"expected 0.2 requirement to parse"
-  in
+  let requirement = Std.Version.parse_requirement "0.2" |> Result.expect ~msg:"expected 0.2 requirement to parse" in
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
     ~dependencies:[ { name = "minttea"; source = source ~version:requirement () } ]
     () in
-  let registry = make_registry [
-    make_registry_document
-      ~name:"minttea"
-      ~latest:"1.0.0"
-      ~releases:[
-        make_release ~version:"0.1.0" ();
-        make_release ~version:"0.2.0" ();
-        make_release ~version:"0.2.3" ();
-        make_release ~version:"0.3.0" ();
-        make_release ~version:"1.0.0" ();
-      ]
-      ()
-  ] in
+  let registry = make_registry
+    [
+      make_registry_document
+        ~name:"minttea"
+        ~latest:"1.0.0"
+        ~releases:[
+          make_release ~version:"0.1.0" ();
+          make_release ~version:"0.2.0" ();
+          make_release ~version:"0.2.3" ();
+          make_release ~version:"0.3.0" ();
+          make_release ~version:"1.0.0" ();
+        ]
+        ()
+    ] in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected 0.2 requirement to resolve: " ^ pm_error_message err)
   | Ok lockfile -> (
-      match List.find_opt
-        (fun (pkg: Riot_model.Lockfile.package) -> String.equal pkg.id.name "minttea")
-        lockfile.packages with
-      | Some pkg when pkg.id.version = Some "0.2.3" ->
-          Ok ()
-      | Some pkg ->
-          Error ("expected 0.2 requirement to pick highest 0.2.x release, got "
-          ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
-      | None ->
-          Error "expected minttea to be locked"
+      match
+        List.find_opt
+          (fun (pkg: Riot_model.Lockfile.package) ->
+            String.equal pkg.id.name "minttea")
+          lockfile.packages
+      with
+      | Some pkg when pkg.id.version = Some "0.2.3" -> Ok ()
+      | Some pkg -> Error ("expected 0.2 requirement to pick highest 0.2.x release, got "
+      ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
+      | None -> Error "expected minttea to be locked"
     )
 
 let test_lock_deps_supports_major_prefix_requirements = fun _ctx ->
-  let requirement =
-    Std.Version.parse_requirement "0"
-    |> Result.expect ~msg:"expected 0 requirement to parse"
-  in
+  let requirement = Std.Version.parse_requirement "0" |> Result.expect ~msg:"expected 0 requirement to parse" in
   let app_pkg = make_package
     ~name:"app"
     ~path:(Path.v "/workspace/packages/app")
     ~dependencies:[ { name = "minttea"; source = source ~version:requirement () } ]
     () in
-  let registry = make_registry [
-    make_registry_document
-      ~name:"minttea"
-      ~latest:"1.0.0"
-      ~releases:[
-        make_release ~version:"0.1.0" ();
-        make_release ~version:"0.2.0" ();
-        make_release ~version:"0.9.9" ();
-        make_release ~version:"1.0.0" ();
-      ]
-      ()
-  ] in
+  let registry = make_registry
+    [
+      make_registry_document
+        ~name:"minttea"
+        ~latest:"1.0.0"
+        ~releases:[
+          make_release ~version:"0.1.0" ();
+          make_release ~version:"0.2.0" ();
+          make_release ~version:"0.9.9" ();
+          make_release ~version:"1.0.0" ();
+        ]
+        ()
+    ] in
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected 0 requirement to resolve: " ^ pm_error_message err)
   | Ok lockfile -> (
-      match List.find_opt
-        (fun (pkg: Riot_model.Lockfile.package) -> String.equal pkg.id.name "minttea")
-        lockfile.packages with
-      | Some pkg when pkg.id.version = Some "0.9.9" ->
-          Ok ()
-      | Some pkg ->
-          Error ("expected 0 requirement to pick highest 0.x.y release, got "
-          ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
-      | None ->
-          Error "expected minttea to be locked"
+      match
+        List.find_opt
+          (fun (pkg: Riot_model.Lockfile.package) ->
+            String.equal pkg.id.name "minttea")
+          lockfile.packages
+      with
+      | Some pkg when pkg.id.version = Some "0.9.9" -> Ok ()
+      | Some pkg -> Error ("expected 0 requirement to pick highest 0.x.y release, got "
+      ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
+      | None -> Error "expected minttea to be locked"
     )
 
 let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names = fun _ctx ->
@@ -1554,7 +1554,11 @@ let test_lock_refresh_requires_lock_when_missing = fun _ctx ->
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
-      match Riot_deps.Lock_refresh.needs_refresh ~workspace_root ~manifest_paths:[ manifest_path ] ~lockfile:None with
+      match Riot_deps.Lock_refresh.needs_refresh
+        ~workspace_manager:None
+        ~workspace_root
+        ~manifest_paths:[ manifest_path ]
+        ~lockfile:None with
       | Ok true -> Ok ()
       | Ok false -> Error "expected missing lockfile to require refresh"
       | Error err -> Error err)
@@ -1565,11 +1569,13 @@ let test_lock_refresh_false_when_dependency_hash_matches = fun _ctx ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
       let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+        ~workspace_manager:None
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
       |> Result.expect ~msg:"expected dependency hash to compute" in
       let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
       match Riot_deps.Lock_refresh.needs_refresh
+        ~workspace_manager:None
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
         ~lockfile:(Some lockfile) with
@@ -1584,6 +1590,7 @@ let test_lock_refresh_true_when_dependency_hash_changes = fun _ctx ->
       Fs.write "[workspace]\nmembers = []\n[dependencies]\nstd = \"*\"\n" manifest_path
       |> Result.expect ~msg:"expected manifest write to succeed";
       let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+        ~workspace_manager:None
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
       |> Result.expect ~msg:"expected dependency hash to compute" in
@@ -1591,6 +1598,7 @@ let test_lock_refresh_true_when_dependency_hash_changes = fun _ctx ->
       Fs.write "[workspace]\nmembers = []\n[dependencies]\nstd = \"0.1.0\"\n" manifest_path
       |> Result.expect ~msg:"expected manifest rewrite to succeed";
       match Riot_deps.Lock_refresh.needs_refresh
+        ~workspace_manager:None
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
         ~lockfile:(Some lockfile) with
@@ -1721,7 +1729,8 @@ version = "0.0.1"
 name = "widgets"
 version = "0.0.1"
 |};
-      let* workspace, load_errors = Riot_model.Workspace_manager.scan workspace_root
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
       |> Result.map_error (fun err -> "expected workspace scan to succeed: " ^ err) in
       if not (List.is_empty load_errors) then
         Error "expected workspace scan to have no load errors"
@@ -1753,8 +1762,7 @@ version = "0.0.1"
             then
               Ok ()
             else
-              Error "expected path add to write discovered package name and refresh riot.lock"
-    )
+              Error "expected path add to write discovered package name and refresh riot.lock")
 
 let test_git_dependency_parse_spec_normalizes_github_source = fun _ctx ->
   match Riot_deps.Git_dependency.parse_spec "https://github.com/riot-tests/widgets-add#main" with
@@ -1763,8 +1771,8 @@ let test_git_dependency_parse_spec_normalizes_github_source = fun _ctx ->
         Ok ()
       else
         Error "expected github source spec to normalize into locator + ref"
-  | Error err ->
-      Error ("expected git dependency spec to parse: " ^ Riot_deps.Git_dependency.message err)
+  | Error err -> Error ("expected git dependency spec to parse: "
+  ^ Riot_deps.Git_dependency.message err)
 
 let test_git_dependency_sync_checkout_clones_local_repo = fun _ctx ->
   let ( let* ) = Result.and_then in
@@ -1783,8 +1791,7 @@ let test_git_dependency_sync_checkout_clones_local_repo = fun _ctx ->
       if String.contains manifest_source "name = \"widgets\"" then
         Ok ()
       else
-        Error "expected git dependency checkout to clone the local repository"
-    )
+        Error "expected git dependency checkout to clone the local repository")
 
 let test_add_rejects_unsupported_source_dependency_specs = fun _ctx ->
   let ( let* ) = Result.and_then in
@@ -1803,7 +1810,8 @@ members = ["packages/app"]
 name = "app"
 version = "0.0.1"
 |};
-      let* workspace, load_errors = Riot_model.Workspace_manager.scan workspace_root
+      let workspace_manager = Riot_model.Workspace_manager.create () in
+      let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
       |> Result.map_error (fun err -> "expected workspace scan to succeed: " ^ err) in
       if not (List.is_empty load_errors) then
         Error "expected workspace scan to have no load errors"
@@ -1823,8 +1831,7 @@ version = "0.0.1"
               Ok ()
             else
               Error "unexpected unsupported source dependency payload"
-        | Error err -> Error ("unexpected add error: " ^ Riot_deps.package_error_message err)
-    )
+        | Error err -> Error ("unexpected add error: " ^ Riot_deps.package_error_message err))
 
 let test_package_error_message_lists_search_suggestions = fun _ctx ->
   let message = Riot_deps.package_error_message
@@ -1832,9 +1839,13 @@ let test_package_error_message_lists_search_suggestions = fun _ctx ->
       package = "kernl";
       registry = "pkgs.ml";
       suggestions = [
-        { Riot_deps.package = "kernel"; latest_version = "0.0.1"; description = Some "Core primitives" };
+        {
+          Riot_deps.package = "kernel";
+          latest_version = "0.0.1";
+          description = Some "Core primitives"
+        };
         { Riot_deps.package = "kernel-tools"; latest_version = "0.1.0"; description = None };
-      ];
+      ]
     }) in
   if
     String.contains message "package 'kernl' was not found in registry 'pkgs.ml'"
@@ -1848,27 +1859,33 @@ let test_package_error_message_lists_search_suggestions = fun _ctx ->
 
 let test_search_returns_registry_results = fun _ctx ->
   let release = {
-    (make_release ~version:"0.0.1" ()) with
-    description = Some "Bootstrap build tool for the Riot toolchain";
+    (make_release ~version:"0.0.1" ())
+    with description = Some "Bootstrap build tool for the Riot toolchain"
   } in
-  let registry = make_registry [
-    make_registry_document ~name:"miniriot" ~latest:"0.0.1" ~releases:[ release ] ();
-    make_registry_document ~name:"jsonrpc" ~latest:"0.1.0" ~releases:[ make_release ~version:"0.1.0" () ] ();
-  ] in
+  let registry = make_registry
+    [
+      make_registry_document ~name:"miniriot" ~latest:"0.0.1" ~releases:[ release ] ();
+      make_registry_document
+        ~name:"jsonrpc"
+        ~latest:"0.1.0"
+        ~releases:[ make_release ~version:"0.1.0" () ]
+        ();
+    ] in
   match Riot_deps.search ~registry ~request:Riot_deps.{ query = "mini"; limit = 5 } () with
-  | Error err ->
-      Error ("expected search to succeed: " ^ Riot_deps.package_error_message err)
+  | Error err -> Error ("expected search to succeed: " ^ Riot_deps.package_error_message err)
   | Ok [ result ] ->
       if
         String.equal result.package "miniriot"
         && String.equal result.latest_version "0.0.1"
-        && Option.equal String.equal result.description (Some "Bootstrap build tool for the Riot toolchain")
+        && Option.equal
+          String.equal
+          result.description
+          (Some "Bootstrap build tool for the Riot toolchain")
       then
         Ok ()
       else
         Error "unexpected search result payload"
-  | Ok results ->
-      Error ("expected one search result, got " ^ Int.to_string (List.length results))
+  | Ok results -> Error ("expected one search result, got " ^ Int.to_string (List.length results))
 
 let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
   with_tempdir "riot_deps_ensure_lock_missing"
@@ -1922,6 +1939,7 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
         ~existing_lock:None [ app_pkg; std_pkg ]
       |> Result.expect ~msg:"expected workspace lock projection to succeed" in
       let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+        ~workspace_manager:None
         ~workspace_root
         ~manifest_paths:[
           manifest_path;
@@ -2050,10 +2068,14 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
         ~workspace:(make_workspace ~workspace_root [ app_pkg ])
         ()
       |> Result.expect ~msg:"expected initial lock solve to succeed" in
-      let existing_lock = { existing_lock with dependency_hash = Riot_deps.Lock_refresh.dependency_hash
-        ~workspace_root
-        ~manifest_paths:[ manifest_path; Path.(workspace_root / Path.v "packages/app/riot.toml") ]
-        |> Result.expect ~msg:"expected dependency hash to compute" } in
+      let existing_lock = {
+        existing_lock
+        with dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+          ~workspace_manager:None
+          ~workspace_root
+          ~manifest_paths:[ manifest_path; Path.(workspace_root / Path.v "packages/app/riot.toml") ]
+        |> Result.expect ~msg:"expected dependency hash to compute"
+      } in
       Riot_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
       match collect_event_names (fun emit -> ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
       | Error err -> Error ("expected ensure_lock to reuse lock and materialize missing packages: "

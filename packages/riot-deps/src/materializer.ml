@@ -5,7 +5,7 @@ let ( let* ) = Result.and_then
 
 type event_sink = Riot_model.Event.kind -> unit
 
-let no_emit : event_sink = fun _ -> ()
+let no_emit: event_sink = fun _ -> ()
 
 let duration_ms_since = fun started ->
   Time.Instant.duration_since ~earlier:started (Time.Instant.now ()) |> Time.Duration.to_millis

@@ -558,11 +558,11 @@ let notification_to_json = fun (notif: notification) ->
   @ params_field)
 
 (** JSON Deserialization - simplified for now *)
-let request_of_json _json : (request, string) result = Error "Not implemented"
+let request_of_json _json: (request, string) result = Error "Not implemented"
 
-let response_of_json _json : (response, string) result = Error "Not implemented"
+let response_of_json _json: (response, string) result = Error "Not implemented"
 
-let notification_of_json _json : (notification, string) result = Error "Not implemented"
+let notification_of_json _json: (notification, string) result = Error "Not implemented"
 
 (** Helper functions *)
 let make_request = fun ?params id method_type ->
@@ -581,7 +581,7 @@ module Protocol: Jsonrpc.ApplicationProtocol with type request = request and typ
 
   type nonrec response = response
 
-  let request_to_params : request -> Jsonrpc.prerequest = fun req ->
+  let request_to_params: request -> Jsonrpc.prerequest = fun req ->
     let params =
       match req.params with
       | None -> Jsonrpc.NoParams
@@ -591,16 +591,16 @@ module Protocol: Jsonrpc.ApplicationProtocol with type request = request and typ
     in
     { Jsonrpc.method_ = req.method_name; params }
 
-  let request_of_params : string -> Jsonrpc.params -> (request, Json.t) result = fun method_ params ->
+  let request_of_params: string -> Jsonrpc.params -> (request, Json.t) result = fun method_ params ->
     let id = String "0" in
     Ok { jsonrpc = "2.0"; id; method_name = method_; params = None }
 
-  let response_to_json : response -> Json.t = fun resp ->
+  let response_to_json: response -> Json.t = fun resp ->
     match resp with
     | SuccessResponse { result; _ } -> response_result_to_json result
     | ErrorResponse { error; _ } -> error_to_json error
 
-  let response_of_json : Json.t -> (response, Json.t) result = fun json ->
+  let response_of_json: Json.t -> (response, Json.t) result = fun json ->
     match response_of_json json with
     | Ok r -> Ok r
     | Error e -> Error (Json.String e)
@@ -833,7 +833,7 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
     | Error msg ->
         Json.Object [ ("error", Json.String msg) ]
 
-  let response_of_json _json : (response, Json.t) result = Error (Json.String "Not implemented")
+  let response_of_json _json: (response, Json.t) result = Error (Json.String "Not implemented")
 
   let make_initialize_result = fun ~protocol_version ~capabilities ~server_info ~instructions ->
     InitializeResult { protocol_version; capabilities; server_info; instructions }

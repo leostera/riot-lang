@@ -24,14 +24,18 @@ let test_parse_request_extracts_package_and_suite_selector = fun _ctx ->
   Ok ()
 
 let test_parse_request_extracts_package_suite_and_query = fun _ctx ->
-  let request = Test_selection.parse_request ~pattern:(Some "syn:diagnostic_tests:0001") ~legacy_package:None in
+  let request = Test_selection.parse_request
+    ~pattern:(Some "syn:diagnostic_tests:0001")
+    ~legacy_package:None in
   Test.assert_equal ~expected:(Some "syn") ~actual:request.package_filter;
   Test.assert_equal ~expected:(Some "diagnostic_tests") ~actual:request.suite_filter;
   Test.assert_equal ~expected:(Some "0001") ~actual:request.query;
   Ok ()
 
 let test_parse_request_preserves_raw_query_with_package_flag = fun _ctx ->
-  let request = Test_selection.parse_request ~pattern:(Some "syn:diagnostic_tests") ~legacy_package:(Some "std") in
+  let request = Test_selection.parse_request
+    ~pattern:(Some "syn:diagnostic_tests")
+    ~legacy_package:(Some "std") in
   Test.assert_equal ~expected:(Some "std") ~actual:request.package_filter;
   Test.assert_equal ~expected:None ~actual:request.suite_filter;
   Test.assert_equal ~expected:(Some "syn:diagnostic_tests") ~actual:request.query;

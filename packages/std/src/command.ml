@@ -3,7 +3,7 @@ open Collections
 open Kernel.System
 
 type Actors.Message.t +=
-  | Reader_finished of { reader: Actors.Pid.t; stream:
+  | Reader_finished of { reader: Actors.Pid.t; stream: 
         [
           `stdout
           | `stderr

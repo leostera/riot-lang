@@ -4,7 +4,7 @@ open Suri.Component
 
 (* Simple static page showcasing component system *)
 
-let welcome_page : unit t = html
+let welcome_page: unit t = html
   [ head
       [
         title [ text "Welcome to Suri Components" ];

@@ -2,10 +2,14 @@ open Std
 
 module Log = struct
   let debug _ = ()
+
   let info _ = ()
+
   let error _ = ()
+
   let trace _ = ()
 end
+
 open Std.Sync
 open Std.Sync.Cell
 
@@ -102,12 +106,12 @@ let get_constraint = fun solution pkg ->
         List.fold_left
           (fun acc ->
             function
-            | Derivation (p, ranges, _, _, _) when p = pkg -> Some (
-                match acc with
-                | None -> ranges
-                | Some existing ->
-                    Ranges.intersection ~compare_v:version_compare existing ranges
-              )
+            | Derivation (p, ranges, _, _, _) when p = pkg ->
+                Some (
+                  match acc with
+                  | None -> ranges
+                  | Some existing -> Ranges.intersection ~compare_v:version_compare existing ranges
+                )
             | _ -> acc)
           None
           solution.assignments
@@ -132,11 +136,15 @@ let pick_highest_priority_pkg = fun solution prioritizer ->
               | `Constrained ranges ->
                   Log.info ("🔍 pick: found candidate " ^ pkg);
                   candidates := (pkg, ranges, gidx) :: !candidates
-              | `Undecided -> ()
-              | `Decided _ -> ()
+              | `Undecided ->
+                  ()
+              | `Decided _ ->
+                  ()
             )
-          | None -> ()
-          | Some _ -> Log.info ("🔍 pick: " ^ pkg ^ " already decided, skipping")
+          | None ->
+              ()
+          | Some _ ->
+              Log.info ("🔍 pick: " ^ pkg ^ " already decided, skipping")
         )
       | Decision _ -> ()
     )
@@ -299,16 +307,17 @@ let get_assignment_level = fun solution pkg ->
 
 let satisfier_search = fun solution incompat ->
   let chronological = List.rev solution.assignments in
-  let solution_of_chronological = fun assignments ->
+  let solution_of_chronological assignments =
     let decisions = Collections.HashMap.create () in
     let decision_level = ref 0 in
     List.iter
-      (function
-      | Decision (pkg, ver, level, _) ->
-          ignore (Collections.HashMap.insert decisions pkg ver);
-          decision_level := max !decision_level level
-      | Derivation (_, _, _, level, _) ->
-          decision_level := max !decision_level level)
+      (
+        function
+        | Decision (pkg, ver, level, _) ->
+            ignore (Collections.HashMap.insert decisions pkg ver);
+            decision_level := max !decision_level level
+        | Derivation (_, _, _, level, _) -> decision_level := max !decision_level level
+      )
       assignments;
     {
       assignments = List.rev assignments;
@@ -348,33 +357,32 @@ let satisfier_search = fun solution incompat ->
       else
         Ranges.complement ~compare_v:version_compare (Term.ranges term)
     in
-    let difference =
-      Ranges.intersection
-        ~compare_v:version_compare
-        assigned_ranges
-        (Ranges.complement ~compare_v:version_compare term_allowed_ranges)
-    in
+    let difference = Ranges.intersection
+      ~compare_v:version_compare
+      assigned_ranges
+      (Ranges.complement ~compare_v:version_compare term_allowed_ranges) in
     if Ranges.is_empty difference then
       None
     else
       Some (Term.negative (Term.package term) difference)
   in
-  let rec find_satisfier prefix =
-    function
+  let rec find_satisfier prefix = function
     | [] ->
         Log.error "No satisfier found in satisfier_search";
-        panic ("No satisfier found in satisfier_search for "
-        ^ (Incompatibility.terms incompat
-          |> List.map
-            (fun term ->
-              let prefix =
-                if Term.is_positive term then
-                  ""
-                else
-                  "not "
-              in
-              prefix ^ Term.package term)
-          |> String.concat " && "))
+        panic
+          (
+            "No satisfier found in satisfier_search for " ^ (
+              Incompatibility.terms incompat |> List.map
+                (fun term ->
+                  let prefix =
+                    if Term.is_positive term then
+                      ""
+                    else
+                      "not "
+                  in
+                  prefix ^ Term.package term) |> String.concat " && "
+            )
+          )
     | assignment :: rest ->
         let prefix' = prefix @ [ assignment ] in
         let prefix_solution = solution_of_chronological prefix' in
@@ -389,9 +397,7 @@ let satisfier_search = fun solution incompat ->
         else
           find_satisfier prefix' rest
   in
-  let satisfier_prefix, satisfier_assignment, satisfier_pkg, satisfier_term =
-    find_satisfier [] chronological
-  in
+  let satisfier_prefix, satisfier_assignment, satisfier_pkg, satisfier_term = find_satisfier [] chronological in
   let satisfier_level = assignment_level satisfier_assignment in
   let rec find_previous_satisfier prefix candidate before_satisfier =
     match before_satisfier with
@@ -405,9 +411,7 @@ let satisfier_search = fun solution incompat ->
         else
           find_previous_satisfier prefix' candidate rest
   in
-  let before_satisfier =
-    List.rev (List.tl (List.rev satisfier_prefix))
-  in
+  let before_satisfier = List.rev (List.tl (List.rev satisfier_prefix)) in
   let previous_satisfier = find_previous_satisfier [] None before_satisfier in
   let previous_level =
     match previous_satisfier with

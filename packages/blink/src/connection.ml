@@ -25,11 +25,12 @@ type t =
       of_io_error: 'err -> Error.t;
     } -> t
 
-let make : type socket err. reader:(socket, err) IO.Reader.t ->
-writer:(socket, err) IO.Writer.t ->
-of_io_error:(err -> Error.t) ->
-uri:Net.Uri.t ->
-t = fun ~reader ~writer ~of_io_error ~uri ->
+let make:
+  type socket err. reader:(socket, err) IO.Reader.t ->
+  writer:(socket, err) IO.Writer.t ->
+  of_io_error:(err -> Error.t) ->
+  uri:Net.Uri.t ->
+  t = fun ~reader ~writer ~of_io_error ~uri ->
   Conn {
     protocol = (module Protocol.Http1);
     reader;

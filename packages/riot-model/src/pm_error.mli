@@ -14,7 +14,7 @@ type t =
       dependency_name: string;
       source_locator: string;
       ref_: string option;
-      error: string;
+      error: string
     }
   | SourceDependencyDecodeFailed of { dependency_name: string; manifest_path: Path.t; error: string }
   | RegistryLatestReleaseMissing of { package: string; latest_version: string }
@@ -25,7 +25,7 @@ type t =
       registry: string;
       requirement: string;
       available_versions: string list;
-      required_by: required_by option;
+      required_by: required_by option
     }
   | LockfileReadFailed of { path: Path.t; error: string }
   | LockRefreshCheckFailed of { workspace_root: Path.t; error: string }

@@ -66,7 +66,7 @@ let rec is_bool_type_node = fun (node: Syn.Cst.syntax_node) ->
   | Syn.SyntaxKind.TYPE_ALIAS ->
       direct_non_trivia_nodes node |> List.exists is_bool_type_node
   | Syn.SyntaxKind.TYPE_CONSTR ->
-      let token_texts : string list =
+      let token_texts: string list =
         Syn.Ceibo.Red.SyntaxNode.children node
         |> Array.to_list
         |> List.filter_map

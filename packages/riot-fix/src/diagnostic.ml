@@ -230,7 +230,7 @@ type grouped = {
   fix: Fix.fix option;
 }
 
-let group_diagnostics : t list -> grouped list = fun diags ->
+let group_diagnostics: t list -> grouped list = fun diags ->
   let module DiagMap = Collections.HashMap in
   let map = DiagMap.create () in
   List.iter

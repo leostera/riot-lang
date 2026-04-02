@@ -259,7 +259,7 @@ let product_card = fun ~name ~price ~in_stock ~discount ->
             [ text "Add to Cart" ]; ]; ]
 
 (** Example Page *)
-let example_page : unit t = html
+let example_page: unit t = html
   [ head
       [
         title [ text "Design System Example" ];

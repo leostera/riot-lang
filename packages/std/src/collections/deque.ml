@@ -213,7 +213,7 @@ let of_list = fun elements ->
   List.iter (push_back deque) elements;
   deque
 
-let into_iter : type v. v t -> v Iter.Iterator.t = fun deque ->
+let into_iter: type v. v t -> v Iter.Iterator.t = fun deque ->
   let module DequeIter = struct
     type state = {
       deque: v t;
@@ -231,7 +231,7 @@ let into_iter : type v. v t -> v Iter.Iterator.t = fun deque ->
   end in
   Iter.Iterator.make (module DequeIter) { deque; idx = 0 }
 
-let to_mut_iter : type v. v t -> v Iter.MutIterator.t = fun deque ->
+let to_mut_iter: type v. v t -> v Iter.MutIterator.t = fun deque ->
   let module DequeIter = struct
     type state = v t
 

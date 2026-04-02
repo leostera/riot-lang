@@ -101,26 +101,20 @@ let package_id_of_fields = fun fields ->
 
 let provenance_to_toml = fun provenance ->
   match provenance with
-  | Workspace -> Toml.Table [ ("kind", Toml.String "workspace") ]
-  | Path path -> Toml.Table [
-    ("kind", Toml.String "path");
-    ("path", Toml.String (Path.to_string path))
-  ]
+  | Workspace ->
+      Toml.Table [ ("kind", Toml.String "workspace") ]
+  | Path path ->
+      Toml.Table [ ("kind", Toml.String "path"); ("path", Toml.String (Path.to_string path)) ]
   | Source { locator; ref_ } ->
-      let fields = [
-        ("kind", Toml.String "source");
-        ("locator", Toml.String locator);
-      ] in
+      let fields = [ ("kind", Toml.String "source"); ("locator", Toml.String locator); ] in
       let fields =
         match ref_ with
         | Some ref_ -> ("ref", Toml.String ref_) :: fields
         | None -> fields
       in
       Toml.Table (List.rev fields)
-  | Registry { registry } -> Toml.Table [
-    ("kind", Toml.String "registry");
-    ("registry", Toml.String registry)
-  ]
+  | Registry { registry } ->
+      Toml.Table [ ("kind", Toml.String "registry"); ("registry", Toml.String registry) ]
 
 let provenance_of_toml = fun value ->
   match value with
@@ -183,10 +177,7 @@ let dependency_to_toml = fun (dep: dependency) ->
     in
     Toml.Table (List.rev fields)
   else
-    Toml.Table [
-      ("name", Toml.String dep.name);
-      ("package", package_id_to_toml dep.package)
-    ]
+    Toml.Table [ ("name", Toml.String dep.name); ("package", package_id_to_toml dep.package) ]
 
 let dependency_of_toml = fun value ->
   match value with
@@ -337,11 +328,9 @@ let to_toml = fun (lockfile: t) ->
 let of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match
-        List.assoc_opt "format_version" fields,
-        List.assoc_opt "dependency_hash" fields,
-        List.assoc_opt "packages" fields
-      with
+      match List.assoc_opt "format_version" fields, List.assoc_opt "dependency_hash" fields, List.assoc_opt
+        "packages"
+        fields with
       | Some (Toml.Int format_version), Some (Toml.String dependency_hash), Some (Toml.Array packages) ->
           let rec loop acc = function
             | [] -> Ok { format_version; dependency_hash; packages = List.rev acc }
@@ -379,28 +368,20 @@ let render_package_id = fun (id: package_id) ->
 
 let render_provenance = fun provenance ->
   match provenance with
-  | Workspace -> "{ kind = " ^ render_string "workspace" ^ " }"
-  | Path path -> "{ kind = "
-  ^ render_string "path"
-  ^ ", path = "
-  ^ render_string (Path.to_string path)
-  ^ " }"
+  | Workspace ->
+      "{ kind = " ^ render_string "workspace" ^ " }"
+  | Path path ->
+      "{ kind = " ^ render_string "path" ^ ", path = " ^ render_string (Path.to_string path) ^ " }"
   | Source { locator; ref_ } ->
-      let fields = [
-        ("kind", render_string "source");
-        ("locator", render_string locator);
-      ] in
+      let fields = [ ("kind", render_string "source"); ("locator", render_string locator); ] in
       let fields =
         match ref_ with
         | Some ref_ -> ("ref", render_string ref_) :: fields
         | None -> fields
       in
       "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
-  | Registry { registry } -> "{ kind = "
-  ^ render_string "registry"
-  ^ ", registry = "
-  ^ render_string registry
-  ^ " }"
+  | Registry { registry } ->
+      "{ kind = " ^ render_string "registry" ^ ", registry = " ^ render_string registry ^ " }"
 
 let render_dependency = fun (dep: dependency) ->
   let is_flat_registry_dependency =
@@ -429,11 +410,7 @@ let render_dependency = fun (dep: dependency) ->
     in
     "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
   else
-    "{ name = "
-    ^ render_string dep.name
-    ^ ", package = "
-    ^ render_package_id dep.package
-    ^ " }"
+    "{ name = " ^ render_string dep.name ^ ", package = " ^ render_package_id dep.package ^ " }"
 
 let render_dependency_list = fun deps ->
   "[" ^ String.concat ", " (List.map render_dependency deps) ^ "]"
@@ -468,11 +445,12 @@ let to_string = fun lockfile ->
   let parts = [
     "format_version = " ^ Int.to_string lockfile.format_version;
     "dependency_hash = " ^ render_string lockfile.dependency_hash;
-  ] @ List.map render_package lockfile.packages in
+  ]
+  @ List.map render_package lockfile.packages in
   String.concat "\n\n" parts ^ "\n"
 
 module Tests = struct
-  let test_lockfile_roundtrip_toml () : (unit, string) result =
+  let test_lockfile_roundtrip_toml (): (unit, string) result =
     let lockfile = {
       format_version = 1;
       dependency_hash = "deadbeefcafebabe";
@@ -537,7 +515,7 @@ module Tests = struct
       )
     | Error err -> Error err [@test]
 
-  let test_lockfile_parses_path_provenance () : (unit, string) result =
+  let test_lockfile_parses_path_provenance (): (unit, string) result =
     let toml =
       Toml.parse
         {|

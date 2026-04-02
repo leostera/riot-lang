@@ -1998,7 +1998,7 @@ let case_ranges = [|{
   };|]
 
 (** Apply case delta to a code point *)
-let apply_delta : int -> case_delta -> int -> int = fun r delta case_type ->
+let apply_delta: int -> case_delta -> int -> int = fun r delta case_type ->
   match delta with
   | Delta d -> r + d
   | UpperLower ->
@@ -2014,7 +2014,7 @@ let apply_delta : int -> case_delta -> int -> int = fun r delta case_type ->
 (* Clear low bit *)
 
 (** Binary search for case range containing code point *)
-let find_case_range : case_range array -> int -> case_range option = fun ranges r ->
+let find_case_range: case_range array -> int -> case_range option = fun ranges r ->
   let rec search lo hi =
     if lo > hi then
       None
@@ -2031,7 +2031,7 @@ let find_case_range : case_range array -> int -> case_range option = fun ranges 
   search 0 (Array.length ranges - 1)
 
 (** Convert code point to uppercase *)
-let to_upper : int -> int = fun r ->
+let to_upper: int -> int = fun r ->
   if r >= 0x61 && r <= 0x7a then
     r - 32
     (* a-z -> A-Z *)
@@ -2041,7 +2041,7 @@ let to_upper : int -> int = fun r ->
     | None -> r
 
 (** Convert code point to lowercase *)
-let to_lower : int -> int = fun r ->
+let to_lower: int -> int = fun r ->
   if r >= 0x41 && r <= 0x5a then
     r + 32
     (* A-Z -> a-z *)
@@ -2051,7 +2051,7 @@ let to_lower : int -> int = fun r ->
     | None -> r
 
 (** Convert code point to titlecase *)
-let to_title : int -> int = fun r ->
+let to_title: int -> int = fun r ->
   if r >= 0x61 && r <= 0x7a then
     r - 32
   else

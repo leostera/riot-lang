@@ -6,9 +6,9 @@ let canonicalize_json =
   let rec loop = function
     | Json.Object fields ->
         Json.Object (
-          fields
-          |> List.map (fun (key, value) -> (key, loop value))
-          |> List.sort (fun (left, _) (right, _) -> String.compare left right)
+          fields |> List.map (fun (key, value) -> (key, loop value)) |> List.sort
+            (fun (left, _) (right, _) ->
+              String.compare left right)
         )
     | Json.Array items -> Json.Array (List.map loop items)
     | other -> other
@@ -20,11 +20,14 @@ let test_diagnostic = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let parse_result = Syn.parse ~filename:ctx.fixture_path source in
   let actual_diagnostics = parse_result.Parser.diagnostics in
   let actual_json = Json.Array (List.map Diagnostic.to_json actual_diagnostics) |> canonicalize_json in
-  Test.Snapshot.assert_with ~ctx:ctx.test ~render:(fun json -> Json.to_string_pretty json ^ "\n") ~actual:actual_json
+  Test.Snapshot.assert_with
+    ~ctx:ctx.test
+    ~render:(fun json -> Json.to_string_pretty json ^ "\n")
+    ~actual:actual_json
 
 let diagnostic_marker_path = fun path ->
   match Path.extension path with
-  | Some ext -> Path.add_extension path ~ext:(ext ^ ".diagnostic")
+  | Some ext -> Path.add_extension path ~ext:((ext ^ ".diagnostic"))
   | None -> Path.add_extension path ~ext:"diagnostic"
 
 let filter_diagnostic_fixture = fun path ->
@@ -42,7 +45,8 @@ let () =
   Actors.run
     ~main:(fun ~args ->
       let tests =
-        Test.FixtureRunner.cases ()
+        Test.FixtureRunner.cases
+          ()
           ~dir:(Path.v "packages/syn/tests/diagnostics")
           ~filter:filter_diagnostic_fixture
           ~run:(fun ctx -> test_diagnostic ~ctx)

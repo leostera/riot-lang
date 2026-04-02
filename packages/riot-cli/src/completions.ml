@@ -152,7 +152,8 @@ let run = fun matches ->
         else
           (* Try to load workspace, but fail silently if not in one *)
           let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-          match Workspace_manager.scan cwd with
+          let workspace_manager = Workspace_manager.create () in
+          match Workspace_manager.scan workspace_manager cwd with
           | Error _ ->
               (* Not in a workspace or scan failed - silently succeed *)
               Ok ()

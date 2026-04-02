@@ -52,8 +52,10 @@ type ctx = {
   fixture_name: string;
 }
 type filter_result =
-  [ `keep
-  | `skip ]
+[
+  `keep
+  | `skip
+]
 val cases:
   ?filter:(Path.t -> filter_result) ->
   ?snapshot_path:(Path.t -> Path.t option) ->

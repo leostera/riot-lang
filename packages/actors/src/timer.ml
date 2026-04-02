@@ -17,7 +17,7 @@ type t = {
   mutable expires_at: int64;
   duration_nanos: int64;
   action: action;
-  mutable status:
+  mutable status: 
     [
       `pending
       | `cancelled

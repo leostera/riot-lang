@@ -71,7 +71,7 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
-      status:
+      status: 
         [
           `Fresh
           | `Cached
@@ -102,7 +102,7 @@ type Telemetry.event +=
       package: Package.t;
       action: Action_node.t;
       artifact: Artifact.t;
-      status:
+      status: 
         [
           `Fresh
           | `Cached

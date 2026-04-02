@@ -100,7 +100,7 @@ type kind =
   | PackageComplete of build_result
   | PackageSkipped of { package: string; reason: skip_reason }
   | PackageStarted of { package: string }
-  | QueuePackage of { package: string; queue_type:
+  | QueuePackage of { package: string; queue_type: 
         [
           `Ready
           | `Waiting
@@ -129,7 +129,7 @@ type kind =
   | LockfileWriteStarted of { path: string }
   | LockfileWriteFinished of { path: string; duration_ms: int }
   | LockfileWriteFailed of { path: string; error: Pm_error.t }
-  | DependencyResolutionStarted of { packages: string list; mode:
+  | DependencyResolutionStarted of { packages: string list; mode: 
         [
           `Refresh
           | `Unlock
@@ -1879,7 +1879,7 @@ let from_json = fun json ->
   | _ -> Error "Invalid JSON format for Event"
 
 module Tests = struct
-  let test_lockfile_event_json_roundtrip () : (unit, string) result =
+  let test_lockfile_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
       ~level:Info (LockfileReadFinished { path = "/tmp/workspace/riot.lock"; duration_ms = 12 }) in
@@ -1892,7 +1892,7 @@ module Tests = struct
     | Ok _ -> Error "expected LockfileReadFinished after round-trip"
     | Error err -> Error err [@test]
 
-  let test_resolution_event_json_roundtrip () : (unit, string) result =
+  let test_resolution_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
       ~level:Info (DependencyResolutionStarted { packages = [ "app"; "std" ]; mode = `Unlock }) in
@@ -1905,7 +1905,7 @@ module Tests = struct
     | Ok _ -> Error "expected DependencyResolutionStarted unlock event after round-trip"
     | Error err -> Error err [@test]
 
-  let test_package_resolved_event_json_roundtrip () : (unit, string) result =
+  let test_package_resolved_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
       ~level:Info (PackageResolvedForBuild {

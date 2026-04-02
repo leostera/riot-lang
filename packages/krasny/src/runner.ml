@@ -401,12 +401,12 @@ let rec dispatch_loop = fun state ->
       Ok ()
     )
   else
-    let selector : ([
-      `WorkerReady of Path.t WorkerPool.DynamicWorkerPool.worker
-      | `ScannerDiscovered of Path.t
-      | `ScannerComplete
-      | `FileChecked of file_result
-    ]) selector = function
+    let selector: ([
+        `WorkerReady of Path.t WorkerPool.DynamicWorkerPool.worker
+        | `ScannerDiscovered of Path.t
+        | `ScannerComplete
+        | `FileChecked of file_result
+      ]) selector = function
       | WorkerPool.DynamicWorkerPool.WorkerReady worker -> (
           match Ref.type_equal
             state.pool.task_ref
@@ -523,10 +523,10 @@ let run_streaming = fun ~mode ?(concurrency = System.available_parallelism) ?(sh
     spawn (fun () -> start_dispatcher ~owner ~run_ref ~concurrency ~roots ~should_ignore ~check_fn)
   in
   let rec collect results_rev =
-    let selector : ([
-      `FileResult of file_result
-      | `Completed
-    ]) selector = function
+    let selector: ([
+        `FileResult of file_result
+        | `Completed
+      ]) selector = function
       | StreamFileResult { run_ref=msg_ref; result } when Ref.equal run_ref msg_ref -> `select (`FileResult result)
       | StreamCompleted msg_ref when Ref.equal run_ref msg_ref -> `select `Completed
       | _ -> `skip

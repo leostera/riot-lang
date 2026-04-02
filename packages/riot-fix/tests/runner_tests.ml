@@ -2098,15 +2098,18 @@ let render x y z =
       Ok ());
   Test.case "rule explanations explain record-destructuring parameters"
     (fun _ctx ->
-      ignore (assert_explanation_contains ~rule_id:"prefer-record-destructuring-parameters" ~snippet:"let { ... } = value in ...");
+      ignore
+        (assert_explanation_contains ~rule_id:"prefer-record-destructuring-parameters" ~snippet:"let { ... } = value in ...");
       Ok ());
   Test.case "rule explanations explain ignored map traversal"
     (fun _ctx ->
-      ignore (assert_explanation_contains ~rule_id:"std:prefer-iter-over-ignored-map" ~snippet:"List.iter");
+      ignore
+        (assert_explanation_contains ~rule_id:"std:prefer-iter-over-ignored-map" ~snippet:"List.iter");
       Ok ());
   Test.case "rule explanations explain List.is_empty preference"
     (fun _ctx ->
-      ignore (assert_explanation_contains ~rule_id:"std:prefer-list-is-empty" ~snippet:"List.is_empty");
+      ignore
+        (assert_explanation_contains ~rule_id:"std:prefer-list-is-empty" ~snippet:"List.is_empty");
       Ok ());
 ]
 

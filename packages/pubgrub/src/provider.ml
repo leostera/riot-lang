@@ -43,7 +43,7 @@ let version_compare = fun a b ->
   | Eq -> 0
   | Gt -> 1
 
-let to_provider : offline -> string t = fun offline ->
+let to_provider: offline -> string t = fun offline ->
   let choose_version pkg ranges =
     match Collections.HashMap.get offline.packages pkg with
     | None -> Ok None

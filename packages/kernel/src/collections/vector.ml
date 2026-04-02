@@ -149,7 +149,7 @@ let of_list = fun elements ->
   List.iter (push vector) elements;
   vector
 
-let into_iter : type item. item t -> item Iter.Iterator.t = fun vector ->
+let into_iter: type item. item t -> item Iter.Iterator.t = fun vector ->
   let module VecIter = struct
     type state = {
       vec: item t;
@@ -169,7 +169,7 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun vector ->
   end in
   Iter.Iterator.make (module VecIter) { VecIter.vec = vector; pos = 0 }
 
-let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun vector ->
+let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun vector ->
   let module VecIter = struct
     type state = {
       vec: item t;

@@ -42,8 +42,8 @@ let test_discover_pending_snapshots =
     (fun _ctx ->
       with_tempdir_result "snapshots_discover"
         (fun workspace_root ->
-          let fixture_pending, _, custom_pending, _, workspace_pending, _, build_pending =
-            pending_paths workspace_root in
+          let fixture_pending, _, custom_pending, _, workspace_pending, _, build_pending = pending_paths
+            workspace_root in
           match write_file fixture_pending "fixture pending\n" with
           | Error msg -> Error msg
           | Ok () -> (

@@ -46,8 +46,8 @@ let request_of_matches = fun matches ->
   in
   match query, limit with
   | Ok query, Ok limit -> Ok Riot_deps.{ query; limit }
-  | Error err, _
-  | _, Error err -> Error err
+  | (Error err, _)
+  | (_, Error err) -> Error err
 
 let json_of_result = fun (result: Riot_deps.suggested_package) ->
   Data.Json.Object [
@@ -63,16 +63,14 @@ let json_of_result = fun (result: Riot_deps.suggested_package) ->
 
 let write_human_results = fun ~query results ->
   match results with
-  | [] ->
-      println ("No packages found for '" ^ query ^ "'")
+  | [] -> println ("No packages found for '" ^ query ^ "'")
   | results ->
       List.iter
         (fun (result: Riot_deps.suggested_package) ->
           match result.description with
-          | Some description ->
-              println (result.package ^ "@" ^ result.latest_version ^ " - " ^ description)
-          | None ->
-              println (result.package ^ "@" ^ result.latest_version))
+          | Some description -> println
+            (result.package ^ "@" ^ result.latest_version ^ " - " ^ description)
+          | None -> println (result.package ^ "@" ^ result.latest_version))
         results
 
 let run = fun matches ->
@@ -86,10 +84,8 @@ let run = fun matches ->
           if json then
             results
             |> List.map json_of_result
-            |> fun items -> Data.Json.Array items
-            |> Data.Json.to_string
-            |> println
+            |> fun items -> Data.Json.Array items |> Data.Json.to_string |> println
           else
             write_human_results ~query:request.query results;
-          Ok ()
+            Ok ()
     )

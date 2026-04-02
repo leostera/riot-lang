@@ -27,15 +27,15 @@ type range_table = {
 }
 
 (** Check if code point is in 16-bit range *)
-let in_range16 : range16 -> int -> bool = fun r code ->
+let in_range16: range16 -> int -> bool = fun r code ->
   code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
 
 (** Check if code point is in 32-bit range *)
-let in_range32 : range32 -> int -> bool = fun r code ->
+let in_range32: range32 -> int -> bool = fun r code ->
   code >= r.lo && code <= r.hi && (r.stride = 1 || (code - r.lo) mod r.stride = 0)
 
 (** Check if code point is in range table using binary search *)
-let in_table : range_table -> int -> bool = fun tbl code ->
+let in_table: range_table -> int -> bool = fun tbl code ->
   if code < 0 || code > 0x10_ffff then
     false
   else if code < 0x1_0000 then

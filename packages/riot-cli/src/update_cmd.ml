@@ -29,34 +29,39 @@ let json_of_event = function
     ("package", Data.Json.String package);
     ("latest_version", Data.Json.String latest_version)
   ])
-  | Riot_deps.SourceDependencyMaterializationStarted { source_locator; ref_ } -> Some (Data.Json.Object [
-    ("type", Data.Json.String "SourceDependencyMaterializationStarted");
-    ("source_locator", Data.Json.String source_locator);
-    (
-      "ref",
-      match ref_ with
-      | Some ref_ -> Data.Json.String ref_
-      | None -> Data.Json.Null
-    )
-  ])
+  | Riot_deps.SourceDependencyMaterializationStarted { source_locator; ref_ } ->
+      Some (
+        Data.Json.Object [
+          ("type", Data.Json.String "SourceDependencyMaterializationStarted");
+          ("source_locator", Data.Json.String source_locator);
+          (
+            "ref",
+            match ref_ with
+            | Some ref_ -> Data.Json.String ref_
+            | None -> Data.Json.Null
+          )
+        ]
+      )
   | Riot_deps.SourceDependencyMaterializationFinished { source_locator; ref_; package; version } ->
-      Some (Data.Json.Object [
-        ("type", Data.Json.String "SourceDependencyMaterializationFinished");
-        ("source_locator", Data.Json.String source_locator);
-        (
-          "ref",
-          match ref_ with
-          | Some ref_ -> Data.Json.String ref_
-          | None -> Data.Json.Null
-        );
-        ("package", Data.Json.String package);
-        (
-          "version",
-          match version with
-          | Some version -> Data.Json.String version
-          | None -> Data.Json.Null
-        )
-      ])
+      Some (
+        Data.Json.Object [
+          ("type", Data.Json.String "SourceDependencyMaterializationFinished");
+          ("source_locator", Data.Json.String source_locator);
+          (
+            "ref",
+            match ref_ with
+            | Some ref_ -> Data.Json.String ref_
+            | None -> Data.Json.Null
+          );
+          ("package", Data.Json.String package);
+          (
+            "version",
+            match version with
+            | Some version -> Data.Json.String version
+            | None -> Data.Json.Null
+          )
+        ]
+      )
   | Riot_deps.ManifestUpdated { path; section; operation; dependency } ->
       Some (
         Data.Json.Object [

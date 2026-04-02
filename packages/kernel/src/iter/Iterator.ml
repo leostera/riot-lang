@@ -15,14 +15,14 @@ type 'item t =
 
 (*************************************************************************************************)
 
-let make : type item state. (item, state) iter -> state -> item t = fun mod_ state ->
+let make: type item state. (item, state) iter -> state -> item t = fun mod_ state ->
   Iter (mod_, state)
 
-let next : type item. item t -> item option * item t = fun (Iter (((module Iter) as mod_), state)) ->
+let next: type item. item t -> item option * item t = fun (Iter (((module Iter) as mod_), state)) ->
   let item, state' = Iter.next state in
   (item, Iter (mod_, state'))
 
-let size : type item. item t -> int = fun (Iter ((module Iter), state)) -> Iter.size state
+let size: type item. item t -> int = fun (Iter ((module Iter), state)) -> Iter.size state
 
 (*************************************************************************************************)
 
@@ -43,7 +43,7 @@ let to_list = fun t -> collect t []
 
 let iter_next = next
 
-let map : type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn ->
+let map: type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn ->
   let module MapIter = struct
     type state = a t
 
@@ -58,7 +58,7 @@ let map : type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn ->
   end in
   make (module MapIter) iter
 
-let filter : type a. a t -> fn:(a -> bool) -> a t = fun iter ~fn ->
+let filter: type a. a t -> fn:(a -> bool) -> a t = fun iter ~fn ->
   let module FilterIter = struct
     type state = a t
 
@@ -76,7 +76,7 @@ let filter : type a. a t -> fn:(a -> bool) -> a t = fun iter ~fn ->
   end in
   make (module FilterIter : Intf with type state = a t and type item = a) iter
 
-let filter_map : type a b. a t -> fn:(a -> b option) -> b t = fun iter ~fn ->
+let filter_map: type a b. a t -> fn:(a -> b option) -> b t = fun iter ~fn ->
   let module FilterMapIter = struct
     type state = a t
 
@@ -103,7 +103,7 @@ let filter_map : type a b. a t -> fn:(a -> b option) -> b t = fun iter ~fn ->
 
 (*************************************************************************************************)
 
-let fold : type a acc. a t -> init:acc -> fn:(a -> acc -> acc) -> acc = fun iter ~init ~fn ->
+let fold: type a acc. a t -> init:acc -> fn:(a -> acc -> acc) -> acc = fun iter ~init ~fn ->
   let rec loop t acc =
     match next t with
     | Some x, t' -> loop t' (fn x acc)
@@ -111,12 +111,12 @@ let fold : type a acc. a t -> init:acc -> fn:(a -> acc -> acc) -> acc = fun iter
   in
   loop iter init
 
-let reduce : type a. a t -> fn:(a -> a -> a) -> a option = fun iter ~fn ->
+let reduce: type a. a t -> fn:(a -> a -> a) -> a option = fun iter ~fn ->
   match next iter with
   | Some first, iter' -> Some (fold iter' ~init:first ~fn)
   | None, _ -> None
 
-let count : type a. a t -> int = fun iter -> fold iter ~init:0 ~fn:(fun _ acc -> acc + 1)
+let count: type a. a t -> int = fun iter -> fold iter ~init:0 ~fn:(fun _ acc -> acc + 1)
 
 (*************************************************************************************************)
 
@@ -124,7 +124,7 @@ let count : type a. a t -> int = fun iter -> fold iter ~init:0 ~fn:(fun _ acc ->
 
 (*************************************************************************************************)
 
-let find : type a. a t -> fn:(a -> bool) -> a option = fun iter ~fn ->
+let find: type a. a t -> fn:(a -> bool) -> a option = fun iter ~fn ->
   let rec loop t =
     match next t with
     | Some x, t' when fn x -> Some x
@@ -133,7 +133,7 @@ let find : type a. a t -> fn:(a -> bool) -> a option = fun iter ~fn ->
   in
   loop iter
 
-let any : type a. a t -> fn:(a -> bool) -> bool = fun iter ~fn ->
+let any: type a. a t -> fn:(a -> bool) -> bool = fun iter ~fn ->
   let rec loop t =
     match next t with
     | Some x, _ when fn x -> true
@@ -142,7 +142,7 @@ let any : type a. a t -> fn:(a -> bool) -> bool = fun iter ~fn ->
   in
   loop iter
 
-let all : type a. a t -> fn:(a -> bool) -> bool = fun iter ~fn ->
+let all: type a. a t -> fn:(a -> bool) -> bool = fun iter ~fn ->
   let rec loop t =
     match next t with
     | Some x, t' when fn x -> loop t'
@@ -157,7 +157,7 @@ let all : type a. a t -> fn:(a -> bool) -> bool = fun iter ~fn ->
 
 (*************************************************************************************************)
 
-let take : type a. a t -> int -> a t = fun iter n ->
+let take: type a. a t -> int -> a t = fun iter n ->
   let module TakeIter = struct
     type state = {
       iter: a t;
@@ -178,7 +178,7 @@ let take : type a. a t -> int -> a t = fun iter n ->
   end in
   make (module TakeIter) { iter; remaining = n }
 
-let drop : type a. a t -> int -> a t = fun iter n ->
+let drop: type a. a t -> int -> a t = fun iter n ->
   let rec skip t count =
     if count <= 0 then
       t
@@ -188,7 +188,7 @@ let drop : type a. a t -> int -> a t = fun iter n ->
   in
   skip iter n
 
-let enumerate : type a. a t -> (int * a) t = fun iter ->
+let enumerate: type a. a t -> (int * a) t = fun iter ->
   let module EnumIter = struct
     type state = {
       iter: a t;
@@ -207,7 +207,7 @@ let enumerate : type a. a t -> (int * a) t = fun iter ->
   end in
   make (module EnumIter) { iter; index = 0 }
 
-let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
+let zip: type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
   let module ZipIter = struct
     type state = {
       iter1: a t;
@@ -227,7 +227,7 @@ let zip : type a b. a t -> b t -> (a * b) t = fun iter1 iter2 ->
   end in
   make (module ZipIter) { iter1; iter2 }
 
-let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
+let chain: type a. a t -> a t -> a t = fun iter1 iter2 ->
   let module ChainIter = struct
     type state = {
       first: a t;
@@ -265,7 +265,7 @@ let chain : type a. a t -> a t -> a t = fun iter1 iter2 ->
 
 (*************************************************************************************************)
 
-let for_each : type a. a t -> fn:(a -> unit) -> unit = fun iter ~fn ->
+let for_each: type a. a t -> fn:(a -> unit) -> unit = fun iter ~fn ->
   let rec loop t =
     match next t with
     | Some x, t' ->

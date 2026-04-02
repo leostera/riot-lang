@@ -2,7 +2,7 @@ open Global0
 
 include Stdlib.Array
 
-let into_iter : type item. item array -> item Iter.Iterator.t = fun arr ->
+let into_iter: type item. item array -> item Iter.Iterator.t = fun arr ->
   let module ArrayIter = struct
     type state = {
       arr: item array;
@@ -22,7 +22,7 @@ let into_iter : type item. item array -> item Iter.Iterator.t = fun arr ->
   end in
   Iter.Iterator.make (module ArrayIter) { arr; idx = 0 }
 
-let to_mut_iter : type item. item array -> item Iter.MutIterator.t = fun arr ->
+let to_mut_iter: type item. item array -> item Iter.MutIterator.t = fun arr ->
   let module ArrayMutIter = struct
     type state = {
       arr: item array;

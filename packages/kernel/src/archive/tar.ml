@@ -95,7 +95,7 @@ let feed_reader = fun reader ~src ~src_pos ~src_len ->
   try Ok (_feed_reader_raw reader src src_pos src_len) with
   | Failure msg -> Error (Unknown_error msg)
 
-let next_entry : reader -> (next, error) result = fun reader ->
+let next_entry: reader -> (next, error) result = fun reader ->
   let (error_code, status_code, raw_header) = _next_entry_raw reader in
   match error_of_code error_code with
   | Some err -> Error err
@@ -107,7 +107,7 @@ let next_entry : reader -> (next, error) result = fun reader ->
       | _, _ -> Error (Unknown_error "invalid tar next_entry response")
     )
 
-let read_entry_data : reader -> dst:bytes -> dst_pos:int -> dst_len:int -> (read_result, error) result = fun reader ~dst ~dst_pos ~dst_len ->
+let read_entry_data: reader -> dst:bytes -> dst_pos:int -> dst_len:int -> (read_result, error) result = fun reader ~dst ~dst_pos ~dst_len ->
   check_slice "Kernel.Archive.Tar.read_entry_data" dst ~pos:dst_pos ~len:dst_len;
   let (error_code, status_code, produced) = _read_entry_data_raw reader dst dst_pos dst_len in
   match error_of_code error_code with
@@ -120,7 +120,7 @@ let read_entry_data : reader -> dst:bytes -> dst_pos:int -> dst_len:int -> (read
       | _ -> Error (Unknown_error "invalid tar read_entry_data response")
     )
 
-let skip_entry : reader -> (skip_result, error) result = fun reader ->
+let skip_entry: reader -> (skip_result, error) result = fun reader ->
   let (error_code, status_code) = _skip_entry_raw reader in
   match error_of_code error_code with
   | Some err -> Error err

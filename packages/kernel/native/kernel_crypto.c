@@ -7,9 +7,6 @@
 #include <caml/custom.h>
 #include <string.h>
 
-/* For now, we'll use OCaml's built-in Digest for MD5/SHA */
-/* In production, we'd link with OpenSSL or libsodium */
-
 #ifdef __APPLE__
 #include <CommonCrypto/CommonDigest.h>
 #include <CommonCrypto/CommonHMAC.h>

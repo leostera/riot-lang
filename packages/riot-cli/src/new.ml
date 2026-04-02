@@ -28,7 +28,9 @@ let run = fun matches ->
     in
     let name = Path.basename path_obj in
     let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-    let (workspace, _load_errors) = Riot_model.Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
+    let workspace_manager = Riot_model.Workspace_manager.create () in
+    let (workspace, _load_errors) = Riot_model.Workspace_manager.scan workspace_manager cwd
+    |> Result.expect ~msg:"Failed to scan workspace" in
     match Client.connect_local ~workspace () with
     | Ok client -> (
         let package_kind =

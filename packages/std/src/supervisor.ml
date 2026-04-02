@@ -7,7 +7,7 @@ open Collections
 type t = Pid.t
 
 (** Convert supervisor to Pid *)
-let to_pid : t -> Pid.t = fun sup -> sup
+let to_pid: t -> Pid.t = fun sup -> sup
 
 (** {1 Supervision Strategies} *)
 
@@ -170,11 +170,11 @@ let check_intensity = fun state ->
 (** {1 Restart Strategies} *)
 
 let restart_one_for_one = fun state child_id reason ->
-  let children : child_state list = Cell.get state.children in
+  let children: child_state list = Cell.get state.children in
   let updated =
     List.map
       (fun (child: child_state) ->
-        let spec : child_spec = child.spec in
+        let spec: child_spec = child.spec in
         if spec.id = child_id && should_restart spec reason then
           (
             (* Terminate old process if still alive *)
@@ -301,7 +301,7 @@ let handle_which_children = fun state reply_to ->
   Ok ()
 
 let handle_count_children = fun state reply_to ->
-  let children : child_state list = Cell.get state.children in
+  let children: child_state list = Cell.get state.children in
   let specs = List.length children in
   let active =
     List.fold_left
@@ -484,7 +484,7 @@ let rec loop = fun state ->
   match receive ~selector () with
   | Process.DOWN { pid; reason; _ } ->
       (* Find which child died *)
-      let children : child_state list = Cell.get state.children in
+      let children: child_state list = Cell.get state.children in
       let child_opt =
         List.find_opt (fun (c: child_state) -> c.pid = Some pid) children
       in

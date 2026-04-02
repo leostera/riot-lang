@@ -82,12 +82,7 @@ let test_fmt_prints_syn_diagnostics_for_syntax_errors = fun _ctx ->
       if List.is_empty parsed.diagnostics then
         Error "expected broken source to produce syn diagnostics"
       else
-        let expected =
-          Syn.DiagnosticReporter.format
-            ~file:(Path.to_string broken)
-            ~source
-            parsed.diagnostics
-        in
+        let expected = Syn.DiagnosticReporter.format ~file:(Path.to_string broken) ~source parsed.diagnostics in
         (
           match Riot_fmt.run ~stdout ~stderr matches with
           | Ok () -> Error "expected syntax error formatting to fail"
@@ -103,7 +98,7 @@ let test_fmt_explain_prints_syn_explanation = fun _ctx ->
   let stderr, stderr_contents = make_capture_writer () in
   Riot_fmt.run ~stdout ~stderr matches |> Result.expect ~msg:"explain error id";
   Test.assert_equal
-    ~expected:(Syn.Error.explain Syn.Error.E0001_MalformedTypeVariable ^ "\n")
+    ~expected:((Syn.Error.explain Syn.Error.E0001_MalformedTypeVariable ^ "\n"))
     ~actual:(stdout_contents ());
   Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
   Ok ()

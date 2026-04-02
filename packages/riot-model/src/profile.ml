@@ -197,7 +197,7 @@ let apply_overrides = fun base overrides ->
       apply_override base override
 
 (** Parse profile_override from TOML table *)
-let override_from_toml : (string * Std.Data.Toml.value) list -> profile_override = fun table_items ->
+let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override = fun table_items ->
   let open Std.Data.Toml in
     let get_string_list key =
       match List.assoc_opt key table_items with
@@ -251,7 +251,7 @@ let override_from_toml : (string * Std.Data.Toml.value) list -> profile_override
     }
 
 (** Parse profile from TOML table *)
-let from_toml : (string * Std.Data.Toml.value) list -> base:t -> t = fun table_items ~base ->
+let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_items ~base ->
   let open Std.Data.Toml in
     let get_string_list key =
       match List.assoc_opt key table_items with

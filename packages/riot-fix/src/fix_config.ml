@@ -93,7 +93,8 @@ let load_fix_config = fun path ->
     )
 
 let load_scope = fun ~cwd ->
-  match Workspace_manager.scan cwd with
+  let workspace_manager = Workspace_manager.create () in
+  match Workspace_manager.scan workspace_manager cwd with
   | Error _ -> None
   | Ok (workspace, _load_errors) ->
       let workspace_toml = Path.(workspace.root / Path.v "riot.toml") in

@@ -3,7 +3,7 @@ open Std
 module Config = struct
   type t = {
     path: Path.t;
-    mode:
+    mode: 
       [
         `ReadOnly
         | `ReadWrite
@@ -11,7 +11,7 @@ module Config = struct
       ];
     busy_timeout: Time.Duration.t option;
     cache_size: int option;
-    synchronous:
+    synchronous: 
       ([
         `Off
         | `Normal
@@ -87,7 +87,7 @@ module Driver = struct
             )
         ); ("message", Data.Json.string (error_to_string err)) ]
 
-  let connect : config -> (connection, error) result = fun config ->
+  let connect: config -> (connection, error) result = fun config ->
     let id = "sqlite_" ^ string_of_int (Random.int 1_000_000) in
     Ok { id; path = config.path; handle = (); closed = false }
 

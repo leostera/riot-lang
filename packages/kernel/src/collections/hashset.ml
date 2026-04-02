@@ -90,7 +90,7 @@ let is_superset = fun set1 set2 -> is_subset set2 set1
 let is_disjoint = fun set1 set2 ->
   Hashtbl.fold (fun elem _ acc -> acc && not (Hashtbl.mem set2 elem)) set1 true
 
-let into_iter : type item. item t -> item Iter.Iterator.t = fun set ->
+let into_iter: type item. item t -> item Iter.Iterator.t = fun set ->
   let module SetIter = struct
     type state = {
       items: item list;
@@ -111,7 +111,7 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun set ->
   let items = to_list set in
   Iter.Iterator.make (module SetIter) { SetIter.items; pos = 0 }
 
-let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun set ->
+let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun set ->
   let module SetIter = struct
     type state = {
       items: item list;

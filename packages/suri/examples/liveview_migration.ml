@@ -130,7 +130,7 @@ let counter_view_static = fun count ->
         ];
     ]
 
-let static_page : unit t = html
+let static_page: unit t = html
   [
     head
       [
@@ -200,7 +200,7 @@ let counter_view_interactive = fun count ->
         ];
     ]
 
-let interactive_page count : msg t = html
+let interactive_page count: msg t = html
   [
     head
       [
@@ -257,7 +257,7 @@ let counter_view count =
   ]
 
 (** Step 3: Comparison Page *)
-let comparison_page : msg t = html
+let comparison_page: msg t = html
   [ head
       [
         title [ text "Static vs LiveView Comparison" ];

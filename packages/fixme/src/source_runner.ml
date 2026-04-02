@@ -36,7 +36,7 @@ let trace = fun ?filename message ->
     in
     eprintln ("[riot-fix] " ^ file_path ^ " " ^ message)
 
-let parse ?filename source : Syn.Parser.parse_result =
+let parse ?filename source: Syn.Parser.parse_result =
   match filename with
   | Some filename -> Syn.parse ~filename source
   | None -> Syn.parse_implementation source

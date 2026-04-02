@@ -197,12 +197,11 @@ let test_sse_parsing = fun _ctx ->
             )
           )
 
-let tests =
-  [
-    case "large JSON response without truncation" test_large_json_response;
-    case "streamed/chunked response without truncation" test_streamed_response;
-    case "SSE event parsing" test_sse_parsing;
-  ]
+let tests = [
+  case "large JSON response without truncation" test_large_json_response;
+  case "streamed/chunked response without truncation" test_streamed_response;
+  case "SSE event parsing" test_sse_parsing;
+]
 
 let test_config = {|
 [[log.handler]]

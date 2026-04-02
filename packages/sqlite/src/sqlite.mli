@@ -47,7 +47,7 @@ module Config: sig
   type t = {
     path: Path.t;
     (* Path to the database file. Use ":memory:" for in-memory databases. *)
-    mode:
+    mode: 
       [
         `ReadOnly
         | `ReadWrite
@@ -64,7 +64,7 @@ module Config: sig
     cache_size: int option;
     (* Size of the page cache in pages (default is -2000, meaning 2MB).
        Negative values specify cache size in KB. *)
-    synchronous:
+    synchronous: 
       ([
         `Off
         | `Normal

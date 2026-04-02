@@ -404,7 +404,8 @@ let parse_sandbox_path = fun path ->
 (** Try to connect to riot server and get package sources *)
 let get_package_sources = fun package_name ->
   let cwd = Std.Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-  match Riot_model.Workspace_manager.scan cwd with
+  let workspace_manager = Riot_model.Workspace_manager.create () in
+  match Riot_model.Workspace_manager.scan workspace_manager cwd with
   | Error _ -> None
   | Ok (workspace, _load_errors) -> (
       match List.find_opt (fun (pkg: Riot_model.Package.t) -> pkg.name = package_name) workspace.packages with
@@ -439,7 +440,8 @@ let find_source_via_riot = fun sandbox_info ->
 (** Make a path relative to the workspace root *)
 let make_workspace_relative = fun path ->
   let cwd = Std.Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-  match Riot_model.Workspace_manager.find_workspace_root cwd with
+  let workspace_manager = Riot_model.Workspace_manager.create () in
+  match Riot_model.Workspace_manager.find_workspace_root workspace_manager cwd with
   | None -> path
   | Some workspace_root ->
       let workspace_root_str = Path.to_string workspace_root in

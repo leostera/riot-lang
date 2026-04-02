@@ -46,7 +46,7 @@ let handler_continue =
     let backtrace = Exception.get_raw_backtrace () in
     finished (Error { exn; backtrace })
   in
-  let effc : type c. c Effect.t -> ((c, 'a) continuation -> 'b) option = fun e ->
+  let effc: type c. c Effect.t -> ((c, 'a) continuation -> 'b) option = fun e ->
     Some (fun k -> suspended_with k e) in
   Effect.Shallow.{ retc; exnc; effc }
 
@@ -62,7 +62,7 @@ let make = fun fn eff ->
   let k = Effect.Shallow.fiber fn in
   Suspended (k, eff)
 
-let run : type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> a t option = fun ~consume_reduction ~perform t ->
+let run: type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> a t option = fun ~consume_reduction ~perform t ->
   let exception Yield of a t in
   let exception Unwind in
   let t = Cell.create t in
@@ -76,7 +76,7 @@ let run : type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> 
       | Unhandled (fn, v) ->
           raise_notrace (Yield (continue_with fn v))
       | Suspended (fn, e) as suspended ->
-          let k : type c. (c, a) continuation -> c step -> a t = fun fn step ->
+          let k: type c. (c, a) continuation -> c step -> a t = fun fn step ->
             match step with
             | Delay ->
                 suspended

@@ -25,10 +25,10 @@ type event =
       source_locator: string;
       ref_: string option;
       package: string;
-      version: string option;
+      version: string option
     }
   | PackageUpdated of { package: string; from_version: string; to_version: string }
-  | ManifestUpdated of { path: Path.t; section: string; operation:
+  | ManifestUpdated of { path: Path.t; section: string; operation: 
         [
           `Add
           | `Remove
@@ -54,12 +54,16 @@ type error =
       dependency: string;
       source_locator: string;
       ref_: string option;
-      error: string;
+      error: string
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistrySearchFailed of { query: string; registry: string; error: string }
-  | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
+  | RegistryPackageNotFound of {
+      package: string;
+      registry: string;
+      suggestions: suggested_package list
+    }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
@@ -85,9 +89,6 @@ val remove:
   (unit, error) result
 
 val search:
-  ?registry:Pkgs_ml.Registry.t ->
-  request:search_request ->
-  unit ->
-  (suggested_package list, error) result
+  ?registry:Pkgs_ml.Registry.t -> request:search_request -> unit -> (suggested_package list, error) result
 
 val update: ?on_event:(event -> unit) -> workspace:Riot_model.Workspace.t -> unit -> (unit, error) result

@@ -3,6 +3,7 @@ name = "sqlx-driver"
 version = "0.0.1"
 description = "Database driver interface for sqlx"
 license = "Apache-2.0"
+public = true
 
 [lib]
 path = "./src/sqlx_driver.ml"

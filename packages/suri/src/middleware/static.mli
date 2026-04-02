@@ -78,14 +78,14 @@ type config = {
   (** Enable directory browsing with HTML listings. Default: [false] *)
   index_files: string list;
   (** Index files to try for directories. Default: [["index.html"; "index.htm"]] *)
-  dotfiles:
+  dotfiles: 
     [
       `Allow
       | `Deny
       | `Ignore
     ];
   (** How to handle dotfiles (.env, .git, etc). Default: [`Deny] *)
-  symlinks:
+  symlinks: 
     [
       `Follow
       | `Deny

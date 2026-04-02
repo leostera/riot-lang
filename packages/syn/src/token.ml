@@ -96,7 +96,7 @@ and trivia = {
   span: Ceibo.Span.t;
 }
 
-let delimiter_of_keyword : keyword -> delimiter option = function
+let delimiter_of_keyword: keyword -> delimiter option = function
   | Begin -> Some BeginEnd
   | Struct -> Some StructEnd
   | Sig -> Some SigEnd

@@ -27,7 +27,7 @@ let run_benchmarks_cmd =
 
 let list_benchmarks_cmd = command "list-benchmarks" |> about "List all benchmarks"
 
-let get_suite_info name : Reporter.Intf.suite_info = { name }
+let get_suite_info name: Reporter.Intf.suite_info = { name }
 
 let benchmark_name = function
   | Bench_runner.Single case -> case.Bench_case.name

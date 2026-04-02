@@ -20,30 +20,34 @@ primary type. Modules with several important types should name them explicitly.
 
 let single_type_decl_token = fun (decl: Syn.Cst.TypeDeclaration.t) ->
   match Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name decl) with
-  | Some _ when List.is_empty (Syn.Cst.TypeDeclaration.and_declarations decl) ->
-      Some (Syn.Cst.TypeDeclaration.name_token decl |> Syn.Cst.Token.syntax_token)
-  | _ ->
-      None
+  | Some _ when List.is_empty (Syn.Cst.TypeDeclaration.and_declarations decl) -> Some (Syn.Cst.TypeDeclaration.name_token
+    decl
+  |> Syn.Cst.Token.syntax_token)
+  | _ -> None
 
 let single_structure_type_decl_token = fun items ->
-  match List.filter_map
-    (
-      function
-      | Syn.Cst.StructureItem.TypeDeclaration decl -> Some decl
-      | _ -> None
-    )
-    items with
+  match
+    List.filter_map
+      (
+        function
+        | Syn.Cst.StructureItem.TypeDeclaration decl -> Some decl
+        | _ -> None
+      )
+      items
+  with
   | [ decl ] -> single_type_decl_token decl
   | _ -> None
 
 let single_signature_type_decl_token = fun items ->
-  match List.filter_map
-    (
-      function
-      | Syn.Cst.SignatureItem.TypeDeclaration decl -> Some decl
-      | _ -> None
-    )
-    items with
+  match
+    List.filter_map
+      (
+        function
+        | Syn.Cst.SignatureItem.TypeDeclaration decl -> Some decl
+        | _ -> None
+      )
+      items
+  with
   | [ decl ] -> single_type_decl_token decl
   | _ -> None
 

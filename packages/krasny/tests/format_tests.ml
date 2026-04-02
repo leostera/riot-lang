@@ -121,7 +121,10 @@ let tests = [
 let with_doc = fun x -> (** keep *) x
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"fun-body comment and docstring trivia should not need source reparsing" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"fun-body comment and docstring trivia should not need source reparsing"
+        source);
   Test.case "format renders if-branch trivia from token-leading trivia"
     (fun _ctx ->
       let source = {|let classify = fun flag -> if flag then value (* keep before else *) else other
@@ -168,7 +171,10 @@ let bind =
   finish value
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"sequence and binding-operator trivia should not need source reparsing" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"sequence and binding-operator trivia should not need source reparsing"
+        source);
   Test.case "format match cases from structure, not arrow source newlines"
     (fun ctx ->
       let source = {|let render = function
@@ -176,7 +182,10 @@ let bind =
       value
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"match case layout should not preserve source newlines after arrows" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"match case layout should not preserve source newlines after arrows"
+        source);
   Test.case "format polymorphic variant heads from explicit tag tokens"
     (fun ctx ->
       let source = {|let classify = function
@@ -186,7 +195,10 @@ let bind =
 let value = `Ok 1
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"polymorphic variant heads should format from tag tokens" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"polymorphic variant heads should format from tag tokens"
+        source);
   Test.case "format quoted core type variables from explicit sigil tokens"
     (fun ctx ->
       let source = {|type 'a t = 'a list
@@ -194,15 +206,20 @@ let value = `Ok 1
 val id : 'a -> 'a
 |}
       in
-      assert_formatted_mli_snapshot ~ctx ~msg:"quoted core type variables should format from sigil and name tokens" source);
+      assert_formatted_mli_snapshot
+        ~ctx
+        ~msg:"quoted core type variables should format from sigil and name tokens"
+        source);
   Test.case "format core type alias binders from explicit sigil tokens"
     (fun _ctx ->
       let source = {|val cast : ('a list as 'whole) -> 'whole
 |}
       in
       let actual = parse_mli source |> Krasny.format |> Result.expect ~msg:"core type alias binders should format from explicit sigil tokens" in
-      Test.assert_equal ~expected:{|val cast: ('a list as 'whole) -> 'whole
-|} ~actual;
+      Test.assert_equal
+        ~expected:{|val cast: ('a list as 'whole) -> 'whole
+|}
+        ~actual;
       Ok ());
   Test.case "format record fields without name-length multiline forcing"
     (fun _ctx ->
@@ -234,15 +251,20 @@ type u = {
 let map (type a b) (iter : a t) ~(fn : a -> b) : b t = failwith "todo"
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"typed named parameters should move to the synthesized outer annotation" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"typed named parameters should move to the synthesized outer annotation"
+        source);
   Test.case "keep typed parameters in the binding header when annotation synthesis declines"
     (fun _ctx ->
       let source = {|let pick x : int = x
 |}
       in
       let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"typed parameters should stay in the binding header when outer annotation synthesis does not apply" in
-      Test.assert_equal ~expected:{|let pick x: int = x
-|} ~actual;
+      Test.assert_equal
+        ~expected:{|let pick x: int = x
+|}
+        ~actual;
       Ok ());
   Test.case "format index expressions from explicit delimiter tokens"
     (fun ctx ->
@@ -251,13 +273,19 @@ let y = a.(0)
 let z = x.%(0)
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"index expressions should format from CST-carried delimiters, not token replay" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"index expressions should format from CST-carried delimiters, not token replay"
+        source);
   Test.case "format signed literal patterns from structural sign tokens"
     (fun ctx ->
       let source = {|let classify = function | -1 -> `Neg | +2 -> `Pos | _ -> `Other
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"signed literal patterns should format from CST-carried sign tokens" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"signed literal patterns should format from CST-carried sign tokens"
+        source);
   Test.case "format leaves a blank line before docstring-led top-level items"
     (fun _ctx ->
       let source = {|let first = 1
@@ -281,14 +309,20 @@ let second = 2
 val second : int
 |}
       in
-      assert_formatted_mli_snapshot ~ctx ~msg:"signature docstring-led items should stay visually separated" source);
+      assert_formatted_mli_snapshot
+        ~ctx
+        ~msg:"signature docstring-led items should stay visually separated"
+        source);
   Test.case "format operator expressions and patterns from explicit operator tokens"
     (fun ctx ->
       let source = {|let op = ( + )
 let is_plus = function | ( + ) -> true | _ -> false
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"operator expressions and patterns should format from CST-carried operator tokens" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"operator expressions and patterns should format from CST-carried operator tokens"
+        source);
   Test.case "format infix and prefix expression operators from explicit operator tokens"
     (fun _ctx ->
       let source = {|let negate value = ~-value
@@ -318,7 +352,10 @@ let ready =
   | [value] -> hit
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"singleton list patterns should not preserve compact source spacing" compact_source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"singleton list patterns should not preserve compact source spacing"
+        compact_source);
   Test.case "format if conditions from infix structure, not token scans"
     (fun _ctx ->
       let source = {|let decide =
@@ -345,7 +382,10 @@ let ready =
   )
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"binding layout should not preserve multiline source for a simple wrapped value" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"binding layout should not preserve multiline source for a simple wrapped value"
+        source);
   Test.case "format simple string bindings inline from ordinary simplicity checks"
     (fun ctx ->
       let source = {|let message =
@@ -357,7 +397,10 @@ let bind =
   finish value
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"simple string bindings should stay inline without a separate override" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"simple string bindings should stay inline without a separate override"
+        source);
   Test.case "format keeps simple applies inline even when identifiers contain keywords"
     (fun _ctx ->
       let source = "let handler = use function_handler\n" in
@@ -381,7 +424,10 @@ let bind =
   Test.case "format rewrites parameterized let bindings between formatted lets"
     (fun ctx ->
       let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in
-      assert_formatted_ml_snapshot ~ctx ~msg:"parameterized let bindings should lower through explicit fun syntax" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"parameterized let bindings should lower through explicit fun syntax"
+        source);
   Test.case "format keeps mixed trivia and unsupported items parseable"
     (fun _ctx ->
       let source = {|open Std
@@ -438,7 +484,10 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
   ready, staged
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"local binding equals policy should stay stable while heuristics are isolated" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"local binding equals policy should stay stable while heuristics are isolated"
+        source);
   Test.case "format local binding infix threshold around inline-after-equals cutoff"
     (fun ctx ->
       let source = {|let totals a b c d e f g h i =
@@ -447,7 +496,10 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
   total8, total9
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"local binding infix threshold should stay explicit and stable" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"local binding infix threshold should stay explicit and stable"
+        source);
   Test.case "format simple apply rhs by shape, not comment scans"
     (fun _ctx ->
       let source = {|let run x =
@@ -468,7 +520,10 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
   callback staged, ready
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"binding-operator equals policy should stay aligned with local bindings" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"binding-operator equals policy should stay aligned with local bindings"
+        source);
   Test.case "format recursive local bindings with multiline bodies"
     (fun _ctx ->
       let source = {|let outer value =
@@ -656,7 +711,10 @@ end
 class worker : int -> service
 |}
       in
-      assert_formatted_mli_snapshot ~ctx ~msg:"class type declaration items should lower structurally" source);
+      assert_formatted_mli_snapshot
+        ~ctx
+        ~msg:"class type declaration items should lower structurally"
+        source);
   Test.case "format keeps shortcut class declaration modifiers idempotent"
     (fun _ctx ->
       let source = {|class%foo [@foo] x = x
@@ -683,27 +741,38 @@ exception Nested = Std.Result.Error
   Test.case "format floating attributes from structural payload items"
     (fun ctx ->
       let source = "[@@@warning    \"-32\"]\n" in
-      assert_formatted_ml_snapshot ~ctx ~msg:"floating attributes should render from structural payload items" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"floating attributes should render from structural payload items"
+        source);
   Test.case "format floating extension items structurally"
     (fun ctx ->
       let structure_source = {|[%%foo]
 [%%bar let x = 1]
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"floating structure extensions should render structurally from the extension shell and payload" structure_source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"floating structure extensions should render structurally from the extension shell and payload"
+        structure_source);
   Test.case "format module-expression and module-type extensions structurally"
     (fun ctx ->
       let source = {|module type S = [%foo]
 module M = [%foo]
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"module-expression and module-type extensions should render from the structural extension shell" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"module-expression and module-type extensions should render from the structural extension shell"
+        source);
   Test.case "format currently fails for structural core types"
     (fun _ctx ->
       let source = {|val use : #service -> M.(t list) -> < close : unit -> unit; next : int >
 |}
       in
-      assert_format_mli_fails ~msg:"class, local-open, and object core types are not supported structurally yet" source);
+      assert_format_mli_fails
+        ~msg:"class, local-open, and object core types are not supported structurally yet"
+        source);
   Test.case "format currently fails for first-class module types from structural module-type docs"
     (fun _ctx ->
       let source = {|type packed = (module   Transport   with   type t = int)
@@ -736,7 +805,10 @@ type payload = (module [%foo: S])
 let guarded = 1 [@foo? Some y when y > 0]
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"ordinary pattern-payload attributes should render structurally" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"ordinary pattern-payload attributes should render structurally"
+        source);
   Test.case "format parenthesizes attributed non-atomic expressions"
     (fun ctx ->
       let source = {|let constructor = Some 0 [@inline always]
@@ -744,7 +816,10 @@ let apply = I64.logor b (I64.shift_left b 32) [@inline always]
 let infix = mask land (mask - 1) [@inline always]
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"postfix expression attributes should preserve attributed apply and infix payloads" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"postfix expression attributes should preserve attributed apply and infix payloads"
+        source);
   Test.case "format currently fails for plain object expressions"
     (fun _ctx ->
       let source = {|let empty = object end
@@ -823,11 +898,17 @@ let typed =
   Test.case "format trailing variant comments with explicit separator policy"
     (fun ctx ->
       let source = "type t =\n  | A (* comment *)\n" in
-      assert_formatted_ml_snapshot ~ctx ~msg:"trailing variant comments should format from explicit trivia separators" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"trailing variant comments should format from explicit trivia separators"
+        source);
   Test.case "format trailing variant docstrings with explicit separator policy"
     (fun ctx ->
       let source = "type t =\n  | A (** doc *)\n" in
-      assert_formatted_ml_snapshot ~ctx ~msg:"trailing variant docstrings should format from explicit trivia separators" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"trailing variant docstrings should format from explicit trivia separators"
+        source);
   Test.case "format fails for signature-bodied first-class module types"
     (fun _ctx ->
       let source = {|type packed = (module sig
@@ -841,7 +922,10 @@ end)
   Test.case "format core-type extensions structurally"
     (fun ctx ->
       let source = "val use : [%foo: int]\n" in
-      assert_formatted_mli_snapshot ~ctx ~msg:"core-type extensions should render structurally from the extension shell and payload" source);
+      assert_formatted_mli_snapshot
+        ~ctx
+        ~msg:"core-type extensions should render structurally from the extension shell and payload"
+        source);
   Test.case "format keeps structural patterns idempotent"
     (fun _ctx ->
       let source = {|let unpack = function
@@ -879,7 +963,10 @@ end)
   | [%foo? Some y when y > 0] -> y
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"pattern extensions should render structurally from the extension shell and payload" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"pattern extensions should render structurally from the extension shell and payload"
+        source);
   Test.case "format keeps structural imperative and module expressions idempotent"
     (fun _ctx ->
       let source = {|let packed = (module M : S)
@@ -900,7 +987,10 @@ let widen value = (value :> target)
       let source = {|let update next count = {< current = next; count >}
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"object override expressions should format structurally" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"object override expressions should format structurally"
+        source);
   Test.case "format expression extensions structurally"
     (fun ctx ->
       let source = {|let generated = [%foo]
@@ -909,7 +999,10 @@ let typed = [%foo: int]
 let nested = [%foo let x = 1]
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"expression extensions should render structurally from the extension shell and payload" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"expression extensions should render structurally from the extension shell and payload"
+        source);
   Test.case "format unreachable expressions structurally"
     (fun _ctx ->
       let source = {|let absurd maybe =
@@ -929,7 +1022,10 @@ let shaped handler = (handler : < run : int >)
 let poly = ((fun x -> x) : 'a. 'a -> 'a)
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"typed and polymorphic expressions should lower through structural core-type rendering" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"typed and polymorphic expressions should lower through structural core-type rendering"
+        source);
   Test.case "format keeps nested module bodies structural"
     (fun _ctx ->
       let source = {|module type S = sig
@@ -1012,7 +1108,10 @@ let ( .??[] ) () () = ();;
 module M = struct end
 |}
       in
-      assert_formatted_ml_snapshot ~ctx ~msg:"top-level phrase separators should come from source-file tokens, not source gaps" source);
+      assert_formatted_ml_snapshot
+        ~ctx
+        ~msg:"top-level phrase separators should come from source-file tokens, not source gaps"
+        source);
   Test.case "format preserves syntax hash for selected codebase files"
     (fun _ctx ->
       List.iter assert_roundtrip_hash workspace_files;

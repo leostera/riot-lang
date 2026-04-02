@@ -12,6 +12,8 @@ let app = [ (fun ~conn ~next:_ -> Conn.respond conn ~status:Ok ~body:"Hello from
 let () =
   Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
+      Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
+      let _ = Std.Log.start_link () in
       match Suri.start_link app with
       | Ok supervisor ->
           Log.info "🚀 Server running on http://0.0.0.0:4000";

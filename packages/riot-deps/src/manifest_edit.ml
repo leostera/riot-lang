@@ -14,21 +14,38 @@ let quoted = fun value -> Std.Data.Toml.to_string (Std.Data.Toml.String value)
 
 let render_dependency_table = fun name fields ->
   let rendered_fields =
-    List.map
-      (fun (field, value) -> field ^ " = " ^ value)
-      fields
+    List.map (fun (field, value) -> field ^ " = " ^ value) fields
   in
   name ^ " = { " ^ String.concat ", " rendered_fields ^ " }"
 
 let render_dependency = fun (dep: Riot_model.Package.dependency) ->
   let name = dep.name in
   match dep.source with
-  | { workspace=true; _ } -> name ^ " = { workspace = true }"
-  | { path=None; source_locator=None; ref_=None; version=Some requirement; _ } -> name
-  ^ " = "
-  ^ quoted (Std.Version.requirement_to_string requirement)
-  | { path=None; source_locator=None; ref_=None; version=None; _ } -> name ^ " = " ^ quoted "*"
-  | { path; source_locator; ref_; version; _ } ->
+  | { workspace=true; _ } ->
+      name ^ " = { workspace = true }"
+  | {
+    path=None;
+    source_locator=None;
+    ref_=None;
+    version=Some requirement;
+    _
+  } ->
+      name ^ " = " ^ quoted (Std.Version.requirement_to_string requirement)
+  | {
+    path=None;
+    source_locator=None;
+    ref_=None;
+    version=None;
+    _
+  } ->
+      name ^ " = " ^ quoted "*"
+  | {
+    path;
+    source_locator;
+    ref_;
+    version;
+    _
+  } ->
       let fields = [] in
       let fields =
         match path with
@@ -47,7 +64,8 @@ let render_dependency = fun (dep: Riot_model.Package.dependency) ->
       in
       let fields =
         match version with
-        | Some requirement -> ("version", quoted (Std.Version.requirement_to_string requirement)) :: fields
+        | Some requirement -> ("version", quoted (Std.Version.requirement_to_string requirement))
+        :: fields
         | None -> fields
       in
       render_dependency_table name (List.rev fields)

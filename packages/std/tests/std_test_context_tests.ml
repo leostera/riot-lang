@@ -18,8 +18,8 @@ let test_ctx_exposes_binary_path =
     (fun ctx ->
       match ctx.binary_path with
       | Some path when String.contains (Path.to_string path) "std_test_context_tests" -> Ok ()
-      | Some path ->
-          Error ("expected binary path to mention std_test_context_tests, got " ^ Path.to_string path)
+      | Some path -> Error ("expected binary path to mention std_test_context_tests, got "
+      ^ Path.to_string path)
       | None -> Error "expected ctx.binary_path to be present")
 
 let test_ctx_derives_package_name =

@@ -28,7 +28,7 @@ type 't var_type =
   | Bool: bool var_type
   | Char: char var_type
 
-let var : type t. t var_type -> name:string -> t option = fun var_type ~name ->
+let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
   try
     let value = Kernel.Env.getenv_exn name in
     match var_type with

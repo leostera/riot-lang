@@ -17,14 +17,14 @@ let rec make = fun () ->
 let equal = fun (Ref a) (Ref b) ->
   Int64.equal a b
 
-let type_equal : type a b. a t -> b t -> (a, b) Type.eq option = fun a b ->
+let type_equal: type a b. a t -> b t -> (a, b) Type.eq option = fun a b ->
   match (a, b) with
   | Ref a', Ref b' when Int64.equal a' b' -> Some (Kernel.dangerous_unsafe_cast Type.Equal)
   | _ -> None
 
-let cast : type a b. (a, b) Type.eq -> a -> b = fun (Type.Equal) a -> a
+let cast: type a b. (a, b) Type.eq -> a -> b = fun (Type.Equal) a -> a
 
-let cast : type a b. a t -> b t -> a -> b option = fun a b value ->
+let cast: type a b. a t -> b t -> a -> b option = fun a b value ->
   match type_equal a b with
   | Some witness -> Some (cast witness value)
   | None -> None

@@ -80,7 +80,7 @@ module Server = struct
   let start = fun () -> spawn init
 end
 
-let pid : Pid.t option Cell.t = cell None
+let pid: Pid.t option Cell.t = cell None
 
 let lock = Mutex.create ()
 

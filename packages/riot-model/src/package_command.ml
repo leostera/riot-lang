@@ -11,18 +11,18 @@ type t = {
   command_binary: Path.t;
 }
 
-let is_built : t -> bool = fun cmd ->
+let is_built: t -> bool = fun cmd ->
   match Fs.exists cmd.command_binary with
   | Ok true -> true
   | _ -> false
 
-let status_string : t -> string = fun cmd ->
+let status_string: t -> string = fun cmd ->
   if is_built cmd then
     "ready"
   else
     "not built"
 
-let parse_from_toml : Toml.value list -> package_name:string -> package_path:Path.t -> t list = fun toml_entries ~package_name ~package_path ->
+let parse_from_toml: Toml.value list -> package_name:string -> package_path:Path.t -> t list = fun toml_entries ~package_name ~package_path ->
   List.filter_map
     (fun cmd_toml ->
       match cmd_toml with
@@ -63,7 +63,7 @@ let parse_from_toml : Toml.value list -> package_name:string -> package_path:Pat
 
 (* Note: discover_all and find_by_name moved to Workspace module to avoid circular dependency *)
 
-let to_json : t -> Json.t = fun cmd ->
+let to_json: t -> Json.t = fun cmd ->
   Json.Object [
     ("name", Json.String cmd.name);
     ("description", Json.String cmd.description);

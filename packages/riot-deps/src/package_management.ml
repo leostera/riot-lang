@@ -31,10 +31,10 @@ type event =
       source_locator: string;
       ref_: string option;
       package: string;
-      version: string option;
+      version: string option
     }
   | PackageUpdated of { package: string; from_version: string; to_version: string }
-  | ManifestUpdated of { path: Path.t; section: string; operation:
+  | ManifestUpdated of { path: Path.t; section: string; operation: 
         [
           `Add
           | `Remove
@@ -63,12 +63,16 @@ type error =
       dependency: string;
       source_locator: string;
       ref_: string option;
-      error: string;
+      error: string
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistrySearchFailed of { query: string; registry: string; error: string }
-  | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
+  | RegistryPackageNotFound of {
+      package: string;
+      registry: string;
+      suggestions: suggested_package list
+    }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }
@@ -107,20 +111,16 @@ let no_emit = fun _ -> ()
 let registry_name = "pkgs.ml"
 
 let error_message = function
-  | CurrentPackageNotFound { cwd } -> "could not determine current package from '"
-  ^ Path.to_string cwd
-  ^ "'"
-  | PackageNotFound { package } -> "workspace package '" ^ package ^ "' was not found"
-  | DependencySpecInvalid { dependency; error } -> "invalid dependency '" ^ dependency ^ "': " ^ error
-  | PathDependencyMustBeRelative { dependency } -> "path dependency '"
-  ^ dependency
-  ^ "' must be a relative path"
-  | PathDependencyLoadFailed { dependency; path; error } -> "failed to load path dependency '"
-  ^ dependency
-  ^ "' from '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ error
+  | CurrentPackageNotFound { cwd } ->
+      "could not determine current package from '" ^ Path.to_string cwd ^ "'"
+  | PackageNotFound { package } ->
+      "workspace package '" ^ package ^ "' was not found"
+  | DependencySpecInvalid { dependency; error } ->
+      "invalid dependency '" ^ dependency ^ "': " ^ error
+  | PathDependencyMustBeRelative { dependency } ->
+      "path dependency '" ^ dependency ^ "' must be a relative path"
+  | PathDependencyLoadFailed { dependency; path; error } ->
+      "failed to load path dependency '" ^ dependency ^ "' from '" ^ Path.to_string path ^ "': " ^ error
   | SourceDependencyLoadFailed { dependency; source_locator; ref_; error } ->
       let suffix =
         match ref_ with
@@ -134,22 +134,12 @@ let error_message = function
       ^ suffix
       ^ "': "
       ^ error
-  | RegistryInitializationFailed { registry; error } -> "failed to initialize registry '"
-  ^ registry
-  ^ "': "
-  ^ error
-  | RegistryLookupFailed { package; registry; error } -> "failed to look up package '"
-  ^ package
-  ^ "' in registry '"
-  ^ registry
-  ^ "': "
-  ^ error
-  | RegistrySearchFailed { query; registry; error } -> "failed to search registry '"
-  ^ registry
-  ^ "' for '"
-  ^ query
-  ^ "': "
-  ^ error
+  | RegistryInitializationFailed { registry; error } ->
+      "failed to initialize registry '" ^ registry ^ "': " ^ error
+  | RegistryLookupFailed { package; registry; error } ->
+      "failed to look up package '" ^ package ^ "' in registry '" ^ registry ^ "': " ^ error
+  | RegistrySearchFailed { query; registry; error } ->
+      "failed to search registry '" ^ registry ^ "' for '" ^ query ^ "': " ^ error
   | RegistryPackageNotFound { package; registry; suggestions } ->
       let base = "package '" ^ package ^ "' was not found in registry '" ^ registry ^ "'" in
       (
@@ -160,41 +150,36 @@ let error_message = function
               List.map
                 (fun { package; latest_version; description } ->
                   match description with
-                  | Some description ->
-                      "  - " ^ package ^ "@" ^ latest_version ^ " - " ^ description
-                  | None ->
-                      "  - " ^ package ^ "@" ^ latest_version)
+                  | Some description -> "  - " ^ package ^ "@" ^ latest_version ^ " - " ^ description
+                  | None -> "  - " ^ package ^ "@" ^ latest_version)
                 suggestions
             in
             base ^ "\nDid you mean:\n" ^ String.concat "\n" lines
       )
-  | RegistryVersionNotFound { package; requirement; registry } -> "package '"
-  ^ package
-  ^ "' has no release matching '"
-  ^ requirement
-  ^ "' in registry '"
-  ^ registry
-  ^ "'"
-  | ManifestUpdateFailed { path; error } -> "failed to update manifest '"
-  ^ Path.to_string path
-  ^ "': "
-  ^ error
-  | DependencyNotFoundInSection { path; section; dependency } -> "dependency '"
-  ^ dependency
-  ^ "' was not found in ["
-  ^ section
-  ^ "] of '"
-  ^ Path.to_string path
-  ^ "'"
-  | WorkspaceReloadFailed { workspace_root; error } -> "failed to reload workspace '"
-  ^ Path.to_string workspace_root
-  ^ "': "
-  ^ error
-  | WorkspaceReloadHadErrors { workspace_root; errors } -> "workspace '"
-  ^ Path.to_string workspace_root
-  ^ "' has load errors:\n"
-  ^ String.concat "\n" errors
-  | LockRefreshFailed error -> Riot_model.Pm_error.message error
+  | RegistryVersionNotFound { package; requirement; registry } ->
+      "package '"
+      ^ package
+      ^ "' has no release matching '"
+      ^ requirement
+      ^ "' in registry '"
+      ^ registry
+      ^ "'"
+  | ManifestUpdateFailed { path; error } ->
+      "failed to update manifest '" ^ Path.to_string path ^ "': " ^ error
+  | DependencyNotFoundInSection { path; section; dependency } ->
+      "dependency '"
+      ^ dependency
+      ^ "' was not found in ["
+      ^ section
+      ^ "] of '"
+      ^ Path.to_string path
+      ^ "'"
+  | WorkspaceReloadFailed { workspace_root; error } ->
+      "failed to reload workspace '" ^ Path.to_string workspace_root ^ "': " ^ error
+  | WorkspaceReloadHadErrors { workspace_root; errors } ->
+      "workspace '" ^ Path.to_string workspace_root ^ "' has load errors:\n" ^ String.concat "\n" errors
+  | LockRefreshFailed error ->
+      Riot_model.Pm_error.message error
 
 let scope_to_section = function
   | Runtime -> Manifest_edit.Runtime
@@ -254,14 +239,16 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
     in
     let package_root = dependency_root ~declared_from dep_path in
     let manifest_path = Path.(package_root / Path.v "riot.toml") in
-    let* source = Fs.read_to_string manifest_path |> Result.map_error
+    let* source = Fs.read_to_string manifest_path
+    |> Result.map_error
       (fun err ->
         PathDependencyLoadFailed {
           dependency = raw;
           path = package_root;
           error = IO.error_message err
         }) in
-    let* toml = Data.Toml.parse source |> Result.map_error
+    let* toml = Data.Toml.parse source
+    |> Result.map_error
       (fun err ->
         PathDependencyLoadFailed {
           dependency = raw;
@@ -276,39 +263,37 @@ let load_path_dependency = fun ~(target:target_manifest) ~raw ->
       ~path:package_root
       ~relative_path:dep_path
     |> Result.map_error
-      (fun err ->
-        PathDependencyLoadFailed {
-          dependency = raw;
-          path = package_root;
-          error = err
-        }) in
+      (fun err -> PathDependencyLoadFailed { dependency = raw; path = package_root; error = err }) in
     Ok (Path { name = package.name; path = dep_path })
 
 let load_source_dependency = fun ~(emit:event -> unit) ~raw ->
   let* spec = Git_dependency.parse_spec raw
-  |> Result.map_error (fun error -> DependencySpecInvalid {
-    dependency = raw;
-    error = Git_dependency.message error
-  }) in
+  |> Result.map_error
+    (fun error -> DependencySpecInvalid { dependency = raw; error = Git_dependency.message error }) in
   let* () = Git_dependency.parse_source_locator spec.source_locator
-  |> Result.map_error (fun error -> DependencySpecInvalid {
-    dependency = raw;
-    error = Git_dependency.message error
-  })
+  |> Result.map_error
+    (fun error -> DependencySpecInvalid { dependency = raw; error = Git_dependency.message error })
   |> Result.map (fun _ -> ()) in
-  emit (SourceDependencyMaterializationStarted {
-    source_locator = spec.source_locator;
-    ref_ = spec.ref_
-  });
-  let* materialized = Git_dependency.materialize ~source_locator:spec.source_locator ~ref_:spec.ref_ ()
-  |> Result.map_error (fun error -> SourceDependencyLoadFailed {
-    dependency = raw;
-    source_locator = spec.source_locator;
-    ref_ = spec.ref_;
-    error = Git_dependency.message error
-  }) in
+  emit
+    (SourceDependencyMaterializationStarted {
+      source_locator = spec.source_locator;
+      ref_ = spec.ref_
+    });
+  let* materialized = Git_dependency.materialize
+    ~source_locator:spec.source_locator
+    ~ref_:spec.ref_
+    ()
+  |> Result.map_error
+    (fun error ->
+      SourceDependencyLoadFailed {
+        dependency = raw;
+        source_locator = spec.source_locator;
+        ref_ = spec.ref_;
+        error = Git_dependency.message error
+      }) in
   let manifest_path = Path.(materialized.package_root / Path.v "riot.toml") in
-  let* source = Fs.read_to_string manifest_path |> Result.map_error
+  let* source = Fs.read_to_string manifest_path
+  |> Result.map_error
     (fun err ->
       SourceDependencyLoadFailed {
         dependency = raw;
@@ -316,7 +301,8 @@ let load_source_dependency = fun ~(emit:event -> unit) ~raw ->
         ref_ = spec.ref_;
         error = IO.error_message err
       }) in
-  let* toml = Data.Toml.parse source |> Result.map_error
+  let* toml = Data.Toml.parse source
+  |> Result.map_error
     (fun err ->
       SourceDependencyLoadFailed {
         dependency = raw;
@@ -344,12 +330,13 @@ let load_source_dependency = fun ~(emit:event -> unit) ~raw ->
         ref_ = spec.ref_;
         error
       }) in
-  emit (SourceDependencyMaterializationFinished {
-    source_locator = spec.source_locator;
-    ref_ = spec.ref_;
-    package = package.name;
-    version = Option.map Std.Version.to_string package.publish.version
-  });
+  emit
+    (SourceDependencyMaterializationFinished {
+      source_locator = spec.source_locator;
+      ref_ = spec.ref_;
+      package = package.name;
+      version = Option.map Std.Version.to_string package.publish.version
+    });
   Ok (Source { name = package.name; source_locator = spec.source_locator; ref_ = spec.ref_ })
 
 let parse_dependency_spec = fun ~(target:target_manifest) raw ->
@@ -358,10 +345,9 @@ let parse_dependency_spec = fun ~(target:target_manifest) raw ->
   else
     match parse_registry_dependency_spec raw with
     | Ok parsed -> Ok (Registry parsed)
-    | Error _
-      when String.contains raw "/"
-      || String.starts_with ~prefix:"." raw ->
-        load_path_dependency ~target ~raw
+    | Error _ when String.contains raw "/" || String.starts_with ~prefix:"." raw -> load_path_dependency
+      ~target
+      ~raw
     | Error err -> Error err
 
 let init_registry = fun () ->
@@ -478,23 +464,24 @@ let dependency_exists = fun ~(package_name:string) document requirement ->
   in
   loop document.Pkgs_ml.Sparse_index.releases
 
-let suggested_package_of_search_result = fun (result: Pkgs_ml.Registry.search_result) -> {
-  package = result.package_name;
-  latest_version = result.latest_version;
-  description = result.description;
-}
+let suggested_package_of_search_result = fun (result: Pkgs_ml.Registry.search_result) ->
+  {
+    package = result.package_name;
+    latest_version = result.latest_version;
+    description = result.description
+  }
 
 let lookup_package_suggestions = fun ~registry ~package_name ->
   match Pkgs_ml.Registry.search_packages registry ~query:package_name ~limit:5 () with
-  | Ok results ->
-      results
-      |> List.filter (fun (result: Pkgs_ml.Registry.search_result) ->
-        not (String.equal
+  | Ok results -> results
+  |> List.filter
+    (fun (result: Pkgs_ml.Registry.search_result) ->
+      not
+        (String.equal
           (Pkgs_ml.Sparse_index.normalized_name result.package_name)
           (Pkgs_ml.Sparse_index.normalized_name package_name)))
-      |> List.map suggested_package_of_search_result
-  | Error _ ->
-      []
+  |> List.map suggested_package_of_search_result
+  | Error _ -> []
 
 let search = fun ?registry ~(request:search_request) () ->
   let* registry =
@@ -507,12 +494,13 @@ let search = fun ?registry ~(request:search_request) () ->
     ~query:request.query
     ~limit:request.limit
     ()
-  |> Result.map_error (fun error ->
-    RegistrySearchFailed {
-      query = request.query;
-      registry = Pkgs_ml.Registry.name registry;
-      error;
-    }) in
+  |> Result.map_error
+    (fun error ->
+      RegistrySearchFailed {
+        query = request.query;
+        registry = Pkgs_ml.Registry.name registry;
+        error
+      }) in
   Ok (List.map suggested_package_of_search_result results)
 
 let lookup_named_package = fun ~(emit:event -> unit) ~registry (parsed: registry_dependency) ->
@@ -521,12 +509,11 @@ let lookup_named_package = fun ~(emit:event -> unit) ~registry (parsed: registry
   |> Result.map_error
     (fun error -> RegistryLookupFailed { package = parsed.name; registry = registry_name; error }) in
   match document with
-  | None ->
-      Error (RegistryPackageNotFound {
-        package = parsed.name;
-        registry = registry_name;
-        suggestions = lookup_package_suggestions ~registry ~package_name:parsed.name
-      })
+  | None -> Error (RegistryPackageNotFound {
+    package = parsed.name;
+    registry = registry_name;
+    suggestions = lookup_package_suggestions ~registry ~package_name:parsed.name
+  })
   | Some document ->
       emit
         (RegistryPackageLookupFinished { package = document.name; latest_version = document.latest });
@@ -565,42 +552,46 @@ let dependency_of_parsed = function
   | Registry parsed ->
       Riot_model.Package.{
         name = parsed.name;
-        source = {
-          workspace = false;
-          builtin = Riot_model.Package.is_builtin_dependency_name parsed.name;
-          path = None;
-          source_locator = None;
-          ref_ = None;
-          version = parsed.requirement
-        }
+        source =
+          {
+            workspace = false;
+            builtin = Riot_model.Package.is_builtin_dependency_name parsed.name;
+            path = None;
+            source_locator = None;
+            ref_ = None;
+            version = parsed.requirement;
+          };
       }
   | Path parsed ->
       Riot_model.Package.{
         name = parsed.name;
-        source = {
-          workspace = false;
-          builtin = false;
-          path = Some parsed.path;
-          source_locator = None;
-          ref_ = None;
-          version = None
-        }
+        source =
+          {
+            workspace = false;
+            builtin = false;
+            path = Some parsed.path;
+            source_locator = None;
+            ref_ = None;
+            version = None;
+          };
       }
   | Source parsed ->
       Riot_model.Package.{
         name = parsed.name;
-        source = {
-          workspace = false;
-          builtin = false;
-          path = None;
-          source_locator = Some parsed.source_locator;
-          ref_ = parsed.ref_;
-          version = None
-        }
+        source =
+          {
+            workspace = false;
+            builtin = false;
+            path = None;
+            source_locator = Some parsed.source_locator;
+            ref_ = parsed.ref_;
+            version = None;
+          };
       }
 
 let reload_workspace = fun ~(workspace_root:Path.t) ->
-  let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_root
+  let workspace_manager = Riot_model.Workspace_manager.create () in
+  let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager workspace_root
   |> Result.map_error (fun error -> WorkspaceReloadFailed { workspace_root; error }) in
   match load_errors with
   | [] -> Ok workspace
@@ -668,22 +659,21 @@ let add = fun ?(on_event = no_emit) ~(workspace:Riot_model.Workspace.t) ~cwd ~(r
     | Registry parsed ->
         let* registry = init_registry () in
         lookup_named_package ~emit ~registry parsed |> Result.map (fun parsed -> Registry parsed)
-    | Path parsed -> Ok (Path parsed)
-    | Source parsed -> Ok (Source parsed)
+    | Path parsed ->
+        Ok (Path parsed)
+    | Source parsed ->
+        Ok (Source parsed)
   in
   let dependencies = upsert_dependency target.dependencies (dependency_of_parsed parsed) in
-  let* () = update_manifest
-    ~emit
-    ~target
-    ~scope:request.scope
-    ~dependencies
-    ~operation:`Add
-      ~dependency:(
-      match parsed with
-      | Registry parsed -> parsed.name
-      | Path parsed -> parsed.name
-      | Source parsed -> parsed.name
-    ) in
+  let* () =
+    update_manifest ~emit ~target ~scope:request.scope ~dependencies ~operation:`Add
+      ~dependency:((
+        match parsed with
+        | Registry parsed -> parsed.name
+        | Path parsed -> parsed.name
+        | Source parsed -> parsed.name
+      ))
+  in
   let* registry = init_registry () in
   let* workspace = reload_workspace ~workspace_root:workspace.root in
   let* _lockfile = refresh_lock ~emit ~mode:Dep_solver.Refresh ~registry ~workspace in

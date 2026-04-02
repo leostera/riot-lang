@@ -53,7 +53,7 @@ type Message.t +=
   | AgentRequest of agent_request
   | AgentResponse of agent_response
 
-let rec loop : type state. state Ref.t -> state -> (unit, exn) result = fun state_ref state ->
+let rec loop: type state. state Ref.t -> state -> (unit, exn) result = fun state_ref state ->
   let selector msg =
     match msg with
     | AgentRequest req -> `select req
@@ -97,22 +97,22 @@ let rec loop : type state. state Ref.t -> state -> (unit, exn) result = fun stat
       send reply_to (AgentResponse StopReply);
       Ok ()
 
-let start : type state. (unit -> state) -> state t = fun init ->
-  let state_ref : state Ref.t = Ref.make () in
+let start: type state. (unit -> state) -> state t = fun init ->
+  let state_ref: state Ref.t = Ref.make () in
   let pid =
     spawn (fun () -> loop state_ref (init ()))
   in
   { pid; state_ref }
 
-let start_link : type state. (unit -> state) -> state t = fun init ->
-  let state_ref : state Ref.t = Ref.make () in
+let start_link: type state. (unit -> state) -> state t = fun init ->
+  let state_ref: state Ref.t = Ref.make () in
   let pid =
     spawn_link (fun () -> loop state_ref (init ()))
   in
   { pid; state_ref }
 
-let get : type state reply. state t -> (state -> reply) -> reply = fun agent fn ->
-  let reply_ref : reply Ref.t = Ref.make () in
+let get: type state reply. state t -> (state -> reply) -> reply = fun agent fn ->
+  let reply_ref: reply Ref.t = Ref.make () in
   send
     agent.pid
     (AgentRequest (Get { reply_to = self (); fn; state_ref = agent.state_ref; reply_ref }));
@@ -129,7 +129,7 @@ let get : type state reply. state t -> (state -> reply) -> reply = fun agent fn 
     )
   | _ -> panic "unexpected agent response"
 
-let update : type state. state t -> (state -> state) -> unit = fun agent fn ->
+let update: type state. state t -> (state -> state) -> unit = fun agent fn ->
   send agent.pid (AgentRequest (Update { reply_to = self (); fn; state_ref = agent.state_ref }));
   let selector msg =
     match msg with
@@ -140,8 +140,8 @@ let update : type state. state t -> (state -> state) -> unit = fun agent fn ->
   | UpdateReply -> ()
   | _ -> panic "unexpected agent response"
 
-let get_and_update : type state reply. state t -> (state -> reply * state) -> reply = fun agent fn ->
-  let reply_ref : reply Ref.t = Ref.make () in
+let get_and_update: type state reply. state t -> (state -> reply * state) -> reply = fun agent fn ->
+  let reply_ref: reply Ref.t = Ref.make () in
   send
     agent.pid
     (AgentRequest (GetAndUpdate { reply_to = self (); fn; state_ref = agent.state_ref; reply_ref }));
@@ -158,10 +158,10 @@ let get_and_update : type state reply. state t -> (state -> reply * state) -> re
     )
   | _ -> panic "unexpected agent response"
 
-let cast : type state. state t -> (state -> state) -> unit = fun agent fn ->
+let cast: type state. state t -> (state -> state) -> unit = fun agent fn ->
   send agent.pid (AgentRequest (Cast { fn; state_ref = agent.state_ref }))
 
-let stop : type state. state t -> unit = fun agent ->
+let stop: type state. state t -> unit = fun agent ->
   send agent.pid (AgentRequest (Stop { reply_to = self () }));
   let selector msg =
     match msg with

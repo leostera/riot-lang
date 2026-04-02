@@ -55,7 +55,7 @@ type publish_error =
 
 let default_registry_name = "pkgs.ml"
 
-let no_event : publish_event -> unit = fun _ -> ()
+let no_event: publish_event -> unit = fun _ -> ()
 
 let ( let* ) = Result.and_then
 
@@ -169,7 +169,8 @@ let run_check = fun ~emit ~package_name ~version ~stage check_fn ->
   Ok value
 
 let scan_workspace_strict = fun workspace_root ->
-  match Workspace_manager.scan workspace_root with
+  let workspace_manager = Workspace_manager.create () in
+  match Workspace_manager.scan workspace_manager workspace_root with
   | Error error -> Error (WorkspaceScanFailed { workspace_root; error })
   | Ok (workspace, load_errors) ->
       if List.is_empty load_errors then
@@ -260,6 +261,7 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
             ~on_event:(fun event -> emit (Fix event))
             ~build_package:(fun ~workspace_root ~package_name ~profile ->
               build_package_in_workspace_root ~emit ~workspace_root ~package_name ~profile
+              |> Result.map (fun _ -> ())
               |> Result.map_error (fun err -> Failure (publish_error_message err)))
             fix_request
           |> Result.map (fun _ -> ()))
@@ -272,7 +274,9 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
       ~package_name:package.name
       ~version:package.publish.version
       ~stage:`build
-      (fun () -> build_package ~emit ~workspace ~package_name:package.name ~profile:"debug")
+      (fun () ->
+        build_package ~emit ~workspace ~package_name:package.name ~profile:"release"
+        |> Result.map (fun _ -> ()))
   in
   run_check
     ~emit
@@ -297,8 +301,8 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
       in
       if already_published then
         let version = Option.unwrap package.publish.version in
-        let event : publish_event = SkippedAlreadyPublished { package = package.name; version } in
-        let outcome : publish_outcome = Skipped { package = package.name; version } in
+        let event: publish_event = SkippedAlreadyPublished { package = package.name; version } in
+        let outcome: publish_outcome = Skipped { package = package.name; version } in
         emit event;
         run_packages
           ~emit
@@ -344,11 +348,11 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
         | Publish, Some api_token -> (
             match Riot_deps.Publisher.publish_prepared ~registry ~api_token prepared with
             | Error err when publish_error_is_already_published err ->
-                let event : publish_event = SkippedAlreadyPublished {
+                let event: publish_event = SkippedAlreadyPublished {
                   package = package.name;
                   version = prepared.version
                 } in
-                let outcome : publish_outcome = Skipped {
+                let outcome: publish_outcome = Skipped {
                   package = package.name;
                   version = prepared.version
                 } in

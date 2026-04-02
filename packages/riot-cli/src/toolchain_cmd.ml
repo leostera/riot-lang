@@ -85,7 +85,8 @@ let run_install = fun workspace ->
 let run = fun matches ->
   let open ArgParser in
     let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get cwd" in
-    let (workspace, _) = Workspace_manager.scan cwd |> Result.expect ~msg:"Failed to scan workspace" in
+    let workspace_manager = Workspace_manager.create () in
+    let (workspace, _) = Workspace_manager.scan workspace_manager cwd |> Result.expect ~msg:"Failed to scan workspace" in
     match get_subcommand matches with
     | Some ("list", _) ->
         run_list workspace

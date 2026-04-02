@@ -69,7 +69,7 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target;
-      status:
+      status: 
         [
           `Fresh
           | `Cached
@@ -100,7 +100,7 @@ type Telemetry.event +=
       package: Package.t;
       action: Action_node.t;
       artifact: Artifact.t;
-      status:
+      status: 
         [
           `Fresh
           | `Cached
@@ -194,7 +194,7 @@ let warning_source_of_json = function
   | Data.Json.String "cached" -> Ok `Cached
   | _ -> Error (Data.Json.String "Invalid warning source")
 
-let to_json : Telemetry.event -> Data.Json.t option = function
+let to_json: Telemetry.event -> Data.Json.t option = function
   | BuildStarted { session_id; package; target } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "BuildStarted");
@@ -434,7 +434,7 @@ let to_json : Telemetry.event -> Data.Json.t option = function
   | _ ->
       None
 
-let from_json : Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json ->
+let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json ->
   let get_session_id fields =
     match List.assoc_opt "session_id" fields with
     | Some (Data.Json.String sid) -> Session_id.of_string sid

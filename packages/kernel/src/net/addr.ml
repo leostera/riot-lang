@@ -16,12 +16,12 @@ type stream_addr =
 ]
 
 module Ipaddr = struct
-  let to_unix : tcp_addr -> Unix.inet_addr = Unix.inet_addr_of_string
+  let to_unix: tcp_addr -> Unix.inet_addr = Unix.inet_addr_of_string
 
-  let of_unix : Unix.inet_addr -> tcp_addr = Unix.string_of_inet_addr
+  let of_unix: Unix.inet_addr -> tcp_addr = Unix.string_of_inet_addr
 end
 
-let loopback : tcp_addr = "0.0.0.0"
+let loopback: tcp_addr = "0.0.0.0"
 
 let tcp = fun host port ->
   assert (String.length host > 0);

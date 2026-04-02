@@ -1,8 +1,8 @@
 open Std
 
-let to_rgb : ([
-  `rgb of int * int * int
-]) array = [|
+let to_rgb: ([
+    `rgb of int * int * int
+  ]) array = [|
   `rgb (0, 0, 0);
   `rgb (128, 0, 0);
   `rgb (0, 128, 0);

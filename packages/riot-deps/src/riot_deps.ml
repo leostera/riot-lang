@@ -46,10 +46,10 @@ type package_event = Package_management.event =
       source_locator: string;
       ref_: string option;
       package: string;
-      version: string option;
+      version: string option
     }
   | PackageUpdated of { package: string; from_version: string; to_version: string }
-  | ManifestUpdated of { path: Path.t; section: string; operation:
+  | ManifestUpdated of { path: Path.t; section: string; operation: 
         [
           `Add
           | `Remove
@@ -78,12 +78,16 @@ type package_error = Package_management.error =
       dependency: string;
       source_locator: string;
       ref_: string option;
-      error: string;
+      error: string
     }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistrySearchFailed of { query: string; registry: string; error: string }
-  | RegistryPackageNotFound of { package: string; registry: string; suggestions: suggested_package list }
+  | RegistryPackageNotFound of {
+      package: string;
+      registry: string;
+      suggestions: suggested_package list
+    }
   | RegistryVersionNotFound of { package: string; requirement: string; registry: string }
   | ManifestUpdateFailed of { path: Path.t; error: string }
   | DependencyNotFoundInSection of { path: Path.t; section: string; dependency: string }

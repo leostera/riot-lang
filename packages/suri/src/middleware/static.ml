@@ -3,13 +3,13 @@ open Std
 type config = {
   show_directory: bool;
   index_files: string list;
-  dotfiles:
+  dotfiles: 
     [
       `Allow
       | `Deny
       | `Ignore
     ];
-  symlinks:
+  symlinks: 
     [
       `Follow
       | `Deny

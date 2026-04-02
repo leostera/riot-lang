@@ -43,7 +43,7 @@ type Message.t +=
   | ComponentEvent of { handler_id: string; event_data: string }
 
 (** Attach handler IDs to component tree and register handlers *)
-let rec attach_handler_ids registry (component: 'msg Component.t) : 'msg Component.t =
+let rec attach_handler_ids registry (component: 'msg Component.t): 'msg Component.t =
   match component with
   | Component.Text _ ->
       component
@@ -442,7 +442,7 @@ window.LiveView = LiveView;
 |}
 
 (** Client script as a Component element *)
-let client_script : 'msg Component.t =
+let client_script: 'msg Component.t =
   let open Component in script ~attrs:[ attr "type" "text/javascript" ] javascript_runtime
 
 (** Generate HTML template with LiveView bootstrap *)
@@ -484,7 +484,7 @@ let html_template = fun ~element_id ~ws_path ?title ?styles initial_content ->
         Middleware.router routes;
       ]
     ]} *)
-let serve_runtime ?(prefix = "/assets/liveview.js") () : Middleware.Pipeline.middleware = fun ~conn ~next ->
+let serve_runtime ?(prefix = "/assets/liveview.js") (): Middleware.Pipeline.middleware = fun ~conn ~next ->
   let req_path = Middleware.Conn.uri conn in
   if req_path = prefix then
     conn

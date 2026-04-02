@@ -159,7 +159,7 @@ let fold = fun f acc heap ->
   done;
   Cell.get result
 
-let into_iter : type item. item t -> item Iter.Iterator.t = fun heap ->
+let into_iter: type item. item t -> item Iter.Iterator.t = fun heap ->
   let module HeapIter = struct
     type state = item t
 
@@ -175,7 +175,7 @@ let into_iter : type item. item t -> item Iter.Iterator.t = fun heap ->
   let heap_copy = { data = Array.copy heap.data; size = heap.size; compare = heap.compare } in
   Iter.Iterator.make (module HeapIter) heap_copy
 
-let to_mut_iter : type item. item t -> item Iter.MutIterator.t = fun heap ->
+let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun heap ->
   let module HeapIter = struct
     type state = item t
 

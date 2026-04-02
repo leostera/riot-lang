@@ -69,13 +69,13 @@ type t = {
   underline: bool;
   width: size;
   border: Border.t option;
-  align_horizontal:
+  align_horizontal: 
     ([
       `Left
       | `Center
       | `Right
     ]) option;
-  align_vertical:
+  align_vertical: 
     ([
       `Top
       | `Center
@@ -87,7 +87,7 @@ type t = {
 
 (* Structural equality for styles *)
 
-let equal : t -> t -> bool = fun a b -> a = b
+let equal: t -> t -> bool = fun a b -> a = b
 
 let default = {
   background = None;

@@ -9,7 +9,7 @@ type t = {
   fn: Event.t -> unit;
 }
 
-let handlers : (id, t) HashMap.t = HashMap.create ()
+let handlers: (id, t) HashMap.t = HashMap.create ()
 
 (** Emit event to all handlers - called directly in caller process *)
 let emit = fun event ->
