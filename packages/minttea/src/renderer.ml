@@ -36,6 +36,14 @@ type Message.t +=
   | RendererStarted of Pid.t
   | ShutdownComplete
 
+let schedule_next_tick = fun pid fps ->
+  if fps > 0 then
+    let after = Time.Duration.from_secs_float (fps_to_secs fps) in
+    let _ = Timer.send_after pid Tick ~after in
+    ()
+  else
+    ()
+
 type t = Pid.t
 
 type state = {
@@ -275,24 +283,16 @@ and handle_shutdown = fun state ->
 and handle_tick = fun t ->
   Log.trace "[RENDERER] Tick received";
   let now = Time.Instant.now () in
-  (* Always render on every tick to ensure EraseLineRight sequences are emitted.
-     This follows Bubbletea's approach of rendering every frame at the configured FPS.
-     The differential optimization at the element level wasn't working correctly. *)
-  Log.trace "[RENDERER] Painting frame";
-  let frame = paint_frame t in
-  print_frame t frame;
-  (* Always send frame event for app updates *)
   Log.trace "[RENDERER] Sending Frame event to program";
   send t.runner (Io_loop.Input (Event.Frame now));
-  let _ =
-    let after = Time.Duration.from_secs_float (fps_to_secs t.fps) in
-    Timer.send_after (self ()) Tick ~after
-  in
+  schedule_next_tick (self ()) t.fps;
   loop t
 
 and handle_render_element = fun t element ->
-  (* Update current element - will be painted on next tick *)
-  t.current_root_element <- element
+  (* Paint immediately so inline apps only redraw when their model changes. *)
+  t.current_root_element <- element;
+  let frame = paint_frame t in
+  print_frame t frame
 
 and handle_enter_alt_screen = fun t ->
   if t.is_altscreen_active then
@@ -382,10 +382,7 @@ and handle_set_window_title = fun state title ->
 let init = fun ~parent ~config ~tty ->
   send parent (RendererStarted (self ()));
   let Conf.{ render_mode; fps; output } = config in
-  let _ =
-    let after = Time.Duration.from_secs_float (fps_to_secs fps) in
-    Timer.send_after (self ()) Tick ~after
-  in
+  schedule_next_tick (self ()) fps;
   let _size = Tty.size tty in
   loop
     {
