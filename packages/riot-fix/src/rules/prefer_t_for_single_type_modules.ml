@@ -18,36 +18,33 @@ This rule is intentionally narrow. It only applies when the module clearly expos
 primary type. Modules with several important types should name them explicitly.
 |}
 
-let is_trivia = fun kind ->
-  let open Syn.SyntaxKind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
+let single_type_decl_token = fun (decl: Syn.Cst.TypeDeclaration.t) ->
+  match Syn.Cst.Ident.name (Syn.Cst.TypeDeclaration.type_name decl) with
+  | Some _ when List.is_empty (Syn.Cst.TypeDeclaration.and_declarations decl) ->
+      Some (Syn.Cst.TypeDeclaration.name_token decl |> Syn.Cst.Token.syntax_token)
+  | _ ->
+      None
 
-let direct_non_trivia_nodes = fun node ->
-  Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.filter_map
+let single_structure_type_decl_token = fun items ->
+  match List.filter_map
     (
       function
-      | Syn.Ceibo.Red.Node child when not (is_trivia (Syn.Ceibo.Red.SyntaxNode.kind child)) -> Some child
+      | Syn.Cst.StructureItem.TypeDeclaration decl -> Some decl
       | _ -> None
     )
+    items with
+  | [ decl ] -> single_type_decl_token decl
+  | _ -> None
 
-let first_non_trivia_token = fun node ->
-  Syn.Ceibo.Red.SyntaxNode.children node |> Array.to_list |> List.find_map
+let single_signature_type_decl_token = fun items ->
+  match List.filter_map
     (
       function
-      | Syn.Ceibo.Red.Token token when not (is_trivia (Syn.Ceibo.Red.SyntaxToken.kind token)) -> Some token
+      | Syn.Cst.SignatureItem.TypeDeclaration decl -> Some decl
       | _ -> None
     )
-
-let type_name_token_from_decl_node = fun node ->
-  direct_non_trivia_nodes node |> List.find_map
-    (fun child ->
-      match Syn.Ceibo.Red.SyntaxNode.kind child with
-      | Syn.SyntaxKind.MODULE_PATH -> first_non_trivia_token child
-      | _ -> None)
-
-let single_type_decl_token = fun item_nodes ->
-  match item_nodes
-  |> List.filter (fun node -> Syn.Ceibo.Red.SyntaxNode.kind node = Syn.SyntaxKind.TYPE_DECL) with
-  | [ type_decl ] -> type_name_token_from_decl_node type_decl
+    items with
+  | [ decl ] -> single_type_decl_token decl
   | _ -> None
 
 let make_diagnostic = fun token ->
@@ -63,7 +60,7 @@ let diagnostic_for_module_structure = fun decl ->
   match Syn.CstBuilder.structure_items_of_module_expression
     (Syn.Cst.ModuleStructure.module_expression decl) with
   | Ok items -> (
-      match List.map Syn.Cst.StructureItem.syntax_node items |> single_type_decl_token with
+      match single_structure_type_decl_token items with
       | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" -> Some (make_diagnostic token)
       | _ -> None
     )
@@ -74,7 +71,7 @@ let diagnostic_for_module_type_decl = fun decl ->
   | Some module_type -> (
       match Syn.CstBuilder.signature_items_of_module_type module_type with
       | Ok items -> (
-          match List.map Syn.Cst.SignatureItem.syntax_node items |> single_type_decl_token with
+          match single_signature_type_decl_token items with
           | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" -> Some (make_diagnostic token)
           | _ -> None
         )
@@ -101,7 +98,7 @@ let diagnostics_for_items = fun source_file ->
               | Syn.Cst.ModuleSignature.Signature module_type -> (
                   match Syn.CstBuilder.signature_items_of_module_type module_type with
                   | Ok items -> (
-                      match List.map Syn.Cst.SignatureItem.syntax_node items |> single_type_decl_token with
+                      match single_signature_type_decl_token items with
                       | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" -> Some (make_diagnostic
                         token)
                       | _ -> None
