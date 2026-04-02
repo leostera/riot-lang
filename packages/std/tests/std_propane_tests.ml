@@ -17,4 +17,4 @@ let option_map_property =
 let tests = [ list_reverse_property; option_map_property ]
 
 let () =
-  Miniriot.run ~main:(fun ~args -> Test.Cli.main ~name:"std_propane" ~tests ~args) ~args:Env.args ()
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"std_propane" ~tests ~args) ~args:Env.args ()

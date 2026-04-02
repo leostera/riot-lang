@@ -5,7 +5,7 @@ This example shows how to use the `riot-builder` Docker image to build and packa
 ## Prerequisites
 
 - Docker installed
-- A Riot application with a `tusk.toml` file
+- A Riot application with a `riot.toml` file
 
 ## Quick Start
 
@@ -22,10 +22,10 @@ cp docker/example-app/Dockerfile /path/to/your/app/
 Edit the Dockerfile and replace `my-app` with your actual binary name:
 
 ```dockerfile
-RUN tusk build --release my-app
+RUN riot build --release my-app
 ```
 
-The binary name comes from your `tusk.toml` `[[bin]]` section:
+The binary name comes from your `riot.toml` `[[bin]]` section:
 
 ```toml
 [[bin]]
@@ -75,13 +75,13 @@ When cross-compilation support is added, you'll be able to build for different a
 
 ```dockerfile
 # Build for ARM64 Alpine (musl)
-RUN tusk build --release -x aarch64-unknown-linux-musl my-app
+RUN riot build --release -x aarch64-unknown-linux-musl my-app
 
 # Build for x86_64 Alpine (musl)
-RUN tusk build --release -x x86_64-unknown-linux-musl my-app
+RUN riot build --release -x x86_64-unknown-linux-musl my-app
 
 # Build for ARM64 Ubuntu (glibc)
-RUN tusk build --release -x aarch64-unknown-linux-gnu my-app
+RUN riot build --release -x aarch64-unknown-linux-gnu my-app
 ```
 
 ## Customizing Runtime Dependencies
@@ -153,10 +153,10 @@ jobs:
 
 ### Binary not found after build
 
-Check the exact path where tusk places the binary:
+Check the exact path where riot places the binary:
 
 ```bash
-docker run --rm -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest sh -c "tusk build my-app && find _build -name my-app"
+docker run --rm -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest sh -c "riot build my-app && find _build -name my-app"
 ```
 
 ### Permission denied

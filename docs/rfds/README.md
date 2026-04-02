@@ -12,14 +12,14 @@ RFDs use a small lifecycle vocabulary:
 These are the RFDs that are still only `presented` and therefore the most obvious candidates for follow-up work:
 
 - `RFD0008` - Macro
-- `RFD0010` - Miniriot Multicore Work-Stealing Runtime
-- `RFD0011` - Miniriot Pinned and Blocking Spawn
-- `RFD0012` - Simplify Tusk Around Action-Level Caching
+- `RFD0010` - Actors Multicore Work-Stealing Runtime
+- `RFD0011` - Actors Pinned and Blocking Spawn
+- `RFD0012` - Simplify Riot Around Action-Level Caching
 - `RFD0018` - Syn Matchers, Traversal, and Visitor
-- `RFD0019` - Tusk Fix Syntax-Directed Rewrites
+- `RFD0019` - Riot Fix Syntax-Directed Rewrites
 - `RFD0020` - Krasny Pretty Printer
 - `RFD0025` - Snapshot Testing for Riot
-- `RFD0026` - Tusk Package Management
+- `RFD0026` - Riot Package Management
 - `RFD0028` - Local Artifact Publishing
 - `RFD0029` - Std Archive and Compression Support
 
@@ -33,18 +33,18 @@ There are currently no RFDs marked `rejected`.
 
 ## Implemented
 
-- `RFD0001` - Simplify Tusk into a One-Shot Build Tool
-- `RFD0002` - Tusk Bootstrap Process
-- `RFD0003` - Tusk Build System Snapshot
-- `RFD0004` - Miniriot Runtime Snapshot
+- `RFD0001` - Simplify Riot into a One-Shot Build Tool
+- `RFD0002` - Riot Bootstrap Process
+- `RFD0003` - Riot Build System Snapshot
+- `RFD0004` - Actors Runtime Snapshot
 - `RFD0005` - Kernel and Std Snapshot
 - `RFD0006` - Ceibo and Syn Snapshot
-- `RFD0007` - Tusk Fix
+- `RFD0007` - Riot Fix
 - `RFD0009` - Testing System Snapshot
-- `RFD0009` - Tusk Toolchain System Snapshot
-- `RFD0013` - Tusk Fix Package-Provided Rules
-- `RFD0014` - Tusk Dependency Classes
-- `RFD0016` - Tusk Foreign Dependency Model Snapshot
+- `RFD0009` - Riot Toolchain System Snapshot
+- `RFD0013` - Riot Fix Package-Provided Rules
+- `RFD0014` - Riot Dependency Classes
+- `RFD0016` - Riot Foreign Dependency Model Snapshot
 - `RFD0017` - OCaml Cross-Compilation Snapshot
 - `RFD0021` - Docker Stack Snapshot
 - `RFD0022` - Riot Package Registry

@@ -1,6 +1,6 @@
 # Suri - Web Framework for OCaml
 
-Suri is a high-performance, supervised web framework built on Std and Miniriot for building HTTP servers, WebSocket servers, and real-time web applications.
+Suri is a high-performance, supervised web framework built on Std and Actors for building HTTP servers, WebSocket servers, and real-time web applications.
 
 ## Quick Start
 

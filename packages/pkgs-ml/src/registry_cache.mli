@@ -1,9 +1,9 @@
 open Std
 
 type t
-val create: ?tusk_home:Path.t -> registry_name:string -> unit -> (t, string) result
+val create: ?riot_home:Path.t -> registry_name:string -> unit -> (t, string) result
 
-val tusk_home: t -> Path.t
+val riot_home: t -> Path.t
 
 val registry_name: t -> string
 

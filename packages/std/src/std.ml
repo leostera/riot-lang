@@ -62,7 +62,7 @@ include Global
 (* Application startup *)
 
 let start = fun ~apps ->
-  let config = Miniriot.Config.default in
+  let config = Actors.Config.default in
   let main ~args:_ =
     match Application.start_applications apps with
     | Ok _app_pids ->
@@ -75,4 +75,4 @@ let start = fun ~apps ->
         Ok ()
     | Error e -> Error e
   in
-  Miniriot.run ~config ~main ~args:[] ()
+  Actors.run ~config ~main ~args:[] ()

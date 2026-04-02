@@ -135,7 +135,7 @@ let app =
   ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ ->
       let port = 8_080 in
       let config = Suri.config ~port () in

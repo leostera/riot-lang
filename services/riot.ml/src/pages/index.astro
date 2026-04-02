@@ -1,8 +1,8 @@
 ---
 import SiteLayout from "../layouts/SiteLayout.astro";
 
-const installCommand = "curl -sSL https://cdn.pkgs.ml/tusk/install.sh | sh";
-const terminalDemo = `$ tusk run leostera/create-riot-app
+const installCommand = "curl -sSL https://cdn.pkgs.ml/riot/install.sh | sh";
+const terminalDemo = `$ riot run leostera/create-riot-app
 Fetching toolchain...
 Creating app...
 Building app...
@@ -13,8 +13,8 @@ const actorCode = `spawn (fun () ->
   match receive () with
   | Hello_world -> ...
 )`;
-const packageCommands = `tusk add <package>
-tusk publish`;
+const packageCommands = `riot add <package>
+riot publish`;
 ---
 
 <SiteLayout
@@ -26,7 +26,7 @@ tusk publish`;
     <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#why">Why</a>
     <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#what">What</a>
     <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#std">Std</a>
-    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#tusk">Tusk</a>
+    <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#riot">Riot</a>
     <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#philosophy">Philosophy</a>
     <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#packages">Packages</a>
     <a class="my-0.5 block text-[#c8afb7] transition-colors hover:text-[#ff354f]" href="#community">Community</a>
@@ -91,7 +91,7 @@ tusk publish`;
       <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Why Riot?</p>
       <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
         <p>Riot is my vision of a great developer experience, rooted in OCaml and inspired by Erlang. It ships as a complete stack for building type-safe, multicore applications without having to assemble the pieces yourself.</p>
-        <p>Riot ships with <code class="bg-transparent p-0 text-inherit">tusk</code> , the only tool in the stack. Tusk is the package manager, build system, task runner, toolchain manager, formatter, and linter. One tool, one workflow, one place to do the work.</p>
+        <p>Riot ships with <code class="bg-transparent p-0 text-inherit">riot</code> , the only tool in the stack. Riot is the package manager, build system, task runner, toolchain manager, formatter, and linter. One tool, one workflow, one place to do the work.</p>
         <p>If you like tooling that gets out of your way and a strong foundation for building real systems, Riot should feel natural.</p>
       </div>
     </section>
@@ -155,10 +155,10 @@ tusk publish`;
       </div>
     </section>
 
-    <section id="tusk" class="py-16">
-      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Tusk</p>
+    <section id="riot" class="py-16">
+      <p class="mb-3 text-xs uppercase tracking-[0.12em] text-[#ff354f]">Riot</p>
       <div class="max-w-[42rem] font-['Cormorant_Garamond','Times_New_Roman',serif] text-[clamp(1rem,1.6vw,1.125rem)]">
-        <p>Tusk is Riot&apos;s toolchain. It is the thing that makes the whole experience feel cohesive instead of improvised. It installs what you need, fetches the right compiler, builds your project, runs it, tests it, formats it, and manages dependencies through one consistent interface.</p>
+        <p>Riot is Riot&apos;s toolchain. It is the thing that makes the whole experience feel cohesive instead of improvised. It installs what you need, fetches the right compiler, builds your project, runs it, tests it, formats it, and manages dependencies through one consistent interface.</p>
         <p>I wanted the toolchain to feel like an instrument: something you trust enough that you stop thinking about it while you work. That is why the first experience matters so much. You run one install command, then you create and run an app immediately. The setup fades into the background where it belongs.</p>
       </div>
       <div class="mt-4 grid max-w-[42rem] gap-2 font-['Cormorant_Garamond','Times_New_Roman',serif] text-[1.15rem] text-[#fff6f8]">

@@ -82,10 +82,10 @@ The current mental model should be:
 flowchart TD
   A[docker/Dockerfile] --> B[bootstrap stage]
   B --> C[./bootstrap.py]
-  C --> D[./minitusk]
-  D --> E[bootstrap tusk builds tusk-cli]
-  E --> F[copy ./tusk into final image]
-  B --> G[copy /root/.tusk/toolchains]
+  C --> D[./miniriot]
+  D --> E[bootstrap riot builds riot-cli]
+  E --> F[copy ./riot into final image]
+  B --> G[copy /root/.riot/toolchains]
   F --> H[riot-builder image]
   G --> H
   H --> I[local use via docker run]
@@ -97,7 +97,7 @@ flowchart TD
 
 - Building `riot-builder` locally from the repo root with `./docker/build.sh`
 - Using `docker/Dockerfile` directly with `docker build -f docker/Dockerfile .`
-- Running `tusk` inside the resulting image
+- Running `riot` inside the resulting image
 - Building Riot packages and binaries inside that image
 - Writing service-local multi-stage Dockerfiles that consume `riot-builder`
 
@@ -158,12 +158,12 @@ The `bootstrap` stage:
 - copies the repository to `/riot`
 - runs:
   - `./bootstrap.py`
-  - `./minitusk`
-  - `./_build/bootstrap/out/Tusk_cli/tusk build --no-code-server tusk-cli`
-  - `./_build/bootstrap/out/Tusk_cli/tusk install tusk`
+  - `./miniriot`
+  - `./_build/bootstrap/out/Riot_cli/riot build --no-code-server riot-cli`
+  - `./_build/bootstrap/out/Riot_cli/riot install riot`
 
-The result is a bootstrapped `tusk` binary plus a populated
-`/root/.tusk/toolchains` directory inside the image.
+The result is a bootstrapped `riot` binary plus a populated
+`/root/.riot/toolchains` directory inside the image.
 
 ### 2.2 Final builder stage
 
@@ -177,10 +177,10 @@ The `builder` stage:
   - `gcc-x86-64-linux-gnu`
   - `g++-x86-64-linux-gnu`
   - corresponding libc dev packages
-- copies `/riot/tusk` from the bootstrap stage into `/usr/local/bin/tusk`
-- copies `/root/.tusk/toolchains` from the bootstrap stage into the final image
+- copies `/riot/riot` from the bootstrap stage into `/usr/local/bin/riot`
+- copies `/root/.riot/toolchains` from the bootstrap stage into the final image
 - sets `WORKDIR /app`
-- uses `ENTRYPOINT ["tusk"]`
+- uses `ENTRYPOINT ["riot"]`
 
 This means the final image is not a minimal runtime image.
 It is a pre-seeded build container whose job is to compile Riot workspaces.
@@ -226,10 +226,10 @@ not a full automated publishing pipeline.
 `.dockerignore` excludes:
 
 - `_build/`
-- `.tusk/`
+- `.riot/`
 - `.git/`
-- `minitusk`
-- `tusk`
+- `miniriot`
+- `riot`
 - `docs/`
 - `docker/`
 - many compiled artifacts and editor files
@@ -251,7 +251,7 @@ The user-facing contract presented by the docs is:
 
 - pull `ghcr.io/leostera/riot/riot-builder:latest`
 - mount a Riot workspace at `/app`
-- run `tusk build ...`, `tusk test ...`, or `tusk bench ...`
+- run `riot build ...`, `riot test ...`, or `riot bench ...`
 - use a multi-stage Dockerfile for application/service packaging
 
 This contract is reflected in:
@@ -291,7 +291,7 @@ So the current documentation overstates the amount of automation in place.
 pattern:
 
 1. use `ghcr.io/leostera/riot/riot-builder:latest` as a build stage
-2. run `tusk build --release registry`
+2. run `riot build --release registry`
 3. copy the resulting binary into a smaller runtime image
 
 That pattern is structurally sound and matches the general guidance in
@@ -308,7 +308,7 @@ fresh, service-local Dockerfiles inherit that uncertainty unless contributors:
 The Docker builder image is adjacent to, but separate from, Riot's OCaml
 toolchain publication story.
 
-`docker/Dockerfile` copies `/root/.tusk/toolchains` into the final image so the
+`docker/Dockerfile` copies `/root/.riot/toolchains` into the final image so the
 builder starts warm.
 
 That image-level warm cache is a consumer optimization.

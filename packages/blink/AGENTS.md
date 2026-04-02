@@ -11,4 +11,4 @@
 
 ## Validate
 
-`timeout 30 tusk build blink`
+`timeout 30 riot build blink`

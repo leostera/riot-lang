@@ -283,17 +283,17 @@ describe("registry indexing", () => {
     const kernel = makeReleaseRecord({
       package_categories: ["runtime", "concurrency"],
     });
-    const miniriot = makeReleaseRecord({
-      package_name: "miniriot",
+    const actors = makeReleaseRecord({
+      package_name: "actors",
       package_version: "0.0.1",
-      package_locator: "github.com/leostera/riot-new/packages/miniriot",
+      package_locator: "github.com/leostera/riot-new/packages/actors",
       package_description: "Actor runtime building blocks.",
-      package_root_module: "Miniriot",
+      package_root_module: "Actors",
       dependencies: [{ name: "kernel", raw: "^0.0.1" }],
       source_archive_key:
         "sources/github.com/leostera/riot-new/abcf0372bf5b6687db05bda80cde55f960cbfd9d.tar.gz",
       manifest_key:
-        "packages/github.com/leostera/riot-new/packages/miniriot/abcf0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
+        "packages/github.com/leostera/riot-new/packages/actors/abcf0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json",
       artifact_sha256: "abcf0372bf5b6687db05bda80cde55f960cbfd9d",
       published_at: "2026-03-27T16:10:00Z",
       package_categories: ["runtime", "actors"],
@@ -308,8 +308,8 @@ describe("registry indexing", () => {
     await indexSeededRelease(
       env,
       db,
-      miniriot,
-      makeManifest(miniriot, { package_categories: ["runtime", "actors"] }),
+      actors,
+      makeManifest(actors, { package_categories: ["runtime", "actors"] }),
     );
 
     await applyMetadataMigrations(db as unknown as D1Database);
@@ -319,7 +319,7 @@ describe("registry indexing", () => {
     ) as PackageRelationsDocument;
     expect(kernelRelations.dependents).toEqual([
       {
-        package_name: "miniriot",
+        package_name: "actors",
         latest_version: "0.0.1",
         requirement: "^0.0.1",
       },
@@ -331,13 +331,13 @@ describe("registry indexing", () => {
         name: "runtime",
         slug: "runtime",
         package_count: 2,
-        packages: ["kernel", "miniriot"],
+        packages: ["kernel", "actors"],
       },
       {
         name: "actors",
         slug: "actors",
         package_count: 1,
-        packages: ["miniriot"],
+        packages: ["actors"],
       },
       {
         name: "concurrency",
@@ -351,7 +351,7 @@ describe("registry indexing", () => {
       db as unknown as D1Database,
       "leostera",
     ) as OwnerPackagesDocument;
-    expect(ownerPackages.packages.map((item) => item.package_name)).toEqual(["miniriot", "kernel"]);
+    expect(ownerPackages.packages.map((item) => item.package_name)).toEqual(["actors", "kernel"]);
   });
 
   test("derived package view documents tolerate legacy non-semver releases", async () => {

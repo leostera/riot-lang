@@ -7,6 +7,6 @@ members = [
   "native/riot-ffi",
 ]
 
-# Use a separate target directory to avoid conflicts with Tusk's target/ directory
+# Use a separate target directory to avoid conflicts with Riot's target/ directory
 [workspace.metadata]
 target-dir = "native/target" 

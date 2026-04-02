@@ -1,7 +1,7 @@
 open Std
 
 let () =
-  Miniriot.run ~main:(fun ~args ->
+  Actors.run ~main:(fun ~args ->
     (* Parse command-line arguments *)
     let cmd = ArgParser.command "simple_https"
       |> ArgParser.about "Simple HTTPS client example"

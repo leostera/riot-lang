@@ -59,7 +59,7 @@ let discover_diagnostics = fun () ->
         String.compare a b)
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args ->
       let diagnostics = discover_diagnostics () in
       let tests =

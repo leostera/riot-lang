@@ -101,7 +101,7 @@ let resolve_paths = fun ~(ctx:Test_context.t) ->
           let test_name = sanitize_path_component ctx.test_name in
           let base =
             Path.(workspace_root
-            / Path.v ".tusk"
+            / Path.v ".riot"
             / Path.v "snapshots"
             / Path.v package_name
             / Path.v suite_dir

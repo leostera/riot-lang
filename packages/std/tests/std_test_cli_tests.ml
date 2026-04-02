@@ -101,4 +101,4 @@ let main = fun ~args ->
   | _ :: "sample" :: _ -> sample_main ~args
   | _ -> meta_main ~args
 
-let () = Miniriot.run ~main ~args:Env.args ()
+let () = Actors.run ~main ~args:Env.args ()

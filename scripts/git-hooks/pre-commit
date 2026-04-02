@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tusk fmt --check
-tusk fix --check
-tusk build
-tusk test
+riot fmt --check
+riot fix --check
+riot build
+riot test

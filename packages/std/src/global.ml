@@ -3,34 +3,34 @@ include Kernel.Types
 include Kernel.Global
 
 (** Process management globals *)
-include Miniriot.Exception
+include Actors.Exception
 
-type 'msg selector = 'msg Miniriot.selector
+type 'msg selector = 'msg Actors.selector
 
-let self = Miniriot.self
+let self = Actors.self
 
-let spawn = Miniriot.spawn
+let spawn = Actors.spawn
 
-let spawn_link = Miniriot.spawn_link
+let spawn_link = Actors.spawn_link
 
-let send = Miniriot.send
+let send = Actors.send
 
 let receive = fun ~selector ?timeout () ->
   let timeout = Option.map Time.Duration.to_secs_float timeout in
-  Miniriot.receive ~selector ?timeout ()
+  Actors.receive ~selector ?timeout ()
 
 let receive_any = fun ?timeout () ->
   let timeout = Option.map Time.Duration.to_secs_float timeout in
-  Miniriot.receive_any ?timeout ()
+  Actors.receive_any ?timeout ()
 
 let sleep = fun timeout ->
   let selector _msg = `skip in
   try receive ~selector ~timeout () with
   | Receive_timeout -> ()
 
-let yield = Miniriot.yield
+let yield = Actors.yield
 
-let shutdown = Miniriot.shutdown
+let shutdown = Actors.shutdown
 
 open Kernel
 

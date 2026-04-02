@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 tusk build sqlite`
+`timeout 30 riot build sqlite`

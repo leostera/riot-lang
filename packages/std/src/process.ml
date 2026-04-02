@@ -1,7 +1,7 @@
-include Miniriot.Process
+include Actors.Process
 
-let self = Miniriot.self
+let self = Actors.self
 
-let spawn = Miniriot.spawn
+let spawn = Actors.spawn
 
-let spawn_link = Miniriot.spawn_link
+let spawn_link = Actors.spawn_link

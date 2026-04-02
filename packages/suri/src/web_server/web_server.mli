@@ -124,9 +124,9 @@
 
     Run examples:
     {[
-      tusk run suri:hello_world
-      tusk run suri:routing
-      tusk run suri:json_api
+      riot run suri:hello_world
+      riot run suri:routing
+      riot run suri:json_api
     ]}
 
     {2 Configuration}

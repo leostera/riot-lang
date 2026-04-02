@@ -96,7 +96,7 @@ post "/submit" submit_handler;
 post "/submit-ajax" submit_ajax_handler;]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       let secret = "dev-secret-not-for-production-use-32bit" in
       let app =

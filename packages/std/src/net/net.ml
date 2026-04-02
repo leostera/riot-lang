@@ -1,4 +1,4 @@
-(** Network I/O operations for Miniriot *)
+(** Network I/O operations for Actors *)
 type error =
   | Connection_refused
   | Closed

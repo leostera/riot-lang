@@ -16,7 +16,7 @@
 
 * include `syn` parsing stage in the riot build pipeline to get better syntax errors faster
 
-* implement ./docs/rfds/RFD0011-miniriot-pinned-and-blocking-spawn.md 
+* implement ./docs/rfds/RFD0011-actors-pinned-and-blocking-spawn.md 
 
 * RIOT_LOG=debug should set the log level of Std.Log to debug -- that way we can just put a bunch of Log calls everywhere!
 

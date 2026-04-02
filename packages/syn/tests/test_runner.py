@@ -1055,7 +1055,7 @@ def main():
     # Check if syn binary exists
     if not runner.syn_binary.exists():
         print(f"{RED}Error: syn binary not found at {runner.syn_binary}{NC}")
-        print(f"{YELLOW}Run: tusk build syn{NC}")
+        print(f"{YELLOW}Run: riot build syn{NC}")
         sys.exit(1)
     
     exit_code = 0

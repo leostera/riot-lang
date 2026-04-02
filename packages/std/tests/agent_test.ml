@@ -5,7 +5,7 @@ type person = {
   age: int;
 }
 
-(* Helper to run in a miniriot process *)
+(* Helper to run in a actors process *)
 
 let run_test = fun () ->
   println "\n=== Testing Agent (Parametric) ===";
@@ -79,4 +79,4 @@ let run_test = fun () ->
   println "✓ Type polymorphism tests passed!\n";
   println "=== All Agent tests passed! ===\n"
 
-let () = Miniriot.run @@ fun () -> spawn run_test |> ignore
+let () = Actors.run @@ fun () -> spawn run_test |> ignore

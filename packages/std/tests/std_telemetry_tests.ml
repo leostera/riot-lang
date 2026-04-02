@@ -153,4 +153,4 @@ let tests = [
   test_stop_idempotent;
 ]
 
-let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

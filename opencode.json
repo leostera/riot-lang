@@ -40,7 +40,7 @@
   "permission": {
     "bash": {
       "*": "allow",
-      "tusk*": "allow",
+      "riot*": "allow",
       "git status*": "allow",
       "git diff*": "allow",
       "git log*": "allow",

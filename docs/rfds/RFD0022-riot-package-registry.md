@@ -25,10 +25,10 @@ It is the single control-plane service for:
 
 The final model is intentionally explicit:
 
-- `tusk add github.com/owner/repo[/path]` is a source dependency flow
-- `tusk publish` is the only way to claim a public package name
-- `tusk add <package-name>` installs from the sparse index
-- `tusk add` never implicitly publishes or claims names
+- `riot add github.com/owner/repo[/path]` is a source dependency flow
+- `riot publish` is the only way to claim a public package name
+- `riot add <package-name>` installs from the sparse index
+- `riot add` never implicitly publishes or claims names
 
 GitHub is the first supported upstream provider.
 The public API is provider-neutral enough that more providers can be added
@@ -60,14 +60,14 @@ The registry deliberately does not own:
 - compatibility selection
 - build execution
 
-Those belong in `tusk`.
+Those belong in `riot`.
 
 ## Final user model
 [guide-level-explanation]: #guide-level-explanation
 
 ### Source installs
 
-`tusk add github.com/leostera/minttea`
+`riot add github.com/leostera/minttea`
 
 This asks the registry to:
 
@@ -85,7 +85,7 @@ This flow does not:
 
 ### Named publishes
 
-`tusk publish`
+`riot publish`
 
 This asks the registry to:
 
@@ -106,7 +106,7 @@ After a successful publish, the package is immediately available through:
 
 ### Named installs
 
-`tusk add minttea`
+`riot add minttea`
 
 This does not go through GitHub.
 It should eventually use:
@@ -122,7 +122,7 @@ The current implemented auth model is:
 
 - GitHub OAuth for user identity
 - session cookies for `pkgs.ml`
-- API tokens for `tusk publish`
+- API tokens for `riot publish`
 - temporary `ROOT_AUTH_TOKEN` support for operator and e2e flows
 
 Users authenticate through:
@@ -178,7 +178,7 @@ These are treated as built-in dependencies and do not require publication:
 - `dynlink`
 
 Workspace publish ordering is intentionally not solved in the registry.
-That orchestration belongs in `tusk publish`.
+That orchestration belongs in `riot publish`.
 
 ## API surface
 [reference-level-explanation]: #reference-level-explanation
@@ -254,21 +254,21 @@ These events drive:
 - debugging of publish pipelines
 - future downstream systems such as docs, security checks, or analytics
 
-## Relationship to `tusk add` and `tusk publish`
+## Relationship to `riot add` and `riot publish`
 
-This RFD captures the registry contract that `tusk` should build against.
+This RFD captures the registry contract that `riot` should build against.
 
-`tusk add` needs two modes:
+`riot add` needs two modes:
 
 - source mode via `resolve`
 - named-package mode via the sparse index
 
-`tusk publish` needs:
+`riot publish` needs:
 
 - Git-aware package locator detection
 - auth token support
 - workspace publish ordering
 - clear handling of immutable version conflicts
 
-Those client-side concerns are intentionally deferred to a later Tusk package
+Those client-side concerns are intentionally deferred to a later Riot package
 management RFD.

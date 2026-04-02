@@ -69,7 +69,7 @@ src/
 Run the built-in tests:
 
 ```bash
-tusk run pubgrub
+riot run pubgrub
 ```
 
 Output:

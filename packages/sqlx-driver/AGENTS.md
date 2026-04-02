@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 tusk build sqlx-driver`
+`timeout 30 riot build sqlx-driver`

@@ -1,6 +1,6 @@
 # Specs TODO
 
-This is the continuation plan for the `tusk` spec pass in `specs/tusk/`.
+This is the continuation plan for the `riot` spec pass in `specs/riot/`.
 
 The current strategy is:
 
@@ -21,9 +21,9 @@ This file is meant to answer three questions:
 
 ## Current State
 
-- `specs/tusk/PropertyInventory.md` is the remaining TLA+ backlog
-- `specs/tusk/BugInventory.md` is the current list of bug-shaped properties
-- `specs/tusk/README.md` documents the modeled slices and TLC commands
+- `specs/riot/PropertyInventory.md` is the remaining TLA+ backlog
+- `specs/riot/BugInventory.md` is the current list of bug-shaped properties
+- `specs/riot/README.md` documents the modeled slices and TLC commands
 - the spec pass has already produced multiple failing bug configs
 - no new OCaml regression tests should be added until the inventory phase is
   explicitly closed
@@ -34,10 +34,10 @@ This file is meant to answer three questions:
 - Keep every slice small and named after one semantic concern.
 - For each slice, keep one smoke config and add a `*Bug.cfg` only when the
   current implementation-shaped semantics look wrong.
-- Update `specs/tusk/README.md`, `PropertyInventory.md`, and `BugInventory.md`
+- Update `specs/riot/README.md`, `PropertyInventory.md`, and `BugInventory.md`
   whenever a slice changes the current picture.
 - Commit spec work often with conventional commits such as
-  `spec(tusk): model scheduler readiness requeue`.
+  `spec(riot): model scheduler readiness requeue`.
 
 ## Standard Workflow For Each New Slice
 
@@ -70,9 +70,9 @@ Why next:
 
 Primary sources:
 
-- `packages/tusk-executor/src/action_queue.ml`
-- `packages/tusk-executor/src/action_executor.ml`
-- `packages/tusk-executor/tests/action_queue_workspace_graph_tests.ml`
+- `packages/riot-executor/src/action_queue.ml`
+- `packages/riot-executor/src/action_executor.ml`
+- `packages/riot-executor/tests/action_queue_workspace_graph_tests.ml`
 
 Property to model:
 
@@ -96,8 +96,8 @@ Why next:
 
 Primary sources:
 
-- `packages/tusk-executor/src/action_queue.ml`
-- `packages/tusk-executor/src/action_executor.ml`
+- `packages/riot-executor/src/action_queue.ml`
+- `packages/riot-executor/src/action_executor.ml`
 
 Property to model:
 
@@ -124,9 +124,9 @@ Why next:
 
 Primary sources:
 
-- `packages/tusk-executor/src/coordinator.ml`
-- `packages/tusk-executor/src/package_builder.ml`
-- `packages/tusk-executor/tests/coordinator_tests.ml`
+- `packages/riot-executor/src/coordinator.ml`
+- `packages/riot-executor/src/package_builder.ml`
+- `packages/riot-executor/tests/coordinator_tests.ml`
 
 Property to model:
 
@@ -151,9 +151,9 @@ Why next:
 
 Primary sources:
 
-- `packages/tusk-executor/src/coordinator.ml`
-- `packages/tusk-planner/src/package_graph.ml`
-- `packages/tusk-executor/tests/coordinator_tests.ml`
+- `packages/riot-executor/src/coordinator.ml`
+- `packages/riot-planner/src/package_graph.ml`
+- `packages/riot-executor/tests/coordinator_tests.ml`
 
 Property to model:
 

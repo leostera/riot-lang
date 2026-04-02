@@ -1,0 +1,115 @@
+open Std
+
+(** Riot-Fix - OCaml Linter and Code Fixer
+    
+    A pipeline-based linter and code fixer for OCaml, built on top of the syn parser.
+*)
+module Diagnostic: module type of Diagnostic
+
+(** Structured diagnostic information for lint errors *)
+module Fix: module type of Fix
+
+(** Types for code fixes and transformations *)
+module Pipeline: module type of Pipeline
+
+(** Linting pipeline orchestration *)
+module Provider: module type of Provider
+
+(** Package-provided riot-fix rule surface *)
+module Provider_registry: module type of Provider_registry
+
+(** Runtime registry for package-provided rules and explanations *)
+module Reporter: module type of Reporter
+
+(** Diagnostic output formatting *)
+module Rule: module type of Rule
+
+(** Lint rule abstraction *)
+module Runner: module type of Runner
+
+(** Structured `riot fix` event payloads and JSON serialization *)
+module Event: module type of Event
+
+(** Synchronous lint/apply runner for files and directories *)
+module Cli: module type of Cli
+
+(** CLI surface shared by the standalone binary and `riot fix` *)
+module Rules: module type of Rules
+
+(** Built-in lint rules *)
+module Traversal: module type of Traversal
+
+(** CST traversal helpers *)
+module Source_runner: module type of Fixme.Source_runner
+
+(** Pure rule execution and safe-fix application on source strings *)
+module Rule_test: module type of Fixme.Rule_test
+
+(** Test helper for running rules, applying fixes, and rerunning on updated source *)
+module Rule_query: module type of Rule_query
+
+(** Rule-oriented CST query helpers built on top of `Syn.Visit` *)
+module File_scanner: module type of File_scanner
+
+(** File system scanner for finding OCaml source files *)
+module Messages: module type of Messages
+
+(** Shared message types for coordinator and worker communication *)
+module Worker: module type of Worker
+
+(** Worker actor for linting individual files *)
+module Coordinator: module type of Coordinator
+
+(** Coordinator actor for managing lint workers *)
+module Config: module type of Fix_config
+
+(** Workspace and package-local configuration resolution for `riot fix` *)
+module Explanation: module type of Explanation
+
+(** Shared explanation entry type used by built-in and provider rules *)
+module Explanations: module type of Explanations
+
+(** Explanation lookup for loaded built-in and provider rules *)
+module Fixme_runner: module type of Fixme_runner
+
+(** Build-time fixme runner planning for package-provided rules *)
+type build_package = Api.build_package
+type fix_output_mode = Api.fix_output_mode =
+  Silent
+  | Report of Reporter.format
+type fix_action = Api.fix_action =
+  | ListRules of { format: Reporter.format }
+  | ListDiagnostics of { format: Reporter.format }
+  | ExplainRule of { rule_id: string }
+  | Run of {
+      mode: Runner.mode;
+      limit: int option;
+      target: Path.t;
+      forwarded_args: string list;
+      output_mode: fix_output_mode;
+      use_generated_runner: bool
+    }
+type fix_request = Api.fix_request = {
+  cwd: Path.t;
+  scope: Fix_config.scope option;
+  action: fix_action;
+}
+type fix_response = Api.fix_response =
+  | Completed
+  | ListedRules of { format: Reporter.format; output: string }
+  | ListedDiagnostics of { format: Reporter.format; output: string }
+  | ExplainedRule of { rule_id: string; output: string }
+val check_request: cwd:Path.t -> target:Path.t -> fix_request
+
+val fix_request_of_matches: ArgParser.matches -> (fix_request, exn) result
+
+val output_mode_of_request: fix_request -> fix_output_mode
+
+val fix:
+  ?build_package:build_package ->
+  ?on_event:(Event.t -> unit) ->
+  ?output_mode:fix_output_mode ->
+  fix_request ->
+  (fix_response, exn) result
+
+val response_output: fix_response -> string option

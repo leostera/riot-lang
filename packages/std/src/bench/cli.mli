@@ -16,7 +16,7 @@ open Global
     Example:
     {[
       let () =
-        Miniriot.run
+        Actors.run
           ~main:(fun ~args ->
             Bench.Cli.main
               ~name:"My Benchmarks"
@@ -30,4 +30,4 @@ val main:
   name:string ->
   benchmarks:Bench_runner.bench_item list ->
   args:string list ->
-  (unit, Miniriot.Process.exit_reason) result
+  (unit, Actors.Process.exit_reason) result

@@ -80,7 +80,7 @@ get "/divide" divide_handler;]
 let app = Middleware.[ request_id; logger; debugger; router routes; ]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       (* Enable backtraces! Critical for debugger *)
       Log.(set_level Debug);

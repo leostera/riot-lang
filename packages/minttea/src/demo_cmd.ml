@@ -13,7 +13,7 @@ let main = fun ~args ->
       Error (Failure "Argument parsing failed")
   | Ok _matches -> (
       println "Hello from minttea:demo!";
-      println "This is a package-provided Tusk command.";
+      println "This is a package-provided Riot command.";
       println "";
       println "The command system is working correctly!";
       Ok ()
@@ -30,5 +30,5 @@ let should_autorun =
 
 let () =
   if should_autorun then
-    let _ = Miniriot.run ~main ~args:Std.Env.args () in
+    let _ = Actors.run ~main ~args:Std.Env.args () in
     ()

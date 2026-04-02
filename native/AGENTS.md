@@ -14,4 +14,4 @@ The `native/` tree holds the Rust side of Riot's OCaml binding layer.
 
 1. Keep crate names, exported symbols, and OCaml-facing ABI changes deliberate.
 2. Update both Rust and OCaml smoke tests when changing the binding surface.
-3. Use `cargo check` for the Rust workspace and `tusk build hello-foreign` for the end-to-end path.
+3. Use `cargo check` for the Rust workspace and `riot build hello-foreign` for the end-to-end path.

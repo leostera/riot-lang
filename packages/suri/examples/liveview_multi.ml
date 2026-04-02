@@ -11,7 +11,7 @@ open Suri
     - Timer: Server-driven updates (ticks every second)
     - Custom page layout with side-by-side components
     
-    Run with: tusk run suri:liveview_multi
+    Run with: riot run suri:liveview_multi
     Then open: http://localhost:9998 *)
 
 (** Counter LiveView - User-driven interactions *)
@@ -383,7 +383,7 @@ LiveView.live (module Status);]
 let app = [ Middleware.router routes; ]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       let config = Suri.config ~port:9_998 () in
       match Suri.start_link ~config app with

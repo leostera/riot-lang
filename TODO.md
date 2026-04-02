@@ -8,9 +8,9 @@
 2. Reproduce it with a focused fixture run:
    - `timeout 900 python3 packages/krasny/tests/test_runner.py --filter <fixture_id>`
 3. If the fix changes `krasny` code, rebuild before trusting fixture output:
-   - `timeout 120 tusk build krasny`
+   - `timeout 120 riot build krasny`
    - or, when `syn`/shared fallout is possible:
-     `timeout 120 tusk build syn krasny fixme tusk-fix`
+     `timeout 120 riot build syn krasny fixme riot-fix`
 4. If the fix changes `syn` parser/CST behavior, also run the focused `syn` fixture coverage:
    - `timeout 900 python3 packages/syn/tests/test_runner.py fixtures --filter <pattern>`
    - `timeout 900 python3 packages/syn/tests/test_runner.py cst --filter <pattern>`
@@ -19,7 +19,7 @@
 6. If the new output matches the agreed policy and the fixture was stale, refresh it:
    - `timeout 900 python3 packages/krasny/tests/test_runner.py --filter <fixture_id> --refresh`
 7. After a small batch, run broader verification:
-   - `timeout 30 tusk test krasny:format_tests`
+   - `timeout 30 riot test krasny:format_tests`
 8. Periodically re-run the whole fixture suite:
    - `timeout 900 python3 packages/krasny/tests/test_runner.py`
 9. Commit each coherent slice with a conventional commit.
@@ -30,8 +30,8 @@
   - `timeout 900 python3 packages/krasny/tests/test_runner.py`
   - `timeout 900 python3 packages/syn/tests/test_runner.py fixtures`
   - `timeout 900 python3 packages/syn/tests/test_runner.py cst`
-  - `timeout 30 tusk test krasny:format_tests`
-  - `timeout 180 tusk test syn:cst_tests`
+  - `timeout 30 riot test krasny:format_tests`
+  - `timeout 180 riot test syn:cst_tests`
 - Structural token cleanup in `syn` is in much better shape now:
   - declaration boundary tokens preserved
   - quantified and mutable tokens preserved
@@ -78,47 +78,47 @@
 
 ### After Syntax/Layout Stabilization
 
-1. Fix `tusk fix` for the new CST.
+1. Fix `riot fix` for the new CST.
    - Generated `fixme-runner` now builds against the current CST again.
-   - `timeout 180 tusk test tusk-fix:runner_tests` is green.
+   - `timeout 180 riot test riot-fix:runner_tests` is green.
    - Package-scoped health checks are now working without runtime crashes:
-     - `timeout 60 tusk fix --check --json packages/std`
-     - `timeout 60 tusk fix --check --json packages/krasny`
+     - `timeout 60 riot fix --check --json packages/std`
+     - `timeout 60 riot fix --check --json packages/krasny`
    - Recent root fixes:
      - provider hashes now include provider/support source contents, so generated runners rebuild when rules change
-     - stale traversal matches for standalone top-level docstrings/comments were fixed in both `fixme` and `tusk-fix`
+     - stale traversal matches for standalone top-level docstrings/comments were fixed in both `fixme` and `riot-fix`
    - Next blocker:
-     - run the broader `timeout 120 tusk fix --check`
-     - confirm ignore patterns from `tusk.toml` are being honored during scanning
+     - run the broader `timeout 120 riot fix --check`
+     - confirm ignore patterns from `riot.toml` are being honored during scanning
      - only after that should we re-enable pre-commit
-   - Once `tusk fix` is healthy again, re-enable the `scripts/git-hooks/pre-commit` check so every commit runs:
-     - `tusk fix --check`
+   - Once `riot fix` is healthy again, re-enable the `scripts/git-hooks/pre-commit` check so every commit runs:
+     - `riot fix --check`
    - Loop:
-     - `timeout 120 tusk build syn fixme tusk-fix`
-     - `timeout 60 tusk fix --check --json <package-or-path>`
-     - `timeout 120 tusk fix --check`
+     - `timeout 120 riot build syn fixme riot-fix`
+     - `timeout 60 riot fix --check --json <package-or-path>`
+     - `timeout 120 riot fix --check`
      - fix one root CST consumer at a time
      - prefer fixing crashes/stalls in `fixme` or generated-runner inputs before patching downstream wrappers
-     - re-run `timeout 180 tusk test syn:cst_tests`
-     - re-run `timeout 30 tusk test krasny:format_tests` when formatter-facing CST APIs change
+     - re-run `timeout 180 riot test syn:cst_tests`
+     - re-run `timeout 30 riot test krasny:format_tests` when formatter-facing CST APIs change
 
-2. Investigate `tusk fmt` startup latency.
+2. Investigate `riot fmt` startup latency.
    - It sometimes takes about a second before printing results.
    - Run:
-     - `tusk fmt --json`
+     - `riot fmt --json`
    - Inspect where the startup time is going and reduce time-to-first-result.
    - Verification loop:
-     - capture baseline `tusk fmt --json`
+     - capture baseline `riot fmt --json`
      - make one startup-path change
-     - rerun `tusk fmt --json`
+     - rerun `riot fmt --json`
      - compare time-to-first-result and total runtime
 
 3. Start a new repo-health loop for failing tests.
-   - Run `tusk test`
+   - Run `riot test`
    - Pick one failing test or suite
    - Fix it
    - Re-run
-   - Repeat until `tusk test` is green
+   - Repeat until `riot test` is green
 
 4. After all of the above is done and committed:
    - start exploring an implementation of `RFD0026`

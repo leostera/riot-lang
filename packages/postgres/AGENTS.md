@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 tusk build postgres`
+`timeout 30 riot build postgres`

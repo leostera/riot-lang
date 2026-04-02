@@ -149,18 +149,18 @@ That gives Riot:
 If search requirements later exceed what D1 and FTS5 provide, the external API
 shape can stay stable while the implementation changes.
 
-## Relationship to `tusk add`
+## Relationship to `riot add`
 
 Search is not on the install critical path.
 It exists for discovery.
 
-Future `tusk add` should use:
+Future `riot add` should use:
 
 - search for package discovery UX
 - the sparse index for actual install resolution
 
 That distinction is important:
 
-- `tusk add kernel` should not require search to work
+- `riot add kernel` should not require search to work
 - search should help users find `kernel`
 - the sparse index should remain the authoritative install fast path

@@ -9,7 +9,7 @@
 ## Summary
 [summary]: #summary
 
-This RFD makes `tusk` require `manifest.json` inside published OCaml
+This RFD makes `riot` require `manifest.json` inside published OCaml
 toolchain tarballs and use it as the authoritative toolchain identity input to
 cache hashing.
 
@@ -24,7 +24,7 @@ The contract is:
 - Release toolchains published for `./scripts/toolchain/ocaml.sh` must include
   `manifest.json`.
 - The file must contain a non-empty `toolchain_fingerprint`.
-- `tusk-toolchain` must validate manifest presence on install and reject archives
+- `riot-toolchain` must validate manifest presence on install and reject archives
   that do not contain it.
 - Planner cache keys for downloaded/non-local toolchains must be derived from that
   fingerprint instead of probing selected filesystem paths.
@@ -47,7 +47,7 @@ depend on a stable build artifact description carried in the release tarball.
 
 1. `vendor/ocaml/cross/package.sh` writes `manifest.json` during packaging and
    archives it into every tarball.
-2. `tusk-toolchain`:
+2. `riot-toolchain`:
    - validates `manifest.json` after extraction for downloaded toolchains,
    - fails installation if the manifest is missing or invalid,
    - prefers `toolchain_fingerprint` in `hash`.
@@ -58,10 +58,10 @@ depend on a stable build artifact description carried in the release tarball.
 [migration]: #migration
 
 - Re-publish affected OCaml toolchains after this change and upload to CDN.
-- Invalidate stale local toolchain cache directories under `~/.tusk/toolchains/...`
+- Invalidate stale local toolchain cache directories under `~/.riot/toolchains/...`
   if users previously installed legacy tarballs without manifests.
 - Publish and consume only Riot version-family toolchains by default:
-  - `bootstrap.py`, `packages/tusk-toolchain`, `packages/tusk-model`, and
+  - `bootstrap.py`, `packages/riot-toolchain`, `packages/riot-model`, and
     `ocaml-toolchain.toml` default to `5.5.0-riot.1`.
   - Explicitly setting `OCAML_VERSION`/`[toolchain].version` remains the override
     for newer epochs (for example `5.5.0-riot.2`).

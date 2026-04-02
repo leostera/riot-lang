@@ -114,7 +114,7 @@ get "/api/users/:id" user_handler;]
 let app = Middleware.[ logger; cors_middleware; router routes; ]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
       let _ = Std.Log.start_link () in

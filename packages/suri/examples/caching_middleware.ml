@@ -10,7 +10,7 @@ open Suri
     5. ETag - Generates content-based cache identifiers
     6. Conditional Get - Returns 304 Not Modified for cached content
     
-    Run with: tusk run suri:caching_middleware
+    Run with: riot run suri:caching_middleware
 *)
 
 (** Sample data for demonstration *)
@@ -204,7 +204,7 @@ get "/api/ip"
     |> Conn.send);]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       (* Middleware pipeline showcasing all 6 new features *)
       (* NOTE: remote_ip commented out due to optional parameter type issues in lists *)

@@ -1,0 +1,30 @@
+[package]
+name = "riot-fix"
+version = "0.0.1"
+description = "Linting and auto-fix pipeline for OCaml workspaces."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_fix.ml"
+
+[[bin]]
+name = "riot-fix"
+path = "src/main.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+syn = { path = "../syn", version = "*" }
+riot-model = { path = "../riot-model", version = "*" }
+fixme = { path = "../fixme", version = "*" }
+
+[riot.fix]
+ignore = ["tests/000*.ml"]
+
+[[bin]]
+name = "fix_tests"
+path = "tests/fix_tests.ml"
+
+[[bin]]
+name = "runner_tests"
+path = "tests/runner_tests.ml"

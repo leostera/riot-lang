@@ -98,7 +98,7 @@ get "/api/data" api_data_handler;]
 let app = Middleware.[ request_id; logger; timer_middleware; cors_middleware; router routes; ]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       match Suri.start_link app with
       | Ok supervisor ->

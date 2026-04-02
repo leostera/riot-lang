@@ -1,7 +1,7 @@
 open Std
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ ->
       (* Test Greek letter *)
       let alpha =

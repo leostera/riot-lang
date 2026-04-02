@@ -1,0 +1,18 @@
+[package]
+name = "riot-eval"
+version = "0.0.1"
+description = "OCaml evaluation tooling for the Riot toolchain."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_eval.ml"
+
+[[bin]]
+name = "riot-eval"
+path = "src/main.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+syn = { path = "../syn", version = "*" }
+riot-toolchain = { path = "../riot-toolchain", version = "*" }

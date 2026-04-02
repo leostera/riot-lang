@@ -24,7 +24,7 @@ find_syn_bin() {
 
 SYN_BIN="$(find_syn_bin || true)"
 if [[ -z "$SYN_BIN" ]]; then
-    echo "Could not find built syn binary. Run: tusk build syn"
+    echo "Could not find built syn binary. Run: riot build syn"
     exit 1
 fi
 

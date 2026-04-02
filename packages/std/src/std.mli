@@ -920,7 +920,7 @@ module ArgParser = Arg_parser
     Use ArgParser for building CLI tools with flags, options, and subcommands.
     
     **Examples:**
-    - Build tools (like tusk, cargo, npm)
+    - Build tools (like riot, cargo, npm)
     - Developer utilities
     - System administration scripts *)
 module Bench = Bench
@@ -1446,7 +1446,7 @@ val start: apps:Application.t list -> unit
 (** Start the runtime with applications.
     
     Applications are started in dependency order.
-    Uses `Miniriot.run` under the hood.
+    Uses `Actors.run` under the hood.
     
     **Example:**
     ```ocaml
@@ -1523,7 +1523,7 @@ exception Receive_timeout
 exception Syscall_timeout
 
 (** Raised when a syscall operation times out *)
-type 'msg selector = 'msg Miniriot.selector
+type 'msg selector = 'msg Actors.selector
 
 (** Message selector type *)
 val self: unit -> Pid.t

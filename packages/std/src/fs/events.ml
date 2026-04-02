@@ -95,7 +95,7 @@ let poll = fun t ->
               Ok (List.rev events)
               (* Otherwise wait for readable *)
             else
-              Miniriot.syscall
+              Actors.syscall
                 ~name:"Fs.Events.read"
                 ~interest:Kernel.Async.Interest.readable
                 ~source:t.source

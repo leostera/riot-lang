@@ -135,7 +135,7 @@ module Handler: sig
         - `ok state to continue with updated state
         - `push (frames, state) to send frames and update state
         - `error (state, err) if frame processing fails *)
-    val handle_message: Miniriot.Message.t -> state -> (state, [>
+    val handle_message: Actors.Message.t -> state -> (state, [>
         `Unknown_opcode of int
       ]) handle_result
 
@@ -173,7 +173,7 @@ module Handler: sig
     ]
 
   (** Handle an incoming frame *)
-  val handle_message: t -> Miniriot.Message.t -> 'a -> [>
+  val handle_message: t -> Actors.Message.t -> 'a -> [>
       `continue of 'a * t
       | `error of 'a * [>
         `Unknown_opcode of int
@@ -211,7 +211,7 @@ module Handler: sig
     val handle_frame: Http.Ws.Frame.t -> Net.TcpStream.t -> 'state -> ('state, 'error) handle_result
 
     (** Default frame handler: responds to Ping with Pong *)
-    val handle_message: Miniriot.Message.t -> 'state -> ('state, 'error) handle_result
+    val handle_message: Actors.Message.t -> 'state -> ('state, 'error) handle_result
 
     (** Default message handler: ignores all messages *)
   end

@@ -4,10 +4,10 @@
 
 ## Rules
 
-1. Keep MCP-specific modeling here. Do not reintroduce tusk-specific coupling.
+1. Keep MCP-specific modeling here. Do not reintroduce riot-specific coupling.
 2. Favor clear protocol types and capability boundaries over dynamic dictionaries.
 3. Re-check `jsonrpc` interactions when changing message shapes.
 
 ## Validate
 
-`timeout 30 tusk build mcp`
+`timeout 30 riot build mcp`

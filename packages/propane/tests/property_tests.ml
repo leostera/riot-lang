@@ -132,7 +132,7 @@ let tests = [
 ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Test.Cli.main ~name:"propane/property_tests" ~tests ~args)
     ~args:Env.args
     ()

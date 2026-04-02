@@ -1375,7 +1375,7 @@ let run_all_tests_with_new_solver () =
 *)
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Test.Cli.main ~name:"pubgrub" ~tests:all_tests ~args)
     ~args:Env.args
     ()

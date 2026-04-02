@@ -28,7 +28,7 @@ The central requirement is:
 - helper predicates such as `is_function` or `has_default` should live outside
   the core tree definitions
 
-The intent is to make tooling such as `tusk-fix`, `tusk-eval`, the future
+The intent is to make tooling such as `riot-fix`, `riot-eval`, the future
 formatter, and the future typechecker easier to write without sacrificing the
 exact source fidelity that fix rules require.
 
@@ -36,7 +36,7 @@ exact source fidelity that fix rules require.
 [motivation]: #motivation
 
 The current `syn` surface is powerful but mechanically awkward for tooling.
-Consumers such as `tusk-fix` operate directly on generic `Ceibo.Red` nodes and
+Consumers such as `riot-fix` operate directly on generic `Ceibo.Red` nodes and
 tokens, which means many rules have to:
 
 - match on `SyntaxKind`
@@ -46,7 +46,7 @@ tokens, which means many rules have to:
 
 That is workable, but it is brittle.
 
-The recent `snake-case-type-names` rule in `tusk-fix` is a good example. The rule
+The recent `snake-case-type-names` rule in `riot-fix` is a good example. The rule
 should conceptually answer a simple question:
 
 - "what is the declared type name of this `type` declaration?"
@@ -64,7 +64,7 @@ That kind of traversal is easy to get wrong and hard to read in review.
 This matters for Riot because `syn` is no longer just a parser experiment. It is
 now a foundation for:
 
-- `tusk-fix` lint rules and auto-fixes
+- `riot-fix` lint rules and auto-fixes
 - parser-backed diagnostics
 - future macros
 - future formatting and rewrite tooling
@@ -407,7 +407,7 @@ The rollout should happen in slices:
 ### Stage 3
 
 - cover declarations, module syntax, class syntax, and signatures
-- migrate `tusk-fix` to depend on faithful CST nodes rather than convenience
+- migrate `riot-fix` to depend on faithful CST nodes rather than convenience
   wrappers
 - keep the fixture snapshots as the coverage tracker
 
@@ -476,7 +476,7 @@ unsolved:
 - consumers still rebuild structural interpretations ad hoc
 - sub-children still need repeated conversion as tooling descends the tree
 
-If `tusk-fix` runs dozens of rules over one file, Riot should be able to build
+If `riot-fix` runs dozens of rules over one file, Riot should be able to build
 the typed concrete structure once for that file and share it.
 
 The chosen design should therefore produce one complete CST per parse result
@@ -547,7 +547,7 @@ The strongest shared lesson is:
 Once Riot has a faithful typed CST, it could support:
 
 - formatter passes over exact syntax structure
-- richer `tusk-fix` rewrites
+- richer `riot-fix` rewrites
 - parser-backed editor tooling
 - structural refactorings
 - a future typechecker built on shared parser-shaped nodes

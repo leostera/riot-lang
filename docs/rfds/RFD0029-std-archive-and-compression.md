@@ -574,7 +574,7 @@ Because Riot links against system `zlib`, then:
 
 That means any implementation work must include:
 
-- `packages/kernel/tusk.toml` link flag updates
+- `packages/kernel/riot.toml` link flag updates
 - toolchain packaging updates so cross sysroots include the required artifacts
 - verification on macOS and Linux, including cross targets
 

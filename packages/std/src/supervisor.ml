@@ -138,7 +138,7 @@ let terminate_child_process = fun (child_state: child_state) ->
   | Some pid -> (
       match child_state.spec.shutdown with
       | BrutalKill ->
-          (* TODO: Need Process.kill or Process.exit API in miniriot *)
+          (* TODO: Need Process.kill or Process.exit API in actors *)
           send pid (Process.EXIT { from = self (); reason = Error (Failure "killed") })
       | Timeout _timeout ->
           (* TODO: Implement graceful shutdown with timeout *)

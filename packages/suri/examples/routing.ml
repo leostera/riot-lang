@@ -5,7 +5,7 @@ open Suri
     
     Demonstrates routing with middleware pipeline including request ID and logging.
     
-    Run: tusk run suri:routing *)
+    Run: riot run suri:routing *)
 (* Route handlers *)
 
 let home_handler = fun conn req ->
@@ -62,7 +62,7 @@ get "/api/health" health_handler;]
 let app = Middleware.[ request_id; logger; router routes; ]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       match Suri.start_link app with
       | Ok supervisor ->

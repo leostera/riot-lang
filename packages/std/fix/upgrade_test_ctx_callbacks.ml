@@ -206,7 +206,7 @@ let check_tree = fun (ctx: Api.Rule.context) _red_root ->
   if not (is_test_source_path ctx.file_path) then
     []
   else
-    let expressions = Tusk_fix.Rule_query.expressions ctx in
+    let expressions = Riot_fix.Rule_query.expressions ctx in
     let inline_diagnostics =
       expressions
       |> List.filter_map
@@ -230,7 +230,7 @@ let check_tree = fun (ctx: Api.Rule.context) _red_root ->
         | Some name -> increment_count path_use_counts name
         | None -> ());
     let named_diagnostics =
-      Tusk_fix.Rule_query.let_bindings ctx
+      Riot_fix.Rule_query.let_bindings ctx
       |> List.filter_map
         (fun binding ->
           match Syn.Cst.LetBinding.binding_name_token binding with

@@ -150,4 +150,4 @@ val run: ?config:Config.t -> 'model -> 'model App.t -> (unit, Process.exit_reaso
 (** Run the application *)
 val start: ?config:Config.t -> 'model App.t -> 'model -> unit
 
-(** Start the application with Miniriot runtime *)
+(** Start the application with Actors runtime *)

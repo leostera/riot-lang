@@ -1,0 +1,16 @@
+[package]
+name = "riot-executor"
+version = "0.0.1"
+description = "Build execution and result aggregation for Riot."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_executor.ml"
+
+[dependencies]
+std = { path = "../riot-planner", version = "*" }
+riot-model = { path = "../riot-planner", version = "*" }
+riot-planner = { path = "../riot-planner", version = "*" }
+riot-toolchain = { path = "../riot-planner", version = "*" }
+riot-store = { path = "../riot-planner", version = "*" }

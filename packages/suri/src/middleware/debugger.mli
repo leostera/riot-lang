@@ -50,7 +50,7 @@
         router routes;
       ]
       
-      let () = Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let () = Actors.run ~args:Env.args () ~main:(fun ~args:_ ->
         match Suri.start_link app with
         | Ok _ -> (* ... *)
         | Error _ -> (* ... *)
@@ -120,7 +120,7 @@
     Shows 5 lines of context before and after the error line.
     
     {b Workspace Source Resolution:}
-    The debugger scans the local tusk workspace to resolve sandbox paths back to
+    The debugger scans the local riot workspace to resolve sandbox paths back to
     actual source files. This provides clean workspace-relative paths like
     [packages/suri/src/handler.ml] instead of cryptic sandbox paths, and falls
     back to best-guess path construction if the workspace cannot be loaded.

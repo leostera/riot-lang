@@ -2,7 +2,7 @@ open Std
 
 (** {1 Suri - High-Performance Web Framework for OCaml}
 
-    Suri is a modern, actor-based web framework built on {!Std} and {!Miniriot}.
+    Suri is a modern, actor-based web framework built on {!Std} and {!Actors}.
     It provides everything you need to build fast, fault-tolerant web applications
     with type safety and elegant concurrency.
 
@@ -17,7 +17,7 @@ open Std
     {2:why Why Suri?}
 
     {b ✅ Actor-Based Concurrency}
-    - Built on Miniriot's lightweight processes
+    - Built on Actors's lightweight processes
     - Supervised connection pools with automatic restart
     - Handle thousands of concurrent connections efficiently
 
@@ -50,7 +50,7 @@ open Std
         (fun conn -> Conn.respond conn ~status:Ok ~body:"Hello, World!")
       ]
 
-      let () = Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let () = Actors.run ~args:Env.args () ~main:(fun ~args:_ ->
         match Suri.start_link app with
         | Ok _ ->
             Log.info "Server running on http://0.0.0.0:4000";
@@ -97,7 +97,7 @@ open Std
         Middleware.Router.middleware routes;
       ]
 
-      let () = Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let () = Actors.run ~args:Env.args () ~main:(fun ~args:_ ->
         match Suri.start_link app with
         | Ok _ ->
             Log.info "Server running";
@@ -147,7 +147,7 @@ open Std
         let conn = Middleware.Pipeline.run conn app in
         close (Middleware.Conn.to_response conn)
 
-      let () = Miniriot.run ~args:Env.args () ~main:(fun ~args:_ ->
+      let () = Actors.run ~args:Env.args () ~main:(fun ~args:_ ->
         match Suri.start_link ~handler () with
         | Ok _ ->
             Log.info "Server with routing on http://0.0.0.0:4000";
@@ -217,9 +217,9 @@ open Std
 
     {b Run an example:}
     {[
-      tusk run suri:hello_world
-      tusk run suri:routing
-      tusk run suri:basic_component
+      riot run suri:hello_world
+      riot run suri:routing
+      riot run suri:basic_component
     ]}
 
     {2:architecture Architecture}

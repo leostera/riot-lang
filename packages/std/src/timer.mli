@@ -1,7 +1,7 @@
 (** Opaque timer identifier *)
 (** Send a message to a process after a delay. Returns a timer ID
     that can be used to cancel the timer. *)
-type id = Miniriot.Timer.id
+type id = Actors.Timer.id
 val send_after: Pid.t -> Message.t -> after:Time.Duration.t -> id
 
 (** Send a message to a process repeatedly at a given interval.

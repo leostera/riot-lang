@@ -1,0 +1,21 @@
+# riot-model AGENTS
+
+`riot-model` defines the shared types for the build system: workspaces, packages, modules, actions, events, targets, and errors.
+
+## Rules
+
+1. Keep this package free of execution policy. It is the shared vocabulary for the rest of riot.
+2. Prefer structured variants and records over loosely typed payloads.
+3. Scoped package phases (`Build`, `Runtime`, `Dev`) live here; changes to that shape usually require follow-up in planner, executor, server, and CLI code.
+4. Be conservative about breaking public type shapes.
+5. Workspace build-path configuration lives in the root `riot.toml` under `[riot].target_dir`; treat that as the source of truth for `_build`-style paths.
+6. Formatter ignore configuration lives under `[riot.fmt]` (`ignore = ["substring", ...]`) on both workspace and package manifests. Bare `[fmt]` is only a compatibility fallback.
+7. The default `debug` profile is the debugger-friendly baseline: native code with debug symbols and minimal optimization (currently `-inline 0` plus `-g`). Do not silently drift it back toward bytecode or optimized native output.
+8. `Ocaml_compiler` owns the shared OCaml warning/flag vocabulary and its string codec. Do not duplicate warning/flag parsing in planner or toolchain packages.
+9. `User_config` is the shared `~/.riot/config.toml` vocabulary. Registry entries carry `api_url`, `cdn_url`, and `api_token`; preserve those fields across parse/save/update paths.
+10. Test support trees under `tests/fixtures/`, `tests/generated/`, and `tests/diagnostics/` are non-compilable inputs. Keep them out of `Package.sources.tests` and test-binary autodiscovery.
+11. Lockfile dependency entries should stay flat and exact for registry packages: render `name`, `version`, and `sha256` directly in the dependency table instead of nesting a second `package = { ... }` object.
+
+## Validate
+
+`timeout 30 riot build riot-model`

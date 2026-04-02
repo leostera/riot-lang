@@ -1,0 +1,10 @@
+[package]
+name = "riot-repl"
+version = "0.0.1"
+description = "Read-eval-print loop support for Riot tooling."
+license = "Apache-2.0"
+public = true
+
+[dependencies]
+std = "*"
+# Add dependencies here

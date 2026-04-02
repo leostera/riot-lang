@@ -63,5 +63,5 @@ val assert_true: bool -> unit
 
 module Cli: sig
   val main:
-    name:string -> tests:test_case list -> args:string list -> (unit, Miniriot.Process.exit_reason) result
+    name:string -> tests:test_case list -> args:string list -> (unit, Actors.Process.exit_reason) result
 end

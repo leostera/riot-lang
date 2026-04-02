@@ -23,7 +23,7 @@ let accept = fun ?timeout t ->
     | Error IO.Operation_would_block
     | Error IO.Resource_unavailable_try_again ->
         (* Would block / EAGAIN / EWOULDBLOCK - register interest and wait *)
-        Miniriot.syscall
+        Actors.syscall
           ?timeout:timeout_secs
           ~name:"TcpListener.accept"
           ~interest:Interest.readable

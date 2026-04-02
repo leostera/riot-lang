@@ -110,7 +110,7 @@ get "/articles/:id" article_handler;]
 let app = [ Middleware.router routes; ]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       match Suri.start_link app with
       | Ok supervisor ->

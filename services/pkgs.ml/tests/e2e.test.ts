@@ -159,10 +159,10 @@ describe("pkgs.ml live e2e", () => {
       (html) =>
         html.includes(publication.package_name) &&
         html.includes(`v${publication.package_version}`) &&
-        html.includes(`tusk add ${publication.package_name}`),
+        html.includes(`riot add ${publication.package_name}`),
     );
     expect(packageHtml).toContain("Discover Packages");
-    expect(packageHtml).toContain(`tusk add ${publication.package_name}`);
+    expect(packageHtml).toContain(`riot add ${publication.package_name}`);
 
     const versionHtml = await pollText(
       `${pkgsBaseUrl}/p/${encodeURIComponent(publication.package_name)}/${encodeURIComponent(publication.package_version)}`,
@@ -415,7 +415,7 @@ async function fetchPackageIndexDocument(packageName: string): Promise<PackageIn
 function buildInlinePackageArtifact(packageName: string, packageVersion: string): Uint8Array {
   const entries = [
     tarEntry(
-      "tusk.toml",
+      "riot.toml",
       [
         "[package]",
         `name = "${packageName}"`,

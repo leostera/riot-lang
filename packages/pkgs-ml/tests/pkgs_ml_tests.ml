@@ -3,7 +3,7 @@ module Test = Std.Test
 
 let test_registry_split_layout = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
-    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~riot_home:(Path.v "/tmp/.riot")
     ~registry_name:"pkgs.ml"
     ()
   |> Result.expect ~msg:"expected registry cache to be created" in
@@ -13,9 +13,9 @@ let test_registry_split_layout = fun _ctx ->
   let src = Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:"std" ~version:"0.1.0"
   |> Path.to_string in
   if
-    String.equal index "/tmp/.tusk/registry/pkgs.ml/index"
-    && String.equal archive "/tmp/.tusk/registry/pkgs.ml/archive/std/0.1.0.tar"
-    && String.equal src "/tmp/.tusk/registry/pkgs.ml/src/std/0.1.0"
+    String.equal index "/tmp/.riot/registry/pkgs.ml/index"
+    && String.equal archive "/tmp/.riot/registry/pkgs.ml/archive/std/0.1.0.tar"
+    && String.equal src "/tmp/.riot/registry/pkgs.ml/src/std/0.1.0"
   then
     Ok ()
   else
@@ -23,12 +23,12 @@ let test_registry_split_layout = fun _ctx ->
 
 let test_sparse_index_layout = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
-    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~riot_home:(Path.v "/tmp/.riot")
     ~registry_name:"pkgs.ml"
     ()
   |> Result.expect ~msg:"expected registry cache to be created" in
   let actual = Pkgs_ml.Sparse_index.package_cache_path cache ~package_name:"AbCd" |> Path.to_string in
-  if String.equal actual "/tmp/.tusk/registry/pkgs.ml/index/ab/cd/abcd.json" then
+  if String.equal actual "/tmp/.riot/registry/pkgs.ml/index/ab/cd/abcd.json" then
     Ok ()
   else
     Error ("unexpected sparse index cache path: " ^ actual)
@@ -90,7 +90,7 @@ let test_sparse_index_cached_reads = fun _ctx ->
     |> Result.expect ~msg:"expected sparse index package to parse"
   in
   let cache = Pkgs_ml.Registry_cache.create
-    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~riot_home:(Path.v "/tmp/.riot")
     ~registry_name:"pkgs.ml"
     ()
   |> Result.expect ~msg:"expected registry cache to be created" in
@@ -170,7 +170,7 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
     Fs.with_tempdir ~prefix:"pkgs_ml_fetch_config"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
-          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~riot_home:Path.(tempdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
@@ -214,7 +214,7 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
     Fs.with_tempdir ~prefix:"pkgs_ml_fetch_package"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
-          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~riot_home:Path.(tempdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
@@ -272,7 +272,7 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
     Fs.with_tempdir ~prefix:"pkgs_ml_fetch_missing_package"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
-          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~riot_home:Path.(tempdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
@@ -324,7 +324,7 @@ let test_registry_materializes_in_memory_release = fun _ctx ->
     Fs.with_tempdir ~prefix:"pkgs_ml_materialize"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
-          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~riot_home:Path.(tempdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
@@ -362,7 +362,7 @@ let test_registry_materializes_in_memory_release = fun _ctx ->
               cache
               ~package_name:"std"
               ~version:"0.1.0"
-            |> fun root -> Path.(root / Path.v "tusk.toml") in
+            |> fun root -> Path.(root / Path.v "riot.toml") in
             let source_path = Pkgs_ml.Registry_cache.package_src_dir
               cache
               ~package_name:"std"
@@ -383,7 +383,7 @@ let test_registry_materialize_skips_existing_release = fun _ctx ->
     Fs.with_tempdir ~prefix:"pkgs_ml_materialize_skip"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
-          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~riot_home:Path.(tempdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
@@ -482,7 +482,7 @@ let create_test_archive = fun ~source_root ~archive_path ->
     | Some parent -> parent
     | None -> Path.v "."
   in
-  let manifest_path = Path.(source_root / Path.v "tusk.toml") in
+  let manifest_path = Path.(source_root / Path.v "riot.toml") in
   let source_file_path = Path.(source_root / Path.v "src/std.ml") in
   match Fs.create_dir_all archive_parent with
   | Error err -> Error ("failed to create archive parent directory: " ^ IO.error_message err)
@@ -501,7 +501,7 @@ let create_test_archive = fun ~source_root ~archive_path ->
           in
           add_entry ~name:"./" ~kind:'5' ~mode:0o755L "";
           add_entry ~name:"./src/" ~kind:'5' ~mode:0o755L "";
-          add_entry ~name:"./tusk.toml" ~kind:'0' ~mode:0o644L manifest;
+          add_entry ~name:"./riot.toml" ~kind:'0' ~mode:0o644L manifest;
           add_entry ~name:"./src/std.ml" ~kind:'0' ~mode:0o644L source;
           IO.Buffer.add_string buffer (String.make (tar_block_size * 2) '\000');
           Fs.write (IO.Buffer.contents buffer) archive_path
@@ -538,7 +538,7 @@ let test_filesystem_registry_materializes_cached_release = fun _ctx ->
     Fs.with_tempdir ~prefix:"pkgs_ml_filesystem_materialize"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
-          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~riot_home:Path.(tempdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
@@ -547,7 +547,7 @@ let test_filesystem_registry_materializes_cached_release = fun _ctx ->
         Fs.create_dir_all Path.(source_root / Path.v "src") |> Result.expect ~msg:"expected source directory to be created";
         Fs.write
           "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
-          Path.(source_root / Path.v "tusk.toml")
+          Path.(source_root / Path.v "riot.toml")
         |> Result.expect ~msg:"expected manifest to be written";
         Fs.write "let answer = 42\n" source_file |> Result.expect ~msg:"expected source file to be written";
         let archive_path = Pkgs_ml.Registry_cache.archive_path cache ~package_name:"std" ~version:"0.1.0" in
@@ -565,7 +565,7 @@ let test_filesystem_registry_materializes_cached_release = fun _ctx ->
                   cache
                   ~package_name:"std"
                   ~version:"0.1.0"
-                |> fun root -> Path.(root / Path.v "tusk.toml") in
+                |> fun root -> Path.(root / Path.v "riot.toml") in
                 let materialized_source = Pkgs_ml.Registry_cache.package_src_dir
                   cache
                   ~package_name:"std"
@@ -586,7 +586,7 @@ let test_filesystem_registry_materializes_gzip_cached_release = fun _ctx ->
     Fs.with_tempdir ~prefix:"pkgs_ml_filesystem_materialize_gzip"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
-          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~riot_home:Path.(tempdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
@@ -596,7 +596,7 @@ let test_filesystem_registry_materializes_gzip_cached_release = fun _ctx ->
         Fs.create_dir_all Path.(source_root / Path.v "src") |> Result.expect ~msg:"expected source directory to be created";
         Fs.write
           "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
-          Path.(source_root / Path.v "tusk.toml")
+          Path.(source_root / Path.v "riot.toml")
         |> Result.expect ~msg:"expected manifest to be written";
         Fs.write "let answer = 42\n" source_file |> Result.expect ~msg:"expected source file to be written";
         let archive_path = Pkgs_ml.Registry_cache.archive_path cache ~package_name:"std" ~version:"0.1.0" in
@@ -617,7 +617,7 @@ let test_filesystem_registry_materializes_gzip_cached_release = fun _ctx ->
                       cache
                       ~package_name:"std"
                       ~version:"0.1.0"
-                    |> fun root -> Path.(root / Path.v "tusk.toml") in
+                    |> fun root -> Path.(root / Path.v "riot.toml") in
                     let materialized_source = Pkgs_ml.Registry_cache.package_src_dir
                       cache
                       ~package_name:"std"
@@ -639,7 +639,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
     Fs.with_tempdir ~prefix:"pkgs_ml_filesystem_registry_download"
       (fun tempdir ->
         let cache = Pkgs_ml.Registry_cache.create
-          ~tusk_home:Path.(tempdir / Path.v ".tusk")
+          ~riot_home:Path.(tempdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
           ()
         |> Result.expect ~msg:"expected registry cache to be created" in
@@ -649,7 +649,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
         Fs.create_dir_all Path.(source_root / Path.v "src") |> Result.expect ~msg:"expected source directory to be created";
         Fs.write
           "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
-          Path.(source_root / Path.v "tusk.toml")
+          Path.(source_root / Path.v "riot.toml")
         |> Result.expect ~msg:"expected manifest to be written";
         Fs.write "let answer = 42\n" source_file |> Result.expect ~msg:"expected source file to be written";
         match create_test_archive ~source_root ~archive_path:downloaded_archive with
@@ -691,7 +691,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                       cache
                       ~package_name:"std"
                       ~version:"0.1.0"
-                    |> fun root -> Path.(root / Path.v "tusk.toml") in
+                    |> fun root -> Path.(root / Path.v "riot.toml") in
                     let materialized_source = Pkgs_ml.Registry_cache.package_src_dir
                       cache
                       ~package_name:"std"
@@ -726,7 +726,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
 
 let test_registry_publish_from_locator_posts_tarball_to_publish_route = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
-    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~riot_home:(Path.v "/tmp/.riot")
     ~registry_name:"pkgs.ml"
     ()
   |> Result.expect ~msg:"expected registry cache to be created" in
@@ -806,7 +806,7 @@ let test_registry_publish_from_locator_posts_tarball_to_publish_route = fun _ctx
 
 let test_registry_publish_from_locator_bubbles_registry_error_message = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
-    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~riot_home:(Path.v "/tmp/.riot")
     ~registry_name:"pkgs.ml"
     ()
   |> Result.expect ~msg:"expected registry cache to be created" in
@@ -839,7 +839,7 @@ let test_registry_publish_from_locator_bubbles_registry_error_message = fun _ctx
 
 let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
-    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~riot_home:(Path.v "/tmp/.riot")
     ~registry_name:"pkgs.ml"
     ()
   |> Result.expect ~msg:"expected registry cache to be created" in
@@ -908,7 +908,7 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
 
 let test_registry_publish_artifact_bubbles_transport_exceptions_as_errors = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
-    ~tusk_home:(Path.v "/tmp/.tusk")
+    ~riot_home:(Path.v "/tmp/.riot")
     ~registry_name:"pkgs.ml"
     ()
   |> Result.expect ~msg:"expected registry cache to be created" in
@@ -948,4 +948,4 @@ let tests =
 
 let name = "pkgs-ml Tests"
 
-let () = Miniriot.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
+let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

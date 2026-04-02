@@ -1,14 +1,14 @@
-# Multi-stage Dockerfile for Riot/Tusk
-# Stage 1: Bootstrap Tusk from source
-# Stage 2: Clean builder image with Tusk installed
+# Multi-stage Dockerfile for Riot/Riot
+# Stage 1: Bootstrap Riot from source
+# Stage 2: Clean builder image with Riot installed
 
 # ==============================================================================
-# Stage 1: Bootstrap Tusk
+# Stage 1: Bootstrap Riot
 # ==============================================================================
 FROM ubuntu:24.04 AS bootstrap
 
 LABEL org.opencontainers.image.source="https://github.com/leostera/riot"
-LABEL org.opencontainers.image.description="Riot/Tusk bootstrap stage"
+LABEL org.opencontainers.image.description="Riot/Riot bootstrap stage"
 
 # Install system dependencies for bootstrapping
 RUN apt-get update && apt-get install -y \
@@ -23,29 +23,29 @@ RUN apt-get update && apt-get install -y \
     libzstd-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory for Tusk source
+# Set working directory for Riot source
 WORKDIR /riot
 
-# Copy Tusk source code
+# Copy Riot source code
 COPY . /riot
 
 # Step 1: Bootstrap with Python
 RUN echo "=== Step 1: Running bootstrap.py ===" && \
     ./bootstrap.py
 
-# Step 2: Build minitusk
-RUN echo "=== Step 2: Running minitusk ===" && \
-    ./minitusk
+# Step 2: Build miniriot
+RUN echo "=== Step 2: Running miniriot ===" && \
+    ./miniriot
 
-# Step 3: Build Tusk proper using the bootstrap Tusk
-RUN echo "=== Step 3: Building Tusk proper ===" && \
-    ./_build/bootstrap/out/Tusk_cli/tusk -v build tusk-cli && \
-    ./_build/bootstrap/out/Tusk_cli/tusk -v install tusk
+# Step 3: Build Riot proper using the bootstrap Riot
+RUN echo "=== Step 3: Building Riot proper ===" && \
+    ./_build/bootstrap/out/Riot_cli/riot -v build riot-cli && \
+    ./_build/bootstrap/out/Riot_cli/riot -v install riot
 
 
-# Verify the final Tusk binary exists and works
-RUN echo "=== Verifying Tusk binary ===" && \
-    ls -la ./tusk && ./tusk --help
+# Verify the final Riot binary exists and works
+RUN echo "=== Verifying Riot binary ===" && \
+    ls -la ./riot && ./riot --help
 
 # ==============================================================================
 # Stage 2: Clean Builder Image
@@ -53,9 +53,9 @@ RUN echo "=== Verifying Tusk binary ===" && \
 FROM ubuntu:24.04 AS builder
 
 LABEL org.opencontainers.image.source="https://github.com/leostera/riot"
-LABEL org.opencontainers.image.description="Riot/Tusk builder image"
+LABEL org.opencontainers.image.description="Riot/Riot builder image"
 
-# Install runtime dependencies for Tusk and cross-compilation toolchains
+# Install runtime dependencies for Riot and cross-compilation toolchains
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
@@ -74,23 +74,23 @@ RUN apt-get update && apt-get install -y \
     libc6-dev-amd64-cross \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the fully built Tusk binary from bootstrap stage
-COPY --from=bootstrap /riot/tusk /usr/local/bin/tusk
+# Copy the fully built Riot binary from bootstrap stage
+COPY --from=bootstrap /riot/riot /usr/local/bin/riot
 
 # Copy the OCaml toolchain from bootstrap stage
 # This avoids downloading it every time the container runs
-COPY --from=bootstrap /root/.tusk/toolchains /root/.tusk/toolchains
+COPY --from=bootstrap /root/.riot/toolchains /root/.riot/toolchains
 
 # Make it executable
-RUN chmod +x /usr/local/bin/tusk
+RUN chmod +x /usr/local/bin/riot
 
-# Verify Tusk installation
-RUN tusk --version
-RUN tusk --help
+# Verify Riot installation
+RUN riot --version
+RUN riot --help
 
 # Set working directory for user applications
 WORKDIR /app
 
 # Default command
-ENTRYPOINT ["tusk"]
+ENTRYPOINT ["riot"]
 CMD ["--help"]

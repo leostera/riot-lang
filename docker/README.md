@@ -1,6 +1,6 @@
 # Riot Docker Images
 
-Docker images for building Riot applications with Tusk.
+Docker images for building Riot applications with Riot.
 
 ## Quick Start
 
@@ -22,7 +22,7 @@ WORKDIR /app
 COPY . /app
 
 # Build your application
-RUN tusk build --release my-app
+RUN riot build --release my-app
 
 # Multi-stage: Create minimal runtime image
 FROM alpine:latest
@@ -35,7 +35,7 @@ ENTRYPOINT ["/usr/local/bin/my-app"]
 ### Test Locally
 
 ```bash
-# Run Tusk directly
+# Run Riot directly
 docker run --rm -v $(pwd):/app ghcr.io/leostera/riot/riot-builder:latest build --help
 
 # Interactive development
@@ -80,16 +80,16 @@ To inspect the commands without pushing:
 │ Stage 1: Bootstrap                  │
 │ - Ubuntu 24.04                      │
 │ - Run ./bootstrap.py                │
-│ - Run ./minitusk                    │
-│ - Build tusk with bootstrap tusk    │
-│ - Result: _build/debug/*/tusk       │
+│ - Run ./miniriot                    │
+│ - Build riot with bootstrap riot    │
+│ - Result: _build/debug/*/riot       │
 └────────────┬────────────────────────┘
-             │ COPY tusk binary
+             │ COPY riot binary
              ↓
 ┌─────────────────────────────────────┐
 │ Stage 2: Builder (Final Image)     │
 │ - Clean Ubuntu 24.04                │
-│ - Tusk in /usr/local/bin/           │
+│ - Riot in /usr/local/bin/           │
 │ - Ready for building apps           │
 └─────────────────────────────────────┘
 ```
@@ -97,9 +97,9 @@ To inspect the commands without pushing:
 ## Image Details
 
 - **Base OS:** Ubuntu 24.04 LTS
-- **Tusk Location:** `/usr/local/bin/tusk`
+- **Riot Location:** `/usr/local/bin/riot`
 - **Working Directory:** `/app`
-- **Entrypoint:** `tusk`
+- **Entrypoint:** `riot`
 - **Cross-Compilation Targets:**
   - `aarch64-linux-gnu` (ARM64 glibc)
   - `x86_64-linux-gnu` (x86-64 glibc)
@@ -144,12 +144,12 @@ services:
     image: ghcr.io/leostera/riot/riot-builder:latest
     volumes:
       - .:/app
-      - tusk-cache:/root/.tusk
+      - riot-cache:/root/.riot
     working_dir: /app
     command: build --watch
 
 volumes:
-  tusk-cache:
+  riot-cache:
 ```
 
 Then:
@@ -164,16 +164,16 @@ docker-compose up
 
 Check that all required files are present:
 - `bootstrap.py`
-- `minitusk` (will be created by bootstrap.py)
-- `packages/` directory with all Tusk source code
+- `miniriot` (will be created by bootstrap.py)
+- `packages/` directory with all Riot source code
 
-### Tusk Not Found
+### Riot Not Found
 
 Verify the binary was copied correctly:
 
 ```bash
-docker run --rm riot-builder:latest which tusk
-docker run --rm riot-builder:latest tusk --help
+docker run --rm riot-builder:latest which riot
+docker run --rm riot-builder:latest riot --help
 ```
 
 ### Permission Issues
@@ -250,14 +250,14 @@ services:
     image: ghcr.io/leostera/riot/riot-builder:latest
     volumes:
       - .:/app
-      - tusk-cache:/root/.tusk
+      - riot-cache:/root/.riot
     working_dir: /app
     command: build --watch
 
 volumes:
-  tusk-cache:
+  riot-cache:
 ```
 
 ## License
 
-Same as Riot/Tusk - see main repository LICENSE file.
+Same as Riot/Riot - see main repository LICENSE file.

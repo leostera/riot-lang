@@ -22,7 +22,7 @@ The uploaded tarball becomes the immutable install artifact for the published
 release. It is package-root shaped, so extracting it directly yields:
 
 ```text
-tusk.toml
+riot.toml
 src/...
 README.md
 ...
@@ -37,7 +37,7 @@ owner-repo-<sha>/packages/std/...
 `source_key` now has a strict meaning:
 
 - it is the immutable install artifact for the published release
-- extracting it directly must yield `tusk.toml` at archive root
+- extracting it directly must yield `riot.toml` at archive root
 - installers must not need `package_subdir` to unpack it correctly
 
 The registry remains the authority for package publication. It still validates
@@ -51,7 +51,7 @@ digest, and emits lifecycle events.
 Riot's current package-publication contract has a mismatch:
 
 - the registry stores a raw repository tarball at `source_key`
-- installers and `tusk-deps` consume `source_key` as if it were a package install
+- installers and `riot-deps` consume `source_key` as if it were a package install
   artifact
 
 That mismatch is especially visible for packages published from a subdirectory.
@@ -59,23 +59,23 @@ A release for `github.com/owner/repo/packages/std` currently extracts to
 something like:
 
 ```text
-~/.tusk/registry/pkgs.ml/src/std/0.1.0/owner-repo-<sha>/packages/std/...
+~/.riot/registry/pkgs.ml/src/std/0.1.0/owner-repo-<sha>/packages/std/...
 ```
 
 while the installer needs:
 
 ```text
-~/.tusk/registry/pkgs.ml/src/std/0.1.0/tusk.toml
-~/.tusk/registry/pkgs.ml/src/std/0.1.0/src/...
+~/.riot/registry/pkgs.ml/src/std/0.1.0/riot.toml
+~/.riot/registry/pkgs.ml/src/std/0.1.0/src/...
 ```
 
-This forces `pkgs-ml` and `tusk-deps` to recover repository structure that should
+This forces `pkgs-ml` and `riot-deps` to recover repository structure that should
 not matter during installation:
 
 - discover and strip the synthetic tarball root directory
 - understand package `subdir`
 - extract only a subtree of the archive
-- reconstruct the actual package root before reading `tusk.toml`
+- reconstruct the actual package root before reading `riot.toml`
 
 That is the wrong place to pay this complexity.
 
@@ -83,11 +83,11 @@ The install artifact should already be shaped like the installed package. If we
 fix that upstream:
 
 - `pkgs-ml` becomes a simple "download archive -> extract package" client
-- `tusk-deps` stops caring about repository archive layout
+- `riot-deps` stops caring about repository archive layout
 - install failures become much easier to reason about
 - package publication becomes explicit about what bytes are being published
 
-There is also a UX benefit. If `tusk publish` packages the local package root
+There is also a UX benefit. If `riot publish` packages the local package root
 itself, it can run local preflight checks before upload and fail quickly without
 waiting for the registry to rediscover obvious problems.
 
@@ -96,7 +96,7 @@ waiting for the registry to rediscover obvious problems.
 
 ### New mental model
 
-`tusk publish` should publish a package artifact, not a repository snapshot.
+`riot publish` should publish a package artifact, not a repository snapshot.
 
 That means the client should:
 
@@ -142,7 +142,7 @@ Assume a repository:
 ```text
 riot/
   packages/std/
-    tusk.toml
+    riot.toml
     src/result.ml
     src/path.ml
 ```
@@ -150,7 +150,7 @@ riot/
 Publishing `packages/std` should upload a tarball whose root is:
 
 ```text
-tusk.toml
+riot.toml
 src/result.ml
 src/path.ml
 ```
@@ -159,7 +159,7 @@ not:
 
 ```text
 riot-<sha>/
-  packages/std/tusk.toml
+  packages/std/riot.toml
   packages/std/src/result.ml
   packages/std/src/path.ml
 ```
@@ -168,9 +168,9 @@ Then installation of `std@0.1.0` is trivial:
 
 1. download the immutable artifact referenced by the sparse index
 2. extract into:
-   - `~/.tusk/registry/pkgs.ml/src/std/0.1.0/`
+   - `~/.riot/registry/pkgs.ml/src/std/0.1.0/`
 3. read:
-   - `~/.tusk/registry/pkgs.ml/src/std/0.1.0/tusk.toml`
+   - `~/.riot/registry/pkgs.ml/src/std/0.1.0/riot.toml`
 
 No `subdir`-aware extraction is needed on the client.
 
@@ -179,7 +179,7 @@ No `subdir`-aware extraction is needed on the client.
 The local publish flow should feel like:
 
 ```text
-tusk publish
+riot publish
 ```
 
 Roughly:
@@ -191,7 +191,7 @@ Roughly:
 5. upload the tarball
 6. finalize publication
 
-If validation fails locally, `tusk publish` should fail before upload.
+If validation fails locally, `riot publish` should fail before upload.
 If publication fails remotely, the registry should still explain the failure in
 terms of package publication rules such as:
 
@@ -231,7 +231,7 @@ package root.
 
 The archive must contain at least:
 
-- `tusk.toml`
+- `riot.toml`
 - package source files
 
 The archive must not assume an extra repository root prefix.
@@ -239,7 +239,7 @@ The archive must not assume an extra repository root prefix.
 More specifically, the registry must accept only archives that satisfy all of
 the following:
 
-- `tusk.toml` exists as a regular file at archive path `tusk.toml`
+- `riot.toml` exists as a regular file at archive path `riot.toml`
 - package files are rooted directly under the archive root
 - no archive entry path is absolute
 - no archive entry path contains `..` segments after normalization
@@ -308,10 +308,10 @@ These checks are purely for fast feedback.
 The registry must rerun publish validation after upload.
 
 Local publish does not need to solve dependency compatibility or lock the
-workspace. Those concerns remain in `tusk-deps`.
+workspace. Those concerns remain in `riot-deps`.
 
 Local publish also does not solve workspace ordering by itself. If a workspace
-contains packages that depend on one another, `tusk publish` still needs to
+contains packages that depend on one another, `riot publish` still needs to
 publish them in a valid order or fail clearly when the dependency graph is not
 yet publishable.
 
@@ -442,9 +442,9 @@ This proposal works naturally with the Cargo-style cache layout from
 `RFD0026`:
 
 ```text
-~/.tusk/registry/pkgs.ml/index/...
-~/.tusk/registry/pkgs.ml/archive/<package>/<version>.tar.gz
-~/.tusk/registry/pkgs.ml/src/<package>/<version>/...
+~/.riot/registry/pkgs.ml/index/...
+~/.riot/registry/pkgs.ml/archive/<package>/<version>.tar.gz
+~/.riot/registry/pkgs.ml/src/<package>/<version>/...
 ```
 
 The client downloads the published package artifact into `archive/` and extracts
@@ -472,7 +472,7 @@ It only moves artifact construction to the client.
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-- `tusk publish` becomes more complex because it now needs to build and upload
+- `riot publish` becomes more complex because it now needs to build and upload
   the package artifact itself.
 - the registry API gains upload/session semantics instead of a simpler
   "publish this source locator" interface.
@@ -510,7 +510,7 @@ This is a better design than the status quo and may still be a useful fallback.
 However, it keeps the registry in charge of fetching repository snapshots and
 materializing artifacts from source locators.
 
-Local artifact publishing is still cleaner when `tusk publish` already has the
+Local artifact publishing is still cleaner when `riot publish` already has the
 package on disk and can package it directly.
 
 ### Artifact-only publish without provenance
@@ -551,8 +551,8 @@ installation, not for source-host mirroring.
 
 - Should the upload protocol use signed R2 uploads, worker-streamed uploads, or
   a simpler synchronous request first?
-- Should local preflight eventually include optional `tusk build` or
-  `tusk test` gates before upload?
+- Should local preflight eventually include optional `riot build` or
+  `riot test` gates before upload?
 - Do we want a separate operator/debug path that can still publish from a
   source locator without a local artifact upload?
 

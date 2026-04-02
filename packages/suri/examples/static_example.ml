@@ -7,7 +7,7 @@ open Suri
     
     Static files are located in: packages/suri/examples/public/
     
-    Run with: tusk run suri:static_example
+    Run with: riot run suri:static_example
     Then visit: http://localhost:8080/public/
 *)
 
@@ -68,7 +68,7 @@ let app =
   ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ ->
       Log.(set_level Debug);
       let port = 8_080 in

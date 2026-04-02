@@ -16,17 +16,17 @@ export async function buildPublicationManifestFromArtifact(args: {
   sourceUrl?: string;
   packageSubdir?: string;
 }): Promise<PackagePublicationManifest> {
-  const tuskToml = await readArchiveFileFromTarGz(args.archiveBytes, "tusk.toml");
+  const riotToml = await readArchiveFileFromTarGz(args.archiveBytes, "riot.toml");
 
-  if (tuskToml === null) {
+  if (riotToml === null) {
     throw new HttpError(
       422,
       "invalid_package_archive",
-      "Published package artifact must contain tusk.toml at archive root.",
+      "Published package artifact must contain riot.toml at archive root.",
     );
   }
 
-  const parsed = parseTuskToml(tuskToml, args.packageLocator ?? "artifact");
+  const parsed = parseRiotToml(riotToml, args.packageLocator ?? "artifact");
   const packageSection = asRecord(parsed.package, "package", args.packageLocator ?? "artifact");
   const packageName = expectString(packageSection.name, "package.name", args.packageLocator ?? "artifact");
   const packageVersion = expectString(
@@ -97,7 +97,7 @@ export async function buildPublicationManifestFromArtifact(args: {
   };
 }
 
-function parseTuskToml(source: string, locator: string): Record<string, unknown> {
+function parseRiotToml(source: string, locator: string): Record<string, unknown> {
   const parsed = parseToml(source);
   return asRecord(parsed, "document", locator);
 }

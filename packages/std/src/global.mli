@@ -40,24 +40,24 @@ exception Receive_timeout
 exception Syscall_timeout
 
 (** Get the PID of the currently running process *)
-type 'msg selector = 'msg Miniriot.selector
-val self: unit -> Miniriot.Pid.t
+type 'msg selector = 'msg Actors.selector
+val self: unit -> Actors.Pid.t
 
 (** Spawn a new process *)
-val spawn: (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
+val spawn: (unit -> (unit, Actors.Process.exit_reason) Kernel.result) -> Actors.Pid.t
 
 (** Spawn a new process linked to the current process *)
-val spawn_link: (unit -> (unit, Miniriot.Process.exit_reason) Kernel.result) -> Miniriot.Pid.t
+val spawn_link: (unit -> (unit, Actors.Process.exit_reason) Kernel.result) -> Actors.Pid.t
 
 (** Send a message to a process *)
-val send: Miniriot.Pid.t -> Miniriot.Message.t -> unit
+val send: Actors.Pid.t -> Actors.Message.t -> unit
 
 (** Receive a message using a selector *)
 
 (** Receive any message *)
-val receive: selector:'value Miniriot.selector -> ?timeout:Time.Duration.t -> unit -> 'value
+val receive: selector:'value Actors.selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
-val receive_any: ?timeout:Time.Duration.t -> unit -> Miniriot.Message.t
+val receive_any: ?timeout:Time.Duration.t -> unit -> Actors.Message.t
 
 (** Sleeps the current process for at least the specified duration *)
 val sleep: Time.Duration.t -> unit

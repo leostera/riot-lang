@@ -201,7 +201,7 @@ let test_multiple_inline_tables = Test.case "parse multiple inline tables" @@ fu
 [dependencies]
 std = { path = "../std" }
 kernel = { path = "../kernel" }
-miniriot = { path = "../miniriot" }
+actors = { path = "../actors" }
 |}
   in
   match Toml.parse input with
@@ -335,11 +335,11 @@ port = "8080"
 let test_array_of_tables_simple = Test.case "parse simple array of tables" @@ fun _ctx ->
   let input = {|
 [[bin]]
-name = "tusk"
+name = "riot"
 path = "src/main.ml"
 
 [[bin]]
-name = "tusk-build"
+name = "riot-build"
 path = "src/server.ml"
 |}
   in
@@ -352,7 +352,7 @@ path = "src/server.ml"
               match bins with
               | [Toml.Table bin1;Toml.Table bin2] -> (
                   match (get_string (List.assoc "name" bin1), get_string (List.assoc "path" bin1)) with
-                  | Some "tusk", Some "src/main.ml" -> Ok ()
+                  | Some "riot", Some "src/main.ml" -> Ok ()
                   | Some n, Some p -> Error ("First binary values wrong: name=" ^ n ^ " path=" ^ p)
                   | _ -> Error "Missing name or path in first binary"
                 )
@@ -569,19 +569,19 @@ let test_only_comments = Test.case "parse document with only comments" @@ fun _c
 
 (* === COMPLEX REAL-WORLD TESTS === *)
 
-let test_real_tusk_toml = Test.case "parse actual tusk.toml structure" @@ fun _ctx ->
+let test_real_riot_toml = Test.case "parse actual riot.toml structure" @@ fun _ctx ->
   let content = {|[package]
-name = "tusk"
+name = "riot"
 version = "0.0.1"
 
 [[bin]]
-name = "tusk"
+name = "riot"
 path = "src/main.ml"
 
 [dependencies]
 jsonrpc = { path = "../jsonrpc" }
 mcp = { path = "../mcp" }
-miniriot = { path = "../miniriot" }
+actors = { path = "../actors" }
 std = { path = "../std" }
 |}
   in
@@ -591,7 +591,7 @@ std = { path = "../std" }
       | Some (Toml.Array bins) when List.length bins = 1 -> Ok ()
       | Some (Toml.Array bins) -> Error ("Expected 1 bin, got " ^ Int.to_string (List.length bins))
       | Some _ -> Error "bin is not an array"
-      | None -> Error "No bin section found in tusk.toml"
+      | None -> Error "No bin section found in riot.toml"
     )
   | Ok _ ->
       Error "Expected Table at top level"
@@ -706,7 +706,7 @@ port = "9090"
   | _ -> Error "Parse failed"
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args ->
       let all_tests = [
         test_simple_string;
@@ -745,7 +745,7 @@ let () =
         test_empty_inline_table;
         test_empty_document;
         test_only_comments;
-        test_real_tusk_toml;
+        test_real_riot_toml;
         test_typical_package_toml;
         test_workspace_toml;
         test_mixed_inline_and_section_tables;

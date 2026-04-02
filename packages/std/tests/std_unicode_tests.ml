@@ -888,4 +888,4 @@ let tests =
   ]
 
 let () =
-  Miniriot.run ~main:(fun ~args -> Test.Cli.main ~name:"unicode" ~tests ~args) ~args:Env.args ()
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"unicode" ~tests ~args) ~args:Env.args ()

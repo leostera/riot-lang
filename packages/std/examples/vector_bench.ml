@@ -156,7 +156,7 @@ let benchmarks =
   ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Bench.Cli.main ~name:"Vector Benchmarks" ~benchmarks ~args)
     ~args:Env.args
     ()

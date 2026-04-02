@@ -90,8 +90,8 @@
 
 ## Validate
 
-`timeout 30 tusk build krasny`
-`timeout 30 tusk test krasny:format_tests`
+`timeout 30 riot build krasny`
+`timeout 30 riot test krasny:format_tests`
 `timeout 900 python3 packages/krasny/tests/test_runner.py`
 
 Target individual fixture subsets when needed:

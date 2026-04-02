@@ -8,7 +8,7 @@ open Suri
     - Real-time updates over WebSocket
     - No client-side JavaScript framework needed
     
-    Run with: tusk run suri:liveview_counter
+    Run with: riot run suri:liveview_counter
     Then open: http://localhost:4000 *)
 module Counter = struct
   let id = LiveView.id "counter"
@@ -258,7 +258,7 @@ LiveView.live (module Counter);]
 let app = [ Middleware.router routes; ]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       Std.Config.load_file (Path.v "packages/suri/examples/conf.toml");
       let _ = Std.Log.start_link () in

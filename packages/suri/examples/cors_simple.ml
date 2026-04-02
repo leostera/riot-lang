@@ -20,7 +20,7 @@ post "/api/submit"
     conn |> Conn.respond ~status:Net.Http.Status.Ok ~body:"Data received!" |> Conn.send);]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       (* Development mode - allow all origins *)
       let app = Middleware.[ request_id; logger; cors ~origins:[ "*" ] (); router routes; ] in

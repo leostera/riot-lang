@@ -40,7 +40,7 @@ The motivating use cases are concrete:
    boilerplate around actors, messages, SQL, routing, or serialization.
 3. A macro emits rich parser-style diagnostics tied to source spans, instead of
    failing as a stringly preprocessor.
-4. Macro expansion participates in `tusk` builds as a normal package dependency.
+4. Macro expansion participates in `riot` builds as a normal package dependency.
 5. Future Riot libraries such as `sqlx`, web routing, or state-machine helpers
    can offer structured code generation without depending on an external ppx story.
 
@@ -55,7 +55,7 @@ Contributors should think about `macro` as a new package layer on top of `syn`.
 The flow is:
 
 1. User code contains a macro invocation.
-2. `tusk` resolves the macro package as a build dependency.
+2. `riot` resolves the macro package as a build dependency.
 3. The macro runtime receives token streams, not raw strings.
 4. A macro may parse those tokens with `syn` if it wants structured syntax.
 5. The macro returns generated token streams plus optional diagnostics.
@@ -85,7 +85,7 @@ flowchart TD
   A[source file] --> B[syn parse]
   B --> C[locate macro invocation]
   C --> D[extract TokenStream input]
-  D --> E[tusk resolves macro package]
+  D --> E[riot resolves macro package]
   E --> F[macro runtime loads macro entrypoint]
   F --> G[macro optionally parses with syn]
   G --> H[macro returns TokenStream plus diagnostics]
@@ -116,7 +116,7 @@ The exact API names are not the point yet. The important part is the shape:
 - the public output is a token stream
 - diagnostics are first-class
 
-### Relationship to `syn`, `ceibo`, and `tusk`
+### Relationship to `syn`, `ceibo`, and `riot`
 
 `macro` is not a parser.
 `macro` is not a formatter.
@@ -127,7 +127,7 @@ Instead:
 - `ceibo` owns tree representation
 - `syn` owns parsing and syntax kinds
 - `macro` owns token-stream macro authoring and expansion
-- `tusk` owns build integration and expansion scheduling
+- `riot` owns build integration and expansion scheduling
 
 That layering is the main architectural point of this proposal.
 
@@ -146,7 +146,7 @@ flowchart LR
   B --> C
   B --> D[macro]
   C --> D
-  D --> E[tusk integration]
+  D --> E[riot integration]
 ```
 
 The intended responsibility split is:
@@ -154,7 +154,7 @@ The intended responsibility split is:
 - `ceibo`: generic tree representation
 - `syn`: OCaml parser, lexer, syntax kinds, diagnostics
 - `macro`: macro authoring API, expansion runtime, result model
-- `tusk`: build-time execution of macros
+- `riot`: build-time execution of macros
 
 `macro` should depend on `syn`, not the other way around.
 
@@ -169,19 +169,19 @@ High-level expansion pipeline:
 
 ```mermaid
 sequenceDiagram
-  participant Tusk as tusk
+  participant Riot as riot
   participant Syn as syn
   participant MacroPkg as macro package
   participant Planner as planner/compiler
 
-  Tusk->>Syn: parse source file
-  Syn-->>Tusk: CST plus diagnostics
-  Tusk->>Tusk: find macro invocations
-  Tusk->>MacroPkg: invoke macro entrypoint with TokenStream input
-  MacroPkg-->>Tusk: expanded TokenStream plus diagnostics
-  Tusk->>Syn: validate generated syntax
-  Syn-->>Tusk: expanded CST
-  Tusk->>Planner: continue normal build
+  Riot->>Syn: parse source file
+  Syn-->>Riot: CST plus diagnostics
+  Riot->>Riot: find macro invocations
+  Riot->>MacroPkg: invoke macro entrypoint with TokenStream input
+  MacroPkg-->>Riot: expanded TokenStream plus diagnostics
+  Riot->>Syn: validate generated syntax
+  Syn-->>Riot: expanded CST
+  Riot->>Planner: continue normal build
 ```
 
 Important properties:
@@ -310,7 +310,7 @@ design discussion.
 
 ## 7. Build system integration
 
-`tusk` needs to treat macro packages as a distinct kind of dependency.
+`riot` needs to treat macro packages as a distinct kind of dependency.
 
 That implies at least:
 
@@ -375,7 +375,7 @@ The macro stack should have at least three layers of tests:
 2. **diagnostic tests**
    malformed macro input or macro-emitted errors
 3. **integration tests**
-   `tusk` builds real packages that depend on macro packages
+   `riot` builds real packages that depend on macro packages
 
 Because `syn` is already fixture-driven, the macro package should follow the
 same general testing philosophy.
@@ -455,7 +455,7 @@ Rust: package-managed, procedural, syntax-aware, and build-integrated.
 - Should macro diagnostics reuse `syn` diagnostics directly, or wrap them in a macro-specific layer?
 - How should expanded artifacts be stored and surfaced in `_build`?
 - What minimum hygiene helpers should the first version provide?
-- How should macro packages be declared in `tusk.toml`?
+- How should macro packages be declared in `riot.toml`?
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities

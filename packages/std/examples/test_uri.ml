@@ -1,7 +1,7 @@
 open Std
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ ->
       let test_uris = [
         "https://api.ipify.org?format=json";

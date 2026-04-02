@@ -244,7 +244,7 @@ let benchmarks =
   ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Bench.Cli.main ~name:"HashMap vs Swisstable Performance" ~benchmarks ~args)
     ~args:Env.args
     ()

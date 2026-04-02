@@ -22,15 +22,15 @@ dune.lock
 dev-tools.locks
 
 target
-/minitusk
-/tusk
-/tusk-*
+/miniriot
+/riot
+/riot-*
 .merlin
 *.cmi
 *.cmo
 *.cma
 /logs
-run_tusk.sh
+run_riot.sh
 
 /llm
 .tmp

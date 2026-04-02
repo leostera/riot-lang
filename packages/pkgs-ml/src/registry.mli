@@ -50,7 +50,7 @@ val make_fetch:
   fetch
 
 val create_filesystem:
-  ?fetch:fetch -> registry_name:string -> ?tusk_home:Path.t -> unit -> (t, string) result
+  ?fetch:fetch -> registry_name:string -> ?riot_home:Path.t -> unit -> (t, string) result
 
 val filesystem: ?fetch:fetch -> Registry_cache.t -> t
 

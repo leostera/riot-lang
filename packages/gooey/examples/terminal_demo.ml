@@ -11,7 +11,7 @@ let text_measurer = fun text _style ->
   Viewport.make ~width ~height
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ ->
       (* Create a simple UI with text, colored boxes, and borders *)
       let ui = Element.column

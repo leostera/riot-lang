@@ -59,7 +59,7 @@ let open_append = fun path ->
 let open_read_write = fun path ->
   open_with_flags path [ Kernel.Fd.OpenFlags.ReadWrite ] ~mode:Permissions.read_write
 
-(* Reading - with async/Miniriot support *)
+(* Reading - with async/Actors support *)
 
 let read = fun t buffer ~offset ~len ->
   match ensure_open t with
@@ -70,7 +70,7 @@ let read = fun t buffer ~offset ~len ->
         match Kernel.Fs.File.read t.fd buffer ~pos:offset ~len with
         | Ok bytes_read -> Ok bytes_read
         | Error IO.Operation_would_block
-        | Error IO.Resource_unavailable_try_again -> Miniriot.syscall
+        | Error IO.Resource_unavailable_try_again -> Actors.syscall
           ~name:"File.read"
           ~interest:Kernel.Async.Interest.readable
           ~source
@@ -134,7 +134,7 @@ let read_line = fun t ->
       in
       read_until_newline ()
 
-(* Writing - with async/Miniriot support *)
+(* Writing - with async/Actors support *)
 
 let write = fun t buffer ~offset ~len ->
   match ensure_open t with
@@ -145,7 +145,7 @@ let write = fun t buffer ~offset ~len ->
         match Kernel.Fs.File.write t.fd buffer ~pos:offset ~len with
         | Ok bytes_written -> Ok bytes_written
         | Error IO.Operation_would_block
-        | Error IO.Resource_unavailable_try_again -> Miniriot.syscall
+        | Error IO.Resource_unavailable_try_again -> Actors.syscall
           ~name:"File.write"
           ~interest:Kernel.Async.Interest.writable
           ~source

@@ -1,1 +1,1 @@
-include module type of Miniriot.Pid
+include module type of Actors.Pid

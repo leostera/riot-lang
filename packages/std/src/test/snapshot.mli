@@ -10,7 +10,7 @@ open Global
     Non-fixture snapshots live under:
 
     {[
-      .tusk/snapshots/<package>/<suite>/<test>.expected
+      .riot/snapshots/<package>/<suite>/<test>.expected
     ]}
 
     Fixture-backed snapshots live adjacent to the fixture input, replacing the

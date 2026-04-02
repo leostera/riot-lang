@@ -21,7 +21,7 @@ let make_ctx = fun ?fixture ?(test_name = "snapshot_test") workspace_root ->
 
 let snapshot_path = fun workspace_root test_name ->
   Path.(workspace_root
-  / Path.v ".tusk"
+  / Path.v ".riot"
   / Path.v "snapshots"
   / Path.v "std"
   / Path.v "std_snapshot_tests"
@@ -141,7 +141,7 @@ let tests = [
 ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Test.Cli.main ~name:"std_snapshot_tests" ~tests ~args)
     ~args:Env.args
     ()

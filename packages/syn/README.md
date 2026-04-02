@@ -59,10 +59,10 @@ clean parse.
 The package also ships CLI surfaces that are used heavily by the fixture suite:
 
 ```sh
-tusk run syn -- print-ceibo path/to/file.ml
-tusk run syn -- print-cst path/to/file.ml
-tusk run syn -- parse --json path/to/file.ml
-tusk run syn -- token-stream --json path/to/file.ml
+riot run syn -- print-ceibo path/to/file.ml
+riot run syn -- print-cst path/to/file.ml
+riot run syn -- parse --json path/to/file.ml
+riot run syn -- token-stream --json path/to/file.ml
 ```
 
 `print-ceibo` always prints the lossless parse result plus diagnostics.
@@ -86,8 +86,8 @@ future refactors and formatting.
 The main validation surfaces are:
 
 ```sh
-timeout 30 tusk build syn
-timeout 180 tusk test syn:cst_tests
+timeout 30 riot build syn
+timeout 180 riot test syn:cst_tests
 timeout 900 python3 packages/syn/tests/test_runner.py fixtures
 timeout 900 python3 packages/syn/tests/test_runner.py cst
 timeout 900 python3 packages/syn/tests/test_runner.py diagnostics

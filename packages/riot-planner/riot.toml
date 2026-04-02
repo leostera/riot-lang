@@ -1,0 +1,15 @@
+[package]
+name = "riot-planner"
+version = "0.0.1"
+description = "Dependency graph construction and build planning for Riot."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/Riot_planner.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+riot-model = { path = "../riot-model", version = "*" }
+riot-store = { path = "../riot-store", version = "*" }
+riot-toolchain = { path = "../riot-toolchain", version = "*" }

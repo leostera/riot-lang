@@ -32,7 +32,7 @@ later build a real formatter beside it.
 Riot is heading toward two adjacent capabilities:
 
 - syntax-directed lint rewrites
-- a canonical `tusk fmt`
+- a canonical `riot fmt`
 
 When synthetic rewrites need fresh syntax materialization, Riot will
 need some way to turn structured syntax back into OCaml source. Building one
@@ -60,7 +60,7 @@ At a high level:
 
 - `syn` remains responsible for parsing and faithful syntax structure
 - `krasny` is responsible for layout and rendering policy
-- `tusk fmt` becomes the user-facing entrypoint to `krasny`
+- `riot fmt` becomes the user-facing entrypoint to `krasny`
 
 ### One formatter, one style
 
@@ -163,7 +163,7 @@ end
 ```
 
 Even if the first implementation renders into a string internally, the API
-should be shaped around writing because that is how `tusk fmt` and future
+should be shaped around writing because that is how `riot fmt` and future
 callers will naturally use it.
 
 ## 3. Internal pipeline
@@ -294,7 +294,7 @@ printer as a separate subsystem.
 
 If Riot later needs to materialize synthetic rewrites, that rendering should
 come from `krasny`'s document pipeline, not from a second rendering codepath
-inside `tusk-fix`.
+inside `riot-fix`.
 
 That means:
 
@@ -357,7 +357,7 @@ not to add a second formatting pipeline.
 
 Rejected.
 
-Riot already wants `tusk fmt`, and waiting would only encourage ad hoc
+Riot already wants `riot fmt`, and waiting would only encourage ad hoc
 rendering logic to leak into unrelated systems first.
 
 ## Prior art

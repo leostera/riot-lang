@@ -224,7 +224,7 @@ let benchmarks =
 
 let () =
   println "HashMap vs Swisstable - Large Dataset Performance\n";
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Bench.Cli.main ~name:"HashMap vs Swisstable - Large Datasets" ~benchmarks ~args)
     ~args:Env.args
     ()

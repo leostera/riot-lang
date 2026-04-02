@@ -57,7 +57,7 @@ important distinctions.
 Rather, simplicity in Riot usually means the smallest shape that keeps ownership obvious:
 
 - `kernel` owns raw platform edges and mechanical primitives
-- `miniriot` owns the runtime model, scheduling, mailboxes, timers, and process lifecycle
+- `actors` owns the runtime model, scheduling, mailboxes, timers, and process lifecycle
 - `std` owns the default ergonomic surface
 
 The elegant solution is often the one that improves the boundary, the data shape, and the call site
@@ -102,10 +102,10 @@ appears, then carrying that change through code, docs, and tooling.
 Riot is not a safety-critical firmware project, but it does have strong boundary discipline.
 
 - Respect package ownership. If behavior is low-level and mechanical, it probably belongs in
-  `kernel`. If it changes scheduler or process semantics, it belongs in `miniriot`. If it improves
+  `kernel`. If it changes scheduler or process semantics, it belongs in `actors`. If it improves
   everyday ergonomics, it probably belongs in `std`. If it is wire behavior, keep it in `http`.
   If it is framework behavior, keep it in `suri`.
-- Outside `kernel` and `miniriot`, `open Std`. Inside `std`, prefer `open Global`. Do not
+- Outside `kernel` and `actors`, `open Std`. Inside `std`, prefer `open Global`. Do not
   reintroduce direct `Stdlib`, `Unix`, `Sys`, or `Obj` usage outside the packages that already own
   those edges.
 - Keep low-level APIs narrow and mechanical. Higher-level policy belongs above them.
@@ -275,9 +275,9 @@ the next person.
 
 ## Style By The Numbers
 
-- Use `tusk fmt`. The formatter backend may evolve, but the repository should have one formatting
+- Use `riot fmt`. The formatter backend may evolve, but the repository should have one formatting
   entrypoint and one shared style.
-- Use `tusk fix` to surface style drift that the formatter cannot settle by itself.
+- Use `riot fix` to surface style drift that the formatter cannot settle by itself.
 - Optimize for readability. Newlines are cheap.
 - Around 100 columns is a good target. Do not make horizontal scanning the cost of understanding the
   code.
@@ -314,10 +314,10 @@ specialized instruments each with a dedicated manual.
 
 For Riot development:
 
-- run `tusk` from the workspace root
-- use `tusk completions --packages`, `--binaries`, and `--tests` for discovery
-- use `tusk fmt` for formatting
-- use `tusk fix` for style and rewrite guidance
+- run `riot` from the workspace root
+- use `riot completions --packages`, `--binaries`, and `--tests` for discovery
+- use `riot fmt` for formatting
+- use `riot fix` for style and rewrite guidance
 - wrap long-running commands with `timeout`
 - prefer Riot's tooling entrypoints over ad hoc shell glue when a first-class command already exists
 

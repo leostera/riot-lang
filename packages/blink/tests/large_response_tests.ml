@@ -211,7 +211,7 @@ format = "full"
 |}
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args ->
       (* Enable logging to see chunk messages in streamed response test *)
       Std.Config.load_string test_config;

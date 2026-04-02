@@ -1,0 +1,12 @@
+[package]
+name = "riot-cmd"
+version = "0.0.1"
+description = "Shared command registration interfaces for Riot commands."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_cmd.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }

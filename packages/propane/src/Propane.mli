@@ -35,7 +35,7 @@
       let tests = [ list_rev_prop; division_prop ]
       
       let () =
-        Miniriot.run 
+        Actors.run 
           ~main:(fun ~args -> Test.Cli.main ~name:"my-tests" ~tests ~args) 
           ~args:Env.args ()
     ]}

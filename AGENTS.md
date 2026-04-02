@@ -9,7 +9,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 ## Routing Table
 
 - `packages/kernel/AGENTS.md`: C FFI, platform shims, file descriptors, event loop primitives
-- `packages/miniriot/AGENTS.md`: actor runtime, scheduler, mailbox, timers, process lifecycle
+- `packages/actors/AGENTS.md`: actor runtime, scheduler, mailbox, timers, process lifecycle
 - `packages/std/AGENTS.md`: shared standard library surface used by the rest of the repo
 - `packages/http/AGENTS.md`: HTTP protocol implementation and wire-level behavior
 - `packages/blink/AGENTS.md`: streaming HTTP client built on actors
@@ -18,20 +18,20 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/mcp/AGENTS.md`: MCP transport and protocol types
 - `packages/syn/AGENTS.md`: parser, lexer, CST, diagnostics
 - `packages/krasny/AGENTS.md`: OCaml formatter, document layout, syntax-to-text rendering
-- `packages/tusk-model/AGENTS.md`: shared build-system types and workspace/package model
-- `packages/tusk-deps/AGENTS.md`: package management, dependency solving, lock refresh, registry cache layout
-- `packages/tusk-publish/AGENTS.md`: publish command orchestration across fmt, fix, build, and registry upload
-- `packages/tusk-planner/AGENTS.md`: build planning and dependency graph construction
-- `packages/tusk-executor/AGENTS.md`: build execution and result aggregation
-- `packages/tusk-store/AGENTS.md`: artifact store and cache layout
-- `packages/tusk-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers
-- `packages/tusk-build/AGENTS.md`: in-process build session/runtime entrypoints
-- `packages/tusk-cli/AGENTS.md`: CLI commands and user-facing flows
-- `packages/tusk-fmt/AGENTS.md`: `tusk fmt` wrapper around krasny-based formatting checks
-- `packages/tusk-init/AGENTS.md`: workspace/package scaffolding
-- `packages/tusk-eval/AGENTS.md`: OCaml evaluation tooling
-- `packages/tusk-fix/AGENTS.md`: linting and auto-fix pipeline
-- `packages/fixme/AGENTS.md`: shared rule-authoring types used by tusk-fix and generated `fixme-runner` providers
+- `packages/riot-model/AGENTS.md`: shared build-system types and workspace/package model
+- `packages/riot-deps/AGENTS.md`: package management, dependency solving, lock refresh, registry cache layout
+- `packages/riot-publish/AGENTS.md`: publish command orchestration across fmt, fix, build, and registry upload
+- `packages/riot-planner/AGENTS.md`: build planning and dependency graph construction
+- `packages/riot-executor/AGENTS.md`: build execution and result aggregation
+- `packages/riot-store/AGENTS.md`: artifact store and cache layout
+- `packages/riot-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers
+- `packages/riot-build/AGENTS.md`: in-process build session/runtime entrypoints
+- `packages/riot-cli/AGENTS.md`: CLI commands and user-facing flows
+- `packages/riot-fmt/AGENTS.md`: `riot fmt` wrapper around krasny-based formatting checks
+- `packages/riot-init/AGENTS.md`: workspace/package scaffolding
+- `packages/riot-eval/AGENTS.md`: OCaml evaluation tooling
+- `packages/riot-fix/AGENTS.md`: linting and auto-fix pipeline
+- `packages/fixme/AGENTS.md`: shared rule-authoring types used by riot-fix and generated `fixme-runner` providers
 - `packages/tty/AGENTS.md`: terminal control and rendering helpers
 - `packages/gooey/AGENTS.md`: TUI primitives
 - `packages/minttea/AGENTS.md`: Elm-style TUI framework

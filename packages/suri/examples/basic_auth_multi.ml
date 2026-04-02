@@ -65,7 +65,7 @@ get "/api/users" api_users_handler;
 get "/api/posts" api_posts_handler;]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       (* Strategy: Use skip functions to apply different auth to different paths *)
       let app =

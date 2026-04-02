@@ -1,0 +1,26 @@
+[package]
+name = "actors"
+license = "Apache-2.0"
+description = "Actor-model multi-core runtime for OCaml 5"
+version = "0.0.3"
+categories = ["runtime", "actors"]
+keywords = ["actors", "scheduler", "mailbox"]
+
+[riot.fix]
+rules = [ "-no-stdlib" ]
+
+[riot.fix.provider]
+rules = [ "loop-yield" ]
+
+[lib]
+path = "src/actors.ml"
+
+[dependencies]
+kernel = { path = "../kernel", version = "*" }
+
+[build-dependencies]
+fixme = { path = "../fixme", version = "*" }
+
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }
+std = { path = "../std", version = "*" }

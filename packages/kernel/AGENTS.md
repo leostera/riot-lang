@@ -13,4 +13,4 @@
 
 ## Validate
 
-`timeout 30 tusk build kernel`
+`timeout 30 riot build kernel`

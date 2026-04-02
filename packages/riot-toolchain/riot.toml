@@ -1,0 +1,13 @@
+[package]
+name = "riot-toolchain"
+version = "0.0.1"
+description = "Compiler and toolchain invocation wrappers for Riot."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_toolchain.ml"
+
+[dependencies]
+std = "*"
+riot-model = "*"

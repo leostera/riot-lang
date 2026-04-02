@@ -63,7 +63,7 @@ let tests =
   ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ -> Test.Cli.main ~name:"http:http2_parser" ~tests ~args:Env.args)
     ~args:Env.args
     ()

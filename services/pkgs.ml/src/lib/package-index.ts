@@ -67,11 +67,11 @@ export function buildPackageFacts(
   return [
     {
       label: "Install",
-      value: `tusk add ${document.name}`,
+      value: `riot add ${document.name}`,
       code: true,
     },
     {
-      label: "tusk.toml",
+      label: "riot.toml",
       value: `${document.name} = "${release.version}"`,
       code: true,
     },

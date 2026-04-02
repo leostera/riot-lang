@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 tusk build propane`
+`timeout 30 riot build propane`

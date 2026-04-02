@@ -11,4 +11,4 @@
 
 ## Validate
 
-`timeout 30 tusk build http`
+`timeout 30 riot build http`

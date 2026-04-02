@@ -27,7 +27,7 @@
     before emitting events. Idempotent: returns the existing server PID when the
     server is already running. *)
 type event = ..
-val start: unit -> Miniriot.Pid.t
+val start: unit -> Actors.Pid.t
 
 (** Emit a telemetry event. All attached handlers will receive it. *)
 val emit: event -> unit

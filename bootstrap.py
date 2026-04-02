@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bootstrap script for tusk build system
+Bootstrap script for riot build system
 """
 
 import os
@@ -14,7 +14,7 @@ import urllib.request
 
 OCAML_VERSION = os.getenv("OCAML_VERSION", "5.5.0-riot.1")
 OCAML_CDN_BASE_URL = os.getenv(
-    "TUSK_OCAML_CDN_URL", "https://cdn.pkgs.ml/ocaml"
+    "RIOT_OCAML_CDN_URL", "https://cdn.pkgs.ml/ocaml"
 ).rstrip("/")
 HTTP_USER_AGENT = "riot-bootstrap/1.0 (+https://github.com/leostera/riot)"
 
@@ -84,7 +84,7 @@ def ensure_toolchain(version):
     """Ensure OCaml toolchain is installed"""
     host_triple = get_host_triple()
     home = os.path.expanduser("~")
-    toolchain_dir = os.path.join(home, ".tusk", "toolchains", version, host_triple)
+    toolchain_dir = os.path.join(home, ".riot", "toolchains", version, host_triple)
     ocamlc = os.path.join(toolchain_dir, "bin", "ocamlopt.opt")
     vendored_ocaml = os.path.abspath("./vendor/ocaml")
 
@@ -92,13 +92,13 @@ def ensure_toolchain(version):
         print(f"✓ OCaml {version} ({host_triple}) already installed")
         return toolchain_dir
 
-    if os.path.exists(os.path.join(vendored_ocaml, "configure")):
-        print(f"Installing OCaml {version} for {host_triple} from vendored source...")
-        print(f"✓ Using vendored OCaml source at {vendored_ocaml}")
-        os.makedirs(toolchain_dir, exist_ok=True)
-        run(f"./scripts/toolchain/build-vendored-ocaml.sh --prefix '{toolchain_dir}'")
-        print(f"✓ OCaml {version} ({host_triple}) built from vendored source")
-        return toolchain_dir
+    # if os.path.exists(os.path.join(vendored_ocaml, "configure")):
+    #     print(f"Installing OCaml {version} for {host_triple} from vendored source...")
+    #     print(f"✓ Using vendored OCaml source at {vendored_ocaml}")
+    #     os.makedirs(toolchain_dir, exist_ok=True)
+    #     run(f"./scripts/toolchain/build-vendored-ocaml.sh --prefix '{toolchain_dir}'")
+    #     print(f"✓ OCaml {version} ({host_triple}) built from vendored source")
+    #     return toolchain_dir
 
     print(f"Installing OCaml {version} for {host_triple}...")
     os.makedirs(toolchain_dir, exist_ok=True)
@@ -124,27 +124,29 @@ def ensure_toolchain(version):
 
     except Exception as e:
         print(f"✗ Failed to install prebuilt binary: {e}")
-        print("OCaml bootstrap requires either ./vendor/ocaml or a working cdn.pkgs.ml tarball.")
+        print(
+            "OCaml bootstrap requires either ./vendor/ocaml or a working cdn.pkgs.ml tarball."
+        )
         sys.exit(1)
 
     return toolchain_dir
 
 
 def main():
-    print("=== Bootstrap: Building minitusk ===\n")
+    print("=== Bootstrap: Building miniriot ===\n")
 
     # Ensure OCaml toolchain
     toolchain_dir = ensure_toolchain(OCAML_VERSION)
     ocamlopt = f"{toolchain_dir}/bin/ocamlopt"
 
-    print("\nBuilding minitusk...\n")
+    print("\nBuilding miniriot...\n")
 
     # Clean and create bootstrap directory
     run("rm -rf ./_build/bootstrap")
-    os.makedirs("./_build/bootstrap/sandbox/minitusk", exist_ok=True)
+    os.makedirs("./_build/bootstrap/sandbox/miniriot", exist_ok=True)
 
-    # Build minitusk (compile all modules in dependency order)
-    print("=== Compiling minitusk ===")
+    # Build miniriot (compile all modules in dependency order)
+    print("=== Compiling miniriot ===")
 
     # Generate const.ml with correct paths and architecture
     print("=== Generating const.ml ===")
@@ -174,7 +176,7 @@ let ocaml_version = "{OCAML_VERSION}"
 
 (** Get the toolchain directory for a given version and target *)
 let get_toolchain_dir ?(version = ocaml_version) ?(target = get_host_triple ()) () =
-  Filename.concat home_dir (Filename.concat ".tusk/toolchains" (Filename.concat version target))
+  Filename.concat home_dir (Filename.concat ".riot/toolchains" (Filename.concat version target))
 
 (** Get the bin directory for a given toolchain *)
 let get_toolchain_bin_dir ?(version = ocaml_version) ?(target = get_host_triple ()) () =
@@ -185,7 +187,7 @@ let get_toolchain_lib_dir ?(version = ocaml_version) ?(target = get_host_triple 
   Filename.concat (get_toolchain_dir ~version ~target ()) "lib/ocaml"
 """
 
-    with open("./_build/bootstrap/sandbox/minitusk/const.ml", "w") as f:
+    with open("./_build/bootstrap/sandbox/miniriot/const.ml", "w") as f:
         f.write(const_ml_content)
 
     # Copy all other source files to bootstrap directory
@@ -204,21 +206,21 @@ let get_toolchain_lib_dir ?(version = ocaml_version) ?(target = get_host_triple 
     ]
 
     for file in source_files[1:]:  # Skip const.ml since it's generated
-        run(f"cp packages/minitusk/src/{file} ./_build/bootstrap/sandbox/minitusk")
+        run(f"cp packages/miniriot/src/{file} ./_build/bootstrap/sandbox/miniriot")
 
     # Compile in dependency order (as determined by ocamldep)
     run(
-        f"cd ./_build/bootstrap/sandbox/minitusk && {ocamlopt} -I +unix -o minitusk unix.cmxa "
+        f"cd ./_build/bootstrap/sandbox/miniriot && {ocamlopt} -I +unix -o miniriot unix.cmxa "
         + " ".join(source_files)
     )
 
     # Install
-    run("rm -f ./minitusk")
-    run("cp ./_build/bootstrap/sandbox/minitusk/minitusk ./minitusk")
-    run("chmod +x ./minitusk")
+    run("rm -f ./miniriot")
+    run("cp ./_build/bootstrap/sandbox/miniriot/miniriot ./miniriot")
+    run("chmod +x ./miniriot")
 
-    print("\n✓ Bootstrap complete! Minitusk executable at: ./minitusk")
-    print("\nNow run: ./minitusk")
+    print("\n✓ Bootstrap complete! Miniriot executable at: ./miniriot")
+    print("\nNow run: ./miniriot")
 
 
 if __name__ == "__main__":

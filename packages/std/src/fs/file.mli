@@ -5,7 +5,7 @@ open IO
 (** # Fs.File - File handles for reading and writing
 
     File handle type providing low-level file I/O operations with async support
-    through Miniriot. Wraps file descriptors with a safe interface.
+    through Actors. Wraps file descriptors with a safe interface.
 
     ## Examples
 

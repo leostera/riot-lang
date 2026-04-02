@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 tusk build jsonrpc`
+`timeout 30 riot build jsonrpc`

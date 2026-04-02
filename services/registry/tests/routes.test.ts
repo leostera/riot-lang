@@ -392,9 +392,9 @@ describe("riot package registry routes", () => {
     const sourceObject = await bucket.get(payload.source_archive.key);
     expect(sourceObject).not.toBeNull();
     const sourceBytes = new Uint8Array(await sourceObject!.arrayBuffer());
-    expect(await readArchiveFileFromTarGz(sourceBytes, "tusk.toml")).toContain('name = "std"');
+    expect(await readArchiveFileFromTarGz(sourceBytes, "riot.toml")).toContain('name = "std"');
     expect(await readArchiveFileFromTarGz(sourceBytes, "src/std.ml")).toBe('let hello = "riot"\n');
-    expect(await readArchiveFileFromTarGz(sourceBytes, "repo-root/tusk.toml")).toBeNull();
+    expect(await readArchiveFileFromTarGz(sourceBytes, "repo-root/riot.toml")).toBeNull();
 
     await applyMetadataMigrations(db as unknown as D1Database);
     expect(await readPackageClaim(db as unknown as D1Database, "std")).toMatchObject({
@@ -761,13 +761,13 @@ async function makePackageArtifact(options: MakePackageArtifactOptions): Promise
 
   packageLines.push(`license = "${options.license ?? "Apache-2.0"}"`);
 
-  const tuskToml = [
+  const riotToml = [
     ...packageLines,
     ...(options.dependencyLines ?? []),
   ].join("\n");
 
   return await makeTarGz({
-    "tusk.toml": tuskToml,
+    "riot.toml": riotToml,
     ...(options.files ?? {}),
   }, "");
 }

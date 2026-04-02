@@ -70,7 +70,7 @@ let test_three_column_with_grow = fun _ctx ->
 let tests = Test.[ case "Three columns with Grow in middle" test_three_column_with_grow; ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Test.Cli.main ~name:"grow_layout_tests" ~tests ~args)
     ~args:Env.args
     ()

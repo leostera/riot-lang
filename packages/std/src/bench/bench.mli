@@ -19,7 +19,7 @@ open Global
       ]
 
       let () =
-        Miniriot.run
+        Actors.run
           ~main:(fun ~args ->
             let config = Bench.Runner.{
               reporter = (module Bench.Reporter.Default);
@@ -119,7 +119,7 @@ module Cli: sig
     name:string ->
     benchmarks:bench_item list ->
     args:string list ->
-    (unit, Miniriot.Process.exit_reason) result
+    (unit, Actors.Process.exit_reason) result
 
   (** Main entry point for benchmark binaries with CLI support.
       

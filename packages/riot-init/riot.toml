@@ -1,0 +1,13 @@
+[package]
+name = "riot-init"
+version = "0.0.1"
+description = "Workspace and package scaffolding for Riot."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_init.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+riot-model = { path = "../riot-model", version = "*" }

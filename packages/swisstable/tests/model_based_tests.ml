@@ -341,7 +341,7 @@ let tests = [
 ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Test.Cli.main ~name:"swisstable-model-based-tests" ~tests ~args)
     ~args:Env.args
     ()

@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 tusk build tty`
+`timeout 30 riot build tty`

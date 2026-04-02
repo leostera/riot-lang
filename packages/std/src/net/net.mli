@@ -1,6 +1,6 @@
 (** # Net - Network I/O for actors
 
-    Actor-friendly networking operations that integrate with Miniriot's
+    Actor-friendly networking operations that integrate with Actors's
     scheduler. All blocking operations properly suspend the calling process
     until I/O is ready, allowing other actors to run.
 

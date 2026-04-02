@@ -1,0 +1,35 @@
+[package]
+name = "kernel"
+description = "Low-level primitives for the Riot stack"
+version = "0.0.3"
+license = "Apache-2.0"
+public = true
+categories = ["runtime", "concurrency"]
+keywords = ["ffi", "io", "primitives"]
+
+[riot.fix]
+rules = [ "-no-stdlib" ]
+
+[lib]
+path = "src/kernel.ml"
+
+[target.macos]
+cc_flags = ["-I/opt/homebrew/opt/openssl@3/include"]
+ld_flags = [
+  "-framework", "CoreFoundation", 
+  "-framework", "CoreServices", 
+  "-framework", "Security",
+  "-L/opt/homebrew/opt/openssl@3/lib", 
+  "-lssl", 
+  "-lcrypto",
+  "-lz"
+]
+
+[target.linux]
+cc_flags = []
+ld_flags = ["-lssl", "-lcrypto", "-luuid", "-lz"]
+
+[dependencies]
+stdlib = "*"
+dynlink = "*"
+unix = "*"

@@ -1,0 +1,72 @@
+[workspace]
+members = [
+  "packages/blink",
+  "packages/ceibo",
+  "packages/colors",
+  "packages/fixme",
+  "packages/gooey",
+  "packages/hello-foreign",
+  "packages/http",
+  "packages/jsonrpc",
+  "packages/kernel",
+  "packages/krasny",
+  "packages/mcp",
+  "packages/mime",
+  "packages/actors",
+  "packages/actors",
+  "packages/minttea",
+  "packages/postgres",
+  "packages/pkgs-ml",
+  "packages/propane",
+  "packages/pubgrub",
+  "packages/sqlite",
+  "packages/sqlx",
+  "packages/sqlx-driver",
+  "packages/std",
+  "packages/suri",
+  "packages/swisstable",
+  "packages/syn",
+  "packages/tty",
+  "packages/riot-cli",
+  "packages/riot-cmd",
+  "packages/riot-eval",
+  "packages/riot-executor",
+  "packages/riot-fix",
+  "packages/riot-fmt",
+  "packages/riot-init",
+  "packages/riot-model",
+  "packages/riot-deps",
+  "packages/riot-publish",
+  "packages/riot-planner",
+  "packages/riot-repl",
+  "packages/riot-build",
+  "packages/riot-store",
+  "packages/riot-toolchain",
+  "services/registry",
+]
+
+[dependencies]
+# Shared external dependencies across workspace members
+
+[riot.fmt]
+ignore = [ 
+  "fixtures",
+  "diagnostics",
+  "expected"
+]
+
+[riot.fix]
+ignore = [ 
+  "fixtures",
+  "diagnostics",
+  "expected"
+]
+rules = [
+  "no-stdlib", 
+  "-class-case-module-names",
+  "-limit-open-statements",
+  "-no-unnecessary-rec",
+  "-limit-nested-match-depth",
+  "-prefer-pipelines-for-nested-calls",
+  "-std:prefer-result-map-over-manual-match",
+]

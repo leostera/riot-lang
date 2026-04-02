@@ -48,7 +48,7 @@ let routes = Middleware.Router.[get "/" home_handler;
 get "/reset" reset_handler;]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       let secret = "dev-secret-not-for-production-use-32bit" in
       let app = Middleware.[ request_id; logger; session ~secret (); router routes; ] in

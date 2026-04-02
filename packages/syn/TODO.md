@@ -23,12 +23,12 @@ That is real progress, but it is still far too slow.
 
 ### Correctness / Workflow Rules
 
-1. Only run one `tusk` or `syn` process at a time.
+1. Only run one `riot` or `syn` process at a time.
 2. On macOS, do not rebuild while a native `syn` binary is running.
    - If the binary changes while running, macOS can get into a bad state and kill or corrupt execution.
 3. Prefer this serial loop:
-   - `tusk clean`
-   - `tusk build syn`
+   - `riot clean`
+   - `riot build syn`
    - run one timing command
    - run one test command
 4. Do not trust timings collected while a build is also happening.
@@ -36,8 +36,8 @@ That is real progress, but it is still far too slow.
 ### Measurement Loop
 
 1. Clean and rebuild:
-   - `timeout 120 tusk clean`
-   - `timeout 240 tusk build syn`
+   - `timeout 120 riot clean`
+   - `timeout 240 riot build syn`
 
 2. Measure the slow repro:
    - `./_build/debug/aarch64-apple-darwin/out/syn/syn print-cst packages/krasny/tests/fixtures/0988_sparse_index_release_decoder_tuple_match.ml > /dev/null`
@@ -50,7 +50,7 @@ That is real progress, but it is still far too slow.
    - `xcrun xctrace export --input /tmp/syn-print-cst.trace --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]' --output /tmp/syn-print-cst-time-profile.xml`
 
 5. Validate correctness after each coherent slice:
-   - `timeout 240 tusk build syn`
+   - `timeout 240 riot build syn`
    - `timeout 900 python3 packages/syn/tests/test_runner.py fixtures`
    - `timeout 900 python3 packages/syn/tests/test_runner.py cst`
 

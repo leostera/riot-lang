@@ -1,0 +1,337 @@
+format_version = 1
+
+[[packages]]
+name = "blink"
+root = "packages/blink"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "http" }, { name = "actors" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "ceibo"
+root = "packages/ceibo"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "colors"
+root = "packages/colors"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "fixme"
+root = "packages/fixme"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "syn" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "gooey"
+root = "packages/gooey"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "tty" }, { name = "colors" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "hello-foreign"
+root = "packages/hello-foreign"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "http"
+root = "packages/http"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "propane" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "jsonrpc"
+root = "packages/jsonrpc"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "kernel"
+root = "packages/kernel"
+provenance = { kind = "workspace" }
+dependencies = []
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "krasny"
+root = "packages/krasny"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "syn" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "mcp"
+root = "packages/mcp"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "jsonrpc" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "mime"
+root = "packages/mime"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "actors"
+root = "packages/actors"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "kernel" }]
+build_dependencies = [{ name = "fixme" }]
+dev_dependencies = [{ name = "propane" }, { name = "std" }]
+
+[[packages]]
+name = "minttea"
+root = "packages/minttea"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "colors" }, { name = "gooey" }, { name = "std" }, { name = "tty" }]
+build_dependencies = [{ name = "std" }]
+dev_dependencies = []
+
+[[packages]]
+name = "postgres"
+root = "packages/postgres"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "kernel" }, { name = "sqlx-driver" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "pkgs-ml"
+root = "packages/pkgs-ml"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "blink" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "propane"
+root = "packages/propane"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "pubgrub"
+root = "packages/pubgrub"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "sqlite"
+root = "packages/sqlite"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "sqlx-driver" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "sqlx"
+root = "packages/sqlx"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "kernel" }, { name = "sqlx-driver" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "sqlx-driver"
+root = "packages/sqlx-driver"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "std"
+root = "packages/std"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "actors" }, { name = "kernel" }]
+build_dependencies = [{ name = "fixme" }]
+dev_dependencies = [{ name = "propane" }]
+
+[[packages]]
+name = "suri"
+root = "packages/suri"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "http" }, { name = "blink" }, { name = "riot-model" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "swisstable"
+root = "packages/swisstable"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "kernel" }, { name = "std" }, { name = "propane" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "syn"
+root = "packages/syn"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "tty" }, { name = "colors" }, { name = "ceibo" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "tty"
+root = "packages/tty"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-cli"
+root = "packages/riot-cli"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-init" }, { name = "riot-executor" }, { name = "riot-model" }, { name = "riot-planner" }, { name = "riot-build" }, { name = "riot-store" }, { name = "riot-toolchain" }, { name = "riot-fix" }, { name = "riot-fmt" }, { name = "riot-deps" }, { name = "riot-publish" }, { name = "pkgs-ml" }, { name = "tty" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-cmd"
+root = "packages/riot-cmd"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-eval"
+root = "packages/riot-eval"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "syn" }, { name = "riot-toolchain" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-executor"
+root = "packages/riot-executor"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std", package_name = "riot-planner" }, { name = "riot-model", package_name = "riot-planner" }, { name = "riot-planner" }, { name = "riot-toolchain", package_name = "riot-planner" }, { name = "riot-store", package_name = "riot-planner" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-fix"
+root = "packages/riot-fix"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "syn" }, { name = "riot-model" }, { name = "fixme" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-fmt"
+root = "packages/riot-fmt"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-model" }, { name = "krasny" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-init"
+root = "packages/riot-init"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-model" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-model"
+root = "packages/riot-model"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-deps"
+root = "packages/riot-deps"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-model" }, { name = "pkgs-ml" }, { name = "riot-fmt" }, { name = "riot-fix" }, { name = "riot-planner" }, { name = "riot-executor" }, { name = "riot-store" }, { name = "riot-toolchain" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-publish"
+root = "packages/riot-publish"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-model" }, { name = "pkgs-ml" }, { name = "riot-deps" }, { name = "riot-build" }, { name = "riot-fix" }, { name = "riot-fmt" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-planner"
+root = "packages/riot-planner"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-model" }, { name = "riot-store" }, { name = "riot-toolchain" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-repl"
+root = "packages/riot-repl"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-build"
+root = "packages/riot-build"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-model" }, { name = "riot-deps" }, { name = "pkgs-ml" }, { name = "riot-executor" }, { name = "riot-planner" }, { name = "riot-store" }, { name = "riot-toolchain" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-store"
+root = "packages/riot-store"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-model" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-toolchain"
+root = "packages/riot-toolchain"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }, { name = "riot-model" }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "registry"
+root = "services/registry"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std" }]
+build_dependencies = []
+dev_dependencies = []

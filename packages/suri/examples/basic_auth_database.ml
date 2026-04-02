@@ -206,7 +206,7 @@ get "/admin" admin_handler;
 get "/profile" profile_handler;]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       let app =
         Middleware.[ request_id; logger; basic_auth_with_validation ~validate ~realm:"Member Area"

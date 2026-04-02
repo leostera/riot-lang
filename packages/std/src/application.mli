@@ -9,4 +9,4 @@ type t = {
   start: unit -> (Pid.t, exn) result;
   stop: Pid.t -> unit;
 }
-val start_applications: t list -> ((string * Miniriot.Pid.t) list, exn) result
+val start_applications: t list -> ((string * Actors.Pid.t) list, exn) result

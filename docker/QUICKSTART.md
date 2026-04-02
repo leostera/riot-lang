@@ -25,7 +25,7 @@ Create `Dockerfile` in your project:
 FROM ghcr.io/leostera/riot/riot-builder:latest AS build
 WORKDIR /app
 COPY . /app
-RUN tusk build --release my-app
+RUN riot build --release my-app
 
 FROM alpine:latest
 COPY --from=build /app/_build/release/*/my-app /usr/local/bin/my-app
@@ -54,8 +54,8 @@ cd /path/to/riot
 ```
 
 This will:
-1. Bootstrap Tusk from source
-2. Create a clean builder image with Tusk installed
+1. Bootstrap Riot from source
+2. Create a clean builder image with Riot installed
 3. Tag it as `riot-builder:latest`
 
 ### Publish riot-builder
@@ -81,11 +81,11 @@ docker run --rm riot-builder:latest --help
 ### Test with the Riot Codebase
 
 ```bash
-# Build tusk-cli using the Docker image
-docker run --rm -v $(pwd):/app riot-builder:latest build tusk-cli
+# Build riot-cli using the Docker image
+docker run --rm -v $(pwd):/app riot-builder:latest build riot-cli
 
 # Check the output
-ls -la _build/debug/*/tusk
+ls -la _build/debug/*/riot
 ```
 
 ## 📂 Files
@@ -126,10 +126,10 @@ build or publish it manually from this repository.
 
 ### Binary not found after build
 
-Check where tusk places the binary:
+Check where riot places the binary:
 
 ```bash
-docker run --rm -v $(pwd):/app riot-builder:latest sh -c "tusk build my-app && find _build -name 'my-app'"
+docker run --rm -v $(pwd):/app riot-builder:latest sh -c "riot build my-app && find _build -name 'my-app'"
 ```
 
 ## 📝 Notes

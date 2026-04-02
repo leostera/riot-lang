@@ -141,7 +141,7 @@ let discover_fixtures = fun () ->
       String.compare a b)
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args ->
       let fixtures = discover_fixtures () in
       let tests = Test.case "tagged_quoted_string_cst" test_tagged_quoted_string_cst :: List.map

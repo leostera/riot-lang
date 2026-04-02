@@ -274,7 +274,7 @@ describe("riot package registry auth", () => {
     const cookie = await loginAsGitHubUser(env, "leostera");
     const publishToken = await createPublishToken(env, cookie, "publish");
     const firstArchive = await makeTarGz({
-      "tusk.toml": [
+      "riot.toml": [
         "[package]",
         'name = "minttea"',
         'version = "0.4.1"',
@@ -284,7 +284,7 @@ describe("riot package registry auth", () => {
       ].join("\n"),
     }, "");
     const secondArchive = await makeTarGz({
-      "tusk.toml": [
+      "riot.toml": [
         "[package]",
         'name = "minttea"',
         'version = "0.4.2"',
@@ -345,7 +345,7 @@ describe("riot package registry auth", () => {
     const cookie = await loginAsGitHubUser(env, "someoneelse");
     const publishToken = await createPublishToken(env, cookie, "publish");
     const archive = await makeTarGz({
-      "tusk.toml": [
+      "riot.toml": [
         "[package]",
         'name = "minttea"',
         'version = "0.4.2"',
@@ -392,7 +392,7 @@ describe("riot package registry auth", () => {
     const initialCookie = await loginAsGitHubUser(env, "leostera");
     const publishToken = await createPublishToken(env, initialCookie, "publish");
     const archive = await makeTarGz({
-      "tusk.toml": [
+      "riot.toml": [
         "[package]",
         'name = "minttea"',
         'version = "0.4.2"',

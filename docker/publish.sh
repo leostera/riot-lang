@@ -137,7 +137,7 @@ fi
 
 if [[ "${RUN_SMOKE_TEST}" -eq 1 ]]; then
   run_cmd docker run --rm "${LOCAL_REF}" --help
-  run_cmd docker run --rm -v "$(pwd):/app" "${LOCAL_REF}" build tusk-cli
+  run_cmd docker run --rm -v "$(pwd):/app" "${LOCAL_REF}" build riot-cli
 fi
 
 run_cmd docker tag "${LOCAL_REF}" "${REMOTE_REF}"

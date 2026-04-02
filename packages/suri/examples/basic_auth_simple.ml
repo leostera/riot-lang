@@ -52,7 +52,7 @@ get "/admin" admin_handler;
 get "/api/users" api_handler;]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       let app =
         Middleware.[

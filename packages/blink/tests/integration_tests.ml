@@ -4,7 +4,7 @@ module Test = Std.Test
 let tests = []
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Test.Cli.main ~name:"blink_integration" ~tests ~args)
     ~args:Env.args
     ()

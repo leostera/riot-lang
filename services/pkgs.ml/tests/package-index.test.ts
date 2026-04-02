@@ -41,8 +41,8 @@ describe("buildPackageFacts", () => {
 
     const facts = buildPackageFacts(document, document.releases[0]!);
 
-    expect(facts.find((fact) => fact.label === "Install")?.value).toBe("tusk add kernel");
-    expect(facts.find((fact) => fact.label === "tusk.toml")?.value).toBe('kernel = "0.0.1"');
+    expect(facts.find((fact) => fact.label === "Install")?.value).toBe("riot add kernel");
+    expect(facts.find((fact) => fact.label === "riot.toml")?.value).toBe('kernel = "0.0.1"');
     expect(facts.find((fact) => fact.label === "License")).toBeUndefined();
     expect(facts.find((fact) => fact.label === "Dependencies")).toBeUndefined();
     expect(facts).toHaveLength(2);

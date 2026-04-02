@@ -467,7 +467,7 @@ let benchmarks =
 
 let () =
   println "HashMap vs Swisstable - Complex Types Performance\n";
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Bench.Cli.main ~name:"Complex Types Benchmarks" ~benchmarks ~args)
     ~args:Env.args
     ()

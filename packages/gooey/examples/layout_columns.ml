@@ -9,7 +9,7 @@ let text_measurer = fun text _style ->
   Viewport.make ~width ~height
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ ->
       (* Get terminal dimensions - use default if TTY not available *)
       let size =

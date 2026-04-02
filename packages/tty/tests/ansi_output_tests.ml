@@ -166,7 +166,4 @@ let tests =
   ]
 
 let () =
-  Miniriot.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"tty_ansi_output" ~tests ~args)
-    ~args:Env.args
-    ()
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_ansi_output" ~tests ~args) ~args:Env.args ()

@@ -1,1 +1,1 @@
-include Miniriot.Message
+include Actors.Message

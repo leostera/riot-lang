@@ -32,7 +32,7 @@ name needs a much cheaper hot path.
 The install fast path for:
 
 ```text
-tusk add kernel
+riot add kernel
 ```
 
 should be:
@@ -40,7 +40,7 @@ should be:
 1. fetch sparse index config once
 2. compute one package shard path
 3. fetch one small package document
-4. solve locally in `tusk`
+4. solve locally in `riot`
 5. download immutable artifacts by SHA
 
 That means the index must be:
@@ -126,7 +126,7 @@ Each release entry includes:
 - source key
 - dependency metadata
 
-This lets `tusk` solve locally without consulting the registry Worker on the
+This lets `riot` solve locally without consulting the registry Worker on the
 install hot path.
 
 ## Publish-time behavior
@@ -146,7 +146,7 @@ Because this work happens inline with publish, the user-visible behavior is:
 
 - publish succeeds
 - the package is already visible in the sparse index
-- `tusk add <package>` can use it immediately
+- `riot add <package>` can use it immediately
 
 ## Root config
 
@@ -157,14 +157,14 @@ The root config document at `index/v1/config.json` tells clients:
 - index base URL
 - artifact base URL
 
-This gives `tusk` a single bootstrap file to cache and use for all future
+This gives `riot` a single bootstrap file to cache and use for all future
 named-package installs.
 
-## Client contract for future `tusk add`
+## Client contract for future `riot add`
 
 The index is the main contract for named installs.
 
-`tusk add <package>` should:
+`riot add <package>` should:
 
 1. fetch `config.json`
 2. compute the shard path for the package name
@@ -173,4 +173,4 @@ The index is the main contract for named installs.
 5. fetch the immutable source tarball referenced by the chosen release
 
 The index deliberately does not choose versions for the client.
-That belongs in Tusk's package-management layer.
+That belongs in Riot's package-management layer.

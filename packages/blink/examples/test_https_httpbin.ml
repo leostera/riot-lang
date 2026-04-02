@@ -1,7 +1,7 @@
 open Std
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ ->
       println "Starting HTTPS test with httpbin.org...";
       let uri =

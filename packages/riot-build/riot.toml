@@ -1,0 +1,31 @@
+[package]
+name = "riot-build"
+version = "0.0.1"
+description = "In-process build session runtime for the Riot server."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_build.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+riot-model = { path = "../riot-model", version = "*" }
+riot-deps = { path = "../riot-deps", version = "*" }
+pkgs-ml = { path = "../pkgs-ml", version = "*" }
+riot-executor = { path = "../riot-executor", version = "*" }
+riot-planner = { path = "../riot-planner", version = "*" }
+riot-store = { path = "../riot-store", version = "*" }
+riot-toolchain = { path = "../riot-toolchain", version = "*" }
+
+[[bin]]
+name = "cache_tests"
+path = "tests/cache_tests.ml"
+
+[[bin]]
+name = "concurrent_tests"
+path = "tests/concurrent_tests.ml"
+
+[[bin]]
+name = "server_tests"
+path = "tests/server_tests.ml"

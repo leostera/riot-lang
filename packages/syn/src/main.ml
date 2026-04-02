@@ -257,4 +257,4 @@ let main = fun ~args ->
           Error (Failure "missing subcommand")
     )
 
-let () = Miniriot.run ~main ~args:Env.args ()
+let () = Actors.run ~main ~args:Env.args ()

@@ -1,0 +1,12 @@
+[package]
+name = "riot-model"
+version = "0.0.1"
+description = "Shared workspace, package, and build-system types for Riot."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_model.ml"
+
+[dependencies]
+std = "*"

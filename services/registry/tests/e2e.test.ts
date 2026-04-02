@@ -415,7 +415,7 @@ async function buildInlinePackageArtifact(args: {
   }
 
   return await makeTarGz({
-    "tusk.toml": packageLines.join("\n"),
+    "riot.toml": packageLines.join("\n"),
   }, "");
 }
 

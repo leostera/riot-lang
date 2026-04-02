@@ -1,4 +1,4 @@
-include module type of Miniriot.Process
+include module type of Actors.Process
 
 open Global
 

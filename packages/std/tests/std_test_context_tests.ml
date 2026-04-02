@@ -46,7 +46,7 @@ let tests = [
 ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Test.Cli.main ~name:"std_test_context" ~tests ~args)
     ~args:Env.args
     ()

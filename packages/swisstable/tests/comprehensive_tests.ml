@@ -380,7 +380,7 @@ let tests = [
 ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args:_ -> Test.Cli.main ~name:"swisstable:comprehensive" ~tests ~args:Env.args)
     ~args:Env.args
     ()

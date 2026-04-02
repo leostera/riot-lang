@@ -26,7 +26,7 @@ let benchmarks =
 (* Main entry point using new Bench.Cli *)
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Bench.Cli.main ~name:"Simple Benchmarks" ~benchmarks ~args)
     ~args:Env.args
     ()

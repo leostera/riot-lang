@@ -50,7 +50,7 @@ let rec accept_loop = fun t ->
   | Ok (stream, _client_addr) ->
       (* println "[TCP_SERVER] Connection accepted, spawning handler"; *)
       let _connection_pid =
-        Miniriot.spawn
+        Actors.spawn
           (fun () ->
             (* Read lines in a loop using the read_line helper *)
             let rec connection_loop () =

@@ -176,4 +176,4 @@ let tests =
   ]
 
 let () =
-  Miniriot.run ~main:(fun ~args -> Test.Cli.main ~name:"integration" ~tests ~args) ~args:Env.args ()
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"integration" ~tests ~args) ~args:Env.args ()

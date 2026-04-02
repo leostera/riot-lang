@@ -13,9 +13,9 @@ WORKDIR /app
 # Copy your application source
 COPY . /app
 
-# Build your application with tusk
-# Replace 'my-app' with your actual binary name from tusk.toml
-RUN tusk build --release my-app
+# Build your application with riot
+# Replace 'my-app' with your actual binary name from riot.toml
+RUN riot build --release my-app
 
 # The binary will be in _build/release/<arch>/my-app
 # List files to verify

@@ -57,7 +57,7 @@ post "/api/submit"
     |> Conn.send);]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       let app =
         Middleware.[

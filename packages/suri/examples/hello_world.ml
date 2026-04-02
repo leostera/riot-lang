@@ -5,12 +5,12 @@ open Suri
     
     Demonstrates the minimal Suri API - just a list of middleware!
     
-    Run: tusk run suri:hello_world
+    Run: riot run suri:hello_world
     Test: curl http://localhost:4000 *)
 let app = [ (fun ~conn ~next:_ -> Conn.respond conn ~status:Ok ~body:"Hello from Suri!") ]
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       match Suri.start_link app with
       | Ok supervisor ->

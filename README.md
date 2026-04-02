@@ -26,23 +26,23 @@ formats (json, toml, etc), lazy iterators and collections, datetime and time
 and timers, file system and networking, an arg parser, unicode support,
 synchronization primitives, external commands, cryptography, and more.
 
-* `tusk` -- a new extensible build system and package manager that becomes the
+* `riot` -- a new extensible build system and package manager that becomes the
 only tool you need to install and use to do _everything_ in this stack. 
 
 * `ocaml-toolchain.toml` -- a managed toolchain story, including support for
 cross-compilation
 
-* a familiar package management experience -- with commands like `tusk add
+* a familiar package management experience -- with commands like `riot add
 @leostera/agents` to add, remove, and update your dependencies
 
 * an extensible command system, where packages can provide custom commands to
-support your workflows better, and they are all surfaced via tusk. Think `tusk
+support your workflows better, and they are all surfaced via riot. Think `riot
 minttea:gen component`
 
-* `tusk fix` -- a new extensible linter, where packages can provide custom
+* `riot fix` -- a new extensible linter, where packages can provide custom
 linting rules and automated fixes
 
-* `tusk fmt` -- a strict, zero-knobs formatter, optimized for readability and
+* `riot fmt` -- a strict, zero-knobs formatter, optimized for readability and
 small diffs
 
 * A new procedural macro system, allowing packages to provide macros using
@@ -56,16 +56,16 @@ thing up and running!
 To get a feel for Riot quickly:
 
 ```sh
-curl -sSL https://cdn.pkgs.ml/tusk/install.sh | sh
-tusk --help
+curl -sSL https://cdn.pkgs.ml/riot/install.sh | sh
+riot --help
 ```
 
-To strat an empty workspace run `tusk init` and follow the instructions.
+To strat an empty workspace run `riot init` and follow the instructions.
 
 Or you can scaffold a starter Riot application by running:
 
 ```sh
-tusk run leostera/create-riot-app
+riot run leostera/create-riot-app
 ```
 
 ## Non-goals

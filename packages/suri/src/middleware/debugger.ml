@@ -341,13 +341,13 @@ type source_snippet = {
   lines: (int * string) list;  (* line_num, content *)
   error_line: int;
   source_path: string;  (* Clean workspace-relative path *)
-  found_via_tusk: bool;  (* Whether tusk server helped resolve *)
+  found_via_riot: bool;  (* Whether riot server helped resolve *)
 }
 
 (** Resolved source path information *)
 type resolved_path = {
   resolved_path: string;
-  found_via_tusk: bool;
+  found_via_riot: bool;
 }
 
 (** Sandbox path parsing result *)
@@ -401,13 +401,13 @@ let parse_sandbox_path = fun path ->
               Some { package_name; relative_path }
         )
 
-(** Try to connect to tusk server and get package sources *)
+(** Try to connect to riot server and get package sources *)
 let get_package_sources = fun package_name ->
   let cwd = Std.Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-  match Tusk_model.Workspace_manager.scan cwd with
+  match Riot_model.Workspace_manager.scan cwd with
   | Error _ -> None
   | Ok (workspace, _load_errors) -> (
-      match List.find_opt (fun (pkg: Tusk_model.Package.t) -> pkg.name = package_name) workspace.packages with
+      match List.find_opt (fun (pkg: Riot_model.Package.t) -> pkg.name = package_name) workspace.packages with
       | None -> None
       | Some pkg ->
           let sources = pkg.sources.src
@@ -419,8 +419,8 @@ let get_package_sources = fun package_name ->
           Some sources
     )
 
-(** Find actual source file path from sandbox path using tusk server *)
-let find_source_via_tusk = fun sandbox_info ->
+(** Find actual source file path from sandbox path using riot server *)
+let find_source_via_riot = fun sandbox_info ->
   match get_package_sources sandbox_info.package_name with
   | None -> None
   | Some sources ->
@@ -431,7 +431,7 @@ let find_source_via_tusk = fun sandbox_info ->
     
     Strategy:
     1. Parse sandbox path to get package + relative path
-    2. Query tusk server for package sources
+    2. Query riot server for package sources
     3. Match against relative path
     4. Return clean workspace-relative path
 *)
@@ -439,7 +439,7 @@ let find_source_via_tusk = fun sandbox_info ->
 (** Make a path relative to the workspace root *)
 let make_workspace_relative = fun path ->
   let cwd = Std.Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-  match Tusk_model.Workspace_manager.find_workspace_root cwd with
+  match Riot_model.Workspace_manager.find_workspace_root cwd with
   | None -> path
   | Some workspace_root ->
       let workspace_root_str = Path.to_string workspace_root in
@@ -458,20 +458,20 @@ let resolve_source_path = fun path ->
   match parse_sandbox_path path with
   | None ->
       (* Not a sandbox path, make it relative to workspace *)
-      { resolved_path = make_workspace_relative path; found_via_tusk = false }
-  | Some sandbox_info -> (* Try to find via tusk server *)
+      { resolved_path = make_workspace_relative path; found_via_riot = false }
+  | Some sandbox_info -> (* Try to find via riot server *)
     (
-      match find_source_via_tusk sandbox_info with
+      match find_source_via_riot sandbox_info with
       | Some actual_path -> {
         resolved_path = make_workspace_relative actual_path;
-        found_via_tusk = true
+        found_via_riot = true
       }
       | None ->
           (* Fallback: construct expected path *)
           let fallback = String.concat
             ""
             [ "./packages/"; sandbox_info.package_name; "/"; sandbox_info.relative_path ] in
-          { resolved_path = fallback; found_via_tusk = false }
+          { resolved_path = fallback; found_via_riot = false }
     )
 
 (** Extract quoted string after a pattern *)
@@ -610,9 +610,9 @@ let parse_backtrace = fun backtrace ->
   |> List.map parse_frame_line
   |> List.filter (fun frame -> not (should_hide_frame frame))
 
-(** Try to find and read a source file using tusk server resolution *)
+(** Try to find and read a source file using riot server resolution *)
 let try_read_file = fun file ->
-  (* First resolve the path using tusk server if it's a sandbox path *)
+  (* First resolve the path using riot server if it's a sandbox path *)
   let resolved = resolve_source_path file in
   (* Try to read from the resolved path *)
   match Fs.read_to_string (Path.v resolved.resolved_path) with
@@ -644,7 +644,7 @@ let extract_source = fun ~file ~line ~context ->
           lines;
           error_line = line;
           source_path = resolved.resolved_path;
-          found_via_tusk = resolved.found_via_tusk;
+          found_via_riot = resolved.found_via_riot;
         }
 
 (** Render source code snippet *)
@@ -723,7 +723,7 @@ let extract_module_from_function = fun func_name ->
         (* No underscores - just return as-is (already capitalized) *)
         Some module_part
 
-(** Find source file for a module using tusk server *)
+(** Find source file for a module using riot server *)
 let find_source_for_module = fun package_name module_name ->
   match get_package_sources package_name with
   | None -> None
@@ -785,7 +785,7 @@ let render_stack_frame = fun frame ->
           None
     in
     (* Determine what file info to display *)
-    let file_info, tusk_badge =
+    let file_info, riot_badge =
       match snippet with
       | Some s ->
           let path_display = s.source_path in
@@ -795,9 +795,9 @@ let render_stack_frame = fun frame ->
             | None -> path_display
           in
           let badge =
-            if s.found_via_tusk then
+            if s.found_via_riot then
               span
-                ~attrs:[ class_ "tusk-badge"; attr "title" "Path resolved via tusk server" ]
+                ~attrs:[ class_ "riot-badge"; attr "title" "Path resolved via riot server" ]
                 [ text "✓" ]
             else
               text ""
@@ -823,7 +823,7 @@ let render_stack_frame = fun frame ->
     in
     div ~attrs:[ class_ "stack-frame" ]
       [ div ~attrs:[ class_ "frame-header" ]
-          [ span ~attrs:[ class_ "frame-location" ] [ text file_info; text " "; tusk_badge; ]; (
+          [ span ~attrs:[ class_ "frame-location" ] [ text file_info; text " "; riot_badge; ]; (
               match frame.function_name with
               | Some name -> span ~attrs:[ class_ "frame-function" ] [ text (" in " ^ name) ]
               | None -> text ""
@@ -1297,7 +1297,7 @@ td {
   margin: 0 30px 20px;
 }
 
-.tusk-badge {
+.riot-badge {
   display: inline-block;
   color: #4caf50;
   font-size: 14px;

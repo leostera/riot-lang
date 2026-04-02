@@ -1,7 +1,7 @@
 open Std
 
 let () =
-  Miniriot.run ~args:Env.args ()
+  Actors.run ~args:Env.args ()
     ~main:(fun ~args:_ ->
       Log.info "Testing receive timeout...";
       let selector _msg = `skip in

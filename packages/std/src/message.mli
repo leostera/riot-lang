@@ -1,1 +1,1 @@
-type t = Miniriot.Message.t = ..
+type t = Actors.Message.t = ..

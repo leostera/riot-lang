@@ -1,0 +1,21 @@
+[package]
+name = "suri"
+version = "0.0.1"
+description = "Web framework, middleware, and routing for Riot applications."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/suri.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+http = { path = "../http", version = "*" }
+blink = { path = "../blink", version = "*" }
+riot-model = { path = "../riot-model", version = "*" }
+
+# NOTE: Disabled until Telemetry.event API is updated
+# [[command]]
+# name = "suri"
+# help = "Suri web framework commands"
+# path = "src/riot_cmd/main.ml"

@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 tusk build hello-foreign`
+`timeout 30 riot build hello-foreign`

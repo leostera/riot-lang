@@ -1,0 +1,24 @@
+[package]
+name = "riot-deps"
+version = "0.0.1"
+description = "Package management and dependency solving for Riot."
+license = "Apache-2.0"
+public = true
+
+[lib]
+path = "src/riot_deps.ml"
+
+[[bin]]
+name = "pm_tests"
+path = "tests/pm_tests.ml"
+
+[dependencies]
+std = { path = "../std", version = "*" }
+riot-model = { path = "../riot-model", version = "*" }
+pkgs-ml = { path = "../pkgs-ml", version = "*" }
+riot-fmt = { path = "../riot-fmt", version = "*" }
+riot-fix = { path = "../riot-fix", version = "*" }
+riot-planner = { path = "../riot-planner", version = "*" }
+riot-executor = { path = "../riot-executor", version = "*" }
+riot-store = { path = "../riot-store", version = "*" }
+riot-toolchain = { path = "../riot-toolchain", version = "*" }

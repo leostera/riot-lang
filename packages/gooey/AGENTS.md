@@ -10,4 +10,4 @@
 
 ## Validate
 
-`timeout 30 tusk build gooey`
+`timeout 30 riot build gooey`

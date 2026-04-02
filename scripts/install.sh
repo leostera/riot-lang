@@ -1,6 +1,6 @@
 #!/bin/sh
-# Tusk installation script
-# Usage: curl -sSL https://cdn.pkgs.ml/tusk/install.sh | sh
+# Riot installation script
+# Usage: curl -sSL https://cdn.pkgs.ml/riot/install.sh | sh
 
 set -e
 
@@ -62,13 +62,13 @@ detect_platform() {
     print_info "Detected platform: $PLATFORM"
 }
 
-# Download and install tusk
-install_tusk() {
-    INSTALL_DIR="${HOME}/.tusk/bin"
-    TUSK_REPO="leostera/riot"
-    VERSION="${TUSK_VERSION:-latest}"
+# Download and install riot
+install_riot() {
+    INSTALL_DIR="${HOME}/.riot/bin"
+    RIOT_REPO="leostera/riot"
+    VERSION="${RIOT_VERSION:-latest}"
     
-    print_info "Installing Tusk ($VERSION) for $PLATFORM..."
+    print_info "Installing Riot ($VERSION) for $PLATFORM..."
     
     # Create installation directory
     mkdir -p "$INSTALL_DIR"
@@ -83,7 +83,7 @@ install_tusk() {
         VERSION="latest"
     fi
     
-    DOWNLOAD_URL="${S3_BASE_URL}/tusk/tusk-${VERSION}-${PLATFORM}.tar.gz"
+    DOWNLOAD_URL="${S3_BASE_URL}/riot/riot-${VERSION}-${PLATFORM}.tar.gz"
     
     print_info "Downloading from: $DOWNLOAD_URL"
     
@@ -93,31 +93,31 @@ install_tusk() {
     
     # Try to download
     if command -v curl >/dev/null 2>&1; then
-        HTTP_CODE=$(curl -sSL -w "%{http_code}" -o "$TMPDIR/tusk.tar.gz" "$DOWNLOAD_URL")
+        HTTP_CODE=$(curl -sSL -w "%{http_code}" -o "$TMPDIR/riot.tar.gz" "$DOWNLOAD_URL")
         if [ "$HTTP_CODE" != "200" ]; then
             handle_download_error "$HTTP_CODE"
         fi
-        tar xzf "$TMPDIR/tusk.tar.gz" -C "$TMPDIR"
+        tar xzf "$TMPDIR/riot.tar.gz" -C "$TMPDIR"
     elif command -v wget >/dev/null 2>&1; then
-        if ! wget -q -O "$TMPDIR/tusk.tar.gz" "$DOWNLOAD_URL"; then
+        if ! wget -q -O "$TMPDIR/riot.tar.gz" "$DOWNLOAD_URL"; then
             handle_download_error "wget_failed"
         fi
-        tar xzf "$TMPDIR/tusk.tar.gz" -C "$TMPDIR"
+        tar xzf "$TMPDIR/riot.tar.gz" -C "$TMPDIR"
     else
         print_error "Neither curl nor wget found. Please install one of them."
         exit 1
     fi
     
     # Move binary to install directory
-    if [ ! -f "$TMPDIR/tusk" ]; then
+    if [ ! -f "$TMPDIR/riot" ]; then
         print_error "Binary not found in downloaded archive"
         exit 1
     fi
     
-    mv "$TMPDIR/tusk" "$INSTALL_DIR/tusk"
-    chmod +x "$INSTALL_DIR/tusk"
+    mv "$TMPDIR/riot" "$INSTALL_DIR/riot"
+    chmod +x "$INSTALL_DIR/riot"
     
-    print_info "Tusk installed to: $INSTALL_DIR/tusk"
+    print_info "Riot installed to: $INSTALL_DIR/riot"
 }
 
 # Handle download errors
@@ -125,7 +125,7 @@ handle_download_error() {
     HTTP_CODE="$1"
     
     echo ""
-    print_error "Failed to download Tusk binary for $PLATFORM"
+    print_error "Failed to download Riot binary for $PLATFORM"
     echo ""
     
     if [ "$HTTP_CODE" = "404" ]; then
@@ -157,7 +157,7 @@ handle_download_error() {
 
 # Add to PATH in shell config
 add_to_path() {
-    INSTALL_DIR="${HOME}/.tusk/bin"
+    INSTALL_DIR="${HOME}/.riot/bin"
     SHELL_NAME="$(basename "$SHELL")"
     
     case "$SHELL_NAME" in
@@ -179,7 +179,7 @@ add_to_path() {
     esac
     
     # Check if already in config
-    if [ -f "$SHELL_CONFIG" ] && grep -q ".tusk/bin" "$SHELL_CONFIG"; then
+    if [ -f "$SHELL_CONFIG" ] && grep -q ".riot/bin" "$SHELL_CONFIG"; then
         print_info "PATH already configured in $SHELL_CONFIG"
         return
     fi
@@ -189,8 +189,8 @@ add_to_path() {
         echo "fish_add_path -g $INSTALL_DIR" >> "$SHELL_CONFIG"
     else
         echo "" >> "$SHELL_CONFIG"
-        echo "# Tusk" >> "$SHELL_CONFIG"
-        echo "export PATH=\"\$HOME/.tusk/bin:\$PATH\"" >> "$SHELL_CONFIG"
+        echo "# Riot" >> "$SHELL_CONFIG"
+        echo "export PATH=\"\$HOME/.riot/bin:\$PATH\"" >> "$SHELL_CONFIG"
     fi
     
     print_info "Added $INSTALL_DIR to PATH in $SHELL_CONFIG"
@@ -199,36 +199,36 @@ add_to_path() {
 
 # Verify installation
 verify_installation() {
-    INSTALL_DIR="${HOME}/.tusk/bin"
+    INSTALL_DIR="${HOME}/.riot/bin"
     
-    if [ ! -f "$INSTALL_DIR/tusk" ]; then
-        print_error "Installation failed: tusk binary not found"
+    if [ ! -f "$INSTALL_DIR/riot" ]; then
+        print_error "Installation failed: riot binary not found"
         exit 1
     fi
     
     # Add to PATH temporarily for verification
     export PATH="$INSTALL_DIR:$PATH"
     
-    if command -v tusk >/dev/null 2>&1; then
-        VERSION_OUTPUT=$(tusk --version 2>&1 || echo "unknown")
-        print_info "Tusk installed successfully!"
+    if command -v riot >/dev/null 2>&1; then
+        VERSION_OUTPUT=$(riot --version 2>&1 || echo "unknown")
+        print_info "Riot installed successfully!"
         print_info "Version: $VERSION_OUTPUT"
         echo ""
         print_info "To get started, run:"
-        echo "  tusk --help"
+        echo "  riot --help"
     else
-        print_error "Installation completed but tusk not found in PATH"
+        print_error "Installation completed but riot not found in PATH"
         exit 1
     fi
 }
 
 # Main installation flow
 main() {
-    print_info "Tusk Installation Script"
+    print_info "Riot Installation Script"
     echo ""
     
     detect_platform
-    install_tusk
+    install_riot
     add_to_path
     echo ""
     verify_installation

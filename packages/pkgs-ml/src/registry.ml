@@ -155,8 +155,8 @@ let default_fetch =
     ~post:(fun uri ~headers ~body -> run Net.Http.Method.Post uri ~headers ~body ())
     ()
 
-let create_filesystem = fun ?(fetch = default_fetch) ~registry_name ?tusk_home () ->
-  match Registry_cache.create ?tusk_home ~registry_name () with
+let create_filesystem = fun ?(fetch = default_fetch) ~registry_name ?riot_home () ->
+  match Registry_cache.create ?riot_home ~registry_name () with
   | Error _ as err -> err
   | Ok cache -> Ok { cache; fetch; source = Filesystem }
 
@@ -442,7 +442,7 @@ let refresh_package_document = fun registry ~package_name ->
     packages)
 
 let write_release_files = fun ~root (release: release_source) ->
-  let manifest_path = Path.(root / Path.v "tusk.toml") in
+  let manifest_path = Path.(root / Path.v "riot.toml") in
   match Fs.create_dir_all root with
   | Error err -> Error ("failed to create package source directory '"
   ^ Path.to_string root
@@ -612,7 +612,7 @@ let path_is_directory = fun path ->
       Error ("failed to stat '" ^ Path.to_string path ^ "': " ^ IO.error_message err)
 
 let normalize_legacy_package_root = fun ~root ~(release: Sparse_index.release) ->
-  let manifest_path = Path.(root / Path.v "tusk.toml") in
+  let manifest_path = Path.(root / Path.v "riot.toml") in
   match Fs.exists manifest_path with
   | Error err ->
       Error ("failed to check package manifest '"
@@ -652,11 +652,11 @@ let normalize_legacy_package_root = fun ~root ~(release: Sparse_index.release) -
       in
       match candidate_root with
       | None ->
-          Error ("materialized archive did not contain tusk.toml at package root '"
+          Error ("materialized archive did not contain riot.toml at package root '"
           ^ Path.to_string root
           ^ "'")
       | Some candidate_root ->
-          let candidate_manifest = Path.(candidate_root / Path.v "tusk.toml") in
+          let candidate_manifest = Path.(candidate_root / Path.v "riot.toml") in
           match Fs.exists candidate_manifest with
           | Error err ->
               Error ("failed to check candidate manifest '"
@@ -664,7 +664,7 @@ let normalize_legacy_package_root = fun ~root ~(release: Sparse_index.release) -
               ^ "': "
               ^ IO.error_message err)
           | Ok false ->
-              Error ("materialized archive did not contain tusk.toml at package root '"
+              Error ("materialized archive did not contain riot.toml at package root '"
               ^ Path.to_string root
               ^ "'")
           | Ok true ->
@@ -689,7 +689,7 @@ let normalize_legacy_package_root = fun ~root ~(release: Sparse_index.release) -
               | Ok false ->
                   Error ("normalized archive for '"
                   ^ release.canonical_locator
-                  ^ "' is still missing tusk.toml at '"
+                  ^ "' is still missing riot.toml at '"
                   ^ Path.to_string manifest_path
                   ^ "'")
               | Error err ->
@@ -781,7 +781,7 @@ let fetch_release_archive = fun registry ~package_name ~version ~archive_path ->
 
 let materialize_release = fun registry ~package_name ~version ->
   let root = Registry_cache.package_src_dir registry.cache ~package_name ~version in
-  let manifest_path = Path.(root / Path.v "tusk.toml") in
+  let manifest_path = Path.(root / Path.v "riot.toml") in
   let archive_path = Registry_cache.archive_path registry.cache ~package_name ~version in
   let finalize_extracted_root = fun () ->
     match Fs.exists manifest_path with

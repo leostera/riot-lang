@@ -6,7 +6,7 @@
 
 1. Preserve lossless parsing. Token and trivia retention matter.
 2. Parser recovery changes are user-facing because tooling builds on diagnostics.
-3. Keep syntax tree changes coordinated with any tooling that consumes `syn`, especially `tusk-fix` and `tusk-eval`.
+3. Keep syntax tree changes coordinated with any tooling that consumes `syn`, especially `riot-fix` and `riot-eval`.
 4. Prefer explicit syntax kinds and spans over inferred structure.
 5. Keep `Syn.Cst` faithful to the successful `Ceibo` parse. If a syntax family cannot be lifted precisely, bail from the builder instead of introducing public placeholder nodes.
 6. During the structural-formatting push, prefer exposing explicit CST facts for valid syntax over preserving formatter-policy convenience; if `krasny` still needs to reconstruct a fact, that fact likely belongs here.
@@ -85,7 +85,7 @@
 
 ## Validate
 
-`timeout 30 tusk build syn`
-`timeout 180 tusk test syn:cst_tests`
+`timeout 30 riot build syn`
+`timeout 180 riot test syn:cst_tests`
 `timeout 900 python3 packages/syn/tests/test_runner.py fixtures`
 `timeout 900 python3 packages/syn/tests/test_runner.py cst`

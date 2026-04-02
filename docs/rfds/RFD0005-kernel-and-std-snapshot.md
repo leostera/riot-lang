@@ -9,7 +9,7 @@
 ## Summary
 [summary]: #summary
 
-This RFD documents the current relationship between `kernel` and `std`. It captures how Riot splits its foundational library surface into a low-level systems boundary in `kernel` and a broader application-facing standard library in `std`, with `miniriot` sitting between them for actor runtime behavior.
+This RFD documents the current relationship between `kernel` and `std`. It captures how Riot splits its foundational library surface into a low-level systems boundary in `kernel` and a broader application-facing standard library in `std`, with `actors` sitting between them for actor runtime behavior.
 
 ## Motivation
 [motivation]: #motivation
@@ -20,7 +20,7 @@ Without a snapshot document, it is easy to blur their roles:
 
 - `kernel` can look like just a bag of primitives unless its boundary is described explicitly
 - `std` can look like a generic utilities package instead of the mandatory Riot surface
-- the relationship between `kernel`, `miniriot`, and `std` can become implicit instead of architectural
+- the relationship between `kernel`, `actors`, and `std` can become implicit instead of architectural
 
 This RFD records the current design as it exists today:
 
@@ -35,20 +35,20 @@ This RFD records the current design as it exists today:
 The current layering is:
 
 1. `kernel` provides low-level systems primitives and platform integration
-2. `miniriot` turns some of those primitives into an actor runtime
+2. `actors` turns some of those primitives into an actor runtime
 3. `std` becomes the default library surface for almost all Riot code
 
 In practice:
 
 - if code is FFI, raw platform details, or low-level async/polling primitives, it belongs in `kernel`
-- if code is needs actor scheduling, processes, mailboxes, timers, or receive semantics, it belongs in `miniriot`
+- if code is needs actor scheduling, processes, mailboxes, timers, or receive semantics, it belongs in `actors`
 - if code is ergonomic everyday APIs for files, data, networking, application structure, testing, logging, or higher-level process helpers, it belongs in `std`
 
 ### Layer relationship
 
 ```mermaid
 flowchart TD
-  A[kernel] --> B[miniriot]
+  A[kernel] --> B[actors]
   A --> C[std]
   B --> C
   C --> D[applications and higher packages]
@@ -78,7 +78,7 @@ It currently owns things like:
 
 It currently gathers and exposes:
 
-- process and runtime-facing APIs built on `miniriot`
+- process and runtime-facing APIs built on `actors`
 - richer filesystem and path handling
 - collections and iterators
 - data formats like JSON, TOML, CSV, XML, and S-expressions
@@ -98,7 +98,7 @@ flowchart TD
   B --> C[Fs / Net / Data / Collections]
   B --> D[Process / Agent / Supervisor / Timer]
   B --> E[Config / Test / Telemetry / Application]
-  D --> F[miniriot]
+  D --> F[actors]
   C --> G[kernel]
   E --> F
   E --> G
@@ -112,15 +112,15 @@ flowchart TD
 The current manifests are simple:
 
 - `kernel` depends on `stdlib`, `unix`, and `dynlink`
-- `miniriot` depends on `kernel`
-- `std` depends on `kernel` and `miniriot`
+- `actors` depends on `kernel`
+- `std` depends on `kernel` and `actors`
 
 That produces a clear stack:
 
 ```mermaid
 flowchart LR
   A[stdlib unix dynlink] --> B[kernel]
-  B --> C[miniriot]
+  B --> C[actors]
   B --> D[std]
   C --> D
 ```
@@ -154,7 +154,7 @@ The key point is that `kernel` is not only “FFI code”. It is the low-level s
 
 `kernel` contains the repo’s explicit platform-facing configuration.
 
-`packages/kernel/tusk.toml` currently carries platform-specific link behavior:
+`packages/kernel/riot.toml` currently carries platform-specific link behavior:
 
 - macOS OpenSSL include and link flags
 - Linux OpenSSL and `uuid` link flags
@@ -191,7 +191,7 @@ The split between `kernel` and `std` is not just about dependencies. It is also 
 
 Examples of this pattern in the current tree:
 
-- `Kernel.Async.Poll` vs higher actor-facing process/syscall use through `Miniriot` and `Std.Process`
+- `Kernel.Async.Poll` vs higher actor-facing process/syscall use through `Actors` and `Std.Process`
 - `Kernel.Fs` and `Kernel.IO` primitives vs richer `Std.Fs`, `Std.Path`, and higher-level file helpers
 - `Kernel.System` host/process details vs `Std.Application`, `Std.Config`, and application lifecycle helpers
 
@@ -228,9 +228,9 @@ It also includes `Global`, giving the rest of the repo a shared ambient foundati
 
 ## 6. Process-facing surface in `std`
 
-`std` does not implement its own runtime. It wraps and re-exports `miniriot`.
+`std` does not implement its own runtime. It wraps and re-exports `actors`.
 
-For example, `packages/std/src/process.mli` includes the module type of `Miniriot.Process`, then adds:
+For example, `packages/std/src/process.mli` includes the module type of `Actors.Process`, then adds:
 
 - `self`
 - `spawn`
@@ -238,7 +238,7 @@ For example, `packages/std/src/process.mli` includes the module type of `Minirio
 
 This pattern is important:
 
-- runtime semantics remain owned by `miniriot`
+- runtime semantics remain owned by `actors`
 - most higher-level code still works through `Std.Process`
 
 The same general principle shows up in other parts of `std`: it is a curated integration layer, not a completely separate stack.
@@ -255,7 +255,7 @@ The current design:
 4. starts apps in dependency order
 5. rolls back already-started apps on failure
 
-`Std.start` in `packages/std/src/std.ml` then uses `Miniriot.run` to host that application set and keep the system alive.
+`Std.start` in `packages/std/src/std.ml` then uses `Actors.run` to host that application set and keep the system alive.
 
 ```mermaid
 flowchart TD
@@ -263,7 +263,7 @@ flowchart TD
   B --> C[topological sort]
   C --> D[start apps in order]
   D --> E{all started?}
-  E -->|yes| F[enter Miniriot runtime]
+  E -->|yes| F[enter Actors runtime]
   E -->|no| G[stop already started apps]
 ```
 
@@ -277,7 +277,7 @@ Telemetry is implemented as its own actor server with:
 - a global PID cell
 - event emission through actor messaging
 
-This shows how `std` uses `miniriot` to build reusable coordination services rather than exposing only raw process APIs.
+This shows how `std` uses `actors` to build reusable coordination services rather than exposing only raw process APIs.
 
 ## 9. Data, config, and testing in `std`
 
@@ -329,4 +329,4 @@ Without `std`, application code would have to assemble its own stack from smalle
 - clearer naming or grouping around the parts of `std` that are runtime-facing vs purely library-facing
 - deeper cross-platform abstractions in `kernel`
 - more integrated application lifecycle and supervision stories in `std`
-- code generation or documentation tooling that can surface ownership through the `kernel -> miniriot -> std` stack more clearly
+- code generation or documentation tooling that can surface ownership through the `kernel -> actors -> std` stack more clearly

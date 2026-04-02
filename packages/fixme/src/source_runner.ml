@@ -25,7 +25,7 @@ let emit_progress = fun on_progress phase ->
   | Some on_progress -> on_progress { timestamp_ms = timestamp_ms (); phase }
   | None -> ()
 
-let trace_enabled = Env.var Env.Bool ~name:"TUSK_FIX_TRACE" |> Option.unwrap_or ~default:false
+let trace_enabled = Env.var Env.Bool ~name:"RIOT_FIX_TRACE" |> Option.unwrap_or ~default:false
 
 let trace = fun ?filename message ->
   if trace_enabled then
@@ -34,7 +34,7 @@ let trace = fun ?filename message ->
       | Some filename -> Path.to_string filename
       | None -> "<stdin>"
     in
-    eprintln ("[tusk-fix] " ^ file_path ^ " " ^ message)
+    eprintln ("[riot-fix] " ^ file_path ^ " " ^ message)
 
 let parse ?filename source : Syn.Parser.parse_result =
   match filename with

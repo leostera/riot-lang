@@ -39,7 +39,7 @@ let string_concat_prop =
 let tests = [ list_rev_prop; division_prop; vector_length_prop; string_concat_prop ]
 
 let () =
-  Miniriot.run
+  Actors.run
     ~main:(fun ~args -> Test.Cli.main ~name:"propane-basic-examples" ~tests ~args)
     ~args:Env.args
     ()

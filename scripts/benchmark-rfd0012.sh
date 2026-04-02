@@ -8,23 +8,23 @@ RUN_ID="$(date +%Y%m%d-%H%M%S)"
 LOG_DIR="/tmp/rfd0012-bench-${RUN_ID}"
 mkdir -p "$LOG_DIR"
 
-BASELINE_BIN="${BASELINE_TUSK:-$(command -v tusk)}"
-CANDIDATE_PIN="${CANDIDATE_TUSK:-/tmp/tusk-rfd0012-candidate}"
+BASELINE_BIN="${BASELINE_RIOT:-$(command -v riot)}"
+CANDIDATE_PIN="${CANDIDATE_RIOT:-/tmp/riot-rfd0012-candidate}"
 
 if [[ ! -x "$BASELINE_BIN" ]]; then
-  echo "error: baseline tusk not executable: $BASELINE_BIN" >&2
+  echo "error: baseline riot not executable: $BASELINE_BIN" >&2
   exit 1
 fi
 
 build_candidate_binary() {
-  echo "[1/4] Building candidate tusk-cli with baseline binary: $BASELINE_BIN"
-  "$BASELINE_BIN" build tusk-cli >"$LOG_DIR/candidate-bootstrap.log" 2>&1
+  echo "[1/4] Building candidate riot-cli with baseline binary: $BASELINE_BIN"
+  "$BASELINE_BIN" build riot-cli >"$LOG_DIR/candidate-bootstrap.log" 2>&1
 
   local candidate_src
-  candidate_src="$(find _build -type f -path '*/out/tusk-cli/tusk' | head -n 1 || true)"
+  candidate_src="$(find _build -type f -path '*/out/riot-cli/riot' | head -n 1 || true)"
 
   if [[ -z "$candidate_src" ]]; then
-    echo "error: could not locate candidate tusk binary under _build" >&2
+    echo "error: could not locate candidate riot binary under _build" >&2
     echo "bootstrap log: $LOG_DIR/candidate-bootstrap.log" >&2
     exit 1
   fi

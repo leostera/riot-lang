@@ -4,8 +4,8 @@
 
 ## Routing
 
-- `specs/miniriot/AGENTS.md`: `packages/miniriot` runtime semantics, scheduler behavior, mailbox rules, timers, lifecycle, links, and monitors
-- `specs/tusk/AGENTS.md`: `packages/tusk-*` build planning, action scheduling, cache semantics, pipeline boundaries, and artifact materialization
+- `specs/actors/AGENTS.md`: `packages/actors` runtime semantics, scheduler behavior, mailbox rules, timers, lifecycle, links, and monitors
+- `specs/riot/AGENTS.md`: `packages/riot-*` build planning, action scheduling, cache semantics, pipeline boundaries, and artifact materialization
 
 ## Rules
 

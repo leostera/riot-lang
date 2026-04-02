@@ -10,7 +10,7 @@
 [summary]: #summary
 
 This RFD proposes first-class snapshot testing for `Std.Test`, plus a shared
-fixture-runner helper and a dedicated `tusk snapshots` review workflow.
+fixture-runner helper and a dedicated `riot snapshots` review workflow.
 
 The design has four core ideas:
 
@@ -38,7 +38,7 @@ Today:
 
 - `syn` maintains custom fixture runners and adjacent expected outputs
 - `krasny` uses a Python fixture harness over `.expected` files
-- `tusk-fix` aggregates JSON output into stored fixture expectations
+- `riot-fix` aggregates JSON output into stored fixture expectations
 - many ordinary tests still rely on hand-written assertions even when they are
   checking large rendered values, trees, or diagnostics
 
@@ -104,8 +104,8 @@ That is exactly the kind of thing `Std.Test` should make easy.
   output next to each fixture.
 - A small string transformation test keeps its expectation inline in source
   because a separate file would be noise.
-- A contributor changes formatter behavior, runs `tusk test`, sees pending
-  snapshot candidates, and then reviews them with `tusk snapshots review`.
+- A contributor changes formatter behavior, runs `riot test`, sees pending
+  snapshot candidates, and then reviews them with `riot snapshots review`.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -156,7 +156,7 @@ If no approved snapshot exists yet, the test fails and writes a pending
 candidate. The contributor then reviews it with:
 
 ```sh
-tusk snapshots review
+riot snapshots review
 ```
 
 ### Inline expectations
@@ -182,7 +182,7 @@ let tests = [
 ```
 
 Inline expectations do not create pending files and are not managed by
-`tusk snapshots`.
+`riot snapshots`.
 They are intended for very small values where a separate artifact would make
 the test harder to read.
 
@@ -207,7 +207,7 @@ let tests =
     ~run:run_fixture
 
 let () =
-  Miniriot.run ~main:(Test.Cli.main ~name:"formatting tests" ~tests) ~args:Env.args ()
+  Actors.run ~main:(Test.Cli.main ~name:"formatting tests" ~tests) ~args:Env.args ()
 ```
 
 The fixture runner:
@@ -224,9 +224,9 @@ approval.
 
 The workflow is:
 
-1. run `tusk test`
+1. run `riot test`
 2. failing snapshot assertions write pending candidates
-3. inspect the diff with `tusk snapshots review`
+3. inspect the diff with `riot snapshots review`
 4. approve or reject the candidate
 5. rerun tests
 
@@ -244,7 +244,7 @@ flowchart TD
   F -->|No| G[Test passes]
   F -->|Yes| H[Write pending .expected.new]
   H --> I[Test fails]
-  I --> J[tusk snapshots review]
+  I --> J[riot snapshots review]
   J --> K[Approve or reject]
   K --> L[Later test run sees approved state]
 ```
@@ -259,14 +259,14 @@ The proposal spans three owned surfaces:
 - `packages/std/src/test/`
   Owns snapshot assertions, fixture-runner helpers, and the case-level runtime
   contract.
-- `packages/tusk-cli/`
-  Owns repository-level review commands under `tusk snapshots`.
+- `packages/riot-cli/`
+  Owns repository-level review commands under `riot snapshots`.
 - package test suites
   Own rendering logic for domain values and decide whether a given assertion is
   better expressed as external or inline.
 
-This RFD does not make `tusk test` itself responsible for snapshot semantics
-beyond running suites normally. `tusk test` should keep owning suite discovery,
+This RFD does not make `riot test` itself responsible for snapshot semantics
+beyond running suites normally. `riot test` should keep owning suite discovery,
 build, and execution.
 
 ## 2. Assumed per-test context
@@ -330,7 +330,7 @@ Notes:
 - `assert_with` allows custom serializers without turning every package into
   its own snapshot harness.
 - `assert_inline_text` compares against source-embedded expected text and does
-  not participate in `tusk snapshots`.
+  not participate in `riot snapshots`.
 
 In v1, a test may perform at most one snapshot assertion of any kind.
 That keeps snapshot identity simple and avoids assertion-name machinery in the
@@ -388,34 +388,34 @@ Approved fixture `.expected` files are intended to be version controlled.
 Tests that are not fixture-backed store approved snapshots under:
 
 ```text
-.tusk/snapshots/
+.riot/snapshots/
 ```
 
 The recommended layout is:
 
 ```text
-.tusk/snapshots/<package>/<suite>/<test>.expected
+.riot/snapshots/<package>/<suite>/<test>.expected
 ```
 
 with the pending candidate at:
 
 ```text
-.tusk/snapshots/<package>/<suite>/<test>.expected.new
+.riot/snapshots/<package>/<suite>/<test>.expected.new
 ```
 
 Example:
 
 ```text
-.tusk/snapshots/std/std_test_cli_tests/list-tests-lists-all-sample-cases.expected
+.riot/snapshots/std/std_test_cli_tests/list-tests-lists-all-sample-cases.expected
 ```
 
 This gives ordinary tests a stable artifact home without requiring every
 package to invent its own storage convention.
 
-Approved snapshots under `.tusk/snapshots/` are intended to be version
+Approved snapshots under `.riot/snapshots/` are intended to be version
 controlled.
 Pending `.expected.new` files are working-tree artifacts and should not be
-committed, whether they live next to fixtures or under `.tusk/snapshots/`.
+committed, whether they live next to fixtures or under `.riot/snapshots/`.
 
 ## 6. External snapshot execution behavior
 
@@ -445,14 +445,14 @@ approved state.
 Snapshot review lives under:
 
 ```text
-tusk snapshots <subcommand>
+riot snapshots <subcommand>
 ```
 
 The initial command set should be:
 
-- `tusk snapshots review`
-- `tusk snapshots approve`
-- `tusk snapshots reject`
+- `riot snapshots review`
+- `riot snapshots approve`
+- `riot snapshots reject`
 
 `review` should discover pending files, show a diff between approved and
 pending state, and let the contributor inspect each change.
@@ -504,7 +504,7 @@ They:
 
 - do not create `.expected` files
 - do not create `.expected.new` files
-- do not participate in `tusk snapshots`
+- do not participate in `riot snapshots`
 - fail immediately on mismatch with a useful diff
 
 They are appropriate when:
@@ -541,7 +541,7 @@ The recommended order is:
 2. land file-backed external snapshots
 3. land inline expectations
 4. land `FixtureRunner`
-5. land `tusk snapshots`
+5. land `riot snapshots`
 6. migrate one or two real packages
 
 The design does not require all current package-local expectation harnesses to
@@ -666,7 +666,7 @@ It only needs:
 - direct compare against in-source expected text
 - readable diff on failure
 - no file writes
-- no `tusk snapshots` integration
+- no `riot snapshots` integration
 
 Implementation notes:
 
@@ -714,25 +714,25 @@ Validation:
 - add unit tests for deterministic discovery order
 - add a small sample fixture suite in `packages/std/tests/` using snapshots
 
-### Slice 6: add `tusk snapshots` command family
+### Slice 6: add `riot snapshots` command family
 
-Introduce a new top-level command family in `tusk-cli`:
+Introduce a new top-level command family in `riot-cli`:
 
-- `tusk snapshots review`
-- `tusk snapshots approve`
-- `tusk snapshots reject`
+- `riot snapshots review`
+- `riot snapshots approve`
+- `riot snapshots reject`
 
 Likely new files:
 
-- `packages/tusk-cli/src/snapshots_cmd.ml`
-- `packages/tusk-cli/src/snapshots_cmd.mli`
+- `packages/riot-cli/src/snapshots_cmd.ml`
+- `packages/riot-cli/src/snapshots_cmd.mli`
 
 Likely touched files:
 
-- `packages/tusk-cli/src/cli.ml`
-- `packages/tusk-cli/src/shell_completions/shell_completions.ml`
-- `packages/tusk-cli/README.md`
-- `packages/tusk-cli/AGENTS.md` if command behavior/contracts change
+- `packages/riot-cli/src/cli.ml`
+- `packages/riot-cli/src/shell_completions/shell_completions.ml`
+- `packages/riot-cli/README.md`
+- `packages/riot-cli/AGENTS.md` if command behavior/contracts change
 
 The first implementation does not need a TUI.
 A line-oriented review flow is sufficient.
@@ -747,7 +747,7 @@ Implementation notes:
 
 Validation:
 
-- add `tusk-cli` unit tests for path scanning and promotion behavior
+- add `riot-cli` unit tests for path scanning and promotion behavior
 - add at least one integration-style test over a temp snapshot tree
 
 ### Slice 7: decide pending-file ignore policy
@@ -786,7 +786,7 @@ The goal of the pilot is to force the following design questions into the open:
 - are the derived paths readable enough?
 - are the diffs good enough?
 - is `FixtureRunner` too opinionated or too weak?
-- is `tusk snapshots review` sufficient without a richer UI?
+- is `riot snapshots review` sufficient without a richer UI?
 
 Validation:
 
@@ -799,7 +799,7 @@ This RFD treats package-owned rewrites in foundational packages as ordinary
 evergreen fixes, not as a separate codemod feature.
 
 That means the `Std.Test` callback migration should land as a `std` fix rule
-that is loaded by normal `tusk fix` execution.
+that is loaded by normal `riot fix` execution.
 
 Likely new files:
 
@@ -808,8 +808,8 @@ Likely new files:
 
 Likely touched files:
 
-- `packages/std/fix/tusk_fix_rules.ml`
-- `packages/std/tusk.toml`
+- `packages/std/fix/riot_fix_rules.ml`
+- `packages/std/riot.toml`
 
 The rule should only target callsites that are clearly owned by `Std.Test`.
 The first implementation should support:
@@ -847,7 +847,7 @@ Validation:
 - add focused `fixme` rule tests for lambda, `@@`, and helper-function forms
 - add tests proving already-migrated callbacks remain unchanged
 - add tests proving unrelated local functions named `case` are ignored
-- run `tusk fix --apply` on a representative subset of test packages and
+- run `riot fix --apply` on a representative subset of test packages and
   confirm the rewritten sources still typecheck
 
 ### Slice 10: broaden format helpers
@@ -871,7 +871,7 @@ These should remain follow-up slices, not v1 blockers.
   owner will now inherit.
 - The one-snapshot-per-test rule keeps v1 simple but is constraining for some
   compound cases.
-- `.tusk/` becomes a repository-owned namespace that must stay coherent as more
+- `.riot/` becomes a repository-owned namespace that must stay coherent as more
   features want to use it.
 
 ## Rationale and alternatives
@@ -882,7 +882,7 @@ These should remain follow-up slices, not v1 blockers.
 This design is the best fit for Riot because it preserves the current split:
 
 - `Std.Test` owns case-level assertions and helper APIs
-- `tusk-cli` owns repository-level orchestration and review commands
+- `riot-cli` owns repository-level orchestration and review commands
 - packages own their renderers, not their own snapshot frameworks
 
 It also matches how Riot already works in practice: contributors already use
@@ -929,7 +929,7 @@ Fixture-backed snapshots work best adjacent to fixtures because the fixture
 input is itself the stable identity.
 
 Ordinary tests do not always have a meaningful adjacent input file.
-For those, a repository-owned store under `.tusk/snapshots/` is a clearer and
+For those, a repository-owned store under `.riot/snapshots/` is a clearer and
 more scalable home.
 
 ### Why not make inline snapshots reviewable in v1
@@ -973,7 +973,7 @@ Riot already has package-local prior art:
 
 - `packages/syn/tests/`
 - `packages/krasny/tests/`
-- `packages/tusk-fix/tests/`
+- `packages/riot-fix/tests/`
 
 These existing harnesses are good evidence that the use case is real.
 They are also evidence that Riot should stop solving the same problem three
@@ -983,12 +983,12 @@ different ways.
 [unresolved-questions]: #unresolved-questions
 
 - What exact `ctx` shape should `Std.Test` standardize before snapshot rollout?
-- Should `tusk snapshots approve` and `reject` support filtering by package,
+- Should `riot snapshots approve` and `reject` support filtering by package,
   suite, or path in v1?
 - Should fixture-backed pending files use plain adjacent `.expected.new`, or
-  should Riot eventually centralize pending artifacts under `.tusk/` as well?
+  should Riot eventually centralize pending artifacts under `.riot/` as well?
 - What gitignore policy should Riot use for pending snapshot files across both
-  adjacent fixture directories and `.tusk/snapshots/`?
+  adjacent fixture directories and `.riot/snapshots/`?
 - Should inline expectations remain text-only in the first pass, or should Riot
   also ship `assert_inline_json` immediately?
 
@@ -1001,6 +1001,6 @@ different ways.
 - custom diff renderers through a shared `Std.Diff`
 - redaction and normalization helpers for unstable fields such as timestamps or
   absolute paths
-- richer `tusk snapshots` filtering and batch approval commands
-- migration codemods in `tusk fix` to help move packages from custom fixture
+- richer `riot snapshots` filtering and batch approval commands
+- migration codemods in `riot fix` to help move packages from custom fixture
   harnesses to `Std.Test.FixtureRunner`
