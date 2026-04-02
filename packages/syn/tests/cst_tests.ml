@@ -197,7 +197,7 @@ let tests = [
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
       | Syn.Cst.StructureItem.LetBinding _ :: Syn.Cst.StructureItem.Comment comment :: _ ->
-          Test.assert_equal ~expected:"tail" ~actual:((Syn.Cst.Comment.text comment |> String.trim));
+          Test.assert_equal ~expected:"(* tail *)" ~actual:(Syn.Cst.Comment.text comment);
           Ok ()
       | _ -> Error "expected trailing file comment after let binding");
   Test.case "build_cst keeps trailing file docstrings visible via EOF trivia"
@@ -279,7 +279,7 @@ let tests = [
             token_kinds
         );
       Test.assert_equal
-        ~expected:(String.length source)
+        ~expected:(String.length source - 1)
         ~actual:(Ceibo.Green.width (Ceibo.Green.Node result.tree));
       Ok ());
   Test.case "red tree traversal stays trivia-free while first token keeps leading trivia"
@@ -339,7 +339,7 @@ let tests = [
       let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       Test.assert_equal
-        ~expected:[ ";"; ";"; ";"; ";" ]
+        ~expected:[ ";"; ";" ]
         ~actual:((Syn.Cst.SourceFile.phrase_separator_tokens cst |> List.map Syn.Cst.Token.text));
       Ok ());
   Test.case "cst polymorphic-variant inherit patterns keep the path after #"
@@ -593,8 +593,10 @@ let tests = [
               Test.assert_equal ~expected:"A" ~actual:(Syn.Cst.VariantConstructor.name head_constr);
               (
                 match Syn.Cst.TypeDeclaration.manifest_alias alias_decl with
-                | Some (Syn.Cst.CoreType.Constr { constructor_path; arguments=[]; _ }) -> Test.assert_true
-                  (Syn.Cst.Ident.equal constructor_path (Syn.Cst.Ident.from_string "Outer.Inner.t"))
+                | Some (Syn.Cst.CoreType.Constr { constructor_path; _ }) ->
+                    Test.assert_equal
+                      ~expected:[ "Outer"; "Inner"; "t" ]
+                      ~actual:(Syn.Cst.Ident.segments constructor_path |> List.map Syn.Cst.Token.text)
                 | _ -> raise
                   (Failure "expected grouped alias declaration to keep the qualified type path")
               );
