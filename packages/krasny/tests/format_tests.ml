@@ -664,11 +664,9 @@ exception Nested = Std.Result.Error
       Test.assert_equal ~expected:formatted ~actual:reparsed;
       Ok ());
   Test.case "format floating attributes from structural payload items"
-    (fun _ctx ->
+    (fun ctx ->
       let source = "[@@@warning    \"-32\"]\n" in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"floating attributes should render from structural payload items" in
-      Test.assert_equal ~expected:"[@@@warning \"-32\"]\n" ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"floating attributes should render from structural payload items" source);
   Test.case "format floating extension items structurally"
     (fun _ctx ->
       let structure_source = {|[%%foo]
@@ -688,15 +686,12 @@ exception Nested = Std.Result.Error
       Test.assert_equal ~expected:actual_signature ~actual:reformatted_signature;
       Ok ());
   Test.case "format module-expression and module-type extensions structurally"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|module type S = [%foo]
 module M = [%foo]
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"module-expression and module-type extensions should render from the structural extension shell" in
-      Test.assert_equal ~expected:source ~actual;
-      assert_idempotent ~source ~msg:"module-expression and module-type extensions should stay stable";
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"module-expression and module-type extensions should render from the structural extension shell" source);
   Test.case "format keeps structural core types idempotent"
     (fun _ctx ->
       let source = {|val use : #service -> M.(t list) -> < close : unit -> unit; next : int >
@@ -740,15 +735,12 @@ type payload = (module [%foo: S])
       Test.assert_equal ~expected:source ~actual;
       Ok ());
   Test.case "format ordinary pattern-payload attributes structurally"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let simple = 1 [@foo? Some y]
 let guarded = 1 [@foo? Some y when y > 0]
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"ordinary pattern-payload attributes should render structurally" in
-      Test.assert_equal ~expected:source ~actual;
-      assert_idempotent ~source ~msg:"ordinary pattern-payload attributes should stay stable";
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"ordinary pattern-payload attributes should render structurally" source);
   Test.case "format parenthesizes attributed non-atomic expressions"
     (fun _ctx ->
       let source = {|let constructor = Some 0 [@inline always]
@@ -880,17 +872,13 @@ let typed =
       assert_idempotent ~source ~msg:"object extension members should stay stable across repeated formatting";
       Ok ());
   Test.case "format trailing variant comments with explicit separator policy"
-    (fun _ctx ->
+    (fun ctx ->
       let source = "type t =\n  | A (* comment *)\n" in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"trailing variant comments should format from explicit trivia separators" in
-      Test.assert_equal ~expected:"type t =\n  | A (* comment *)\n" ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"trailing variant comments should format from explicit trivia separators" source);
   Test.case "format trailing variant docstrings with explicit separator policy"
-    (fun _ctx ->
+    (fun ctx ->
       let source = "type t =\n  | A (** doc *)\n" in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"trailing variant docstrings should format from explicit trivia separators" in
-      Test.assert_equal ~expected:"type t =\n  | A\n  (** doc *)\n" ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"trailing variant docstrings should format from explicit trivia separators" source);
   Test.case "format fails for signature-bodied first-class module types"
     (fun _ctx ->
       let source = {|type packed = (module sig
@@ -902,13 +890,9 @@ end)
       | Ok _ -> panic "signature-bodied first-class module types should fail until they have a structural formatter"
       | Error _ -> Ok ());
   Test.case "format core-type extensions structurally"
-    (fun _ctx ->
+    (fun ctx ->
       let source = "val use : [%foo: int]\n" in
-      let actual = parse_mli source |> Krasny.format |> Result.expect ~msg:"core-type extensions should render structurally from the extension shell and payload" in
-      Test.assert_equal ~expected:source ~actual;
-      let reparsed = parse_mli actual |> Krasny.format |> Result.expect ~msg:"core-type extensions should stay stable across repeated formatting" in
-      Test.assert_equal ~expected:actual ~actual:reparsed;
-      Ok ());
+      assert_formatted_mli_snapshot ~ctx ~msg:"core-type extensions should render structurally from the extension shell and payload" source);
   Test.case "format keeps structural patterns idempotent"
     (fun _ctx ->
       let source = {|let unpack = function
@@ -931,15 +915,14 @@ end)
         ~actual;
       assert_idempotent ~source ~msg:"polymorphic-variant inherit patterns should stay stable";
       Ok ());
-  Test.case "format fails for typed first-class-module patterns"
+  Test.case "format typed first-class-module patterns structurally"
     (fun _ctx ->
       let source = {|let unpack = function
   | (module M : S) -> ()
 |}
       in
-      match parse_ml source |> Krasny.format with
-      | Ok _ -> panic "typed first-class-module patterns should fail formatting instead of preserving source"
-      | Error _ -> Ok ());
+      assert_idempotent ~source ~msg:"typed first-class-module patterns should lower structurally";
+      Ok ());
   Test.case "format pattern extensions structurally"
     (fun _ctx ->
       let source = {|let unpack = function
@@ -974,17 +957,14 @@ let update next count = {< current = next; count >}
       assert_idempotent ~source ~msg:"module-pack, imperative, coercion, and object-override expressions should format structurally";
       Ok ());
   Test.case "format expression extensions structurally"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let generated = [%foo]
 let computed = [%test 42]
 let typed = [%foo: int]
 let nested = [%foo let x = 1]
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"expression extensions should render structurally from the extension shell and payload" in
-      Test.assert_equal ~expected:source ~actual;
-      assert_idempotent ~source ~msg:"expression extensions should stay stable across repeated formatting";
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"expression extensions should render structurally from the extension shell and payload" source);
   Test.case "format unreachable expressions structurally"
     (fun _ctx ->
       let source = {|let absurd maybe =
@@ -998,14 +978,13 @@ let nested = [%foo let x = 1]
       assert_idempotent ~source ~msg:"unreachable expressions should stay stable across repeated formatting";
       Ok ());
   Test.case "format keeps typed and polymorphic expressions structural"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let typed value = (value : source)
 let shaped handler = (handler : < run : int >)
 let poly = ((fun x -> x) : 'a. 'a -> 'a)
 |}
       in
-      assert_idempotent ~source ~msg:"typed and polymorphic expressions should lower through structural core-type rendering";
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"typed and polymorphic expressions should lower through structural core-type rendering" source);
   Test.case "format keeps nested module bodies structural"
     (fun _ctx ->
       let source = {|module type S = sig
