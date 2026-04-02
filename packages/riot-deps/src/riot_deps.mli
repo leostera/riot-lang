@@ -50,6 +50,9 @@ type package_error = Package_management.error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: string }
   | DependencySpecInvalid of { dependency: string; error: string }
+  | UnsupportedDependencySource of { dependency: string }
+  | PathDependencyMustBeRelative of { dependency: string }
+  | PathDependencyLoadFailed of { dependency: string; path: Path.t; error: string }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string }

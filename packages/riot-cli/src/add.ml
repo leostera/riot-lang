@@ -16,7 +16,7 @@ let command =
     |> about "Add a dependency to a manifest and refresh riot.lock"
     |> args
       [
-        positional "dependency" |> help "Dependency name or name@version";
+        positional "dependency" |> help "Dependency name, name@version, or local path";
         option "package" |> short 'p' |> long "package" |> help "Target a specific workspace package manifest";
         flag "workspace" |> long "workspace" |> help "Target the workspace root manifest";
         flag "build" |> long "build" |> help "Add to [build-dependencies]";

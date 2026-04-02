@@ -89,7 +89,13 @@ let with_tempdir = fun prefix fn ->
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
+let workspace_package = fun ~workspace_root (pkg: Riot_model.Package.t) ->
+  match Path.strip_prefix pkg.path ~prefix:workspace_root with
+  | Ok relative_path -> { pkg with relative_path }
+  | Error _ -> pkg
+
 let make_workspace = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
+  let packages = List.map (workspace_package ~workspace_root) packages in
   Riot_model.Workspace.make
     ~root:workspace_root
     ~packages
@@ -320,6 +326,7 @@ public = true
               Pkgs_ml.Registry.status_code = 200;
               body =
                 {|{
+  "artifact_sha256": "deadbeef",
   "package": "github.com/example/demo",
   "source_url": "https://github.com/example/demo",
   "package_subdir": ".",
@@ -617,13 +624,14 @@ public = true
           | Error err -> Error err
           | Ok selector -> (
               let package = make_package ~name:"demo" ~path:package_root () in
-              let fetch, requests =
-                make_fetch_recorder
-                  ~post_handler:(fun _uri ~headers:_ ~body:_ ->
-                    Ok {
-                      Pkgs_ml.Registry.status_code = 200;
-                      body =
-                        {|{
+	              let fetch, requests =
+	                make_fetch_recorder
+	                  ~post_handler:(fun _uri ~headers:_ ~body:_ ->
+	                    Ok {
+	                      Pkgs_ml.Registry.status_code = 200;
+	                      body =
+	                        {|{
+  "artifact_sha256": "deadbeef",
   "package": "github.com/example/riot/packages/demo",
   "source_url": "https://github.com/example/riot",
   "package_subdir": "packages/demo",
@@ -670,10 +678,7 @@ public = true
                   | [ request ] ->
                       if
                         String.equal request.method_ "POST"
-                        && String.equal
-                          request.url
-                          ("https://api.pkgs.ml/v1/packages/github.com/example/riot/packages/demo/publish?ref="
-                          ^ selector)
+                        && String.equal request.url "https://api.pkgs.ml/v1/publish"
                         && String.equal published.package_name "demo"
                       then
                         Ok ()
@@ -1508,6 +1513,105 @@ version = "0.0.1"
             Error "unexpected dependency-not-found payload for inherited dependency removal"
       | Error err -> Error ("unexpected remove error: " ^ Riot_deps.package_error_message err))
 
+let test_add_path_dependency_discovers_package_name_and_refreshes_lock = fun _ctx ->
+  let ( let* ) = Result.and_then in
+  with_tempdir "riot_deps_add_path"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      let lib_root = Path.(workspace_root / Path.v "packages/lib") in
+      write_file workspace_manifest
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write_package_manifest ~root:app_root
+        {|
+[package]
+name = "app"
+version = "0.0.1"
+|};
+      write_package_manifest ~root:lib_root
+        {|
+[package]
+name = "widgets"
+version = "0.0.1"
+|};
+      let* workspace, load_errors = Riot_model.Workspace_manager.scan workspace_root
+      |> Result.map_error (fun err -> "expected workspace scan to succeed: " ^ err) in
+      if not (List.is_empty load_errors) then
+        Error "expected workspace scan to have no load errors"
+      else
+        let* () = Riot_deps.add
+          ~workspace
+          ~cwd:app_root
+          ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = "../lib" }
+          ()
+        |> Result.map_error Riot_deps.package_error_message in
+        let* manifest_source = Fs.read_to_string Path.(app_root / Path.v "riot.toml")
+        |> Result.map_error IO.error_message in
+        let* lockfile = Riot_deps.Lockfile_store.read ~workspace_root
+        |> Result.map_error (fun err -> "expected lockfile read to succeed: " ^ err) in
+        match lockfile with
+        | None -> Error "expected add to rewrite riot.lock"
+        | Some lockfile ->
+            let app_lock =
+              List.find_opt
+                (fun (pkg: Riot_model.Lockfile.package) -> pkg.id.name = "app")
+                lockfile.packages
+            in
+            if
+              String.contains manifest_source "widgets = { path = \"../lib\" }"
+              && Option.is_some app_lock
+              && List.exists
+                (fun (pkg: Riot_model.Lockfile.package) -> pkg.id.name = "widgets")
+                lockfile.packages
+            then
+              Ok ()
+            else
+              Error "expected path add to write discovered package name and refresh riot.lock"
+    )
+
+let test_add_rejects_unsupported_source_dependency_specs = fun _ctx ->
+  let ( let* ) = Result.and_then in
+  with_tempdir "riot_deps_add_source"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
+      let app_root = Path.(workspace_root / Path.v "packages/app") in
+      write_file workspace_manifest
+        {|
+[workspace]
+members = ["packages/app"]
+|};
+      write_package_manifest ~root:app_root
+        {|
+[package]
+name = "app"
+version = "0.0.1"
+|};
+      let* workspace, load_errors = Riot_model.Workspace_manager.scan workspace_root
+      |> Result.map_error (fun err -> "expected workspace scan to succeed: " ^ err) in
+      if not (List.is_empty load_errors) then
+        Error "expected workspace scan to have no load errors"
+      else
+        match Riot_deps.add
+          ~workspace
+          ~cwd:app_root
+          ~request:Riot_deps.{
+            selection = Current;
+            scope = Runtime;
+            dependency = "github.com/leostera/widgets"
+          }
+          () with
+        | Ok () -> Error "expected source dependency add to be rejected until source support lands"
+        | Error (Riot_deps.UnsupportedDependencySource { dependency }) ->
+            if String.equal dependency "github.com/leostera/widgets" then
+              Ok ()
+            else
+              Error "unexpected unsupported source dependency payload"
+        | Error err -> Error ("unexpected add error: " ^ Riot_deps.package_error_message err)
+    )
+
 let test_ensure_lock_refreshes_missing_lock_and_resolves_workspace = fun _ctx ->
   with_tempdir "riot_deps_ensure_lock_missing"
     (fun workspace_root ->
@@ -1544,6 +1648,8 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected workspace manifest to be written";
+      write_file Path.(workspace_root / Path.v "packages/std/riot.toml") "[package]\nname = \"std\"\n";
+      write_file Path.(workspace_root / Path.v "packages/app/riot.toml") "[package]\nname = \"app\"\n";
       let std_pkg = make_package ~name:"std" ~path:Path.(workspace_root / Path.v "packages/std") () in
       let app_pkg = make_package
         ~name:"app"
@@ -1638,6 +1744,7 @@ let test_ensure_lock_reuses_existing_lock_and_materializes_missing_registry_pack
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected workspace manifest to be written";
+      write_file Path.(workspace_root / Path.v "packages/app/riot.toml") "[package]\nname = \"app\"\n";
       let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
       let app_pkg = make_package
         ~name:"app"
@@ -2038,6 +2145,8 @@ let tests =
     case "lockfile store: roundtrips root lockfile" test_lockfile_store_roundtrips;
     case "lockfile store: missing lockfile returns none" test_lockfile_store_returns_none_when_missing;
     case "lockfile store: bubbles parse errors" test_lockfile_store_bubbles_parse_errors;
+    case "package management: add discovers path dependency package names and refreshes lockfile" test_add_path_dependency_discovers_package_name_and_refreshes_lock;
+    case "package management: add rejects unsupported source dependency specs" test_add_rejects_unsupported_source_dependency_specs;
     case "package management: remove rejects dependencies only inherited from workspace root" test_remove_reports_missing_package_dependency_when_only_inherited_from_workspace;
     case "ensure lock: refreshes missing lock and resolves workspace graph" test_ensure_lock_refreshes_missing_lock_and_resolves_workspace;
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;

@@ -23,6 +23,7 @@
 17. `riot snapshots` owns repository-level snapshot review commands. Keep it focused on discovering pending `.expected.new` files, showing review diffs, and promoting or rejecting candidates; do not fold snapshot approval into `riot test`.
 18. PM human output should only show `Fetching <pkg> <version>` for real download-start events. Cache-hit materialization events stay structured in JSON but should be silent in human mode.
 19. `add`, `remove`/`rm`, and `update` are thin package-management commands. Parse flags into `Riot_deps` request types, delegate, and reuse the normal PM event renderer instead of inventing a second lock/progress surface.
+20. `riot add` should accept local path specs as well as named registry specs. Keep the CLI help text honest about the accepted forms, but keep package-name discovery for path adds inside `riot-deps`.
 
 ## Validate
 

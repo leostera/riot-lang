@@ -39,6 +39,9 @@ type error =
   | CurrentPackageNotFound of { cwd: Path.t }
   | PackageNotFound of { package: string }
   | DependencySpecInvalid of { dependency: string; error: string }
+  | UnsupportedDependencySource of { dependency: string }
+  | PathDependencyMustBeRelative of { dependency: string }
+  | PathDependencyLoadFailed of { dependency: string; path: Path.t; error: string }
   | RegistryInitializationFailed of { registry: string; error: string }
   | RegistryLookupFailed of { package: string; registry: string; error: string }
   | RegistryPackageNotFound of { package: string; registry: string }
@@ -54,10 +57,19 @@ type target_manifest = {
   dependencies: Riot_model.Package.dependency list;
 }
 
-type parsed_dependency = {
+type registry_dependency = {
   name: string;
   requirement: Std.Version.requirement option;
 }
+
+type path_dependency = {
+  name: string;
+  path: Path.t;
+}
+
+type parsed_dependency =
+  | Registry of registry_dependency
+  | Path of path_dependency
 
 let no_emit = fun _ -> ()
 
@@ -69,6 +81,18 @@ let error_message = function
   ^ "'"
   | PackageNotFound { package } -> "workspace package '" ^ package ^ "' was not found"
   | DependencySpecInvalid { dependency; error } -> "invalid dependency '" ^ dependency ^ "': " ^ error
+  | UnsupportedDependencySource { dependency } -> "dependency '"
+  ^ dependency
+  ^ "' uses a source/github form that `riot add` does not support yet"
+  | PathDependencyMustBeRelative { dependency } -> "path dependency '"
+  ^ dependency
+  ^ "' must be a relative path"
+  | PathDependencyLoadFailed { dependency; path; error } -> "failed to load path dependency '"
+  ^ dependency
+  ^ "' from '"
+  ^ Path.to_string path
+  ^ "': "
+  ^ error
   | RegistryInitializationFailed { registry; error } -> "failed to initialize registry '"
   ^ registry
   ^ "': "
@@ -117,7 +141,7 @@ let scope_to_section = function
   | Build -> Manifest_edit.Build
   | Dev -> Manifest_edit.Dev
 
-let parse_dependency_spec = fun raw ->
+let parse_registry_dependency_spec = fun raw ->
   match String.split_on_char '@' raw with
   | [ name ] ->
       let* name = Riot_model.Package.validate_name (String.trim name)
@@ -146,6 +170,71 @@ let parse_dependency_spec = fun raw ->
         dependency = raw;
         error = "expected <name> or <name>@<version>"
       })
+
+let is_source_dependency_spec = fun raw ->
+  String.starts_with ~prefix:"http://" raw
+  || String.starts_with ~prefix:"https://" raw
+  || String.starts_with ~prefix:"github.com/" raw
+
+let dependency_root = fun ~declared_from dep_path ->
+  if Path.is_absolute dep_path then
+    Path.normalize dep_path
+  else
+    Path.normalize Path.(declared_from / dep_path)
+
+let load_path_dependency = fun ~(target:target_manifest) ~raw ->
+  let dep_path = Path.normalize (Path.v raw) in
+  if Path.is_absolute dep_path then
+    Error (PathDependencyMustBeRelative { dependency = raw })
+  else
+    let declared_from =
+      match Path.parent target.path with
+      | Some parent -> parent
+      | None -> Path.v "."
+    in
+    let package_root = dependency_root ~declared_from dep_path in
+    let manifest_path = Path.(package_root / Path.v "riot.toml") in
+    let* source = Fs.read_to_string manifest_path |> Result.map_error
+      (fun err ->
+        PathDependencyLoadFailed {
+          dependency = raw;
+          path = package_root;
+          error = IO.error_message err
+        }) in
+    let* toml = Data.Toml.parse source |> Result.map_error
+      (fun err ->
+        PathDependencyLoadFailed {
+          dependency = raw;
+          path = package_root;
+          error = Data.Toml.error_to_string err
+        }) in
+    let* package = Riot_model.Package.from_toml
+      toml
+      ~workspace_deps:[]
+      ~workspace_dev_deps:[]
+      ~workspace_build_deps:[]
+      ~path:package_root
+      ~relative_path:dep_path
+    |> Result.map_error
+      (fun err ->
+        PathDependencyLoadFailed {
+          dependency = raw;
+          path = package_root;
+          error = err
+        }) in
+    Ok (Path { name = package.name; path = dep_path })
+
+let parse_dependency_spec = fun ~(target:target_manifest) raw ->
+  if is_source_dependency_spec raw then
+    Error (UnsupportedDependencySource { dependency = raw })
+  else
+    match parse_registry_dependency_spec raw with
+    | Ok parsed -> Ok (Registry parsed)
+    | Error _
+      when String.contains raw "/"
+      || String.starts_with ~prefix:"." raw ->
+        load_path_dependency ~target ~raw
+    | Error err -> Error err
 
 let init_registry = fun () ->
   Pkgs_ml.Registry.create_filesystem ~registry_name ()
@@ -261,7 +350,7 @@ let dependency_exists = fun ~(package_name:string) document requirement ->
   in
   loop document.Pkgs_ml.Sparse_index.releases
 
-let lookup_named_package = fun ~(emit:event -> unit) ~registry parsed ->
+let lookup_named_package = fun ~(emit:event -> unit) ~registry (parsed: registry_dependency) ->
   emit (RegistryPackageLookupStarted { package = parsed.name });
   let* document = Pkgs_ml.Registry.read_package_document registry ~package_name:parsed.name
   |> Result.map_error
@@ -302,16 +391,27 @@ let remove_dependency = fun dependencies ~name ->
   in
   (kept, not (Int.equal (List.length kept) (List.length dependencies)))
 
-let dependency_of_parsed = fun (parsed: parsed_dependency) ->
-  Riot_model.Package.{
-    name = parsed.name;
-    source = {
-      workspace = false;
-      builtin = Riot_model.Package.is_builtin_dependency_name parsed.name;
-      path = None;
-      version = parsed.requirement
-    }
-  }
+let dependency_of_parsed = function
+  | Registry parsed ->
+      Riot_model.Package.{
+        name = parsed.name;
+        source = {
+          workspace = false;
+          builtin = Riot_model.Package.is_builtin_dependency_name parsed.name;
+          path = None;
+          version = parsed.requirement
+        }
+      }
+  | Path parsed ->
+      Riot_model.Package.{
+        name = parsed.name;
+        source = {
+          workspace = false;
+          builtin = false;
+          path = Some parsed.path;
+          version = None
+        }
+      }
 
 let reload_workspace = fun ~(workspace_root:Path.t) ->
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_root
@@ -352,7 +452,7 @@ let emit_updated_packages = fun ~(emit:event -> unit) ~(previous:Riot_model.Lock
       | _ -> ())
     current.packages
 
-let update_manifest = fun ~(emit:event -> unit) ~target ~scope ~dependencies ~operation ~dependency ->
+let update_manifest = fun ~(emit:event -> unit) ~(target:target_manifest) ~scope ~dependencies ~operation ~dependency ->
   Manifest_edit.update_dependency_section
     ~manifest_path:target.path
     ~section:(scope_to_section scope)
@@ -370,10 +470,15 @@ let update_manifest = fun ~(emit:event -> unit) ~target ~scope ~dependencies ~op
 
 let add = fun ?(on_event = no_emit) ~(workspace:Riot_model.Workspace.t) ~cwd ~(request:add_request) () ->
   let emit = on_event in
-  let* registry = init_registry () in
-  let* parsed = parse_dependency_spec request.dependency in
-  let* parsed = lookup_named_package ~emit ~registry parsed in
   let* target = target_manifest ~workspace ~cwd request.selection request.scope in
+  let* parsed = parse_dependency_spec ~target request.dependency in
+  let* parsed =
+    match parsed with
+    | Registry parsed ->
+        let* registry = init_registry () in
+        lookup_named_package ~emit ~registry parsed |> Result.map (fun parsed -> Registry parsed)
+    | Path _ as parsed -> Ok parsed
+  in
   let dependencies = upsert_dependency target.dependencies (dependency_of_parsed parsed) in
   let* () = update_manifest
     ~emit
@@ -381,7 +486,12 @@ let add = fun ?(on_event = no_emit) ~(workspace:Riot_model.Workspace.t) ~cwd ~(r
     ~scope:request.scope
     ~dependencies
     ~operation:`Add
-    ~dependency:parsed.name in
+    ~dependency:(
+      match parsed with
+      | Registry parsed -> parsed.name
+      | Path parsed -> parsed.name
+    ) in
+  let* registry = init_registry () in
   let* workspace = reload_workspace ~workspace_root:workspace.root in
   let* _lockfile = refresh_lock ~emit ~mode:Dep_solver.Refresh ~registry ~workspace in
   Ok ()
