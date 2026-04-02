@@ -69,6 +69,10 @@ let assert_formatted_ml_snapshot = fun ~ctx ~msg source ->
   let actual = parse_ml source |> Krasny.format |> Result.expect ~msg in
   Test.Snapshot.assert_text ~ctx ~actual
 
+let assert_formatted_mli_snapshot = fun ~ctx ~msg source ->
+  let actual = parse_mli source |> Krasny.format |> Result.expect ~msg in
+  Test.Snapshot.assert_text ~ctx ~actual
+
 let assert_roundtrip_hash = fun path ->
   let parsed = parse_file path in
   let original_hash = Krasny.syntax_hash parsed in
@@ -174,15 +178,13 @@ let value = `Ok 1
       in
       assert_formatted_ml_snapshot ~ctx ~msg:"polymorphic variant heads should format from tag tokens" source);
   Test.case "format quoted core type variables from explicit sigil tokens"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|type 'a t = 'a list
 
 val id : 'a -> 'a
 |}
       in
-      let actual = parse_mli source |> Krasny.format |> Result.expect ~msg:"quoted core type variables should format from sigil and name tokens" in
-      Test.assert_equal ~expected:source ~actual;
-      Ok ());
+      assert_formatted_mli_snapshot ~ctx ~msg:"quoted core type variables should format from sigil and name tokens" source);
   Test.case "format core type alias binders from explicit sigil tokens"
     (fun _ctx ->
       let source = {|val cast : ('a list as 'whole) -> 'whole
@@ -206,20 +208,13 @@ type u = {
       Test.assert_equal ~expected:source ~actual;
       Ok ());
   Test.case "desugar typed named parameters without duplicating inner annotations"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|type 'a t = 'a list
 
 let map (type a b) (iter : a t) ~(fn : a -> b) : b t = failwith "todo"
 |}
       in
-      let expected = {|type 'a t = 'a list
-
-let map : type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn -> failwith "todo"
-|}
-      in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"typed named parameters should move to the synthesized outer annotation" in
-      Test.assert_equal ~expected ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"typed named parameters should move to the synthesized outer annotation" source);
   Test.case "keep typed parameters in the binding header when annotation synthesis declines"
     (fun _ctx ->
       let source = {|let pick x : int = x
@@ -229,30 +224,19 @@ let map : type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn -> failwith "todo"
       Test.assert_equal ~expected:source ~actual;
       Ok ());
   Test.case "format index expressions from explicit delimiter tokens"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let x = s.[0]
 let y = a.(0)
 let z = x.%(0)
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"index expressions should format from CST-carried delimiters, not token replay" in
-      Test.assert_equal ~expected:source ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"index expressions should format from CST-carried delimiters, not token replay" source);
   Test.case "format signed literal patterns from structural sign tokens"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let classify = function | -1 -> `Neg | +2 -> `Pos | _ -> `Other
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"signed literal patterns should format from CST-carried sign tokens" in
-      Test.assert_equal
-        ~expected:{|let classify =
-  function
-  | -1 -> `Neg
-  | +2 -> `Pos
-  | _ -> `Other
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"signed literal patterns should format from CST-carried sign tokens" source);
   Test.case "format leaves a blank line before docstring-led top-level items"
     (fun _ctx ->
       let source = {|let first = 1
@@ -270,38 +254,20 @@ let second = 2
         ~actual;
       Ok ());
   Test.case "format leaves a blank line before docstring-led signature items"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|val first : int
 (** doc for second *)
 val second : int
 |}
       in
-      let actual = parse_mli source |> Krasny.format |> Result.expect ~msg:"signature docstring-led items should stay visually separated" in
-      Test.assert_equal
-        ~expected:{|val first: int
-
-(** doc for second *)
-val second: int
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_mli_snapshot ~ctx ~msg:"signature docstring-led items should stay visually separated" source);
   Test.case "format operator expressions and patterns from explicit operator tokens"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let op = ( + )
 let is_plus = function | ( + ) -> true | _ -> false
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"operator expressions and patterns should format from CST-carried operator tokens" in
-      Test.assert_equal
-        ~expected:{|let op = ( + )
-
-let is_plus =
-  function
-  | ( + ) -> true
-  | _ -> false
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"operator expressions and patterns should format from CST-carried operator tokens" source);
   Test.case "format infix and prefix expression operators from explicit operator tokens"
     (fun _ctx ->
       let source = {|let negate value = ~-value
@@ -326,25 +292,12 @@ let ready =
         ~actual;
       Ok ());
   Test.case "format singleton list patterns with explicit formatter spacing"
-    (fun _ctx ->
+    (fun ctx ->
       let compact_source = {|let classify = function
   | [value] -> hit
 |}
       in
-      let spaced_source = {|let classify = function
-  | [ value ] -> hit
-|}
-      in
-      let expected = {|let classify =
-  function
-  | [ value ] -> hit
-|}
-      in
-      let actual_compact = parse_ml compact_source |> Krasny.format |> Result.expect ~msg:"singleton list patterns should not preserve compact source spacing" in
-      let actual_spaced = parse_ml spaced_source |> Krasny.format |> Result.expect ~msg:"singleton list patterns should keep the explicit formatter style" in
-      Test.assert_equal ~expected ~actual:actual_compact;
-      Test.assert_equal ~expected ~actual:actual_spaced;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"singleton list patterns should not preserve compact source spacing" compact_source);
   Test.case "format if conditions from infix structure, not token scans"
     (fun _ctx ->
       let source = {|let decide =
@@ -364,21 +317,16 @@ let ready =
         ~actual;
       Ok ());
   Test.case "format binding values from structure, not source newlines"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let wrapped =
   (
     value
   )
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"binding layout should not preserve multiline source for a simple wrapped value" in
-      Test.assert_equal
-        ~expected:{|let wrapped = (value)
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"binding layout should not preserve multiline source for a simple wrapped value" source);
   Test.case "format simple string bindings inline from ordinary simplicity checks"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let message =
   (
     "ok"
@@ -388,16 +336,7 @@ let bind =
   finish value
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"simple string bindings should stay inline without a separate override" in
-      Test.assert_equal
-        ~expected:{|let message = ("ok")
-
-let bind =
-  let* value = "ok" in
-  finish value
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"simple string bindings should stay inline without a separate override" source);
   Test.case "format keeps simple applies inline even when identifiers contain keywords"
     (fun _ctx ->
       let source = "let handler = use function_handler\n" in
@@ -419,13 +358,9 @@ let bind =
         ~actual;
       Ok ());
   Test.case "format rewrites parameterized let bindings between formatted lets"
-    (fun _ctx ->
+    (fun ctx ->
       let source = "(* intro *)\nlet x = 1 + 2\nlet f x = x + 1\nlet y = 3 + 4\n" in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"parameterized let bindings should lower through explicit fun syntax" in
-      Test.assert_equal
-        ~expected:"(* intro *)\nlet x = 1 + 2\n\nlet f x = x + 1\n\nlet y = 3 + 4\n"
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"parameterized let bindings should lower through explicit fun syntax" source);
   Test.case "format keeps mixed trivia and unsupported items parseable"
     (fun _ctx ->
       let source = {|open Std
@@ -449,7 +384,7 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
       assert_idempotent ~source ~msg:"collection expressions should stay stable";
       Ok ());
   Test.case "format canonicalizes multiline list apply arguments"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let cmd =
   f [
     first_item;
@@ -457,26 +392,15 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
   ]
 |}
       in
-      let formatted = parse_ml source |> Krasny.format |> Result.expect ~msg:"list arguments should format" in
-      Test.assert_equal
-        ~expected:{|let cmd = f [ first_item; second_item ]
-|}
-        ~actual:formatted;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"list arguments should format" source);
   Test.case "format normalizes let-open bodies from structure, not source newlines"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let answer =
   let open Option in
   value
 |}
       in
-      let formatted = parse_ml source |> Krasny.format |> Result.expect ~msg:"let-open expressions should format structurally" in
-      Test.assert_equal
-        ~expected:{|let answer =
-  let open Option in value
-|}
-        ~actual:formatted;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"let-open expressions should format structurally" source);
   Test.case "format open bang from explicit bang tokens in ml and mli"
     (fun _ctx ->
       let source = "open! Inline\n" in
@@ -486,67 +410,23 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
       Test.assert_equal ~expected:source ~actual:actual_mli;
       Ok ());
   Test.case "format local binding equals policy for boolean chains and pipelines"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let run flag01 flag02 flag03 flag04 flag05 flag06 flag07 flag08 flag09 value =
   let ready = flag01 && flag02 && flag03 && flag04 && flag05 && flag06 && flag07 && flag08 && flag09 in
   let staged = value |> stage01 |> stage02 |> stage03 |> stage04 |> stage05 |> stage06 in
   ready, staged
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"local binding equals policy should stay stable while heuristics are isolated" in
-      Test.assert_equal
-        ~expected:{|let run flag01 flag02 flag03 flag04 flag05 flag06 flag07 flag08 flag09 value =
-  let ready =
-    flag01
-    && flag02
-    && flag03
-    && flag04
-    && flag05
-    && flag06
-    && flag07
-    && flag08
-    && flag09
-  in
-  let staged =
-    value
-    |> stage01
-    |> stage02
-    |> stage03
-    |> stage04
-    |> stage05
-    |> stage06
-  in
-  ready, staged
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"local binding equals policy should stay stable while heuristics are isolated" source);
   Test.case "format local binding infix threshold around inline-after-equals cutoff"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let totals a b c d e f g h i =
   let total8 = a + b + c + d + e + f + g + h in
   let total9 = a + b + c + d + e + f + g + h + i in
   total8, total9
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"local binding infix threshold should stay explicit and stable" in
-      Test.assert_equal
-        ~expected:{|let totals a b c d e f g h i =
-  let total8 = a + b + c + d + e + f + g + h in
-  let total9 =
-    a
-    + b
-    + c
-    + d
-    + e
-    + f
-    + g
-    + h
-    + i
-  in
-  total8, total9
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"local binding infix threshold should stay explicit and stable" source);
   Test.case "format simple apply rhs by shape, not comment scans"
     (fun _ctx ->
       let source = {|let run x =
@@ -559,7 +439,7 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
       assert_idempotent ~source ~msg:"comment-bearing simple apply rhs should stay stable";
       Ok ());
   Test.case "format binding-operator equals policy with explicit fun and multiline values"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let bind flag01 flag02 flag03 flag04 flag05 flag06 flag07 flag08 flag09 value =
   let* callback = fun x -> x in
   let* ready = flag01 && flag02 && flag03 && flag04 && flag05 && flag06 && flag07 && flag08 && flag09 in
@@ -567,34 +447,7 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
   callback staged, ready
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"binding-operator equals policy should stay aligned with local bindings" in
-      Test.assert_equal
-        ~expected:{|let bind flag01 flag02 flag03 flag04 flag05 flag06 flag07 flag08 flag09 value =
-  let* callback = fun x -> x in
-  let* ready =
-    flag01
-    && flag02
-    && flag03
-    && flag04
-    && flag05
-    && flag06
-    && flag07
-    && flag08
-    && flag09
-  in
-  let+ staged =
-    value
-    |> stage01
-    |> stage02
-    |> stage03
-    |> stage04
-    |> stage05
-    |> stage06
-  in
-  callback staged, ready
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"binding-operator equals policy should stay aligned with local bindings" source);
   Test.case "format recursive local bindings with multiline bodies"
     (fun _ctx ->
       let source = {|let outer value =
@@ -616,21 +469,11 @@ let array_value = [|first_item_identifier; second_item_identifier; third_item_id
         ~actual;
       Ok ());
   Test.case "format breaks long tuples without source-length sniffing"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let tuple_value = (left_side_identifier, right_side_identifier, final_identifier, fourth_identifier)
 |}
       in
-      let formatted = parse_ml source |> Krasny.format |> Result.expect ~msg:"long tuples should still break from doc layout" in
-      Test.assert_equal
-        ~expected:{|let tuple_value =
-  ( left_side_identifier,
-    right_side_identifier,
-    final_identifier,
-    fourth_identifier
-  )
-|}
-        ~actual:formatted;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"long tuples should still break from doc layout" source);
   Test.case "verify treats normalized punctuation and parens as safe"
     (fun _ctx ->
       with_tempdir "krasny_runner_verify_semantic_hash"
@@ -1237,7 +1080,7 @@ let ( .??[] ) () () = ();;
       assert_idempotent ~source ~msg:"top-level expression phrases should stay outside lowered fun bindings";
       Ok ());
   Test.case "format keeps top-level phrase separators structural"
-    (fun _ctx ->
+    (fun ctx ->
       let source = {|let project x = x
 ;;
 1
@@ -1245,18 +1088,7 @@ let ( .??[] ) () () = ();;
 module M = struct end
 |}
       in
-      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"top-level phrase separators should come from source-file tokens, not source gaps" in
-      Test.assert_equal
-        ~expected:{|let project x = x;;
-
-1;;
-
-module M = struct
-
-end
-|}
-        ~actual;
-      Ok ());
+      assert_formatted_ml_snapshot ~ctx ~msg:"top-level phrase separators should come from source-file tokens, not source gaps" source);
   Test.case "format preserves syntax hash for selected codebase files"
     (fun _ctx ->
       List.iter assert_roundtrip_hash workspace_files;

@@ -1,0 +1,14 @@
+let totals a b c d e f g h i =
+  let total8 = a + b + c + d + e + f + g + h in
+  let total9 =
+    a
+    + b
+    + c
+    + d
+    + e
+    + f
+    + g
+    + h
+    + i
+  in
+  (total8, total9)

@@ -1,0 +1,4 @@
+let classify = function
+  | -1 -> `Neg
+  | +2 -> `Pos
+  | _ -> `Other
