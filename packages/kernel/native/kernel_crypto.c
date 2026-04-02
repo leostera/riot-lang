@@ -95,75 +95,56 @@ CAMLprim value kernel_crypto_md5(value data) {
 
 #else
 /* Linux/other platforms - use OpenSSL */
-#include <openssl/sha.h>
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 
-CAMLprim value kernel_crypto_sha1(value data) {
+static value kernel_crypto_evp_digest(value data, const EVP_MD *digest, int digest_length) {
     CAMLparam1(data);
     CAMLlocal1(result);
 
-    unsigned char hash[SHA_DIGEST_LENGTH];
-    SHA_CTX ctx;
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hash_len = 0;
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (ctx == NULL) {
+        caml_failwith("EVP_MD_CTX_new failed");
+    }
 
-    SHA1_Init(&ctx);
-    SHA1_Update(&ctx, Bytes_val(data), caml_string_length(data));
-    SHA1_Final(hash, &ctx);
+    if (EVP_DigestInit_ex(ctx, digest, NULL) != 1) {
+        EVP_MD_CTX_free(ctx);
+        caml_failwith("EVP_DigestInit_ex failed");
+    }
 
-    result = caml_alloc_string(SHA_DIGEST_LENGTH);
-    memcpy(Bytes_val(result), hash, SHA_DIGEST_LENGTH);
+    if (EVP_DigestUpdate(ctx, Bytes_val(data), caml_string_length(data)) != 1) {
+        EVP_MD_CTX_free(ctx);
+        caml_failwith("EVP_DigestUpdate failed");
+    }
+
+    if (EVP_DigestFinal_ex(ctx, hash, &hash_len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        caml_failwith("EVP_DigestFinal_ex failed");
+    }
+
+    EVP_MD_CTX_free(ctx);
+
+    result = caml_alloc_string(digest_length);
+    memcpy(Bytes_val(result), hash, digest_length);
 
     CAMLreturn(result);
+}
+
+CAMLprim value kernel_crypto_sha1(value data) {
+    return kernel_crypto_evp_digest(data, EVP_sha1(), EVP_MD_size(EVP_sha1()));
 }
 
 CAMLprim value kernel_crypto_sha256(value data) {
-    CAMLparam1(data);
-    CAMLlocal1(result);
-
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX ctx;
-
-    SHA256_Init(&ctx);
-    SHA256_Update(&ctx, Bytes_val(data), caml_string_length(data));
-    SHA256_Final(hash, &ctx);
-
-    result = caml_alloc_string(SHA256_DIGEST_LENGTH);
-    memcpy(Bytes_val(result), hash, SHA256_DIGEST_LENGTH);
-
-    CAMLreturn(result);
+    return kernel_crypto_evp_digest(data, EVP_sha256(), EVP_MD_size(EVP_sha256()));
 }
 
 CAMLprim value kernel_crypto_sha512(value data) {
-    CAMLparam1(data);
-    CAMLlocal1(result);
-
-    unsigned char hash[SHA512_DIGEST_LENGTH];
-    SHA512_CTX ctx;
-
-    SHA512_Init(&ctx);
-    SHA512_Update(&ctx, Bytes_val(data), caml_string_length(data));
-    SHA512_Final(hash, &ctx);
-
-    result = caml_alloc_string(SHA512_DIGEST_LENGTH);
-    memcpy(Bytes_val(result), hash, SHA512_DIGEST_LENGTH);
-
-    CAMLreturn(result);
+    return kernel_crypto_evp_digest(data, EVP_sha512(), EVP_MD_size(EVP_sha512()));
 }
 
 CAMLprim value kernel_crypto_md5(value data) {
-    CAMLparam1(data);
-    CAMLlocal1(result);
-
-    unsigned char hash[MD5_DIGEST_LENGTH];
-    MD5_CTX ctx;
-
-    MD5_Init(&ctx);
-    MD5_Update(&ctx, Bytes_val(data), caml_string_length(data));
-    MD5_Final(hash, &ctx);
-
-    result = caml_alloc_string(MD5_DIGEST_LENGTH);
-    memcpy(Bytes_val(result), hash, MD5_DIGEST_LENGTH);
-
-    CAMLreturn(result);
+    return kernel_crypto_evp_digest(data, EVP_md5(), EVP_MD_size(EVP_md5()));
 }
 
 #endif
@@ -224,16 +205,16 @@ CAMLprim value kernel_crypto_hmac_sha256(value key, value data) {
     CAMLparam2(key, data);
     CAMLlocal1(result);
 
-    unsigned char mac[SHA256_DIGEST_LENGTH];
-    unsigned int mac_len;
+    unsigned char mac[EVP_MAX_MD_SIZE];
+    unsigned int mac_len = 0;
     
     HMAC(EVP_sha256(),
          String_val(key), caml_string_length(key),
          (unsigned char *)String_val(data), caml_string_length(data),
          mac, &mac_len);
 
-    result = caml_alloc_string(SHA256_DIGEST_LENGTH);
-    memcpy(Bytes_val(result), mac, SHA256_DIGEST_LENGTH);
+    result = caml_alloc_string(mac_len);
+    memcpy(Bytes_val(result), mac, mac_len);
 
     CAMLreturn(result);
 }
