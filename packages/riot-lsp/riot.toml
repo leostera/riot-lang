@@ -21,3 +21,5 @@ std = { path = "../std", version = "*" }
 jsonrpc = { path = "../jsonrpc", version = "*" }
 lsp = { path = "../lsp", version = "*" }
 syn = { path = "../syn", version = "*" }
+krasny = { path = "../krasny", version = "*" }
+riot-fix = { path = "../riot-fix", version = "*" }

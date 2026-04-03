@@ -6,7 +6,7 @@
 
 1. Keep `riot-lsp` built on `jsonrpc` and `lsp`; do not duplicate protocol types or JSON codecs here.
 2. Keep stdout protocol-only. Never mix logs or human status output into the LSP stream.
-3. Keep the first slice syntax-first: lifecycle, document sync, syntax diagnostics, then formatting/code actions later.
+3. Keep the early slices syntax-first: lifecycle, document sync, syntax and lint diagnostics first, then formatting/code actions incrementally.
 4. Keep session state explicit and testable. Prefer pure state transitions over hiding behavior in ad hoc I/O loops.
 5. Treat request parsing failures as request-scoped failures. One bad request must not poison the rest of the session.
 6. Keep request/response behavior covered by snapshot fixtures.

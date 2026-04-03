@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "ad80db832dbe2eff"
+dependency_hash = "9774d2a9a610d963"
 
 [[packages]]
 name = "blink"
@@ -342,7 +342,7 @@ dev_dependencies = []
 name = "riot-lsp"
 root = "packages/riot-lsp"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "jsonrpc", package = { name = "jsonrpc" } }, { name = "lsp", package = { name = "lsp" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
+dependencies = [{ name = "jsonrpc", package = { name = "jsonrpc" } }, { name = "krasny", package = { name = "krasny" } }, { name = "lsp", package = { name = "lsp" } }, { name = "riot-fix", package = { name = "riot-fix" } }, { name = "std", package = { name = "std" } }, { name = "syn", package = { name = "syn" } }]
 build_dependencies = []
 dev_dependencies = []
 

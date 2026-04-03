@@ -2,6 +2,7 @@ open Std
 open Std.Data
 
 let ( let* ) = Result.and_then
+let lint_rules = Riot_fix.Pipeline.default_rules ()
 
 type document = {
   uri: Lsp.Uri.t;
@@ -61,11 +62,33 @@ let diagnostic_to_lsp = fun text -> fun (diagnostic : Syn.Diagnostic.t) ->
     data = Some (Syn.Diagnostic.to_json diagnostic);
   }
 
+let lint_diagnostic_severity = fun severity ->
+  match severity with
+  | Riot_fix.Diagnostic.Error -> Lsp.Diagnostic.Error
+  | Riot_fix.Diagnostic.Warning -> Lsp.Diagnostic.Warning
+  | Riot_fix.Diagnostic.Info -> Lsp.Diagnostic.Information
+  | Riot_fix.Diagnostic.Hint -> Lsp.Diagnostic.Hint
+
+let lint_diagnostic_to_lsp = fun text -> fun (diagnostic : Riot_fix.Diagnostic.t) ->
+  let span = Riot_fix.Diagnostic.span diagnostic in
+  {
+    Lsp.Diagnostic.range = Lsp.Utf16.range_of_offsets text ~start_offset:span.start ~end_offset:span.end_;
+    severity = Some (lint_diagnostic_severity (Riot_fix.Diagnostic.severity diagnostic));
+    code = Some (Riot_fix.Diagnostic.rule_id diagnostic);
+    source = Some "riot-fix";
+    message = Riot_fix.Diagnostic.message diagnostic;
+    tags = None;
+    data = Some (Riot_fix.Diagnostic.to_json diagnostic);
+  }
+
+let analyze_document = fun document ->
+  Riot_fix.Source_runner.run ~rules:lint_rules ~filename:(filename_of_uri document.uri) document.text
+
 let publish_diagnostics = fun document ->
+  let result = analyze_document document in
   let diagnostics =
-    Syn.parse ~filename:(filename_of_uri document.uri) document.text
-    |> fun result -> result.diagnostics
-    |> List.map (diagnostic_to_lsp document.text)
+    List.map (diagnostic_to_lsp document.text) result.parse_diagnostics
+    @ List.map (lint_diagnostic_to_lsp document.text) result.diagnostics
   in
   let params : Lsp.Text_document_methods.Publish_diagnostics.params = {
     uri = document.uri;
@@ -111,7 +134,7 @@ let capabilities =
       Some
         (Lsp.Initialize.Server_capabilities.Sync_options
            { open_close = Some true; change = Some Lsp.Text_document.Sync_kind.Full; save = None });
-    document_formatting_provider = Some false;
+    document_formatting_provider = Some true;
     code_action_provider = Some (Lsp.Initialize.Server_capabilities.Bool false);
     experimental = None;
   }
@@ -167,6 +190,43 @@ let handle_shutdown = fun state -> fun payload ->
       let state = { state with shutdown_requested = true } in
       ok state [ Lsp.response_to_json ~id Lsp.Shutdown.request () ]
 
+let document_range = fun text ->
+  Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:(String.length text)
+
+let handle_formatting = fun state -> fun payload ->
+  match Lsp.request_of_json Lsp.Text_document_methods.Formatting.request payload with
+  | Error reason ->
+      ok state [ response_error ~id:Jsonrpc.Null ~code:Lsp.Error_code.invalid_params ~message:reason () ]
+  | Ok (id, params) -> (
+      match find_document state params.text_document.uri with
+      | None ->
+          ok state
+            [
+              response_error ~id ~code:Lsp.Error_code.invalid_params
+                ~message:"formatting requested for a document that is not open" ();
+            ]
+      | Some document ->
+          let parse_result = Syn.parse ~filename:(filename_of_uri document.uri) document.text in
+          if not (List.is_empty parse_result.diagnostics) then
+            ok state [ Lsp.response_to_json ~id Lsp.Text_document_methods.Formatting.request None ]
+          else
+            match Krasny.format parse_result with
+            | Ok formatted ->
+                let result =
+                  if String.equal formatted document.text then
+                    Some []
+                  else
+                    Some [ { Lsp.Text_edit.range = document_range document.text; new_text = formatted } ]
+                in
+                ok state [ Lsp.response_to_json ~id Lsp.Text_document_methods.Formatting.request result ]
+            | Error error ->
+                ok state
+                  [
+                    response_error ~id ~code:Lsp.Error_code.internal_error
+                      ~message:(Krasny.format_error_to_string error) ();
+                  ]
+    )
+
 let handle_request = fun state -> fun request -> fun payload ->
   if (not state.initialized) && not (String.equal request.Jsonrpc.method_ "initialize") then
     let id = Option.unwrap_or request.Jsonrpc.id ~default:Jsonrpc.Null in
@@ -176,6 +236,7 @@ let handle_request = fun state -> fun request -> fun payload ->
     match request.Jsonrpc.method_ with
     | "initialize" -> handle_initialize state payload
     | "shutdown" -> handle_shutdown state payload
+    | "textDocument/formatting" -> handle_formatting state payload
     | method_ ->
         let id = Option.unwrap_or request.Jsonrpc.id ~default:Jsonrpc.Null in
         ok state [ response_error ~id ~code:Lsp.Error_code.method_not_found ~message:("unknown method `" ^ method_ ^ "`") () ]

@@ -10,7 +10,7 @@
             "openClose": true,
             "change": 1
           },
-          "documentFormattingProvider": false,
+          "documentFormattingProvider": true,
           "codeActionProvider": false
         },
         "serverInfo": {
